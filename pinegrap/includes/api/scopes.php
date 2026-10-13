@@ -108,9 +108,9 @@ function api_scope_groups() {
 		// and all, stays on its own screen.
 		'campaigns' => array('label' => 'Campaigns',  'read' => 'campaigns:read', 'write' => 'campaigns:write'),
 
-		// The lists campaigns go to and who is on them. Writing puts contacts
-		// in or takes them out and records their choice for the group's
-		// e-mail; a group is made, renamed or removed on its own screen.
+		// The lists campaigns go to and who is on them. Writing makes, changes
+		// and removes a group (an empty one only), puts contacts in or takes
+		// them out and records their choice for the group's e-mail.
 		'contact_groups' => array('label' => 'Contact Groups', 'read' => 'contact_groups:read', 'write' => 'contact_groups:write'),
 
 		// Who did what on the site, from which address. Read only.

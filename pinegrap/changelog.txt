@@ -1108,9 +1108,21 @@
          kaydeder; bir bülten aracında abonelikten çıkan
          kişi sitede de çıkmış görünür. Daha önce çıkmış
          kişi gruba yeniden eklenince, açıkça abone olduğu
-         gönderilmedikçe çıkmış kalır. Grup oluşturma ve
-         silme kendi ekranında kalır. Kullanıcı rolündeki
-         hesap yalnız kendisine verilen grupları görür.
+         gönderilmedikçe çıkmış kalır. Yazma grup da
+         oluşturur, adını ve e-posta aboneliğini değiştirir
+         ve boş bir grubu siler; içinde kişi olan grup, grup
+         ekranındaki gibi silinmez. Kullanıcı rolündeki
+         hesap yalnız kendisine verilen grupları görür ve
+         yeni grup oluşturamaz.
+
+  [YENİ] Webhook olayı "contact_group.members_changed":
+         kişiler API'den ya da paneldeki kişi ekranlarından
+         bir gruba eklenince veya gruptan çıkarılınca grup ve
+         eklenen / çıkarılan kişilerle tek bildirim gider.
+         Böylece bir bülten aracı listeyi yeniden okumadan
+         değişikliği öğrenir. Ödeme, formlar, e-posta
+         tercihleri sayfası ve içe aktarmalar bu olayı
+         göndermez.
 
   [YENİ] E-posta kampanyaları API'de, kendi izinleriyle
          (kampanyaları okuma / yazma): kampanyalar konusu,

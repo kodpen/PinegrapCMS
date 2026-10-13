@@ -443,6 +443,7 @@ if (!$_POST) {
     $query =
         "SELECT
            id,
+           name,
            email_subscription
         FROM contact_groups";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -606,6 +607,8 @@ if (!$_POST) {
                     '" . $contact_id . "',
                     '" . $contact_group['id'] . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            pg_announce_contact_group_members($contact_group['id'], array($contact_id), array(), $contact_group['name']);
             
             // if contact group has email subscription turned on, add opt-in selection
             if ($contact_group['email_subscription'] == 1) {

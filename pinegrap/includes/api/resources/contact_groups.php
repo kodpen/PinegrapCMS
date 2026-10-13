@@ -10,10 +10,10 @@
 
 // Contact groups: the lists a campaign is sent to, and who is on them.
 //
-// Read, and members put in or taken out, as on the contact screen; a group
-// itself is made, renamed and removed on its own screen. An account with the
-// contacts right but the user role reaches only the groups given to it, as on
-// those screens.
+// Read, made, changed and removed as on the contact group screens, and members
+// put in or taken out as on the contact screen. An account with the contacts
+// right but the user role reaches only the groups given to it, as on those
+// screens: it may change or remove one of them, but not make a new one.
 //
 // Being on a list and agreeing to its e-mail are two records. A group with
 // e-mail subscription switched on keeps a contact's choice in opt_in, one row
@@ -156,6 +156,84 @@ function api_contact_group_load_or_fail($id) {
 
 }
 
+// The add screen opens from the manager role up only. Below that an account
+// works inside the groups given to it, and a group it made would be given to
+// nobody.
+function api_contact_group_may_create($owner) {
+
+	return ((int)$owner['role'] < 3);
+
+}
+
+// The group as a create or a change writes it: what it holds now, with what was
+// sent laid over it. The subscription type is kept while the subscription is
+// off, as the group screens keep it, so switching it back on brings back the
+// type it had.
+function api_contact_group_fields($params, $row = null) {
+
+	$data = array(
+		'name'                    => ($row === null) ? '' : (string)$row['name'],
+		'description'             => ($row === null) ? '' : (string)$row['description'],
+		'email_subscription'      => (($row !== null) && ((int)$row['email_subscription'] === 1)) ? 1 : 0,
+		'email_subscription_type' => (($row !== null) && ((string)$row['email_subscription_type'] === 'closed')) ? 'closed' : 'open'
+	);
+
+	if (isset($params['name'])) {
+
+		$data['name'] = trim((string)$params['name']);
+
+	}
+
+	if (isset($params['description'])) {
+
+		$data['description'] = (string)$params['description'];
+
+	}
+
+	if (isset($params['email_subscription'])) {
+
+		$data['email_subscription'] = $params['email_subscription'] ? 1 : 0;
+
+	}
+
+	if (isset($params['subscription_type'])) {
+
+		$data['email_subscription_type'] = ((string)$params['subscription_type'] === 'closed') ? 'closed' : 'open';
+
+	}
+
+	return $data;
+
+}
+
+// The contact, campaign and form screens tell groups apart by name, so the
+// group screens refuse a second group of the same name. The column compares
+// without regard to case, and so does this.
+function api_contact_group_name_or_fail($name, $except_id = 0) {
+
+	$name = trim((string)$name);
+
+	if ($name === '') {
+
+		api_fail_validation(lang(array('string' => '{var:1} is required.', 'vars' => array('name'))), 'name');
+
+	}
+
+	$taken = api_value("SELECT id FROM contact_groups WHERE name = '" . escape($name) . "' AND id <> '" . (int)$except_id . "' LIMIT 1");
+
+	if ($taken) {
+
+		api_fail(409, 'name_taken', lang(array(
+			'string' => 'A contact group with the name {var:1} already exists (id {var:2}).',
+			'vars'   => array($name, (int)$taken)
+		)), 'name');
+
+	}
+
+	return $name;
+
+}
+
 // By id, so a page boundary never moves when a group is renamed.
 function api_contact_groups_list($params) {
 
@@ -247,6 +325,156 @@ function api_contact_groups_get($params) {
 	$counts = api_contact_group_member_counts(array($row['id']));
 
 	api_ok(api_contact_group_present($row, $counts[(int)$row['id']]));
+
+}
+
+// As on the add screen: an empty group, recorded under the account that owns
+// the application.
+function api_contact_groups_create($params) {
+
+	$app = api_current_app();
+
+	if (!api_contact_group_may_create($app['owner'])) {
+
+		api_fail(403, 'forbidden', lang('Contact groups are created from the manager role up, as on the contact group screens. This account works inside the groups given to it.'));
+
+	}
+
+	$data = api_contact_group_fields($params);
+
+	$data['name'] = api_contact_group_name_or_fail($data['name']);
+
+	api_dry_run_stop('created', 'contact_group', array('name' => $data['name']));
+
+	$owner_id = (int)$app['owner']['id'];
+
+	api_exec("INSERT INTO contact_groups (name, description, email_subscription, email_subscription_type,
+			created_user_id, created_timestamp, last_modified_user_id, last_modified_timestamp)
+		VALUES (
+			'" . escape($data['name']) . "',
+			'" . escape($data['description']) . "',
+			'" . $data['email_subscription'] . "',
+			'" . $data['email_subscription_type'] . "',
+			'" . $owner_id . "', UNIX_TIMESTAMP(), '" . $owner_id . "', UNIX_TIMESTAMP())");
+
+	$id = api_insert_id();
+
+	if ($id <= 0) {
+
+		api_fail_server();
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'Contact group ({var:1}) was created through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($data['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(api_contact_group_present(api_contact_group_load_or_fail($id), 0), 201);
+
+}
+
+// Only what is sent is changed. Switching the subscription off keeps the
+// members' choices, as the group screen does, so switching it back on finds
+// them again.
+function api_contact_groups_update($params) {
+
+	$app = api_current_app();
+
+	$row = api_contact_group_load_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	$sent = false;
+
+	foreach (array('name', 'description', 'email_subscription', 'subscription_type') as $key) {
+
+		if (isset($params[$key])) {
+
+			$sent = true;
+
+		}
+
+	}
+
+	if (!$sent) {
+
+		api_fail_validation(lang('Send at least one of name, description, email_subscription or subscription_type.'));
+
+	}
+
+	$data = api_contact_group_fields($params, $row);
+
+	if ($data['name'] !== (string)$row['name']) {
+
+		$data['name'] = api_contact_group_name_or_fail($data['name'], $id);
+
+	}
+
+	api_dry_run_stop('updated', 'contact_group', array('id' => $id, 'name' => $data['name']));
+
+	api_exec("UPDATE contact_groups SET
+			name = '" . escape($data['name']) . "',
+			description = '" . escape($data['description']) . "',
+			email_subscription = '" . $data['email_subscription'] . "',
+			email_subscription_type = '" . $data['email_subscription_type'] . "',
+			last_modified_user_id = '" . (int)$app['owner']['id'] . "',
+			last_modified_timestamp = UNIX_TIMESTAMP()
+		WHERE id = '" . $id . "'");
+
+	log_activity(lang(array(
+		'string' => 'Contact group ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($data['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	$counts = api_contact_group_member_counts(array($id));
+
+	api_ok(api_contact_group_present(api_contact_group_load_or_fail($id), $counts[$id]));
+
+}
+
+// As on the group's own screen: only a group with no contacts in it is
+// removed, and with it the accounts it was given to, the members' choices kept
+// for it and the campaigns' record of having been sent to it. Members are
+// counted as the members field counts them, so a link left behind by a contact
+// that no longer exists does not hold the group back, and goes with it.
+function api_contact_groups_delete($params) {
+
+	$app = api_current_app();
+
+	$row = api_contact_group_load_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	$counts = api_contact_group_member_counts(array($id));
+
+	if ($counts[$id] > 0) {
+
+		api_fail(409, 'contact_group_has_members', lang(array(
+			'string' => 'This contact group holds {var:1} contacts. Take them out first (POST /contact-groups/{var:2}/members with remove), as the contact group screen asks.',
+			'vars'   => array($counts[$id], $id)
+		)));
+
+	}
+
+	api_dry_run_stop('deleted', 'contact_group', array('id' => $id, 'name' => (string)$row['name']));
+
+	api_exec("DELETE FROM contact_groups WHERE id = '" . $id . "'");
+
+	api_exec("DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = '" . $id . "'");
+
+	api_exec("DELETE FROM users_contact_groups_xref WHERE contact_group_id = '" . $id . "'");
+
+	api_exec("DELETE FROM opt_in WHERE contact_group_id = '" . $id . "'");
+
+	api_exec("DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = '" . $id . "'");
+
+	log_activity(lang(array(
+		'string' => 'Contact group ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($row['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(array('id' => $id, 'deleted' => true));
 
 }
 
@@ -430,7 +658,9 @@ function api_contact_group_contacts_or_fail($ids, $field) {
 
 // Members in and out, as the contact screen ticks a group. Taking a contact
 // out keeps its opt-in row, as that screen does, so a contact who opted out
-// and is put back stays opted out unless opt_in=true is sent.
+// and is put back stays opted out unless opt_in=true is sent. Who actually
+// moved is announced as contact_group.members_changed; a choice written for a
+// member already there is not a move.
 function api_contact_groups_members_update($params) {
 
 	$app = api_current_app();
@@ -525,6 +755,8 @@ function api_contact_groups_members_update($params) {
 		api_exec("INSERT INTO opt_in (contact_id, contact_group_id, opt_in) VALUES " . implode(', ', $values));
 
 	}
+
+	pg_announce_contact_group_members($id, $changes['add'], $changes['remove'], $group['name']);
 
 	if (!empty($changes['add']) || !empty($changes['remove']) || ($opt_in !== null)) {
 
