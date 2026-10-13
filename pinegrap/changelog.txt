@@ -339,6 +339,31 @@
          siparişleri" ve "Yeni satın alma siparişi"
          düğmeleri var.
 
+  [YENİ] Siparişten alış faturası: sipariş ekranındaki
+         "Alış faturası taslağı oluştur" henüz gelmeyenler
+         için siparişin fiyatlarıyla bir taslak açıyor.
+         Tedarikçinin faturasına göre miktarlar, fatura
+         numarası ve tarihi düzeltilip kesiliyor; stok ve
+         maliyet her zamanki gibi fatura kesilince
+         değişiyor. Parçalı teslimde her teslim için yeni
+         bir taslak açılabiliyor.
+
+  [YENİ] Sipariş kendi durumunu bu faturalardan okuyor:
+         bir kısmı geldiyse "Kısmen teslim alındı",
+         tamamı geldiyse "Tamamı teslim alındı". İptal
+         edilen fatura sayılmıyor. Sipariş ekranında her
+         satır için sipariş edilen, alınan, taslakta olan
+         ve gelecek miktar ile siparişten kesilen
+         faturalar listeleniyor; faturada ve taslakta
+         siparişe dönen bağlantı var.
+
+  [YENİ] Minimum stok ekranında işaretlenen ürünlerden
+         satın alma siparişi açılıyor: her ürün için
+         minimuma dönmek üzere gereken miktar ve son alış
+         fiyatıyla. ERP panosunda "Bekleyen satın alma
+         siparişleri" kartı var; teslim günü geçenlerin
+         sayısını gösteriyor.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.
