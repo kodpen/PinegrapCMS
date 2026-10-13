@@ -58,6 +58,7 @@ require_once($pg_api_directory . '/resources/comments.php');
 require_once($pg_api_directory . '/resources/short_links.php');
 require_once($pg_api_directory . '/resources/store.php');
 require_once($pg_api_directory . '/resources/gift_cards.php');
+require_once($pg_api_directory . '/resources/commissions.php');
 require_once($pg_api_directory . '/resources/visitors.php');
 require_once($pg_api_directory . '/resources/site_log.php');
 require_once($pg_api_directory . '/resources/campaigns.php');
@@ -268,7 +269,7 @@ function api_run() {
 	if (in_array($method, array('POST', 'PUT', 'PATCH', 'DELETE'), true)
 		&& api_dry_run_requested() && empty($route['dry_run'])) {
 
-		api_fail(400, 'dry_run_unsupported', lang('This endpoint cannot rehearse a call. Send it without X-Dry-Run.'));
+		api_fail(400, 'dry_run_unsupported', lang('This endpoint cannot rehearse a call. Send it without X-Dry-Run or dry_run.'));
 
 	}
 

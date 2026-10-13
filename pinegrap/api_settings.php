@@ -557,6 +557,7 @@ function api_settings_group_text($key, $group = array()) {
 		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means switching one on or off, moving its dates or removing it, not creating it'), 'bi-file-earmark-text'),
 		'key_codes' => array(lang('Key Codes'),  lang('The codes shoppers type instead of an offer\'s own code; writing makes codes for an existing offer, changes or removes one'), 'bi-key'),
 		'gift_cards' => array(lang('Gift Cards'), lang('The cards, their codes, balances and where they were spent; writing issues a card, changes its balance or expiry, or removes it'), 'bi-gift'),
+		'commissions' => array(lang('Commissions'), lang('What the affiliate program owes each affiliate, with its status and the order it came from - read only'), 'bi-cash-coin'),
 		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder and describing them'), 'bi-folder'),
 		'forms'     => array(lang('Forms'),      lang('Which forms the site has and what visitors filled in; writing marks a submission complete and fills in its text answers'), 'bi-ui-checks'),
 		'calendars' => array(lang('Calendars'),  lang('The calendars and the events on them; writing adds, changes, publishes or removes an event, not its repeats or reservations'), 'bi-calendar-event'),

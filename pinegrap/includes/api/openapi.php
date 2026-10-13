@@ -206,6 +206,15 @@ function api_openapi_build() {
 					'schema'      => array('type' => 'string', 'enum' => array('true', 'false'))
 				);
 
+				// The same, for a caller that cannot set a header.
+				$operation['parameters'][] = array(
+					'name'        => 'dry_run',
+					'in'          => 'query',
+					'required'    => false,
+					'description' => 'The same as X-Dry-Run, in the query string: ?dry_run=true. Either one asking for a dry run is enough.',
+					'schema'      => array('type' => 'string', 'enum' => array('true', 'false'))
+				);
+
 			}
 
 		}
@@ -506,6 +515,7 @@ function api_openapi_objects()
         'StoreCurrency' => 'api_store_currency_schema',
         'GiftCard'     => 'api_gift_card_schema',
         'GiftCardRedemption' => 'api_gift_card_redemption_schema',
+        'Commission'   => 'api_commission_schema',
         'TrafficReport' => 'api_traffic_report_schema',
         'TopContent'   => 'api_top_content_schema',
         'VisitorBreakdown' => 'api_visitor_breakdown_schema',

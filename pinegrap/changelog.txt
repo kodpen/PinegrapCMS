@@ -922,6 +922,23 @@
          kullanılan bir nitelik ancak açıkça istenirse
          silinir.
 
+  [YENİ] Ortaklık komisyonları API'de, kendi izniyle
+         (komisyonları okuma): her komisyon referans
+         kodu, durumu (beklemede, ödenecek, uygun değil,
+         ödendi), tutarı, ortağı ve geldiği siparişle;
+         yinelenen komisyonlarda dönemi ve ürünüyle.
+         Liste son değişene göre sıralı, böylece bir
+         ödeme aracı yalnız durumu değişenleri çekebilir.
+         Yalnız okuma: durum Komisyonlar ekranında
+         değiştirilir. İzin mağazayı yönetebilenlere
+         açılır.
+
+  [DÜZELTME] Yazma provası sorgu parametresiyle de
+         isteniyor: ?dry_run=true, X-Dry-Run başlığıyla
+         aynı işi yapar. Önceden başlık gönderemeyen bir
+         araç ?dry_run=true eklediğinde parametre yok
+         sayılıyor ve işlem gerçekten yapılıyordu.
+
   [YENİ] İletişim grupları API'de, kendi izinleriyle
          (iletişim gruplarını okuma / yazma): gruplar adı,
          açıklaması, e-posta aboneliği ve üye sayısıyla;
