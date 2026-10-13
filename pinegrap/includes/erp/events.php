@@ -337,6 +337,39 @@ function erp_event_quote($quote_id, $event)
 }
 
 /**
+ * Announce a purchase order: written, sent, received in full, cancelled or
+ * opened again. An order moves no money, so like a quote it feeds the
+ * webhook queue and the audit trail only.
+ *
+ * @param int    $order_id
+ * @param string $event  'erp.purchase_order.created' | 'erp.purchase_order.sent'
+ *                       | 'erp.purchase_order.received' | 'erp.purchase_order.cancelled'
+ *                       | 'erp.purchase_order.reopened'
+ * @return int
+ */
+function erp_event_purchase_order($order_id, $event)
+{
+    $order = db_item("SELECT id, full_number, status, account_id, issue_date, expected_date, currency, grand_total, sent_at
+        FROM erp_purchase_orders WHERE id = '" . (int) $order_id . "' LIMIT 1");
+
+    if (!is_array($order)) {
+        return 0;
+    }
+
+    return erp_event($event, array(
+        'id' => (int) $order['id'],
+        'number' => (string) $order['full_number'],
+        'status' => (string) $order['status'],
+        'account_id' => (int) $order['account_id'],
+        'issue_date' => erp_event_date($order['issue_date']),
+        'expected_date' => erp_event_date($order['expected_date']),
+        'currency' => (string) $order['currency'],
+        'grand_total' => (int) $order['grand_total'],
+        'sent_at' => erp_event_time($order['sent_at']),
+    ));
+}
+
+/**
  * Announce a stock count that was applied: the store's stock of every product
  * on it was set to what was counted.
  *

@@ -271,6 +271,19 @@
          bir göreve not ya da Çalışma Alanı notu eklemeyi
          önerebiliyor; uygulanınca kanala karar düşer.
 
+  [YENİ] Dış API ve MCP: görev asistana verilebiliyor ve
+         asistanın çalışması durdurulabiliyor; görev
+         listesi asistandaki görevlere göre süzülebiliyor;
+         görevde asistanın kim olduğu, şu an çalışıp
+         çalışmadığı ve onay bekleyen öneri sayısı
+         görünüyor. Asistanın görevdeki cevapları ve
+         önerileri görev numarasıyla okunuyor. Öneriler
+         telefondan ya da bağlanan bir uygulamadan, kişinin
+         kendi oturumuyla uygulanıp kenara ayrılabiliyor;
+         bir uygulama anahtarı (asistanın kendisi dahil)
+         öneri uygulayamaz. "Benim günüm" kişinin onayını
+         bekleyen önerileri de getiriyor.
+
   [ŞEMA] Görevler tablosuna asistan için üç kolon,
          asistan istekleri ve önerilen değişiklikler
          tablolarına görev kolonu eklenir.
@@ -300,6 +313,68 @@
 
   [ŞEMA] Takvim abonelikleri için yeni bir tablo
          oluşturulur.
+
+  [YENİ] Hızlı not: panelin üst çubuğunda, bildirim
+         zilinin yanında yeni bir düğme. Açılan kutuya
+         yazılan metin Çalışma Alanı notlarınıza
+         kaydediliyor, ilk satırı başlık oluyor
+         (Ctrl+Enter ile de kaydedilir). Kutudan
+         Notlarım'a geçiliyor. Düğme Çalışma Alanı açıkken
+         ve kişi ekipteyken görünüyor.
+
+  [YENİ] Görev hatırlatıcısı artık yalnız e-postayla
+         gelmiyor: görevdeki kişilerin bildirimlerine,
+         telefon ve bilgisayar bildirimlerine de düşüyor.
+         E-posta adresi olmayan kişiye de ulaşıyor.
+
+  [YENİ] Bitiş zamanı geçen açık görev, görevdeki
+         kişilere (görevde kimse yoksa görevi açana) bir
+         kez "gecikti" bildirimi gönderiyor: saatli görevde
+         o saatte, saatsiz görevde ertesi sabah 09:00'da.
+         Bitiş tarihi ileri alınan görev, yeni tarih
+         geçince yeniden bildiriliyor.
+
+  [YENİ] Bir göreve not yazıldığında görevdeki kişiler ve
+         görevi açan kişi bildirim alıyor; notu yazan
+         almıyor, notta anılan kişi zaten kendi
+         bildirimini alıyor. Okunmadan gelen yeni notlar
+         aynı bildirimde toplanıyor.
+
+  [YENİ] Bir görev açıldığında o görevle ilgili gelen
+         kutusu satırları ve zildeki bildirimler okunmuş
+         sayılıyor; bekleyen cihaz bildirimi gitmiyor.
+
+  [YENİ] Asistan cevap verdiğinde gelen bildirim, onay
+         bekleyen öneri varsa sayısını da söylüyor.
+
+  ERP (ÖN MUHASEBE)
+  --------------------------------------------------------
+
+  [YENİ] Satın alma siparişi: ERP menüsündeki "Satın alma
+         siparişleri" ekranında tedarikçiden ne istendiği
+         yazılıyor. Sipariş alış faturasıyla aynı satır
+         editöründe ürün, miktar, fiyat, iskonto ve KDV
+         ile yazılır; beklenen teslim tarihi isteğe
+         bağlı. Kaydedilince kendi serisinden numara alır
+         (fatura serisinin sonuna P eklenir, ör. PGFP).
+         Para, stok ve vergi hareketi yaratmaz.
+
+  [YENİ] Sipariş PDF olarak açılıyor, indiriliyor ve
+         ekranından tedarikçiye PDF ekiyle e-postalanıyor;
+         e-posta gidince sipariş "Tedarikçiye gönderildi"
+         olur. Telefonla ya da kâğıtla verilen sipariş
+         elle işaretlenebiliyor. Sipariş iptal edilip
+         yeniden açılabiliyor ve kopyalanabiliyor; her adım
+         denetim izine yazılıyor. Liste durumla, numarayla
+         ya da tedarikçi adıyla süzülüyor; teslim tarihi
+         geçmiş bekleyen sipariş "Gecikti" ile işaretli.
+         Tedarikçi carisinin kartında "Satın alma
+         siparişleri" ve "Yeni satın alma siparişi"
+         düğmeleri var.
+
+  [ŞEMA] Satın alma siparişleri için yeni bir tablo
+         oluşturulur; faturalara sipariş, fatura
+         satırlarına sipariş satırı kolonu eklenir.
 
   DIŞ API
   --------------------------------------------------------

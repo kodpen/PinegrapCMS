@@ -323,6 +323,17 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
   Basım fatura şablonuyla `erp_invoice_document_data($id, $source)`;
   faturaya dönüşüm yalnız `erp_invoice_draft_save()` ile (taslak, bugünün
   tarihi). Durum ekranda `erp_quote_state()` ile hesaplanır (süresi doldu).
+- Satın alma siparişi (10.58, `includes/erp/purchase_orders.php`,
+  `erp_purchase_orders`) de `erp_invoices`'a yazılmaz; stok ve maliyet
+  yalnız ondan yapılan alış faturasıyla değişir. Numara
+  `erp_next_number($seri, 'purchase_order', $yıl)`, seri
+  `ERP_PURCHASE_ORDER_SERIES` ya da fatura serisi + `P` (`S` irsaliyenin).
+  Her satırın kalıcı anahtarı `source_line` (`erp_source_line_key()`,
+  `erp_purchase_order_line_keys()`); siparişten yapılan fatura satırı onu
+  `erp_invoice_items.source_line`'a, siparişi `erp_invoices.purchase_order_id`'ye
+  yazar. Editör ortak: `erp_invoice_form_cards($liveform, ['purchase_order'
+  => true])`; boş beklenen teslim için ekran yazılanı `erp_invoice_form_read()`
+  öncesi okur (vadeyi carinin ödeme vadesiyle doldurur).
 - Teklif imzası (8.58, `includes/erp/signatures.php`): kayıt `erp_signatures`'ta
   (`doc_type`, `doc_id`; belge başına bir), çizim `files`'ta `erp_doc_type =
   'quote_signature'`. İmza **silinmez, yeniden çizilmez**; teklif sonradan
@@ -573,6 +584,7 @@ Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_oze
 | Denetim izi | `includes/erp/audit.php`, `erp_audit.php` |
 | Anlık bildirim | `includes/erp/alerts.php`, `erp_stock_alert_job.php` |
 | Teklifler | `includes/erp/quotes.php`, `erp_quotes.php`, `add_erp_quote.php`, `edit_erp_quote.php`, `get_erp_quote_pdf.php` |
+| Satın alma siparişleri | `includes/erp/purchase_orders.php`, `erp_purchase_orders.php`, `add_erp_purchase_order.php`, `edit_erp_purchase_order.php`, `get_erp_purchase_order_pdf.php`, `templates/purchase_order.html` |
 | Belge imzası (teklif) | `includes/erp/signatures.php` |
 | Tekrarlayan faturalar | `includes/erp/invoice_recurring.php`, `erp_invoice_recurrences.php`, `erp_invoice_recurring_job.php` |
 | Cari fiyatları | `includes/erp/price_lists.php`, `erp_account_prices.php` |

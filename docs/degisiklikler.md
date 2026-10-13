@@ -176,6 +176,267 @@ görüldü); barkod tablosu olan bir mağaza (kod ürün koduyla denendi).
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: hatırlatıcı, gecikme ve görev notu bildirimleri; başlıkta hızlı not (2026-10-13)
+
+**Neden.** Ürün sahibinin üç isteği: panelin service worker'lı bildirim
+sistemine Çalışma Alanı'nın eksik uçlarını tamamlamak, bir "hızlı not"
+düğmesi ve Çalışma Alanı açıksa Notlarım'a bir yol.
+
+**Tarama.** `sw.js` yükte metin taşımaz; uyanınca `push_pending`'e sorar,
+o da zilin satırlarını okur. Çalışma Alanı'ndan cihaza giden tek yol
+`ws_notify()` → `ws_inbox` → zil (`notifications.target_user_id`, 4.83) →
+`push_queue` (`source = 'ws'`). Bu yola zaten bağlı olanlar: anma, görev
+verme, görevin bitmesi (açana), görev notunda anma, engelin kalkması, kanala
+davet, not paylaşımı ve değişikliği, Claude/Pinegrap AI'ın not cevabı, onay
+isteği/kararı/hatırlatması, okundu isteği hatırlatması, misafir mesajı,
+zamanlanmış eylem bildirimi ve hatası, tartışma, asistanın görev cevabı.
+Bağlı olmayan dört şey bulundu: (1) görev hatırlatıcısı yalnız e-postaydı,
+adresi olmayan kişiye hiç ulaşmıyordu; (2) gecikmiş görev için hiçbir şey
+yoktu; (3) görevdeki kişiler, anılmadıkları sürece göreve yazılan notu
+duymuyordu; (4) asistanın cevap bildirimi onay bekleyen önerileri
+söylemiyordu. Bir de: görevi açmak o görevin gelen kutusu satırlarını okunmuş
+saymıyordu, zil ve cihaz kuyruğu okunmamış kalıyordu. Push uçları
+(`push_config`, `push_subscribe`, `push_unsubscribe`, `push_test`,
+`push_pending`) ve dış API'nin `/notifications` uçları eksiksiz; yeni uç
+gerekmedi. Kişi başı, tür bazında bildirim tercihi sistemde yok; kanalın
+"Hiçbir zaman" ayarı anmaları susturuyor ve öyle kalıyor.
+
+**Ne değişti.**
+
+- `reminders.php`: hatırlatıcı her kişiye `task_reminder` gelen kutusu satırı
+  yazar (zil + cihaz), e-posta adresi olanlara ayrıca e-posta gider.
+  Kime: `ws_task_notice_user_ids()` (görevdeki ekip üyeleri, kimse yoksa
+  açan); `ws_task_reminder_people()` bunun adresi olanları. Dönüşte `sent`
+  artık giden hatırlatma, `failed` e-postası kimseye gitmeyen hatırlatma.
+  Çekmecedeki metinler "Saat ve hatırlatma", "Hatırlat" ve "bildirimlerinde
+  ve e-postayla" oldu (eski anahtarlar tr.json'da duruyor).
+- Gecikme: `ws_task_overdue_run()`. Açık görev bitiş anını geçince
+  görevdekilere bir kez `task_overdue`. An: saatli görevde saati, saatsizde
+  ertesi gün `WS_TASK_REMIND_DAY_TIME` (09:00) — listelerin "gecikti" demeye
+  başladığı gün. Görevde bir şey saklanmaz, şema adımı yok: `cron_runs`'ta
+  `workspace_overdue_notices` satırı bir su çizgisi tutar, her koşu
+  çizgiyi bulduğu yerden şimdiye korumalı UPDATE ile taşıyarak kendi
+  aralığını alır (iki koşu aynı anda gelirse biri çıkar). İlk koşu yalnız
+  çizgiyi kurar (eski gecikmeler haber değildir); geride kalan koşu en çok iki
+  gün geriye bakar (`WS_TASK_OVERDUE_LOOKBACK`). Bitiş ileri alınan görev
+  yeni an geçince yeniden bildirilir. Koşanlar: genel iş (`job.php`, beş
+  dakikada bir; Çalışma Alanı yalnız gerektiğinde yüklenir), saatlik
+  tekrarlayan görev işi, açık Çalışma Alanı ekranının `ws_tick`'i
+  (`ws_sync` cevabındaki `scheduled_due` artık bunu da söyler).
+- `task_work.php`: `ws_task_note_tell()` — göreve not yazılınca görevdekiler
+  ve açan `task_note` alır; yazan ve notta anılanlar (kendi `note`
+  satırları var) hariç, görevi görebilenlere. Okunmamış satır sonraki notları
+  da toplar; satır en yeni notu (okuyanın kendi notları hariç) yazanın adı
+  ve metniyle anlatır, uygulama notunda uygulamanın adıyla.
+- `notify.php`: üç yeni tür (`task_note`, `task_reminder`, `task_overdue`)
+  ve tanımları; `task_assistant` gövdesi onay bekleyen öneri sayısını ekler
+  (`ws_task_delegation_waiting_map()`). `ws_notify()`'a `batch` bayrağı:
+  cihaz kuyruğa girer ama burada uyandırılmaz; hatırlatma ve gecikme koşuları
+  bitince kuyruğu bir kez işler (`ws_push_batch_done()`). Her satırda
+  kuyruğu ayrı işlemek, çok kişili bir koşuyu ekranın `ws_tick` isteğinde
+  uzatırdı.
+- `ws_inbox_mark_task_read()`: görev çekmecesi (`ws_task_get`) açılınca o
+  görevin okuyana ait satırları okunur, zil eşitlenir; kuyrukta bekleyen
+  banner gönderim anında düşer (`ws_push_still_relevant()`). Dış API'nin
+  görev okuması okundu saymaz.
+- Hızlı not: `ws_notes_quick_markup()` (`notes.php`), `output_header()`
+  zilin solunda basar — Çalışma Alanı açık, kişi ekip üyesi ve notlar
+  kuruluysa; araç çubuğu kipinde değil (ayarlar düğmesiyle aynı gerekçe).
+  Kutu `ws_note_save` eylemiyle kişinin kendi notuna yazar (başlık boş,
+  ilk satır başlık olur), Ctrl+Enter kaydeder, kayıttan sonra "Notu aç"
+  bağlantısı çıkar; kutunun başında Notlarım bağlantısı. Betik
+  `backend.src.js` (`pg_quick_note_init()`), metinler ve adresler formun
+  `data-*` özniteliklerinde, stil `backend.src.css`'te zilinkiyle aynı
+  yerleşim.
+
+**Bilerek yapılmayan.**
+
+- Kanalın "Her mesajı bildir" ayarı cihaz bildirimi göndermiyor; yalnız
+  rozeti etkiliyor. Varsayılan `all` olduğundan her mesajı bildirime çevirmek
+  herkesi gürültüye boğardı. Gerekirse ayrı bir karar.
+- Başkasının planladığı toplantı/izin (plan kaydı) için bildirim yok:
+  `ws_inbox` plan kaydına işaret edecek kolon taşımıyor, şema adımı ister.
+- Tür bazında kişisel bildirim tercihi ekranı yok.
+- Gecikme ve hatırlatma için webhook olayı eklenmedi.
+
+**Doğrulama.** Sandbox'ta (MariaDB, üç ekip üyesi, biri e-postasız) CLI ile:
+hatırlatma iki kişiye `task_reminder` + zil satırı, e-postasız kişiye de;
+görev notu yazan hariç görevdekilere ve açana `task_note`, ikinci not aynı
+satırda, anılan kişiye yalnız `note`; görevi açınca satır ve zil okundu;
+gecikmede ilk koşu yalnız çizgiyi kurdu, saatli geçmiş görev ve dünkü
+saatsiz görev (kimse yokken açana) bildirildi, bugünkü saatsiz ve bitmiş
+görev bildirilmedi, aynı çizgiyle ikinci koşu hiçbir şey yapmadı;
+`batch` satırı kuyrukta bekleyip `ws_push_batch_done()` ile işlendi;
+zilin cihaz için verdiği metin doğru. `php job.php` ve
+`workspace_recurring_job.php` hatasız koştu, çizgi ilerledi. Chromium'da
+hızlı not: masaüstü ve 375 px'te açıldı, kutu odak aldı, Ctrl+Enter kaydetti,
+"Notu aç" doğru notu açtı (ilk satır başlık), Notlarım bağlantısı doğru.
+
+**Doğrulanamayan.** Gerçek bir cihaza giden push (sandbox'ta abonelik yok);
+dev.pinegrap.com'da telefonla denenmeli.
+
+---
+
+## 2026.4.10 — ERP: satın alma siparişi (10.58) (2026-10-13)
+
+**Neden.** ERP planının Faz 7'si (`docs/_plan_erp_ozellikler.md` §3): mağaza
+tedarikçiye ne istediğini sistemde tutamıyordu; alış faturası ancak mal ve
+fatura gelince yazılıyordu. Bu PR siparişin kendisini getirir (yaz, düzelt,
+yazdır, e-postala, gönderildi işaretle, iptal et, yeniden aç, kopyala).
+Alış faturasına dönüşüm, kısmi teslimden okunan durum, minimum stoktan
+sipariş ve pano kartı sonraki PR'da; API/MCP uçları ve webhook olay listesi
+Faz 6 birleşince gelir.
+
+**Model.** Teklif gibi kendi tablosu (`erp_purchase_orders`): para, stok ve
+vergi hareketi yaratmadığı için hiçbir raporun onu dışarıda bırakmayı
+öğrenmesi gerekmez. Satırlar alış faturası editörüyle yazılır
+(`erp_invoice_form_cards()`'a `purchase_order` seçeneği: gizli
+`direction=purchase`, "Tedarikçi" etiketi, vade yerine **beklenen teslim**,
+tedarikçi fatura no/tarihi bloğu yok) ve `erp_manual_lines_build()` ile
+hesaplanıp `line_data`'ya JSON yazılır (teklifteki gibi). Beklenen teslim
+boş bırakılabilir: `erp_invoice_form_read()` boş vadeyi carinin ödeme
+vadesiyle doldurduğu için ekran yazılanı önce okur, boşsa sıfırlar (teklif
+ekranının yaptığı). Tarih sipariş tarihinden önce olamaz.
+
+**Satır anahtarı (`source_line`).** Her sipariş satırı 16 karaktere kadar
+harf/rakamdan bir anahtar taşır; satır düzenlenirken anahtarı değişmez
+(editörde gizli `lines[i][source_line]`). Sonraki PR'da siparişten yapılan
+alış faturası satırları bu anahtarı `erp_invoice_items.source_line`'a yazar;
+sipariş "ne geldi"yi buradan okur. `erp_source_line_key()` anahtarı temizler
+ve yalnız sıfırdan oluşanı boş sayar (editör son satırı silerken gizli
+alanlara `0` yazar). `erp_purchase_order_line_keys()` boş ya da daha önce
+kullanılmış (büyük/küçük harf fark etmeksizin) anahtara yenisini verir; bir
+anahtar iki satıra verilmez, kopyalanan satır kendi anahtarını alır.
+Siparişi kopyalamak anahtarları boşaltır.
+
+**Numara serisi: P, plandaki S değil.** Plan fatura serisinin sonuna S
+eklemeyi yazıyordu; `erp_waybill_series()` irsaliyeler için zaten S
+kullanıyor ve iki belgenin aynı numarayla basılması numaralamanın yapmaması
+gereken tek şeydir. Sipariş serisi `ERP_DEFAULT_SERIES . 'P'` (varsayılan
+`PGFP`), `config.php`'de `ERP_PURCHASE_ORDER_SERIES` ile değiştirilebilir.
+Numara ilk kayıtta `erp_next_number(…, 'purchase_order', yıl)` ile aynı
+işlemin içinde alınır (`erp_document_series.doc_kind` ENUM'una
+`purchase_order` eklendi).
+
+**Durumlar.** `open` ve `sent` düzenlenebilir; `partial` ve `received`
+sonraki PR'da alış faturalarından okunur (düzenlenemez); `cancelled`
+düzenlenemez, "Yeniden aç" `sent_at` varsa `sent`'e, yoksa `open`'a döner.
+Gönderildi: e-posta başarıyla gidince ya da elle (telefon, kâğıt);
+`sent_at` ilk seferde yazılır, `erp.purchase_order.sent` yalnız o zaman
+çıkar. İptal `received` dışında her açık durumdan yapılır; gelmiş mal alış
+faturalarında kalır.
+
+**Olaylar ve denetim izi.** `erp_event_purchase_order()`:
+`erp.purchase_order.created` (kayıt işleminin içinde, kayıtla birlikte geri
+alınır), `.sent`, `.cancelled`, `.reopened`; `.received` sonraki PR'da.
+`erp_audit_object_types()`'a `purchase_order` (ekrana bağlantılı), olay
+metinleri. Webhook olay listesine (`erp_webhook_events()`) Faz 6 ile
+çakışmamak için API PR'ında eklenecek.
+
+**Ekranlar.** `erp_purchase_orders.php` (durum süzgeci, "Mal bekleyen"
+sayaçlı, numara/tedarikçi araması, cari süzgeci; beklenen teslimi geçmiş
+bekleyen sipariş kırmızı "Gecikti"), `add_erp_purchase_order.php`
+(`?copy=`, `?account_id=`), `edit_erp_purchase_order.php` (düzenle,
+gönderildi işaretle, iptal, yeniden aç, e-posta ve geçmişi, kopyala, denetim
+izi; düzenlenemezken salt-okunur satır tablosu),
+`get_erp_purchase_order_pdf.php` (`&download=1`, `&html=1`). Şablon
+`includes/erp/templates/purchase_order.html`: fatura şablonunun verisiyle
+okunur, etiketler veride (Sipariş No, Sipariş Tarihi, Beklenen teslim,
+TEDARİKÇİ), sabit metin taşımaz; carinin kopyası tutulmadığı için tedarikçi
+bugünkü kartıyla basılır. E-posta `erp_document_mails`'e `purchase_order`
+türüyle yazılır, alıcı önce carinin fatura e-postası. ERP menüsünde
+Teklifler'in altında; tedarikçi (ve "ikisi de") carinin kartında iki düğme.
+
+**Şema 10.58** (`upgrade_2026_4_10_erp_purchase_orders()`):
+`erp_purchase_orders` tablosu (`uniq_number`, `idx_account`, `idx_status`),
+`erp_invoices.purchase_order_id` + `idx_purchase_order`,
+`erp_invoice_items.source_line` VARCHAR(16), `doc_kind` ENUM'una
+`purchase_order` (mevcut değerler okunup korunarak). Son iki kolon bu PR'da
+yalnız açılır, sonraki PR yazar. **2026.4.10'a zaten geçmiş siteler (dev
+dahil) adımı almak için Yazılımı Onar › "Veritabanı yükseltme adımlarını
+yeniden koş" › 2026.4.9'dan yeniden koşturmalı.**
+
+**Doğrulama.** Sandbox'ta adım iki kez koşturuldu (ilkinde 5 ifade
+uygulandı, ikincide 31/31 "zaten yerindeydi"). Güncelleme öncesi ekranlar
+"güncellemeyi çalıştırın" diyor. Sipariş yazma (numara `PGFP2026000000001`,
+seri satırı `purchase_order`), düzenleme (anahtarlar korunuyor, kopya
+anahtar yenileniyor, boş tarih boş kalıyor), PDF (pdftotext ile Türkçe
+karakterler, sayılar), gönderildi (iki kez, olay bir kez), iptal, iptalken
+gönder/iptal reddi, yeniden aç, kopyala, liste süzgeçleri, cari kartı
+(tedarikçide düğmeler, müşteride yok), denetim izi ekranı, salt-okunur
+görünüm, başarısız e-postanın kaydı ve taslağın korunması; fatura, teklif
+ve fatura taslağı ekranları değişmeden çalışıyor.
+`tests/erp_purchase_order_test.php` (8 test).
+
+**Doğrulanamayan.** Başarılı e-posta gönderimi (sandbox'ta posta sunucusu
+yok); dev.pinegrap.com'da denenmeli.
+
+---
+
+## 2026.4.10 — Çalışma Alanı API ve MCP: görevi asistana verme ve önerileri onaylama (2026-10-13)
+
+**Neden.** Görevi asistana verme işinin üçüncü ve son PR'ı (araştırmanın P1
+1.2 maddesi). İlk iki PR ekranı kurdu; dış API ve MCP görevin asistanda
+olduğunu, asistanın cevabını ve önerilerini göremiyor, öneri de
+uygulanamıyordu. Mobil API planına (`docs/_plan_api_mobil.md`) uygun olarak
+uygulamaya özel uç yazılmadı: mevcut uçlara alan ve süzgeç eklendi, yeni uçlar
+genel eylemler.
+
+**Ne değişti.**
+
+- `WorkspaceTask`: `delegate` (ai / claude / null), `delegated_by`,
+  `delegated_at`, `assistant_working` (şu an çalışan asistan),
+  `waiting_changes` (onay bekleyen öneri sayısı). Liste tek sorguda okur
+  (`ws_api_tasks_known()`, yeni `ws_task_delegation_open_map()`).
+- `GET /workspace/tasks?delegate=any|none|ai|claude` (`ws_tasks_list()`
+  süzgeci `delegate`).
+- `POST /workspace/tasks/{id}/delegate` {agent, instruction}: ekrandaki
+  `ws_task_delegate()`; cevap çalışmanın kendisi (`WorkspaceAssistantRequest`,
+  201). Çalışma sürerken 409 `assistant_busy`. `POST
+  /workspace/tasks/{id}/delegate/stop` {take_back}: `ws_task_delegation_stop()`.
+  Asistanın çalıştığı uygulamadan (Claude, Pinegrap AI) ikisi de 403:
+  asistan görev devretmez, geri almaz.
+- `GET /workspace/assistant-requests`: görevdeki çalışmalar (origin `task`,
+  `task_id`), görevi görebilen herkes için; bu çalışmalarda `instruction` ve
+  `answer` düz metin olarak gelir. `task_id` süzgeci.
+- `GET /workspace/changes`: görevdeki öneriler de (`task_id`, kanal ve mesaj
+  0), `task_id` süzgeci; her öneride `can_apply`, `can_dismiss`.
+  Okunabilirlik tek SQL'de: kanallar + görülebilen görevler
+  (`ws_api_task_seen_sql()`, `ws_can_see_task()` kuralının SQL'i; sandbox'ta
+  beş kullanıcı × yedi görev düzeninde PHP kuralıyla birebir aynı çıktı).
+- `POST /workspace/changes/{id}/apply` ve `/dismiss`: kartın düğmeleriyle
+  aynı fonksiyonlar (`ws_change_apply()`, `ws_change_dismiss()`), yalnız
+  cihaz oturumu ya da kişinin bağladığı OAuth uygulaması
+  (`ws_api_person_only()`); uygulama anahtarı 403, yani asistan kendi
+  önerisini uygulayamaz. Eskimiş öneri 409 `stale`, karar verilmiş öneri 409
+  `already_decided`.
+- `GET /workspace/my-day`: `proposed_changes` (kişinin istediği, onu
+  bekleyen öneriler; kanal ve görev, en çok 20).
+- API'den uygulanan değişikliğin etkinlik kaydı kişinin kullanıcı adıyla
+  yazılır (`ws_change_log()`, oturum yoksa API sahibinin adı).
+- `workspace.task.assistant_answered` olayının açıklaması cevabın ve
+  önerilerin nereden okunacağını söylüyor.
+- MCP araçları uçlardan kendiliğinden geliyor: `workspace_tasks_delegate`,
+  `workspace_tasks_delegate_stop`, `workspace_changes_apply`,
+  `workspace_changes_dismiss`.
+
+**Bilerek yapılmayan.** Panelin "Benim günüm" ekranına öneri listesi
+eklenmedi (yalnız API). Pinegrap AI'ı API'den başlatmak bekleyen bir ekran
+ya da saatlik iş ister; uç bunu açıklamasında söylüyor.
+
+**Doğrulama.** Sandbox'ta cihaz oturumuyla (`POST /auth/login`): görevi
+Claude'a verme, ikinci istekte 409, Claude uygulamasıyla talep alma ve
+cevaplama (iki öneri) → `my-day` iki öneri → Claude anahtarıyla apply 403 →
+cihazla apply (görev güncellendi, etkinlik kaydı kişinin adıyla) → aynı
+öneriye tekrar 409 `already_decided` → dismiss → kayıt arada değişince 409
+`stale` → durdur + geri al (delegate null, çalışma iptal). OpenAPI belgesinde
+dört yeni yol ve yeni alanlar var.
+
+**Doğrulanamayan.** Gerçek mobil uygulama ve MCP istemcisiyle deneme;
+dev.pinegrap.com'da yapılmalı.
+
+---
+
 ## 2026.4.10 — Dış API ve MCP: ERP faturaları ve teklifleri yazılıyor (Faz 6, birinci parça) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27): API'de ve MCP'de

@@ -156,7 +156,7 @@ function erp_audit_event($event, $payload)
     $label = '';
     $amount = 0;
 
-    if (($type === 'invoice') || ($type === 'waybill') || ($type === 'quote')) {
+    if (($type === 'invoice') || ($type === 'waybill') || ($type === 'quote') || ($type === 'purchase_order')) {
         $label = (string) ($payload['number'] ?? '');
         $amount = (int) ($payload['grand_total'] ?? 0);
     } elseif ($type === 'receipt') {
@@ -234,6 +234,7 @@ function erp_audit_object_types()
         'waybill' => array(lang('Delivery Notes'), 'edit_erp_waybill.php?id='),
         'expense' => array(lang('Expenses'), 'edit_erp_expense.php?id='),
         'quote' => array(lang('Quotes'), 'edit_erp_quote.php?id='),
+        'purchase_order' => array(lang('Purchase orders'), 'edit_erp_purchase_order.php?id='),
         'stock_count' => array(lang('Stock counts'), 'erp_stock_count.php?id='),
     );
 }
@@ -273,6 +274,11 @@ function erp_audit_event_text($row)
         'erp.quote.reopened' => lang('Quote opened again'),
         'erp.quote.invoiced' => lang('Quote turned into an invoice draft'),
         'erp.quote.signed' => lang('Quote signed'),
+        'erp.purchase_order.created' => lang('Purchase order written'),
+        'erp.purchase_order.sent' => lang('Purchase order sent to the supplier'),
+        'erp.purchase_order.received' => lang('Purchase order received in full'),
+        'erp.purchase_order.cancelled' => lang('Purchase order cancelled'),
+        'erp.purchase_order.reopened' => lang('Purchase order opened again'),
         'erp.stock_count.applied' => lang('Stock count applied'),
     );
 

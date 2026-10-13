@@ -146,6 +146,54 @@ function ws_notes_menu_pin($viewer, $pinned)
 }
 
 /**
+ * The quick note in the panel's header: a button beside the bell that opens a
+ * box, and what is written there becomes one of the person's notes through
+ * the same save the notes screen uses (ws_note_save, the ws_note_save action).
+ * The box also leads to My Notes. Drawn by output_header() for the members of
+ * the team while the workspace is on; the script is backend.src.js's.
+ *
+ * @param array  $rights        ws_rights() of the person
+ * @param string $parent_target the target attribute the header's links carry
+ * @return string '' when the person keeps no notes here
+ */
+function ws_notes_quick_markup($rights, $parent_target = '')
+{
+    if (empty($rights['member']) || !ws_notes_ready()) {
+        return '';
+    }
+
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+
+    return '
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown no-arrow no-popover" title="' . h(lang('Quick note')) . '">
+                        <button type="button" id="pg_quick_note_toggle" class="nav-link nav-link-sm no-popover dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="' . h(lang('Quick note')) . '">
+                            <span class="bi bi-journal-plus" aria-hidden="true"></span>
+                        </button>
+                        <div id="pg_quick_note" class="dropdown-menu shadow p-3 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" aria-labelledby="pg_quick_note_toggle">
+                            <form data-pg-quick-note class="disable_shortcut" novalidate
+                                data-api="' . h($base . 'api.php') . '"
+                                data-note-url="' . h($base . 'workspace_notes.php?note=') . '"
+                                data-saved="' . h(lang('Saved to your notes.')) . '"
+                                data-open="' . h(lang('Open the note')) . '"
+                                data-failed="' . h(lang('The note could not be saved.')) . '">
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                    <label for="pg_quick_note_text" class="fw-semibold small mb-0"><i class="bi bi-journal-plus me-1" aria-hidden="true"></i>' . h(lang('Quick note')) . '</label>
+                                    <a class="small link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('My Notes')) . '</a>
+                                </div>
+                                <textarea id="pg_quick_note_text" name="body" class="form-control form-control-sm" rows="4" maxlength="' . WS_NOTE_MAX . '" placeholder="' . h(lang('Write a note. Its first line becomes its title.')) . '"></textarea>
+                                <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
+                                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">' . h(lang('Save')) . '</button>
+                                    <span class="small text-body-secondary d-none d-sm-inline">Ctrl+Enter</span>
+                                    <span class="small ms-auto" data-pg-quick-note-status role="status"></span>
+                                </div>
+                            </form>
+                        </div>
+                    </li>
+                </ul>';
+}
+
+/**
  * Can an inbox row point at a note (4.110)?
  *
  * @return bool

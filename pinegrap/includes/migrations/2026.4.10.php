@@ -30,6 +30,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_waf_countries();          // 10.2
 	upgrade_2026_4_10_workspace_delegation();   // 10.80
 	upgrade_2026_4_10_workspace_calendar_feeds(); // 10.81
+	upgrade_2026_4_10_erp_purchase_orders();    // 10.58
 
 }
 
@@ -280,5 +281,91 @@ function upgrade_2026_4_10_workspace_calendar_feeds() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: every member can subscribe to their tasks, plan items, days off and approval deadlines in their phone or desktop calendar (Apple, Google, Outlook) with a private address of their own, from the account menu.');
+
+}
+
+// ERP: purchase orders (2026.4.10, 10.58; includes/erp/purchase_orders.php).
+//
+// What the store asks a supplier for, before the supplier's bill exists. Like
+// a quote it moves no money, no stock and no tax, so it has a table of its own
+// rather than a doc_type on erp_invoices, where every report would have to
+// learn to leave it out. It takes a number of its own series when first saved
+// (erp_document_series, doc_kind 'purchase_order'). line_data are the lines as
+// they were worked out, shaped like erp_invoice_items rows, each with a key of
+// its own (source_line) that stays with the line while the order is edited.
+// expected_date is the day the goods are expected; sent_at is when the order
+// first went to the supplier (by e-mail, or marked sent by hand).
+//
+// The order becomes purchase invoice drafts at the quantities still to come,
+// once or several times for a delivery in parts. erp_invoices.purchase_order_id
+// names the order an invoice was made from, and erp_invoice_items.source_line
+// the order line each invoice line stands for. The order's status reads the
+// issued purchase invoices back through those two: partial while some lines
+// are still to come, received once every line has come.
+//
+// erp_document_series.doc_kind is widened from what is there, never narrowed:
+// a value the ENUM does not know is stored as nothing and the series never
+// opens (4.46).
+function upgrade_2026_4_10_erp_purchase_orders() {
+
+	install_create_table('erp_purchase_orders', "CREATE TABLE erp_purchase_orders (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		series            VARCHAR(10) NOT NULL DEFAULT '',
+		number            INT UNSIGNED NOT NULL DEFAULT 0,
+		issue_year        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		full_number       VARCHAR(32) NOT NULL DEFAULT '',
+		account_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		issue_date        DATE NOT NULL DEFAULT '0000-00-00',
+		expected_date     DATE NOT NULL DEFAULT '0000-00-00',
+		currency          CHAR(3) NOT NULL DEFAULT 'TRY',
+		exchange_rate     DECIMAL(15,6) NOT NULL DEFAULT 1.000000,
+		subtotal          BIGINT NOT NULL DEFAULT 0,
+		discount_total    BIGINT NOT NULL DEFAULT 0,
+		tax_total         BIGINT NOT NULL DEFAULT 0,
+		tax2_total        BIGINT NOT NULL DEFAULT 0,
+		withholding_total BIGINT NOT NULL DEFAULT 0,
+		grand_total       BIGINT NOT NULL DEFAULT 0,
+		grand_total_base  BIGINT NOT NULL DEFAULT 0,
+		status            ENUM('open','sent','partial','received','cancelled') NOT NULL DEFAULT 'open',
+		line_data         MEDIUMTEXT NULL,
+		notes             TEXT NULL,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_number (series, number, issue_year),
+		KEY idx_account (account_id, issue_date),
+		KEY idx_status (status, expected_date)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('erp_invoices', 'purchase_order_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('erp_invoices', 'idx_purchase_order', "INDEX idx_purchase_order (purchase_order_id)");
+
+	install_add_column('erp_invoice_items', 'source_line', "VARCHAR(16) NOT NULL DEFAULT ''");
+
+	$doc_kind = install_column_info('erp_document_series', 'doc_kind');
+
+	if (is_array($doc_kind) && (stripos((string)$doc_kind['Type'], "'purchase_order'") === false)) {
+
+		// Every value the column holds today is kept, the new one is added.
+		preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string)$doc_kind['Type'], $matches);
+		$values = array();
+
+		foreach ($matches[1] as $value) {
+			$values[] = "'" . $value . "'";
+		}
+
+		$values[] = "'purchase_order'";
+
+		install_modify_column('erp_document_series', 'doc_kind', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT 'sales_invoice'");
+
+	} elseif (is_array($doc_kind)) {
+
+		install_skipped('erp_document_series.doc_kind already knows about purchase orders');
+
+	}
+
+	install_note('ERP: purchase orders to suppliers, with their own number, printed and e-mailed, turned into purchase invoice drafts as the goods arrive (in one go or in parts). An order moves no money and no stock; the purchase invoice does.');
 
 }
