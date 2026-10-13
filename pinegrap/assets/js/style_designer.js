@@ -13250,7 +13250,12 @@ const StyleDesigner = (function () {
                                      'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
                                      'navbar-mega', 'navbar-double', 'navbar-centered-logo',
                                      'error-404-simple', 'error-404-illustration', 'error-404-search',
-                                     'breadcrumbs-with-header'];
+                                     'breadcrumbs-with-header',
+                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
+                                     'steps-numbered', 'booking-cta', 'booking-split',
+                                     'hours-card', 'hours-location', 'locations-cards',
+                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
+                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings'];
                 var _ct = (dragData.extra || {}).componentType || '';
                 if (_noWrapCtypes.indexOf(_ct) === -1) {
                     n = createNode('container', { fluid: false, cssClass: '' }, [n]);
@@ -16077,6 +16082,634 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Dark theme') })
                         ])
                     ]);
+                }
+
+                // ── Service, booking, hours, menu and event blocks ──────────────
+                // The pieces a clinic, a café or any local business needs:
+                // service cards, a price list, booking bands, opening hours,
+                // branches, menus, events, an urgent notice, profile cards and
+                // a rating summary. Bootstrap utilities only, so a block looks
+                // the same in any design. One family, one set of helpers.
+                if (/^(services|booking|steps|hours|locations|menu|events|notice)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
+                    var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
+                    var _bkDiv = function (cls, name, kids, attrs) {
+                        var p = { tag: 'div', cssClass: cls, customName: name };
+                        if (attrs) p._attrs = attrs;
+                        return createNode('semantic', p, kids || []);
+                    };
+                    var _bkTag = function (tag, cls, name, kids, attrs) {
+                        var p = { tag: tag, cssClass: cls, customName: name };
+                        if (attrs) p._attrs = attrs;
+                        return createNode('semantic', p, kids || []);
+                    };
+                    var _bkSection = function (cls, name, kids) {
+                        return createNode('semantic', { tag: 'section', cssClass: cls, customName: name }, [
+                            createNode('container', { fluid: false, cssClass: '' }, kids)
+                        ]);
+                    };
+                    var _bkRow = function (name, kids, cls) {
+                        return createNode('row', { gutter: '4', justify: '', align: '', cssClass: cls || '', customName: name }, kids);
+                    };
+                    var _bkCol = function (name, kids, lg, md, sm, cls) {
+                        return createNode('col', { xs: '12', sm: sm || '', md: md || '', lg: lg || '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
+                    };
+                    var _bkH = function (tag, text, cls) { return createNode('content', { contentType: 'heading', tag: tag, text: text, cssClass: cls || '' }); };
+                    var _bkP = function (text, cls) { return createNode('content', { contentType: 'paragraph', text: text, cssClass: cls || '' }); };
+                    var _bkIcon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
+                    var _bkBtn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
+                    var _bkLink = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
+                    var _bkImg = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
+                    var _bkIntro = function (title, lead) {
+                        return _bkDiv('text-center mb-5', _sdT('Section Header'), [
+                            _bkH('h2', title, 'fw-bold mb-2'),
+                            _bkP(lead, 'lead text-body-secondary mb-0')
+                        ]);
+                    };
+                    // One menu line: name, a rule that leads the eye to the
+                    // price, then an optional description and diet tags.
+                    var _bkMenuItem = function (name, desc, price, tags) {
+                        var kids = [
+                            _bkDiv('d-flex align-items-baseline gap-2', _sdT('Item Head'), [
+                                _bkH('h4', name, 'h6 fw-semibold mb-0'),
+                                _bkDiv('flex-grow-1 border-bottom border-secondary-subtle', _sdT('Leader')),
+                                _bkH('span', price, 'fw-semibold text-nowrap')
+                            ])
+                        ];
+                        if (desc) kids.push(_bkP(desc, 'small text-body-secondary mb-0 mt-1'));
+                        if (tags && tags.length) {
+                            kids.push(_bkDiv('d-flex flex-wrap gap-1 mt-2', _sdT('Tags'), tags.map(function (t) {
+                                return _bkH('span', t, 'badge rounded-pill bg-success-subtle text-success-emphasis');
+                            })));
+                        }
+                        return _bkDiv('py-2', name, kids);
+                    };
+                    var _bkStars = function (size) {
+                        var stars = [];
+                        for (var i = 0; i < 5; i++) stars.push(_bkIcon('bi-star-fill', 'text-warning me-1', size));
+                        return _bkDiv('mb-2', _sdT('Star Rating'), stars);
+                    };
+
+                    // Services: Icon Cards — six cards, icon tile + title + copy, the whole card is the link
+                    if (ctype === 'services-icon-cards') {
+                        var _siCard = function (n, icon, title, body) {
+                            return _bkCol(_sdT('Service {var}', n), [
+                                _bkDiv('card h-100 border-0 shadow-sm', _sdT('Service Card'), [
+                                    _bkDiv('card-body p-4', _sdT('Service Body'), [
+                                        _bkDiv('d-inline-flex rounded-3 bg-primary-subtle text-primary-emphasis p-3 mb-3', _sdT('Service Icon'), [
+                                            _bkIcon(icon, '', '28')
+                                        ]),
+                                        _bkH('h3', title, 'h5 fw-semibold mb-2'),
+                                        _bkP(body, 'text-body-secondary mb-3'),
+                                        _bkLink(_sdT('Learn more'), '#', 'link-primary fw-semibold text-decoration-none stretched-link', _sdT('Service Link'))
+                                    ])
+                                ])
+                            ], '4', '6');
+                        };
+                        return _bkSection('py-5', _sdT('Services (Icon Cards)'), [
+                            _bkIntro(_sdT('Our Services'), _sdT('Everything we offer, explained in plain words.')),
+                            _bkRow(_sdT('Services Row'), [
+                                _siCard(1, 'bi-heart-pulse',      _sdT('General Check-ups'),   _sdT('A yearly check that catches small things before they grow.')),
+                                _siCard(2, 'bi-clipboard2-pulse', _sdT('Lab Tests'),           _sdT('Blood and urine tests in-house, with results usually the next day.')),
+                                _siCard(3, 'bi-shield-plus',      _sdT('Vaccinations'),        _sdT('Routine and travel vaccines for adults and children.')),
+                                _siCard(4, 'bi-people',           _sdT('Family Medicine'),     _sdT('One doctor who knows the whole family and its history.')),
+                                _siCard(5, 'bi-activity',         _sdT('Chronic Care'),        _sdT('Regular follow-up for blood pressure, diabetes and asthma.')),
+                                _siCard(6, 'bi-camera-video',     _sdT('Online Consultation'), _sdT('A video visit for questions that do not need an exam.'))
+                            ])
+                        ]);
+                    }
+
+                    // Services: Image Cards — three cards with photo, duration badge, price and a book button
+                    if (ctype === 'services-image-cards') {
+                        var _sicCard = function (n, seed, badge, title, body, price) {
+                            return _bkCol(_sdT('Service {var}', n), [
+                                _bkTag('article', 'card h-100 border-0 shadow-sm overflow-hidden', _sdT('Service Card'), [
+                                    _bkImg(seed, 600, 400, title, 'card-img-top object-fit-cover pg-ratio-16x9'),
+                                    _bkDiv('card-body d-flex flex-column p-4', _sdT('Service Body'), [
+                                        _bkH('span', badge, 'badge rounded-pill bg-primary-subtle text-primary-emphasis align-self-start mb-2'),
+                                        _bkH('h3', title, 'h5 fw-semibold mb-2'),
+                                        _bkP(body, 'text-body-secondary mb-4'),
+                                        _bkDiv('d-flex align-items-center justify-content-between gap-2 mt-auto', _sdT('Service Footer'), [
+                                            _bkH('span', price, 'fw-semibold'),
+                                            _bkBtn(_sdT('Book now'), 'outline-primary', 'sm')
+                                        ])
+                                    ])
+                                ])
+                            ], '4', '6');
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Services (Image Cards)'), [
+                            _bkIntro(_sdT('Visits & Treatments'), _sdT('Each card says how long the visit takes and what it costs.')),
+                            _bkRow(_sdT('Services Row'), [
+                                _sicCard(1, 'svc1', _sdT('30 min'), _sdT('First Visit'),       _sdT('A full history, an exam and a plan you take home in writing.'), _sdT('From $80')),
+                                _sicCard(2, 'svc2', _sdT('45 min'), _sdT('Check-up Package'),  _sdT('Exam, blood count, cholesterol and an ECG in one morning.'),     _sdT('From $150')),
+                                _sicCard(3, 'svc3', _sdT('20 min'), _sdT('Follow-up Visit'),   _sdT('Results, a dose check or a quick look at how things are going.'), _sdT('From $45'))
+                            ])
+                        ]);
+                    }
+
+                    // Services: Price List — two flush lists of service, short detail and price
+                    if (ctype === 'services-price-list') {
+                        var _splItem = function (name, meta, price) {
+                            return _bkTag('li', 'list-group-item d-flex justify-content-between align-items-start gap-3 px-0 py-3 bg-transparent', name, [
+                                _bkDiv('', _sdT('Item Copy'), [
+                                    _bkH('span', name, 'fw-semibold d-block'),
+                                    _bkH('small', meta, 'text-body-secondary')
+                                ]),
+                                _bkH('span', price, 'fw-semibold text-nowrap')
+                            ]);
+                        };
+                        var _splList = function (title, items) {
+                            return _bkCol(title, [
+                                _bkH('h3', title, 'h5 fw-bold mb-2'),
+                                _bkTag('ul', 'list-group list-group-flush', _sdT('Price List'), items)
+                            ], '6');
+                        };
+                        return _bkSection('py-5', _sdT('Services (Price List)'), [
+                            _bkIntro(_sdT('Fees'), _sdT('Clear prices before you book. Your insurance may change what you pay.')),
+                            _bkRow(_sdT('Price Row'), [
+                                _splList(_sdT('Visits'), [
+                                    _splItem(_sdT('First visit'),         _sdT('30 min · history and exam'), _sdT('$80')),
+                                    _splItem(_sdT('Follow-up visit'),     _sdT('20 min'),                     _sdT('$45')),
+                                    _splItem(_sdT('Online consultation'), _sdT('15 min · video call'),        _sdT('$35')),
+                                    _splItem(_sdT('Home visit'),          _sdT('Within the city'),            _sdT('$120'))
+                                ]),
+                                _splList(_sdT('Tests'), [
+                                    _splItem(_sdT('Full blood count'),  _sdT('Results the next day'), _sdT('$25')),
+                                    _splItem(_sdT('ECG'),               _sdT('10 min'),               _sdT('$40')),
+                                    _splItem(_sdT('Cholesterol panel'), _sdT('Fasting needed'),       _sdT('$30')),
+                                    _splItem(_sdT('Flu vaccine'),       _sdT('Seasonal'),             _sdT('$20'))
+                                ])
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Steps: Numbered — four bordered cards, number pill + icon + title + copy
+                    if (ctype === 'steps-numbered') {
+                        var _snStep = function (n, icon, title, body) {
+                            return _bkCol(_sdT('Step {var}', n), [
+                                _bkDiv('h-100 p-4 rounded-4 border bg-body', _sdT('Step Card'), [
+                                    _bkDiv('d-flex align-items-center gap-3 mb-3', _sdT('Step Head'), [
+                                        _bkH('span', String(n), 'badge rounded-pill text-bg-primary fs-6 px-3 py-2'),
+                                        _bkIcon(icon, 'text-primary', '24')
+                                    ]),
+                                    _bkH('h3', title, 'h6 fw-bold mb-2'),
+                                    _bkP(body, 'small text-body-secondary mb-0')
+                                ])
+                            ], '3', '6');
+                        };
+                        return _bkSection('py-5', _sdT('Steps (Numbered)'), [
+                            _bkIntro(_sdT('How It Works'), _sdT('From booking to follow-up in four simple steps.')),
+                            _bkRow(_sdT('Steps Row'), [
+                                _snStep(1, 'bi-calendar2-check',      _sdT('Pick a time'),        _sdT('Choose a service, a doctor and a time that suits you.')),
+                                _snStep(2, 'bi-envelope-check',       _sdT('Get a confirmation'), _sdT('We confirm by e-mail and remind you the day before.')),
+                                _snStep(3, 'bi-person-check',         _sdT('Come in'),            _sdT('Arrive ten minutes early with your ID and any earlier reports.')),
+                                _snStep(4, 'bi-file-earmark-medical', _sdT('Follow up'),          _sdT('Your results and next steps wait for you in your account.'))
+                            ])
+                        ]);
+                    }
+
+                    // Booking: Call to Action — tinted panel, copy on the left, book + call buttons on the right
+                    if (ctype === 'booking-cta') {
+                        return _bkSection('py-5', _sdT('Booking (Call to Action)'), [
+                            _bkDiv('rounded-4 bg-primary-subtle p-4 p-lg-5', _sdT('Booking Panel'), [
+                                _bkRow(_sdT('Booking Row'), [
+                                    _bkCol(_sdT('Booking Copy'), [
+                                        _bkDiv('d-flex align-items-center gap-2 text-primary-emphasis fw-semibold mb-2', _sdT('Booking Eyebrow'), [
+                                            _bkIcon('bi-calendar-heart', '', '20'),
+                                            _bkH('span', _sdT('Same-week appointments'))
+                                        ]),
+                                        _bkH('h2', _sdT('Book your visit in under a minute'), 'fw-bold mb-2'),
+                                        _bkP(_sdT('Pick a time online, or call us and we will find one together.'), 'lead text-body-secondary mb-0')
+                                    ], '8'),
+                                    _bkCol(_sdT('Booking Actions'), [
+                                        _bkDiv('d-grid gap-2', _sdT('Action Group'), [
+                                            _bkBtn(_sdT('Book an Appointment'), 'primary', 'lg'),
+                                            _bkLink(_sdT('Call +1 202 555 0143'), 'tel:+12025550143', 'btn btn-outline-primary btn-lg', _sdT('Phone Button'))
+                                        ])
+                                    ], '4')
+                                ], 'align-items-center')
+                            ])
+                        ]);
+                    }
+
+                    // Booking: Split — photo on one side, promise + checklist + buttons on the other
+                    if (ctype === 'booking-split') {
+                        var _bsCheck = function (text) {
+                            return _bkDiv('d-flex gap-2', text, [
+                                _bkIcon('bi-check-circle-fill', 'text-success flex-shrink-0', '18'),
+                                _bkH('span', text)
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Booking (Split)'), [
+                            _bkRow(_sdT('Booking Row'), [
+                                _bkCol(_sdT('Booking Image'), [
+                                    _bkImg('booking1', 800, 600, _sdT('Our reception desk'), 'img-fluid rounded-4 shadow-sm')
+                                ], '6'),
+                                _bkCol(_sdT('Booking Copy'), [
+                                    _bkH('span', _sdT('Online booking'), 'text-uppercase text-primary fw-semibold small d-block mb-2'),
+                                    _bkH('h2', _sdT('A time that suits you'), 'fw-bold mb-3'),
+                                    _bkP(_sdT('Book, move or cancel your appointment from your account. We send a reminder the day before.'), 'lead text-body-secondary mb-4'),
+                                    _bkDiv('d-flex flex-column gap-2 mb-4', _sdT('Check List'), [
+                                        _bsCheck(_sdT('Same-week appointments')),
+                                        _bsCheck(_sdT('Reminders by e-mail')),
+                                        _bsCheck(_sdT('Change or cancel online'))
+                                    ]),
+                                    _bkDiv('d-flex flex-wrap gap-2', _sdT('Action Group'), [
+                                        _bkBtn(_sdT('Book an Appointment'), 'primary', 'lg'),
+                                        _bkBtn(_sdT('See Services'), 'outline-secondary', 'lg')
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Hours: Card — a centered card with one line per day and a holiday note
+                    if (ctype === 'hours-card') {
+                        var _hcDay = function (day, time, closed) {
+                            return _bkTag('li', 'list-group-item d-flex justify-content-between gap-3' + (closed ? ' text-body-secondary' : ''), day, [
+                                _bkH('span', day),
+                                _bkH('span', time, closed ? '' : 'fw-semibold')
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Hours (Card)'), [
+                            _bkDiv('col-md-8 col-lg-5 mx-auto', _sdT('Hours Wrap'), [
+                                _bkDiv('card border-0 shadow-sm', _sdT('Hours Card'), [
+                                    _bkDiv('card-header bg-transparent d-flex align-items-center gap-2 py-3', _sdT('Card Header'), [
+                                        _bkIcon('bi-clock', 'text-primary', '20'),
+                                        _bkH('h2', _sdT('Opening Hours'), 'h5 fw-bold mb-0')
+                                    ]),
+                                    _bkTag('ul', 'list-group list-group-flush', _sdT('Hours List'), [
+                                        _hcDay(_sdT('Monday – Friday'), '08:00 – 19:00'),
+                                        _hcDay(_sdT('Saturday'),        '09:00 – 14:00'),
+                                        _hcDay(_sdT('Sunday'),          _sdT('Closed'), true)
+                                    ]),
+                                    _bkDiv('card-footer bg-transparent small text-body-secondary py-3', _sdT('Card Footer'), [
+                                        _bkP(_sdT('Hours may change on public holidays.'), 'mb-0')
+                                    ])
+                                ])
+                            ])
+                        ]);
+                    }
+
+                    // Hours: Location — map frame on the left, address + hours + phone + directions on the right
+                    if (ctype === 'hours-location') {
+                        var _hlLine = function (icon, title, body) {
+                            return _bkDiv('d-flex gap-3', title, [
+                                _bkDiv('flex-shrink-0', _sdT('Icon Wrap'), [ _bkIcon(icon, 'text-primary', '22') ]),
+                                _bkDiv('flex-grow-1', _sdT('Info Copy'), [
+                                    _bkH('h3', title, 'h6 fw-bold mb-1'),
+                                    _bkP(body, 'text-body-secondary mb-0')
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Hours (Location)'), [
+                            _bkRow(_sdT('Location Row'), [
+                                _bkCol(_sdT('Map Col'), [
+                                    _bkDiv('ratio ratio-16x9', _sdT('Map Wrap'), [
+                                        _bkDiv('d-flex flex-column align-items-center justify-content-center gap-2 rounded-4 border bg-body text-body-secondary', _sdT('Map Placeholder'), [
+                                            _bkIcon('bi-geo-alt-fill', 'text-primary', '40'),
+                                            _bkP(_sdT('Place your map here'), 'small fw-semibold mb-0')
+                                        ])
+                                    ])
+                                ], '7'),
+                                _bkCol(_sdT('Info Col'), [
+                                    _bkH('h2', _sdT('Find Us'), 'fw-bold mb-4'),
+                                    _bkDiv('d-flex flex-column gap-4 mb-4', _sdT('Info List'), [
+                                        _hlLine('bi-geo-alt',   _sdT('Address'),       _sdT('42 Main Street, Springfield')),
+                                        _hlLine('bi-clock',     _sdT('Opening Hours'), _sdT('Mon–Fri 08:00–19:00 · Sat 09:00–14:00')),
+                                        _hlLine('bi-telephone', _sdT('Phone'),         '+1 202 555 0143')
+                                    ]),
+                                    _bkBtn(_sdT('Get Directions'), 'primary')
+                                ], '5')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Locations: Cards — one card per branch, photo + address + hours + phone + directions
+                    if (ctype === 'locations-cards') {
+                        var _lcLine = function (icon, text, name) {
+                            return _bkDiv('d-flex gap-2', name, [ _bkIcon(icon, 'text-primary flex-shrink-0'), _bkH('span', text) ]);
+                        };
+                        var _lcCard = function (n, seed, name, address, hours, phone) {
+                            return _bkCol(_sdT('Location {var}', n), [
+                                _bkDiv('card h-100 border-0 shadow-sm overflow-hidden', _sdT('Location Card'), [
+                                    _bkImg(seed, 600, 400, name, 'card-img-top object-fit-cover pg-ratio-16x9'),
+                                    _bkDiv('card-body d-flex flex-column p-4', _sdT('Location Body'), [
+                                        _bkH('h3', name, 'h5 fw-bold mb-3'),
+                                        _bkDiv('d-flex flex-column gap-2 small text-body-secondary mb-4', _sdT('Location Details'), [
+                                            _lcLine('bi-geo-alt',   address, _sdT('Address')),
+                                            _lcLine('bi-clock',     hours,   _sdT('Opening Hours')),
+                                            _lcLine('bi-telephone', phone,   _sdT('Phone'))
+                                        ]),
+                                        _bkDiv('mt-auto', _sdT('Location Action'), [ _bkBtn(_sdT('Get Directions'), 'outline-primary', 'sm') ])
+                                    ])
+                                ])
+                            ], '4', '6');
+                        };
+                        return _bkSection('py-5', _sdT('Locations (Cards)'), [
+                            _bkIntro(_sdT('Our Locations'), _sdT('Three neighbourhoods, the same coffee and the same welcome.')),
+                            _bkRow(_sdT('Locations Row'), [
+                                _lcCard(1, 'loc1', _sdT('Old Town'),          _sdT('12 Market Square'),           _sdT('Every day 07:30–22:00'), '+1 202 555 0111'),
+                                _lcCard(2, 'loc2', _sdT('Riverside'),         _sdT('8 Harbour Walk'),             _sdT('Every day 08:00–23:00'), '+1 202 555 0122'),
+                                _lcCard(3, 'loc3', _sdT('Business District'), _sdT('Vertex Tower, ground floor'), _sdT('Mon–Fri 07:00–19:00'),   '+1 202 555 0133')
+                            ])
+                        ]);
+                    }
+
+                    // Menu: Tabs — pill tabs per category, two columns of priced lines in each pane
+                    if (ctype === 'menu-tabs') {
+                        var _mtPfx = _bkUid('mt');
+                        var _mtTab = function (i, label, icon) {
+                            return _bkTag('li', 'nav-item', label, [
+                                _bkTag('button', 'nav-link d-flex align-items-center gap-2' + (i === 0 ? ' active' : ''), _sdT('Tab Button'), [
+                                    _bkIcon(icon),
+                                    _bkH('span', label)
+                                ], [
+                                    { name: 'type',           value: 'button' },
+                                    { name: 'data-bs-toggle', value: 'pill' },
+                                    { name: 'data-bs-target', value: '#' + _mtPfx + '_' + i },
+                                    { name: 'role',           value: 'tab' },
+                                    { name: 'aria-controls',  value: _mtPfx + '_' + i },
+                                    { name: 'aria-selected',  value: i === 0 ? 'true' : 'false' }
+                                ])
+                            ], [{ name: 'role', value: 'presentation' }]);
+                        };
+                        var _mtPane = function (i, label, left, right) {
+                            return createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade' + (i === 0 ? ' show active' : ''), id: _mtPfx + '_' + i, customName: label,
+                                _attrs: [{ name: 'role', value: 'tabpanel' }, { name: 'tabindex', value: '0' }] }, [
+                                _bkRow(_sdT('Menu Row'), [
+                                    _bkCol(_sdT('Left Column'), left, '6'),
+                                    _bkCol(_sdT('Right Column'), right, '6')
+                                ], 'g-lg-5')
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Menu (Tabs)'), [
+                            _bkIntro(_sdT('Our Menu'), _sdT('Made fresh every morning. Ask us about allergens.')),
+                            _bkTag('ul', 'nav nav-pills justify-content-center flex-wrap gap-2 mb-5', _sdT('Menu Tabs'), [
+                                _mtTab(0, _sdT('Coffee'),    'bi-cup-hot'),
+                                _mtTab(1, _sdT('Breakfast'), 'bi-egg-fried'),
+                                _mtTab(2, _sdT('Desserts'),  'bi-cake2')
+                            ], [{ name: 'role', value: 'tablist' }]),
+                            _bkDiv('tab-content', _sdT('Menu Panes'), [
+                                _mtPane(0, _sdT('Coffee'), [
+                                    _bkMenuItem(_sdT('Espresso'),   _sdT('A double shot of our house blend.'), _sdT('$2.80')),
+                                    _bkMenuItem(_sdT('Flat White'), _sdT('Espresso with a thin layer of silky milk.'), _sdT('$3.80')),
+                                    _bkMenuItem(_sdT('Cappuccino'), _sdT('Equal parts espresso, milk and foam.'), _sdT('$3.90'))
+                                ], [
+                                    _bkMenuItem(_sdT('Caffè Latte'),   _sdT('Oat, almond or whole milk.'), _sdT('$4.10'), [_sdT('Vegan option')]),
+                                    _bkMenuItem(_sdT('Filter Coffee'), _sdT('A single origin that changes every week.'), _sdT('$3.20')),
+                                    _bkMenuItem(_sdT('Cold Brew'),     _sdT('Steeped for eighteen hours, served over ice.'), _sdT('$4.20'))
+                                ]),
+                                _mtPane(1, _sdT('Breakfast'), [
+                                    _bkMenuItem(_sdT('Avocado Toast'),  _sdT('Sourdough, lime, chilli flakes and seeds.'), _sdT('$9.50'), [_sdT('Vegan')]),
+                                    _bkMenuItem(_sdT('Eggs Benedict'),  _sdT('Poached eggs, ham and hollandaise on a muffin.'), _sdT('$11.00')),
+                                    _bkMenuItem(_sdT('Granola Bowl'),   _sdT('Yoghurt, honey, berries and house granola.'), _sdT('$7.50'), [_sdT('Vegetarian')])
+                                ], [
+                                    _bkMenuItem(_sdT('Pancake Stack'),  _sdT('Three pancakes, maple syrup and butter.'), _sdT('$8.90'), [_sdT('Vegetarian')]),
+                                    _bkMenuItem(_sdT('Shakshuka'),      _sdT('Eggs baked in a spiced tomato sauce, with bread.'), _sdT('$10.50'), [_sdT('Vegetarian'), _sdT('Spicy')]),
+                                    _bkMenuItem(_sdT('Butter Croissant'), _sdT('Baked here every morning.'), _sdT('$3.20'))
+                                ]),
+                                _mtPane(2, _sdT('Desserts'), [
+                                    _bkMenuItem(_sdT('Baked Cheesecake'),  _sdT('With a berry compote.'), _sdT('$5.90'), [_sdT('Vegetarian')]),
+                                    _bkMenuItem(_sdT('Chocolate Brownie'), _sdT('Dark chocolate and sea salt.'), _sdT('$4.50'), [_sdT('Gluten free')]),
+                                    _bkMenuItem(_sdT('Carrot Cake'),       _sdT('Walnuts, cinnamon and cream cheese icing.'), _sdT('$5.20'))
+                                ], [
+                                    _bkMenuItem(_sdT('Lemon Tart'), _sdT('Sharp lemon curd in a buttery shell.'), _sdT('$4.90')),
+                                    _bkMenuItem(_sdT('Tiramisu'),   _sdT('Espresso-soaked biscuits and mascarpone.'), _sdT('$6.20')),
+                                    _bkMenuItem(_sdT('Fruit Tart'), _sdT('Whatever the market has that week.'), _sdT('$5.50'))
+                                ])
+                            ])
+                        ]);
+                    }
+
+                    // Menu: Two Columns — a category per column, icon heading + priced lines
+                    if (ctype === 'menu-list') {
+                        var _mlCategory = function (icon, title, items) {
+                            return _bkCol(title, [
+                                _bkDiv('d-flex align-items-center gap-2 mb-3', _sdT('Category Head'), [
+                                    _bkIcon(icon, 'text-primary', '24'),
+                                    _bkH('h3', title, 'h4 fw-bold mb-0')
+                                ])
+                            ].concat(items), '6');
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Menu (Two Columns)'), [
+                            _bkIntro(_sdT('Drinks'), _sdT('Every coffee comes with a glass of water.')),
+                            _bkRow(_sdT('Menu Row'), [
+                                _mlCategory('bi-cup-hot', _sdT('Hot Drinks'), [
+                                    _bkMenuItem(_sdT('Espresso'),      '', _sdT('$2.80')),
+                                    _bkMenuItem(_sdT('Cappuccino'),    '', _sdT('$3.90')),
+                                    _bkMenuItem(_sdT('Hot Chocolate'), _sdT('Made with real dark chocolate.'), _sdT('$4.00')),
+                                    _bkMenuItem(_sdT('Chai Latte'),    _sdT('Black tea, warm spices and milk.'), _sdT('$4.20'))
+                                ]),
+                                _mlCategory('bi-cup-straw', _sdT('Cold Drinks'), [
+                                    _bkMenuItem(_sdT('Iced Latte'),      '', _sdT('$4.30')),
+                                    _bkMenuItem(_sdT('Cold Brew'),       '', _sdT('$4.20')),
+                                    _bkMenuItem(_sdT('Fresh Lemonade'),  _sdT('Lemon, mint and a little sugar.'), _sdT('$3.60'), [_sdT('Vegan')]),
+                                    _bkMenuItem(_sdT('Berry Smoothie'),  _sdT('Berries, banana and oat milk.'), _sdT('$5.40'), [_sdT('Vegan')])
+                                ])
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Menu: Image Cards — four dish cards, square photo + optional badge + name, price and line
+                    if (ctype === 'menu-cards') {
+                        var _mcCard = function (n, seed, name, desc, price, badge) {
+                            var card = [ _bkImg(seed, 600, 600, name, 'card-img-top object-fit-cover pg-ratio-1x1') ];
+                            if (badge) card.push(_bkH('span', badge, 'badge text-bg-warning position-absolute top-0 start-0 m-3'));
+                            card.push(_bkDiv('card-body', _sdT('Dish Body'), [
+                                _bkDiv('d-flex justify-content-between align-items-baseline gap-2 mb-1', _sdT('Dish Head'), [
+                                    _bkH('h3', name, 'h6 fw-semibold mb-0'),
+                                    _bkH('span', price, 'fw-semibold text-primary text-nowrap')
+                                ]),
+                                _bkP(desc, 'small text-body-secondary mb-0')
+                            ]));
+                            return _bkCol(_sdT('Dish {var}', n), [
+                                _bkTag('article', 'card h-100 border-0 shadow-sm overflow-hidden', _sdT('Dish Card'), card)
+                            ], '3', '', '6');
+                        };
+                        return _bkSection('py-5', _sdT('Menu (Image Cards)'), [
+                            _bkIntro(_sdT('Fresh From the Counter'), _sdT('A few favourites; the full menu is inside.')),
+                            _bkRow(_sdT('Dishes Row'), [
+                                _mcCard(1, 'dish1', _sdT('Pistachio Croissant'), _sdT('Flaky, buttery and filled to the edges.'), _sdT('$4.20'), _sdT('New')),
+                                _mcCard(2, 'dish2', _sdT('Avocado Toast'),       _sdT('Sourdough, lime, chilli flakes and seeds.'), _sdT('$9.50'), _sdT('Vegan')),
+                                _mcCard(3, 'dish3', _sdT('Baked Cheesecake'),    _sdT('With a berry compote.'), _sdT('$5.90'), ''),
+                                _mcCard(4, 'dish4', _sdT('Iced Caramel Latte'),  _sdT('Our espresso, caramel and cold milk.'), _sdT('$4.60'), _sdT('Seasonal'))
+                            ])
+                        ]);
+                    }
+
+                    // Menu: Board — dark chalkboard band, one table of drinks by cup size
+                    if (ctype === 'menu-board') {
+                        var _mbCell = function (tag, text, cls, attrs) {
+                            return _bkTag(tag, cls, tag === 'th' ? _sdT('Header cell') : _sdT('Cell'), [ _bkH('span', text) ], attrs);
+                        };
+                        var _mbRow = function (name, small, medium, large) {
+                            return _bkTag('tr', '', name, [
+                                _mbCell('th', name, 'fw-semibold', [{ name: 'scope', value: 'row' }]),
+                                _mbCell('td', small,  'text-end'),
+                                _mbCell('td', medium, 'text-end'),
+                                _mbCell('td', large,  'text-end')
+                            ]);
+                        };
+                        return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body text-body', customName: _sdT('Menu (Board)'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
+                            createNode('container', { fluid: false, cssClass: '' }, [
+                                _bkDiv('col-lg-8 mx-auto', _sdT('Board Wrap'), [
+                                    _bkDiv('text-center mb-4', _sdT('Section Header'), [
+                                        _bkH('span', _sdT('Coffee Bar'), 'text-uppercase text-primary fw-semibold small d-block mb-2'),
+                                        _bkH('h2', _sdT('Pick Your Size'), 'fw-bold mb-0')
+                                    ]),
+                                    _bkDiv('table-responsive', _sdT('Table Wrap'), [
+                                        _bkTag('table', 'table table-borderless align-middle mb-3', _sdT('Size Table'), [
+                                            _bkTag('thead', '', _sdT('Table Head'), [
+                                                _bkTag('tr', 'border-bottom', _sdT('Row'), [
+                                                    _mbCell('th', _sdT('Drink'), 'text-body-secondary fw-normal', [{ name: 'scope', value: 'col' }]),
+                                                    _mbCell('th', _sdT('Small'), 'text-body-secondary fw-normal text-end', [{ name: 'scope', value: 'col' }]),
+                                                    _mbCell('th', _sdT('Medium'), 'text-body-secondary fw-normal text-end', [{ name: 'scope', value: 'col' }]),
+                                                    _mbCell('th', _sdT('Large'), 'text-body-secondary fw-normal text-end', [{ name: 'scope', value: 'col' }])
+                                                ])
+                                            ]),
+                                            _bkTag('tbody', '', _sdT('Table Body'), [
+                                                _mbRow(_sdT('Americano'),   _sdT('$2.90'), _sdT('$3.40'), _sdT('$3.90')),
+                                                _mbRow(_sdT('Cappuccino'),  _sdT('$3.40'), _sdT('$3.90'), _sdT('$4.40')),
+                                                _mbRow(_sdT('Caffè Latte'), _sdT('$3.60'), _sdT('$4.10'), _sdT('$4.60')),
+                                                _mbRow(_sdT('Mocha'),       _sdT('$3.90'), _sdT('$4.40'), _sdT('$4.90')),
+                                                _mbRow(_sdT('Chai Latte'),  _sdT('$3.70'), _sdT('$4.20'), _sdT('$4.70'))
+                                            ])
+                                        ])
+                                    ]),
+                                    _bkP(_sdT('Oat, almond or soy milk at no extra cost. Extra shot $0.60.'), 'small text-body-secondary text-center mb-0')
+                                ])
+                            ])
+                        ]);
+                    }
+
+                    // Menu: Specials — photo + the special of the day with price, and two more lines under it
+                    if (ctype === 'menu-specials') {
+                        return _bkSection('py-5', _sdT('Menu (Specials)'), [
+                            _bkRow(_sdT('Specials Row'), [
+                                _bkCol(_sdT('Specials Image'), [
+                                    _bkImg('special1', 800, 600, _sdT('Roasted pumpkin soup'), 'img-fluid rounded-4 shadow-sm')
+                                ], '6'),
+                                _bkCol(_sdT('Specials Copy'), [
+                                    _bkH('span', _sdT('Special of the day'), 'badge rounded-pill text-bg-primary mb-3'),
+                                    _bkH('h2', _sdT('Roasted pumpkin soup'), 'fw-bold mb-2'),
+                                    _bkP(_sdT('Slow-roasted pumpkin, ginger and coconut milk, with warm sourdough.'), 'lead text-body-secondary mb-3'),
+                                    _bkDiv('d-flex flex-wrap align-items-baseline gap-3 mb-4', _sdT('Special Price'), [
+                                        _bkH('span', _sdT('$8.50'), 'fs-3 fw-bold text-primary'),
+                                        _bkH('span', _sdT('Served until 15:00'), 'small text-body-secondary')
+                                    ]),
+                                    _bkDiv('border-top pt-3', _sdT('More Specials'), [
+                                        _bkMenuItem(_sdT('Soup and sandwich'),     _sdT('Half a sandwich of the day with a small soup.'), _sdT('$11.00')),
+                                        _bkMenuItem(_sdT('Afternoon tea for two'), _sdT('Scones, sandwiches, two cakes and a pot of tea.'), _sdT('$23.00'))
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Events: List — stacked cards, date tile + title, when/where line + copy + reserve button
+                    if (ctype === 'events-list') {
+                        var _elItem = function (n, datetime, month, day, title, meta, body) {
+                            return _bkTag('article', 'card border-0 shadow-sm', _sdT('Event {var}', n), [
+                                _bkDiv('card-body d-flex flex-column flex-sm-row align-items-sm-center gap-3 gap-sm-4 p-4', _sdT('Event Body'), [
+                                    _bkTag('time', 'flex-shrink-0 align-self-start align-self-sm-center text-center rounded-3 bg-primary-subtle text-primary-emphasis px-3 py-2', _sdT('Event Date'), [
+                                        _bkH('span', month, 'd-block small text-uppercase fw-semibold'),
+                                        _bkH('span', day, 'd-block fs-3 fw-bold lh-1')
+                                    ], [{ name: 'datetime', value: datetime }]),
+                                    _bkDiv('flex-grow-1', _sdT('Event Copy'), [
+                                        _bkH('h3', title, 'h5 fw-bold mb-1'),
+                                        _bkP(meta, 'small text-body-secondary mb-2'),
+                                        _bkP(body, 'mb-0')
+                                    ]),
+                                    _bkDiv('flex-shrink-0', _sdT('Event Action'), [ _bkBtn(_sdT('Reserve a seat'), 'outline-primary', 'sm') ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Events (List)'), [
+                            _bkIntro(_sdT('Upcoming Events'), _sdT('Live music, tastings and workshops. Seats are limited.')),
+                            _bkDiv('col-lg-10 mx-auto d-flex flex-column gap-3', _sdT('Event List'), [
+                                _elItem(1, '2026-10-16T20:00', _sdT('Oct'), '16', _sdT('Acoustic Friday'),    _sdT('Friday · 20:00 · Old Town'),    _sdT('Two guitars, one voice and the autumn menu until late.')),
+                                _elItem(2, '2026-10-24T11:00', _sdT('Oct'), '24', _sdT('Coffee Tasting'),     _sdT('Saturday · 11:00 · Riverside'), _sdT('Taste four single origins side by side with our roaster.')),
+                                _elItem(3, '2026-11-07T14:00', _sdT('Nov'), '07', _sdT('Latte Art Workshop'), _sdT('Saturday · 14:00 · Old Town'),  _sdT('Learn to pour a heart and a tulip. All the milk is on us.'))
+                            ])
+                        ]);
+                    }
+
+                    // Notice: Bar — a full-width urgent line with an icon and one action, for the top of a page
+                    if (ctype === 'notice-bar') {
+                        return createNode('semantic', { tag: 'div', cssClass: 'alert alert-danger rounded-0 border-0 mb-0 py-2', customName: _sdT('Notice (Bar)'),
+                            _attrs: [{ name: 'role', value: 'alert' }] }, [
+                            createNode('container', { fluid: false, cssClass: 'd-flex flex-column flex-sm-row align-items-sm-center gap-2 gap-sm-3' }, [
+                                _bkIcon('bi-telephone-fill', 'flex-shrink-0', '18'),
+                                _bkP(_sdT('Medical emergency? Call 112 straight away instead of booking online.'), 'small fw-semibold mb-0 flex-grow-1'),
+                                _bkLink(_sdT('Call 112'), 'tel:112', 'alert-link small text-nowrap', _sdT('Notice Link'))
+                            ])
+                        ]);
+                    }
+
+                    // Team: Profiles — horizontal cards, photo + name, specialty, bio, tags and a book button
+                    if (ctype === 'team-profiles') {
+                        var _tpCard = function (n, seed, name, role, bio, tags) {
+                            return _bkCol(_sdT('Profile {var}', n), [
+                                _bkDiv('card h-100 border-0 shadow-sm', _sdT('Profile Card'), [
+                                    _bkDiv('card-body d-flex flex-column flex-sm-row gap-4 p-4', _sdT('Profile Body'), [
+                                        createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/240/240', alt: name, cssClass: 'rounded-4 object-fit-cover flex-shrink-0', width: '112', height: '112' }),
+                                        _bkDiv('flex-grow-1', _sdT('Profile Copy'), [
+                                            _bkH('h3', name, 'h5 fw-bold mb-1'),
+                                            _bkP(role, 'text-primary fw-semibold small mb-2'),
+                                            _bkP(bio, 'small text-body-secondary mb-3'),
+                                            _bkDiv('d-flex flex-wrap gap-2 mb-3', _sdT('Tags'), tags.map(function (t) {
+                                                return _bkH('span', t, 'badge rounded-pill bg-body-tertiary text-body border');
+                                            })),
+                                            _bkBtn(_sdT('Book a visit'), 'primary', 'sm')
+                                        ])
+                                    ])
+                                ])
+                            ], '6');
+                        };
+                        return _bkSection('py-5', _sdT('Team (Profiles)'), [
+                            _bkIntro(_sdT('Our Doctors'), _sdT('Experienced, unhurried and easy to talk to.')),
+                            _bkRow(_sdT('Profiles Row'), [
+                                _tpCard(1, 'doc1', _sdT('Dr. Jane Cooper'),    _sdT('Family Medicine'), _sdT('Twenty years of family practice, from first fevers to yearly check-ups.'), [_sdT('English'), _sdT('Spanish')]),
+                                _tpCard(2, 'doc2', _sdT('Dr. Michael Brooks'), _sdT('Cardiology'),      _sdT('Heart checks, blood pressure and ECGs, explained without jargon.'),      [_sdT('English'), _sdT('ECG')]),
+                                _tpCard(3, 'doc3', _sdT('Dr. Emily Turner'),   _sdT('Paediatrics'),     _sdT('Newborn visits, growth checks and the vaccine calendar.'),               [_sdT('English'), _sdT('Children')]),
+                                _tpCard(4, 'doc4', _sdT('Dr. Daniel Ross'),    _sdT('Dermatology'),     _sdT('Skin checks, moles and allergies, with same-week slots.'),              [_sdT('English'), _sdT('French')])
+                            ])
+                        ]);
+                    }
+
+                    // Testimonial: Ratings — the score and stars on the left, three short reviews on the right
+                    if (ctype === 'testimonial-ratings') {
+                        var _trCard = function (n, quote, name, meta) {
+                            return _bkCol(_sdT('Review {var}', n), [
+                                _bkDiv('card h-100 border-0 shadow-sm', _sdT('Review Card'), [
+                                    _bkDiv('card-body p-4', _sdT('Review Body'), [
+                                        _bkStars('14'),
+                                        _bkP(quote, 'mb-3'),
+                                        _bkH('strong', name, 'd-block small'),
+                                        _bkP(meta, 'small text-body-secondary mb-0')
+                                    ])
+                                ])
+                            ], '4', '6');
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Testimonials (Ratings)'), [
+                            _bkRow(_sdT('Ratings Row'), [
+                                _bkCol(_sdT('Rating Summary'), [
+                                    _bkH('span', '4.9', 'display-4 fw-bold d-block lh-1 mb-2'),
+                                    _bkStars('20'),
+                                    _bkP(_sdT('Average of 320 reviews'), 'text-body-secondary mb-4'),
+                                    _bkBtn(_sdT('Write a review'), 'outline-primary')
+                                ], '3', '', '', 'text-center text-lg-start'),
+                                _bkCol(_sdT('Reviews'), [
+                                    _bkRow(_sdT('Reviews Row'), [
+                                        _trCard(1, _sdT('Booking took a minute and the reminder came right on time.'),   _sdT('Emily Turner'),   _sdT('Visited in September')),
+                                        _trCard(2, _sdT('Friendly, on time and clear about the price before we started.'), _sdT('Daniel Ross'),    _sdT('Regular since 2021')),
+                                        _trCard(3, _sdT('I left with answers, not more questions. Thank you.'),         _sdT('Michael Brooks'), _sdT('First visit'))
+                                    ])
+                                ], '9')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
                 }
 
                 // Accordion Explosion
@@ -51434,7 +52067,25 @@ const StyleDesigner = (function () {
             { label: _sdT('Alert: Warning'),              type: 'component', icon: 'bi-exclamation-circle',    extra: { componentType: 'alert-warning-actions' } },
             { label: _sdT('Theme: Dropdown'),             type: 'component', icon: 'bi-palette',               extra: { componentType: 'theme-switcher-dropdown' } },
             { label: _sdT('Theme: Toggle'),               type: 'component', icon: 'bi-moon',                  extra: { componentType: 'theme-switcher-toggle' } },
-            { label: _sdT('Theme: Switch'),               type: 'component', icon: 'bi-toggle-on',             extra: { componentType: 'theme-switcher-switch' } }
+            { label: _sdT('Theme: Switch'),               type: 'component', icon: 'bi-toggle-on',             extra: { componentType: 'theme-switcher-switch' } },
+            { label: _sdT('Services: Icon Cards'),        type: 'component', icon: 'bi-grid-1x2',              extra: { componentType: 'services-icon-cards' } },
+            { label: _sdT('Services: Image Cards'),       type: 'component', icon: 'bi-card-image',            extra: { componentType: 'services-image-cards' } },
+            { label: _sdT('Services: Price List'),        type: 'component', icon: 'bi-list-ul',               extra: { componentType: 'services-price-list' } },
+            { label: _sdT('Steps: Numbered'),             type: 'component', icon: 'bi-123',                   extra: { componentType: 'steps-numbered' } },
+            { label: _sdT('Booking: Call to Action'),     type: 'component', icon: 'bi-calendar-plus',         extra: { componentType: 'booking-cta' } },
+            { label: _sdT('Booking: Split'),              type: 'component', icon: 'bi-calendar-check',        extra: { componentType: 'booking-split' } },
+            { label: _sdT('Hours: Card'),                 type: 'component', icon: 'bi-clock',                 extra: { componentType: 'hours-card' } },
+            { label: _sdT('Hours: Location'),             type: 'component', icon: 'bi-geo-alt',               extra: { componentType: 'hours-location' } },
+            { label: _sdT('Locations: Cards'),            type: 'component', icon: 'bi-shop',                  extra: { componentType: 'locations-cards' } },
+            { label: _sdT('Menu: Tabs'),                  type: 'component', icon: 'bi-menu-button-wide',      extra: { componentType: 'menu-tabs' } },
+            { label: _sdT('Menu: Two Columns'),           type: 'component', icon: 'bi-layout-split',          extra: { componentType: 'menu-list' } },
+            { label: _sdT('Menu: Image Cards'),           type: 'component', icon: 'bi-egg-fried',             extra: { componentType: 'menu-cards' } },
+            { label: _sdT('Menu: Board'),                 type: 'component', icon: 'bi-easel',                 extra: { componentType: 'menu-board' } },
+            { label: _sdT('Menu: Specials'),              type: 'component', icon: 'bi-star',                  extra: { componentType: 'menu-specials' } },
+            { label: _sdT('Events: List'),                type: 'component', icon: 'bi-calendar-event',        extra: { componentType: 'events-list' } },
+            { label: _sdT('Notice: Bar'),                 type: 'component', icon: 'bi-megaphone-fill',        extra: { componentType: 'notice-bar' } },
+            { label: _sdT('Team: Profiles'),              type: 'component', icon: 'bi-person-vcard',          extra: { componentType: 'team-profiles' } },
+            { label: _sdT('Testimonial: Ratings'),        type: 'component', icon: 'bi-star-half',             extra: { componentType: 'testimonial-ratings' } }
         ];
     }
 
@@ -51445,10 +52096,13 @@ const StyleDesigner = (function () {
             { title: _sdT('Page Header'),      icon: 'bi-window-sidebar',     match: ['navbar-', 'hero-', 'breadcrumbs-'] },
             { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-'] },
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
-            { title: _sdT('Content Lists'),    icon: 'bi-collection',         match: ['blog-', 'faq-', 'timeline-', 'image-'] },
+            { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
+            { title: _sdT('Hours & Locations'), icon: 'bi-geo-alt',           match: ['hours-', 'locations-'] },
+            { title: _sdT('Food & Drink'),     icon: 'bi-cup-hot',            match: ['menu-'] },
+            { title: _sdT('Content Lists'),    icon: 'bi-collection',         match: ['blog-', 'faq-', 'timeline-', 'image-', 'events-'] },
             { title: _sdT('Forms & Access'),   icon: 'bi-envelope-paper',     match: ['contact-', 'newsletter-', 'login-'] },
             { title: _sdT('Page Footer'),      icon: 'bi-window-dock',        match: ['footer-'] },
-            { title: _sdT('Status & Utility'), icon: 'bi-shield-exclamation', match: ['error-', 'alert-', 'theme-switcher-'] }
+            { title: _sdT('Status & Utility'), icon: 'bi-shield-exclamation', match: ['error-', 'alert-', 'notice-', 'theme-switcher-'] }
         ];
         var other = { title: _sdT('Other'), icon: 'bi-box', match: [], items: [] };
         groups.forEach(function (g) { g.items = []; });
@@ -51521,7 +52175,10 @@ const StyleDesigner = (function () {
         'logos-marquee-static': ['pg-logo-44'],
         'compare-side-by-side': ['pg-logo-60'],
         'navbar-mega':          ['pg-mega-menu'],
-        'navbar-centered-logo': ['pg-spacer-40', 'pg-brand-center']
+        'navbar-centered-logo': ['pg-spacer-40', 'pg-brand-center'],
+        'services-image-cards': ['pg-ratio-16x9'],
+        'locations-cards':      ['pg-ratio-16x9'],
+        'menu-cards':           ['pg-ratio-1x1']
     };
 
     // Append the rules a dropped block needs to the design's User Styles,
