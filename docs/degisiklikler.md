@@ -84,6 +84,88 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Alış faturası kendi serisinde (2026-10-13)
+
+**Kaynak.** Satın alma siparişlerinin dev.pinegrap.com testi (koordinatör
+üzerinden): alış faturası PGF2026000000001 ile satış faturası
+PGF2026000000001 aynı numarayı taşıyor. `erp_invoice_issue()` iki yön için
+de `ERP_DEFAULT_SERIES`'ten numara alıyordu; `erp_document_series` satırı
+`doc_kind`'e göre ayrı olduğundan iki sayaç da 1'den başlıyordu.
+`erp_invoices.uniq_number` `direction` içerdiğinden veritabanı ikisini de
+kabul ediyordu.
+
+**Ne değişti.** Yeni `erp_invoice_series($direction)`
+(`includes/erp/invoice_manual.php`): satış faturası fatura serisinde kalır,
+alış faturası `config.php`'deki `ERP_PURCHASE_INVOICE_SERIES` ya da fatura
+serisi + `A` (PGF → PGFA) alır; irsaliyenin `S`, iadenin `I`, teklifin `T`,
+satın alma siparişinin `P` eki gibi. Alış faturasının iadesi ana faturanın
+serisine `I` ekler, artık PGFAI. Ayarlar › E-Ticaret › ERP'deki seri
+açıklaması "alış faturaları A" diyor (yeni dil anahtarı).
+
+**Bilerek yapılmayan.** Şema adımı yok. İstenen biçim
+`erp_document_series.prefix`'i güncelleyen bir adımdı, ama `prefix` yalnız
+GİB biçiminde kullanılıyor; "yıl" ve "sürekli" biçimleri seriyi doğrudan
+yazdığından yalnız önek değişse PGF-2026-0001 yine iki belgede olurdu.
+Kesilmiş belgelerin numaraları değişmedi; eski `PGF / purchase_invoice`
+sayaç satırı yerinde kalır, kullanılmaz. Yeni seri 1'den başlar. Seri 10
+karakter sınırına göre kesilmiyor (`I`, `S`, `T`, `P` eklerinde de böyle).
+
+**Doğrulama.** Sandbox: alış PGFA2026000000001, satış PGF2026000000006,
+alış PGFA2026000000002; `erp_document_series`'te `PGFA / purchase_invoice`
+satırı açıldı. `tests/erp_purchase_order_test.php`'de seri testi.
+
+---
+
+## 2026.4.10 — Cari fiyatları mağazada (ERP Faz 8b, 10.59) (2026-10-13)
+
+**Neden.** `docs/_plan_erp_ozellikler.md` Faz 8b (#14): bayi ya da
+sözleşmeli müşteri için caride tanımlı fiyat ve iskonto (`price_lists.php`)
+yalnız ERP'de elle kesilen faturada uygulanıyordu; aynı müşteri mağazadan
+sipariş verince liste fiyatını ödüyordu.
+
+**Ne değişti.** Şema 10.59 `config.erp_storefront_account_prices`
+(TINYINT, varsayılan 0; `ERP_STOREFRONT_ACCOUNT_PRICES`), ayar Ayarlar ›
+E-Ticaret › ERP'de "Cari fiyatları mağazada". Kural tek saf fonksiyonda,
+`erp_storefront_price($liste, $koşullar, $kampanya)`
+(`includes/erp/storefront.php`): cari fiyatı ürünün kendi satırındaki fiyat,
+yoksa liste fiyatından (satırın ya da carinin) iskonto
+(`erp_storefront_account_price()`, yuvarlama `erp_apply_rate()`);
+kampanyayla **toplanmaz**, ikisinden düşük olan geçer, eşitlikte kampanya
+kalır; liste fiyatının altına inmeyen cari fiyatı fiyat sayılmaz. Mağaza
+tarafında `pg_erp_member_prices()` (`includes/fn/ecommerce.php`) oturumdaki
+üyenin carisi için listeden ucuzlayan ürünleri istek başına bir kez çıkarır
+(ERP yalnız koşulu olan üyede yüklenir) ve üç yer onu okur:
+
+- `get_discounted_product_prices()`: bütün vitrin (katalog, ürün sayfası,
+  arama, çapraz satış, sepet ve hızlı sipariş ekranları, panel API'nin
+  ürün okuması) fiyatı buradan aldığı için üstü çizili liste fiyatı ve cari
+  fiyatı görünür. Yeni `$for_member` parametresi; ürün RSS beslemeleri
+  (`get_page.php`, `_pg_build_catalog_*_rss_parts()`) `false` geçer.
+- `update_order_item_prices()`: teklifsiz satırın fiyatı cari fiyatı.
+- `apply_offers_to_cart()` ve `get_best_offer_id()`: tekliften arındırılan
+  satır cari fiyatına döner; bir teklif satırı ancak cari fiyatının altına
+  indiriyorsa alır, indirim tutarı cari fiyatına göre sayılır (sonraki
+  tekliflerin alt toplam koşulu doğru kalsın diye).
+
+Boş döndüğü durumlar: ayar kapalı, oturum yok, kişinin carisi yok ya da
+aktif müşteri carisi değil (`kind` customer/both, `status` active), personel
+başkası adına sipariş veriyor (ghost oturum). Hediye kartı (para, mal değil)
+ve bağış hiç almaz.
+
+**Golden.** Ayar kapalıyken `pg_erp_member_prices()` boş dizi, üç yer
+bugünkü değeri yazar (`tests/erp_storefront_test.php`). Sandbox'ta aynı
+sepet (beş ürün, biri kampanyalı) geliştirme dalının koduyla ve bu kodla
+ayar kapalıyken koşturuldu: satır satır aynı fiyat, teklif ve ara toplam
+(124.976).
+
+**Bilerek yapılmayan.** Katalogda fiyata göre sıralama ve fiyat aralığı
+süzgeci SQL'de liste fiyatına bakar. Sipariş, sepetin en son
+hesaplandığı fiyatla yazılır (`submit_order.php` fiyatı yeniden hesaplamaz;
+kampanyada da böyle). Cari fiyatı vergi ve döviz bakımından liste
+fiyatıyla aynı tabanda tutulur, dönüştürme yok.
+
+---
+
 ## 2026.4.10 — Bağlı hesaplar: Dropbox'a hazırlık (2026-10-13)
 
 **Neden.** Buluta yedek senaryosu (`docs/_plan_tersine_oauth.md` §4.4)

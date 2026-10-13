@@ -21785,5 +21785,8 @@
     "{var:1} sign-in was tied to the account with the same verified e-mail address ({var:2})": "{var:1} girişi aynı doğrulanmış e-posta adresli hesaba bağlandı ({var:2})",
     "This website cannot get delivery dates from FedEx, because a FedEx API key, secret key or account number is missing from the site settings.": "Site ayarlarında FedEx API anahtarı, gizli anahtarı ya da hesap numarası eksik olduğu için bu site FedEx'ten teslim tarihi alamıyor.",
     "An error occurred while trying to get a delivery date from FedEx: {var:1} Request: {var:2}": "FedEx'ten teslim tarihi alınırken hata oluştu: {var:1} İstek: {var:2}",
-    "FedEx answered without delivery dates: {var:1} Request: {var:2}": "FedEx teslim tarihi olmadan yanıt verdi: {var:1} İstek: {var:2}"
+    "FedEx answered without delivery dates: {var:1} Request: {var:2}": "FedEx teslim tarihi olmadan yanıt verdi: {var:1} İstek: {var:2}",
+    "Account prices in the store": "Cari fiyatları mağazada",
+    "A customer whose contact is linked to an account sees and pays that account's prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.": "Kişisi bir cariye bağlı müşteri, oturum açtığında mağazada o carinin fiyatlarını görür ve öder: ürüne tanımlı kendi fiyatını ya da liste fiyatı üzerinden iskontosunu. Daha düşük bir kampanya yine geçerlidir; ikisi toplanmaz. Kapalıyken herkes liste fiyatını görür.",
+    "The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns I, purchase invoices A.": "Her fatura numarasının başladığı harfler, örneğin PGF (Türkiye'de üç harf). İrsaliyeler bunlara S, iadeler I, alış faturaları A ekler."
 }
