@@ -504,6 +504,8 @@ function api_openapi_objects()
         'StoreState'   => 'api_store_state_schema',
         'StoreCountry' => 'api_store_country_schema',
         'StoreCurrency' => 'api_store_currency_schema',
+        'GiftCard'     => 'api_gift_card_schema',
+        'GiftCardRedemption' => 'api_gift_card_redemption_schema',
         'File'         => 'api_file_schema',
         'Offer'        => 'api_offer_schema',
         'Webhook'      => 'api_webhook_schema',
