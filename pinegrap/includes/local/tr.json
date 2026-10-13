@@ -21689,5 +21689,13 @@
     "the MCP server @{var:1} was turned off": "@{var:1} MCP sunucusu kapatıldı",
     "the tools of the MCP server @{var:1} were changed": "@{var:1} MCP sunucusunun araçları değiştirildi",
     "{var:1} of {var:2} tools on": "{var:2} araçtan {var:1} açık",
-    "{var:1} tools of @{var:2} can be used.": "@{var:2} sunucusunun {var:1} aracı kullanılabilir."
+    "{var:1} tools of @{var:2} can be used.": "@{var:2} sunucusunun {var:1} aracı kullanılabilir.",
+    "Written in a channel where Pinegrap AI may be asked, the alias is answered by Pinegrap AI with the server's tools.": "Pinegrap AI'ın çağrılabildiği bir kanalda takma ada yazılanı Pinegrap AI sunucunun araçlarıyla yanıtlar.",
+    "Pinegrap AI is not connected yet, so the aliases cannot be asked. Connect it on the Pinegrap AI card.": "Pinegrap AI henüz bağlı değil, bu yüzden takma adlara soru sorulamaz. Pinegrap AI kartından bağlayın.",
+    "Pinegrap AI is offered the first {var:1} of them, in alphabetical order.": "Pinegrap AI'a bunların alfabetik sırayla ilk {var:1} tanesi sunulur.",
+    "Pinegrap AI answers with its tools": "Pinegrap AI onun araçlarıyla yanıtlar",
+    "The tool answered with an error.": "Araç bir hatayla yanıt verdi.",
+    "@{var:1} has no tool turned on yet. An administrator turns them on in Workspace Settings › MCP servers.": "@{var:1} için henüz açık araç yok. Araçları bir yönetici Çalışma Alanı Ayarları › MCP sunucuları altında açar.",
+    "Through @{var:1}, without calling its tools.": "@{var:1} üzerinden, araçları çağrılmadan.",
+    "Through @{var:1}: {var:2}": "@{var:1} üzerinden: {var:2}"
 }

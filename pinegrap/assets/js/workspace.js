@@ -11222,6 +11222,16 @@
                     }
                 }
 
+                // Other services' MCP servers, by their alias: written as
+                // text, and Pinegrap AI answers with the server's tools.
+                if (self.channel) {
+                    (BOOT.mcp || []).forEach(function (server) {
+                        if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
+                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t('mcp_meta'), icon: 'bi-plug', insert: '@' + server.alias + ' ' });
+                        }
+                    });
+                }
+
                 BOOT.people.forEach(function (member) {
                     if (!needle || member.name.toLocaleLowerCase().indexOf(needle) !== -1 || member.username.toLocaleLowerCase().indexOf(needle) !== -1) {
                         items.push({ label: member.name, meta: member.title, avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
