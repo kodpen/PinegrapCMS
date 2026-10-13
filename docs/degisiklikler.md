@@ -84,7 +84,7 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
-## 2026.4.10 — Yerel test bulguları: ülke kısıtında panel girişi, IIS'te çift başlık, MCP 401 metni, Bağlı uygulamalar, iki PHP uyarısı (2026-10-13)
+## 2026.4.10 — Yerel test bulguları: ülke kısıtında panel girişi, IIS'te çift başlık, MCP 401 metni, Bağlı uygulamalar, iki PHP uyarısı, çekmecede not başlığı (2026-10-13)
 
 **Neden.** dev.pinegrap.com'daki yerel test turunun ikinci raporu (OAuth/MCP,
 Welcome, Workspace, dil yönlendirmesi, WAF). Bir önemli bulgu, dört küçük.
@@ -183,6 +183,16 @@ metin uygulamanın siteye bağlanıp jeton alması gerektiğini söyler. Kod
   Pinegrap kurulumu ve izleme botu için ziyaretçi kaydı açmaz; fonksiyon
   `visitor_id` yokken çıkar. Saatlik özet sayacı (`pg_record_visitor_page_view()`)
   yine önce çalışır, davranışı değişmedi.
+
+### 6. Görev çekmecesinde "Notlarım" başlığı
+
+`ws_notes_js_strings()` ekranın dizgeleriyle (`ws_js_strings()`)
+`array_merge` ile birleşir ve ikisi de `'notes'` anahtarını tanımlıyordu:
+not ekranınınki ("My Notes") çekmecenin "Notes" başlığını eziyordu. Not
+ekranının anahtarı `my_notes` oldu; JS'te `t('notes')`'u yalnız çekmece
+başlığı okuyor, `my_notes`'u okuyan yok (menü `nav_notes`'u kullanır). Diğer
+Çalışma Alanı dizge tablolarında farklı metinle tekrarlanan anahtar yok
+(misafir sayfasınınki ayrı tablodur).
 
 ---
 

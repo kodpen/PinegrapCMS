@@ -384,6 +384,9 @@
   [YENİ] Asistan cevap verdiğinde gelen bildirim, onay
          bekleyen öneri varsa sayısını da söylüyor.
 
+  [DÜZELTME] Görev çekmecesindeki not bölümünün başlığı
+         "Notlarım" yerine "Notlar" yazıyor.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
