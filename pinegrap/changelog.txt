@@ -640,9 +640,31 @@
          göstermez. Hazır şablonların Hesabım sayfasında
          hesap özetinin altında yer alıyor.
 
+  [YENİ] Cari fiyatları mağazada: Ayarlar › E-Ticaret ›
+         ERP'deki "Cari fiyatları mağazada" açılınca,
+         kişisi bir cariye bağlı müşteri oturum açtığında
+         o carinin fiyatlarını görür ve öder: cari
+         kartında ürüne yazılmış fiyat ya da liste
+         fiyatından iskonto. Ürün listesi, ürün sayfası,
+         arama ve sepet bu fiyatı gösterir, sipariş bu
+         fiyatla yazılır. Kampanya daha düşükse kampanya
+         geçerlidir; ikisi toplanmaz. Hediye kartları ve
+         bağışlar etkilenmez; ürün RSS beslemeleri liste
+         fiyatını yayımlar. Varsayılan kapalı.
+
+  [DÜZELTME] Alış faturaları artık kendi serisinde
+         numaralanıyor: fatura serisinin sonuna A eklenir
+         (ör. PGFA2026000000001). Önceden yılın ilk alış
+         faturası ile ilk satış faturası aynı numarayı
+         (PGF2026000000001) taşıyordu. Kesilmiş belgelerin
+         numaraları değişmez.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.
+
+  [ŞEMA] Cari fiyatlarını mağazada açıp kapatan ayar
+         için config tablosuna bir kolon eklenir.
 
   DIŞ API
   --------------------------------------------------------

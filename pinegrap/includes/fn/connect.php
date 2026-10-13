@@ -25,6 +25,17 @@
  * in (the sign-in screens): Connected accounts does not list it and no
  * account can be connected through it.
  *
+ * A provider can also be built at run time, from a row of the feature that
+ * owns it, when its endpoints are not known in advance: an MCP server's are
+ * found by discovery, one set per server. The feature registers a builder for
+ * a key prefix (pg_connect_provider_builders()); such a provider is not listed
+ * on Connected accounts and is connected from the feature's own screen. Its
+ * application may be a public client (options.public: no secret, as with a
+ * client ID metadata document or a dynamic registration), it may name no
+ * account ('identity' => false), it may hand out no refresh token
+ * ('refresh_optional' => true), and it may need parameters on every token
+ * request ('token_params', e.g. the RFC 8707 resource).
+ *
  * Every provider is the site's own application (registered by the operator
  * in the provider's console, credentials in connect_apps), so the consent
  * screen shows the site's name. The redirect address registered there is
@@ -107,7 +118,62 @@ function pg_connect_provider($key)
 {
     $providers = pg_connect_providers();
 
-    return isset($providers[$key]) ? $providers[$key] : null;
+    return isset($providers[$key]) ? $providers[$key] : pg_connect_built_provider($key);
+}
+
+/**
+ * The builders of the providers made at run time, by key prefix. A feature
+ * registers one when it loads; the builder takes the whole key ('mcp_7') and
+ * answers a definition in the shape of a provider file, or null.
+ *
+ * @param string        $prefix   lower-case letters and digits ending in _
+ * @param callable|null $builder  null only reads the list
+ * @return array prefix => builder
+ */
+function pg_connect_provider_builders($prefix = '', $builder = null)
+{
+    static $builders = array();
+
+    if (($builder !== null) && is_callable($builder) && preg_match('/^[a-z][a-z0-9]{0,15}_$/', (string) $prefix)) {
+        $builders[$prefix] = $builder;
+    }
+
+    return $builders;
+}
+
+/**
+ * A provider made at run time, or null when no builder knows the key. A file
+ * of the same name always wins (pg_connect_provider()).
+ *
+ * @param string $key
+ * @return array|null
+ */
+function pg_connect_built_provider($key)
+{
+    $key = (string) $key;
+
+    if (!preg_match('/^[a-z0-9_]{1,40}$/', $key)) {
+        return null;
+    }
+
+    foreach (pg_connect_provider_builders() as $prefix => $builder) {
+        if (strpos($key, $prefix) !== 0) {
+            continue;
+        }
+
+        $definition = call_user_func($builder, $key);
+
+        if (!is_array($definition)) {
+            return null;
+        }
+
+        $definition['key'] = $key;
+        $definition['built'] = true;
+
+        return $definition;
+    }
+
+    return null;
 }
 
 function pg_connect_purposes()
@@ -123,7 +189,9 @@ function pg_connect_purpose($key)
 }
 
 /**
- * Whether a purpose can be served by a provider, and by whom.
+ * Whether a purpose can be served by a provider, and by whom. A purpose for
+ * providers made at run time names their key prefix ('provider_prefix') rather
+ * than each provider; their scopes are the provider's own identity_scopes.
  *
  * @param array  $purpose
  * @param string $provider_key
@@ -136,7 +204,10 @@ function pg_connect_purpose_allows($purpose, $provider_key, $owner)
         return false;
     }
 
-    if (!array_key_exists($provider_key, $purpose['scopes'])) {
+    $prefix = isset($purpose['provider_prefix']) ? (string) $purpose['provider_prefix'] : '';
+    $prefixed = ($prefix !== '') && (strpos((string) $provider_key, $prefix) === 0);
+
+    if (!$prefixed && !array_key_exists($provider_key, $purpose['scopes'])) {
         return false;
     }
 
@@ -335,16 +406,19 @@ function pg_connect_authorize_url($provider, $app, $request)
 /**
  * A token endpoint answer, in the shape the rest of this file reads.
  *
- * @param array $data the decoded JSON
+ * @param array $data        the decoded JSON
  * @param int   $now
+ * @param int   $default_ttl seconds, when the answer gives no expires_in (a
+ *                           provider whose tokens do not end says so with its
+ *                           'default_ttl')
  * @return array
  */
-function pg_connect_token_response($data, $now)
+function pg_connect_token_response($data, $now, $default_ttl = 3600)
 {
     $expires_in = isset($data['expires_in']) ? (int) $data['expires_in'] : 0;
 
     if ($expires_in <= 0) {
-        $expires_in = 3600;
+        $expires_in = max(60, (int) $default_ttl);
     }
 
     return array(
@@ -680,7 +754,32 @@ function pg_connect_app($provider_key)
  */
 function pg_connect_app_ready($app)
 {
-    return is_array($app) && $app['enabled'] && ($app['client_id'] !== '') && ($app['client_secret'] !== '');
+    return is_array($app) && $app['enabled'] && ($app['client_id'] !== '')
+        && (($app['client_secret'] !== '') || pg_connect_app_public($app));
+}
+
+/**
+ * Whether an application is a public client: it has no secret and proves
+ * itself with PKCE alone (a client ID metadata document, or a dynamic
+ * registration with token_endpoint_auth_method none).
+ *
+ * @param array|null $app
+ * @return bool
+ */
+function pg_connect_app_public($app)
+{
+    return is_array($app) && !empty($app['options']['public']);
+}
+
+/**
+ * How long a provider's access token lasts when its answer does not say.
+ *
+ * @param array $provider
+ * @return int seconds
+ */
+function pg_connect_default_ttl($provider)
+{
+    return isset($provider['default_ttl']) ? max(60, (int) $provider['default_ttl']) : 3600;
 }
 
 /**
@@ -912,12 +1011,25 @@ function pg_connect_token_request($provider, $app, $params)
 
     $headers = array('Content-Type: application/x-www-form-urlencoded', 'Accept: application/json');
 
+    // What the provider wants on every token request, the code's and the
+    // renewal's alike (RFC 8707: the resource the token is for).
+    if (isset($provider['token_params']) && is_array($provider['token_params'])) {
+        foreach ($provider['token_params'] as $name => $value) {
+            if (!isset($params[$name])) {
+                $params[$name] = (string) $value;
+            }
+        }
+    }
+
     $params['client_id'] = $app['client_id'];
 
-    if (isset($provider['client_auth']) && ($provider['client_auth'] === 'basic')) {
-        $headers[] = 'Authorization: Basic ' . base64_encode(rawurlencode($app['client_id']) . ':' . rawurlencode($app['client_secret']));
-    } else {
-        $params['client_secret'] = $app['client_secret'];
+    // A public client sends its id and the PKCE verifier, nothing more.
+    if (!pg_connect_app_public($app)) {
+        if (isset($provider['client_auth']) && ($provider['client_auth'] === 'basic')) {
+            $headers[] = 'Authorization: Basic ' . base64_encode(rawurlencode($app['client_id']) . ':' . rawurlencode($app['client_secret']));
+        } else {
+            $params['client_secret'] = $app['client_secret'];
+        }
     }
 
     $result = api_http_request('POST', pg_connect_endpoint($provider, $app, 'token_url'), array(
@@ -1081,7 +1193,7 @@ function pg_connect_refresh($row, $provider, $secret, $scopes, $key)
     }
 
     $now = time();
-    $parsed = pg_connect_token_response($response['data'], $now);
+    $parsed = pg_connect_token_response($response['data'], $now, pg_connect_default_ttl($provider));
 
     $secret = pg_connect_store_access($secret, $key, $parsed['access_token'], $parsed['expires_at'], $now);
 
@@ -1219,7 +1331,8 @@ function pg_connect_start($provider_key, $purpose_key, $owner, $user, $return, $
         $existing = pg_connect_account($connection_id);
 
         if (is_array($existing) && ($existing['provider'] === $provider_key)) {
-            $login_hint = $existing['label'];
+            // A provider that names no account has no account to hint at.
+            $login_hint = (isset($provider['identity']) && ($provider['identity'] === false)) ? '' : $existing['label'];
 
             foreach ($existing['purposes'] as $existing_purpose_key) {
                 $existing_purpose = pg_connect_purpose($existing_purpose_key);
@@ -1333,7 +1446,10 @@ function pg_connect_finish($query, $user)
     // RFC 9207: when the provider names itself on the redirect, it has to be
     // the provider this attempt was sent to. One redirect address serves
     // every provider, so this is what tells them apart.
-    if (isset($query['iss']) && !pg_connect_issuer_matches($provider, is_string($query['iss']) ? $query['iss'] : '')) {
+    // A provider that said it always names itself (authorization server
+    // metadata: authorization_response_iss_parameter_supported) has to.
+    if ((isset($query['iss']) || !empty($provider['iss_required']))
+        && !pg_connect_issuer_matches($provider, (isset($query['iss']) && is_string($query['iss'])) ? $query['iss'] : '')) {
         return $fail(lang('The connection could not be verified. Please start it again.'), $return);
     }
 
@@ -1363,11 +1479,17 @@ function pg_connect_finish($query, $user)
     }
 
     $now = time();
-    $tokens = pg_connect_token_response($response['data'], $now);
+    $tokens = pg_connect_token_response($response['data'], $now, pg_connect_default_ttl($provider));
 
-    $claims = ($tokens['id_token'] !== '') ? pg_google_jwt_payload($tokens['id_token']) : null;
+    // A provider that names no account (an MCP server) has one connection
+    // per owner, under a fixed id.
+    $anonymous = isset($provider['identity']) && ($provider['identity'] === false);
 
-    if (is_array($claims)) {
+    $claims = (!$anonymous && ($tokens['id_token'] !== '')) ? pg_google_jwt_payload($tokens['id_token']) : null;
+
+    if ($anonymous) {
+        $claims = array('sub' => 'account', 'name' => isset($provider['account_label']) ? (string) $provider['account_label'] : (string) $provider['label']);
+    } elseif (is_array($claims)) {
         $problem = pg_connect_claims_problem($provider, $claims, $app['client_id'], $pending['nonce'], $now);
 
         if ($problem !== '') {
@@ -1409,7 +1531,10 @@ function pg_connect_finish($query, $user)
         $secret['refresh_token'] = $tokens['refresh_token'];
     }
 
-    if (!isset($secret['refresh_token']) || ($secret['refresh_token'] === '')) {
+    // Without a refresh token the connection lasts as long as its access
+    // token; a provider that may hand out none says so, and the account is
+    // connected again when the token stops working.
+    if ((!isset($secret['refresh_token']) || ($secret['refresh_token'] === '')) && empty($provider['refresh_optional'])) {
         return $fail(lang(array(
             'string' => '{var:1} gave no lasting permission, so the account could not be kept connected. Remove this site from the account\'s connected apps and try again.',
             'vars'   => $provider['label'])), $return);

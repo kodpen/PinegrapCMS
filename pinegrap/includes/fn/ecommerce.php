@@ -1117,6 +1117,9 @@ function update_order_item_prices()
     while ($row = mysqli_fetch_assoc($result)) {
         $order_items[] = $row;
     }
+    // The signed-in member's agreed prices (pg_erp_member_prices()): an item
+    // no offer has touched costs that member their price, not the list price.
+    $member_prices = pg_erp_member_prices();
     // loop through all order items
     foreach ($order_items as $key => $value) {
         // If a product was found for the order item and the product is enabled,
@@ -1124,9 +1127,12 @@ function update_order_item_prices()
         if (($order_items[$key]['product_id']) && ($order_items[$key]['product_enabled'] == 1)) {
             // if order item was not modified by a special offer and order item is not a donation, update order item price
             if (($order_items[$key]['offer_id'] == 0) && ($order_items[$key]['product_selection_type'] != 'donation')) {
+                $price = isset($member_prices[(int) $order_items[$key]['product_id']])
+                    ? $member_prices[(int) $order_items[$key]['product_id']]['price']
+                    : $order_items[$key]['product_price'];
                 $query = "UPDATE order_items
 
-                         SET price = '" . $order_items[$key]['product_price'] . "'
+                         SET price = '" . $price . "'
 
                          WHERE id = '" . $order_items[$key]['id'] . "'";
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -2081,6 +2087,10 @@ function apply_offers_to_cart()
     while ($row = mysqli_fetch_assoc($result)) {
         $order_items[] = $row;
     }
+    // The signed-in member's agreed prices (pg_erp_member_prices()): an item
+    // stripped of its offer goes back to that member's price, and an offer
+    // below only takes an item it makes cheaper still.
+    $member_prices = pg_erp_member_prices();
     // loop through the order items that are discounted by offers in order to remove discount
     foreach ($order_items as $order_item) {
         // if a product was found for this order item, then remove discount
@@ -2089,7 +2099,7 @@ function apply_offers_to_cart()
 
                 SET
 
-                    price = '" . $order_item['product_price'] . "',
+                    price = '" . (isset($member_prices[(int) $order_item['product_id']]) ? $member_prices[(int) $order_item['product_id']]['price'] : $order_item['product_price']) . "',
 
                     offer_id = '0',
 
@@ -2378,6 +2388,17 @@ function apply_offers_to_cart()
                                     if ($discounted_price < 0) {
                                         $discounted_price = 0;
                                     }
+                                    // The price the item stands at without an offer: the list
+                                    // price, or the member's agreed price, which an offer has to
+                                    // beat to take the item (erp_storefront_price()).
+                                    $line_price = $order_item['product_price'];
+                                    if (isset($member_prices[(int) $order_item['product_id']])) {
+                                        $member = $member_prices[(int) $order_item['product_id']];
+                                        if (erp_storefront_price($member['list'], $member['terms'], $discounted_price)['source'] !== 'offer') {
+                                            continue;
+                                        }
+                                        $line_price = $member['price'];
+                                    }
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -2391,7 +2412,7 @@ function apply_offers_to_cart()
                                         // add previous discount for this order item (if one exists) back to subtotal
                                         $subtotal = $subtotal + ($discounted_order_items[$order_item['id']]['discount'] ?? 0);
                                         // set new discount for this order item
-                                        $discounted_order_items[$order_item['id']]['discount'] = ($order_item['product_price'] - $discounted_price) * $order_item['quantity'];
+                                        $discounted_order_items[$order_item['id']]['discount'] = ($line_price - $discounted_price) * $order_item['quantity'];
                                         // reduce subtotal by new discount for this order item
                                         // we do this so when we validate other offers, we will be validating with the most recent subtotal that we know about
                                         $subtotal = $subtotal - $discounted_order_items[$order_item['id']]['discount'];
@@ -3087,6 +3108,9 @@ function get_best_offer_id($offer_code, $scope = '')
             $offer_actions[] = $row;
         }
         $discounted_order_items = array();
+        // The member's agreed prices count as in apply_offers_to_cart(): an
+        // offer is worth only what it takes off below them.
+        $member_prices = pg_erp_member_prices();
         // get subtotal
         // we need the subtotal because we need to keep track of how the subtotal is changed as order items are discounted
         // in order for us to determine if offers are valid
@@ -3130,6 +3154,17 @@ function get_best_offer_id($offer_code, $scope = '')
                                     if ($discounted_price < 0) {
                                         $discounted_price = 0;
                                     }
+                                    // The price the item stands at without an offer: the list
+                                    // price, or the member's agreed price, which an offer has to
+                                    // beat to take the item (erp_storefront_price()).
+                                    $line_price = $order_item['product_price'];
+                                    if (isset($member_prices[(int) $order_item['product_id']])) {
+                                        $member = $member_prices[(int) $order_item['product_id']];
+                                        if (erp_storefront_price($member['list'], $member['terms'], $discounted_price)['source'] !== 'offer') {
+                                            continue;
+                                        }
+                                        $line_price = $member['price'];
+                                    }
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -3140,7 +3175,7 @@ function get_best_offer_id($offer_code, $scope = '')
                                         // add previous discount for this order item (if one exists) back to subtotal
                                         $subtotal = $subtotal + ($discounted_order_items[$order_item['id']]['discount'] ?? 0);
                                         // set new discount for this order item
-                                        $discounted_order_items[$order_item['id']]['discount'] = ($order_item['product_price'] - $discounted_price) * $order_item['quantity'];
+                                        $discounted_order_items[$order_item['id']]['discount'] = ($line_price - $discounted_price) * $order_item['quantity'];
                                         // reduce subtotal by new discount for this order item
                                         // we do this so when we validate other offers, we will be validating with the most recent subtotal that we know about
                                         $subtotal = $subtotal - $discounted_order_items[$order_item['id']]['discount'];
@@ -4350,7 +4385,9 @@ function protect_givex_gift_card_code($gift_card_code)
     return mb_substr($gift_card_code, 0, 6) . '*****' . mb_substr($gift_card_code, 11, -1) . '*';
 }
 // create function that will be used to get discounted product prices based on products that are discounted by offers
-function get_discounted_product_prices()
+// $for_member: also the signed-in member's agreed prices (pg_erp_member_prices()); false
+// for what is published to everyone, such as the product feeds.
+function get_discounted_product_prices($for_member = true)
 {
     $discounted_product_prices = array();
     $special_offer_code = '';
@@ -4514,6 +4551,17 @@ function get_discounted_product_prices()
                         $discounted_product_prices[$product_id] = $discounted_price;
                     }
                 }
+            }
+        }
+    }
+    // The signed-in member's agreed prices (pg_erp_member_prices()) where
+    // they are lower than the campaign's; the two never stack. Feeds pass
+    // false: what they publish is the store's price, not one customer's.
+    if ($for_member) {
+        foreach (pg_erp_member_prices() as $product_id => $member) {
+            $pick = erp_storefront_price($member['list'], $member['terms'], isset($discounted_product_prices[$product_id]) ? $discounted_product_prices[$product_id] : null);
+            if ($pick['source'] === 'account') {
+                $discounted_product_prices[$product_id] = $pick['price'];
             }
         }
     }
@@ -7231,6 +7279,80 @@ function pg_erp_member_account()
     }
 
     return $account;
+}
+
+/**
+ * The prices the signed-in member's ERP account has agreed, as the store
+ * charges them (config.erp_storefront_account_prices, off by default): a
+ * product's own price on the account, or the account's discount on the list
+ * price (erp_account_price_terms()). Only the products the terms make cheaper
+ * than the list price are listed, never a gift card or a donation;
+ * get_discounted_product_prices(), update_order_item_prices() and
+ * apply_offers_to_cart() weigh them against the campaign with
+ * erp_storefront_price(), the lower of the two winning.
+ *
+ * Empty with the setting off, for anyone not signed in, for a member whose
+ * contact has no active customer account, and while staff place an order for
+ * someone else (a ghost session: the order is not theirs). Read once per
+ * request; the ERP is loaded only for a member who has terms to read.
+ *
+ * @return array  product_id => ['price' => int, 'list' => int, 'terms' => array]
+ */
+function pg_erp_member_prices()
+{
+    static $prices = null;
+
+    if ($prices !== null) {
+        return $prices;
+    }
+
+    $prices = array();
+
+    if (!defined('ERP_STOREFRONT_ACCOUNT_PRICES') || !ERP_STOREFRONT_ACCOUNT_PRICES || !empty($_SESSION['software']['ghost'])) {
+        return $prices;
+    }
+
+    $account = pg_erp_member_account();
+
+    if (($account === null) || ($account['status'] !== 'active') || !in_array($account['kind'], array('customer', 'both'), true)) {
+        return $prices;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+    if (!erp_price_lists_ready()) {
+        return $prices;
+    }
+
+    // An account-wide discount reaches every product; without one only the
+    // products the account has a row for.
+    $listed = array();
+    foreach ((array) db_items("SELECT product_id FROM erp_account_prices WHERE account_id = '" . (int) $account['id'] . "'") as $row) {
+        $listed[] = (int) $row['product_id'];
+    }
+
+    $account_wide = ((float) db_value("SELECT discount_rate FROM erp_accounts WHERE id = '" . (int) $account['id'] . "' LIMIT 1") > 0);
+
+    if (!$account_wide && !$listed) {
+        return $prices;
+    }
+
+    // A gift card is money rather than goods: it sells at its face value to
+    // everyone. A donation names its own amount.
+    $products = (array) db_items("SELECT id, price FROM products
+        WHERE enabled = 1 AND price > 0 AND selection_type != 'donation' AND gift_card = 0"
+        . ($account_wide ? '' : " AND id IN ('" . implode("', '", $listed) . "')"));
+
+    foreach ($products as $product) {
+        $terms = erp_account_price_terms((int) $account['id'], (int) $product['id']);
+        $pick = erp_storefront_price((int) $product['price'], $terms);
+
+        if ($pick['source'] === 'account') {
+            $prices[(int) $product['id']] = array('price' => (int) $pick['price'], 'list' => (int) $product['price'], 'terms' => $terms);
+        }
+    }
+
+    return $prices;
 }
 
 /**

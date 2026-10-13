@@ -47,6 +47,36 @@ if (!defined('ERP_MANUAL_MAX_LINES')) {
 }
 
 /**
+ * The series an invoice is numbered in when it is issued.
+ *
+ * A sales invoice takes the invoice series (config.erp_default_series). A
+ * purchase invoice cannot share it: the number printed on a document is what
+ * identifies it, and on one series the year's first purchase bill and first
+ * sales invoice would both read PGF2026000000001. The site may name a series
+ * in config.php (ERP_PURCHASE_INVOICE_SERIES); otherwise it is the invoice
+ * series with an A after it, the way delivery notes take an S and returns an
+ * I. Bills already issued keep their numbers.
+ *
+ * @param string $direction  sales | purchase
+ * @return string
+ */
+function erp_invoice_series($direction = 'sales')
+{
+    $series = defined('ERP_DEFAULT_SERIES') ? trim((string) ERP_DEFAULT_SERIES) : 'PGF';
+
+    if ((string) $direction !== 'purchase') {
+        return $series;
+    }
+
+    if (defined('ERP_PURCHASE_INVOICE_SERIES') && (trim((string) ERP_PURCHASE_INVOICE_SERIES) !== '')) {
+        return trim((string) ERP_PURCHASE_INVOICE_SERIES);
+    }
+
+    // No invoice series is no purchase series either: issuing refuses both.
+    return ($series !== '') ? $series . 'A' : '';
+}
+
+/**
  * Work out the lines and the totals of a typed invoice.
  *
  * Pure: reads nothing and writes nothing, so a screen can show the result
@@ -658,7 +688,7 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
     $direction = ((string) $invoice['direction'] === 'purchase') ? 'purchase' : 'sales';
     $issue_date = (string) $invoice['issue_date'];
     $issue_year = (int) substr($issue_date, 0, 4);
-    $series = trim((string) (defined('ERP_DEFAULT_SERIES') ? ERP_DEFAULT_SERIES : 'PGF'));
+    $series = erp_invoice_series($direction);
 
     if (($refusal = erp_lock_refusal($issue_date)) !== '') {
         erp_tx_rollback();
