@@ -22621,5 +22621,10 @@
     "This website cannot get delivery dates from USPS, because no USPS consumer key and consumer secret are set in the site settings.": "Site ayarlarında USPS tüketici anahtarı ve gizli anahtarı girilmediği için bu site USPS'ten teslim tarihi alamıyor.",
     "An error occurred while trying to get a delivery date from USPS: {var:1} Request: {var:2}": "USPS'ten teslim tarihi alınırken hata oluştu: {var:1} İstek: {var:2}",
     "This website cannot verify addresses with USPS, because no USPS consumer key and consumer secret are set in the site settings.": "Site ayarlarında USPS tüketici anahtarı ve gizli anahtarı girilmediği için bu site adresleri USPS ile doğrulayamıyor.",
-    "An error occurred while trying to verify an address with USPS: {var:1}": "Adres USPS ile doğrulanırken hata oluştu: {var:1}"
+    "An error occurred while trying to verify an address with USPS: {var:1}": "Adres USPS ile doğrulanırken hata oluştu: {var:1}",
+    "Sign in with Google, Microsoft and Apple": "Google, Microsoft ve Apple ile Giriş",
+    "Every provider follows the same rules: an account is found by the provider account connected to it, else by the same verified e-mail address. The staff login never opens an account, the registration and membership pages do. Two-step verification still applies.": "Her sağlayıcıda kurallar aynı: hesap önce ona bağlı sağlayıcı hesabıyla, yoksa aynı doğrulanmış e-posta adresiyle bulunur. Personel girişi hiç hesap açmaz, kayıt ve üyelik sayfaları açar. İki adımlı doğrulama yine sorulur.",
+    "This account has no password of its own - disconnecting {var:1} would lock it out.": "Bu hesabın kendi parolası yok — {var:1} bağlantısı kaldırılırsa hesap tamamen kilitlenir.",
+    "{var:1} only": "Yalnız {var:1}",
+    "No Google, Microsoft or Apple account is connected.": "Bağlı Google, Microsoft ya da Apple hesabı yok."
 }

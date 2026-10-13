@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Google as a provider of connected accounts (includes/fn/connect.php).
+ * Google as a provider of connected accounts (includes/fn/connect.php) and
+ * of sign-in (includes/fn/signin.php).
  *
  * The application is an OAuth client of type "Web application" in Google
  * Cloud Console. access_type=offline with prompt=consent is what makes Google
@@ -44,5 +45,20 @@ return array(
         lang('Add the redirect address below under Authorized redirect URIs.'),
         lang('Copy the client ID and the client secret here.'),
         lang('On the OAuth consent screen, publish the app (In production). While it is in Testing, Google ends every permission after seven days.'),
+    ),
+    // Sign in with Google. The application is the one of the security
+    // settings and the return address google_auth.php, both as they were
+    // before Google joined signin.php, so a site's Google Cloud Console needs
+    // no change. Signing in asks for no refresh token and lets the person
+    // pick an account each time.
+    'signin'           => array(
+        'order'            => 10,
+        'scopes'           => array('openid', 'email', 'profile'),
+        'pkce'             => true,
+        'return'           => 'google_auth.php',
+        'authorize_params' => array(
+            'access_type' => 'online',
+            'prompt'      => 'select_account',
+        ),
     ),
 );

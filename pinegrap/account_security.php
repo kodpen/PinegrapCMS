@@ -89,21 +89,11 @@ if ($action === 'logout_all') {
     exit();
 }
 
-// Disconnect Google: allowed only while the account still has a password to
-// sign in with. A Google-only account (algo 3) would lock itself out, so it is
-// refused here regardless of what the screen offered.
-if ($action === 'unlink_google') {
-    if (!pg_signin_can_remove($user_id, 'google')) {
-        output_error(lang('This account signs in with Google only. Set a password first with Forgot Password, then you can disconnect Google.'));
-    }
-    db("UPDATE user SET user_google_id = NULL WHERE user_id = '" . $user_id . "'");
-    log_activity(lang('user disconnected Google'), $_SESSION['sessionusername'] ?? '');
-    go($back_or(get_page_type_url('my account')));
-}
-
-// Disconnect Microsoft, Apple or another provider of signin.php
-// (unlink_<provider>), under the same guard: never the last way in.
-if ((strpos($action, 'unlink_') === 0) && ($action !== 'unlink_google')) {
+// Disconnect Google, Microsoft, Apple or another provider of signin.php
+// (unlink_<provider>): allowed only while the account keeps another way in.
+// An account with no password and no other provider would lock itself out,
+// so it is refused here regardless of what the screen offered.
+if (strpos($action, 'unlink_') === 0) {
     $unlink_provider = substr($action, 7);
     $unlink_identities = pg_signin_identities($user_id);
 

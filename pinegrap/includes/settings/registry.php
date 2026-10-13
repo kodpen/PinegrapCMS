@@ -182,18 +182,16 @@ function pg_settings_categories()
                 'pgset-session'    => lang('Session & Password'),
                 'pgset-device'     => lang('Device'),
                 'pgset-mfa'        => lang('Two-Step Verification'),
-                'pgset-signin'     => lang('Sign in with Google'),
-                'pgset-signin-microsoft' => lang('Sign in with Microsoft'),
-                'pgset-signin-apple'     => lang('Sign in with Apple'),
+                'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
             'keywords' => array(
                 'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
-                'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')),
-                'pgset-signin-microsoft' => pg_settings_keywords(lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')),
-                'pgset-signin-apple'     => pg_settings_keywords(lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
+                'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')
+                    . ', ' . lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')
+                    . ', ' . lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
                 'pgset-membership' => pg_settings_keywords(lang('membership, registration, sign up, signup, approval, verification, member number')),
             ),
         ),
