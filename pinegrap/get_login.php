@@ -92,7 +92,7 @@ function get_login($properties = array()) {
             $output_forgot_password_link = '<a class="text-center" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/forgot_password.php?send_to=' . $output_send_to . '">' . lang('Forgot password?') . '</a>';
         }
 
-        $output_google_signin = pg_google_signin_button(($_GET['send_to'] ?? ''), false);
+        $output_google_signin = pg_signin_buttons(($_GET['send_to'] ?? ''), false);
 
         $output_links = '';
         if (($output_forgot_password_link != '') || ($output_google_signin != '')) {
@@ -210,7 +210,7 @@ function get_login($properties = array()) {
                 <br />
                 <br />
                 ' . $output_forgot_password_link . '
-                ' . pg_google_signin_button(($_GET['send_to'] ?? ''), false) . '
+                ' . pg_signin_buttons(($_GET['send_to'] ?? ''), false) . '
             </form>';
 
     // Otherwise the layout is custom.
@@ -258,7 +258,7 @@ function get_login($properties = array()) {
             'attributes' => $attributes,
             'system' => $system,
             'forgot_password_url' => $forgot_password_url,
-            'google_signin' => pg_google_signin_button(($_GET['send_to'] ?? ''), false)));
+            'google_signin' => pg_signin_buttons(($_GET['send_to'] ?? ''), false)));
 
         $output = $form->prepare($output);
         

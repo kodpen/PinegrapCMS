@@ -16,7 +16,7 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  *
  * Account security actions for the signed-in member: sign out of all devices,
- * disconnect Google, and turn two-step verification on or off. State changes only; the my-account screen renders the
+ * disconnect Google, Microsoft or Apple, and turn two-step verification on or off. State changes only; the my-account screen renders the
  * matching buttons (pg_account_security_section). Every action requires a POST
  * with a valid CSRF token, and the Google-only guard is enforced here so the
  * screen cannot be bypassed.
@@ -93,12 +93,33 @@ if ($action === 'logout_all') {
 // sign in with. A Google-only account (algo 3) would lock itself out, so it is
 // refused here regardless of what the screen offered.
 if ($action === 'unlink_google') {
-    $algo = (int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'");
-    if ($algo === 3) {
+    if (!pg_signin_can_remove($user_id, 'google')) {
         output_error(lang('This account signs in with Google only. Set a password first with Forgot Password, then you can disconnect Google.'));
     }
     db("UPDATE user SET user_google_id = NULL WHERE user_id = '" . $user_id . "'");
     log_activity(lang('user disconnected Google'), $_SESSION['sessionusername'] ?? '');
+    go($back_or(get_page_type_url('my account')));
+}
+
+// Disconnect Microsoft, Apple or another provider of signin.php
+// (unlink_<provider>), under the same guard: never the last way in.
+if ((strpos($action, 'unlink_') === 0) && ($action !== 'unlink_google')) {
+    $unlink_provider = substr($action, 7);
+    $unlink_identities = pg_signin_identities($user_id);
+
+    if (isset($unlink_identities[$unlink_provider])) {
+        $unlink_label = pg_signin_provider_label($unlink_provider);
+
+        if (!pg_signin_can_remove($user_id, $unlink_provider)) {
+            output_error(lang(array(
+                'string' => 'This account signs in with {var:1} only. Set a password first with Forgot Password, then you can disconnect {var:1}.',
+                'vars'   => $unlink_label)));
+        }
+
+        pg_signin_identity_remove($user_id, $unlink_provider);
+        log_activity(lang(array('string' => 'user disconnected {var:1}', 'vars' => $unlink_label)), $_SESSION['sessionusername'] ?? '');
+    }
+
     go($back_or(get_page_type_url('my account')));
 }
 

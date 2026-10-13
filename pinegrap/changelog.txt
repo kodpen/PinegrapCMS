@@ -960,6 +960,44 @@
   [ŞEMA] Bağlı hesaplar için iki yeni tablo (sağlayıcı
          uygulamaları ve bağlı hesaplar) eklenir.
 
+  GİRİŞ VE ÜYELİK
+  --------------------------------------------------------
+
+  [YENİ] Microsoft ile Giriş ve Apple ile Giriş: Google ile
+         Giriş düğmesinin yanında, panel girişinde, mağaza
+         giriş, kayıt ve üyelik sayfalarında ve görsel
+         editörün giriş, kayıt ve üyelik widget'larında
+         görünüyor. İkisi de varsayılan kapalı; Ayarlar ›
+         Güvenlik'te açılıyor ve uygulama bilgileri
+         girilene kadar düğme gizli kalıyor. Microsoft
+         uygulaması Bağlı hesaplar ekranındaki uygulamanın
+         aynısı; Apple için Services ID, ekip kimliği,
+         anahtar kimliği ve .p8 anahtarı Güvenlik
+         ekranına giriliyor (anahtar şifreli saklanıyor).
+
+  [YENİ] Google'daki kurallar geçerli: aynı doğrulanmış
+         e-posta adresli hesap varsa ona bağlanıyor, yoksa
+         kayıt sayfasından gelen kişiye üye hesabı
+         açılıyor, üyelik sayfasında üye numarası
+         soruluyor, personel girişinde bilinmeyen hesap
+         reddediliyor. İki adımlı doğrulama ve cihaz
+         sınırı parolayla girişteki gibi soruluyor.
+         Microsoft iş ve okul hesaplarının adresi yalnız
+         dizin alan adını doğruluyorsa (xms_edov) kabul
+         ediliyor. Apple adı yalnız ilk girişte veriyor;
+         adresini gizleyen kişi Apple aktarma adresiyle
+         kaydoluyor.
+
+  [YENİ] Hesabım › Giriş ve cihazlar ile panelde kullanıcı
+         düzenleme ekranı Microsoft ve Apple bağlantısını
+         gösteriyor ve kesiyor. Hesaba başka giriş yolu
+         yoksa (parola ya da başka bir sağlayıcı)
+         bağlantı kesilemiyor.
+
+  [ŞEMA] Hesaplara bağlı Microsoft ve Apple kimlikleri
+         için yeni bir tablo ve ayarlar tablosuna bir
+         kolon eklenir.
+
   PANO
   --------------------------------------------------------
 

@@ -19,6 +19,43 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+    // Sign in with Apple's application is checked before anything on this
+    // screen is written: a refused field leaves every setting as it was, and
+    // the form keeps what was typed.
+    $apple_post = (post_value('apple_client_id') !== NULL)
+        && function_exists('pg_signin_schema_ready') && pg_signin_schema_ready();
+
+    if ($apple_post) {
+        $apple_client_id = trim((string) post_value('apple_client_id'));
+        $apple_team_id = strtoupper(trim((string) post_value('apple_team_id')));
+        $apple_key_id = strtoupper(trim((string) post_value('apple_key_id')));
+        $apple_key = trim((string) post_value('apple_private_key'));
+
+        if (($apple_client_id !== '') && !preg_match('/^[A-Za-z0-9.\-]{1,255}$/', $apple_client_id)) {
+            $liveform->mark_error('apple_client_id', lang('A Services ID is written like a domain in reverse, for example com.example.signin.'));
+        }
+
+        foreach (array('apple_team_id' => $apple_team_id, 'apple_key_id' => $apple_key_id) as $apple_field => $apple_value) {
+            if (($apple_value !== '') && !preg_match('/^[A-Z0-9]{10}$/', $apple_value)) {
+                $liveform->mark_error($apple_field, lang('Apple writes this as ten letters and digits.'));
+            }
+        }
+
+        $apple_problem = ($apple_key !== '') ? pg_signin_apple_key_problem($apple_key) : '';
+
+        if ($apple_problem !== '') {
+            $liveform->mark_error('apple_private_key', $apple_problem);
+        }
+
+        if ((($apple_client_id !== '') || ($apple_key !== '')) && !pg_connect_can_seal()) {
+            $liveform->mark_error('apple_private_key', lang('This site has no encryption key, so it cannot keep the permissions of a connected account.'));
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+    }
+
 
 
     // ── Firewall settings ────────────────────────────────────────────────
@@ -108,6 +145,45 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
 
         db("UPDATE config SET mfa_required_role = " . $mfa_post_role);
+    }
+
+    // Sign in with Microsoft and Apple (10.74): the switches, and Apple's
+    // application. Both wait for the upgrade, like the columns above.
+    if (function_exists('pg_signin_schema_ready') && pg_signin_schema_ready() && pg_schema_has('config', 'signin_providers')) {
+
+        $signin_list = array();
+
+        foreach (array('microsoft', 'apple') as $signin_key) {
+            if (post_value('signin_' . $signin_key) == '1') {
+                $signin_list[] = $signin_key;
+            }
+        }
+
+        // A provider this screen has no card for keeps its switch.
+        foreach (pg_connect_scope_list(str_replace(',', ' ', (string) db_value("SELECT signin_providers FROM config"))) as $signin_key) {
+            if (!in_array($signin_key, array('microsoft', 'apple'), true)) {
+                $signin_list[] = $signin_key;
+            }
+        }
+
+        db("UPDATE config SET signin_providers = '" . escape(implode(',', $signin_list)) . "'");
+
+        if ($apple_post) {
+            $apple_existing = pg_connect_app('apple');
+
+            // Nothing typed and nothing stored: no row is opened for an
+            // application the site does not use.
+            if (($apple_client_id !== '') || ($apple_team_id !== '') || ($apple_key_id !== '') || ($apple_key !== '')
+                || (is_array($apple_existing) && ($apple_existing['source'] === 'connect'))) {
+                pg_connect_app_save(
+                    'apple',
+                    $apple_client_id,
+                    ($apple_key !== '') ? pg_signin_pem_private_key($apple_key) : null,
+                    array('team_id' => $apple_team_id, 'key_id' => $apple_key_id),
+                    true,
+                    USER_ID);
+            }
+        }
     }
 
     // Google client secret: stored encrypted (AES-256-CBC + IV) but written

@@ -351,7 +351,7 @@ function get_registration_entrance($properties = array()) {
                                 </td>
                             </tr>
                         </table>
-                        ' . pg_google_signin_button(($_GET['send_to'] ?? '')) . '
+                        ' . pg_signin_buttons(($_GET['send_to'] ?? '')) . '
                     </form>
                 </div>
                 <div style="clear: both"></div>';
@@ -524,7 +524,7 @@ function get_registration_entrance($properties = array()) {
                                     ' . $output_captcha_fields . '
                                     ' . $allow_guest_hidden_field . '
                                     <input type="submit" name="submit_register" value="' . h(lang('Register')) . '" class="software_input_submit_primary register_button"><br>
-                                    ' . pg_google_signin_button(($_GET['send_to'] ?? '')) . '
+                                    ' . pg_signin_buttons(($_GET['send_to'] ?? '')) . '
                                 </form>
                             </div>
                         </td>
@@ -624,7 +624,7 @@ function get_registration_entrance($properties = array()) {
             'opt_in_label' => OPT_IN_LABEL,
             'captcha_question' => ($captcha_info['question'] ?? ''),
             'register_system' => $register_system,
-            'google_signin' => pg_google_signin_button(($_GET['send_to'] ?? ''))));
+            'google_signin' => pg_signin_buttons(($_GET['send_to'] ?? ''))));
 
         $output = $login_form->prepare($output, 'login-form');
         $output = $register_form->prepare($output, 'register-form');

@@ -71,6 +71,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if (($row['oauth_google_client_secret'] ?? '') !== '') {
         $oauth_google_client_secret_value = (string) decode_ssl_keys($row['oauth_google_client_secret'], ($row['oauth_google_secret_iv'] ?? ''));
     }
+    // Sign in with Microsoft and Apple (10.74): which buttons are on, and the
+    // applications they use (connect_apps; Microsoft's is set up on Connected
+    // accounts, Apple's on its card here). Empty until the upgrade has run.
+    $signin_ready = function_exists('pg_signin_schema_ready') && pg_signin_schema_ready() && array_key_exists('signin_providers', $row);
+    $signin_on = $signin_ready ? pg_connect_scope_list(str_replace(',', ' ', (string) $row['signin_providers'])) : array();
+    $signin_microsoft_checked = in_array('microsoft', $signin_on, true) ? ' checked="checked"' : '';
+    $signin_apple_checked = in_array('apple', $signin_on, true) ? ' checked="checked"' : '';
+    $signin_microsoft_app = $signin_ready ? pg_connect_app('microsoft') : null;
+    $signin_apple_app = $signin_ready ? pg_connect_app('apple') : null;
     $proxy_address = $row['proxy_address'];
     $badge_label = $row['badge_label'];
     $timezone = $row['timezone'];

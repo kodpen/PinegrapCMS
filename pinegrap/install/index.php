@@ -8444,6 +8444,7 @@ function get_tables() {
 		'talks',
 		'update_address_book_pages',
 		'user',
+		'user_identities',
 		'user_mfa',
 		'user_mfa_recovery',
 		'users_ad_regions_xref',
