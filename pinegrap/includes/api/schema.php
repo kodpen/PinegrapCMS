@@ -577,6 +577,90 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'calendars.event_create',
+			'method'  => 'POST',
+			'path'    => '/calendars/events',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_events_create',
+			'dry_run' => true,
+			'returns' => 'CalendarEvent',
+			'summary' => 'Add an event',
+			'description' => 'A one-off event on the calendars named, unpublished unless published=true is sent. An all-day event runs from the start of its first day to the end of its last; any other event has to end after it starts. Times without an offset are read as the site\'s wall clock. Repeats, reservations, rooms and the page a visitor goes to next are set on the event\'s own screen. Publishing needs the publishing right where the owner is not a manager: 403 forbidden otherwise.',
+			'params'  => array(
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'start',             'in' => 'body', 'type' => 'datetime', 'required' => true),
+				array('name' => 'end',               'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'For an all-day event, the last day it runs on.'),
+				array('name' => 'all_day',           'in' => 'body', 'type' => 'bool'),
+				array('name' => 'calendar_ids',      'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'required' => true, 'description' => 'The calendars it goes on: at least one, each one the owner may open.'),
+				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'description',       'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long description, as HTML. Scripts, event handlers and the like are removed.'),
+				array('name' => 'location',          'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Where it happens, as words. The rooms it books are set on its screen.'),
+				array('name' => 'show_start_time',   'in' => 'body', 'type' => 'bool', 'description' => 'Show the clock time with the start date. On when not sent.'),
+				array('name' => 'show_end_time',     'in' => 'body', 'type' => 'bool', 'description' => 'Show the clock time with the end date. On when not sent.'),
+				array('name' => 'published',         'in' => 'body', 'type' => 'bool', 'description' => 'Off when not sent.'),
+				array('name' => 'unpublish_days',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 65535, 'description' => 'Days after it ends that it leaves the published calendar. 45 when not sent.')
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/calendars/events/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_events_update',
+			'dry_run' => true,
+			'returns' => 'CalendarEvent',
+			'summary' => 'Change an event',
+			'description' => 'Only what is sent is changed. The times are worked out again from what is sent and what is stored whenever start, end or all_day is sent. A one-off event that books a room is checked against the room\'s other bookings (409 room_taken); a repeating one that books a room is moved on its own screen (409 repeating_event_books_room). calendar_ids replaces the calendars the owner may open; the others keep the event. A published event is closed to an owner without the publishing right (403). PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'start',             'in' => 'body', 'type' => 'datetime'),
+				array('name' => 'end',               'in' => 'body', 'type' => 'datetime'),
+				array('name' => 'all_day',           'in' => 'body', 'type' => 'bool'),
+				array('name' => 'calendar_ids',      'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50),
+				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'description',       'in' => 'body', 'type' => 'string', 'max_length' => 20000),
+				array('name' => 'location',          'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'show_start_time',   'in' => 'body', 'type' => 'bool'),
+				array('name' => 'show_end_time',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'published',         'in' => 'body', 'type' => 'bool'),
+				array('name' => 'unpublish_days',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 65535)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_delete',
+			'method'  => 'DELETE',
+			'path'    => '/calendars/events/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_events_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event',
+			'description' => 'With every repeat, its place on every calendar, the rooms it booked and the reservation spots left, as on the event screen. Reservations already sold stay with their orders.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_delete_post',
+			'method'  => 'POST',
+			'path'    => '/calendars/events/{id}/delete',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_events_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event, addressed as a POST',
+			'description' => 'The same removal as DELETE /calendars/events/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(
