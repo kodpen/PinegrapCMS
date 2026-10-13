@@ -84,6 +84,58 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: ürün güncellemede grup, varyant, görsel ve barkod; yazımdan sonra SEO puanı (2026-10-13)
+
+**Neden.** Erdal, Claude bağlayıcısıyla bir ürünün "tüm alanlarını" doldurttu
+(ürün 227, dev.pinegrap.com). Claude'un raporundaki eksikler:
+
+- `group_ids` ve `attributes` yalnız oluştururken veriliyordu; güncellemede
+  yoktu. Grup üyeliği `POST /product-groups/{id}/products` ile zaten
+  değişebiliyordu ama ürün güncelleme ucunun tarifi bunu anmıyordu ve model onu
+  bulamadı.
+- Görsel bağlayan bir alan hiçbir uçta yoktu.
+- `barcode` cevapta dönüyordu ama yazılamıyordu.
+- Güncelleme cevabındaki SEO bloğu `stale.meta: true` ve eski puanla
+  dönüyordu: ürün güncelleme `seo_analysis_current = 0` yazıp bırakıyordu,
+  sayfa ve ürün grubu güncellemesi ise `pg_seo_recalculate()` çağırıyor.
+
+**Ne değişti.**
+
+- `POST /products/{id}`: `group_ids`, `attributes`, `images` ve `barcode`
+  eklendi. İlk üçü gönderildiğinde ürünün mevcut bağlarının **yerine geçer**,
+  boş liste hepsini kaldırır (ürün ekranı da bu bağları baştan yazar). Tarif
+  grup üyeliğinin grup tarafından da değişebileceğini anıyor.
+- `POST /products`: `images` ve `barcode` eklendi. Görseller
+  `pg_pb_create_product()`'ın mevcut `images` ilişkisiyle yazılır.
+- `images`: Dosya kitaplığındaki dosya adları ya da API'nin verdiği adresler
+  (sitenin kendi kökündeyse ad olarak okunur). Dosya `files` tablosunda olmalı
+  ve uzantısı görsel olmalı (jpg, jpeg, png, gif, webp, avif, svg). İlki
+  `products.image_name`, kalanı sırayla `products_images_xref`.
+- `barcode`: `BARCODE_ENABLED` kapalıysa 422. Biçim
+  `pg_barcode_matches_format()` ile, başka üründeki kod 422. Ürünün zaten
+  barkodu varsa: aynısıysa yazma yok, farklıysa 422. Gerekçe: ürün ekranı da
+  (`pg_assign_product_barcode()`) yalnız ekler, çünkü basılmış etiket aynı
+  ürünü okutmaya devam etmeli.
+- Ekleme ve güncellemeden sonra `api_products_rescore()` meta yarısını
+  `pg_seo_recalculate('product', ...)` ile hemen hesaplar; cevap güncel puanı
+  ve `stale.meta: false` taşır. Yapı yarısı gece işinde kalır.
+- Doğrulama yazmadan önce yapılır; `X-Dry-Run` her şeyi denetler, hiçbir şey
+  yazmaz.
+
+**Doğrulama.** Sandbox'ta sunucu anahtarıyla `integration.php` üzerinden:
+
+- İki PNG yüklendi. Ürün görsel, barkod (EAN-13) ve grupla oluşturuldu.
+- Güncellemede görsel (biri adres, biri adla), iki grup ve bir varyant
+  özelliği yazıldı; SEO puanı 46'dan 62'ye çıktı ve `stale.meta` false döndü.
+- Hata yolları: farklı barkod, olmayan dosya ve olmayan grup 422 döndü. Aynı
+  barkod 200 döndü. Boş listeler görselleri ve grupları temizledi.
+- Dry run hiçbir şey yazmadı.
+
+MCP aracı şemadan kendiliğinden genişler, ayrıca denenmedi. Barkod
+değiştirme ve sürüm/varyant matrisi kurmak kapsam dışında kaldı.
+
+---
+
 ## 2026.4.10 — Uygulama Erişimi: OAuth uygulamasında MCP adresleri ve bağlantı rehberi (2026-10-13)
 
 **Neden.** Erdal Claude'u `https://dev.pinegrap.com/pinegrap/mcp.php` ile

@@ -85,6 +85,17 @@
          (POST /product-groups/{id}/products). Kök grup ve
          içinde grup olan grup silinmez.
 
+  [YENİ] Ürün güncellemede (POST /products/{id}) ürünün
+         grupları, varyant özellikleri ve görselleri (Dosya
+         kitaplığından ad ya da adresle; ilki ana görsel)
+         değiştirilebiliyor; ürün oluştururken görsel ve barkod
+         da verilebiliyor. Barkodu olmayan ürüne barkod
+         eklenir, var olan barkod API'den değiştirilmez.
+
+  [DÜZELTME] API'den eklenen ya da değiştirilen ürünün SEO
+         puanı hemen yeniden hesaplanıyor. Önceden cevaptaki
+         puan değişiklikten önceki hâlini gösteriyordu.
+
   [YENİ] Müşteri silme: DELETE /customers/{id}. Bir kullanıcı
          hesabına ya da ERP carisine bağlı kişi silinmez.
 

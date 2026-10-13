@@ -20146,5 +20146,11 @@
     "What the application can do": "Uygulama neler yapabilir",
     "Every permission area becomes a set of tools. Read gives the list and view tools; Write also gives the tools that create, change and delete.": "Her izin alanı bir araç grubuna dönüşür. Okuma, listeleme ve görüntüleme araçlarını verir; Yazma ayrıca oluşturma, değiştirme ve silme araçlarını da verir.",
     "A person gets at most what their own panel account may do, and never more than the permissions chosen here.": "Bir kişi en fazla kendi panel hesabının yapabildiklerini alır, burada seçilen izinlerden fazlasını asla alamaz.",
-    "Narrowing the permissions takes effect at once. After widening them, connect again in the application so the person can agree to the new ones.": "İzinleri daraltmak hemen geçerli olur. Genişlettikten sonra, kişinin yeni izinleri onaylayabilmesi için uygulamada yeniden bağlanın."
+    "Narrowing the permissions takes effect at once. After widening them, connect again in the application so the person can agree to the new ones.": "İzinleri daraltmak hemen geçerli olur. Genişlettikten sonra, kişinin yeni izinleri onaylayabilmesi için uygulamada yeniden bağlanın.",
+    "Barcodes are switched off on this site.": "Bu sitede barkodlar kapalı.",
+    "Another product already carries this barcode.": "Bu barkod başka bir üründe kullanılıyor.",
+    "There is no file named {var:1} in the Files library.": "Dosya kitaplığında {var:1} adında bir dosya yok.",
+    "The file {var:1} is not an image.": "{var:1} dosyası bir görsel değil.",
+    "This product already has the barcode {var:1}. A barcode is not replaced through the API, because labels may already carry it.": "Bu ürünün zaten {var:1} barkodu var. Etiketlere basılmış olabileceği için barkod API üzerinden değiştirilmez.",
+    "The barcode does not match the site's barcode format ({var:1}).": "Barkod sitenin barkod biçimine ({var:1}) uymuyor."
 }

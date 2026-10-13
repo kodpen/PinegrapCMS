@@ -32,6 +32,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 - Para `api_money()` (kuruş), gün `Y-m-d`, an ISO.
 - `POST /products` ekranın yazdığı yerden yazar (`pg_pb_create_product()`) —
   ikinci bir INSERT yazma; alınmış ad 409 döner.
+- Ürün güncellemede `group_ids`, `attributes`, `images` bağların **yerine
+  geçer** (boş liste temizler). Barkod yalnız eklenir, değiştirilmez.
+  Kaydın SEO'sunu etkileyen her yazım cevaptan önce
+  `pg_seo_recalculate()` çağırır (`api_products_rescore()`, sayfa, grup);
+  yalnız `seo_analysis_current = 0` yazıp bırakma.
 - **IIS'te PATCH ve DELETE gönderilmez** (WebDAV 405; PATCH ayrıca sonraki
   POST'u 404'e düşürür): `'method' => 'POST', 'also_accepts' => array('PATCH')`.
   Silme için `POST /x/{id}/delete` takma adı ekle. İstisna: `POST /webhooks/{id}`
