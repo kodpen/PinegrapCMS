@@ -100,6 +100,8 @@ function ws_webhook_events()
         'workspace.poll.closed'         => 'A poll in a public workspace channel closed, by hand or when its time ran out: the counts, and the winner or a tie',
         'workspace.template.applied'    => 'A channel template was applied to a channel, when the channel was made from it or later: the template, the tasks made and how many could not be assigned',
         'workspace.task.time_logged'    => 'Time spent on a workspace task was written: a stopped timer or minutes written by hand (minutes, worked_on, billable, user_id)',
+        'workspace.task.delegated'      => 'A workspace task was handed to an assistant (agent: ai or claude); the people on it stay responsible (delegated_by, request_id)',
+        'workspace.task.assistant_answered' => 'An assistant finished a run on a workspace task (outcome: answered or failed; agent, request_id, requested_by). The answer itself is read from the site',
         'workspace.approval.requested'  => 'An approval request was made in a public workspace channel: its title, rule, deadline, the people asked and the record it is about',
         'workspace.approval.decided'    => 'An approval request in a public workspace channel was settled - approved, rejected, expired or closed without a decision - with each person\'s answer',
     );

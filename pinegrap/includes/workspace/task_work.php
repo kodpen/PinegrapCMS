@@ -723,7 +723,11 @@ function ws_task_note_add($viewer, $task, $body, $app_id = 0)
         ));
     }
 
-    return array('ok' => true, 'error' => '', 'note_id' => $note_id);
+    // A person's note that calls an assistant by name asks it about the task
+    // (delegation.php); an application's note never does.
+    $notice = (($app_id <= 0) && function_exists('ws_task_delegation_from_note')) ? ws_task_delegation_from_note($viewer, $task, $clean['body']) : '';
+
+    return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'notice' => $notice);
 }
 
 /**

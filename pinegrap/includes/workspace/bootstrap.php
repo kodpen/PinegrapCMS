@@ -54,6 +54,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/briefing.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude_setup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/delegation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/tour.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bulk.php');
