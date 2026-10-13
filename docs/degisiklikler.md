@@ -288,6 +288,56 @@ görüldü); barkod tablosu olan bir mağaza (kod ürün koduyla denendi).
 
 ---
 
+## 2026.4.10 — Dış API: görsel tasarımlar listesi ve tasarıma taslak sayfa ekleme (2026-10-13)
+
+**Sorun.** API ve MCP görsel tasarımın sayfalarını okuyup onlara değişiklik
+önerebiliyordu ama yeni sayfa açamıyordu; hangi tasarımların olduğu da
+yalnız sayfaların üzerinden görülebiliyordu. Siteyi MCP üzerinden kuran bir
+asistan "Hizmetler sayfasını ekle" diyemiyordu.
+
+**Değişiklik.** `includes/api/resources/design.php`:
+
+- `GET /design/designs` (`design:read`): Görsel Sayfa Düzenleyici'nin
+  tasarımları (`pg_designer_list_designs()` ile aynı koşul), sayfa ve taslak
+  sayısı, ana sayfanın tasarımda olup olmadığı, `state` (empty / live /
+  draft / mixed, `pg_designer_design_state()`), başladığı şablon. Kimlikle
+  sayfalanır.
+- `POST /design/pages` (`design:write`, dry-run): tasarıma yeni sayfa. Kayıt
+  düzenleyicinin kendi kaydıyla (`pg_designer_save_page()`, `page_draft` 1)
+  yapılır; sayfa her zaman taslak klasörüne gider, `folder_id` yayınlanınca
+  gideceği klasördür (verilmezse en üst klasör; klasör uçlarının hedef
+  denetimi: kutu ve taslak klasörü olmaz, sahibin klasöre yazma hakkı
+  gerekir). `copy_from` aynı tasarımın bir sayfasının yerleşimini kopyalar
+  (düzenleyicideki "Sayfayı çoğalt" gibi; başlık, açıklama ve ayarlar
+  kopyalanmaz). Kendi formu olan sayfa kopyalanmaz (409 `page_has_form`):
+  formun alanları ve kayıtları sayfaya aittir, kopyanın formunu düzenleyici
+  kaydederken kurar. Ad, Sayfalar ekranındaki gibi boşluk ve `&` → `_`;
+  `? # % \ < > "` reddedilir; ad bir sayfa, dosya, kısa bağlantı ya da kök
+  klasörle çakışırsa 409 `name_taken`. Kayıt `page.created` olayını yayar
+  ve günlüğe uygulama adıyla yazılır.
+- Tasarım sayfası cevabına `draft` eklendi.
+- Düzeltme: `GET /design/pages` imleci `$cursor['id']` okuyordu, oysa
+  `api_cursor_decode()` `v` ve `i` verir; ikinci sayfa yine ilk sayfayı
+  döndürüyor, sayfalayan istemci döngüye giriyordu. `i` okunuyor.
+
+**Neden taslak.** `design:write` "yazmak önermektir" kuralıyla verilir:
+uygulama sitede görünen hiçbir şeyi kendi başına değiştirmez. Taslak sayfa
+siteye çıkmaz; içeriği öneriyle yazılır, bir tasarımcı uygular ve yayınlar.
+Düzenleyicinin kaydı yalnız açık sekmelerini yazar, API'nin açtığı sayfa
+açık bir düzenleyicinin kaydıyla silinmez; sayfayı yeniden yükleyince sekme
+olarak gelir.
+
+**Doğrulandı (sandbox).** Tasarım listesi ve sayfalama; dry-run; boş ve
+`copy_from` ile sayfa (ağaç kopyalandı, `page_tree_code` üretildi,
+`page_drafts` satırı yayın klasörüyle yazıldı); ad çakışması, geçersiz
+karakter, olmayan tasarım, görsel olmayan tasarım, olmayan klasör, başka
+tasarımın sayfası, formlu sayfa reddi; yeni sayfaya `page` önerisi; MCP
+`tools/list` ve OpenAPI (`Design`, `/design/designs`, `/design/pages`).
+Denenmeyen: gerçek düzenleyicide sekmenin açılması (bulut oturumunda tarayıcı
+yok).
+
+---
+
 ## 2026.4.10 — ERP: satın alma siparişinden alış faturası, teslim durumu, minimum stoktan sipariş (2026-10-13)
 
 **Neden.** Faz 7'nin ikinci parçası (`docs/_plan_erp_ozellikler.md` §3, akışın

@@ -594,6 +594,21 @@
          taslak ya da geri dönüşüm kutusunda olup olmadığını
          da gösteriyor.
 
+  [YENİ] Görsel tasarımlar API'de: GET /design/designs
+         tasarımları sayfa, taslak sayısı ve durumlarıyla
+         listeler. POST /design/pages bir tasarıma yeni sayfa
+         ekler: boş tuval olarak ya da aynı tasarımın başka bir
+         sayfasının yerleşimiyle. Sayfa her zaman taslak olarak
+         açılır, Görsel Sayfa Düzenleyici'de diğer sayfalarla
+         birlikte görünür ve siteye bir kişi yayınlar. İçeriği
+         öneri olarak yazılır (POST /design/pages/{id}/proposals).
+         Tasarım sayfaları listesi sayfanın taslak olup
+         olmadığını da gösteriyor.
+
+  [DÜZELTME] GET /design/pages ikinci sayfayı istediğinde
+         yine ilk sayfayı veriyordu; sayfalayan bir istemci
+         listeyi hiç bitiremiyordu.
+
   [YENİ] ERP faturaları ve teklifleri API'den ve MCP'den
          yazılıyor. Faturada: taslak yazma, değiştirme ve
          silme (POST /erp/invoices), kesme, iptal, iade

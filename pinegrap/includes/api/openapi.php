@@ -507,6 +507,7 @@ function api_openapi_objects()
         'SeoIssue'       => 'api_seo_issue_schema',
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
+        'Design'         => 'api_design_schema',
         'DesignPage'     => 'api_design_page_schema',
         'DesignView'     => 'api_design_view_schema',
         'DesignOutlineItem' => 'api_design_outline_item_schema',
