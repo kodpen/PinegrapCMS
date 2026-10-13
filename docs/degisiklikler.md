@@ -84,6 +84,66 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ürün kaydı bildirimi indiği ekranda; ürün listelerinde görseller büyük açılıyor (2026-10-13)
+
+**Sorun.** Ürün sahibinin hata kanalından iki madde. (1) Ürün kaydedilince
+bildirim ürün listesinde çıkmıyor, başka bir sayfaya gidilince beliriyordu.
+(2) Ürün listelerinde görsel yalnız 50 piksellik küçük resimdi; müşteriler
+ürün güncellerken benzer ürünleri ayırt etmekte zorlanıyordu.
+
+**Kök sebep (1).** liveform bildirimleri oturumda form adına göre durur ve
+yalnız o adı basan ekranda gösterilip silinir. `edit_product.php` "ürün
+güncellendi"yi kendi formuna (`edit_product`) yazıp `send_to`'ya (çoğunlukla
+`view_products.php`) gidiyordu: liste bildirimi görmüyor, bir sonraki ürün
+açılınca ürün ekranı eski ürünün bildirimini basıyordu. `add_product.php`
+varyantlı üründe bildirimi `view_products`'a yazıp grup ekranına
+(`edit_product_group.php`) gidiyordu; ürün formu istenince `view_fields.php`'ye
+hiç bildirim gitmiyordu. Aynı hata 2026.4.9'da da var.
+
+**Ne değişti.**
+- `edit_product.php`: bildirim, kaydın indiği ekranın formuna yazılır.
+  "Kaydet ve kal" ürün ekranına, dönüş ürün listesiyse `view_products`'a.
+  `send_to` başka bir yere (ör. sitedeki satır içi düzenleme düğmesinin
+  sayfası) gidiyorsa bildirim kuyruğa girmez; o sayfa panel bildirimi basmaz
+  ve kuyruktaki not sonradan listede yanlış anda çıkardı. Silme bildirimi de
+  aynı kuralla.
+- `add_product.php`: varyantlı ürün bildirimi `edit_product_group`'a, ürün
+  formu istenince `view_fields`'e (tek ürün ve varyant seti) yazılır.
+- Yeni `pg_product_image_cell()` ve `pg_product_more_images()`
+  (`includes/fn/ecommerce.php`). Hücre küçük resmi bir düğmeye sarar ve
+  panelin mevcut resim görüntüleyicisini (`assets/js/pg_lightbox.js`,
+  `_pg_lightbox_assets_once()`) kullanır: aynı `data-pg-lb-gallery` değerini
+  taşıyan öğeler tek galeri olur; kapak düğmenin kendisi, ek görseller
+  (`products_images_xref`) aynı hücrede boş gizli `span`'lar. Sıra ürün
+  ekranındakiyle aynı (kapak önce, ek görseller tabloya yazıldıkları sırada).
+  Altyazı "SKU - kısa açıklama". Düğmede `no-submit` var: `backend.js`'in
+  düğme işleyicisi `type=button` düğmelerin etiketini "yükleniyor" metnine
+  çevirir. Ek görseller listenin tamamı için tek sorguyla okunur;
+  `view_products.php`'de kimlikler sonucu ilk geçişte toplanıp
+  `mysqli_data_seek()` ile başa sarılır.
+- Kullanan listeler: `view_products.php` (bütün filtreler),
+  `edit_product_group.php` (gruptaki ürünler ve alt gruplar — alt grubun
+  yalnız kapağı — ve eklenebilecek ürünler), `add_product_group.php`, "Daha
+  Fazla Ürün Yükle"nin satırları (`pg_panel_get_unselected_products`,
+  `includes/panel/commerce.php`; görüntüleyiciyi çağıran ekran yükler) ve
+  `duplicate_products.php`. Görüntüleyici yalnız "Tablolarda Ürün Görsellerini
+  Göster" açıkken yüklenir.
+- Küçük resim adresi artık `encode_url_path()`'ten geçiyor; boşluklu ya da
+  Türkçe karakterli dosya adı da açılıyor.
+
+**Bilerek yapılmayan.** Varyant setleri görünümü (`pg_pb_variant_sets_screen()`)
+ve ERP satır tablolarındaki küçük resimler değişmedi: ilki grubun görseli,
+ikincisi ürün listesi değil. Ürün grubu kaydı (`edit_product_group.php`)
+hiç bildirim yazmıyor; bu iş kapsamında değil.
+
+**Doğrulama.** `php -l`; `tools/lint.php`, `tools/check_lang.php`,
+`tools/test.php`. Hücre çıktısı, sayfanın kendi `pg_lightbox.js`'iyle
+başsız tarayıcıda denendi: kapak + iki ek görsel 1/3, 2/3 sırasıyla, kapakla
+aynı ve boş ek görsel atlanıyor, tırnak ve `<` içeren altyazı metin olarak
+çıkıyor, tek görselde küçük resim şeridi yok.
+
+---
+
 ## 2026.4.10 — Ürün içe aktarımı: `.ods` PHP 8'de okunuyor; tablo tarihleri saat diliminden bağımsız (2026-10-13)
 
 **Sorun.** Ürünleri İçe Aktar'a verilen OpenDocument (`.ods`) dosyası PHP

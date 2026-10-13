@@ -1314,11 +1314,7 @@ if (!$_POST) {
     		$show_image = true;
     		if($show_image == true){
     			$output_image_header ='<th>' . lang(array('string'=>'Image') ) . '</th>';
-    			if(!$image_name){
-    				$output_image_column ='<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image') ) . '</text></svg></td>';
-    			}else{
-    				$output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . $image_name . '" /></td>';
-    			}
+    			$output_image_column = pg_product_image_cell('product-' . (int) $row['id'], $image_name, $row['name'], $short_description);
     		}
 
             // output filter specific table cells
@@ -1782,7 +1778,7 @@ if (!$_POST) {
         'icon'=>'store',
         'heading'=>$heading,
         'heading_description' => ($subheading ?? '')
-    ]) . '<main id="content" class="container-fluid">' . $output . '</main>' . output_footer();
+    ]) . '<main id="content" class="container-fluid">' . $output . _pg_lightbox_assets_once() . '</main>' . output_footer();
         $liveform->remove_form('view_products');
     }
 }else{

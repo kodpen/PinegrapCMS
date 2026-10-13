@@ -58,6 +58,12 @@ $product    = pg_pb_load_product($product_id);
 // save is a fresh request with no query string on it.
 $send_to = pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
 
+// Whether that is the product list. Only then is the save's notice queued for
+// it: a notice parked for a screen the save does not land on waits in the
+// session and turns up on some later visit, long after the save it was about.
+// A site page that opened this editor inline draws no panel notices at all.
+$send_to_list = (basename((string) parse_url($send_to, PHP_URL_PATH)) === 'view_products.php');
+
 if (!$product) {
     output_error(
         lang('Page not found.')
@@ -87,9 +93,11 @@ if ($_POST) {
             lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name))),
             $_SESSION['sessionusername']);
 
-        $liveform_target = new liveform('view_products');
-        $liveform_target->add_notice(
-            lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name))));
+        if ($send_to_list) {
+            $liveform_target = new liveform('view_products');
+            $liveform_target->add_notice(
+                lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name))));
+        }
 
         go($send_to);
     }
@@ -111,14 +119,19 @@ if ($_POST) {
         lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name']))),
         $_SESSION['sessionusername']);
 
-    $liveform->add_notice(
-        lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name']))));
+    $notice = lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name'])));
 
     // Back to the list, the same place the create screen ends, unless the
     // operator asked to stay — editing a photo and a price in one sitting is
-    // two visits otherwise.
+    // two visits otherwise. The notice goes with the operator either way.
     if (!empty($_POST['submit_save_and_stay'])) {
+        $liveform->add_notice($notice);
         go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
+    }
+
+    if ($send_to_list) {
+        $liveform_target = new liveform('view_products');
+        $liveform_target->add_notice($notice);
     }
 
     go($send_to);

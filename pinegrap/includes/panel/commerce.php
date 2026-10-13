@@ -892,6 +892,10 @@ function pg_panel_get_unselected_products($request, $action)
         "SELECT COUNT(*) FROM products WHERE 1 $exclude_sql"
     );
 
+    // The pictures behind each product's cover, for the image viewer, which
+    // the screen that asked for these rows has already loaded.
+    $more_images = $show_image ? pg_product_more_images(array_column($products, 'id')) : array();
+
     $rows_html = '';
     foreach ($products as $product) {
         $product['price'] = $product['price'] / 100;
@@ -899,11 +903,8 @@ function pg_panel_get_unselected_products($request, $action)
 
         $output_image_column = '';
         if ($show_image) {
-            if (!$product['image_name']) {
-                $output_image_column = '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img"><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang('No Image') . '</text></svg></td>';
-            } else {
-                $output_image_column = '<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($product['image_name']) . '" /></td>';
-            }
+            $output_image_column = pg_product_image_cell('product-' . (int) $product['id'], $product['image_name'], $product['name'], $product['short_description'],
+                isset($more_images[(int) $product['id']]) ? $more_images[(int) $product['id']] : array());
         }
 
         $rows_html .=

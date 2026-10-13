@@ -839,6 +839,23 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
     $output_image_header = $show_image ? '<th>' . lang('Image') . '</th>' : '';
 
+    // The pictures behind each cover, read for the whole list at once: the ids
+    // are collected in a first pass over the result, which is then rewound.
+    $more_images = array();
+
+    if ($show_image) {
+        $listed_ids = array();
+
+        while ($id_row = mysqli_fetch_assoc($result)) {
+            $listed_ids[] = $id_row['id'];
+        }
+
+        if ($listed_ids) {
+            mysqli_data_seek($result, 0);
+            $more_images = pg_product_more_images($listed_ids);
+        }
+    }
+
     $barcode_product_map = array(); // product_id => [sku, short_description, price, image]
 
     while ($row = mysqli_fetch_assoc($result)) {
@@ -931,11 +948,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
 		
         $output_image_column = '';
         if ($show_image) {
-            if (!$image_name) {
-                $output_image_column = '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image') ) . '</text></svg></td>';
-            } else {
-                $output_image_column = '<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . $image_name . '" /></td>';
-            }
+            $output_image_column = pg_product_image_cell(
+                'product-' . (int) $row['id'],
+                $image_name,
+                $row['name'],
+                $short_description,
+                isset($more_images[(int) $row['id']]) ? $more_images[(int) $row['id']] : array());
         }
         
         // output filter specific table cells
@@ -1426,6 +1444,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             'head' => (defined('BARCODE_ENABLED') && BARCODE_ENABLED ?
                 '<script src="assets/lib/JsBarcode/JsBarcode.all.min.js"></script>' : '')
         )
-    ) . '<main id="content" class="container-fluid">' . $output . $barcode_print_js . '</main>' . output_footer();
+    ) . '<main id="content" class="container-fluid">' . $output . $barcode_print_js . ($show_image ? _pg_lightbox_assets_once() : '') . '</main>' . output_footer();
     $liveform->remove_form('view_products');
 }
