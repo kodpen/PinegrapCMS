@@ -948,7 +948,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '</form>';
     }
 
-    $empty_html = '<div class="pg-sw-empty text-muted py-3">' . h($empty_message) . '</div>';
+    // As an element the records' parent may hold (an item in a list, a column
+    // in a grid row).
+    $empty_html = pg_sw_state_message_html($empty_message, $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
 
     // ── Resolve detail page URL prefix (catalog uses /slug/<address_name> path style) ──
     // INTENTIONALLY independent of $_GET / pagination state — see the form_list_view
