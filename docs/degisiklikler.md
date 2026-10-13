@@ -151,6 +151,58 @@ için yeniden bağlanmak gerekir); gerçek e-posta gönderimi.
 
 ---
 
+## 2026.4.10 — Bağlı hesaplar: giden OAuth altyapısı (2026-10-13)
+
+**Neden.** Ürün sahibi tersine OAuth planından (`docs/_plan_tersine_oauth.md`)
+model A'yı seçti ve ilk beş senaryonun hemen başlamasını istedi. Beşi de
+(Microsoft 365/Gmail ile posta, Search Console, buluta yedek, Microsoft ile
+giriş, Çalışma Alanı'nda MCP istemcisi) aynı şeye dayanıyor: sitenin bir
+dış hesaba bir kez bağlanıp belirteçlerini güvenle saklaması ve yenilemesi.
+Microsoft parolalı SMTP'yi 2026 sonunda kapatıyor; posta senaryosu bu
+altyapıyı bekliyordu.
+
+**Nasıl.** `includes/fn/connect.php` her istekte yüklü bir modül: sağlayıcı
+ve amaç tanımları klasörden okunur (`includes/connect/providers/*.php`,
+`includes/connect/purposes/*.php`; yeni sağlayıcı ya da özellik bir dosya),
+akış yetkilendirme kodu + PKCE S256, durum ve nonce oturumda, RFC 9207
+`iss` denetimi. id_token imzası doğrulanmaz (OpenID Connect Core 3.1.3.7:
+belirteç TLS üzerinden doğrudan token ucundan, istemci sırrıyla alınan
+yanıtta gelir), ama `iss`, `aud`, `exp`, `nonce` ve `sub` denetlenir;
+id_token yoksa userinfo ucu okunur. Refresh token ve kapsam kümesi başına
+erişim belirteçleri tek bir şifreli alanda (`encrypt_string_with_iv()`,
+site anahtarı) durur. Yenileme `GET_LOCK` altında, satır yeniden okunarak
+yapılır; `invalid_grant` hesabı `reauth` durumuna alır ve günlüğe yazar,
+geçici hatalar yalnız `last_error`'a düşer. Microsoft belirteci kaynak
+başına verdiği için (`token_per_scope`) önbellek anahtarı kapsamların
+özetidir ve yenilemede kapsam gönderilir; Google `access_type=offline` +
+`prompt=consent` ile her bağlantıda refresh token verir. Google
+uygulaması girilmemişse Google ile giriş ayarlarındaki uygulama kullanılır.
+
+**Ne değişti.** Ayarlar › Bağlantılar › Bağlı hesaplar (`connections.php`):
+sağlayıcı başına kart, bağlı hesaplar (amaç, bağlanma ve son kullanım,
+son hata, durum), Denetle / Yeniden bağla / Bağlantıyı kes (Google'da izin
+de geri alınır; Microsoft'un iptal ucu yok), uygulama formu (kurulum adımları, kopyalanabilir yönlendirme
+adresi, istemci kimliği, gizli anahtar — kayıtlıysa geri gösterilmez —,
+Microsoft dizini). Geri dönüş adresi `connect.php`: POST bağlantıyı
+başlatır (site hesabı yönetici yetkisi ister), GET kodu alır ve ekrana
+iletiyle döner; dönüş adresi yalnız panel betiği olabilir. Komut paletinde
+"Bağlı hesaplar". Şema 10.72: `connect_apps`, `connect_accounts`.
+Özelliklerin kullanacağı yüz: `pg_connect_start_fields()`,
+`pg_connect_access_token()`, `pg_connect_api()`,
+`pg_connect_service_get/put/delete()` (sunucudan sunucuya belirteçler).
+`tr.json`'da "Client ID" "Müşteri Kimliği" yerine "İstemci Kimliği",
+"Client Secret" "İstemci Gizli Anahtarı" oldu (Paraşüt ve ClearCommerce
+alanları da aynı anahtarı kullanır).
+
+**Bilerek yapılmayan.** Hiçbir özellik henüz bu bağlantıyı kullanmıyor;
+posta gönderimi, Paraşüt belirteci ve kargo API'leri ayrı PR'lar. Kişinin
+kendi hesabını bağlaması (`owner = person`) kütüphanede var, ekranı onu
+kullanacak özellikle gelecek. Arka planda belirteç tazeleme işi yok:
+belirteç kullanılırken yenilenir, Google'ın altı ay kullanılmayan izni
+düşürmesi `reauth` olarak görünür.
+
+---
+
 ## 2026.4.10 — Dış API ve MCP: ERP virmanı, çek/senet, kâr, kasa akışı ve pano (Faz 6, üçüncü parça) (2026-10-13)
 
 **Neden.** `docs/_plan_erp_ozellikler.md` Faz 6 (#27), son parça: kasalar
