@@ -6074,12 +6074,39 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 /* ══ Dashboard clock ═══════════════════════════════════════════════════════
    Was a centred display-3 stack that ate a fifth of the fold before the first
    widget appeared. Left aligned with the grid and set on one baseline, the same
-   three facts cost roughly a third of the height. */
+   three facts cost roughly a third of the height.
+
+   On a wide screen the brief and the clock share one row -- the sentence on
+   the left where reading starts, the clock right-aligned at the far end with
+   the next meeting under it -- so the whole bar is about as tall as the brief
+   alone. Narrower, they stack, brief first. */
 .pg-clockbar {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.5rem;
   padding: 0.25rem 0 1.25rem;
+}
+@media (min-width: 992px) {
+  .pg-clockbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+  .pg-clockbar > .pg-brief {
+    align-self: center;
+  }
+  /* Parent-qualified: the base rules for these two come further down. */
+  .pg-clockbar > .pg-clockbar-now {
+    flex: 0 0 auto;
+    align-items: flex-end;
+    max-width: 40%;
+    text-align: right;
+  }
+  .pg-clockbar .pg-clockbar-when {
+    flex-direction: column;
+    align-items: flex-end;
+  }
 }
 /* The briefing.
    A mark and a short paragraph, laid out the way a remark is laid out rather
@@ -6136,6 +6163,44 @@ html[data-bs-theme="dark"] .pg-brief {
   flex-direction: column;
   gap: 0.4rem;
   min-width: 0;
+}
+
+/* "Say something else": a quiet round button at the end of the card, the
+   same size as the mark so the two ends of the card balance. It turns while
+   the new line is on its way. */
+.pg-brief-again {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0 -0.35rem 0 0.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bs-tertiary-color);
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.pg-brief-again:hover,
+.pg-brief-again:focus-visible {
+  color: var(--bs-body-color);
+  background: var(--bs-secondary-bg);
+}
+.pg-brief-again .bi {
+  display: inline-block;
+}
+.pg-brief-again .bi::before {
+  vertical-align: 0;
+}
+.pg-brief-again.is-busy .bi {
+  animation: pg-brief-spin 0.8s linear infinite;
+}
+@keyframes pg-brief-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* The speaker. It carries the hour's own glyph -- sunrise, sun, dusk, moon --
@@ -6213,12 +6278,29 @@ html[data-bs-theme="dark"] .pg-brief {
   .pg-brief-mark {
     animation: pg-brief-ring 0.9s ease-out 1;
   }
+  /* A new line asked for with the button arrives the same way. The second
+     set of keyframes is what restarts it: an element keeps a running
+     animation for as long as its name stays the same. */
+  .pg-brief.is-new .pg-brief-text {
+    animation: pg-brief-again 0.45s ease-out both;
+  }
+  .pg-brief.is-new .pg-brief-mark {
+    animation: pg-brief-ring-again 0.9s ease-out 1;
+  }
 }
 @keyframes pg-brief-in {
   from { opacity: 0; transform: translateY(2px); }
   to   { opacity: 1; transform: none; }
 }
 @keyframes pg-brief-ring {
+  from { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0 var(--clock-glow); }
+  to   { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0.55rem transparent; }
+}
+@keyframes pg-brief-again {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pg-brief-ring-again {
   from { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0 var(--clock-glow); }
   to   { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0.55rem transparent; }
 }
@@ -6265,6 +6347,28 @@ html[data-bs-theme="dark"] .pg-brief {
 .pg-brief-ws-item.is-late .pg-brief-ws-label {
   color: var(--bs-danger);
 }
+/* A timer that is running: a green dot that breathes, so the one item that
+   goes on counting by itself looks alive. */
+.pg-brief-ws-item.is-live::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bs-success);
+}
+.pg-brief-ws-item.is-live .bi {
+  color: var(--bs-success);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-brief-ws-item.is-live::before {
+    animation: pg-live 1.6s ease-in-out infinite;
+  }
+}
+@keyframes pg-live {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
 .pg-brief-ws-label {
   font-weight: 600;
   color: var(--bs-secondary-color);
@@ -6304,6 +6408,13 @@ html[data-bs-theme="dark"] .pg-brief {
 }
 .pg-clockbar-now {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.pg-clockbar-when {
+  display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0 0.7rem;
@@ -6338,6 +6449,85 @@ html[data-bs-theme="dark"] .pg-brief {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--bs-tertiary-color);
+}
+
+/* The next meeting or visit, under the clock: when, what, and how long until
+   it starts. Every event left today is in the markup and only the first is
+   shown; the page script removes one when it ends. */
+.pg-clockbar-next {
+  display: flex;
+  max-width: 100%;
+}
+.pg-next + .pg-next {
+  display: none;
+}
+.pg-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  padding: 0.15rem 0.6rem 0.15rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bs-body-bg) 72%, transparent);
+  color: var(--bs-body-color);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+html[data-bs-theme="dark"] .pg-next {
+  background: color-mix(in srgb, var(--bs-body-bg) 55%, transparent);
+}
+.pg-next:hover,
+.pg-next:focus-visible {
+  color: var(--bs-body-color);
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  transform: translateY(-1px);
+}
+.pg-next .bi {
+  color: var(--bs-secondary-color);
+}
+.pg-next-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pg-next-title {
+  min-width: 0;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--bs-secondary-color);
+}
+.pg-next-until {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--clock-fallback-color);
+}
+.pg-next-until:empty {
+  display: none;
+}
+/* Under way: the countdown becomes "now" with the timer's breathing dot. */
+.pg-next.is-now .pg-next-until {
+  color: var(--bs-success);
+}
+.pg-next.is-now .pg-next-until::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.3rem;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 0.1em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-next.is-now .pg-next-until::before {
+    animation: pg-live 1.6s ease-in-out infinite;
+  }
 }
 @media (max-width: 575.98px) {
   .pg-clockbar-time {

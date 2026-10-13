@@ -20319,5 +20319,14 @@
     "{var:1} left": "{var:1} kaldı",
     "Best Sellers": "En Çok Satanlar",
     "Top Pages · Last 7 Days": "En Çok Ziyaret Edilenler · Son 7 Gün",
-    "Trending Today": "Bugün Yükselen"
+    "Trending Today": "Bugün Yükselen",
+    "Say something else": "Başka bir şey söyle",
+    "Timer running": "Sayaç çalışıyor",
+    "Awaiting your approval": "Onayını bekleyen",
+    "{var:1} approval request{suffix:1}": "{var:1} onay isteği",
+    "{var:1} {suffix:1} waiting on your answer.": "{var:1} yanıtını bekliyor.",
+    "Next up": "Sıradaki",
+    "in {var:1} min": "{var:1} dk sonra",
+    "in {var:1} h": "{var:1} sa sonra",
+    "in {var:1} h {var:2} min": "{var:1} sa {var:2} dk sonra"
 }

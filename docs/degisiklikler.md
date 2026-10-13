@@ -84,6 +84,59 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Pano üst alanı: karşılama ve saat tek satırda, sıradaki toplantı geri sayımı, "Başka bir şey söyle" (2026-10-13)
+
+**İstenen.** Erdal: ekranın üst kısmındaki saat ve brief alanları
+geliştirilsin.
+
+**Brief ayrı dosyada.** `welcome.php`'deki yaklaşık 1.700 satırlık
+karşılama kodu `includes/dashboard/brief.php` → `pg_dashboard_brief($user,
+$changelog_sections)` oldu. Davranış aynı; tek fark sistem durumu önbellek
+yolunun `dirname(__FILE__)` yerine `PG_FUNCTIONS_DIR` ile kurulması. Dönen
+dizi: `icon`, `greeting`, `line`, `strip`, `next`, `ws`. Sayfa da yeni
+`get_dashboard_brief` paneli eylemi de bu fonksiyondan geçer.
+
+**"Başka bir şey söyle".** Kartın sağında yuvarlak düğme.
+`get_dashboard_brief`'i çağırır (muaf, jetonsuz, yazmaz; oturum açık
+kalır çünkü cümle seçimi son söyleneni oturumda tutuyor). Gelen selam,
+cümle, şerit ve saatin altındaki satır yerine konur, giriş animasyonu
+yeniden oynar. İstek sürerken düğme döner ve kilitlenir.
+
+**Saatin altında sıradaki etkinlik.**
+- `ws_dashboard_signals()` artık `events_next` da döner: bugünün bitmemiş,
+  kişiyi ilgilendiren toplantı ve ziyaretlerinden ilk üçü (`event_first`
+  alanları + `id`, `ends_at`).
+- `pg_dashboard_brief_next()` hepsini yazar, CSS ilkini gösterir.
+  Saatli olanlar tüm gün olanlardan önce gelir.
+- `pg_dashboard_brief_until()` kalan süreyi yazar: "25 dk sonra", "2 sa
+  30 dk sonra", başladıysa "Şimdi". Dakika yukarı yuvarlanır. Sayfa
+  betiği (`pg_clock_next()`) aynı hesabı saatin dakika tikinde yapar;
+  biten etkinliği siler, sıradaki kendiliğinden öne çıkar, istek yok.
+
+**Şeritte iki yeni öğe.** Çalışan görev sayacı (`ws_task_time_running()`,
+en başta, yeşil nefes alan nokta, süre `data-pg-elapsed`'den dakikada bir
+ilerler) ve onayını bekleyen istekler (`ws_approvals_waiting()`, bağlantı
+en yenisinin kanalına). Cümle havuzuna da onay bekleyen istek cümlesi
+girdi.
+
+**Düzen.** 992 px ve üstünde `.pg-clockbar` satır: kart solda, saat
+sağda sağa yaslı; altında tarih ve sıradaki etkinlik. Daha dar ekranda
+eskisi gibi alt alta.
+
+**Doğrulama.**
+- `php tools/test.php`: `tests/dashboard_brief_test.php` (geri sayım
+  yuvarlaması, durumlar, işaretleme, sıralama, kaçış).
+- Sandbox + Playwright (Çalışma Alanı açık, bir görev sayacı, iki toplantı,
+  bir tüm gün ziyaret): 1440, 1100 ve 390 px, koyu tema. Düğmeye üç kez
+  basıldı; her seferinde farklı cümle geldi, tek `.pg-brief-line`, tek
+  şerit, tek etkinlik satırı kaldı. Sayfada zaman ileri alınınca toplantı
+  "Şimdi" oldu, bitince sıradaki geldi, hepsi bitince satır kalktı.
+
+Onay isteği şeridi sandbox'ta denenmedi (kanal ve mesaj kurmak gerekiyordu);
+`ws_approvals_waiting()` Çalışma Alanı ekranının kullandığı fonksiyon.
+
+---
+
 ## 2026.4.10 — Pano: Operasyon Masası; en çok satanlar E-ticaret Özeti'nde, en çok ziyaret edilenler Ziyaretçi Özetleri'nde; panoda CodeMirror yok (2026-10-13)
 
 **İstenen.** Erdal: bekleyen sevkiyat, bekleyen iade ve stokta tükenen

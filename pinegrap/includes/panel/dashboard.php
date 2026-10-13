@@ -11,6 +11,8 @@
  *   get_widget_data              one dashboard widget's data
  *                                (includes/dashboard/widgets.php)
  *   get_widgets_data             several dashboard widgets in one request
+ *   get_dashboard_brief          a fresh line for the dashboard greeting
+ *                                (includes/dashboard/brief.php)
  *   user_pinned_app_update       the apps pinned to the caller's own menu
  *   update_dashboard_widgets     the caller's dashboard widget layout
  *   update_dashboard_appearance  the dashboard's backdrop and look
@@ -116,6 +118,36 @@ function pg_panel_get_widgets_data($request, $action)
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
 
     respond(pg_dashboard_widgets_run_many($request, $user));
+}
+
+function pg_panel_get_dashboard_brief($request, $action)
+{
+    // Kept global: the brief reaches helpers that read `global $user`.
+    global $user;
+
+    $user = validate_user();
+
+    // The session stays open here, unlike the widget calls above. The brief
+    // remembers what it said last so the next line can say something else,
+    // and that memory is in the session; a single request has nothing to
+    // queue behind it.
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/brief.php');
+
+    $brief = pg_dashboard_brief($user, pg_changelog_sections());
+
+    session_write_close();
+
+    respond(array(
+        'status' => 'success',
+        'message' => 'Action Success',
+        'data' => array(
+            'icon' => $brief['icon'],
+            'greeting' => $brief['greeting'],
+            'line' => $brief['line'],
+            'strip' => $brief['strip'],
+            'next' => $brief['next'],
+        ),
+    ));
 }
 
 function pg_panel_user_pinned_app_update($request, $action)
