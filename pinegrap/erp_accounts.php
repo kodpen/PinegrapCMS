@@ -61,12 +61,12 @@ $unlinked_contacts = (int) db_value("SELECT COUNT(DISTINCT orders.contact_id)
 // toolbar can say how many there are, and the list can be narrowed to
 // them - cleaning 380 cards one failed invoice at a time is no way to
 // spend an afternoon. Nothing is drawn when no provider is chosen.
-$edoc_only = ((string) ($_GET['filter'] ?? '') === 'edoc');
+$edoc_only = (($_GET['filter'] ?? '') === 'edoc');
 $edoc_gaps = array();
 
 // Accounts past their credit limit (4.98): flagged in the list, and the list
 // can be narrowed to them.
-$over_limit_only = ((string) ($_GET['filter'] ?? '') === 'over_limit');
+$over_limit_only = (($_GET['filter'] ?? '') === 'over_limit');
 $over_limit = array();
 
 if (function_exists('erp_credit_state')) {

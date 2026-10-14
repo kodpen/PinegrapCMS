@@ -37,7 +37,7 @@ $output_view_pills = function ($active) {
                 </ul>';
 };
 
-if ((string) ($_GET['view'] ?? '') === 'forecast') {
+if (($_GET['view'] ?? '') === 'forecast') {
     $forecast = erp_cash_forecast($_GET['horizon'] ?? 90);
     $kinds = erp_cash_forecast_kinds();
     $bucket_keys = array_keys($forecast['buckets']);
@@ -248,7 +248,7 @@ $quick_ranges = array(
     'last_90' => array(lang('Last 90 days'), date('Y-m-d', strtotime('-89 days')), date('Y-m-d')),
     'this_year' => array(lang('This year'), date('Y-01-01'), date('Y-m-d')),
 );
-$quick_key = (string) ($_GET['range'] ?? '');
+$quick_key = is_string($_GET['range'] ?? null) ? $_GET['range'] : '';
 if (isset($quick_ranges[$quick_key])) {
     $_GET['from'] = $quick_ranges[$quick_key][1];
     $_GET['to'] = $quick_ranges[$quick_key][2];

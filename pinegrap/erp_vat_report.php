@@ -24,13 +24,15 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_vat_report');
 
+// Each value is one value; one sent as an array (?month[]=x) counts as not
+// given: it wrote "Array to string conversion" into the log.
 $input = array(
-    'range' => (string) ($_GET['range'] ?? 'month'),
-    'month' => (string) ($_GET['month'] ?? date('Y-m')),
-    'quarter' => (string) ($_GET['quarter'] ?? (date('Y') . '-Q' . (int) ceil(date('n') / 3))),
-    'year' => (string) ($_GET['year'] ?? date('Y')),
-    'from' => (string) ($_GET['from'] ?? ''),
-    'to' => (string) ($_GET['to'] ?? ''),
+    'range' => is_string($_GET['range'] ?? null) ? $_GET['range'] : 'month',
+    'month' => is_string($_GET['month'] ?? null) ? $_GET['month'] : date('Y-m'),
+    'quarter' => is_string($_GET['quarter'] ?? null) ? $_GET['quarter'] : (date('Y') . '-Q' . (int) ceil(date('n') / 3)),
+    'year' => is_string($_GET['year'] ?? null) ? $_GET['year'] : date('Y'),
+    'from' => is_string($_GET['from'] ?? null) ? $_GET['from'] : '',
+    'to' => is_string($_GET['to'] ?? null) ? $_GET['to'] : '',
 );
 
 $period = erp_profit_period($input);
@@ -49,7 +51,7 @@ $tax2_label = erp_vat_tax2_label();
 $labels = erp_vat_kind_labels();
 
 // ------------------------------------------------------------------ export
-if ((string) ($_GET['export'] ?? '') === 'xlsx') {
+if (($_GET['export'] ?? '') === 'xlsx') {
     $path = tempnam(sys_get_temp_dir(), 'pgv');
 
     if (($path === false) || !erp_vat_workbook($report, $path)) {

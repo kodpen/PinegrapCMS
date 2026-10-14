@@ -31,7 +31,7 @@ $filter_names = array(
     'cancelled' => lang('Cancelled'),
 );
 
-$filter = (string) ($_GET['filter'] ?? '');
+$filter = is_string($_GET['filter'] ?? null) ? $_GET['filter'] : '';
 if (!isset($filter_names[$filter])) {
     $filter = '';
 }

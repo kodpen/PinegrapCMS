@@ -21,7 +21,7 @@ if (!validate_erp_access($user)) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
 $id = (int) ($_GET['id'] ?? 0);
-$format = ((string) ($_GET['format'] ?? 'pdf') === 'ubl') ? 'ubl' : 'pdf';
+$format = (($_GET['format'] ?? 'pdf') === 'ubl') ? 'ubl' : 'pdf';
 $row = erp_edoc_inbox_row($id);
 
 if ($row === null) {

@@ -66,9 +66,11 @@ if (!$ready) {
     $liveform->mark_error('', lang('Cheques and notes come with the software update; run the update to use them.'));
 }
 
-$direction = in_array((string) ($_GET['direction'] ?? ''), array('received', 'given'), true) ? (string) $_GET['direction'] : '';
-$status = (string) ($_GET['status'] ?? 'open');
-$search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
+// Each filter is one value; one sent as an array (?status[]=x) counts as not
+// given: it wrote "Array to string conversion" into the log.
+$direction = in_array($_GET['direction'] ?? '', array('received', 'given'), true) ? (string) $_GET['direction'] : '';
+$status = is_string($_GET['status'] ?? null) ? $_GET['status'] : 'open';
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
 $statuses = erp_cheque_statuses();
 $kinds = erp_cheque_kinds();
 $totals = erp_cheque_totals();

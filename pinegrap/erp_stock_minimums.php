@@ -41,8 +41,8 @@ include_once('liveform.class.php');
 $liveform = new liveform('erp_stock_minimums');
 
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
-$search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
-$show = in_array((string) ($_GET['show'] ?? ''), array('set', 'low'), true) ? (string) $_GET['show'] : 'all';
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
+$show = in_array($_GET['show'] ?? '', array('set', 'low'), true) ? (string) $_GET['show'] : 'all';
 
 $ready = erp_stock_minimums_ready();
 

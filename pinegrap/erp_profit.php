@@ -23,20 +23,22 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_profit');
 
+// Each value is one value; one sent as an array (?month[]=x) counts as not
+// given: it wrote "Array to string conversion" into the log.
 $input = array(
-    'range' => (string) ($_GET['range'] ?? 'year'),
-    'month' => (string) ($_GET['month'] ?? date('Y-m')),
-    'quarter' => (string) ($_GET['quarter'] ?? (date('Y') . '-Q' . (int) ceil(date('n') / 3))),
-    'year' => (string) ($_GET['year'] ?? date('Y')),
-    'from' => (string) ($_GET['from'] ?? ''),
-    'to' => (string) ($_GET['to'] ?? ''),
+    'range' => is_string($_GET['range'] ?? null) ? $_GET['range'] : 'year',
+    'month' => is_string($_GET['month'] ?? null) ? $_GET['month'] : date('Y-m'),
+    'quarter' => is_string($_GET['quarter'] ?? null) ? $_GET['quarter'] : (date('Y') . '-Q' . (int) ceil(date('n') / 3)),
+    'year' => is_string($_GET['year'] ?? null) ? $_GET['year'] : date('Y'),
+    'from' => is_string($_GET['from'] ?? null) ? $_GET['from'] : '',
+    'to' => is_string($_GET['to'] ?? null) ? $_GET['to'] : '',
 );
 
 $period = erp_profit_period($input);
 
 // Whether the completed orders without an invoice count: asked on the form,
 // then remembered in this browser (the ERP dashboard reads the same choice).
-$with_orders = erp_profit_orders_choice(isset($_GET['orders']) ? (string) $_GET['orders'] : null);
+$with_orders = erp_profit_orders_choice((isset($_GET['orders']) && is_string($_GET['orders'])) ? $_GET['orders'] : null);
 
 if ($period['error'] !== '') {
     $liveform->add_warning(h($period['error']));
@@ -47,7 +49,7 @@ $totals = $report['totals'];
 $base = erp_base_currency();
 
 // ------------------------------------------------------------------ export
-if ((string) ($_GET['export'] ?? '') === 'xlsx') {
+if (($_GET['export'] ?? '') === 'xlsx') {
     $path = tempnam(sys_get_temp_dir(), 'pgp');
 
     if (($path === false) || !erp_profit_workbook($report, $path)) {

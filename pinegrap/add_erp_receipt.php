@@ -55,8 +55,8 @@ if ($preset_invoice_id > 0) {
 // operator is sent back to the order afterwards.
 $preset_account_id = ($preset_invoice === null) ? (int) ($_REQUEST['account_id'] ?? 0) : 0;
 $preset_amount = max(0, (int) ($_GET['amount'] ?? 0));
-$preset_method = (string) ($_GET['method'] ?? '');
-$preset_description = trim(mb_substr((string) ($_GET['description'] ?? ''), 0, 200));
+$preset_method = is_string($_GET['method'] ?? null) ? $_GET['method'] : '';
+$preset_description = trim(mb_substr(is_string($_GET['description'] ?? null) ? $_GET['description'] : '', 0, 200));
 $back_order_id = (int) ($_REQUEST['back_order'] ?? 0);
 
 if (($back_order_id > 0) && !db_value("SELECT id FROM orders WHERE id = '" . $back_order_id . "' LIMIT 1")) {

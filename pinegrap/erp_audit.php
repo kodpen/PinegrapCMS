@@ -30,20 +30,23 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_audit');
 
+// Every filter is one value; one sent as an array (?from[]=x) counts as not
+// given: it wrote "Array to string conversion" into the log.
 $date_or_empty = function ($value) {
-    $value = trim((string) $value);
+    $value = is_string($value) ? trim($value) : '';
 
     return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
 };
 
 $types = erp_audit_object_types();
+$type = is_string($_GET['type'] ?? null) ? $_GET['type'] : '';
 $filters = array(
     'from' => $date_or_empty($_GET['from'] ?? ''),
     'to' => $date_or_empty($_GET['to'] ?? ''),
-    'user' => mb_substr(trim((string) ($_GET['user'] ?? '')), 0, 100),
-    'type' => (isset($types[(string) ($_GET['type'] ?? '')]) || ((string) ($_GET['type'] ?? '') === 'log')) ? (string) $_GET['type'] : '',
+    'user' => mb_substr(trim(is_string($_GET['user'] ?? null) ? $_GET['user'] : ''), 0, 100),
+    'type' => (isset($types[$type]) || ($type === 'log')) ? $type : '',
     'id' => max(0, (int) ($_GET['id'] ?? 0)),
-    'search' => mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100),
+    'search' => mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100),
 );
 $query = array_filter($filters, function ($value) {
     return ($value !== '') && ($value !== 0);
@@ -51,7 +54,7 @@ $query = array_filter($filters, function ($value) {
 
 if (!erp_audit_ready()) {
     $liveform->mark_error('', lang('The audit trail comes with the software update; run the update to use it.'));
-} elseif ((string) ($_GET['format'] ?? '') === 'csv') {
+} elseif (($_GET['format'] ?? '') === 'csv') {
     log_activity(lang('erp audit trail was exported'), $_SESSION['sessionusername']);
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="erp-audit-' . date('Ymd-His') . '.csv"');

@@ -60,7 +60,7 @@ if ($_POST) {
     go($self_url);
 }
 
-$state = (string) ($_GET['state'] ?? 'new');
+$state = is_string($_GET['state'] ?? null) ? $_GET['state'] : 'new';
 if (($state !== 'all') && !isset($states[$state])) {
     $state = 'new';
 }

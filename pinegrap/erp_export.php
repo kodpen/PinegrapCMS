@@ -51,8 +51,10 @@ function erp_export_staged()
 
 // A finished file: send it and forget it. The token has to be one this
 // session staged, so a guessed address downloads nothing.
-if (isset($_GET['download'])) {
-    $token = (string) $_GET['download'];
+// (a token sent as an array, ?download[]=x, counts as not given: it wrote
+// "Array to string conversion" into the log)
+if (isset($_GET['download']) && is_string($_GET['download'])) {
+    $token = $_GET['download'];
     $staged = erp_export_staged();
 
     if (!isset($staged[$token]) || !is_file($staged[$token]['path'])) {
@@ -162,14 +164,14 @@ if ($_POST) {
 // generic CSV is the default otherwise, so the first choice is not tied to
 // one country's program.
 if ($liveform->field_in_session('profile') == false) {
-    $entity = isset($_GET['entity']) ? (string) $_GET['entity'] : 'invoices';
+    $entity = (isset($_GET['entity']) && is_string($_GET['entity'])) ? $_GET['entity'] : 'invoices';
     $liveform->assign_field_value('profile', ($entity === 'accounts') ? 'csv_accounts' : (($entity === 'receipts') ? 'csv_receipts' : 'csv_invoices'));
     $liveform->assign_field_value('direction', 'sales');
     $liveform->assign_field_value('not_exported', '1');
     $liveform->assign_field_value('mark_exported', '1');
 }
 
-$done_token = isset($_GET['done']) ? (string) $_GET['done'] : '';
+$done_token = (isset($_GET['done']) && is_string($_GET['done'])) ? $_GET['done'] : '';
 $staged = erp_export_staged();
 $download_url = (($done_token !== '') && isset($staged[$done_token])) ? ('erp_export.php?download=' . h($done_token)) : '';
 

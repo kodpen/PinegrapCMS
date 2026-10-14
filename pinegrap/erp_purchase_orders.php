@@ -23,9 +23,9 @@ include_once('liveform.class.php');
 $liveform = new liveform('erp_purchase_orders');
 
 $statuses = erp_purchase_order_statuses();
-$status = (string) ($_GET['status'] ?? '');
+$status = is_string($_GET['status'] ?? null) ? $_GET['status'] : '';
 $status = (isset($statuses[$status]) || ($status === 'waiting')) ? $status : '';
-$search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
 $account_id = max(0, (int) ($_GET['account_id'] ?? 0));
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $ready = erp_purchase_orders_ready();

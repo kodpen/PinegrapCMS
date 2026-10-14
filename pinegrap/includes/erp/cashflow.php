@@ -63,8 +63,9 @@ function erp_cashflow_options($input)
     $input = (array) $input;
     $today = date('Y-m-d');
 
+    // An array (?from[]=x) is no date: it wrote "Array to string conversion".
     $valid = function ($value) {
-        $value = trim((string) $value);
+        $value = is_scalar($value) ? trim((string) $value) : '';
 
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
             return '';
@@ -92,7 +93,7 @@ function erp_cashflow_options($input)
         $days = ERP_CASHFLOW_MAX_DAYS;
     }
 
-    $group = (string) ($input['group'] ?? '');
+    $group = is_scalar($input['group'] ?? null) ? (string) $input['group'] : '';
     $group_chosen = isset(erp_cashflow_groups()[$group]);
 
     if (!$group_chosen) {

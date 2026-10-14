@@ -33,6 +33,12 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_sync.php';
 $provider = erp_edoc_accounts_provider();
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $account_id = (int) ($_REQUEST['account_id'] ?? 0);
+
+// The search term is one value; one sent as an array (?q[]=x) counts as not
+// given: it wrote "Array to string conversion" into the log.
+if (isset($_GET['q']) && !is_string($_GET['q'])) {
+    unset($_GET['q']);
+}
 $row = ($id > 0) ? erp_edoc_account_row($id) : null;
 $account = null;
 
