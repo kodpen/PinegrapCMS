@@ -937,6 +937,15 @@
   ÇALIŞMA ALANI
   --------------------------------------------------------
 
+  [DÜZELTME] Kanal grubu sürüklenince ya da menüden
+         yukarı / aşağı taşınınca, liste bu arada başka
+         bir yönetici tarafından değiştirildiyse (önüne
+         bırakılan grup kaldırılmış ya da taşınmışsa)
+         grup artık sessizce en sona gitmiyor: taşıma
+         yapılmıyor, uyarı çıkıyor ve liste güncel
+         haliyle yeniden yükleniyor. API de aynı
+         durumda 422 veriyor.
+
   [DÜZELTME] Ataçla ya da düzenlenmiş kopya olarak
          gönderilen bir dosyanın mesajı yazılamadığında
          (çok hızlı art arda gönderim gibi) dosya Dosya

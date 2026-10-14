@@ -5843,7 +5843,12 @@
                     BOOT.groups = data.groups;
                     BOOT.channels = data.channels;
                     self.drawSide();
-                }).catch(fail);
+                }).catch(function (error) {
+                    // A refused move is mostly a list someone else changed
+                    // meanwhile: draw it again as the server has it.
+                    fail(error);
+                    self.reloadChannels(0);
+                });
             };
 
             if (simple || parentId === group.parent_id) {

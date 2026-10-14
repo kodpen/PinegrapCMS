@@ -84,6 +84,59 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: kanal grubu, bu arada değişmiş bir listede sessizce en sona gitmiyor (2026-10-14)
+
+**Neden.** #400'ün bıraktığı parça, panel tarafı 2026.4.9'da da var. Bir
+kanal grubunu başka bir grubun önüne koymak için panel (`ws_group_move`
+eylemi: kenar çubuğunda sürükleme, grup menüsündeki Yukarı / Aşağı taşı) ve
+API (`POST|PATCH /workspace/channel-groups/{id}`, `before_id`) aynı
+`ws_group_move()`'u çağırıyor. API, `before_id` grubun varacağı seviyede
+başka bir grup değilse 422 veriyordu; `ws_group_move()` ise böyle bir
+`before_id`'yi "en son" sayıp grubu sessizce sona koyuyordu. Panel
+`before_id`'yi her zaman ekranda çizili listeden alır: en son için 0
+gönderir, sürüklenen grubu listeden çıkarır. Geçersiz bir `before_id` bu
+yüzden ancak liste bu arada başka biri tarafından değiştirildiyse gelir
+(önüne bırakılan grup kaldırılmış ya da başka seviyeye taşınmış). O zaman
+grup bırakılmadığı bir yere, ekrandaki eski seviyenin sonuna gidiyor, ekran
+da eski listeyi göstermeye devam ediyordu. Panelin sona eklemeyi sürdürmesi
+için bir sebep yok; bu yüzden panel API'ye uyduruldu.
+
+**Ne değişti.**
+- Kural tek yerde, `ws_group_before_fits()` (`includes/workspace/groups.php`):
+  `before_id` 0 (ya da altı) en son demek; başka bir değer, grubun varacağı
+  seviyede grubun kendisi olmayan bir grup olmalı.
+- `ws_group_move()` kurala uymayan `before_id`'yi reddediyor (`field`
+  `before_id`), hiçbir şey yazmıyor. Panelde görünen metin "The groups
+  changed in the meantime and the list has been loaded again. Try the move
+  once more." (`tr.json`'da Türkçesi).
+- Panelin `moveGroup()`'u başarısız bir taşımada hatayı gösterip kanal ve
+  grup listesini sunucudan yeniden yüklüyor (`reloadChannels(0)`); önceden
+  ekranda eski liste kalıyordu. `workspace.min.js` yeniden üretildi.
+- API'nin ön denetimi aynı fonksiyonu soruyor; 422 cevabının gövdesi,
+  metni ve alanı (`before_id`) aynı. Ön denetim prova cevabından ve ad /
+  renk kaydından önce koşuyor; ön denetimle taşıma arasında liste değişirse
+  `ws_group_move()`'un reddi de 422 `before_id` olarak dönüyor
+  (`ws_api_channel_group_refused()` alanı taşıyor).
+- API belgesi: güncelleme ucunun açıklaması ve `before_id` parametresi
+  422'yi söylüyor (OpenAPI aynı tanımdan üretiliyor).
+- Test: `test_ws_group_before_fits` kuralı (aynı seviye, varılan seviye, 0,
+  eksi, olmayan grup, başka seviye, ayrılan seviye, grubun kendisi) ve iki
+  çağıranın da fonksiyonu sorduğunu, API'nin prova ve kayıttan önce
+  sorduğunu denetliyor.
+
+Şema değişikliği yok, izin yok; bir `tr.json` satırı.
+
+**Bilerek yapılmayan.** Kanal grupları için webhook olayı yok (panelde de
+yok). Kanalı bir gruba taşıma (`ws_channel_move_group()`) `before_id`
+almıyor, değişmedi.
+
+**Doğrulama.** `test.php` (tam takım), `lint`, `check_lang`,
+`check_api_schema`, `check_bindings`, `check_copies`, `build_js --check`,
+`node --check workspace.js` temiz. Çalışan örnekte sürüklenerek
+denenmedi.
+
+---
+
 ## 2026.4.10 — Dış API: altı Çalışma Alanı yazımına prova (2026-10-14)
 
 **Neden.** #393'ün belge taraması, mobil uygulamanın en sık yazdığı altı uçta

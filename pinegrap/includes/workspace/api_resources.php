@@ -2224,16 +2224,13 @@ function ws_api_channel_groups_update($params)
         api_fail_validation($refused, 'parent_id');
     }
 
-    // ws_group_move() puts a group it cannot place in front of before_id
-    // last without a word; here that is a mistake worth naming.
+    // ws_group_move() refuses such a before_id too, but only after the name
+    // and colour are saved and without naming the field: asked here, before
+    // the dry run as well.
     $before_id = max(0, (int) ($params['before_id'] ?? 0));
 
-    if ($before_id > 0) {
-        $before = ws_group($before_id);
-
-        if (!$before || ($before_id === $id) || ((int) $before['parent_id'] !== $parent_id)) {
-            api_fail_validation(lang('before_id must be another group of the level the group ends up on.'), 'before_id');
-        }
+    if (!ws_group_before_fits($id, $parent_id, $before_id)) {
+        api_fail_validation(lang('before_id must be another group of the level the group ends up on.'), 'before_id');
     }
 
     $moved = ($parent_id !== (int) $group['parent_id']);
