@@ -9078,12 +9078,16 @@
             // under itself for its asker's approval (mcp_agent.php).
             var agent = message.changes.every(function (change) { return change.agent; });
 
-            box.appendChild(el('div', 'ws-drafts-title', t(agent ? 'mcp_agent_changes' : ((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes'))));
+            // Scheduled actions Pinegrap AI drafted (scheduled_draft.php) are
+            // opened in their form and saved there, not applied.
+            var drafts = message.changes.every(function (change) { return change.action === 'draft'; });
+
+            box.appendChild(el('div', 'ws-drafts-title', t(agent ? 'mcp_agent_changes' : (drafts ? 'ai_scheduled' : ((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')))));
 
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
                 var head = el('div', 'ws-draft-head');
-                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right', bulk: 'bi-collection', run: 'bi-play-circle' };
+                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right', bulk: 'bi-collection', run: 'bi-play-circle', draft: 'bi-alarm' };
 
                 head.appendChild(icon(change.status === 'applied' ? 'bi-check2-circle' : (icons[change.action] || 'bi-pencil-square')));
 
@@ -9222,6 +9226,24 @@
                     actions.appendChild(apply);
                 }
 
+                // A drafted scheduled action opens in its form, filled in, for
+                // the one who asked; saved there, the card says so.
+                if (change.draft) {
+                    var open = button('btn btn-sm btn-primary rounded-pill px-3', t('sa_draft_open'), 'bi-alarm');
+
+                    open.addEventListener('click', function () {
+                        scheduledForm({ channel_id: change.draft.channel_id }, null, function () { self.sync(); }, {
+                            key: 'sentence',
+                            sentence: change.draft.sentence,
+                            data: JSON.parse(JSON.stringify(change.draft.data)),
+                            notes: change.draft.notes || [],
+                            change_id: change.id
+                        });
+                    });
+
+                    actions.appendChild(open);
+                }
+
                 var dismiss = null;
 
                 if (change.can_dismiss) {
@@ -9257,8 +9279,10 @@
                     card.appendChild(actions);
                 }
 
-                if (change.status === 'pending' && !change.can_apply) {
-                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : t('change_waiting', change.asker))));
+                if (change.status === 'pending' && change.draft) {
+                    // The one who asked has the form to open: nothing to wait for.
+                } else if (change.status === 'pending' && !change.can_apply) {
+                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : t(change.action === 'draft' ? 'sa_draft_waiting' : 'change_waiting', change.asker))));
                 } else if (change.status === 'pending' && change.account) {
                     var account = el('div', 'ws-draft-done', t('mcp_account', change.account.alias) + ' ');
                     var off = el('a', '', t('mcp_disconnect_me'));
@@ -9282,10 +9306,10 @@
                     account.appendChild(off);
                     card.appendChild(account);
                 } else if (change.status === 'applied') {
-                    var done = el('div', 'ws-draft-done', t('change_applied', change.decided_by, change.decided) + ' ');
+                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? 'sa_draft_saved' : 'change_applied', change.decided_by, change.decided) + ' ');
 
                     if (change.decision_id) {
-                        var see = el('a', '', t('change_see_decision'));
+                        var see = el('a', '', t(change.action === 'draft' ? 'sa_draft_see' : 'change_see_decision'));
                         see.href = '#';
                         see.addEventListener('click', function (event) {
                             event.preventDefault();
@@ -14546,6 +14570,12 @@
                 note_id: (context && context.note_id) || 0
             };
 
+            // Opened from a draft of Pinegrap AI in a channel: saving it
+            // marks the draft's card.
+            if (!item && preset && preset.change_id) {
+                out.draft_change_id = preset.change_id;
+            }
+
             if (config.chains) {
                 out.follow = Array.prototype.map.call(follows.children, function (row) { return row.read(); }).filter(function (follow) { return follow.do; });
             } else {
@@ -14712,7 +14742,7 @@
             say(t('sa_sentence_working'));
 
             api('ws_scheduled_draft', { text: text, channel_id: (context && context.channel_id) || 0 }).then(function (result) {
-                scheduledForm(context, null, onDone, { key: 'sentence', sentence: text, data: result.draft, notes: result.notes || [] });
+                scheduledForm(context, null, onDone, { key: 'sentence', sentence: text, data: result.draft, notes: result.notes || [], change_id: (preset && preset.change_id) || 0 });
             }).catch(function (error) {
                 go.disabled = false;
                 area.readOnly = false;

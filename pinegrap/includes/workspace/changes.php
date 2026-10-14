@@ -2036,7 +2036,11 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         // kind of record, but waits on the same card.
         $mcp = ($type === 'mcp_call') && function_exists('ws_mcp_change_entry');
 
-        if (!isset($types[$type]) && !$mcp) {
+        // Nor is a scheduled action Pinegrap AI drafted (scheduled_draft.php):
+        // it is opened in its form and saved there.
+        $scheduled = ($type === 'scheduled') && function_exists('ws_scheduled_draft_change_entry');
+
+        if (!isset($types[$type]) && !$mcp && !$scheduled) {
             continue;
         }
 
@@ -2052,6 +2056,11 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
 
         if ($mcp) {
             $out[(int) $row[$by]][] = ws_mcp_change_entry($viewer, $row, $people, !empty($can_post[$place]));
+            continue;
+        }
+
+        if ($scheduled) {
+            $out[(int) $row[$by]][] = ws_scheduled_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]));
             continue;
         }
 
@@ -2279,6 +2288,12 @@ function ws_change_apply($viewer, $change_id)
     $types = ws_change_types();
     $type = (string) $change['record_type'];
     $action = (string) ($change['action'] ?? 'update');
+
+    // A scheduled action Pinegrap AI drafted (scheduled_draft.php) is saved
+    // from its form, where everything it does is checked again.
+    if ($type === 'scheduled') {
+        return $fail(lang('A drafted scheduled action is saved from its form: open it there and save it.'));
+    }
 
     // A call of an MCP server's tool that writes (mcp_ask.php): it runs with
     // the asker's own account, so what it needs is that account rather than

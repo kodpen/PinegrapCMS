@@ -294,6 +294,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error($result['error'], $result['field']);
             }
 
+            // A new one opened from a draft Pinegrap AI made in a channel:
+            // the draft's card says it was saved (scheduled_draft.php).
+            if (((int) ($request['id'] ?? 0) === 0) && ((int) ($request['draft_change_id'] ?? 0) > 0) && function_exists('ws_scheduled_draft_saved')) {
+                ws_scheduled_draft_saved($viewer, (int) $request['draft_change_id'], (int) $result['id'], (int) $result['message_id']);
+            }
+
             return ws_action_ok(array('id' => $result['id'], 'message_id' => $result['message_id'], 'item' => ws_scheduled_present($viewer, ws_scheduled($result['id']), true)));
 
         // What the form would save, in words, as it is filled in.

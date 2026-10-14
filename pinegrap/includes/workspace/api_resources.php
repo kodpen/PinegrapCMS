@@ -2017,9 +2017,10 @@ function ws_api_change_field_present($type, $name, $field, $action, $item)
  *
  * @param array  $row ws_ai_changes
  * @param string $action
+ * @param array  $entry ws_changes_map() for this change
  * @return array[]
  */
-function ws_api_change_fields_present($row, $action)
+function ws_api_change_fields_present($row, $action, $entry = array())
 {
     $types = ws_change_types();
     $type = (string) $row['record_type'];
@@ -2034,6 +2035,16 @@ function ws_api_change_fields_present($row, $action)
                 $name = (string) ($item['name'] ?? '');
                 $out[] = array('name' => $name, 'label' => $name, 'from_shown' => null, 'to_shown' => ws_mcp_argument_show($item['to'] ?? null));
             }
+        }
+
+        return $out;
+    }
+
+    // A scheduled action Pinegrap AI drafted (scheduled_draft.php): its steps
+    // in words, as the card shows them to the person who asked.
+    if ($type === 'scheduled') {
+        foreach ((array) ($entry['fields'] ?? array()) as $item) {
+            $out[] = array('name' => (string) $item['name'], 'label' => (string) $item['label'], 'from_shown' => null, 'to_shown' => (string) $item['to']);
         }
 
         return $out;
@@ -2071,8 +2082,10 @@ function ws_api_change_record_present($row, $entry)
     $id = (int) $row['record_id'];
 
     // A call of an MCP server's tool (mcp_ask.php): the call is the record,
-    // named by its tool; it has no tag.
-    if ($type === 'mcp_call') {
+    // named by its tool; it has no tag. So is a drafted scheduled action
+    // (scheduled_draft.php), named by its name, with the id of the action
+    // saved from it.
+    if (($type === 'mcp_call') || ($type === 'scheduled')) {
         return array(
             'type'       => $type,
             'type_label' => (string) $entry['type_label'],
@@ -2132,7 +2145,7 @@ function ws_api_change_present($row, $entry, $people)
         'action'              => (string) $entry['action'],
         'record'              => ws_api_change_record_present($row, $entry),
         'hidden'              => !empty($entry['hidden']),
-        'fields'              => !empty($entry['hidden']) ? array() : ws_api_change_fields_present($row, (string) $entry['action']),
+        'fields'              => !empty($entry['hidden']) ? array() : ws_api_change_fields_present($row, (string) $entry['action'], $entry),
         'reason'              => (string) $entry['reason'],
         'error'               => (string) $row['error'],
         'requested_by'        => ws_api_person_ref($row['requested_by'], $people),

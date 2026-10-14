@@ -84,6 +84,78 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Kanalda @ai programlanmış işlemin taslağını hazırlıyor (2026-10-14)
+
+**Neden.** Bir önceki değişiklik (aşağıda, "bir cümleyle kuruluyor")
+cümleden taslağı formun üstündeki kutuya koydu ve kanalda `@ai` ile
+yazılan isteği bilerek dışarıda bıraktı. Araştırma notunun örneği tam
+bu yoldu: kanalda "şu olunca şunu yap" yazan kişi formu açmayı bilmek
+zorunda kalmamalı.
+
+**Ne değişti.**
+- Kanaldan gelen `@ai` isteğinde (not, görev ve MCP takma adı dışında)
+  Pinegrap AI'a yeni bir araç sunulur: `propose_scheduled_action`
+  (`sentence`). Yalnız `ws_scheduled_draft_ai_offered()` doğruysa:
+  isteyen programlayabilen personel ve `ws_scheduled_draft_ready()`
+  doğru. Sistem istemine "sonra, tekrar tekrar ya da bir şey olunca
+  yapılacak iş görev değil programlanmış işlemdir" satırı eklenir; en çok
+  2 taslak (`WS_SCHEDULED_DRAFT_PER_ANSWER`).
+- Taslak #360'ın yolundan çıkar: `ws_scheduled_draft()` isteyenin
+  haklarıyla, isteğin kanalı formun kanalı olarak. Bu çağrı kendi
+  model adımıdır (`ws_scheduled_draft_ai_step()`): araç cümleyi
+  `scheduled_todo`'ya koyar, bir sonraki `ws_ai_step()` sohbet çağrısı
+  yerine taslak çağrısını yapar ve sonucu (adımların özeti, açık kalan)
+  sohbete yazar. Böylece bir web isteğinde iki model çağrısı üst üste
+  binmez; site çapındaki tek-çağrı kilidi ve süre sınırı aynen geçerli.
+  Aynı turda `answer` çağrılırsa "önce taslak" hatasıyla geri döner.
+- Taslak, yanıtın altındaki öneri kartına `ws_ai_changes` satırı olarak
+  gider: `record_type 'scheduled'`, `action 'draft'`, taslak
+  `snapshot`'ta (`ws_scheduled_draft_ai_store()`). `mcp_call` gibi
+  `ws_change_types()`'ta değildir; uygulanmaz
+  (`ws_change_apply()` "formdan kaydedilir" der, API'deki
+  `workspace_changes_apply` de). Kart `ws_scheduled_draft_change_entry()`
+  ile çizilir: isteyen adı, adımları (`ws_scheduled_preview()` metni),
+  açık kalanı ve "Formda aç" düğmesini görür; öbürleri yalnız bir
+  taslağın beklediğini görür, çünkü taslak isteyenin okuduğu başka bir
+  kanalın adını taşıyabilir. "Kenara ayır" her öneride olduğu gibi.
+- "Formda aç" formu #360'ın `preset` yoluyla (cümle kutusu, notlar) açar;
+  kayıt her zamanki `ws_scheduled_save()`'den geçer. Kayıtta
+  `draft_change_id` gelirse `ws_scheduled_draft_saved()` kartı
+  "kaydedildi" yapar: `record_id` kaydedilen işlem, kanaldaki işlem
+  kartının mesajı snapshot'ta (`decision_message_id` boş kalır; karar
+  değildir). Kart "X kaydetti · saat · Programlanmış işleme git" der.
+- Yalnız taslak öneren yanıt boşsa ya da "ayarladım" diyorsa metin
+  "Taslağını aşağıya hazırladım. Formda açıp kaydedene kadar hiçbir şey
+  programlanmaz." olur (`ws_ai_proposed_line()`); taslak varken "görev
+  iste" ve "değiştirdim deme" geri göndermeleri çalışmaz.
+- API: öneri listesinde taslak `record.type = scheduled`, alanlar kartın
+  adımlarıdır (yalnız isteyene), `can_apply` her zaman false.
+
+Gizlilik #360'taki gibi: kanal adları taslak çağrısına yalnız
+`ws_ai_channel_allowed()` doğruysa gider; AI'a kapalı özel kanal hiçbir
+çağrıda geçmez. Şema değişikliği yok. Yeni metinler `tr.json`'da
+(8 anahtar).
+
+**Bilerek yapılmayan.** Yeni olay türü eklenmedi. Taslak kendiliğinden
+kaydedilmez. Not, görev ve MCP takma adı isteklerinde araç sunulmaz (kartın
+duracağı kanal yok). Kartta şablon seçilip form değiştirilirse kart
+bağlantısı düşer; cümle kutusundan yeniden doldurmak bağlantıyı korur.
+
+**Doğrulama.** `tests/workspace_scheduled_draft_test.php`'ye üç test
+(bekleyen cümle ve sınırlar, aracın yalnız kanalda sunulması, yanıt
+metni). Sandbox'ta yerel sahte model ile: kanalda `@ai her pazartesi
+09:00'da herkese geciken görevlerini e-postayla gönder` → araç sunuldu,
+aynı turdaki `answer` geri döndü, taslak ayrı adımda yapıldı, kart
+"Ne zaman: her hafta Pazartesi 09:00 · Yap: geciken görevler e-postası ·
+Sonraki çalışmalar" gösterdi; ikinci kullanıcı adımları ve adı görmedi;
+`ws_change_apply` reddetti. Playwright: "Formda aç" formu dolu açtı (cümle
+kutusu ve notla), "Programla" kaydetti, kart "admin kaydetti · Programlanmış
+işleme git" oldu; Pinegrap AI kapalıyken kart formu kutusuz açtı, konsolda
+hata yok. AI'a kapalı özel kanal (`yonetim`) hiçbir çağrıda geçmedi, AI'a
+açık özel kanal yalnız taslak çağrısında geçti.
+
+---
+
 ## 2026.4.10 — Uzak ajan: konuşma sürüyor, yanıt takma adın kendi adıyla görünüyor (2026-10-14)
 
 **Neden.** Uzak ajanın beşinci ve son dilimi (`docs/_plan_tersine_oauth.md` →
@@ -224,7 +296,8 @@ isteği forma dökmek, formu tanımayan için zordu.
 
 **Bilerek yapılmayan.** Kanalda `@ai` ile yazılan istekten taslak kurma
 (araştırma notunun örneğindeki yol) bu değişikliğe girmedi; giriş noktası
-formun kendisi. Kayıt koşulu, kayıt değişikliği ve başka bir işlemi
+formun kendisi. (Sonraki değişiklikte eklendi: yukarıda, "Kanalda @ai
+programlanmış işlemin taslağını hazırlıyor".) Kayıt koşulu, kayıt değişikliği ve başka bir işlemi
 başlatma (`trigger` eylemi) elle seçilir. İstek sayısına ayrı bir sınır
 konmadı: eylem yalnız personele açık, Pinegrap AI'ın kendi bekletmesi
 (`hold_until`) geçerli.

@@ -1317,6 +1317,17 @@ function ws_ai_step($row)
         return 'held';
     }
 
+    // A scheduled action the model asked for (propose_scheduled_action) is
+    // drafted in a call of its own (scheduled_draft.php) before the
+    // conversation goes on; with no turn left for it, it is left out.
+    if (!empty($state['scheduled_todo'])) {
+        if (($steps < WS_AI_MAX_STEPS - 1) && function_exists('ws_scheduled_draft_ai_step')) {
+            return ws_scheduled_draft_ai_step($row, $state, $steps);
+        }
+
+        unset($state['scheduled_todo']);
+    }
+
     // The last turn is an answer in words, with no tool to call.
     if ($steps >= WS_AI_MAX_STEPS - 1) {
         return ws_ai_final($row, $state, $model);
@@ -1466,6 +1477,13 @@ function ws_ai_step($row)
                 continue;
             }
 
+            // A scheduled action asked for in the same turn is drafted
+            // first: the answer would come before its draft.
+            if (!empty($state['scheduled_todo']) && ($steps < WS_AI_MAX_STEPS - 2)) {
+                $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => 'The scheduled action is drafted first. Call answer again once you are told how it came out.'));
+                continue;
+            }
+
             return ws_ai_finish_answer($row, $state, $said, $steps, '', $call['id']);
         }
 
@@ -1547,7 +1565,7 @@ function ws_ai_response_problem($response)
  */
 function ws_ai_final($row, $state, $model)
 {
-    $proposed = !empty($state['proposals']['tasks']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['pages']);
+    $proposed = !empty($state['proposals']['tasks']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['pages']) || !empty($state['proposals']['scheduled']);
     $messages = $state['messages'];
 
     $messages[] = array('role' => 'user', 'content' => 'Write your final answer to the request now, as plain text in the language of the request, without calling any tool.'
@@ -1575,8 +1593,8 @@ function ws_ai_final($row, $state, $model)
 
     $text = ws_ai_strip_text_calls(ws_ai_text_answer(ws_ai_clean((string) ($response['json']['choices'][0]['message']['content'] ?? ''))));
 
-    if (($text === '') && !empty($state['proposals']) && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']))) {
-        $text = lang('I propose it below. Nothing is changed until you press Apply under it.');
+    if (($text === '') && !empty($state['proposals']) && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['scheduled']))) {
+        $text = ws_ai_proposed_line($state);
     }
 
     if ($text === '') {
@@ -1624,8 +1642,8 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         $text = pg_design_ai_channel_words($text, !empty($state['proposals']['pages']));
     }
 
-    if (($text === '') && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['mcp_calls']))) {
-        $text = lang('I propose it below. Nothing is changed until you press Apply under it.');
+    if (($text === '') && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['mcp_calls']) || !empty($state['proposals']['scheduled']))) {
+        $text = ws_ai_proposed_line($state);
     }
 
     $looks = (!empty($state['proposals']['pages']) && empty($state['css_nudged']) && ($steps < WS_AI_MAX_STEPS - 2) && ws_design_ai())
@@ -1652,11 +1670,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         // utility class outweighs: the page would not look as proposed.
         $result = array('ok' => false, 'error' => 'The page would not look as you mean yet. ' . implode(' ', $looks) . ' Fix it with the page tools, then call answer again with new words on what the proposal now does.');
         $state['css_nudged'] = 1;
-    } elseif (empty($state['proposals']['tasks']) && empty($state['task_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['tasks']) && empty($state['proposals']['scheduled']) && empty($state['task_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_asks_for_task($state) && ($steps < WS_AI_MAX_STEPS - 2)) {
         $result = array('ok' => false, 'error' => 'The request asks for a task: call propose_task for it first, then call answer again.');
         $state['task_nudged'] = 1;
-    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_claims_done($text) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // An answer that says a record was changed, with no change
         // proposed: nothing was changed, and the words must not say so.
@@ -1692,17 +1710,48 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
  */
 function ws_ai_proposed_words($text, $state)
 {
-    $proposed = !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['pages']);
+    $proposed = !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['pages']) || !empty($state['proposals']['scheduled']);
 
     if (!$proposed || !ws_ai_claims_done($text)) {
         return $text;
     }
 
     if (mb_strlen(trim((string) $text)) <= 240) {
-        return lang('I propose it below. Nothing is changed until you press Apply under it.');
+        return ws_ai_proposed_line($state);
     }
 
-    return rtrim((string) $text) . "\n\n" . lang('Nothing is changed until you press Apply under the proposal.');
+    return rtrim((string) $text) . "\n\n" . (ws_ai_only_drafts($state)
+        ? lang('Nothing is scheduled until you open the draft in the form and save it.')
+        : lang('Nothing is changed until you press Apply under the proposal.'));
+}
+
+/**
+ * Is all an answer proposes a scheduled action drafted from the request
+ * (scheduled_draft.php)? That is saved from its form, not applied.
+ *
+ * @param array $state
+ * @return bool
+ */
+function ws_ai_only_drafts($state)
+{
+    $proposals = (array) ($state['proposals'] ?? array());
+
+    return !empty($proposals['scheduled'])
+        && empty($proposals['tasks']) && empty($proposals['changes']) && empty($proposals['pages']) && empty($proposals['mcp_calls']);
+}
+
+/**
+ * The words of an answer that only proposes: they stand in for an answer
+ * with none, and for one that says it did what it only proposed.
+ *
+ * @param array $state
+ * @return string
+ */
+function ws_ai_proposed_line($state)
+{
+    return ws_ai_only_drafts($state)
+        ? lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.')
+        : lang('I propose it below. Nothing is changed until you press Apply under it.');
 }
 
 /**
@@ -1738,7 +1787,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
 }
 
 /**
@@ -2172,7 +2221,8 @@ function ws_ai_drafts_input($tasks)
  * @param array  $row
  * @param string $text
  * @param array  $proposals tasks (rows as the model sent them), changes
- *                          (ws_ai_propose_change() entries)
+ *                          (ws_ai_propose_change() entries), scheduled
+ *                          (drafts, ws_scheduled_draft_ai_step())
  * @return array ok, error (what the model is told to fix)
  */
 function ws_ai_deliver($row, $text, $proposals)
@@ -2335,6 +2385,12 @@ function ws_ai_deliver($row, $text, $proposals)
     // Calls of an MCP server's tools that write, waiting for approval.
     if (!empty($proposals['mcp_calls']) && function_exists('ws_mcp_calls_propose')) {
         ws_mcp_calls_propose($row, (int) $sent['message_id'], $proposals['mcp_calls']);
+    }
+
+    // Scheduled actions drafted from the request, waiting to be opened in
+    // their form and saved (scheduled_draft.php).
+    if (!empty($proposals['scheduled']) && function_exists('ws_scheduled_draft_ai_store')) {
+        ws_scheduled_draft_ai_store($row, (int) $sent['message_id'], $proposals['scheduled']);
     }
 
     if (!empty($pages) && ws_design_ai()) {
@@ -3002,6 +3058,10 @@ function ws_ai_system_prompt($row, $asker, $readable)
         }
         $lines[] = '- Call add_task_note only when the request asks for a note on a task.';
 
+        if (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker)) {
+            $lines[] = '- When the request asks for something to be done later on its own, again and again, or whenever something happens ("every Monday at 9...", "when a task moves to Waiting...", "remind the team tomorrow at 10"), it is a scheduled action, not a task: call propose_scheduled_action with the request as one complete sentence, once for each action (at most ' . WS_SCHEDULED_DRAFT_PER_ANSWER . '). It is drafted for you and waits under your answer; ' . $name . ' opens it in its form and saves it. Never write that it is scheduled or set up.';
+        }
+
         if (ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
             $lines[] = '- A page of a visual design (a <#page:ID> tag) can be changed: read it with read_page, then change it with the page tools (read_page tells how). What you do is a proposal the person who asked previews and applies.';
         }
@@ -3325,6 +3385,14 @@ function ws_ai_tools($row)
             'due_date'    => array('type' => 'string', 'description' => 'YYYY-MM-DD'),
             'priority'    => array('type' => 'string', 'enum' => array('low', 'normal', 'high', 'urgent')),
         ), array('title'));
+
+        // A scheduled action, drafted from a sentence the way its form is
+        // (scheduled_draft.php), waits under the answer to be saved.
+        if (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker)) {
+            $tools[] = $tool('propose_scheduled_action', 'Draft a scheduled action, only when the request asks for something to be done later on its own, again and again, or whenever something happens. It is drafted from the sentence and waits under your answer; the person who asked opens it in its form and saves it.', array(
+                'sentence' => array('type' => 'string', 'description' => 'What the scheduled action does, as one complete sentence in the language of the request: when it runs (a time and how often, or what happens) and what it does, with the channel, the people and the e-mail addresses the request names.'),
+            ), array('sentence'));
+        }
     }
 
     // On a task as well: what it proposes waits on the task.
@@ -3529,6 +3597,11 @@ function ws_ai_tool_run($row, &$state, $name, $args)
 
         case 'propose_bulk_change':
             return ($note || $task || !function_exists('ws_ai_propose_bulk')) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_bulk($row, $state, $args);
+
+        case 'propose_scheduled_action':
+            return (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker))
+                ? ws_scheduled_draft_ai_propose($row, $state, $args)
+                : array('error' => 'A scheduled action cannot be drafted for this request.');
 
         case 'add_task_note':
             if ($note || $task) {
