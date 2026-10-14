@@ -844,9 +844,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
             case 'photo gallery':
 
-                // if a folder id is in the query string, the add it to the query string
-                if (isset($_GET['folder_id']) == TRUE) {
-                    $query_string = '?folder_id=' . $_GET['folder_id'];
+                // if a folder id is in the query string, the add it to the query string.
+                // Only a whole number is a folder id: anything else (?folder_id[]=x,
+                // ?folder_id=abc, an empty value) is ignored, so the address stays plain.
+                if (
+                    isset($_GET['folder_id'])
+                    && is_string($_GET['folder_id'])
+                    && (filter_var($_GET['folder_id'], FILTER_VALIDATE_INT, array('options' => array('min_range' => 1))) !== false)
+                ) {
+                    $query_string = '?folder_id=' . (int) $_GET['folder_id'];
                 }
 
                 break;
@@ -854,11 +860,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             case 'search results':
 
                 // If there is a specific query for this page, then use it.
-                if (($_GET[$page_id . '_query'] ?? '') != '') {
+                // A query sent as an array (?query[]=x) is ignored, as on the
+                // search results themselves: trim() refused it with an error page.
+                if (isset($_GET[$page_id . '_query']) && is_string($_GET[$page_id . '_query']) && $_GET[$page_id . '_query'] != '') {
                     $query_string = '?' . $page_id . '_query=' . urlencode(trim($_GET[$page_id . '_query']));
 
                 // Otherwise if there is a general query, then use it.
-                } else if (($_GET['query'] ?? '') != '') {
+                } else if (isset($_GET['query']) && is_string($_GET['query']) && $_GET['query'] != '') {
                     $query_string = '?query=' . urlencode(trim($_GET['query']));
                 }
 
