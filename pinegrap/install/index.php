@@ -1186,8 +1186,13 @@ function get_install_changelog_sections() {
 
 	$contents = str_replace("\r\n", "\n", $contents);
 
-	// version headings are a version number on its own line followed by a line of equal signs
-	$matched = preg_match_all('/^[ \t]*([0-9][0-9.]*)[ \t]*\n[ \t]*={5,}[ \t]*$/m', $contents, $matches, PREG_OFFSET_CAPTURE);
+	// A version heading is a version number on its own line with a rule of equal signs directly above
+	// it (the current layout) or directly below it (older files).  Versions released together share
+	// one heading ("2026.2 / 2026.2.1").  The branch reset keeps the version in group 1 for both
+	// shapes.  Same pattern as pg_changelog_heading_pattern(), which this screen cannot include.
+	$version_pattern = '[0-9][0-9.]*(?:[ \t]*\/[ \t]*[0-9][0-9.]*)*';
+
+	$matched = preg_match_all('/^(?|[ \t]*={5,}[ \t]*\n[ \t]*(' . $version_pattern . ')[ \t]*|[ \t]*(' . $version_pattern . ')[ \t]*\n[ \t]*={5,}[ \t]*)$/m', $contents, $matches, PREG_OFFSET_CAPTURE);
 
 	if (($matched == false) || (count($matches[0]) == 0)) {
 
@@ -1197,7 +1202,7 @@ function get_install_changelog_sections() {
 
 	foreach ($matches[0] as $index => $heading) {
 
-		$version = $matches[1][$index][0];
+		$version = preg_replace('/[ \t]*\/[ \t]*/', ' / ', $matches[1][$index][0]);
 
 		// preg gives us byte offsets, so we slice with the byte functions here
 		$section_start = $heading[1] + strlen($heading[0]);
@@ -1253,8 +1258,20 @@ function get_install_changelog_sections() {
 
 			}
 
-			// the rule under a heading
-			if (preg_match('/^[ \t]{0,4}-{5,}[ \t]*$/', $line)) {
+			// The rule under a heading, the rule that opens the next version and any other divider.
+			// It ends the entry above it, so the note under the closing rule at the end of the file
+			// never becomes part of the oldest entry.
+			if (preg_match('/^[ \t]{0,4}(?:-{5,}|={5,})[ \t]*$/', $line)) {
+
+				if ($entry_tag != '') {
+
+					$entries[] = array('tag' => $entry_tag, 'text' => trim(preg_replace('/\s+/', ' ', $entry_text)), 'group' => $entry_group);
+
+					$entry_tag = '';
+
+					$entry_text = '';
+
+				}
 
 				continue;
 
@@ -1346,7 +1363,7 @@ function get_install_schema_note($version_number) {
 
 		$tag = mb_strtoupper($entry['tag']);
 
-		if (($tag == 'ŞEMA') || ($tag == 'SEMA') || ($tag == 'SCHEMA')) {
+		if (($tag == 'ŞEMA') || ($tag == 'SEMA') || ($tag == 'SCHEMA') || ($tag == 'SCHEME')) {
 
 			return get_install_short_text($entry['text'], 150);
 
@@ -1383,7 +1400,7 @@ function get_install_changelog_tag_class($tag) {
 
 	}
 
-	if (($tag == 'ŞEMA') || ($tag == 'SCHEMA')) {
+	if (($tag == 'ŞEMA') || ($tag == 'SCHEMA') || ($tag == 'SCHEME')) {
 
 		return 'text-bg-warning';
 

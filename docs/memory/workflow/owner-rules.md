@@ -19,8 +19,8 @@ description: Standing rules from the owner (Erdal) on docs, pages, plans, templa
 - No (owner decision 2026-10-14). The API endpoints built for it stay; docs never say "mobile app"; do not re-ask the mobile questions. Restart point: `docs/_plan_mobil_api_claude_kanali.md`.
 
 ## How are changes logged?
-- Under the open version in `docs/degisiklikler.md` (detail and reasons; append only, never read it) and `pinegrap/changelog.txt` (short operator summary).
-- In the open version the changelog describes the final state: a fix to something added in the same version updates its [YENİ] item instead of adding [DÜZELTME]; internal addresses added and removed during development are not mentioned.
+- Under the open version in `docs/degisiklikler.md` (detail and reasons; append only, never read it).
+- `pinegrap/changelog.txt` is English and carries only plan-driven major features as one-line [NEW] entries; all other changes share the version's single [FIX] / [SECURITY] / [SCHEME] lines (owner rule 2026-10-14). Format: docs/memory/release/upgrade-changelog-rules.md
 
 ## How big is a task?
 - One task = one small PR. Many small threads, not one long one.

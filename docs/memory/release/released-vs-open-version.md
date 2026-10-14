@@ -9,7 +9,7 @@ description: Released versions are closed, unreleased ones open: where the statu
 ## What is closed and what is open?
 - The criterion is release, not having run on a dev install.
 - A number that shipped to servers is closed: do not touch its `$versions` row, its `changelog.txt` heading, or the meaning of the DB change its `upgrade_to_*` function brings.
-- An unreleased number is open: add the new schema step as a sub-step of that version's entry (e.g. `upgrade_2026_4_4_<topic>()`); the changelog section describes the final state; dev-internal fixes are not written as [DÜZELTME].
+- An unreleased number is open: add the new schema step as a sub-step of that version's entry (e.g. `upgrade_2026_4_4_<topic>()`); the changelog section describes the final state (docs/memory/release/upgrade-changelog-rules.md).
 - Never open a new number while an unreleased version exists. Reason: the old rule ("a number that ran once on dev is also closed") piled up eight numbers after 2026.4.3; on 2026-08-28 they were collapsed into one 2026.4.4 and the rule changed.
 
 ## What does the upgrade loop compare?

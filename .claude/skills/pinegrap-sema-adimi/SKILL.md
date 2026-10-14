@@ -57,10 +57,12 @@ alt adımlar `upgrade_2026_4_9_<konu>()` gibi (2026.4.4'te
    Atlanırsa: aynı DB'ye yeniden kurulumda eski tablo kalır, idempotent adım
    "zaten var" deyip geçer, site eski şemayla **sessizce** açılır.
 
-5. **`pinegrap/changelog.txt`** — operatör dilinde madde yaz: `[YENİ]` /
-   `[ŞEMA]` / `[GÜVENLİK]` / `[DÜZELTME]` / `[HIZ]`. Şema değişikliğinde `[ŞEMA]`
-   zorunlu. Yayınlanmamış sürümdeki düzeltmeler `[DÜZELTME]` olarak YAZILMAZ.
-   Hata düzeltmesinde **belirtiyi** de yaz.
+5. **`pinegrap/changelog.txt`** — İngilizce. Açık sürümde tek bir `[SCHEME]`
+   satırı olmalı: yoksa kısa bir cümleyle ekle, varsa değişen alanı o cümleye
+   ekle; ikinci satır açma. Yalnız plan ile gelen büyük özellik kendi
+   `[NEW]` satırını alır; düzeltmeler sürümün tek `[FIX]` satırında kalır.
+   Biçim: `docs/memory/release/upgrade-changelog-rules.md`. Belirti ve
+   ayrıntı yalnız `docs/degisiklikler.md`'ye.
 
 6. **`docs/degisiklikler.md`** — kararın gerekçesini, kök sebebi ve ödünü yaz.
    Yeni madde başlık bloğunun (`---`) hemen altına, önceki en yeni maddenin
