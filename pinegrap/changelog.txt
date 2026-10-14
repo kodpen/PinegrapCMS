@@ -499,6 +499,36 @@
          ekleyebiliyordu. Artık yalnız listenin
          sütunları ve artan/azalan kabul ediliyor.
 
+  REKLAM, REHBER GRUBU VE E-TİCARET LİSTELERİ
+  --------------------------------------------------------
+
+  [YENİ] Reklamlar, Rehber Grupları, Komisyonlar,
+         Yinelenen Komisyon Profilleri, Hediye Kartları
+         ve Sipariş Raporları listeleri de aynı anda
+         birden çok sütuna göre sıralanıyor, örneğin
+         durum artan, aynı durumda tutar azalan. Başlığa
+         Shift ile tıklamak sonraki düzeyi ekliyor;
+         telefonda ya da klavyeyle araç çubuğundaki
+         "Sıralama" menüsü kullanılıyor. Seçilen sıralama
+         panel dili değişince kaybolmuyor; reklam bölgesi
+         seçimi ve komisyon tarih aralığı sıralama
+         değişince korunuyor, hediye kartlarının dışa
+         aktarımı listedeki sırayla geliyor.
+
+  [DÜZELTME] Komisyonlar ve Yinelenen Komisyon
+         Profilleri listelerinde Sipariş başlığına
+         tıklamak listeyi sıralamıyordu; artık sipariş
+         numarasına göre sıralıyor.
+
+  [GÜVENLİK] Bu altı listede adres çubuğuna yazılan
+         sıralama yönü veritabanı sorgusuna olduğu gibi
+         giriyordu; listeye girebilen oturum açmış bir
+         kullanıcı (reklam, rehber, e-ticaret ya da
+         e-ticaret rapor yetkisi olan Kullanıcı rolü
+         dahil) sorguya kendi komutunu ekleyebiliyordu.
+         Artık yalnız listenin sütunları ve artan/azalan
+         kabul ediliyor.
+
   E-TİCARET: AYARLAR
   --------------------------------------------------------
 

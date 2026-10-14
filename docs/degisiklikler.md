@@ -84,6 +84,105 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Reklam, komisyon, rehber grubu, hediye kartı, sipariş raporu ve yinelenen komisyon profili listeleri ortak tablo yardımcısında: çoklu sıralama, sıralama yönündeki SQL enjeksiyonu kapandı (2026-10-14)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331 ürünler, #335 Rehber, #336 Sayfalar, #338 Kullanıcılar,
+#340 e-ticaret ayar listeleri, #341 e-posta kampanyaları, #344 takvim ve
+menü listeleri, #346 ülke ve nakliye listeleri). #346'nın "Sonraki gruplar"
+dökümünde ilk sıraya konan altı liste bu PR'da: Tüm Reklamlarım
+(`view_ads.php`), Tüm Komisyonlar (`view_commissions.php`), Tüm Rehber
+Grupları (`view_contact_groups.php`), Tüm Hediye Kartları
+(`view_gift_cards.php`), Tüm Sipariş Raporları (`view_order_reports.php`)
+ve Tüm Yinelenen Komisyon Profilleri
+(`view_recurring_commission_profiles.php`). Altısı da istekteki her değeri
+oturuma kopyalayan bir döngüyle sıralamayı çevrilmiş başlık adıyla tutup
+kendi `switch`'iyle tek sütunluk ORDER BY kuruyordu.
+
+Altısında da yön (`order`) ORDER BY'a yalnız `escape()` ile yazılıyordu;
+tırnak içermeyen bir değer sorguya olduğu gibi giriyordu (#341 ve #344'teki
+açığın aynısı). Sandbox'ta eski kodla `?order=asc, (SELECT SLEEP(0.3))`
+satır başına 0,3 saniye bekletti: 5 reklamda 1,5 s, ay içindeki 6
+komisyonda 1,8 s, 42 rehber grubunda 12,6 s, 4 hediye kartında 1,2 s, 5
+sipariş raporunda 1,5 s, 4 yinelenen profilde 1,2 s. Değer oturumda kaldığı
+için listenin sonraki her açılışında da koştu; hediye kartlarının CSV dışa
+aktarımı da aynı değeri kullanıyordu. Rolü Kullanıcı olanlar dahil, ilgili
+yetkisi olan oturum açmış her kullanıcı girebiliyor: Reklamlar'a en az bir
+reklam bölgesini düzenleyebilen, Rehber Grupları'na rehber yetkisi ve en az
+bir grubu olan, Komisyonlar, Hediye Kartları ve Yinelenen Profiller'e
+e-ticaret yetkisi olan, Sipariş Raporları'na e-ticaret rapor yetkisi olan.
+2026.4.9'da da var.
+
+**Ne değişti.** Her listenin sıralanabilen sütunları kodla tanımlandı:
+Reklamlar `name`, `ad_region`, `display_type`, `created`, `last_modified`;
+Komisyonlar `affiliate_name`, `affiliate_code`, `reference_code`, `status`,
+`amount`, `frequency`, `order_number`, `product`, `created`,
+`last_modified`; Rehber Grupları `name`, `subscription`, `type`,
+`description`, `created`, `last_modified`; Hediye Kartları `code`,
+`balance`, `original_amount`, `expiration_date`, `notes`, `from`,
+`recipient`, `delivery_date`, `created`, `last_modified`; Sipariş Raporları
+`name`, `created`, `last_modified`; Yinelenen Profiller `affiliate_name`,
+`affiliate_code`, `enabled`, `amount`, `start_date`, `frequency`,
+`commissions`, `order_number`, `product`, `created`, `last_modified`.
+Altısında da varsayılan eskisi gibi son değişiklik azalan. Sıra
+`pg_list_state('<liste>', …)` ile okunur, ORDER BY `pg_list_order_by()`
+ile yalnız ekranın kod → SQL eşlemesinden yazılır (sütunlar eskisiyle
+aynı). Başlıklar `get_column_heading()`'e düzey listesi verir; Shift+tık
+ve düzey numarası ürünlerdeki gibi çalışır. Araç çubuğunun sağına
+`pg_list_sort_menu()` eklendi (`pg-toolbar-grow` boşluğuyla). Araç çubuğu
+olmayan Komisyonlar ve Yinelenen Profiller'e yalnız menüyü taşıyan bir
+`#button_bar` eklendi; Rehber Grupları'nda araç çubuğu artık rolü
+Kullanıcı olana da çıkıyor (Oluştur düğmesi eskisi gibi yalnız Yönetici ve
+üstüne). Hediye kartlarının CSV dışa aktarımı listedeki sırayla geliyor.
+
+İstekteki her değeri oturuma kopyalayan döngü kaldırıldı. Döngünün
+sıralama dışında taşıdığı değerler artık adıyla oturuma yazılıyor:
+Reklamlar'da reklam bölgesi seçimi (`ad_region_id`), Komisyonlar'da
+gelişmiş filtrelerin tarih aralığı (`start_*`, `stop_*`) ve `status`
+(`view_verified_shipping_addresses.php`'deki #340 kalıbı). Rehber
+Grupları, Hediye Kartları, Sipariş Raporları ve Yinelenen Profiller'de
+döngüyü okuyan başka bir şey yoktu. Ortak yardımcıya, `backend.src.js`'e
+ve `tr.json`'a dokunulmadı; kullanılan metinler zaten vardı.
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor. Eski
+`sort=<başlık>&order=desc` bağlantıları `pg_list_sort_parse()` ile tek
+düzey olarak okunur. Komisyonlar ve Yinelenen Profiller'de Sipariş
+başlığı eskiden bir bağlantıydı ama switch'te karşılığı olmadığı için
+tıklayınca listeyi varsayılana döndürüyordu; artık sipariş numarasına
+(`orders.order_number`) göre sıralıyor. Sütunlar, Oluştur ve Dışa Aktar
+düğmeleri, reklam bölgesi seçimi, komisyon tarih aralığı ve özet
+kutuları, sayfalama, satır düğmeleri, tarayıcıdaki arama ve sayfa başına
+kayıt seçimi değişmedi. Satır içi hızlı güncelleme bu PR'ın kapsamında
+değil. Şema değişikliği yok.
+
+Fark edilen, dokunulmayan: Komisyonlar'da gelişmiş filtreler kapalıyken
+onları açan bir düğme çıkmıyor (yalnız `?advanced_filters=true` ile
+açılıyor) ve durum filtresi (`$sql_status`) hiç uygulanmıyor; Yinelenen
+Profiller sayfalama bağlantılarını hesaplıyor ama göstermiyor ve sorguda
+LIMIT yok (hepsi listeleniyor). Üçü de eskiden beri böyle.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 5 reklam, 22 komisyon, 42
+rehber grubu, 4 hediye kartı, 5 sipariş raporu, 4 yinelenen profil).**
+Altı listede her sütun iki yönde ve sütunların her ikili birleşimi (ilk
+azalan, ikinci artan), aynı ORDER BY'lı SQL'in sıralama değerleri
+dizisini verdi; varsayılan son değişiklik azalan; parametresiz yeniden
+açılışta iki düzeyli sıra korundu; yönsüz kod artan, varsayılan sütun
+azalan başladı; bozuk değer (`id;drop table x:desc`) varsayılana düştü;
+Türkçe başlıklı eski bağlantı (ör. `sort=Adı&order=desc`) sıraladı;
+reklam bölgesi seçimi ve komisyon tarih aralığı sıralama değişince
+korundu (593 denetim, hepsi geçti; doğrulayıcı ters beklentiyle altı
+listede de hata verdi). Yeni kodla `order`/`sort` içine konan `SLEEP` hiç
+koşmadı, sonraki açılış da beklemedi. Hediye kartı CSV'si listedeki
+iki düzeyli sırayla geldi. Tarayıcıda 1400 pikselde başlığa tık tek
+sütuna, Shift+tık aynı sekmede ikinci düzeye çevirdi; menü iki düzeyi ve
+rozeti gösterdi; 390 pikselde menü açıldı, yatay kaydırma yok; konsolda
+yalnız sandbox'ın erişemediği DataTables çeviri dosyası (dokunulmayan
+listelerde de aynı). Sunucu günlüğünde bu altı dosyadan uyarı yok.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek kayıtlar, rolü Kullanıcı olan
+yetkili hesaplar ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Ülke, eyalet/il, nakliye bölgesi, nakliye yöntemi ve varış tarihi listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-14)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına

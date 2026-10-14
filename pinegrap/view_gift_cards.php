@@ -25,16 +25,6 @@ $liveform = new liveform('view_gift_cards');
 
 $current_date = date('Y-m-d');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_gift_cards'][$key] = trim($value);
-    }
-}
-
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
@@ -53,64 +43,41 @@ if (
 
 
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_gift_cards']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_gift_cards']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'code'            => lang('Code'),
+    'balance'         => lang('Balance'),
+    'original_amount' => lang('Original Amt'),
+    'expiration_date' => lang('Expiration Date'),
+    'notes'           => lang('Notes'),
+    'from'            => lang('From'),
+    'recipient'       => lang('Recipient'),
+    'delivery_date'   => lang('Delivery Date'),
+    'created'         => lang('Created'),
+    'last_modified'   => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? '')) {
-    case lang('Code'):
-        $sort_column = 'gift_cards.code';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Balance'):
-        $sort_column = 'gift_cards.balance';
-        break;
-        
-    case lang('Original Amt'):
-        $sort_column = 'gift_cards.amount';
-        break;
+$list_state = pg_list_state('view_gift_cards', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Expiration Date'):
-        $sort_column = 'gift_cards.expiration_date';
-        break;
-
-    case lang('Notes'):
-        $sort_column = 'gift_cards.notes';
-        break;
-
-    case lang('From'):
-        $sort_column = 'gift_cards.from_name';
-        break;
-        
-    case lang('Recipient'):
-        $sort_column = 'gift_cards.recipient_email_address';
-        break;
-
-    case lang('Delivery Date'):
-        $sort_column = 'gift_cards.delivery_date';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'gift_cards.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'gift_cards.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'gift_cards.last_modified_timestamp';
-        $_SESSION['software']['ecommerce']['view_gift_cards']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_gift_cards']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_gift_cards']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_gift_cards']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'code'            => 'gift_cards.code',
+    'balance'         => 'gift_cards.balance',
+    'original_amount' => 'gift_cards.amount',
+    'expiration_date' => 'gift_cards.expiration_date',
+    'notes'           => 'gift_cards.notes',
+    'from'            => 'gift_cards.from_name',
+    'recipient'       => 'gift_cards.recipient_email_address',
+    'delivery_date'   => 'gift_cards.delivery_date',
+    'created'         => 'gift_cards.created_timestamp',
+    'last_modified'   => 'gift_cards.last_modified_timestamp',
+));
 
 $where = "";
 
@@ -159,7 +126,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
         LEFT JOIN user AS created_user ON gift_cards.created_user_id = created_user.user_id
         LEFT JOIN user AS last_modified_user ON gift_cards.last_modified_user_id = last_modified_user.user_id
         $where
-        ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')));
+        ORDER BY $order_by");
 
     // If the date format is month and then day, then use that format.
     if (DATE_FORMAT == 'month_day') {
@@ -244,7 +211,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
         LEFT JOIN user AS created_user ON gift_cards.created_user_id = created_user.user_id
         LEFT JOIN user AS last_modified_user ON gift_cards.last_modified_user_id = last_modified_user.user_id
         $where
-        ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? ''));
+        ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $gift_cards = mysqli_fetch_items($result);
 
@@ -396,6 +363,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                                     <button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-link link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
                                 </div>
                             </form>
+                            <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_gift_cards.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
                 </div>
@@ -405,16 +374,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Code'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Balance'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Original Amt'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Expiration Date'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Notes'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('From'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Recipient'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Delivery Date'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Balance'), $sort_levels, '', '', 'balance') . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Original Amt'), $sort_levels, '', '', 'original_amount') . '</th>
+                                    <th>' . get_column_heading(lang('Expiration Date'), $sort_levels, '', '', 'expiration_date') . '</th>
+                                    <th>' . get_column_heading(lang('Notes'), $sort_levels, '', '', 'notes') . '</th>
+                                    <th>' . get_column_heading(lang('From'), $sort_levels, '', '', 'from') . '</th>
+                                    <th>' . get_column_heading(lang('Recipient'), $sort_levels, '', '', 'recipient') . '</th>
+                                    <th>' . get_column_heading(lang('Delivery Date'), $sort_levels, '', '', 'delivery_date') . '</th>
+                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
