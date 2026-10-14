@@ -340,6 +340,23 @@ function ws_mcp_agent_compose($text, $parent_author = '', $parent_text = '')
 }
 
 /**
+ * A message without the alias it starts with: the alias is this site's name
+ * for the server, not the agent's, and "@alias question" would reach it as
+ * part of the question. A message that is the alias alone is kept.
+ *
+ * @param string $text
+ * @param string $alias
+ * @return string
+ */
+function ws_mcp_agent_unaddressed($text, $alias)
+{
+    $text = trim((string) $text);
+    $rest = trim((string) preg_replace('/^@' . preg_quote((string) $alias, '/') . '(?![\p{L}\p{N}_-])[\s,:;.!-]*/iu', '', $text));
+
+    return ($rest !== '') ? $rest : $text;
+}
+
+/**
  * A message as the agent reads it: tags as the names the asker sees, a tag
  * of something they may not see as hidden, cut to a length.
  *
@@ -472,14 +489,27 @@ function ws_mcp_agent_run($row, $timeout)
 
     $tool = ws_mcp_agent_tool($server);
 
-    // A reply: the agent reads the message it answers too.
+    // A reply: the agent reads the message it answers too. An answer of an
+    // agent is quoted under no name and without the line that says who
+    // answered: it is posted in the asker's name, but they did not write it.
     $parent = ((int) $message['parent_id'] > 0) ? ws_message((int) $message['parent_id']) : null;
-    $parent_ok = $parent && ((int) $parent['deleted_at'] === 0);
+    $parent_author = '';
+    $parent_text = '';
+
+    if ($parent && ((int) $parent['deleted_at'] === 0)) {
+        $parent_text = ws_mcp_agent_text($asker, (string) $parent['body'], WS_MCP_AGENT_CONTEXT_LIMIT);
+
+        if (db_value("SELECT id FROM ws_ai_requests WHERE reply_message_id = '" . (int) $parent['id'] . "' AND agent = 'mcp' LIMIT 1")) {
+            $parent_text = (string) preg_replace('/^[^\n]*\n?/', '', $parent_text, 1);
+        } else {
+            $parent_author = ws_mcp_agent_author($parent);
+        }
+    }
 
     $text = ws_mcp_agent_compose(
-        ws_mcp_agent_text($asker, (string) $message['body'], WS_MCP_AGENT_TEXT_LIMIT),
-        $parent_ok ? ws_mcp_agent_author($parent) : '',
-        $parent_ok ? ws_mcp_agent_text($asker, (string) $parent['body'], WS_MCP_AGENT_CONTEXT_LIMIT) : ''
+        ws_mcp_agent_unaddressed(ws_mcp_agent_text($asker, (string) $message['body'], WS_MCP_AGENT_TEXT_LIMIT), $server['alias']),
+        $parent_author,
+        $parent_text
     );
 
     $arguments = (string) json_encode((object) array($tool['argument'] => $text), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

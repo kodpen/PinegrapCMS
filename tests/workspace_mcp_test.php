@@ -537,6 +537,15 @@ function test_workspace_mcp_agent_message_with_the_one_it_answers()
 	pg_assert_same('And?', ws_mcp_agent_compose('And?', 'Ayşe', '  '), 'an empty message answered adds nothing');
 }
 
+function test_workspace_mcp_agent_message_without_the_alias_it_starts_with()
+{
+	pg_assert_same('Is order 1045 shipped?', ws_mcp_agent_unaddressed('@helpdesk Is order 1045 shipped?', 'helpdesk'));
+	pg_assert_same('is it shipped?', ws_mcp_agent_unaddressed(' @HelpDesk, is it shipped?', 'helpdesk'), 'any case, with the comma after it');
+	pg_assert_same('@helpdesk2 hello', ws_mcp_agent_unaddressed('@helpdesk2 hello', 'helpdesk'), 'a longer alias is another one');
+	pg_assert_same('Ask @helpdesk later', ws_mcp_agent_unaddressed('Ask @helpdesk later', 'helpdesk'), 'only at the start');
+	pg_assert_same('@helpdesk', ws_mcp_agent_unaddressed('@helpdesk', 'helpdesk'), 'the alias alone is kept');
+}
+
 function test_workspace_mcp_agent_answer_mentions_nobody()
 {
 	$body = ws_mcp_agent_answer_body('helpdesk', 'a`sk', "Ask <@user:12> in <#channel:3>.\n**Done.**");

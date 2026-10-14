@@ -125,7 +125,10 @@ ilk dilim, kanalda uçtan uca çalışan en küçük parçadır.
     mesajın altındaki satır nedenini söyler. Her çağrı `ws_mcp_calls`'a `via = 'agent'` ile.
   - Ajan yalnız mesajı ve cevapsa cevaplanan mesajı okur (Markdown alıntısı, yazanın adıyla;
     etiketler sorana görünen adlarına çevrilir, sitenin `<@user:N>` biçimi gitmez), kanalın
-    geri kalanını okumaz. Mesaj 4000, alıntı 2000 karakterle kesilir.
+    geri kalanını okumaz. Mesajın başındaki `@takmaad` atılır (takma ad sitenin adıdır, ajanın
+    değil; `ws_mcp_agent_unaddressed()`); ajanın kendi yanıtı adsız ve "yanıtladı" satırı
+    olmadan alıntılanır (soranın adıyla yazılmıştır ama soran yazmadı). Mesaj 4000, alıntı
+    2000 karakterle kesilir.
   - Zaman: ekrandan çağrı 45 sn, saatlik işte 90 sn; 5 dakikadır `running` kalan istek
     "zamanında yanıt vermedi", bir gün gönderilemeyen `cancelled` (`ws_mcp_agent_watchdog()`).
 - `includes/workspace/actions.php`: mesaj gönderiminde önce ajan, ajanın değilse Pinegrap AI;
@@ -153,7 +156,7 @@ tanıyor; genelleştirmesi dilim 5. Ajan kipindeki sunucuya görev devri ve gör
 (dilim 3).
 
 **Denendi.** Birim testi (`tests/workspace_mcp_test.php`: argüman seçimi, aracın kuralları,
-alıntı, yanıtın etiketleri). Sandbox'ta `192.0.2.2:8001`'de sahte bir ajan sunucusuyla
+alıntı, baştaki takma ad, yanıtın etiketleri). Sandbox'ta `192.0.2.2:8001`'de sahte bir ajan sunucusuyla
 (2026-07-28, `ask` aracı) uçtan uca: ayar kartında seçim (kuralsız seçim reddedildi), kanalda
 `@ajan` → yanıt mesajın altında kilitli, ajanın yanıtına cevap aynı ajana alıntıyla gitti,
 `isError` satırda göründü, araç kapatılınca kanal nedenini söyledi, Pinegrap AI sorulmadı;
