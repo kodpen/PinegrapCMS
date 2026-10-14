@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             go($database_engine_url);
         }
 
-    } elseif (!in_array($engine_action, array('check_all', 'visitor_cleanup', 'visitor_move'), true)) {
+    } elseif (!in_array($engine_action, array('check_all', 'visitor_cleanup', 'visitor_move', 'visitor_shrink'), true)) {
 
         $liveform->add_error(lang('Unknown action.'));
         go($database_engine_url);
@@ -247,6 +247,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $engine_text = lang('The visitors table is being moved to InnoDB. The general job carries the move on a few thousand records at a time; the Visitor records card shows how far it has come.');
             }
+            break;
+
+        case 'visitor_shrink':
+            // Asked for here, the rebuild runs now, without the size, the
+            // hour and the free disk the general job waits for on its own.
+            $visitor_shrink = pg_visitor_shrink_run(true);
+            $engine_ok = ($visitor_shrink['state'] === 'done');
+            $engine_text = ($visitor_shrink['text'] !== '') ? $visitor_shrink['text'] : lang('The visitors table was left as it is.');
             break;
 
         case 'check_all':
@@ -584,17 +592,58 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     }
 
     // Removed rows leave their room inside the table file, which keeps its
-    // size on disk. Said when that room is a large share of the file, with
-    // the button that gives it back.
-    if (($visitor_catalog['engine'] !== 'myisam') && ($visitor_catalog['free'] >= 134217728) && ($visitor_catalog['free'] >= ($visitor_catalog['bytes'] / 2))) {
-        $visitor_alert .= '
+    // size on disk. On InnoDB the general job rebuilds the table online once
+    // that room is a large share of the file (pg_visitor_shrink_run()); this
+    // says how the last rebuild ended, and when the next one comes or what it
+    // waits for.
+    $visitor_innodb = ($visitor_catalog['engine'] === 'innodb');
+    $visitor_shrink_reason = '';
+
+    if ($visitor_innodb) {
+
+        $visitor_shrink = pg_visitor_shrink_last();
+        $visitor_shrink_facts = pg_visitor_shrink_facts($visitor_catalog, $visitor_shrink, false);
+        $visitor_shrink['needed'] = $visitor_shrink_facts['needed'];
+        $visitor_shrink['quiet_hour'] = $visitor_shrink_facts['quiet_hour'];
+        $visitor_shrink_reason = pg_visitor_shrink_hold_reason($visitor_shrink_facts);
+
+        if ($visitor_shrink['state'] === 'failed') {
+
+            $visitor_alert .= '
+                    <div class="alert alert-warning d-flex gap-2 align-items-start">
+                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                        <div>' . h(pg_visitor_shrink_reason_text('failed', $visitor_shrink)) . '</div>
+                    </div>';
+
+        } elseif (($visitor_shrink['state'] === 'done') && ($visitor_shrink['finished_at'] > (time() - 30 * 86400))) {
+
+            $visitor_alert .= '
+                    <div class="alert alert-success d-flex gap-2 align-items-start">
+                        <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                        <div>' . h(lang(array(
+                            'string' => 'The visitors table was rebuilt on {var:1} and its file made smaller: {var:2} before, {var:3} now.',
+                            'vars' => array(
+                                get_absolute_time(array('timestamp' => $visitor_shrink['finished_at'], 'type' => 'date', 'format' => 'plain_text')),
+                                pg_innodb_size_label($visitor_shrink['file_before']),
+                                pg_innodb_size_label($visitor_shrink['file_after']),
+                            ),
+                        ))) . '</div>
+                    </div>';
+        }
+
+        if ($visitor_shrink_facts['worth'] && ($visitor_shrink['state'] !== 'failed')) {
+
+            $visitor_shrink_text = pg_visitor_shrink_reason_text($visitor_shrink_reason, $visitor_shrink);
+
+            $visitor_alert .= '
                     <div class="alert alert-info d-flex gap-2 align-items-start">
                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                         <div>' . h(lang(array(
-                            'string' => '{var:1} inside the table file is free space, left by removed records. New visits reuse it; Optimize table gives it back to the disk.',
+                            'string' => '{var:1} inside the table file is free space, left by removed records. New visits reuse it.',
                             'vars' => array(pg_innodb_size_label($visitor_catalog['free'])),
-                        ))) . '</div>
+                        )) . (($visitor_shrink_text !== '') ? ' ' . $visitor_shrink_text : '')) . '</div>
                     </div>';
+        }
     }
 
     if ($visitor_settings['days'] > 0) {
@@ -679,14 +728,21 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                     <p class="mb-2">' . h($visitor_will) . '</p>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
                         <button type="button" id="pg_visitor_cleanup" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="' . h($visitor_confirm) . '"' . ($visitor_enabled ? '' : ' disabled') . '><i class="bi bi-trash3 me-1" aria-hidden="true"></i>' . h(lang('Clean up visitor records now')) . '</button>
-                        ' . $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline-warning' : 'btn-outline-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== '') && !$visitor_moving)) . (($visitor_catalog['engine'] === 'myisam') && !$visitor_moving ? '
+                        ' . ($visitor_innodb
+                            ? $engine_button('visitor_shrink', 'visitors', lang('Shrink now'), 'bi-arrows-collapse', $visitor_shrink_facts['worth'] ? 'btn-outline-warning' : 'btn-outline-secondary', lang(array(
+                                'string' => 'Rebuild the visitors table now to make its file smaller? The site keeps running meanwhile; the database server needs about {var:1} of free disk until the rebuild ends, which takes minutes on a large table.',
+                                'vars' => array(pg_innodb_size_label($visitor_shrink_facts['needed'])),
+                            )), ($engine_tools && ($visitor_shrink_reason !== 'shared_tablespace') && !$visitor_moving))
+                            : $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline-warning' : 'btn-outline-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== '') && !$visitor_moving))) . (($visitor_catalog['engine'] === 'myisam') && !$visitor_moving ? '
                         ' . $engine_button('visitor_move', 'visitors', lang('Move to InnoDB now'), 'bi-database-gear', 'btn-outline-warning', lang(array(
                             'string' => 'Move the visitors table to InnoDB now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the move on.',
                             'vars' => array(pg_innodb_size_label(pg_visitor_move_disk_needed($visitor_catalog))),
                         )), ($engine_tools && $engine_capability['ok'])) : '') . '
                     </div>
                     <div id="pg_visitor_cleanup_progress" class="small mt-2" role="status" aria-live="polite"></div>
-                    <div class="small text-body-secondary mt-2">' . h(lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Optimize table gives it back to the disk; that is a separate, optional step.')) . '</div>';
+                    <div class="small text-body-secondary mt-2">' . h($visitor_innodb
+                        ? lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Once much of the file is free, the general job rebuilds the table at the quietest hour of the day while the site keeps running, which gives the room back to the disk; Shrink now does it at once.')
+                        : lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Optimize table gives it back to the disk; that is a separate, optional step.')) . '</div>';
 }
 
 // -- Tables on MyISAM ---------------------------------------------------------

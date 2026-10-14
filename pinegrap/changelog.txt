@@ -3311,10 +3311,7 @@
          kayıtlarını şimdi temizle" onay ister ve sayfa
          açıkken adım adım ilerler. Silme diskteki dosyayı
          kendiliğinden küçültmez, boşalan yer yeni
-         ziyaretlere kalır; "Optimize et" dosyayı ayrı ve
-         isteğe bağlı bir adım olarak küçültür (tablo
-         boyutu kadar boş disk ister, sakin bir saatte
-         yapın).
+         ziyaretlere kalır.
 
   [YENİ] Ziyaretçi tablosu 2 milyon satırı ya da 512 MB'ı
          geçince Sistem Durumu'nda "Ziyaretçi Kayıtları"
@@ -3334,6 +3331,15 @@
          yetmiyorsa kendiliğinden başlamaz; Veritabanı
          Motoru'ndaki "Şimdi InnoDB'ye taşı" düğmesi
          başlatır.
+
+  [YENİ] InnoDB'deki ziyaretçi tablosunun dosyası eski
+         kayıtlar silindikten sonra kendiliğinden
+         küçülüyor: dosyanın büyük kısmı boşsa genel görev
+         tabloyu günün en sakin saatinde, site çalışırken
+         yeniden kurar. Veritabanı sunucusunun boş diski
+         okunamıyorsa ya da yetmiyorsa kendiliğinden
+         yapmaz; Veritabanı Motoru'ndaki "Şimdi küçült"
+         düğmesi hemen yapar.
 
   [DÜZELTME] Güvenlik duvarı kapalı sitelerde arama
          motorlarının ve diğer botların gezdiği her sayfa

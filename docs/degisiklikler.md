@@ -84,6 +84,73 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — InnoDB'deki ziyaretçi tablosunun dosyası temizlikten sonra kendiliğinden küçülüyor (2026-10-14)
+
+**Neden.** Temizlik (10.3) eski satırları siler ama InnoDB dosyası
+(`visitors.ibd`) diskte küçülmez; boşalan sayfalar dosyanın içinde kalır.
+Yoğun bir sitede ilk temizlikten sonra dosyanın üçte ikisi boş alan olabiliyor
+ve müşteri sitelerinde disk dolu kalıyordu. Kart yalnız "Optimize et"
+diyordu; kimse basmazsa yer geri gelmiyordu. Plan
+`docs/_plan_ziyaretci_temizleme.md`, "Ertelenenler" 5.
+
+**Ne değişti.**
+- `includes/fn/visitor_retention.php`: `pg_visitor_shrink_run()` tabloyu
+  `ALTER TABLE visitors FORCE, ALGORITHM=INPLACE, LOCK=NONE` ile çevrimiçi
+  yeniden kurar. `OPTIMIZE TABLE` değil: o, çevrimiçi yapamayan sunucuda
+  (FULLTEXT dizini, eski ayarlar) sessizce yazmaları bekleten kopyaya düşer,
+  MariaDB'de `innodb_defragment` açıksa dosyayı küçültmeden birleştirir.
+  Algoritma ve kilit açıkça yazıldığı için yapamayan sunucu ifadeyi
+  reddeder, tablo olduğu gibi kalır, kart nedenini söyler.
+- Genel görev (`job.php`, posta ve webhook geçişlerinden sonra) saatte bir
+  bakar (`data/temp/visitor_shrink.json`). Kendiliğinden yeniden kurma
+  koşulları (`pg_visitor_shrink_hold_reason()`, sırayla): tablo InnoDB;
+  MyISAM → InnoDB taşıması sürmüyor; `innodb_file_per_table` kapalı değil;
+  dosyadaki boş alan ≥ 128 MB ve ≥ (veri + dizin) / 2
+  (`pg_visitor_shrink_worth()`, kartın eski "Optimize et" notunun eşiği);
+  son bir haftada yeniden kurma olmamış (başarılı ya da başarısız); temizliğin
+  birikmiş işi yok; veritabanı yerel ve boş disk ≥ 3 × (veri + dizin) + 1 GB
+  (InnoDB'de boş alan veri rakamına dahil değil, taşımadaki `veri − boş`
+  burada yanlış olurdu); saat, son 14 günün `visitor_stats_hourly` sayfa
+  görüntülemelerine göre en sakin saat (veri yoksa 03:00; PHP saati, özetle
+  aynı). Saat tutmuyorsa bakış tek küçük okumayla biter, katalog okunmaz.
+- Başlamadan önce bu veritabanında 2 sn'den uzun süren bir ifade varsa
+  (uzun rapor, yedek) başlamaz. Meta veri kilidi bekleme süresi 2 sn
+  (`pg_db_run_table_statement()`'a isteğe bağlı `$lock_wait_seconds`,
+  varsayılan 20 aynı); kilidi alamazsa vazgeçer, ertesi gün dener.
+- Temizlik ve taşımayla aynı `GET_LOCK`. İsteği yarıda biten yeniden kurma
+  (`running` kalan işaret) bir sonraki bakışta dosya boyutundan sonuçlanır.
+- Veritabanı Motoru › Ziyaretçi kayıtları: InnoDB tabloda "Optimize et"
+  yerine **"Şimdi küçült"** (onayda gereken boş disk; boyut, saat, disk ve
+  haftalık bekleme atlanır, uzun ifade denetimi atlanmaz). Boş alan notu
+  kendiliğinden yeniden kurmanın saatini ya da neden yapılmadığını söyler
+  (disk okunamıyor / yetmiyor, ortak tablespace, temizlik sürüyor, son bir
+  haftada yapıldı). Son sonuç: başarılı (30 gün) ya da durdu. MyISAM'da
+  düğmeler değişmedi.
+- 22 yeni dil anahtarı; kartın eski boş alan cümlesi kısaldı.
+
+Şema ve JS değişikliği yok.
+
+**Ölçüm (sandbox, MariaDB 10.11, 128 MB buffer pool; 1,2 milyon satır,
+90 günle ~920 bin satır silindi; aynı anda dört işçi: ziyaret ekleme, sayfa
+görüntüleme güncellemesi, tekilleştirme, son bir saat sayımı).**
+- Yeniden kurma 2,2–2,7 sn; `visitors.ibd` 620 MB → 124 MB (üç deneme).
+  İşten önce p99 1,5–3 ms; yeniden kurma sırasında p99 ~20 ms, en uzun
+  407 ms (son andaki kilit ve eski dosyanın silinmesi). Yükün yazdığı
+  4.821 ziyaretin hepsi yerinde, hata yok.
+- Açık bir işlem tabloyu okumuş halde beklerken: ziyaret sorguları 2 sn
+  bekledi, yeniden kurma "kullanımda" deyip vazgeçti (önceki 5 sn denemede
+  5 sn). Uzun süren bir sorgu varken: hiç başlamadı, bekleme yok.
+- FULLTEXT dizini eklenmiş tabloda: `LOCK=NONE is not supported` (1846),
+  tablo değişmedi, kart "durdu" dedi.
+- Genel görev: saat tutmayan turda 0,2 sn, aynı saatte ikinci tur bakmadı,
+  en sakin saatte tur 2,4 sn'de yeniden kurdu, Site Günlüğü'ne satır düştü.
+- **Doğrulanamayan:** MySQL 8 (dev.pinegrap.com, IIS) ve MySQL 5.7; gerçek
+  diskte büyük tablo süresi. Önce/sonra boyutları `information_schema`
+  istatistiğinden gelir, yaklaşıktır (motor değişiminden hemen sonra
+  istatistik eski kalabilir).
+
+---
+
 ## 2026.4.10 — ERP'nin kalan 29 formu da dizi gelen tek değerli alanı "Array" diye kaydetmiyor, 1 numaralı kaydı seçmiyor (2026-10-14)
 
 **Neden.** #446'nın ikinci yarısı: testin bekleyenler listesindeki 29 ERP POST

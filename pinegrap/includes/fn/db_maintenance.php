@@ -265,8 +265,9 @@ function pg_db_optimize_marker()
 }
 
 /**
- * Runs one table maintenance statement (OPTIMIZE, CHECK or REPAIR TABLE) the
- * way all three are run: the name is checked against the database's own list,
+ * Runs one table maintenance statement (OPTIMIZE, CHECK or REPAIR TABLE, and
+ * the online rebuild of pg_visitor_shrink_run()) the way all of them are
+ * run: the name is checked against the database's own list,
  * nothing starts while another maintenance statement on the table is running,
  * the wait for the metadata lock is bounded, and the rows the server answers
  * with come back as 'messages'.
@@ -280,10 +281,13 @@ function pg_db_optimize_marker()
  * @param array  $result    the answer to fill in
  * @param string $marker    a marker file to hold for the statement's duration,
  *                          or ''
+ * @param int    $lock_wait_seconds how long the statement may wait for the
+ *                          table's metadata lock, at its start and, for a
+ *                          rebuild, at its end
  * @return array $result with 'state' 'missing', 'running', 'busy', 'failed'
  *               or 'ran', and 'catalog' => the table's catalog row before
  */
-function pg_db_run_table_statement($table, $statement, $result, $marker = '')
+function pg_db_run_table_statement($table, $statement, $result, $marker = '', $lock_wait_seconds = 20)
 {
     // The name goes into the statement between backticks: it must look like
     // one of the software's names and be a table this database has.
@@ -343,7 +347,7 @@ function pg_db_run_table_statement($table, $statement, $result, $marker = '')
         }
     }
 
-    @mysqli_query(db::$con, "SET SESSION lock_wait_timeout = 20");
+    @mysqli_query(db::$con, "SET SESSION lock_wait_timeout = " . max(1, (int) $lock_wait_seconds));
 
     $started = microtime(true);
 
