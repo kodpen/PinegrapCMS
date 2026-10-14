@@ -46,6 +46,11 @@ $draft_from = '';
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array id as 1 and saved over that template,
+    // (string) wrote "Array" into the text fields.
+    pg_request_single_values(array('id', 'name', 'description', 'icon', 'color', 'kind', 'department_id', 'summary', 'pinned', 'welcome', 'body'));
+
     $data = array(
         'id'            => (int) ($_POST['id'] ?? 0),
         'name'          => (string) ($_POST['name'] ?? ''),

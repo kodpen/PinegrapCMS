@@ -67,6 +67,15 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $order = mysqli_fetch_assoc($result);
 
+// The optional address lines below are only filled when there is something
+// to show; they start empty so a slip without them prints no notices.
+$output_organization_address_2 = '';
+$output_organization_country = '';
+$output_ship_to_salutation = '';
+$output_ship_to_company = '';
+$output_ship_to_address_2 = '';
+$output_ship_to_phone_number = '';
+
 // If there is an organization address 2, then output it.
 if (ORGANIZATION_ADDRESS_2 != '') {
     $output_organization_address_2 = h(ORGANIZATION_ADDRESS_2) . '<br />';

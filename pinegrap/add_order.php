@@ -178,6 +178,12 @@ if ($request === 'recent') {
 /* ---------------------------------------------------------
    POST: the actions
    --------------------------------------------------------- */
+// Every posted field of an action is one value, the quick account's
+// included. One posted as an array counts as not given: (int) read an array
+// id as 1 (the first item, product, contact or order), (string) wrote
+// "Array" with a notice.
+pg_request_single_values(array('action', 'item_id', 'barcode', 'product_id', 'quantity', 'contact_id', 'account_id', 'title', 'is_person', 'tax_number', 'email', 'phone', 'pay_method', 'pay_till', 'received', 'pay_parts', 'order_id'));
+
 $action = isset($_POST['action']) ? trim((string) $_POST['action']) : '';
 
 if ($action !== '') {
