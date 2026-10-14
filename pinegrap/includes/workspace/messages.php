@@ -863,14 +863,16 @@ function ws_channel_news($channel_id, $held_id, $since, $options = array())
 }
 
 /**
- * Changes the text of one's own message.
+ * Whether a message may be changed to this text: the checks of
+ * ws_message_edit(), made on their own so that the API's dry run meets the
+ * same refusals.
  *
  * @param array  $viewer
  * @param array  $message
  * @param string $body
- * @return array ok, error
+ * @return array ok, error, body (the new text as it would be stored), channel
  */
-function ws_message_edit($viewer, $message, $body)
+function ws_message_edit_check($viewer, $message, $body)
 {
     if (($message['sender_kind'] !== 'user') || ((int) $message['sender_id'] !== (int) $viewer['id'])
         || ((int) $message['deleted_at'] > 0) || !in_array($message['kind'], array('message', 'note', 'decision'), true)) {
@@ -901,6 +903,27 @@ function ws_message_edit($viewer, $message, $body)
         return array('ok' => false, 'error' => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)));
     }
 
+    return array('ok' => true, 'error' => '', 'body' => $body, 'channel' => $channel);
+}
+
+/**
+ * Changes the text of one's own message.
+ *
+ * @param array  $viewer
+ * @param array  $message
+ * @param string $body
+ * @return array ok, error
+ */
+function ws_message_edit($viewer, $message, $body)
+{
+    $checked = ws_message_edit_check($viewer, $message, $body);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
+    }
+
+    $body = $checked['body'];
+    $channel = $checked['channel'];
     $before = array();
 
     foreach (ws_tokens($message['body']) as $token) {
@@ -939,6 +962,34 @@ function ws_message_edit($viewer, $message, $body)
 }
 
 /**
+ * Whether the person may delete a message for everyone: the checks of
+ * ws_message_delete(), made on their own for the API's dry run.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @return array ok, error, mine
+ */
+function ws_message_delete_check($viewer, $message)
+{
+    $mine = ($message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id']);
+
+    // A guest's message is taken out by staff.
+    if (!in_array($message['sender_kind'], array('user', 'guest'), true) || (!$mine && ($viewer['role'] >= 3))) {
+        return array('ok' => false, 'error' => lang('You can only delete your own messages.'), 'mine' => $mine);
+    }
+
+    if (!empty($message['locked']) && ($viewer['role'] >= 3)) {
+        return array('ok' => false, 'error' => lang('This decision records a change to a record. People with the User role cannot delete it.'), 'mine' => $mine);
+    }
+
+    if (!ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        return array('ok' => false, 'error' => lang('Access denied.'), 'mine' => $mine);
+    }
+
+    return array('ok' => true, 'error' => '', 'mine' => $mine);
+}
+
+/**
  * Deletes a message: the author their own, staff anyone's. The row stays as
  * "message deleted" so the conversation around it still reads; its text,
  * file link and tags go.
@@ -949,20 +1000,13 @@ function ws_message_edit($viewer, $message, $body)
  */
 function ws_message_delete($viewer, $message)
 {
-    $mine = ($message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id']);
+    $checked = ws_message_delete_check($viewer, $message);
 
-    // A guest's message is taken out by staff.
-    if (!in_array($message['sender_kind'], array('user', 'guest'), true) || (!$mine && ($viewer['role'] >= 3))) {
-        return array('ok' => false, 'error' => lang('You can only delete your own messages.'));
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
     }
 
-    if (!empty($message['locked']) && ($viewer['role'] >= 3)) {
-        return array('ok' => false, 'error' => lang('This decision records a change to a record. People with the User role cannot delete it.'));
-    }
-
-    if (!ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
-        return array('ok' => false, 'error' => lang('Access denied.'));
-    }
+    $mine = $checked['mine'];
 
     // A checklist a task carries moves into the task before the text goes.
     ws_checklist_tasks_detach($message);
@@ -1031,6 +1075,27 @@ function ws_message_hidden_ids($user_id, $message_ids)
 }
 
 /**
+ * Whether the person may delete a message for themselves: the checks of
+ * ws_message_hide(), made on their own for the API's dry run.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @return array ok, error
+ */
+function ws_message_hide_check($viewer, $message)
+{
+    if (!ws_message_hides_ready()) {
+        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    if (($message['kind'] === 'system') || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        return array('ok' => false, 'error' => lang('That message could not be found.'));
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
  * Deletes a message for the person alone: the others keep it as it is.
  *
  * @param array $viewer
@@ -1039,12 +1104,10 @@ function ws_message_hidden_ids($user_id, $message_ids)
  */
 function ws_message_hide($viewer, $message)
 {
-    if (!ws_message_hides_ready()) {
-        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'));
-    }
+    $checked = ws_message_hide_check($viewer, $message);
 
-    if (($message['kind'] === 'system') || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
-        return array('ok' => false, 'error' => lang('That message could not be found.'));
+    if (!$checked['ok']) {
+        return $checked;
     }
 
     db("INSERT IGNORE INTO ws_message_hides (message_id, user_id, hidden_at)

@@ -101,6 +101,24 @@ function test_ws_api_message_edit_delete_and_read_are_tools()
 	pg_assert_false(in_array('workspace_messages_delete_post', $offered, true), 'the POST alias is no tool');
 }
 
+// Deleting a message for oneself is a tool of its own; the changes a phone
+// makes to messages and read marks can each be rehearsed with a dry run.
+function test_ws_api_message_hide_is_a_tool_and_writes_rehearse()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	pg_assert_true(isset($routes['workspace.messages.hide']) && pg_mcp_route_is_offered($routes['workspace.messages.hide']), 'hide is offered as a tool');
+	pg_assert_true(pg_mcp_tool_name('workspace.messages.hide') === 'workspace_messages_hide', 'the tool is workspace_messages_hide');
+
+	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.delete_post', 'workspace.messages.hide', 'workspace.channels.read') as $id) {
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' takes dry_run');
+	}
+}
+
 // The list reads changed messages with changed_since, a moment.
 function test_ws_api_messages_list_takes_changed_since()
 {
