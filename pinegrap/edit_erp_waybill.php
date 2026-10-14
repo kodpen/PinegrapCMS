@@ -41,6 +41,9 @@ if ($_POST) {
 
     validate_token_field();
 
+    // The action is one value; one posted as an array is no action.
+    pg_request_single_values(array('erp_action'));
+
     if (($_POST['erp_action'] ?? '') === 'invoice') {
 
         $result = erp_waybill_invoice($waybill_id, (int) $user['id']);

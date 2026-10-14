@@ -30,6 +30,9 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 // Open an account for every contact that has ordered and has none yet - the
 // same reading of the card the order bridge makes, one card per contact.
+// The action is one value; one posted as an array is no action.
+pg_request_single_values(array('erp_action'));
+
 if ($_POST && (($_POST['erp_action'] ?? '') === 'sync_contacts')) {
     validate_token_field();
 

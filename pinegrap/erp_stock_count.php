@@ -38,6 +38,11 @@ $open = ((string) $count['status'] === 'open') && !$readonly;
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the forms but the counted list is one value. One posted
+    // as an array counts as not given: (string) read the code and the
+    // quantity as "Array" with a notice.
+    pg_request_single_values(array('erp_action', 'code', 'quantity', 'set'));
+
     $action = (string) ($_POST['erp_action'] ?? 'scan');
 
     if ($action === 'scan') {

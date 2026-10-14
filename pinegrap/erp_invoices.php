@@ -63,15 +63,20 @@ $self_url = 'erp_invoices.php' . (!empty($self_query) ? ('?' . http_build_query(
 // function its own screen's button calls, so the gates are the same ones; a
 // document an action does not apply to is counted as skipped, not as a
 // failure. The number per click is capped because each document is at least
-// one call to the provider, and a request has to finish.
+// one call to the provider, and a request has to finish. The action is one
+// value; one posted as an array is no action.
+pg_request_single_values(array('erp_action'));
+
 if ($_POST && $edoc_bulk && in_array((string) ($_POST['erp_action'] ?? ''), array('edoc_bulk_send', 'edoc_bulk_submit', 'edoc_bulk_poll'), true)) {
     validate_token_field();
 
     $bulk_action = (string) $_POST['erp_action'];
     $bulk_limit = 25;
     $bulk_ids = array();
+    // A ticked row is one number; one sent as an array is no row, rather
+    // than invoice 1.
     foreach ((array) ($_POST['invoice_ids'] ?? array()) as $bulk_id) {
-        if ((int) $bulk_id > 0) {
+        if (is_scalar($bulk_id) && ((int) $bulk_id > 0)) {
             $bulk_ids[(int) $bulk_id] = true;
         }
     }

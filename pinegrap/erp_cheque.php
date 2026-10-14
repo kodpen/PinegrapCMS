@@ -36,6 +36,11 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array bank or account as record 1 and moved
+    // the cheque there, (string) read the step and the reason as "Array".
+    pg_request_single_values(array('step', 'date', 'bank_till_id', 'account_id', 'reason'));
+
     $step = (string) ($_POST['step'] ?? '');
     $typed = trim((string) ($_POST['date'] ?? ''));
     $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $typed) ? $typed : ((($typed !== '') && validate_date($typed)) ? prepare_form_data_for_input($typed, 'date') : date('Y-m-d'));

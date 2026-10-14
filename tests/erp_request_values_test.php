@@ -115,19 +115,6 @@ function test_erp_request_values_purchase_order_products_skip_arrays()
 	pg_assert_same(array(), erp_purchase_order_rows_for_products(array(array('7'), array())), 'purchase order rows from array entries');
 }
 
-// ERP screens whose form posts have not been gone through yet. Each is
-// taken off once its fields are handed to pg_request_single_values().
-function erp_request_values_post_pending()
-{
-	return array(
-		'add_erp_invoice', 'add_erp_late_fee_invoice', 'add_erp_return', 'edit_erp_expense', 'edit_erp_invoice', 'edit_erp_purchase_order',
-		'edit_erp_quote', 'edit_erp_waybill', 'erp_account_prices', 'erp_account_sync', 'erp_accountant', 'erp_accounts', 'erp_accounts_import',
-		'erp_bank_statement', 'erp_bank_statements', 'erp_cheque', 'erp_expense_categories', 'erp_export', 'erp_inbox', 'erp_inbox_document',
-		'erp_invoices', 'erp_order_flow', 'erp_receipt', 'erp_reconciliation', 'erp_settings', 'erp_stock_count', 'get_erp_invoice_pdf',
-		'get_erp_reconciliation_pdf', 'get_erp_waybill_pdf',
-	);
-}
-
 // The pg_request_single_values() calls of a source: each call's offset and
 // the names it hands over, with a form's own list (erp_*_single_fields())
 // read from the function.
@@ -169,11 +156,14 @@ function erp_request_values_single_value_calls($source)
 
 // A screen that saves a form hands every one-value field it reads to
 // pg_request_single_values() before reading the post, the liveform's copy
-// (add_fields_to_session()) included. Lines, choices and other lists that a
-// form posts as an array on purpose are not handed over.
+// (add_fields_to_session()) included, and a field named after a line
+// (qty_<line>) by its prefix. Lines, choices and the other lists that a form
+// posts as an array on purpose (ticked rows, the import's column mapping,
+// the categories, the amounts to allocate, the counted quantities) are not
+// handed over.
 function test_erp_request_values_post_fields_dropped_before_first_read()
 {
-	$lists = array('token', 'lines', 'choice');
+	$lists = array('token', 'lines', 'choice', 'invoice_ids', 'map', 'categories', 'allocate', 'counted');
 	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/erp_*.php'), glob(PG_FUNCTIONS_DIR . '/get_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/add_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/edit_erp_*.php'));
 	$checked = 0;
 
@@ -181,13 +171,10 @@ function test_erp_request_values_post_fields_dropped_before_first_read()
 		$screen = basename($file, '.php');
 		$source = file_get_contents($file);
 
-		if (in_array($screen, erp_request_values_post_pending(), true)) {
-			continue;
-		}
-
 		$liveform = (strpos($source, 'add_fields_to_session()') !== false);
 		preg_match_all("/\\\$_POST\\['(\\w+)'\\]/", $source, $posted, PREG_OFFSET_CAPTURE);
 		preg_match_all("/get_field_value\\('(\\w+)'\\)/", $source, $read);
+		preg_match_all("/get_field_value\\('(\\w+)' \\./", $source, $prefixed);
 
 		if (!$liveform && empty($posted[1])) {
 			continue;
@@ -225,6 +212,10 @@ function test_erp_request_values_post_fields_dropped_before_first_read()
 					pg_assert_true(in_array($field, $names, true), $screen . ': ' . $field . ' read from the form but not handed over');
 				}
 			}
+
+			foreach (array_unique($prefixed[1]) as $prefix) {
+				pg_assert_true(in_array($prefix, $names, true), $screen . ': ' . $prefix . '<…> read from the form but not handed over');
+			}
 		}
 
 		// A shared form is read by its own reader; the screen hands over the
@@ -238,7 +229,7 @@ function test_erp_request_values_post_fields_dropped_before_first_read()
 		}
 	}
 
-	pg_assert_true($checked >= 15, 'screens checked: ' . $checked);
+	pg_assert_true($checked >= 45, 'screens checked: ' . $checked);
 
 	// The quick account dialog hands $_POST to erp_account_quick_create()
 	// whole; every field that reads is handed over first.
@@ -247,6 +238,29 @@ function test_erp_request_values_post_fields_dropped_before_first_read()
 	preg_match_all("/\\\$data\\['(\\w+)'\\]/", file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/account_quick.php'), $data);
 	pg_assert_true(!empty($calls) && ($calls[0]['offset'] < strpos($quick, 'erp_account_quick_create($user, $_POST)')), 'quick account: call before the create');
 	pg_assert_same(array(), empty($calls) ? array('no call') : array_values(array_diff(array_unique($data[1]), $calls[0]['names'])), 'quick account fields not handed over');
+}
+
+// A list of ticked rows a form posts (the invoices to send, the cards to take
+// in) is read entry by entry; an entry that is itself an array
+// (invoice_ids[0][]=x) is no row, rather than record 1.
+function test_erp_request_values_posted_row_lists_skip_arrays()
+{
+	$found = array();
+	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/erp_*.php'), glob(PG_FUNCTIONS_DIR . '/get_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/add_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/edit_erp_*.php'));
+
+	foreach ($files as $file) {
+		$source = file_get_contents($file);
+
+		preg_match_all('/foreach \(\(array\) \(\$_POST\[[^\]]+\] \?\? array\(\)\) as (\$\w+)\)/', $source, $matches);
+
+		foreach ($matches[1] as $entry) {
+			if (preg_match('/\(int\) ' . preg_quote($entry, '/') . '\b/', $source) && (strpos($source, 'is_scalar(' . $entry . ')') === false)) {
+				$found[] = basename($file) . ' ' . $entry;
+			}
+		}
+	}
+
+	pg_assert_same(array(), $found, 'screens casting a ticked row from $_POST with a bare (int)');
 }
 
 // The lists the shared forms give the screens name every field their own

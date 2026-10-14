@@ -156,6 +156,10 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array order as order 1 and invoiced that one.
+    pg_request_single_values(array('order_id', 'from_order_screen'));
+
     $liveform->add_fields_to_session();
 
     $order_id = (int) $liveform->get_field_value('order_id');

@@ -81,6 +81,11 @@ $profiles = erp_export_profiles();
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (string) read the format and the dates as "Array" with a
+    // notice.
+    pg_request_single_values(array('profile', 'from', 'to', 'direction', 'include_drafts', 'include_passive', 'not_exported', 'mark_exported'));
+
     $liveform->add_fields_to_session();
 
     $profile = erp_export_profile((string) $liveform->get_field_value('profile'));

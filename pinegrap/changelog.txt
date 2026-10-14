@@ -1967,6 +1967,18 @@
          verilmemiş sayılıyor. Normal açılışta ekranlar
          aynı.
 
+  [DÜZELTME] ERP'nin öbür formları da (fatura ekranı
+         eylemleri, iade, vade farkı, siparişten fatura,
+         gider ödeme ve iptal, banka ekstresi, çek
+         adımları, muhasebeci paketi, cari fiyatları,
+         toplu e-belge, e-belge gelen kutusu, ayarlar ve
+         şablon önizlemesi) elle hazırlanmış bir istekte
+         birden çok kez gelen tek değerli alanı "Array"
+         diye kaydetmiyor, 1 numaralı kaydı seçmiyor:
+         önceden bir tahsis, tekrar ya da ekstre satırı
+         1 numaralı kayıtta işleniyor, gider 1 numaralı
+         kasadan ödeniyordu. Normal kayıtlar aynı.
+
   [DÜZELTME] ERP'de kayıt açan ve değiştiren formlar
          (cari, kasa, tahsilat ve ödeme, virman, gider,
          fatura, teklif, satın alma siparişi, irsaliye,

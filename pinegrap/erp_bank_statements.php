@@ -29,6 +29,10 @@ $self = PATH . SOFTWARE_DIRECTORY . '/erp_bank_statements.php';
 if ($_POST) {
     validate_token_field();
 
+    // The till is one value. One posted as an array counts as not given:
+    // (int) read it as till 1 and took the statement in there.
+    pg_request_single_values(array('cash_account_id'));
+
     $file = $_FILES['statement'] ?? null;
 
     if (!is_array($file) || ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $file['tmp_name'])) {

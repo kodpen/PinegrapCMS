@@ -36,6 +36,12 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array line, account, invoice or category as
+    // record 1 and recorded the line there, an array column as column 1.
+    pg_request_single_values(array('erp_action', 'header', 'date_order', 'col_date', 'col_description', 'col_amount', 'col_debit', 'col_credit',
+        'line_id', 'account_id', 'invoice_id', 'category_id'));
+
     $action = (string) ($_POST['erp_action'] ?? '');
 
     if ($action === 'map') {

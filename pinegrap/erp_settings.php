@@ -70,6 +70,10 @@ $document = $documents[$doc];
 $default_template = $document['default'];
 $doc_url = $self_url . (($doc === 'invoice') ? '' : '?doc=' . $doc);
 
+// Every field of the three forms is one value. One posted as an array counts
+// as not given: (string) read it as "Array" and saved that as the template.
+pg_request_single_values(array('rules', 'vat_net_withholding', 'vat_exemption_code', 'late_fee', 'late_fee_rate', 'late_fee_tax_rate', 'reset', 'template'));
+
 // The accounting rules have a form of their own on this screen.
 if ($_POST && ((string) ($_POST['rules'] ?? '') === '1')) {
 

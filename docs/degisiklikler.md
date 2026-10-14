@@ -84,6 +84,74 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — ERP'nin kalan 29 formu da dizi gelen tek değerli alanı "Array" diye kaydetmiyor, 1 numaralı kaydı seçmiyor (2026-10-14)
+
+**Neden.** #446'nın ikinci yarısı: testin bekleyenler listesindeki 29 ERP POST
+ekranı. Sandbox'ta eski kodla, elle hazırlanmış istekte tek bir alan dizi
+gelince (`alan[]=x`): fatura ekranında `settlement_id[]` ve tahsilat
+ekranında aynısı 1 numaralı tahsisi kaldırdı, `recurrence_id[]` 1 numaralı
+tekrarı durdurdu; gider ödeme `cash_account_id[]` ile 1 numaralı kasadan
+ödendi; banka ekstresinde `line_id[]` 1 numaralı satırı işledi ya da kenara
+aldı, `category_id[]` gideri 1 numaralı kategoriye yazdı, ekstre yükleme
+`cash_account_id[]` ile 1 numaralı kasaya alındı; çekte `bank_till_id[]` ve
+`account_id[]` çeki 1 numaralı kasaya yatırdı ya da 1 numaralı cariye
+ciro etti; vade farkı `account_id[]` ile 1 numaralı carinin taslağını yazdı;
+cari fiyatları `product_id[]` ile 1 numaralı ürünü listeye ekledi;
+muhasebeci ekranı `package_id[]` ile 1 numaralı pakete bağlantı açtı;
+siparişten fatura ve sipariş belge adımı 1 numaralı siparişi denedi.
+Not, alıcı kartı düzeltme, e-posta, imzalayan, gider ve tahsilat iptal
+nedeni, yeni gider kategorisi ve fatura şablonu "Array" olarak kaydedildi.
+Ayrıca toplu e-belgede `invoice_ids[0][]` ve cari eşitlemede `card_ids[0][]`
+gibi işaretli satırın kendisi dizi gelince `(int)` 1 numaralı fatura ya da
+kartla çalışıyordu. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** #446'nın kalıbı: 29 ekran okuduğu tek değerli alanları
+`pg_request_single_values()`'e veriyor; dizi gelen alan verilmemiş sayılıyor,
+zorunluysa ekranın kendi hatası çıkıyor ("Bir cari seçin.", "Banka hesabını
+seçin.", "Bir kategori seçin.", "Sipariş gerekli", "Bu paket artık yok.")
+ve bir şey yazılmıyor. Çağrı jeton denetiminden sonra; alanı jeton
+denetiminden önce okuyan altı ekranda (`add_erp_late_fee_invoice`,
+`erp_order_flow`, `erp_accounts`, `erp_invoices`, `erp_accounts_import`,
+`erp_settings`) ve üç PDF önizlemesinde ilk okumadan önce.
+`edit_erp_purchase_order` ve `edit_erp_quote` fatura formunun listesini
+(`erp_invoice_form_single_fields()`) kullanıyor; `add_erp_return` satır başı
+miktar alanlarını (`qty_<satır>`) iade edilebilir satırlardan kuruyor.
+`erp_invoices` toplu e-belge ve `erp_account_sync` toplu işlem işaretli
+satırın dizi olanını atlıyor (`is_scalar()`).
+
+`tests/erp_request_values_test.php`: bekleyenler listesi kalktı, test bütün
+ERP ekranlarını denetliyor (eski kodda 29 ekranın hepsi düşüyor); liveform'da
+önekle okunan alanın (`get_field_value('qty_' . …)`) öneki çağrıda olmalı;
+yeni test `$_POST`'tan gelen işaretli satır listesinde `is_scalar()`'sız
+`(int)` bırakmıyor (eski kodda iki ekran). Gerçek listeler (`lines`,
+`choice`, `invoice_ids`, `map`, `categories`, `allocate`, `counted`)
+çağrıya verilmiyor. Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, DEBUG açık).** Eski kod
+(`origin/development`) 8001'de, yeni 8000'de, aynı veritabanı; her istekten
+önce değişen tablolar anlık görüntüye dönüyor, yazılanlar tablo tablo
+`mysqldump` farkıyla okunuyor. Sahte İşbaşı ayarı (boş kimlik bilgisi),
+sağlayıcıya istek gitmedi; e-posta sandbox'ta gönderilemiyor. 29 ekranda 60 senaryo,
+663 istek. 60 normal istek iki kodda aynı durum, yönlendirme, mesaj ve
+yazılan satırlar (rastgele dosya adları ve indirme jetonu dışında; işaretli
+satırı dizi gönderen iki senaryo bilerek farklı). Her alan dizi verilerek:
+eski kodda 181 isteğin 113'ü uyarı yazdı, 22'si "Array" içeren satır kaydetti, 8'i
+1 numaralı kaydı değiştirdi; yeni kodda uyarı 0, "Array" 0, 1 numaralı
+kayıt 0, 500 yok ve her dizi isteği alanın hiç gönderilmediği istekle aynı
+sonucu verdi. `tools/lint.php`, `tools/test.php`, `check_lang`,
+`check_bindings`, `check_api_schema`, `check_copies` ve `build_js.php
+--check` geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler, gerçek
+e-belge hesabı ve e-posta gönderimi.
+
+**Bilerek yapılmayan.** Listelerin içindeki diziler: satırlar
+(`lines[0][description][]`), eşlemenin `choice[x][]`'i, gider
+kategorilerinin `categories[x][name][]`'i, içe aktarmanın `map[x][]`'i,
+tahsisin `allocate[x][]`'i ve sayımın `counted[x][]`'i. E-belge ayarlarının
+Ayarlar ekranındaki kaydı (`includes/settings/commerce.save.php`). Bunlar
+devir notunda kalanlar olarak listeli.
+
+---
+
 ## 2026.4.10 — Tasarım dosyası ekranı yalnız tasarım dosyasını açıyor; diskte olmayan dosya düzenleyicide uyarısız (2026-10-14)
 
 **Neden.** #449'un kalanları. Tasarım Dosyasını Düzenle (`edit_design_file.php`)

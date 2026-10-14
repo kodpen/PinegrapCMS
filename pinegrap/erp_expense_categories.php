@@ -30,6 +30,11 @@ $with_deductible = erp_expense_categories_have_deductible();
 if ($_POST) {
     validate_token_field();
 
+    // The new category's fields are one value each; categories is the list
+    // of the others. One posted as an array counts as not given: (string)
+    // named the category "Array".
+    pg_request_single_values(array('new_name', 'new_code', 'new_tax_deductible'));
+
     $rows = array();
 
     foreach ((array) ($_POST['categories'] ?? array()) as $category_id => $row) {

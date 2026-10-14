@@ -40,6 +40,12 @@ $self = PATH . SOFTWARE_DIRECTORY . '/edit_erp_expense.php?id=' . $id;
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array till as till 1 and paid from it,
+    // (string) wrote "Array" into the reason with a notice.
+    pg_request_single_values(array('erp_action', 'paid_date', 'cash_account_id', 'payment_method', 'reason', 'repeat_end', 'repeat_every', 'repeat_due_days',
+        'repeat_pay'));
+
     $action = (string) ($_POST['erp_action'] ?? '');
 
     if ($action === 'pay') {

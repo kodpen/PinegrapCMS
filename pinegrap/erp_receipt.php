@@ -47,6 +47,12 @@ if ($_POST) {
 
     validate_token_field();
 
+    // Every field of the forms but the amounts to allocate is one value. One
+    // posted as an array counts as not given: (int) read an array allocation
+    // as allocation 1 and took that one off, (string) wrote "Array" into
+    // the reason.
+    pg_request_single_values(array('erp_action', 'reason', 'settlement_id'));
+
     $action = (string) ($_POST['erp_action'] ?? '');
 
     if ($action === 'cancel') {

@@ -479,6 +479,10 @@ function erp_import_step_result($outcome, $list_url)
 
 // -- request handling ---------------------------------------------------------
 
+// Every field of the steps but the mapping is one value. One posted as an
+// array counts as not given: (string) read it as "Array" with a notice.
+pg_request_single_values(array('step', 'default_kind', 'import_token', 'duplicate_mode', 'submit_recheck', 'submit_run'));
+
 $step = isset($_POST['step']) ? (string) $_POST['step'] : '';
 
 // No submission: the upload form. Any file left from an earlier visit is
