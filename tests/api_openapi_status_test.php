@@ -9,7 +9,9 @@
  * that 200 with the record, and everything else keeps its 200 (or 204).
  * Also the fields that may be null - the people a workspace record names
  * that may be nobody, and the columns and parts a record may not have -
- * declared so a generated client takes null there.
+ * declared so a generated client takes null there, and the DEFAULT NULL
+ * columns every create path writes, declared without it. Last, the two
+ * security schemes and the three kinds of caller they describe.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -350,4 +352,210 @@ function test_api_openapi_status_channel_groups_declare_their_nulls()
 	pg_assert_same(null, $move['group_id']);
 	pg_assert_same(null, $move['group_path']);
 	pg_assert_same(null, $move['previous_group_id']);
+}
+
+// The DEFAULT NULL columns every create path writes, which the objects declare
+// without a question mark (api_openapi_type_spec()), as table => columns.
+function api_openapi_status_test_written_columns()
+{
+	return array(
+		'products'       => array('name'),
+		'product_groups' => array('name'),
+		'page'           => array('page_name', 'page_title', 'page_meta_description'),
+		'files'          => array('name', 'type'),
+	);
+}
+
+// The create paths that build their column list at run time, with the line
+// that keeps the columns above written there.
+function api_openapi_status_test_built_inserts()
+{
+	return array(
+		// A copy of every column of the original page, under a new name.
+		'duplicate_style.php|page' => "if (\$col === 'page_name')",
+		// Only a row whose name cell is filled in is inserted, and a cell that
+		// is filled in is always one of the columns.
+		'import_products.php|products' => 'if ($row[$name_key]) {',
+		'includes/api/resources/files.php|files' => '$columns = "name, folder, description, type, size, user, timestamp";',
+	);
+}
+
+// Every INSERT into those tables in the product's own code, as
+// file|table => the text between the table name and VALUES / SELECT / SET,
+// keyed with the line so two in one file stay apart.
+function api_openapi_status_test_inserts()
+{
+	$root = rtrim(str_replace('\\', '/', PG_FUNCTIONS_DIR), '/');
+
+	$tables = implode('|', array_keys(api_openapi_status_test_written_columns()));
+
+	// Bundled libraries never write the site's tables.
+	$skip = '#^(assets/lib|data|includes/(dompdf|phpexcel|phpmailer|stripe|iyzipay-php|boxpacker|qrcode))/#';
+
+	$out = array();
+
+	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+
+	foreach ($files as $file) {
+
+		$path = str_replace('\\', '/', (string) $file);
+
+		if (substr($path, -4) !== '.php') {
+			continue;
+		}
+
+		$relative = substr($path, strlen($root) + 1);
+
+		if (preg_match($skip, $relative)) {
+			continue;
+		}
+
+		$source = (string) file_get_contents($path);
+
+		if (strpos($source, 'INSERT') === false) {
+			continue;
+		}
+
+		if (!preg_match_all('/INSERT\s+(?:IGNORE\s+)?INTO\s+`?(' . $tables . ')`?(?![\w`])(.{0,8000}?)\b(?:VALUES|SELECT|SET)\b/is', $source, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+			continue;
+		}
+
+		foreach ($matches as $match) {
+			$line = substr_count(substr($source, 0, $match[0][1]), "\n") + 1;
+			$out[$relative . ':' . $line . '|' . strtolower($match[1][0])] = $match[2][0];
+		}
+	}
+
+	return $out;
+}
+
+// The spelling a declaration gives one top-level field, read from the source:
+// the resource files load only behind the API entry, which a test does not
+// define (tools/check_api_schema.php reads them the same way).
+function api_openapi_status_test_declared($file, $function, $field)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/' . $file);
+
+	if (!preg_match('/function ' . $function . '\(\)\s*\{(.*?)\n\}/s', $source, $body)) {
+		return null;
+	}
+
+	// The first line naming the field is the top-level one: the nested
+	// objects of these declarations come after it.
+	return preg_match('/\'' . $field . '\'\s*=>\s*\'([^\']*)\'/', $body[1], $spec) ? $spec[1] : null;
+}
+
+// A product's and a group's name, a page's name, title and meta description,
+// a file's name and type, a form's name: DEFAULT NULL columns, declared without
+// a question mark because every create path writes them.
+function test_api_openapi_status_written_columns_are_not_null()
+{
+	$fields = array(
+		array('products.php', 'api_product_schema', 'name'),
+		array('product_groups.php', 'api_product_group_schema', 'name'),
+		array('pages.php', 'api_page_schema', 'name'),
+		array('pages.php', 'api_page_schema', 'title'),
+		array('pages.php', 'api_page_schema', 'meta_description'),
+		array('files.php', 'api_file_schema', 'name'),
+		array('files.php', 'api_file_schema', 'type'),
+		array('forms.php', 'api_form_schema', 'name'),
+	);
+
+	foreach ($fields as $field) {
+		$spec = api_openapi_status_test_declared($field[0], $field[1], $field[2]);
+		pg_assert_same('string', $spec, $field[1] . ' ' . $field[2]);
+		pg_assert_false(!empty(api_openapi_type_spec((string) $spec)['nullable']), $field[1] . ' ' . $field[2] . ' is never null');
+	}
+
+	// The column a create path leaves out is the one that is nullable.
+	pg_assert_same('string?', api_openapi_status_test_declared('products.php', 'api_product_schema', 'short_description'), 'Product.short_description may be null');
+}
+
+// What the declarations above rest on: every create path writes those columns.
+// A new INSERT that leaves one out fails here, and the field it feeds takes
+// the question mark in the same change.
+function test_api_openapi_status_create_paths_write_those_columns()
+{
+	$written = api_openapi_status_test_written_columns();
+
+	$built = api_openapi_status_test_built_inserts();
+
+	$inserts = api_openapi_status_test_inserts();
+
+	$seen_built = array();
+
+	foreach ($inserts as $where => $columns) {
+
+		list($place, $table) = explode('|', $where);
+
+		$file = substr($place, 0, strrpos($place, ':'));
+
+		$missing = array();
+
+		foreach ($written[$table] as $column) {
+			if (!preg_match('/(?<![\w$\'])' . $column . '(?![\w\'])/', $columns)) {
+				$missing[] = $column;
+			}
+		}
+
+		if (empty($missing)) {
+			continue;
+		}
+
+		// A column list built at run time names no column itself.
+		if (isset($built[$file . '|' . $table])) {
+			$seen_built[] = $file . '|' . $table;
+			continue;
+		}
+
+		pg_assert_same(array(), $missing, $place . ' writes ' . $table);
+	}
+
+	pg_assert_true(count($inserts) > 50, 'the create paths were found');
+
+	sort($seen_built);
+	$expected = array_keys($built);
+	sort($expected);
+
+	pg_assert_same($expected, $seen_built, 'the column lists built at run time');
+
+	foreach ($built as $where => $line) {
+		$file = substr($where, 0, strpos($where, '|'));
+		pg_assert_contains($line, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file);
+	}
+
+	// The panel's and POST /products' own create path writes through a helper
+	// that takes the table as an argument.
+	$builder = (string) file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php');
+
+	pg_assert_contains("\$product['name'] = get_unique_name(", $builder, 'pg_pb_create_product() writes the name');
+	pg_assert_contains("'name'              => \$name,", $builder, 'pg_pb_create_group() writes the name');
+}
+
+// The Bearer scheme names both kinds of token it carries and what each may
+// do, the way the person-only refusals name them; Basic says what an
+// application key may not.
+function test_api_openapi_status_security_schemes_name_the_three_callers()
+{
+	$schemes = api_openapi_security_schemes();
+
+	pg_assert_same(array('applicationKey', 'deviceToken'), array_keys($schemes));
+	pg_assert_same('basic', $schemes['applicationKey']['scheme']);
+	pg_assert_same('bearer', $schemes['deviceToken']['scheme']);
+
+	$bearer = $schemes['deviceToken']['description'];
+
+	pg_assert_contains('team devices session (POST /auth/login)', $bearer);
+	pg_assert_contains('OAuth connection', $bearer);
+	pg_assert_contains('POST /auth/refresh', $bearer);
+	pg_assert_contains('only credential that can change the person\'s own words', $bearer);
+	pg_assert_contains('403 forbidden', $bearer);
+	pg_assert_contains('403 forbidden', $schemes['applicationKey']['description']);
+	pg_assert_contains('webhook subscriptions', $schemes['applicationKey']['description']);
+
+	foreach ($schemes as $name => $scheme) {
+		foreach (array('signed in on a device', 'mobile', 'phone') as $old) {
+			pg_assert_false(stripos($scheme['description'], $old) !== false, $name . ' does not say ' . $old);
+		}
+	}
 }

@@ -54,8 +54,9 @@ function api_openapi_build() {
 			'summary'     => $route['summary'],
 			'tags'        => array(api_openapi_tag($route['id'])),
 			// Either credential opens an endpoint: an application's key and
-			// secret, or the token of a person signed in on a device. The two
-			// that hand a device its tokens need neither.
+			// secret, or a Bearer access token - a person's own team devices
+			// session or an OAuth connection. The session's own sign-in calls
+			// ('public': login, refresh, logout) need neither.
 			'security'    => !empty($route['public'])
 				? array()
 				: array(array('applicationKey' => array()), array('deviceToken' => array())),
@@ -317,26 +318,55 @@ function api_openapi_build() {
 				. 'Money is always a whole number of minor units - 1999 is 19.99. '
 				. 'Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. '
 				. 'Every read answers with an ETag and takes If-None-Match (304 when unchanged) and fields= (only the fields named). '
-				. 'An integration authenticates with its application key and secret; a person signed in on a device sends Authorization: Bearer with the token from /auth/login.'
+				. 'An integration authenticates with its application key and secret (HTTP Basic). A person\'s own team devices session (POST /auth/login) and an OAuth connection send their access token as Authorization: Bearer. The two security schemes say which calls each of the three can make.'
 		),
 		'servers' => array(array('url' => api_openapi_base_url())),
 		'components' => array(
 			'schemas' => api_openapi_components(),
-			'securitySchemes' => array(
-				'applicationKey' => array(
-					'type'        => 'http',
-					'scheme'      => 'basic',
-					'description' => 'HTTP Basic. The user name is the application key, the password is its secret.'
-				),
-				'deviceToken' => array(
-					'type'        => 'http',
-					'scheme'      => 'bearer',
-					'description' => 'The access token of a person signed in on a device (POST /auth/login). Lives an hour; renew it with POST /auth/refresh.'
-				)
-			)
+			'securitySchemes' => api_openapi_security_schemes()
 		),
 		'security' => array(array('applicationKey' => array()), array('deviceToken' => array())),
 		'paths' => $paths
+	);
+
+}
+
+/**
+ * The two ways a call proves who makes it, and what each kind of caller may
+ * do. Three kinds share the two schemes: an application key (Basic), and a
+ * person's own team devices session or an OAuth connection (both Bearer, both
+ * rows of api_devices - api_device_authenticate()). The refusals the person-only
+ * calls answer with (ws_api_person_only(), ws_api_own_words_only()) name them
+ * the same way.
+ *
+ * The Bearer scheme keeps the name deviceToken: a generated client refers to a
+ * scheme by its name, and renaming it would break every client built so far.
+ *
+ * @return array
+ */
+function api_openapi_security_schemes() {
+
+	return array(
+		'applicationKey' => array(
+			'type'        => 'http',
+			'scheme'      => 'basic',
+			'description' => 'HTTP Basic. The user name is the application key, the password is its secret. '
+				. 'An application key calls in the name of the account that owns it, within the scopes it was given, '
+				. 'and is the only credential that can manage webhook subscriptions. '
+				. 'A call only the person can make - marking what they have read, answering an approval, changing or deleting their own messages - answers 403 forbidden.'
+		),
+		'deviceToken' => array(
+			'type'        => 'http',
+			'scheme'      => 'bearer',
+			'description' => 'An access token, of one of two kinds. '
+				. 'The person\'s own team devices session (POST /auth/login) calls as that person, within the team devices application\'s permissions, '
+				. 'and is the only credential that can change the person\'s own words: change, delete or schedule their messages, ask or change a poll, pin a message. '
+				. 'An OAuth connection, made through the site\'s OAuth server, calls as the person who approved it, within the scopes they agreed to: '
+				. 'it can make the other calls only the person can make, such as marking what they have read or answering an approval, '
+				. 'but changing their own words answers 403 forbidden. '
+				. 'Neither can manage webhook subscriptions. '
+				. 'An access token lives an hour: renew a session with POST /auth/refresh, a connection with its refresh token at the OAuth server\'s token endpoint.'
+		)
 	);
 
 }
@@ -492,6 +522,18 @@ function api_openapi_type($param) {
  * The question mark matters more than it looks: a generated client that maps a
  * nullable column to a non-nullable field breaks on the first order placed
  * without a phone number.
+ *
+ * What decides it is what the presenter can hand back, not the column. A field
+ * carries the question mark when it can really be null: some create path
+ * leaves the column unwritten or writes NULL into it, the presenter itself
+ * answers null (nothing to refer to, a part the record does not have), or the
+ * row is one the site's own data ships that way. A DEFAULT NULL column that
+ * every create path writes - a product's or a group's name, a page's name,
+ * title and meta description, a file's name and type - is declared without
+ * it, and so is one the presenter casts ((string) $row['x']). A new create
+ * path that leaves such a column out adds the question mark in the same
+ * change; tests/api_openapi_status_test.php reads the create paths for the
+ * fields above.
  *
  * @param mixed $spec
  * @return array

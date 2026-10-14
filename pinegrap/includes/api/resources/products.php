@@ -1415,6 +1415,8 @@ function api_product_schema() {
 	return array(
 		'id'                => 'integer',
 		'sku'               => 'string',
+		// A DEFAULT NULL column that every create path writes, so not nullable
+		// (api_openapi_type_spec() says when a field is).
 		'name'              => 'string',
 		'barcode'           => 'string?',
 		'enabled'           => 'boolean',

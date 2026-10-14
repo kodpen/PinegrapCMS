@@ -22,7 +22,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_bank_statement');
 
-$statement_id = (int) ($_REQUEST['id'] ?? 0);
+$statement_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $statement = erp_bank_statement($statement_id);
 
 if ($statement === null) {

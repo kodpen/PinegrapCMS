@@ -26,7 +26,7 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_purchase_order');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_purchase_orders.php';
-$order_id = (int) ($_REQUEST['id'] ?? 0);
+$order_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $order = erp_purchase_order($order_id);
 
 if ($order === null) {

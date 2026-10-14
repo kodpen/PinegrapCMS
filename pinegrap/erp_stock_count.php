@@ -23,7 +23,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_stock_count');
 
-$count_id = (int) ($_REQUEST['id'] ?? 0);
+$count_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $count = erp_stock_count($count_id);
 
 if ($count === null) {

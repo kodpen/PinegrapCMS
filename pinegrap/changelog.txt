@@ -499,6 +499,18 @@
          artık yazmıyor. Haftalık görünümdeki takvim
          sayfası da her açılışta uyarı yazmıyor.
 
+  [DÜZELTME] Form listesinin gelişmiş arama düzeninde
+         panelin listelediği biçimde yazılan alanlar
+         ({{name: 'subject', dynamic: true}}) çözülmüyor,
+         sayfada olduğu gibi yazı olarak görünüyordu;
+         artık arama alanı ve düğme olarak çıkıyor. Örnek
+         verideki "Tüm Sohbetler", "Tüm Destek Biletleri"
+         ve "Tüm Hizmet Projeleri" listeleri de böyleydi.
+         JSON biçiminde yazılmış düzenler eskisi gibi.
+         Katalog sayfası boş arama terimiyle (?query=)
+         açılınca RSS bağlantısını göstermiyordu; artık
+         terimsiz sayfadaki gibi gösteriyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
@@ -1778,6 +1790,17 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] API belgesi: OpenAPI belgesindeki kimlik
+         açıklamaları üç arayanı ayrı ayrı anlatıyor:
+         uygulama anahtarı, kişinin kendi ekip
+         cihazları oturumu (POST /auth/login) ve OAuth
+         bağlantısı; hangisinin neyi yapabildiğini
+         (kendi mesajını düzeltme, okundu işaretleme,
+         webhook yönetimi) yazıyor. Önceden Bearer
+         "cihazında oturum açmış kişi" diyor, OAuth
+         bağlantısını anmıyordu. Uçların cevabı
+         değişmedi.
+
   [DÜZELTME] ERP: API'den ya da yapay zekâ bağlantısından
          kaydedilen tahsilatın zil bildirimi ("Tahsilat
          alındı") paneldeki gibi kaydı yapanın kullanıcı
@@ -2761,6 +2784,19 @@
          Rehberde çift kayıt listesi boşken ve haftalık ya
          da yaklaşan etkinlik görünümündeki takvim hata
          günlüğüne uyarı yazıyordu; artık yazmıyor.
+
+  [DÜZELTME] Kayıt düzenleme, görüntüleme ve yazdırma
+         ekranları (bölge, takvim, etkinlik, kişi, ülke,
+         para birimi, klasör, hediye kartı, ürün grubu,
+         kargo yöntemi, kullanıcı, sipariş yazdırma,
+         ziyaretçi ve diğerleri), adresinde kayıt numarası
+         birden çok kez geçen (?id[]=…) bir bağlantıyla
+         açılınca hata sayfası veriyordu; artık "Kayıt
+         bulunamadı" gösteriyor. ERP belge ekranları
+         (fatura, teklif, irsaliye, sipariş, gider, çek,
+         ekstre, sayım, mutabakat ve PDF'leri) böyle bir
+         bağlantıda varsa 1 numaralı belgeyi açıyordu;
+         artık belgenin bulunamadığını söylüyor.
 
   ÇOK DİLLİ SİTE
   --------------------------------------------------------

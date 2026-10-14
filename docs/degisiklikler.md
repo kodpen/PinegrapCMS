@@ -84,6 +84,193 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Kimlik kapılı 40 panel ekranı `?id[]=` ile 500 vermiyor, ERP ekranları 1 numaralı belgeyi açmıyor (2026-10-14)
+
+**Neden.** #417'nin panel taramasından kalan K1. c651716'daki "Kayıt
+bulunamadı" kapısını ve ERP ekranlarının aynı kalıbını taşıyan 40 dosya
+kimliği `(int) ($_REQUEST['id'] ?? 0)` ile okuyordu. Dizi için `(int)` 1
+veriyor: 1 numaralı kayıt varsa kapı geçiliyordu. c651716'nın 22 ekranı
+(`edit_ad`, `edit_calendar`, `edit_calendar_event`, `edit_contact`,
+`edit_container`, `edit_country`, `edit_currency`, `edit_email_campaign`,
+`edit_folder`, `edit_gift_card`, `edit_key_code`, `edit_product_attribute`,
+`edit_product_group`, `edit_referral_source`, `edit_shipping_method`,
+`edit_short_link`, `edit_state`, `edit_tax_zone`, `edit_user`, `edit_zone`,
+`print_order`, `view_visitor`) kapıdan sonra `$_REQUEST['id']` /
+`$_GET['id']`'yi `escape()`, `h()`, `urlencode()` ya da liveform'a verip 500
+veriyordu. Kimliği yalnız `$id`'den okuyan 18 ERP ve benzeri ekran
+(`add_erp_expense`, `approve_affiliate`, `edit_erp_expense`,
+`edit_erp_invoice`, `edit_erp_invoice_draft`, `edit_erp_purchase_order`,
+`edit_erp_quote`, `edit_erp_waybill`, `erp_account_sync_item`,
+`erp_bank_statement`, `erp_cheque`, `erp_inbox_document`, `erp_receipt`,
+`erp_reconciliation`, `erp_stock_count`, `get_erp_invoice_pdf`,
+`get_erp_reconciliation_pdf`, `get_erp_waybill_pdf`) düşmüyor ama 1
+numaralı kaydı açıyordu (ERP belgesi, PDF'i, ortaklık onayı sorusu, gider
+düzenleme formu). Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Her dosyada tek satır, #417'deki `theme_designer.php`
+kalıbı: `$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;`.
+Dizi kimlik "verilmedi" sayılıyor: 22 ekran kimliksiz açılış gibi "Kayıt
+bulunamadı" 404'ünü, ERP ekranları kendi "bulunamadı" ekranını ya da liste
+yönlendirmesini veriyor; `add_erp_expense` boş yeni gider formunu açıyor.
+Kapıdan sonraki satırlar değişmedi: kapı diziyi geçirmediği için oralara
+ulaşmıyor. Normal isteğin çıktısı aynı. Şema, dil dosyası, JS değişikliği
+yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Kırk tabloda 1 numaralı kayıt
+oluşturuldu (kurulum yalnız dokuzunda 1 numara veriyor; gerçek sitede
+hepsinde olabilir) ve `panel-tarama-araclari/scan.py` 40 ekranda koşuldu
+(parametresiz, kendi parametreleri, her parametre dizi olarak; 736 istek).
+Eski kodda 22 istek 500 verdi (hepsi `?id[]=1`), 22 istek ölümcül hata
+yazdı; yeni kodda 500 ve uyarı ya da ölümcül hata yazan istek 0. Kalan
+tek satır, 404 ekranının kendi `h(null)` kullanım dışı uyarısı (yalnız
+DEBUG açıkken; kimliksiz açılışta da yazıyor, liveform, #417'nin K9'u).
+Eski kod (`origin/development`) ikinci portta, istekler sırayla iki
+sunucuya: 120 normal istek (`?id=1`, kimliksiz, `?id=999999`) aynı HTML'i
+verdi; farklı olanlar yalnız `?id[]=1` istekleri (39'u; `erp_receipt`'te
+1 numara tahsilat değildi, iki kodda da "bulunamadı"). Yeni
+`tests/panel_id_gate_test.php`: hiçbir panel ekranı istek kimliğini
+`is_scalar()` olmadan `(int) ($_REQUEST['id'] ?? 0)` ile okumuyor (eski
+kodda 40 eşleşme). `php -l`, `tools/lint.php`, `tools/test.php` (934
+test), `check_lang`, `check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler.
+
+**Bilerek yapılmayan.** #417 notundaki K2–K9: kapısı olmayan düzenleme
+ekranları (`?id[]=` 500 ve kimliksiz açılışta yarı boş form), `?send_to[]=`,
+ERP `(string) ($_GET['x'] ?? '')` "Array to string" uyarıları, diğer
+500'ler, liveform `h(null)` ve `custom_form.php`. Kapıdan sonraki
+`$_REQUEST['id']` okumaları `$id`'ye çevrilmedi: dizi artık kapıda duruyor,
+değişiklik dosya başına tek satır kalıyor.
+
+---
+
+## 2026.4.10 — API belgesi: her eklemede yazılan boş sütunların kuralı, Bearer açıklaması üç arayanı anlatıyor (2026-10-14)
+
+**Neden.** #412 ve #405'ten kalan iki iş. (1) Ham sütunu `DEFAULT NULL`
+olup belgede boş olamaz yazılı alanlar (ürün ve grup adı, sayfa adı,
+başlığı ve açıklaması, dosya adı ve türü) için bir kural yazılı değildi;
+sonraki bir tarama bunları sütuna bakıp `?` ile işaretleyebilir ya da yeni
+bir ekleme yolu sütunu boş bırakıp belgeyi sessizce yanlış yapabilirdi.
+(2) OpenAPI'nin Bearer şeması "a person signed in on a device (POST
+/auth/login)" diyordu: OAuth bağlantısı da Bearer jetonuyla geliyor
+(`api_devices` satırı) ama anılmıyordu ve hangi arayanın neyi
+yapabildiği yazmıyordu.
+
+**Ne değişti.**
+- Kural `api_openapi_type_spec()`'in açıklamasında: alanın `?` alıp
+  almayacağına sütun değil sunucu fonksiyonunun verebileceği değer karar
+  verir. Bir ekleme yolu sütunu yazmıyor ya da NULL yazıyorsa, sunucu
+  fonksiyonu kendisi `null` veriyorsa ya da sitenin kendi verisi öyle
+  geliyorsa `?`; her ekleme yolunun yazdığı `DEFAULT NULL` sütun ve
+  sunucu fonksiyonunun `(string)` ile çevirdiği alan `?` almaz. Ürün,
+  grup, sayfa, dosya ve form bildirimlerinin yanında da tek satır not.
+- Tarama: bu sütunlara yazan 63 INSERT (ürün 3, grup 7, sayfa 7, dosya 46)
+  ve ürün oluşturucusu (`pg_pb_create_product()`, `pg_pb_create_group()`)
+  okundu. Hepsi adı, başlığı, açıklamayı ve türü dolu bir değerle yazıyor;
+  kopyalama (`duplicate_style.php`) özgün sayfanın değerini taşıyor,
+  ürün içe aktarma yalnız adı dolu satırı ekliyor; hiçbir UPDATE bu
+  sütunlara NULL yazmıyor; kurulumla gelen iki veri dökümünde (181/180
+  sayfa, 27 ürün, 20 grup, 212/206 dosya) NULL yok. Bu yüzden alanlar boş
+  olamaz kaldı, belgede şema değişmedi. Önceden `?` taşıyanlar
+  (`Product.short_description`, siparişin fatura alanları, `SeoIssue.name`
+  ve #412'nin müşteri alanları) kurala uyuyor.
+- `components.securitySchemes`: yeni `api_openapi_security_schemes()`.
+  Basic (`applicationKey`) uygulama anahtarının sahibinin adına ve verilen
+  izinlerle çağırdığını, webhook aboneliklerini yönetebilen tek kimlik
+  olduğunu, kişinin kendisinin yapacağı çağrıların 403 forbidden döndüğünü
+  söylüyor. Bearer (`deviceToken`) iki jeton türünü ayırıyor: kişinin kendi
+  ekip cihazları oturumu (`POST /auth/login`) kişinin kendi sözünü
+  değiştirebilen tek kimlik (mesaj düzeltme, silme, zamanlama, oylama
+  açma ve değiştirme, sabitleme); OAuth bağlantısı onaylayan kişi adına ve
+  verilen izinlerle çağırıyor, okundu işaretleme ve onay yanıtlama gibi
+  kişiye ait öbür çağrıları yapabiliyor, kişinin sözünü değiştirmesi 403.
+  İkisi de webhook yönetemiyor; jeton bir saat yaşıyor (`POST /auth/refresh`
+  ya da OAuth sunucusunun token ucu). `info.description` cümlesi de aynı
+  sözcüklerle. Şemanın adı `deviceToken` kaldı: üretilmiş istemciler şemayı
+  adıyla anıyor.
+- `tests/api_openapi_status_test.php`: 3 yeni test. Sekiz alanın
+  bildirimi boş olamaz (kaynaktan okunuyor; resource dosyaları test
+  ortamında yüklenmiyor); bu tablolara yazan her INSERT'in sütun listesi
+  bu sütunları anıyor, listesi çalışırken kurulan üç ekleme yolu adıyla
+  sayılı ve yazmayı güvenceye alan satırları yerinde; iki güvenlik
+  şemasının metni üç arayanı anıyor, "signed in on a device", "mobile",
+  "phone" demiyor.
+
+Uçların davranışı, şema, dil dosyası ve JS değişmedi. Panelin API belgesi
+sayfası yalnız HTTP Basic'i gösteriyor, Bearer cümlesi orada yok (tr.json'a
+dokunulmadı).
+
+**Doğrulama.** OpenAPI belgesi CLI'da modüller açık üretildi (380 işlem),
+önce ve sonra `openapi-spec-validator` ile geçerli; fark yalnız
+`info.description` ve iki güvenlik şemasının açıklaması. Testin kırmızıya
+döndüğü denendi (`add_page.php`'den `page_meta_description` çıkarılınca ve
+`File.type` `string?` yapılınca). `lint`, `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies`, `build_js --check`, `tools/test.php`
+yeşil.
+
+---
+
+## 2026.4.10 — Form listesinin gelişmiş arama düzeni panelin verdiği `{name: '…'}` biçimini okumuyordu, katalog boş terimle RSS bağlantısını göstermiyordu (2026-10-14)
+
+**Neden.** #415'in bıraktığı iki parça, ikisi de 2026.4.9'da var. (1) Form
+listesinin gelişmiş arama düzenindeki her `{{…}}` etiketi `json_decode()`
+ile okunuyordu. Panelin düzenleme ekranı alanları `{{name: 'subject'}}`
+biçiminde listeliyor ve ipucu "Etiketleri Alanlardan kopyalayın" diyor;
+örnek verideki gelişmiş araması açık üç liste (`all-conversations`,
+`all-support-tickets`, `all-services-projects`) ve araması kapalı diğer
+düzenler de bu biçimde (`{name: 'submitter', dynamic: true}`). Bu JSON
+değil (anahtar tırnaksız, metin tek tırnaklı), bu yüzden bu etiketler hiç
+çözülmüyor, sayfada `{{name: …}}` yazısı olduğu gibi görünüyordu. Yalnız
+`{{"name":"subject"}}` gibi sıkı JSON çalışıyordu. (2) Katalog `?query=`
+(boş ya da yalnız boşluk) ile açılınca `get_catalog.php` terimi `trim()`
+edip terimsiz sayfayı gösteriyor, ama `get_page_content.php`'deki RSS
+koşulu terimin metin olmasına baktığı için `<head>`'deki RSS bağlantısı
+çıkmıyordu.
+
+**Ne değişti.**
+- `includes/fn/forms.php`: `pg_form_list_advanced_field_properties()`. Önce
+  sıkı JSON dener; çözülürse sonucu olduğu gibi döner, bu yüzden JSON
+  düzenlerin HTML'i değişmez. Çözülmezse tek geçişte tırnaksız anahtarları
+  tırnaklar (Türkçe harfli anahtar dahil), tek tırnaklı metni çift tırnağa
+  çevirir (içindeki `\'` ve `"` dahil), kapanış parantezinden önceki virgülü
+  atar; metinlerin içine dokunmaz. Yine okunamazsa `null` döner.
+- `get_form_list_view.php` etiketi bu fonksiyonla okuyor; okunamayan etiket
+  atlanıyor ve düzende yazıldığı gibi kalıyor (bilinmeyen alan adındaki
+  gibi), uyarı ya da 500 yok.
+- Katalog RSS bağlantısı terim boşsa ya da yalnız boşluksa da çıkıyor.
+- `tests/form_list_advanced_field_test.php`: beş test (sıkı JSON aynen,
+  nesne biçimi, sondaki virgüller, metin içinde tırnak ve kaçış, bozuk girdi
+  uyarısız `null`).
+- Paneldeki ipucu ve alan etiketleri değişmedi: verdikleri biçim artık
+  çalışıyor. Örnek veri değişmedi. Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, Türkçe örnek veri).** Eski kod
+(`origin/development`) ve yeni kod aynı veritabanında iki ayrı sunucuda,
+opcache kapalı. Üç örnek liste (yönetici olarak): eski kodda gelişmiş arama
+bloğunda etiketler düz yazı; yeni kodda dinamik seçim listeleri (Gönderen,
+E-posta, Şirket, Telefon, Konu; projelerde Kredi) ve Ara/Temizle düğmeleri
+çıkıyor, tarayıcıda bir e-posta seçip Ara ile süzme çalışıyor, sayfa hatası
+yok. `/forum` listesine sıkı JSON düzen (standart ve özel alan, dinamik,
+operatör, `&quot;`'lu etiket, bilinmeyen alan, JSON olmayan etiket, düğmeler)
+kuruldu: oturumsuz dört istekte (terimsiz, alanla arama, gönderen ve tarih,
+dizi değer) eski ve yeni HTML birebir aynı (oturum jetonu dışında). Katalog
+`/shop-fullwidth`: `?query=`, `?query=%20`, `?1000_query=` yeni kodda RSS
+bağlantısı terimsiz sayfadaki gibi, eski kodda yoktu; terimsiz,
+`?query=kalem`, `?query[]=x`, `?1000_query=&query=kalem` eski ve yeni
+kodda aynı. Hiçbir istek `php_errors.log`'a satır yazmadı.
+`tools/lint.php`, `check_*`, `tools/test.php` ve `build_js.php --check`
+geçti. Doğrulanamadı: dev.pinegrap.com'daki sayfalar.
+
+**Bilerek yapılmayan.** Katalogda iki uç hâlâ terimsiz sayfadan ayrı (eski
+kodda da aynı): basit aramanın Temizle düğmesi terimle gelince
+(`?<sayfa>_simple_clear`) ve `?<sayfa>_query=` ile `?query=x` birlikte
+gelince katalog terimsiz sayfayı gösteriyor ama RSS bağlantısı gizli.
+Gevşek okuyucu JavaScript'in tamamını değil, panel etiketlerinin kullandığı
+üç gevşekliği okuyor; onaltılık sayı, yorum ya da `\x41` kaçışı olan etiket
+atlanır.
+
+---
+
 ## 2026.4.10 — Sayfalar listesinden, sayfa ekranından ve görsel editörden silinen sayfa ve sayfa stili Geri Dönüşüm Kutusuna gidiyor (2026-10-14)
 
 **Neden.** Bir müşteri sitesinde yanlışlıkla silinen kaydı geri almak için

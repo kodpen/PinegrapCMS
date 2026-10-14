@@ -22,6 +22,13 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 - Her uç için `'returns'` bildir (`'ErpInvoice'` veya
   `array('list' => 'ErpInvoice')`); nesne alanlarını üreten fonksiyonun yanında
   alan başına bir satır tanımla, nullable için `'string?'`.
+  `?` sütuna değil sunucu fonksiyonunun verebileceği değere bakar: her ekleme
+  yolunun yazdığı `DEFAULT NULL` sütun (ürün/grup adı, sayfa adı, başlığı ve
+  açıklaması, dosya adı ve türü) ya da `(string)` ile çevrilen alan `?` almaz;
+  bir yolun yazmadığı ya da NULL yazdığı, fonksiyonun `null` verdiği alan
+  alır (`api_openapi_type_spec()` açıklaması). O sütunları yazmayan yeni bir
+  INSERT `test_api_openapi_status_create_paths_write_those_columns`'u kırar:
+  alan aynı değişiklikte `?` alır.
 - `'type' => 'list'` parametresine öğe türünü `'of'` ile yaz (`'integer'`,
   `'string'` ya da `array('hash' => 'string', ...)`); yazılmazsa OpenAPI onu
   nesne listesi sanar. Gövde parametresinin `description`'ı belgeye girer.
@@ -150,6 +157,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   `includes/api/devices.php`). Cihazda `api_current_app()['owner']` giriş yapan
   kişidir; sahibi okuyan her kod (Çalışma Alanı, ERP kasa, audit) kendiliğinden
   o kişiyle çalışır. Uç yazarken "sahip" deme, `$app['owner']` oku.
+  Bearer jetonu iki türdür: kişinin kendi ekip cihazları oturumu
+  (`POST /auth/login`) ve OAuth bağlantısı (ikisi de `api_devices` satırı).
+  OpenAPI'deki iki güvenlik şemasının metni `api_openapi_security_schemes()`'te
+  ve üç arayanı kişiye özel uçların 403 metinleriyle aynı sözcüklerle anar;
+  şemanın adı `deviceToken` kalır (üretilmiş istemciler adıyla anıyor).
 - `api_current_device()` null değilse istek bir cihazdan gelir. Cihazda
   `webhooks:manage` yoktur, `account:*` hep vardır.
 - `'public' => true` yalnız jeton veren uçlar içindir (login/refresh/logout);

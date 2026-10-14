@@ -20,7 +20,7 @@ include('init.php');
 $user = validate_user();
 validate_contacts_access($user);
 
-$contact_id = (int) ($_REQUEST['id'] ?? 0);
+$contact_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 // try to find contact for supplied id
 $query = "SELECT id, email_address, affiliate_code FROM contacts WHERE id = '" . $contact_id . "'";
