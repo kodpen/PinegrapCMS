@@ -580,6 +580,47 @@
          Seçilen sıralama panel dili değişince
          kaybolmuyor.
 
+  YÖNLENDİRME KAYNAĞI, ZİYARETÇİ RAPORU, OTOMATİK
+  DİYALOG VE ANAHTAR KOD LİSTELERİ
+  --------------------------------------------------------
+
+  [YENİ] Tüm Yönlendirme Kaynakları, Kişinin Tüm
+         Siparişleri, Tüm Ziyaretçi Raporları, Otomatik
+         Diyaloglar ve Tüm Anahtar Kodlar listeleri de
+         aynı anda birden çok sütuna göre sıralanıyor,
+         örneğin teklif kodu artan, aynı teklifte son
+         düzenleme azalan. Başlığa Shift ile tıklamak
+         sonraki düzeyi ekliyor; telefonda ya da
+         klavyeyle araç çubuğundaki "Sıralama" menüsü
+         kullanılıyor. Seçilen sıralama panel dili
+         değişince kaybolmuyor.
+
+  [DÜZELTME] Türkçe panelde Tüm Ziyaretçi Raporları
+         listesinde Adı ve Oluşturulma başlıklarına
+         tıklamak listeyi sıralamıyordu, hep son
+         düzenlemeye göre kalıyordu; artık sıralıyor.
+
+  [DÜZELTME] Kişinin Tüm Siparişleri listesinde başlığa
+         tıklayan, rolü Kullanıcı olan rehber yetkilisi
+         "Erişim reddedildi" alıyordu; sıralama
+         bağlantıları artık kişiyi adreste taşıyor.
+
+  [DÜZELTME] Tüm Anahtar Kodlar listesi Teklif
+         Mesajı'na göre sıralıyken Dışa Aktar, kayıt
+         yerine veritabanı hatası içeren bir dosya
+         veriyordu; dışa aktarım artık listedeki sırayla
+         geliyor.
+
+  [GÜVENLİK] Otomatik Diyaloglar ve Tüm Anahtar Kodlar
+         listelerinde (anahtar kodların dışa aktarımı
+         dahil) adres çubuğuna yazılan sıralama yönü
+         veritabanı sorgusuna olduğu gibi giriyordu;
+         listeye girebilen oturum açmış bir kullanıcı
+         (Anahtar Kodlar'da e-ticaret yetkisi olan
+         Kullanıcı rolü dahil) sorguya kendi komutunu
+         ekleyebiliyordu. Artık yalnız listenin sütunları
+         ve artan/azalan kabul ediliyor.
+
   E-TİCARET: AYARLAR
   --------------------------------------------------------
 

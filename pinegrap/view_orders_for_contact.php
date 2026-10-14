@@ -38,18 +38,6 @@ if (isset($_GET['id'])) {
 
 $id = ($_SESSION['software']['ecommerce']['view_orders_for_contact']['id'] ?? '');
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['ecommerce']['view_orders_for_contact']['sort'] = $_REQUEST['sort'];
-}
-
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store sort in session
-    $_SESSION['software']['ecommerce']['view_orders_for_contact']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
-
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
@@ -73,30 +61,32 @@ $row = mysqli_fetch_assoc($result);
 $first_name = $row['first_name'];
 $last_name = $row['last_name'];
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_orders_for_contact']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_orders_for_contact']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'order_number' => lang('Order Number'),
+    'total'        => lang('Total'),
+    'order_date'   => lang('Order Date'),
+);
 
-switch (($_SESSION['software']['ecommerce']['view_orders_for_contact']['sort'] ?? '')) {
-    case lang('Order Number'):
-        $sort_column = 'order_number';
-        break;
-    case lang('Total'):
-        $sort_column = 'total';
-        break;
-    case lang('Order Date'):
-        $sort_column = 'order_date';
-        break;
-    default:
-        $sort_column = 'order_date';
-}
-if (!empty($_SESSION['software']['ecommerce']['view_orders_for_contact']['order'])) {
-    $asc_desc = sql_order_direction($_SESSION['software']['ecommerce']['view_orders_for_contact']['order'] ?? '');
-} else {
-    $asc_desc = 'desc';
-}
+$sort_default = array('sort' => 'order_date', 'order' => 'desc');
+
+$list_state = pg_list_state('view_orders_for_contact', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'order_number' => 'order_number',
+    'total'        => 'total',
+    'order_date'   => 'order_date',
+));
+
+// The sort links keep the contact in the address, so the access check at
+// the top sees the same contact the list shows.
+$sort_query = array('id' => $id);
+$sort_extras = h('&id=' . urlencode($id));
 
 // set where clause
 $where = "WHERE contact_id = '" . escape($id) . "' ";
@@ -115,7 +105,7 @@ $number_of_results = $row[0];
 $query = "SELECT id, order_number, total, order_date ".
          "FROM orders ".
          $where.
-         "ORDER BY $sort_column $asc_desc ";
+         "ORDER BY $order_by ";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 while ($row = mysqli_fetch_assoc($result)) {
     $row['total'] =                 sprintf("%01.2lf", $row['total'] / 100);
@@ -130,9 +120,9 @@ while ($row = mysqli_fetch_assoc($result)) {
             <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
         </td>
-        <td class="' . $row_style .'">' . h($row['order_number']) . '</td>
-        <td class="' . $row_style .'" nowrap>' . h($row['total']) . '</td>
-        <td class="' . $row_style .'" nowrap>' . $row['order_date'] . '</td>
+        <td>' . h($row['order_number']) . '</td>
+        <td nowrap>' . h($row['total']) . '</td>
+        <td nowrap>' . $row['order_date'] . '</td>
     </tr>';
 }
 
@@ -155,19 +145,23 @@ pg_page_shell(
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
-
-
-
-            
+            <div class="row mb-2  flex-wrap">
+                <div class="col-12 text-center text-md-start">
+                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_orders_for_contact.php', $sort_columns, $sort_levels, $sort_default, $sort_query) . '
+                    </nav>
+                </div>
+            </div>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th nowrap>' . asc_or_desc(lang('Order Number'),'view_orders_for_contact', $keys_and_values) . '</td>
-                                <th nowrap>' . asc_or_desc(lang('Total'),'view_orders_for_contact', $keys_and_values) . '</td>
-                                <th nowrap>' . asc_or_desc(lang('Order Date'),'view_orders_for_contact', $keys_and_values) . '</td>
+                                <th nowrap>' . get_column_heading(lang('Order Number'), $sort_levels, '', $sort_extras, 'order_number') . '</th>
+                                <th nowrap>' . get_column_heading(lang('Total'), $sort_levels, '', $sort_extras, 'total') . '</th>
+                                <th nowrap>' . get_column_heading(lang('Order Date'), $sort_levels, '', $sort_extras, 'order_date') . '</th>
                             </tr>
                         </thead>
                         ' . $output_rows . '
