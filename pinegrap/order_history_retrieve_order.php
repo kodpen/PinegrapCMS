@@ -35,7 +35,7 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if the order was not found, output error
 if (mysqli_num_rows($result) == 0) {
-    output_error('The order could not be found. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('The order could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $row = mysqli_fetch_assoc($result);
@@ -50,12 +50,12 @@ $user_id = $row['user_id'];
 
 // if order user id is different than user id, output error
 if ($order_user_id != $user_id) {
-    output_error('You do not have access to this order. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('You do not have access to this order.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 // if the order is complete, output error
 if ($status != 'incomplete') {
-    output_error('The order is complete. You may only retrieve incomplete orders. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('The order is complete. You may only retrieve incomplete orders.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $order_switched = false;

@@ -22,6 +22,14 @@ validate_ecommerce_access($user);
 
 validate_token_field();
 
+// A copy needs an existing product. An id that is missing, unknown or sent as
+// an array (?id[]=x) stops on "not found": the copy was made from an empty row,
+// or escape() failed on the array with an error page.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM products WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $new_product_id = duplicate_product($_GET['id']);
 
 $old_product_name = db_value("SELECT name FROM products WHERE id = '" . escape($_GET['id']) . "'");

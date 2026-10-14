@@ -21,6 +21,19 @@ include('init.php');
 $user = validate_user();
 validate_email_access($user);
 
+// Sending is a change, so it carries the CSRF token like the other actions:
+// both links that open this window and the refresh that sends the next batch
+// pass it.
+validate_token_field();
+
+// A campaign that is missing, unknown or sent as an array (?id[]=x) stops on
+// "not found": escape() failed on the array with an error page, and a missing
+// id ran the send loop on an empty row.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM email_campaigns WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // get e-mail campaign information
 $query =
     "SELECT

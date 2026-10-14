@@ -125,3 +125,29 @@ function test_panel_id_gate_on_get_id_screens()
 	pg_assert_contains("is_scalar(\$_GET['duplicate'] ?? null) ? (int) \$_GET['duplicate'] : 0", file_get_contents(PG_FUNCTIONS_DIR . '/edit_offer.php'), 'edit_offer duplicate');
 	pg_assert_contains("is_scalar(\$_GET['id'] ?? null) ? get_calendar_event(\$_GET['id'], 0) : false", file_get_contents(PG_FUNCTIONS_DIR . '/get_page.php'), 'get_page icalendar');
 }
+
+// The token-checked actions that copy, optimize, remove or send one record
+// passed ?id[]=x to escape(), which fails on an array with an error page, and
+// most copied an empty row when the id was missing or unknown. Each now stops
+// on "Record not found." before anything reads the id.
+function test_panel_id_gate_on_token_action_screens()
+{
+	$screens = array(
+		'duplicate_calendar_event', 'duplicate_common_region', 'duplicate_designer_region',
+		'duplicate_email_campaign_profile', 'duplicate_menu', 'duplicate_page', 'duplicate_product', 'optimize',
+		'remove_recipient', 'send_email_campaign',
+	);
+
+	foreach ($screens as $screen) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
+		$gate = strpos($source, "\$id = is_scalar(\$_GET['id'] ?? null) ? (int) \$_GET['id'] : 0;\nif ((\$id < 1) || ((int) db_value(\"SELECT COUNT(*) FROM ");
+
+		pg_assert_true($gate !== false, $screen . ': no record gate');
+		pg_assert_contains("output_error(lang('Record not found.')", $source, $screen);
+
+		if ($gate !== false) {
+			pg_assert_same($gate + strlen('$id = is_scalar('), strpos($source, "\$_GET['id']"), $screen . ': id read before the gate');
+			pg_assert_true(strpos($source, 'validate_token_field();') < $gate, $screen . ': token checked after the gate');
+		}
+	}
+}

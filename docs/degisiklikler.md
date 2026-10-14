@@ -84,6 +84,106 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Jetonlu çoğaltma ve gönderme eylemleri kaydı olmayan id'de "Kayıt bulunamadı" diyor; Hesabım sipariş ekranı uyarı yazmıyor (2026-10-14)
+
+**Neden.** #442'nin kalanları.
+
+1. Jetonla çağrılan on eylem ekranı (`duplicate_calendar_event`,
+   `duplicate_common_region`, `duplicate_designer_region`,
+   `duplicate_email_campaign_profile`, `duplicate_menu`, `duplicate_page`,
+   `duplicate_product`, `optimize`, `remove_recipient`,
+   `send_email_campaign`) `$_GET['id']`'yi doğrudan `escape()`'e veriyordu:
+   `?id[]=x` 500 veriyordu. Sandbox'ta eski kodla bulunan daha ağır durum:
+   id'siz ya da var olmayan id'yle (`?id=999999`) beş çoğaltma ekranı boş bir
+   satırdan kopya yaratıyordu (adsız takvim etkinliği, ortak ve tasarımcı
+   bölgesi, kampanya profili, ürün) ve hata günlüğüne onlarca satır
+   yazıyordu; `send_email_campaign` id'siz açılınca boş satır üzerinde
+   gönderme döngüsünü koşuyordu. `send_email_campaign` ayrıca jetonu hiç
+   doğrulamıyordu: iki çağıran bağlantı (`add_email_campaign`,
+   `edit_email_campaign`) ve sonraki 10 alıcı için yenileme jetonu
+   taşıyordu, ama ekran bakmıyordu; başka bir siteden açılan bir bağlantı
+   oturumu açık yöneticinin hazır kampanyasını gönderebiliyordu.
+2. Hesabım'ın sipariş ekranı (`get_view_order_screen_content`) gerçek bir
+   siparişin her açılışında uyarı yazıyordu. Özel alan etiketleri bu
+   ziyaretin ödeme akışındaki fatura bilgileri sayfasından okunuyor
+   (`$_SESSION['ecommerce']['billing_information_page_id']`); siparişine
+   geri bakan müşteride o anahtar yok. Kalemsiz bir siparişte
+   `$recurring_products_exist`, `$applied_offers` ve
+   `$output_recurring_products` hiç atanmıyordu. Özel düzende (sayfanın
+   düzen türü "custom") tamamlanmış bir siparişin teslimat adresinde takip
+   numarası yoksa `$recipient['shipping_tracking_numbers']` atanmıyor,
+   `includes/templates/view_order.php` `count()` ile 500 veriyordu;
+   kargosuz kalemlerin alıcısında `offer_id`, kargo adresinde `name`,
+   otomatik üyelik yokken `$auto_registration_email_address` /
+   `_password` tanımsızdı. Hepsi 2026.4.9'da da var.
+3. Sipariş geçmişindeki geri alma, yeniden sipariş ve silme ekranlarının
+   "The order could not be found." ve yanındaki üç hata metni `lang()`'sız
+   olduğu için Türkçe sitede İngilizce kalıyordu.
+
+**Ne değişti.**
+
+1. On ekranın hepsi jeton denetiminden hemen sonra #424'ün kapısını
+   taşıyor: `$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0`,
+   ardından tablosunda `COUNT(*)`; id yok, dizi ya da kayıt yoksa "Kayıt
+   bulunamadı." 404. `remove_recipient`'te kapı oturum denetiminden sonra
+   (oturumsuz ziyaretçi eskisi gibi girişe yönleniyor). Ekranların kendi
+   "bulunamadı" yanıtları (menü, sayfa, dosya, alıcı) yerinde kaldı; var
+   olmayan id'de artık önce kapı yanıt veriyor. `send_email_campaign`
+   `validate_token_field()` çağırıyor. `duplicate_menu`'nün menü
+   öğelerini kopyalayan özyinelemeli fonksiyonu ilk çağrıda üst öğe
+   olmadığı için iki "Undefined array key" yazıyordu; varsayılan 0, sorgu
+   ve kayıt aynı.
+2. Sipariş ekranı üç listeyi fonksiyonun başında boş başlatıyor; oturum
+   anahtarlarını ve etiketleri `?? ''` ile okuyor (sorgu ve çıktı aynı:
+   eski kodda da boş değer hiçbir satıra uymuyordu). Özel düzende her
+   alıcının takip numarası listesi boş dizi olarak başlıyor, `name`
+   ve otomatik üyelik değişkenleri boş, kargosuz alıcı `!empty()` ile
+   okunuyor. `includes/templates/view_order.php` takip numarası satırını
+   yalnız numara varken gösteriyor (sistem düzeniyle aynı). Düzen
+   dosyası değiştirilmemiş ("layout_modified" 0) sayfalar şablonu doğrudan
+   kullandığı için düzelme hemen geçerli; panelden değiştirilmiş eski
+   düzen dosyaları 500 yerine numarasız boş bir "Tracking Number:"
+   satırı gösteriyor (PHP 7'deki görünüm).
+3. Üç `order_history_*` ekranının dört hata metni `lang()` ile; "The
+   order could not be found." ve "You do not have access to this order."
+   anahtarları zaten vardı, üç yeni anahtar `tr.json` sonuna eklendi.
+
+Şema adımı ve JS yok. Testler: `tests/panel_id_gate_test.php`
+(`test_panel_id_gate_on_token_action_screens`: on ekranda kapı var, id'yi
+ondan önce okuyan yok, jeton kapıdan önce), yeni
+`tests/order_view_screen_test.php` (varsayılanlar düzenlerden önce, oturum
+okumaları, takip satırı, `lang()`'lı mesajlar).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod (`origin/development`)
+8001'de, yeni 8000'de, aynı veritabanı. On ekran `?id[]=x`: eski 500, yeni
+404 "Kayıt bulunamadı.". id'siz ve `?id=999999`: eski beş çoğaltma ekranı
+boş kopya yarattı (yönlendirme yeni kaydın düzenleme ekranına), menü,
+sayfa, dosya ve alıcı kendi bulunamadı yanıtını verdi; yeni 404, kayıt
+yaratılmadı. Var olan kayıtla (etkinlik 7, bölge 77 ve 193, profil 8, menü
+11, sayfa 886, ürün 70, dosya 2019, alıcı 7, kampanya 500) iki sunucuda aynı
+durum kodu, aynı yönlendirme biçimi ve aynı mesaj; jetonsuz istek ikisinde
+de jeton hatası, yalnız `send_email_campaign` jetonsuz eskide gönderdi,
+yenide jeton hatası. 12 alıcılı kampanya yeni kodda iki parti halinde
+yenilemeyle sonuna kadar gitti (jeton yenilemede taşınıyor). Hesabım sipariş
+ekranı yönetici oturumuyla altı siparişte (kalemsiz, tek ve iki teslimat
+adresli, yinelenen ürünlü, kargosuz kalemli): sistem düzeninde eski kod her
+açılışta 3, kalemsizde 6 uyarı satırı, yeni kod hiç; HTML aynı (yalnız sayfa
+görüntülenme sayacı farklı). Özel düzende eski kod tamamlanmış siparişlerde
+500, yeni kod 200, uyarı yok; takip numaralı siparişte numara iki kodda aynı
+görünüyor. Sipariş geçmişi hataları yeni kodda Türkçe. `tools/lint.php`,
+`tools/test.php` (1012 test), `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies` ve `build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler, gerçek e-posta
+gönderimi.
+
+**Bilerek yapılmayan.** `update_order.php:28`'in API yanıtı ("The order
+could not be found.") İngilizce kaldı (API iletileri İngilizce). Sipariş
+geçmişi ekranlarının "Query failed." metinleri değişmedi. Panelden
+değiştirilmiş özel sipariş düzenlerinde takip numarası olmayan adreste boş
+"Tracking Number:" satırı görünüyor; düzen yeniden üretilince gider.
+
+---
+
 ## 2026.4.10 — Sipariş akışının son kalanları: editörün sepet widget'ı ve sepete ekle API'si dizi değerde, her siparişteki uyarılar (2026-10-14)
 
 **Neden.** #421, #430 ve #440'ın kalanları. Sandbox'ta eski kodla yeniden

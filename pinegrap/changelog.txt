@@ -591,6 +591,18 @@
          açmamış biri) hata günlüğüne uyarı yazıyordu;
          artık yazmıyor.
 
+  [DÜZELTME] Hesabım'daki sipariş ekranı her açılışta
+         hata günlüğüne uyarı yazıyordu; artık yazmıyor,
+         sayfa aynı. Sipariş sayfası özel düzende
+         (custom) kullanılıyorsa takip numarası
+         girilmemiş tamamlanmış bir sipariş hata sayfası
+         veriyordu; artık açılıyor ve takip numarası
+         satırı yalnız numara varken görünüyor. Sipariş
+         geçmişindeki siparişi kurtarma, yineleme ve
+         silme bağlantılarının hata mesajları ("Sipariş
+         bulunamadı." gibi) Türkçe sitede İngilizce
+         görünüyordu; artık Türkçe.
+
   ÜRÜNLER
   --------------------------------------------------------
 
@@ -859,6 +871,14 @@
          kullanıcı sorguya kendi komutunu ekleyebiliyordu.
          Artık yalnız listenin sütunları ve artan/azalan
          kabul ediliyor.
+
+  [GÜVENLİK] Kampanya gönderme penceresi panelin
+         bağlantısındaki güvenlik jetonunu
+         denetlemiyordu; başka bir siteden açılan bir
+         bağlantı, oturumu açık bir yöneticinin
+         gönderilmeye hazır kampanyasını
+         gönderebiliyordu. Artık jeton denetleniyor;
+         panelden gönderme eskisi gibi çalışıyor.
 
   TAKVİMLER VE MENÜLER
   --------------------------------------------------------
@@ -3081,6 +3101,20 @@
          söylüyor. Takvim etkinliğinin iCalendar
          indirmesi aynı durumda hata sayfası yerine
          etkinliğin bulunamadığını söylüyor.
+
+  [DÜZELTME] Takvim etkinliği, ortak bölge, tasarımcı
+         bölgesi, kampanya profili ve ürün çoğaltma,
+         adresinde kayıt numarası olmayan ya da var
+         olmayan bir kaydı gösteren bağlantıyla boş bir
+         kopya yaratıyordu. Bu beş ekran ile menü ve
+         sayfa çoğaltma, görsel optimize etme, adres
+         defterinden alıcı silme ve kampanya gönderme,
+         kayıt numarası birden çok kez geçen (?id[]=…)
+         bir bağlantıda hata sayfası veriyordu. Artık
+         hepsi kaydın bulunamadığını söylüyor ve hiçbir
+         şey yaratmıyor; var olan kayıtta eskisi gibi
+         çalışıyor. Menü çoğaltma hata günlüğüne uyarı
+         yazmıyor.
 
   [DÜZELTME] Hata ayıklama açıkken panelin neredeyse her
          ekranı ve yönetici oturumuyla açılan site

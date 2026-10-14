@@ -23273,5 +23273,8 @@
     "The backup has no config table, so it is not the backup of a site.": "Yedekte config tablosu yok, bu yüzden bir sitenin yedeği değil.",
     "{var:1} % · {var:2} / {var:3}": "%{var:1} · {var:2} / {var:3}",
     "The table name {var:1} is too long to be loaded next to the tables of the site.": "{var:1} tablo adı, sitenin tablolarının yanına yüklenemeyecek kadar uzun.",
-    "Without the rows of visit, view and request records, which backups leave out. The whole database is {var:1}.": "Yedeğe girmeyen ziyaret, görüntüleme ve istek kayıtlarının satırları hariç. Veritabanının tamamı {var:1}."
+    "Without the rows of visit, view and request records, which backups leave out. The whole database is {var:1}.": "Yedeğe girmeyen ziyaret, görüntüleme ve istek kayıtlarının satırları hariç. Veritabanının tamamı {var:1}.",
+    "The order is complete. You may only retrieve incomplete orders.": "Sipariş tamamlanmış. Yalnızca tamamlanmamış siparişleri kurtarabilirsiniz.",
+    "The order is incomplete. You may only reorder complete orders.": "Sipariş tamamlanmamış. Yalnızca tamamlanmış siparişleri yineleyebilirsiniz.",
+    "The order is complete. You may only delete incomplete orders.": "Sipariş tamamlanmış. Yalnızca tamamlanmamış siparişleri silebilirsiniz."
 }
