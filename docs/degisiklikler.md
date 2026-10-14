@@ -84,6 +84,79 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — API: cihazdan yazılan mesajda @Claude, @ai ve MCP ajanı anması isteği başlatıyor (2026-10-14)
+
+**Neden.** #369 (aşağıda, "cihazdan yazılan Çalışma Alanı mesajı
+kişinin adıyla") bu parçayı bilerek dışarıda bıraktı: ekip
+cihazından (`POST /auth/login`) yazılan mesaj `@Claude`, `@ai` ya da kendisi
+ajan olan bir MCP sunucusunun takma adını (`@dev`) ansa da istek
+başlamıyordu. İsteği kuyruğa koyan çağrılar panelin `ws_send` eyleminde
+duruyordu, API'nin kanal yazma ucu (`ws_api_messages_create()`) onları hiç
+çağırmıyordu.
+
+**Ne değişti.**
+- `includes/workspace/messages.php`: `ws_message_ask_assistants()`.
+  Panelin `ws_send` eylemindeki sıra buraya taşındı: önce
+  `ws_claude_after_send()`, sonra `ws_mcp_agent_after_send()`, ajan
+  sunucusunun mesajı değilse `ws_ai_after_send()` (takma adı Pinegrap AI
+  ile yanıtlanan sunucu ve #362'nin `@ai` taslak kartı da bu yoldan
+  çıkar), tartışmada sorulduysa `ws_thread_assistant_asked()`. Dönüş
+  `claude`, `agent`, `ai`. İzin denetimleri aynı yardımcıların içinde
+  olduğu için iki yolda da aynı: Claude'a ya da AI'a kapalı kanal,
+  misafir odası, dışa paylaşılan kanal, kişi başı bekleyen istek sınırı;
+  sorulamayan yerde kanala nedenini söyleyen sistem satırı düşer.
+- `includes/workspace/actions.php`, `ws_send`: aynı yardımcıyı çağırıyor;
+  ekrana dönen `claude`, `ai`, `agent` alanları değişmedi.
+- `includes/workspace/api_resources.php`, `ws_api_messages_create()`:
+  `ws_api_message_asks_assistants()` doğruysa (yazan kişinin kendi
+  cihazı, yani `ws_api_writer_app_id()` 0, ve `kind` `message`) aynı
+  yardımcıyı çağırıyor. Uygulama anahtarıyla ya da OAuth bağlantısıyla
+  yazılan mesaj hiçbir asistanı sormaz (bir ajanın yanıtında geçen takma
+  ad kendini yeniden sormasın; görev notundaki `$app_id <= 0` kuralıyla
+  aynı). Karar ve not türündeki mesaj sormaz; panel de yalnız düz mesajda
+  sorar.
+- Kuyruğu ilerletmek: `ws_api_assistants_carry_on()`. Claude'un rutini
+  hemen ateşlenir (`ws_claude_dispatch()`, API'de göreve verme
+  `ws_api_tasks_delegate()` ile aynı). Pinegrap AI ve ajan sunucusu bir
+  model çağrısı ya da ajanın yanıtı kadar sürdüğü için telefonun yanıtını
+  bekletmez: `fastcgi_finish_request()` varsa (PHP-FPM) yanıt gittikten
+  sonra kapanış fonksiyonunda `ws_mcp_agent_kick()` ve `ws_ai_kick()`
+  çalışır (`erp_mail_defer()` deseni). Yoksa (IIS, mod_php) isteği
+  kanalı açık panel ekranı ve saatlik iş sürdürür; göreve verilen işte
+  de böyle.
+- API açıklaması (`includes/workspace/api.php`,
+  `workspace.messages.create`; OpenAPI ve MCP aracı metni buradan gelir)
+  bunu söylüyor.
+
+Şema değişikliği yok, yeni metin yok, JS değişmedi.
+
+**Bilerek yapılmayan.** API'de "kuyruğu sürdür" ucu yok: IIS'te
+telefondan sorulan Pinegrap AI ya da ajan isteği, biri kanalı panelde
+açana ya da saatlik iş çalışana kadar bekler. Uygulamanın ekranı gibi
+sürdürmesi için bir uç ya da eşitleme çağrısının (plandaki M3,
+`GET /workspace/sync`) taşıması gerekir; ayrı dilim. `/claude …` ve
+`/ai …` komutları API'de etiketle yeniden yazılmaz (metin yazıldığı gibi
+kalır), ama `ws_claude_asked()` ve `ws_ai_asked()` bu yazımı zaten
+tanıdığı için istek başlar. Diğer eğik çizgi komutları (`ws_command_run()`)
+API'de hâlâ çalışmaz. Mesaj ekli dosya (`ws_attach`) panelde de asistan
+sormadığı için değişmedi.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye bir test (kişi + mesaj
+sorar; uygulama, karar ve not sormaz). Sandbox'ta ekip cihazı oturumuyla
+(`POST /auth/login`): Claude ve AI bağlı değilken `@Claude` ve `@ai`
+mesajının ardından kanala kurulum ve Premium satırları düştü; karar
+türündeki `@ai` mesajı hiçbir şey yazmadı. Claude bağlı gösterilince
+`@Claude` isteği `ws_ai_requests`'e kişinin adıyla `queued` düştü ve
+`ws_claude_dispatch()` aynı istekte çağrıldı; özel kanalda "Bu kanalda
+Claude çağrılamaz" satırı düştü, istek yazılmadı; tartışmada sorulunca
+istek yazıldı ve tartışmanın `assistants` alanı `claude` oldu. Sunucu
+uygulama anahtarıyla yazılan `@Claude … @ai` mesajı ne istek ne satır
+bıraktı. Panelin `ws_send` eylemi aynı yanıtı verdi (`claude: true`,
+`@ai` için Premium satırı, düz mesajda hiçbir şey). MCP ajanı yolu
+sandbox'ta denenmedi (ajan sunucusu gerekir); kod panelle aynı çağrıdır.
+
+---
+
 ## 2026.4.10 — Listeden hızlı güncelleme: anahtar kod durumu ve hediye kartı notları (2026-10-14)
 
 **Neden.** #364'ün hızlı güncelleme kalıbının ikinci aday grubu (#370'in

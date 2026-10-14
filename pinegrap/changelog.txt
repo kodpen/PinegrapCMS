@@ -2009,6 +2009,17 @@
          bağlı uygulamayla (OAuth, MCP) yazan
          entegrasyonlar eskisi gibi uygulama adıyla yazıyor.
 
+  [DÜZELTME] Ekip cihazlarından (mobil uygulama) yazılan
+         mesajda @Claude, @ai ya da bir MCP sunucusunun
+         takma adı (örn. @dev) anılınca istek başlıyor;
+         önceden yalnız panelden yazılınca başlıyordu.
+         Kanalın izinleri panelle aynı: asistana kapalı
+         kanalda kanala nedenini söyleyen bir satır düşer.
+         Claude hemen çalışır; Pinegrap AI ve kendisi ajan
+         olan MCP sunucusu, sunucu yanıtı önce
+         gönderebiliyorsa hemen, yoksa kanalı açık bir
+         ekran ya da saatlik iş tarafından sürdürülür.
+
   BAĞLI HESAPLAR
   --------------------------------------------------------
 

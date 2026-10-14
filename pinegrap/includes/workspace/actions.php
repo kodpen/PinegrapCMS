@@ -1096,39 +1096,17 @@ function ws_handle_action($action, $request)
                 'quote_ids' => is_array($request['quote_ids'] ?? null) ? $request['quote_ids'] : array(),
             ));
 
-            // A request to Claude is queued here and started by the screen's
-            // next call (ws_claude_kick), so the message is on the screen
-            // without waiting for claude.ai.
-            $claude = false;
-
-            if ($result['ok'] && function_exists('ws_claude_after_send')) {
-                $claude = ws_claude_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
             }
 
-            // Written to the alias of an MCP server that is an agent itself
-            // (mcp_agent.php): queued for the agent, carried on by the
-            // screen's next call (ws_mcp_agent_kick); Pinegrap AI is not
-            // asked.
-            $agent = null;
+            // Requests to Claude, an MCP agent or Pinegrap AI are queued here
+            // and carried on by the screen's next call (ws_claude_kick,
+            // ws_mcp_agent_kick, ws_ai_kick), so the message is on the screen
+            // without waiting for an answer.
+            $asked = ws_message_ask_assistants($viewer, $channel, $result['message_id'], $body);
 
-            if ($result['ok'] && function_exists('ws_mcp_agent_after_send')) {
-                $agent = ws_mcp_agent_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
-            }
-
-            // The same for Pinegrap AI (ai.php): queued here, carried on by
-            // the screen's next call (ws_ai_kick).
-            $ai = false;
-
-            if ($result['ok'] && ($agent === null) && function_exists('ws_ai_after_send')) {
-                $ai = ws_ai_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
-            }
-
-            // Asked in a discussion: its channel's message says so.
-            if (($claude || $ai) && ws_channel_is_thread($channel)) {
-                ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
-            }
-
-            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $claude, 'ai' => $ai, 'agent' => ($agent === true))) : ws_action_error($result['error']);
+            return ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $asked['claude'], 'ai' => $asked['ai'], 'agent' => $asked['agent']));
 
         case 'ws_edit':
             $message = ws_message((int) ($request['message_id'] ?? 0));

@@ -6,8 +6,8 @@
  * (includes/workspace/api.php) that need no database: every route reaches a
  * handler, no two routes answer the same method on the same path, and each
  * action becomes one MCP tool. Also the scopes the search asks of each kind
- * of panel record (includes/workspace/api_day.php), and who a call from a
- * device writes as.
+ * of panel record (includes/workspace/api_day.php), who a call from a
+ * device writes as, and which of its messages ask an assistant.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -138,4 +138,14 @@ function test_ws_api_device_writes_as_person()
 	pg_assert_true(ws_api_device_writes_as_person(array('id' => 4, 'app_id' => 2)), 'a team devices session writes as the person');
 	pg_assert_true(ws_api_device_writes_as_person(array('id' => 4, 'app_id' => 2, 'oauth_client_id' => '0')), 'a device row with no client writes as the person');
 	pg_assert_false(ws_api_device_writes_as_person(array('id' => 5, 'app_id' => 3, 'oauth_client_id' => '7')), 'an OAuth connection writes as the application');
+}
+
+// Only the person's own message asks the assistants it names, as the panel's
+// composer does: never an application's words, nor a decision or a note.
+function test_ws_api_message_asks_assistants()
+{
+	pg_assert_true(ws_api_message_asks_assistants(0, 'message'), 'a message from the person\'s device asks');
+	pg_assert_false(ws_api_message_asks_assistants(7, 'message'), 'an application\'s message does not ask');
+	pg_assert_false(ws_api_message_asks_assistants(0, 'decision'), 'a decision does not ask');
+	pg_assert_false(ws_api_message_asks_assistants(0, 'note'), 'a note does not ask');
 }
