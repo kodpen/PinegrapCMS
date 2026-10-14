@@ -27,7 +27,9 @@ validate_area_access($user, 'user');
 $liveform = new liveform('view_files');
 
 // If there is a filter set.
-if (isset($_GET['filter']) == true) {
+// (one sent as an array, ?filter[]=x, counts as not given: it ended in an
+// error page)
+if (isset($_GET['filter']) && is_string($_GET['filter'])) {
     // Send the filter to the search form.
     $filter = $_GET['filter'];
 } else {
@@ -490,7 +492,7 @@ if ($files) {
             <td class="align-middle text-center ' . $output_design_class . '" style="text-align: center">' . $optimized . '</td>
             <td class="align-middle text-start ' . $file['folder_access_control_type'] . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline">folder</span><span class="badge fw-light text-reset d-inline">' . h($file['folder_name']) . '</span></span></td>
             <td class="align-middle ' . $output_design_class . '" title="' . nl2br(h($file['description'])) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . nl2br(h($file['description'])) . '</span></td>
-            <td class="align-middle ' . $output_design_class . '">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($file['user_username']) ) ) ) . '</td>
+            <td class="align-middle ' . $output_design_class . '">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($file['user_username'] ?? '') ) ) ) . '</td>
         </tr>';
     }
 }

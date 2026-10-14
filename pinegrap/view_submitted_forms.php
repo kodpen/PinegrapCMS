@@ -29,7 +29,9 @@ $output_rows = '';
 $sql_data_joins = '';
 
 // The filter is carried through the paging links and the advanced filters form.
-$filter = isset($_REQUEST['filter']) ? $_REQUEST['filter'] : '';
+// One sent as an array (?filter[]=x) counts as not given: it ended in an error
+// page.
+$filter = (isset($_REQUEST['filter']) && is_string($_REQUEST['filter'])) ? $_REQUEST['filter'] : '';
 
 // store all values collected in request to session
 foreach ($_REQUEST as $key => $value) {

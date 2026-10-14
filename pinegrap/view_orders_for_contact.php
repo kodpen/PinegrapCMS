@@ -24,8 +24,14 @@ $output_rows = '';
 $user = validate_user();
 validate_contacts_access($user);
 
+// An id sent as an array (?id[]=x) counts as not given: kept in the session,
+// it gave every later visit an error page.
+if (isset($_GET['id']) && !is_string($_GET['id'])) {
+    unset($_GET['id']);
+}
+
 // if user does not have access to contact, then output error
-if (validate_contact_access($user, $_GET['id']) == false) {
+if (validate_contact_access($user, ($_GET['id'] ?? '')) == false) {
     log_activity(lang('access denied to view orders for contact because user does not have access to a contact group that the contact is in'), $_SESSION['sessionusername']);
     output_error(lang('Access denied.'));
 }
@@ -37,6 +43,10 @@ if (isset($_GET['id'])) {
 }
 
 $id = ($_SESSION['software']['ecommerce']['view_orders_for_contact']['id'] ?? '');
+
+if (!is_scalar($id)) {
+    $id = '';
+}
 
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
@@ -58,6 +68,14 @@ if (
 $query = "SELECT first_name, last_name FROM contacts WHERE id = '" . escape($id) . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// Stop when there is no such contact (no id given, stale link, contact deleted
+// meanwhile): a "not found" screen instead of an empty heading, PHP notices
+// and an order list matched on a blank contact.
+if (!$row) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $first_name = $row['first_name'];
 $last_name = $row['last_name'];
 
@@ -120,7 +138,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
         </td>
-        <td>' . h($row['order_number']) . '</td>
+        <td>' . h($row['order_number'] ?? '') . '</td>
         <td nowrap>' . h($row['total']) . '</td>
         <td nowrap>' . $row['order_date'] . '</td>
     </tr>';

@@ -21,6 +21,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $link, $number_of_upcoming_events = '', $return = 'html', $output_minimal_calendar = false)
 {
     $sql_join = '';
+    // The weekly view only appends to the calendar, and the back-end upcoming
+    // view prints a date selection it never builds: both start out empty.
+    $output_calendar = '';
+    $output_date_selection = '';
     // if at least one calendar was supplied, continue
     if ($calendars) {
         // assume that calendar id has not been verified until we find out otherwise

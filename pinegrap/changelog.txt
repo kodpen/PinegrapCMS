@@ -488,6 +488,17 @@
          bir bağlantıyla açılınca RSS bağlantısını
          göstermiyordu; artık gösteriyor.
 
+  [DÜZELTME] Sitenin herhangi bir sayfası, adresinde
+         kampanya, takip, ortaklık ya da teklif kodu
+         birden çok kez geçen (?utm_source[]=…, ?a[]=…,
+         ?o[]=…, ?t[]=…) bir bağlantıyla açılınca hata
+         sayfası veriyordu; artık sayfa açılıyor, böyle
+         gelen kod yok sayılıyor. Yalnız utm_source taşıyan
+         bir kampanya bağlantısı (?utm_source=bulten) her
+         ziyarette hata günlüğüne dört uyarı yazıyordu;
+         artık yazmıyor. Haftalık görünümdeki takvim
+         sayfası da her açılışta uyarı yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
@@ -2699,6 +2710,33 @@
          tamamı bulanıklaştırılıyordu: ayarlar kaydırıldıkça
          ya da arkadaki panoda bir şey kıpırdadıkça tarayıcı
          bütün pencereyi yeniden bulanıklaştırıyordu.
+
+  [DÜZELTME] Toplu Düzenleme, Tema Tasarımcısı ve bir
+         kişinin siparişleri ekranı, adresinde bir değer
+         birden çok kez geçen (?tags[]=…, ?id[]=…) bir
+         bağlantı bir kez açıldıktan sonra oturum boyunca
+         her açılışta hata sayfası veriyordu; artık ekran
+         açılıyor. Tema Tasarımcısı, önizleme için seçilmiş
+         sayfa sonradan silinmişse o temada her açılışta
+         yanıt vermeden bekliyordu; artık ana sayfayı
+         önizliyor. Var olmayan bir temayla ya da kişiyle
+         açılan Tema Tasarımcısı ve kişinin siparişleri
+         ekranı yarı boş sayfa yerine "Kayıt bulunamadı"
+         gösteriyor.
+
+  [DÜZELTME] Sayfalar, Rehber, Dosyalar, Kullanıcılar ve
+         Gönderilen Formlar listeleri, Performans Günlüğü,
+         Güvenlik Duvarı günlüğü ve ERP belge şablonu
+         ayarları, adresinde süzgeç ya da sıralama değeri
+         birden çok kez geçen (?filter[]=…, ?range[]=…) bir
+         bağlantıyla açılınca hata sayfası veriyordu; artık
+         ekran varsayılan görünümüyle açılıyor. Takvimler
+         ekranı bilinmeyen bir görünümle (?view=…) açılınca
+         oturum boyunca uyarı yazıyor ve takvimi boş
+         gösteriyordu; artık aylık görünüme dönüyor.
+         Rehberde çift kayıt listesi boşken ve haftalık ya
+         da yaklaşan etkinlik görünümündeki takvim hata
+         günlüğüne uyarı yazıyordu; artık yazmıyor.
 
   ÇOK DİLLİ SİTE
   --------------------------------------------------------

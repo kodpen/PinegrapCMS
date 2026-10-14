@@ -84,6 +84,105 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Panel taraması: dizi parametresiyle 500, oturuma yapışan hata sayfaları, her sayfada `?utm_source[]=` (2026-10-14)
+
+**Neden.** Site sayfalarındaki dizi parametresi serisinin (#384, #389, #391,
+#394, #397, #403, #406) panel karşılığı. Sandbox'ta yönetici oturumuyla 367
+panel ekranı GET ile açıldı: parametresiz, kendi parametreleri `1` ile ve her
+parametre (kendi parametreleri ile `id`, `q`, `page`, `sort`, `order`,
+`query`, `filter`, `screen`, `search`, `status`, `send_to`, `mode`, `type`,
+`view`, `tab`) tek tek dizi olarak (`?x[]=1`), sonunda yine parametresiz
+(oturuma yapışanı yakalamak için); 6.760 istek. Eski kodda 149 istek 500
+verdi, 440 ayrı dosya:satır uyarı ya da ölümcül hata yazdı. Bu PR bunların
+en çok işe yarayan 15 dosyasını düzeltiyor; kalanlar (çoğu `?id[]=` ve
+`?send_to[]=` ile 500 veren düzenleme ekranları) aşağıda ve
+`notes/panel-php-uyari-taramasi.md`'de. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Serinin kuralı: dizi gelen tek değerli parametre "verilmedi"
+sayılır, normal isteğin HTML'i değişmez, 500 yok.
+
+- `get_page.php`: sitenin her sayfası `?utm_source[]=x`, `?a[]=x`, `?t[]=x`,
+  `?o[]=x`, `?page[]=x` ile 500 veriyordu (`trim()` / `mb_strpos()`), panel
+  oturumu olsun olmasın. Dosyanın başında bu dokuz tek değerli parametre
+  dizi gelirse `$_GET`'ten çıkarılıyor (`get_shipping_method.php`'deki
+  `unset($_GET['ship_to_id'])` gibi). Yalnız `utm_source` taşıyan kampanya
+  bağlantısı her ziyarette dört "Undefined array key utm_medium…" uyarısı
+  yazıyordu; eksik etiketler eskisi gibi boş saklanıyor (`?? ''`).
+- Oturuma yapışan 500'ler: `mass_edit.php` `?tags[]=` değerini oturuma
+  yazıyordu, sonraki her açılış `explode()` ile düşüyordu; `theme_designer.php`
+  `?page_to_preview_id[]=`, `view_orders_for_contact.php` `?id[]=` için aynı.
+  Dizi oturuma yazılmıyor; daha önce yazılmış dizi de okunurken yok sayılıyor.
+  `mass_edit.php` bilinmeyen etikette (`?tags=x`) tanımsız `$outputs`'a
+  ekliyordu; boş başlıyor (çıktı aynı: yalnız düğmeler).
+- `theme_designer.php`: önizlenecek sayfa silinmişse (ya da elle yazılmış bir
+  numaraysa) sayfa satırı gelmiyordu, `get_style()` boş klasörle üst klasörü
+  hiç bulamıyordu: istek süre sınırına kadar dönüyordu (sandbox'ta 60 saniye
+  sonra bile yanıt yok), oturumda kaldığı için o temanın tasarımcısı her
+  açılışta. Artık ana sayfaya düşüyor. Ekran ayrıca c651716'daki "Kayıt
+  bulunamadı" kapısını aldı: kimliksiz, var olmayan ya da dizi kimlikle açılış
+  404.
+- `view_orders_for_contact.php`: kişi yoksa (kimlik verilmemiş, silinmiş)
+  boş başlık, iki uyarı ve boş kişiye (`contact_id = ''`, yani 0) eşlenen
+  sipariş listesi yerine aynı "Kayıt bulunamadı" 404. Taslak siparişin boş
+  sipariş numarası `h(null)` kullanım dışı uyarısı yazıyordu; `?? ''`.
+- Liste süzgeçleri: `view_pages.php`, `view_contacts.php`, `view_files.php`,
+  `view_users.php`, `view_submitted_forms.php`, `get_files_for_picker.php`
+  `?filter[]=` ile 500 veriyordu (`strpos()`, `h()`, `trim()`); dizi süzgeç
+  verilmemiş sayılıyor, ekran varsayılan görünümle açılıyor. `view_contacts.php`
+  `?order[]=` ile `sql_order_direction()` içinde uyarı yazıyordu; dizi yok
+  sayılıyor. Çift kayıt listesi boşken `$output_image_header` tanımsızdı
+  (yalnız döngüde atanıyordu); döngüden önce boş başlıyor. Silinmiş
+  kullanıcının değiştirdiği satırda `h(null)` için `?? ''` (rehber, dosyalar).
+- `view_performance_log.php` (`range`, `area`, `slow_sort`, `slow_dir`,
+  `mem_sort`, `mem_dir`, `search`) ve `view_waf_log.php` (`range`,
+  `category`, `search`): her biri dizi gelince 500 ya da "Array" araması;
+  `is_string()` koşulu eklendi, beyaz liste aynı.
+- `erp_settings.php`: `?doc[]=` 500 ("Cannot access offset of type array");
+  dizi belge fatura sayılıyor.
+- `calendars.php`: takvim, görünüm, durum ve tarih oturuma yazılıyor; dizi
+  yazılmıyor, bilinmeyen görünüm (`?view=x`) boş (aylık) görünüme dönüyor.
+  Önceden bilinmeyen görünüm oturumda kalıyor, takvim boş çiziliyor ve her
+  açılış sekiz "Undefined variable" uyarısı yazıyordu.
+- `includes/fn/calendar.php` `get_calendar()`: haftalık görünüm
+  `$output_calendar`'a tanımsızken ekliyordu (aylık görünüm onu `=` ile
+  başlatıyor), panelin yaklaşan etkinlikler görünümü hiç kurulmayan
+  `$output_date_selection`'ı basıyordu. İkisi fonksiyon başında boş
+  başlıyor; ön yüzdeki haftalık takvim sayfaları da her açılışta uyarı
+  yazmıyor. Çıktı aynı.
+
+Şema, dil dosyası (yeni anahtar yok; "Record not found." ve "Go back"
+mevcut) ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Aynı tarama yeni kodda: 15
+dosyada 500'ler 53 → 0, uyarı ya da ölümcül hata yazan istek 98 → 0; bütün
+panelde 500 149 → 97, ayrı uyarı satırı 440 → 344 (kalanlar bu PR'ın kapsamı
+dışı). Eski kod (`origin/development`) ikinci portta, istekler sırayla iki
+sunucuya: 15 dosyanın 58 normal isteği (süzgeçler, sıralama, belge türleri,
+takvim görünümleri, toplu düzenleme etiketleri, tema tasarımcısı, sipariş
+listesi) ve 14 ön yüz isteği (oturumsuz, kampanya / takip / ortaklık /
+teklif kodlu) aynı HTML'i verdi (oturum jetonu, saat simgesi, "N dakika
+önce", Site Günlüğü sayacı, CAPTCHA sorusu, sayfa görüntülenme sayacı ve
+performans günlüğünün sürekli değişen sayıları dışında). Farklı olanlar
+yalnız bilerek değişenler: dizi parametreli istekler 500 yerine 200,
+kimliksiz / var olmayan kayıtla tema tasarımcısı ve kişi siparişleri 404,
+bilinmeyen takvim görünümü aylık. `php -l`, `tools/lint.php`,
+`tools/test.php` (919 test), `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies` ve `build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler.
+
+**Bilerek yapılmayan (kalanlar).** `?id[]=` ile 500 veren 47 düzenleme ve
+görüntüleme ekranı: c651716 kapısını almış 22 ekran `(int) $_REQUEST['id']`
+ile diziyi 1 sayıyor, kapıdan geçip `escape()`'te düşüyor (tek satırlık
+düzeltme: `is_scalar()`); kapısı olmayanlar ayrıca kimliksiz açılışta yarı boş
+form ve uyarı gösteriyor. `?send_to[]=` ile 500 veren 21 ekran (`h()` gizli
+alanda). Bu iki grup tek tek ekran düzeltmesi mi, `init.php`'de tek değerli
+panel parametrelerini süzen merkezi bir kural mı olacağı bir karar. ERP
+ekranlarının `(string) ($_GET['x'] ?? '')` kalıbı dizide uyarı yazıp "Array"
+değeriyle devam ediyor (500 yok). `h()`, `escape()`, liveform ve
+`custom_form.php` dokunulmadı. Ayrıntılı liste notta.
+
+---
+
 ## 2026.4.10 — Ürün silme: ürün ekranı, ürün listesi, varyant setleri ve grup ekranı da Geri Dönüşüm Kutusuna gönderiyor (2026-10-14)
 
 **Neden.** Bir müşteri sitesinde ürün yanlışlıkla silindi ve geri

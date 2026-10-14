@@ -22,6 +22,15 @@ require_once(dirname(__FILE__) . '/generate_system_theme_css.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 
+// Stop early when the screen is opened without an existing file (stale link,
+// hand-typed URL, file deleted meanwhile, an id sent as an array): a "not
+// found" screen instead of PHP notices from the unchecked row below or an
+// error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $liveform = new liveform('theme_designer');
 
 if (!empty($_GET['clear_theme_designer_session'])) {
@@ -47,12 +56,14 @@ if (!$_POST) {
     }
     
     // if there is a page id in the URL, then set the page to preview id for this theme in the session to the URL's value
-    if (($_GET['page_to_preview_id'] ?? '') != '') {
+    // (one sent as an array counts as not given: kept in the session, it gave
+    // every later visit an error page)
+    if (isset($_GET['page_to_preview_id']) && is_string($_GET['page_to_preview_id']) && ($_GET['page_to_preview_id'] != '')) {
         $_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'] = $_GET['page_to_preview_id'];
     }
     
     // if there is a page to preview id in the session, then get the pages data
-    if (!empty($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'])) {
+    if (!empty($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id']) && is_scalar($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'])) {
         $where = "WHERE page_id = '" . escape($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id']) . "'";
         $limit = '';
     
@@ -75,6 +86,26 @@ if (!$_POST) {
         $where$limit";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
+
+    // A page to preview that no longer exists (deleted since it was picked, or
+    // a hand-typed id) falls back to the home page. Without its folder the
+    // style lookup below never reached the top folder, and every visit to
+    // this theme's designer ran out of time.
+    if (!$row && ($limit === '')) {
+        $query =
+            "SELECT
+                page_id,
+                page_name,
+                page_folder,
+                page_style,
+                mobile_style_id,
+                page_type
+            FROM page 
+            WHERE page_home = 'yes' LIMIT 1";
+        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $row = mysqli_fetch_array($result);
+    }
+
     $page_to_preview_id = $row['page_id'];
     $page_to_preview_name = $row['page_name'];
     $page_folder = $row['page_folder'];

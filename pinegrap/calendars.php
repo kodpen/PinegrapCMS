@@ -23,19 +23,27 @@ validate_calendars_access($user);
 
 $liveform = new liveform('calendars');
 
-if (isset($_GET['calendar_id']) == true) {
+// The calendar, view, status and date are kept in the session for the next
+// visit. A value sent as an array (?date[]=x) counts as not given, and a view
+// the calendar does not draw (?view=x) falls back to the monthly one: either
+// stuck in the session, and every later visit wrote PHP warnings.
+if (isset($_GET['calendar_id']) && is_string($_GET['calendar_id'])) {
     $_SESSION['software']['calendars']['calendar_id'] = $_GET['calendar_id'];
 }
 
-if (isset($_GET['view']) == true) {
+if (isset($_GET['view']) && is_string($_GET['view'])) {
     $_SESSION['software']['calendars']['view'] = $_GET['view'];
 }
 
-if (isset($_GET['status']) == true) {
+if (!in_array(($_SESSION['software']['calendars']['view'] ?? ''), array('', 'monthly', 'weekly', 'upcoming'), true)) {
+    $_SESSION['software']['calendars']['view'] = '';
+}
+
+if (isset($_GET['status']) && is_string($_GET['status'])) {
     $_SESSION['software']['calendars']['status'] = $_GET['status'];
 }
 
-if (isset($_GET['date']) == true) {
+if (isset($_GET['date']) && is_string($_GET['date'])) {
     $_SESSION['software']['calendars']['date'] = $_GET['date'];
 }
 
