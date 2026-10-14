@@ -146,15 +146,24 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $oldest_timestamp = $row[0];
 
-// if date has not been set in the session yet, populate start and stop days with default, which is today
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['start_month']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['start_month'] = date('m', time() - 2678400);
-    $_SESSION['software']['forms']['view_submitted_forms']['start_day'] = date('d', time() - 2678400);
-    $_SESSION['software']['forms']['view_submitted_forms']['start_year'] = date('Y', time() - 2678400);
+// Default range: a month ago to today. Each date part is checked on its own:
+// the year math and mktime() below throw a TypeError for a missing or
+// non-numeric value, the year select loops forever on a non-numeric stop year,
+// and since the value is kept in the session, one bad address would otherwise
+// break the list for the rest of the session.
+$date_defaults = array(
+    'start_month' => date('m', time() - 2678400),
+    'start_day'   => date('d', time() - 2678400),
+    'start_year'  => date('Y', time() - 2678400),
+    'stop_month'  => date('m'),
+    'stop_day'    => date('d'),
+    'stop_year'   => date('Y'),
+);
 
-    $_SESSION['software']['forms']['view_submitted_forms']['stop_month'] = date('m');
-    $_SESSION['software']['forms']['view_submitted_forms']['stop_day'] = date('d');
-    $_SESSION['software']['forms']['view_submitted_forms']['stop_year'] = date('Y');
+foreach ($date_defaults as $key => $value) {
+    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['forms']['view_submitted_forms'][$key] ?? ''))) {
+        $_SESSION['software']['forms']['view_submitted_forms'][$key] = $value;
+    }
 }
 
 $decrease_year['start_month'] = '01';

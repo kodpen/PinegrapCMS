@@ -151,24 +151,33 @@ if (!$_POST) {
         $stop_day = date('d');
         $stop_year = date('Y');
 
-    // if date range has not be completed yet
-    } elseif (!isset($_REQUEST['start_month']) || !$_REQUEST['start_month']) {
-        // assign default values to start and stop dates (default to ~31 days ago)
-        $start_month = date('m', time() - 2678400);
-        $start_day = date('d', time() - 2678400);
-        $start_year = date('Y', time() - 2678400);
-        $stop_month = date('m');
-        $stop_day = date('d');
-        $stop_year = date('Y');
-
     } else {
-        $start_month = $_REQUEST['start_month'];
-        $start_day = $_REQUEST['start_day'];
-        $start_year = $_REQUEST['start_year'];
-        $stop_month = $_REQUEST['stop_month'];
-        $stop_day = $_REQUEST['stop_day'];
-        $stop_year = $_REQUEST['stop_year'];
+        // Default to ~31 days ago. A range passed in the address replaces it part
+        // by part: mktime() below throws a TypeError for a missing, non-numeric or
+        // oversized value, so such a part keeps its default instead of breaking the page.
+        $date_range = array(
+            'start_month' => date('m', time() - 2678400),
+            'start_day'   => date('d', time() - 2678400),
+            'start_year'  => date('Y', time() - 2678400),
+            'stop_month'  => date('m'),
+            'stop_day'    => date('d'),
+            'stop_year'   => date('Y'),
+        );
 
+        if (!empty($_REQUEST['start_month'])) {
+            foreach ($date_range as $key => $value) {
+                if (is_string($_REQUEST[$key] ?? null) && preg_match('/^\d{1,4}$/', $_REQUEST[$key])) {
+                    $date_range[$key] = $_REQUEST[$key];
+                }
+            }
+        }
+
+        $start_month = $date_range['start_month'];
+        $start_day = $date_range['start_day'];
+        $start_year = $date_range['start_year'];
+        $stop_month = $date_range['stop_month'];
+        $stop_day = $date_range['stop_day'];
+        $stop_year = $date_range['stop_year'];
     }
     // get minimum year from oldest timestamp
     $oldest_year = date('Y', $oldest_timestamp);

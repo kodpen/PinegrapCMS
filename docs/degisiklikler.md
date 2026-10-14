@@ -84,6 +84,67 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Gönderilen Formlar, Rehber ve Site Günlüğü: bozuk tarih değeri listeyi çökertmiyor (2026-10-14)
+
+**Neden.** #350, Komisyonlar'da kapattığı çökmenin Gönderilen Formlar
+(`view_submitted_forms.php`) ve Siparişler'de de olduğunu not etmişti.
+Gönderilen Formlar istekteki her değeri oturuma yazıyor, tarih
+varsayılanlarını ise yalnız `start_month` hiç yokken kuruyordu.
+`?start_month=x` (ilk açılışta tek başına bile; o zaman öbür beş parça boş
+kalıyor) yıl hesabında ve `mktime()`'da PHP 8'de `TypeError` veriyordu
+("Beklenmeyen bir hata oluştu", HTTP 500). Değer oturumda kaldığı için
+sonraki her açılış da çöküyordu; böyle bir bağlantıya tıklayan yönetici
+listeyi oturumu kapanana kadar açamıyordu.
+
+Aynı kalıbı taşıyan iki liste daha çıktı. Rehber (`view_contacts.php`)
+parçaları `mktime()`'a `(int)` ile verdiği için orada çökmüyordu, ama
+gelişmiş filtrelerin yıl seçimi oturumdaki bitiş yılına kadar sayıyor. PHP
+8'de sayı ile sayı olmayan metin metin olarak karşılaştırıldığı için
+`?stop_year=abc` (liste bir kez açıldıktan sonra) döngüyü hiç bitirmiyordu:
+128 MB sınırında istek "Allowed memory size exhausted" ile düşüyor, sınırsız
+bellekte süre sınırına kadar dönüyordu. Değer oturumda kaldığı için Rehber,
+yinelenen kişiler görünümü dahil, oturum boyunca açılmıyordu. Site Günlüğü
+(`view_log.php`) tarihi oturuma yazmıyor ama adresteki parçaları doğrudan
+`mktime()`'a veriyordu; bozuk bir parça o isteği hata sayfasına düşürüyordu
+(sonraki düz açılış düzeliyor). Üçü de eski kodla sandbox'ta üretildi;
+2026.4.9'da da var.
+
+**Ne değişti.** #350'deki kalıp: altı tarih parçasının her biri ayrı
+denetleniyor; oturumda yoksa ya da 1–4 haneli bir sayı değilse o parça
+varsayılana dönüyor (Gönderilen Formlar'da bir ay önce → bugün, Rehber'de en
+eski kişinin tarihi → bugün). Geçerli parçalar korunuyor, zaten bozulmuş bir
+oturum sonraki açılışta kendini düzeltiyor; bitiş yılı en çok dört hane
+olabildiği için yıl döngüsü de sınırlı kalıyor. Rehber'de en eski kişi
+tarihinin sorgusu ve denetim, yinelenen kişiler görünümünü de kapsasın diye
+filtre koşulunun dışına alındı (`contacts.timestamp` indeksli, sorgu
+ucuz). Site Günlüğü'nde adresten gelen her parça aynı denetimden geçiyor
+(dizi değeri de); geçmeyen parça varsayılanı (yaklaşık 31 gün önce → bugün)
+alıyor, `start_month` boşken eskisi gibi bütün aralık varsayılan.
+
+Siparişler'e (`view_orders.php`) dokunulmadı: kendi taşıma PR'ı bu
+düzeltmeyi alıyor. Orada aynı yıl döngüsü de var; aynı denetim onu da
+kapatır. Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kodla: Gönderilen
+Formlar'da `?start_month=x` ve ardından düz açılış 500; Rehber'de bir
+açılıştan sonra `?stop_year=abc` ve ardından düz açılış 500 (128 MB, bellek
+tükendi), yinelenen kişiler görünümünde de aynı; sınırsız bellekte istek
+yanıt vermedi ve PHP sunucusu süre sınırında kapandı; Site Günlüğü'nde
+`start_month=x` ve `start_day=x` 500. Yeni kodla: Gönderilen Formlar'da yedi
+bozuk istek (`start_month=x`, tek başına `start_month=01`, 20 haneli yıl,
+`stop_year=abc`, boş gün, dizi değeri, `start_year=x`) ve her birinin
+ardından düz açılış 200; eski koddan bozuk kalmış oturum ilk açılışta
+düzeldi; geçerli aralık (5 Mart – 6 Nisan 2025) başlıkta ve tarih
+değiştirici bağlantılarında doğru; `start_month=x&start_year=2024`'te ay
+varsayılana döndü, yıl korundu. Rehber'de 20 haneli başlangıç yılı,
+`stop_year=abc`, yinelenen kişiler görünümünde `stop_year=abc` ve
+`start_month=x` 200 (128 MB sınırında da). Site Günlüğü'nde dört bozuk istek
+200, geçerli aralık bağlantılarda korundu. `tools/test.php` 747/747; lint,
+dil, bağlama, API şeması, kopya denetimleri ve `build_js.php --check`
+geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek kayıtlar.
+
+---
+
 ## 2026.4.10 — Komisyonlar'da gelişmiş filtre düğmesi, Yinelenen Komisyon Profilleri'nde sayfalama (2026-10-14)
 
 **Neden.** #348 iki listeyi ortak tablo yardımcısına taşırken iki eski

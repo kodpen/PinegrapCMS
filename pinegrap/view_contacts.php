@@ -598,26 +598,33 @@ $increase_day = array();
 $output_date_range_time = '';
 $show_hide_date_range = '';
 
+// find the oldest timestamp (this will be used later in a couple of places)
+$query = "SELECT MIN(timestamp) FROM contacts";
+$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$row = mysqli_fetch_row($result);
+$oldest_timestamp = $row[0];
+
+// Default range: the oldest contact's date to today. Each date part is checked
+// on its own, for every filter: the year select further below loops forever on
+// a non-numeric stop year, and since the value is kept in the session, one bad
+// address would otherwise break the list for the rest of the session.
+$date_defaults = array(
+    'start_month' => date('m', $oldest_timestamp),
+    'start_day'   => date('d', $oldest_timestamp),
+    'start_year'  => date('Y', $oldest_timestamp),
+    'stop_month'  => date('m'),
+    'stop_day'    => date('d'),
+    'stop_year'   => date('Y'),
+);
+
+foreach ($date_defaults as $key => $value) {
+    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['view_contacts'][$key] ?? ''))) {
+        $_SESSION['software']['view_contacts'][$key] = $value;
+    }
+}
+
 // if the filter is not set to all duplicate contacts, then run logic to get date range
 if ($filter != 'all_duplicate_contacts') {
-    // find the oldest timestamp (this will be used later in a couple of places)
-    $query = "SELECT MIN(timestamp) FROM contacts";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_row($result);
-    $oldest_timestamp = $row[0];
-
-    // if date has not been set in the session yet, populate start and stop days with default,
-    // which is the oldest contact timestamp date to today's date
-    if (isset($_SESSION['software']['view_contacts']['start_month']) == false) {
-        $_SESSION['software']['view_contacts']['start_month'] = date('m', $oldest_timestamp);
-        $_SESSION['software']['view_contacts']['start_day'] = date('d', $oldest_timestamp);
-        $_SESSION['software']['view_contacts']['start_year'] = date('Y', $oldest_timestamp);
-
-        $_SESSION['software']['view_contacts']['stop_month'] = date('m');
-        $_SESSION['software']['view_contacts']['stop_day'] = date('d');
-        $_SESSION['software']['view_contacts']['stop_year'] = date('Y');
-    }
-
     $decrease_year['start_month'] = '01';
     $decrease_year['start_day'] = '01';
    $decrease_year['start_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') - 1;
