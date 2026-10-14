@@ -84,6 +84,115 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Uzak ajan: arka planda süren iş (MCP görevleri) ve isteği durdurma (10.110) (2026-10-14)
+
+**Neden.** Uzak ajanın ikinci dilimi (`docs/_plan_tersine_oauth.md` → "4.6 Uzak
+ajan"). Bir ajanın işi bir çağrıya sığmayabilir: bir rapor hazırlamak, başka
+bir sistemde iş başlatmak, bir insanın onayını beklemek. MCP'nin güncel
+neslinde (2026-07-28) sunucu böyle bir çağrıya sonucu değil bir görev tutamacı
+döner (`io.modelcontextprotocol/tasks` eki, `resultType: "task"`); istemci
+görevi `tasks/get` ile sorar, görev bitince sonuç aynı yanıtta gelir. İstemci
+bu yanıtı bugüne dek "desteklenmiyor" hatası sayıyordu: ajan işi kabul ettiği
+hâlde mesajın altında "yanıtlayamadı" yazıyordu; 45 saniyeyi aşan bir yanıt da
+zaman aşımına düşüyordu.
+
+**Ne değişti.**
+
+- İstemci (`includes/mcp/client.php`):
+  - Güncel nesilde her istek `_meta` içinde
+    `io.modelcontextprotocol/clientCapabilities` taşır. Belge bunu zorunlu
+    sayıyor, önceden hiç gönderilmiyordu: izlenen ek yoksa boş nesne, varsa
+    `extensions` altında adı. Bağlantı dizisine `extensions` eklendi,
+    varsayılanı boş. Görevi izleyemeyen çağıran (Pinegrap AI'ın araç döngüsü,
+    form) görev bildirmez; sunucu ona görev dönmemeli, dönerse eskisi gibi
+    hata. Eski nesil (2025-11-25) görevi el sıkışmadaki yetenekle açıyordu;
+    site orada görev bildirmez, o sunucular eskisi gibi bekletilerek
+    yanıtlanır.
+  - `pg_mcp_client_send()`: görevi bildiren çağırana `resultType: "task"` hata
+    değil, `task` alanıyla başarılı yanıttır. `input_required` (çok turlu
+    istek) kendi sözüyle hata: "daha fazla bilgi istedi, buradan verilemiyor".
+  - Yeni: `pg_mcp_client_task()` (saf: kimlik en çok 255 bayt, denetim
+    karakteri yok; bilinmeyen durum `working` sayılır; `statusMessage` tek
+    satır, 200 karakter; `failed`'da hatanın mesajı), `pg_mcp_client_get_task()`
+    (yanıttaki kimlik sorulanla aynı olmalı), `pg_mcp_client_cancel_task()`.
+    `tasks/*` isteklerinde yalnız `Mcp-Method` başlığı gider, `Mcp-Name` yalnız
+    `tools/call`'ın.
+  - Plandan sapma: 2026-07-28 ekinde `tasks/result` yok (plan bunu yazıyordu),
+    sonuç `tasks/get`'in `completed` yanıtında; `tasks/list` de kalktı.
+    Kaynak: MCP 2026-07-28 değişiklik notu madde 6 ve `ext-tasks` deposunun
+    `schema/2026-07-28/schema.ts`'i.
+- Şema 10.110 (`upgrade_2026_4_10_workspace_mcp_tasks()`): `ws_mcp_calls.status`
+  ENUM'una `running` (önce tip okunur, yalnız genişletilir), ardından
+  `ws_ai_requests.mcp_task` VARCHAR(255) '' (sunucunun verdiği görev kimliği),
+  `mcp_task_poll` INT UNSIGNED (sıradaki sorunun zamanı), `mcp_task_note`
+  VARCHAR(255) (sunucunun son ilerleme sözü). Çalışma Alanı'nın 10.80–10.89
+  aralığında yalnız iki etiket kaldığı ve başka sohbetler onları alabileceği
+  için dosyanın kendi yorumundaki ikinci Çalışma Alanı aralığından 10.110
+  seçildi.
+- `includes/workspace/mcp_agent.php`:
+  - Ajanın çağrısı görevi izleyen bağlantıyla gider (`ws_mcp_agent_connection()`;
+    şema adımından önce izlemez). Görev dönerse istek `running` kalır, kimlik
+    saklanır, çağrının kaydı `running` olur (`finished_at` 0); görev bitince
+    süresi çağrıdan itibaren yazılır.
+  - `ws_mcp_agent_poll()`: sırası gelen görevi `tasks/get` ile sorar.
+    `completed` → sonuç, bekletilmeden gelen yanıtla aynı yoldan
+    (`ws_mcp_agent_result()`, `ws_mcp_agent_post()`: `isError`, boş yanıt,
+    kilitli mesaj, bozulan etiketler). `failed` → "İş bir hatayla sona erdi:
+    …". `cancelled` → istek iptal, sunucunun sözüyle. `input_required` →
+    görev sunucuda iptal edilir, istek "daha fazla bilgi istedi" ile kapanır
+    (bilgi vermek, `tasks/update`, sonraki bir iş). `working` → sunucunun
+    istediği aralıkla (2 sn–10 dk; söylemezse 5 sn) yeniden sorulur, ilerleme
+    sözü mesajın altındaki satıra yazılır. Ulaşılamama, 429 ya da 5xx'te 60 sn
+    sonra yeniden sorulur; sunucu görevi tanımıyor ya da reddediyorsa istek
+    kapanır.
+  - Kurallar her soruda yeniden denetlenir (`ws_mcp_agent_context()`,
+    bekletilmeden gelen yanıtın denetimiyle aynı): sunucu ya da araç
+    kapatıldıysa, kanalın izni kalktıysa, soran üye değilse ya da mesaj
+    silindiyse görev sunucuda da iptal edilir (`ws_mcp_agent_task_stop()`;
+    kapatılmış sunucu durdurmak için bile çağrılmaz).
+  - Bir soru, zamanı koşullu güncellemeyle ileri alınarak sahiplenilir: iki
+    ekran aynı görevi aynı anda sormaz; soran ekran ölürse soru 50 sn sonra
+    yeniden sorulur.
+  - `ws_mcp_agent_kick()` önce sırası gelen en çok 5 görevi sorar, sonra
+    bekleyen isteği gönderir. 5 dakikalık "zamanında yanıt vermedi" kuralı
+    görevli isteğe uygulanmaz; bir günü aşan görev sunucuda iptal edilir ve
+    istek "işi bir gün içinde bitirmedi" ile kapanır (bekçi her turda en çok 5).
+  - Durdurma: soran ya da bir yönetici bekleyen veya süren isteği mesajın
+    altındaki satırdan "Durdur" ile durdurur (`ws_mcp_agent_cancel()`, eylem
+    `ws_mcp_agent_cancel`, panel eylem listesine eklendi). İstek önce koşullu
+    güncellemeyle iptal olur, görev varsa ardından `tasks/cancel` gider; yolda
+    olan bir yanıt yazılmaz (yazmadan önce durum okunur). Görevle dönen çağrı
+    gelmeden istek durdurulmuşsa görev hemen iptal edilir.
+- `claude.php`: satırın durumu kişiye göre (`cancel`). `assets/js/workspace.js`
+  (+ `.min.js`): satırda onay sorulu "Durdur" bağlantısı; ekran ajan isteği
+  beklerken de sürerken de `ws_mcp_agent_kick` çağırır (görev soruları
+  ekranlar ve saatlik işle taşınır).
+
+**Ödün.** Ekranı açık kimse yoksa biten görev saatlik işte yazılır (bekleyen
+istek gibi). Ajanın ek bilgi istemesi (`input_required`, `tasks/update`) henüz
+desteklenmiyor: görev iptal edilir, satır nedenini söyler. Sunucunun anlık
+bildirimleri (`notifications/tasks`, `subscriptions/listen`) kullanılmaz; PHP'nin
+istek başına modeline yoklama uyar. Pinegrap'ın kendi MCP sunucusu görev
+dönmez: dev'de görev yolu denenemez, yalnız bekletilmeden gelen yanıtın
+değişmediği ve durdurma denenir.
+
+**Denendi.** Birim testleri: istemci (`tests/mcp_client_test.php`: her istekte
+yetenek bildirimi, görevle yanıt ve `tasks/get` ile sonuca kadar, `tasks/cancel`,
+başka görevin yanıtı reddedilir, görev biçimleri, `input_required`), Çalışma
+Alanı (`tests/workspace_mcp_test.php`: soru aralığı, kimin durdurabileceği).
+Sandbox'ta `192.0.2.2:8443`'te https konuşan sahte bir 2026-07-28 ajanıyla
+(`ask` aracı, görev eki) uçtan uca: bekletilmeden yanıt değişmedi; uzun iş
+görevle döndü, aralığa uyularak soruldu, satırda "Adım 2/3", bitince yanıt
+kilitli düştü (etiket bozuldu, çağrı kaydı 7000 ms); `failed`, `input_required`
+(sunucuya `tasks/cancel` gitti), sunucunun iptali, kişinin durdurması (kuyrukta
+ve sürerken), bir günü aşan görev, araç kapatılınca durma, sunucu düşünce 60 sn
+sonra yeniden sorma, sunucu görevi unutunca kapanma. Tarayıcıda satırdaki
+"Durdur", onay sorusu ve ekranın görev sürerken `ws_mcp_agent_kick` çağırması.
+Şema adımı sandbox'ta 10.89'dan yükseltmede ve iki kez koşturuldu (ikincide
+atlandı).
+
+---
+
 ## 2026.4.10 — Yönlendirme kaynağı, kişinin siparişleri, ziyaretçi raporu, otomatik diyalog ve anahtar kod listeleri ortak tablo yardımcısında: çoklu sıralama, sıralama yönündeki SQL enjeksiyonu kapandı (2026-10-14)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına

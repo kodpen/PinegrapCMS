@@ -43,6 +43,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_meetings();     // 10.86
 	upgrade_2026_4_10_visitor_retention();      // 10.3
 	upgrade_2026_4_10_workspace_mcp_agent();    // 10.89
+	upgrade_2026_4_10_workspace_mcp_tasks();    // 10.110
 
 }
 
@@ -810,6 +811,36 @@ function upgrade_2026_4_10_workspace_mcp_agent() {
 	install_add_column('ws_mcp_servers', 'agent_tool', "VARCHAR(128) NOT NULL DEFAULT '' AFTER tool_rules");
 
 	install_note('Workspace: an MCP server that is an agent itself can answer its alias on its own. An administrator chooses the tool that takes the messages; what is written to the alias goes to it and its answer comes back under the message, without Pinegrap AI.');
+
+}
+
+// MCP agents that work in the background (2026.4.10, 10.110;
+// includes/mcp/client.php, includes/workspace/mcp_agent.php).
+//
+// An agent whose work takes longer than a call answers with a task (the
+// tasks extension of the protocol's current generation): a handle the site
+// asks about until the task ends. ws_ai_requests.mcp_task is that handle,
+// as the server gave it ('' for a request answered at once), mcp_task_poll
+// when it is asked about next (moved on before each question, so two
+// screens never ask together), and mcp_task_note what the server last said
+// of its progress, shown under the message. The call's record in
+// ws_mcp_calls stays in status 'running' until the task ends. The enum is
+// widened first, so the new columns also say the enum has its value.
+function upgrade_2026_4_10_workspace_mcp_tasks() {
+
+	$info = install_column_info('ws_mcp_calls', 'status');
+
+	if (is_array($info) && (strpos((string) $info['Type'], "'running'") === false)) {
+		install_modify_column('ws_mcp_calls', 'status', "ENUM('pending','done','failed','dismissed','running') NOT NULL DEFAULT 'done'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_mcp_calls.status running')));
+	}
+
+	install_add_column('ws_ai_requests', 'mcp_task', "VARCHAR(255) NOT NULL DEFAULT '' AFTER mcp_server_id");
+	install_add_column('ws_ai_requests', 'mcp_task_poll', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER mcp_task");
+	install_add_column('ws_ai_requests', 'mcp_task_note', "VARCHAR(255) NOT NULL DEFAULT '' AFTER mcp_task_poll");
+
+	install_note('Workspace: an MCP agent may work on a message in the background. The site asks the service how the work goes until it ends, the line under the message says it is working, and the person who asked can stop it.');
 
 }
 

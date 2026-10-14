@@ -35,6 +35,10 @@
  *   protocol  the version agreed on, '' until it is known
  *   session   the session id of an earlier-generation server, '' for none
  *   timeout   seconds one request may take
+ *   extensions the extensions of the current generation the caller follows
+ *             (PG_MCP_CLIENT_TASKS); declared with every request, so a
+ *             server may answer in their shapes. Empty by default: a caller
+ *             that cannot follow a task never gets one
  *   transport a callable taking (url, body, headers, timeout, max_body) and
  *             answering like api_http_request() with response_headers; only
  *             the tests set it
@@ -57,6 +61,12 @@ define('PG_MCP_CLIENT_MAX_BODY', 4194304);
 define('PG_MCP_CLIENT_MAX_TOOLS', 200);
 
 define('PG_MCP_CLIENT_MAX_PAGES', 10);
+
+// The tasks extension of the current generation: a server may answer a
+// tools/call with a task handle (resultType "task") instead of the result,
+// and the client asks tasks/get until the task ends. tasks/get carries the
+// result itself; tasks/cancel asks the server to stop.
+define('PG_MCP_CLIENT_TASKS', 'io.modelcontextprotocol/tasks');
 
 // The versions spoken, newest first. The first has no session; the rest open
 // with initialize, the second being the one asked for.
@@ -89,12 +99,13 @@ function pg_mcp_client_info() {
 function pg_mcp_client_connection($url, $headers = array(), $protocol = '', $session = '', $timeout = 20) {
 
 	return array(
-		'url'       => (string)$url,
-		'headers'   => array_values((array)$headers),
-		'protocol'  => (string)$protocol,
-		'session'   => (string)$session,
-		'timeout'   => max(3, (int)$timeout),
-		'transport' => null
+		'url'        => (string)$url,
+		'headers'    => array_values((array)$headers),
+		'protocol'   => (string)$protocol,
+		'session'    => (string)$session,
+		'timeout'    => max(3, (int)$timeout),
+		'extensions' => array(),
+		'transport'  => null
 	);
 
 }
@@ -126,8 +137,10 @@ function pg_mcp_client_url_is_valid($url) {
 }
 
 // One JSON-RPC message. A notification (no id) asks for no answer. The
-// current generation also carries its version in _meta.
-function pg_mcp_client_message($id, $method, $params, $version) {
+// current generation also carries in _meta its version, who the client is
+// and what it can do: the capabilities are declared with every request, an
+// empty object when it follows no extension.
+function pg_mcp_client_message($id, $method, $params, $version, $extensions = array()) {
 
 	$params = is_array($params) ? $params : array();
 
@@ -138,6 +151,16 @@ function pg_mcp_client_message($id, $method, $params, $version) {
 		$meta['io.modelcontextprotocol/protocolVersion'] = $version;
 
 		$meta['io.modelcontextprotocol/clientInfo'] = pg_mcp_client_info();
+
+		$followed = array();
+
+		foreach ((array)$extensions as $extension) {
+
+			$followed[(string)$extension] = new stdClass();
+
+		}
+
+		$meta['io.modelcontextprotocol/clientCapabilities'] = empty($followed) ? new stdClass() : array('extensions' => $followed);
 
 		$params['_meta'] = $meta;
 
@@ -381,9 +404,11 @@ function pg_mcp_client_send($conn, $method, $params, $version) {
 
 	$id = pg_mcp_client_next_id();
 
-	$response = pg_mcp_client_post($conn, pg_mcp_client_message($id, $method, $params, $version), $method, $version);
+	$extensions = isset($conn['extensions']) ? (array)$conn['extensions'] : array();
 
-	$out = array('ok' => false, 'result' => null, 'raw' => '', 'error' => '', 'code' => 0, 'status' => $response['status'], 'headers' => $response['headers']);
+	$response = pg_mcp_client_post($conn, pg_mcp_client_message($id, $method, $params, $version, $extensions), $method, $version);
+
+	$out = array('ok' => false, 'result' => null, 'raw' => '', 'error' => '', 'code' => 0, 'status' => $response['status'], 'headers' => $response['headers'], 'task' => null);
 
 	if ($response['status'] === 0) {
 
@@ -411,11 +436,42 @@ function pg_mcp_client_send($conn, $method, $params, $version) {
 
 		$result = $message['result'];
 
-		// Work that goes on after the answer (the tasks extension) is not
-		// followed: the call is reported as not done rather than as empty.
-		if (isset($result['resultType']) && ($result['resultType'] !== 'complete')) {
+		$type = isset($result['resultType']) ? (string)$result['resultType'] : 'complete';
 
-			$out['error'] = lang('The MCP server answered that the work goes on in the background, which is not supported here yet.');
+		// Work that goes on after the answer (the tasks extension): a handle
+		// to ask about, for a caller that follows tasks. Anything else that
+		// is not the result - a task for a caller that did not ask for one,
+		// a request for more input - is reported as not done rather than as
+		// empty.
+		if ($type === 'task') {
+
+			$task = (in_array(PG_MCP_CLIENT_TASKS, $extensions, true) && pg_mcp_client_is_modern($version)) ? pg_mcp_client_task($result) : null;
+
+			if (!$task) {
+
+				$out['error'] = lang('The MCP server answered that the work goes on in the background, which is not supported here yet.');
+
+				return $out;
+
+			}
+
+			$out['ok'] = true;
+
+			$out['result'] = $result;
+
+			$out['raw'] = $read['raw'];
+
+			$out['task'] = $task;
+
+			return $out;
+
+		}
+
+		if ($type !== 'complete') {
+
+			$out['error'] = ($type === 'input_required')
+				? lang('The MCP server asked for more input before it answers, which cannot be given from here yet.')
+				: lang('The MCP server answered that the work goes on in the background, which is not supported here yet.');
 
 			return $out;
 
@@ -798,19 +854,118 @@ function pg_mcp_client_call_tool(&$conn, $name, $arguments) {
 
 	if (!$answer['ok']) {
 
-		return array('ok' => false, 'is_error' => true, 'result' => null, 'error' => $answer['error'], 'status' => $answer['status']);
+		return array('ok' => false, 'is_error' => true, 'result' => null, 'error' => $answer['error'], 'status' => $answer['status'], 'task' => null);
 
 	}
 
 	$result = $answer['result'];
+
+	// A task: the result comes later, from pg_mcp_client_get_task().
+	if (!empty($answer['task'])) {
+
+		return array('ok' => true, 'is_error' => false, 'result' => null, 'error' => '', 'status' => $answer['status'], 'task' => $answer['task']);
+
+	}
 
 	return array(
 		'ok'       => true,
 		'is_error' => !empty($result['isError']),
 		'result'   => $result,
 		'error'    => '',
-		'status'   => $answer['status']
+		'status'   => $answer['status'],
+		'task'     => null
 	);
+
+}
+
+// A task as a server describes it - a tools/call answered with a handle, or
+// tasks/get - as it is kept: id, status (working, input_required, completed,
+// failed, cancelled; a status this client does not know counts as working),
+// message (the server's own words on where it stands, on one line), poll_ms
+// (how long the server asks to wait between two questions, 0 when it does
+// not say), result (completed: what the request would have answered at
+// once) and error (failed: the error's message). null when it carries no
+// usable id. The id is sent back as it is, so it must fit where it is kept.
+function pg_mcp_client_task($result) {
+
+	if (!is_array($result) || !isset($result['taskId']) || !is_string($result['taskId'])) {
+
+		return null;
+
+	}
+
+	$id = $result['taskId'];
+
+	if (($id === '') || (strlen($id) > 255) || !preg_match('/^[^\x00-\x1F\x7F]+$/u', $id)) {
+
+		return null;
+
+	}
+
+	$status = isset($result['status']) ? (string)$result['status'] : '';
+
+	if (!in_array($status, array('working', 'input_required', 'completed', 'failed', 'cancelled'), true)) {
+
+		$status = 'working';
+
+	}
+
+	$message = isset($result['statusMessage']) && is_scalar($result['statusMessage']) ? trim(preg_replace('/\s+/u', ' ', (string)$result['statusMessage'])) : '';
+
+	$error = '';
+
+	if ($status === 'failed') {
+
+		$error = (isset($result['error']['message']) && is_scalar($result['error']['message'])) ? (string)$result['error']['message'] : $message;
+
+		$error = mb_substr(trim(preg_replace('/\s+/u', ' ', $error)), 0, 300);
+
+	}
+
+	return array(
+		'id'      => $id,
+		'status'  => $status,
+		'message' => mb_substr($message, 0, 200),
+		'poll_ms' => (isset($result['pollIntervalMs']) && is_numeric($result['pollIntervalMs'])) ? max(0, (int)$result['pollIntervalMs']) : 0,
+		'result'  => (($status === 'completed') && isset($result['result']) && is_array($result['result'])) ? $result['result'] : null,
+		'error'   => $error
+	);
+
+}
+
+// Asks a server where one of its tasks stands. Answers ok (the server
+// answered), task (as pg_mcp_client_task() keeps it; null with ok false
+// when the answer is not a task), error, code (the JSON-RPC error code: a
+// task the server does not know) and status (HTTP).
+function pg_mcp_client_get_task(&$conn, $task_id) {
+
+	$answer = pg_mcp_client_request($conn, 'tasks/get', array('taskId' => (string)$task_id));
+
+	if (!$answer['ok']) {
+
+		return array('ok' => false, 'task' => null, 'error' => $answer['error'], 'code' => $answer['code'], 'status' => $answer['status']);
+
+	}
+
+	$task = pg_mcp_client_task($answer['result']);
+
+	if (!$task || ($task['id'] !== (string)$task_id)) {
+
+		return array('ok' => false, 'task' => null, 'error' => lang(array('string' => 'The MCP server gave an answer that could not be read (HTTP {var:1}).', 'vars' => $answer['status'])), 'code' => 0, 'status' => $answer['status']);
+
+	}
+
+	return array('ok' => true, 'task' => $task, 'error' => '', 'code' => 0, 'status' => $answer['status']);
+
+}
+
+// Asks a server to stop one of its tasks. Stopping is the server's to do:
+// it may still finish the work. Answers ok, error and status (HTTP).
+function pg_mcp_client_cancel_task(&$conn, $task_id) {
+
+	$answer = pg_mcp_client_request($conn, 'tasks/cancel', array('taskId' => (string)$task_id));
+
+	return array('ok' => $answer['ok'], 'error' => $answer['error'], 'status' => $answer['status']);
 
 }
 

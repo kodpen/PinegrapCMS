@@ -867,7 +867,7 @@ function ws_claude_request_state($viewer, $row, $session = false)
     }
 
     if ((($row['agent'] ?? 'claude') === 'mcp') && function_exists('ws_mcp_agent_request_state')) {
-        return ws_mcp_agent_request_state($row);
+        return ws_mcp_agent_request_state($row, $viewer);
     }
 
     $status = (string) $row['status'];

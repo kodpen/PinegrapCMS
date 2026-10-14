@@ -210,6 +210,8 @@ function ws_mcp_js_strings()
     return array(
         'mcp_meta'           => lang('Pinegrap AI answers with its tools'),
         'mcp_meta_agent'     => lang('Its own agent answers'),
+        'mcp_agent_stop'     => lang('Stop'),
+        'mcp_agent_stop_ask' => lang('Stop this request? Work the agent does in the background is cancelled on the service too, and an answer still on its way is not posted.'),
         'mcp_connect_me'     => lang('Connect my account'),
         'mcp_connect_again'  => lang('Connect my account again'),
         'mcp_connect_ask'    => ws_js_template('Connect your own account to @{var:1}? You sign in on the service and come back here.', 1),

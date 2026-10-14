@@ -8963,11 +8963,35 @@
         // ── Claude ──
 
         claudeStateNode: function (message) {
+            var self = this;
             var state = message.claude;
             var line = el('div', 'ws-claude-state ws-claude-' + state.status);
 
             line.appendChild(icon(state.icon));
             line.appendChild(el('span', '', state.label));
+
+            // A request to an MCP agent can be stopped while it waits or
+            // runs, by the one who asked or an administrator (mcp_agent.php).
+            if (state.cancel) {
+                var stop = el('a', 'ms-1', t('mcp_agent_stop'));
+
+                stop.href = '#';
+                stop.addEventListener('click', function (event) {
+                    event.preventDefault();
+
+                    ask(t('mcp_agent_stop_ask'), t('mcp_agent_stop'), true).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        api('ws_mcp_agent_cancel', { request_id: state.id }).then(function () {
+                            self.sync();
+                        }).catch(fail);
+                    });
+                });
+
+                line.appendChild(stop);
+            }
 
             return line;
         },
@@ -12180,9 +12204,11 @@
                 self.kickAi();
             }
 
-            // So does an MCP agent: a message waits until a screen sends it.
+            // So does an MCP agent: a message waits until a screen sends it,
+            // and an agent working in the background until a screen asks
+            // about its task.
             if (waiting && (self.messages || []).some(function (message) {
-                return message.claude && message.claude.agent === 'mcp' && message.claude.status === 'queued';
+                return message.claude && message.claude.agent === 'mcp' && /^(queued|sent|running)$/.test(message.claude.status);
             })) {
                 self.kickAgent();
             }

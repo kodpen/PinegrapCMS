@@ -8,7 +8,8 @@
  * sign in to, which are on, the names the model knows them by, aliases, the
  * credential headers, the arguments a waiting call shows, the form a
  * tool that reads is run with (mcp_form.php), and the tool that takes the
- * messages of a server that is an agent itself (mcp_agent.php).
+ * messages of a server that is an agent itself, how often its tasks are
+ * asked about and who may stop a request to it (mcp_agent.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -560,4 +561,25 @@ function test_workspace_mcp_agent_answer_mentions_nobody()
 
 	pg_assert_true(mb_strlen($long) <= WS_MESSAGE_MAX, 'it fits in a message');
 	pg_assert_contains('…', $long, 'cut with a mark');
+}
+
+function test_workspace_mcp_agent_task_is_asked_about_as_the_server_asks()
+{
+	pg_assert_same(WS_MCP_AGENT_POLL_DEFAULT, ws_mcp_agent_poll_delay(0), 'the server did not say');
+	pg_assert_same(WS_MCP_AGENT_POLL_MIN, ws_mcp_agent_poll_delay(200), 'not more often than the least wait');
+	pg_assert_same(3, ws_mcp_agent_poll_delay(3000));
+	pg_assert_same(4, ws_mcp_agent_poll_delay(3001), 'rounded up, never sooner than asked');
+	pg_assert_same(WS_MCP_AGENT_POLL_MAX, ws_mcp_agent_poll_delay(86400000), 'not less often than the longest wait');
+}
+
+function test_workspace_mcp_agent_request_is_stopped_by_who_asked_or_an_administrator()
+{
+	$row = array('requested_by' => 7, 'status' => 'running');
+
+	pg_assert_true(ws_mcp_agent_can_cancel(array('id' => 7, 'role' => 3), $row), 'the one who asked');
+	pg_assert_true(ws_mcp_agent_can_cancel(array('id' => 1, 'role' => 0), $row), 'an administrator');
+	pg_assert_false(ws_mcp_agent_can_cancel(array('id' => 8, 'role' => 3), $row), 'somebody else');
+	pg_assert_false(ws_mcp_agent_can_cancel(null, $row), 'nobody');
+	pg_assert_true(ws_mcp_agent_can_cancel(array('id' => 7, 'role' => 3), array('requested_by' => 7, 'status' => 'queued')), 'while it waits');
+	pg_assert_false(ws_mcp_agent_can_cancel(array('id' => 7, 'role' => 3), array('requested_by' => 7, 'status' => 'answered')), 'not once it ended');
 }

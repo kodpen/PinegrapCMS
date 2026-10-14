@@ -4,8 +4,8 @@
  *
  * Tests for the MCP client (includes/mcp/client.php): reading answers sent
  * as JSON or as an event stream, the handshake with a server of either
- * generation, a forgotten session, paged tool lists and what a tool's result
- * becomes as text. The servers are stand-ins passed as the connection's
+ * generation, a forgotten session, paged tool lists, what a tool's result
+ * becomes as text, and a task followed to its result (the tasks extension). The servers are stand-ins passed as the connection's
  * transport; nothing goes over the network.
  *
  * @author      Erdal Güral (Kodpen)
@@ -275,7 +275,157 @@ function test_mcp_client_a_background_task_is_not_taken_for_a_result()
 
 	$call = pg_mcp_client_call_tool($conn, 'export', array());
 
+	pg_assert_false($call['ok'], 'the caller did not say it follows tasks');
+	pg_assert_same(null, $call['task']);
+}
+
+function test_mcp_client_input_asked_for_is_not_taken_for_a_result()
+{
+	$conn = pg_mcp_client_connection('https://slow.example.com/mcp', array(), '2026-07-28');
+	$conn['extensions'] = array(PG_MCP_CLIENT_TASKS);
+	$conn['transport'] = function ($url, $body) {
+		$message = json_decode($body, true);
+
+		return array('status' => 200, 'headers' => array(), 'body' => json_encode(array('jsonrpc' => '2.0', 'id' => $message['id'], 'result' => array('resultType' => 'input_required', 'inputRequests' => array()))), 'error' => '');
+	};
+
+	$call = pg_mcp_client_call_tool($conn, 'export', array());
+
 	pg_assert_false($call['ok']);
+	pg_assert_same(null, $call['task']);
+	pg_assert_contains('input', $call['error']);
+}
+
+function test_mcp_client_declares_what_it_follows_with_every_request()
+{
+	$bodies = array();
+	$conn = pg_mcp_client_connection('https://agent.example.com/mcp', array(), '2026-07-28');
+	$conn['transport'] = function ($url, $body) use (&$bodies) {
+		$bodies[] = $body;
+		$message = json_decode($body, true);
+
+		return array('status' => 200, 'headers' => array(), 'body' => json_encode(array('jsonrpc' => '2.0', 'id' => $message['id'], 'result' => array('resultType' => 'complete', 'content' => array()))), 'error' => '');
+	};
+
+	pg_mcp_client_call_tool($conn, 'ask', array('message' => 'hi'));
+
+	pg_assert_contains('"io.modelcontextprotocol/clientCapabilities":{}', $bodies[0], 'no extension: an empty object');
+
+	$conn['extensions'] = array(PG_MCP_CLIENT_TASKS);
+	pg_mcp_client_call_tool($conn, 'ask', array('message' => 'hi'));
+
+	pg_assert_contains('"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/tasks":{}}}', $bodies[1], 'the tasks extension, by its name');
+
+	$legacy = pg_mcp_client_message(1, 'tools/call', array('name' => 'ask'), '2025-11-25', array(PG_MCP_CLIENT_TASKS));
+
+	pg_assert_false(isset($legacy['params']['_meta']), 'the earlier generation declares at the handshake, not per request');
+}
+
+// A stand-in agent that answers a call with a task, then tells how the task
+// goes: working once, then done. Every request is written to $log.
+function mcp_client_test_task_server(&$log)
+{
+	return function ($url, $body, $headers) use (&$log) {
+		$message = json_decode($body, true);
+		$log[] = array('message' => $message, 'headers' => $headers);
+		$id = $message['id'];
+		$asked = count(array_filter($log, function ($entry) {
+			return $entry['message']['method'] === 'tasks/get';
+		}));
+		$task = array('taskId' => 'job/42', 'createdAt' => '2026-10-14T10:00:00Z', 'lastUpdatedAt' => '2026-10-14T10:00:00Z', 'ttlMs' => 600000);
+
+		switch ($message['method']) {
+			case 'tools/call':
+				$result = array_merge($task, array('resultType' => 'task', 'status' => 'working', 'statusMessage' => "Reading\n  three files", 'pollIntervalMs' => 3000));
+				break;
+
+			case 'tasks/get':
+				$result = ($asked < 2)
+					? array_merge($task, array('resultType' => 'complete', 'status' => 'working', 'statusMessage' => 'Two of three read'))
+					: array_merge($task, array('resultType' => 'complete', 'status' => 'completed', 'result' => array('resultType' => 'complete', 'content' => array(array('type' => 'text', 'text' => 'All read.')))));
+				break;
+
+			default:
+				$result = array('resultType' => 'complete');
+		}
+
+		return array('status' => 200, 'headers' => array('content-type' => 'application/json'), 'body' => json_encode(array('jsonrpc' => '2.0', 'id' => $id, 'result' => $result)), 'error' => '');
+	};
+}
+
+function test_mcp_client_follows_a_task_to_its_result()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://agent.example.com/mcp', array(), '2026-07-28');
+	$conn['extensions'] = array(PG_MCP_CLIENT_TASKS);
+	$conn['transport'] = mcp_client_test_task_server($log);
+
+	$call = pg_mcp_client_call_tool($conn, 'ask', array('message' => 'Read the files'));
+
+	pg_assert_true($call['ok'], 'a task is an answer');
+	pg_assert_false($call['is_error']);
+	pg_assert_same(null, $call['result'], 'the result comes later');
+	pg_assert_same('job/42', $call['task']['id']);
+	pg_assert_same('working', $call['task']['status']);
+	pg_assert_same(3000, $call['task']['poll_ms']);
+	pg_assert_same('Reading three files', $call['task']['message'], 'the server\'s words on one line');
+
+	$first = pg_mcp_client_get_task($conn, 'job/42');
+	$asked = end($log);
+
+	pg_assert_true($first['ok']);
+	pg_assert_same('working', $first['task']['status']);
+	pg_assert_same('Two of three read', $first['task']['message']);
+	pg_assert_same('tasks/get', mcp_client_test_header($asked['headers'], 'Mcp-Method'));
+	pg_assert_same('', mcp_client_test_header($asked['headers'], 'Mcp-Name'), 'only tools/call names a tool');
+	pg_assert_same('job/42', $asked['message']['params']['taskId'] ?? '');
+
+	$second = pg_mcp_client_get_task($conn, 'job/42');
+
+	pg_assert_true($second['ok']);
+	pg_assert_same('completed', $second['task']['status']);
+	pg_assert_same('All read.', pg_mcp_client_result_text($second['task']['result']), 'the result is in the task');
+
+	$stop = pg_mcp_client_cancel_task($conn, 'job/42');
+	$asked = end($log);
+
+	pg_assert_true($stop['ok']);
+	pg_assert_same('tasks/cancel', $asked['message']['method']);
+	pg_assert_same('job/42', $asked['message']['params']['taskId'] ?? '');
+}
+
+function test_mcp_client_a_task_answer_about_another_task_is_not_taken()
+{
+	$conn = pg_mcp_client_connection('https://agent.example.com/mcp', array(), '2026-07-28');
+	$conn['transport'] = function ($url, $body) {
+		$message = json_decode($body, true);
+
+		return array('status' => 200, 'headers' => array(), 'body' => json_encode(array('jsonrpc' => '2.0', 'id' => $message['id'], 'result' => array('resultType' => 'complete', 'taskId' => 'other', 'status' => 'completed'))), 'error' => '');
+	};
+
+	$out = pg_mcp_client_get_task($conn, 'mine');
+
+	pg_assert_false($out['ok']);
+	pg_assert_same(null, $out['task']);
+}
+
+function test_mcp_client_task_shapes()
+{
+	pg_assert_same(null, pg_mcp_client_task(array('status' => 'working')), 'no id');
+	pg_assert_same(null, pg_mcp_client_task(array('taskId' => 42)), 'an id is a string');
+	pg_assert_same(null, pg_mcp_client_task(array('taskId' => "a\nb")), 'no line break in an id');
+	pg_assert_same(null, pg_mcp_client_task(array('taskId' => str_repeat('x', 256))), 'an id fits where it is kept');
+	pg_assert_same('working', pg_mcp_client_task(array('taskId' => 't', 'status' => 'paused'))['status'], 'a status not known here: still working');
+	pg_assert_same(0, pg_mcp_client_task(array('taskId' => 't', 'status' => 'working'))['poll_ms'], 'no interval given');
+
+	$failed = pg_mcp_client_task(array('taskId' => 't', 'status' => 'failed', 'error' => array('code' => -32603, 'message' => "Disk\nfull")));
+
+	pg_assert_same('Disk full', $failed['error']);
+
+	$done = pg_mcp_client_task(array('taskId' => 't', 'status' => 'completed'));
+
+	pg_assert_same(null, $done['result'], 'completed without a result');
+	pg_assert_same('', $done['error']);
 }
 
 function test_mcp_client_tool_names_and_schemas()
