@@ -824,6 +824,45 @@ function ws_messages_touched($channel_id, $since, $upto_id, $after_id = 0, $limi
 }
 
 /**
+ * What a screen open on a channel asks for on each look, the panel's
+ * (ws_sync) and an app's (GET /workspace/sync) alike: the polls and approval
+ * requests whose time ran out are closed first, so they are read closed;
+ * then the messages after the newest one the reader holds, and the ones they
+ * hold that changed since their previous look.
+ *
+ * @param int   $channel_id
+ * @param int   $held_id the newest message the reader holds, 0 for none
+ * @param int   $since   the moment of the previous look, 0 for none
+ * @param array $options new: false reads no new messages (an earlier version
+ *                       of the conversation is on the screen); first_page:
+ *                       with nothing held, the newest this many rather than
+ *                       the conversation from its start; after_id, limit: as
+ *                       ws_messages_touched() takes them
+ * @return array new, changed (ws_messages rows, oldest first)
+ */
+function ws_channel_news($channel_id, $held_id, $since, $options = array())
+{
+    $channel_id = (int) $channel_id;
+    $held_id = (int) $held_id;
+
+    ws_polls_autoclose($channel_id);
+    ws_approvals_autoclose($channel_id);
+
+    $new = array();
+
+    if (!isset($options['new']) || $options['new']) {
+        $new = (($held_id <= 0) && !empty($options['first_page']))
+            ? ws_messages_page($channel_id, 0, (int) $options['first_page'])
+            : ws_messages_since($channel_id, $held_id);
+    }
+
+    return array(
+        'new'     => $new,
+        'changed' => ws_messages_touched($channel_id, $since, $held_id, (int) ($options['after_id'] ?? 0), (int) ($options['limit'] ?? 50)),
+    );
+}
+
+/**
  * Changes the text of one's own message.
  *
  * @param array  $viewer

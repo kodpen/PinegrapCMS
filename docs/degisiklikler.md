@@ -84,6 +84,79 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: tek çağrıda eşitleme, GET /workspace/sync (2026-10-14)
+
+**Neden.** Mobil API ve Claude kanalı planının M3 dilimi
+(`docs/_plan_mobil_api_claude_kanali.md`). Panel açık bir kanalı birkaç
+saniyede bir `ws_sync` ile tek istekte güncel tutuyor; bir telefon
+uygulaması aynı işi kanal listesi, mesajlar ve zil için ayrı ayrı
+çağrılarla yapmak zorundaydı. API çağrısı kişiyi "ekranda" da saymıyordu,
+bu yüzden uygulamada okuyan kişinin telefonu anılma için ayrıca push ile
+uyandırılıyordu.
+
+**Ne değişti.**
+- `GET /workspace/sync?cursor=…&channel_id=…` (`workspace:read`, yeni
+  dosya `includes/workspace/api_sync.php`). Cevap: `channels` (bütün
+  liste, `GET /workspace/channels`'ın verdiği nesneler) ve `threads`
+  (kişinin içinde olduğu açık tartışmalar, kenar çubuğunun
+  `ws_threads_for()` listesi) yalnız imleçten beri değiştiyse, yoksa
+  `null`; `inbox_unread`; `channel_id` verilince o kanalın imleçten sonra
+  yazılan mesajları (`messages`) ve elde olan mesajlardan değişenler
+  (`changed`: düzeltme, silme, tepki, işaret, oy, okundu onayı).
+  İmleçte bu kanal açık değilse en yeni 50 mesaj gelir; geriye
+  `GET …/messages?before_id=` ile gidilir. `more` 200 yeni mesajda,
+  `reload` 200 değişen mesajda (bir cevaba sığmadı, kanalı yeniden oku),
+  `gone` kanal artık okunamıyorsa.
+- İmleç (base64url JSON: an, açık kanal, gönderilen son mesaj, kanal ve
+  tartışma listesinin `crc32` işareti) önceki cevabın bıraktığı durumu
+  taşır. Hiçbir şey değişmediyse imleç aynen döner, cevap bayt bayt aynı
+  olur ve API'nin ETag'i `If-None-Match` ile 304 verir. Bir şey
+  gönderildiyse an bu çağrının anına geçer. Okunamayan imleç 400
+  `invalid_cursor`. İmleç imzalı değil: kanal her çağrıda yeniden
+  denetlenir, mesaj kimliği yalnız o kanal içindeki okumayı sınırlar.
+- Ekip cihazları oturumundan çağrı (`ws_api_device_writes_as_person()`)
+  kişiyi ekranda sayar (`ws_touch_seen()`) ve vakti gelen push'ları
+  gönderir (`ws_push_due_run()`), panelin açık ekranı gibi: anılmanın
+  push'u bir dakika bekler, kişi okursa düşer. Uygulama anahtarının ve
+  OAuth bağlantısının yoklaması kimseyi ekranda saymaz. Çağrı hiçbir şeyi
+  okundu işaretlemez (`POST /workspace/channels/{id}/read`, M2).
+- Ortak kod: panelin `ws_sync`'i ve yeni uç açık kanalı aynı
+  `ws_channel_news()` (`messages.php`: süresi dolan anket ve onayları
+  kapatır, yeni ve değişen mesajları okur) ve `ws_sync_seen()`
+  (`notify.php`) ile okur. Panelin davranışı aynı. API'nin mesaj
+  sunumu `ws_api_messages_present()`'a alındı, `GET …/messages` da onu
+  kullanır.
+- Claude'un çalıştığı uygulama yalnız Claude'a sorulabilen kanalları ve
+  tartışmaları görür (`GET /workspace/channels` kuralı).
+- MCP: rota `'mcp' => false` taşır ve araç olmaz
+  (`pg_mcp_route_is_offered()` bu bayrağı tanıyor); imleçle yoklama bir
+  modelin işine yaramaz.
+
+Şema değişikliği yok, yeni izin kapsamı yok, yeni metin yok.
+
+**Bilerek yapılmayan.** WebSocket ya da SSE yok (paylaşımlı barındırmada
+ve IIS'te her açık bağlantı bir PHP işçisi tutar). Panelin `ws_sync`'indeki
+ekrana özgü parçalar (sabitlenen mesaj, sekme sayıları, pano işareti,
+görev kartı HTML'i, misafir durumu, programlanmış işin tetiklenmesi)
+API'de yok. Zil sayısı ayrı izin istediği için yok
+(`GET /notifications/unread-count`). Kanalın önceki sürümleri (`era`)
+okunmaz, `GET …/messages` gibi.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye üç test (rota GET ve
+`workspace:read`, MCP aracı değil, bayraksız olsa araç olurdu; imleç
+gidiş-dönüşü ve bozuk imleçlerin reddi; liste işareti). Sandbox'ta "Ekip
+cihazları" ile: ilk çağrı listeleri verdi; kanal açılınca `channels`
+geldi, `threads` `null`; `channel_id` ile ilk sayfa; değişiklik yokken
+imleç aynı kaldı ve ETag ile 304; iki yeni mesaj `messages`'da; tepki ve
+düzeltme `changed`'de (`edited: true`, 👍 1); bozuk imleç 400
+`invalid_cursor`; olmayan kanal `gone: true`; `user_online_timestamp`
+güncellendi. Panelin Çalışma Alanı ekranı Chromium'da açıkken API'den
+yapılan düzeltme ve yeni mesaj `ws_sync` cevabında `changed: 1`,
+`messages: 1` olarak geldi, konsolda hata yok. Sunucu günlüğünde uyarı
+yok; `check_api_schema`, `lint`, `check_lang`, `build_js --check` temiz.
+
+---
+
 ## 2026.4.10 — API: cihazdan yazılan mesajda @Claude, @ai ve MCP ajanı anması isteği başlatıyor (2026-10-14)
 
 **Neden.** #369 (aşağıda, "cihazdan yazılan Çalışma Alanı mesajı

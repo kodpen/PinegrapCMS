@@ -110,7 +110,7 @@ yerine kişiye bakar. Uygulama anahtarıyla yazan entegrasyonlar değişmez. OAu
 kişi adına yazması karar 11'e bağlıdır (C5); karar gelene kadar bağlantı bugünkü gibi yazar.
 API açıklamaları ("readers see it as written by the application") güncellenir.
 
-**M2 — Düzeltme, silme, okundu, değişenler (K, şema yok).**
+**M2 — Düzeltme, silme, okundu, değişenler (K, şema yok). Yapıldı (#371).**
 - `PATCH|POST /workspace/messages/{id}` {text}: panelin `ws_edit` kuralıyla (yalnız yazan, kilitli
   karar değil).
 - `DELETE|POST /workspace/messages/{id}/delete`: panelin `ws_delete` kuralıyla.
@@ -119,7 +119,8 @@ API açıklamaları ("readers see it as written by the application") güncelleni
 - `GET /workspace/channels/{id}/messages?changed_since=<zaman>`: `ws_messages_touched()`; yanıtta
   `edited`, `deleted`, tepkiler ve okundu sayısı güncel.
 
-**M3 — Tek çağrıda eşitleme (O, şema yok).** `GET /workspace/sync?cursor=…&channel_id=…`:
+**M3 — Tek çağrıda eşitleme (O, şema yok). Yapıldı (#374):** kanal ve tartışma listesi yalnız
+değiştiklerinde gelir; rota MCP aracı değildir. `GET /workspace/sync?cursor=…&channel_id=…`:
 değişen kanallar (okunmamış sayısıyla), tartışmalar, gelen kutusu sayısı, açık kanalın yeni ve
 değişen mesajları, sonraki `cursor`. ETag / 304 ile ucuz; uygulama önündeyken 3–5 sn'de bir
 çağırır. Çağrı `ws_touch_seen()` yapar, böylece ekranda okuyan kişinin telefonu push ile ayrıca

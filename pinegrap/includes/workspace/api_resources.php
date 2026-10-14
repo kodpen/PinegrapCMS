@@ -685,6 +685,19 @@ function ws_api_messages_list($params)
         $rows = ws_messages_page($channel['id'], (int) ($params['before_id'] ?? 0), $limit);
     }
 
+    api_ok_list(ws_api_messages_present($viewer, $rows), $limit);
+}
+
+/**
+ * Messages as the API shows them, with their tags, reactions, read receipts
+ * and discussions read once for the whole set.
+ *
+ * @param array   $viewer
+ * @param array[] $rows ws_messages rows
+ * @return array[]
+ */
+function ws_api_messages_present($viewer, $rows)
+{
     $tokens = array();
 
     foreach ($rows as $row) {
@@ -707,7 +720,7 @@ function ws_api_messages_list($params)
         $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads);
     }
 
-    api_ok_list($out, $limit);
+    return $out;
 }
 
 function ws_api_messages_create($params)

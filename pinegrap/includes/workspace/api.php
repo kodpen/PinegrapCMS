@@ -39,6 +39,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -145,6 +146,8 @@ function ws_openapi_objects()
         'WorkspacePlanItem'         => 'ws_api_plan_item_schema',
         'WorkspaceSearchHit'        => 'ws_api_search_hit_schema',
         'WorkspaceMyDay'            => 'ws_api_my_day_schema',
+        'WorkspaceSync'             => 'ws_api_sync_schema',
+        'WorkspaceSyncThread'       => 'ws_api_sync_thread_schema',
     );
 }
 
@@ -303,6 +306,22 @@ function ws_api_routes()
                 array('name' => 'before_id', 'in' => 'query', 'type' => 'int', 'min' => 0),
                 array('name' => 'changed_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only the messages that changed at or after this moment; before_id is then ignored.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.sync',
+            'method'      => 'GET',
+            'path'        => '/workspace/sync',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_sync',
+            'returns'     => 'WorkspaceSync',
+            'mcp'         => false,
+            'summary'     => 'Keep an open app up to date',
+            'description' => 'What a team app on a phone or a computer needs to stay current, in one call, the way the panel\'s own screen keeps itself up to date. Call it every few seconds while the app is in front, passing back the cursor of the previous answer; leave it out on the first call. channels is the whole list GET /workspace/channels gives, and threads the open discussions the person is in, each sent only when something in it changed since the cursor (a new message, an unread count, a name); null means keep what you have. inbox_unread counts the workspace inbox. With channel_id, messages holds what was written there since the cursor - the newest 50 when the channel was not open at the previous call; page back with GET /workspace/channels/{id}/messages?before_id= - and changed the messages already sent that were edited, deleted, reacted to, ticked, voted on or acknowledged since, each as it is now. more true means more new messages wait: call again at once. reload true means more changed than one answer carries: read the channel again. gone true means the person can no longer read channel_id. When nothing changed, the answer is the previous one again, cursor included, so its ETag in If-None-Match gets 304 with no body. From a team devices session (POST /auth/login) the call also counts as the person looking at the workspace, as the panel\'s open screen does: a mention waits about a minute before it wakes their devices, and is not sent once they have read it. Nothing is marked read here; POST /workspace/channels/{id}/read does that.',
+            'params'      => array(
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'The cursor of the previous answer. Left out on the first call.'),
+                array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The channel open on the screen, or a discussion\'s id (threads[].id).'),
             ),
         ),
 

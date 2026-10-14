@@ -1568,6 +1568,18 @@
   --------------------------------------------------------
 
   [YENİ] Çalışma Alanı: telefon ya da bilgisayar
+         uygulaması açıkken tek bir çağrıyla güncel
+         kalıyor: kanal listesi ve tartışmalar (yalnız
+         değiştiklerinde), gelen kutusu sayısı, açık
+         kanalın yeni mesajları ve elindeki mesajlardan
+         değişenler birlikte geliyor. Hiçbir şey
+         değişmediyse cevap gövdesiz döner, sık sorulması
+         siteyi yormaz. Uygulamayla oturum açan kişi
+         ekrana bakıyor sayılır: panel açıkken olduğu gibi
+         anılma bildirimi telefonuna hemen düşmez, okursa
+         hiç gönderilmez.
+
+  [YENİ] Çalışma Alanı: telefon ya da bilgisayar
          uygulamasıyla oturum açan kişi kendi mesajını
          düzeltebiliyor ve silebiliyor, kanalı okundu
          işaretleyebiliyor (okunmamış sayısı ve

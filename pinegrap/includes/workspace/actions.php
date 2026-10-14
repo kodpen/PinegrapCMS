@@ -939,18 +939,20 @@ function ws_handle_action($action, $request)
 
             // The screen is in front of this person (see ws_notify()), and
             // banners whose wait is over go out.
-            ws_touch_seen($viewer['id']);
-            ws_push_due_run();
+            ws_sync_seen($viewer['id']);
 
             if ($channel_id > 0) {
                 $channel = ws_channel($channel_id);
 
                 if ($channel && ws_can_read_channel($viewer, $channel)) {
-                    ws_polls_autoclose($channel_id);
-                    ws_approvals_autoclose($channel_id);
-
-                    // An earlier version open on the screen takes nothing new.
-                    $rows = ((int) ($request['era_id'] ?? 0) > 0) ? array() : ws_messages_since($channel_id, (int) ($request['since_id'] ?? 0));
+                    // An earlier version open on the screen takes nothing
+                    // new. Messages the reader already has that changed since
+                    // the last look come as well: an edit, a reaction, a tick,
+                    // a vote.
+                    $news = ws_channel_news($channel_id, (int) ($request['since_id'] ?? 0), (int) ($request['since_ts'] ?? 0), array(
+                        'new' => ((int) ($request['era_id'] ?? 0) <= 0),
+                    ));
+                    $rows = $news['new'];
 
                     // The pinned message, as somebody may have changed it.
                     $out['pin'] = ws_channel_pin_present($viewer, $channel, ws_channel_membership($channel_id, $viewer['id']));
@@ -979,10 +981,7 @@ function ws_handle_action($action, $request)
                         $out['shares'] = ws_channel_shares_state($viewer, $channel);
                     }
                     $out['messages'] = ws_message_payloads($viewer, $rows);
-
-                    // Messages the reader already has that changed since the
-                    // last look: an edit, a reaction, a tick, a vote.
-                    $out['changed'] = ws_message_payloads($viewer, ws_messages_touched($channel_id, (int) ($request['since_ts'] ?? 0), (int) ($request['since_id'] ?? 0)));
+                    $out['changed'] = ws_message_payloads($viewer, $news['changed']);
 
                     if (!empty($rows) && !empty($request['read']) && ws_channel_membership($channel_id, $viewer['id'])) {
                         ws_channel_mark_read($channel_id, $viewer['id'], (int) $rows[count($rows) - 1]['id']);

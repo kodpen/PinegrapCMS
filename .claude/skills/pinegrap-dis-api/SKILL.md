@@ -152,8 +152,9 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   yazınca araç kendiliğinden gelir. `summary`/`description`/parametre
   açıklamaları modelin okuduğu metindir — İngilizce, kısa ve doğru yaz.
 - Dışarıda kalanlar `pg_mcp_route_is_offered()`'da: `auth.*`, `push.*`,
-  `docs.*`, `*_post` takma adları, kapsamsız rotalar. IIS için POST takma
-  adı açarken kimliği `_post` ile bitir, yoksa iki araç olur.
+  `docs.*`, `*_post` takma adları, kapsamsız rotalar ve `'mcp' => false`
+  taşıyan rota (uygulamanın yokladığı `GET /workspace/sync` gibi). IIS için
+  POST takma adı açarken kimliği `_post` ile bitir, yoksa iki araç olur.
 - `tools/call` rotayı süreç içinde çalıştırır; işleyici yine `api_send()` /
   `api_fail()` ile çıkar, `api_send_hook()` cevabı JSON-RPC'ye çevirir.
   İşleyici `$_SERVER`/`php://input` okumamalı, `api_request_input()` ve

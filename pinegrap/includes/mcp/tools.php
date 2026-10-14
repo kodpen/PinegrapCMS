@@ -30,12 +30,19 @@ if (!defined('PG_MCP_ENTRY')) {
 // has its own sign-in. The *_post routes are second addresses of a DELETE or
 // PATCH for servers that drop those verbs; a tool call never travels as that
 // verb, so the original route is the only one needed. A route with no scope
-// is public and is no tool either.
+// is public and is no tool either, nor one that says 'mcp' => false: an
+// address an app polls to stay in step with the screen, not an action.
 function pg_mcp_route_is_offered($route) {
 
 	$id = isset($route['id']) ? (string)$route['id'] : '';
 
 	if (($id === '') || !empty($route['public']) || !isset($route['scope']) || ($route['scope'] === '')) {
+
+		return false;
+
+	}
+
+	if (isset($route['mcp']) && ($route['mcp'] === false)) {
 
 		return false;
 
