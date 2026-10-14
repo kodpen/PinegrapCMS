@@ -199,22 +199,27 @@ function api_customers_get($params) {
 }
 
 // What api_customer_present() returns, declared for the OpenAPI document.
+//
+// Every column but the id may be null: a contact is created with what is known
+// of the person - an e-mail address alone from the e-mail preferences page, a
+// name alone from POST /customers - and the columns nobody wrote stay NULL.
+// phone is null when none of the three is filled in.
 function api_customer_schema() {
 
 	return array(
 		'id'         => 'integer',
 		'member_id'  => 'string?',
-		'first_name' => 'string',
-		'last_name'  => 'string',
-		'email'      => 'string',
-		'company'    => 'string',
-		'phone'      => 'string',
+		'first_name' => 'string?',
+		'last_name'  => 'string?',
+		'email'      => 'string?',
+		'company'    => 'string?',
+		'phone'      => 'string?',
 		'address'    => array(
-			'line_1'  => 'string',
-			'city'    => 'string',
-			'state'   => 'string',
-			'zip'     => 'string',
-			'country' => 'string'
+			'line_1'  => 'string?',
+			'city'    => 'string?',
+			'state'   => 'string?',
+			'zip'     => 'string?',
+			'country' => 'string?'
 		)
 	);
 

@@ -1422,7 +1422,8 @@ function api_product_schema() {
 		'enabled'           => 'boolean',
 		'price'             => 'integer',
 		'title'             => 'string',
-		'short_description' => 'string',
+		// A nullable column: an import whose sheet has no such column leaves it unset.
+		'short_description' => 'string?',
 		'brand'             => 'string',
 		'gtin'              => 'string',
 		'mpn'               => 'string',

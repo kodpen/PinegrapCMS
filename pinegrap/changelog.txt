@@ -1713,6 +1713,18 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] API belgesi: güncelleme ve işlem uçlarında
+         (ürün güncelleme, sipariş gönderme, fatura
+         kesme, mesaj düzeltme ve benzerleri, 122 uç)
+         OpenAPI belgesi 200 cevabının deneme isteğinde
+         (X-Dry-Run) kaydın değil deneme cevabının
+         biçiminde geldiğini de yazıyor. Müşterinin adı,
+         soyadı, e-postası, şirketi, telefonu ve adresi,
+         ürünün kısa açıklaması, sitenin varsayılan KDV
+         oranı ve yapay zekâ isteğinde okunan kaydın
+         satırları boş gelebildiği için null olabilir
+         diye işaretli; uçların cevabı değişmedi.
+
   [DÜZELTME] Çalışma Alanı: API'den ya da yapay zekâ
          bağlantısından tetiklenen bildirimler (anma,
          görev verme, onay isteği ve benzerleri) zilde
