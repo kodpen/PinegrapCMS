@@ -5,6 +5,9 @@
 "Dış API: ekip cihazı oturumu, bildirim/push uçları, ETag ve fields=". Biten bölümler
 çıkarıldı; tam metin: `git show d9fec3a:docs/_plan_api_mobil.md`. Sahibi: API (`includes/api/**`, `api_settings.php`).
 
+**Devamı (2026-10-14):** mobil uygulamanın Çalışma Alanı ihtiyaçları ve aşağıdaki kalanlar
+`docs/_plan_mobil_api_claude_kanali.md` → A bölümünde dilimlere bölündü.
+
 ## Kalanlar
 
 1. Gerçek cihazdan giriş: Erdal'ın denemesi bekleniyor.

@@ -5,7 +5,8 @@ ilk istek dev.pinegrap.com'da gerçek rutinle uçtan uca yanıtlandı. Ayrıntı
 `docs/degisiklikler.md` → "kanalda Claude, Faz 1 (4.87)". Kapsam kararı (Erdal): yalnız
 Faz 1; Claude Console API anahtarıyla değil, Claude aboneliğiyle (rutin + API tetikleyicisi)
 çalışır, bağlantı site geneli tektir. Biten bölümler çıkarıldı; tam metin: `git show d9fec3a:docs/_plan_claude_kanal.md`.
-İlgili: `docs/_plan_calisma_alani.md` (modül).
+İlgili: `docs/_plan_calisma_alani.md` (modül). Claude Code kanalıyla anlık bağlantı (rutinin yanına ikinci
+bağlantı türü): `docs/_plan_mobil_api_claude_kanali.md` → B bölümü.
 
 ## Kalanlar
 
