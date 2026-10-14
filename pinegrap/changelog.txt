@@ -1546,6 +1546,16 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: telefon ya da bilgisayar
+         uygulamasıyla oturum açan kişi kendi mesajını
+         düzeltebiliyor ve silebiliyor, kanalı okundu
+         işaretleyebiliyor (okunmamış sayısı ve
+         anılmalar düşer) ve elindeki mesajlardan
+         sonradan değişenleri (düzeltme, silme, tepki,
+         oy, okundu onayı) tek istekle alabiliyor.
+         Uygulama anahtarıyla bağlanan entegrasyonlar
+         bunları kişi adına yapamaz.
+
   [DÜZELTME] Para alanlarının sınırları her uçta aynı
          denetleniyor ve belgede görünüyor: ürün fiyatı 0
          ile 2147483647, hediye kartı tutarı 1'den, bakiyesi

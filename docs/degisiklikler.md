@@ -84,6 +84,66 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: Çalışma Alanı mesajını düzeltme, silme, kanalı okundu işaretleme ve değişen mesajlar (2026-10-14)
+
+**Neden.** Mobil API ve Claude kanalı planının M2 dilimi
+(`docs/_plan_mobil_api_claude_kanali.md`). Bir telefon uygulaması kendi
+mesajını düzeltemiyor, silemiyor, kanalı okundu işaretleyemiyordu (yalnız
+okunmamış sayısını görüyordu) ve elindeki mesajlardaki değişikliği
+(düzenleme, tepki, silme, oy) almanın yolu yoktu; panel bunları `ws_edit`,
+`ws_delete` ve `ws_sync` ile yapıyor.
+
+**Ne değişti.**
+- `PATCH|POST /workspace/messages/{id}` {text}: `ws_message_edit()` ile,
+  panelin kuralı (yalnız yazanın kendi mesajı, not ya da kararı; kayıt
+  değişikliğini kaydeden kilitli karar ve onay isteği değişmez, yalnız
+  yeni anılanlara bildirim gider).
+- `DELETE /workspace/messages/{id}` ve IIS için
+  `POST /workspace/messages/{id}/delete`: `ws_message_delete()` ile (kişi
+  kendi mesajını, yönetici herkesinkini ve misafirinkini; uygulama mesajı
+  silinmez). Yanıt `deleted: true` mesajdır. Silinmiş mesaja 404.
+- `POST /workspace/channels/{id}/read` {message_id?}:
+  `ws_channel_mark_read()`; `message_id` yoksa kanalın en yeni mesajı.
+  Mesaj başka kanalınsa 422, kanalın üyesi olmayana 409 `not_member`.
+  Yanıt güncel `unread` ile kanal nesnesi. İşaret geri gitmez.
+- `GET /workspace/channels/{id}/messages?changed_since=<zaman>`: yazılmış
+  mesajlardan o andan sonra değişenler (`ws_messages_touched()`), id
+  sırasıyla; `since_id` ile sayfalanır, kanalın önceki sürümleri dışarıda.
+  `ws_messages_touched()`'a isteğe bağlı `$after_id` ve `$limit` eklendi;
+  panel çağrısı aynı. Veritabanı yükseltilmemişse (`touched_at` yok) 503.
+- Düzeltme ve silme yalnız "Ekip cihazları" oturumundan
+  (`ws_api_own_words_only()`, #369'un `ws_api_device_writes_as_person()`
+  kuralı): uygulama anahtarı ve OAuth bağlantısı uygulama adıyla yazdığı
+  için 403 alır, entegrasyon kişinin sözünü değiştirmez. Bağlantının kişi
+  adına yazması karar 11'e (C5) bağlı; karar gelince bu kural da genişler.
+  Okundu işareti okundu onayı gibi her cihaz oturumundan
+  (`ws_api_person_only()`, OAuth dahil); uygulama anahtarı 403. Önceki bir
+  sürümdeki mesaj (`ws_message_in_past()`) değişmez ve silinmez (422).
+- MCP araçları: `workspace_messages_update`, `workspace_messages_delete`,
+  `workspace_channels_read`; POST takma adı ayrı araç değil.
+
+Şema değişikliği yok, yeni izin kapsamı yok (`workspace:write`). Yeni
+metinler `tr.json`'da (2 anahtar).
+
+**Bilerek yapılmayan.** "Yalnız benden sil" (`ws_message_hide()`) API'de
+yok; dry_run yok (mesaj yazma ve tepki gibi). #369'dan önce cihazdan
+yazılmış mesajlar uygulamanın adıyla durduğu için düzeltilemez; #369'dan
+sonra cihazdan ve panelden yazılanlar düzeltilir.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye iki test (üç uç birer
+araç, POST takma adı araç değil; `changed_since` bir tarih). Sandbox'ta
+"Ekip cihazları" ile giriş: uygulama anahtarıyla düzeltme, silme ve
+okundu 403; cihazla düzeltme 200 (`edited: true`, metindeki
+`<@user:118>` "@admin"), uygulama mesajını düzeltme ve silme 403, olmayan
+mesaj 404; iki uygulama mesajıyla `unread` 2 → `message_id` ile 1 → boşla
+0, eski mesaja geri işaret 0'da kaldı, başka kanalın mesajı 422, üye
+olmayan 409 `not_member`; POST takma adıyla silme `deleted: true`, ikinci
+silme 404; `changed_since` düzeltilen ve silinen mesajı döndürdü,
+`since_id` + `limit=1` ile sayfalandı, bozuk değer 422. Sunucu günlüğünde
+uyarı yok.
+
+---
+
 ## 2026.4.10 — API: cihazdan yazılan Çalışma Alanı mesajı kişinin adıyla (2026-10-14)
 
 **Neden.** Mobil API planının M1 dilimi (`docs/_plan_mobil_api_claude_kanali.md`).

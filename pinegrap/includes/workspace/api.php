@@ -296,11 +296,12 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_list',
             'returns'     => array('list' => 'WorkspaceMessage'),
             'summary'     => 'Read a channel',
-            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. text is the message with every tag spelled out; body keeps the tags as written. id may also be a discussion\'s (thread.id of a message, or GET /workspace/channels/{id}/threads), read by the people in it. thread is set on a message a discussion was started from; from_thread_id on a decision, a note or a task card copied into the channel from a discussion that is still there.',
+            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. changed_since reads instead the messages already written that changed at or after a moment: an edit, a deletion, a reaction, a tick, a vote or a read receipt, each as it is now (deleted true, edited true and so on). Pass the moment of the previous read by the site\'s clock, the Date header of its answer; when as many messages as limit come back, ask again with since_id set to the last one. text is the message with every tag spelled out; body keeps the tags as written. id may also be a discussion\'s (thread.id of a message, or GET /workspace/channels/{id}/threads), read by the people in it. thread is set on a message a discussion was started from; from_thread_id on a decision, a note or a task card copied into the channel from a discussion that is still there.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'since_id', 'in' => 'query', 'type' => 'int', 'min' => 0),
                 array('name' => 'before_id', 'in' => 'query', 'type' => 'int', 'min' => 0),
+                array('name' => 'changed_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only the messages that changed at or after this moment; before_id is then ignored.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 50),
             ),
         ),
@@ -319,6 +320,65 @@ function ws_api_routes()
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
                 array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('message', 'note', 'decision')),
                 array('name' => 'ack', 'in' => 'body', 'type' => 'bool', 'description' => 'Ask for read receipts on the message once it is written.'),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.messages.update',
+            'method'       => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path'         => '/workspace/messages/{id}',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_messages_update',
+            'returns'      => 'WorkspaceMessage',
+            'summary'      => 'Change one\'s own message',
+            'description'  => 'Changes the text of a message, a note or a decision the person wrote, the way Edit in the message menu does: edited is then true, and only the people the new text mentions for the first time are told. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection write as the application and are refused with 403 forbidden, so an integration does not rewrite its owner\'s words. Somebody else\'s message, a decision that records a change to a record, an approval request and a message of an earlier version of the conversation cannot be changed. PATCH is accepted beside POST.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The whole new text. Tags are written as tokens, as when writing.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.delete',
+            'method'      => 'DELETE',
+            'path'        => '/workspace/messages/{id}',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_delete',
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Delete a message for everyone',
+            'description' => 'Deletes a message the way Delete in the message menu does: the person their own, staff anybody\'s or a guest\'s. Its text, file and tags go, and the channel shows "message deleted" in its place, so the answer has deleted true. It cannot be undone. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. A message of an application, or of an earlier version of the conversation, cannot be deleted. POST /workspace/messages/{id}/delete does the same for servers that refuse DELETE.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_delete',
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Delete a message, addressed as a POST',
+            'description' => 'The same deletion as DELETE /workspace/messages/{id}, for clients and servers that cannot send DELETE. It has an address of its own because POST /workspace/messages/{id} is the change.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.read',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/read',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channels_read',
+            'returns'     => 'WorkspaceChannel',
+            'summary'     => 'Mark a channel read',
+            'description' => 'Marks a channel read up to a message, the way opening it in the panel does: unread counts only what came after it, and the person\'s mentions up to there leave the bell. Without message_id, up to the newest message. A mark never moves back. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since an integration reading a channel is not its owner reading it. Only the people in the channel keep a mark there; anybody else is answered with 409 not_member. id may also be a discussion\'s the person is in.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'message_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A message of this channel. Left out, the newest one.'),
             ),
         ),
 
