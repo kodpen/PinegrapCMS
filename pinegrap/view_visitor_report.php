@@ -39,6 +39,16 @@ if (defined('BASE_CURRENCY_SYMBOL') == false) {
 // blank and the heading falls back to "[new visitor report]".
 $output_visitor_report_name = '';
 
+// An id sent as an array (?id[]=x) counts as not given: the screen opens a
+// new report instead of an error page.
+if (isset($_GET['id']) && !is_scalar($_GET['id'])) {
+    unset($_GET['id']);
+}
+
+if (isset($_POST['id']) && !is_scalar($_POST['id'])) {
+    unset($_POST['id']);
+}
+
 // if an id was passed in the query string, then set id
 if (isset($_GET['id']) == true) {
     $id = (int) $_GET['id'];
@@ -46,6 +56,13 @@ if (isset($_GET['id']) == true) {
 // else if an id was passed in post, then set id
 } elseif (isset($_POST['id']) == true) {
     $id = (int) $_POST['id'];
+}
+
+// Stop early when the screen is opened for a report that does not exist (stale
+// link, hand-typed URL, report deleted meanwhile): a "not found" screen instead
+// of PHP notices from the unchecked row below.
+if (isset($id) && (((int) $id < 1) || ((int) db_value("SELECT COUNT(*) FROM visitor_reports WHERE id = '" . (int) $id . "'") < 1))) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 // prepare query string with id if necessary

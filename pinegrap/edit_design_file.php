@@ -22,6 +22,16 @@ include_once('liveform.class.php');
 $liveform_view_design_files = new liveform('view_design_files');
 $liveform = new liveform('edit_design_file');
 validate_area_access($user, 'designer');
+
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $from = '';
 if(isset($_GET['from'])){
     $from = ($_GET['from'] ?? '');
@@ -63,6 +73,10 @@ if (empty($_POST['name'])) {
         $output_file_name = h($file_name);
     }
     
+    // Only set for images; other design files show neither.
+    $output_thumbnail = '';
+    $output_image_info = '';
+
     if ((mb_strtolower($file_type) == 'bmp') || (mb_strtolower($file_type) == 'gif') || (mb_strtolower($file_type) == 'jpg') || (mb_strtolower($file_type) == 'jpeg') || (mb_strtolower($file_type) == 'png') || (mb_strtolower($file_type) == 'tif') || (mb_strtolower($file_type) == 'tiff')) {
         // Get the dimensions of the image.
         $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file_name);
@@ -110,6 +124,9 @@ if (empty($_POST['name'])) {
     // get file extension
     $file_extension = mb_strtolower(mb_substr($file_name, mb_strrpos($file_name, '.') + 1));
     
+    // Images and other formats without an editor get no edit button.
+    $output_edit_file_button = '';
+
     // if the file is either a CSS or JS file, then output the edit file button
     if (($file_extension == 'css') || ($file_extension == 'js')) {
         $edit_file_button_label = '';
@@ -292,8 +309,6 @@ if (empty($_POST['name'])) {
 </main>' . output_footer();
     
     $liveform->remove_form('edit_design_file');
-
-print $output;
 
 } else {
     validate_token_field();

@@ -32,6 +32,15 @@ validate_area_access($user, 'user');
 // would let the check pass on one page while the handler changes another.
 $requested_page_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($requested_page_id) ? (int) $requested_page_id : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // get page's folder in order to validate folder access
 $result = mysqli_query(db::$con, "SELECT page_id, page_folder FROM page WHERE page_id = '" . escape($requested_page_id) . "'") or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);

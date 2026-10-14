@@ -24,6 +24,9 @@ validate_area_access($user, 'designer');
 $liveform = new liveform('add_theme_file');
 
 if (!$_POST) {
+    // The id preselects the folder; one sent as an array (?id[]=x) counts as
+    // not given instead of giving an error page.
+    $folder_id = (isset($_GET['id']) && is_scalar($_GET['id'])) ? $_GET['id'] : '';
 
     print
     pg_page_shell([
@@ -45,7 +48,7 @@ if (!$_POST) {
                 
                 <form enctype="multipart/form-data" name="form" action="add_theme_file.php" method="post" name="form">
                     ' . get_token_field() . '
-                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>(isset($_GET['id']) ? $_GET['id'] : ''))) . '
+                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$folder_id)) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'id'=>'file_upload_field', 'name'=>'file_upload_field')) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'overwrite')) . '
                     <div class="row">
@@ -138,7 +141,7 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="col-12 my-2">
                                         <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-select" id="folder" name="folder">' . select_folder(isset($_GET['id']) ? $_GET['id'] : '', 0) . '</select>
+                                        <select class="form-select" id="folder" name="folder">' . select_folder($folder_id, 0) . '</select>
                                     </div>
                                 </div>
                             </div>
