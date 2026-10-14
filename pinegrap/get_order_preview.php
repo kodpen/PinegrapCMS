@@ -54,9 +54,11 @@ function get_order_preview($properties) {
              WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    
-    $discount_offer_id = $row['discount_offer_id'];
-    $offline_payment_allowed = $row['offline_payment_allowed'];
+
+    // A visitor who opens this page before anything is in the cart has no order yet,
+    // so there is no row: no offer code and no offline payment setting.
+    $discount_offer_id = $row['discount_offer_id'] ?? '';
+    $offline_payment_allowed = $row['offline_payment_allowed'] ?? '';
     
     $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
 

@@ -365,6 +365,30 @@
          yeni ziyaretçi hata günlüğüne uyarı yazıyordu;
          artık yazmıyor.
 
+  SİTE SAYFALARI
+  --------------------------------------------------------
+
+  [DÜZELTME] Form kaydı (blog yazısı, ilan) ve takvim
+         etkinliği sayfaları, adresinde bir değer birden
+         çok kez geçen (?r[]=…, ?id[]=…) ya da tekrar
+         numarası sayı olmayan bir bağlantıyla açılınca
+         hata sayfası veriyordu; artık "bulunamadı"
+         mesajı ya da etkinliğin kendisi açılıyor.
+
+  [DÜZELTME] Takvim etkinliği takvimden değil doğrudan
+         (paylaşılan link, arama sonucu) açılınca "Geri"
+         düğmesi aynı sayfayı yeniden yüklüyordu; artık
+         yalnız ziyaretçi bir takvimden geldiyse
+         görünüyor.
+
+  [DÜZELTME] Sepet boşken açılan fatura bilgileri ve
+         sipariş önizleme sayfaları, referans kodsuz
+         form kaydı, kimliksiz takvim etkinliği ve
+         ürünsüz katalog detay sayfaları ile indirimsiz
+         ürünü olan ürün grubu sayfası hata günlüğüne
+         uyarı yazıyordu (fatura sayfası her açılışta
+         19); artık yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
