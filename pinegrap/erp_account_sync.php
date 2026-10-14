@@ -34,7 +34,7 @@ $provider = erp_edoc_accounts_provider();
 $provider_label = ($provider !== '') ? (string) erp_edoc_info($provider)['label'] : '';
 $tabs = erp_edoc_accounts_tabs($provider_label);
 
-$tab = (string) ($_REQUEST['tab'] ?? '');
+$tab = is_string($_REQUEST['tab'] ?? null) ? $_REQUEST['tab'] : '';
 
 if ($_POST) {
 

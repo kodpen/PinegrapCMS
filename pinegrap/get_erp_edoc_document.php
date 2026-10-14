@@ -22,7 +22,7 @@ if (!validate_erp_access($user)) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
 $invoice_id = (int) ($_GET['id'] ?? 0);
-$format = ((string) ($_GET['format'] ?? 'pdf') === 'xml') ? 'xml' : 'pdf';
+$format = (($_GET['format'] ?? 'pdf') === 'xml') ? 'xml' : 'pdf';
 
 // The provider's copy of an accepted document does not change any more; the
 // one kept locally is served without asking the provider again.

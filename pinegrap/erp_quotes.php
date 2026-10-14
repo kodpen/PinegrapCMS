@@ -22,8 +22,9 @@ include_once('liveform.class.php');
 $liveform = new liveform('erp_quotes');
 
 $statuses = erp_quote_statuses();
-$state = isset($statuses[(string) ($_GET['state'] ?? '')]) ? (string) $_GET['state'] : '';
-$search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
+$state = is_string($_GET['state'] ?? null) ? $_GET['state'] : '';
+$state = isset($statuses[$state]) ? $state : '';
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
 $account_id = max(0, (int) ($_GET['account_id'] ?? 0));
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 

@@ -40,7 +40,7 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
 // The e-document view in the address, checked against the keys the screen
 // knows. It narrows the register on its own or together with a due-date view.
 $edoc_filters = (erp_edoc_installed() && erp_edoc_in_use()) ? erp_edoc_filters() : array();
-$edoc_filter = (string) ($_GET['edoc'] ?? '');
+$edoc_filter = is_string($_GET['edoc'] ?? null) ? $_GET['edoc'] : '';
 $edoc_filter = isset($edoc_filters[$edoc_filter]) ? $edoc_filter : '';
 
 // Ticking rows and acting on them is offered only where there is a provider
@@ -52,7 +52,7 @@ $edoc_bulk = ($edoc_provider !== '');
 // so a bulk action comes back to the same view.
 $self_query = array();
 foreach (array('filter', 'direction', 'account_id', 'bucket', 'as_of', 'edoc') as $self_key) {
-    if (isset($_GET[$self_key]) && ((string) $_GET[$self_key] !== '')) {
+    if (isset($_GET[$self_key]) && is_string($_GET[$self_key]) && ($_GET[$self_key] !== '')) {
         $self_query[$self_key] = (string) $_GET[$self_key];
     }
 }
@@ -159,11 +159,13 @@ $filter_names = array(
     'due_week' => lang('Due this week'),
     'open' => lang('Open'),
 );
-$filter = (string) ($_GET['filter'] ?? '');
-$filter_direction = (string) ($_GET['direction'] ?? '');
+// Each filter is one value; one sent as an array (?filter[]=x) counts as not
+// given: it wrote "Array to string conversion" into the log.
+$filter = is_string($_GET['filter'] ?? null) ? $_GET['filter'] : '';
+$filter_direction = is_string($_GET['direction'] ?? null) ? $_GET['direction'] : '';
 $filter_direction = (($filter_direction === 'sales') || ($filter_direction === 'purchase')) ? $filter_direction : '';
 $filter_account_id = (int) ($_GET['account_id'] ?? 0);
-$filter_bucket = (string) ($_GET['bucket'] ?? '');
+$filter_bucket = is_string($_GET['bucket'] ?? null) ? $_GET['bucket'] : '';
 $filter_bucket = erp_aging_bucket_valid($filter_bucket) ? $filter_bucket : '';
 $filter_as_of = erp_aging_as_of($_GET['as_of'] ?? '');
 

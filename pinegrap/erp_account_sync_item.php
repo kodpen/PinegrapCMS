@@ -33,6 +33,12 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_sync.php';
 $provider = erp_edoc_accounts_provider();
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $account_id = (int) ($_REQUEST['account_id'] ?? 0);
+
+// The search term is one value; one sent as an array (?q[]=x) counts as not
+// given: it wrote "Array to string conversion" into the log.
+if (isset($_GET['q']) && !is_string($_GET['q'])) {
+    unset($_GET['q']);
+}
 $row = ($id > 0) ? erp_edoc_account_row($id) : null;
 $account = null;
 
@@ -265,7 +271,7 @@ $pick_list = function ($items, $kind) use ($form, $provider_label) {
 $search_box = function ($placeholder) use ($row, $account) {
     return '<form action="erp_account_sync_item.php" method="get" class="d-flex gap-2 my-3" role="search">
                 ' . (($row !== null) ? '<input type="hidden" name="id" value="' . (int) $row['id'] . '" />' : '<input type="hidden" name="account_id" value="' . (int) $account['id'] . '" />') . '
-                <input type="search" name="q" value="' . h((string) ($_GET['q'] ?? '')) . '" class="form-control form-control-sm" placeholder="' . h($placeholder) . '" maxlength="100" />
+                <input type="search" name="q" value="' . h($_GET['q'] ?? '') . '" class="form-control form-control-sm" placeholder="' . h($placeholder) . '" maxlength="100" />
                 <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap"><i class="bi bi-search me-1" aria-hidden="true"></i>' . lang('Search') . '</button>
             </form>';
 };

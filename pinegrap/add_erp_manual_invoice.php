@@ -46,7 +46,7 @@ if (!$_POST) {
     // already there is one sent back with an error, and keeps what was typed.
     $fresh = !$liveform->field_in_session('issue_date');
 
-    erp_invoice_form_prefill($liveform, null, (string) ($_GET['direction'] ?? 'sales'));
+    erp_invoice_form_prefill($liveform, null, is_string($_GET['direction'] ?? null) ? $_GET['direction'] : 'sales');
 
     $card_options = array();
     $copy_id = max(0, (int) ($_GET['copy'] ?? 0));

@@ -53,7 +53,7 @@ if (!is_array($account)) {
 
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $ready = erp_price_lists_ready();
-$search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
 $self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_prices.php?account_id=' . $account_id;
 
 if ($_POST) {

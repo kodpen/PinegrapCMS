@@ -1812,6 +1812,17 @@
          (PGF2026000000001) taşıyordu. Kesilmiş belgelerin
          numaraları değişmez.
 
+  [DÜZELTME] ERP ekranları (faturalar, teklifler, satın
+         alma siparişleri, giderler, çekler, kâr/zarar,
+         KDV raporu, kasa akışı, yaşlandırma, mutabakat,
+         denetim izi, dışa aktarma ve diğerleri),
+         adresinde bir süzgeç, tarih ya da arama değeri
+         birden çok kez geçen (?status[]=…, ?from[]=…) bir
+         bağlantıyla açılınca hata günlüğüne "Array to
+         string conversion" uyarısı yazıyordu; artık
+         yazmıyor, böyle gelen değer verilmemiş sayılıyor.
+         Normal açılışta ekranlar aynı.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.

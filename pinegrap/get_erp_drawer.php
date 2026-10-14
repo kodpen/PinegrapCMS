@@ -27,7 +27,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');
 
-$type = (string) ($_GET['type'] ?? '');
+$type = is_string($_GET['type'] ?? null) ? $_GET['type'] : '';
 $id = (int) ($_GET['id'] ?? 0);
 
 $builders = array(

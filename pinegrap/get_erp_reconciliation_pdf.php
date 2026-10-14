@@ -55,7 +55,7 @@ if (!is_array($account)) {
 // The screen's dates come in the site's format; a link's come as Y-m-d. Both
 // end up as Y-m-d or empty, and empty means the default.
 $read_date = function ($value) {
-    $value = trim((string) $value);
+    $value = is_string($value) ? trim($value) : '';
 
     if ($value === '') {
         return '';
