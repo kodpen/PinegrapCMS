@@ -90,7 +90,13 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 - `ws_api_own_words_only()` isteyen uç (doğrudan ya da `ws_api_pin_target()`
   gibi bir yardımcıyla) `'mcp' => false` taşır: MCP istemcisi OAuth
   bağlantısıyla gelir, araç her çağrıda 403 alırdı.
-  `test_ws_api_own_words_routes_are_no_tools` bunu denetler.
+  `test_ws_api_own_words_routes_are_no_tools` bunu denetler. Reddin metni
+  "Only the person's own team devices session (POST /auth/login) can …; an
+  application key or an OAuth connection …" biçimindedir, "signed in on a
+  device" demez (OAuth bağlantısı da cihaz satırıdır);
+  `test_ws_api_own_words_refusals_name_the_team_devices_session` denetler.
+  `ws_api_person_only()` metinleri "signed in on a device" der: orada OAuth
+  kabul.
 - Herkes için aynı olan düzen (kanalı gruba taşıma) kişisel tercih
   değildir: `ws_api_person_only()` istemez, kanal değiştirme ucu gibi
   sahibin haklarıyla kapılanır (uygulama anahtarı kabul). Erişim değiştiren

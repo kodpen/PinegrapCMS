@@ -84,6 +84,54 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kişinin kendi sözü olan uçların 403 metni ekip cihazları oturumunu söylüyor (2026-10-14)
+
+**Neden.** #399'un bıraktığı parça. `ws_api_own_words_only()` kapısı yalnız
+ekip cihazları oturumunu (`POST /auth/login`) kabul eder; uygulama anahtarı
+ve OAuth bağlantısı 403 `forbidden` alır. Kapının altı reddi ise "Only the
+person, signed in on a device, can …" diyordu. OAuth bağlantısı da bir
+cihaz satırı olduğu (`api_devices`, `oauth_client_id` dolu) ve kişi orada
+oturum açtığı için metin, bağlantıyla gelen bir istemciye neden reddedildiğini
+söylemiyor, hatta cihazında oturum açmış olduğu için yetmesi gerektiğini
+düşündürüyordu. API belgesi bu uçlarda zaten "Only a team devices session
+(a Bearer token from POST /auth/login) may: an application key and an OAuth
+connection are refused" diyor.
+
+**Ne değişti.**
+- Altı metin (kapının varsayılanı: mesaj düzeltme / silme; kendi
+  görünümünden silme, zamanlama, oylama açma, oylama değiştirme, sabitleme /
+  sabitlemeyi kaldırma / kapatma) "Only the person's own team devices
+  session (POST /auth/login) can …; an application key or an OAuth
+  connection cannot …" biçiminde. Zamanlamada: "… it is posted later in their
+  own name, while an application key or an OAuth connection writes as the
+  application." `tr.json`'da altı satırın anahtarı ve Türkçesi yerinde
+  değişti ("yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) …;
+  uygulama anahtarı ya da OAuth bağlantısı onun adına …"); eski anahtar
+  kalmadı.
+- Hata kodu (403 `forbidden`), cevabın yapısı ve kapının kuralı aynı.
+- Test: `test_ws_api_own_words_refusals_name_the_team_devices_session`
+  kapının varsayılan metnini ve `ws_api_own_words_only(lang('…'))` ile
+  verilen her metni okuyup "team devices session (POST /auth/login)" ve
+  "OAuth connection" geçtiğini, "signed in on a device" geçmediğini
+  denetliyor; eski metinlerle kırmızı.
+
+Şema değişikliği yok, izin yok, JS değişmedi, API belgesi değişmedi (metin
+belgede örnek olarak geçmiyordu).
+
+**Bilerek yapılmayan.** `ws_api_person_only()` kapısının metinleri
+("Only the person, signed in on a device, can give this answer …" ve
+okundu, oy, bildirim düzeyi, kanal sabitleme, tartışmaya katılma / ayrılma,
+oylama kapatma metinleri) değişmedi: o kapı OAuth bağlantısını kabul eder,
+yalnız uygulama anahtarını reddeder; "cihazında oturum açmış kişi" orada
+doğru. `openapi.php`'deki Bearer şemasının "a person signed in on a device
+(POST /auth/login)" açıklaması da 403 metni değil, değişmedi.
+
+**Doğrulama.** `test.php` (tam takım), `lint`, `check_lang`,
+`check_api_schema`, `check_copies`, `build_js --check` temiz. Çalışan
+örnekte istekle denenmedi.
+
+---
+
 ## 2026.4.10 — Dış API: kanal oluşturma, mesaj silme ve şablon uygulama Site Günlüğü'ne adsız yazıyordu (2026-10-14)
 
 **Neden.** `ws_channel_create()`, `ws_message_delete()` (başkasının mesajı)
