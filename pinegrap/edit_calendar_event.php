@@ -730,7 +730,7 @@ if (!$_POST) {
                                                         </div>
                                                         <div class="col-12 col-md-4 my-2">
                                                             <label for="product_id" class="form-label">' . lang('Reservation Product') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-select', 'options'=>get_product_options())) . '
+                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-select', 'options'=>get_product_options(true, $liveform->get_field_value('product_id')))) . '
                                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                         <div class="col-12 col-md-4 my-2">

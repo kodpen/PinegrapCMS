@@ -144,6 +144,12 @@ if (!$_POST) {
     $item_names = array();
     
     // get all product groups currently in this product group
+    //
+    // Groups and products in the Recycle Bin are not listed or counted here, as
+    // the Catalog Manager leaves them out: a sub-group in the bin is not one
+    // that has to be deleted before this group can be, and a binned product
+    // keeps its place in this group (the save below leaves its row alone) so
+    // that restoring it puts it back where it was.
     $query = 
         "SELECT
             id,
@@ -154,7 +160,7 @@ if (!$_POST) {
             sort_order
         FROM product_groups
         WHERE
-            parent_id = '" . e($_GET['id']) . "'";
+            parent_id = '" . e($_GET['id']) . "'" . pg_catalog_bin_live_sql('product_groups');
     
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     while ($row = mysqli_fetch_assoc($result)) {
@@ -185,7 +191,7 @@ if (!$_POST) {
         FROM products_groups_xref
         LEFT JOIN products on products.id = product
         WHERE
-            product_group = '" . e($_GET['id']) . "'";
+            product_group = '" . e($_GET['id']) . "'" . pg_catalog_bin_live_sql('products');
 
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     while ($row = mysqli_fetch_assoc($result)) {
@@ -256,9 +262,9 @@ if (!$_POST) {
     }
     
     // Build the exclusion clause once (reused for count and initial batch).
-    $unselected_exclude_sql = $selected_products
-        ? " WHERE id NOT IN (" . implode(',', array_map('intval', $selected_products)) . ")"
-        : "";
+    $unselected_exclude_sql = " WHERE 1 = 1"
+        . ($selected_products ? " AND id NOT IN (" . implode(',', array_map('intval', $selected_products)) . ")" : "")
+        . pg_catalog_bin_live_sql('products');
 
     $total_unselected = (int) db_value("SELECT COUNT(*) FROM products" . $unselected_exclude_sql);
 
@@ -489,7 +495,14 @@ if (!$_POST) {
     }
     
     // Show parent selector only when there are selectable groups (excluding self and descendants).
-    $_parent_options_html = get_product_group_options($parent_id, 0, $_GET['id'], 0, array(), FALSE);
+    //
+    // Groups in the Recycle Bin are no place to move a group to. The one
+    // exception is a parent that is itself in the bin (a sub-group restored on
+    // its own): left off the list, the select would fall to its first option
+    // and the next save would move this group there.
+    $_parent_in_bin = pg_catalog_bin_ready()
+        && ((int) db_value("SELECT recycled FROM product_groups WHERE id = '" . (int) $parent_id . "'") === 1);
+    $_parent_options_html = get_product_group_options($parent_id, 0, $_GET['id'], 0, array(), FALSE, 'text', false, true, $_parent_in_bin);
     if ($_parent_options_html !== '') {
         $output_parent_product_group_row =
             '<div class="col-12 col-md-4 my-2">
@@ -1176,8 +1189,16 @@ if (!$_POST) {
             WHERE id = '" . e($_POST['id'] ?? '') . "'");
         
         // flush appropriate entries from products_groups_xref table
-        $query = "DELETE FROM products_groups_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'";
+        //
+        // Except those of products in the Recycle Bin: the screen does not
+        // list them, so they are never posted back, and dropping their rows
+        // here would take the product out of this group for good while it
+        // waits in the bin. What is left after this is exactly those rows.
+        $query = "DELETE FROM products_groups_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'"
+            . (pg_catalog_bin_ready() ? " AND product NOT IN (SELECT id FROM products WHERE recycled = '1')" : "");
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+
+        $kept_product_ids = array_map('intval', (array) db_values("SELECT product FROM products_groups_xref WHERE product_group = '" . e($_POST['id'] ?? '') . "'"));
 
         if($selected_count > 1){
             foreach ($selected_images as $value) {db("INSERT INTO product_groups_images_xref (product_group,file_name)VALUES ('" . escape($_POST['id'] ?? '') . "','" . escape($value) . "')");}
@@ -1189,6 +1210,12 @@ if (!$_POST) {
         if ($_POST['products']) {
             // foreach product that was selected
             foreach ($_POST['products'] as $product_id) {
+                // A form opened before the product went to the bin still
+                // posts it; its row is the one kept above.
+                if (in_array((int) $product_id, $kept_product_ids, true)) {
+                    continue;
+                }
+
                 $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . escape($product_id) . "', '" . escape($_POST['id'] ?? '') . "', '" . escape($_POST['sort_order_product_' . $product_id]) . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed');
             }

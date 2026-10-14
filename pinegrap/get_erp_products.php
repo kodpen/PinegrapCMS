@@ -44,6 +44,11 @@ if (isset($_GET['zone_rate'])) {
 if (isset($_GET['barcode'])) {
     $row = erp_product_by_barcode((string) $_GET['barcode']);
 
+    // A product in the Recycle Bin is not put on a document, as in the search.
+    if (is_array($row) && pg_catalog_product_binned($row['id'])) {
+        $row = null;
+    }
+
     echo json_encode(array('product' => is_array($row) ? erp_product_for_line($row, $account_id) : null), $flags);
     exit();
 }

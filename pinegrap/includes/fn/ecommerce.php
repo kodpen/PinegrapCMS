@@ -1417,6 +1417,55 @@ function pg_catalog_bin_ready()
 }
 
 /**
+ * The WHERE fragment that leaves catalogue rows in the Recycle Bin out of a
+ * picker, a search or a count.
+ *
+ * A row in the bin is one the operator deleted; offering it again next to the
+ * live ones, marked only as switched off, lets it be chosen for an order line,
+ * an offer or a group as if nothing had happened. The Catalog Manager's own
+ * filter, so every screen reads the bin the same way; empty before the upgrade
+ * that adds the bin, so the same queries run either way.
+ *
+ * $keep_id is the row a form already points at. It stays in the list even from
+ * the bin: a <select> that no longer has the stored value falls back to its
+ * first option, and the next save would quietly point the setting somewhere
+ * else, or nowhere, while the row waits to be restored.
+ *
+ * @param string $table   'products' or 'product_groups', or the alias the query gives it
+ * @param int    $keep_id the row to keep whatever its state, or 0
+ * @return string " AND (<table>.recycled = '0')", or ''
+ */
+function pg_catalog_bin_live_sql($table, $keep_id = 0)
+{
+    if (pg_catalog_bin_ready() == false) {
+        return '';
+    }
+
+    $keep_id = (int) $keep_id;
+
+    if ($keep_id > 0) {
+        return " AND ((" . $table . ".recycled = '0') OR (" . $table . ".id = '" . $keep_id . "'))";
+    }
+
+    return pg_catalog_live_filter($table);
+}
+
+/**
+ * Whether a product is in the Recycle Bin.
+ *
+ * @param int $product_id
+ * @return bool
+ */
+function pg_catalog_product_binned($product_id)
+{
+    if (pg_catalog_bin_ready() == false) {
+        return false;
+    }
+
+    return ((int) db_value("SELECT recycled FROM products WHERE id = '" . (int) $product_id . "'") === 1);
+}
+
+/**
  * Move one product to the Recycle Bin, the way the Catalog Manager's Delete does.
  *
  * product.deleted goes out with recycled: true, as it does when the API bins a

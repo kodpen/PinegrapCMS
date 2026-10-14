@@ -84,6 +84,115 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Geri Dönüşüm Kutusundaki ürün seçicilerde çıkmıyor, grup ekranı kutudakileri saymıyor, ürün ekranı kutudaki ürünü kaydetmiyor (2026-10-14)
+
+**Neden.** #416'nın "Bilerek yapılmayan" maddesindeki üç uç. Kutu bir
+bayrak (`recycled = 1`, `enabled = 0`), satır yerinde duruyor; bu yüzden
+(1) ürün seçen ekranlar kutudaki ürünü "devre dışı" ürün gibi sunuyordu
+ve seçilebiliyordu; (2) ürün grubu ekranı kutudaki alt grubu alt grup
+olarak listeleyip sayıyordu (alt grubu yalnız kutuda olan grup "önce alt
+grupları silin" diyordu), kutudaki ürünü de grubun ürünleri arasında
+gösteriyordu; (3) kutudaki ürün `edit_product.php?id=…` ile uyarısız
+açılıp kaydedilebiliyordu. Vitrin yalnız `enabled`'a baktığı için Durum
+açık kaydedilen ürün kutudayken yeniden satışa çıkıyordu; Sil de kutu
+kaydını yenileyip geri sayımı baştan başlatıyordu.
+
+**Ne değişti.**
+- `includes/fn/ecommerce.php`: `pg_catalog_bin_live_sql($table, $keep_id
+  = 0)` Katalog Yöneticisi'nin süzgecini (`pg_catalog_live_filter()`)
+  `pg_catalog_bin_ready()` kapısıyla verir; kutu yoksa boş. `$keep_id`
+  verilirse o satır kutuda olsa da kalır. `pg_catalog_product_binned()`
+  tek ürünü sorar. Yeni işaret yok, #416'nın `recycled` sütunu.
+- Seçiciler: `get_product_options()` (kısa bağlantı, takvim etkinliği,
+  e-posta kampanyası, Katalog Yöneticisi'nin kısa bağlantı sihirbazı) ve
+  `select_product()` (ürün ekranının "gerekli ürün"ü) kutudakini
+  bırakır; düzenleme ekranları (`edit_short_link.php`,
+  `edit_calendar_event.php`, `edit_email_campaign_profile.php`) kaydın
+  zaten gösterdiği ürünü `$keep_id` olarak verir ve o seçenek
+  "[GERİ DÖNÜŞÜM KUTUSUNDA]" ekiyle kalır. Kalmasaydı `<select>` ilk
+  seçeneğe düşer, sonraki kayıt bağlantıyı sessizce başka ürüne ya da
+  boşa çevirirdi. Kampanya editörü (`_pg_offer_products()` +
+  `offer_editor.js`) listeyi etiketler için tam tutar, ürünlere
+  `recycled` ekler; seçici kutudakini yalnız satırın zaten seçtiği ürünse
+  gösterir, hızlı başlangıç ilk kutuda olmayan ürünü alır. Ürün grubu
+  ekranlarının "seçilmemiş ürünler" listesi ve sayısı (`add_product_group.php`,
+  `edit_product_group.php`, kaydırınca yükleyen `get_unselected_products`),
+  ERP belge satırı araması (`erp_product_search()`, barkod eşleşmesi ve
+  `get_erp_products.php?barcode=` dahil), panel araması (ürün ve ürün
+  grubu), Çalışma Alanı ürün referansı araması (grubunki zaten
+  `recycled = 0` idi) ve pazaryeri eşleştirme listesi süzülür.
+- Grup ekranı (`edit_product_group.php`): alt grup listesi ve
+  `$child_product_group_exists` kutudakini saymaz; grubun ürün listesi
+  kutudaki ürünü göstermez. Kaydetme `products_groups_xref`'i silip
+  postalanandan yeniden yazdığı için kutudaki ürünün satırı silmeden
+  korunur (`AND product NOT IN (SELECT id FROM products WHERE recycled =
+  '1')`), eski bir formun yine postaladığı kutudaki ürün ikinci kez
+  eklenmez (tabloda benzersiz anahtar yok). Üst grup seçicisi
+  (`get_product_group_options()`'a `$include_recycled`, yeni grup
+  ekranında da) kutudaki grupları göstermez; grubun kendi üst grubu
+  kutudaysa (tek başına geri yüklenmiş alt grup) liste eskisi gibi tam
+  kalır, yoksa kayıt grubu ilk seçeneğe taşırdı. Diğer grup seçicileri
+  (ürün ekranının grupları, sayfa ayarları, kısa bağlantı) değişmedi:
+  oradaki seçili kutu grubu tutulmazsa kayıt bağı koparırdı.
+- Ürün ekranı: `edit_product.php` kutudaki ürünü gösterir ama POST'u
+  hiçbir şey yazmadan aynı ekrana geri gönderir (Kaydet de Sil de).
+  `pg_pb_render_product_screen()` `recycled` bağlamıyla üstte uyarı ve
+  "Geri Dönüşüm Kutusunu Aç" (`view_product_groups.php?view=bin`)
+  gösterir, kayıt çubuğunda Kaydet/Sil yerine aynı bağlantı durur.
+  Geri yükleme Katalog Yöneticisi'nin kutusunda; ikinci bir geri yükleme
+  kodu yazılmadı. Ürün listesinin satır içi düzenlemesi
+  (`pg_pb_quick_update()`) kutudaki ürünü "Ürün bulunamadı." diye
+  reddeder.
+- `tr.json`'a 3 anahtar.
+- Test (`tests/catalog_bin_test.php`, +4): seçicilerin ortak yardımcıyı
+  kullandığı, düzenleme ekranlarının mevcut ürünü verdiği, grup
+  ekranının kutudakini ne listeleyip ne düşürdüğü, ürün ekranının
+  yazmadan önce durduğu. Düzeltme öncesi kodda 4'ü kırmızı.
+
+Şema değişikliği yok; dev'de yalnız `git pull` yeter.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, Türkçe başlangıç sitesi).**
+Mega Hediye Sepeti (43, gruplar 27/41/51) ürün ekranının Sil'iyle,
+İndirilenler (49, Mağaza'nın alt grubu) grup ekranının Sil'iyle kutuya
+atıldı; bir kısa bağlantı 43'e, biri 42'ye bağlıydı.
+- Ürün ekranı 43: uyarı ve iki kutu bağlantısı, Kaydet/Sil yok; Durum
+  açık Kaydet POST'u ve Sil POST'u ekrana döndü, satır (`enabled 0`,
+  `recycled 1`) ve kutu kaydının tarihi değişmedi. 42'de uyarı yok,
+  düğmeler var. Satır içi düzenleme 43'e 422 `not_found`.
+- Kısa bağlantı ekleme: 43 yok, 42 var. 43'e bağlı bağlantının
+  düzenlemesi: 43 seçili, etiket "CGB-078 - Mega Hediye Sepeti (₺79,95)
+  [GERİ DÖNÜŞÜM KUTUSUNDA]"; 42'ye bağlı olanda 43 yok.
+- Grup 27: ürün listesinde 43 yok, 41 var; seçilmemiş listede 43 yok.
+  27, eski formdaki gibi 41, 42 ve 43 postalanarak kaydedildi: 43'ün 27
+  bağı tek satır ve sıra numarasıyla kaldı. Mağaza (37) alt grupları 27,
+  28, 43 (49 yok); üst grup seçicilerinde 49 yok. Hediye Dükkanı'nın (51)
+  tek alt grubu (56) kutuya atılınca Sil düğmesi gerçek silme oldu.
+- Kampanya editörü: JSON'da 43 `recycled: 1`; "hediye" hızlı
+  başlangıcının iki ürün seçicisinde 43 yok, 42 var.
+- Panel araması "Hediye Sepeti" → 41, 42; "ndirilenler" grubu → 23 (49
+  yok). Çalışma Alanı ve ERP açılınca ürün referansı ve belge araması →
+  41, 42; `?barcode=CGB-078` → `null`, `CGB-077` → 42.
+- Katalog Yöneticisi'nden 43 geri yüklendi: `enabled 1`, ürün ekranı
+  Kaydet'li, kısa bağlantı eklemede 43 var, grup 27'nin listesinde 43
+  yeniden işaretli (bağ korunduğu için).
+- Takvim etkinliği, e-posta kampanyası, kampanya, pazaryeri, ERP cari
+  fiyatları ekranları 200; bu değişiklikten PHP uyarısı yok
+  (`edit_calendar_event.php` 215/455'teki `recurrence_number` uyarısı
+  eskiden var).
+
+**Bilerek yapılmayan.** Ürün ekranının grup seçicisi, sayfa ayarlarındaki
+ve kısa bağlantıdaki grup seçicileri kutudaki grubu "[DEVRE DIŞI]"
+olarak göstermeye devam ediyor (seçili olanı tutmak ağaç yürüyüşünde
+atalarını da gerektiriyor). Depo girişi/çıkışı barkod ekranları, kasa
+(`local_sale.php` barkod eşleşmesi) ve Dış API listeleri dokunulmadı.
+Kutudaki grubun kendi ekranı (`edit_product_group.php?id=…`) uyarısız
+açılıyor. Katalog Yöneticisi'nin kısa bağlantı sihirbazı listeyi bir kez
+ve kayıttan bağımsız aldığı için kutudaki ürüne giden bir bağlantıyı
+orada düzenlemek ürünü yeniden seçtiriyor (klasik
+`edit_short_link.php` tutuyor).
+
+---
+
 ## 2026.4.10 — Sipariş akışı: hızlı sipariş, kargo adresi, fatura bilgileri ve sipariş önizleme dizi gelen değerde 500 veriyordu (2026-10-14)
 
 **Neden.** #407 site formlarını temizlerken `submit_custom_form()`'u ve

@@ -187,21 +187,26 @@ function _pg_offer_action_icon($type)
 
 // products.name is the code the operator types (SKU); the storefront prints
 // short_description. The picker shows both, the summaries use the printed one.
+//
+// Products in the Recycle Bin stay on the list, flagged: an offer that already
+// names one still has to say which product it is, and its editor keeps the
+// choice; offer_editor.js does not offer them for a new choice.
 function _pg_offer_products()
 {
     $rows = db_items(
-        "SELECT id, name, short_description, enabled, price
+        "SELECT id, name, short_description, enabled, price, " . (pg_catalog_bin_ready() ? "recycled" : "'0' AS recycled") . "
         FROM products
         ORDER BY short_description, name");
     $products = array();
     if ($rows) {
         foreach ($rows as $row) {
             $products[] = array(
-                'id'      => (int) $row['id'],
-                'code'    => (string) $row['name'],
-                'label'   => (trim((string) $row['short_description']) != '') ? (string) $row['short_description'] : (string) $row['name'],
-                'enabled' => (int) $row['enabled'],
-                'price'   => (int) $row['price']);
+                'id'       => (int) $row['id'],
+                'code'     => (string) $row['name'],
+                'label'    => (trim((string) $row['short_description']) != '') ? (string) $row['short_description'] : (string) $row['name'],
+                'enabled'  => (int) $row['enabled'],
+                'recycled' => (int) $row['recycled'],
+                'price'    => (int) $row['price']);
         }
     }
     return $products;

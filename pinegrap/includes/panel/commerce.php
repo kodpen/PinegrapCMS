@@ -878,6 +878,9 @@ function pg_panel_get_unselected_products($request, $action)
         $exclude_sql = "AND id NOT IN (" . implode(',', array_map('intval', $selected_ids)) . ")";
     }
 
+    // Products in the Recycle Bin are not offered (edit_product_group.php).
+    $exclude_sql .= pg_catalog_bin_live_sql('products');
+
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
 
     $products = db_items(

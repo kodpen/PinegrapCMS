@@ -23219,5 +23219,8 @@
     "page ({var:1}) was moved to the Recycle Bin": "sayfa ({var:1}) Geri Dönüşüm Kutusuna taşındı",
     "The page style, {var:1}, was moved to the Recycle Bin.": "{var:1} sayfa stili Geri Dönüşüm Kutusuna taşındı.",
     "The page style, {var:1}, was restored.": "{var:1} sayfa stili geri yüklendi.",
-    "{var:1} page(s)": "{var:1} sayfa"
+    "{var:1} page(s)": "{var:1} sayfa",
+    "IN RECYCLE BIN": "GERİ DÖNÜŞÜM KUTUSUNDA",
+    "This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.": "Bu ürün Geri Dönüşüm Kutusunda. Değiştirmeden önce Katalog Yöneticisi'ndeki Geri Dönüşüm Kutusundan geri yükleyin.",
+    "Open the Recycle Bin": "Geri Dönüşüm Kutusunu Aç"
 }
