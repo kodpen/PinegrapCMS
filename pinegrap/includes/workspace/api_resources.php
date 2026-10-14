@@ -761,7 +761,64 @@ function ws_api_messages_create($params)
         ws_ack_request($viewer, $row, true);
     }
 
+    // @Claude, @ai or an MCP server's alias written from the person's own
+    // device asks as it does from the panel's composer.
+    if (ws_api_message_asks_assistants($app_id, $kind)) {
+        ws_api_assistants_carry_on(ws_message_ask_assistants($viewer, $channel, $row['id'], (string) $params['text']));
+    }
+
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
+ * Does a message written now ask the assistants it names? Only a person's
+ * own message, as the panel's composer writes it: an application's words
+ * never ask one (an agent quoting an alias in its answer would ask itself
+ * again), and a decision or a note is kept, not asked.
+ *
+ * @param int    $app_id ws_api_writer_app_id()
+ * @param string $kind   message | note | decision
+ * @return bool
+ */
+function ws_api_message_asks_assistants($app_id, $kind)
+{
+    return ((int) $app_id === 0) && ((string) $kind === 'message');
+}
+
+/**
+ * Carries on what a message from the person's device asked. Claude's routine
+ * is started at once, as for a task handed over: one short call to the
+ * routine's trigger. Pinegrap AI and an MCP agent take a model call or the agent's
+ * answer, so they run only after the answer has gone back to the device,
+ * where the server can finish a response early (PHP-FPM); elsewhere the
+ * screens that have the channel open and the hourly job carry them on.
+ *
+ * @param array $asked ws_message_ask_assistants()
+ */
+function ws_api_assistants_carry_on($asked)
+{
+    if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+        ws_claude_dispatch();
+    }
+
+    $agent = !empty($asked['agent']) && function_exists('ws_mcp_agent_kick');
+    $ai = !empty($asked['ai']) && function_exists('ws_ai_kick');
+
+    if ((!$agent && !$ai) || !function_exists('fastcgi_finish_request')) {
+        return;
+    }
+
+    register_shutdown_function(function () use ($agent, $ai) {
+        fastcgi_finish_request();
+
+        if ($agent) {
+            ws_mcp_agent_kick();
+        }
+
+        if ($ai) {
+            ws_ai_kick();
+        }
+    });
 }
 
 function ws_api_messages_react($params)

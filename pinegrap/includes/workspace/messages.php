@@ -617,6 +617,37 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 }
 
 /**
+ * After a person's message was written: the assistants it asks get the
+ * request queued - Claude (claude.php), an MCP server that answers its alias
+ * on its own (mcp_agent.php), otherwise Pinegrap AI (ai.php), which also
+ * answers an alias with that server's tools. Each one checks whether it may
+ * be asked in the channel and leaves a line saying why not when it may not.
+ * Nothing is started here; the caller carries the queue on.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param int    $message_id
+ * @param string $body as written
+ * @return array claude, agent, ai: whether a request was queued for each
+ */
+function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
+{
+    $body = ws_tokens_normalise(trim((string) $body));
+    $claude = function_exists('ws_claude_after_send') && ws_claude_after_send($viewer, $channel, $message_id, $body);
+    $agent = function_exists('ws_mcp_agent_after_send') ? ws_mcp_agent_after_send($viewer, $channel, $message_id, $body) : null;
+
+    // A message written to an agent's alias is the agent's alone.
+    $ai = ($agent === null) && function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body);
+
+    // Asked in a discussion: its channel's message says so.
+    if (($claude || $ai) && ws_channel_is_thread($channel)) {
+        ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
+    }
+
+    return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai);
+}
+
+/**
  * May this person bring others into the channel? Anyone who may write in a
  * public channel; only its members in a private one.
  *
