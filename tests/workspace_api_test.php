@@ -6,7 +6,8 @@
  * (includes/workspace/api.php) that need no database: every route reaches a
  * handler, no two routes answer the same method on the same path, and each
  * action becomes one MCP tool. Also the scopes the search asks of each kind
- * of panel record (includes/workspace/api_day.php).
+ * of panel record (includes/workspace/api_day.php), and who a call from a
+ * device writes as.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -91,4 +92,15 @@ function test_ws_api_search_record_scopes_name_known_kinds()
 	}
 
 	pg_assert_false(array_key_exists('user_account', ws_api_search_record_scopes()), 'no scope reads user accounts');
+}
+
+// A person signed in on their own device writes in their own name; an
+// application key, and an OAuth connection (a device row with a client),
+// write as the application.
+function test_ws_api_device_writes_as_person()
+{
+	pg_assert_false(ws_api_device_writes_as_person(null), 'an application key writes as the application');
+	pg_assert_true(ws_api_device_writes_as_person(array('id' => 4, 'app_id' => 2)), 'a team devices session writes as the person');
+	pg_assert_true(ws_api_device_writes_as_person(array('id' => 4, 'app_id' => 2, 'oauth_client_id' => '0')), 'a device row with no client writes as the person');
+	pg_assert_false(ws_api_device_writes_as_person(array('id' => 5, 'app_id' => 3, 'oauth_client_id' => '7')), 'an OAuth connection writes as the application');
 }

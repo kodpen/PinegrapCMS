@@ -56,6 +56,35 @@ function ws_api_app_id()
 }
 
 /**
+ * Does a call made from this device row write as the person? A team devices
+ * session does: the phone is the person's own, not an integration, so their
+ * words carry their name the way the panel's do. An OAuth connection is a
+ * device row too, and keeps writing as the application until it is settled
+ * how a connection's words are shown.
+ *
+ * @param array|null $device api_devices row, null for an application key
+ * @return bool
+ */
+function ws_api_device_writes_as_person($device)
+{
+    return is_array($device) && ((int) ($device['oauth_client_id'] ?? 0) <= 0);
+}
+
+/**
+ * The application a message, reaction or note written now is shown under:
+ * 0 when the person writes from their own device, so the rate limit, joining
+ * a public channel and the read mark apply to them as in the panel.
+ *
+ * @return int
+ */
+function ws_api_writer_app_id()
+{
+    $device = function_exists('api_current_device') ? api_current_device() : null;
+
+    return ws_api_device_writes_as_person($device) ? 0 : ws_api_app_id();
+}
+
+/**
  * The line the panel's own screens leave in the activity log for a write.
  *
  * @param string $what
@@ -681,6 +710,7 @@ function ws_api_messages_create($params)
 
     $kind = (string) ($params['kind'] ?? 'message');
     $ack = !empty($params['ack']);
+    $app_id = ws_api_writer_app_id();
 
     // A read receipt is asked for only where it may be, and that is settled
     // before anything is written. The message about to be written comes
@@ -695,8 +725,8 @@ function ws_api_messages_create($params)
             'id'          => PHP_INT_MAX,
             'channel_id'  => (int) $channel['id'],
             'kind'        => $kind,
-            'sender_kind' => 'app',
-            'sender_id'   => ws_api_app_id(),
+            'sender_kind' => ($app_id > 0) ? 'app' : 'user',
+            'sender_id'   => ($app_id > 0) ? $app_id : (int) $viewer['id'],
             'deleted_at'  => 0,
         );
 
@@ -707,7 +737,7 @@ function ws_api_messages_create($params)
 
     $result = ws_message_send($viewer, $channel, (string) $params['text'], array(
         'kind'   => $kind,
-        'app_id' => ws_api_app_id(),
+        'app_id' => $app_id,
     ));
 
     if (!$result['ok']) {
@@ -733,7 +763,7 @@ function ws_api_messages_react($params)
     }
 
     $on = !array_key_exists('on', $params) || !empty($params['on']);
-    $result = ws_reaction_set($viewer, $message, (string) $params['emoji'], ws_api_app_id(), $on);
+    $result = ws_reaction_set($viewer, $message, (string) $params['emoji'], ws_api_writer_app_id(), $on);
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], 'emoji');
@@ -1016,7 +1046,7 @@ function ws_api_approvals_create($params)
 
     api_dry_run_stop('created', 'workspace_approval', array('title' => $checked['title'], 'rule' => $checked['rule'], 'approvers' => $checked['approvers'], 'guests' => $checked['guests']));
 
-    $result = ws_approval_create($viewer, $channel, $data, ws_api_app_id());
+    $result = ws_approval_create($viewer, $channel, $data, ws_api_writer_app_id());
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], (($result['field'] ?? '') !== '') ? $result['field'] : null);
@@ -1360,7 +1390,7 @@ function ws_api_tasks_create($params)
     }
 
     if (!empty($data['channel_id'])) {
-        $sent = ws_message_send($viewer, ws_channel($data['channel_id']), '', array('kind' => 'task', 'task_id' => $result['task_id'], 'app_id' => ws_api_app_id()));
+        $sent = ws_message_send($viewer, ws_channel($data['channel_id']), '', array('kind' => 'task', 'task_id' => $result['task_id'], 'app_id' => ws_api_writer_app_id()));
 
         if ($sent['ok']) {
             db("UPDATE ws_tasks SET source_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $result['task_id'] . "'");
@@ -1474,7 +1504,7 @@ function ws_api_task_notes_create($params)
 {
     $viewer = ws_api_viewer();
     $task = ws_api_task_or_404($viewer, $params['id']);
-    $result = ws_task_note_add($viewer, $task, (string) $params['text'], ws_api_app_id());
+    $result = ws_task_note_add($viewer, $task, (string) $params['text'], ws_api_writer_app_id());
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], 'text');

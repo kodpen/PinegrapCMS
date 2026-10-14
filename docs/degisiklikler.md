@@ -84,6 +84,55 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — API: cihazdan yazılan Çalışma Alanı mesajı kişinin adıyla (2026-10-14)
+
+**Neden.** Mobil API planının M1 dilimi (`docs/_plan_mobil_api_claude_kanali.md`).
+Ekip cihazları oturumu (`POST /auth/login`, `pgat_…` jetonu) kişinin kendi
+haklarıyla çalışıyor ama Çalışma Alanı'na yazdığı her şey
+`ws_api_app_id()` ile uygulama adına düşüyordu: telefonundan yazan kişinin
+mesajı kanalda "Ekip cihazları (uygulama)" olarak görünüyordu. Hız sınırı
+(`ws_rate_limited()`), genel kanala yazınca katılma ve kendi mesajıyla
+kanalın okunmuş sayılması da kişiye uygulanmıyordu.
+
+**Ne değişti.**
+- `includes/workspace/api_resources.php`: `ws_api_device_writes_as_person()`
+  (cihaz satırı var ve `oauth_client_id` boşsa doğru) ve
+  `ws_api_writer_app_id()` (kişi cihazdan yazıyorsa 0, yoksa uygulama
+  kimliği). Mesaj yazma, tepki, onay isteği, kanala görev kartı, görev notu
+  ve şablon uygulamanın sabitlenen mesajı (`api_templates.php`) artık bunu
+  kullanıyor; böylece `ws_message_send()`, `ws_reaction_set()`,
+  `ws_task_note_add()`, `ws_approval_create()` ve `ws_template_apply()`
+  panelin yolundan geçiyor: `sender_kind = 'user'`, hız sınırı (aşılınca
+  422), genel kanala katılma, okundu işareti, anılma bildiriminde yazan
+  kişi (kendini anan kendine bildirim almaz), webhook'ta `sender_id`.
+- Cihazdan yazılan görev notu bir yardımcıyı adıyla anarsa görevi ona
+  sorar (`ws_task_delegation_from_note()`), paneldeki gibi; uygulamanın
+  notu bunu hiç yapmaz.
+- Mesajla birlikte okundu isteği (`ack: true`): yazılacak mesaj kişinin
+  sayıldığı için "yazan ya da personel isteyebilir" kuralı uygulama yerine
+  kişiye bakıyor; personel olmayan kişi kendi mesajında okundu isteyebiliyor.
+- API açıklamaları (`includes/workspace/api.php`; OpenAPI ve MCP aracı
+  metinleri buradan gelir): mesaj, tepki, onay isteği, görev notu ve şablon
+  uçları kimin adıyla yazıldığını söylüyor.
+
+Şema değişikliği yok, yeni metin yok.
+
+**Bilerek yapılmayan.** OAuth bağlantısı (claude.ai bağlayıcısı, MCP
+istemcileri) da bir `api_devices` satırıdır ama eskisi gibi uygulama adına
+yazar: kişi adına "… ile" rozetiyle yazması plandaki 11. karara (C5)
+bağlı. Okundu verme ve onay kararı (`ws_api_person_only()`) zaten
+cihazdan kişi olarak veriliyordu; değişmedi. Claude ve Pinegrap AI
+uygulama anahtarıyla yazdığı için etkilenmez. `@Claude`, `@ai` ya da bir
+MCP ajanını anan mesaj cihazdan yazılınca istek başlamaz: panelin `ws_send`
+eylemi `ws_claude_after_send()`, `ws_mcp_agent_after_send()` ve
+`ws_ai_after_send()` çağırıyor, API ucu çağırmıyor; kuyruğu ekranın sonraki
+çağrısı ilerlettiği için bu ayrı bir dilim.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye bir test (uygulama
+anahtarı, ekip cihazı, istemcisi boş cihaz satırı, OAuth bağlantısı).
+
+---
+
 ## 2026.4.10 — Listeden hızlı güncelleme: ERP cari fiyatları ve nakliye ücretleri (2026-10-14)
 
 **Neden.** #364'ün açtığı hızlı güncelleme kalıbının ilk iki aday listesi.

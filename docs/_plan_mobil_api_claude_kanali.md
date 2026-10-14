@@ -101,7 +101,8 @@ Efor: K küçük, O orta, B büyük.
 
 ### A.3 Dilimler
 
-**M1 — Kişinin kendi adıyla yazmak (K, şema yok).** Arayan cihaz oturumuysa
+**M1 — Kişinin kendi adıyla yazmak (K, şema yok). Yapıldı (#369):** görev notu, görev kartı,
+onay isteği ve şablonun sabitlenen mesajı da kişinin adıyla. Arayan cihaz oturumuysa
 (`api_current_device() !== null`) `ws_api_messages_create()` ve `ws_api_messages_react()`
 `app_id` vermez: mesaj kişinin, hız sınırı (`ws_rate_limited()`) ve genel kanala kendiliğinden
 katılma uygulanır. Okundu isteğinin "yalnız personel isteyebilir" kuralı da o zaman uygulama
