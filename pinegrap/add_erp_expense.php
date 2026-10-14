@@ -569,6 +569,13 @@ $("#expense_date' . ($paid ? '-none' : '') . ', #paid_date, #due_date, #repeat_e
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array category or till as record 1 and paid
+    // from it, (string) wrote "Array" into the supplier and the description.
+    pg_request_single_values(array('expense_date', 'category_id', 'supplier', 'supplier_tax_number', 'document_no', 'description', 'currency', 'exchange_rate',
+        'amount', 'includes_tax', 'tax_rate', 'tax_amount', 'tax_deductible', 'pay', 'cash_account_id', 'payment_method', 'paid_date', 'due_date',
+        'repeat', 'repeat_every', 'repeat_due_days', 'repeat_end', 'repeat_pay', 'submit_save'));
+
     $liveform->add_fields_to_session();
 
     $date_in = function ($field) use ($liveform) {

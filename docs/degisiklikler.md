@@ -84,6 +84,97 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — ERP formları dizi gelen tek değerli alanı "Array" diye kaydetmiyor, 1 numaralı kaydı seçmiyor (2026-10-14)
+
+**Neden.** #427'nin son kalanı: ERP ekranlarının POST işleyicileri. Formlar
+tek değerli alanları `(string)`, `(int)` ya da `trim()` ile okuyordu. Elle
+hazırlanmış bir istekte alan dizi gelince (`name[]=x`) "Array to string
+conversion" yazılıp değer "Array" olarak kaydediliyor, `(int)` diziyi
+uyarısız 1 yaptığı için 1 numaralı kayıt seçiliyordu. Sandbox'ta eski kodla:
+kasa düzenlemede Sil `id[]=2` ile 1 numaralı kasayı sildi; cari ve kasa
+düzenleme `id[]` ile 1 numaralı kaydın üstüne yazdı; tahsilat
+(`account_id[]`, `cash_account_id[]`), virman (`from_id[]`), gider
+(`category_id[]`, `cash_account_id[]`), fatura taslağı, satın alma siparişi,
+teklif, irsaliye ve çek (`account_id[]`, `till_id[]`) 1 numaralı cariye ya da
+kasaya yazıldı; hesap eşlemede `link_account_id[]` kartı 1 numaralı cariye
+bağladı; cari, kasa, stok sayımı ve hızlı cari (`erp_account_quick.php`)
+"Array" adlı kayıt açtı; e-belge bağlantı testi `edoc_provider[]`'ı "Array"
+okuyup "Bilinmeyen e-belge sağlayıcısı" dedi. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Serinin kuralı: dizi gelen tek değerli alan "verilmedi"
+sayılır; alan zorunluysa ekranın kendi "gerekli" hatası çıkar ve bir şey
+kaydedilmez, normal kayıt aynı kalır. 17 ekran jeton denetiminden hemen sonra
+(liveform `add_fields_to_session()`'dan önce) #425'in
+`pg_request_single_values()`'ini okuduğu tek değerli alanlarla çağırıyor:
+`add_erp_account`, `edit_erp_account`, `add_erp_till`, `edit_erp_till`,
+`add_erp_receipt`, `add_erp_transfer`, `add_erp_expense`,
+`add_erp_manual_invoice`, `edit_erp_invoice_draft`,
+`add_erp_purchase_order`, `add_erp_quote`, `add_erp_waybill`, `erp_cheques`,
+`erp_stock_counts`, `erp_account_sync_item`, `get_erp_edoc_test` ve
+`erp_account_quick` (#437'nin bıraktığı hızlı cari ucu).
+
+- Fatura ve cari formlarının alan listeleri formun yanında:
+  `erp_invoice_form_single_fields()` (`includes/erp/invoice_form.php`) ve
+  `erp_account_form_single_fields()` (`includes/erp/account_form.php`);
+  bunları kullanan ekranlar listeyi yeniden yazmıyor.
+- Satırlar (`lines[…]`), hesap eşlemenin `choice[…]` seçimleri ve öbür
+  gerçek listeler olduğu gibi.
+- `edit_erp_till`: `id` boş ya da kasa yoksa Sil ve Kaydet "Kasa
+  bulunamadı." diyor (önceden olmayan kasa için "Kasa silindi." diyordu).
+- `get_erp_edoc_test`: sağlayıcının bilgi kutuları adları sürücüden geldiği
+  için listeye girmiyor; dizi gelen kutu yazılmamış sayılıyor
+  (`is_string()`).
+- `tests/erp_request_values_test.php` iki test aldı: 17 ekranın okuduğu her
+  `$_POST` alanı ve liveform `get_field_value()` adı çağrının listesinde ve
+  çağrı ilk okumadan önce; fatura ve cari formunun okuduğu her alan ortak
+  listede. Eski kodda ilk test 17 ekranın hepsinde, ikincisi listeler
+  olmadığı için düşüyor; listeden bir ad silinince ya da çağrı kaldırılınca
+  da düşüyor. Henüz çağrısı olmayan 29 ERP POST ekranı testte bekleyenler
+  listesinde (ikinci yarı).
+
+Şema, dil dosyası ve JS değişikliği yok ("Kasa bulunamadı." çevirisi zaten
+var).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, DEBUG açık).** Eski kod
+(`origin/development`) 8001'de, yeni 8000'de, aynı veritabanı ve `data/`;
+her istekten önce ERP tabloları, ürünler ve kişiler aynı anlık görüntüye
+dönüyor, yazılan satırlar `mysqldump` farkıyla okunuyor. Hesap eşleme için
+sahte İşbaşı ayarı (`erp_edoc_providers` satırı, boş kimlik bilgisi) ve iki
+kart; hiçbir sağlayıcıya istek gitmedi. 27 senaryo (eşlemenin bağla, kart
+bağla, kenara al, içe al, eşitle, gönder, bağı çöz eylemleri; fatura kesme
+dahil): 27 normal istek iki kodda aynı durum, yönlendirme, mesaj ve yazılan
+satırlar (yalnız zaman damgası ve rastgele kimlikler farklı). Her alan tek
+tek dizi verilerek 207 istek: eski kodda 150'si uyarı yazdı (86 farklı
+satır), 47'si "Array" içeren satır kaydetti; yeni kodda uyarı 0, "Array"
+satırı 0, 500 yok. Zorunlu alan dizi gelince yeni kod ekranın kendi
+hatasını veriyor ve yazmıyor (ör. "Adı gerekli", "Bir cari seçin.", "İki
+hesabı da seçin.", "Kasa bulunamadı.", hızlı caride 422 `{"field_errors":
+{"title": "Adı gerekli"}}`); isteğe bağlı alan dizi gelince kayıt o alan
+boş olarak yapılıyor. Dokuz istekte (fatura taslağı ve hesap eşleme hata
+dönüşü) iki kodda da görülen liveform `h(null)` kullanım dışı satırı #445
+ile gitti; bu ekranlar yeniden tarandı, satır yok. `tools/lint.php`,
+`tools/test.php`, `check_lang`, `check_bindings`, `check_api_schema`,
+`check_copies` ve `build_js.php --check` geçti. Doğrulanamadı:
+dev.pinegrap.com'daki gerçek veriler ve gerçek bir e-belge hesabı.
+
+**Bilerek yapılmayan.** Dosya sayısı ~15'i geçtiği için iş ikiye bölündü;
+ikinci yarının 29 ekranı (`add_erp_invoice`, `add_erp_late_fee_invoice`,
+`add_erp_return`, `edit_erp_expense`, `edit_erp_invoice`,
+`edit_erp_purchase_order`, `edit_erp_quote`, `edit_erp_waybill`,
+`erp_account_prices`, `erp_account_sync`, `erp_accountant`, `erp_accounts`,
+`erp_accounts_import`, `erp_bank_statement`, `erp_bank_statements`,
+`erp_cheque`, `erp_expense_categories`, `erp_export`, `erp_inbox`,
+`erp_inbox_document`, `erp_invoices`, `erp_order_flow`, `erp_receipt`,
+`erp_reconciliation`, `erp_settings`, `erp_stock_count`,
+`get_erp_invoice_pdf`, `get_erp_reconciliation_pdf`, `get_erp_waybill_pdf`)
+testte bekleyenler listesinde. Satır alanlarının içindeki diziler
+(`lines[0][description][]`) ve eşlemenin iç içe `choice[x][]`'i ile e-belge
+ayarlarının Ayarlar ekranındaki kaydı (`includes/settings/commerce.save.php`)
+değişmedi. Kasa satışında ürün eklemenin ziyaretçi satırı uyarısını (#437'nin
+kalanı) #444 giderdi.
+
+---
+
 ## 2026.4.10 — Güncelleme ekranının yedek boyutu tahmini satırsız tabloları saymıyor (2026-10-14)
 
 **Neden.** #434 ve #438'in kalanı. Güncelleme ekranının "Başlamadan önce"

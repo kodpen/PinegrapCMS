@@ -28,6 +28,12 @@ $self = PATH . SOFTWARE_DIRECTORY . '/erp_cheques.php';
 
 if ($_POST) {
     validate_token_field();
+
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array account or till as record 1 and booked
+    // the cheque there, (string) wrote "Array" into the serial and the bank.
+    pg_request_single_values(array('direction', 'kind', 'account_id', 'amount', 'doc_date', 'due_date', 'serial_no', 'bank_name', 'branch', 'drawer', 'till_id', 'notes'));
+
     $liveform->add_fields_to_session();
 
     $date_in = function ($field) use ($liveform) {

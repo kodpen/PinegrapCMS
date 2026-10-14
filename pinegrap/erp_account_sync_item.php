@@ -77,6 +77,11 @@ if ($_POST) {
 
     validate_token_field();
 
+    // The action and the record it links to are one value each; choice is
+    // the field-by-field list. One posted as an array counts as not given:
+    // (int) read an array account or card as record 1 and linked that one.
+    pg_request_single_values(array('erp_action', 'link_account_id', 'link_card_id'));
+
     $action = (string) ($_POST['erp_action'] ?? '');
     $user_id = (int) $user['id'];
 

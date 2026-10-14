@@ -127,6 +127,11 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array till as till 1 and moved the money out
+    // of or into it, (string) wrote "Array" into the description.
+    pg_request_single_values(array('from_id', 'to_id', 'amount', 'doc_date', 'description'));
+
     $liveform->add_fields_to_session();
 
     $back = PATH . SOFTWARE_DIRECTORY . '/add_erp_transfer.php';

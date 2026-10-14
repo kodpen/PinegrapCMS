@@ -584,6 +584,20 @@ function erp_invoice_form_prefill($liveform, $invoice = null, $direction = 'sale
 }
 
 /**
+ * The fields of the form that hold one value each: all of them but the lines.
+ *
+ * A screen hands them to pg_request_single_values() before it reads the post,
+ * so one sent as an array (account_id[]=2) counts as not given: (int) read it
+ * as account 1, (string) as the text "Array", and trim() stopped the request.
+ *
+ * @return array
+ */
+function erp_invoice_form_single_fields()
+{
+    return array('direction', 'account_id', 'currency', 'exchange_rate', 'issue_date', 'due_date', 'supplier_invoice_no', 'supplier_invoice_date', 'notes');
+}
+
+/**
  * Read the posted form back into what erp_invoice_draft_save() takes.
  *
  * The rate of the issue date is used unless the operator typed another one;

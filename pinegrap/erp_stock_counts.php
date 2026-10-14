@@ -27,6 +27,10 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 if ($_POST) {
     validate_token_field();
 
+    // The title is one value. One posted as an array counts as not given:
+    // (string) named the count "Array" with a notice.
+    pg_request_single_values(array('title'));
+
     $count_id = erp_stock_count_create((string) ($_POST['title'] ?? ''), (int) $user['id']);
 
     if ($count_id <= 0) {

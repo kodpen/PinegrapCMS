@@ -75,6 +75,10 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (string) wrote "Array" into the name, bank or IBAN.
+    pg_request_single_values(array('name', 'kind', 'currency', 'is_active', 'bank_name', 'iban', 'opening_balance'));
+
     $liveform->add_fields_to_session();
 
     $liveform->validate_required_field('name', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));

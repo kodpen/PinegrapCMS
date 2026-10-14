@@ -76,6 +76,11 @@ if (($session_token === '') || !hash_equals($session_token, $post_token)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
+// Every field of the dialog is one value. One posted as an array counts as
+// not given: (string) read it as "Array" with a notice, and the account
+// could open under that name.
+pg_request_single_values(array('kind', 'title', 'is_person', 'tax_number', 'email', 'phone'));
+
 $created = erp_account_quick_create($user, $_POST);
 
 if (!$created['success']) {

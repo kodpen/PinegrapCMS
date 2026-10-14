@@ -1913,6 +1913,21 @@
          verilmemiş sayılıyor. Normal açılışta ekranlar
          aynı.
 
+  [DÜZELTME] ERP'de kayıt açan ve değiştiren formlar
+         (cari, kasa, tahsilat ve ödeme, virman, gider,
+         fatura, teklif, satın alma siparişi, irsaliye,
+         çek ve senet, stok sayımı, hesap eşleme, hızlı
+         cari ve e-belge bağlantı testi) tek değerli bir
+         alan elle hazırlanmış bir istekte birden çok kez
+         (alan[]=…) gelince o alanı "Array" diye
+         kaydediyor ya da 1 numaralı kaydı seçiyordu:
+         kasa ekranında Sil 1 numaralı kasayı siliyor,
+         tahsilat 1 numaralı cariye yazılıyor, eşleme
+         kartı 1 numaralı cariye bağlanıyordu. Artık
+         böyle gelen alan verilmemiş sayılıyor; zorunluysa
+         form "gerekli" uyarısıyla geri dönüyor. Normal
+         kayıtlar aynı.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.

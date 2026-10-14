@@ -32,6 +32,10 @@ if (!$_POST) {
 
 validate_token_field();
 
+// The provider and the answer's format are one value each. One posted as an
+// array counts as not given: (string) read it as "Array" with a notice.
+pg_request_single_values(array('edoc_provider', 'format'));
+
 $code = isset($_POST['edoc_provider']) ? (string) $_POST['edoc_provider'] : '';
 $lines = array();
 $ok = false;
@@ -50,7 +54,10 @@ if ($code === '') {
     $typed_any = false;
 
     foreach (erp_edoc_fields($code) as $field) {
-        $typed = trim((string) ($_POST['edoc_' . $code . '_' . $field['name']] ?? ''));
+        // A box is one value; one posted as an array is not typed. Read as
+        // "Array" it went to the provider as the credential.
+        $posted = $_POST['edoc_' . $code . '_' . $field['name']] ?? '';
+        $typed = is_string($posted) ? trim($posted) : '';
 
         // A text box comes back filled with the stored value, so only a
         // changed value counts as typed.

@@ -168,6 +168,12 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form but the lines is one value. One posted as an
+    // array counts as not given: (int) read an array account as account 1,
+    // (string) wrote "Array" into the address, the carrier and the driver.
+    pg_request_single_values(array('account_id', 'order_id', 'invoice_id', 'issue_date', 'ship_date', 'ship_time', 'ship_to_title', 'ship_to_address',
+        'ship_to_district', 'ship_to_city', 'ship_to_state', 'ship_to_country', 'carrier_title', 'carrier_vkn', 'plate', 'driver_name', 'driver_tckn', 'notes'));
+
     $liveform->add_fields_to_session();
 
     $read = erp_waybill_form_read($liveform, $user);
