@@ -136,9 +136,10 @@ function pg_announce_contact_group_members($contact_group_id, $added = array(), 
 
 // The events the workspace listens to (includes/workspace/watch.php): what
 // starts a scheduled action with an event rule, and what is written into the
-// channels that watch a record. Only these are kept: the workspace's own
-// events (workspace.*) and the ERP's (erp.*) have nobody here to read them,
-// and a public channel announces every message.
+// channels that watch a record. Only these are kept from pg_announce(): the
+// ERP's (erp.*) have nobody here to read them, and the workspace keeps its
+// own (workspace.*) through ws_event(), only while a scheduled action waits
+// for one - a public channel announces every message.
 function pg_event_workspace_events()
 {
     return array(

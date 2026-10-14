@@ -859,6 +859,21 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
         ));
     }
 
+    // The scheduled actions waiting for it (watch.php), in a private channel
+    // too: each is started only where its creator reads the channel.
+    if ($channel && function_exists('ws_event')) {
+        ws_event('workspace.approval.decided', array(
+            'id'          => (int) $approval['id'],
+            'channel_id'  => (int) $channel['id'],
+            'message_id'  => (int) $approval['message_id'],
+            'title'       => $title,
+            'status'      => (string) $outcome,
+            'record_type' => (string) $approval['record_type'],
+            'record_id'   => (int) $approval['record_id'],
+            'actor_id'    => (int) $actor_id,
+        ));
+    }
+
     return (int) $result_id;
 }
 

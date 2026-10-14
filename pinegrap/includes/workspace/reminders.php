@@ -35,7 +35,9 @@
  * watermark (cron_runs, WS_TASK_OVERDUE_MARK) and each one takes the tasks
  * that went overdue since the last, claimed by a guarded update of the mark.
  * A due date moved later goes overdue again later and is told again; the
- * tasks that were already overdue when the notice arrived are not told.
+ * tasks that were already overdue when the notice arrived are not told. The
+ * same moment starts the scheduled actions that wait for a task to go
+ * overdue (ws_event(), watch.php), whether or not anybody is on the task.
  *
  * A meeting on the plan with a video call link (2026.4.10, 10.86) tells its
  * people WS_MEETING_REMIND_MINUTES before it starts, with the same runs: a
@@ -806,7 +808,7 @@ function ws_task_overdue_run($limit = WS_TASK_OVERDUE_BATCH)
 
     // A task without a time goes overdue the morning after its date, so the
     // dates one day before the stretch can hold one too.
-    $rows = (array) db_items("SELECT id, creator_id, due_date" . (ws_task_reminders_ready() ? ', due_time' : '') . " FROM ws_tasks
+    $rows = (array) db_items("SELECT id, creator_id, title, status, channel_id, due_date" . (ws_task_reminders_ready() ? ', due_time' : '') . " FROM ws_tasks
         WHERE status IN ('todo', 'doing', 'waiting')
         AND due_date >= '" . date('Y-m-d', $from - 86400) . "' AND due_date <= '" . date('Y-m-d', $now) . "'
         ORDER BY due_date, id LIMIT " . max(1, (int) $limit));
@@ -818,6 +820,18 @@ function ws_task_overdue_run($limit = WS_TASK_OVERDUE_BATCH)
 
         if (($at <= $from) || ($at > $now)) {
             continue;
+        }
+
+        // The scheduled actions waiting for a task to go overdue
+        // (watch.php), whether or not anybody is on it to be told.
+        if (function_exists('ws_event')) {
+            ws_event('workspace.task.overdue', array(
+                'id'         => (int) $task['id'],
+                'title'      => (string) $task['title'],
+                'status'     => (string) $task['status'],
+                'channel_id' => (int) $task['channel_id'],
+                'due_date'   => (string) $task['due_date'],
+            ));
         }
 
         $people = ws_task_notice_user_ids($task);

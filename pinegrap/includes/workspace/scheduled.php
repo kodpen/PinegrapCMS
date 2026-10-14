@@ -26,9 +26,11 @@
  *
  * Or it waits for something to happen on the site (the "event" rule): a new
  * order, an order that changed status, a submitted form, a product low in
- * stock. The event is kept where it happened and the run picks it up
- * (includes/workspace/watch.php), putting the action in the queue with the
- * event carried, so its texts can name the record ({{record}}).
+ * stock - or in the workspace itself: a task completed, moved or gone
+ * overdue, an approval request settled, a guest writing. The event is kept
+ * where it happened and the run picks it up (includes/workspace/watch.php),
+ * putting the action in the queue with the event carried, so its texts can
+ * name the record ({{record}}).
  *
  * A scheduled message (kind "message", scheduled_messages.php) is the plain
  * bridge from the writing box: one message written now and posted later, by
@@ -619,8 +621,10 @@ function ws_scheduled_placeholders()
         '{{record}}'        => lang('the record it happened to, tagged'),
         '{{record_title}}'  => lang('the name of the record'),
         '{{record_link}}'   => lang('the address of the record in the panel'),
-        '{{record_status}}' => lang('the status of the order'),
-        '{{customer}}'      => lang('the customer of the order, the contact or the form'),
+        '{{record_status}}' => lang('the status of the order or the task, or how the approval request ended'),
+        '{{customer}}'      => lang('the customer of the order, the contact or the form, or the guest who wrote'),
+        '{{actor}}'         => lang('the person who completed or moved the task or settled the request, tagged'),
+        '{{message}}'       => lang('what the guest wrote'),
         '{{amount}}'        => lang('the amount of the order'),
         '{{form_fields}}'   => lang('the fields of the submitted form, a line each. Members who may not see forms read the values too.'),
         '{{count:tasks_overdue}}' => lang('a count, by its key'),
@@ -662,7 +666,7 @@ function ws_scheduled_fill($text, $context)
     // An action started by an event: the record and what is known of it,
     // read only when the text asks for one of them (watch.php). Run by hand
     // or by another action, there is no event and they are left empty.
-    if (preg_match_all('/\{\{(event|record|record_title|record_link|record_status|customer|amount|form_fields)\}\}/', $text, $asked)) {
+    if (preg_match_all('/\{\{(event|record|record_title|record_link|record_status|customer|amount|form_fields|actor|message)\}\}/', $text, $asked)) {
         $values += (!empty($context['event']) && function_exists('ws_events_fill_values'))
             ? ws_events_fill_values(is_array($context['viewer'] ?? null) ? $context['viewer'] : array(), (string) $context['event'], (array) ($context['event_payload'] ?? array()))
             : array_fill_keys($asked[0], '');
@@ -1053,14 +1057,39 @@ function ws_scheduled_rule_input($viewer, $rule)
                 $out['page_id'] = $page_id;
             }
 
-            if ($info['filter'] === 'status') {
+            // The status an order or a task moves to, or how an approval
+            // request ended; empty for any.
+            $filter_values = array(
+                'status'      => ws_events_order_statuses(),
+                'task_status' => ws_task_statuses(),
+                'outcome'     => function_exists('ws_events_approval_outcomes') ? ws_events_approval_outcomes() : array(),
+            );
+
+            if (isset($filter_values[$info['filter']])) {
                 $status = (string) ($rule['status'] ?? '');
 
-                if (($status !== '') && !isset(ws_events_order_statuses()[$status])) {
+                if (($status !== '') && !isset($filter_values[$info['filter']][$status])) {
                     return $fail(lang('Choose one of the values the field takes.'));
                 }
 
                 $out['status'] = $status;
+            }
+
+            // A workspace event in one channel the creator reads, or (0) in
+            // any; each event is checked against their rights again as it
+            // comes (watch.php).
+            if (!empty($info['channel'])) {
+                $event_channel = max(0, (int) ($rule['channel_id'] ?? 0));
+
+                if ($event_channel > 0) {
+                    $channel = ws_channel($event_channel);
+
+                    if (!$channel || ((string) $channel['kind'] === 'thread') || !ws_can_read_channel($viewer, $channel)) {
+                        return $fail(lang('That channel could not be found.'));
+                    }
+                }
+
+                $out['channel_id'] = $event_channel;
             }
 
             return array('ok' => true, 'error' => '', 'rule' => $out);
@@ -2002,11 +2031,30 @@ function ws_scheduled_rule_text($viewer, $rule)
                 return lang(array('string' => 'When a form is submitted: {var:1}', 'vars' => $forms[(int) $rule['page_id']] ?? lang('a form that is gone')));
             }
 
-            if ((string) ($rule['status'] ?? '') !== '') {
-                return lang(array('string' => 'When the status of an order becomes “{var:1}”', 'vars' => ws_events_order_statuses()[$rule['status']] ?? $rule['status']));
+            $status = (string) ($rule['status'] ?? '');
+            $text = (string) $info['when'];
+
+            if ($status !== '') {
+                switch ($info['filter']) {
+                    case 'status':
+                        return lang(array('string' => 'When the status of an order becomes “{var:1}”', 'vars' => ws_events_order_statuses()[$status] ?? $status));
+
+                    case 'task_status':
+                        $text = lang(array('string' => 'When the status of a task becomes “{var:1}”', 'vars' => ws_task_status_label($status)));
+                        break;
+
+                    case 'outcome':
+                        $text = lang(array('string' => 'When an approval request ends: {var:1}', 'vars' => ws_events_approval_outcomes()[$status] ?? $status));
+                        break;
+                }
             }
 
-            return (string) $info['when'];
+            if ((int) ($rule['channel_id'] ?? 0) > 0) {
+                $event_channel = ws_channel((int) $rule['channel_id']);
+                $text = lang(array('string' => '{var:1}, in {var:2}', 'vars' => array($text, $event_channel ? '#' . $event_channel['name'] : lang('a channel that is gone'))));
+            }
+
+            return $text;
 
         case 'workday':
             return lang('Only on a working day');
@@ -3161,6 +3209,12 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
     db("UPDATE ws_scheduled_runs SET finished_at = 0 WHERE id = '" . $run_id . "'");
     $fill['run_id'] = $run_id;
 
+    // A workspace event this run causes starts the actions waiting for it
+    // one step further down this chain (watch.php).
+    if (function_exists('ws_event_depth')) {
+        ws_event_depth($context['depth']);
+    }
+
     if (!is_array($viewer) || !ws_can_schedule($viewer)) {
         $status = 'failed';
         $steps[] = array('step' => 'rules', 'ok' => false, 'text' => lang('The one who wrote it is no longer on the staff.'));
@@ -3207,6 +3261,10 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
                 $posted = (int) $then['message_id'];
             }
         }
+    }
+
+    if (function_exists('ws_event_depth')) {
+        ws_event_depth(-1);
     }
 
     $finished = time();

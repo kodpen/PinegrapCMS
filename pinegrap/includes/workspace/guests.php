@@ -1505,6 +1505,18 @@ function ws_guest_send($context, $text, $parent_id = 0)
         ws_notify((int) $user_id, 'guest_message', array('channel_id' => (int) $channel['id'], 'actor_id' => 0));
     }
 
+    // The scheduled actions waiting for a guest to write (watch.php).
+    if (function_exists('ws_event')) {
+        ws_event('workspace.guest.message', array(
+            'id'         => $message_id,
+            'message_id' => $message_id,
+            'channel_id' => (int) $channel['id'],
+            'guest_id'   => (int) $guest['id'],
+            'guest'      => (string) $guest['name'],
+            'text'       => $text,
+        ));
+    }
+
     return array('ok' => true, 'error' => '', 'message_id' => $message_id);
 }
 
