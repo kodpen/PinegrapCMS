@@ -333,7 +333,7 @@ if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] 
                 $field_id = $row['id'];
 
                 // if a filter value has been entered for this field, then we need to add a join and a where condition
-                if ($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id]) {
+                if ($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id] ?? '') {
                     $sql_data_joins .= "LEFT JOIN form_data AS form_data_" . $field_id . " ON ((forms.id = form_data_" . $field_id . ".form_id) AND (form_data_" . $field_id . ".form_field_id = '" . $field_id . "') AND (form_data_" . $field_id . ".data LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id]) . "%')) ";
 
                     // if data conditions have already been set for this form, add an AND
@@ -876,7 +876,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $previous = $screen - 1;
         // if previous screen is greater than zero, output previous link
         if ($previous > 0) {
-            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $previous . $output_filter_for_links . '" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
+            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $previous . '" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
         }else{
             $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
         }
@@ -885,18 +885,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         for ($i = 1; $i <= $number_of_screens; $i++) {
             // if this number is the current screen, then select option
             if ($i == $screen) {
-                $active = 'active"';
+                $active = 'active';
             // else this number is not the current screen, so do not select option
             } else {
                 $active = '';
             }
-            $output_screen_links .= '<li class="page-item mt-1 mb-1 ' . $active . '"><a class="page-link " href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $i . $output_filter_for_links . '">' . $i . '</a></li>';
+            $output_screen_links .= '<li class="page-item mt-1 mb-1 ' . $active . '"><a class="page-link " href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $i . '">' . $i . '</a></li>';
         }
         // build Next button if necessary
         $next = $screen + 1;
         // if next screen is less than or equal to the total number of screens, output next link
         if ($next <= $number_of_screens) {
-            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $next . $output_filter_for_links . '" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
+            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $next . '" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
         }else{
             $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
         }
@@ -1007,6 +1007,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
 
         // Prepare selection for status field.
+        $status_any_selected = '';
+        $status_incomplete_selected = '';
+        $status_complete_selected = '';
+
         if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'any') {
             $status_any_selected = ' selected="selected"';
 
@@ -1312,9 +1316,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                         </form>
                     </div>
                 </div>
+                ' . $output_screen_links . '
             </div>
         </div>
-    
+
 </main>' .
     output_footer();
     print $output;
