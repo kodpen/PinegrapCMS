@@ -20,7 +20,7 @@ Everything else is in memory files and skills, opened only when needed.
 - `docs/degisiklikler.md` (change log) is **never read**, only written to:
   insert your `## 2026.4.10 — <title> (<date>)` section directly under the
   file's first `---` line. Released versions are in
-  `docs/degisiklikler-arsiv/<version>.md`, also not read routinely.
+  `docs/changelog-archive/<version>.md`, also not read routinely.
 - Schema step history: `docs/sema-adimlari.md`; append a row, look up with grep.
 
 ## Skills — load before the matching work

@@ -15,6 +15,6 @@ description: How variant prices are computed from attribute price rules (base, m
 ## Where are rules stored and what can edit them?
 - Stored in `product_groups.variant_price_rules`, but no screen reads them. No later bulk editing; a variant is edited from its own screen.
 - Because the stored rule does not change, "hand-edited variant" = `price` differs from the computation with the stored rule.
-- Detail and rationale: `docs/degisiklikler-arsiv/2026.4.6.md` "Varyant fiyat kuralları".
+- Detail and rationale: `docs/changelog-archive/2026.4.6.md` "Varyant fiyat kuralları".
 
 Related: docs/memory/commerce/products-variant-model.md

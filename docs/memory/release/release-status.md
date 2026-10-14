@@ -15,7 +15,7 @@ description: Last released version (2026.4.9), the open version (2026.4.10), its
 - Rerun on dev: set `config.version` back to the last released version (today `2026.4.9`); steps are idempotent, applied ones are skipped.
 
 ## How is a release built?
-- Branch `release/<version>` = one "Release <version>" commit on top of `main` whose tree is `development`'s minus `CLAUDE.md`, `.claude/`, `docs/`, `tools/`, `tests/` (built with a temporary index + `commit-tree`, the working copy untouched). Then PR and tag. The owner does this. After a release, the released version's sections move from `docs/degisiklikler.md` to `docs/degisiklikler-arsiv/<version>.md` and this file is updated.
+- Branch `release/<version>` = one "Release <version>" commit on top of `main` whose tree is `development`'s minus `CLAUDE.md`, `.claude/`, `docs/`, `tools/`, `tests/` (built with a temporary index + `commit-tree`, the working copy untouched). Then PR and tag. The owner does this. After a release, the released version's sections move from `docs/degisiklikler.md` to `docs/changelog-archive/<version>.md` and this file is updated.
 - CI PHP steps skip on branches without `tools/`.
 
 ## What never ships in public notes?

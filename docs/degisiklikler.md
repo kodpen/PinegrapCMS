@@ -1,7 +1,7 @@
 # Pinegrap — Değişiklik Ayrıntıları
 
 Açık sürümün teknik ayrıntısı ve gerekçesi, yeniden eskiye; kısa özet `pinegrap/changelog.txt`.
-Yayınlanmış sürümler `docs/degisiklikler-arsiv/<sürüm>.md` dosyalarındadır (2026.2.4 öncesi: `install/index.php` içindeki `upgrade_to_*`).
+Yayınlanmış sürümler `docs/changelog-archive/<sürüm>.md` dosyalarındadır (2026.2.4 öncesi: `install/index.php` içindeki `upgrade_to_*`).
 Bu dosya okunmaz: yeni bölüm aşağıdaki ilk `---` çizgisinin hemen altına eklenir.
 
 ---
