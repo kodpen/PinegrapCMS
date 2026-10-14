@@ -23052,5 +23052,17 @@
     "Open in the form": "Formda aç",
     "Scheduled once {var:1}, who asked for it, opens it in the form and saves it": "İsteyen {var:1} formda açıp kaydedince programlanır",
     "Saved by {var:1} · {var:2}": "{var:1} kaydetti · {var:2}",
-    "See the scheduled action": "Programlanmış işleme git"
+    "See the scheduled action": "Programlanmış işleme git",
+    "The value could not be read.": "Değer okunamadı.",
+    "{var:1} can be at most {var:2} characters long.": "{var:1} en fazla {var:2} karakter olabilir.",
+    "{var:1} takes a whole number from {var:2} to {var:3}.": "{var:1} için {var:2} ile {var:3} arasında bir tam sayı girin.",
+    "{var:1} takes an amount, such as {var:2}.": "{var:1} için {var:2} gibi bir tutar girin.",
+    "Choose one of the values offered for {var:1}.": "{var:1} için sunulan seçeneklerden birini seçin.",
+    "This column cannot be changed here.": "Bu sütun burada değiştirilemez.",
+    "{var:1} is too large.": "{var:1} çok büyük.",
+    "This product does not track stock. Turn stock tracking on in the product first.": "Bu ürün stok takibi yapmıyor. Önce üründe stok takibini açın.",
+    "product ({var:1}) was changed on the product list: {var:2} from \"{var:3}\" to \"{var:4}\"": "ürün ({var:1}) ürün listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
+    "erp minimum stock of product ({var:1}) was changed from {var:2} to {var:3}": "erp: ürünün ({var:1}) minimum stoğu {var:2} iken {var:3} oldu",
+    "Click a minimum to change it; it is saved as soon as you press Enter or leave the box.": "Değiştirmek için minimuma tıklayın; Enter'a bastığınızda ya da kutudan çıktığınızda hemen kaydedilir.",
+    "The change could not be saved. Check the connection and try again.": "Değişiklik kaydedilemedi. Bağlantıyı kontrol edip yeniden deneyin."
 }

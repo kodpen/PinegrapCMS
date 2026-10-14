@@ -12,6 +12,25 @@
  */
 
 include('init.php');
+
+// A minimum changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON before validate_erp_access(),
+// which answers with a page; these are its conditions for a change, the
+// accountant's read-only right included.
+if (pg_list_edit_requested()) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+    $edit = pg_list_edit_request(erp_stock_minimum_edit_columns(), function ($user) {
+        return defined('ERP_ENABLED') && ERP_ENABLED
+            && (((int) $user['role'] < 3) || !empty($user['manage_erp']))
+            && !(((int) $user['role'] >= 3) && !empty($user['manage_erp_readonly']));
+    });
+
+    $saved = erp_stock_minimum_quick_save($edit['id'], $edit['value'], (int) $edit['user']['id']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 if (!validate_erp_access($user)) {
     exit();
@@ -24,26 +43,6 @@ $liveform = new liveform('erp_stock_minimums');
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
 $show = in_array((string) ($_GET['show'] ?? ''), array('set', 'low'), true) ? (string) $_GET['show'] : 'all';
-$query = http_build_query(array_filter(array('search' => $search, 'show' => ($show !== 'all') ? $show : '')));
-$self = PATH . SOFTWARE_DIRECTORY . '/erp_stock_minimums.php' . (($query !== '') ? '?' . $query : '');
-
-if ($_POST) {
-    validate_token_field();
-
-    $saved = erp_stock_minimums_save((array) ($_POST['minimum'] ?? array()), (int) $user['id']);
-
-    if (!$saved['success']) {
-        $liveform->mark_error('_error', h($saved['error']));
-        go($self);
-    }
-
-    if ($saved['changed'] > 0) {
-        log_activity(lang(array('string' => 'erp minimum stock was changed for {var:1} product(s)', 'vars' => (int) $saved['changed'])), $_SESSION['sessionusername']);
-    }
-
-    $liveform->add_notice(h(lang(array('string' => 'Minimum stock saved for {var:1} product(s).', 'vars' => (int) $saved['changed']))));
-    go($self);
-}
 
 $ready = erp_stock_minimums_ready();
 
@@ -58,14 +57,16 @@ $low_count = erp_stock_low_count();
 // purchase_orders.php) with what each needs to get back to its minimum.
 $can_order = !$readonly && function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready();
 
+// The minimum changes in place, saved as soon as it is typed.
+$quick_edit = (!$readonly && $ready) ? erp_stock_minimum_edit_columns() : array();
+
 $output_rows = '';
 
 foreach ($rows as $row) {
     $product_id = (int) $row['product_id'];
-    $quantity = (int) $row['inventory_quantity'];
     $minimum = (int) $row['min_quantity'];
-    $low = ($minimum > 0) && ($quantity <= $minimum);
     $enabled = ((string) $row['enabled'] === '1');
+    $cells = erp_stock_minimum_cells($row);
 
     $output_rows .= '
         <tr' . ($enabled ? '' : ' class="opacity-75"') . '>
@@ -73,11 +74,8 @@ foreach ($rows as $row) {
             <td class="align-middle">' . h(erp_stock_product_label($row))
                 . (((trim((string) $row['product_sku']) !== '') && (trim((string) $row['product_sku']) !== trim(erp_stock_product_label($row)))) ? '<div class="small text-body-secondary font-monospace">' . h((string) $row['product_sku']) . '</div>' : '')
                 . ($enabled ? '' : '<span class="badge text-bg-secondary">' . lang('Not on sale') . '</span>') . '</td>
-            <td class="align-middle text-end ' . ($low ? 'text-danger fw-bold' : '') . '" data-sort="' . $quantity . '">' . h(erp_quantity_text($quantity))
-                . ($low ? ' <span class="badge text-bg-danger">' . lang('Low') . '</span>' : '') . '</td>
-            <td class="align-middle" style="width:9rem" data-sort="' . $minimum . '">
-                <input type="text" class="form-control form-control-sm text-end" name="minimum[' . $product_id . ']" value="' . (($minimum > 0) ? $minimum : '') . '" data-initial="' . (($minimum > 0) ? $minimum : '') . '" inputmode="numeric" maxlength="7" placeholder="—" aria-label="' . h(lang('Minimum')) . '"' . ($readonly ? ' disabled' : '') . ' />
-            </td>
+            <td class="' . $cells['stock']['class'] . '" data-sort="' . $cells['stock']['sort'] . '" data-pg-cell="stock">' . $cells['stock']['html'] . '</td>
+            <td class="' . $cells['min_quantity']['class'] . '" style="width:9rem" data-sort="' . $cells['min_quantity']['sort'] . '"' . pg_list_edit_cell($quick_edit, 'min_quantity', $product_id, ($minimum > 0) ? $minimum : '') . '>' . $cells['min_quantity']['html'] . '</td>
             <td class="align-middle text-end" style="width:7rem">
                 <a class="btn btn-sm btn-outline-secondary" href="erp_stock.php?product_id=' . $product_id . '#erp_stock_moves" title="' . h(lang('Stock movements')) . '"><i class="bi bi-list-ul" aria-hidden="true"></i></a>
             </td>
@@ -128,31 +126,24 @@ pg_page_shell([
                 ' . $output_show_filter . '
             </nav>
 
-            <form method="post" action="erp_stock_minimums.php' . (($query !== '') ? '?' . h($query) : '') . '" id="erp_minimum_form">
-                ' . get_token_field() . '
-                <div class="card my-4">
-                    <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover align-middle mb-0" data-pg-sort>
-                            <thead>
-                                <tr>
-                                    ' . ($can_order ? '<th data-pg-sort="none"><input type="checkbox" class="form-check-input" aria-label="' . h(lang('Tick all')) . '" data-erp-order-all /></th>' : '') . '
-                                    <th>' . lang('Product') . '</th>
-                                    <th class="text-end">' . lang('Stock') . '</th>
-                                    <th>' . lang('Minimum') . '</th>
-                                    <th data-pg-sort="none"></th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                    <div class="form-text px-3 pb-3">' . h(lang(array('string' => 'Products that track stock, at most {var:1} at a time; search to narrow the list. Empty is no minimum. The stock is the store\'s own count, the one orders take from.', 'vars' => 500))) . '</div>
+            <div class="card my-4">
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover align-middle mb-0" data-pg-sort' . pg_list_edit_table('erp_stock_minimums.php', $quick_edit) . '>
+                        <thead>
+                            <tr>
+                                ' . ($can_order ? '<th data-pg-sort="none"><input type="checkbox" class="form-check-input" aria-label="' . h(lang('Tick all')) . '" data-erp-order-all /></th>' : '') . '
+                                <th>' . lang('Product') . '</th>
+                                <th class="text-end">' . lang('Stock') . '</th>
+                                <th class="text-end">' . lang('Minimum') . '</th>
+                                <th data-pg-sort="none"></th>
+                            </tr>
+                        </thead>
+                        <tbody>' . $output_rows . '</tbody>
+                    </table>
                 </div>
-                ' . (!$readonly ? '<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
-                    <div class="container">
-                        <button type="submit" class="btn my-1 btn-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
-                    </div>
-                </nav>' : '') . '
-            </form>
+                <div class="form-text px-3 pb-3">' . h(lang(array('string' => 'Products that track stock, at most {var:1} at a time; search to narrow the list. Empty is no minimum. The stock is the store\'s own count, the one orders take from.', 'vars' => 500)))
+                    . ($quick_edit ? ' ' . h(lang('Click a minimum to change it; it is saved as soon as you press Enter or leave the box.')) : '') . '</div>
+            </div>
         </div>
     </div>
 </main>
@@ -189,16 +180,6 @@ pg_page_shell([
     });
     sync();
 })();
-
-// Only the minimums that changed are sent: a long list would otherwise run
-// into the server\'s limit on the number of fields in one request.
-document.getElementById("erp_minimum_form").addEventListener("submit", function () {
-    this.querySelectorAll("input[name^=\\"minimum[\\"]").forEach(function (input) {
-        if (input.value.trim() === (input.getAttribute("data-initial") || "")) {
-            input.disabled = true;
-        }
-    });
-});
 </script>
 ' .
 output_footer();

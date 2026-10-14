@@ -349,6 +349,20 @@
   ÜRÜNLER
   --------------------------------------------------------
 
+  [YENİ] Ürün listesinde stok, fiyat, durum (Etkin / Devre
+         dışı) ve kısa açıklama ürünü açmadan, satırda
+         değişiyor: hücreye tıklayın, yazın, Enter'a basın
+         ya da kutudan çıkın; kayıt hemen yapılıyor. Escape
+         vazgeçiyor, Tab kaydedip alttaki ürünün aynı
+         hücresini açıyor. Telefonda hücreye dokunmak
+         yeterli; stokta rakam klavyesi açılıyor. Kayıt
+         ürün formunun kurallarıyla yapılıyor (stok 0'a
+         inince ürün stokta yok sayılıyor, pazaryerlerine
+         haber gidiyor) ve Site Günlüğü'ne eski ve yeni
+         değeriyle yazılıyor. Kabul edilmeyen bir değerde
+         hücre eski hâline dönüyor ve nedeni gösteriliyor.
+         Stok yalnız stok takibi yapan üründe değişiyor.
+
   [DÜZELTME] Ürün listesinde seçilen sıralama, panel dili
          değiştirilince korunuyor. Önceden liste "Son
          Değişiklik" sıralamasına dönüyordu.
@@ -1260,6 +1274,14 @@
 
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
+
+  [YENİ] Minimum stok ekranında minimum, hücresine
+         tıklanıp yazılınca hemen kaydediliyor; boş
+         bırakmak minimumu kaldırıyor. Ürünün stoğu
+         "Düşük"e girip çıkıyorsa aynı anda görünüyor.
+         Bütün tabloyu gönderen Kaydet düğmesi kalktı;
+         kaydetmeden sayfadan çıkınca değişiklik artık
+         kaybolmuyor. Değişiklik Site Günlüğü'ne yazılıyor.
 
   [YENİ] Başlığına tıklayınca sıralanan ERP tabloları
          (teklifler, satın alma siparişleri, giderler,

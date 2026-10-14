@@ -11429,3 +11429,399 @@ $(function () {
         window.pgSortTables(document);
     }
 })();
+
+/* -------------------------------------------------------------------------
+ * Quick edit on list tables: a cell changed in place, without leaving the
+ * list (pg_list_edit_table() and pg_list_edit_cell() in
+ * includes/fn/output.php).
+ *
+ * A cell marked data-pg-edit opens an input on a click, a tap, Enter or F2.
+ * Enter or leaving the input saves, Escape puts the cell back as it was, Tab
+ * saves and opens the same column on the next row (Shift+Tab: the row
+ * before). A choice list saves as soon as something is picked. The value
+ * goes to the table's data-pg-edit-url with the session token; the answer
+ * redraws the cell from what was stored, and the other cells of the row it
+ * names. A refusal, or a request that never got an answer, puts the cell back
+ * and says why.
+ *
+ * Ctrl, Cmd or Shift with the click belongs to the row selection
+ * (multiselectCheckbox) and opens nothing, and so does a click that ends a
+ * text selection. The input has no name, so it never travels with the form
+ * the table sits in, and its keys stay with it: Enter does not submit that
+ * form and Ctrl+S saves the cell rather than the page's form.
+ * ------------------------------------------------------------------------- */
+(function () {
+    'use strict';
+
+    function say(key) {
+        return (typeof window.pgLang === 'function') ? window.pgLang(key) : key;
+    }
+
+    function addStyle() {
+        if (document.getElementById('pg_list_edit_style')) {
+            return;
+        }
+
+        var style = document.createElement('style');
+        style.id = 'pg_list_edit_style';
+        style.textContent = 'td[data-pg-edit]{cursor:pointer}'
+            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--bs-primary);outline-offset:-2px}'
+            + 'td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
+            + 'font-style:normal;font-weight:400;font-size:.75rem;line-height:1;margin-inline-start:.35em;vertical-align:.05em;'
+            + 'color:var(--bs-secondary-color);opacity:0}'
+            + 'td[data-pg-edit]:hover::after,td[data-pg-edit]:focus::after{opacity:.9}'
+            + '@media (hover:none){td[data-pg-edit]:not([data-pg-editing])::after{opacity:.55}}'
+            + 'td[data-pg-editing]{cursor:auto}'
+            + 'td[data-pg-editing] .form-control,td[data-pg-editing] .form-select{min-width:7rem}'
+            + 'td.pg-edit-saved{animation:pgEditSaved 1.2s ease-out}'
+            + 'td.pg-edit-failed{animation:pgEditFailed 1.6s ease-out}'
+            + '@keyframes pgEditSaved{from{background-color:rgba(var(--bs-success-rgb),.3)}to{background-color:transparent}}'
+            + '@keyframes pgEditFailed{from{background-color:rgba(var(--bs-danger-rgb),.3)}to{background-color:transparent}}'
+            + '@media (prefers-reduced-motion:reduce){td.pg-edit-saved,td.pg-edit-failed{animation:none}}'
+            + '@media print{td[data-pg-edit]::after{display:none}}';
+        document.head.appendChild(style);
+    }
+
+    function quote(name) {
+        return (window.CSS && window.CSS.escape) ? window.CSS.escape(name) : String(name).replace(/[^\w-]/g, '');
+    }
+
+    function columnsOf(table) {
+        if (!table.pgEditColumns) {
+            try {
+                table.pgEditColumns = JSON.parse(table.getAttribute('data-pg-edit-columns') || '{}') || {};
+            } catch (error) {
+                table.pgEditColumns = {};
+            }
+        }
+
+        return table.pgEditColumns;
+    }
+
+    function tokenFor(table) {
+        if (typeof window.software_token === 'string' && window.software_token !== '') {
+            return window.software_token;
+        }
+
+        var form = table.closest('form');
+        var field = (form || document).querySelector('input[name="token"]');
+
+        return field ? field.value : '';
+    }
+
+    // The new look of a cell from the answer: content, classes, tip and the
+    // value a table sorted in the browser orders it by. An editable cell
+    // keeps its hint when the answer has no tip of its own.
+    function paint(cell, view) {
+        if (typeof view.html === 'string') {
+            cell.innerHTML = view.html;
+        }
+
+        if (typeof view['class'] === 'string') {
+            cell.className = view['class'];
+        }
+
+        if (typeof view.title === 'string') {
+            if (view.title !== '') {
+                cell.setAttribute('title', view.title);
+            } else if (!cell.hasAttribute('data-pg-edit')) {
+                cell.removeAttribute('title');
+            }
+        }
+
+        if ((view.sort !== undefined) && (view.sort !== null)) {
+            cell.setAttribute('data-sort', String(view.sort));
+        }
+    }
+
+    function flash(cell, name) {
+        cell.classList.remove('pg-edit-saved', 'pg-edit-failed');
+        void cell.offsetWidth;
+        cell.classList.add(name);
+
+        window.setTimeout(function () {
+            cell.classList.remove(name);
+        }, 1700);
+    }
+
+    // DataTables keeps its own copy of each cell for its search box.
+    function refreshSearch(table, row) {
+        var $ = window.jQuery;
+
+        if ($ && $.fn && $.fn.dataTable && $.fn.dataTable.isDataTable(table)) {
+            try {
+                $(table).DataTable().row(row).invalidate('dom');
+            } catch (error) {
+                // The search sees the old value until the page is reloaded.
+            }
+        }
+    }
+
+    // The same column on the next row (or the one before) that can change.
+    function step(cell, direction) {
+        var field = cell.getAttribute('data-pg-edit');
+        var row = cell.closest('tr');
+
+        while (row) {
+            row = (direction > 0) ? row.nextElementSibling : row.previousElementSibling;
+
+            var next = row ? row.querySelector('td[data-pg-edit="' + quote(field) + '"]') : null;
+
+            if (next && !next.hasAttribute('data-pg-edit-busy')) {
+                open(next);
+                return;
+            }
+        }
+    }
+
+    function close(state) {
+        state.cell.removeAttribute('data-pg-editing');
+        state.cell.removeAttribute('data-pg-edit-busy');
+        state.cell.removeAttribute('aria-busy');
+    }
+
+    function failed(state, message) {
+        close(state);
+        state.cell.innerHTML = state.html;
+        flash(state.cell, 'pg-edit-failed');
+
+        message = message || say('The change could not be saved. Check the connection and try again.');
+
+        if (typeof window.pgToast === 'function') {
+            window.pgToast({ message: message, variant: 'danger', delay: 6000 });
+        } else {
+            window.alert(message);
+        }
+    }
+
+    function saved(state, data) {
+        var cell = state.cell;
+        var row = cell.closest('tr');
+
+        close(state);
+        paint(cell, data);
+
+        if ((data.value !== undefined) && (data.value !== null)) {
+            cell.setAttribute('data-pg-edit-value', String(data.value));
+        }
+
+        if (row && data.cells && (typeof data.cells === 'object')) {
+            Object.keys(data.cells).forEach(function (name) {
+                var other = row.querySelector('[data-pg-cell="' + quote(name) + '"], td[data-pg-edit="' + quote(name) + '"]');
+
+                if (other && (other !== cell)) {
+                    paint(other, data.cells[name]);
+                }
+            });
+        }
+
+        flash(cell, 'pg-edit-saved');
+
+        if (row) {
+            refreshSearch(state.table, row);
+        }
+    }
+
+    function send(state, value, shown) {
+        var cell = state.cell;
+        var body = new FormData();
+        var spinner = document.createElement('span');
+
+        // What was typed stays on screen, with a spinner, until the answer.
+        cell.removeAttribute('data-pg-editing');
+        cell.setAttribute('data-pg-edit-busy', '');
+        cell.setAttribute('aria-busy', 'true');
+        cell.textContent = shown;
+        spinner.className = 'spinner-border spinner-border-sm ms-2';
+        spinner.setAttribute('aria-hidden', 'true');
+        cell.appendChild(spinner);
+
+        body.append('pg_list_edit', '1');
+        body.append('token', tokenFor(state.table));
+        body.append('field', cell.getAttribute('data-pg-edit'));
+        body.append('id', cell.getAttribute('data-pg-edit-id') || '');
+        body.append('value', value);
+
+        window.fetch(state.table.getAttribute('data-pg-edit-url'), {
+            method: 'POST',
+            body: body,
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' }
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                return data;
+            }, function () {
+                return null;
+            });
+        }).then(function (data) {
+            if (data && data.ok) {
+                saved(state, data);
+            } else {
+                failed(state, (data && data.message) ? String(data.message) : '');
+            }
+        }, function () {
+            failed(state, '');
+        });
+    }
+
+    // direction: 1 or -1 opens the same column on the next or the previous
+    // row; refocus puts the keyboard back on the cell (Enter, Ctrl+S), which
+    // a click elsewhere must not do.
+    function commit(state, direction, refocus) {
+        if (state.done) {
+            return;
+        }
+
+        state.done = true;
+
+        var control = state.control;
+        var value = (control.tagName === 'SELECT') ? control.value : control.value.trim();
+
+        if (value === state.value) {
+            close(state);
+            state.cell.innerHTML = state.html;
+        } else {
+            send(state, value, (control.tagName === 'SELECT') ? control.options[control.selectedIndex].text : value);
+        }
+
+        if (direction) {
+            step(state.cell, direction);
+        } else if (refocus) {
+            state.cell.focus();
+        }
+    }
+
+    function cancel(state) {
+        if (state.done) {
+            return;
+        }
+
+        state.done = true;
+        close(state);
+        state.cell.innerHTML = state.html;
+        state.cell.focus();
+    }
+
+    function open(cell) {
+        var table = cell.closest('table[data-pg-edit-url]');
+        var column = table ? columnsOf(table)[cell.getAttribute('data-pg-edit')] : null;
+
+        if (!column || cell.hasAttribute('data-pg-editing') || cell.hasAttribute('data-pg-edit-busy')) {
+            return;
+        }
+
+        var value = cell.getAttribute('data-pg-edit-value') || '';
+        var control;
+
+        if (column.type === 'select') {
+            control = document.createElement('select');
+            control.className = 'form-select form-select-sm';
+
+            (column.options || []).forEach(function (pair) {
+                var option = document.createElement('option');
+
+                option.value = String(pair[0]);
+                option.textContent = String(pair[1]);
+                option.selected = (option.value === value);
+                control.appendChild(option);
+            });
+        } else {
+            control = document.createElement('input');
+            control.type = 'text';
+            control.className = 'form-control form-control-sm' + ((column.type === 'text') ? '' : ' text-end');
+            control.value = value;
+            control.autocomplete = 'off';
+            control.setAttribute('enterkeyhint', 'done');
+
+            if (column.type === 'integer') {
+                control.inputMode = 'numeric';
+            } else if (column.type === 'money') {
+                control.inputMode = 'decimal';
+            } else if (column.max) {
+                control.maxLength = column.max;
+            }
+        }
+
+        control.setAttribute('aria-label', String(column.label || ''));
+
+        var state = { cell: cell, table: table, control: control, value: value, html: cell.innerHTML, done: false };
+
+        cell.setAttribute('data-pg-editing', '');
+        cell.innerHTML = '';
+        cell.appendChild(control);
+        control.focus();
+
+        if (control.tagName === 'INPUT') {
+            control.select();
+        } else if (typeof control.showPicker === 'function') {
+            try {
+                control.showPicker();
+            } catch (error) {
+                // Not allowed here; the list opens on the next click.
+            }
+        }
+
+        control.addEventListener('keydown', function (event) {
+            // The panel's own shortcuts listen on the document; what is typed
+            // here is for this input.
+            event.stopPropagation();
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                commit(state, 0, true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                cancel(state);
+            } else if (event.key === 'Tab') {
+                event.preventDefault();
+                commit(state, event.shiftKey ? -1 : 1);
+            } else if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S'))) {
+                event.preventDefault();
+                commit(state, 0, true);
+            }
+        });
+
+        control.addEventListener('blur', function () {
+            commit(state);
+        });
+
+        if (control.tagName === 'SELECT') {
+            control.addEventListener('change', function () {
+                commit(state);
+            });
+        }
+    }
+
+    document.addEventListener('click', function (event) {
+        if ((event.button !== 0) || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || !event.target.closest) {
+            return;
+        }
+
+        var cell = event.target.closest('td[data-pg-edit]');
+
+        if (!cell || event.target.closest('a, button, input, select, textarea, label')) {
+            return;
+        }
+
+        if (window.getSelection && (String(window.getSelection()) !== '')) {
+            return;
+        }
+
+        open(cell);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        var cell = event.target;
+
+        if (cell && cell.matches && cell.matches('td[data-pg-edit]') && ((event.key === 'Enter') || (event.key === 'F2'))) {
+            event.preventDefault();
+            open(cell);
+        }
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', addStyle);
+    } else {
+        addStyle();
+    }
+})();

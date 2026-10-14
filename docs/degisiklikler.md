@@ -84,6 +84,125 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Tablolarda listeden hızlı güncelleme: ürünlerde stok, fiyat, durum ve kısa açıklama, ERP'de minimum stok (2026-10-14)
+
+**Neden.** Ürün sahibinin Buglar listesinin 5. maddesi: "Tüm tablolar listede
+hızlı güncelleme özelliği alacak." Stok, fiyat ya da satış durumu gibi sık
+değişen bir alan için ürünü açıp formu kaydedip listeye dönmek gerekiyordu;
+50 ürünün stoğunu düzeltmek 50 form demekti. ERP'nin Minimum stok ekranı ise
+bütün tabloyu tek bir formla gönderiyordu: bir minimumu değiştirip Kaydet'e
+basmadan sayfadan çıkan kişi değişikliği kaybediyordu.
+
+**Ne değişti — ortak yardımcı.** Hızlı güncelleme bir sütun tanımıyla açılır
+(`includes/fn/output.php`): alan adı → `type` (`text` | `integer` | `money` |
+`select`), `label`, `max`, `min`, `empty` (sayı ya da tutar boş
+bırakılabilir), `required` (metin boş bırakılamaz), `options` (değer →
+etiket). Tabloya `pg_list_edit_table($url, $sütunlar)` adresi ve tanımları
+(`data-pg-edit-url`, `data-pg-edit-columns`; tarayıcıya yalnız tür, etiket,
+sınırlar ve seçenekler gider, `required` gibi kurallar sunucuda kalır),
+düzenlenebilen hücreye `pg_list_edit_cell($sütunlar, $alan, $id, $değer)`
+alanı, kaydı ve düzenlenecek ham değeri (`data-pg-edit*`, `tabindex="0"`)
+yazar. Tanımı olmayan alan ya da kaydı olmayan satır düz kalır.
+
+İstek aynı ekrana gider (`pg_list_edit=1`, `token`, `field`, `id`, `value`)
+ve ekran sayfayı çizmeden önce `pg_list_edit_requested()` ile onu yakalar.
+`pg_list_edit_request($sütunlar, $izin)` sırasıyla POST, oturum,
+`validate_user()` + ekranın izin fonksiyonu, CSRF jetonu (`hash_equals`),
+alanın tanımda olması, kaydın sayı olması ve değerin okunmasına bakar; biri
+tutmazsa JSON'la (405, 401, 403, 422) cevap verip çıkar. `validate_*`
+fonksiyonları HTML sayfasıyla cevap verdiği için bu kapı JSON'a özel yazıldı.
+Değeri `pg_list_edit_parse()` okur: metin tek satıra indirilir ve kırpılır,
+uzunluk karakterle sayılır (`mb_strlen`); tam sayı yalnız rakamdır, sınırların
+içinde olmalıdır; tutar yalnız rakam ve ayraçtır (eksi işareti ya da para
+simgesi reddedilir, okuması ekranın kendi tutar okuyucusuna kalır); seçim
+yalnız sunulan değerlerden biridir; bozuk UTF-8 ve tanımsız tür reddedilir.
+Ekran kaydı kendi kaydetme fonksiyonuyla yapar ve cevabı
+`pg_list_edit_reply()` ile verir: hücrenin yeni HTML'i, sınıfı, sıralama
+değeri, gerekirse aynı satırdaki başka hücreler (`cells`, `data-pg-cell` ile
+bulunur).
+
+Tarayıcı tarafı `backend.src.js`'in sonundaki modül: hücreye tıklamak (ya da
+klavyeyle odaklanıp Enter / F2) küçük bir kutu açar (seçimde açılır liste,
+sayıda telefonun rakam klavyesi, tutarda ondalıklı klavye). Enter ya da
+kutudan çıkmak kaydeder, Escape vazgeçer, Tab kaydedip alttaki satırın aynı
+hücresini açar, Ctrl+S sayfanın formunu göndermeden yalnız hücreyi kaydeder.
+Değişmeyen değer istek göndermez. Kayıt sürerken hücrede yazılan değer ve bir
+dönen simge görünür; hata olursa hücre eski hâline döner, kırmızı yanıp söner
+ve sunucunun nedeni bildirim olarak çıkar (bağlantı koparsa "Değişiklik
+kaydedilemedi…"). Başarıda hücre yeşil yanıp söner, DataTables'ın arama
+dizini yenilenir. Kalem simgesi fareyle üzerine gelince, dokunmatik ekranda
+hep soluk görünür; hücreye `title` konmadı, çünkü `pgBindTitlePopovers` her
+`title`'ı açılır kutuya çevirir ve listede yüzlerce açılır kutu olurdu.
+Düğme metinlerine (#327) dokunulmadı.
+
+**Ürünler.** `view_products.php`'de Kısa Açıklama (metin, en çok 100 karakter
+— sütunun boyu), Etkin (Etkin / Devre dışı), Fiyat (tutar) ve stok
+izlenen üründe Stok Miktarı (0–9 999 999) değişir; izin ürün listesininki
+(rol < 3 ya da e-ticaret yönetimi). Kayıt `pg_pb_quick_update()`'tedir ve
+ürün formunun kaydettiği yolla aynı yardımcıları kullanır: fiyat
+`pg_pb_price_to_cents()` ile kuruşa çevrilir (INT sınırını aşan reddedilir),
+stok `pg_pb_apply_stock_flag()` ile stokta yok bayrağını ve tarihini ayarlar,
+satır `pg_pb_update_row()` ile yazılır, durum değişince
+`pg_pb_sync_tag_cloud_keywords()` etiket bulutunu düzeltir, fiyat, stok ve
+durum değişince `pg_marketplace_product_changed()` pazaryerlerine haber
+verir. Kısa açıklama ve durum SEO analizini eskimiş işaretler (analiz bu
+ikisini okur, fiyatı ve stoğu okumaz). Değişiklik zamanı ve kullanıcısı
+yazılır; Site Günlüğü'ne "ürün (KOD) ürün listesinde değiştirildi: Alan
+"eski" iken "yeni" oldu" satırı düşer. Stok izlemeyen üründe stok hücresi
+düz kalır; doğrudan istek gelirse "Bu ürün stok takibi yapmıyor…" ile
+reddedilir. Hücrelerin çizimi tek yerde toplandı (`pg_pb_list_cells()`):
+liste ve hızlı güncellemenin cevabı aynı sınıfları ve renkleri kullanır
+(stok 0 ve altı kırmızı, 10'un altı sarı; ürün devre dışı kalınca adı ve
+kısa açıklaması kırmızıya döner). Fiyat kutusu sitenin ondalık ayracıyla
+açılır (`pg_format_input_amount()`, Türkçe sitede 299,95).
+
+**ERP Minimum stok.** `erp_stock_minimums.php`'de minimum hücreye tıklanarak
+değişir, boş bırakmak minimumu kaldırır (0–1 000 000). Kayıt
+`erp_stock_minimum_quick_save()` → mevcut `erp_stock_minimums_save()`;
+cevap minimumla birlikte stok hücresini de getirir, ürün "Düşük"e girer ya da
+çıkar. İzin ekranınki: ERP açık, rol < 3 ya da ERP yönetimi, muhasebecinin
+salt okunur hakkı değil (salt okunur kullanıcıda hücreler düz kalır). Site
+Günlüğü'ne "erp: ürünün (KOD) minimum stoğu X iken Y oldu" yazılır. Ekranın
+bütün tabloyu gönderen formu, Kaydet düğmesi ve "yalnız değişenleri gönder"
+betiği kaldırıldı; işaretlenen ürünlerden satın alma siparişi açan kutular ve
+düğme olduğu gibi kaldı. Minimum başlığı sayılarla aynı hizaya (sağa) alındı.
+
+**Kapsam dışı / sıradakiler.** Bu PR'da yalnız iki ekran bağlandı. Yeni bir
+listeye eklemek için betiğe ya da yardımcıya dokunmak gerekmiyor: ekran bir
+sütun tanımı, kendi kayıt fonksiyonunu çağıran bir izin + kayıt bloğu ve
+hücrelere `pg_list_edit_cell()` ekler. Adaylar: ERP Cari fiyatları
+(`erp_account_prices.php`; cari fiyatı ile iskonto ikisi boşalınca satır
+silindiği için kuralı ayrıca düşünülmeli), Nakliye yöntemleri (temel ve
+kalem ücretleri), Anahtar kodlar (Etkin), Hediye kartları (Notlar; bakiye
+ayrı iz istediği için hariç). Stokta Olmayan Ürünler filtresinde stok sütunu
+yok, orada stok değişmez (fiyat, durum ve kısa açıklama değişir). ERP stok
+ekranının stoğu sayım ve hareketle değiştiği için hızlı güncellemeye
+açılmadı. Şema değişikliği yok.
+
+**Testler.** `tests/list_edit_test.php` (12 test): metnin kırpılması ve tek
+satıra inmesi, karakterle sayılan uzunluk, zorunlu metin, tam sayı aralığı ve
+boş değer, tutar biçimi (eksi, simge, yarım ayraç reddi), seçim, tanımsız tür
+/ dizi / bozuk UTF-8, tablo tanımlarının sırası ve sunucu kurallarının
+tarayıcıya gitmemesi, boş özellikler, hücre değerinin kaçışı.
+
+**Doğrulandı (sandbox, MariaDB, Chromium).** Ürün listesinde stok 5 → 0
+Enter'la kaydedildi, hücre kırmızıya döndü, veritabanında stokta yok bayrağı,
+tarihi ve kullanıcı yazıldı, odak hücreye döndü; fiyat 19,90 → 1990 kuruş;
+Tab alttaki satırın fiyatını açtı, Escape istek göndermeden kapattı; -5
+fiyatı 422 ile reddedildi, bildirim çıktı, hücre eski hâline döndü; Etkin →
+Devre dışı SEO analizini eskimiş işaretledi, ad ve kısa açıklama kırmızıya
+döndü; kısa açıklama kutudan çıkınca kırpılarak kaydedildi; Ctrl+S sayfayı
+göndermeden kaydetti; aynı değer istek göndermedi; DataTables araması yeni
+metni buldu. Doğrudan isteklerde yanlış jeton 403, ad alanı 422, stok
+izlemeyen ürün 422 `not_tracked`, olmayan ürün 422 `not_found`. Site
+Günlüğü satırları yazıldı. Minimum stokta boş değer minimumu kaldırdı ve
+"Düşük" kalktı, 2 000 000 reddedildi, 4 kaydedildi, sıralama değeri
+güncellendi ve stok yeniden düşük göründü. 390 piksel dokunmatik ekranda
+dokunuş kutuyu açtı, 11 kaydedildi. Doğrulanamadı:
+Safari / iOS ve gerçek bir telefon, dev.pinegrap.com'daki gerçek ürünler.
+
+---
+
 ## 2026.4.10 — Siparişler listesi ortak tablo yardımcısında: çoklu sıralama; bozuk tarih değeri listeyi çökertmiyor (2026-10-14)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
