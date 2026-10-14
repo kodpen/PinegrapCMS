@@ -274,3 +274,24 @@ function test_backup_dump_note_is_comments_naming_each_table()
 
 	pg_assert_same('-- Pinegrap database backup', $lines[0]);
 }
+
+// The estimate before a backup leaves out every table the dump carries
+// without its rows or skips, read from the same list, and counts the rest.
+function test_backup_estimate_bytes_leaves_out_rowless_and_skipped_tables()
+{
+	$table_bytes = array('orders' => 3000000, 'config' => 16384, 'log' => '500000', 'visitor_stats_daily' => 65536);
+	$kept = 3000000 + 16384 + 500000 + 65536;
+
+	foreach (array_keys(pg_backup_rowless_tables()) as $table) {
+		$table_bytes[$table] = 900000000;
+	}
+
+	foreach (pg_backup_skipped_tables() as $table) {
+		$table_bytes[$table] = 700000000;
+	}
+
+	pg_assert_same((float) $kept, pg_backup_estimate_bytes($table_bytes));
+	pg_assert_same(0.0, pg_backup_estimate_bytes(array()), 'no tables');
+	pg_assert_same(0.0, pg_backup_estimate_bytes(array('visitors' => 5000000)), 'only left-out tables');
+	pg_assert_same(16384.0, pg_backup_estimate_bytes(array('visitors_stats' => 16384)), 'a name close to a left-out one counts');
+}

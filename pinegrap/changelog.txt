@@ -3253,6 +3253,13 @@
          yazılır. Geri yükleme boyunca veritabanında
          sitenin bir kopyası daha kadar boş yer gerekir.
 
+  [YENİ] Güncelleme ekranındaki "Veritabanı yedeği"
+         satırı yedeğin boyutunu, yedeğe satırsız giren
+         ziyaret, görüntüleme ve istek kayıtlarını
+         saymadan tahmin ediyor; boş alan uyarısı da bu
+         boyuta bakıyor. Veritabanının tamamı satırın
+         altında yazıyor.
+
   [ŞEMA] Ayarlar tablosuna iki kolon ve günlük özet için
          yeni bir tablo eklenir; kayıtlı ziyaretçi
          raporlarının gruplama seçeneklerine "Cihaz"

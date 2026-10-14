@@ -23272,5 +23272,6 @@
     "A restore does not run this statement, because it could change the tables of the site before the backup is in place.": "Geri yükleme bu ifadeyi çalıştırmaz, çünkü yedek yerine konmadan sitenin tablolarını değiştirebilir.",
     "The backup has no config table, so it is not the backup of a site.": "Yedekte config tablosu yok, bu yüzden bir sitenin yedeği değil.",
     "{var:1} % · {var:2} / {var:3}": "%{var:1} · {var:2} / {var:3}",
-    "The table name {var:1} is too long to be loaded next to the tables of the site.": "{var:1} tablo adı, sitenin tablolarının yanına yüklenemeyecek kadar uzun."
+    "The table name {var:1} is too long to be loaded next to the tables of the site.": "{var:1} tablo adı, sitenin tablolarının yanına yüklenemeyecek kadar uzun.",
+    "Without the rows of visit, view and request records, which backups leave out. The whole database is {var:1}.": "Yedeğe girmeyen ziyaret, görüntüleme ve istek kayıtlarının satırları hariç. Veritabanının tamamı {var:1}."
 }
