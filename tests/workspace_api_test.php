@@ -237,6 +237,23 @@ function test_ws_api_sync_channel_state_present()
 	pg_assert_false(ws_api_sync_mark($state) === ws_api_sync_mark($closed), 'hiding the pin moves it');
 }
 
+// What is not there comes as null, and every field the answer has is
+// declared: an empty inbox has no moment, a caller without the bell's
+// permission no count, a call without a person's open channel no state.
+function test_ws_api_sync_present_nulls()
+{
+	$out = ws_api_sync_present(array(
+		'cursor' => 'abc', 'channels' => null, 'threads' => null, 'inbox_unread' => 0, 'inbox_changed_at' => 0,
+		'notifications_unread' => null, 'gone' => false, 'messages' => array(), 'more' => false,
+		'changed' => array(), 'reload' => false, 'channel_state' => null,
+	));
+
+	pg_assert_same(array_keys(ws_api_sync_schema()), array_keys($out));
+	pg_assert_same(null, $out['inbox_changed_at']);
+	pg_assert_same(null, $out['notifications_unread']);
+	pg_assert_same(null, $out['channel_state']);
+}
+
 // The bell is the Own account permission's: without it the count is left out
 // rather than refused, as GET /auth/me leaves its unread out.
 function test_ws_api_sync_bell_needs_own_account()

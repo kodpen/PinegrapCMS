@@ -1576,6 +1576,9 @@
          mesajı, sekmelerdeki sayılar (kararlar ve
          notlar, açık görevler, özet) ve panonun
          değiştiği de geliyor, yalnız değiştiklerinde.
+         Gelen kutusunun en son ne zaman değiştiği de
+         geliyor; uygulama yalnız değişen satırları
+         okuyabiliyor.
 
   [YENİ] Çalışma Alanı: uygulama, elindeki gelen
          kutusu satırlarında sonradan ne değiştiğini

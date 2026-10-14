@@ -21,7 +21,9 @@
  * A person's own app also gets what the panel's channel screen shows around
  * the messages - the message pinned to the top, the marks beside the tabs and
  * a mark of the board - each time it changed (ws_api_sync_channel_state()),
- * and every caller allowed to read the person's bell gets its count.
+ * and every caller allowed to read the person's bell gets its count. The
+ * last moment the inbox changed tells an app when to ask GET /workspace/inbox
+ * for the lines changed since.
  *
  * Pinegrap AI and an MCP server's own agent work only while somebody carries
  * them on. While a request to one waits in the open channel, a person's app
@@ -310,6 +312,7 @@ function ws_api_sync_present($sync)
         'channels'     => ($sync['channels'] !== null) ? array_values($sync['channels']) : null,
         'threads'      => ($sync['threads'] !== null) ? array_values($sync['threads']) : null,
         'inbox_unread' => (int) $sync['inbox_unread'],
+        'inbox_changed_at' => ((int) $sync['inbox_changed_at'] > 0) ? api_time($sync['inbox_changed_at']) : null,
         'notifications_unread' => ($sync['notifications_unread'] !== null) ? (int) $sync['notifications_unread'] : null,
         'gone'         => (bool) $sync['gone'],
         'messages'     => array_values($sync['messages']),
@@ -328,6 +331,7 @@ function ws_api_sync_schema()
         'channels'     => 'WorkspaceChannel[]?',
         'threads'      => 'WorkspaceSyncThread[]?',
         'inbox_unread' => 'integer',
+        'inbox_changed_at' => 'string?',
         'notifications_unread' => 'integer?',
         'gone'         => 'boolean',
         'messages'     => 'WorkspaceMessage[]',
@@ -412,6 +416,7 @@ function ws_api_sync($params)
         'channels'     => null,
         'threads'      => null,
         'inbox_unread' => ws_inbox_unread_count($viewer['id']),
+        'inbox_changed_at' => ws_api_inbox_changed_at($viewer['id']),
         'notifications_unread' => ws_api_sync_bell(api_current_app()['owner'], api_current_scopes()),
         'gone'         => false,
         'messages'     => array(),

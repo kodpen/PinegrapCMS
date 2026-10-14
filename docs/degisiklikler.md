@@ -84,14 +84,15 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
-## 2026.4.10 — Dış API: eşitlemede zil sayısı, sabitlenmiş mesaj, sekme sayıları ve pano işareti (2026-10-14)
+## 2026.4.10 — Dış API: eşitlemede zil sayısı, gelen kutusunun değişim anı, sabitlenmiş mesaj, sekme sayıları ve pano işareti (2026-10-14)
 
 **Neden.** #374 (`GET /workspace/sync`, aşağıda) panelin `ws_sync`'indeki
 kanal ekranına özgü parçaları ve zil sayısını bilerek dışarıda bıraktı:
 telefon uygulaması sabitlenen mesajı, sekmelerin yanındaki sayıları ve
 panonun değiştiğini öğrenmek için ayrı çağrı yapacak bir uç bulamıyordu,
 zil sayısı için de her yoklamada `GET /notifications/unread-count`'u ayrıca
-çağırmak zorundaydı.
+çağırmak zorundaydı. #379 gelen kutusuna `changed_since` ekledi, ama
+eşitleme cevabı kutunun ne zaman değiştiğini söylemiyordu.
 
 **Ne değişti.**
 - `notifications_unread` (zil sayısı, `api_notifications_unread_count()`,
@@ -102,6 +103,15 @@ zil sayısı için de her yoklamada `GET /notifications/unread-count`'u ayrıca
   Ekip cihazları oturumunda hep vardır (`api_device_scopes()`); uygulama
   anahtarı ve OAuth bağlantısında yalnız operatör ya da kişi verdiyse.
   Bu izni taşımayan mevcut uygulamalara kendiliğinden verilmez.
+- `inbox_changed_at`: gelen kutusunda bir satırın en son yazıldığı,
+  yeniden gönderildiği ya da okunduğu an (`ws_api_inbox_changed_at()`,
+  `api_inbox.php`; boş kutuda `null`). #379'un `changed_since`'i ile
+  eşleşir: değişince uygulama `GET /workspace/inbox?changed_since=<önceki
+  değer>` çağırır. Okunmamış satırların en yeni `created_at`'i ile bütün
+  satırların en yeni `read_at`'i (yalnız okunmamış satır yeniden
+  gönderilir, okunan satır okunmadan önce yazılmıştır), ikisi de
+  `idx_user` üzerinden; `MAX(created_at)` bütün kutuyu taramaz.
+  `workspace:read` yeter, `inbox_unread` gibi herkese.
 - `channel_state` (`ws_api_sync_channel_state()`): yalnız ekip cihazları
   oturumundan, `channel_id` verilince ve kanal okunabiliyorsa; içindekiler
   önceki cevaptan beri değiştiyse gönderilir, yoksa `null`. Alanlar:
@@ -140,7 +150,7 @@ tetikleyicisi). Sabitleme ve sabitlenmiş mesajı kapatma uçları yok.
 ve `p`'siz, eski imlecin okunması ve aynı baytlarla yeniden yazılması,
 bozuk `p`'nin reddi, kanal durumu sunumu (alanlar şemayla aynı, tartışmada
 `null`'lar, iki kanalın işareti farklı, `hidden` işareti değiştiriyor),
-`account:read`'siz zil `null`. Sandbox'ta ekip cihazları oturumuyla: ilk
+`account:read`'siz zil `null`, boş alanların sunumu `null`. Sandbox'ta ekip cihazları oturumuyla: ilk
 çağrıda `channel_state` (pin `null`, sayılar 0, pano işareti) ve
 `notifications_unread: 0`; ikinci çağrıda `channel_state: null`, aynı
 imleç, ETag ile 304. Mesaj sabitlenince `pin` (mesaj 2, `pinned_by`,
@@ -149,7 +159,11 @@ imleç, ETag ile 304. Mesaj sabitlenince `pin` (mesaj 2, `pinned_by`,
 `hidden: true`. Bildirim satırı eklenince `notifications_unread: 1`, imleç
 aynı kaldı. Uygulama anahtarıyla `notifications_unread: null`,
 `channel_state: null` ve imlecinde `p` yok. `p`'si çıkarılmış imleçle
-durum bir kez geldi. Tartışmanın kimliğiyle durum `pin`, `tab_counts`,
+durum bir kez geldi. Gelen kutusuna satır eklenince `inbox_changed_at`
+satırın anı oldu ve `changed_since` o değerle satırı (`read: false`)
+verdi; `POST /workspace/inbox/read` sonrası an okuma anına geçti,
+önceki değerle `changed_since` satırı `read: true` verdi; değişiklik
+yokken 304 yine geldi. Tartışmanın kimliğiyle durum `pin`, `tab_counts`,
 `board` `null`. Panelin Çalışma Alanı ekranı Chromium'da açıkken
 `ws_sync` cevabında `pin` (id 2, `hidden: true`) eskisi gibi geldi,
 konsolda hata yok. Sunucu günlüğünde bu değişiklikten uyarı yok;
