@@ -22,7 +22,8 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-$quote = erp_quote((int) ($_GET['id'] ?? 0));
+// One number: an array (?id[]=x) cast to 1 and printed the first quote.
+$quote = erp_quote(is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0);
 
 if ($quote === null) {
     output_error(lang('The quote could not be found.'));

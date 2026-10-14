@@ -76,8 +76,11 @@ if (!$_POST) {
         $preset_qty = (isset($_GET['qty']) && is_array($_GET['qty'])) ? $_GET['qty'] : null;
 
         foreach ($lines as $line) {
+            // Each quantity is one number: an array (?qty[5][]=x) cast to 1
+            // and put one back; it counts as none refunded on that line.
+            $preset = $preset_qty[(int) $line['id']] ?? 0;
             $quantity = ($preset_qty !== null)
-                ? min((float) $line['remaining_qty'], max(0, (float) ($preset_qty[(int) $line['id']] ?? 0)))
+                ? min((float) $line['remaining_qty'], max(0, is_scalar($preset) ? (float) $preset : 0))
                 : (float) $line['remaining_qty'];
             $liveform->assign_field_value('qty_' . (int) $line['id'],
                 ($quantity > 0) ? rtrim(rtrim(number_format($quantity, 4, '.', ''), '0'), '.') : '');

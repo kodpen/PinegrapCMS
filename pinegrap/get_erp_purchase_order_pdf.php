@@ -22,7 +22,8 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-$order = erp_purchase_order((int) ($_GET['id'] ?? 0));
+// One number: an array (?id[]=x) cast to 1 and printed the first order.
+$order = erp_purchase_order(is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0);
 
 if ($order === null) {
     output_error(lang('The purchase order could not be found.'));

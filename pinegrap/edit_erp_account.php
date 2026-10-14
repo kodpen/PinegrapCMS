@@ -31,7 +31,8 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php';
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
-    $account_id = (int) ($_GET['id'] ?? 0);
+    // One number: an array (?id[]=x) cast to 1 and opened the first account.
+    $account_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
     $account = ($account_id > 0) ? erp_account($account_id) : null;
 
     if (!is_array($account)) {

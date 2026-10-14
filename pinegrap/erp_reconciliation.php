@@ -38,7 +38,7 @@ if (!is_array($account)) {
 $options = erp_reconciliation_options(array(
     'as_of' => $_REQUEST['as_of'] ?? '',
     'from' => $_REQUEST['from'] ?? '',
-    'reply_days' => isset($_REQUEST['reply_days']) ? (int) $_REQUEST['reply_days'] : 7,
+    'reply_days' => is_scalar($_REQUEST['reply_days'] ?? null) ? (int) $_REQUEST['reply_days'] : 7,
 ));
 
 $query = 'id=' . $account_id . '&as_of=' . $options['as_of'] . '&from=' . $options['from'] . '&reply_days=' . $options['reply_days'];

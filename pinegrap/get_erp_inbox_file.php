@@ -20,7 +20,8 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-$id = (int) ($_GET['id'] ?? 0);
+// One number: an array (?id[]=x) cast to 1 and opened the first document.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 $format = (($_GET['format'] ?? 'pdf') === 'ubl') ? 'ubl' : 'pdf';
 $row = erp_edoc_inbox_row($id);
 

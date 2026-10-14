@@ -73,8 +73,10 @@ if (!$_POST) {
         }
     }
 
-    // Products picked on the minimum stock screen, one line each.
-    $product_ids = (isset($_GET['products']) && is_array($_GET['products'])) ? $_GET['products'] : array();
+    // Products picked on the minimum stock screen, one line each. An entry
+    // that is itself an array (?products[0][]=x) is no product: it cast to 1
+    // and put product 1 on the order.
+    $product_ids = (isset($_GET['products']) && is_array($_GET['products'])) ? array_filter($_GET['products'], 'is_scalar') : array();
 
     if (($copy_id === 0) && !empty($product_ids)) {
         $card_options['lines'] = erp_invoice_form_lines($liveform, erp_purchase_order_rows_for_products($product_ids));
