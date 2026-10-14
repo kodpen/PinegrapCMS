@@ -5,8 +5,8 @@
  * Tests for the pure parts of a task handed to an assistant
  * (includes/workspace/delegation.php: the instruction as it is kept, the
  * request statuses a run is still under way in, the keys of an MCP server's
- * alias). Which assistants are connected is read from the database: a
- * sandbox check.
+ * alias and the queue its runs go by). Which assistants are connected is
+ * read from the database: a sandbox check.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,6 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/delegation.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_agent.php');
 
 function test_delegation_instruction_is_one_trimmed_block()
 {
@@ -62,9 +63,19 @@ function test_delegation_alias_key_names_its_server()
 
 function test_delegation_alias_runs_go_by_pinegrap_ai()
 {
-	pg_assert_same('ai', ws_assistant_agent('mcp:7'), 'its queue and limits are Pinegrap AI\'s');
+	pg_assert_same('ai', ws_assistant_agent_of('mcp:7', array('id' => 7, 'agent_tool' => '')), 'its queue and limits are Pinegrap AI\'s');
+	pg_assert_same('ai', ws_assistant_agent_of('mcp:7', null), 'a server that is gone');
+	pg_assert_same('ai', ws_assistant_agent_of('ai', null));
+	pg_assert_same('claude', ws_assistant_agent_of('claude', null));
 	pg_assert_same('ai', ws_assistant_agent('ai'));
 	pg_assert_same('claude', ws_assistant_agent('claude'));
+}
+
+function test_delegation_alias_of_an_agent_goes_by_its_own_queue()
+{
+	pg_assert_same('mcp', ws_assistant_agent_of('mcp:7', array('id' => 7, 'agent_tool' => 'ask')), 'a server that is an agent itself answers on its own');
+	pg_assert_same('ai', ws_assistant_agent_of('mcp:7', array('id' => 7, 'agent_tool' => '  ')), 'no tool chosen');
+	pg_assert_same('claude', ws_assistant_agent_of('claude', array('id' => 7, 'agent_tool' => 'ask')), 'only an alias\'s key');
 }
 
 function test_delegation_run_key_of_a_request()
@@ -72,6 +83,7 @@ function test_delegation_run_key_of_a_request()
 	pg_assert_same('mcp:3', ws_task_run_key(array('agent' => 'ai', 'mcp_server_id' => '3')));
 	pg_assert_same('ai', ws_task_run_key(array('agent' => 'ai', 'mcp_server_id' => '0')));
 	pg_assert_same('ai', ws_task_run_key(array('agent' => 'ai')), 'before the MCP step there is no column');
-	pg_assert_same('claude', ws_task_run_key(array('agent' => 'claude', 'mcp_server_id' => '3')), 'only Pinegrap AI answers with a server');
+	pg_assert_same('mcp:3', ws_task_run_key(array('agent' => 'mcp', 'mcp_server_id' => '3')), 'a run of the server\'s own agent');
+	pg_assert_same('claude', ws_task_run_key(array('agent' => 'claude', 'mcp_server_id' => '3')), 'only Pinegrap AI or the server\'s agent answers with a server');
 	pg_assert_same('claude', ws_task_run_key(array()), 'before the agent column every request is Claude\'s');
 }

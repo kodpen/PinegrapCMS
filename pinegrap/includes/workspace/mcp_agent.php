@@ -42,6 +42,15 @@
  * locked, in the name of the person who asked (as the answer of a tool run
  * with a form is, mcp_form.php), and a tag in it does not mention anybody.
  *
+ * A task goes to such an agent too (delegation.php): handed to its alias, or
+ * asked about in a note on it that writes the alias. The run is a request
+ * with task_id and no message; the agent is sent the task's number and
+ * title, its description, its own last answer on the task and the
+ * instruction - not the task's notes, people or channel - and its answer is
+ * kept on the run (ws_task_delegation_answer()) and shown in the task's
+ * Assistant part. The task's channel, when it has one, must let Pinegrap AI
+ * be asked, as a channel must for a message.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -156,6 +165,18 @@ function ws_mcp_agent_mode($server)
 }
 
 /**
+ * Does the server answer on its own on this site: an agent, once the schema
+ * step that brought agents in has run.
+ *
+ * @param array|null $server
+ * @return bool
+ */
+function ws_mcp_agent_on($server)
+{
+    return is_array($server) && ws_mcp_agent_ready() && ws_mcp_agent_mode($server);
+}
+
+/**
  * The argument of a tool a message goes into: its one required text
  * argument, or, when it requires none, the text argument whose name says it
  * takes a message (message, prompt, query, ...). '' when the tool cannot
@@ -251,16 +272,18 @@ function ws_mcp_agent_tool($server)
 }
 
 /**
- * Why an agent cannot be asked now, as the channel is told; '' when it can.
+ * Why an agent cannot be asked now, as the channel or the task is told; ''
+ * when it can.
  *
  * @param array      $server
  * @param array|null $asker
  * @param int        $channel_id where the offer to connect an account leads back to
+ * @param int        $task_id    asked for a task instead
  * @return string
  */
-function ws_mcp_agent_problem($server, $asker = null, $channel_id = 0)
+function ws_mcp_agent_problem($server, $asker = null, $channel_id = 0, $task_id = 0)
 {
-    $problem = ws_mcp_ask_problem($server, $asker, (int) $channel_id);
+    $problem = ws_mcp_ask_problem($server, $asker, (int) $channel_id, (int) $task_id);
 
     if ($problem !== '') {
         return $problem;
@@ -423,30 +446,84 @@ function ws_mcp_agent_compose($text, $parent_author = '', $parent_text = '')
         return $text;
     }
 
+    return ws_mcp_agent_quote($parent_text, (string) $parent_author) . "\n\n" . $text;
+}
+
+/**
+ * A text quoted line by line, after the name of who wrote it when known.
+ *
+ * @param string $text
+ * @param string $author
+ * @return string
+ */
+function ws_mcp_agent_quote($text, $author = '')
+{
     $quote = array();
 
-    foreach (preg_split('/\R/u', $parent_text) as $index => $line) {
-        $quote[] = '> ' . ((($index === 0) && ($parent_author !== '')) ? $parent_author . ': ' : '') . $line;
+    foreach (preg_split('/\R/u', trim((string) $text)) as $index => $line) {
+        $quote[] = '> ' . ((($index === 0) && ($author !== '')) ? $author . ': ' : '') . $line;
     }
 
-    return implode("\n", $quote) . "\n\n" . $text;
+    return implode("\n", $quote);
+}
+
+/**
+ * What is sent to the agent for a task: its number and title, its
+ * description, the agent's own last answer on it quoted, and the
+ * instruction, each under a line that says what it is. An instruction
+ * written in a note loses the alias it starts with; a note that writes only
+ * the alias gives none, and the task itself is the request.
+ *
+ * @param string $title       the task's number and title, as one line
+ * @param string $description as text, '' for none
+ * @param string $earlier     the agent's last answer on the task, '' for none
+ * @param string $instruction as text, '' for none
+ * @param string $alias
+ * @return string
+ */
+function ws_mcp_agent_task_compose($title, $description, $earlier, $instruction, $alias = '')
+{
+    $description = trim((string) $description);
+    $earlier = trim((string) $earlier);
+    $instruction = trim((string) $instruction);
+    $parts = array(trim((string) $title));
+
+    if ((string) $alias !== '') {
+        $instruction = ws_mcp_agent_unaddressed($instruction, $alias, false);
+    }
+
+    if ($description !== '') {
+        $parts[] = lang('Description:') . "\n" . $description;
+    }
+
+    if ($earlier !== '') {
+        $parts[] = lang('Your last answer on this task:') . "\n" . ws_mcp_agent_quote($earlier);
+    }
+
+    if ($instruction !== '') {
+        $parts[] = lang('Instruction:') . "\n" . $instruction;
+    }
+
+    return implode("\n\n", $parts);
 }
 
 /**
  * A message without the alias it starts with: the alias is this site's name
  * for the server, not the agent's, and "@alias question" would reach it as
- * part of the question. A message that is the alias alone is kept.
+ * part of the question. A message that is the alias alone is kept, unless
+ * $keep_alone is false.
  *
  * @param string $text
  * @param string $alias
+ * @param bool   $keep_alone
  * @return string
  */
-function ws_mcp_agent_unaddressed($text, $alias)
+function ws_mcp_agent_unaddressed($text, $alias, $keep_alone = true)
 {
     $text = trim((string) $text);
     $rest = trim((string) preg_replace('/^@' . preg_quote((string) $alias, '/') . '(?![\p{L}\p{N}_-])[\s,:;.!-]*/iu', '', $text));
 
-    return ($rest !== '') ? $rest : $text;
+    return (($rest !== '') || !$keep_alone) ? $rest : $text;
 }
 
 /**
@@ -506,19 +583,48 @@ function ws_mcp_agent_author($row)
 function ws_mcp_agent_answer_body($alias, $tool, $answer)
 {
     $head = lang(array('string' => '@{var:1} answered through {var:2}:', 'vars' => array($alias, '`' . str_replace('`', '', (string) $tool) . '`')));
+
+    return $head . "\n" . ws_mcp_agent_neutral($answer, max(0, WS_MESSAGE_MAX - mb_strlen($head) - 2));
+}
+
+/**
+ * Another service's text as it is kept here: a tag in it would mention
+ * somebody or link a record, so its angle bracket is changed; cut to the
+ * room there is.
+ *
+ * @param string $answer
+ * @param int    $room characters
+ * @return string
+ */
+function ws_mcp_agent_neutral($answer, $room)
+{
     $answer = trim(preg_replace('/<(?=[@#])/', '‹', (string) $answer));
-    $room = max(0, WS_MESSAGE_MAX - mb_strlen($head) - 2);
 
     if (mb_strlen($answer) > $room) {
         $answer = rtrim(mb_substr($answer, 0, max(0, $room - 1))) . '…';
     }
 
-    return $head . "\n" . $answer;
+    return $answer;
+}
+
+/**
+ * Marks the message a request answers as changed, so the screens draw its
+ * line again; a run on a task has no message.
+ *
+ * @param array $row
+ */
+function ws_mcp_agent_touch($row)
+{
+    if ((int) ($row['message_id'] ?? 0) > 0) {
+        ws_message_touch((int) $row['message_id']);
+    }
 }
 
 /**
  * Closes a request as not done - failed, or cancelled - unless it ended
- * already; the line under the message says why.
+ * already; the line under the message, or on the task's run, says why. The
+ * person who asked for a run on a task is told it failed, as for the other
+ * assistants.
  *
  * @param array  $row
  * @param string $reason
@@ -534,7 +640,11 @@ function ws_mcp_agent_fail($row, $reason, $status = 'failed')
 
     $closed = (mysqli_affected_rows(db::$con) > 0);
 
-    ws_message_touch((int) $row['message_id']);
+    if ($closed && ($status !== 'cancelled') && ((int) ($row['task_id'] ?? 0) > 0) && function_exists('ws_task_delegation_told')) {
+        ws_task_delegation_told($row, 'failed');
+    }
+
+    ws_mcp_agent_touch($row);
 
     return $closed;
 }
@@ -543,14 +653,16 @@ function ws_mcp_agent_fail($row, $reason, $status = 'failed')
  * What a request needs to be carried on, checked again at every step: the
  * server, the person who asked and their right to post in the channel, a
  * channel where Pinegrap AI may be asked, the message, and the rules of the
- * agent (ws_mcp_agent_problem()).
+ * agent (ws_mcp_agent_problem()). A run on a task needs the task, which the
+ * person who asked must still see, instead of the message, and its channel
+ * only when it has one.
  *
  * @param array $row
- * @return array error ('' when it may go on), server, asker, channel, message
+ * @return array error ('' when it may go on), server, asker, channel, message, task
  */
 function ws_mcp_agent_context($row)
 {
-    $out = array('error' => '', 'server' => null, 'asker' => null, 'channel' => null, 'message' => null);
+    $out = array('error' => '', 'server' => null, 'asker' => null, 'channel' => null, 'message' => null, 'task' => null);
 
     $fail = function ($reason) use (&$out) {
         $out['error'] = $reason;
@@ -568,6 +680,28 @@ function ws_mcp_agent_context($row)
 
     if (!$asker) {
         return $fail(lang('The person who asked is no longer a member of the workspace.'));
+    }
+
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        $task = function_exists('ws_task') ? ws_task((int) $row['task_id']) : null;
+
+        if (!$task || !ws_can_see_task($asker, $task)) {
+            return $fail(lang('The task could not be found, or the person who asked may no longer see it.'));
+        }
+
+        $channel = ((int) $task['channel_id'] > 0) ? ws_channel((int) $task['channel_id']) : null;
+
+        if ($channel && !ws_ai_channel_allowed($channel)) {
+            return $fail(lang(array('string' => '{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.', 'vars' => '@' . $server['alias'])));
+        }
+
+        $problem = ws_mcp_agent_problem($server, $asker, 0, (int) $task['id']);
+
+        if ($problem !== '') {
+            return $fail($problem);
+        }
+
+        return array('error' => '', 'server' => $server, 'asker' => $asker, 'channel' => $channel, 'message' => null, 'task' => $task);
     }
 
     $channel = ws_channel((int) $row['channel_id']);
@@ -592,7 +726,7 @@ function ws_mcp_agent_context($row)
         return $fail($problem);
     }
 
-    return array('error' => '', 'server' => $server, 'asker' => $asker, 'channel' => $channel, 'message' => $message);
+    return array('error' => '', 'server' => $server, 'asker' => $asker, 'channel' => $channel, 'message' => $message, 'task' => null);
 }
 
 /**
@@ -675,7 +809,9 @@ function ws_mcp_agent_call_end($call, $error)
 /**
  * Posts an agent's answer under the message that asked, in the asker's
  * name, locked, and closes the request as answered - unless it was given up
- * or stopped while the agent worked.
+ * or stopped while the agent worked. The answer of a run on a task is kept
+ * on the run instead, shown in the task's Assistant part, and the person who
+ * asked is told.
  *
  * @param array  $row
  * @param array  $context as ws_mcp_agent_context() answers it
@@ -694,6 +830,17 @@ function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id)
 
     $server = $context['server'];
     $asker = $context['asker'];
+
+    if ($context['task']) {
+        if (!ws_task_delegation_answer($row, ws_mcp_agent_neutral($answer, WS_MESSAGE_MAX))) {
+            return false;
+        }
+
+        log_activity(lang(array('string' => 'the MCP agent @{var:1} answered on task {var:2}', 'vars' => array($server['alias'], ws_task_number($context['task']['id'])))), (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $asker['id'] . "'"));
+
+        return true;
+    }
+
     $channel = $context['channel'];
     $message = $context['message'];
 
@@ -726,6 +873,64 @@ function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id)
 }
 
 /**
+ * What a request sends its agent. For a message: the message without the
+ * alias it starts with, after a quote of the message it answers when it is
+ * a reply. For a run on a task: the task (ws_mcp_agent_task_compose()), with
+ * the agent's last answer on it, as a reply quotes the answer it replies to.
+ *
+ * @param array $row
+ * @param array $context as ws_mcp_agent_context() answers it
+ * @return string
+ */
+function ws_mcp_agent_request_text($row, $context)
+{
+    $server = $context['server'];
+    $asker = $context['asker'];
+
+    if ($context['task']) {
+        $task = $context['task'];
+
+        $earlier = (string) db_value("SELECT note_reply FROM ws_ai_requests
+            WHERE task_id = '" . (int) $task['id'] . "' AND agent = 'mcp' AND mcp_server_id = '" . (int) $server['id'] . "'
+                AND status = 'answered' AND id < '" . (int) $row['id'] . "'
+            ORDER BY id DESC LIMIT 1");
+
+        return ws_mcp_agent_task_compose(
+            ws_task_number($task['id']) . ': ' . ws_mcp_agent_text($asker, (string) $task['title'], 300),
+            ws_mcp_agent_text($asker, (string) $task['description'], WS_MCP_AGENT_TEXT_LIMIT),
+            ($earlier !== '') ? ws_mcp_agent_text($asker, $earlier, WS_MCP_AGENT_CONTEXT_LIMIT) : '',
+            ws_mcp_agent_text($asker, (string) $row['note_text'], WS_MCP_AGENT_TEXT_LIMIT),
+            (string) $server['alias']
+        );
+    }
+
+    $message = $context['message'];
+
+    // A reply: the agent reads the message it answers too. An answer of an
+    // agent is quoted under no name and without the line that says who
+    // answered: it is posted in the asker's name, but they did not write it.
+    $parent = ((int) $message['parent_id'] > 0) ? ws_message((int) $message['parent_id']) : null;
+    $parent_author = '';
+    $parent_text = '';
+
+    if ($parent && ((int) $parent['deleted_at'] === 0)) {
+        $parent_text = ws_mcp_agent_text($asker, (string) $parent['body'], WS_MCP_AGENT_CONTEXT_LIMIT);
+
+        if (db_value("SELECT id FROM ws_ai_requests WHERE reply_message_id = '" . (int) $parent['id'] . "' AND agent = 'mcp' LIMIT 1")) {
+            $parent_text = (string) preg_replace('/^[^\n]*\n?/', '', $parent_text, 1);
+        } else {
+            $parent_author = ws_mcp_agent_author($parent);
+        }
+    }
+
+    return ws_mcp_agent_compose(
+        ws_mcp_agent_unaddressed(ws_mcp_agent_text($asker, (string) $message['body'], WS_MCP_AGENT_TEXT_LIMIT), $server['alias']),
+        $parent_author,
+        $parent_text
+    );
+}
+
+/**
  * Sends one request to its agent and posts the answer. An agent that works
  * on in the background answers with a task instead: the task is kept and
  * asked about from then on (ws_mcp_agent_poll()).
@@ -746,34 +951,10 @@ function ws_mcp_agent_run($row, $timeout)
 
     $server = $context['server'];
     $asker = $context['asker'];
-    $channel = $context['channel'];
     $message = $context['message'];
     $tool = ws_mcp_agent_tool($server);
 
-    // A reply: the agent reads the message it answers too. An answer of an
-    // agent is quoted under no name and without the line that says who
-    // answered: it is posted in the asker's name, but they did not write it.
-    $parent = ((int) $message['parent_id'] > 0) ? ws_message((int) $message['parent_id']) : null;
-    $parent_author = '';
-    $parent_text = '';
-
-    if ($parent && ((int) $parent['deleted_at'] === 0)) {
-        $parent_text = ws_mcp_agent_text($asker, (string) $parent['body'], WS_MCP_AGENT_CONTEXT_LIMIT);
-
-        if (db_value("SELECT id FROM ws_ai_requests WHERE reply_message_id = '" . (int) $parent['id'] . "' AND agent = 'mcp' LIMIT 1")) {
-            $parent_text = (string) preg_replace('/^[^\n]*\n?/', '', $parent_text, 1);
-        } else {
-            $parent_author = ws_mcp_agent_author($parent);
-        }
-    }
-
-    $text = ws_mcp_agent_compose(
-        ws_mcp_agent_unaddressed(ws_mcp_agent_text($asker, (string) $message['body'], WS_MCP_AGENT_TEXT_LIMIT), $server['alias']),
-        $parent_author,
-        $parent_text
-    );
-
-    $arguments = (string) json_encode((object) array($tool['argument'] => $text), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $arguments = (string) json_encode((object) array($tool['argument'] => ws_mcp_agent_request_text($row, $context)), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
     if (function_exists('set_time_limit')) {
         @set_time_limit($timeout * 2 + 30);
@@ -813,8 +994,8 @@ function ws_mcp_agent_run($row, $timeout)
             '" . e($arguments) . "',
             'agent',
             '" . (int) $asker['id'] . "',
-            '" . (int) $channel['id'] . "',
-            '" . (int) $message['id'] . "',
+            '" . (int) $row['channel_id'] . "',
+            '" . ($message ? (int) $message['id'] : 0) . "',
             '" . (int) $row['id'] . "',
             '" . ($task ? 'running' : (($error === '') ? 'done' : 'failed')) . "',
             '" . e(mb_substr($error, 0, 250)) . "',
@@ -867,7 +1048,7 @@ function ws_mcp_agent_task_keep($row, $task, $conn, $call_id)
         return;
     }
 
-    ws_message_touch((int) $row['message_id']);
+    ws_mcp_agent_touch($row);
 }
 
 /**
@@ -974,7 +1155,7 @@ function ws_mcp_agent_poll($row, $timeout)
         WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
 
     if ($task['message'] !== (string) $row['mcp_task_note']) {
-        ws_message_touch((int) $row['message_id']);
+        ws_mcp_agent_touch($row);
     }
 
     return false;
@@ -1082,7 +1263,7 @@ function ws_mcp_agent_watchdog()
         LIMIT 50") as $row) {
         db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(lang('It could not be sent within a day.')) . "'
             WHERE id = '" . (int) $row['id'] . "' AND status = 'queued'");
-        ws_message_touch((int) $row['message_id']);
+        ws_mcp_agent_touch($row);
     }
 
     // Stopping a task is a call to its server: a few at a time.
@@ -1165,7 +1346,7 @@ function ws_mcp_agent_kick($budget = 1, $timeout = WS_MCP_AGENT_TIMEOUT)
         }
 
         $status = 'working';
-        ws_message_touch((int) $row['message_id']);
+        ws_mcp_agent_touch($row);
         ws_mcp_agent_run(array_merge($row, array('status' => 'running')), $timeout);
 
         if ((time() - $started) >= $budget) {
@@ -1223,7 +1404,7 @@ function ws_mcp_agent_settings_field($server, $admin)
         <div class="mb-3">
             <label class="form-label small fw-semibold" for="' . $field . '">' . h(lang(array('string' => 'Who answers @{var:1}', 'vars' => $server['alias']))) . '</label>
             <select class="form-select form-select-sm" name="mcp_agent_tool" id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
-            <div class="form-text">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. Pinegrap AI is not needed. The tool must be turned on below as one that reads only.')) . '</div>
+            <div class="form-text">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task\'s title and description, and the answer comes back in the task\'s Assistant part. Pinegrap AI is not needed. The tool must be turned on below as one that reads only.')) . '</div>
             ' . $problem . '
         </div>';
 }

@@ -8,8 +8,9 @@
  * sign in to, which are on, the names the model knows them by, aliases, the
  * credential headers, the arguments a waiting call shows, the form a
  * tool that reads is run with (mcp_form.php), and the tool that takes the
- * messages of a server that is an agent itself, how often its tasks are
- * asked about and who may stop a request to it (mcp_agent.php).
+ * messages of a server that is an agent itself, what it is sent for a
+ * workspace task, how often its tasks are asked about and who may stop a
+ * request to it (mcp_agent.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -547,6 +548,37 @@ function test_workspace_mcp_agent_message_without_the_alias_it_starts_with()
 	pg_assert_same('@helpdesk2 hello', ws_mcp_agent_unaddressed('@helpdesk2 hello', 'helpdesk'), 'a longer alias is another one');
 	pg_assert_same('Ask @helpdesk later', ws_mcp_agent_unaddressed('Ask @helpdesk later', 'helpdesk'), 'only at the start');
 	pg_assert_same('@helpdesk', ws_mcp_agent_unaddressed('@helpdesk', 'helpdesk'), 'the alias alone is kept');
+	pg_assert_same('', ws_mcp_agent_unaddressed('@helpdesk:', 'helpdesk', false), 'or not, when nothing else is asked');
+	pg_assert_same('check it', ws_mcp_agent_unaddressed('@helpdesk check it', 'helpdesk', false));
+}
+
+function test_workspace_mcp_agent_reads_a_workspace_task()
+{
+	pg_assert_same(
+		"T-12: Invoice run\n\nDescription:\nAll orders of May.\n\nInstruction:\nStart with the late ones.",
+		ws_mcp_agent_task_compose('T-12: Invoice run', ' All orders of May. ', '', '@helpdesk Start with the late ones.', 'helpdesk'),
+		'the task, then the instruction without the alias it starts with'
+	);
+	pg_assert_same('T-12: Invoice run', ws_mcp_agent_task_compose('T-12: Invoice run', '', '', '@HelpDesk', 'helpdesk'), 'a note that only writes the alias: the task itself is the request');
+	pg_assert_same('T-12: Invoice run', ws_mcp_agent_task_compose('T-12: Invoice run', '  ', '', '  ', 'helpdesk'), 'handed over without an instruction');
+	pg_assert_same(
+		"T-12: Invoice run\n\nYour last answer on this task:\n> 40 orders found.\n> 3 are late.\n\nInstruction:\nAnd the others?",
+		ws_mcp_agent_task_compose('T-12: Invoice run', '', "40 orders found.\n3 are late.", 'And the others?', 'helpdesk'),
+		'its own last answer on the task is quoted, as a reply quotes the answer it replies to'
+	);
+	pg_assert_same(
+		"T-12: Invoice run\n\nInstruction:\nAsk @helpdesk later",
+		ws_mcp_agent_task_compose('T-12: Invoice run', '', '', 'Ask @helpdesk later', 'helpdesk'),
+		'an alias written later in the note stays'
+	);
+}
+
+function test_workspace_mcp_agent_answer_on_a_task_mentions_nobody()
+{
+	pg_assert_same('Ask ‹@user:12> about ‹#order:3>.', ws_mcp_agent_neutral(" Ask <@user:12> about <#order:3>. ", 100));
+	pg_assert_same('a < b', ws_mcp_agent_neutral('a < b', 100), 'only a tag\'s bracket changes');
+	pg_assert_same('abcd…', ws_mcp_agent_neutral('abcdefghij', 5), 'cut with a mark');
+	pg_assert_same("> Ayşe: one\n> two", ws_mcp_agent_quote("one\ntwo", 'Ayşe'));
 }
 
 function test_workspace_mcp_agent_answer_mentions_nobody()

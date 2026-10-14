@@ -31,7 +31,9 @@
  * Pinegrap AI's requests with the server set (agent ai, mcp_server_id), so
  * Pinegrap AI works the task with that server's tools, and a tool that
  * writes waits on the task as a call to approve, run only by the person who
- * asked, with their own account.
+ * asked, with their own account. A server that is an agent itself answers
+ * on its own instead (mcp_agent.php): its runs are requests of agent mcp,
+ * sent to the tool that takes its messages, and need no Pinegrap AI.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -92,7 +94,7 @@ function ws_assistant_mcp_id($key)
 
 /**
  * The assistant a run was for, by key: a request to Pinegrap AI with an MCP
- * server set is that server's alias.
+ * server set, or to the server's own agent, is that server's alias.
  *
  * @param array $row ws_ai_requests
  * @return string
@@ -101,7 +103,7 @@ function ws_task_run_key($row)
 {
     $agent = (string) ($row['agent'] ?? 'claude');
 
-    if (($agent === 'ai') && ((int) ($row['mcp_server_id'] ?? 0) > 0)) {
+    if (in_array($agent, array('ai', 'mcp'), true) && ((int) ($row['mcp_server_id'] ?? 0) > 0)) {
         return 'mcp:' . (int) $row['mcp_server_id'];
     }
 
@@ -110,14 +112,34 @@ function ws_task_run_key($row)
 
 /**
  * The assistant whose queue, limits and channel switch a key's runs go by:
- * an MCP server's alias is answered by Pinegrap AI.
+ * an MCP server's alias is answered by Pinegrap AI, or by the server's own
+ * agent when it is one (mcp_agent.php).
  *
  * @param string $key
- * @return string ai | claude
+ * @return string ai | claude | mcp
  */
 function ws_assistant_agent($key)
 {
-    return (ws_assistant_mcp_id($key) > 0) ? 'ai' : (string) $key;
+    $server_id = ws_assistant_mcp_id($key);
+
+    return ws_assistant_agent_of($key, (($server_id > 0) && function_exists('ws_mcp_server')) ? ws_mcp_server($server_id) : null);
+}
+
+/**
+ * ws_assistant_agent() given the server a key names: null for none, or for
+ * one that is gone, whose runs stay Pinegrap AI's.
+ *
+ * @param string     $key
+ * @param array|null $server
+ * @return string ai | claude | mcp
+ */
+function ws_assistant_agent_of($key, $server)
+{
+    if (ws_assistant_mcp_id($key) <= 0) {
+        return (string) $key;
+    }
+
+    return (is_array($server) && function_exists('ws_mcp_agent_mode') && ws_mcp_agent_mode($server)) ? 'mcp' : 'ai';
 }
 
 /**
@@ -170,10 +192,14 @@ function ws_assistants()
 
     // An MCP server's alias: Pinegrap AI answers with that server's tools,
     // so an alias is there only where Pinegrap AI is, and only once it has a
-    // tool turned on.
-    if (isset($list['ai']) && function_exists('ws_mcp_ready') && ws_mcp_ready() && function_exists('ws_mcp_ask_problem')) {
+    // tool turned on. A server that is an agent itself answers on its own
+    // (mcp_agent.php): it is there without Pinegrap AI, while the tool that
+    // takes its messages can take them, and writes through no application.
+    if (function_exists('ws_mcp_ready') && ws_mcp_ready() && function_exists('ws_mcp_ask_problem')) {
         foreach (ws_mcp_servers() as $server) {
-            if (ws_mcp_ask_problem($server) !== '') {
+            $agent = function_exists('ws_mcp_agent_on') && ws_mcp_agent_on($server);
+
+            if ($agent ? (ws_mcp_agent_problem($server) !== '') : (!isset($list['ai']) || (ws_mcp_ask_problem($server) !== ''))) {
                 continue;
             }
 
@@ -185,7 +211,7 @@ function ws_assistants()
                 'handle'    => '@' . $server['alias'],
                 'icon'      => 'bi-plug',
                 'avatar'    => PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg',
-                'app_id'    => (int) $ai['app_id'],
+                'app_id'    => $agent ? 0 : (int) $ai['app_id'],
                 'server_id' => (int) $server['id'],
             );
         }
@@ -248,7 +274,7 @@ function ws_assistant_avatar($key)
         return $assistant['avatar'];
     }
 
-    return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . ((ws_assistant_agent($key) === 'ai') ? 'ws-ai.svg' : 'ws-assistant.svg');
+    return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . ((ws_assistant_agent($key) === 'claude') ? 'ws-assistant.svg' : 'ws-ai.svg');
 }
 
 /**
@@ -300,9 +326,10 @@ function ws_assistant_alias_named($body)
  * What keeps an assistant from working on a task: it is not connected, or
  * the task's channel does not let it be asked. A task outside any channel is
  * sent by the person who hands it over, who can read all of it. An MCP
- * server's alias goes by Pinegrap AI's setup and channel switch, and a server
- * people sign in to needs an account for the one who hands it over: their
- * own, or the site's.
+ * server's alias goes by Pinegrap AI's setup and channel switch - one that is
+ * an agent itself by the tool that takes its messages and the same channel
+ * switch - and a server people sign in to needs an account for the one who
+ * hands it over: their own, or the site's.
  *
  * @param array  $viewer
  * @param string $key
@@ -328,7 +355,10 @@ function ws_assistant_task_problem($viewer, $key, $task)
     $server_id = ws_assistant_mcp_id($key);
 
     if ($server_id > 0) {
-        $problem = ws_mcp_ask_problem(ws_mcp_server($server_id), $viewer, 0, (int) $task['id']);
+        $server = ws_mcp_server($server_id);
+        $problem = ($agent === 'mcp')
+            ? ws_mcp_agent_problem($server, $viewer, 0, (int) $task['id'])
+            : ws_mcp_ask_problem($server, $viewer, 0, (int) $task['id']);
 
         if ($problem !== '') {
             return $problem;
@@ -338,10 +368,11 @@ function ws_assistant_task_problem($viewer, $key, $task)
     $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
 
     if ($channel) {
-        $allowed = ($agent === 'ai') ? ws_ai_channel_allowed($channel) : ws_claude_channel_allowed($channel);
+        // The server's own agent may be asked where Pinegrap AI may.
+        $allowed = ($agent === 'claude') ? ws_claude_channel_allowed($channel) : ws_ai_channel_allowed($channel);
 
         if (!$allowed) {
-            return lang(array('string' => '{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.', 'vars' => ws_assistant_name($agent)));
+            return lang(array('string' => '{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.', 'vars' => ws_assistant_name(($agent === 'mcp') ? $key : $agent)));
         }
     }
 
@@ -445,15 +476,23 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
     $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
         WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_ai_agent_where($agent));
 
-    $limit = ($agent === 'ai') ? WS_AI_PER_PERSON : WS_CLAUDE_PER_PERSON;
+    // The agents of MCP servers share one limit, in channels and on tasks.
+    if ($agent === 'mcp') {
+        if ($waiting >= WS_MCP_AGENT_PER_PERSON) {
+            return $fail(lang(array('string' => '{var:1} of your requests to MCP agents are still waiting. Please wait for those to be answered.', 'vars' => WS_MCP_AGENT_PER_PERSON)));
+        }
+    } else {
+        $limit = ($agent === 'ai') ? WS_AI_PER_PERSON : WS_CLAUDE_PER_PERSON;
 
-    if ($waiting >= $limit) {
-        return $fail(lang(array('string' => '{var:1} already has {var:2} requests of yours waiting. Please wait for those to be answered.', 'vars' => array(ws_assistant_name($agent), $limit))));
+        if ($waiting >= $limit) {
+            return $fail(lang(array('string' => '{var:1} already has {var:2} requests of yours waiting. Please wait for those to be answered.', 'vars' => array(ws_assistant_name($agent), $limit))));
+        }
     }
 
     // Written with its assistant in one go: a request to Pinegrap AI must
     // never sit in the table as Claude's, where Claude's run would take it,
-    // nor a request to an alias as Pinegrap AI's own.
+    // nor a request to an alias as Pinegrap AI's own, nor one to a server's
+    // own agent as Pinegrap AI's (mcp_agent.php takes agent mcp).
     db("INSERT INTO ws_ai_requests (channel_id, message_id, task_id, note_text, requested_by, status, agent, created_at" . (($server_id > 0) ? ', mcp_server_id' : '') . ")
         VALUES ('0', '0', '" . (int) $task['id'] . "', '" . e(ws_delegation_instruction_clean($instruction)) . "',
             '" . (int) $viewer['id'] . "', 'queued', '" . e($agent) . "', '" . time() . "'" . (($server_id > 0) ? ", '" . $server_id . "'" : '') . ")");
@@ -556,7 +595,19 @@ function ws_task_delegation_stop($viewer, $task, $undelegate)
     }
 
     if ($run) {
-        db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(lang(array('string' => 'Stopped by {var:1}.', 'vars' => ws_person_name($viewer['id'])))) . "',
+        $reason = lang(array('string' => 'Stopped by {var:1}.', 'vars' => ws_person_name($viewer['id'])));
+
+        // A server's own agent working on the run in the background is
+        // stopped on the server too (mcp_agent.php).
+        if (((string) ($run['agent'] ?? '') === 'mcp') && function_exists('ws_mcp_agent_task_stop')) {
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(WS_MCP_AGENT_POLL_TIMEOUT * 2 + 30);
+            }
+
+            ws_mcp_agent_task_stop($run, $reason, 'cancelled');
+        }
+
+        db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e($reason) . "',
                 answered_at = '" . time() . "', ai_state = NULL
             WHERE task_id = '" . (int) $task['id'] . "' AND status IN ('queued', 'sent', 'running')");
     }
@@ -669,6 +720,10 @@ function ws_task_delegation_state($viewer, $row)
         return ws_ai_request_state($viewer, $row);
     }
 
+    if (((string) ($row['agent'] ?? '') === 'mcp') && function_exists('ws_mcp_agent_request_state')) {
+        return ws_mcp_agent_request_state($row, $viewer);
+    }
+
     return ws_claude_request_state($viewer, $row);
 }
 
@@ -698,11 +753,14 @@ function ws_task_delegation_detail($viewer, $task)
         if ($server) {
             // A server people sign in to, where the reader has no account
             // yet (neither their own nor the site's): they connect their own
-            // from here.
-            $problem = ws_mcp_ask_problem($server, $viewer);
-            $ready = ws_ai_ready() && ($problem === '');
+            // from here. A server that is an agent itself needs no Pinegrap
+            // AI.
+            $agent = (ws_assistant_agent($key) === 'mcp');
+            $problem = $agent ? ws_mcp_agent_problem($server, $viewer) : ws_mcp_ask_problem($server, $viewer);
+            $able = $agent || ws_ai_ready();
+            $ready = $able && ($problem === '');
 
-            if (ws_ai_ready() && ($problem !== '') && ($server['auth_kind'] === 'oauth')) {
+            if ($able && ($problem !== '') && ($server['auth_kind'] === 'oauth')) {
                 $connect = array('server_id' => (int) $server['id'], 'alias' => (string) $server['alias']);
             }
         } else {
@@ -913,8 +971,10 @@ function ws_task_delegation_from_note($viewer, $task, $body)
 /**
  * Why a note that writes an MCP server's alias asked nobody: the server is
  * turned off or has no tool on, or Pinegrap AI, which answers for it, is not
- * connected. In a channel the same message gets these words as a system
- * message (ai.php); a note has its notice instead.
+ * connected - for a server that is an agent itself, the tool that takes its
+ * messages can no longer take them. In a channel the same message gets
+ * these words as a system message (ai.php, mcp_agent.php); a note has its
+ * notice instead.
  *
  * @param array  $viewer
  * @param string $body the note
@@ -926,6 +986,10 @@ function ws_task_delegation_alias_problem($viewer, $body)
 
     if (!$server) {
         return '';
+    }
+
+    if (function_exists('ws_mcp_agent_on') && ws_mcp_agent_on($server)) {
+        return ws_mcp_agent_problem($server);
     }
 
     $problem = ws_mcp_ask_problem($server);
