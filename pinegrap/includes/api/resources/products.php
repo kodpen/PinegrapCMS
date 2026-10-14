@@ -1180,18 +1180,16 @@ function api_products_delete($params) {
 
 		api_dry_run_stop('recycled', 'product', array('id' => $id, 'name' => $product['name']));
 
-		// "AND recycled = '0'" keeps a second request that raced this one from
-		// writing recycled_enabled from an enabled that is already forced to 0,
-		// which would bring the product back out of the bin unpublished.
-		api_exec("UPDATE products
-			SET recycled = '1', recycled_enabled = enabled, enabled = '0'
-			WHERE id = '" . $id . "' AND recycled = '0'
-			LIMIT 1");
+		// The statements every panel screen writes when it bins a product.
+		// "AND recycled = '0'" in them keeps a second request that raced this
+		// one from writing recycled_enabled from an enabled that is already
+		// forced to 0, which would bring the product back out of the bin
+		// unpublished.
+		foreach (pg_catalog_bin_statements('product', $id, array($id), 0, (int)$app['owner']['id']) as $statement) {
 
-		api_exec("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . $id . "')");
+			api_exec($statement);
 
-		api_exec("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-			VALUES ('product', '" . $id . "', '0', UNIX_TIMESTAMP(), '" . (int)$app['owner']['id'] . "')");
+		}
 
 		log_activity(lang(array(
 			'string' => 'Product ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).',

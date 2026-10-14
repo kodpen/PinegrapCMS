@@ -87,16 +87,27 @@ if ($_POST) {
 
         $deleted_name = $product['name'];
 
-        pg_pb_delete_product($product_id);
+        // To the Recycle Bin, as the Catalog Manager deletes: a product deleted
+        // by mistake has to be one restore away, not a database backup away.
+        // Emptying the bin is what runs the permanent delete below.
+        if (pg_catalog_bin_ready()) {
 
-        log_activity(
-            lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name))),
-            $_SESSION['sessionusername']);
+            pg_catalog_bin_product($product_id, $user['id']);
+
+            $deleted_message = lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($deleted_name)));
+
+        } else {
+
+            pg_pb_delete_product($product_id);
+
+            $deleted_message = lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name)));
+        }
+
+        log_activity($deleted_message, $_SESSION['sessionusername']);
 
         if ($send_to_list) {
             $liveform_target = new liveform('view_products');
-            $liveform_target->add_notice(
-                lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name))));
+            $liveform_target->add_notice($deleted_message);
         }
 
         go($send_to);

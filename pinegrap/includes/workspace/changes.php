@@ -2730,19 +2730,13 @@ function ws_change_write_product($viewer, $action, $record, $values)
 
         // To the Recycle Bin, as the file manager bins it: flagged and switched
         // off, with what it was kept so that restoring puts it back as it was.
+        // The same move every panel screen makes (pg_catalog_bin_product()),
+        // product.deleted with recycled: true and the marketplace queue
+        // included.
         if (ws_change_binned('product')) {
-            db("UPDATE products SET recycled = '1', recycled_enabled = enabled, enabled = '0' WHERE id = '" . $id . "' AND recycled = '0'");
-
-            db("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . $id . "')");
-
-            db("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                VALUES ('product', '" . $id . "', '0', UNIX_TIMESTAMP(), '" . (int) $viewer['id'] . "')");
+            pg_catalog_bin_product($id, (int) $viewer['id']);
 
             ws_change_log(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($record['name']))));
-
-            if (function_exists('pg_marketplace_product_changed')) {
-                pg_marketplace_product_changed($id);
-            }
 
             return array('ok' => true, 'error' => '', 'id' => $id, 'binned' => true);
         }
@@ -3187,12 +3181,9 @@ function ws_change_write_product_group($viewer, $action, $record, $values)
         // groups inside it is not proposed, so it goes alone; its products stay
         // where else they are listed.
         if (ws_change_binned('product_group')) {
-            db("UPDATE product_groups SET recycled = '1', recycled_enabled = enabled, enabled = '0' WHERE id = '" . $id . "' AND recycled = '0'");
-
-            db("DELETE FROM recycle_bin WHERE (item_type = 'product_group') AND (item_id = '" . $id . "')");
-
-            db("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                VALUES ('product_group', '" . $id . "', '" . (int) $record['parent_id'] . "', UNIX_TIMESTAMP(), '" . (int) $viewer['id'] . "')");
+            foreach (pg_catalog_bin_statements('product_group', $id, array($id), (int) $record['parent_id'], (int) $viewer['id']) as $statement) {
+                db($statement);
+            }
 
             ws_change_log(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($record['name']))));
 

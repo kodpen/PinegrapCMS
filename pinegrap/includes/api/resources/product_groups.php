@@ -976,15 +976,13 @@ function api_product_groups_delete($params) {
 
 		api_dry_run_stop('recycled', 'product_group', array('id' => $id, 'name' => $group['name']));
 
-		api_exec("UPDATE product_groups
-			SET recycled = '1', recycled_enabled = enabled, enabled = '0'
-			WHERE id = '" . $id . "' AND recycled = '0'
-			LIMIT 1");
+		// The statements every panel screen writes when it bins a group. The
+		// group alone: one with groups inside it was refused above.
+		foreach (pg_catalog_bin_statements('product_group', $id, array($id), (int)$group['parent_id'], (int)$app['owner']['id']) as $statement) {
 
-		api_exec("DELETE FROM recycle_bin WHERE (item_type = 'product_group') AND (item_id = '" . $id . "')");
+			api_exec($statement);
 
-		api_exec("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-			VALUES ('product_group', '" . $id . "', '" . (int)$group['parent_id'] . "', UNIX_TIMESTAMP(), '" . (int)$app['owner']['id'] . "')");
+		}
 
 		log_activity(lang(array(
 			'string' => 'Product group ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).',
