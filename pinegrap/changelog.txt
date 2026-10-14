@@ -401,6 +401,24 @@
          "Sıralama" menüsü kullanılıyor. Seçilen sıralama
          panel dili değişince kaybolmuyor.
 
+  [GÜVENLİK] Ürünleri toplu çoğaltma ekranındaki
+         "Assortment" seçimi, kopyanın ürün özelliklerini
+         yazan veritabanı sorgusuna olduğu gibi giriyordu;
+         e-ticaret yetkisi olan oturum açmış bir kullanıcı
+         sorguya kendi komutunu ekleyebiliyordu. Artık
+         yalnız var olan bir özellik seçeneği kabul
+         ediliyor; bulunamayan bir seçimde hiçbir ürün
+         çoğaltılmıyor ve ekran nedenini söylüyor.
+
+  [DÜZELTME] Ürünleri toplu çoğaltırken birden çok
+         özelliği olan üründe, "Assortment" değiştirilmese
+         de kopyanın bütün özellikleri ilk özelliğin
+         seçeneğini alıyordu; artık her özellik kendi
+         seçeneğini koruyor. Seçilen "Assortment" yalnız ait
+         olduğu özelliğin seçeneğini değiştiriyor. "Silinecek
+         Harf Sayısı" boş bırakılınca çoğaltma hata
+         sayfasıyla duruyordu; artık 1 harf siliniyor.
+
   REHBER
   --------------------------------------------------------
 

@@ -1613,7 +1613,9 @@ if (!$_POST) {
     // before a single product is copied.
     validate_token_field();
 
-    function duplicate_products($id,$lettertodelete,$newletter,$option_id) {
+    // $option is the assortment option row (id, product_attribute_id) checked
+    // below before anything is copied, or an empty array for "Do not Change".
+    function duplicate_products($id,$lettertodelete,$newletter,$option) {
         // get original product's info
         $result = mysqli_query(db::$con, "SELECT * FROM products WHERE id = '" . escape($id) . "'") or output_error(lang('Query failed'));
         $row                   = mysqli_fetch_assoc($result);
@@ -1622,9 +1624,14 @@ if (!$_POST) {
             'name' => $row['name'],
             'type' => 'product'
         ));
-        if(!isset($lettertodelete) && !is_numeric($lettertodelete)){
+        // An emptied field or a value that is not a count of at least one falls
+        // back to the field's default; negating a non-numeric string below
+        // would end the request with a TypeError on PHP 8.
+        if (!is_numeric($lettertodelete) || ($lettertodelete < 1)) {
             $lettertodelete = 1;
         }
+
+        $lettertodelete = (int) $lettertodelete;
 
         $product_name = substr($product_name, 0, -4) . $newletter;
         $short_description = substr($row['short_description'], 0, -$lettertodelete) . $newletter;
@@ -2209,12 +2216,12 @@ if (!$_POST) {
             WHERE product_id = '" . e($id) . "'");
 
         foreach ($attributes as $attribute) {
+            // The chosen assortment replaces the option of the attribute it
+            // belongs to; every other attribute keeps the original's option.
+            $attribute_option_id = $attribute['option_id'];
 
-            if(isset($option_id) && $option_id != ''){
-
-                $option_id = $option_id;
-            }else{
-                $option_id = $attribute['option_id'];
+            if ($option && ($attribute['attribute_id'] == $option['product_attribute_id'])) {
+                $attribute_option_id = $option['id'];
             }
 
             db("INSERT INTO products_attributes_xref (
@@ -2231,11 +2238,11 @@ if (!$_POST) {
     
                     '$new_product_id',
     
-                    '" . $attribute['attribute_id'] . "',
+                    '" . (int) $attribute['attribute_id'] . "',
     
-                    '" . $option_id . "',
+                    '" . (int) $attribute_option_id . "',
     
-                    '" . $attribute['sort_order'] . "')");
+                    '" . (int) $attribute['sort_order'] . "')");
         }
     
         // Get product groups in order to duplicate them.
@@ -2286,10 +2293,30 @@ if (!$_POST) {
         return $new_product_id;
     }
   
+    // The assortment is looked up once, before a single product is copied, so
+    // only the id of an option that exists reaches the attribute INSERT; any
+    // other value sends the user back with nothing written.
+    $option = array();
+    $option_id = $_POST['option_id'] ?? '';
+
+    if ($option_id !== '') {
+        if (is_string($option_id) && ctype_digit($option_id)) {
+            $option = db_item(
+                "SELECT id, product_attribute_id
+                FROM product_attribute_options
+                WHERE id = '" . e($option_id) . "'");
+        }
+
+        if (!$option) {
+            $liveform->mark_error('option_id', lang('The selected assortment option could not be found, so no products were duplicated.'));
+            go(PATH . SOFTWARE_DIRECTORY . '/duplicate_products.php');
+        }
+    }
+
     $products = $_POST['products'];
     $new_product_id = '';
     foreach($products as $product){
-        $new_product_id = duplicate_products($product,$_POST['lettertodelete'],$_POST['newletter'],$_POST['option_id']);
+        $new_product_id = duplicate_products($product, $_POST['lettertodelete'] ?? '', $_POST['newletter'] ?? '', $option);
     }
    
     include_once('liveform.class.php');
