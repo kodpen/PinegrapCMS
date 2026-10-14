@@ -175,6 +175,17 @@ function api_console_endpoints_html($try_hint = '') {
 
 			}
 
+			// Which writes can be rehearsed. The OpenAPI document declares
+			// X-Dry-Run on exactly the routes that stop for it; this page said
+			// so only in one sentence at the top, so a reader could not tell
+			// which call takes it and which answers 400 dry_run_unsupported.
+			if (!empty($route['dry_run'])) {
+
+				$tables .= '<p class="doc-desc mb-0 mt-2"><i class="bi bi-shield-check me-1"></i>'
+					. h(lang('Can be rehearsed: with X-Dry-Run: true, or dry_run=true in the query, it makes every check and answers without writing.')) . '</p>';
+
+			}
+
 			$accepts = '';
 
 			if (isset($route['also_accepts'])) {

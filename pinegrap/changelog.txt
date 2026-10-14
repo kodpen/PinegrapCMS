@@ -1624,6 +1624,14 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] API belgesi: her uçta deneme isteği
+         (X-Dry-Run) alıp almadığı yazıyor; OpenAPI
+         belgesinde boş gelebilen alanlar (mesajın
+         dosyası, göndereni, tartışması; sabitleyen,
+         kapatan kişi) ve null ile temizlenen alanlar
+         doğru işaretli; Çalışma Alanı uçlarında hangi
+         oturumun kabul edildiği koda uygun yazıyor.
+
   [YENİ] Çalışma Alanı: yöneticiler bir kanalı API'den
          bir kanal grubuna taşıyabiliyor ya da gruptan
          çıkarabiliyor (panelde kanalı gruba sürüklemek

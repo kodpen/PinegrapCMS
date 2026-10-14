@@ -84,6 +84,66 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — API belgesi: mobil uçların belgesi koda uyduruldu (2026-10-14)
+
+**Neden.** #369–#387 ile gelen Çalışma Alanı mobil uçları (kişinin adıyla
+yazma, düzeltme / silme / gizleme, okundu, `changed_since`, eşitleme, gelen
+kutusu, dosya, bildirim düzeyi, oylama, tartışma, sabitleme, kanal sırası)
+kodla, API belgesiyle (`api_docs.php`, `integration.php/docs`) ve OpenAPI
+çıktısıyla karşılaştırıldı. Uçların hepsi iki belgede de var; dry_run
+bayrağı her uçta işleyicinin duruşuyla eşleşiyor; 304 / 206 / 416 / 409 /
+422 cevapları yazılı. Farklar belgede ve OpenAPI üreticisindeydi.
+
+**Ne değişti.**
+- API belgesi her uçta prova edilip edilemeyeceğini yazıyor
+  (`api_console_endpoints_html()`, rota `dry_run` taşıyorsa): önceden yalnız
+  sayfa başındaki genel cümle vardı, hangi yazmanın `X-Dry-Run` aldığı,
+  hangisinin 400 `dry_run_unsupported` döndüğü okunamıyordu. Hata
+  kataloğunda `dry_run_unsupported` `dry_run` sorgusunu da anıyor.
+- OpenAPI: `'nullable' => true` gövde alanı `nullable: true` taşıyor
+  (yönlendirici ve MCP aracı JSON `null`'ı zaten temizleme diye alıyordu;
+  ör. `PATCH /workspace/polls/{id}` `closes_at: null`); API genelinde her nullable gövde alanı.
+- OpenAPI: boş olabilen iç içe nesneler ayrı nesne oldu ve `?` ile yazıldı
+  (`WorkspaceMessage.sender` / `file` / `thread`, `WorkspaceThread.started_by`
+  / `closed_by`, `WorkspaceSyncPin.pinned_by`, `WorkspaceApproval.record` /
+  `requested_by` / `closed_by`): yeni `WorkspacePerson`,
+  `WorkspaceMessageSender`, `WorkspaceMessageFile`, `WorkspaceMessageThread`,
+  `WorkspaceApprovalRecord`. Üretilen istemci dosyasız mesajda düşüyordu.
+- 403 kuralı: `ws_api_person_only()` isteyen on uç (gelen kutusu okundu,
+  kanal okundu, bildirim düzeyi, kanal sırası, tartışmaya katılma / ayrılma,
+  okundu onayı, oy, oylamayı kapatma, onay kararı) "yalnız POST /auth/login
+  jetonu" diyordu; OAuth bağlantısı da kabul ediliyor, açıklama bunu
+  söylüyor. Tepki, onay isteği, görev notu, görev kartı ve şablonun
+  sabitlenen mesajı OAuth bağlantısıyla uygulama adıyla yazılır; "kendi
+  cihazında oturum açmış kişi" yerine ekip cihazları oturumu yazıldı.
+- Kanal mesajları açıklaması `file` (ad, `kind`, `size`, `url`, `api_url`) ve
+  oylamanın `can_vote` / `can_edit` / `can_close` alanlarını anıyor; dosya
+  yükleme açıklaması aynı `Idempotency-Key` başka dosyayla 409
+  `idempotency_key_reused` alır diyor; eşitlemenin zil sayısı OAuth
+  bağlantısının iznini de anıyor.
+
+Şema değişikliği yok, izin yok, `tr.json`'da 1 yeni metin, JS değişmedi,
+çalışan kod değişmedi (yalnız açıklama, nesne bildirimi ve üretici).
+
+**Bilerek yapılmayan (koda dokunuyor, ayrı iş).** Zamanlanmış mesaj OAuth
+bağlantısıyla kurulabiliyor ama sonra kişinin adıyla gidiyor; mesaj
+düzeltme / silme / gizleme MCP aracı olarak sunuluyor ama her OAuth
+bağlantısını ve uygulama anahtarını 403 ile reddediyor (sabitleme ve
+oylama açma `'mcp' => false`); mesaj yazma, dosya, tepki, okundu onayı, onay
+kararı ve görev notu uçlarında `dry_run` yok; gizleme `touched_at`'i
+ilerletmediği için kişinin öbür cihazı `changed_since` / eşitlemeden
+öğrenmiyor. API genelinde 201 dönen oluşturma uçları OpenAPI'de 200
+yazıyor; Çalışma Alanı'nın öbür nesnelerinde de boş olabilen kişi alanları
+var.
+
+**Doğrulama.** Sandbox'ta `integration.php/openapi.json` ve
+`/docs/endpoints` önce ve sonra üretildi: iki belge de
+`openapi-spec-validator` ile geçerli, eksik `$ref` yok; prova satırı her
+`dry_run` rotasında. `lint`, `check_lang`, `check_api_schema`,
+`build_js --check` temiz.
+
+---
+
 ## 2026.4.10 — Dış API: kanalı bir kanal grubuna taşıma (2026-10-14)
 
 **Neden.** #387 kanalın kişisel tercihlerini (sabitleme, sıra) API'ye

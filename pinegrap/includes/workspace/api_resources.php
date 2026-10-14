@@ -657,21 +657,40 @@ function ws_api_message_schema()
         'channel_id'  => 'integer',
         'kind'        => 'string',
         'sender_kind' => 'string',
-        'sender'      => array('user_id' => 'integer?', 'name' => 'string'),
+        'sender'      => 'WorkspaceMessageSender?',
         'text'        => 'string',
         'body'        => 'string',
         'task_id'     => 'integer?',
-        'file'        => array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string'),
+        'file'        => 'WorkspaceMessageFile?',
         'deleted'     => 'boolean',
         'hidden'      => 'boolean',
         'edited'      => 'boolean',
         'reactions'   => array(array('emoji' => 'string', 'count' => 'integer')),
         'ack'         => array('wanted' => 'boolean', 'count' => 'integer', 'total' => 'integer', 'mine' => 'boolean'),
-        'thread'         => array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean'),
+        'thread'         => 'WorkspaceMessageThread?',
         'from_thread_id' => 'integer?',
         'poll'           => 'WorkspacePoll?',
         'created_at'  => 'string',
     );
+}
+
+// The parts of a message that are null when it has none: written by the
+// workspace itself, carrying no file, with no discussion started from it.
+// An object written inline cannot say it may be null, so each is declared
+// on its own.
+function ws_api_message_sender_schema()
+{
+    return array('user_id' => 'integer?', 'name' => 'string');
+}
+
+function ws_api_message_file_schema()
+{
+    return array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string');
+}
+
+function ws_api_message_thread_schema()
+{
+    return array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean');
 }
 
 /**
@@ -2259,17 +2278,23 @@ function ws_api_approval_schema()
         'title'             => 'string',
         'text'              => 'string',
         'rule'              => 'string',
-        'record'            => array('type' => 'string', 'id' => 'integer'),
+        'record'            => 'WorkspaceApprovalRecord?',
         'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
         'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?', 'link_expires_at' => 'string?')),
         'outcome'           => 'string',
-        'requested_by'      => array('user_id' => 'integer', 'name' => 'string'),
-        'closed_by'         => array('user_id' => 'integer', 'name' => 'string'),
+        'requested_by'      => 'WorkspacePerson?',
+        'closed_by'         => 'WorkspacePerson?',
         'result_message_id' => 'integer?',
         'closes_at'         => 'string?',
         'closed_at'         => 'string?',
         'created_at'        => 'string',
     );
+}
+
+// The record a request is about; null when it is about none.
+function ws_api_approval_record_schema()
+{
+    return array('type' => 'string', 'id' => 'integer');
 }
 
 function ws_api_approval_or_404($viewer, $id)
@@ -3308,6 +3333,13 @@ function ws_api_person_ref($user_id, $people = array())
     }
 
     return array('user_id' => $user_id, 'name' => (string) ($people[$user_id]['name'] ?? ws_person_name($user_id)));
+}
+
+// What ws_api_person_ref() returns when it names somebody. A field that may
+// name nobody is declared 'WorkspacePerson?'.
+function ws_api_person_schema()
+{
+    return array('user_id' => 'integer', 'name' => 'string');
 }
 
 /**
