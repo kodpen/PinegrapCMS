@@ -84,6 +84,94 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Sipariş akışı: bilinmeyen, boş ya da dizi `page_id` siparişi sayfanın ayarları olmadan veriyordu (2026-10-14)
+
+**Neden.** #421'den kalan madde. Hızlı sipariş (`express_order.php`),
+fatura bilgileri (`billing_information.php`) ve sipariş önizleme
+(`order_preview.php` → `submit_order()`) betikleri sayfanın ayarlarını
+formun gönderdiği `page_id` ile okuyor, o kimlikte satır yoksa ayarsız
+devam ediyordu. Kimlik bilinmeyen, boş, eksik, dizi (`page_id[]=`) ya da
+başka türden bir sayfanın kimliği olunca:
+
+- Hızlı sipariş ve sipariş önizleme siparişi veriyor, ama makbuz
+  e-postası gitmiyor, koşullar sayfası onayı, özel alan 1/2 ve özel
+  kargo/ödeme formunun zorunlu alanları sorulmuyor, sayfanın kendi
+  çevrimdışı ödeme izni, otomatik üyelik ve kaydetme kancaları
+  okunmuyor; ziyaretçi makbuz sayfası yerine ana sayfaya gidiyordu.
+- Fatura bilgileri, özel alanları ve özel ödeme formunu sormadan
+  faturayı tamamlanmış sayıyor, ziyaretçiyi formdaki `next_page_id`'ye
+  gönderiyordu.
+
+Kargo adresi adımı (`shipping_address_and_arrival.php`) bunu zaten
+yapmıyordu: sayfa o türden değilse "A shipping address &amp; arrival page
+could not be found for the id that was passed." hatasıyla duruyordu.
+Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** İki yoldan durdurmak seçildi, oturumdaki sayfadan
+ayarları almak değil: kargo adresi adımı zaten böyle duruyor ve
+oturumdaki kimlik (`$_SESSION['ecommerce']['<adım>_page_id']`) yalnız
+ziyaretçinin en son açtığı sayfayı söylüyor, formun geldiği sayfayı
+değil. Silinen ya da türü değişen sayfada o da aynı bilinmeyen kimlik
+olurdu.
+
+- Yeni `pg_order_page_known($page_id, $page_type)`
+  (`includes/fn/ecommerce.php`). Kimlik yalnız rakamdan oluşan sıfırdan
+  büyük bir değerse ve o türden bir sayfayı gösteriyorsa doğrudur. Hızlı
+  siparişte ayrıca görsel editörün hızlı sipariş widget'ının bulunduğu
+  sayfa da sayılır: widget sayfasına bir `express_order_pages` satırı
+  açar ve sayfanın türü `standard` kalır. Dizi, boş değer ve 0 sorgusuz
+  reddedilir.
+- `express_order.php`, `order_preview.php` ve `billing_information.php`
+  CSRF denetiminden sonra, `initialize_order()`'dan önce bu denetimi
+  yapıyor. Kimlik yanlışsa kargo adresi adımının desenini kullanıyorlar:
+  `output_error()` ile "An express order page / An order preview page /
+  A billing information page could not be found for the id that was
+  passed." ve "Geri git" bağlantısı. Yanlış istek sipariş satırı
+  açmıyor, var olanı değiştirmiyor.
+- Ödeme ağ geçidinin dönüşü (`paypal_express_checkout_return`,
+  `iyzipay_threedsecure_return`, `pay_with_iyzico_return`) durdurulmuyor.
+  Dönüş, gönderimde denetlenmiş kimliği adresinde getiriyor; ödeme
+  ağ geçidinde alınmış olabileceği için dönüşü kesmek yerine eski
+  davranış korunuyor.
+- Hızlı sipariş widget'ı (`widgets_cart.php`) sayfasını yalnız
+  `$_GET['page']` adından buluyordu. Sitenin köküne açılan ana sayfada ad
+  yok, bu yüzden form `page_id` 0 gönderiyordu: sipariş ayarsız
+  veriliyordu ve yeni denetim onu durdururdu. Ad bir sayfa bulmazsa
+  artık çizilen sayfanın kimliği (`pg_rendered_page()`, özel form
+  widget'ının kullandığı kaynak) kullanılıyor; widget o sayfaya kendi
+  `express_order_pages` satırını açıyor.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod `origin/development`
+worktree'sinden ikinci portta sunuldu; iki taraf da aynı veritabanı
+dökümünden başladı. Örnek veriyle (aidat ürünü; klasik yol fatura
+bilgileri → sipariş önizleme, hızlı sipariş sayfası) 19 istek denendi:
+
+- Eski kod 10 istekte ayarsız sipariş verdi, makbuz e-postası gitmedi ve
+  ziyaretçi ana sayfaya düştü: hızlı siparişte ve sipariş önizlemede
+  bilinmeyen, boş, dizi, eksik ve başka türden kimlik. Fatura
+  bilgilerindeki 3 istekte (bilinmeyen, dizi, başka tür) faturayı
+  tamamlanmış saydı. Yeni kodda bu 13 isteğin hepsi hata sayfasında
+  durdu, sipariş verilmedi.
+- Bilinmeyen kimlikle 3 ağ geçidi dönüşü iki kodda da aynı sonucu verdi
+  ve yeni kod durdurmadı.
+- Normal hızlı sipariş, hızlı siparişin "Güncelle" düğmesi ve normal
+  klasik sipariş iki kodla tamamlandı. `orders`, `order_items`,
+  `ship_tos`, `contacts`, `form_data` ve `user` satırları bire bir aynı
+  çıktı; fark yalnız rastgele referans kodu ile otomatik üyeliğin
+  rastgele şifresinin özetinde. İki makbuz e-postası da tarih, Message-ID,
+  MIME sınırı ve geçici şifre dışında aynı.
+- Ana sayfaya konan hızlı sipariş widget'ı eskide `page_id` 0, yenide
+  ana sayfanın kimliğini gönderdi. Siparişi iki kod da tamamladı.
+- Hata günlüğüne iki tarafta da kayıt düşmedi.
+
+`tests/order_page_known_test.php` eklendi: reddedilen kimlikler ve üç
+betiğin denetimi `initialize_order()`'dan önce yapması.
+`tools/test.php`, lint, dil, kopya, bağlama, API şeması ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki
+gerçek ödeme adımları ve ödeme ağ geçitleri.
+
+---
+
 ## 2026.4.10 — Geri Dönüşüm Kutusundaki ürün grubu grup seçicilerinde çıkmıyor, kutudaki grubun ekranı kaydetmiyor (2026-10-14)
 
 **Neden.** #423'ün "Bilerek yapılmayan" maddesindeki iki grup ucu.

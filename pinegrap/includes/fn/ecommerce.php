@@ -599,6 +599,47 @@ function get_page_name($page_id)
     return db("SELECT page_name FROM page WHERE page_id = '" . e($page_id) . "'");
 }
 
+/**
+ * Whether $page_id names a page that a checkout step of $page_type ('express
+ * order', 'order preview', 'billing information') is posted from: a page of
+ * that type or, for an express order, a page that carries the designer's
+ * express order widget (the widget gives its page an express_order_pages row).
+ * The step reads that page's settings by this id: required custom fields and
+ * forms, terms, the order receipt e-mail and the next page. For any other id
+ * it would carry on without them. Only a string of digits can name a page, so
+ * an array, an empty value or 0 is turned away before any query runs.
+ *
+ * @param mixed  $page_id
+ * @param string $page_type
+ * @return bool
+ */
+function pg_order_page_known($page_id, $page_type)
+{
+    if (is_int($page_id)) {
+        $page_id = (string) $page_id;
+    }
+
+    if (!is_string($page_id) || !ctype_digit($page_id) || ((int) $page_id <= 0)) {
+        return false;
+    }
+
+    if ($page_type === 'express order') {
+        return (bool) db(
+            "SELECT page.page_id
+            FROM page
+            LEFT JOIN express_order_pages ON express_order_pages.page_id = page.page_id
+            WHERE
+                (page.page_id = '" . e($page_id) . "')
+                AND ((page.page_type = 'express order') OR (express_order_pages.page_id IS NOT NULL))
+            LIMIT 1");
+    }
+
+    return (bool) db(
+        "SELECT page_id FROM page
+        WHERE (page_id = '" . e($page_id) . "') AND (page_type = '" . e($page_type) . "')
+        LIMIT 1");
+}
+
 
 // Marks a card number that was encrypted with the OpenSSL implementation below.
 // Values without this prefix are legacy mcrypt (Rijndael-256) blobs, which can

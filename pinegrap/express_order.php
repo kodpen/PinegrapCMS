@@ -52,6 +52,17 @@ if (!$is_gateway_return) {
 }
 
 require_cookies();
+
+// The form names the express order page it was posted from, and the order is
+// checked and placed with that page's settings (custom forms and fields,
+// terms, receipt e-mail, next page). An id that names no such page (unknown,
+// empty or posted as an array) stops here, as on the shipping address and
+// arrival step, instead of placing the order without them. A gateway callback
+// brings back the id its submit was checked with.
+if (!$is_gateway_return && !pg_order_page_known($_POST['page_id'] ?? '', 'express order')) {
+    output_error(lang('An express order page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 initialize_order();
 
 $liveform = new liveform('express_order');

@@ -525,6 +525,19 @@
          gönderimde hata günlüğüne uyarı yazıyordu; artık
          yazmıyor.
 
+  [DÜZELTME] Hızlı sipariş, fatura bilgileri ve sipariş
+         önizleme adımları, bilinmeyen, boş ya da birden
+         çok değerli bir sayfa kimliğiyle (page_id)
+         gönderilince sayfanın ayarları olmadan devam
+         ediyordu: sipariş makbuz e-postası gitmeden,
+         koşullar onayı ve zorunlu özel alanlar
+         sorulmadan veriliyor, ziyaretçi ana sayfaya
+         dönüyordu. Artık kargo adresi adımındaki gibi
+         "sayfa bulunamadı" hatası ve geri dönüş
+         bağlantısı çıkıyor. Ana sayfaya konan hızlı
+         sipariş widget'ı da kendi sayfasının ayarlarıyla
+         çalışıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
