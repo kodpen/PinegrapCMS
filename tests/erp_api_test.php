@@ -8,7 +8,8 @@
  * on invoices, quotes, delivery notes, stock, transfers and cheques can be
  * rehearsed with X-Dry-Run, money moves only with the cash scope, the
  * helpers that read a typed document's lines (includes/erp/api_documents.php,
- * api_stock.php), and the cash forecast's shape (api_reports.php).
+ * api_stock.php), the cash forecast's shape (api_reports.php), and whose
+ * name a collection's bell row carries (includes/erp/alerts.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,6 +26,7 @@ if (!defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/alerts.php');
 
 function test_erp_api_routes_reach_a_handler()
 {
@@ -239,4 +241,38 @@ function test_erp_api_cash_forecast_present()
 	pg_assert_same(3, $out['items_count'], 'the count says how many there are');
 	pg_assert_same(array('invoice', 7, 3, 'overdue'), array($out['items'][0]['source'], $out['items'][0]['source_id'], $out['items'][0]['account_id'], $out['items'][0]['column']), 'the first item names its record');
 	pg_assert_same(array(1, 2), array($out['unpriced'], $out['cheque_tills']), 'what was left out');
+}
+
+// A collection's bell row names who recorded it, and is read already for
+// them: the person signed in on the panel, or, for a call through the API
+// (which loads no panel user), the application's owner - the person on the
+// device or behind the OAuth connection, the owner of an application key.
+function test_erp_alert_actor()
+{
+	$app = array('id' => 3, 'name' => 'Muhasebe', 'owner' => array('id' => 7, 'username' => 'mehmet'));
+
+	pg_assert_same(array('id' => 4, 'username' => 'ayse'), erp_alert_actor('4', 'ayse', null), 'the panel: the person signed in');
+	pg_assert_same(array('id' => 7, 'username' => 'mehmet'), erp_alert_actor('', '', $app), 'the API: the application\'s owner');
+	pg_assert_same(array('id' => 7, 'username' => 'mehmet'), erp_alert_actor(0, '', $app), 'no panel user at all');
+	pg_assert_same(array('id' => 4, 'username' => 'ayse'), erp_alert_actor(4, 'ayse', $app), 'a panel user stands');
+	pg_assert_same(array('id' => 0, 'username' => ''), erp_alert_actor('', '', array('id' => 3)), 'a call refused before its owner was loaded');
+	pg_assert_same(array('id' => 0, 'username' => ''), erp_alert_actor('', '', null), 'a scheduled job');
+}
+
+// The collection notice takes both its name and its reader from
+// erp_alert_actor(), not from the panel's constants, which are empty on a
+// call through the API or the MCP server.
+function test_erp_alert_rows_carry_the_actor()
+{
+	$parts = preg_split('/^function\s+(\w+)\s*\(/m', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/alerts.php'), -1, PREG_SPLIT_DELIM_CAPTURE);
+	$bodies = array();
+
+	for ($i = 1; $i < count($parts); $i += 2) {
+		$bodies[$parts[$i]] = $parts[$i + 1];
+	}
+
+	foreach (array('erp_alert_create', 'erp_alert_event') as $function) {
+		pg_assert_contains('erp_alert_current_actor()', $bodies[$function] ?? '', $function . '() asks erp_alert_current_actor()');
+		pg_assert_false(strpos($bodies[$function] ?? '', 'USER_ID') !== false || strpos($bodies[$function] ?? '', 'USER_USERNAME') !== false, $function . '() does not read the panel\'s constants itself');
+	}
 }

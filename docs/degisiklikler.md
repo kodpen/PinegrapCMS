@@ -84,6 +84,58 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kaydedilen ERP tahsilatının zil satırı "system" diyordu ve kaydedenin zilinde okunmamış duruyordu (2026-10-14)
+
+**Neden.** #411'in bıraktığı parça. ERP Ayarları'nda tahsilat bildirimi
+açıkken her tahsilat zile bir "Tahsilat alındı" satırı yazıyor
+(`erp_alert_event()` → `erp_alert_create()`, `includes/erp/alerts.php`).
+Satır, kaydı yapanın adını `USER_USERNAME`'den, kendi zilinde okunmuş
+sayılacak kişiyi `USER_ID`'den alıyordu. API ve MCP sunucusu panel
+kullanıcısı yüklemediği için ikisi de boş: API'den kaydedilen tahsilatın
+satırında ad yerine `system` yazıyordu ve tahsilatı kaydeden kişi kendi
+işini zilinde okunmamış bildirim (cihazına da bildirim) olarak alıyordu.
+Panelde aynı kişi tahsilatı kaydedince satır onun adını taşıyor ve onun
+zilinde okunmuş sayılıyordu.
+
+**Ne değişti.**
+- Yeni `erp_alert_actor()` / `erp_alert_current_actor()`: panelde oturum
+  açan kişi; panel kullanıcısı yoksa API'yi çağıran uygulamanın sahibi
+  (ekip cihazları oturumu ve OAuth'ta oturum açan kişi, uygulama
+  anahtarında uygulamanın sahibi; #411'in `ws_bell_user()`'ıyla aynı
+  kural). Zamanlanmış işte ikisi de yok, satır eskisi gibi `system`.
+- `erp_alert_event()` satırın adını, `erp_alert_create()` okundu satırının
+  kişisini buradan alıyor. Tek yerde olduğu için tahsilata varan bütün
+  API ve MCP yolları (`POST /erp/receipts`, `erp_receipts_create` ve
+  tahsilat kaydeden öbür uçlar) kapsanıyor.
+- Öbür kişilerin zilindeki satırın metni, sayısı ve cihaz bildirimi aynı.
+  Panelden kaydedilen tahsilat değişmedi. Eski satırlar geriye dönük
+  düzeltilmedi.
+- Test (`tests/erp_api_test.php`): `test_erp_alert_actor` kişinin nereden
+  geldiğini, `test_erp_alert_rows_carry_the_actor` `erp_alert_create()` ve
+  `erp_alert_event()`'in kişiyi panel sabitlerinden değil
+  `erp_alert_current_actor()`'dan aldığını denetliyor (düzeltme öncesi
+  kodda ikisi de kırmızı).
+
+Şema değişikliği yok, izin yok, API belgesi, `tr.json` ve JS değişmedi.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** ERP ve tahsilat bildirimi
+açık, iki yönetici (`admin`, `ayse`). Düzeltme öncesi: `ayse`'nin
+uygulama anahtarıyla ve `admin`'in ekip cihazları oturumuyla
+`POST /erp/receipts` iki satırı da `system` adıyla, okundu satırı olmadan
+yazdı. Düzeltme sonrası: anahtarla `ayse`, cihazla `admin`, MCP'de
+(`erp_receipts_create`, anahtarla) `ayse` adıyla; her satır yalnız
+kaydedenin zilinde okunmuş, öbür yöneticide okunmamış. Panelden
+(`add_erp_receipt.php`, `admin`) kaydedilen tahsilat cihazla aynı
+sonucu verdi. OAuth bağlantısıyla denenmedi (cihazla aynı doğrulama
+yolundan geçiyor).
+
+**Bilerek yapılmayan.** Öbür ERP zil satırları (düşük stok, süresi dolan
+teklif, vadesi geçen alacak) yalnız zamanlanmış işlerden yazılıyor,
+API'den tetiklenmiyor; `system` doğru. Ödeme (para çıkışı) zile satır
+yazmıyor.
+
+---
+
 ## 2026.4.10 — API belgesi: 200 dönen yazmalarda prova cevabı, kişi dışı boş gelebilen alanlar (2026-10-14)
 
 **Neden.** #401'in bıraktığı üç iş. (1) Provası olan ve gerçekte 200 dönen
