@@ -365,6 +365,14 @@
          yeni ziyaretçi hata günlüğüne uyarı yazıyordu;
          artık yazmıyor.
 
+  [DÜZELTME] Form listesi (blog listesi gibi) sayfası
+         adresinde ?id= ya da ?recurrence_number= ile
+         açılınca kanonik adres bu değeri taşıyor, sayfa
+         numarasını (?page_number=2) düşürüyordu; artık
+         yalnız sayfa numarası yazılıyor. Sayfa numarası
+         birden çok kez geçen (?page_number[]=…) adres
+         hata sayfası veriyordu; artık liste açılıyor.
+
   SİTE SAYFALARI
   --------------------------------------------------------
 

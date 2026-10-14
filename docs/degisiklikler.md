@@ -84,6 +84,41 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Form listesi sayfasının kanonik adresi `?id=` taşıyordu (2026-10-14)
+
+**Neden.** `get_page_content.php`'de kanonik adresin sorgu kısmını kuran
+`switch`'te `form list view` dalı `break`'siz bitiyor, `calendar event
+view` dalına düşüyordu. Form listesi `id` ve `recurrence_number`
+okumaz (sayfalamayı `<sayfa kimliği>_page_number` ya da `page_number` ile
+yapar); düşme bilinçli bir paylaşım değildi. Sonuç: blog listesi gibi bir
+form listesi sayfası `?id=5` ya da `?recurrence_number=2` ile açılınca
+kanonik adres ve `og:url` bu değeri taşıyordu, `?page_number=2&id=5`'te
+sayfa numarası da düşüp `?id=5` kalıyordu (arama motoru ikinci sayfayı
+başka bir adrese bağlıyordu). Aynı dalda `?page_number[]=2` `trim()`'e dizi
+verip 500 dönüyordu; listenin kendisi (`get_form_list_view.php`) değeri
+tam sayıya çevirdiği için hata yalnız buradaydı. İkisi de 2026.4.9'da var.
+
+**Ne değişti.** Dala `break` eklendi; sayfa numarası yalnız metinse
+okunuyor (dizi gelirse kanonik adres sayfa numarasız, liste ilk
+sayfayı zaten öyle açıyordu). Takvim etkinliği dalı ve öbür dallar
+değişmedi; aynı `switch`'te başka eksik `break` yok. Şema, dil dosyası ve
+JS değişikliği yok.
+
+**Doğrulandı.** `switch` bloğu eski (`origin/development`) ve yeni dosyadan
+çıkarılıp altı sayfa türü × on dört adres parametresi bileşimiyle koşuldu:
+84 durumun 76'sı aynı; farklı olan 8'in hepsi form listesinde `id` ya da
+`recurrence_number` içeren adresler (yeni kod onları yazmıyor, sayfa
+numarasını koruyor). Takvim etkinliği, form kaydı, fotoğraf galerisi ve
+arama sonuçlarında çıktı aynı. `php -l`, `tools/lint.php`, `tools/test.php`
+ve `build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek
+sayfalar.
+
+**Bilerek yapılmayan.** Aynı `switch`'te arama sonuçları `?query[]=x` ile
+500 veriyor, ama `get_search_results.php` de aynı değeri `trim()`'liyor;
+ikisi birlikte ayrı iş. Fotoğraf galerisi dalı `folder_id`'yi
+`urlencode()`'suz ve dizi denetimsiz yazıyor (`?folder_id[]=x` →
+"Array" ve uyarı).
+
 ## 2026.4.10 — Dış API: gelen kutusunun değişenlerinde artık görülemeyen satırlar ve baştan okuma işareti (2026-10-14)
 
 **Neden.** #383'ün bilerek bıraktığı iki kenar durumu. (1) Kişinin artık
@@ -246,7 +281,8 @@ başka dosyalarda da uyarı buldu: `get_affiliate_sign_up_form_screen_content.ph
 `get_email_preferences.php` 47, `get_custom_form_screen_content.php` 47,
 `includes/fn/auth.php` 3233 (oturumsuz `user-logout`). `get_page_content.php`
 790–840'ta `form list view` dalı `break`'siz `calendar event view`'a
-düşüyor (form listesinin kanonik adresine `?id=` eklenebiliyor); ayrı iş.
+düşüyor (form listesinin kanonik adresine `?id=` eklenebiliyor); ayrı iş,
+yukarıdaki bölümde giderildi.
 
 **Doğrulandı (sandbox, MariaDB, PHP 8.3).** 181 sayfa oturumsuz ve
 yönetici oturumuyla açıldı: eski kodda bu altı dosyadan 33 farklı satırda

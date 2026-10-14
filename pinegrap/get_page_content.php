@@ -808,14 +808,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             case 'form list view':
 
                 // If there is a specific page number for this page, then use it.
-                if (isset($_GET[$page_id . '_page_number']) && $_GET[$page_id . '_page_number'] != '' and $_GET[$page_id . '_page_number'] > 1) {
+                if (isset($_GET[$page_id . '_page_number']) && is_string($_GET[$page_id . '_page_number']) && $_GET[$page_id . '_page_number'] != '' and $_GET[$page_id . '_page_number'] > 1) {
                     $query_string = '?' . $page_id . '_page_number=' . urlencode(trim($_GET[$page_id . '_page_number']));
-                    
+
                 // Otherwise if there is a general page number, then use it.
-                } else if (isset($_GET['page_number']) && $_GET['page_number'] != '' and $_GET['page_number'] > 1) {
+                } else if (isset($_GET['page_number']) && is_string($_GET['page_number']) && $_GET['page_number'] != '' and $_GET['page_number'] > 1) {
                     $query_string = '?page_number=' . urlencode(trim($_GET['page_number']));
                 }
-                
+
+                break;
+
             case 'calendar event view':
 
                 // if there is an id in the query string, then add it to the query string
