@@ -511,6 +511,20 @@
          açılınca RSS bağlantısını göstermiyordu; artık
          terimsiz sayfadaki gibi gösteriyor.
 
+  [DÜZELTME] Hızlı sipariş, kargo adresi, fatura
+         bilgileri ve sipariş önizleme sayfaları, bir
+         alanı birden çok değerle (alan[]=…) gönderen bir
+         istekte ödemenin ortasında hata sayfası
+         veriyordu; artık o alan boş gönderilmiş
+         sayılıyor: zorunluysa sayfa "gerekli" uyarısıyla
+         geri geliyor. Özel kargo ve ödeme formlarının
+         tarih, saat ve e-posta alanları da böyle; onay
+         kutusu ve çoklu seçim alanları eskisi gibi
+         birden çok değer alıyor. Özel ödeme formu açık
+         fatura bilgileri ve hızlı sipariş sayfaları her
+         gönderimde hata günlüğüne uyarı yazıyordu; artık
+         yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
