@@ -3154,6 +3154,17 @@
          dosyayı boşaltıp hata sayfası veriyordu; artık
          dosyaya dokunmuyor.
 
+  [DÜZELTME] Tasarım Dosyasını Düzenle ekranı, adres elle
+         değiştirilince Dosya Yöneticisi'ndeki bir dosyayı
+         da açıp yeniden adlandırabiliyor ya da
+         silebiliyordu; artık yalnız tasarım dosyalarını
+         açıyor, başkasında "Kayıt bulunamadı" gösteriyor.
+         Diskte bulunmayan bir dosya düzenleyicide boş ve
+         "Dosya burada kayıtlı ama diskte yok." notuyla
+         açılıyor, Kaydet onu yeniden yazıyor. Türkçe
+         varsayılan şablonda "noise" temasının dosyası
+         yanlış adla geliyordu; yeni kurulumlarda düzeldi.
+
   [DÜZELTME] Aynı "Passing null" satırı kampanya
          profillerinin CSV dışa aktarmasında, yönetici
          oturumuyla açılan yorumlu form kayıt sayfalarında

@@ -43,8 +43,16 @@ if (
 
 // if there has not been a post then continue to output the page
 if (!$_POST) {
-    // get the file contents from the script file
-    $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
+    // A file recorded here but missing from the disk opens empty with a
+    // note instead of a PHP warning; Save writes it again.
+    $output_file_missing = '';
+
+    if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+        $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
+    } else {
+        $code = '';
+        $output_file_missing = '<div class="alert alert-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+    }
     
     // output the page
     print
@@ -60,7 +68,7 @@ if (!$_POST) {
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
-                ' . $liveform->output_notices() . '
+                ' . $liveform->output_notices() . $output_file_missing . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
 <h2 class="d-inline-block text-break" data-bs-content="' . lang('You are editing this JS file.') . '" title="' . lang('Edit JS') . '">[' . h($file_name) . ']</h2>
@@ -192,7 +200,9 @@ if (!$_POST) {
         // point anywhere on the file system.
 
         // delete the existing file. we have to do this in order to avoid permission errors in certain cirumstances
-        unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+            unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        }
         
         // update the content in the file
         $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');

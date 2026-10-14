@@ -84,6 +84,40 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Tasarım dosyası ekranı yalnız tasarım dosyasını açıyor; diskte olmayan dosya düzenleyicide uyarısız (2026-10-14)
+
+**Neden.** #449'un kalanları. Tasarım Dosyasını Düzenle (`edit_design_file.php`)
+kimlik kapısı satırın varlığını soruyordu, tasarım dosyası olup olmadığını
+sormuyordu: Dosya Yöneticisi'ndeki bir dosya elle yazılan adresle açılıp
+yeniden adlandırılabiliyor ya da silinebiliyordu. Kaydetme yolu kaydı
+gönderilen `id` ile ikinci kez okuyordu. Kayıtlı ama diskte bulunmayan bir
+dosya açılınca CSS, JavaScript ve metin düzenleyicileri `file_get_contents()`,
+Kaydet `unlink()`, Tasarım Dosyasını Düzenle Kaydet `rename()` uyarısı
+yazıyordu. Türkçe varsayılan şablonda `files` satırı `theme__noise.css`,
+şablondaki dosya `theme_ noise.css` (boşluklu) idi: Türkçe kurulumda "noise"
+temasının diskte dosyası yoktu (2026.4.9'da da).
+
+**Ne değişti.** `edit_design_file.php` kapısı satırı `design = '1'` ile
+okuyor ve saklı adın düz dosya adı olduğunu (`basename()` ile aynı, `..` yok)
+denetliyor; değilse GET ve POST'ta "Kayıt bulunamadı." 404 (#449'un kalıbı,
+tür sınırı yok: ekran her tasarım dosyasını açar). Sil ve yeniden adlandır
+kapının okuduğu kimlik ve saklı adla çalışıyor; dosya yalnız adı değiştiyse
+ve diskteyse yeniden adlandırılıyor. Üç düzenleyici diskte olmayan dosyayı
+boş içerikle ve Dosya Yöneticisi'nin mevcut "Dosya burada kayıtlı ama diskte
+yok." notuyla açıyor (normal açılışta HTML aynı); Kaydet eski dosyayı yalnız
+varsa siliyor, dosyayı yeniden yazıyor. Şablon dosyası `theme__noise.css`
+olarak yeniden adlandırıldı (veritabanı satırının adı; yeni kurulumlar).
+Şema adımı, yeni dil anahtarı, JS yok. Test: `tests/panel_id_gate_test.php`
+`test_panel_id_gate_file_editors_check_name_and_type` genişletildi.
+
+**Bilerek yapılmayan.** Mevcut Türkçe kurulumlarda `data/files/theme_ noise.css`
+elle `theme__noise.css` yapılmalı (şema adımı eklenmedi). Şablon satırındaki
+boyut (134322) dosyanın gerçek boyutundan (127718) farklı; yalnız gösterim.
+Doğrulama statik (`tools/test.php`, `lint`, `check_lang`, `build_js --check`);
+sandbox'ta koşturulmadı.
+
+---
+
 ## 2026.4.10 — Sipariş ekranları ziyaret kaydı olmadan uyarı yazmıyor; ortaklık kodlu sipariş 500 vermiyor (2026-10-14)
 
 **Neden.** #444'ün kalanı. Ziyaret kaydı (`$_SESSION['software']['visitor_id']`)
