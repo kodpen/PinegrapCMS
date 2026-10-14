@@ -211,6 +211,9 @@ function ws_channel_detail($viewer, $channel)
 
     $brief['tab_counts'] = ws_channel_tab_counts($channel);
 
+    // The newest status update, shown beside the name (status.php).
+    $brief['status'] = function_exists('ws_status_channel_state') ? ws_status_channel_state($channel) : null;
+
     // A discussion (threads.php): what it is about, and no pin of its own.
     if (ws_channel_is_thread($channel)) {
         $thread = ws_thread($channel['id']);

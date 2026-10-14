@@ -1272,6 +1272,38 @@
          görür; kanaldaki öbürleri yalnız bir taslağın
          beklediğini görür.
 
+  [YENİ] Kanal için durum güncellemesi: yazma kutusunun
+         + menüsündeki "Durum güncellemesi" işin Yolunda,
+         Riskte ya da Gecikti olduğunu birkaç satırla
+         kanala yazıyor. Form kanalın rakamlarını
+         gösteriyor (açık, geciken ve bu hafta biten
+         görevler, bir haftadır dokunulmamış görevler, bu
+         haftanın kararları, bekleyen onaylar), bunlara
+         bakarak bir durum öneriyor ve metni taslak olarak
+         dolduruyor. Pinegrap AI'ın sorulabildiği kanalda
+         "Pinegrap AI ile taslak yaz" görevlerden,
+         kararlardan ve son check-in yanıtlarından daha
+         dolu bir taslak yazıyor. Son durum kanal adının
+         yanında renkli bir etiket olarak görünüyor;
+         tıklayınca güncellemeye gidiyor.
+
+  [YENİ] Check-in: + menüsündeki "Check-in sor" kanala
+         bir soru yazıyor ("Bu hafta neyi bitirdin, sırada
+         ne var, seni engelleyen bir şey var mı?").
+         Herkes mesajın altındaki kartta yanıtlıyor ve
+         yanıtını sonra değiştirebiliyor; kart yanıtları
+         ve henüz yanıtlamayanları gösteriyor. Programlanmış
+         işlemde yeni "Bir kanalda check-in sor" adımı,
+         haftalık tekrarla her hafta aynı soruyu soruyor.
+
+  [YENİ] "İnsanlara görevlerini e-postala" adımında yeni
+         süzgeç: bir haftadır ya da daha uzun süredir
+         dokunulmamış görevler. Eskiyen işlerin
+         hatırlatması bununla programlanıyor.
+
+  [ŞEMA] Durum güncellemeleri, check-in'ler ve yanıtları
+         için üç yeni tablo oluşturulur.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 

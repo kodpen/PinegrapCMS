@@ -210,6 +210,7 @@ function ws_scheduled_draft_lists($viewer, $channel_id)
         'chains'     => $chains,
         'join'       => ws_scheduled_join_ready(),
         'approvals'  => function_exists('ws_approvals_ready') && ws_approvals_ready(),
+        'checkins'   => function_exists('ws_status_ready') && ws_status_ready(),
         'channels'   => $channels,
         'people'     => $people,
         'events'     => $events,
@@ -272,7 +273,7 @@ function ws_scheduled_draft_messages($text, $lists, $language)
     if ($chains) {
         $actions[] = '{"type":"notify","user_ids":[P],"text":"..."}: a notification to people of the team.';
         $actions[] = '{"type":"task","title":"...","description":"...","priority":"' . implode('|', $lists['priorities']) . '","assignees":[P],"channel_id":C or 0,"due_in":days or ""}: opens a task.';
-        $actions[] = '{"type":"task_digest","mode":"mine|channel","channel_id":C or 0,"user_ids":[P],"only":"' . implode('|', $lists['digest']) . '","subject":"...","intro":"..."}: e-mails people their tasks. mine: each person the tasks they are on (of one channel, or of all with 0); channel: the tasks of one channel to its members. user_ids [] is everybody concerned. only: open all open tasks, week due within a week and overdue, overdue overdue only.';
+        $actions[] = '{"type":"task_digest","mode":"mine|channel","channel_id":C or 0,"user_ids":[P],"only":"' . implode('|', $lists['digest']) . '","subject":"...","intro":"..."}: e-mails people their tasks. mine: each person the tasks they are on (of one channel, or of all with 0); channel: the tasks of one channel to its members. user_ids [] is everybody concerned. only: open all open tasks, week due within a week and overdue, overdue overdue only, stale open tasks nobody changed for a week or more.';
 
         if (!empty($lists['metrics'])) {
             $actions[] = '{"type":"report","title":"...","metrics":[M],"channel_id":C or 0,"to":["address"]}: the counts, written in a channel and / or e-mailed.';
@@ -284,6 +285,10 @@ function ws_scheduled_draft_messages($text, $lists, $language)
 
     if (!empty($lists['approvals'])) {
         $actions[] = '{"type":"approval","channel_id":C,"title":"...","text":"...","approvers":[P],"rule":"any|all"}: asks people of a channel to approve something.';
+    }
+
+    if (!empty($lists['checkins'])) {
+        $actions[] = '{"type":"checkin","channel_id":C,"question":"..."}: a check-in, one question the people of a channel each answer on its card (such as what they finished this week and what is in their way).';
     }
 
     $days = array();
@@ -770,6 +775,19 @@ function ws_scheduled_draft_action($action, $lists, $joined = false)
                 'text'       => ws_scheduled_draft_text($action['text'] ?? '', 4000),
                 'approvers'  => ws_scheduled_draft_people($action['approvers'] ?? array(), $lists),
                 'rule'       => ((string) ($action['rule'] ?? 'any') === 'all') ? 'all' : 'any',
+            );
+
+        case 'checkin':
+            if (empty($lists['checkins'])) {
+                return null;
+            }
+
+            $channel = ws_scheduled_draft_channel($action['channel_id'] ?? 0, $lists, $here);
+
+            return array(
+                'type'       => 'checkin',
+                'channel_id' => ($channel !== 0) ? $channel : null,
+                'question'   => ws_scheduled_draft_line($action['question'] ?? '', 255),
             );
     }
 
