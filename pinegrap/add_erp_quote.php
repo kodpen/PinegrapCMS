@@ -41,7 +41,9 @@ if (!$_POST) {
     erp_invoice_form_prefill($liveform, null, 'sales');
 
     $card_options = array('quote' => true, 'valid_days' => ERP_QUOTE_VALID_DAYS);
-    $copy_id = max(0, (int) ($_GET['copy'] ?? 0));
+    // The document to copy and the account card the screen was opened from
+    // are one value each: an array (?copy[]=x) cast to 1 and took the first.
+    $copy_id = max(0, is_scalar($_GET['copy'] ?? null) ? (int) $_GET['copy'] : 0);
 
     if ($copy_id > 0) {
         $source = erp_quote($copy_id);
@@ -63,8 +65,9 @@ if (!$_POST) {
     }
 
     // A quote started from an account's card opens on that account.
-    if (((int) ($_GET['account_id'] ?? 0) > 0) && !$liveform->field_in_session('account_id')) {
-        $liveform->assign_field_value('account_id', (string) (int) $_GET['account_id']);
+    $card_account_id = is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0;
+    if (($card_account_id > 0) && !$liveform->field_in_session('account_id')) {
+        $liveform->assign_field_value('account_id', (string) $card_account_id);
     }
 
     if (!erp_quotes_ready()) {

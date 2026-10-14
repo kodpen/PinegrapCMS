@@ -32,7 +32,9 @@ $liveform = new liveform('erp_account_sync_item');
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_sync.php';
 $provider = erp_edoc_accounts_provider();
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
-$account_id = (int) ($_REQUEST['account_id'] ?? 0);
+// One value only: an array (?account_id[]=x) cast to 1 and opened the
+// first account.
+$account_id = is_scalar($_REQUEST['account_id'] ?? null) ? (int) $_REQUEST['account_id'] : 0;
 
 // The search term is one value; one sent as an array (?q[]=x) counts as not
 // given: it wrote "Array to string conversion" into the log.

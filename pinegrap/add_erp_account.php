@@ -47,8 +47,10 @@ if (!$_POST) {
         // Opened from a contact's screen: the form comes filled in from the
         // card, the way the order bridge would fill it, for the operator to
         // check before it is saved. A contact that already has an account is
-        // sent to that account instead of getting a second one.
-        $from_contact = (int) ($_GET['contact_id'] ?? 0);
+        // sent to that account instead of getting a second one. One value
+        // only: an array (?contact_id[]=x) cast to 1 and filled in the first
+        // contact.
+        $from_contact = is_scalar($_GET['contact_id'] ?? null) ? (int) $_GET['contact_id'] : 0;
 
         if ($from_contact > 0) {
             $existing_id = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $from_contact . "' ORDER BY id ASC LIMIT 1");

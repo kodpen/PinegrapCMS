@@ -25,7 +25,9 @@ $statuses = erp_quote_statuses();
 $state = is_string($_GET['state'] ?? null) ? $_GET['state'] : '';
 $state = isset($statuses[$state]) ? $state : '';
 $search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
-$account_id = max(0, (int) ($_GET['account_id'] ?? 0));
+// One value only: an array (?account_id[]=x) cast to 1 and narrowed the
+// list to the first account.
+$account_id = max(0, is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0);
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if (!erp_quotes_ready()) {

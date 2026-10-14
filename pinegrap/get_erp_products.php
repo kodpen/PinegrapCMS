@@ -33,8 +33,9 @@ header('Cache-Control: private, no-store');
 $flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE;
 
 // The account the document is for: a product without a rate of its own is
-// offered at the tax zone of that account's address.
-$account_id = max(0, (int) ($_GET['account_id'] ?? 0));
+// offered at the tax zone of that account's address. One value only: an
+// array (?account_id[]=x) cast to 1 and priced for the first account.
+$account_id = max(0, is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0);
 
 if (isset($_GET['zone_rate'])) {
     echo json_encode(array('rate' => ($account_id > 0) ? erp_account_zone_rate($account_id) : erp_default_tax_rate()), $flags);

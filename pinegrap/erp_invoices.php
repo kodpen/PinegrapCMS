@@ -164,7 +164,7 @@ $filter_names = array(
 $filter = is_string($_GET['filter'] ?? null) ? $_GET['filter'] : '';
 $filter_direction = is_string($_GET['direction'] ?? null) ? $_GET['direction'] : '';
 $filter_direction = (($filter_direction === 'sales') || ($filter_direction === 'purchase')) ? $filter_direction : '';
-$filter_account_id = (int) ($_GET['account_id'] ?? 0);
+$filter_account_id = is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0;
 $filter_bucket = is_string($_GET['bucket'] ?? null) ? $_GET['bucket'] : '';
 $filter_bucket = erp_aging_bucket_valid($filter_bucket) ? $filter_bucket : '';
 $filter_as_of = erp_aging_as_of($_GET['as_of'] ?? '');

@@ -29,7 +29,7 @@ if (pg_list_edit_requested()) {
             && !(((int) $user['role'] >= 3) && !empty($user['manage_erp_readonly']));
     });
 
-    $saved = erp_account_price_quick_save((int) ($_GET['account_id'] ?? 0), $edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+    $saved = erp_account_price_quick_save((is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0), $edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }
@@ -43,7 +43,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_account_prices');
 
-$account_id = (int) ($_REQUEST['account_id'] ?? 0);
+// One value only: an array (?account_id[]=x) cast to 1 and opened the
+// first account.
+$account_id = is_scalar($_REQUEST['account_id'] ?? null) ? (int) $_REQUEST['account_id'] : 0;
 $account = erp_account($account_id);
 
 if (!is_array($account)) {

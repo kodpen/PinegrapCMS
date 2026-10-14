@@ -26,7 +26,9 @@ $liveform = new liveform('add_erp_return');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 
-$invoice_id = (int) ($_REQUEST['invoice_id'] ?? 0);
+// One value only: an array (?invoice_id[]=x) cast to 1 and opened the
+// first invoice.
+$invoice_id = is_scalar($_REQUEST['invoice_id'] ?? null) ? (int) $_REQUEST['invoice_id'] : 0;
 
 $invoice = ($invoice_id > 0)
     ? db_item("SELECT i.*, a.title AS account_title
@@ -45,6 +47,9 @@ $invoice_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
+    // The order the screen was opened from, carried to the form: one value
+    // only, an array (?back_order[]=x) cast to 1.
+    $back_order_id = is_scalar($_GET['back_order'] ?? null) ? (int) $_GET['back_order'] : 0;
     $lines = erp_returnable_lines($invoice_id);
 
     $anything_left = false;
@@ -129,7 +134,7 @@ if (!$_POST) {
 
             <form name="form" action="add_erp_return.php" method="post">
                 ' . get_token_field() . '
-                ' . (((int) ($_GET['back_order'] ?? 0) > 0) ? '<input type="hidden" name="back_order" value="' . (int) $_GET['back_order'] . '" />' : '') . '
+                ' . (($back_order_id > 0) ? '<input type="hidden" name="back_order" value="' . $back_order_id . '" />' : '') . '
                 <input type="hidden" name="invoice_id" value="' . $invoice_id . '" />
 
                 <div class="card my-4">
