@@ -34,7 +34,6 @@ Open the index of the folder the task needs, then only the files you need.
 
 ## Other documents (docs/)
 
-- LANG_USAGE.md: lang() syntax: plain strings, {var:N} variables, plurals and usage examples
 - _erp_yol_haritasi_adaylari.md: ERP roadmap candidates after phases -1 to 5: legislation, competitor features, building blocks (research, not decisions)
 - _get_file_kopyalar.md: Function copies inside get_file.php: which have an original, how they diverged, which stay as copies (check_copies.php)
 - _innodb_envanter.md: InnoDB inventory (2026.4.8, steps 8.10-8.14): table list and groups behind pg_innodb_table_groups()
