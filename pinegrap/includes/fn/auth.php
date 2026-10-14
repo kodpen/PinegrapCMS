@@ -3228,9 +3228,12 @@ function initialize_token()
 }
 // Create function in order to get hidden form field with a token in order to prevent CSRF attacks.
 // This is used in almost all post requests.
+// The session has no token once logout() has ended it, and the page that follows
+// (the "You are not logged in." notice for a visitor who was not signed in) still
+// prints forms, so the field is left empty then, as the query string field is.
 function get_token_field()
 {
-    return '<input type="hidden" name="token" value="' . $_SESSION['software']['token'] . '">';
+    return '<input type="hidden" name="token" value="' . ($_SESSION['software']['token'] ?? '') . '">';
 }
 // Create function in order to get query string field with a token in order to prevent CSRF attacks.
 // This is used in get requests that change things.

@@ -54,6 +54,31 @@ function get_my_account_profile($properties = array()) {
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
 
+    // A user without a contact record (an administrator created in the control
+    // panel) has nothing to show yet, so every field starts blank. Null keeps the
+    // fields exactly as a missing value always printed them.
+    if (is_array($row) == false) {
+        $row = array_fill_keys(array(
+            'salutation',
+            'first_name',
+            'last_name',
+            'suffix',
+            'title',
+            'company',
+            'business_address_1',
+            'business_address_2',
+            'business_city',
+            'business_state',
+            'business_zip_code',
+            'business_phone',
+            'home_phone',
+            'mobile_phone',
+            'business_fax',
+            'business_country',
+            'tax_number',
+            'tax_office'), null);
+    }
+
     $salutation = $row['salutation'];
     $first_name = $row['first_name'];
     $last_name = $row['last_name'];

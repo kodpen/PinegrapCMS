@@ -397,6 +397,25 @@
          uyarı yazıyordu (fatura sayfası her açılışta
          19); artık yazmıyor.
 
+  [DÜZELTME] Özel form sayfaları adresinde bir değer
+         birden çok kez geçen bir bağlantıyla
+         (?connect_to_contact[]=…, ?add_watcher[]=…,
+         ?value_<alan>[]=…) açılınca hata sayfası
+         veriyordu; artık form açılıyor ve o değer
+         verilmemiş sayılıyor. E-posta tercihleri sayfası
+         ?id[]=… ya da ?sig[]=… ile açılınca da hata
+         sayfası veriyordu; artık oturum açmış kişiye
+         sayfanın kendisi açılıyor, oturumsuz ziyaretçi
+         imzasız bağlantı gibi giriş sayfasına gidiyor.
+
+  [DÜZELTME] Panelde oluşturulmuş, rehber kaydı olmayan
+         bir kullanıcı (yönetici gibi) Hesabım profil,
+         e-posta tercihleri ve ortaklık başvuru
+         sayfalarını açınca; "Sonrası için Kaydet" açık
+         özel form, ?add_watcher= ile açılan özel form ve
+         oturum açmadan açılan çıkış sayfası hata
+         günlüğüne uyarı yazıyordu; artık yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 

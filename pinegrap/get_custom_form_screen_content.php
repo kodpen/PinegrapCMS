@@ -41,10 +41,17 @@ function get_custom_form_screen_content($properties) {
 
     $layout_type = get_layout_type($current_page_id);
 
+    // Values a link can pass to the form. Any of them can be left out, and only a
+    // string can be one: an array (connect_to_contact[]=) would stop the page in the
+    // string functions and the escaping below, so it counts as not passed.
+    $query_connect_to_contact = (isset($_GET['connect_to_contact']) && is_string($_GET['connect_to_contact'])) ? $_GET['connect_to_contact'] : null;
+    $query_add_watcher = (isset($_GET['add_watcher']) && is_string($_GET['add_watcher'])) ? $_GET['add_watcher'] : null;
+    $query_add_watcher_page_id = (isset($_GET['add_watcher_page_id']) && is_string($_GET['add_watcher_page_id'])) ? $_GET['add_watcher_page_id'] : '';
+
     // If save-for-later confirmation should be shown, then show it.
     if (
         $save
-        and ($_GET[$current_page_id . '_save_confirmation'] == 'true')
+        and (($_GET[$current_page_id . '_save_confirmation'] ?? '') == 'true')
     ) {
         $output =
             '<div class="save_confirmation_message">
@@ -156,11 +163,11 @@ function get_custom_form_screen_content($properties) {
                     $output_connect_to_contact_field = '';
                     
                     // if there is a connect to contact value then pass it through the form, and output a notice if needed
-                    if (isset($_GET['connect_to_contact']) == TRUE) {
-                        $output_connect_to_contact_field = '<input type="hidden" name="connect_to_contact" value="' . h($_GET['connect_to_contact']) . '" />';
+                    if ($query_connect_to_contact !== null) {
+                        $output_connect_to_contact_field = '<input type="hidden" name="connect_to_contact" value="' . h($query_connect_to_contact) . '" />';
                         
                         // if connect to contact is off then output notice
-                        if (trim(mb_strtolower($_GET['connect_to_contact'])) == 'false') {
+                        if (trim(mb_strtolower($query_connect_to_contact)) == 'false') {
                             $form->add_notice(lang('The connect to contact feature has been disabled for this visit to this form, so your contact information will not be prefilled and will not be updated.'));
                         }
                     }
@@ -171,10 +178,10 @@ function get_custom_form_screen_content($properties) {
                     // If an add watcher value was passed in the query string, then output hidden add watcher fields.
                     // Someone can pass a username or email address in the query string, which allows that
                     // watcher to be emailed, like the submitter is emailed, and also added as a watcher to a form item view page.
-                    if (isset($_GET['add_watcher']) == true) {
+                    if ($query_add_watcher !== null) {
                         $output_hidden_add_watcher_fields =
-                            $form->output_field(array('type' => 'hidden', 'name' => 'add_watcher', 'value' => $_GET['add_watcher'])) . '
-                            ' . $form->output_field(array('type' => 'hidden', 'name' => 'add_watcher_page_id', 'value' => $_GET['add_watcher_page_id']));
+                            $form->output_field(array('type' => 'hidden', 'name' => 'add_watcher', 'value' => $query_add_watcher)) . '
+                            ' . $form->output_field(array('type' => 'hidden', 'name' => 'add_watcher_page_id', 'value' => $query_add_watcher_page_id));
                     }
                     
                     // assume that we will not show office use only fields until we find out otherwise
@@ -365,7 +372,7 @@ function get_custom_form_screen_content($properties) {
                         $set_default_values = false;
                     }
 
-                    if (isset($_GET['connect_to_contact']) && trim(mb_strtolower($_GET['connect_to_contact'])) == 'false') {
+                    if (($query_connect_to_contact !== null) && trim(mb_strtolower($query_connect_to_contact)) == 'false') {
                         $connect_to_contact = false;
                     } else {
                         $connect_to_contact = true;
@@ -465,7 +472,7 @@ function get_custom_form_screen_content($properties) {
 
                         if ($set_default_values) {
                             $value_from_query_string = '';
-                            if(isset($_GET['value_' . $field['id']])){
+                            if (isset($_GET['value_' . $field['id']]) && is_string($_GET['value_' . $field['id']])) {
                                 $value_from_query_string = trim($_GET['value_' . $field['id']]);
                             }
                             
@@ -670,10 +677,10 @@ function get_custom_form_screen_content($properties) {
                     // a username or email address in the query string, which
                     // allows that watcher to be emailed, like the submitter
                     // is emailed, and also added as a watcher to a form item view page.
-                    if (isset($_GET['add_watcher'])) {
+                    if ($query_add_watcher !== null) {
                         $system .=
-                            '<input type="hidden" name="add_watcher" value="' . h($_GET['add_watcher']) . '">
-                            <input type="hidden" name="add_watcher_page_id" value="' . h($_GET['add_watcher_page_id']) . '">';
+                            '<input type="hidden" name="add_watcher" value="' . h($query_add_watcher) . '">
+                            <input type="hidden" name="add_watcher_page_id" value="' . h($query_add_watcher_page_id) . '">';
                     }
                     
                     // If office-use-only fields can appear on this form,
