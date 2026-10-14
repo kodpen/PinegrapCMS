@@ -1644,7 +1644,18 @@ function build_url($properties)
         parse_str($url_parts['query'], $query_string_parameters);
         foreach ($query_string_parameters as $name => $value) {
             if (!is_array($parameters) || !array_key_exists($name, $parameters)) {
-                $url_query_string .= ($url_query_string == '' ? '?' : '&') . urlencode($name) . '=' . urlencode($value);
+                // A parameter that arrived as an array (?name[]=x) is carried over in the
+                // same bracket form: urlencode() refused the array with an error page.
+                if (is_array($value)) {
+                    $pair = http_build_query(array($name => $value));
+
+                    if ($pair != '') {
+                        $url_query_string .= ($url_query_string == '' ? '?' : '&') . $pair;
+                    }
+
+                } else {
+                    $url_query_string .= ($url_query_string == '' ? '?' : '&') . urlencode($name) . '=' . urlencode($value);
+                }
             }
         }
     }

@@ -34,7 +34,10 @@ function get_photo_gallery($properties) {
     $page_name = get_page_name($page_id);
 
     if ($layout_type == 'system') {
-        
+
+        // A gallery with no columns outputs an empty wrapper.
+        $output = '';
+
         // If the number of thumbnails is greater than 0, then prepare and display the photo gallery
         if ($number_of_columns > 0) {
             // get folder id

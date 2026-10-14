@@ -432,6 +432,18 @@
          bir klasörle açılan fotoğraf galerisi hata
          günlüğüne uyarı yazıyordu; artık yazmıyor.
 
+  [DÜZELTME] Katalog ve kullanıcı dizini sayfaları,
+         adresinde arama terimi ya da başka bir değer
+         birden çok kez geçen (?query[]=…) bir bağlantıyla
+         açılınca hata sayfası veriyordu; artık sayfa
+         açılıyor, böyle gelen arama terimi yok sayılıyor.
+         Özel düzende yapılmış bir formda bir alana birden
+         çok değer gönderen ziyaretçi o form sayfasını her
+         açılışta hata sayfası olarak görüyordu; artık form
+         açılıyor. Hazır düzende sütun sayısı 0 olan
+         fotoğraf galerisi hata günlüğüne uyarı yazıyordu;
+         artık yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
