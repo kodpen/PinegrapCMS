@@ -252,7 +252,7 @@ function pg_panel_actions()
         'ws_bootstrap', 'ws_channels', 'ws_channel_open', 'ws_channel_get',
         'ws_message_seen', 'ws_scheduled_list', 'ws_scheduled_get',
         'ws_scheduled_targets', 'ws_scheduled_save', 'ws_scheduled_status',
-        'ws_scheduled_run_now', 'ws_scheduled_preview',
+        'ws_scheduled_run_now', 'ws_scheduled_preview', 'ws_scheduled_draft',
         'ws_scheduled_message_save', 'ws_scheduled_messages',
         'ws_scheduled_message_delete', 'ws_scheduled_message_send',
         'ws_sync', 'ws_messages_before', 'ws_send', 'ws_edit', 'ws_delete',

@@ -23026,5 +23026,18 @@
     "what the guest wrote": "misafirin yazdığı",
     "When the status of a task becomes “{var:1}”": "Görev durumu “{var:1}” olduğunda",
     "When an approval request ends: {var:1}": "Bir onay isteği sonuçlandığında: {var:1}",
-    "{var:1}, in {var:2}": "{var:1}, {var:2} kanalında"
+    "{var:1}, in {var:2}": "{var:1}, {var:2} kanalında",
+    "Write in a sentence what the scheduled action should do.": "Programlanmış işlemin ne yapacağını bir cümleyle yazın.",
+    "Pinegrap AI is not ready on this site, so the form has to be filled in by hand.": "Bu sitede Pinegrap AI hazır değil; formu elle doldurmanız gerekiyor.",
+    "The answer of Pinegrap AI could not be read as a form. Try again with the sentence put a little differently.": "Pinegrap AI'ın yanıtı forma çevrilemedi. Cümleyi biraz farklı yazıp yeniden deneyin.",
+    "When it runs could not be read from the sentence: it is set to tomorrow at 09:00.": "Ne zaman çalışacağı cümleden anlaşılamadı: yarın 09:00'a ayarlandı.",
+    "A condition the form does not take was left out.": "Formun almadığı bir koşul dışarıda bırakıldı.",
+    "What it does could not be read from the sentence: choose it in step 3.": "Ne yapacağı cümleden anlaşılamadı: 3. adımda seçin.",
+    "A follow-up the form does not take was left out.": "Formun almadığı bir sonraki adım dışarıda bırakıldı.",
+    "Describe it in a sentence": "Bir cümleyle anlatın",
+    "Every Monday at 9:00, e-mail each person their overdue tasks": "Her pazartesi 09:00'da herkese geciken görevlerini e-postayla gönder",
+    "Pinegrap AI fills in the steps below from it. Nothing is saved until you save.": "Pinegrap AI aşağıdaki adımları bu cümleden doldurur. Siz kaydedene kadar hiçbir şey kaydedilmez.",
+    "Fill in the form": "Formu doldur",
+    "Pinegrap AI is filling in the form…": "Pinegrap AI formu dolduruyor…",
+    "Filled in from your sentence. Check each step and the summary before you save.": "Cümlenizden dolduruldu. Kaydetmeden önce her adıma ve özete bakın."
 }

@@ -317,6 +317,17 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok($result);
 
+        // The form filled in by Pinegrap AI from a sentence: nothing is
+        // saved, the form opens again with the draft (scheduled_draft.php).
+        case 'ws_scheduled_draft':
+            $result = ws_scheduled_draft($viewer, (string) ($request['text'] ?? ''), (int) ($request['channel_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('draft' => $result['data'], 'notes' => $result['notes']));
+
         case 'ws_scheduled_status':
             $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
 

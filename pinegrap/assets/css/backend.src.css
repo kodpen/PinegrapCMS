@@ -11446,6 +11446,30 @@ button.ws-thread-bar:hover {
   background: rgba(var(--bs-danger-rgb), .08);
   color: var(--bs-danger-text-emphasis);
 }
+.ws-sa-sentence {
+  margin-bottom: .75rem;
+  padding: .6rem .75rem;
+  border: 1px dashed rgba(var(--ws-accent-rgb), .55);
+  border-radius: var(--ws-radius);
+  background: var(--ws-soft);
+}
+.ws-sa-sentence-row {
+  display: flex;
+  gap: .5rem;
+  align-items: flex-start;
+}
+.ws-sa-sentence-row textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-sa-sentence-row .btn {
+  flex: none;
+  white-space: nowrap;
+}
+.ws-sa-sentence-said {
+  margin-top: .35rem;
+  color: var(--bs-secondary-color);
+}
 .ws-sa-gallery-wrap {
   margin-bottom: .75rem;
 }

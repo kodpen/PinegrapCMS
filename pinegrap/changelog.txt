@@ -1189,6 +1189,20 @@
   [YENİ] İki hazır işlem: "Geciken görevler kanala" ve
          "Onaylanınca sonraki görev".
 
+  [YENİ] Programlanmış işlem bir cümleyle kurulabiliyor.
+         Formun üstündeki "Bir cümleyle anlatın"
+         kutusuna ne istediğinizi yazın (örneğin "Her
+         pazartesi 09:00'da herkese geciken görevlerini
+         e-postayla gönder"); "Formu doldur" deyince
+         Pinegrap AI zamanı, koşulları ve yapılacak işi
+         formun adımlarına yerleştirir. Hiçbir şey kendi
+         kendine kaydedilmez: adımlara ve özete bakar,
+         eksik kalanı tamamlar ve siz kaydedersiniz.
+         Cümleden anlaşılamayan ya da formun almadığı
+         kısım kutunun altında yazar. Kutu yalnız Pinegrap
+         AI'ın hazır olduğu sitelerde görünür; öbür
+         sitelerde form eskisi gibidir.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
