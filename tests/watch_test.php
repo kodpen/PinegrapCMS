@@ -5,8 +5,9 @@
  * Tests for the site's events in the workspace: which events are kept for the
  * workspace (includes/fn/events.php), which record an event is about, which
  * events a watching channel hears, and whether an event rule of a scheduled
- * action matches an event (includes/workspace/watch.php). The functions
- * tested here read nothing from the database.
+ * action matches an event, the workspace's own events included
+ * (includes/workspace/watch.php). The functions tested here read nothing
+ * from the database.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -87,4 +88,67 @@ function test_watch_rule_matches_event_and_filters()
 	pg_assert_true(ws_events_rule_matches(array('type' => 'event', 'event' => 'order.status_changed', 'status' => ''), 'order.status_changed', array('status' => 'exported')), 'any status');
 	pg_assert_false(ws_events_rule_matches(array('type' => 'join', 'event' => 'order.created'), 'order.created', array()), 'not an event rule');
 	pg_assert_false(ws_events_rule_matches(null, 'order.created', array()), 'no rule');
+}
+
+// The workspace's own events are kept by ws_event(), never by
+// pg_event_record(), and are the five a scheduled action can wait for.
+function test_watch_own_events_are_kept_apart()
+{
+	$recorded = pg_event_workspace_events();
+
+	foreach (ws_events_own() as $event) {
+		pg_assert_true(ws_events_is_own($event), $event . ' is the workspace\'s own');
+		pg_assert_false(in_array($event, $recorded, true), $event . ' not kept by pg_event_record()');
+	}
+
+	pg_assert_same(5, count(ws_events_own()), 'five events');
+	pg_assert_false(ws_events_is_own('workspace.message.created'), 'a message in a public channel is the webhooks\' only');
+	pg_assert_false(ws_events_is_own('order.created'), 'a site event');
+	pg_assert_false(ws_event('workspace.task.completed', array('id' => 1)), 'nothing kept without the workspace\'s tables');
+}
+
+// A task's events tag the task; a settled request the task it asked about,
+// else its channel; a guest's message the guest's room.
+function test_watch_record_of_own_events()
+{
+	pg_assert_same(array('task', 42), ws_events_record_of('workspace.task.completed', array('id' => 42, 'channel_id' => 3)), 'completed');
+	pg_assert_same(array('task', 42), ws_events_record_of('workspace.task.status_changed', array('id' => '42', 'status' => 'waiting')), 'status changed');
+	pg_assert_same(array('task', 7), ws_events_record_of('workspace.task.overdue', array('id' => 7)), 'overdue');
+	pg_assert_same(array('task', 9), ws_events_record_of('workspace.approval.decided', array('id' => 2, 'channel_id' => 3, 'record_type' => 'task', 'record_id' => 9)), 'a request about a task');
+	pg_assert_same(array('channel', 3), ws_events_record_of('workspace.approval.decided', array('id' => 2, 'channel_id' => 3, 'record_type' => 'order', 'record_id' => 9)), 'a request about another record');
+	pg_assert_same(array('channel', 3), ws_events_record_of('workspace.approval.decided', array('id' => 2, 'channel_id' => 3, 'record_type' => '', 'record_id' => 0)), 'a request about nothing');
+	pg_assert_same(array('channel', 11), ws_events_record_of('workspace.guest.message', array('id' => 500, 'channel_id' => 11)), 'a guest\'s message');
+	pg_assert_false(ws_events_watched('workspace.task.completed'), 'never written into a watching channel');
+}
+
+// A workspace rule narrowed to a channel and a status matches only there.
+function test_watch_rule_matches_channel_and_task_status()
+{
+	$any = array('type' => 'event', 'event' => 'workspace.task.completed', 'channel_id' => 0);
+	$design = array('type' => 'event', 'event' => 'workspace.task.completed', 'channel_id' => 4);
+	$waiting = array('type' => 'event', 'event' => 'workspace.task.status_changed', 'status' => 'waiting', 'channel_id' => 0);
+	$approved = array('type' => 'event', 'event' => 'workspace.approval.decided', 'status' => 'approved', 'channel_id' => 4);
+
+	pg_assert_true(ws_events_rule_matches($any, 'workspace.task.completed', array('id' => 1, 'channel_id' => 9)), 'any channel');
+	pg_assert_true(ws_events_rule_matches($any, 'workspace.task.completed', array('id' => 1, 'channel_id' => 0)), 'a task of no channel');
+	pg_assert_true(ws_events_rule_matches($design, 'workspace.task.completed', array('id' => 1, 'channel_id' => 4)), 'its channel');
+	pg_assert_false(ws_events_rule_matches($design, 'workspace.task.completed', array('id' => 1, 'channel_id' => 5)), 'another channel');
+	pg_assert_false(ws_events_rule_matches($design, 'workspace.task.completed', array('id' => 1)), 'a task of no channel, for a rule of one');
+	pg_assert_true(ws_events_rule_matches($waiting, 'workspace.task.status_changed', array('id' => 1, 'status' => 'waiting')), 'its status');
+	pg_assert_false(ws_events_rule_matches($waiting, 'workspace.task.status_changed', array('id' => 1, 'status' => 'doing')), 'another status');
+	pg_assert_true(ws_events_rule_matches($approved, 'workspace.approval.decided', array('channel_id' => 4, 'status' => 'approved')), 'approved there');
+	pg_assert_false(ws_events_rule_matches($approved, 'workspace.approval.decided', array('channel_id' => 4, 'status' => 'rejected')), 'rejected there');
+	pg_assert_false(ws_events_rule_matches($approved, 'workspace.task.completed', array('channel_id' => 4, 'status' => 'approved')), 'another event');
+}
+
+// A run says its depth as it starts and ends; what it causes stands one
+// step below it, and outside a run at the head of a chain.
+function test_watch_event_depth_follows_the_run()
+{
+	pg_assert_same(0, ws_event_depth(), 'outside a run');
+	pg_assert_same(1, ws_event_depth(0), 'a run at the head of a chain');
+	pg_assert_same(1, ws_event_depth(), 'read while it runs');
+	pg_assert_same(4, ws_event_depth(3), 'a run three steps down');
+	pg_assert_same(0, ws_event_depth(-1), 'the run ended');
+	pg_assert_same(0, ws_event_depth(), 'outside again');
 }

@@ -84,6 +84,84 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı olayları programlanmış işlemi başlatıyor (2026-10-14)
+
+**Neden.** Çalışma Alanı araştırmasının P2 2.1 maddesi. Programlanmış
+işlemin olay kuralı (8.85) sitenin olaylarını (sipariş, stok, kişi, form)
+dinliyordu ama Çalışma Alanı'nın kendi olaylarına kördü:
+`pg_event_workspace_events()` `workspace.*`'ı bilerek dışarıda bırakıyordu,
+çünkü `pg_announce()` her açık kanal mesajını da duyurur. "Tasarım
+onaylanınca 'Siteyi yayına al' görevini aç ve müşteriye e-posta at" gibi
+bir akış kurulamıyordu.
+
+**Ne değişti.**
+- `includes/workspace/watch.php`: `ws_event($event, $payload)` Çalışma
+  Alanı olaylarının tek yayın noktası. Yalnız `ws_events_own()`'daki beş
+  olayı ve yalnız etkin bir programlanmış işlem o olayı beklerken
+  (`ws_events_awaited()`, istek başına bir okuma) `ws_events_in`'e tek satır
+  yazar; otomasyon kurmayan site hiçbir şey yazmaz. `pg_announce()` yolu
+  (webhook) değişmedi ve `workspace.*`'ı hâlâ `ws_events_in`'e yazmaz, aynı
+  olay iki kez tutulmaz. Olaylar:
+  `workspace.task.completed`, `workspace.task.status_changed`
+  (`ws_task_set_status()`, kimin yaptığı `actor_id`),
+  `workspace.task.overdue` (`ws_task_overdue_run()`; mevcut `cron_runs`
+  damgasıyla, görevde kimse olmasa da),
+  `workspace.approval.decided` (`ws_approval_settle()`; özel kanalda da,
+  `status` = sonuç), `workspace.guest.message` (`ws_guest_send()`; misafirin
+  adı ve yazdığı).
+- `ws_events_catalog()` beş olayı `right => member` ile listeler; filtreleri
+  `task_status` (görev durumları), `outcome` (onaylandı, reddedildi, süresi
+  doldu, kararsız kapandı) ve hepsinde `channel`. Kural `status` ve
+  `channel_id` taşır; `ws_events_rule_matches()` kanalı da karşılaştırır.
+  `ws_scheduled_rule_input()` durumu ve kanalı doğrular (kanal okunabilir
+  olmalı, tartışma olamaz).
+- Görünürlük: `ws_events_start()` Çalışma Alanı olayını işlemi yazan kişinin
+  gözüyle süzer (`ws_events_creator_sees()`: görev için `ws_can_see_task()`,
+  onay ve misafir için kanalın okunabilirliği). Okuyamadığı özel kanaldaki
+  görev, yazanın işlemini başlatmaz ve iz bırakmaz (atlandı satırı yazılmaz).
+- Zincir derinliği: `ws_scheduled_execute()` çalışırken `ws_event_depth()`
+  derinliğini söyler; bu sırada doğan Çalışma Alanı olayı `_depth` taşır ve
+  başlattığı işlem kuyruğa bir alt basamaktan girer,
+  `WS_SCHEDULED_CHAIN_DEPTH`'te durur. Bugün programlanmış işlem görev
+  durumunu değiştiremediği (`task` değişiklik türü atlanır) için doğrudan
+  döngü kurulamıyor; koruma ileride eklenecek eylemler için.
+- Yer tutucular: `{{actor}}` (tamamlayan, durumu değiştiren ya da isteği
+  sonuçlandıran kişi, etiketiyle) ve `{{message}}` (misafirin yazdığı).
+  `{{record}}` görevi, görev hakkında değilse onay isteğinin kanalını ya da
+  misafir odasını etiketler; `{{record_title}}` onay isteğinde isteğin
+  başlığıdır; `{{record_link}}` onay ve misafir mesajında mesajın kendisini
+  açar; `{{record_status}}` görev durumu ya da onay sonucudur. Ad ve bağlantı
+  yalnız yazan kişi kaydı ya da kanalı okuyabiliyorsa dolar
+  (`ws_events_own_values()`).
+- Form (`assets/js/workspace_events.js` + `workspace.min.js`): olay listesinde
+  beş yeni olay, Çalışma Alanı olayında "Hangi kanalda" seçimi ve olayın kendi
+  filtresi (sunucudan `options`, `filter_label`, `any`). İki hazır işlem:
+  "Geciken görevler kanala" ve "Onaylanınca sonraki görev".
+- Kural metni: "Görev durumu “Bekliyor” olduğunda, #tasarim kanalında",
+  "Bir onay isteği sonuçlandığında: Onaylı" gibi.
+
+Şema değişikliği yok. Yeni metinler `tr.json`'da (28 anahtar).
+
+**Bilerek yapılmayan.** Cümleden otomasyon kurma (P2 2.2) bu değişikliğe
+girmedi. Kanal izleme satırı (`ws_watch_write()`) Çalışma Alanı olaylarını
+yazmaz; kanal zaten "X tamamladı" satırını alıyor. Webhook kataloğu
+değişmedi; özel kanalın olayları dışarı gitmez.
+
+**Doğrulama.** `tests/watch_test.php` dört yeni test (olayların ayrı
+tutulması, kayıt eşleme, kanal ve durum filtresi, derinlik). Sandbox'ta
+PHP ile uçtan uca: beş olay da işlemi başlattı ve metinler doldu
+(`{{actor}}`, `{{record_title}}`, `{{record_link}}`, `{{record_status}}`,
+`{{customer}}`, `{{message}}`); "Bekliyor" kuralı yalnız #tasarim'da çalıştı;
+onaylanan istek "Sonraki adım: Tasarım onayı" görevini açtı; yönetici
+(rol 2) üyesi olmadığı özel kanaldaki görevle başlamadı; derinlik 6'daki
+çalışmanın olayı işlemi derinlik 7'de başlattı, derinlik 7'deki hiç
+başlatmadı; olay beklenmezken `ws_events_in`'e satır yazılmadı. Okuyamadığı
+kanala ve geçersiz duruma kural kaydı reddedildi. Playwright ile formda
+olay, durum ve kanal seçimleri göründü; iki hazır işlem kaydedildi
+(kural ve eylem veritabanında doğru). dev.pinegrap.com'da denenmedi.
+
+---
+
 ## 2026.4.10 — Uzak ajan: yazan ajan aracı, her mesaj soranın onayıyla ve kendi hesabıyla gidiyor (2026-10-14)
 
 **Neden.** Uzak ajanın dördüncü dilimi (`docs/_plan_tersine_oauth.md` →

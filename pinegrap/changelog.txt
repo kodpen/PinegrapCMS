@@ -1165,6 +1165,30 @@
          hatırlatma sütunları, gelen kutusuna plan öğesi
          sütunu eklenir.
 
+  [YENİ] Programlanmış işlemler Çalışma Alanı'nın kendi
+         olaylarıyla da başlıyor. "Bir şey olduğunda"
+         listesinde beş yeni olay var: görev tamamlandı,
+         görevin durumu değişti (istenirse yalnız bir
+         duruma geçince), görev gecikti, onay isteği
+         sonuçlandı (istenirse yalnız onaylanınca,
+         reddedilince, süresi dolunca ya da kararsız
+         kapanınca) ve misafir yazdı. Her biri tek bir
+         kanalla sınırlanabiliyor; işlem yalnız onu yazan
+         kişinin okuyabildiği görev, kanal ya da misafir
+         odası için başlıyor. Örnek: "Tasarım onaylanınca
+         'Siteyi yayına al' görevini aç ve müşteriye
+         e-posta at".
+
+  [YENİ] Metinlerde iki yeni yer tutucu: {{actor}} (görevi
+         tamamlayan ya da isteği sonuçlandıran kişi) ve
+         {{message}} (misafirin yazdığı). {{record}},
+         {{record_title}}, {{record_link}} ve
+         {{record_status}} görevi, onay isteğini ve
+         misafir odasını da anlatıyor.
+
+  [YENİ] İki hazır işlem: "Geciken görevler kanala" ve
+         "Onaylanınca sonraki görev".
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 

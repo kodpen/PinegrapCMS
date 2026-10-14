@@ -750,6 +750,17 @@ function ws_task_set_status($viewer, $task, $status)
 
     pg_announce('workspace.task.status_changed', ws_task_event_payload($updated, $assignees) + array('previous_status' => $task['status']));
 
+    // The scheduled actions waiting for it (watch.php), with who moved it.
+    if (function_exists('ws_event')) {
+        $event = ws_task_event_payload($updated, $assignees) + array('previous_status' => (string) $task['status'], 'actor_id' => (int) $viewer['id']);
+
+        ws_event('workspace.task.status_changed', $event);
+
+        if ($done) {
+            ws_event('workspace.task.completed', $event);
+        }
+    }
+
     if ($done) {
         pg_announce('workspace.task.completed', ws_task_event_payload($updated, $assignees));
 
