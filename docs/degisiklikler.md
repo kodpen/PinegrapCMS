@@ -84,6 +84,66 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — `h(null)` ve `escape(null)` kullanım dışı satırı yazmıyor (2026-10-14)
+
+**Neden.** #417 panel taramasının K9 maddesi. Hata ayıklama açıkken
+`init.php`'nin dışarıda bıraktığı kullanım dışı uyarıları da
+`php_errors.log`'a yazılıyor (`pg_error_record()`: "sonraki PHP sürümünün
+kıracağı liste"). Taramada en sık satır `includes/fn/core.php`'deki `h()`
+idi: `htmlspecialchars()`'a `null` verince PHP 8.1'den beri "Passing null
+to parameter #1 ($string) of type string is deprecated" düşüyor. Çağıranların
+başında `liveform.class.php` geliyor (`prepare()` 1376 ve `output_field()`
+342/567: değeri NULL sütundan gelen alan); 404 "Kayıt bulunamadı" ekranı,
+`view_countries`, `view_styles`, `add_container` gibi listeler ve yönetici
+oturumuyla açılan site sayfaları da aynı satırı yazıyordu. Günlük dosya:satır
+başına istekte bir kez yazdığı için her istekte yalnız ilk çağıran
+görünüyordu. `escape()` (`mysqli_real_escape_string()`) aynı durumdaydı
+(`add_menu_item`, `preview_form`, `print_packing_slip`, `generate_layout`,
+`includes/fn/forms.php` ve `ecommerce.php` üzerinden). PHP 9'da bu çağrılar
+`TypeError` olacak. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** `h()` ve `escape()` `null` alınca hemen `''` döndürüyor.
+Dönen değer değişmedi: `htmlspecialchars(null)` ve
+`mysqli_real_escape_string(null)` de `''` veriyordu. Dizi eskisi gibi
+`TypeError` veriyor (dizi parametre serisinin "verilmedi" kuralı çağıran
+ekranda uygulanıyor; burada susturulmadı). Sayı ve mantıksal değer eskisi
+gibi metne çevriliyor. `liveform.class.php`'ye dokunmak gerekmedi: oradaki
+bütün `h()` çağrıları bu yoldan geçiyor. Şema, dil dosyası ve JS
+değişikliği yok. Test: `tests/core_test.php`
+`test_core_h_and_escape_take_null` (eski kodda `ErrorException`, yenide
+geçiyor).
+
+K9'un ikinci maddesi `includes/fn/custom_form.php` #407 ve #421'de kapanmıştı;
+bu turda yeniden denendi, kalan uyarı yok (aşağıda).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, `debug = 1`, development 569eac3c
+üstünde).** #417'nin tarayıcısı (367 panel ekranı, 6.760 GET, düz açılış, kendi parametreleri ve her
+parametre dizi olarak) eski ve yeni kodla: `h()` / `escape()` kullanım dışı
+satırı yazan istek 3.349 → 0 (183 ekranda), herhangi bir satır yazan istek
+3.403 → 678, toplam satır 5.564 → 2.121; durum kodu farkı yok, 500 yok. 181
+site sayfası oturumsuz ve yönetici oturumuyla (düzenleme kipi): satır yazan
+istek 150 → 5 (yöneticide sayfa başına bir `h(null)` satırı gidiyor). Özel
+formların 14'ü `custom_form.php`'ye yalnız jetonla, gizli alanlarla ve
+bütün alanları boş gönderildi (96 istek, yönetici ve oturumsuz): yeni kodda
+hiç satır yok, durum ve yönlendirmeler eskisiyle aynı. HTML: aynı sunucuda
+yalnız `core.php` değiştirilerek 1.260 istek (site sayfaları iki oturumla,
+panel ekranlarının düz ve parametreli 200 açılışları); sayılar ve göreli
+zamanlar ayıklanınca 1.254'ü bire bir aynı, kalan 6'sı canlı veri gösteren
+ekranlar (oturumlar, Site Günlüğü, performans günlüğü, veritabanı motoru,
+Hesabım'daki cihaz listesi). `tools/lint.php`, `tools/test.php`,
+`check_lang`, `check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com.
+
+**Bilerek yapılmayan.** Aynı türden kalan kullanım dışı satırları başka
+yardımcılarda ve hepsi eksik parametreyle açılışta: `encode_url_path()`
+(`rawurlencode(null)`; `browse_catalog_menu.php:27`,
+`add_email_campaign.php:44`), `escape_javascript()` (`preview_form.php:79`),
+`escape_csv()` (`view_email_campaign_profiles.php:229`); çağıran ekran
+düzeldiğinde gider. q10 (`liveform::prepare()`'de `type` özniteliği olmayan
+input ve `value`'su olmayan onay kutusu) ayrı iş, bu satırlara dokunulmadı.
+
+---
+
 ## 2026.4.10 — ERP dışındaki ekranlar dizi gelen `?id`'yi 1 numaralı kayıt saymıyor (2026-10-14)
 
 **Neden.** #436'nın kalanı. ERP dışındaki 19 kök ekranda `(int) $_GET['id']`

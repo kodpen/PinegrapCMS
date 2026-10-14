@@ -48,3 +48,13 @@ function test_core_build_url_carries_array_parameter()
 		build_url(array('url' => '/members?a=1&q[]=x', 'parameters' => array('summary' => 'most_recent'))));
 	pg_assert_same('/members?a=1&summary=x', build_url(array('url' => '/members?a=1&summary=y', 'parameters' => array('summary' => 'x'))));
 }
+
+// A NULL column or an unset value prints and escapes as nothing, without the
+// PHP 8.1 "Passing null" deprecation (the runner turns it into an error).
+function test_core_h_and_escape_take_null()
+{
+	pg_assert_same('', h(null));
+	pg_assert_same('', escape(null));
+	pg_assert_same('a &amp; &quot;b&quot;', h('a & "b"'));
+	pg_assert_same('0', h(0));
+}
