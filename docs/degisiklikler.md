@@ -118,6 +118,123 @@ sandbox'ta koşturulmadı.
 
 ---
 
+## 2026.4.10 — Zip yedekler kurulum ekranından adım adım geri yükleniyor; geri yükleme yedekteki yöneticiyi ikinci kez eklemiyor (2026-10-14)
+
+**Neden.** Adım adım geri yüklemenin (#441) iki kalanı. (1) Otomatik
+yedek `ZipArchive` olan sunucuda haftanın yedeğini tek arşiv olarak yazıyor
+(`data/backups/auto_backup_<yıl>-<ay>-<hafta>.zip`), ama kurulum ekranının
+"Sunucudaki yedek" listesi yalnız klasörleri gösteriyordu: müşterinin en
+güncel yedeği listede yoktu, elle açıp klasöre çevirmek gerekiyordu.
+(2) Geri yükleme kurulum olarak çalıştığı için formdaki yönetici yedekten
+gelen kullanıcıların üstüne her seferinde yeni satır olarak ekleniyordu.
+`user` tablosunda e-posta ve kullanıcı adı tekil değil; `validate_login()`
+`LIMIT 1` ile ilk satırı aldığından, yedekte aynı e-posta varsa yeni satıra
+hiç giriş yapılamıyor, formda girilen parola çalışmıyordu (yedekteki satırın
+parolası geçerliydi) ve kullanıcı listesinde aynı kişi iki kez görünüyordu.
+
+**Ne değişti.**
+- `includes/fn/backup_restore.php`: yedek adı `.zip` ile bitiyorsa arşivdir
+  (`pg_restore_is_archive()`). `pg_restore_archive_read()` arşivin merkez
+  dizinini okur: `sql.sql` en üstte (otomatik yedek, Yedekleme
+  Yöneticisi'nin indirdiği arşiv) ya da tek bir klasörün içinde (elle
+  sıkıştırılmış yedek klasörü; kurulum ekranının yüklemesi de böyle alıyor).
+  Geri yükleme yalnız `sql.sql`'i ve yanındaki `files/` ile `layouts/`'un
+  doğrudan altındaki dosyaları alır; alt klasör, `..`, Windows'un aygıt ya da
+  akış sayacağı adlar (`:`, `*`, `?` …) ve başka her şey arşivde kalır.
+- Arşivin geri yüklemesi `extract` evresiyle başlar
+  (`pg_restore_extract_step()`): dosyalar `data/temp/restore_<id>/`'ye en çok
+  20 sn'lik adımlarla açılır, ekran adımları #441'deki gibi kendisi gönderir.
+  Yarıda kalan dosya, kaydedilen bayttan sürer: sıkıştırılmış bir dosyanın
+  ortasına atlanamadığı için arşiv o bayta kadar yeniden okunur (sağlama
+  toplamı bu yüzden bütün dosyayı kapsar), okuma adımın yazma süresinden
+  sayılmaz, adım ardından en az yarı süre yazar. Her dosya bitince boyutu ve
+  CRC-32'si arşivdekiyle karşılaştırılır; uymazsa "Arşiv bozuk" ile durur.
+  İlk adım dökümün açılmış boyutu + 64 MB boş disk ister. Açma bitince evre
+  `load` olur ve dökümün yüklenmesi #441'in kodundan hiç değişmeden çalışır
+  (`pg_restore_step()` dökümü `pg_restore_content_path()`'ten okur).
+- Kayıtta `archive`, `source_size`, `source_mtime` (arşivin kendisi; sürdürme
+  bunu karşılaştırır), `extract_index`, `extract_written`. #441'in yazdığı,
+  bu alanları taşımayan bir kayıt eskisi gibi dökümün boyutuyla eşleşir.
+  Çalışma klasörü kayıtla birlikte gider: başarı, hata, **Sil** düğmesi ve
+  yeni bir geri yüklemenin başlangıcı (`pg_restore_begin()` artık kalmış
+  `restore_*` klasörlerini de siler).
+- `install/index.php`: `get_site_backups()` `.zip` dosyalarını da listeler;
+  kurulamayan arşiv seçenekte nedeniyle görünür ("Arşivde sql.sql yok …",
+  "arşiv açılamadı …", zip desteği yoksa o). Kurulum isteği kaynak adını
+  listeye karşı denetler: başlangıç sitesi ya da listedeki kurulabilir yedek
+  değilse daha hiçbir şeye dokunmadan alan hatası verir (ad `data/backups`
+  altında yol olduğu için `../` gibi değerler de burada durur; dizi gelen
+  değer 500 vermez). Açma hatası "Arşiv açılamadı: … Site değişmedi:
+  arşivden hiçbir şey yüklenmedi ve açılan dosyalar silindi." der, Site
+  Günlüğü'ne #441'in satırı yazılır. Dosyalar ve tasarım şablonları yedek
+  klasöründen ya da çalışma klasöründen kopyalanır; yedekte `files/` ya da
+  `layouts/` yoksa sitenin kendi klasörü silinmez, konsola uyarı satırı
+  düşer (eskiden önce siliniyor, sonra `opendir()` false dönünce istek
+  ölüyordu).
+- Yönetici: kurulum, formdaki e-postayla (yoksa kullanıcı adıyla) eşleşen bir
+  kullanıcı arar. Bulursa yeni satır eklemez; o kullanıcının satırı yedekteki
+  gibi kalır, yalnız parolası formdakine (MD5, `user_password_algo` 0; kurulum
+  sonunda `pg_password_store()` modern hash'e çevirir) ve rolü yöneticiye
+  çekilir. Konsolda ve sonuç kartında tek cümle: "Yedekte <kullanıcı>
+  (<e-posta>) kullanıcısı zaten var, bu yüzden yeni yönetici eklenmedi: bu
+  kullanıcı yöneticidir ve girdiğiniz parolayla giriş yapar." Eşleşme yoksa
+  eskisi gibi yeni yönetici eklenir. Başlangıç sitelerinde kullanıcı yok,
+  davranış değişmedi. Yarıda kesilen kurulum sürdürülürken de ikinci satır
+  oluşmaz.
+- Kaynak kartı "yedek klasörünü ya da .zip arşivini FTP ile yedekler
+  klasörüne kopyalayın" diyor. `tests/backup_restore_test.php`: arşiv adı,
+  yollar, arşiv okuma (otomatik yedek biçimi, klasörlü arşiv, dışarı çıkan ve
+  Windows'a uymayan adlar, `sql.sql`'siz ve bozuk dosya).
+
+**Seçilen varsayılan (yönetici).** Yedekteki kullanıcılar korunur; formdaki
+yönetici yalnız yedekte aynı e-posta ya da kullanıcı adı yoksa eklenir.
+Varsa o kullanıcıya formdaki parola verilir: geri yüklemeyi yapan kişi
+yazdığı bilgilerle girebilsin, yedeğin eski parolasını bilmiyorsa ve posta
+sunucusu yoksa siteye (ve kilitli kurulum ekranına) dışarıda kalmasın. Eski
+davranışta da formdaki bilgiler girişti (ikinci satır yüzünden çoğu zaman
+çalışmasa da), kilidi açan kişi zaten mevcut sitenin yöneticisi.
+
+**Ölçüm (sandbox, MariaDB, PHP 8.3).** 2.002.000 Site Günlüğü satırlı,
+301 tablolu site; otomatik yedek 232 MB arşiv (629 MB `sql.sql`, 214 dosya,
+90 tasarım şablonu):
+- Kurulum ekranı (HTTP, ekranın yaptığı gibi `restore_id` ile yeniden
+  gönderim): 3 istek, toplam 41,6 sn (açma 7,6 sn; yükleme 20,1 + 13,9 sn;
+  yer değiştirme 3,3 sn). 301 tablo, kullanıcı listesi kaynakla aynı
+  (yedekten sonra silinen üye geri geldi, sonra eklenen gitti), yedekten
+  sonra silinen dosya geri geldi, `pgr_` tablo, `restore.json` ve
+  `restore_*` klasörü kalmadı; Site Günlüğü'nde "… yedeği geri yüklendi:
+  600,0 MB, 3 adımda, 41 saniye".
+- Aynı içeriğin klasör yedeği: 2 istek, 33,3 sn. Elle sıkıştırılmış,
+  `elle/` klasörlü küçük arşiv: 2 istek, 9,1 sn.
+- 1-2 sn'lik adımlarla açma: 5-6 adımda `sql.sql`'in SHA-1'i `unzip` ile
+  aynı; 2. adımdan sonra öldürülmüş adım taklidi (işaret kaldı, dosyanın
+  sonuna çöp eklendi): sonraki adım uyardı, dosyayı kaydedilen bayta kesip
+  sürdü, SHA-1 yine aynı.
+- Ortasına 16 sıfır bayt yazılmış arşiv: açma "sql.sql sağlama toplamıyla
+  uyuşmuyor" ile durdu, site değişmedi, Site Günlüğü'ne satır yazıldı.
+  Kesik arşiv "açılamadı", `sql.sql`'siz arşiv listede nedeniyle göründü ve
+  reddedildi. Açmanın ortasında bırakılan geri yükleme kurulum ekranında
+  kart olarak göründü (%13), **Sil** çalışma klasörünü ve kaydı sildi.
+- Yönetici: formdaki e-posta yedekte yönetici → yeni satır yok, formdaki
+  parolayla giriş; yedekte olmayan e-posta → yedeğin kullanıcıları + yeni
+  yönetici; e-posta yedekte üye → üye yönetici oldu; yalnız kullanıcı adı
+  eşleşti → o kullanıcı. Diğer kullanıcılar yedekteki parolalarıyla girdi.
+
+**Bedeli.** Arşivin açılması dökümün boyutu kadar ek disk ister (işlem
+bitince silinir). Bir adımda bitmeyen çok büyük dökümde (bu sandbox'ta
+~1,5 GB üstü) her açma adımı dökümü baştan yeniden okur; 200 MB/sn'lik açmada 10 GB'a
+kadar istek süresi bir dakikanın altında kalır.
+
+**Bilerek yapılmayan.** Şema adımı yok. Kurulum ekranının bilgisayardan
+yükleme seçeneği eskisi gibi arşivi klasöre açıyor (dosyayı belleğe alarak);
+artık arşivi olduğu gibi yedekler klasörüne koymak yeterli olabilir, ayrı iş.
+Geri yüklemenin kurulum olarak yaptığı diğer işler (ayarlardaki, formlardaki,
+ürünlerdeki ve kampanya profillerindeki e-posta adreslerinin formdaki
+adresle değiştirilmesi, zaman damgalarının şimdiye çekilmesi, yazılım dilinin
+formdakine çekilmesi) değişmedi; ayrı iş.
+
+---
+
 ## 2026.4.10 — Sipariş ekranları ziyaret kaydı olmadan uyarı yazmıyor; ortaklık kodlu sipariş 500 vermiyor (2026-10-14)
 
 **Neden.** #444'ün kalanı. Ziyaret kaydı (`$_SESSION['software']['visitor_id']`)

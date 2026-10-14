@@ -557,6 +557,12 @@ function get_available_starter_sites() {
 // The language of a starter site folder, or '' when the folder is not a starter site.
 function get_starter_site_language($folder) {
 
+	if (!is_string($folder)) {
+
+		return '';
+
+	}
+
 	$starter_sites = get_starter_site_folders();
 
 	return isset($starter_sites[$folder]) ? $starter_sites[$folder]['language'] : '';
@@ -640,7 +646,9 @@ function write_install_design_template_note($template_id, $language, $starters, 
 
 }
 
-// Returns the site backups that are on the server, without the starter sites.  Newest first.
+// Returns the site backups that are on the server, without the starter sites: the folders, and
+// the archives (.zip) the automatic backup writes or someone copied there.  Newest first.  A
+// backup that cannot be installed says why in 'problem'.
 function get_site_backups() {
 
 	$directory_path = dirname(__FILE__) . '/../data/backups/';
@@ -677,6 +685,27 @@ function get_site_backups() {
 
 		}
 
+		// An archive is read the way the restore reads it (includes/fn/backup_restore.php).
+		if ((is_file($directory_path . $entry)) && (pg_restore_is_archive($entry))) {
+
+			$archive = pg_restore_archive_read($directory_path . $entry);
+
+			$backups[] = array(
+
+				'folder' => $entry,
+
+				'modified' => @filemtime($directory_path . $entry),
+
+				'installable' => $archive['ok'],
+
+				'problem' => $archive['error']
+
+			);
+
+			continue;
+
+		}
+
 		if (!is_dir($directory_path . $entry)) {
 
 			continue;
@@ -690,7 +719,9 @@ function get_site_backups() {
 			'modified' => @filemtime($directory_path . $entry),
 
 			// A folder can only be installed when it holds a database dump.
-			'installable' => file_exists($directory_path . $entry . '/sql.sql')
+			'installable' => file_exists($directory_path . $entry . '/sql.sql'),
+
+			'problem' => lang('no database file')
 
 		);
 
@@ -700,6 +731,29 @@ function get_site_backups() {
 	usort($backups, 'compare_site_backups');
 
 	return $backups;
+
+}
+
+// The backup of that name as get_site_backups() lists it, or null when the list does not have it.
+function get_site_backup($folder) {
+
+	if (!is_string($folder)) {
+
+		return null;
+
+	}
+
+	foreach (get_site_backups() as $backup) {
+
+		if ($backup['folder'] === $folder) {
+
+			return $backup;
+
+		}
+
+	}
+
+	return null;
 
 }
 
@@ -2389,7 +2443,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		$install_unfinished_restore_id = $install_unfinished_restore['id'];
 
-		if (($install_selected_folder == '') && (is_file(pg_restore_dump_path($install_unfinished_restore['folder'])))) {
+		if (($install_selected_folder == '') && (is_file(pg_restore_source_path($install_unfinished_restore['folder'])))) {
 
 			$install_selected_folder = $install_unfinished_restore['folder'];
 
@@ -2467,7 +2521,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		if ($backup['installable'] == false) {
 
-			$output_backup_label .= ' · ' . lang('no database file');
+			$output_backup_label .= ' · ' . $backup['problem'];
 
 		}
 
@@ -2534,7 +2588,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		$output_upload_source = '
 		<div class="alert alert-secondary small d-flex gap-2 mt-3 mb-0">
 			<i class="bi bi-info-circle"></i>
-			<div>' . lang('To restore a backup that is not on this server yet, copy the backup folder into the backups folder with FTP, or place the backup archive next to the download assistant and run it again.') . '</div>
+			<div>' . lang('To restore a backup that is not on this server yet, copy the backup folder or its .zip archive into the backups folder with FTP, or place the backup archive next to the download assistant and run it again.') . '</div>
 		</div>';
 
 	}
@@ -4994,6 +5048,25 @@ else {
 			$install_directory_path = $liveform->get_field_value('install_from_folder');
 		}
 
+		// Only a starter site or a backup that the screen lists is installed: the name becomes a
+		// path under data/backups, and a backup that cannot be installed (a folder without a
+		// dump, an archive that cannot be read) stops here, before anything is touched.
+		if (($liveform->get_field_value('install_from_folder') != '') && ((!is_string($install_directory_path)) || (get_starter_site_language($install_directory_path) == ''))) {
+
+			$install_backup = get_site_backup($install_directory_path);
+
+			if ($install_backup === null) {
+
+				$liveform->mark_error('install_from_folder', lang('The backup could not be found in the backups folder.'));
+
+			} elseif ($install_backup['installable'] == false) {
+
+				$liveform->mark_error('install_from_folder', h($install_directory_path . ': ' . $install_backup['problem']));
+
+			}
+
+		}
+
 		// A design template replaces the pages and page styles of a starter site, so it is only
 		// taken with one, and only with the layouts of its widgets that the screen built.
 		$install_design_template = '';
@@ -5316,17 +5389,84 @@ else {
 		};
 
 		// The log table belongs to the site that is still in place, so a failure is recorded there.
-		$install_restore_failed = function ($message, $statement) use (&$install_restore, $liveform) {
+		$install_restore_failed = function ($message, $statement, $extracting = false) use (&$install_restore, $liveform) {
 
 			pg_restore_discard();
 
 			log_activity(lang(array('string' => 'The backup {var:1} could not be restored: {var:2} The site was not changed.', 'vars' => array($install_restore['folder'], $message))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
-			$liveform->mark_error('', lang('There was an error while the database was being initialized. Please contact the software provider and include the error that appears next. MySQL error') . ': ' . h($message) . (($statement != '') ? ' — <code>' . h($statement) . '</code>' : '') . '<br>' . lang('The site was not changed: the backup was loaded next to it, and the part that was loaded has been removed.'));
+			if ($extracting == true) {
+
+				$liveform->mark_error('', lang('The archive could not be extracted') . ': ' . h($message) . (($statement != '') ? ' — <code>' . h($statement) . '</code>' : '') . '<br>' . lang('The site was not changed: nothing was loaded from the archive, and what was extracted has been removed.'));
+
+			} else {
+
+				$liveform->mark_error('', lang('There was an error while the database was being initialized. Please contact the software provider and include the error that appears next. MySQL error') . ': ' . h($message) . (($statement != '') ? ' — <code>' . h($statement) . '</code>' : '') . '<br>' . lang('The site was not changed: the backup was loaded next to it, and the part that was loaded has been removed.'));
+
+			}
 
 			return_to_form();
 
 		};
+
+		// Ends this request and lets the screen post the next step of the restore.
+		$install_restore_continue = function () use (&$install_restore) {
+
+			print '
+			<div id="pg_stream_continue" data-restore-id="' . h($install_restore['id']) . '"></div>
+			<script>pg_install_stream_continue(' . json_encode($install_restore['id']) . ');</script>' . get_footer();
+
+			exit();
+
+		};
+
+		// An archive is extracted first, in steps of its own; the dump is loaded from the next
+		// request on.
+		if ($install_restore['phase'] == 'extract') {
+
+			$install_restore_beat = function ($state) {
+
+				global $install_progress_running;
+
+				$install_progress_running = lang(array('string' => 'Extracting the archive: {var:1}', 'vars' => pg_restore_progress_text($state)));
+
+				write_install_progress_file(false);
+
+			};
+
+			$install_restore_result = pg_restore_extract_step($install_restore, $install_restore_beat);
+
+			$install_progress_running = '';
+
+			if ($install_restore_result['recovered'] == true) {
+
+				add_install_step(lang('The server stopped the previous step, so the archive is extracted again from the last point it recorded'), lang(array('string' => '{var:1} seconds per step', 'vars' => $install_restore['step_seconds'])), 'warning');
+
+			}
+
+			if ($install_restore_result['status'] == 'error') {
+
+				$install_restore_failed($install_restore_result['error'], $install_restore_result['statement'], true);
+
+			}
+
+			$install_expected_steps++;
+
+			if ($install_restore_result['status'] == 'more') {
+
+				add_install_step(lang('Extracting the archive'), pg_restore_progress_text($install_restore));
+
+			} else {
+
+				add_install_step(lang('Extracted the archive'), $install_directory_path . ' · ' . lang(array('string' => '{var:1} files', 'vars' => $install_restore['extracted'])) . ' · ' . convert_bytes_to_string((float) $install_restore['size'], 1) . ' sql.sql');
+
+			}
+
+			$install_restore_save();
+
+			$install_restore_continue();
+
+		}
 
 		if ($install_restore['phase'] == 'load') {
 
@@ -5365,11 +5505,7 @@ else {
 
 				$install_restore_save();
 
-				print '
-				<div id="pg_stream_continue" data-restore-id="' . h($install_restore['id']) . '"></div>
-				<script>pg_install_stream_continue(' . json_encode($install_restore['id']) . ');</script>' . get_footer();
-
-				exit();
+				$install_restore_continue();
 
 			}
 
@@ -5541,51 +5677,98 @@ else {
 
 		db("UPDATE email_campaign_profiles SET bcc_email_address = '" . escape($settings_email_address) . "' WHERE bcc_email_address != ''");
 
-		// add administrator user
-		// We are setting the user's start page to the 294 page which is "staff-home".
-		$query =
+		// A backup keeps its own users.  When it already has the user the form names (the same
+		// e-mail address first, otherwise the same username), no second row is added: sign-in
+		// reads the first row it finds, so the new one could never be signed into.  That user
+		// stays as the backup has it, becomes an administrator if it is not one, and gets the
+		// password from the form, so the person who restores can sign in with what they typed.
+		$install_admin = db_item(
+			"SELECT user_id, user_username, user_email, user_role
+			FROM user
+			WHERE
+				(user_email = '" . escape($liveform->get_field_value('admin_email_address')) . "')
+				OR (user_username = '" . escape($liveform->get_field_value('admin_username')) . "')
+			ORDER BY (user_email = '" . escape($liveform->get_field_value('admin_email_address')) . "') DESC, user_id
+			LIMIT 1");
 
-		"INSERT INTO user (
+		$install_admin_message = '';
 
-				user_username,
+		if ((is_array($install_admin)) && (isset($install_admin['user_id']))) {
 
-				user_email,
+			$user_id = (int) $install_admin['user_id'];
 
-				user_password,
+			// The legacy MD5 is what the row below is written with too; the end of the installation
+			// stores the modern hash once the upgrades have added its column.
+			$install_admin_algo = '';
 
-				user_role,
+			$result = mysqli_query(db::$con, "SHOW COLUMNS FROM user LIKE 'user_password_algo'") or exit(mysqli_error(db::$con));
 
-				user_home,
+			if (mysqli_num_rows($result) != 0) {
 
-				user_timestamp)
+				$install_admin_algo = ", user_password_algo = 0";
 
-			VALUES (
+			}
 
-				'" . escape($liveform->get_field_value('admin_username')) . "',
+			db(
+				"UPDATE user
+				SET
+					user_password = '" . md5($liveform->get_field_value('admin_password')) . "'" . $install_admin_algo . ",
+					user_role = '0'
+				WHERE user_id = '" . $user_id . "'");
 
-				'" . escape($liveform->get_field_value('admin_email_address')) . "',
+			$install_admin_message = lang(array('string' => 'The backup already has the user {var:1} ({var:2}), so no administrator was added: that user is an administrator and signs in with the password you entered.', 'vars' => array($install_admin['user_username'], $install_admin['user_email'])));
 
-				'" . md5($liveform->get_field_value('admin_password')) . "',
+			add_install_step($install_admin_message, '', 'warning');
 
-				'0',
+		} else {
 
-				'294',
+			// add administrator user
+			// We are setting the user's start page to the 294 page which is "staff-home".
+			$query =
 
-				UNIX_TIMESTAMP())";
+			"INSERT INTO user (
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+					user_username,
 
-		$user_id = mysqli_insert_id(db::$con);
+					user_email,
 
-		add_install_step(lang('Created the administrator account'), $liveform->get_field_value('admin_username') . ' · ' . $liveform->get_field_value('admin_email_address'));
+					user_password,
 
-		// Check if appmenu_items exist in users
-		$query = "SHOW COLUMNS FROM user LIKE 'selected_appmenu_items_array'";		
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-		// If the column exists, then we can update user with 'default' selected_appmenu_items_array value
-		if (mysqli_num_rows($result) != 0) {
-			$query = "UPDATE user SET selected_appmenu_items_array = 'default' WHERE user_id = '" . escape($user_id) . "'";
-			$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+					user_role,
+
+					user_home,
+
+					user_timestamp)
+
+				VALUES (
+
+					'" . escape($liveform->get_field_value('admin_username')) . "',
+
+					'" . escape($liveform->get_field_value('admin_email_address')) . "',
+
+					'" . md5($liveform->get_field_value('admin_password')) . "',
+
+					'0',
+
+					'294',
+
+					UNIX_TIMESTAMP())";
+
+			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+
+			$user_id = mysqli_insert_id(db::$con);
+
+			add_install_step(lang('Created the administrator account'), $liveform->get_field_value('admin_username') . ' · ' . $liveform->get_field_value('admin_email_address'));
+
+			// Check if appmenu_items exist in users
+			$query = "SHOW COLUMNS FROM user LIKE 'selected_appmenu_items_array'";		
+			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+			// If the column exists, then we can update user with 'default' selected_appmenu_items_array value
+			if (mysqli_num_rows($result) != 0) {
+				$query = "UPDATE user SET selected_appmenu_items_array = 'default' WHERE user_id = '" . escape($user_id) . "'";
+				$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+			}
+
 		}
 
 		// Update last modified site settings info to contain info for this admin user, so that
@@ -5821,78 +6004,97 @@ else {
 
 		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
 
-		// delete all files from files directory
-		$handle = opendir(FILE_DIRECTORY_PATH . '/');
+		// The files and the design templates come from the backup folder, or from the folder an
+		// archive was extracted into.  A backup without one of the two folders leaves the site's
+		// own in place: deleting them first would leave the site with none.
+		$install_content_path = pg_restore_content_path($install_restore);
 
-		while (false !== ($file = readdir($handle))) {
+		if (is_dir($install_content_path . '/files')) {
 
-			if (($file != '.') && ($file != '..')) {
+			// delete all files from files directory
+			$handle = opendir(FILE_DIRECTORY_PATH . '/');
 
-				unlink(FILE_DIRECTORY_PATH . '/' . $file);
+			while (false !== ($file = readdir($handle))) {
 
-			}
+				if (($file != '.') && ($file != '..')) {
 
-		}
+					unlink(FILE_DIRECTORY_PATH . '/' . $file);
 
-		closedir($handle);
-
-		// prepare path to template files
-		$template_files_path = dirname(__FILE__) . '/../data/backups/' . $install_directory_path . '/files/';
-
-		$handle = opendir($template_files_path);
-
-		// copy template files to files directory
-		while (false !== ($file = readdir($handle))) {
-
-			if (($file != '.') && ($file != '..')) {
-
-				copy($template_files_path . $file, FILE_DIRECTORY_PATH . '/' . $file);
+				}
 
 			}
 
+			closedir($handle);
+
+			// prepare path to template files
+			$template_files_path = $install_content_path . '/files/';
+
+			$handle = opendir($template_files_path);
+
+			// copy template files to files directory
+			while (false !== ($file = readdir($handle))) {
+
+				if (($file != '.') && ($file != '..')) {
+
+					copy($template_files_path . $file, FILE_DIRECTORY_PATH . '/' . $file);
+
+				}
+
+			}
+
+			closedir($handle);
+
+			add_install_step(lang('Copied the files of the site'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(FILE_DIRECTORY_PATH), array('.', '..'))))));
+
+		} else {
+
+			add_install_step(lang('The backup has no files folder, so the files of the site were kept'), '', 'warning');
+
 		}
-
-		closedir($handle);
-
-		add_install_step(lang('Copied the files of the site'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(FILE_DIRECTORY_PATH), array('.', '..'))))));
 
 		// Deal with layouts now.
-		
+		if (is_dir($install_content_path . '/layouts')) {
 
-		// delete all files from layouts directory
-		$handle = opendir(LAYOUT_DIRECTORY_PATH . '/');
+			// delete all files from layouts directory
+			$handle = opendir(LAYOUT_DIRECTORY_PATH . '/');
 
-		while (false !== ($file = readdir($handle))) {
+			while (false !== ($file = readdir($handle))) {
 
-			if (($file != '.') && ($file != '..')) {
+				if (($file != '.') && ($file != '..')) {
 
-				unlink(LAYOUT_DIRECTORY_PATH . '/' . $file);
+					unlink(LAYOUT_DIRECTORY_PATH . '/' . $file);
 
-			}
-
-		}
-
-		closedir($handle);
-
-		// prepare path to template layouts
-		$template_layouts_path = dirname(__FILE__) . '/../data/backups/' . $install_directory_path . '/layouts/'; 
-
-		$handle = opendir($template_layouts_path);
-
-		// copy template layouts to layouts directory
-		while (false !== ($file = readdir($handle))) {
-
-			if (($file != '.') && ($file != '..')) {
-
-				copy($template_layouts_path . $file, LAYOUT_DIRECTORY_PATH . '/' . $file);
+				}
 
 			}
 
+			closedir($handle);
+
+			// prepare path to template layouts
+			$template_layouts_path = $install_content_path . '/layouts/';
+
+			$handle = opendir($template_layouts_path);
+
+			// copy template layouts to layouts directory
+			while (false !== ($file = readdir($handle))) {
+
+				if (($file != '.') && ($file != '..')) {
+
+					copy($template_layouts_path . $file, LAYOUT_DIRECTORY_PATH . '/' . $file);
+
+				}
+
+			}
+
+			closedir($handle);
+
+			add_install_step(lang('Copied the design templates'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(LAYOUT_DIRECTORY_PATH), array('.', '..'))))));
+
+		} else {
+
+			add_install_step(lang('The backup has no layouts folder, so the design templates of the site were kept'), '', 'warning');
+
 		}
-
-		closedir($handle);
-
-		add_install_step(lang('Copied the design templates'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(LAYOUT_DIRECTORY_PATH), array('.', '..'))))));
 
 		// create config.php file
 		
@@ -6292,6 +6494,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 					<i class="bi bi-check-circle-fill"></i>
 					<div class="flex-grow-1">
 						<b>' . lang('The installation is complete') . '</b> <span class="text-body-secondary">' . h($install_result_details) . '</span>
+						' . (($install_admin_message != '') ? '<div class="small mt-1"><i class="bi bi-person-check me-1"></i>' . h($install_admin_message) . '</div>' : '') . '
 						<div class="d-flex gap-2 flex-wrap mt-2">
 							<a class="btn btn-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
 							<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>

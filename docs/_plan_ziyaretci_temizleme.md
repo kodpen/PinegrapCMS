@@ -177,4 +177,8 @@ dökümden hemen düşer, dosyanın diskteki boyutu yedeği etkilemez.
    bayt `data/temp/restore.json`'da; yükleme bitince tablolar tek
    `RENAME TABLE` ile yer değiştiriyor (`includes/fn/backup_restore.php`).
    Yarım kalan geri yükleme kurulum ekranında ve Yedekleme Yöneticisi'nde
-   görünüyor, sürdürülüyor ya da siliniyor.
+   görünüyor, sürdürülüyor ya da siliniyor. Otomatik yedeğin `.zip`
+   arşivleri de listede: önce `data/temp/restore_<id>/`'ye adım adım açılıp
+   sağlama toplamıyla denetleniyor, sonra aynı yolla yükleniyor. Geri
+   yükleme yedekte aynı e-posta ya da kullanıcı adı varsa yöneticiyi ikinci
+   kez eklemiyor, o kullanıcıya formdaki parolayı veriyor (PR #451).
