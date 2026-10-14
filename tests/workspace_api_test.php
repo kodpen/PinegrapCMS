@@ -369,6 +369,19 @@ function test_ws_api_inbox_reload()
 	pg_assert_same(false, ws_api_inbox_reload($now + 60, $now, $keep));
 }
 
+// Back in a channel, the lines about its tasks come back only for the tasks
+// seen through it: the creator and the people on a task saw it all along.
+function test_ws_inbox_task_through_channel()
+{
+	$task = array('channel_id' => 7, 'creator_id' => 3);
+
+	pg_assert_same(true, ws_inbox_task_through_channel(5, $task, array(4)));
+	pg_assert_same(true, ws_inbox_task_through_channel(5, $task, array()));
+	pg_assert_same(false, ws_inbox_task_through_channel(3, $task, array(4)), 'its creator');
+	pg_assert_same(false, ws_inbox_task_through_channel(5, $task, array('4', '5')), 'one of its people');
+	pg_assert_same(false, ws_inbox_task_through_channel(5, array('channel_id' => 0, 'creator_id' => 3), array()), 'a task in no channel');
+}
+
 // A row changes by being written, sent again or read: either stamp at or
 // after the moment counts, only the person's rows after the one given.
 function test_ws_api_inbox_changed_where()
