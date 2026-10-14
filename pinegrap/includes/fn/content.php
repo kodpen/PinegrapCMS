@@ -2518,7 +2518,8 @@ function get_catalog_item_address_name_from_id($item_id, $item_type)
     $query = "SELECT address_name FROM $sql_table WHERE id = '" . escape($item_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
-    $address_name = $row['address_name'];
+    // A deleted item (a stale catalog menu or link) has no address name.
+    $address_name = $row ? $row['address_name'] : '';
     // return the address name
     return $address_name;
 }

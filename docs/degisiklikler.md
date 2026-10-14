@@ -84,6 +84,83 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Panel taramasının son uyarıları: şablon ve kasa satışı POST alanları, paketleme fişi, silinmiş ürün grubu (2026-10-14)
+
+**Neden.** #432 ve #433'ün kalanları. #433'ün taraması GET'ti;
+`workspace_template` ve `add_order` jetonlu POST alanlarını `(string)` /
+`(int)` ile okuyordu. Dizi gelen alan (`name[]=x`) "Array to string
+conversion" yazıp değeri "Array" olarak kullanıyor, `(int)` dizide 1
+verdiği için 1 numaralı kaydı seçiyordu: sandbox'ta `workspace_template`
+`id[]=1` ile 1 numaralı şablonun üstüne kaydetti (açıklaması silindi),
+`name[]=x` "Array" adlı şablon açtı; kasa satışında `product_id[]=5` 1
+numaralı ürünü aradı, `item_id[]`, `contact_id[]`, `order_id[]` aynı yoldan
+1'i kullanıyordu, hızlı cari açmada `title[]` / `phone[]`
+`includes/erp/account_quick.php`'de uyarı yazdı. `print_packing_slip`
+gerçek bir alıcıda isteğe bağlı satırların değişkenlerini (kurum adres 2 /
+ülke, unvan, şirket, adres 2, telefon) yalnız doluysa kuruyordu; boş olanlar
+için normal açılışta üç ila beş "Undefined variable". Katalog menüsü
+yönlendirmesi silinmiş (ya da boş) ürün grubunda
+`get_catalog_item_address_name_from_id()` bulunamayan satırın sütununu
+okuyordu (`includes/fn/content.php`, "array offset on null"), ardından
+`encode_url_path(null)` kullanım dışı satırı. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Serinin kuralı: dizi gelen tek değerli alan "verilmedi"
+sayılır, normal isteğin çıktısı değişmez. `workspace_template` jeton
+denetiminden hemen sonra, `add_order` eylem okunmadan önce #425'in
+`pg_request_single_values()`'ini ekranın okuduğu bütün POST alanlarıyla
+çağırıyor (kasa satışında hızlı cari açmanın `$_POST`'tan okuduğu `title`,
+`is_person`, `tax_number`, `email`, `phone` dahil). Ekranın kendi formları
+ve `add_order.js` bu alanları hep tek değer gönderiyor. `print_packing_slip`
+altı değişkeni dallardan önce boş metinle başlatıyor (boş metin, tanımsız
+değişkenin bastığıyla aynı). `get_catalog_item_address_name_from_id()` satır
+yoksa boş metin dönüyor (önceden `null`; bütün çağıranlar metin olarak
+kullanıyor, `get_query_string_for_page_url()` boşu zaten "yok" sayıyor).
+Şema, dil dosyası, JS değişikliği yok. Yeni
+`tests/panel_scan_leftovers_test.php`: iki ekranın okuduğu her `$_POST`
+alanı çağrının listesinde ve çağrıdan sonra okunuyor, fişin varsayılanları
+ilk kullanımdan önce, fonksiyon satır yokken sütun okumuyor (eski kodda
+dört test de düşüyor).
+
+Altı ekrandaki boş değerli `h()` kullanım dışı satırı (`add_container`,
+`add_ship_date_adjustment`, `add_verified_shipping_address`,
+`duplicate_products`, `view_countries`, `view_styles`) burada
+değiştirilmedi: altısı da `includes/fn/core.php` `h()`'ye giden `null`
+(çoğu liveform'un boş alan değeri) ve K9 iş parçacığı `h()` / `escape()`'e
+null koruması ekliyor. Sandbox'ta `h()` geçici olarak `(string)` ile
+denendi: altı ekranda (106 istek) kullanım dışı satırı 106 → 0, başka satır
+çıkmadı. Çağrı yerinde ayrı dönüşüm aynı satırları ikinci kez düzeltirdi.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, DEBUG açık).** Eski kod
+(`origin/development`) 8001'de, yeni 8000'de, aynı veritabanı ve `data/`,
+istekler sırayla iki sunucuya. Paketleme fişi dört gerçek alıcıda (şirketli
+/ şirketsiz, unvanlı, telefonlu) aynı HTML; eskisi istek başına 3–5 uyarı,
+yenisi 0. Katalog menüsü: silinmiş ve boş ürün grubu aynı yönlendirme
+(`/shop-sidebar/?previous_url_id=…`), eskisi iki satır, yenisi 0; var olan
+iki grup ve iki katalog sayfası aynı. `workspace_template`: normal kayıt
+ikisinde de şablonu açıp `?id=` sayfasına döndü; dizi ad yenide "ad gerekli"
+formunu, dizi kimlik yeni şablonu açtı; bütün alanları dizi gelen kayıt
+eskide reddedilip yedi uyarı yazdı, yenide ad ile ve öbür alanlar boş
+kaydedildi. Kasa satışı (JSON): ürün kimliği ve barkodla ekleme, geçersiz
+eylem, sepeti boşaltma, hızlı cari açma, müşteriyi kaldırma, `state` ve
+`recent` istekleri aynı yanıt (yalnız yeni satırın kimliği farklı); dizi
+eylem eskide "Geçersiz eylem." JSON'u ve uyarı, yenide eylemsiz POST gibi
+ekranın kendisi; dizi ürün kimliği / barkod "barkod okutun ya da ürün adını
+yazın", dizi cari adı "Ad gerekli" diyor. `scan.py` dört ekranda (79 GET
+isteği): uyarı yok, kalan tek satır hata sayfasındaki liveform `h(null)`
+(K9). `tools/lint.php`, `tools/test.php` (985 test), `check_lang`,
+`check_bindings`, `check_api_schema`, `check_copies` ve `build_js.php
+--check` geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler.
+
+**Bilerek yapılmayan.** `erp_account_quick.php` (ERP ekranlarının hızlı cari
+ucu) aynı `erp_account_quick_create($user, $_POST)` yolunu kullanıyor; ERP
+POST uçları ayrı bir iş olarak kuyrukta. Kasa satışında ürün eklemenin
+`includes/fn/ecommerce.php` ziyaretçi satırı uyarısı (`visitor_id`, ziyaretçi
+kaydı olmayan istek; `update_currency.php:48` ile aynı tür) ve
+`escape(null)` kullanım dışı satırı değişmedi (ikincisi K9'un `escape()`
+korumasıyla gider).
+
+---
+
 ## 2026.4.10 — Tema Tasarımcısı ayarı olmayan CSS teması CSS düzenleyicisinde açılıyor, Kaydet temanın CSS'ini silmiyor (2026-10-14)
 
 **Neden.** #417'nin panel taramasından kalan K8. Tema Tasarımcısı bir

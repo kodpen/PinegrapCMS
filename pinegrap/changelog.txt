@@ -2983,6 +2983,18 @@
          açılan Tema Tasarımcısı "Kayıt bulunamadı"
          gösteriyor.
 
+  [DÜZELTME] Çalışma Alanı kanal şablonu ekranı bir
+         alanı birden çok kez gönderen bir kayıt isteğinde
+         şablon adına "Array" yazıyor ya da 1 numaralı
+         şablonun üstüne kaydediyordu; kasa satışı aynı
+         durumda 1 numaralı ürünü, satırı ya da siparişi
+         kullanıyordu. Artık o alan hiç gönderilmemiş
+         sayılıyor. Paketleme fişi şirket, ikinci adres
+         satırı ya da telefonu olmayan bir alıcıda, katalog
+         menüsü silinmiş bir ürün grubuna yönlendirirken
+         hata günlüğüne uyarı yazıyordu; artık yazmıyor,
+         çıktı aynı.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
