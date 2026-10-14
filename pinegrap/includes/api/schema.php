@@ -2885,7 +2885,7 @@ function api_error_catalogue() {
 		'invalid_cursor'           => array(400, 'The cursor was not one this API issued. Start the listing again without it.'),
 		'invalid_idempotency_key'  => array(400, 'Idempotency-Key must be 8 to 255 characters.'),
 		'invalid_dry_run'          => array(400, 'X-Dry-Run must be true or false.'),
-		'dry_run_unsupported'      => array(400, 'This endpoint cannot rehearse a call. Send it without X-Dry-Run.'),
+		'dry_run_unsupported'      => array(400, 'This endpoint cannot rehearse a call. Send it without X-Dry-Run or dry_run.'),
 
 		'credentials_missing'      => array(401, 'No key and secret were sent. Authentication is HTTP Basic.'),
 		'unauthorized'             => array(401, 'The key is unknown or the secret is wrong. The two are not told apart on purpose.'),

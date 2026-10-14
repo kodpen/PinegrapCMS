@@ -99,6 +99,16 @@ function api_openapi_build() {
 
 				}
 
+				// The router takes JSON null for a nullable field as the
+				// clear (api_validate_input()), and the MCP tool says so too
+				// (pg_mcp_param_schema()); a generated client that was not
+				// told cannot send it.
+				if (!empty($param['nullable'])) {
+
+					$property['nullable'] = true;
+
+				}
+
 				$body_properties[$param['name']] = $property;
 
 				if (!empty($param['required'])) {

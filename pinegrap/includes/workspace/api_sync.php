@@ -261,7 +261,7 @@ function ws_api_sync_pin_schema()
 {
     return array(
         'message'   => 'WorkspaceMessage',
-        'pinned_by' => array('user_id' => 'integer', 'name' => 'string'),
+        'pinned_by' => 'WorkspacePerson?',
         'pinned_at' => 'string?',
         'hidden'    => 'boolean',
     );

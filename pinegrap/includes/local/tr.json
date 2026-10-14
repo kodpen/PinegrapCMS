@@ -23188,5 +23188,6 @@
     "Each item of {var:1} needs a label.": "{var:1} içindeki her öğenin bir label alanı olmalı.",
     "Each id in {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her id oylamanın seçeneklerinden birinin kimliği olmalı.",
     "Send at least one of question, options, multiple, anonymous or closes_at.": "question, options, multiple, anonymous ya da closes_at alanlarından en az birini gönderin.",
-    "Only a public or a private channel goes into a group.": "Gruba yalnız herkese açık ya da özel bir kanal taşınır."
+    "Only a public or a private channel goes into a group.": "Gruba yalnız herkese açık ya da özel bir kanal taşınır.",
+    "Can be rehearsed: with X-Dry-Run: true, or dry_run=true in the query, it makes every check and answers without writing.": "Prova edilebilir: X-Dry-Run: true başlığıyla ya da sorguda dry_run=true ile her denetimi yapar ve yazmadan cevap verir."
 }
