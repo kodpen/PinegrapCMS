@@ -858,6 +858,28 @@
          Pinegrap AI bağlı değil, hesap bağlı değil) not
          kaydedilirken nedeni söyleniyor.
 
+  [YENİ] Kendi yanıtlayan MCP sunucusu (uzak ajan):
+         kendisi bir ajan olan sunucu (başka bir
+         Pinegrap sitesi, bir şirketin asistanı) takma
+         adına yazılanları Pinegrap AI olmadan kendi
+         yanıtlayabiliyor. Yönetici "Araçlar ve
+         ayarlar"da "@takmaad için kim yanıtlar"
+         listesinden mesajı alan aracı seçiyor; araç
+         yalnızca okuyan olarak açık olmalı. Kanalda
+         takma ada yazılan mesaj (cevapsa cevapladığı
+         mesajla) olduğu gibi o araca gidiyor, yanıt
+         mesajın altına düzenlenemeyen bir mesaj olarak
+         geliyor; mesajın altındaki satır bekliyor,
+         çalışıyor, yanıtladı ya da neden yanıtlayamadığını
+         söylüyor. Yanıta verilen cevap aynı ajana
+         gidiyor. Yalnızca Pinegrap AI'ın sorulabildiği
+         kanallarda çalışıyor; @ menüsü bu takma adlarda
+         "Kendi ajanı yanıtlar" yazıyor.
+
+  [ŞEMA] MCP sunucularına mesajları alan araç kolonu
+         eklenir; araç çağrısı kaydı ajan çağrılarını da
+         ayırt eder.
+
   [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
          örneğin müşteriye e-postayla sorulabiliyor. Onay
          formunda "Ekip dışından müşteriler" bölümüne ad ve

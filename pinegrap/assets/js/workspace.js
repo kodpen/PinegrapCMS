@@ -8993,6 +8993,26 @@
             });
         },
 
+        // An MCP server that is an agent itself answers a message at a time,
+        // sent by the screens waiting for it (includes/workspace/mcp_agent.php).
+        kickAgent: function (now) {
+            var self = this;
+
+            if (self.agentKicking || (!now && (Date.now() - (self.agentKickAt || 0)) < 4000)) {
+                return;
+            }
+
+            self.agentKicking = true;
+            self.agentKickAt = Date.now();
+
+            api('ws_mcp_agent_kick').then(function () {
+                self.agentKicking = false;
+                self.sync();
+            }).catch(function () {
+                self.agentKicking = false;
+            });
+        },
+
         // Record changes an answer proposes: what each field holds and would
         // hold. Only the person who asked applies them, with their own rights.
         // A bulk change being applied: the next slice, one at a time, until
@@ -11013,6 +11033,10 @@
                 if (result.ai) {
                     self.kickAi(true);
                 }
+
+                if (result.agent) {
+                    self.kickAgent(true);
+                }
             }).catch(function (error) {
                 self.busy = false;
                 fail(error);
@@ -11465,11 +11489,12 @@
                 };
 
                 // Other services' MCP servers, by their alias: written as
-                // text, and Pinegrap AI answers with the server's tools.
+                // text, and Pinegrap AI answers with the server's tools, or
+                // the server's own agent answers.
                 var mcpAliases = function () {
                     (BOOT.mcp || []).forEach(function (server) {
                         if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
-                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t('mcp_meta'), icon: 'bi-plug', insert: '@' + server.alias + ' ' });
+                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t(server.agent ? 'mcp_meta_agent' : 'mcp_meta'), icon: 'bi-plug', insert: '@' + server.alias + ' ' });
                         }
                     });
                 };
@@ -12153,6 +12178,13 @@
                 return message.claude && message.claude.agent === 'ai' && /^(queued|sent|running)$/.test(message.claude.status);
             })) {
                 self.kickAi();
+            }
+
+            // So does an MCP agent: a message waits until a screen sends it.
+            if (waiting && (self.messages || []).some(function (message) {
+                return message.claude && message.claude.agent === 'mcp' && message.claude.status === 'queued';
+            })) {
+                self.kickAgent();
             }
 
             self.timer = setTimeout(function () {

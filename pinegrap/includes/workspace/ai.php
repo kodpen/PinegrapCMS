@@ -938,6 +938,12 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body)
     // one: Pinegrap AI answers with that server's tools (mcp_ask.php).
     $server = (ws_ai_schema_ready() && function_exists('ws_mcp_ask_server')) ? ws_mcp_ask_server($body, $message_id) : null;
 
+    // A server that is an agent itself answers its alias on its own
+    // (mcp_agent.php, ws_mcp_agent_after_send()).
+    if ($server && function_exists('ws_mcp_agent_mode') && ws_mcp_agent_ready() && ws_mcp_agent_mode($server)) {
+        return false;
+    }
+
     if (!ws_ai_schema_ready() || !($server || ws_ai_asked($body) || ws_ai_answers_ai($message_id))) {
         return false;
     }

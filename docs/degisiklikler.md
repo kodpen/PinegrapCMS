@@ -84,6 +84,89 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Uzak ajan: kendisi ajan olan MCP sunucusu takma adını kendi yanıtlıyor (10.89) (2026-10-14)
+
+**Neden.** Faz F'nin son parçası, seviye C (`notes/mcp-arastirma.md` §3): bazı MCP
+sunucuları yalnız araç sunmaz, kendisi bir ajandır (başka bir Pinegrap sitesi, bir şirketin
+asistanı); mesajı alır ve yanıtlar. Bugüne dek takma ada yazılan her mesajı Pinegrap AI o
+sunucunun araçlarıyla yanıtlıyordu; Pinegrap AI'ı olmayan site böyle bir ajana kanaldan hiç
+soramıyordu. Tam hâli (uzun süren iş, görev ve not, yazan araç onayı, konuşmanın sürmesi) tek
+PR'a sığmadığı için dilimlere bölündü (`docs/_plan_tersine_oauth.md` → "4.6 Uzak ajan"); bu
+ilk dilim, kanalda uçtan uca çalışan en küçük parçadır.
+
+**Ne değişti.**
+
+- Şema 10.89 (`upgrade_2026_4_10_workspace_mcp_agent()`): `ws_mcp_servers.agent_tool`
+  VARCHAR(128) '' — mesajları alan aracın adı, '' iken takma adı Pinegrap AI yanıtlar;
+  `ws_mcp_calls.via` ENUM'una `agent` (önce tip okunur, yalnız genişletilir; sütun ondan sonra
+  eklendiği için sütunun varlığı ENUM'un da genişlediğini söyler). İstek `ws_ai_requests`'te
+  `agent = 'mcp'` ile bekler; sütun VARCHAR, değişiklik yok.
+- Yeni modül `includes/workspace/mcp_agent.php`:
+  - `ws_mcp_agent_argument($tool)` (saf): mesajın gideceği argüman — aracın tek zorunlu metin
+    argümanı; zorunlu yoksa adı mesaj aldığını söyleyen metin (`message`, `prompt`, `query`…).
+    Başka bir şey de zorunluysa ya da böyle bir metin yoksa ''. Değer listesi (`enum`,
+    `const`) ya da biçimi (`format`: tarih, adres) olan argüman metin sayılmaz; sayfalama
+    imleci ya da süzgeç gibi ilk metne düşülmez, seçim listesi uzamaz.
+  - `ws_mcp_agent_candidates()` / `ws_mcp_agent_tool()`: seçilebilen araç tek metinle
+    çağrılabilen ve yalnız okuyan kurala açılabilen araçtır (sunucu salt okur dedi ya da bir şey
+    demedi); kullanılabilmesi için seçili, sunucunun listesinde ve `auto` / `auto_declared`
+    kuralıyla açık olmalı. Yazan (`approve`) araç bu dilimde seçilemez: her mesajın önce onay
+    kartı gerekir (dilim 4).
+  - `ws_mcp_agent_after_send()`: takma ada yazılmış mesaj ya da ajanın yanıtına cevap
+    (`ws_mcp_ask_server()`, cevap eşlemesi artık `agent IN ('ai', 'mcp')`) ajan kipindeki
+    sunucunun ise istek kuyruğa girer ve Pinegrap AI sorulmaz. Kapılar: kanal Pinegrap AI'ın
+    sorulabildiği kanal olmalı (`ws_ai_channel_allowed()`: özel kanalın sözü yalnız üyeleri
+    izin verdiyse siteden çıkar; misafir kanalı hiç), kişi başı 3 bekleyen istek,
+    `ws_mcp_ask_problem()` (kapalı, aracı yok, OAuth'ta hesap yok) ve aracın hâlâ kullanılabilir
+    olması. Engelde kanala nedenini söyleyen sistem mesajı düşer.
+  - `ws_mcp_agent_kick()`: en eski bekleyen isteği koşullu güncellemeyle sahiplenir (iki
+    ekran aynı isteği göndermez), araca gönderir, yanıtı soranın mesajının altına, soranın
+    adıyla, kilitli (`locked = 1`) yazar; başında "@x, `araç` aracıyla yanıtladı:". Yanıt
+    Markdown kalır, `<@` / `<#` etiketleri `‹` ile bozulur (kimseyi anmaz; F1c ve onay kartı
+    kararının deseni). Hata (`isError`), boş yanıt ya da ulaşılamama isteği `failed` yapar,
+    mesajın altındaki satır nedenini söyler. Her çağrı `ws_mcp_calls`'a `via = 'agent'` ile.
+  - Ajan yalnız mesajı ve cevapsa cevaplanan mesajı okur (Markdown alıntısı, yazanın adıyla;
+    etiketler sorana görünen adlarına çevrilir, sitenin `<@user:N>` biçimi gitmez), kanalın
+    geri kalanını okumaz. Mesajın başındaki `@takmaad` atılır (takma ad sitenin adıdır, ajanın
+    değil; `ws_mcp_agent_unaddressed()`); ajanın kendi yanıtı adsız ve "yanıtladı" satırı
+    olmadan alıntılanır (soranın adıyla yazılmıştır ama soran yazmadı). Mesaj 4000, alıntı
+    2000 karakterle kesilir.
+  - Zaman: ekrandan çağrı 45 sn, saatlik işte 90 sn; 5 dakikadır `running` kalan istek
+    "zamanında yanıt vermedi", bir gün gönderilemeyen `cancelled` (`ws_mcp_agent_watchdog()`).
+- `includes/workspace/actions.php`: mesaj gönderiminde önce ajan, ajanın değilse Pinegrap AI;
+  yanıtta `agent: true`. Yeni eylem `ws_mcp_agent_kick` (panel eylem listesine de eklendi).
+  `scheduled_messages.php` programlanmış mesajda aynı sırayı izler. `ai.php`
+  `ws_ai_after_send()` ajan kipindeki sunucuya yazılan mesajı almaz (ikinci kapı).
+- `workspace_recurring_job.php`: `ws_mcp_agent_job()` ekranların taşımadığı istekleri gönderir.
+- `claude.php` `ws_claude_request_state()`: `agent = 'mcp'` satırını `ws_mcp_agent_request_state()`
+  yazar ("@x bekleniyor / üzerinde çalışıyor / yanıtladı / yanıtlayamadı: …").
+- Ayarlar kartı (`mcp.php`): "Araçlar ve ayarlar"ın araç formunda "@x için kim yanıtlar"
+  seçimi (Pinegrap AI ya da uygun bir araç, mesajın gideceği argümanla). Seçilen araç aynı
+  kayıtta yalnız okuyan kuralla açık değilse kaydedilmez, hata söylenir, takma ad Pinegrap AI'da
+  kalır. Kart satırında "`araç` aracıyla kendi yanıtlıyor"; Pinegrap AI bağlı değilken uyarı
+  ajan sunucularının sorulabildiğini söyler.
+- `assets/js/workspace.js` (+ `.min.js`): ekran ajan isteği bekliyorken `ws_mcp_agent_kick`
+  çağırır (`kickAgent`, Pinegrap AI'ınki gibi en çok 4 sn'de bir); `@` menüsünde ajan
+  sunucusunun açıklaması "Kendi ajanı yanıtlar" (`BOOT.mcp[].agent`).
+- Dış API: `GET /workspace/assistant-requests` `agent` değeri ve süzgeci `mcp`'yi de taşır
+  (önceden böyle bir satır `claude` görünürdü).
+
+**Ödün.** Yanıt takma adın kendi üye kimliğiyle değil soranın adıyla, kilitli olarak yazılır:
+uygulama dışı bir gönderen (`ws_app_sender()`, `refs.php`) bugün yalnız Claude ve Pinegrap AI'ı
+tanıyor; genelleştirmesi dilim 5. Ajan kipindeki sunucuya görev devri ve görev notunda
+`@takmaad` bu dilimde değişmedi: Pinegrap AI ajan aracını sıradan bir araç olarak kullanır
+(dilim 3).
+
+**Denendi.** Birim testi (`tests/workspace_mcp_test.php`: argüman seçimi, aracın kuralları,
+alıntı, baştaki takma ad, yanıtın etiketleri). Sandbox'ta `192.0.2.2:8001`'de sahte bir ajan sunucusuyla
+(2026-07-28, `ask` aracı) uçtan uca: ayar kartında seçim (kuralsız seçim reddedildi), kanalda
+`@ajan` → yanıt mesajın altında kilitli, ajanın yanıtına cevap aynı ajana alıntıyla gitti,
+`isError` satırda göründü, araç kapatılınca kanal nedenini söyledi, Pinegrap AI sorulmadı;
+tarayıcıda `@` menüsü ve ekranın `ws_mcp_agent_kick` çağrısı. Şema adımı sandbox'ta iki kez
+koşturuldu.
+
+---
+
 ## 2026.4.10 — Reklam, komisyon, rehber grubu, hediye kartı, sipariş raporu ve yinelenen komisyon profili listeleri ortak tablo yardımcısında: çoklu sıralama, sıralama yönündeki SQL enjeksiyonu kapandı (2026-10-14)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına

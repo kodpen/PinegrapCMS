@@ -13,5 +13,7 @@ yetkilendirme sunucusu" ve sonraki 2026.4.10 bölümleri; kurallar
 1. **Faz E — "Pinegrap ile giriş"** (OpenID Connect, `id_token`): başka yazılımlarda
    Pinegrap hesabıyla oturum açmak. Karar bekliyor, başlanmadı.
 2. Faz F, isteğe bağlı: uzak ajan (proje notu `notes/mcp-arastirma.md`, üçüncü seviye).
-   Görev notunda `@takmaad` ile sormak 2026-10-14'te bitti (#345, `docs/degisiklikler.md` →
-   "Görev notunda @takmaad").
+   Dilimlere bölündü, plan `docs/_plan_tersine_oauth.md` → "4.6 Uzak ajan"; ilk dilim (kanalda
+   `@takmaad` doğrudan ajanın aracına, şema 10.89) 2026-10-14'te bitti (#347). Görev notunda
+   `@takmaad` ile sormak 2026-10-14'te bitti (#345, `docs/degisiklikler.md` → "Görev notunda
+   @takmaad").

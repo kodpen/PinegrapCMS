@@ -6,8 +6,9 @@
  * (includes/workspace/mcp.php, mcp_ask.php): which tools may be turned on
  * with one connection for the whole site, which ask first on a server people
  * sign in to, which are on, the names the model knows them by, aliases, the
- * credential headers, the arguments a waiting call shows, and the form a
- * tool that reads is run with (mcp_form.php).
+ * credential headers, the arguments a waiting call shows, the form a
+ * tool that reads is run with (mcp_form.php), and the tool that takes the
+ * messages of a server that is an agent itself (mcp_agent.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -22,6 +23,7 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_ask.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_agent.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
 
 // A tool as the client keeps it.
@@ -462,3 +464,100 @@ function test_workspace_mcp_form_message_quotes_the_answer_safely()
 	pg_assert_contains("…\n```", $long, 'cut with a mark');
 }
 
+// A tool with this input schema, as the client keeps it.
+function workspace_mcp_test_schema_tool($name, $schema, $annotations = array())
+{
+	return pg_mcp_client_tool_normalise(array('name' => $name, 'annotations' => $annotations), json_encode($schema));
+}
+
+function test_workspace_mcp_agent_argument_takes_the_message()
+{
+	$text = array('type' => 'string');
+
+	pg_assert_same('message', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('a', array('type' => 'object', 'properties' => array('message' => $text, 'lang' => $text), 'required' => array('message')))), 'the one required text');
+	pg_assert_same('q', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('b', array('type' => 'object', 'properties' => array('q' => $text), 'required' => array('q')))), 'whatever its name');
+	pg_assert_same('prompt', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('c', array('type' => 'object', 'properties' => array('style' => $text, 'prompt' => $text)))), 'nothing required: the name that says it takes a message');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('d', array('type' => 'object', 'properties' => array('count' => array('type' => 'integer'), 'cursor' => $text)))), 'nothing required and no such name: a cursor or a filter does not take messages');
+	pg_assert_same('text', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('e', array('type' => 'object', 'properties' => array('text' => array('type' => array('string', 'null'))), 'required' => array('text')))), 'a text that may be null');
+
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('f', array('type' => 'object', 'properties' => array('room' => $text, 'when' => $text), 'required' => array('room', 'when')))), 'two things required');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('g', array('type' => 'object', 'properties' => array('id' => array('type' => 'integer')), 'required' => array('id')))), 'the required one is not a text');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('h', array('type' => 'object', 'properties' => new stdClass()))), 'no argument at all');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('i', array('type' => 'object', 'properties' => array('n' => array('type' => array('string', 'integer')))))), 'a text or a number is not a text');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('j', array('type' => 'object', 'properties' => array('status' => array('type' => 'string', 'enum' => array('open', 'closed'))), 'required' => array('status')))), 'a fixed list of values is not a text');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('k', array('type' => 'object', 'properties' => array('query' => array('type' => 'string', 'format' => 'date'))))), 'nor is a date');
+}
+
+function test_workspace_mcp_agent_tool_must_read_only()
+{
+	$schema = array('type' => 'object', 'properties' => array('message' => array('type' => 'string')), 'required' => array('message'));
+	$tools = array(
+		workspace_mcp_test_schema_tool('ask', $schema),
+		workspace_mcp_test_schema_tool('lookup', $schema, array('readOnlyHint' => true)),
+		workspace_mcp_test_schema_tool('send', $schema, array('readOnlyHint' => false)),
+		workspace_mcp_test_schema_tool('ping', array('type' => 'object', 'properties' => new stdClass()), array('readOnlyHint' => true)),
+	);
+
+	$server = workspace_mcp_test_server($tools, array('ask' => 'auto_declared', 'lookup' => 'auto'));
+
+	pg_assert_same(array('ask' => 'message', 'lookup' => 'message'), ws_mcp_agent_candidates($server), 'a tool that writes, or takes no text, cannot take messages');
+
+	pg_assert_false(ws_mcp_agent_mode($server), 'no tool chosen: Pinegrap AI answers');
+	pg_assert_same(null, ws_mcp_agent_tool($server));
+
+	$server['agent_tool'] = 'ask';
+
+	pg_assert_true(ws_mcp_agent_mode($server));
+	pg_assert_same(array('name' => 'ask', 'argument' => 'message'), ws_mcp_agent_tool($server));
+
+	// Turned off, or no longer listed: the server stays an agent, but the
+	// tool cannot be used.
+	$off = workspace_mcp_test_server($tools, array('lookup' => 'auto'));
+	$off['agent_tool'] = 'ask';
+
+	pg_assert_true(ws_mcp_agent_mode($off));
+	pg_assert_same(null, ws_mcp_agent_tool($off), 'a tool turned off takes no messages');
+
+	$gone = workspace_mcp_test_server($tools, array('ask' => 'auto_declared'));
+	$gone['agent_tool'] = 'vanished';
+
+	pg_assert_same(null, ws_mcp_agent_tool($gone), 'a tool the server no longer lists takes no messages');
+
+	// On a server people sign in to, a tool that waits for an approval
+	// before each call does not take messages yet.
+	$oauth = workspace_mcp_test_server($tools, array('ask' => 'approve', 'send' => 'approve'), 'oauth');
+	$oauth['agent_tool'] = 'ask';
+
+	pg_assert_same(null, ws_mcp_agent_tool($oauth));
+}
+
+function test_workspace_mcp_agent_message_with_the_one_it_answers()
+{
+	pg_assert_same('What about tomorrow?', ws_mcp_agent_compose(' What about tomorrow? '), 'a message alone goes as it is');
+	pg_assert_same("> Ayşe: It rains today.\n> Take an umbrella.\n\nWhat about tomorrow?", ws_mcp_agent_compose('What about tomorrow?', 'Ayşe', "It rains today.\nTake an umbrella."), 'a reply quotes the message it answers');
+	pg_assert_same("> Nothing said.\n\nAnd?", ws_mcp_agent_compose('And?', '', 'Nothing said.'), 'no name when none is known');
+	pg_assert_same('And?', ws_mcp_agent_compose('And?', 'Ayşe', '  '), 'an empty message answered adds nothing');
+}
+
+function test_workspace_mcp_agent_message_without_the_alias_it_starts_with()
+{
+	pg_assert_same('Is order 1045 shipped?', ws_mcp_agent_unaddressed('@helpdesk Is order 1045 shipped?', 'helpdesk'));
+	pg_assert_same('is it shipped?', ws_mcp_agent_unaddressed(' @HelpDesk, is it shipped?', 'helpdesk'), 'any case, with the comma after it');
+	pg_assert_same('@helpdesk2 hello', ws_mcp_agent_unaddressed('@helpdesk2 hello', 'helpdesk'), 'a longer alias is another one');
+	pg_assert_same('Ask @helpdesk later', ws_mcp_agent_unaddressed('Ask @helpdesk later', 'helpdesk'), 'only at the start');
+	pg_assert_same('@helpdesk', ws_mcp_agent_unaddressed('@helpdesk', 'helpdesk'), 'the alias alone is kept');
+}
+
+function test_workspace_mcp_agent_answer_mentions_nobody()
+{
+	$body = ws_mcp_agent_answer_body('helpdesk', 'a`sk', "Ask <@user:12> in <#channel:3>.\n**Done.**");
+
+	pg_assert_contains('@helpdesk', $body);
+	pg_assert_contains('`ask`', $body, 'a backtick in the name does not break the code');
+	pg_assert_contains("Ask ‹@user:12> in ‹#channel:3>.\n**Done.**", $body, 'the answer stays Markdown, its tags mention nobody');
+
+	$long = ws_mcp_agent_answer_body('helpdesk', 'ask', str_repeat('x', 10000));
+
+	pg_assert_true(mb_strlen($long) <= WS_MESSAGE_MAX, 'it fits in a message');
+	pg_assert_contains('…', $long, 'cut with a mark');
+}

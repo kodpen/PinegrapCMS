@@ -1214,6 +1214,12 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
             log_activity(lang(array('string' => 'the tools of the MCP server @{var:1} were changed', 'vars' => $server['alias'])), $username);
             $liveform->add_notice(lang(array('string' => '{var:1} tools of @{var:2} can be used.', 'vars' => array(count($rules), $server['alias']))));
 
+            // The tool that takes the messages of a server that is an agent
+            // itself (mcp_agent.php), by the rules just saved.
+            if (function_exists('ws_mcp_agent_settings_save')) {
+                ws_mcp_agent_settings_save($server, $rules, $liveform);
+            }
+
             return $anchor;
 
         case 'mcp_connect':
@@ -1714,6 +1720,7 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
             ' . get_token_field() . '
             <input type="hidden" name="ws_action" value="mcp_tools">
             <input type="hidden" name="mcp_id" value="' . (int) $server['id'] . '">
+            ' . (function_exists('ws_mcp_agent_settings_field') ? ws_mcp_agent_settings_field($server, $admin) : '') . '
             <div class="d-flex align-items-center gap-2 mb-2">
                 <div class="small fw-semibold ws-grow">' . h(lang(array('string' => 'Tools ({var:1} of {var:2} turned on)', 'vars' => array(count($on), count($tools)))))
                     . ((defined('WS_MCP_ASK_MAX_TOOLS') && (count($on) > WS_MCP_ASK_MAX_TOOLS)) ? '<span class="d-block fw-normal text-warning-emphasis">' . h(lang(array('string' => 'Pinegrap AI is offered the first {var:1} of them, in alphabetical order.', 'vars' => WS_MCP_ASK_MAX_TOOLS))) . '</span>' : '') . '</div>
@@ -1743,6 +1750,7 @@ function ws_mcp_settings_card($self_url, $viewer)
     $admin = ((int) $viewer['role'] === 0);
     $servers = ws_mcp_servers(true);
     $list = '';
+    $agents = false;
 
     foreach ($servers as $server) {
         $id = (int) $server['id'];
@@ -1789,6 +1797,12 @@ function ws_mcp_settings_card($self_url, $viewer)
         }
 
         $details[] = lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(count($on), count($tools))));
+
+        // A server that is an agent itself answers its alias on its own.
+        if (function_exists('ws_mcp_agent_mode') && ws_mcp_agent_ready() && ws_mcp_agent_mode($server)) {
+            $details[] = lang(array('string' => 'answers on its own through {var:1}', 'vars' => (string) $server['agent_tool']));
+            $agents = true;
+        }
 
         // The site's sign-in: Connect while it has none or it stopped working,
         // Disconnect while it works.
@@ -1889,8 +1903,11 @@ function ws_mcp_settings_card($self_url, $viewer)
             <div class="card-body">
                 <p class="small text-body-secondary">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. Each tool stays off until you turn it on here; only tools that read can be turned on.'))
                     . ' ' . h(lang('Written in a channel where Pinegrap AI may be asked, the alias is answered by Pinegrap AI with the server\'s tools.'))
+                    . ((function_exists('ws_mcp_agent_ready') && ws_mcp_agent_ready()) ? ' ' . h(lang('A server that is an agent itself can answer on its own, without Pinegrap AI: choose the tool that takes the messages under Tools and settings.')) : '')
                     . ' ' . h(lang('On a server people sign in to (OAuth), everybody may connect their own account, and tools that write can be turned on too: each call waits under the answer until the person who asked approves it, and runs with their own account.')) . '</p>
-                ' . ((function_exists('ws_ai_ready') && !ws_ai_ready()) ? '<div class="alert alert-warning small py-2">' . h(lang('Pinegrap AI is not connected yet, so the aliases cannot be asked. Connect it on the Pinegrap AI card.')) . '</div>' : '') . '
+                ' . ((function_exists('ws_ai_ready') && !ws_ai_ready()) ? '<div class="alert alert-warning small py-2">' . h($agents
+                    ? lang('Pinegrap AI is not connected yet, so only the aliases of servers that answer on their own can be asked. Connect it on the Pinegrap AI card.')
+                    : lang('Pinegrap AI is not connected yet, so the aliases cannot be asked. Connect it on the Pinegrap AI card.')) . '</div>' : '') . '
                 ' . ($admin ? '<div class="collapse mb-3" id="ws-mcp-new">' . ws_mcp_settings_form($self_url, null, true) . '</div>' : '<div class="form-text mb-2">' . h(lang('Only an administrator can add MCP servers.')) . '</div>') . '
                 ' . $list . '
             </div>

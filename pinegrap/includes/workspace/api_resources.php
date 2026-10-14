@@ -2505,7 +2505,7 @@ function ws_api_assistant_request_present($viewer, $row, $people)
 
     return array(
         'id'               => (int) $row['id'],
-        'agent'            => ((string) ($row['agent'] ?? '') === 'ai') ? 'ai' : 'claude',
+        'agent'            => in_array((string) ($row['agent'] ?? ''), array('ai', 'mcp'), true) ? (string) $row['agent'] : 'claude',
         'status'           => (string) $row['status'],
         'origin'           => ws_api_assistant_request_origin($row),
         'channel_id'       => ((int) $row['channel_id'] > 0) ? (int) $row['channel_id'] : null,

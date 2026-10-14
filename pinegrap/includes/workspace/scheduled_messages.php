@@ -350,7 +350,11 @@ function ws_scheduled_message_run($row, $by_hand = false)
         ws_claude_after_send($viewer, $channel, $sent['message_id'], $body);
     }
 
-    if (function_exists('ws_ai_after_send')) {
+    // An MCP server that is an agent itself answers its alias on its own
+    // (mcp_agent.php); then Pinegrap AI is not asked.
+    $agent = function_exists('ws_mcp_agent_after_send') ? ws_mcp_agent_after_send($viewer, $channel, $sent['message_id'], $body) : null;
+
+    if (($agent === null) && function_exists('ws_ai_after_send')) {
         ws_ai_after_send($viewer, $channel, $sent['message_id'], $body);
     }
 
