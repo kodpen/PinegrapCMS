@@ -388,6 +388,12 @@ function get_membership_entrance($properties = array()) {
             'forgot_password_url' => $forgot_password_url,
             'strong_password_help' => $strong_password_help,
             'opt_in_label' => OPT_IN_LABEL,
+            // The membership entrance asks no CAPTCHA question: a sign-up is let
+            // through by the membership number and surname on file
+            // (pg_member_activate()). Layouts copied from the registration
+            // entrance still test $captcha_question, so it is given, empty,
+            // and their CAPTCHA block stays hidden as it always has.
+            'captcha_question' => '',
             'register_system' => $register_system,
             'google_signin' => pg_signin_buttons(($_GET['send_to'] ?? ''), 'membership')));
 
