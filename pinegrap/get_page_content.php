@@ -2366,11 +2366,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         
                     case 'catalog':
                         // if there is not a search query then output RSS button.
-                        // A query sent as an array (?query[]=x) is not a search
-                        // query: the catalog shows the product group without it.
+                        // A query that is blank or sent as an array (?query= or
+                        // ?query[]=x) is not a search query: the catalog shows
+                        // the product group without it.
                         if (
-                            (is_string($_GET[$system_region_properties['page_id'] . '_query'] ?? null) == FALSE)
-                            && (is_string($_GET['query'] ?? null) == FALSE)
+                            (trim(is_string($_GET[$system_region_properties['page_id'] . '_query'] ?? null) ? $_GET[$system_region_properties['page_id'] . '_query'] : '') == '')
+                            && (trim(is_string($_GET['query'] ?? null) ? $_GET['query'] : '') == '')
                         ) {
                             // if an address name has been passed in the current URL, then prepare RSS button link with address name
                             if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
