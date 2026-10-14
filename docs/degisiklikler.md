@@ -84,6 +84,88 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: Çalışma Alanı gelen kutusu, GET /workspace/inbox (2026-10-14)
+
+**Neden.** Mobil API ve Claude kanalı planının M4 dilimi
+(`docs/_plan_mobil_api_claude_kanali.md`). Çalışma Alanı'nda bir şey
+söylenen kişinin zil satırı (`GET /notifications`) konu olarak
+`workspace_inbox` ve gelen kutusu satırının kimliğini veriyordu, ama API'de
+bu kimliği okuyan uç yoktu: telefon uygulaması bildirime dokunulunca hangi
+kanalı, mesajı ya da görevi açacağını bilemiyor, gelen kutusunu
+listeleyemiyor ve okundu işaretleyemiyordu. Ayrıca zil satırlarının
+`url`'si Çalışma Alanı satırlarında yazılım klasörünü iki kez taşıyordu.
+
+**Ne değişti.**
+- `GET /workspace/inbox` (`workspace:read`, yeni dosya
+  `includes/workspace/api_inbox.php`): en yeniden eskiye; `unread=true`
+  yalnız okunmayanlar, `limit` 1–100 (varsayılan 30), `cursor`
+  (`api_cursor_encode()`, satır kimliğiyle). Her satır `WorkspaceInboxItem`:
+  `kind`, panelin cümlesi (`title`, `body`, `ws_inbox_describe()`), tam
+  panel adresi `url`, `read`, `actor_id` ve satırın neyle ilgili olduğu:
+  `channel_id`, `parent_channel_id` (kanal bir tartışmaysa başladığı kanal,
+  `ws_thread()`), `message_id`, `task_id`, `note_id`, `plan_item_id`
+  (`ws_inbox.event_id`), `meeting_url` (başlamak üzere olan toplantının
+  bağlantısı), `created_at`. `thread` türünde `message_id` tartışmanın
+  başladığı mesajdır (üst kanalda); zamanlanmış eylemin bildirimi
+  (`scheduled_notice`) eylemin yazıldığı kanalı ve mesajı, kişi o kanalı
+  okuyabiliyorsa verir (panel satırının kuralı).
+- `GET /workspace/inbox/{id}`: tek satır. Başkasının satırı ya da kişinin
+  artık göremediği bir şeyle ilgili satır 404 ("Inbox item").
+- `POST /workspace/inbox/read` {`ids` | `all`}: `ws_inbox_mark_read()`;
+  zildeki karşılıkları da okunur (`ws_bell_sync_read()`), bekleyen push
+  gönderilmez (`ws_push_still_relevant()`). Cevap `updated` + `unread`,
+  `POST /notifications/read` gibi; başkasının kimliği ve zaten okunmuş
+  satır atlanır. Yalnız cihaz oturumundan (`ws_api_person_only()`, kanal
+  okundu işareti gibi): uygulama anahtarı 403. `dry_run` alır
+  (`would: marked_read`).
+- Görünürlük panelinkiyle aynı: `ws_inbox_list()`'in süzgeci
+  `ws_inbox_visible_rows()`'a (`notify.php`) alındı, panel ve API onu
+  kullanır; panelin listesi aynı. Kişinin artık göremediği kanal, görev,
+  mesaj ya da notla ilgili satır gösterilmez ve okundu sayılır; sayfa bu
+  yüzden `limit`'ten kısa dönebilir, imleç okunan satırları izler.
+- Claude'un çalıştığı uygulama yalnız Claude'a sorulabilen kanallarla
+  ilgili satırları görür (`ws_claude_channel_allowed()`).
+- `GET /workspace/sync` açıklamasına gelen kutusunun nasıl okunacağı
+  eklendi.
+- [DÜZELTME] `GET /notifications`: Çalışma Alanı satırlarının `url`'si
+  `https://site/pinegrap/pinegrap/workspace.php…` oluyordu.
+  `ws_inbox_describe()` site kökünden başlayan bir yol (`/pinegrap/…`)
+  veriyor, `api_notification_present()` ise kökten başlamayan her adresin
+  önüne yazılım klasörünü ekliyordu. Kökten başlayan yolun önüne artık
+  yalnız şema ve alan adı geliyor; diğer satırların göreli adresleri
+  (`view_order.php?id=…`) eskisi gibi.
+- MCP: üç yeni araç, rotalardan kendiliğinden: `workspace_inbox_list`,
+  `workspace_inbox_get`, `workspace_inbox_read`.
+
+Şema değişikliği yok, yeni izin kapsamı yok. Yeni metin `tr.json`'da
+(1 anahtar).
+
+**Bilerek yapılmayan.** Gelen kutusunda `changed_since` yok: uygulama
+`GET /workspace/sync`'in `inbox_unread` sayısı değişince ilk sayfayı
+yeniden okur. Satırlar panelde olduğu gibi tek tek anlatılır (satır başına
+birkaç okuma), bu yüzden sayfa 100 satırla sınırlı. OAuth bağlantısının
+okundu işaretlemesi kanal okundu işareti gibi serbest (cihaz satırı).
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye iki test (üç rota, kapsam
+ve araç; `ws_api_inbox_url()`). Sandbox'ta: uygulama anahtarıyla kanal,
+anılma, görev ve tartışma açılınca kişinin "Ekip cihazları" oturumu
+`GET /workspace/inbox` ile dört satırı (`thread`, `assigned`, `mention`,
+`invited`) doğru kimliklerle aldı (`thread`'de `channel_id` tartışma,
+`parent_channel_id` kanal); `limit=2` iki sayfa, bozuk imleç 400
+`invalid_cursor`; `GET …/inbox/{id}` 200, olmayan ve başkasının satırı
+404. Okundu: uygulama anahtarı 403, boş gövde 422 `ids`, bilinmeyen alan
+422, `X-Dry-Run` ve `?dry_run=true` 200 `would: marked_read` (hiçbir satır
+değişmedi), `ids [2, 99]` → `updated 1, unread 3`, aynısı yeniden
+`updated 0`, zilin okunmayanlarından da düştü, `sync` `inbox_unread 3`;
+`all` → `updated 3, unread 0`, zil 0. Özel kanaldan çıkarılan kişinin
+satırları listede yok, okundu işaretlendi, tek okuma 404. `GET
+/notifications`'ın adresi düzeltmeden önce `/pinegrap/pinegrap/…`, sonra
+`/pinegrap/workspace.php?channel=1&thread=2`. Panelin `ws_inbox_list()`'i
+aynı satırları verdi; OpenAPI üç yolu ve `WorkspaceInboxItem`'ı, okundu
+ucunda `X-Dry-Run`'ı gösteriyor; sunucu günlüğünde uyarı yok.
+
+---
+
 ## 2026.4.10 — Dış API: açık uygulamanın eşitlemesi Pinegrap AI ve MCP ajanı isteğini sürdürüyor, IIS'te de (2026-10-14)
 
 **Neden.** #373 ekip cihazından yazılan mesajda `@ai` ya da ajan olan bir

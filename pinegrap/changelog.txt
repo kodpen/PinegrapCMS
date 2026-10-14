@@ -1568,6 +1568,22 @@
   --------------------------------------------------------
 
   [YENİ] Çalışma Alanı: telefon ya da bilgisayar
+         uygulaması kişinin gelen kutusunu okuyabiliyor.
+         Anılma, verilen görev, onay isteği, başlamak
+         üzere olan toplantı gibi her satır panelin
+         cümlesiyle ve neyle ilgili olduğuyla (kanal,
+         tartışma, mesaj, görev, not, plan kaydı)
+         geliyor; bildirime dokunulunca uygulama doğru
+         ekranı açabiliyor. Satırlar tek tek ya da hepsi
+         birden okundu işaretlenebiliyor, zildeki
+         karşılıkları da okunuyor.
+
+  [DÜZELTME] API'nin bildirim listesinde Çalışma Alanı
+         bildirimlerinin adresi yazılım klasörünü iki kez
+         içeriyordu ve sayfa açılmıyordu; doğru sayfayı
+         açıyor.
+
+  [YENİ] Çalışma Alanı: telefon ya da bilgisayar
          uygulamasıyla oturum açan kişi bir mesajı
          panelin "Benden sil"i gibi yalnız kendi
          görünümünden kaldırabiliyor; diğerleri görmeye

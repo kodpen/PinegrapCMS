@@ -193,6 +193,44 @@ function test_ws_api_sync_mark_follows_the_list()
 	pg_assert_false(ws_api_sync_mark($list) === ws_api_sync_mark(array(array('id' => 1, 'unread' => 0), array('id' => 2, 'unread' => 3))), 'an unread count moves it');
 }
 
+// The inbox is read with workspace:read and marked read with workspace:write;
+// all three are tools, and the mark can be rehearsed.
+function test_ws_api_inbox_routes()
+{
+	$found = array();
+
+	foreach (ws_api_routes() as $route) {
+		if (strpos($route['id'], 'workspace.inbox.') === 0) {
+			$found[$route['id']] = $route;
+		}
+	}
+
+	$ids = array_keys($found);
+	sort($ids);
+
+	pg_assert_same(array('workspace.inbox.get', 'workspace.inbox.list', 'workspace.inbox.read'), $ids);
+
+	pg_assert_same('GET /workspace/inbox workspace:read', $found['workspace.inbox.list']['method'] . ' ' . $found['workspace.inbox.list']['path'] . ' ' . $found['workspace.inbox.list']['scope']);
+	pg_assert_same('GET /workspace/inbox/{id} workspace:read', $found['workspace.inbox.get']['method'] . ' ' . $found['workspace.inbox.get']['path'] . ' ' . $found['workspace.inbox.get']['scope']);
+	pg_assert_same('POST /workspace/inbox/read workspace:write', $found['workspace.inbox.read']['method'] . ' ' . $found['workspace.inbox.read']['path'] . ' ' . $found['workspace.inbox.read']['scope']);
+	pg_assert_true(!empty($found['workspace.inbox.read']['dry_run']), 'marking read can be rehearsed');
+
+	foreach ($found as $id => $route) {
+		pg_assert_true(pg_mcp_route_is_offered($route), $id . ' is a tool');
+	}
+}
+
+// The inbox's addresses start at the site's root; an app gets them whole,
+// and any other address as it is.
+function test_ws_api_inbox_url()
+{
+	pg_assert_same('https://example.com/pinegrap/workspace.php?channel=3&message=9', ws_api_inbox_url('/pinegrap/workspace.php?channel=3&message=9', 'https://example.com'));
+	pg_assert_same('https://example.com/pinegrap/workspace_tasks.php?task=4', ws_api_inbox_url('/pinegrap/workspace_tasks.php?task=4', 'https://example.com/'));
+	pg_assert_same('https://meet.example.org/abc', ws_api_inbox_url('https://meet.example.org/abc', 'https://example.com'));
+	pg_assert_same('workspace.php', ws_api_inbox_url('workspace.php', 'https://example.com'));
+	pg_assert_same('//elsewhere.example/x', ws_api_inbox_url('//elsewhere.example/x', 'https://example.com'));
+}
+
 // The search looks in a kind of record only with the scope that reads it; a
 // kind it names has to be one a tag can point at.
 function test_ws_api_search_record_scopes_name_known_kinds()
