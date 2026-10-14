@@ -807,6 +807,17 @@
          sonrası göreve dönülüyor. API ve MCP'de görev
          devri agent=mcp:<sunucu no> ile yapılabiliyor.
 
+  [YENİ] Görev notunda @takma ad: göreve @github gibi bir
+         takma ad yazan not eklenince Pinegrap AI o
+         sunucunun araçlarıyla görev hakkında yanıt veriyor;
+         görev devredilmiyor, not talimat oluyor. Yanıt ve
+         yazan araçların onay kartları görevin Asistan
+         bölümüne düşüyor. Not kutusundaki @ menüsü kişilerin
+         yanında Claude'u, Pinegrap AI'ı ve takma adları da
+         gösteriyor. Takma ad sorulamıyorsa (sunucu kapalı,
+         Pinegrap AI bağlı değil, hesap bağlı değil) not
+         kaydedilirken nedeni söyleniyor.
+
   [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
          örneğin müşteriye e-postayla sorulabiliyor. Onay
          formunda "Ekip dışından müşteriler" bölümüne ad ve

@@ -33,7 +33,9 @@
  * (its title, description, state and dates, the instruction, and what the
  * same server answered on it before) rather than a message, and its answer
  * and the calls that wait for approval stay on the task. A call run from the
- * task's card leaves its decision as a note on the task.
+ * task's card leaves its decision as a note on the task. A note on a task
+ * that writes the alias asks it about the task the same way, the note being
+ * the instruction, without handing the task over.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -69,6 +71,38 @@ define('WS_MCP_ASK_MAX_PROPOSED', 3);
 define('WS_MCP_DECISION_RESULT_LIMIT', 600);
 
 /**
+ * The first of these servers whose alias a text writes as a word of its own
+ * ("@github", "(@github"), in any case; an e-mail address or a longer word
+ * that starts with the alias is not it.
+ *
+ * @param string  $body
+ * @param array[] $servers rows with alias
+ * @return array|null the server's row
+ */
+function ws_mcp_alias_named($body, $servers)
+{
+    $by_alias = array();
+
+    foreach ((array) $servers as $server) {
+        $by_alias[(string) $server['alias']] = $server;
+    }
+
+    if (empty($by_alias) || !preg_match_all('/(?:^|[\s(])@([A-Za-z][A-Za-z0-9_-]{1,31})(?![\p{L}\p{N}_-])/u', (string) $body, $matches)) {
+        return null;
+    }
+
+    foreach ($matches[1] as $alias) {
+        $alias = strtolower($alias);
+
+        if (isset($by_alias[$alias])) {
+            return $by_alias[$alias];
+        }
+    }
+
+    return null;
+}
+
+/**
  * The server a message is written to: an alias in it, or, for a reply to an
  * answer given with a server's tools, that server. A message that asks
  * Pinegrap AI by name and names no alias is Pinegrap AI's own.
@@ -83,20 +117,10 @@ function ws_mcp_ask_server($body, $message_id = 0)
         return null;
     }
 
-    $by_alias = array();
+    $named = ws_mcp_alias_named($body, ws_mcp_servers());
 
-    foreach (ws_mcp_servers() as $server) {
-        $by_alias[(string) $server['alias']] = $server;
-    }
-
-    if (preg_match_all('/(?:^|[\s(])@([A-Za-z][A-Za-z0-9_-]{1,31})(?![\p{L}\p{N}_-])/u', (string) $body, $matches)) {
-        foreach ($matches[1] as $alias) {
-            $alias = strtolower($alias);
-
-            if (isset($by_alias[$alias])) {
-                return $by_alias[$alias];
-            }
-        }
+    if ($named) {
+        return $named;
     }
 
     if (((int) $message_id <= 0) || ws_ai_asked($body)) {

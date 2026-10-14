@@ -179,6 +179,24 @@ function test_workspace_mcp_alias_shapes()
 	pg_assert_true(ws_mcp_alias_shape_problem('herkes') !== '', 'herkes is everybody');
 }
 
+function test_workspace_mcp_alias_named_in_a_text()
+{
+	$servers = array(
+		array('id' => 3, 'alias' => 'github'),
+		array('id' => 5, 'alias' => 'docs'),
+	);
+
+	pg_assert_same(3, ws_mcp_alias_named('@github which pull requests are open?', $servers)['id']);
+	pg_assert_same(5, ws_mcp_alias_named("Look it up\n@Docs please", $servers)['id'], 'any case, on a line of its own');
+	pg_assert_same(5, ws_mcp_alias_named('(@docs) and @github', $servers)['id'], 'the first one written');
+	pg_assert_same(3, ws_mcp_alias_named('@ai and @github, both', $servers)['id'], 'an alias next to Pinegrap AI');
+	pg_assert_same(null, ws_mcp_alias_named('erdal@github.com wrote', $servers), 'an e-mail address is not an alias');
+	pg_assert_same(null, ws_mcp_alias_named('@github-enterprise is another one', $servers), 'a longer word is another alias');
+	pg_assert_same(null, ws_mcp_alias_named('@gitlab', $servers), 'only the servers there are');
+	pg_assert_same(null, ws_mcp_alias_named('@github', array()));
+	pg_assert_same(null, ws_mcp_alias_named(null, $servers));
+}
+
 function test_workspace_mcp_credential_headers()
 {
 	pg_assert_same(array('Authorization: Bearer abc'), ws_mcp_auth_headers('bearer', array('token' => 'abc')));

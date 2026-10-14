@@ -84,6 +84,55 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Görev notunda @takmaad: MCP takma adına görev hakkında soru (2026-10-14)
+
+**Neden.** Faz F'nin isteğe bağlı kalanı (`docs/_plan_oauth.md`). #333 görevi
+bir MCP takma adına verdirdi; görev notu ise yalnız `@ai` / `@Claude`
+çağırıyordu. Kanalda `@github` yazmak Pinegrap AI'ı o sunucunun araçlarıyla
+çalıştırırken görev notunda aynı yazı sıradan bir not olarak kalıyordu.
+Şema yok: not, devrin kullandığı isteğin aynısını açar
+(`ws_ai_requests`, `agent = 'ai'`, `mcp_server_id`, `task_id`).
+
+**Ne değişti.**
+
+- `includes/workspace/mcp_ask.php`: takma adı metinde bulan eşleme saf bir
+  fonksiyona ayrıldı, `ws_mcp_alias_named($body, $servers)` (kanaldaki
+  `ws_mcp_ask_server()` de onu kullanır; kural aynı: kelime başında `@`,
+  büyük/küçük harf fark etmez, e-posta adresi ya da takma adla başlayan
+  daha uzun bir kelime sayılmaz, ilk yazılan kazanır).
+- `includes/workspace/delegation.php`: `ws_assistant_called()` sırası
+  Claude → takma ad → Pinegrap AI. Takma ad Pinegrap AI'ın adından önce
+  gelir, kanalda olduğu gibi (aynı notta `@ai` ve `@github` varsa
+  `@github`). Takma ad yalnız `ws_assistants()` listesindeyse çağrılır
+  (Pinegrap AI bağlı, sunucu açık, en az bir aracı açık). Not talimattır,
+  görev devredilmez; model #333'teki gibi görevin başlığını, açıklamasını,
+  durumunu, tarihlerini, bu notu ve aynı takma adın görevdeki önceki
+  yanıtlarını okur, diğer notları okumaz. Yazan araç çağrısı görevde
+  `mcp_call` kartında bekler; uygulayan, notu yazan kişidir.
+- Çağrılamayan takma ad sessiz kalmaz: `ws_task_delegation_alias_problem()`
+  notun bildirimine nedenini yazar (sunucu kapalı, açık aracı yok ya da
+  Pinegrap AI bağlı değil). OAuth'lu sunucuda yazanın hesabı yoksa
+  bildirim, çalışmayı başlatan yolun cümlesidir ("Görevin Asistan
+  bölümünden kendi hesabınızı bağlayın"). Karar notları
+  (`ws_task_note_add(…, 0, false)`) ve uygulamaların notları bugünkü gibi
+  hiçbir asistanı çağırmaz; not düzenlemek de çağırmaz.
+- `assets/js/workspace.js`: görevin yeni not kutusunda `@` menüsü kişilerden
+  önce Claude, Pinegrap AI ve takma adları (`BOOT.mcp`) gösterir. Kanal ve
+  Notlar menüleriyle aynı öğeler; iki ortak yardımcıya ayrıldı. Not
+  düzenlerken menü yalnız kişileri gösterir.
+- Çekmecedeki "henüz asistan çalışmadı" cümlesi, takma ad varken ilkini
+  örnek verir ("@ai, @Claude ya da @github gibi bir MCP sunucusu takma adı
+  yazan bir not da asistana sorar").
+
+**Denendi.** Birim testi (`tests/workspace_mcp_test.php`:
+`ws_mcp_alias_named()` eşlemesi). Çalışmanın kendisi #333'ün yolu
+(`ws_task_delegation_run()`, anahtar `mcp:<id>`), orada sandbox'ta
+denenmişti; nottan başlaması dev.pinegrap.com kontrol listesinde.
+
+**Kapsam dışı.** Uzak ajan (seviye C) Faz F'nin tek kalanı.
+
+---
+
 ## 2026.4.10 — Takvim, etkinlik konumu, menü, kısa link ve ürün özelliği listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-14)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına

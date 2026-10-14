@@ -3421,6 +3421,10 @@
 
             var field = rich || tokenField(input, wrap);
 
+            // A new note can ask an assistant or an MCP server's alias about
+            // the task; a changed one asks nobody.
+            field.asksAssistants = !note;
+
             if (note && !rich) {
                 var value = note.raw || '';
 
@@ -11443,8 +11447,10 @@
                 var needle = query.toLocaleLowerCase();
                 var items = [];
 
-                // In a note @ asks Claude; people are tagged with #.
-                if (self.notesMode) {
+                // Claude and Pinegrap AI as a note asks them: a tag once
+                // connected, before that the name as text, which answers with
+                // how to set it up.
+                var noteAssistants = function () {
                     if (BOOT.claude && (!needle || 'claude'.indexOf(needle) === 0)) {
                         items.push(BOOT.claude.token
                             ? { label: 'Claude', meta: t('claude_meta'), icon: 'bi-stars', token: BOOT.claude.token, shown: '@Claude' }
@@ -11456,9 +11462,31 @@
                             ? { label: BOOT.ai.name, meta: BOOT.ai.handle, icon: 'bi-cpu', token: BOOT.ai.token, shown: BOOT.ai.handle }
                             : { label: BOOT.ai.name, meta: t('ai_not_ready'), icon: 'bi-cpu', insert: BOOT.ai.handle + ' ' });
                     }
+                };
 
+                // Other services' MCP servers, by their alias: written as
+                // text, and Pinegrap AI answers with the server's tools.
+                var mcpAliases = function () {
+                    (BOOT.mcp || []).forEach(function (server) {
+                        if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
+                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t('mcp_meta'), icon: 'bi-plug', insert: '@' + server.alias + ' ' });
+                        }
+                    });
+                };
+
+                // In a note @ asks Claude; people are tagged with #.
+                if (self.notesMode) {
+                    noteAssistants();
                     self.drawPicker(items);
                     return;
+                }
+
+                // A new note on a task asks an assistant about the task by
+                // its name (includes/workspace/delegation.php): the
+                // assistants and the aliases come before the people.
+                if (self.asksAssistants) {
+                    noteAssistants();
+                    mcpAliases();
                 }
 
                 // Claude: a tag where it may be asked; elsewhere, or before it
@@ -11481,14 +11509,8 @@
                     }
                 }
 
-                // Other services' MCP servers, by their alias: written as
-                // text, and Pinegrap AI answers with the server's tools.
                 if (self.channel) {
-                    (BOOT.mcp || []).forEach(function (server) {
-                        if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
-                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t('mcp_meta'), icon: 'bi-plug', insert: '@' + server.alias + ' ' });
-                        }
-                    });
+                    mcpAliases();
                 }
 
                 BOOT.people.forEach(function (member) {

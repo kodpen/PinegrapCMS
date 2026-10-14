@@ -22,7 +22,8 @@
  * payload-free fire of the routine are the ones a channel request has. A run
  * starts when the task is handed over, when the person who handed it writes
  * to the assistant again, and when a note on the task calls an assistant by
- * name (@ai, @Claude) - a note asks without handing the task over.
+ * name (@ai, @Claude, an MCP server's alias) - a note asks without handing
+ * the task over.
  *
  * ws_assistants() is the one list of assistants a task can go to. The task
  * drawer, the task lists and the API read it. An MCP server's alias
@@ -252,8 +253,10 @@ function ws_assistant_avatar($key)
 
 /**
  * The assistant a text calls by name: its tag, its handle written by hand or
- * its command. Claude first when both are called, as a note decides it; an
- * assistant whose connection is off is not called.
+ * its command. Claude first when more than one is called, as a note decides
+ * it; then an MCP server's alias before Pinegrap AI's own name, as in a
+ * channel, since Pinegrap AI answers the alias too. An assistant whose
+ * connection is off, or an alias that cannot be asked now, is not called.
  *
  * @param string $body
  * @return string key, or '' for none
@@ -268,7 +271,29 @@ function ws_assistant_called($body)
         return 'claude';
     }
 
+    $server = ws_assistant_alias_named($body);
+
+    if ($server && ws_assistant('mcp:' . (int) $server['id'])) {
+        return 'mcp:' . (int) $server['id'];
+    }
+
     return (ws_assistant('ai') && ws_ai_asked($body)) ? 'ai' : '';
+}
+
+/**
+ * The MCP server whose alias a text writes, whether it can be asked now or
+ * not.
+ *
+ * @param string $body
+ * @return array|null the server's row
+ */
+function ws_assistant_alias_named($body)
+{
+    if (!function_exists('ws_mcp_alias_named') || !ws_mcp_ready()) {
+        return null;
+    }
+
+    return ws_mcp_alias_named($body, ws_mcp_servers());
 }
 
 /**
@@ -871,7 +896,7 @@ function ws_task_delegation_from_note($viewer, $task, $body)
     $key = ws_assistant_called($body);
 
     if ($key === '') {
-        return '';
+        return ws_task_delegation_alias_problem($viewer, $body);
     }
 
     $run = ws_task_delegation_run($viewer, $task, $key, $body);
@@ -883,6 +908,33 @@ function ws_task_delegation_from_note($viewer, $task, $body)
     ws_task_delegation_start($key);
 
     return '';
+}
+
+/**
+ * Why a note that writes an MCP server's alias asked nobody: the server is
+ * turned off or has no tool on, or Pinegrap AI, which answers for it, is not
+ * connected. In a channel the same message gets these words as a system
+ * message (ai.php); a note has its notice instead.
+ *
+ * @param array  $viewer
+ * @param string $body the note
+ * @return string a sentence, '' when no alias is written
+ */
+function ws_task_delegation_alias_problem($viewer, $body)
+{
+    $server = ws_assistant_alias_named($body);
+
+    if (!$server) {
+        return '';
+    }
+
+    $problem = ws_mcp_ask_problem($server);
+
+    if ($problem !== '') {
+        return $problem;
+    }
+
+    return ws_assistant('ai') ? '' : ws_plain_text($viewer, ws_ai_setup_hint());
 }
 
 /**
@@ -929,6 +981,17 @@ function ws_task_delegation_context($asker, $row)
  */
 function ws_delegation_js_strings()
 {
+    // An MCP server's alias written in a note asks it too: the first one
+    // is named as the example.
+    $alias = '';
+
+    foreach (ws_assistants() as $key => $assistant) {
+        if (ws_assistant_mcp_id($key) > 0) {
+            $alias = $assistant['handle'];
+            break;
+        }
+    }
+
     return array(
         'dg_title'         => lang('Assistant'),
         'dg_hand'          => lang('Hand to an assistant'),
@@ -945,7 +1008,9 @@ function ws_delegation_js_strings()
         'dg_take_confirm'  => lang('Take the task back from the assistant? A run under way is stopped.'),
         'dg_asked'         => ws_js_template('{var:1} asked, {var:2}', 2),
         'dg_no_instruction' => lang('No instruction: the task itself.'),
-        'dg_none'          => lang('No assistant has worked on this task yet. A note that writes @ai or @Claude asks one too.'),
+        'dg_none'          => ($alias !== '')
+            ? lang(array('string' => 'No assistant has worked on this task yet. A note that writes @ai, @Claude or an MCP server\'s alias such as {var:1} asks one too.', 'vars' => $alias))
+            : lang('No assistant has worked on this task yet. A note that writes @ai or @Claude asks one too.'),
         'dg_not_ready'     => lang('not ready'),
         'dg_not_chosen'    => lang('— Not selected —'),
         'dg_started'       => lang('The task was handed to the assistant.'),
