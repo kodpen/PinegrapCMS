@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the lists that take quick edit beside products and minimum
- * stock: an ERP account's price list (includes/erp/price_lists.php) and the
- * shipping methods (includes/fn/ecommerce.php). What their columns accept
- * and how the shipping cells the answer redraws are drawn.
+ * stock: an ERP account's price list (includes/erp/price_lists.php), the
+ * shipping methods, the key codes and the gift cards (includes/fn/ecommerce.php).
+ * What their columns accept and how the cells the answer redraws are drawn.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -82,4 +82,95 @@ function test_list_edit_shipping_cells_draw_each_step_of_a_variable_base_rate()
 
 	$method['user'] = null;
 	pg_assert_false(strpos(pg_shipping_method_list_cells($method)['last_modified']['html'], ' by ') !== false, 'nobody named when the change has no user');
+}
+
+function test_list_edit_key_code_enabled_column_offers_enabled_or_disabled()
+{
+	$columns = pg_key_code_edit_columns();
+
+	pg_assert_same(array('enabled'), array_keys($columns), 'only the enabled flag');
+	pg_assert_same('select', $columns['enabled']['type'], 'a choice');
+	pg_assert_same(array('1', '0'), array_map('strval', array_keys($columns['enabled']['options'])), 'enabled first, then disabled');
+	pg_assert_same('0', pg_list_edit_parse($columns['enabled'], '0')['value'], 'disabled is read as 0');
+	pg_assert_false(pg_list_edit_parse($columns['enabled'], '2')['ok'], 'nothing else');
+	pg_assert_false(pg_list_edit_parse($columns['enabled'], '')['ok'], 'not empty');
+}
+
+function test_list_edit_key_code_is_active_only_when_it_works_at_checkout()
+{
+	$today = '2026-10-14';
+	$key_code = array(
+		'enabled' => '1', 'expiration_date' => '0000-00-00',
+		'offer_status' => 'enabled', 'offer_start_date' => '2026-01-01', 'offer_end_date' => '2026-12-31',
+	);
+
+	pg_assert_true(pg_key_code_active($key_code, $today), 'enabled, no expiry, offer running');
+	pg_assert_true(pg_key_code_active(array('expiration_date' => $today) + $key_code, $today), 'still works on the day it expires');
+	pg_assert_false(pg_key_code_active(array('enabled' => '0') + $key_code, $today), 'disabled');
+	pg_assert_false(pg_key_code_active(array('expiration_date' => '2026-10-13') + $key_code, $today), 'expired');
+	pg_assert_false(pg_key_code_active(array('offer_status' => 'disabled') + $key_code, $today), 'offer disabled');
+	pg_assert_false(pg_key_code_active(array('offer_end_date' => '2026-10-13') + $key_code, $today), 'offer over');
+	pg_assert_false(pg_key_code_active(array('offer_start_date' => '2026-10-15') + $key_code, $today), 'offer not started');
+	pg_assert_false(pg_key_code_active(array('offer_status' => null, 'offer_start_date' => null, 'offer_end_date' => null) + $key_code, $today), 'no offer with that code');
+}
+
+function test_list_edit_key_code_cells_follow_the_enabled_flag()
+{
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+
+	$today = date('Y-m-d');
+	$key_code = array(
+		'enabled' => '1', 'expiration_date' => '0000-00-00',
+		'offer_status' => 'enabled', 'offer_start_date' => '2000-01-01', 'offer_end_date' => '2099-12-31',
+		'last_modified_timestamp' => time(), 'last_modified_username' => '<b>ayse</b>',
+	);
+
+	$cells = pg_key_code_list_cells($key_code, $today);
+
+	pg_assert_contains('status_enabled text-success', $cells['code']['class'], 'a working code is green');
+	pg_assert_contains('chart_label', $cells['code']['class'], 'the code stays the row label');
+	pg_assert_false(isset($cells['code']['html']), 'the code itself is not redrawn');
+	pg_assert_contains('task_alt', $cells['enabled']['html'], 'enabled is marked');
+	pg_assert_contains('&lt;b&gt;ayse&lt;/b&gt;', $cells['last_modified']['html'], 'the username escaped');
+
+	$key_code['enabled'] = '0';
+	$key_code['last_modified_username'] = null;
+	$cells = pg_key_code_list_cells($key_code, $today);
+
+	pg_assert_contains('status_disabled text-danger', $cells['code']['class'], 'a disabled code is red');
+	pg_assert_same('', $cells['enabled']['html'], 'disabled has no mark');
+	pg_assert_false(strpos($cells['last_modified']['html'], ' by ') !== false, 'nobody named when the change has no user');
+}
+
+function test_list_edit_gift_card_notes_column_takes_one_line()
+{
+	$columns = pg_gift_card_edit_columns();
+
+	pg_assert_same(array('notes'), array_keys($columns), 'only the notes; the balance stays on the card');
+	pg_assert_same('text', $columns['notes']['type'], 'a text');
+	pg_assert_same('', pg_list_edit_parse($columns['notes'], '   ')['value'], 'notes can be cleared');
+	pg_assert_same('sent to Ayşe', pg_list_edit_parse($columns['notes'], " sent to Ayşe ")['value'], 'kept as typed, trimmed');
+
+	pg_assert_true(pg_gift_card_notes_fit_list(''), 'no notes fit');
+	pg_assert_true(pg_gift_card_notes_fit_list('sent to Ayşe'), 'one line fits');
+	pg_assert_false(pg_gift_card_notes_fit_list("first\nsecond"), 'two lines stay on the gift card');
+	pg_assert_false(pg_gift_card_notes_fit_list("first\r\nsecond"), 'two lines from a browser too');
+}
+
+function test_list_edit_gift_card_cells_escape_the_notes()
+{
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+
+	$cells = pg_gift_card_list_cells(array(
+		'notes' => "<i>vip</i>\nsecond", 'last_modified_timestamp' => time(), 'last_modified_username' => '',
+	));
+
+	pg_assert_contains('&lt;i&gt;vip&lt;/i&gt;', $cells['notes']['html'], 'the notes escaped');
+	pg_assert_contains('<br', $cells['notes']['html'], 'lines drawn as on the list');
+	pg_assert_same('align-middle', $cells['notes']['class'], 'the list\'s class');
+	pg_assert_false(strpos($cells['last_modified']['html'], ' by ') !== false, 'nobody named when the change has no user');
 }

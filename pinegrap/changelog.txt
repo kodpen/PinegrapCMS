@@ -777,6 +777,27 @@
          Ground" hizmetinin adı, USPS'in verdiği yeni adla
          "USPS Ground Advantage" oldu.
 
+  E-TİCARET: ANAHTAR KODLAR VE HEDİYE KARTLARI
+  --------------------------------------------------------
+
+  [YENİ] Tüm Anahtar Kodlar listesinde bir kod, kodu
+         açmadan satırda kapatılıp açılıyor: Etkin
+         hücresine tıklayın (ya da dokunun) ve Etkin ya da
+         Devredışı'nı seçin; kayıt hemen yapılıyor, kodun
+         rengi ve "Son Değişiklik" sütunu yenileniyor.
+         Değişiklik Site Günlüğü'ne eski ve yeni durumla
+         yazılıyor.
+
+  [YENİ] Tüm Hediye Kartları listesinde Notlar, kartı
+         açmadan satırda değişiyor: hücreye tıklayın,
+         yazın, Enter'a basın ya da kutudan çıkın; kayıt
+         hemen yapılıyor, boş bırakmak notu siliyor.
+         Değişiklik Site Günlüğü'ne eski ve yeni notla
+         yazılıyor. Birden çok satırlı notlar (iptal edilen
+         siparişin eklediği satır dahil) satırları
+         kaybolmasın diye yalnız kartın kendi ekranından
+         değişiyor. Bakiye listede değişmiyor.
+
   E-TİCARET: SİPARİŞLER
   --------------------------------------------------------
 

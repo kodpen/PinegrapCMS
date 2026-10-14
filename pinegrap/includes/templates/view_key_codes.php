@@ -43,7 +43,7 @@ if (!defined('PG_INIT_LOADED')) {
             <div class="card my-4">
                 <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
                 <div class="card-body p-0 position-relative disable_shortcut">
-					<table class="chart table-hover table " style="width:100%;display:none">
+					<table class="chart table-hover table " style="width:100%;display:none"<?=pg_list_edit_table('view_key_codes.php', $quick_edit)?>>
                         <thead>
                             <tr>
                                 <th class="noVis"><?=lang('Action')?></th>
@@ -64,7 +64,7 @@ if (!defined('PG_INIT_LOADED')) {
 									<td class="align-middle text-start">
                 					    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_key_code.php?id=<?=$key_code['id']?>'"><i class="bi bi-pencil"></i></button>
                 					</td>
-									<td class="chart_label align-middle <?php if ($key_code['status_enabled']): ?>status_enabled text-success<?php else: ?>status_disabled text-danger<?php endif ?>">
+									<td class="<?=$key_code['cells']['code']['class']?>" data-pg-cell="code">
 										<?=h($key_code['code'])?>
 									</td>
 									<td class="align-middle">
@@ -79,11 +79,7 @@ if (!defined('PG_INIT_LOADED')) {
 									<td class="align-middle">
 										<?=h($key_code['offer_description'])?>
 									</td>
-									<td  class="align-middle text-center">
-										<?php if ($key_code['enabled']): ?>
-											<span class="material-icons">task_alt</span>
-										<?php endif ?>
-									</td>
+									<td class="<?=$key_code['cells']['enabled']['class']?>"<?=pg_list_edit_cell($quick_edit, 'enabled', $key_code['id'], !empty($key_code['enabled']) ? '1' : '0')?>><?=$key_code['cells']['enabled']['html']?></td>
 									<td class="align-middle">
 										<?php if ($key_code['expiration_date'] != '0000-00-00'): ?>
 										<?=get_absolute_time(array(
@@ -109,12 +105,7 @@ if (!defined('PG_INIT_LOADED')) {
 											<?php endif ?>
 										</span>
 									</td>
-									<td class="align-middle">
-										<?=get_relative_time(array('timestamp' => $key_code['last_modified_timestamp']))?>
-										<?php if ($key_code['last_modified_username'] != ''): ?>
-											<?=lang(array('string'=>'by {var:1}','vars'=>array( h($key_code['last_modified_username']) ) ) )?>
-										<?php endif ?>
-									</td>
+									<td class="<?=$key_code['cells']['last_modified']['class']?>" data-pg-cell="last_modified"><?=$key_code['cells']['last_modified']['html']?></td>
 								</tr>
 							<?php endforeach ?>
 						</tbody>
