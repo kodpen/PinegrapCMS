@@ -461,6 +461,22 @@
          alanları için hata günlüğüne uyarı yazıyordu;
          artık yazmıyor, arama sonuçları aynı.
 
+  [DÜZELTME] Özel form, ortaklık başvurusu, Hesabım profil
+         ve e-posta tercihleri formları, bir alanı birden
+         çok değerle (alan[]=…) gönderen bir istekte hata
+         sayfası veriyordu; artık o alan boş gönderilmiş
+         sayılıyor: zorunluysa form "gerekli" uyarısıyla
+         geri geliyor, değilse kayıt boş değerle yapılıyor.
+         Dosya alanı böyle gelince dosya seçilmemiş
+         sayılıyor. Hızlı sipariş sayfası ve görsel
+         editörün özel form widget'ı ?value_<alan>[]=…
+         bağlantısıyla açılınca hata sayfası veriyor ya da
+         alana "Array" yazıyordu; artık alan kendi
+         varsayılanıyla açılıyor. Ortaklık başvurusunun
+         hazır ekranı ve özel ödeme formu olan hızlı sipariş
+         sayfası hata günlüğüne uyarı yazıyordu; artık
+         yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
