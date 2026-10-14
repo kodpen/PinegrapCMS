@@ -115,10 +115,10 @@ sayılır, normal isteğin HTML'i değişmez, 500 yok.
   da çakışırdı. `init.php` her panel
   ekranından ve her site sayfasından önce çalışıyor ve hiçbir yerde
   `send_to[]` / `from[]` adlı alan yok.
-- Yan etki, kural gereği: ERP raporlarında (`erp_audit`, `erp_cashflow`,
-  `erp_profit`, `erp_vat_report`) ve Çalışma Alanı ekranlarında
-  (`includes/workspace/screen.php:557`) `?from[]=` "Array to string"
-  uyarısı yazmıyor (K4'ün diğer parametreleri duruyor).
+- Yan etki, kural gereği: Çalışma Alanı ekranları
+  (`includes/workspace/screen.php:557`) `?from[]=` ile "Array to string"
+  uyarısı yazmıyor. ERP raporlarındaki aynı uyarıyı #427 kendi ekranlarında
+  kapattı; iki düzeltme birbirine dokunmuyor.
   `update_exchange_rates.php?send_to[]=x` önceden kur listesine
   yönleniyordu, artık `send_to` verilmemiş gibi aynı ekranda kalıyor.
 
@@ -151,8 +151,8 @@ Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler.
 **Bilerek yapılmayan.** `send_to` verilmediğinde zaten uyarı yazan
 ekranlar (ör. `update_currency.php`, eksik parametre: K7) dizide de aynı
 uyarıyı yazıyor. `update_currency.php` `send_to`'yu `pg_safe_redirect_path()`
-olmadan `Location`'a koyuyor (jetonlu POST; ayrı iş). K1, K2, K4–K9'a
-dokunulmadı.
+olmadan `Location`'a koyuyor (jetonlu POST; ayrı iş). K1, K2, K4 (#422,
+#424, #427) dosyalarına ve K5–K9'a dokunulmadı.
 
 ---
 
