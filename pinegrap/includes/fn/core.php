@@ -814,6 +814,36 @@ function pg_safe_redirect_path($url, $fallback = '')
     return $url;
 }
 
+/**
+ * Request parameters that only ever carry one value, removed when they arrive
+ * as an array (?send_to[]=x), so that they count as not given.
+ *
+ * init.php calls it for send_to and from. The screens print them into hidden
+ * fields and links with h() and urlencode(), which stop the request on an
+ * array: twenty panel screens and the login pages answered ?send_to[]=x with
+ * an error page. The value is checked in $_GET, $_POST and $_REQUEST
+ * separately; a string is left exactly as it came.
+ *
+ * @param  array $names Parameter names
+ * @return void
+ */
+function pg_request_single_values($names)
+{
+    foreach ($names as $name) {
+        if (isset($_GET[$name]) && !is_string($_GET[$name])) {
+            unset($_GET[$name]);
+        }
+
+        if (isset($_POST[$name]) && !is_string($_POST[$name])) {
+            unset($_POST[$name]);
+        }
+
+        if (isset($_REQUEST[$name]) && !is_string($_REQUEST[$name])) {
+            unset($_REQUEST[$name]);
+        }
+    }
+}
+
 function escape_url($url)
 {
     if (!is_scalar($url) || $url === '') {
