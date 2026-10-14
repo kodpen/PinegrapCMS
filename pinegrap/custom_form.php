@@ -1622,7 +1622,8 @@ if ($liveform->check_form_errors() == false) {
     $liveform->remove_form();
     
     // if visitor tracking is on, update visitor record with custom form information, if visitor has not already submitted a custom form
-    if (VISITOR_TRACKING == true) {
+    // (a bot, or a post without a page view first, has no visitor record)
+    if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
         $query = "UPDATE visitors
                  SET
                     custom_form_submitted = '1',

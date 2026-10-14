@@ -4095,6 +4095,10 @@ function submit_order($type) {
                 $gift_card_discount_percentage = $gift_card_discount / ($total_without_surcharge + $gift_card_discount);
             }
             
+            // The order record default above is '', and PHP 8 throws on '' + float
+            // and on round('').
+            $commission = 0;
+            
             // loop through all nonrecurring products in order
             foreach ($nonrecurring_products as $product) {
                 if ($product['commissionable'] == 1) {
@@ -6275,8 +6279,9 @@ function submit_order($type) {
                     (aclfolder_user = '$user_id')
                     AND (aclfolder_folder = '$private_folder')");
 
-            $rights = $row['rights'];
-            $expiration_date = $row['expiration_date'];
+            // A first purchase finds no access row yet.
+            $rights = $row['rights'] ?? '';
+            $expiration_date = $row['expiration_date'] ?? '';
 
             // If the user does not have edit rights and does not have infinite private rights already,
             // then continue to give user private access or extend it.
@@ -7898,7 +7903,8 @@ function submit_order($type) {
             )");
     
     // if visitor tracking is on, update visitor record with order completed information
-    if (VISITOR_TRACKING == true) {
+    // (a bot, or a post without a page view first, has no visitor record)
+    if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
         $query = "UPDATE visitors
                  SET
                     order_completed = '1',

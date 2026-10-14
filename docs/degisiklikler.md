@@ -84,6 +84,55 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Sipariş ekranları ziyaret kaydı olmadan uyarı yazmıyor; ortaklık kodlu sipariş 500 vermiyor (2026-10-14)
+
+**Neden.** #444'ün kalanı. Ziyaret kaydı (`$_SESSION['software']['visitor_id']`)
+yalnız bir site sayfası açılınca oluşuyor; botlar hiç almıyor (#426). On
+`UPDATE visitors` kaydı varsayıyordu ve kaydı olmayan istekte "Undefined
+array key visitor_id" yazıyordu (`WHERE id = ''` hiçbir satıra
+dokunmuyordu): `shopping_cart.php` (ortaklık kodu, ödemeye geçiş),
+`billing_information.php`, `submit_order.php`, `express_order.php` (ortaklık
+kodu, fatura bilgisi), `retrieve_order.php`, `order_history_retrieve_order.php`,
+`order_history_reorder.php`, `custom_form.php`. Sandbox aynı akışlarda üç
+sorun daha gösterdi:
+
+- `retrieve_order.php`, `order_history_retrieve_order.php` ve
+  `order_history_reorder.php` oturumdaki utm etiketlerini ve
+  `http_referer`'ı varsayıyordu; bunlar yalnız adres ya da çerez taşıyınca
+  oturuma yazılıyor, yani normal ziyaretçide de uyarı.
+- `submit_order.php` ortaklık komisyonunu sipariş kaydının varsayılanı `''`
+  üstüne topluyordu (2026.4.3'te eklenen varsayılan). PHP 8 `'' + float`
+  ve `round('')`'da TypeError atıyor: geçerli ortaklık koduyla verilen her
+  sipariş 500 veriyor, sipariş `incomplete` kalıyordu.
+- Özel erişim veren ürünün ilk satın alımında erişim satırı yok,
+  `$row['rights']` "array offset on null" yazıyordu.
+
+**Ne değişti.** On `UPDATE visitors` #444'teki gibi yalnız
+`!empty($_SESSION['software']['visitor_id'])` iken koşuyor (ortaklık
+kodunun oturuma ve çereze yazılması eskisi gibi). utm okumaları
+`submit_order.php` / `initialize_order()` ile aynı biçimde (`!empty()`,
+`?? ''`). Komisyon, ürün döngüsünden önce `0`'dan başlıyor; ortaklık kodu
+olmayan siparişin kaydı değişmedi. Erişim satırı yoksa hak ve bitiş tarihi
+`''` (eski `null` ile aynı sonuç). Şema, dil dosyası, JS yok. Testler:
+`tests/visitor_record_optional_test.php` (dosya listesi genişledi, utm
+testi), yeni `tests/order_submit_affiliate_test.php`; eski kodda hepsi
+düşüyor.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod ikinci portta, aynı
+veritabanı. Sepet → fatura → ödeme (çevrimdışı), ortaklık kodlu ve kodsuz;
+hızlı sipariş, ortaklık kodlu ve kodsuz; `/cart?r=<referans>`; sipariş
+geçmişinden yineleme ve kurtarma; sepet sayfasındaki özel form. Her biri
+ziyaret kaydı olmadan (curl kullanıcı ajanı) ve normal ziyaretçiyle. Eski
+kod: kaydı olmayan istekte 27, normal ziyaretçide 14 uyarı satırı, ortaklık
+kodlu sepet ve hızlı siparişte 500; yeni kod 0 uyarı, ortaklık kodlu
+siparişler tamamlanıyor (komisyon 449, `commissions` satırı `pending`).
+Öteki akışlarda durum kodları, yönlendirmeler, `orders` ve `visitors`
+satırları iki kodda aynı. `tools/lint.php`, `tools/test.php`, `check_lang`,
+`check_bindings`, `check_api_schema`, `check_copies`,
+`build_js.php --check` temiz. Doğrulanamadı: dev.pinegrap.com.
+
+---
+
 ## 2026.4.10 — Kalan "Passing null" satırları ve `liveform::prepare()` uyarıları (2026-10-14)
 
 **Neden.** #445'in kalanları. `h()` ve `escape()` düzelince hata ayıklama

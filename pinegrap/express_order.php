@@ -586,8 +586,11 @@ if ($order_submitted == false) {
                         $_SESSION['software']['affiliate_code'] = $special_offer_code;
                         pg_consent_setcookie('marketing', 'software[affiliate_code]', $special_offer_code, time() + 315360000);
                         
-                        $query = "UPDATE visitors SET affiliate_code = '" . escape($special_offer_code) . "' WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        // (a bot, or a post without a page view first, has no visitor record)
+                        if (!empty($_SESSION['software']['visitor_id'])) {
+                            $query = "UPDATE visitors SET affiliate_code = '" . escape($special_offer_code) . "' WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
+                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        }
                     }
                     
                     // prepare to update affiliate code for order
@@ -1038,7 +1041,8 @@ if ($order_submitted == false) {
         }
 
         // if visitor tracking is on, update geographic data for visitor, using billing information
-        if (VISITOR_TRACKING == true) {
+        // (a bot, or a post without a page view first, has no visitor record)
+        if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
             $query = "UPDATE visitors
                      SET
                         city = '" . escape($liveform->get_field_value('billing_city')) . "',

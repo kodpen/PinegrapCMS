@@ -365,7 +365,8 @@ if ($liveform->check_form_errors() == false) {
     }
 
     // if visitor tracking is on, update geographic data for visitor, using billing information
-    if (VISITOR_TRACKING == true) {
+    // (a bot, or a post without a page view first, has no visitor record)
+    if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
         $query = "UPDATE visitors
                  SET
                     city = '" . escape($liveform->get_field_value('billing_city')) . "',
