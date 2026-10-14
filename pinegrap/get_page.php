@@ -2532,8 +2532,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 }
 elseif (isset($_GET['icalendar']) && $_GET['icalendar'] == 'true')
 {
-	// get calendar event data
-	$calendar_event = get_calendar_event($_GET['id'], 0);
+	// get calendar event data (an id sent as an array is no event)
+	$calendar_event = is_scalar($_GET['id'] ?? null) ? get_calendar_event($_GET['id'], 0) : false;
 	// if calendar event could not be found, then output error
 	if ($calendar_event == false)
 	{

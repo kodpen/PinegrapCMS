@@ -26,8 +26,15 @@ $user = validate_user();
 validate_ecommerce_access($user);
 require_once('edit_offer_f.php');
 
+// An id sent as an array (?id[]=x) is no record: (int) would read it as 1
+// and open offer 1.
+if (isset($_GET['id']) && !is_scalar($_GET['id'])) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $offer_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-$duplicate_of = isset($_GET['duplicate']) ? (int) $_GET['duplicate'] : 0;
+// An array source counts as not given: a blank new offer, not a copy of offer 1.
+$duplicate_of = is_scalar($_GET['duplicate'] ?? null) ? (int) $_GET['duplicate'] : 0;
 $is_new = ($offer_id <= 0);
 
 if (!$is_new) {

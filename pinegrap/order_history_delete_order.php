@@ -20,7 +20,8 @@ include('init.php');
 
 validate_token_field();
 
-$order_id = (int) ($_GET['id'] ?? 0);
+// An id sent as an array counts as not given (it would read as order 1).
+$order_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 
 // get order information
 $query =

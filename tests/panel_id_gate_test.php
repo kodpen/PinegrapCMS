@@ -65,3 +65,63 @@ function test_panel_id_gate_on_formerly_ungated_screens()
 	// edit_page.php checks the id its handler reads, never a cookie of the same name.
 	pg_assert_contains('is_scalar($requested_page_id) ? (int) $requested_page_id : 0', file_get_contents(PG_FUNCTIONS_DIR . '/edit_page.php'), 'edit_page');
 }
+
+// Outside the ERP screens (tests/erp_request_values_test.php), no root screen
+// casts $_GET['id'] before an is_scalar() / is_string() check of the id: the
+// check sits on the same line or earlier in the file (the screen's gate).
+function test_panel_id_gate_get_id_cast_after_gate()
+{
+	$found = array();
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/*.php') as $file) {
+		if (strpos(basename($file), 'erp') !== false) {
+			continue;
+		}
+
+		$source = file_get_contents($file);
+
+		if (!preg_match_all('/\(int\)\s*\(?\s*\$_GET\[\'id\'\]/', $source, $casts, PREG_OFFSET_CAPTURE)) {
+			continue;
+		}
+
+		$gate = preg_match('/is_(?:scalar|string)\(\s*\$_(?:GET|REQUEST)\[\'id\'\]/', $source, $match, PREG_OFFSET_CAPTURE) ? $match[0][1] : PHP_INT_MAX;
+
+		foreach ($casts[0] as $cast) {
+			if ($cast[1] < $gate) {
+				$found[] = basename($file) . ':' . (substr_count(substr($source, 0, $cast[1]), "\n") + 1);
+			}
+		}
+	}
+
+	pg_assert_same(array(), $found, 'screens casting $_GET[\'id\'] before checking it is one value');
+}
+
+// The screens that read ?id with a bare cast and no gate: an array id was
+// read as 1 and opened, copied, signed in as or deleted record 1.
+function test_panel_id_gate_on_get_id_screens()
+{
+	// The record screens stop on "Record not found." (edit_offer still
+	// creates without an id).
+	foreach (array('duplicate_offer', 'duplicate_style', 'edit_offer') as $screen) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
+		pg_assert_contains("if (isset(\$_GET['id']) && !is_scalar(\$_GET['id'])) {\n    output_error(lang('Record not found.')", $source, $screen);
+	}
+
+	// The others read an array as no id and give their "not found" answer.
+	$screens = array(
+		'login_as_user'                 => '$login_as_user_id = ',
+		'get_seo_analysis'              => '$id = ',
+		'get_view_order_screen_content' => '$order_id = ',
+		'order_history_delete_order'    => '$order_id = ',
+		'order_history_reorder'         => '$old_order_id = ',
+		'order_history_retrieve_order'  => '$order_id = ',
+	);
+
+	foreach ($screens as $screen => $variable) {
+		pg_assert_contains($variable . "is_scalar(\$_GET['id'] ?? null) ? (int) \$_GET['id'] : 0;", file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php'), $screen);
+	}
+
+	// edit_offer's ?duplicate= source and the iCalendar export of a calendar event page.
+	pg_assert_contains("is_scalar(\$_GET['duplicate'] ?? null) ? (int) \$_GET['duplicate'] : 0", file_get_contents(PG_FUNCTIONS_DIR . '/edit_offer.php'), 'edit_offer duplicate');
+	pg_assert_contains("is_scalar(\$_GET['id'] ?? null) ? get_calendar_event(\$_GET['id'], 0) : false", file_get_contents(PG_FUNCTIONS_DIR . '/get_page.php'), 'get_page icalendar');
+}

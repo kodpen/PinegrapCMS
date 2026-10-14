@@ -84,6 +84,72 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — ERP dışındaki ekranlar dizi gelen `?id`'yi 1 numaralı kayıt saymıyor (2026-10-14)
+
+**Neden.** #436'nın kalanı. ERP dışındaki 19 kök ekranda `(int) $_GET['id']`
+okuması var. Dokuzu (#422 / #424'ün kapısından sonra okuyan
+`edit_calendar_event`, `edit_product_group`, `edit_submitted_form`,
+`edit_user`, `view_menu_items`, `view_order`, `view_visitor_report`; kendi
+`is_scalar` / `is_string` denetimi olan `get_account_document`,
+`workspace_template`) zaten güvenli. Kalan onunda kapı yoktu ve `(int)`
+dizide 1 verdiği için `?id[]=x` 1 numaralı kaydı kullanıyordu: `edit_offer`
+1 numaralı teklifi düzenlemeye açıyor, `duplicate_offer` onu çoğaltıyor
+(`edit_offer?duplicate=1`), `login_as_user` 1 numaralı kullanıcı olarak
+oturum açıyor (rol denetimleri yine geçerli), `get_seo_analysis` 1 numaralı
+ürünün / sayfanın SEO panelini veriyor; Hesabım'ın sipariş ekranı
+(`get_view_order_screen_content`) ve `order_history_retrieve_order` /
+`_reorder` / `_delete_order` müşterinin 1 numaralı siparişini gösteriyor,
+sepete alıyor, yeniden sipariş ediyor ya da siliyordu (sandbox'ta
+`order_history_delete_order?id[]=x` 1 numaralı siparişi sildi; sahiplik
+denetimi yine geçerli). `duplicate_style` ve takvim etkinliği sayfasının
+iCalendar indirmesi (`get_page.php`) diziyi önce `escape()`'e verdiği için
+500 veriyordu. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Serinin kuralı: dizi id "verilmedi" sayılır, normal isteğin
+çıktısı değişmez. Kayıt ekranları #424'ün "Kayıt bulunamadı." 404'ünde
+duruyor: `duplicate_offer`, `duplicate_style` ve `edit_offer` (yalnız dizi
+gelince; `edit_offer` id'siz eskisi gibi yeni teklif açıyor, `?duplicate[]`
+verilmemiş sayılıp boş yeni teklif). Kendi "bulunamadı" yanıtı olan
+ekranlar id'yi `is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0`
+ile okuyor ve id'siz açılıştaki yanıtı veriyor: `login_as_user` ("Kullanıcı
+bulunamadı."), `get_seo_analysis` ("bu kaydı bulamadık"),
+`get_view_order_screen_content` ("Sipariş bulunamadı."), üç
+`order_history_*` ("The order could not be found."). iCalendar indirmesi
+dizi id'de etkinliği aramıyor ("etkinlik bulunamadı" 404). Şema, dil
+dosyası, JS değişikliği yok. `tests/panel_id_gate_test.php` genişledi: ERP
+dışındaki her kök ekranda `(int)` ile okunan `$_GET['id']`'den önce (aynı
+satırda ya da ekranın kapısında) bir `is_scalar` / `is_string` denetimi
+olmalı (eski kodda on dosyada 15 okuma yakalıyor; ERP ekranları
+`tests/erp_request_values_test.php`'de).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, DEBUG açık).** Eski kod
+(`origin/development`) 8001'de, yeni 8000'de, aynı veritabanı; teklif,
+kullanıcı, iki sipariş ve ürün için 1 numaralı kayıt kopyalandı. Normal
+istekler (yeni / var olan / var olmayan teklif, `duplicate=5`, çoğaltma
+yönlendirmesi, `get_seo_analysis` ürün 29, `login_as_user?id=1`, Hesabım
+sipariş 1 ve 2, iCalendar yayımlanmamış etkinlik, `reorder?id=1`, var
+olmayan sipariş silme) iki sunucuda aynı yanıt. Dizi id: eski kod 1
+numaralı teklifi açtı, `duplicate=1`'e yönlendi, "birinci" kullanıcısıyla
+oturum açtı, 1 numaralı ürünün SEO panelini, 1 numaralı siparişi gösterdi,
+siparişi sepete aldı ve sildi; `duplicate_style` ile iCalendar 500. Yeni kod
+hepsinde bulunamadı yanıtı, oturum yönetici olarak kaldı, sipariş yerinde.
+Değişen ekranlarda yeni uyarı satırı yok. `tools/lint.php`, `tools/test.php`,
+`check_lang`, `check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek
+veriler.
+
+**Bilerek yapılmayan.** Jetonlu on eylem ekranı `?id[]=` ile hâlâ 500
+veriyor (`escape()` diziyi kabul etmiyor; `(int)` okuması yok, 1 numaralı
+kaydı kullanmıyorlar): `duplicate_calendar_event`, `duplicate_common_region`,
+`duplicate_designer_region`, `duplicate_email_campaign_profile`,
+`duplicate_menu`, `duplicate_page`, `duplicate_product`, `optimize`,
+`remove_recipient`, `send_email_campaign`; ayrı iş olarak kuyrukta. Hesabım
+sipariş ekranı gerçek bir siparişte normal açılışta beş tür uyarı yazıyor
+(`$recurring_products_exist`, `$applied_offers`, `$output_recurring_products`,
+oturumda `ecommerce` anahtarı); eski kodda da aynı, burada değişmedi.
+
+---
+
 ## 2026.4.10 — Büyük yedek kurulum ekranından adım adım geri yükleniyor, yarım kalan geri yükleme sürdürülüyor (2026-10-14)
 
 **Neden.** Bir müşteri sitesinde yanlışlıkla silinen ürün için 950 MB'lık
