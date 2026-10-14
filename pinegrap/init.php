@@ -854,6 +854,12 @@ if (
     $_COOKIE = array_stripslashes($_COOKIE);
 }
 
+// Where a form goes once it is saved (send_to) and the screen it was opened
+// from (from) are single values that every screen reads from the request
+// itself (174 files), so an array is turned away here, once, before any of
+// them runs. See pg_request_single_values().
+pg_request_single_values(array('send_to', 'from'));
+
 
 // If this request was made over the web instead of a cron job,
 // then deal with forcing secure mode and starting session.

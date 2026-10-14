@@ -84,6 +84,68 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dizi gelen `send_to` ve `from` 20 panel ekranında ve giriş sayfalarında 500 veriyordu (2026-10-14)
+
+**Neden.** #417 taramasının bıraktığı K3. Kayıttan sonra dönülecek adres
+(`send_to`) ve ekranın açıldığı yer (`from`) tek değerli; ekranlar onları
+gizli alana ve bağlantılara `h()`, `urlencode()` ile basıyor. Elle yazılmış
+`?send_to[]=x` ya da `?from[]=x` ile kişi, kullanıcı, alan, dosya, klasör,
+menü öğesi, yönlendirme kaynağı ve tasarım dosyası ekleme, kişi ve kullanıcı
+içe aktarma, klasör çoğaltma, reklam ve tasarımcı bölgesi, öne çıkan ve yeni
+ürünler, JavaScript, tema CSS'i, tema dosyası, editör dosyası ve sistem
+stili kaynağı ekranları 500 veriyordu; ön yüzde giriş ve kayıt giriş
+sayfaları ile panelin giriş ekranı (`/pinegrap/index.php?send_to[]=x`) da
+düşüyordu. Ürün ekleme / düzenleme, ZIP içe aktarma "Array to string"
+uyarısı yazıyordu. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Serinin kuralı: dizi gelen tek değerli parametre "verilmedi"
+sayılır, normal isteğin HTML'i değişmez, 500 yok.
+
+- Yeni `pg_request_single_values($names)` (`includes/fn/core.php`,
+  `pg_safe_redirect_path()`'in yanında): verilen adlar `$_GET`, `$_POST`
+  ya da `$_REQUEST`'te dizi gelirse o kopyadan çıkarılıyor; metin olduğu
+  gibi kalıyor. `get_page.php`'nin #417'deki `unset` döngüsünün aynısı.
+- `init.php` onu magic quotes bloğundan hemen sonra `send_to` ve `from`
+  için çağırıyor. **Neden tek yerden:** `send_to` ortak bir yerde okunmuyor,
+  174 dosya onu doğrudan istekten okuyor (922 kullanım); 20 ekranı tek tek
+  düzeltmek taranmayan POST yollarını (`urlencode($_POST['send_to'])` ile
+  kendine dönen kayıt ekranları) ve gelecek ekranları açıkta bırakırdı, K1
+  ve K2'nin değiştirdiği dosyalarla da çakışırdı. `init.php` her panel
+  ekranından ve her site sayfasından önce çalışıyor ve hiçbir yerde
+  `send_to[]` / `from[]` adlı alan yok.
+- Yan etki, kural gereği: ERP raporlarında (`erp_audit`, `erp_cashflow`,
+  `erp_profit`, `erp_vat_report`) ve Çalışma Alanı ekranlarında
+  (`includes/workspace/screen.php:557`) `?from[]=` "Array to string"
+  uyarısı yazmıyor (K4'ün diğer parametreleri duruyor).
+  `update_exchange_rates.php?send_to[]=x` önceden kur listesine
+  yönleniyordu, artık `send_to` verilmemiş gibi aynı ekranda kalıyor.
+
+Şema, dil dosyası ve JS değişikliği yok. Test:
+`tests/request_single_values_test.php` (3 test).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, DEBUG açık).** #417'nin tarama
+aracıyla 367 panel ekranı yönetici oturumuyla: parametresiz, `?send_to[]=1`,
+`?from[]=1`, yine parametresiz (1.468 istek). Eski kodda 24 istek 500 (20
+ekran), 38 istek parametresiz açılışta olmayan uyarı ya da ölümcül hata
+yazdı (8 ayrı dosya:satır); yeni kodda 0 ve 0. Eski kod
+(`origin/development`) ikinci portta, istekler sırayla iki sunucuya: 20
+ekranın ve ürün ekranlarının metin `send_to` / `from`'lu 31 normal isteği
+(ERP `?from=2026-01-01` dahil) ile oturumsuz 8 ön yüz isteği (ana sayfa,
+giriş, kayıt girişi, şifremi unuttum, panel girişi; `send_to`'lu ve
+`send_to`'suz) aynı HTML'i verdi. Farklı olanlar yalnız dizi istekler:
+taramadakiler ve oturumsuz giriş, kayıt girişi, panel girişi 500 → 200. `tools/lint.php`,
+`tools/test.php` (932 test), `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies` ve `build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler.
+
+**Bilerek yapılmayan.** `send_to` verilmediğinde zaten uyarı yazan
+ekranlar (ör. `update_currency.php`, eksik parametre: K7) dizide de aynı
+uyarıyı yazıyor. `update_currency.php` `send_to`'yu `pg_safe_redirect_path()`
+olmadan `Location`'a koyuyor (jetonlu POST; ayrı iş). K1, K2, K4–K9'a
+dokunulmadı.
+
+---
+
 ## 2026.4.10 — ERP ekranları dizi gelen süzgeç, tarih ve aramada "Array to string conversion" uyarısı yazıyordu (2026-10-14)
 
 **Neden.** #417'nin panel taramasında K4 olarak kalan iş. ERP ekranları
