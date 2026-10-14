@@ -85,9 +85,10 @@ function test_ws_api_plan_item_removal_is_one_tool()
 	}
 }
 
-// A message is changed, deleted and a channel marked read with one tool each;
-// the deletion addressed as a POST is no second tool.
-function test_ws_api_message_edit_delete_and_read_are_tools()
+// A channel is marked read with a tool; changing, deleting and hiding a
+// message are no tools, since only a team devices session may make them and
+// an MCP client signs in through an OAuth connection.
+function test_ws_api_message_edit_delete_and_hide_are_no_tools()
 {
 	$offered = array();
 
@@ -97,16 +98,16 @@ function test_ws_api_message_edit_delete_and_read_are_tools()
 		}
 	}
 
-	foreach (array('workspace_messages_update', 'workspace_messages_delete', 'workspace_channels_read') as $tool) {
-		pg_assert_contains($tool, $offered);
-	}
+	pg_assert_contains('workspace_channels_read', $offered);
 
-	pg_assert_false(in_array('workspace_messages_delete_post', $offered, true), 'the POST alias is no tool');
+	foreach (array('workspace_messages_update', 'workspace_messages_delete', 'workspace_messages_delete_post', 'workspace_messages_hide') as $tool) {
+		pg_assert_false(in_array($tool, $offered, true), $tool . ' is no tool');
+	}
 }
 
-// Deleting a message for oneself is a tool of its own; the changes a phone
-// makes to messages and read marks can each be rehearsed with a dry run.
-function test_ws_api_message_hide_is_a_tool_and_writes_rehearse()
+// The changes a phone makes to messages and read marks can each be rehearsed
+// with a dry run.
+function test_ws_api_message_writes_rehearse()
 {
 	$routes = array();
 
@@ -114,11 +115,76 @@ function test_ws_api_message_hide_is_a_tool_and_writes_rehearse()
 		$routes[$route['id']] = $route;
 	}
 
-	pg_assert_true(isset($routes['workspace.messages.hide']) && pg_mcp_route_is_offered($routes['workspace.messages.hide']), 'hide is offered as a tool');
-	pg_assert_true(pg_mcp_tool_name('workspace.messages.hide') === 'workspace_messages_hide', 'the tool is workspace_messages_hide');
+	pg_assert_true(isset($routes['workspace.messages.hide']), 'hide is declared');
 
 	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.delete_post', 'workspace.messages.hide', 'workspace.channels.read') as $id) {
 		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' takes dry_run');
+	}
+}
+
+// The source of a route's handler, to read which gate it calls.
+function ws_api_test_handler_source($handler)
+{
+	$function = new ReflectionFunction($handler);
+	$lines = file($function->getFileName());
+
+	return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+}
+
+// A route that only a team devices session may call refuses every OAuth
+// connection, and so every MCP client: it is offered to none as a tool. The
+// gate is called by the handler itself or by a helper of the module it calls
+// (ws_api_pin_target()).
+function test_ws_api_own_words_routes_are_no_tools()
+{
+	$gates = array('ws_api_own_words_only(');
+
+	foreach (get_defined_functions()['user'] as $name) {
+		if ((strpos($name, 'ws_api_') === 0) && ($name !== 'ws_api_own_words_only') && (strpos(ws_api_test_handler_source($name), 'ws_api_own_words_only(') !== false)) {
+			$gates[] = $name . '(';
+		}
+	}
+
+	$gated = array();
+
+	foreach (ws_api_routes() as $route) {
+		$source = ws_api_test_handler_source($route['handler']);
+
+		foreach ($gates as $gate) {
+			if (strpos($source, $gate) !== false) {
+				$gated[] = $route['id'];
+				pg_assert_false(pg_mcp_route_is_offered($route), $route['id'] . ' is no MCP tool');
+				break;
+			}
+		}
+	}
+
+	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.hide', 'workspace.messages.pin',
+		'workspace.messages.pin_close', 'workspace.polls.create', 'workspace.polls.update', 'workspace.scheduled_messages.create') as $id) {
+		pg_assert_contains($id, $gated);
+	}
+}
+
+// A scheduled message is posted later in the person's own name, so it is
+// scheduled from a team devices session only, and no MCP tool schedules one;
+// listing and deleting the owner's scheduled messages stay tools.
+function test_ws_api_scheduled_message_is_scheduled_by_the_person()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$source = ws_api_test_handler_source($routes['workspace.scheduled_messages.create']['handler']);
+
+	pg_assert_true(strpos($source, 'ws_api_own_words_only(') !== false, 'scheduling asks for the team devices session');
+	pg_assert_false(strpos($source, 'ws_api_person_only(') !== false, 'an OAuth connection is not enough');
+	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.scheduled_messages.create']), 'scheduling is no MCP tool');
+	pg_assert_true(!empty($routes['workspace.scheduled_messages.create']['dry_run']), 'scheduling rehearses');
+
+	foreach (array('workspace.scheduled_messages.list', 'workspace.scheduled_messages.delete') as $id) {
+		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' is a tool');
 	}
 }
 

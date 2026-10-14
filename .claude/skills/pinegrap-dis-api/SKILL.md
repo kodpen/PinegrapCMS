@@ -74,8 +74,10 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   yol açarsan oraya da kat. Görselin küçük kopyası `ws_file_preview()`
   (`pg_process_image_file()`, `write => false`); kopya `data/temp`'te.
 - Sonradan kişinin kendi adıyla iş yapan kayıt (zamanlanmış mesaj gibi) yalnız
-  cihaz oturumundan açılır (`ws_api_person_only()`); uygulama anahtarı okur ve
-  iptal eder. Uygulamanın yazdığı her şey uygulama adıyla görünür.
+  ekip cihazları oturumundan açılır (`ws_api_own_words_only()`): OAuth
+  bağlantısı da uygulama adıyla yazdığı için 403 alır, yoksa bağlantının
+  kurduğu iş sonra kişinin sözü olarak görünür. Uygulama anahtarı ve OAuth
+  okur ve iptal eder. Uygulamanın yazdığı her şey uygulama adıyla görünür.
 - Kişinin kendi cevabı ya da tercihi (okundu onayı, okundu işareti, onay,
   oy, kanal bildirim düzeyi, kanalı sabitleme ve sırası, tartışmaya
   katılma / ayrılma, oylamayı kapatma) da `ws_api_person_only()` ister:
@@ -85,6 +87,10 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   Sonradan yalnız kişinin değiştirebileceği bir şeyi onun adıyla açan uç
   da (oylama açma: `ws_poll_edit()` yalnız kişinin kendi mesajını kabul
   eder) `ws_api_own_words_only()` ister.
+- `ws_api_own_words_only()` isteyen uç (doğrudan ya da `ws_api_pin_target()`
+  gibi bir yardımcıyla) `'mcp' => false` taşır: MCP istemcisi OAuth
+  bağlantısıyla gelir, araç her çağrıda 403 alırdı.
+  `test_ws_api_own_words_routes_are_no_tools` bunu denetler.
 - Herkes için aynı olan düzen (kanalı gruba taşıma) kişisel tercih
   değildir: `ws_api_person_only()` istemez, kanal değiştirme ucu gibi
   sahibin haklarıyla kapılanır (uygulama anahtarı kabul). Erişim değiştiren

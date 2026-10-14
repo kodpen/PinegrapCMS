@@ -443,6 +443,10 @@ function ws_api_routes()
             ),
         ),
 
+        // Changing, deleting and hiding the person's own messages come from
+        // their team devices session only (ws_api_own_words_only()); an MCP
+        // client signs in through an OAuth connection, which is refused, so
+        // none of them is offered to it as a tool.
         array(
             'id'           => 'workspace.messages.update',
             'method'       => 'POST',
@@ -451,6 +455,7 @@ function ws_api_routes()
             'scope'        => 'workspace:write',
             'handler'      => 'ws_api_messages_update',
             'dry_run'      => true,
+            'mcp'          => false,
             'returns'      => 'WorkspaceMessage',
             'summary'      => 'Change one\'s own message',
             'description'  => 'Changes the text of a message, a note or a decision the person wrote, the way Edit in the message menu does: edited is then true, and only the people the new text mentions for the first time are told. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection write as the application and are refused with 403 forbidden, so an integration does not rewrite its owner\'s words. Somebody else\'s message, a decision that records a change to a record, an approval request and a message of an earlier version of the conversation cannot be changed. PATCH is accepted beside POST.',
@@ -467,6 +472,7 @@ function ws_api_routes()
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_messages_delete',
             'dry_run'     => true,
+            'mcp'         => false,
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Delete a message for everyone',
             'description' => 'Deletes a message the way Delete in the message menu does: the person their own, staff anybody\'s or a guest\'s. Its text, file and tags go, and the channel shows "message deleted" in its place, so the answer has deleted true. It cannot be undone. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. A message of an application, or of an earlier version of the conversation, cannot be deleted. POST /workspace/messages/{id}/delete does the same for servers that refuse DELETE.',
@@ -482,6 +488,7 @@ function ws_api_routes()
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_messages_delete',
             'dry_run'     => true,
+            'mcp'         => false,
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Delete a message, addressed as a POST',
             'description' => 'The same deletion as DELETE /workspace/messages/{id}, for clients and servers that cannot send DELETE. It has an address of its own because POST /workspace/messages/{id} is the change.',
@@ -497,6 +504,7 @@ function ws_api_routes()
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_messages_hide',
             'dry_run'     => true,
+            'mcp'         => false,
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Delete a message for oneself',
             'description' => 'Takes a message out of the person\'s own view, the way Delete for me in the message menu does: the others still see it as it is. Any message the person can read may go, whoever wrote it, but a line the workspace wrote itself; a mention in it leaves the bell. The answer is the message with hidden true, and every later read gives it with hidden true so the app leaves it out while since_id and before_id still count it. The person\'s other devices learn it as a change from the moment it went: changed_since on GET /workspace/channels/{id}/messages and changed in GET /workspace/sync bring it with hidden true, to that person alone; nobody else\'s device is told anything. It cannot be undone. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden.',
@@ -827,6 +835,9 @@ function ws_api_routes()
             ),
         ),
 
+        // Posted later in the person's own name, so scheduled from their team
+        // devices session only; an MCP client's OAuth connection is refused,
+        // and is offered no tool for it. Listing and deleting stay tools.
         array(
             'id'          => 'workspace.scheduled_messages.create',
             'method'      => 'POST',
@@ -834,9 +845,10 @@ function ws_api_routes()
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_scheduled_messages_create',
             'dry_run'     => true,
+            'mcp'         => false,
             'returns'     => 'WorkspaceScheduledMessage',
             'summary'     => 'Schedule a message',
-            'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a device session (a Bearer token from POST /auth/login) may schedule one: an application key is refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person.',
+            'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a team devices session (a Bearer token from POST /auth/login) may schedule one: an application key and an OAuth connection write as the application and are refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'Tags such as <#order:1045> or <@user:12> are kept as tags.'),

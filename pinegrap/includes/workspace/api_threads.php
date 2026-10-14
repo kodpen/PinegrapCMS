@@ -12,8 +12,8 @@
  *
  * A scheduled message waits as its writer's own until its time and is then
  * posted in the writer's name by scheduled_messages.php, so only the person,
- * signed in on a device, schedules one; an application may list and cancel
- * the ones its owner wrote.
+ * from their team devices session, schedules one; an application key or an
+ * OAuth connection may list and cancel the ones its owner wrote.
  *
  * The versions of a note are read here only, through notes.php.
  *
@@ -470,9 +470,12 @@ function ws_api_scheduled_messages_create($params)
 
     $channel = ws_api_channel_or_404($viewer, $params['id']);
 
-    // Posted later in the writer's own name, so the writer is the one who
-    // schedules it.
-    ws_api_person_only(lang('Only the person, signed in on a device, can schedule a message: it is posted later in their own name, not as the application.'));
+    // Posted later in the writer's own name (scheduled_messages.php posts
+    // it with no application on it), so only the team devices session,
+    // which writes as the person now too, schedules one: an application key
+    // and an OAuth connection write as the application, and a message they
+    // scheduled would turn up later as the person's own words.
+    ws_api_own_words_only(lang('Only the person, signed in on a device, can schedule a message: it is posted later in their own name, not as the application.'));
 
     if (!ws_can_post_channel($viewer, $channel)) {
         api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
