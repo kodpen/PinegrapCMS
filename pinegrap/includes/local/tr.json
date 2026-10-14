@@ -23162,5 +23162,8 @@
     "These notes take more than one line. Change them in the gift card.": "Bu notlar birden çok satırdan oluşuyor. Hediye kartının kendisinden değiştirin.",
     "The gift card changed in the meantime. Reload the list and try again.": "Hediye kartı bu arada değişti. Listeyi yenileyip yeniden deneyin.",
     "gift card ({var:1}) was changed on the gift card list: {var:2} from \"{var:3}\" to \"{var:4}\"": "hediye kartı ({var:1}) hediye kartları listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
-    "Only the person, signed in on a device, can delete a message from their own view; an application cannot do it for them.": "Bir mesajı kendi görünümünden yalnız cihazında oturum açmış kişinin kendisi silebilir; bir uygulama onun adına yapamaz."
+    "Only the person, signed in on a device, can delete a message from their own view; an application cannot do it for them.": "Bir mesajı kendi görünümünden yalnız cihazında oturum açmış kişinin kendisi silebilir; bir uygulama onun adına yapamaz.",
+    "Send the file once: as a form part named file, or as content_base64.": "Dosyayı bir kez gönderin: file adlı bir form parçası olarak ya da content_base64 olarak.",
+    "Send the file as a form part named file, or as content_base64.": "Dosyayı file adlı bir form parçası olarak ya da content_base64 olarak gönderin.",
+    "Name the file, with its extension.": "Dosyaya uzantısıyla birlikte bir ad verin."
 }

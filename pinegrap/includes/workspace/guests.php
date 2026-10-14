@@ -1415,21 +1415,12 @@ function ws_guest_file_send($context, $message_id)
 
     // Shown in the page: pictures, sound, video and PDF. Anything else, and
     // anything a browser could run (HTML, SVG), is downloaded.
-    $types = array(
-        'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp',
-        'avif' => 'image/avif', 'bmp' => 'image/bmp', 'pdf' => 'application/pdf',
-        'mp4' => 'video/mp4', 'webm' => 'video/webm', 'mov' => 'video/quicktime', 'm4v' => 'video/mp4', 'ogv' => 'video/ogg',
-        'mp3' => 'audio/mpeg', 'm4a' => 'audio/mp4', 'wav' => 'audio/wav', 'ogg' => 'audio/ogg', 'oga' => 'audio/ogg',
-        'opus' => 'audio/ogg', 'aac' => 'audio/aac', 'weba' => 'audio/webm',
-    );
-
     $name = (string) $row['file_name'];
-    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
-    $inline = isset($types[$extension]);
+    $type = ws_file_type($name);
     $ascii = preg_replace('/[^A-Za-z0-9._-]/', '_', $name);
 
-    header('Content-Type: ' . ($inline ? $types[$extension] : 'application/octet-stream'));
-    header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($name));
+    header('Content-Type: ' . $type['mime']);
+    header('Content-Disposition: ' . ($type['inline'] ? 'inline' : 'attachment') . '; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($name));
     pg_send_nosniff();
     header('Cache-Control: private, max-age=3600');
     header('Content-Length: ' . filesize($path));

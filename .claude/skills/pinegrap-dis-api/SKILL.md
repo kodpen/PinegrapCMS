@@ -61,6 +61,12 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   `$without_body` listesine de girer.
 - İç içe nesne satır içinde nullable yazılamaz: ayrı nesne bildir, alanı
   `'Ad?'` yaz (`'Device?'`, `'ErpQuoteSignature?'`).
+- Dosyayı kendi baytlarıyla veren uç `api_send_file()` ile çıkar ve rotada
+  `'binary' => true` taşır (`returns` istemez, OpenAPI 200'ü binary yazar);
+  `'mcp' => false` da koy. Dosyayı form parçası olarak da alan uç
+  `'form_file' => 'file'` bildirir (OpenAPI'ye multipart eklenir) ve
+  `$_FILES`'ı yalnız `api_send_hook() === null` iken okur
+  (`ws_api_upload_input()`, `GET/POST /workspace/.../file(s)`).
 - Sonradan kişinin kendi adıyla iş yapan kayıt (zamanlanmış mesaj gibi) yalnız
   cihaz oturumundan açılır (`ws_api_person_only()`); uygulama anahtarı okur ve
   iptal eder. Uygulamanın yazdığı her şey uygulama adıyla görünür.

@@ -594,10 +594,16 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
     $file = null;
 
     if (!$deleted && ((int) $row['file_id'] > 0)) {
-        $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $row['file_id'] . "'");
+        $stored = db_item("SELECT name, size FROM files WHERE id = '" . (int) $row['file_id'] . "'");
 
-        if ($stored !== '') {
-            $file = array('name' => (string) $row['file_name'], 'url' => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($stored));
+        if (is_array($stored) && ((string) $stored['name'] !== '')) {
+            $file = array(
+                'name'    => (string) $row['file_name'],
+                'kind'    => ws_file_kind($row['file_name']),
+                'size'    => (int) $stored['size'],
+                'url'     => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path((string) $stored['name']),
+                'api_url' => ws_api_file_url($row['id']),
+            );
         }
     }
 
@@ -639,7 +645,7 @@ function ws_api_message_schema()
         'text'        => 'string',
         'body'        => 'string',
         'task_id'     => 'integer?',
-        'file'        => array('name' => 'string', 'url' => 'string'),
+        'file'        => array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string'),
         'deleted'     => 'boolean',
         'hidden'      => 'boolean',
         'edited'      => 'boolean',
@@ -874,6 +880,170 @@ function ws_api_assistants_carry_on($asked, $here = false)
             ws_ai_kick();
         }
     });
+}
+
+/**
+ * Where the external API hands out a message's file with the caller's own
+ * token (GET /workspace/messages/{id}/file).
+ *
+ * @param int $message_id
+ * @return string
+ */
+function ws_api_file_url($message_id)
+{
+    return URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/integration.php/workspace/messages/' . (int) $message_id . '/file';
+}
+
+/**
+ * The file a call posts: a form part named file, or content_base64 with a
+ * name. A form part is read only off a request of its own; a route run by
+ * the MCP endpoint has none.
+ *
+ * @param array $params
+ * @return array name, base64 (string) or bytes (string), field
+ */
+function ws_api_upload_input($params)
+{
+    $part = null;
+
+    if ((api_send_hook() === null) && isset($_FILES['file']) && is_array($_FILES['file'])) {
+        $part = $_FILES['file'];
+    }
+
+    $base64 = (string) ($params['content_base64'] ?? '');
+    $name = trim((string) ($params['name'] ?? ''));
+
+    // A form part is held to the server's own upload limit as well, which
+    // may be the lower of the two.
+    $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+    $form_max = ws_upload_max_bytes();
+
+    if (((int) ($limits['file_max'] ?? 0) > 0) && ((int) $limits['file_max'] < $form_max)) {
+        $form_max = (int) $limits['file_max'];
+    }
+
+    $too_large = lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor($form_max / 1048576)));
+
+    if (($part !== null) && ($base64 !== '')) {
+        api_fail_validation(lang('Send the file once: as a form part named file, or as content_base64.'), 'content_base64');
+    }
+
+    if ($part !== null) {
+        $error = is_array($part['error']) ? UPLOAD_ERR_NO_FILE : (int) $part['error'];
+
+        if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+            api_fail_validation($too_large, 'file');
+        }
+
+        if (($error !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $part['tmp_name'])) {
+            api_fail_validation(lang('The file could not be read.'), 'file');
+        }
+
+        if ((int) @filesize((string) $part['tmp_name']) > $form_max) {
+            api_fail_validation($too_large, 'file');
+        }
+
+        return array(
+            'name'  => ($name !== '') ? $name : (string) $part['name'],
+            'bytes' => (string) @file_get_contents((string) $part['tmp_name']),
+            'field' => 'file',
+        );
+    }
+
+    // A form larger than the server takes arrives with nothing in it.
+    if (($base64 === '') && (api_send_hook() === null) && function_exists('pg_post_body_discarded') && pg_post_body_discarded()
+        && (stripos((string) ($_SERVER['CONTENT_TYPE'] ?? api_header('Content-Type')), 'multipart/form-data') !== false)) {
+        api_fail_validation($too_large, 'file');
+    }
+
+    if ($base64 === '') {
+        api_fail_validation(lang('Send the file as a form part named file, or as content_base64.'), 'content_base64');
+    }
+
+    if ($name === '') {
+        api_fail_validation(lang('Name the file, with its extension.'), 'name');
+    }
+
+    // Line breaks some encoders add are still the file.
+    return array('name' => $name, 'base64' => preg_replace('/[\r\n\t]+/', '', $base64), 'field' => 'content_base64');
+}
+
+/**
+ * Posts a file into a channel as a message carrying it, the way the panel's
+ * paperclip does (ws_attach).
+ */
+function ws_api_files_create($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $app_id = ws_api_writer_app_id();
+
+    // The person's limit is met before the file is kept, so a message that
+    // would be refused leaves no file behind.
+    if (($app_id === 0) && ws_rate_limited($viewer['id'])) {
+        api_fail_validation(lang('You are sending messages too quickly. Please wait a moment.'));
+    }
+
+    $upload = ws_api_upload_input($params);
+    $stored = isset($upload['bytes'])
+        ? ws_store_upload_bytes($viewer, $channel, $upload['name'], $upload['bytes'])
+        : ws_store_upload($viewer, $channel, $upload['name'], $upload['base64']);
+
+    if (!$stored['ok']) {
+        if ($stored['error'] === lang('The file could not be saved.')) {
+            api_fail_server($stored['error']);
+        }
+
+        api_fail_validation($stored['error'], $upload['field']);
+    }
+
+    $result = ws_message_send($viewer, $channel, (string) ($params['text'] ?? ''), array(
+        'app_id'    => $app_id,
+        'file_id'   => $stored['file_id'],
+        'file_name' => $stored['name'],
+    ));
+
+    if (!$result['ok']) {
+        ws_upload_discard($stored['file_id']);
+        api_fail_validation($result['error'], 'text');
+    }
+
+    $row = ws_message($result['message_id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
+ * Sends the file a message carries to whoever may read the message, as its
+ * own bytes.
+ */
+function ws_api_files_get($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || ((int) $message['file_id'] <= 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('File'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    $stored = basename((string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'"));
+    $path = FILE_DIRECTORY_PATH . '/' . $stored;
+
+    if (($stored === '') || !is_file($path)) {
+        api_fail_not_found(lang('File'));
+    }
+
+    $type = ws_file_type($message['file_name']);
+
+    api_send_file($path, $type['mime'], (string) $message['file_name'], $type['inline']);
 }
 
 function ws_api_messages_react($params)

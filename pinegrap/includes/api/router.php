@@ -271,6 +271,14 @@ function api_request_input($set = null) {
 
 			$input = array_merge($input, $_POST);
 
+		} elseif (strpos($content_type, 'multipart/form-data') !== false) {
+
+			// A form PHP threw away for being over post_max_size: the raw body
+			// is still readable, but it is not url-encoded text, and reading
+			// it as such turns its boundary into a field nobody sent. The
+			// endpoint finds the form empty and says what it is missing.
+			api_request_body_keys(array());
+
 		} else {
 
 			// A body with no content type, or one PHP did not parse itself.

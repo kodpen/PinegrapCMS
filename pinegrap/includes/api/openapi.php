@@ -133,13 +133,18 @@ function api_openapi_build() {
 		// than on each route. See api_response_fields() and api_etag_matches().
 		if ($route['method'] === 'GET') {
 
-			$parameters[] = array(
-				'name'        => 'fields',
-				'in'          => 'query',
-				'required'    => false,
-				'description' => 'Comma separated top-level fields to keep in each record, for example id,name,price. id is always kept; an unknown name is ignored.',
-				'schema'      => array('type' => 'string')
-			);
+			// A file (api_send_file()) has no fields to keep.
+			if (empty($route['binary'])) {
+
+				$parameters[] = array(
+					'name'        => 'fields',
+					'in'          => 'query',
+					'required'    => false,
+					'description' => 'Comma separated top-level fields to keep in each record, for example id,name,price. id is always kept; an unknown name is ignored.',
+					'schema'      => array('type' => 'string')
+				);
+
+			}
 
 			$parameters[] = array(
 				'name'        => 'If-None-Match',
@@ -167,9 +172,26 @@ function api_openapi_build() {
 
 			}
 
+			$content = array('application/json' => array('schema' => $body_schema));
+
+			// A route that also takes its file as a form part names the part
+			// ('form_file'): the form carries the same fields, with the file
+			// itself in place of its base64.
+			if (!empty($route['form_file'])) {
+
+				$form_schema = $body_schema;
+
+				unset($form_schema['properties']['content_base64']);
+
+				$form_schema['properties'][(string)$route['form_file']] = array('type' => 'string', 'format' => 'binary');
+
+				$content['multipart/form-data'] = array('schema' => $form_schema);
+
+			}
+
 			$operation['requestBody'] = array(
 				'required' => !empty($body_required),
-				'content'  => array('application/json' => array('schema' => $body_schema))
+				'content'  => $content
 			);
 
 		}
@@ -712,6 +734,17 @@ function api_openapi_responses($route) {
 	if ($schema !== null) {
 
 		$success['content'] = array('application/json' => array('schema' => $schema));
+
+	}
+
+	// A route that answers with a file rather than a record declares
+	// 'binary' => true (api_send_file()): the 200 is the file's own bytes.
+	if (!empty($route['binary'])) {
+
+		$success = array(
+			'description' => 'The file itself; Content-Type and Content-Disposition name it.',
+			'content'     => array('application/octet-stream' => array('schema' => array('type' => 'string', 'format' => 'binary')))
+		);
 
 	}
 

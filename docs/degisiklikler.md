@@ -84,6 +84,94 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: Çalışma Alanı kanalına dosya gönderme ve dosyayı jetonla indirme (2026-10-14)
+
+**Neden.** Mobil API ve Claude kanalı planının M5 dilimi
+(`docs/_plan_mobil_api_claude_kanali.md`). Panel kanala ataç düğmesiyle
+dosya koyuyor (`ws_attach`); API'de kanala yükleme ucu yoktu (`POST /files`
+yalnız görsel / PDF alıyor ve operatörün klasörüne yazıyor). Mesajdaki
+`file.url` da `get_file.php`'ye gidiyor; o yalnız tarayıcı oturumuna
+bakıyor, Bearer jetonunu tanımıyor, bu yüzden telefon uygulaması kanal
+dosyasını açamıyordu.
+
+**Ne değişti.**
+- `POST /workspace/channels/{id}/files` (`workspace:write`): dosya
+  `multipart/form-data` içinde `file` adlı parçayla (büyük dosyanın yolu)
+  ya da JSON gövdede `content_base64` + `name` ile; isteğe bağlı `text`.
+  Panelin yolu: `ws_store_upload()` + `ws_message_send()`; aynı tür
+  kuralı (program, betik, SVG / HTML / XML / JS yok, görsel gerçekten
+  görsel olmalı), en çok 20 MB ya da sunucunun daha düşük sınırı, dosya
+  kanalın Dosya Yöneticisi klasörüne (tartışmanınki kanalınkine).
+  Kim olarak yazıldığı mesaj yazma ucunun kuralı: uygulama anahtarı ve
+  OAuth uygulama adına, "Ekip cihazları" oturumu kişinin adına ve onun
+  dakikada yirmi mesaj sınırıyla. Sınır dosya kaydedilmeden önce
+  denetleniyor; mesaj yine de yazılamazsa dosya geri alınıyor
+  (`ws_upload_discard()`), artık dosya kalmıyor. Cevap 201 ile mesaj.
+  Panelin `ws_attach`'ı mesajı yazamazsa dosyayı bırakıyor; ona
+  dokunulmadı.
+- `GET /workspace/messages/{id}/file` (`workspace:read`): dosyayı JSON
+  içinde değil kendi baytlarıyla verir; telefon görseli çözmeden
+  gösterir, 20 MB'lık dosya bellekte üç kez tutulmaz. Erişim kuralı
+  mesajdan gider: mesajı okuyabilen (`ws_can_read_channel()`, Claude'un
+  uygulamasında ayrıca `ws_api_channel_or_404()`) dosyasını da alır;
+  herkesten silinmiş mesajın dosyası yok (404). Planın önerdiği
+  `get_file.php` kuralını ortak fonksiyona almak gerekmedi: o kural
+  dosya adından kanala gidiyor, bu uç ise mesajı zaten tanıyor; kopya
+  oluşmadı. Görsel, ses, video ve PDF kendi türüyle `inline`, gerisi
+  `application/octet-stream` ve `attachment`; tür kuralı misafir
+  odasıyla ortak `ws_file_type()`'a alındı (`ws_guest_file_send()` onu
+  kullanıyor, davranışı aynı). ETag dosyanın adresi, boyutu ve
+  değişme anından; `If-None-Match` 304.
+- `WorkspaceMessage.file`'a `kind` (image, video, audio, pdf, file),
+  `size` (bayt) ve `api_url` (bu indirme ucu) eklendi; `url` olduğu gibi
+  kalıyor. Mesaj okuyan her uç (liste, eşitleme, yazma cevapları) yeni
+  alanları veriyor.
+- API çekirdeğinde genel yetenekler: `api_send_file()`
+  (`includes/api/response.php`, `api_send()`'in dosya için ikizi: bütün
+  tamponları boşaltır, aynı günlük satırını yazar, `Cache-Control:
+  private, no-store`, `nosniff`, RFC 6266 dosya adı); rota bayrağı
+  `'binary' => true` (OpenAPI 200'ü `application/octet-stream` yazıyor,
+  `fields` parametresini koymuyor; `tools/check_api_schema.php`
+  `returns` istemiyor) ve `'form_file' => 'file'` (OpenAPI isteğe
+  `multipart/form-data` ekliyor). `api_request_input()`: `post_max_size`'ı
+  aşan form PHP'ce atılınca ham gövde url-encoded diye okunup sınır
+  satırı bilinmeyen alan sanılıyordu (422 "... adında bir alan kabul
+  etmiyor"); artık form boş sayılıyor ve uç "Dosya N MB'tan büyük"
+  diyor.
+- `ws_store_upload()` base64'ü çözüp yeni `ws_store_upload_bytes()`'a
+  veriyor; multipart dosya doğrudan ona gidiyor. Panelin davranışı aynı.
+- İki rota `'mcp' => false`: dosya baytları bir modelin işine yaramaz;
+  MCP araç listesi değişmedi, bağlayıcıyı yeniden bağlamak gerekmez.
+
+Şema değişikliği yok, yeni izin kapsamı yok. Yeni metin `tr.json`'da
+(3 anahtar).
+
+**Bilerek yapılmayan.** Görselde `?size=` küçük önizleme ve video için
+`Range` (iOS AVPlayer adresten oynatırken ister; uygulama dosyayı önce
+indirip yerelden oynatabilir) sonraki küçük dilim. Panelin `ws_attach`'ı
+başarısız mesajda dosyayı bırakmaya devam ediyor. Multipart istekte
+`Idempotency-Key` parmak izi dosyayı değil `name` ve `text`'i kapsıyor.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye iki test (rotalar,
+kapsamlar, MCP dışında oluşları, indirmenin `binary` oluşu;
+`ws_file_type()`). Sandbox'ta: "Ekip cihazları" ile multipart PNG
+(Türkçe adla) 201, kişinin adıyla, dosya kanalın klasöründe; uygulama
+anahtarıyla JSON base64 PDF (satır sonlu) 201, uygulama adıyla;
+url-encoded base64 (`+` boşluğa dönmüş) 201. İndirme: PNG ve PDF bayt
+bayt aynı, `Content-Type`, `inline`, iki biçimli dosya adı, ETag ile
+304, kimliksiz 401, dosyasız / olmayan / silinmiş mesaj 404, üyesi
+olunmayan özel kanalın dosyası 404 ve oraya yükleme 404. Ret: `.php`,
+SVG, görsel olmayan `.png`, HTML içerikli `.txt`, bozuk base64, adsız
+base64, ikisi birden, yalnız metinli form 422; 3 MB form
+(`upload_max_filesize` 2M) ve 9 MB form (`post_max_size` 8M) "Dosya 2
+MB'tan büyük" 422; hız sınırında 422 ve dosya tablosu değişmedi;
+uygulama anahtarı sınıra girmiyor. Eşitleme (`GET /workspace/sync`)
+mesajlarda yeni alanları verdi; OpenAPI belgesinde indirme 200'ü binary,
+yükleme isteği JSON ve multipart. Sunucu günlüğünde yalnız PHP'nin
+post_max_size uyarısı (beklenen).
+
+---
+
 ## 2026.4.10 — Dış API: Çalışma Alanı gelen kutusu, GET /workspace/inbox (2026-10-14)
 
 **Neden.** Mobil API ve Claude kanalı planının M4 dilimi
