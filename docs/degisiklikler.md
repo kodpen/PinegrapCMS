@@ -167,6 +167,77 @@ koşturuldu.
 
 ---
 
+## 2026.4.10 — Sayfa stili, tema, tasarım dosyası, konteyner ve yorum listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-14)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331 ürünler, #335 Rehber, #336 Sayfalar, #338 Kullanıcılar,
+#340 e-ticaret ayar listeleri, #341 e-posta kampanyaları, #344 takvim ve
+menü listeleri, #346 ülke ve nakliye listeleri, #348 reklam, komisyon ve
+rehber grubu listeleri). #348'in "Sonraki gruplar" dökümünde ilk sıraya
+konan beş liste bu PR'da: Tüm Sayfa Stilleri (`view_styles.php`), Tüm
+Temalar (`view_themes.php`), Tasarım Dosyaları (`view_design_files.php`),
+Tüm Konteynerler (`view_containers.php`) ve Yorumlar (`view_comments.php`).
+Beşi de sıralamayı çevrilmiş başlık adıyla oturumda tutup kendi
+`switch`'iyle tek sütunluk ORDER BY kuruyordu; panel dili değişince seçim
+kayboluyordu.
+
+Sıralama açığı yok: beşinde de sütun `switch`'ten geçiyor, yön istekten
+okunurken `sql_order_direction()` ile süzülüyordu (Konteynerler'deki `escape()`
+zaten süzülmüş değere uygulanıyordu). Sandbox'ta eski kodla `order` ve
+`sort` içine konan `SLEEP(0.3)` beş listede de koşmadı; changelog'a
+[GÜVENLİK] satırı gerekmedi.
+
+**Ne değişti.** Her listenin sıralanabilen sütunları kodla tanımlandı:
+Sayfa Stilleri `name`, `theme`, `collection`, `layout_type`,
+`last_modified`; Temalar `name`, `description`, `folder`,
+`activated_desktop`, `activated_mobile`, `last_modified`; Tasarım
+Dosyaları `name`, `type`, `size`, `optimized`, `folder`, `description`,
+`last_modified`; Konteynerler `name`, `enabled`, `length`, `width`, `height`,
+`weight`, `cost`, `created`, `last_modified`; Yorumlar `name`,
+`published`, `featured`, `publish_cancel`, `submitted`. Varsayılan eskisi
+gibi: dördünde son değişiklik azalan, Yorumlar'da gönderilme azalan. Sıra
+`pg_list_state('<liste>', …)` ile okunur, ORDER BY `pg_list_order_by()`
+ile yalnız ekranın kod → SQL eşlemesinden yazılır (SQL ifadeleri eskisiyle
+aynı). Başlıklar `get_column_heading()`'e düzey listesi verir; Shift+tık
+ve düzey numarası ürünlerdeki gibi çalışır. Araç çubuğunun sağına
+`pg_list_sort_menu()` eklendi (`pg-toolbar-grow` boşluğuyla); araç
+çubuğu olmayan Yorumlar'a yalnız menüyü taşıyan bir `#button_bar`
+eklendi. Ortak yardımcıya, `backend.src.js`'e ve `tr.json`'a
+dokunulmadı; kullanılan metinler zaten vardı. Siparişler listesine
+dokunulmadı (ayrı çalışmada).
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor. Eski
+`sort=<başlık>&order=desc` bağlantıları `pg_list_sort_parse()` ile tek
+düzey olarak okunur. Eski oturum anahtarları
+(`$_SESSION['software']['design'][...]`,
+`['ecommerce']['view_containers']`, `['comments']['sort'/'order']`)
+artık okunmuyor; ilk açılışta liste varsayılanla başlar. Sütunlar,
+Oluştur / Dosya Yükle / Görsel Sayfa Editörü düğmeleri, toplu silme ve
+düzenleme, disk kullanımı satırı, satır düğmeleri, tarayıcıdaki arama ve
+sayfa başına kayıt seçimi değişmedi. Satır içi hızlı güncelleme bu PR'ın
+kapsamında değil. Şema değişikliği yok.
+
+Fark edilen, dokunulmayan: Temalar ve Yorumlar oturumdaki `query`
+değerine göre arama süzgeci kuruyor ama bu değeri yazan bir yer yok
+(süzgeç hiç devreye girmiyor). Eskiden beri böyle.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 50 sayfa stili, 4 tema, 79
+tasarım dosyası, 8 konteyner, 8 yorum).** Beş listede her sütun iki yönde ve
+sütunların her ikili birleşimi (ilk azalan, ikinci artan), aynı ORDER
+BY'lı SQL'in sıralama değerleri dizisini verdi; varsayılan eskisi gibi;
+parametresiz yeniden açılışta iki düzeyli sıra korundu; yönsüz kod artan,
+varsayılan sütun azalan başladı; bozuk değer (`id;drop table x:desc`)
+varsayılana düştü; Türkçe başlıklı eski bağlantı (ör.
+`sort=Adı&order=desc`) sıraladı (2160 denetim, hepsi geçti; doğrulayıcı
+ters beklentiyle hata verdi). Yeni kodla da `order`/`sort` içindeki
+`SLEEP` koşmadı. Tarayıcıda 1400 pikselde başlığa tık tek sütuna,
+Shift+tık aynı sekmede ikinci düzeye çevirdi; menü iki düzeyi ve rozeti
+gösterdi; 390 pikselde menü dokunuşla açıldı, yatay kaydırma yok; sayfa
+hatası yok. Sunucu günlüğünde bu beş dosyadan uyarı yok. Doğrulanamadı:
+dev.pinegrap.com'daki gerçek kayıtlar ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Reklam, komisyon, rehber grubu, hediye kartı, sipariş raporu ve yinelenen komisyon profili listeleri ortak tablo yardımcısında: çoklu sıralama, sıralama yönündeki SQL enjeksiyonu kapandı (2026-10-14)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına

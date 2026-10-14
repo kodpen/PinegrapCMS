@@ -529,6 +529,19 @@
          Artık yalnız listenin sütunları ve artan/azalan
          kabul ediliyor.
 
+  TASARIM, KONTEYNER VE YORUM LİSTELERİ
+  --------------------------------------------------------
+
+  [YENİ] Tüm Sayfa Stilleri, Tüm Temalar, Tasarım
+         Dosyaları, Tüm Konteynerler ve Yorumlar
+         listeleri de aynı anda birden çok sütuna göre
+         sıralanıyor, örneğin tür artan, aynı türde boyut
+         azalan. Başlığa Shift ile tıklamak sonraki düzeyi
+         ekliyor; telefonda ya da klavyeyle araç
+         çubuğundaki "Sıralama" menüsü kullanılıyor.
+         Seçilen sıralama panel dili değişince
+         kaybolmuyor.
+
   E-TİCARET: AYARLAR
   --------------------------------------------------------
 

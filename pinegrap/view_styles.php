@@ -26,63 +26,34 @@ validate_area_access($user, 'designer');
 
 $liveform = new liveform('view_styles');
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_styles']['sort'] = $_REQUEST['sort'];
-
-    // clear order
-    $_SESSION['software']['design']['view_styles']['order'] = '';
-}
-
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_styles']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
-
 $number_of_results = 0;
 $output_clear_button = '';
 
-// if the sort is not set yet (first visit to this screen), then default it to empty so the
-// switch below falls through to its default case
-if (isset($_SESSION['software']['design']['view_styles']['sort']) == false) {
-    $_SESSION['software']['design']['view_styles']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'theme'         => lang('Theme'),
+    'collection'    => lang('Collection'),
+    'layout_type'   => lang('Layout Type'),
+    'last_modified' => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['design']['view_styles']['sort'] ?? ''))
-{
-    case lang('Name'):
-        $sort_column = 'style_name';
-        break;
-    case lang('Theme'):
-        $sort_column = 'theme_name';
-        break;
-    case lang('Collection'):
-        $sort_column = 'collection';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Layout Type'):
-        $sort_column = 'layout_type';
-        break;
+$list_state = pg_list_state('view_styles', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Last Modified'):
-        $sort_column = 'style_timestamp';
-        break;
-    default:
-        $sort_column = 'style_timestamp';
-        $_SESSION['software']['design']['view_styles']['sort'] = lang('Last Modified');
-}
-
-if (!empty($_SESSION['software']['design']['view_styles']['order'])) {
-    $asc_desc = sql_order_direction($_SESSION['software']['design']['view_styles']['order'] ?? '');
-} elseif ($sort_column == 'style_timestamp') {
-    $asc_desc = 'desc';
-    $_SESSION['software']['design']['view_styles']['order'] = 'desc';
-} else {
-    $asc_desc = 'asc';
-    $_SESSION['software']['design']['view_styles']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'style_name',
+    'theme'         => 'theme_name',
+    'collection'    => 'collection',
+    'layout_type'   => 'layout_type',
+    'last_modified' => 'style_timestamp',
+));
 
 // Designs made with the visual editor have their own screen
 // (view_system_styles.php); this list is the HTML-template styles.
@@ -109,7 +80,7 @@ $query =
     LEFT JOIN files ON style.theme_id = files.id
     LEFT JOIN user ON style.style_user = user.user_id
     WHERE style.style_layout <> 'visual_designer'
-    ORDER BY $sort_column $asc_desc";
+    ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $styles = array();
@@ -171,6 +142,8 @@ pg_page_shell([
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="add_custom_style.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         <a class="btn btn-sm btn-outline-secondary m-1 " href="view_system_styles.php"><span class="bi bi-magic me-2"></span>' . lang('Visual Page Editor') . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_styles.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -187,13 +160,13 @@ pg_page_shell([
                                         </div>
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th nowrap>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
+                                    <th nowrap>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                     <th class="text-center">' . lang('Folders Using Style') . '</th>
                                     <th class="text-center">' . lang('Pages Using Style') . '</th>
-                                    <th>' . get_column_heading(lang('Theme'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Collection'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Layout Type'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
-                                    <th nowrap>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Theme'), $sort_levels, '', '', 'theme') . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Collection'), $sort_levels, '', '', 'collection') . '</th>
+                                    <th>' . get_column_heading(lang('Layout Type'), $sort_levels, '', '', 'layout_type') . '</th>
+                                    <th nowrap>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
