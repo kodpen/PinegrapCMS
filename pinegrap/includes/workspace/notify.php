@@ -525,14 +525,8 @@ function ws_inbox_list($viewer, $limit = 50)
         ORDER BY read_at = 0 DESC, id DESC LIMIT " . max(1, min(200, (int) $limit)));
 
     $out = array();
-    $hidden = array();
 
-    foreach ($rows as $row) {
-        if (!ws_inbox_row_visible($viewer, $row)) {
-            $hidden[] = (int) $row['id'];
-            continue;
-        }
-
+    foreach (ws_inbox_visible_rows($viewer, $rows) as $row) {
         $describe = ws_inbox_describe($viewer, $row);
 
         $out[] = $describe + array(
@@ -542,6 +536,33 @@ function ws_inbox_list($viewer, $limit = 50)
             'time'   => ws_time_label($row['created_at']),
             'actor'  => current(ws_people(array($row['actor_id']))) ?: null,
         );
+    }
+
+    return $out;
+}
+
+/**
+ * The rows of a person's inbox they may still see, in the order given - for
+ * the workspace screen and for the API alike. The others are about a
+ * channel, a task, a message or a note gone from their reach, and are marked
+ * read so the badge does not count them.
+ *
+ * @param array   $viewer
+ * @param array[] $rows ws_inbox rows of the viewer
+ * @return array[]
+ */
+function ws_inbox_visible_rows($viewer, $rows)
+{
+    $out = array();
+    $hidden = array();
+
+    foreach ((array) $rows as $row) {
+        if (!ws_inbox_row_visible($viewer, $row)) {
+            $hidden[] = (int) $row['id'];
+            continue;
+        }
+
+        $out[] = $row;
     }
 
     if (!empty($hidden)) {

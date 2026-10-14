@@ -40,6 +40,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -148,6 +149,7 @@ function ws_openapi_objects()
         'WorkspaceMyDay'            => 'ws_api_my_day_schema',
         'WorkspaceSync'             => 'ws_api_sync_schema',
         'WorkspaceSyncThread'       => 'ws_api_sync_thread_schema',
+        'WorkspaceInboxItem'        => 'ws_api_inbox_schema',
     );
 }
 
@@ -318,10 +320,56 @@ function ws_api_routes()
             'returns'     => 'WorkspaceSync',
             'mcp'         => false,
             'summary'     => 'Keep an open app up to date',
-            'description' => 'What a team app on a phone or a computer needs to stay current, in one call, the way the panel\'s own screen keeps itself up to date. Call it every few seconds while the app is in front, passing back the cursor of the previous answer; leave it out on the first call. channels is the whole list GET /workspace/channels gives, and threads the open discussions the person is in, each sent only when something in it changed since the cursor (a new message, an unread count, a name); null means keep what you have. inbox_unread counts the workspace inbox. With channel_id, messages holds what was written there since the cursor - the newest 50 when the channel was not open at the previous call; page back with GET /workspace/channels/{id}/messages?before_id= - and changed the messages already sent that were edited, deleted, reacted to, ticked, voted on or acknowledged since, each as it is now. more true means more new messages wait: call again at once. reload true means more changed than one answer carries: read the channel again. gone true means the person can no longer read channel_id. When nothing changed, the answer is the previous one again, cursor included, so its ETag in If-None-Match gets 304 with no body. From a team devices session (POST /auth/login) the call also counts as the person looking at the workspace, as the panel\'s open screen does: a mention waits about a minute before it wakes their devices, and is not sent once they have read it. While a request to Pinegrap AI or an MCP server\'s own agent waits in channel_id, a call from a team devices session also carries it on, as the panel\'s open screen does: where the server can send the answer first, right after it; otherwise (IIS) before the answer, one model or agent call at a time, so that call takes as long and brings what was written, while another app\'s call meanwhile returns at once. Nothing is marked read here; POST /workspace/channels/{id}/read does that.',
+            'description' => 'What a team app on a phone or a computer needs to stay current, in one call, the way the panel\'s own screen keeps itself up to date. Call it every few seconds while the app is in front, passing back the cursor of the previous answer; leave it out on the first call. channels is the whole list GET /workspace/channels gives, and threads the open discussions the person is in, each sent only when something in it changed since the cursor (a new message, an unread count, a name); null means keep what you have. inbox_unread counts the workspace inbox; GET /workspace/inbox lists it. With channel_id, messages holds what was written there since the cursor - the newest 50 when the channel was not open at the previous call; page back with GET /workspace/channels/{id}/messages?before_id= - and changed the messages already sent that were edited, deleted, reacted to, ticked, voted on or acknowledged since, each as it is now. more true means more new messages wait: call again at once. reload true means more changed than one answer carries: read the channel again. gone true means the person can no longer read channel_id. When nothing changed, the answer is the previous one again, cursor included, so its ETag in If-None-Match gets 304 with no body. From a team devices session (POST /auth/login) the call also counts as the person looking at the workspace, as the panel\'s open screen does: a mention waits about a minute before it wakes their devices, and is not sent once they have read it. While a request to Pinegrap AI or an MCP server\'s own agent waits in channel_id, a call from a team devices session also carries it on, as the panel\'s open screen does: where the server can send the answer first, right after it; otherwise (IIS) before the answer, one model or agent call at a time, so that call takes as long and brings what was written, while another app\'s call meanwhile returns at once. Nothing is marked read here; POST /workspace/channels/{id}/read does that.',
             'params'      => array(
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'The cursor of the previous answer. Left out on the first call.'),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The channel open on the screen, or a discussion\'s id (threads[].id).'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.inbox.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/inbox',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_inbox_list',
+            'returns'     => array('list' => 'WorkspaceInboxItem'),
+            'summary'     => 'The owner\'s workspace inbox',
+            'description' => 'What the owner of the application was told in the workspace, newest first, as the inbox on the workspace screen says it: title and body are the panel\'s sentences, url its address, and the ids say what the line is about, so an app opens its own screen. kind is one of mention, assigned, completed, note, unblocked, invited, thread, guest_message, note_shared, note_updated, note_answer, note_answer_ai, task_note, task_assistant, task_reminder, task_overdue, approval_requested, approval_decided, approval_reminder, approval_answered, ack_reminder, agent_answer, scheduled_notice, scheduled_failed, scheduled_message and meeting_soon; more may come, so treat an unknown kind by its url. channel_id may be a discussion\'s (read it with GET /workspace/channels/{id}/messages), and parent_channel_id is then the channel it was started in; for kind thread, message_id is the message the discussion was started from, in parent_channel_id. meeting_url is the video call of a meeting about to start. A workspace line in the bell (GET /notifications) has subject type workspace_inbox and the id of its line here. Lines about a channel, a task, a message or a note the owner can no longer see are left out and count as read, so a page can be shorter than limit with a next_cursor; follow the cursor as usual. Reading marks nothing read; POST /workspace/inbox/read does.',
+            'params'      => array(
+                array('name' => 'unread', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the lines not read yet.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 30, 'description' => 'Lines per page.'),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.inbox.read',
+            'method'      => 'POST',
+            'path'        => '/workspace/inbox/read',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_inbox_read',
+            'dry_run' => true,
+            'returns'     => array('updated' => 'integer', 'unread' => 'integer'),
+            'summary'     => 'Mark inbox lines read',
+            'description' => 'Marks lines of the person\'s workspace inbox read, the way the inbox on the workspace screen does: send ids, or all true for every line. Their lines in the bell are marked read with them, and a banner still waiting for one is not sent. Ids of somebody else\'s lines, and lines already read, are skipped rather than refused: updated says how many were marked, and unread is the count afterwards. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since an integration reading the inbox is not its owner reading it.',
+            'params'      => array(
+                array('name' => 'ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'Inbox line ids (GET /workspace/inbox, or the subject id of a bell line).'),
+                array('name' => 'all', 'in' => 'body', 'type' => 'bool', 'description' => 'Every line not read yet.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.inbox.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/inbox/{id}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_inbox_get',
+            'returns'     => 'WorkspaceInboxItem',
+            'summary'     => 'One line of the workspace inbox',
+            'description' => 'One line of the owner\'s workspace inbox, by its id: what an app woken by a banner reads to open the right screen, when the bell line (GET /notifications) has subject type workspace_inbox. A line that is somebody else\'s, or about something the owner can no longer see, is a 404. Reading it does not mark it read; POST /workspace/inbox/read does.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 

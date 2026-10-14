@@ -587,6 +587,12 @@ function api_notification_present($row, $read) {
 
 		$url = null;
 
+	} elseif ((strpos($url, '/') === 0) && (strpos($url, '//') !== 0)) {
+
+		// A path from the site's root already names the software directory
+		// (the workspace's lines do), so only the scheme and host go in front.
+		$url = URL_SCHEME . HOSTNAME_SETTING . $url;
+
 	} elseif (!preg_match('#^https?://#i', $url)) {
 
 		$url = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/' . ltrim($url, '/');
