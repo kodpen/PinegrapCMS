@@ -2116,11 +2116,15 @@ function pg_page_edit_url_by_id($page_id)
  * list (api.php design_delete).
  *
  * The design's live pages go to the recycle bin; pages already there stay
- * there (each carries its own tree, so a restored page joins another design
- * through "Select Page"). Pages that only use it as their mobile style and
- * folders that use it as their default (desktop or mobile) are cleared to 0
- * rather than blocking the delete: get_style() then looks in the parent
- * folder (the root folder is left with none).
+ * there. Pages that only use it as their mobile style and folders that use
+ * it as their default (desktop or mobile) are cleared to 0 rather than
+ * blocking the delete: get_style() then looks in the parent folder (the root
+ * folder is left with none).
+ *
+ * The design itself goes to the bin with its pages once the bin can hold
+ * styles (pg_recycle_style()); restoring it there brings its pages and those
+ * settings back with it. Before that upgrade it is deleted outright, and a
+ * restored page joins another design through "Select Page".
  *
  * $collab_key is the caller's own editor tab (the toolbar posts it), so the
  * tab that asks is not counted as somebody else having the design open. Any
@@ -2128,12 +2132,13 @@ function pg_page_edit_url_by_id($page_id)
  * design that no longer exists.
  *
  * @return array ok, error, binned (pages sent to the bin), home (how many of
- *               them were the home page), folders (folders cleared), name
+ *               them were the home page), folders (folders cleared), name,
+ *               recycled (the design itself is in the bin)
  */
 function pg_designer_delete_design($style_id, $user, $collab_key = '')
 {
     $style_id = (int)$style_id;
-    $out = array('ok' => false, 'error' => '', 'binned' => 0, 'home' => 0, 'folders' => 0, 'name' => '');
+    $out = array('ok' => false, 'error' => '', 'binned' => 0, 'home' => 0, 'folders' => 0, 'name' => '', 'recycled' => false);
 
     $style = $style_id > 0 ? db_item("SELECT style_id, style_name FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
     if (!$style) {
@@ -2176,7 +2181,24 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
         $uid    = (int)$user['id'];
         $bin_id = (int)pg_recycle_folder_id(true);
         $live   = db_items("SELECT page_id, page_folder, page_home FROM page WHERE page_style = '$style_id'" . pg_designer_not_binned_sql('page_folder'));
-        foreach ((is_array($live) ? $live : array()) as $lp) {
+        $live   = is_array($live) ? $live : array();
+
+        // The design goes to the bin with its pages (pg_recycle_style()), so
+        // it can come back with them. Its record is written first, naming the
+        // pages about to follow it: if it cannot be written, nothing has moved.
+        if (pg_recycle_style_ready()) {
+            $live_ids = array();
+            foreach ($live as $lp) $live_ids[] = (int)$lp['page_id'];
+            $rs = pg_recycle_style($style_id, $user, $live_ids);
+            if ($rs['status'] !== 'binned') {
+                $out['error'] = $rs['message'];
+                return $out;
+            }
+            $out['recycled'] = true;
+            $out['folders']  = (int)$rs['folders'];
+        }
+
+        foreach ($live as $lp) {
             $pid = (int)$lp['page_id'];
             db("UPDATE page SET page_folder = '$bin_id', page_timestamp = UNIX_TIMESTAMP(), page_user = '$uid' WHERE page_id = '$pid'");
             pg_recycle_park_name('page', $pid, $user);
@@ -2186,6 +2208,12 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
             $out['binned']++;
             if ((string)$lp['page_home'] === 'yes') $out['home']++;
         }
+    }
+
+    // In the bin already, with what pointed at it written down and cleared.
+    if ($out['recycled']) {
+        $out['ok'] = true;
+        return $out;
     }
 
     db("UPDATE page SET mobile_style_id = 0 WHERE mobile_style_id = '$style_id'");
@@ -2204,6 +2232,32 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
 
     $out['ok'] = true;
     return $out;
+}
+
+/**
+ * What the operator is told after pg_designer_delete_design(): the toolbar
+ * and the design list say the same thing.
+ */
+function pg_designer_delete_design_message($dd)
+{
+    if (!empty($dd['recycled'])) {
+        $message = $dd['binned'] > 0
+            ? lang(array('string' => 'The design and its {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $dd['binned']))
+            : lang('The design was moved to the Recycle Bin.');
+    } else {
+        $message = $dd['binned'] > 0
+            ? lang(array('string' => 'The design was deleted; {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $dd['binned']))
+            : lang('The style has been deleted.');
+    }
+    if ($dd['home'] > 0) {
+        $message .= ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.');
+    }
+    if ($dd['folders'] > 0) {
+        $message .= ' ' . (!empty($dd['recycled'])
+            ? lang(array('string' => '{var:1} folder(s) used it as their default design; that setting was cleared, and restoring the design puts it back.', 'vars' => $dd['folders']))
+            : lang(array('string' => '{var:1} folder(s) used it as their default design; that setting was cleared.', 'vars' => $dd['folders'])));
+    }
+    return $message;
 }
 
 function pg_designer_load_pages($style_id, $style_name = '')

@@ -84,6 +84,106 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Sayfalar listesinden, sayfa ekranından ve görsel editörden silinen sayfa ve sayfa stili Geri Dönüşüm Kutusuna gidiyor (2026-10-14)
+
+**Neden.** Bir müşteri sitesinde yanlışlıkla silinen kaydı geri almak için
+veritabanı yedeğini kurmak gerekti; yedek ziyaretçi tabloları yüzünden
+950 MB'tı ve sunucu yanıt veremedi. Dosya yöneticisinden silinen dosya,
+klasör ve sayfa ile katalog yöneticisinden silinen ürün ve grup zaten
+Geri Dönüşüm Kutusuna düşüyordu; aynı sayfa başka ekrandan silinince
+kalıcı gidiyordu. Sandbox'ta eski kodla kaydedildi:
+
+- Sayfalar listesinin toplu silmesi (`edit_pages.php`) ve sayfa
+  ekranının Sil düğmesi (`edit_page.php`) satırı, bölgelerini ve
+  bağlı kayıtlarını hemen siliyordu.
+- Görsel editörde tasarımı silmek (`pg_designer_delete_design()`, tasarım
+  listesi, editör araç çubuğu ve `edit_system_style.php`) sayfaları kutuya
+  koyuyor ama `style`, `system_style_cells` ve `preview_styles`
+  satırlarını siliyor, klasörlerin varsayılan tasarım ayarını
+  sıfırlıyordu. Kutudan sayfalar geri gelse de tasarımları yoktu.
+- Sayfa Stilleri listesinden (`delete_styles.php`) ve özel stil
+  ekranından (`edit_custom_style.php`) silinen stil kalıcı gidiyordu.
+
+Site Günlüğü üç durumda da "silindi" yazıyordu.
+
+**Ne değişti.**
+
+- Yeni `pg_recycle_page()` (`view_folder_and_files_f.php`): dosya
+  yöneticisinin silmesinin aynısı. Satır kutu klasörüne taşınır, adı
+  park edilir (`pgbin_<id>_<ad>`), kutu kaydı yazılır; bölgeler, formlar,
+  yorumlar, kısa linkler ve dil bağlantıları satıra bağlı kaldığı için
+  geri yüklemede hepsi döner. Sayfalar listesi ve sayfa ekranı kutu
+  kuruluysa bunu çağırır; zaten kutuda olan sayfa eski yoldan kalıcı
+  silinir (kutunun kendi Sil'i de öyle). Erişim ve "sayfa silme" yetkisi
+  denetimi değişmedi.
+- Sayfa stili kutuya **anlık görüntü** olarak girer: `pg_recycle_style()`
+  stil satırını (`SELECT *`), hücrelerini ve önizleme stillerini,
+  onu varsayılan (ve mobil) tasarım yapan klasörleri, mobil stili o olan
+  sayfaları, onu kullanan sayfaları ve birlikte kutuya giren sayfaları
+  JSON olarak `recycle_bin.item_data`'ya yazar, sonra satırları siler ve
+  atamaları temizler. Kayıt yazılmadan hiçbir şey silinmez (`db()` hata
+  verirse istek orada durur).
+- `pg_recycle_restore_style()`: satırlar, tablonun bugün sahip olduğu
+  sütunlarla (`pg_recycle_row_for_columns()`) aynı kimlikle yazılır; kimlik
+  bu arada alınmışsa yeni kimlik alınır ve sayfaların `page_style`'ı ona
+  çevrilir. Ad alınmışsa `get_unique_name()` "[1]" ekler; sistem stilinde
+  `duplicate_style.php`'deki gibi kod içindeki sınıf adı da değişir.
+  Klasör ve mobil atamaları yalnız hâlâ boş (0) olan yerlere geri yazılır;
+  bu arada başka tasarım seçilmişse ona dokunulmaz.
+- Kutudan stil geri yüklenince birlikte giren sayfaları da gelir; tek bir
+  sayfa geri yüklenince (tasarımcı yüklüyorsa) kutudaki tasarımı yalnız
+  stil olarak gelir, kardeş sayfalar kutuda kalır.
+- Dosya yöneticisi kutusunda stiller "Sayfa Stili" türünde, palet
+  simgesiyle, sayfa sayısıyla listelenir; açılmaz, yalnız Geri Yükle ve
+  Kalıcı Olarak Sil vardır. Stil satırlarını yalnız tasarımcılar (rol ≤ 1)
+  görür, geri yükler ve kalıcı siler; sayıma da öyle girer
+  (`pg_recycle_item_types_sql($user)`).
+- Kutuyu boşaltmak ve kalıcı silmek stilde kaydı siler (satırlar zaten
+  girerken silindi); sayfalarda değişmedi.
+- Onay metinleri ve bildirimler "Geri Dönüşüm Kutusuna taşınacak/taşındı"
+  diyor; Site Günlüğü satırları kalıyor, metni aynı. Tasarım silme yanıtına
+  `recycled` eklendi, mesaj `pg_designer_delete_design_message()`'tan.
+- Şema 10.4: `recycle_bin.item_data` LONGTEXT NULL ve `item_type`
+  ENUM'una `'style'`. Adım koşmadan (`pg_recycle_style_ready()` yanlış)
+  stil eskisi gibi kalıcı silinir.
+
+API (`DELETE /pages/{id}`) ve MCP zaten kutuya koyuyordu (`permanent=true`
+dışında); dokunulmadı. Ürün silme bu değişikliğin dışında.
+
+**Neden anlık görüntü.** Sayfa ve dosya gibi stili de gizli bir klasör ya
+da bayrakla bırakmak, stil okuyan yaklaşık 80 sorguya "kutudaki hariç"
+koşulu eklemek demekti; biri unutulursa kutudaki tasarım seçicilerde ve
+sayfalarda görünürdü. Anlık görüntüde stil kutudayken hiçbir tabloda
+yoktur. Bedeli: geri yükleme satırları yeniden yazar, kimlik alınmışsa
+değişir (sayfalar ona çevrilir).
+
+**Bilerek yapılmayan / sınırlar.**
+
+- Ana sayfa işareti geri gelmiyor; dosya yöneticisi kutusunun kuralı.
+- Saklama süresi temizliği günde bir, ilk açan kişiyle koşar; stil
+  kayıtlarını yalnız tasarımcının ziyareti temizler (tasarım dosyalarında
+  da böyle).
+- Gönderilmiş kaydı olan özel form sayfası artık listeden kutuya
+  gidebiliyor; kutudan kalıcı silmek onu eskisi gibi reddediyor.
+- Stil silen ya da geri yükleyen API ucu yok; sayfa geri yükleyen API ucu
+  da yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod: dört yolun hepsinde
+satırlar gitti, Site Günlüğü "silindi". Yeni kod: dört sayfa bölgeleriyle
+kutuda, iki stil kutuda; stil geri yükleme aynı kimlikle kod, ağaç, hücre,
+önizleme ve klasör atamasıyla döndü, sayfaları adlarıyla klasörlerine
+döndü, mobil stil ayarları geri geldi. Tek sayfa geri yükleme tasarımı
+getirdi, kardeş sayfayı getirmedi. Kimlik ve ad alınmışken geri yükleme
+"[1]" adlı yeni kimlikle döndü, sınıf adı ve atamalar ona çevrildi.
+Kalıcı silme kaydı kaldırdı. Kutu ekranı tarayıcıda: stil satırları palet
+simgesiyle, sağ tık menüsünde yalnız Geri Yükle ve Kalıcı Olarak Sil.
+Şema adımı iki kez koşturuldu (ikincide atlandı).
+`tests/recycle_bin_style_test.php`; `tools/test.php`, lint, dil, kopya,
+bağlama, API şeması ve `build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com.
+
+---
+
 ## 2026.4.10 — Panel taraması: dizi parametresiyle 500, oturuma yapışan hata sayfaları, her sayfada `?utm_source[]=` (2026-10-14)
 
 **Neden.** Site sayfalarındaki dizi parametresi serisinin (#384, #389, #391,

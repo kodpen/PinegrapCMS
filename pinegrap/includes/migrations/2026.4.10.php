@@ -47,6 +47,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_mcp_conversations(); // 10.111
 	upgrade_2026_4_10_workspace_status();       // 10.87
 	upgrade_2026_4_10_workspace_inbox_deleted(); // 10.88
+	upgrade_2026_4_10_style_bin();              // 10.4
 
 }
 
@@ -1022,5 +1023,39 @@ function upgrade_2026_4_10_workspace_inbox_deleted() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: an app that keeps the inbox on a phone learns which lines were taken away - a mention in a deleted message, a note deleted or no longer shared - for 30 days after they go.');
+
+}
+
+// Page styles reach the recycle bin (2026.4.10, 10.4; view_folder_and_files_f.php,
+// pg_recycle_style()).
+//
+// Deleting a design in the visual editor sent its pages to the bin but deleted
+// the style itself, and the page styles list deleted styles outright. A style
+// is not a row in a folder, so it cannot be moved into the bin folder the way a
+// page is: its rows are written into its restore record and then deleted, and
+// restoring writes them back. item_data holds that record. It is LONGTEXT
+// because a style row carries several LONGTEXT columns of its own.
+//
+// item_type is widened with 'style', keeping every value it already has: the
+// list is read first, so a value another step added is never dropped. MODIFY
+// on an enum rewrites the table, so it runs only when 'style' is missing.
+function upgrade_2026_4_10_style_bin() {
+
+	install_add_column('recycle_bin', 'item_data', "LONGTEXT NULL");
+
+	$item_type = install_column_info('recycle_bin', 'item_type');
+
+	if ($item_type && (strpos((string) $item_type['Type'], "'style'") === false)) {
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $item_type['Type'], $matches);
+
+		$values = $matches[1];
+		$values[] = 'style';
+
+		install_modify_column('recycle_bin', 'item_type', "ENUM('" . implode("','", $values) . "') NOT NULL");
+
+	}
+
+	install_note('Recycle Bin: a page style deleted in the Visual Page Editor or from the page styles list goes to the Recycle Bin with its pages, and comes back from there with its settings and the folders and pages that used it.');
 
 }

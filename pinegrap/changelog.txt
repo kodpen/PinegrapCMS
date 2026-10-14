@@ -660,6 +660,30 @@
          kullanılıyor. Seçilen sıralama panel dili
          değişince kaybolmuyor.
 
+  [YENİ] Sayfalar listesinden ya da sayfanın kendi
+         ekranından silinen sayfa artık Geri Dönüşüm
+         Kutusuna gidiyor. Dosya yöneticisindeki kutudan
+         içeriği, ayarları, adresi ve dil bağlantılarıyla
+         geri yükleniyor. Zaten kutuda olan bir sayfa
+         silinirse kalıcı olarak gidiyor.
+
+  [YENİ] Görsel editörde ya da Sayfa Stilleri
+         listesinden silinen sayfa stili de Geri Dönüşüm
+         Kutusuna gidiyor; tasarım kendi sayfalarıyla
+         birlikte taşınıyor. Geri yüklenince stilin kodu
+         ve ayarları, sayfaları, onu varsayılan tasarım
+         yapan klasörler ve mobil stil ayarları geri
+         geliyor. Kutudan tek bir sayfa geri yüklenince
+         tasarımı da onunla geliyor. Adı bu arada başka
+         bir stile verildiyse "[1]" ekiyle dönüyor. Stil
+         satırlarını kutuda yalnız tasarımcılar görüyor.
+         Ana sayfa işareti, dosya yöneticisinde olduğu
+         gibi geri gelmiyor.
+
+  [ŞEMA] Geri Dönüşüm Kutusu tablosuna silinen sayfa
+         stilini saklayan bir sütun ve "sayfa stili"
+         türü ekleniyor.
+
   KULLANICILAR
   --------------------------------------------------------
 

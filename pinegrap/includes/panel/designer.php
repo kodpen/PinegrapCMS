@@ -1415,16 +1415,7 @@ function pg_panel_designer($request, $action)
             if (!$dd['ok']) {
                 respond(array('status' => 'error', 'message' => $dd['error']));
             }
-            $dd_message = $dd['binned'] > 0
-                ? lang(array('string' => 'The design was deleted; {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $dd['binned']))
-                : lang('The style has been deleted.');
-            if ($dd['home'] > 0) {
-                $dd_message .= ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.');
-            }
-            if ($dd['folders'] > 0) {
-                $dd_message .= ' ' . lang(array('string' => '{var:1} folder(s) used it as their default design; that setting was cleared.', 'vars' => $dd['folders']));
-            }
-            respond(array('status' => 'success', 'binned' => $dd['binned'], 'folders' => $dd['folders'], 'message' => $dd_message));
+            respond(array('status' => 'success', 'binned' => $dd['binned'], 'folders' => $dd['folders'], 'recycled' => $dd['recycled'], 'message' => pg_designer_delete_design_message($dd)));
             break;
 
         // Save a stylesheet as a theme: a design CSS file in the file

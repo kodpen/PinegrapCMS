@@ -336,6 +336,7 @@ $explorer_lang = array(
     'empty_bin' => lang('Empty Recycle Bin'),
     'restore' => lang('Restore'),
     'delete_permanently' => lang('Delete Permanently'),
+    'page_style' => lang('Page Style'),
     'bin_banner' => lang('Items here are deleted permanently after {var:1} days.'),
     'bin_confirm_empty' => lang('WARNING: {var:1} item(s) in the recycle bin will be permanently deleted.'),
     'days_left' => lang('{var:1} day(s) left'),
@@ -4612,6 +4613,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.short_link) { return shortLinkIconHtml(item, big); }
         if (item.erp) { return erpIconHtml(item, big); }
 
+        // A page style waiting in the Recycle Bin: it has no folder and no
+        // address, only a restore record.
+        if (item.kind === 'style') { return '<span class="' + sizeClass + ' bi bi-palette text-primary"></span>'; }
+
         var catalogRow = ((item.kind === 'group') || (item.kind === 'product'));
         var withPicture = (big || !catalogRow || productImagesOn());
 
@@ -4809,6 +4814,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function itemTypeLabel(item) {
         if (item.short_link) { return shortLinkTypeLabel(item.destination_type); }
         if (item.erp) { return erpTypeLabel(item); }
+        if (item.kind === 'style') { return L.page_style; }
         if (item.kind === 'group') { return isVariantSet(item) ? L.variant_set : L.category; }
         if (item.kind === 'product') { return L.product; }
         if (item.kind === 'folder') { return L.folder; }
@@ -5128,7 +5134,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     return '<span class="text-body-secondary"' + (why ? (' title="' + esc(why) + '"') : '') + '>—</span>';
                 }
 
-                if (item.kind === 'file') { return esc(item.size_label || ''); }
+                if ((item.kind === 'file') || (item.kind === 'style')) { return esc(item.size_label || ''); }
                 if ((item.kind === 'folder') && (!item.backup)) { return esc(fmt(L.counts_label, [item.counts.folders, item.counts.pages, item.counts.files])); }
 
                 return '';
@@ -6079,6 +6085,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // A short link is an address, so opening it means following it.
         if (item.short_link) { window.open(item.url, '_blank'); return; }
 
+        // A binned page style has nothing to open until it is restored.
+        if (item.kind === 'style') { return; }
+
         // An ERP folder is walked into; a document opens as itself, in a tab
         // of its own -- a draft opens in its editor, which is its url.
         if (item.erp) {
@@ -6108,6 +6117,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // link itself is one click away in the menu, and a double click that
         // navigated away from the list would be a trap.
         if (item.short_link) { openShortLinkWizard(item); return; }
+        if (item.kind === 'style') { return; }
 
         if (item.backup) { openItem(item); return; }
         if (item.erp) { openItem(item); return; }
@@ -7263,7 +7273,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // A binned short link has nothing to open: its address stopped
             // answering the moment it was deleted, which is what the bin means.
-            if (!item.short_link) {
+            // Nor has a binned page style, which no address ever served.
+            if ((!item.short_link) && (item.kind !== 'style')) {
                 html += menuDivider();
                 html += menuItem('bi-box-arrow-up-right', item.kind === 'folder' ? L.open_folder : L.open_in_new_tab, 'open', selected.length > 1);
             }
@@ -7519,6 +7530,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return items.every(function (item) {
             if (item.kind === 'file') { return item.can_edit; }
             if (item.kind === 'folder') { return item.can_edit; }
+            if (item.kind === 'style') { return !!state.caps.is_designer; }
             return state.caps.can_delete_pages;
         });
     }

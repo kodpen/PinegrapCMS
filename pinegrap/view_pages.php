@@ -1382,7 +1382,12 @@ $output_delete_selected_button = '';
 
 // if the user is at least a manager or has access to delete pages, then output the delete selected button
 if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
-    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('pages')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    // With the recycle bin installed the pages go there (edit_pages.php).
+    require_once(dirname(__FILE__) . '/view_folder_and_files_f.php');
+    $delete_confirmation = pg_recycle_ready()
+        ? lang('The selected pages will be moved to the Recycle Bin. Those already in it will be deleted permanently.')
+        : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('pages'))));
+    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
 }
 
 echo

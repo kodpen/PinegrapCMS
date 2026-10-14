@@ -770,6 +770,10 @@ function pg_designer_start_screen($ctx)
     // without the bulk-select column). A design is deleted from its row or
     // from the editor's toolbar, one at a time: its pages go to the recycle
     // bin and the folders using it are cleared (pg_designer_delete_design()).
+    // Once the bin holds styles the design goes there with them, and the
+    // confirmation says so.
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $style_bin = pg_recycle_style_ready();
     $output_rows = '';
     foreach ($designs as $d) {
         $count = (int)$d['page_count'];
@@ -885,15 +889,18 @@ function pg_designer_start_screen($ctx)
         ' . $comp['panel'] . '
         ' . ($can_create ? pg_designer_new_design_modal($from_pages) . pg_designer_template_modal($templates, $from_pages) : '') . '
         <script>
-            // Delete a design from its row: the design goes, its pages go to
-            // the recycle bin. api.php reads a JSON body.
+            // Delete a design from its row: its pages go to the recycle bin,
+            // and the design with them once the bin holds styles. api.php
+            // reads a JSON body.
             document.addEventListener("click", function (e) {
                 var btn = e.target.closest(".sd-design-delete");
                 if (!btn) return;
                 e.preventDefault();
                 var id = parseInt(btn.dataset.styleId, 10), name = btn.dataset.name || "", pages = parseInt(btn.dataset.pages, 10) || 0;
-                var msg = ' . json_encode(lang('The design "{name}" will be deleted.')) . '.replace("{name}", name) + " " +
-                          (pages > 0 ? ' . json_encode(lang('Its {n} page(s) will be moved to the Recycle Bin.')) . '.replace("{n}", pages) : ' . json_encode(lang('It has no pages.')) . ');
+                var msg = ' . ($style_bin
+                    ? '(pages > 0 ? ' . json_encode(lang('The design "{name}" and its {n} page(s) will be moved to the Recycle Bin.')) . '.replace("{n}", pages) : ' . json_encode(lang('The design "{name}" will be moved to the Recycle Bin.')) . ').replace("{name}", name);'
+                    : json_encode(lang('The design "{name}" will be deleted.')) . '.replace("{name}", name) + " " +
+                          (pages > 0 ? ' . json_encode(lang('Its {n} page(s) will be moved to the Recycle Bin.')) . '.replace("{n}", pages) : ' . json_encode(lang('It has no pages.')) . ');') . '
                 var run = function () {
                     btn.disabled = true;
                     fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
