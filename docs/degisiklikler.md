@@ -84,6 +84,85 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ülke, eyalet/il, nakliye bölgesi, nakliye yöntemi ve varış tarihi listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-14)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331 ürünler, #335 Rehber, #336 Sayfalar, #338 Kullanıcılar,
+#340 e-ticaret ayar listeleri, #341 e-posta kampanyaları, #344 takvim,
+menü, kısa link ve ürün özelliği listeleri). Bu PR, #331'in dökümünde
+`asc_or_desc()` kullanan sekiz ekrandan aynı yapıdaki beşini taşıdı:
+Tüm Ülkeler (`view_countries.php`), Tüm Eyaletler/İller
+(`view_states.php`), Tüm Nakliye Bölgeleri (`view_zones.php`), Tüm
+Nakliye Yöntemleri (`view_shipping_methods.php`) ve Tüm Nakliye Varış
+Tarihleri (`view_arrival_dates.php`). Beşi de filtresiz, araç çubuğunda
+yalnız Oluştur düğmesi olan e-ticaret ayar listeleri. Sıralamayı
+oturumda değil yalnız adreste, çevrilmiş başlık adıyla (`?sort=Adı`)
+taşıyıp kendi `switch`'iyle tek sütunluk ORDER BY kuruyorlardı; listeden
+çıkıp dönünce sıra varsayılana dönüyordu.
+
+Güvenlik açısından eski kod sorunsuzdu: sütun `switch`'ten sabit bir
+değer olarak geliyor, yön `sql_order_direction()` ile süzülüyordu
+(#341 ve #344'teki `escape()` açığı bu beş listede yok). Changelog'a
+[GÜVENLİK] satırı gerekmedi.
+
+**Ne değişti.** Her listenin sıralanabilen sütunları kodla tanımlandı:
+Ülkeler `name`, `code`, `zip_code_required`, `transit_adjustment`,
+`default`, `last_modified`; Eyaletler/İller `name`, `code`, `country`,
+`last_modified`; Nakliye Bölgeleri `name`, `base_rate`,
+`primary_weight_rate`, `secondary_weight_rate`, `item_rate`,
+`last_modified`; Nakliye Yöntemleri `name`, `message`, `code`,
+`service`, `realtime_rate`, `base_rate`, `primary_weight_rate`,
+`secondary_weight_rate`, `item_rate`, `handling`, `transit`, `street`,
+`po_box`, `protected`, `last_modified`; Varış Tarihleri `name`,
+`arrival_date`, `status`, `start_date`, `end_date`, `last_modified`.
+Varsayılanlar eskisiyle aynı: Ülkeler ve Eyaletler/İller ad artan, diğer
+üçü son değişiklik azalan. Sıra `pg_list_state('<liste>', …)` ile okunur,
+ORDER BY `pg_list_order_by()` ile yalnız ekranın kod → SQL eşlemesinden
+yazılır; eşlemedeki sütunlar eskisiyle aynı, yalnız tablo adıyla
+nitelendi (Eyaletler/İller'de Ülke sütunu eskisi gibi `countries.name`).
+Başlıklar `asc_or_desc()` yerine `get_column_heading()`'e düzey listesi
+verir; Shift+tık ve düzey numarası ürünlerdeki gibi çalışır. Araç
+çubuğunun sağına `pg_list_sort_menu()` eklendi (`pg-toolbar-grow`
+boşluğuyla). Ülkeler ve Varış Tarihleri'nde araç çubuğu sütunu
+`col-md-6 col-xl-9` yerine `col-12` oldu, menü öbür listelerdeki gibi
+sağ kenara oturuyor. `asc_or_desc()` hâlâ `view_log.php`,
+`view_orders_for_contact.php` ve `view_referral_sources.php`'de
+kullanıldığı için yerinde kaldı. Ortak yardımcıya, `backend.src.js`'e ve
+`tr.json`'a dokunulmadı; kullanılan metinler zaten vardı.
+
+Aynı dosyalarda iki küçük düzeltme: Eyaletler/İller'de Ülke hücresi
+HTML için kaçışlanmadan yazılıyordu, artık `h()` ile yazılıyor;
+Nakliye Bölgeleri ve Varış Tarihleri'nde `<th>` başlıkları `</td>` ile
+kapanıyordu, `</th>` oldu.
+
+Davranış farkları: sıra artık oturumda kalıyor (listeden çıkıp dönünce
+ve panel dili değişince kaybolmuyor). Eski `sort=<başlık>&order=desc`
+bağlantıları `pg_list_sort_parse()` ile tek düzey olarak okunur.
+Başlığa ilk tıklama öbür ortak tablo listelerindeki gibi artan
+başlıyor; eskiden Son Düzenleme başlığı (Eyaletler/İller dışında)
+yönsüz bağlantıyla azalan başlıyordu. Sütunlar, Oluştur düğmesi, satır düğmeleri, durum renkleri,
+Nakliye Yöntemleri'ndeki sıralanmayan Nakliye Bölgesi sütunu,
+tarayıcıdaki arama ve sayfa başına kayıt seçimi değişmedi. Satır içi
+hızlı güncelleme bu PR'ın kapsamında değil. Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 242 ülke, 143 eyalet/il, 6
+bölge, 8 nakliye yöntemi, 5 varış tarihi).** Beş listede her sütun iki
+yönde ve sütunların her ikili birleşimi (ilk azalan, ikinci artan), aynı
+ORDER BY'lı SQL'in sıralama değerleri dizisini verdi; parametresiz
+açılışta varsayılan geldi; parametresiz yeniden açılışta iki düzeyli sıra
+korundu; yönsüz kod artan, varsayılan sütun varsayılan yönde başladı;
+bozuk değer (`id;drop table x:desc`) varsayılana düştü; Türkçe başlıklı
+eski bağlantı (`sort=Adı&order=desc`) sıraladı; `sort`/`order` içine
+konan `SLEEP(0,3)` hiç koşmadı (456 denetim, hepsi geçti; doğrulayıcı
+ters beklentiyle beş listede de hata verdi). Tarayıcıda başlığa
+Shift+tık aynı sekmede ikinci düzeyi ekledi, menü iki düzeyi ve rozeti
+gösterdi; 390 piksel genişlikte menü dokunuşla açıldı, yatay kaydırma
+yok. Sunucu günlüğünde bu beş dosyadan uyarı yok.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek kayıtlar ve gerçek bir
+telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Görev notunda @takmaad: MCP takma adına görev hakkında soru (2026-10-14)
 
 **Neden.** Faz F'nin isteğe bağlı kalanı (`docs/_plan_oauth.md`). #333 görevi
