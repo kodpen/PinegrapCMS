@@ -1017,7 +1017,7 @@ function ws_message_delete($viewer, $message)
     if (function_exists('ws_blocks_index')) {
         ws_blocks_index('message', (int) $message['id'], '');
     }
-    db("DELETE FROM ws_inbox WHERE message_id = '" . (int) $message['id'] . "' AND kind = 'mention'");
+    ws_inbox_delete("message_id = '" . (int) $message['id'] . "' AND kind = 'mention'");
     ws_message_touch($message['id']);
 
     // A decision of a discussion takes its copy in the channel with it.

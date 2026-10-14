@@ -869,7 +869,7 @@ function ws_note_delete($viewer, $note)
     }
 
     if (ws_notes_inbox_ready()) {
-        db("DELETE FROM ws_inbox WHERE note_id = '" . $id . "'");
+        ws_inbox_delete("note_id = '" . $id . "'");
     }
 
     return array('ok' => true, 'error' => '');
@@ -1051,7 +1051,7 @@ function ws_note_unshare($viewer, $note, $share_id = 0)
     db("DELETE FROM ws_note_shares WHERE id = '" . (int) $share['id'] . "'");
 
     if (((int) $share['user_id'] > 0) && ws_notes_inbox_ready()) {
-        db("DELETE FROM ws_inbox WHERE user_id = '" . (int) $share['user_id'] . "' AND note_id = '" . (int) $note['id'] . "'");
+        ws_inbox_delete("user_id = '" . (int) $share['user_id'] . "' AND note_id = '" . (int) $note['id'] . "'");
     }
 
     if ((int) $share['message_id'] > 0) {

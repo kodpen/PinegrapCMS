@@ -8486,6 +8486,7 @@ function get_tables() {
 		'ws_events',
 		'ws_event_people',
 		'ws_inbox',
+		'ws_inbox_deleted',
 		'ws_reactions',
 		'ws_checks',
 		'ws_polls',

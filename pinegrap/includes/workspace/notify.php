@@ -673,6 +673,57 @@ function ws_inbox_mark_task_read($user_id, $task_id)
 }
 
 /**
+ * How long the inbox remembers a line it took away: an app that last asked
+ * for changes longer ago than this reads the inbox again.
+ */
+if (!defined('WS_INBOX_DELETED_KEEP')) {
+    define('WS_INBOX_DELETED_KEEP', 30 * 86400);
+}
+
+/**
+ * Does the inbox remember the lines it took away (2026.4.10, 10.88)?
+ *
+ * @return bool
+ */
+function ws_inbox_deleted_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ((int) db_value("SELECT COUNT(*) FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ws_inbox_deleted'") > 0);
+    }
+
+    return $ready;
+}
+
+/**
+ * Takes inbox rows away for good, because what they said went: a mention in
+ * a message deleted, a note deleted or no longer shared, a discussion purged.
+ * Which ones went is kept for WS_INBOX_DELETED_KEEP, so an app holding them
+ * learns it from the changed lines of GET /workspace/inbox, as it learns of a
+ * deleted message; older such marks go at the same time.
+ *
+ * @param string $where condition on ws_inbox
+ */
+function ws_inbox_delete($where)
+{
+    if (ws_inbox_deleted_ready()) {
+        $now = time();
+
+        // An id is written once, but a server that reuses the ids of its
+        // last deleted rows (MySQL before 8.0, after a restart) can take a
+        // row away twice: the newer mark replaces the older.
+        db("REPLACE INTO ws_inbox_deleted (id, user_id, kind, channel_id, created_at, deleted_at)
+            SELECT id, user_id, kind, channel_id, created_at, '" . $now . "' FROM ws_inbox WHERE " . $where);
+
+        db("DELETE FROM ws_inbox_deleted WHERE deleted_at < '" . ($now - WS_INBOX_DELETED_KEEP) . "' LIMIT 500");
+    }
+
+    db("DELETE FROM ws_inbox WHERE " . $where);
+}
+
+/**
  * Can the bell carry rows addressed to one person (4.83)?
  *
  * @return bool

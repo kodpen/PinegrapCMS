@@ -46,6 +46,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_mcp_tasks();    // 10.110
 	upgrade_2026_4_10_workspace_mcp_conversations(); // 10.111
 	upgrade_2026_4_10_workspace_status();       // 10.87
+	upgrade_2026_4_10_workspace_inbox_deleted(); // 10.88
 
 }
 
@@ -993,5 +994,33 @@ function upgrade_2026_4_10_workspace_status() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a channel can post a status update - on track, at risk or off track - drafted from its tasks and decisions, and ask its people a check-in question they each answer on one card; a scheduled action can ask it every week.');
+
+}
+
+// Inbox lines taken away (2026.4.10, 10.88; includes/workspace/notify.php,
+// api_inbox.php).
+//
+// A line of the workspace inbox is deleted for good when what it says went:
+// a mention in a message deleted since, a note deleted or no longer shared, a
+// discussion purged. ws_inbox_deleted keeps for a while which ones went -
+// the row's own id, its person and kind, when it was written and when it went
+// - so an app holding the line learns it from GET /workspace/inbox with
+// changed_since, as it learns of a deleted message. Rows older than 30 days
+// are removed whenever another line goes (WS_INBOX_DELETED_KEEP).
+function upgrade_2026_4_10_workspace_inbox_deleted() {
+
+	install_create_table('ws_inbox_deleted', "CREATE TABLE ws_inbox_deleted (
+		id          INT UNSIGNED NOT NULL,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        VARCHAR(20) NOT NULL DEFAULT '',
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		deleted_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id, deleted_at),
+		KEY idx_deleted (deleted_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: an app that keeps the inbox on a phone learns which lines were taken away - a mention in a deleted message, a note deleted or no longer shared - for 30 days after they go.');
 
 }

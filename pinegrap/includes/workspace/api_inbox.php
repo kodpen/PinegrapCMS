@@ -17,6 +17,9 @@
  * paged with since_id, as it does with a channel's messages: a row changes
  * only by being written, sent again (its created_at moves) or read (its
  * read_at is set), so those two stamps say when, with no column of its own.
+ * A row taken away for good leaves a mark in ws_inbox_deleted for a while
+ * (ws_inbox_delete()), and comes back among the changes as deleted, the way a
+ * deleted message does.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -120,6 +123,38 @@ function ws_api_inbox_present($viewer, $row)
         'plan_item_id'      => ($event_id > 0) ? $event_id : null,
         'meeting_url'       => ($join !== '') ? $join : null,
         'created_at'        => api_time($row['created_at']),
+        'deleted'           => false,
+    );
+}
+
+/**
+ * A line taken away (ws_inbox_delete()), as the changed lines carry it: its
+ * id, its kind and when it was written, with deleted true and nothing of what
+ * it said, as a deleted message comes back with its text gone. It no longer
+ * waits, so it is read.
+ *
+ * @param array $row ws_inbox_deleted row
+ * @return array
+ */
+function ws_api_inbox_deleted_present($row)
+{
+    return array(
+        'id'                => (int) $row['id'],
+        'kind'              => (string) $row['kind'],
+        'title'             => '',
+        'body'              => '',
+        'url'               => '',
+        'read'              => true,
+        'actor_id'          => null,
+        'channel_id'        => null,
+        'parent_channel_id' => null,
+        'message_id'        => null,
+        'task_id'           => null,
+        'note_id'           => null,
+        'plan_item_id'      => null,
+        'meeting_url'       => null,
+        'created_at'        => api_time($row['created_at']),
+        'deleted'           => true,
     );
 }
 
@@ -142,6 +177,7 @@ function ws_api_inbox_schema()
         'plan_item_id'      => 'integer?',
         'meeting_url'       => 'string?',
         'created_at'        => 'string',
+        'deleted'           => 'boolean',
     );
 }
 
@@ -225,7 +261,8 @@ function ws_api_inbox_unread($user_id)
  * Which of a person's rows changed at or after a moment, after a row: written
  * then, sent again then (a note changed once more moves created_at) or read
  * then - on the workspace screen, in the bell, here or because what the line
- * is about went out of reach. Every writer of ws_inbox moves one of the two.
+ * is about went out of reach. Every writer of ws_inbox moves one of the two;
+ * a row deleted is found by ws_api_inbox_deleted_where() instead.
  *
  * @param int $user_id
  * @param int $since    timestamp
@@ -245,9 +282,10 @@ function ws_api_inbox_changed_where($user_id, $since, $after_id)
  * The last moment anything in a person's inbox changed as changed_since
  * finds it: the newest created_at of the unread rows (a line written, or sent
  * again - only an unread line is sent again) and the newest read_at of any
- * row (a row read was written before it was read). Both read idx_user: the
- * unread rows, which are few, and one end of it, so an app's sync can ask
- * every few seconds.
+ * row (a row read was written before it was read), and the newest line taken
+ * away (ws_inbox_deleted). Each reads one end of an index (idx_user of
+ * either table, and the unread rows, which are few), so an app's sync can
+ * ask every few seconds.
  *
  * @param int $user_id
  * @return int timestamp, 0 for an inbox that never held a line
@@ -259,15 +297,92 @@ function ws_api_inbox_changed_at($user_id)
     $written = (int) db_value("SELECT COALESCE(MAX(created_at), 0) FROM ws_inbox WHERE user_id = '" . $user_id . "' AND read_at = 0");
     $read = (int) db_value("SELECT COALESCE(MAX(read_at), 0) FROM ws_inbox WHERE user_id = '" . $user_id . "'");
 
-    return max($written, $read);
+    $deleted = (function_exists('ws_inbox_deleted_ready') && ws_inbox_deleted_ready())
+        ? (int) db_value("SELECT COALESCE(MAX(deleted_at), 0) FROM ws_inbox_deleted WHERE user_id = '" . $user_id . "'")
+        : 0;
+
+    return max($written, $read, $deleted);
+}
+
+/**
+ * Which of a person's rows were taken away at or after a moment, after a row,
+ * and up to one when the live rows were read only that far (0: no bound).
+ *
+ * @param int $user_id
+ * @param int $since    timestamp
+ * @param int $after_id only rows after this one
+ * @param int $upto_id
+ * @return string
+ */
+function ws_api_inbox_deleted_where($user_id, $since, $after_id, $upto_id = 0)
+{
+    return "user_id = '" . (int) $user_id . "'"
+        . " AND deleted_at >= '" . max(1, (int) $since) . "'"
+        . " AND id > '" . max(0, (int) $after_id) . "'"
+        . (((int) $upto_id > 0) ? " AND id <= '" . (int) $upto_id . "'" : '');
+}
+
+/**
+ * The most marks of lines taken away one read of the changes looks at. A
+ * person's inbox loses few lines in WS_INBOX_DELETED_KEEP, so one read finds
+ * them all in practice.
+ */
+if (!defined('WS_API_INBOX_DELETED_READ')) {
+    define('WS_API_INBOX_DELETED_READ', 500);
+}
+
+/**
+ * The lines of the owner's inbox taken away at or after a moment, oldest
+ * first, as the changed lines carry them. The application Claude works
+ * through hears only of lines about a channel it may be asked in, as with
+ * the lines that are still there.
+ *
+ * @param array $viewer
+ * @param int   $since    timestamp
+ * @param int   $after_id
+ * @param int   $upto_id  0: no bound
+ * @return array lines (id => line), upto: the last mark read when there may
+ *               be more after it, else 0
+ */
+function ws_api_inbox_deleted($viewer, $since, $after_id, $upto_id)
+{
+    if (!function_exists('ws_inbox_deleted_ready') || !ws_inbox_deleted_ready()) {
+        return array('lines' => array(), 'upto' => 0);
+    }
+
+    $rows = (array) db_items("SELECT * FROM ws_inbox_deleted WHERE " . ws_api_inbox_deleted_where($viewer['id'], $since, $after_id, $upto_id) . "
+        ORDER BY id
+        LIMIT " . WS_API_INBOX_DELETED_READ);
+
+    $claude = ws_api_is_claude();
+    $lines = array();
+
+    foreach ($rows as $row) {
+        if ($claude && ((int) $row['channel_id'] > 0)) {
+            $channel = ws_channel((int) $row['channel_id']);
+
+            if (!$channel || !ws_claude_channel_allowed($channel)) {
+                continue;
+            }
+        }
+
+        $lines[(int) $row['id']] = ws_api_inbox_deleted_present($row);
+    }
+
+    $last = end($rows);
+
+    return array(
+        'lines' => $lines,
+        'upto'  => (count($rows) >= WS_API_INBOX_DELETED_READ) ? (int) $last['id'] : 0,
+    );
 }
 
 /**
  * The lines of the owner's inbox that changed at or after a moment, oldest
- * first, after a line, each as it is now. Lines out of the owner's reach are
- * passed over and the page filled from the rows after them, so as many lines
- * as limit means more may follow - the rule the app pages a channel's
- * changed messages by.
+ * first, after a line, each as it is now; a line taken away comes back as
+ * deleted. Lines out of the owner's reach are passed over and the page filled
+ * from the rows after them, so as many lines as limit means more may follow -
+ * the rule the app pages a channel's changed messages by.
  *
  * @param array $viewer
  * @param int   $since    timestamp
@@ -281,6 +396,7 @@ function ws_api_inbox_changed($viewer, $since, $after_id, $limit)
     $after = max(0, (int) $after_id);
     $chunk = $limit;
     $kept = array();
+    $upto = 0;
 
     // The first read takes as many rows as the page holds. Rows out of reach
     // are few - only rows changed since the moment are read, and a hidden one
@@ -295,21 +411,41 @@ function ws_api_inbox_changed($viewer, $since, $after_id, $limit)
         $kept = array_merge($kept, ws_api_inbox_reachable_rows($viewer, $rows));
 
         if ((count($kept) >= $limit) || (count($rows) < $chunk)) {
+            $upto = 0;
             break;
         }
 
         $last = end($rows);
         $after = (int) $last['id'];
+        $upto = $after;
         $chunk = WS_API_INBOX_MAX;
     }
 
-    $out = array();
+    $lines = array();
 
     foreach (array_slice($kept, 0, $limit) as $row) {
-        $out[] = ws_api_inbox_present($viewer, $row);
+        $lines[(int) $row['id']] = ws_api_inbox_present($viewer, $row);
     }
 
-    return $out;
+    // The lines taken away go in among them by id, so since_id pages past
+    // both. Neither kind goes beyond the last row the other was read up to,
+    // when that read stopped short: the next page starts there. A row is
+    // either there or taken away; an id a server gave again after taking its
+    // row away is the line that is there.
+    $gone = ws_api_inbox_deleted($viewer, $since, (int) $after_id, $upto);
+    $lines += $gone['lines'];
+
+    ksort($lines);
+
+    if ($gone['upto'] > 0) {
+        foreach (array_keys($lines) as $id) {
+            if ($id > $gone['upto']) {
+                unset($lines[$id]);
+            }
+        }
+    }
+
+    return array_slice(array_values($lines), 0, $limit);
 }
 
 function ws_api_inbox_list($params)
