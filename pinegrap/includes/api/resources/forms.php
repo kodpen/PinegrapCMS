@@ -648,7 +648,9 @@ function api_form_submission_update($params) {
 }
 
 // What api_form_present() returns, declared for the OpenAPI document. fields is
-// carried by the single-form endpoint only.
+// carried by the single-form endpoint only. name is the page's name, a DEFAULT
+// NULL column that every create path writes, so not nullable
+// (api_openapi_type_spec() says when a field is).
 function api_form_schema() {
 
 	return array(

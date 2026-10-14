@@ -84,6 +84,72 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — API belgesi: her eklemede yazılan boş sütunların kuralı, Bearer açıklaması üç arayanı anlatıyor (2026-10-14)
+
+**Neden.** #412 ve #405'ten kalan iki iş. (1) Ham sütunu `DEFAULT NULL`
+olup belgede boş olamaz yazılı alanlar (ürün ve grup adı, sayfa adı,
+başlığı ve açıklaması, dosya adı ve türü) için bir kural yazılı değildi;
+sonraki bir tarama bunları sütuna bakıp `?` ile işaretleyebilir ya da yeni
+bir ekleme yolu sütunu boş bırakıp belgeyi sessizce yanlış yapabilirdi.
+(2) OpenAPI'nin Bearer şeması "a person signed in on a device (POST
+/auth/login)" diyordu: OAuth bağlantısı da Bearer jetonuyla geliyor
+(`api_devices` satırı) ama anılmıyordu ve hangi arayanın neyi
+yapabildiği yazmıyordu.
+
+**Ne değişti.**
+- Kural `api_openapi_type_spec()`'in açıklamasında: alanın `?` alıp
+  almayacağına sütun değil sunucu fonksiyonunun verebileceği değer karar
+  verir. Bir ekleme yolu sütunu yazmıyor ya da NULL yazıyorsa, sunucu
+  fonksiyonu kendisi `null` veriyorsa ya da sitenin kendi verisi öyle
+  geliyorsa `?`; her ekleme yolunun yazdığı `DEFAULT NULL` sütun ve
+  sunucu fonksiyonunun `(string)` ile çevirdiği alan `?` almaz. Ürün,
+  grup, sayfa, dosya ve form bildirimlerinin yanında da tek satır not.
+- Tarama: bu sütunlara yazan 63 INSERT (ürün 3, grup 7, sayfa 7, dosya 46)
+  ve ürün oluşturucusu (`pg_pb_create_product()`, `pg_pb_create_group()`)
+  okundu. Hepsi adı, başlığı, açıklamayı ve türü dolu bir değerle yazıyor;
+  kopyalama (`duplicate_style.php`) özgün sayfanın değerini taşıyor,
+  ürün içe aktarma yalnız adı dolu satırı ekliyor; hiçbir UPDATE bu
+  sütunlara NULL yazmıyor; kurulumla gelen iki veri dökümünde (181/180
+  sayfa, 27 ürün, 20 grup, 212/206 dosya) NULL yok. Bu yüzden alanlar boş
+  olamaz kaldı, belgede şema değişmedi. Önceden `?` taşıyanlar
+  (`Product.short_description`, siparişin fatura alanları, `SeoIssue.name`
+  ve #412'nin müşteri alanları) kurala uyuyor.
+- `components.securitySchemes`: yeni `api_openapi_security_schemes()`.
+  Basic (`applicationKey`) uygulama anahtarının sahibinin adına ve verilen
+  izinlerle çağırdığını, webhook aboneliklerini yönetebilen tek kimlik
+  olduğunu, kişinin kendisinin yapacağı çağrıların 403 forbidden döndüğünü
+  söylüyor. Bearer (`deviceToken`) iki jeton türünü ayırıyor: kişinin kendi
+  ekip cihazları oturumu (`POST /auth/login`) kişinin kendi sözünü
+  değiştirebilen tek kimlik (mesaj düzeltme, silme, zamanlama, oylama
+  açma ve değiştirme, sabitleme); OAuth bağlantısı onaylayan kişi adına ve
+  verilen izinlerle çağırıyor, okundu işaretleme ve onay yanıtlama gibi
+  kişiye ait öbür çağrıları yapabiliyor, kişinin sözünü değiştirmesi 403.
+  İkisi de webhook yönetemiyor; jeton bir saat yaşıyor (`POST /auth/refresh`
+  ya da OAuth sunucusunun token ucu). `info.description` cümlesi de aynı
+  sözcüklerle. Şemanın adı `deviceToken` kaldı: üretilmiş istemciler şemayı
+  adıyla anıyor.
+- `tests/api_openapi_status_test.php`: 3 yeni test. Sekiz alanın
+  bildirimi boş olamaz (kaynaktan okunuyor; resource dosyaları test
+  ortamında yüklenmiyor); bu tablolara yazan her INSERT'in sütun listesi
+  bu sütunları anıyor, listesi çalışırken kurulan üç ekleme yolu adıyla
+  sayılı ve yazmayı güvenceye alan satırları yerinde; iki güvenlik
+  şemasının metni üç arayanı anıyor, "signed in on a device", "mobile",
+  "phone" demiyor.
+
+Uçların davranışı, şema, dil dosyası ve JS değişmedi. Panelin API belgesi
+sayfası yalnız HTTP Basic'i gösteriyor, Bearer cümlesi orada yok (tr.json'a
+dokunulmadı).
+
+**Doğrulama.** OpenAPI belgesi CLI'da modüller açık üretildi (380 işlem),
+önce ve sonra `openapi-spec-validator` ile geçerli; fark yalnız
+`info.description` ve iki güvenlik şemasının açıklaması. Testin kırmızıya
+döndüğü denendi (`add_page.php`'den `page_meta_description` çıkarılınca ve
+`File.type` `string?` yapılınca). `lint`, `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies`, `build_js --check`, `tools/test.php`
+yeşil.
+
+---
+
 ## 2026.4.10 — Form listesinin gelişmiş arama düzeni panelin verdiği `{name: '…'}` biçimini okumuyordu, katalog boş terimle RSS bağlantısını göstermiyordu (2026-10-14)
 
 **Neden.** #415'in bıraktığı iki parça, ikisi de 2026.4.9'da var. (1) Form

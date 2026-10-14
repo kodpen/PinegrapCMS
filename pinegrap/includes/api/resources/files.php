@@ -804,6 +804,9 @@ function api_files_delete($params) {
 }
 
 // What api_file_present() returns, declared for the OpenAPI document.
+//
+// name and type are DEFAULT NULL columns that every create path writes, so
+// neither is nullable (api_openapi_type_spec() says when a field is).
 function api_file_schema() {
 
 	return array(

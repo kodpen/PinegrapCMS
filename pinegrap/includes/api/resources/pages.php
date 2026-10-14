@@ -851,6 +851,10 @@ function api_pages_delete($params) {
 }
 
 // What api_page_present() returns, declared for the OpenAPI document.
+//
+// name, title and meta_description are DEFAULT NULL columns that every create
+// path writes, so none of them is nullable (api_openapi_type_spec() says when
+// a field is).
 function api_page_schema() {
 
 	return array(
