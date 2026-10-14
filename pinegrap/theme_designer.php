@@ -31,6 +31,30 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . $id
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+// The designer edits the settings stored for a theme (system_theme_css_rules)
+// and rewrites the theme's CSS file from them. A file without such settings
+// is a hand-written CSS theme or not a theme at all: the designer had nothing
+// to show for it and wrote dozens of warnings, and saving replaced the file's
+// own content with generated CSS. A CSS file opens in the CSS editor instead,
+// where the panel's own buttons send it; any other file is not found.
+if ((int) db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . $id . "'") < 1) {
+    $file = db_item("SELECT name, theme FROM files WHERE id = '" . $id . "'");
+
+    if (mb_strtolower(mb_substr($file['name'], -4)) == '.css') {
+        $liveform_edit_theme_css = new liveform('edit_theme_css');
+        $liveform_edit_theme_css->add_notice(lang('This theme has no Theme Designer settings, so it opens in the CSS editor.'));
+
+        $send_to = $_REQUEST['send_to'] ?? '';
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id
+            . ((is_string($send_to) && ($send_to != '')) ? '&send_to=' . urlencode($send_to) : '')
+            . '&from=' . ($file['theme'] ? 'edit_theme_file' : 'edit_design_file'));
+        exit();
+    }
+
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $liveform = new liveform('theme_designer');
 
 if (!empty($_GET['clear_theme_designer_session'])) {
