@@ -23195,5 +23195,6 @@
     "Answers 201 Created with the new record.": "Başarılı olunca 201 Created ve yeni kaydı döner.",
     "Answers 201 Created with the new record, or 200 with the one already there, as described above.": "Başarılı olunca 201 Created ve yeni kaydı döner; yukarıda anlatıldığı gibi var olanı verdiğinde 200 döner.",
     "Answers 204 with no body.": "Başarılı olunca gövdesiz 204 döner.",
-    "A rehearsal answers 200, as nothing is written.": "Prova hiçbir şey yazmadığı için 200 döner."
+    "A rehearsal answers 200, as nothing is written.": "Prova hiçbir şey yazmadığı için 200 döner.",
+    "The groups changed in the meantime and the list has been loaded again. Try the move once more.": "Gruplar bu arada değişti ve liste yeniden yüklendi. Taşımayı bir kez daha deneyin."
 }

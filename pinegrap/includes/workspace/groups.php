@@ -534,14 +534,46 @@ function ws_group_last_sort($parent_id)
 }
 
 /**
+ * Whether a group can go in front of before_id on the level it ends up on:
+ * before_id has to be another group of that level, or 0 for the end. A list
+ * drawn before someone else moved or removed that group sends one that is
+ * not, and putting the group last instead would leave it where nobody
+ * dropped it.
+ *
+ * @param int        $group_id
+ * @param int        $parent_id
+ * @param int        $before_id
+ * @param array|null $groups ws_groups_all() when null
+ * @return bool
+ */
+function ws_group_before_fits($group_id, $parent_id, $before_id, $groups = null)
+{
+    $before_id = (int) $before_id;
+
+    if ($before_id <= 0) {
+        return true;
+    }
+
+    if ($groups === null) {
+        $groups = ws_groups_all();
+    }
+
+    $before = $groups[$before_id] ?? null;
+
+    return $before && ($before_id !== (int) $group_id) && ((int) $before['parent_id'] === max(0, (int) $parent_id));
+}
+
+/**
  * Moves a group: inside another one (or to the top), before one of the
- * groups there (0: at the end).
+ * groups there (0: at the end). A before_id that is not one of them is
+ * refused rather than read as the end.
  *
  * @param array $viewer
  * @param int   $group_id
  * @param int   $parent_id
  * @param int   $before_id
- * @return array ok, error, synced (ws_group_sync_tree() channels)
+ * @return array ok, error, field (before_id when that is refused), synced
+ *               (ws_group_sync_tree() channels)
  */
 function ws_group_move($viewer, $group_id, $parent_id, $before_id = 0)
 {
@@ -560,6 +592,10 @@ function ws_group_move($viewer, $group_id, $parent_id, $before_id = 0)
 
     if ($refused !== '') {
         return array('ok' => false, 'error' => $refused, 'synced' => array());
+    }
+
+    if (!ws_group_before_fits($group['id'], $parent_id, $before_id)) {
+        return array('ok' => false, 'error' => lang('The groups changed in the meantime and the list has been loaded again. Try the move once more.'), 'field' => 'before_id', 'synced' => array());
     }
 
     $moved = ((int) $group['parent_id'] !== $parent_id);

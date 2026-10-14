@@ -1132,6 +1132,40 @@ function test_ws_group_chain_after_a_change()
 	pg_assert_same(array(1), ws_group_chain_removed(array(3, 1), 3), 'its own channels go to the group it was in');
 }
 
+// One rule for where a group may go in front of, on the panel and in the
+// API: another group of the level it ends up on, or 0 for the end. A
+// before_id from a list that changed meanwhile is refused, not read as the
+// end.
+function test_ws_group_before_fits()
+{
+	$groups = array(
+		1 => array('id' => 1, 'parent_id' => 0),
+		2 => array('id' => 2, 'parent_id' => 0),
+		3 => array('id' => 3, 'parent_id' => 1),
+		4 => array('id' => 4, 'parent_id' => 1),
+	);
+
+	pg_assert_true(ws_group_before_fits(2, 0, 1, $groups), 'in front of a group of the same level');
+	pg_assert_true(ws_group_before_fits(3, 1, 4, $groups), 'inside a group too');
+	pg_assert_true(ws_group_before_fits(2, 1, 3, $groups), 'in front of a group of the level it moves to');
+	pg_assert_true(ws_group_before_fits(2, 0, 0, $groups), '0 is the end');
+	pg_assert_true(ws_group_before_fits(2, 0, -1, $groups), 'below 0 is the end as well');
+	pg_assert_false(ws_group_before_fits(2, 0, 9, $groups), 'a group that is no longer there');
+	pg_assert_false(ws_group_before_fits(2, 0, 3, $groups), 'a group of another level');
+	pg_assert_false(ws_group_before_fits(3, 0, 4, $groups), 'a group of the level it leaves');
+	pg_assert_false(ws_group_before_fits(2, 0, 2, $groups), 'the group itself');
+
+	// The panel's move and the API's change both ask it: the API before its
+	// dry run and before it saves the name, so it can name the field.
+	$update = ws_api_test_handler_source('ws_api_channel_groups_update');
+
+	pg_assert_contains('ws_group_before_fits(', ws_api_test_handler_source('ws_group_move'), 'the panel\'s move asks it');
+	pg_assert_contains('ws_group_before_fits(', $update, 'the API\'s change asks it');
+
+	pg_assert_true(strpos($update, 'ws_group_before_fits(') < strpos($update, 'api_dry_run_stop('), 'refused before the dry run answers');
+	pg_assert_true(strpos($update, 'ws_group_before_fits(') < strpos($update, 'ws_group_save('), 'refused before anything is saved');
+}
+
 // A colour is written as the code the list shows; anything else is none.
 function test_ws_palette_place_of()
 {
