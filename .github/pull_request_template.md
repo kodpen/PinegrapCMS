@@ -42,5 +42,5 @@ Closes #
 - [ ] Comments are English and describe the code, not the process that produced it
 - [ ] Schema changes go through the migration runner and are re-runnable
 - [ ] `.src.js` and `.min.js` updated together
-- [ ] Changelog line added where the change is significant to site owners
+- [ ] `changelog.txt`: a one-line `[NEW]` only for a plan-driven major feature; other changes are covered by the version's single `[FIX]` / `[SECURITY]` / `[SCHEME]` lines
 - [ ] Open issues/PRs checked for the same `file:line` ranges; overlaps noted above

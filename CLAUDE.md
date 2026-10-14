@@ -87,6 +87,14 @@ Branches: work from `development`, PRs to `development`, never to `main`.
    hierarchy Designer (1) is above Manager (2).
 8. Talk to the owner in Turkish. One task is one small PR. User documentation
    is never written in the repo (see `docs/memory/workflow/owner-rules.md`).
+9. **`pinegrap/changelog.txt` is English and lists only major features.** Only
+   a plan-driven major feature gets its own one-line `[NEW] Added …` entry.
+   Every other change is covered by the open version's single
+   `[FIX] Miscellaneous bug fixes and new features.`,
+   `[SECURITY] Implemented various security fixes.` and one short
+   `[SCHEME] …` line: add them once if missing, never one line per fix. The
+   detail goes to `docs/degisiklikler.md` only. Layout and order:
+   `docs/memory/release/upgrade-changelog-rules.md`.
 
 ## When a task is done
 

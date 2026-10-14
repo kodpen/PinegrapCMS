@@ -6,6 +6,13 @@ Bu dosya okunmaz: yeni bölüm aşağıdaki ilk `---` çizgisinin hemen altına 
 
 ---
 
+## 2026.4.10 — changelog.txt İngilizce ve yalnız büyük özellikler; yeni başlık biçimi (2026-10-14)
+
+- **Ne değişti:** `pinegrap/changelog.txt` baştan İngilizce yazıldı. Her sürüm artık bir `=` çizgisi, altında sürüm numarası ve tek satırlık girdilerden oluşuyor: plan ile gelen büyük özellikler kısa `[NEW]` satırları, geri kalan her şey sürüm başına tek `[FIX] Miscellaneous bug fixes and new features.`, `[SECURITY] Implemented various security fixes.` ve tek kısa `[SCHEME]` satırı. Konu başlıkları, NOT satırları ve `[HIZ]` etiketi kalktı; dosya ~10.900 satırdan ~275 satıra indi. Eski Türkçe metin git geçmişinde; geliştirici ayrıntısı `docs/degisiklikler-arsiv/` ve bu dosyada.
+- **Neden:** dosya müşteriye gidiyor ve panelde "Sürüm Notları" olarak okunuyor; 2026.4.4 ve 2026.4.10'da 380–395 madde vardı, site sahibi için okunmuyordu. Ürün sahibi bu biçimi daha önce de istemişti, zamanla unutuldu; kural artık CLAUDE.md'de (kural 9) ve `docs/memory/release/upgrade-changelog-rules.md`'de.
+- **Ayrıştırıcılar:** `pg_changelog_sections()` / `pg_changelog_preamble()` (includes/fn/system_status.php) ve install/index.php'deki kopya sürüm başlığını yalnız "numara, altında çizgi" olarak tanıyordu; yeni biçimde çizgi numaranın üstünde. İkisi de artık iki biçimi de tanıyor (PCRE branch reset `(?|…)`, sürüm hep grup 1'de), "2026.2 / 2026.2.1" gibi ortak başlıkları da sürüm sayıyor (önceden bu bölümlerin maddeleri bir üstteki sürüme yapışıyordu) ve çizgi satırı üstteki girdiyi kapatıyor (önceden dosya sonundaki not son girdinin metnine ekleniyordu). `SCHEME` etiketi `ŞEMA`/`SCHEMA` gibi sarı rozet alıyor ve yükseltme ekranındaki şema notu olarak okunuyor. Eski biçimli dosyada eski ve yeni ayrıştırıcının çıktısı yalnız bu iki düzeltmede ayrılıyor (karşılaştırıldı).
+- **Denetim:** `tests/changelog_test.php` iki başlık biçimini, ortak başlığı, girişin kesildiği yeri ve gönderilen dosyanın biçimini (yalnız NEW/FIX/SECURITY/SCHEME, FIX/SECURITY/SCHEME sürüm başına en çok bir kez, açıklama satırında dört etiket) denetliyor; eski ayrıştırıcıyla kırmızı.
+
 ## 2026.4.10 — Sepet sayfası hızlı ekleme kapalıyken boş form çizmiyor; sepet ve hızlı sipariş açılışta ve hata sonrası uyarı yazmıyor (2026-10-14)
 
 **Neden.** #447'nin kalanları. Sandbox'ta eski kodla yeniden üretildi;
