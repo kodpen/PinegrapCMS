@@ -128,10 +128,12 @@ uyandırılmaz (panelin davranışı). `ws_sync`'in mantığı ortak bir fonksiy
 kodu kullanır. WebSocket ya da SSE yok: paylaşımlı barındırmada ve IIS'te her açık bağlantı bir
 PHP işçisi tutar; uygulama arka plandayken push, öndeyken kısa yoklama yeter.
 
-**M4 — Gelen kutusu (K, şema yok).** `GET /workspace/inbox` (tür, kanal, mesaj, görev, not,
-plan öğesi, kimden, okundu; cursor), `POST /workspace/inbox/read` {ids | all}. Zil satırının
-`subject` alanı `workspace_inbox` olduğunda uygulama bu kaydı okuyup ilgili ekranı açar.
-`ws_inbox_list()` ve `ws_inbox_mark_read()` kullanılır.
+**M4 — Gelen kutusu (K, şema yok). Yapıldı (#377):** satırda `parent_channel_id`, `meeting_url`,
+tek satır `GET /workspace/inbox/{id}`; zil satırının `url`'si de düzeldi. `GET /workspace/inbox`
+(tür, kanal, mesaj, görev, not, plan öğesi, kimden, okundu; cursor), `POST
+/workspace/inbox/read` {ids | all}. Zil satırının `subject` alanı `workspace_inbox` olduğunda
+uygulama bu kaydı okuyup ilgili ekranı açar. `ws_inbox_list()` ve `ws_inbox_mark_read()`
+kullanılır.
 
 **M5 — Dosya (O, şema yok).**
 - `POST /workspace/channels/{id}/files` (multipart ya da `content_base64`, isteğe bağlı `text`):
