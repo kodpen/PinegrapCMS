@@ -544,6 +544,58 @@ function ws_upload_discard($file_id)
 }
 
 /**
+ * Posts a file into a channel as a message carrying it, base64 as the panel
+ * sends it. The file and the message are checked before anything is kept,
+ * as the external API's files endpoint does: a message that would be refused
+ * (too long, too many too fast) leaves no file on the disk, no row in the
+ * file manager and no folder for the channel.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $body          the words beside the file, may be empty
+ * @param string $original_name
+ * @param string $data          base64
+ * @param array  $options       as for ws_message_send(), file_id and file_name aside
+ * @return array ok, error, message_id
+ */
+function ws_message_send_file($viewer, $channel, $body, $original_name, $data, $options = array())
+{
+    $binary = ws_upload_decode($data);
+    $checked = ws_upload_check($viewer, $channel, $original_name, $binary);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'message_id' => 0);
+    }
+
+    // The file it is about to carry stands in for its id: words are optional
+    // beside a file.
+    $message = ws_message_send_check($viewer, $channel, $body, array_merge($options, array('file_id' => PHP_INT_MAX)));
+
+    if (!$message['ok']) {
+        return array('ok' => false, 'error' => $message['error'], 'message_id' => 0);
+    }
+
+    $stored = ws_store_upload_bytes($viewer, $channel, $original_name, $binary);
+
+    if (!$stored['ok']) {
+        return array('ok' => false, 'error' => $stored['error'], 'message_id' => 0);
+    }
+
+    $result = ws_message_send($viewer, $channel, $body, array_merge($options, array(
+        'file_id'   => $stored['file_id'],
+        'file_name' => $stored['name'],
+    )));
+
+    // Refused after all (the limit reached in between, the row not written):
+    // no message, no file.
+    if (!$result['ok']) {
+        ws_upload_discard($stored['file_id']);
+    }
+
+    return $result;
+}
+
+/**
  * How a channel's file is handed out: pictures, sound, video and PDF with
  * their own type, to be shown where they are opened; anything else, and
  * anything a browser could run (HTML, SVG), as plain bytes to be saved.
