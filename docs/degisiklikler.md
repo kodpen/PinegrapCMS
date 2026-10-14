@@ -84,6 +84,73 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Form listesi ve katalog detayı dizi parametreyle 500 veriyordu, form listesi araması tarih ve saat alanlarında uyarı yazıyordu (2026-10-14)
+
+**Neden.** #403'ün bıraktığı parçalar, hepsi 2026.4.9'da var. (1) Form
+listesi sayfası (`get_form_list_view.php`) arama terimini `liveform`'dan
+okuyor; `?<sayfa kimliği>_query[]=x` ya da eski biçim `?query[]=x` ile gelen
+dizi `!= ''` denetiminden geçip arama SQL'inde `escape()`'e gidiyor, sayfa
+500 veriyordu (blog, ilan, forum, personel dizini; sistem widget'ının
+`sw<kimlik>_query` adı da aynı yoldan). (2) Aynı arama terimi her alan için
+`prepare_form_data_for_input()`'tan (`includes/fn/forms.php`) geçiyor. Bu
+fonksiyonun "date and time" dalı terimi tarih ve saate bölüyor; tarih ve saat
+biçiminde olmayan bir terimde (`blog`, `2016`, saatsiz bir tarih) eksik
+parçaları okurken "Undefined array key" uyarısı yazıyordu. Her listede dört
+standart "date and time" alanı (gönderim, son değişiklik, en yeni yorum, en
+yeni etkinlik) olduğu için form listesindeki her arama `php_errors.log`'a
+uyarı yazıyordu. "time" dalı ve bu tipteki özel alanlar da aynı. (3) Katalog
+detay sayfası (`get_catalog_detail.php`) `?previous_url_id[]=x` ile "Geri"
+düğmesinin `isset($_SESSION['software']['urls'][dizi])` denetiminde 500
+veriyordu (oturumda saklı bir katalog adresi varken: hazır düzende iki yer,
+özel düzende bir yer). #403 aynısını katalog sayfasında düzeltmişti.
+
+**Ne değişti.**
+- Form listesi yeni ve eski biçim arama terimini yalnız metinse kullanıyor;
+  dizi gelen terim verilmemiş sayılıyor, liste aramasız açılıyor, arama
+  alanı boş. Yeni biçim dizi, eski biçim metinse eski biçim kullanılıyor
+  (öncelik sırası aynı).
+- `prepare_form_data_for_input()` "date and time" ve "time" dallarında eksik
+  parçaları boş sayıyor. Eksik parça önce de `null` okunup boş dizgeye
+  dönüşüyordu; dönen değer her girdide aynı, yalnız uyarılar yok.
+- Katalog detayı üç yerde `previous_url_id`'yi yalnız metinse okuyor; dizi
+  gelince "Geri" düğmesi çıkmıyor (oturumda adres yokmuş gibi).
+- `tests/forms_test.php`: tarih ve saat dallarında beş test (eski kodda üçü
+  uyarıyla düşüyor).
+- Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod (`origin/development`) ve
+yeni kod aynı sunucuda sırayla, opcache kapalı. Form listesi: `/blog`,
+`/blog-cards`, `/staff-directory`, `/forum` `?<kimlik>_query[]=x`, `/blog`
+`?query[]=x`, `?227_query[a]=x`, `?227_query[0][]=x` ve
+`?227_query[]=x&query=blog` eski kodda 500, yeni kodda 200. Dizi terimli
+sayfanın HTML'i terimsiz sayfayla aynı (ayrım yalnız bağlantılarda taşınan
+adres); `?227_query[]=x&query=blog` `?query=blog` ile aynı sonuçları
+veriyor. Katalog detayı (`/shop-product-sidebar`, `/shop-product-fullwidth`,
+özel düzende ve sayfa hazır düzene alınarak) `?previous_url_id[]=x` ve
+`?previous_url_id[a]=x` oturumda katalog adresi varken eski kodda 500, yeni
+kodda 200; HTML "Geri" düğmesi olmayan sayfayla aynı. Normal istekler
+eski ve yeni kodda aynı HTML'i veriyor (oturum jetonu ve rastgele CAPTCHA
+sorusu dışında): aramasız liste; `?227_query=` ile `blog`, `foo`, `2016`,
+`27/03/2016`, `03/27/2016 9:30 AM`, `9:30 PM`; `?query=blog`; dizi gelen
+browse, sayfa numarası, clear ve başka parametreler; katalog detayı
+`previous_url_id=0`, `=9` ve parametresiz. Bu aramalar eski kodda
+`php_errors.log`'a uyarı yazıyor, yeni kodda yazmıyor.
+`prepare_form_data_for_input()`'un eski ve yeni sürümü 21 girdi, 4 tip ve
+iki tarih biçiminde aynı değeri döndürüyor (eski 232 uyarı, yeni 0).
+`php -l`, `tools/lint.php`, `tools/test.php` (892 test), `check_*` ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek
+sayfalar.
+
+**Bilerek yapılmayan.** `prepare_form_data_for_input()` tarih ve saat
+biçiminde olmayan bir terimi yine `0000-00-blog 00:00` gibi bir değere
+çeviriyor (bu alanlarda hiçbir kayıtla eşleşmez). Ham terimi aramak
+(`2016` ile o yılın kayıtları) arama sonuçlarını değiştirirdi; bu ayrı bir
+karar. `liveform` ve `includes/fn/custom_form.php`'ye dokunulmadı (başka
+iş). Katalog sayfasının dizi terimle açılınca RSS bağlantısını göstermemesi
+kapsam dışı kaldı.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: kanal grubu, bu arada değişmiş bir listede sessizce en sona gitmiyor (2026-10-14)
 
 **Neden.** #400'ün bıraktığı parça, panel tarafı 2026.4.9'da da var. Bir

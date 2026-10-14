@@ -3185,10 +3185,12 @@ function prepare_form_data_for_input($data, $type)
                 return $year . '-' . $month . '-' . $day;
                 break;
             case 'date and time':
-                $date_and_time_parts = explode(' ', $data, 2);
+                // Parts missing from a value that is not in a date and time
+                // format (e.g. a search term) count as empty.
+                $date_and_time_parts = explode(' ', $data, 2) + array('', '');
                 $date = $date_and_time_parts[0];
                 $time = $date_and_time_parts[1];
-                $date_parts = preg_split('/[-,\/]/', $date);
+                $date_parts = preg_split('/[-,\/]/', $date) + array('', '', '');
                 $year = $date_parts[2];
                 if (DATE_FORMAT == 'month_day') {
                     $month = $date_parts[0];
@@ -3201,6 +3203,7 @@ function prepare_form_data_for_input($data, $type)
                 $month = str_pad($month, 2, '0', STR_PAD_LEFT);
                 $day = str_pad($day, 2, '0', STR_PAD_LEFT);
                 preg_match('/(\d+):(\d+) (AM|PM)/i', $time, $time_parts);
+                $time_parts += array('', '', '', '');
                 $hour = $time_parts[1];
                 $minute = $time_parts[2];
                 $am_pm = mb_strtoupper($time_parts[3]);
@@ -3217,7 +3220,10 @@ function prepare_form_data_for_input($data, $type)
                 return $year . '-' . $month . '-' . $day . ' ' . $hour . ':' . $minute;
                 break;
             case 'time':
+                // A value that is not in a time format (e.g. a search term)
+                // has no parts; they count as empty.
                 preg_match('/(\d+):(\d+) (AM|PM)/i', $data, $time_parts);
+                $time_parts += array('', '', '', '');
                 $hour = $time_parts[1];
                 $minute = $time_parts[2];
                 $am_pm = mb_strtoupper($time_parts[3]);
