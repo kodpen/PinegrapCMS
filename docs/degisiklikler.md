@@ -84,6 +84,80 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kanala geri alınan kişinin gelen kutusu satırları değişenlerde yeniden geliyor (2026-10-14)
+
+**Neden.** #390'ın bilerek bıraktığı parça. Kişi özel kanaldan çıkınca o
+kanalla ilgili satırları `changed_since`'te `deleted: true` ile geliyor,
+uygulama onları bırakıyordu. Kişi kanala geri alınınca satırlar panelde ve
+ilk sayfada yeniden görünüyor ama damgaları kıpırdamadığı için değişenlerde
+gelmiyordu; uygulama onları ancak gelen kutusunu baştan okuyunca
+görüyordu.
+
+**Ne değişti.**
+- `ws_inbox_reach_regained($channel, $user_ids = null)` (`notify.php`),
+  `ws_inbox_reach_lost()`'un simetriği: kanalı artık okuyan kişinin o
+  kanalla, okuduğu tartışmalarıyla (hâlâ üyesi olduğu) ve kanalın yalnız
+  kanal sayesinde gördüğü görevleriyle ilgili **okunmuş** satırlarının
+  `read_at`'ini şimdiye çeker. `changed_since` onları damgasıyla bulur ve
+  bu kez görünür oldukları için canlı satır olarak verir; eşitlemenin
+  `inbox_changed_at`'i (#380) ilerler. Satırlar okunmuş kalır: zil sayısı
+  ve `inbox_unread` değişmez. Okunmamış satıra dokunulmaz: erişim
+  dışındayken yazılmış bir satır zaten `created_at`'iyle gelir (görülmeden
+  okunduysa `ws_inbox_visible_rows()` onu okunmuş saymıştır, `read_at`'i
+  ilerler).
+- Ayrı bir sütun ya da kişi-kanal izi yerine #390'ın yolu seçildi:
+  kaybedilen satırlar zaten o yolla (`read_at`) işaretleniyor, değişenlerin
+  koşulu (`created_at >= T OR read_at >= T`) ve dizini aynı kalır, şema
+  adımı gerekmez.
+- Görev satırları: kişi görevin sahibi ya da atananı değilse
+  (`ws_inbox_task_through_channel()`) ve satır kurala göre görünürse
+  geri gelir; kendi görevlerinin satırları kayıpta da kıpırdamamıştı,
+  yeniden gönderilmez. Kişi başına en yeni 500 satır
+  (`WS_INBOX_REACH_TASK_READ`, kayıptakiyle aynı sınır).
+- Çağıran yerler, yalnız erişimi gerçekten geri gelenler için (kanalı
+  baştan beri okuyanın her satırı boşuna yeniden gitmesin):
+  `ws_channel_add_members()` herkese açık olmayan kanalda (özel kanala
+  yeniden ekleme, grup erişiminin geri getirmesi `ws_group_sync_channel()`
+  bu yoldan geçer, misafir odası, tartışmaya ekleme);
+  `ws_channel_make_public()` (gelen kutusunda o kanal ya da tartışmaları
+  hakkında satırı olup kanalda olmayan herkes; seyrek adım, tablo bir kez
+  taranır); `ws_thread_join()` (tartışmaya yeniden katılan).
+  `ws_channel_join()` yalnız herkese açık kanala katılır, kimse erişim
+  kazanmaz, çağırmaz.
+- `GET /workspace/inbox` açıklamasına (API belgesi ve `?openapi=1`) "geri
+  alınınca o satırlar o andan itibaren değişenlerde olduğu gibi ve okunmuş
+  gelir, yeniden tutun" cümlesi; `GET /workspace/sync`'in
+  `inbox_changed_at` tarifine "ya da geri verildi". Beceri dosyası
+  (`.claude/skills/pinegrap-dis-api/SKILL.md`) erişime geri alan yeni
+  kodun bu fonksiyonu çağırmasını söyler.
+
+Şema adımı yok, yeni izin kapsamı yok, yeni metin yok, JS değişmedi; cihaz
+oturumu ve izin kuralları aynı.
+
+**Bilerek yapılmayan.** Kişi ekibe yeniden alınırsa (rolü, "Çalışma Alanı"
+izni ya da profilde ekipten çıkarılması geri alınırsa) satırlar
+değişenlere girmez; #390 da kaybı yalnız kanal adımlarına bağlamıştı.
+Yöneticinin özel kanalı inceleme için açması oturuma bağlıdır, satırları
+kıpırdatmaz.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye bir test
+(`ws_inbox_task_through_channel()`: sahibi, atananı, kanalsız görev).
+Sandbox'ta CLI ile gerçek fonksiyonlar: özel kanalda kişinin dört satırı
+(davet, tartışma, anılma, sahibi olmadığı görevin notu) çıkarılınca
+`deleted`, yeniden eklenince dördü canlı geldi (yanında yeni davet satırı),
+kendisine atanan görevin iki satırı ikisinde de gelmedi, `inbox_unread`
+yalnız yeni davet kadar arttı. Herkese açık kanal özel yapılınca dışarıda
+kalanın satırı `deleted`, yeniden açılınca canlı geldi; baştan beri üye
+olanın satırının `read_at`'i değişmedi. Tartışmadan ayrılıp yeniden
+katılan yöneticinin iki satırı önce `deleted`, sonra canlı geldi. Grup
+erişimi bitip (`ws_group_sync_channel()` çıkardı) geri verilince kişinin
+iki satırı önce `deleted`, sonra canlı geldi. Herkese açık kanala katılmak
+hiçbir satırı kıpırdatmadı. Aynı senaryo
+değişiklik öncesi `development`'ta: geri alma sonrası yalnız yeni davet
+satırı, kanal açılınca ve tartışmaya yeniden katılınca hiçbir satır.
+
+---
+
 ## 2026.4.10 — Site sayfaları: beş ekranda daha PHP uyarıları, dizi parametresiyle 500 (2026-10-14)
 
 **Neden.** #389 kendi altı dosyasını temizlerken taramanın bulduğu beş

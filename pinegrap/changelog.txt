@@ -1666,9 +1666,12 @@
          gelen kutusunda o kanalla, tartışmalarıyla ve
          kendisinin olmayan görevleriyle ilgili satırlar
          uygulamanın aldığı değişenlerde silinmiş olarak
-         geliyor ve zil sayısından hemen düşüyor. 30
-         günden eski bir anla soran uygulamaya sunucu
-         gelen kutusunu baştan okumasını söylüyor.
+         geliyor ve zil sayısından hemen düşüyor; kanala
+         geri alınınca, kanal herkese açılınca ya da
+         tartışmaya yeniden katılınca aynı satırlar
+         değişenlerde yeniden geliyor. 30 günden eski bir
+         anla soran uygulamaya sunucu gelen kutusunu
+         baştan okumasını söylüyor.
 
   [YENİ] Çalışma Alanı: telefon ya da bilgisayar
          uygulamasıyla oturum açan kişi bir kanalı kendi

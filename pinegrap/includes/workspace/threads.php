@@ -328,6 +328,9 @@ function ws_thread_join($viewer, $channel)
 
     ws_channel_membership_forget();
 
+    // Somebody who left it once has what their inbox said about it again.
+    ws_inbox_reach_regained($channel, array((int) $viewer['id']));
+
     ws_message_system($channel['id'], lang(array('string' => '{var:1} joined the discussion', 'vars' => '<@user:' . (int) $viewer['id'] . '>')));
 
     $thread = ws_thread($channel['id']);

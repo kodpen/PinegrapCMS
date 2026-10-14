@@ -328,6 +328,12 @@ function ws_channel_add_members($viewer, $channel, $user_ids, $announce = true)
 
     if (!empty($added)) {
         ws_channel_folder_access($channel, $added, true);
+
+        // Back in a channel only its members read: what their inbox said
+        // about it is theirs again.
+        if ((string) $channel['kind'] !== 'public') {
+            ws_inbox_reach_regained($channel, $added);
+        }
     }
 
     if ($announce && !empty($added)) {
@@ -534,8 +540,10 @@ function ws_channel_make_public($viewer, $channel)
 
     db("UPDATE ws_channels SET kind = 'public' WHERE id = '" . (int) $channel['id'] . "'");
 
-    // The notes shared here follow: the whole team reads them now.
+    // The notes shared here follow: the whole team reads them now, and what
+    // their inbox said about it.
     ws_channel_folder_access($channel, array(), true);
+    ws_inbox_reach_regained($channel);
 
     ws_message_system($channel['id'], lang(array(
         'string' => '{var:1} opened this channel to the whole team. Everything written in it can now be read by every team member.',

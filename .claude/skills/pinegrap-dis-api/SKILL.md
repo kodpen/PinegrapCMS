@@ -154,7 +154,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   Kişiyi bir kanalın erişiminden çıkaran yeni kod (üyelik silme, kanalı
   kapatma) `ws_inbox_reach_lost($channel, $user_ids)` çağırır: göremediği
   satırların `read_at`'i ilerler, `changed_since` onları `deleted: true`
-  ile verir. Bir liste cevabına zarf alanı (`reload` gibi)
+  ile verir. Kişiyi erişime geri alan yeni kod (özel kanala ekleme,
+  kanalı açma, tartışmaya yeniden katılma) da önceden okuyamayanlar için
+  `ws_inbox_reach_regained($channel, $user_ids)` çağırır: okunmuş
+  satırların `read_at`'i yine ilerler, `changed_since` onları canlı
+  satır olarak geri verir. Bir liste cevabına zarf alanı (`reload` gibi)
   `api_ok_list()`'in `$extra`'sıyla ve rotada `'list'` yanında bildirilir.
 
 ## OAuth 2.1 (2026.4.10, `oauth.php`, `includes/oauth/`)

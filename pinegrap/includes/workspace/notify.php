@@ -769,6 +769,128 @@ function ws_inbox_reach_lost($channel, $user_ids = null)
 }
 
 /**
+ * Does the person see the task only through its channel - neither its
+ * creator nor one of its people? Those are the tasks whose lines went out of
+ * their reach with the channel (ws_inbox_reach_lost()) and come back with it.
+ *
+ * @param int   $user_id
+ * @param array $task
+ * @param int[] $assignees
+ * @return bool
+ */
+function ws_inbox_task_through_channel($user_id, $task, $assignees)
+{
+    return ((int) $task['channel_id'] > 0)
+        && ((int) $task['creator_id'] !== (int) $user_id)
+        && !in_array((int) $user_id, array_map('intval', (array) $assignees), true);
+}
+
+/**
+ * People came back into a channel's reach: they were added to it again, a
+ * group brought them back, it was made public, or they joined one of its
+ * discussions again. Their lines about it, about the discussions they read
+ * again and about its tasks they see through it again were marked read when
+ * they went out of reach (ws_inbox_reach_lost()), so the changed lines of
+ * GET /workspace/inbox carried them as taken away; their read_at moves to now,
+ * and the changed lines carry them again as they are from that moment, and
+ * the sync's inbox_changed_at moves. They stay read, so the badge is as it
+ * was. A line never read is not touched: one written while out of reach
+ * comes among the changes by when it was written.
+ *
+ * Only for people who could not read the channel before the step that
+ * called: somebody who read it all along would have every line about it
+ * sent again for nothing.
+ *
+ * @param array      $channel
+ * @param int[]|null $user_ids null: everybody told something about it who
+ *                             is not in it - it was made public
+ */
+function ws_inbox_reach_regained($channel, $user_ids = null)
+{
+    $channel_id = is_array($channel) ? (int) $channel['id'] : 0;
+
+    if ($channel_id <= 0) {
+        return;
+    }
+
+    // The discussions started in it, read again by those still in them.
+    $threads = array();
+
+    if (function_exists('ws_threads_ready') && ws_threads_ready()) {
+        foreach ((array) db_items("SELECT channel_id FROM ws_threads WHERE parent_channel_id = '" . $channel_id . "'") as $row) {
+            $threads[] = (int) $row['channel_id'];
+        }
+    }
+
+    $in = implode(',', array_merge(array($channel_id), $threads));
+
+    // Made public: whoever was told something there and is not in it. A
+    // rare step, so one pass over the inbox is fine.
+    if ($user_ids === null) {
+        $user_ids = array();
+
+        foreach ((array) db_items("SELECT DISTINCT user_id FROM ws_inbox
+            WHERE channel_id IN (" . $in . ")
+            AND user_id NOT IN (SELECT user_id FROM ws_channel_members WHERE channel_id = '" . $channel_id . "')") as $row) {
+            $user_ids[] = (int) $row['user_id'];
+        }
+    }
+
+    // As it is now, after the step that called.
+    $channel = ws_channel($channel_id);
+    $now = time();
+    $tasks = array();
+
+    foreach (array_unique(array_map('intval', (array) $user_ids)) as $user_id) {
+        if ($user_id <= 0) {
+            continue;
+        }
+
+        $rights = ws_rights_for_id($user_id);
+
+        if (!ws_can_read_channel($rights, $channel)) {
+            continue;
+        }
+
+        // A discussion is read by the people in it, while they read the
+        // channel it was started in - as they do now.
+        $back = array($channel_id);
+
+        if (!empty($threads)) {
+            $back = array_merge($back, array_map('intval', (array) db_values("SELECT channel_id FROM ws_channel_members
+                WHERE user_id = '" . $user_id . "' AND channel_id IN (" . implode(',', $threads) . ")")));
+        }
+
+        db("UPDATE ws_inbox SET read_at = '" . $now . "'
+            WHERE user_id = '" . $user_id . "' AND read_at > 0 AND channel_id IN (" . implode(',', $back) . ")");
+
+        $again = array();
+
+        foreach ((array) db_items("SELECT * FROM ws_inbox
+            WHERE user_id = '" . $user_id . "' AND read_at > 0 AND channel_id NOT IN (" . $in . ")
+            AND task_id IN (SELECT id FROM ws_tasks WHERE channel_id = '" . $channel_id . "')
+            ORDER BY id DESC
+            LIMIT " . WS_INBOX_REACH_TASK_READ) as $row) {
+            $task_id = (int) $row['task_id'];
+
+            if (!isset($tasks[$task_id])) {
+                $task = ws_task($task_id);
+                $tasks[$task_id] = $task ? array($task, ws_task_assignee_ids($task_id)) : null;
+            }
+
+            if ($tasks[$task_id] && ws_inbox_task_through_channel($user_id, $tasks[$task_id][0], $tasks[$task_id][1])
+                && ws_inbox_row_visible($rights, $row)) {
+                $again[] = (int) $row['id'];
+            }
+        }
+
+        if (!empty($again)) {
+            db("UPDATE ws_inbox SET read_at = '" . $now . "' WHERE id IN (" . implode(',', $again) . ")");
+        }
+    }
+}
+
+/**
  * How long the inbox remembers a line it took away: an app that last asked
  * for changes longer ago than this reads the inbox again.
  */
