@@ -169,5 +169,10 @@ dökümden hemen düşer, dosyanın diskteki boyutu yedeği etkilemez.
    duvarı, performans ve API istek günlükleri (`waf_log`, `perf_log`,
    `api_request_log`) de aynı listeye girdi (PR #438); Site Günlüğü, ERP
    günlükleri, `cron_runs` ve `perf_stats` satırlarıyla kalır.
-8. **Büyük yedeğin geri yüklenmesi**: 950 MB'lık yedeği kurarken sunucu
-   yanıt veremedi; geri yükleme yolunun parça parça çalışması ayrı bir iş.
+8. **Büyük yedeğin geri yüklenmesi** (yapıldı): 950 MB'lık yedeği kurarken
+   sunucu yanıt veremedi. Kurulum ekranı yedeği artık sitenin yanına
+   (`pgr_new_` önekli tablolara) 20 saniyelik adımlarla yüklüyor, kaldığı
+   bayt `data/temp/restore.json`'da; yükleme bitince tablolar tek
+   `RENAME TABLE` ile yer değiştiriyor (`includes/fn/backup_restore.php`).
+   Yarım kalan geri yükleme kurulum ekranında ve Yedekleme Yöneticisi'nde
+   görünüyor, sürdürülüyor ya da siliniyor.

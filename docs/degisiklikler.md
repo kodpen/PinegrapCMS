@@ -84,6 +84,101 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Büyük yedek kurulum ekranından adım adım geri yükleniyor, yarım kalan geri yükleme sürdürülüyor (2026-10-14)
+
+**Neden.** Bir müşteri sitesinde yanlışlıkla silinen ürün için 950 MB'lık
+veritabanı yedeği geri yüklenemedi: kurulum ekranı "sunucu yanıt veremedi"
+dedi. Ziyaretçi temizleme planının "Ertelenenler" 8. maddesi
+(`docs/_plan_ziyaretci_temizleme.md`).
+
+**Kök neden.** "Sunucudaki yedek" seçeneği bütün `sql.sql`'i tek istekte
+çalıştırıyordu (`parse_mysql_dump()`). Önce sitenin tablolarını siliyor,
+sonra dökümü yüklüyordu; yükleme web sunucusunun ya da vekil sunucunun
+istek süresini (IIS/FastCGI, Cloudflare ~100 sn) aştığında istek kesiliyor,
+site yarım veritabanıyla kalıyordu. Sandbox'ta 1,3 GB'lık döküm tek istekte
+83 sn sürdü. İkinci bir sorun: `currency_rates` `get_tables()` listesinde
+yoktu, Yedekleme Yöneticisi'nin dökümü `DROP TABLE` yazmadığı için güncel
+bir sitenin yedeği "Table 'currency_rates' already exists" ile duruyor ve
+site yine yarım kalıyordu.
+
+**Nasıl çalışıyor (`includes/fn/backup_restore.php`).**
+- Döküm sitenin yanına yüklenir: her tablo ifadesi (`CREATE`, `INSERT`,
+  `ALTER`, `LOCK`, `DROP`, `TRUNCATE`, `REPLACE`) `pgr_new_<tablo>`'ya
+  yöneltilir. Site yükleme boyunca kendi tablolarıyla çalışır.
+- Bir adım en çok 20 sn ifade çalıştırır ve bir ifadenin sonunda durur;
+  kaldığı bayt, adım sayısı, o anki tablo ve tablonun `CREATE TABLE`
+  ofseti `data/temp/restore.json`'da. Adım sonunda `COMMIT` ve
+  `UNLOCK TABLES`; sonraki istek dökümün oturum ayarlarını (`SET ...`,
+  en çok 64, son hali) ve tutulan `LOCK TABLES`'ı yeniden kurar. Bağlantının
+  oturum değişkenleri her adımın çevresinde saklanıp geri konur (döküm
+  `autocommit=0` bırakıyordu; Site Günlüğü satırı geri alınıyordu).
+- Ekran aynı formu `restore_id` ile yeniden gönderir; konsol ve ilerleme
+  dosyası aynı kalır, önceki adımların satırları korunur.
+- Yükleme bitince tek `RENAME TABLE` ile site tabloları `pgr_old_`'a,
+  yüklenenler yerine geçer (hepsi ya da hiçbiri); sonra eskiler ve yedekte
+  olmayan sistem tabloları (`get_tables()`) silinir. Ardından eskisi gibi
+  utf8mb4 dönüşümü ve sürüm yükseltmesi; dönüşüm artık yalnız karakter seti
+  farklı tabloları alır (büyük tabloyu boşuna kopyalamıyor).
+- Sunucu bir adımı öldürürse (`running` işareti kalmış) sonraki adım
+  bilinmeyen yeni tabloları ve o tabloyu silip tabloyu `CREATE TABLE`'ından
+  yeniden yükler, adım süresini yarıya indirir (en az 4 sn) ve ekrana uyarı
+  satırı yazar.
+- Bir veritabanına aynı anda tek geri yükleme (`GET_LOCK`). Kurulum
+  ekranının kilit açma süresi her adımda yenilenir.
+- Sitenin tablolarına dokunabilecek ifadeler (`UPDATE`, `DELETE`, görünüm,
+  tetikleyici, başka veritabanı adı, birden çok tablolu `DROP`/`LOCK`,
+  `RENAME`) reddedilir; `USE`, `CREATE DATABASE`, `GLOBAL`/`SQL_LOG_BIN`
+  ayarları ve MariaDB'nin sandbox yorumu atlanır. Reddedilen ya da hata veren
+  ifadede yüklenen kısım silinir, site değişmez, Site Günlüğü'ne yazılır.
+  `config` tablosu olmayan döküm site yedeği sayılmaz.
+
+**Ne değişti.**
+- `install/index.php`: tablo silme + `parse_mysql_dump()` bloğu adım adım
+  yüklemeyle değişti; `parse_mysql_dump()` kaldırıldı (başka kullanan yok).
+  Yarım kalan geri yükleme varsa kaynak adımında kart (yedek, yüzde, boyut,
+  son adım) ve **Sil** düğmesi; form o yedekle ve `restore_id` ile açılır,
+  kurulumu başlatmak kaldığı yerden sürdürür. `get_tables()`'a
+  `currency_rates` eklendi. Başarıda geri yüklenen sitenin günlüğüne
+  "<yedek> yedeği geri yüklendi: <boyut>, <n> adımda, <sn> saniye".
+- `backups.php`: Yedekleme Yöneticisi yarım kalan geri yüklemeyi uyarı
+  olarak gösterir, kurulum ekranına bağlantı verir.
+- `tests/backup_restore_test.php`: ifade sınıflandırması (mysqldump.php,
+  mysqldump komut satırı, phpMyAdmin biçimleri), reddedilen ifadeler, ad
+  değiştirme, oturum takibi, eşleşme ve yüzde.
+
+**Ölçüm (sandbox, MariaDB 10.11, PHP 8.3, 4 çekirdek).** 3.003.221 ziyaret
+satırlı, 301 tablolu 1,3 GB döküm (#434'ten önceki biçim, en kötü durum):
+- Önce: tek istek 83,1 sn (yükleme 79,6 sn); `currency_rates`'li güncel
+  yedekte hata ve yarım site.
+- Sonra: 5 istek (4 × 20 sn + 14 sn), toplam 94,6 sn; yükleme sırasında ana
+  sayfa ~44 ms'de 200; site tabloları yer değiştirmeye kadar değişmedi;
+  yer değiştirme ve eskilerin silinmesi ~3,4 sn.
+- mysqldump komut satırı dökümü (1,4 GB): 5 istek, 87,3 sn.
+- Chromium: ekran 5 isteği kendisi gönderdi (87,5 sn); 2 adımdan sonra
+  kapatılan pencere yeni tarayıcıda karttan sürdürüldü ve bitti.
+- Adımın ortasında PHP işçisi öldürüldü: sonraki istek uyardı, `visitors`'ı
+  10 sn'lik adımlarla baştan yükledi; 9 istek, 3.003.221 tekil kimlik,
+  artık tablo yok.
+- `UPDATE` içeren bozuk yedek: reddedildi, site değişmedi, yeni tablolar
+  silindi, Site Günlüğü'ne satır yazıldı. **Sil** düğmesi: tablolar silindi,
+  günlük satırı ve bildirim.
+- Başlangıç sitesi (`turkish_default`) 1 istek 10,1 sn; boş veritabanına
+  kurulum ve #434/#438 biçimli yedek (başında not, satırsız tablolar)
+  1 istekte geri geldi, 301 tablo.
+
+**Bedeli.** Yükleme boyunca veritabanında sitenin bir kopyası daha kadar boş
+yer gerekir. Toplam süre tek isteğe göre ~%10-15 uzun (adım sınırları ve
+yer değiştirme).
+
+**Bilerek yapılmayan.** Şema adımı yok. Yedek alma tarafına dokunulmadı
+(ziyaret satırları #434/#438'de). Görünüm, tetikleyici ve yabancı anahtar
+içeren dökümler desteklenmiyor (ürünün dökümü yazmıyor). Eskiden kalan
+davranışlar: geri yükleme kurulum olarak çalıştığı için formdaki yönetici
+yeniden ekleniyor, `data/backups`'taki zip arşivleri kurulum ekranında
+listelenmiyor, kurulum ekranının saati sunucu saat diliminde.
+
+---
+
 ## 2026.4.10 — Sipariş akışı: kargo yöntemi, sepete ekle formları, sepet ve hızlı siparişin ürün alanları dizi gelen değerde 500 veriyordu (2026-10-14)
 
 **Neden.** #421'in taramadığı kalanlar: kargo yöntemi adımı
