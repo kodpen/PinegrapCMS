@@ -691,6 +691,8 @@ function ws_api_poll_present($poll)
         'voters'            => (int) $poll['voters'],
         'voted'             => !empty($poll['voted']),
         'can_vote'          => !empty($poll['can_vote']),
+        'can_edit'          => !empty($poll['can_edit']),
+        'can_close'         => !empty($poll['can_close']),
         'options'           => array_map('ws_api_poll_option_present', array_values((array) $poll['options'])),
         'result_message_id' => ((int) $poll['result_id'] > 0) ? (int) $poll['result_id'] : null,
     );
@@ -732,6 +734,8 @@ function ws_api_poll_schema()
         'voters'            => 'integer',
         'voted'             => 'boolean',
         'can_vote'          => 'boolean',
+        'can_edit'          => 'boolean',
+        'can_close'         => 'boolean',
         'options'           => array(array('id' => 'integer', 'label' => 'string', 'count' => 'integer', 'mine' => 'boolean', 'leading' => 'boolean',
             'voters' => array(array('user_id' => 'integer?', 'name' => 'string')))),
         'result_message_id' => 'integer?',
@@ -1500,22 +1504,9 @@ function ws_api_messages_ack($params)
 function ws_api_polls_vote($params)
 {
     $viewer = ws_api_viewer();
-    $poll = ws_poll((int) $params['id']);
-    $message = $poll ? ws_message((int) $poll['message_id']) : null;
-
-    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($poll['channel_id']))) {
-        api_fail_not_found(lang('Poll'));
-    }
-
-    // The limits of the application Claude works through.
-    ws_api_channel_or_404($viewer, $poll['channel_id']);
+    $poll = ws_api_poll_or_404($viewer, $params['id']);
 
     ws_api_person_only();
-
-    // An earlier version of a conversation is kept as it was (eras.php).
-    if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
-        api_fail_validation(lang('This message is in an earlier version of the conversation, which is kept as it was.'));
-    }
 
     $checked = ws_poll_vote_check($viewer, $poll);
 
@@ -1560,9 +1551,285 @@ function ws_api_polls_vote($params)
         api_fail_validation($result['error']);
     }
 
-    $row = ws_message($message['id']);
+    ws_api_poll_message_ok($viewer, $poll);
+}
 
-    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+/**
+ * A poll the owner may read, as the vote, the change and the closing find it:
+ * one whose message is gone, or in a channel the owner cannot read, is a 404,
+ * and one of an earlier version of the conversation a 422.
+ *
+ * @param array $viewer
+ * @param int   $id
+ * @return array ws_polls row
+ */
+function ws_api_poll_or_404($viewer, $id)
+{
+    $poll = ws_poll((int) $id);
+    $message = $poll ? ws_message((int) $poll['message_id']) : null;
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($poll['channel_id']))) {
+        api_fail_not_found(lang('Poll'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $poll['channel_id']);
+
+    // An earlier version of a conversation is kept as it was (eras.php).
+    if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
+        api_fail_validation(lang('This message is in an earlier version of the conversation, which is kept as it was.'));
+    }
+
+    return $poll;
+}
+
+/**
+ * Answers with the message that asks the poll, as it is now.
+ *
+ * @param array $viewer
+ * @param array $poll
+ * @param int   $status
+ */
+function ws_api_poll_message_ok($viewer, $poll, $status = 200)
+{
+    $row = ws_message($poll['message_id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), $status);
+}
+
+/**
+ * A refusal of ws_poll_edit() or ws_poll_close() as the API answers it.
+ *
+ * @param string $error
+ * @param string $field
+ */
+function ws_api_poll_refused($error, $field = '')
+{
+    $forbidden = array(
+        lang('Only the person who asked can change the poll.'),
+        lang('Only the person who asked, or whoever runs the channel, can close the poll.'),
+        lang('You cannot post in that channel.'),
+    );
+
+    if (in_array($error, $forbidden, true)) {
+        api_fail(403, 'forbidden', $error);
+    }
+
+    if ($error === lang('That poll could not be found.')) {
+        api_fail_not_found(lang('Poll'));
+    }
+
+    api_fail_validation($error, ($field !== '') ? $field : null);
+}
+
+/**
+ * Asks a poll in a channel, the way Poll by the composer and the /poll
+ * command do: the question is the person's message, and the options, the
+ * settings and the votes are the poll's. The answer is that message.
+ */
+function ws_api_polls_create($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    // Asked in the person's own name: an application key and an OAuth
+    // connection write as the application, and a poll asked so could be
+    // neither changed by the person nor closed with its result in their name.
+    ws_api_own_words_only(lang('Only the person, signed in on a device, can ask a poll; an application cannot ask it in their name.'));
+
+    if (!ws_interact_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $options = array();
+
+    foreach ((array) $params['options'] as $item) {
+        if (!is_string($item) && !is_int($item) && !is_float($item)) {
+            api_fail_validation(lang(array('string' => 'Each item of {var:1} must be a text.', 'vars' => 'options')), 'options');
+        }
+
+        $options[] = (string) $item;
+    }
+
+    $data = array(
+        'question'  => (string) $params['question'],
+        'options'   => $options,
+        'multiple'  => !empty($params['multiple']),
+        'anonymous' => !empty($params['anonymous']),
+        'closes_at' => (int) ($params['closes_at'] ?? 0),
+    );
+
+    // The checks ws_poll_create() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_poll_input($data);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], ($checked['field'] !== '') ? $checked['field'] : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_poll', array(
+        'channel_id' => (int) $channel['id'],
+        'options'    => $checked['options'],
+        'multiple'   => $data['multiple'],
+        'anonymous'  => $data['anonymous'],
+        'closes_at'  => api_time($checked['closes_at']),
+    ));
+
+    $result = ws_poll_create($viewer, $channel, $data);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+    }
+
+    ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
+}
+
+/**
+ * Changes an open poll the person asked, the way Edit the poll on it does. A
+ * field left out stays as it is. Once somebody has voted, an option with
+ * votes keeps its words and stays, and multiple and anonymous no longer
+ * change; options can still be added and the question worded better.
+ */
+function ws_api_polls_update($params)
+{
+    $viewer = ws_api_viewer();
+    $poll = ws_api_poll_or_404($viewer, $params['id']);
+
+    ws_api_own_words_only(lang('Only the person, signed in on a device, can change their poll; an application cannot change it for them.'));
+
+    $fields = array('question', 'options', 'multiple', 'anonymous', 'closes_at');
+
+    if (!array_intersect($fields, array_keys($params))) {
+        api_fail_validation(lang('Send at least one of question, options, multiple, anonymous or closes_at.'));
+    }
+
+    $options = array();
+
+    foreach ((array) db_items("SELECT id, label FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "' ORDER BY sort, id") as $row) {
+        $options[(int) $row['id']] = array('id' => (int) $row['id'], 'label' => (string) $row['label']);
+    }
+
+    // The poll as it is, with what was sent on top.
+    $data = array(
+        'question'  => (string) ws_message($poll['message_id'])['body'],
+        'options'   => array_values($options),
+        'multiple'  => ((int) $poll['multiple'] === 1),
+        'anonymous' => ((int) $poll['anonymous'] === 1),
+        'closes_at' => (int) $poll['closes_at'],
+    );
+
+    if (array_key_exists('question', $params)) {
+        $data['question'] = (string) $params['question'];
+    }
+
+    if (array_key_exists('multiple', $params)) {
+        $data['multiple'] = !empty($params['multiple']);
+    }
+
+    if (array_key_exists('anonymous', $params)) {
+        $data['anonymous'] = !empty($params['anonymous']);
+    }
+
+    // null clears it: open until somebody closes it.
+    if (array_key_exists('closes_at', $params)) {
+        $data['closes_at'] = ($params['closes_at'] === '') ? 0 : (int) $params['closes_at'];
+    }
+
+    if (array_key_exists('options', $params)) {
+        $data['options'] = array();
+
+        foreach ((array) $params['options'] as $item) {
+            if (is_string($item) || is_int($item) || is_float($item)) {
+                $item = array('label' => (string) $item);
+            }
+
+            if (!is_array($item) || !isset($item['label']) || (!is_string($item['label']) && !is_int($item['label']) && !is_float($item['label']))) {
+                api_fail_validation(lang(array('string' => 'Each item of {var:1} needs a label.', 'vars' => 'options')), 'options');
+            }
+
+            $option_id = 0;
+
+            if (isset($item['id'])) {
+                $option_id = (is_int($item['id']) || (is_string($item['id']) && ctype_digit($item['id']))) ? (int) $item['id'] : -1;
+
+                if (!isset($options[$option_id])) {
+                    api_fail_validation(lang(array('string' => 'Each id in {var:1} must be the id of one of the poll\'s options.', 'vars' => 'options')), 'options');
+                }
+            }
+
+            $data['options'][] = array('id' => $option_id, 'label' => (string) $item['label']);
+        }
+    }
+
+    // The checks ws_poll_edit() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_poll_edit_check($viewer, $poll, $data);
+
+    if (!$checked['ok']) {
+        ws_api_poll_refused($checked['error'], $checked['field']);
+    }
+
+    $added = 0;
+
+    foreach ($checked['options'] as $option) {
+        $added += ($option['id'] === 0) ? 1 : 0;
+    }
+
+    api_dry_run_stop('updated', 'workspace_poll', array(
+        'id'         => (int) $poll['id'],
+        'message_id' => (int) $poll['message_id'],
+        'options'    => count($checked['options']),
+        'added'      => $added,
+        'removed'    => count(array_diff(array_keys($options), array_column($checked['options'], 'id'))),
+        'multiple'   => $checked['multiple'],
+        'anonymous'  => $checked['anonymous'],
+        'closes_at'  => api_time($checked['closes_at']),
+    ));
+
+    $result = ws_poll_edit($viewer, $poll, $data);
+
+    if (!$result['ok']) {
+        ws_api_poll_refused($result['error'], $result['field']);
+    }
+
+    ws_api_poll_message_ok($viewer, $poll);
+}
+
+/**
+ * Closes a poll, the way Close the poll on it does: the asker closes their own,
+ * whoever runs the channel any. The result goes into the channel - a clear
+ * winner as a decision in the asker's name, a tie or a poll nobody voted in
+ * as a line of the workspace's. A poll already closed is not an error.
+ */
+function ws_api_polls_close($params)
+{
+    $viewer = ws_api_viewer();
+    $poll = ws_api_poll_or_404($viewer, $params['id']);
+
+    ws_api_person_only(lang('Only the person, signed in on a device, can close a poll; an application cannot close it for them.'));
+
+    // Already closed: nothing to do.
+    if ((int) $poll['closed_at'] > 0) {
+        ws_api_poll_message_ok($viewer, $poll);
+    }
+
+    if (!ws_can_close_poll($viewer, $poll, ws_channel($poll['channel_id']))) {
+        ws_api_poll_refused(lang('Only the person who asked, or whoever runs the channel, can close the poll.'));
+    }
+
+    api_dry_run_stop('closed', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id']));
+
+    $result = ws_poll_close($viewer, $poll);
+
+    if (!$result['ok']) {
+        ws_api_poll_refused($result['error']);
+    }
+
+    ws_api_poll_message_ok($viewer, $poll);
 }
 
 function ws_api_messages_ack_request($params)
