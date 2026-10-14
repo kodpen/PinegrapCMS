@@ -84,6 +84,59 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: zamanlanmış mesaj yalnız ekip cihazları oturumundan, kişinin sözünü değiştiren uçlar MCP aracı değil (2026-10-14)
+
+**Neden.** #393'ün belge taramasının bıraktığı iki kod bulgusu.
+(1) `POST /workspace/channels/{id}/scheduled-messages` `ws_api_person_only()`
+istiyordu; bu kapı her cihaz oturumunu, OAuth bağlantısını da kabul eder.
+Zamanlanmış mesaj ise vakti gelince `ws_scheduled_message_run()` ile
+uygulamasız, kişinin adıyla gönderiliyor: bir OAuth bağlantısının (Claude
+gibi bir MCP istemcisinin) kurduğu mesaj sonra kişinin kendi sözü olarak
+görünüyordu, oysa bağlantının şimdi yazdığı mesaj uygulama adıyla görünür
+(`ws_api_writer_app_id()`). 2026.4.9'da OAuth bağlantısı olmadığı için açık
+yalnız `development`'ta vardı. (2) `workspace.messages.update`, `.delete`
+ve `.hide` `ws_api_own_words_only()` ile OAuth bağlantısını 403 ile
+reddediyor, ama MCP aracı olarak sunuluyordu; Claude gibi bir MCP istemcisi
+OAuth bağlantısıyla geldiği için araç her çağrıda 403 alıyordu. Kardeş uçlar
+(sabitleme, oylama açma / değiştirme) zaten `'mcp' => false`.
+
+**Ne değişti.**
+- Zamanlama ucu `ws_api_own_words_only()` istiyor (oylama açma gibi):
+  yalnız ekip cihazları oturumu; uygulama anahtarı ve OAuth bağlantısı 403
+  `forbidden`, metin aynı (`tr.json` değişmedi). Rota `'mcp' => false`.
+  Listeleme ve silme uçları aynı kaldı (uygulama anahtarı ve OAuth okur,
+  iptal eder) ve MCP aracı olarak duruyor.
+- `workspace.messages.update`, `.delete`, `.delete_post` ve `.hide`
+  rotalarına `'mcp' => false`: MCP araç listesinden
+  `workspace_messages_update`, `workspace_messages_delete` ve
+  `workspace_messages_hide` düşüyor (bağlayıcı yeniden bağlanınca
+  görünür). REST uçları ve 403 kuralı aynı.
+- API belgesi ve OpenAPI: zamanlama ucunun açıklaması "yalnız ekip
+  cihazları oturumu; uygulama anahtarı ve OAuth bağlantısı uygulama adıyla
+  yazar ve 403 alır" diyor.
+- Test: `test_ws_api_own_words_routes_are_no_tools` işleyicisi (ya da
+  çağırdığı `ws_api_*` yardımcısı, ör. `ws_api_pin_target()`)
+  `ws_api_own_words_only()` çağıran her rotanın MCP aracı olmadığını
+  denetliyor; `test_ws_api_scheduled_message_is_scheduled_by_the_person`
+  zamanlamanın kapısını ve listeleme / silmenin araç kaldığını. Önceki iki
+  test (düzeltme / silme / gizleme araçtır) tersine çevrildi. Kural
+  `pinegrap-dis-api` skill'ine yazıldı.
+
+Şema değişikliği yok, izin yok, `tr.json` ve JS değişmedi.
+
+**Bilerek yapılmayan.** Bağlantının kişi adına yazması plan kararı 11'e
+(C5) bağlı; karar gelince bu üç araç ve zamanlama yeniden açılabilir.
+`mcp.php` ekip cihazları jetonunu ve uygulama anahtarını da kabul ediyor;
+araç listesi tek ve OAuth istemcisine göre kurulu, ekip uygulaması bu
+uçları REST'ten çağırır.
+
+**Doğrulama.** `test.php` (tam takım), `lint`, `check_lang`,
+`check_api_schema`, `check_copies`, `build_js --check` temiz; yeni testler
+düzeltme öncesi kodda kırmızı. Çalışan örnekte MCP istemcisiyle
+denenmedi.
+
+---
+
 ## 2026.4.10 — Dış API: kanal grubu oluşturma, değiştirme, silme ve grup yetkisi (2026-10-14)
 
 **Neden.** #392 kanalı bir gruba taşımayı ve grupların listesini API'ye
