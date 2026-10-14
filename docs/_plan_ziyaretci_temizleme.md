@@ -151,10 +151,13 @@ dökümden hemen düşer, dosyanın diskteki boyutu yedeği etkilemez.
    barındırmada her sunucuda yok.
 4. **IP adresini erken silmek** (KVKK): N günden sonra `ip_address = 0`.
    Tablonun tamamına UPDATE; saklama süresiyle aynı parça yöntemiyle yapılabilir.
-5. **Kendiliğinden OPTIMIZE**: sakin saatte, yeterli disk varsa. Disk dolma
-   riski yüzünden şimdilik elle. InnoDB'de silinen satırların yeri dosyada
-   kalır (yedeği etkilemez, diski etkiler); MyISAM'da taşıma bunu çözüyor.
-   Aynı kopyala-yer değiştir yöntemi InnoDB'yi de küçültebilir.
+5. **Kendiliğinden küçültme** (yapıldı, PR #PRNO): InnoDB'deki tablo,
+   dosyasının boş alanı ≥ 128 MB ve kalan satırların yarısından fazlaysa,
+   genel görevce son iki haftanın en sakin saatinde
+   `ALTER TABLE … FORCE, ALGORITHM=INPLACE, LOCK=NONE` ile çevrimiçi yeniden
+   kurulur; yerel veritabanı ve 3 × (veri + dizin) + 1 GB boş disk ister,
+   uzun bir ifade varken başlamaz, kilidi 2 sn bekler. Koşul tutmazsa
+   Veritabanı Motoru'nda "Şimdi küçült" ve eksik koşulu söyleyen not.
 6. Özetin tutmadığı gruplamalar (tam yönlendiren adres, posta kodu, sayfa
    görüntüleme sayısı, sipariş bayrakları) ve filtreli raporlar için özet:
    gerek görülürse boyut eklenir.

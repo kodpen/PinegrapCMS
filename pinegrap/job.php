@@ -544,6 +544,23 @@ if (function_exists('pg_geo_db_due') && pg_geo_db_due()) {
 
 }
 
+// The file of an InnoDB visitors table keeps the room of the rows the cleanup
+// removed. Once a large share of it is free, the table is rebuilt online in
+// the quietest hour of the day, which writes a file holding only the rows that
+// are left (pg_visitor_shrink_run()). Here, after the passes that deliver mail
+// and webhooks, because the rebuild is one statement that can take minutes on
+// a large table. A tick reads one file; the look itself comes once an hour and
+// is one small read outside the quietest hour.
+if (pg_visitor_shrink_due()) {
+
+    $visitor_shrink = pg_visitor_shrink_run(false);
+
+    if ($visitor_shrink['text'] !== '') {
+        log_activity($visitor_shrink['text'], 'UNKNOWN');
+    }
+
+}
+
 // Optional dispatcher: at most one other scheduled job per tick, and only as
 // the very last thing this script does. Several of those scripts call exit()
 // from inside their own control flow, which ends this process too - harmless

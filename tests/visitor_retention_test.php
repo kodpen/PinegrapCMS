@@ -5,8 +5,9 @@
  * Tests for the pure parts of the visitor retention period in
  * includes/fn/visitor_retention.php: the period as typed into the settings,
  * the boundary it gives, the remainder row of the daily summary, the SQL
- * the device and channel are counted with, and what decides whether a MyISAM
- * table is moved to InnoDB.
+ * the device and channel are counted with, what decides whether a MyISAM
+ * table is moved to InnoDB, and whether an InnoDB one is rebuilt to make its
+ * file smaller.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -207,4 +208,101 @@ function test_visitor_move_hold_reason_on_request()
 	pg_assert_same('unsupported', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('capable' => false))));
 	pg_assert_same('too_wide', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('fits' => false))));
 	pg_assert_same('name_taken', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('old_exists' => true))));
+}
+
+// A rebuild is worth it from 128 MB free that is at least half the size of
+// the rows and indexes left.
+function test_visitor_shrink_worth()
+{
+	$megabyte = 1048576.0;
+
+	pg_assert_true(pg_visitor_shrink_worth(array('free' => 1000 * $megabyte, 'bytes' => 300 * $megabyte)));
+	pg_assert_true(pg_visitor_shrink_worth(array('free' => 128 * $megabyte, 'bytes' => 256 * $megabyte)), 'both bounds met exactly');
+	pg_assert_false(pg_visitor_shrink_worth(array('free' => 127 * $megabyte, 'bytes' => 10 * $megabyte)), 'below 128 MB');
+	pg_assert_false(pg_visitor_shrink_worth(array('free' => 500 * $megabyte, 'bytes' => 1200 * $megabyte)), 'a small share of a large file');
+	pg_assert_false(pg_visitor_shrink_worth(array()), 'nothing known');
+}
+
+// The free space inside the file is not part of the rows on InnoDB.
+function test_visitor_shrink_disk_needed()
+{
+	$gigabyte = 1073741824.0;
+
+	pg_assert_same($gigabyte, pg_visitor_shrink_disk_needed(array()), 'nothing known');
+	pg_assert_same(3 * (300.0 + 100.0) + $gigabyte, pg_visitor_shrink_disk_needed(array('data' => 300.0, 'free' => 900.0, 'index' => 100.0)));
+}
+
+// The hour with the fewest page views; a missing hour had none; a tie goes
+// to the first hour from 03:00 on, and no figures at all mean 03:00.
+function test_visitor_shrink_quiet_hour()
+{
+	pg_assert_same(3, pg_visitor_shrink_quiet_hour(array()), 'no figures');
+	pg_assert_same(3, pg_visitor_shrink_quiet_hour(array_fill(0, 24, 0)), 'all zero');
+
+	$views = array_fill(0, 24, 500);
+	$views[5] = 20;
+	pg_assert_same(5, pg_visitor_shrink_quiet_hour($views));
+
+	$views[23] = 20;
+	pg_assert_same(5, pg_visitor_shrink_quiet_hour($views), 'tie: the first from 03:00 on');
+
+	$views = array_fill(0, 24, 500);
+	$views[1] = 20;
+	$views[4] = 20;
+	pg_assert_same(4, pg_visitor_shrink_quiet_hour($views), 'tie across midnight: 04:00 comes before 01:00 from 03:00 on');
+
+	$views = array_fill(0, 24, 500);
+	unset($views[14]);
+	pg_assert_same(14, pg_visitor_shrink_quiet_hour($views), 'an hour without a row had no page view');
+}
+
+// The facts of an InnoDB table the general job may rebuild on its own.
+function pg_test_visitor_shrink_facts($changes = array())
+{
+	return $changes + array(
+		'engine' => 'innodb',
+		'moving' => false,
+		'per_table' => true,
+		'requested' => false,
+		'worth' => true,
+		'failed' => false,
+		'recent' => false,
+		'backlog' => false,
+		'disk_free' => 10.0 * 1073741824,
+		'needed' => 2.0 * 1073741824,
+		'hour' => 3,
+		'quiet_hour' => 3,
+	);
+}
+
+// Rebuilt on its own only when much of the file is free, the cleanup is
+// through, the disk is seen to have room and it is the quietest hour; each
+// reason in the order the screen explains it.
+function test_visitor_shrink_hold_reason_on_its_own()
+{
+	pg_assert_same('', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts()));
+	pg_assert_same('engine', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('engine' => 'myisam'))));
+	pg_assert_same('moving', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('moving' => true))));
+	pg_assert_same('shared_tablespace', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('per_table' => false))));
+	pg_assert_same('', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('per_table' => null))), 'an unreadable setting does not hold it');
+	pg_assert_same('small', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('worth' => false))));
+	pg_assert_same('failed', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('failed' => true))));
+	pg_assert_same('recent', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('recent' => true))));
+	pg_assert_same('backlog', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('backlog' => true))));
+	pg_assert_same('disk_unknown', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => null))));
+	pg_assert_same('disk_low', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => 1.0 * 1073741824))));
+	pg_assert_same('hour', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('hour' => 14))));
+	pg_assert_same('small', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('worth' => false, 'disk_free' => null, 'hour' => 14))), 'nothing to gain comes first');
+}
+
+// The operator's request skips the size, an earlier rebuild, the cleanup,
+// the disk and the hour, never what makes the rebuild pointless.
+function test_visitor_shrink_hold_reason_on_request()
+{
+	$requested = array('requested' => true, 'worth' => false, 'failed' => true, 'recent' => true, 'backlog' => true, 'disk_free' => null, 'hour' => 14);
+
+	pg_assert_same('', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested)));
+	pg_assert_same('engine', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('engine' => 'myisam'))));
+	pg_assert_same('moving', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('moving' => true))));
+	pg_assert_same('shared_tablespace', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('per_table' => false))));
 }

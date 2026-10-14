@@ -12,7 +12,8 @@
  * 0 keeps them all), a daily summary written before a day's rows go
  * (config.visitor_summary, table visitor_stats_daily), the removal itself in
  * short chunks the general job and the Database Engine screen run, the move
- * of a table still on MyISAM to InnoDB once it is down to its period, and the
+ * of a table still on MyISAM to InnoDB once it is down to its period, the
+ * online rebuild that gives the room of removed rows back to the disk, and the
  * figures that screen and System Status show about the table.
  *
  * The hourly rollups (visitor_stats_hourly, visitor_content_hourly) are not
@@ -1953,6 +1954,673 @@ function pg_visitor_move_reason_text($last)
 
         case 'disk_low':
             return lang(array('string' => 'The general job does not start moving it to InnoDB on its own, because the database server has less free disk space than the move needs, about {var:1}.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+    }
+
+    return '';
+}
+
+// -- Giving the room of removed rows back to the disk -------------------------
+//
+// Rows removed from an InnoDB table leave their pages free inside the table's
+// file: new visits reuse them, but the file keeps its size. Once the cleanup
+// has worked off the backlog of a busy site, most of the file can be free
+// space. Rebuilding the table writes a new file that holds only the rows that
+// are left and drops the old one.
+//
+// ALTER TABLE ... FORCE, ALGORITHM=INPLACE, LOCK=NONE is that rebuild done
+// online (MySQL 5.6.17+, MariaDB 10.0+): visits are written and read while it
+// runs, and the server holds the table to itself only for a moment at its
+// start and at its end. Naming the algorithm and the lock makes a server that
+// cannot rebuild it online refuse the statement rather than fall back to a
+// copy during which every write waits. OPTIMIZE TABLE would fall back
+// silently, and on MariaDB with innodb_defragment on it defragments the pages
+// without making the file smaller.
+
+/**
+ * Free space inside the table's file from which a rebuild is worth its while:
+ * 128 MB, and at least half the size of the rows and indexes that are left
+ * (a third of the file).
+ */
+define('PG_VISITOR_SHRINK_MIN_FREE', 134217728);
+
+/**
+ * The file that remembers the last look at the rebuild and how the last
+ * rebuild ended.
+ *
+ * @return string
+ */
+function pg_visitor_shrink_marker()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/visitor_shrink.json';
+}
+
+/**
+ * What the marker file holds, every key present.
+ *
+ * state: '' never looked, 'waiting' not rebuilt now ('reason' says why),
+ * 'running' a rebuild started and its request has not come back yet,
+ * 'done', 'failed' ('error').
+ *
+ * @return array
+ */
+function pg_visitor_shrink_last()
+{
+    $last = @json_decode((string) @file_get_contents(pg_visitor_shrink_marker()), true);
+
+    if (!is_array($last)) {
+        $last = array();
+    }
+
+    return array(
+        'state' => isset($last['state']) ? (string) $last['state'] : '',
+        'reason' => isset($last['reason']) ? (string) $last['reason'] : '',
+        'error' => isset($last['error']) ? (string) $last['error'] : '',
+        'checked_at' => isset($last['checked_at']) ? (int) $last['checked_at'] : 0,
+        'started' => isset($last['started']) ? (int) $last['started'] : 0,
+        'finished_at' => isset($last['finished_at']) ? (int) $last['finished_at'] : 0,
+        'failed_at' => isset($last['failed_at']) ? (int) $last['failed_at'] : 0,
+        'seconds' => isset($last['seconds']) ? (float) $last['seconds'] : 0.0,
+        'file_before' => isset($last['file_before']) ? (float) $last['file_before'] : 0.0,
+        'file_after' => isset($last['file_after']) ? (float) $last['file_after'] : 0.0,
+        'needed' => isset($last['needed']) ? (float) $last['needed'] : 0.0,
+        'quiet_hour' => isset($last['quiet_hour']) ? (int) $last['quiet_hour'] : 3,
+    );
+}
+
+/**
+ * Write the marker file.
+ *
+ * @param array $last pg_visitor_shrink_last() with the changes
+ */
+function pg_visitor_shrink_save($last)
+{
+    $marker = pg_visitor_shrink_marker();
+
+    if (!is_dir(dirname($marker))) {
+        @mkdir(dirname($marker), 0755, true);
+    }
+
+    @file_put_contents($marker, json_encode($last), LOCK_EX);
+}
+
+/**
+ * Whether the general job should look at the rebuild now: once in every hour
+ * of the clock, so that the quietest one is never skipped, and on every tick
+ * while a rebuild's request has not come back.
+ *
+ * @return bool
+ */
+function pg_visitor_shrink_due()
+{
+    $last = pg_visitor_shrink_last();
+
+    if ($last['state'] === 'running') {
+        return true;
+    }
+
+    return date('YmdH', $last['checked_at']) !== date('YmdH');
+}
+
+/**
+ * Whether the free space inside the table's file is worth a rebuild.
+ *
+ * No database access.
+ *
+ * @param array $catalog_row pg_db_table_catalog()['visitors']
+ * @return bool
+ */
+function pg_visitor_shrink_worth($catalog_row)
+{
+    $free = isset($catalog_row['free']) ? (float) $catalog_row['free'] : 0.0;
+    $bytes = isset($catalog_row['bytes']) ? (float) $catalog_row['bytes'] : 0.0;
+
+    return ($free >= PG_VISITOR_SHRINK_MIN_FREE) && ($free >= ($bytes / 2));
+}
+
+/**
+ * Free disk space a rebuild asks for before the general job starts one on its
+ * own.
+ *
+ * On InnoDB the free space is not part of the data figure: the new file holds
+ * about the data and the indexes, the sort files for the indexes and the log
+ * of the writes made during the rebuild come on top. Three times that, and a
+ * gigabyte left over for the rest of the server, as for the move.
+ *
+ * No database access.
+ *
+ * @param array $catalog_row pg_db_table_catalog()['visitors']
+ * @return float bytes
+ */
+function pg_visitor_shrink_disk_needed($catalog_row)
+{
+    $data = isset($catalog_row['data']) ? (float) $catalog_row['data'] : 0.0;
+    $index = isset($catalog_row['index']) ? (float) $catalog_row['index'] : 0.0;
+
+    return (3 * ($data + $index)) + 1073741824.0;
+}
+
+/**
+ * The hour of the day with the fewest page views, the one the general job
+ * rebuilds the table in.
+ *
+ * An hour with no row had no page view. Of hours as quiet as each other, the
+ * first from 03:00 on; with no figures at all, 03:00.
+ *
+ * No database access.
+ *
+ * @param array $views hour (0-23) => page views over the same days
+ * @return int 0-23
+ */
+function pg_visitor_shrink_quiet_hour($views)
+{
+    if (array_sum(array_map('intval', (array) $views)) <= 0) {
+        return 3;
+    }
+
+    $quiet = 3;
+    $fewest = null;
+
+    for ($step = 0; $step < 24; $step++) {
+
+        $hour = ($step + 3) % 24;
+        $count = isset($views[$hour]) ? (int) $views[$hour] : 0;
+
+        if (($fewest === null) || ($count < $fewest)) {
+            $quiet = $hour;
+            $fewest = $count;
+        }
+    }
+
+    return $quiet;
+}
+
+/**
+ * Page views per hour of the day over the last two weeks, from the hourly
+ * rollup the dashboard reads (bucketed on PHP's clock, the clock the general
+ * job compares with).
+ *
+ * @return array hour => page views; empty when the rollup is not there
+ */
+function pg_visitor_shrink_hour_views()
+{
+    if (!function_exists('pg_visitor_rollup_ready') || !pg_visitor_rollup_ready()) {
+        return array();
+    }
+
+    $result = @mysqli_query(db::$con,
+        "SELECT stat_hour, SUM(page_views)
+        FROM visitor_stats_hourly
+        WHERE stat_date >= '" . date('Y-m-d', strtotime('-14 days')) . "'
+        GROUP BY stat_hour");
+
+    $views = array();
+
+    while ($result && ($row = mysqli_fetch_row($result))) {
+        $views[(int) $row[0]] = (int) $row[1];
+    }
+
+    return $views;
+}
+
+/**
+ * What the decision to rebuild rests on, read now.
+ *
+ * @param array $catalog_row pg_db_table_catalog()['visitors']
+ * @param array $last        pg_visitor_shrink_last()
+ * @param bool  $requested   the operator asked for it
+ * @return array the facts of pg_visitor_shrink_hold_reason()
+ */
+function pg_visitor_shrink_facts($catalog_row, $last, $requested)
+{
+    $move = pg_visitor_move_last();
+    $settings = pg_visitor_retention_settings();
+    $cleanup = pg_visitor_cleanup_last();
+
+    $per_table = null;
+    $per_table_result = @mysqli_query(db::$con, "SELECT @@innodb_file_per_table");
+    $per_table_row = $per_table_result ? mysqli_fetch_row($per_table_result) : null;
+
+    if (is_array($per_table_row) && ($per_table_row[0] !== null)) {
+        $per_table = !in_array(strtoupper(trim((string) $per_table_row[0])), array('0', 'OFF'), true);
+    }
+
+    $days = is_array($settings) ? (int) $settings['days'] : 0;
+
+    return array(
+        'engine' => isset($catalog_row['engine']) ? (string) $catalog_row['engine'] : '',
+        'moving' => in_array($move['state'], array('copying', 'swapped'), true),
+        'per_table' => $per_table,
+        'requested' => (bool) $requested,
+        'worth' => pg_visitor_shrink_worth($catalog_row),
+        'failed' => (($last['state'] === 'failed') && ($last['failed_at'] > (time() - 7 * 86400))),
+        'recent' => (($last['state'] === 'done') && ($last['finished_at'] > (time() - 7 * 86400))),
+        'backlog' => ($days > 0) && (($cleanup['checked_at'] <= 0) || $cleanup['backlog']),
+        'disk_free' => pg_visitor_move_disk_free(),
+        'needed' => pg_visitor_shrink_disk_needed($catalog_row),
+        'hour' => (int) date('G'),
+        'quiet_hour' => pg_visitor_shrink_quiet_hour(pg_visitor_shrink_hour_views()),
+    );
+}
+
+/**
+ * Why the table is not rebuilt now, or '' when it may be.
+ *
+ * On its own the general job rebuilds it only when much of the file is free,
+ * once the cleanup has removed what it is going to, when it can see the free
+ * disk the rebuild needs, in the quietest hour of the day, and not again for
+ * a week after a rebuild that ended either way. The operator's request skips
+ * those: whoever asked has seen the space it needs on the screen.
+ *
+ * No database access.
+ *
+ * @param array $facts engine (lower case), moving (bool: the move to InnoDB
+ *                     is under way), per_table (bool|null:
+ *                     innodb_file_per_table), requested (bool), worth (bool),
+ *                     failed (bool: a rebuild failed in the last week),
+ *                     recent (bool: a rebuild ended in the last week),
+ *                     backlog (bool), disk_free (float|null), needed (float),
+ *                     hour (int, now), quiet_hour (int)
+ * @return string '', 'engine', 'moving', 'shared_tablespace', 'small',
+ *                'failed', 'recent', 'backlog', 'disk_unknown', 'disk_low',
+ *                'hour'
+ */
+function pg_visitor_shrink_hold_reason($facts)
+{
+    // A MyISAM table gets its file made smaller by the move to InnoDB.
+    if ($facts['engine'] !== 'innodb') {
+        return 'engine';
+    }
+
+    if ($facts['moving']) {
+        return 'moving';
+    }
+
+    // With innodb_file_per_table off the table is rebuilt into the shared
+    // tablespace, whose file never gets smaller.
+    if ($facts['per_table'] === false) {
+        return 'shared_tablespace';
+    }
+
+    if ($facts['requested']) {
+        return '';
+    }
+
+    if (!$facts['worth']) {
+        return 'small';
+    }
+
+    if ($facts['failed']) {
+        return 'failed';
+    }
+
+    if ($facts['recent']) {
+        return 'recent';
+    }
+
+    if ($facts['backlog']) {
+        return 'backlog';
+    }
+
+    if ($facts['disk_free'] === null) {
+        return 'disk_unknown';
+    }
+
+    if ((float) $facts['disk_free'] < (float) $facts['needed']) {
+        return 'disk_low';
+    }
+
+    if ((int) $facts['hour'] !== (int) $facts['quiet_hour']) {
+        return 'hour';
+    }
+
+    return '';
+}
+
+/**
+ * The size of the table's file, from its catalog row: the rows, the indexes
+ * and the free space inside it.
+ *
+ * @param array|null $catalog_row
+ * @return float
+ */
+function pg_visitor_shrink_file_size($catalog_row)
+{
+    if (!is_array($catalog_row)) {
+        return 0.0;
+    }
+
+    return (float) $catalog_row['bytes'] + (float) $catalog_row['free'];
+}
+
+/**
+ * Rebuild the visitors table to make its file smaller, or look whether it
+ * should be.
+ *
+ * Takes the cleanup's lock, so that the cleanup, the move and the rebuild
+ * never run at the same time. The rebuild is one statement: a request that
+ * ends under it (a web server's time limit) leaves the server to finish it,
+ * holding the lock until it has, and the marker saying 'running'; the next
+ * run that gets the lock reads from the table's size how it ended.
+ *
+ * The rebuild needs the table to itself for a moment at its start and at its
+ * end, and every query on the table queues behind it while it waits for that
+ * moment. A statement of this database that has been running for seconds (a
+ * visitor report over a long period, a backup) would hold it up: the rebuild
+ * does not start then. Otherwise it waits 2 s at most, the wait a transaction
+ * left open with the table read in it can cause, gives up rather than keep
+ * the visits queuing, and is tried again the next day.
+ *
+ * @param bool $requested the operator asked for it: skips the size, the
+ *                        hour, the disk, the cleanup and the week's wait
+ * @return array('state' => 'busy'|'waiting'|'done'|'failed', 'reason' =>
+ *               string, 'text' => string, 'seconds' => float)
+ */
+function pg_visitor_shrink_run($requested = false)
+{
+    $result = array('state' => 'busy', 'reason' => '', 'text' => '', 'seconds' => 0.0);
+
+    if (!class_exists('db') || empty(db::$con)) {
+        $result['state'] = 'waiting';
+        return $result;
+    }
+
+    // Said only to the operator: the general job finds the lock taken on
+    // every tick of a long rebuild, which is nothing to log.
+    if (pg_visitor_move_number("SELECT GET_LOCK(" . pg_visitor_cleanup_lock_sql() . ", 0)") !== 1) {
+        if ($requested) {
+            $result['text'] = lang('Another visitor record job is running (the cleanup, the move to InnoDB or a rebuild). Try again in a minute.');
+        }
+        return $result;
+    }
+
+    if (function_exists('ignore_user_abort')) {
+        @ignore_user_abort(true);
+    }
+
+    // The statement can run for minutes; on Windows PHP's time limit counts
+    // the time spent waiting for it.
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
+    }
+
+    $last = pg_visitor_shrink_last();
+    $last['checked_at'] = time();
+
+    // A rebuild whose request never came back. Holding the lock means the
+    // server is through with it: the file is a good deal smaller when it
+    // went through.
+    if ($last['state'] === 'running') {
+
+        $catalog = pg_db_table_catalog();
+        $file_now = isset($catalog['visitors']) ? pg_visitor_shrink_file_size($catalog['visitors']) : 0.0;
+
+        // How long it ran is not known.
+        $last['seconds'] = 0.0;
+
+        if (($file_now > 0) && ($last['file_before'] > 0) && ($file_now < 0.9 * $last['file_before'])) {
+            $last['state'] = 'done';
+            $last['finished_at'] = time();
+            $last['file_after'] = $file_now;
+            $last['error'] = '';
+            $result['text'] = pg_visitor_shrink_result_text($last);
+        } else {
+            $last['state'] = 'failed';
+            $last['failed_at'] = time();
+            $last['error'] = lang('the rebuild did not finish');
+            $result['text'] = pg_visitor_shrink_result_text($last);
+        }
+    }
+
+    // Outside the quietest hour the general job's look stops here, before the
+    // table catalog is read.
+    $views = pg_visitor_shrink_hour_views();
+    $last['quiet_hour'] = pg_visitor_shrink_quiet_hour($views);
+
+    if (!$requested && ((int) date('G') !== $last['quiet_hour'])) {
+
+        if (!in_array($last['state'], array('done', 'failed'), true)) {
+            $last['state'] = 'waiting';
+        }
+
+        $last['reason'] = 'hour';
+
+        pg_visitor_shrink_save($last);
+        pg_visitor_move_query("SELECT RELEASE_LOCK(" . pg_visitor_cleanup_lock_sql() . ")");
+
+        $result['state'] = 'waiting';
+        $result['reason'] = 'hour';
+
+        return $result;
+    }
+
+    $catalog = pg_db_table_catalog();
+    $catalog_row = isset($catalog['visitors']) ? $catalog['visitors'] : array();
+
+    $facts = pg_visitor_shrink_facts($catalog_row, $last, $requested);
+    $last['needed'] = $facts['needed'];
+
+    $reason = pg_visitor_shrink_hold_reason($facts);
+
+    if ($reason !== '') {
+
+        if (!in_array($last['state'], array('done', 'failed'), true)) {
+            $last['state'] = 'waiting';
+        }
+
+        $last['reason'] = $reason;
+
+        pg_visitor_shrink_save($last);
+        pg_visitor_move_query("SELECT RELEASE_LOCK(" . pg_visitor_cleanup_lock_sql() . ")");
+
+        $result['state'] = 'waiting';
+        $result['reason'] = $reason;
+
+        if ($requested) {
+            $result['text'] = pg_visitor_shrink_reason_text($reason, $last);
+        }
+
+        return $result;
+    }
+
+    if (pg_visitor_shrink_long_statement() > 0) {
+
+        if (!in_array($last['state'], array('done', 'failed'), true)) {
+            $last['state'] = 'waiting';
+        }
+
+        $last['reason'] = 'in_use';
+
+        pg_visitor_shrink_save($last);
+        pg_visitor_move_query("SELECT RELEASE_LOCK(" . pg_visitor_cleanup_lock_sql() . ")");
+
+        $result['state'] = 'waiting';
+        $result['reason'] = 'in_use';
+        if ($requested) {
+            $result['text'] = pg_visitor_shrink_reason_text('in_use', $last);
+        }
+
+        return $result;
+    }
+
+    // Written before the statement: a request that ends under it leaves this
+    // for the next run to find. A rebuild that does not get the table puts
+    // back what was there.
+    $before_attempt = $last;
+
+    $last['state'] = 'running';
+    $last['reason'] = '';
+    $last['error'] = '';
+    $last['started'] = time();
+    $last['file_before'] = pg_visitor_shrink_file_size($catalog_row);
+    $last['file_after'] = 0.0;
+
+    pg_visitor_shrink_save($last);
+
+    $rebuild = pg_db_run_table_statement('visitors', "ALTER TABLE {table} FORCE, ALGORITHM=INPLACE, LOCK=NONE", array(
+        'state' => 'failed',
+        'table' => 'visitors',
+        'seconds' => 0.0,
+        'messages' => array(),
+        'errno' => 0,
+        'error' => '',
+        'running_seconds' => 0,
+    ), '', 2);
+
+    $last['seconds'] = (float) $rebuild['seconds'];
+
+    if ($rebuild['state'] === 'ran') {
+
+        $after = pg_db_table_catalog();
+
+        $last['state'] = 'done';
+        $last['finished_at'] = time();
+        $last['file_after'] = isset($after['visitors']) ? pg_visitor_shrink_file_size($after['visitors']) : 0.0;
+
+        $result['state'] = 'done';
+        $result['text'] = pg_visitor_shrink_result_text($last);
+
+    } elseif (in_array($rebuild['state'], array('busy', 'running'), true)) {
+
+        // The table was in use: nothing changed and nothing failed.
+        $last = $before_attempt;
+
+        if (!in_array($last['state'], array('done', 'failed'), true)) {
+            $last['state'] = 'waiting';
+        }
+
+        $last['reason'] = 'in_use';
+
+        $result['state'] = 'waiting';
+        $result['reason'] = 'in_use';
+        if ($requested) {
+            $result['text'] = pg_visitor_shrink_reason_text('in_use', $last);
+        }
+
+    } else {
+
+        $last['state'] = 'failed';
+        $last['failed_at'] = time();
+        $last['error'] = ($rebuild['error'] !== '')
+            ? (($rebuild['errno'] > 0) ? 'MySQL ' . (int) $rebuild['errno'] . ': ' . $rebuild['error'] : $rebuild['error'])
+            : lang('unknown error');
+
+        $result['state'] = 'failed';
+        $result['text'] = pg_visitor_shrink_result_text($last);
+    }
+
+    pg_visitor_shrink_save($last);
+
+    pg_visitor_move_query("SELECT RELEASE_LOCK(" . pg_visitor_cleanup_lock_sql() . ")");
+
+    $result['seconds'] = (float) $rebuild['seconds'];
+
+    return $result;
+}
+
+/**
+ * How long, in seconds, the longest statement another connection is running
+ * on this database has been at it, counting only those of 2 s and more; 0
+ * when there is none or the list cannot be read.
+ *
+ * Without the PROCESS privilege the list holds the connections of the same
+ * database user, which are the site's own.
+ *
+ * @return int
+ */
+function pg_visitor_shrink_long_statement()
+{
+    return pg_visitor_move_number(
+        "SELECT COALESCE(MAX(TIME), 0)
+        FROM information_schema.PROCESSLIST
+        WHERE
+            (ID <> CONNECTION_ID())
+            AND (DB = DATABASE())
+            AND (INFO IS NOT NULL)
+            AND (COMMAND NOT IN ('Sleep', 'Daemon', 'Binlog Dump'))
+            AND (TIME >= 2)");
+}
+
+/**
+ * One sentence on how a rebuild ended, for the activity log and the screen.
+ *
+ * @param array $last pg_visitor_shrink_last()
+ * @return string
+ */
+function pg_visitor_shrink_result_text($last)
+{
+    if (($last['state'] === 'done') && ($last['seconds'] <= 0)) {
+        return lang(array(
+            'string' => 'The visitors table was rebuilt and its file made smaller: {var:1} before, {var:2} now.',
+            'vars' => array(pg_innodb_size_label($last['file_before']), pg_innodb_size_label($last['file_after'])),
+        ));
+    }
+
+    if ($last['state'] === 'done') {
+        return lang(array(
+            'string' => 'The visitors table was rebuilt in {var:1} s and its file made smaller: {var:2} before, {var:3} now.',
+            'vars' => array(
+                pg_format_number($last['seconds'], 1),
+                pg_innodb_size_label($last['file_before']),
+                pg_innodb_size_label($last['file_after']),
+            ),
+        ));
+    }
+
+    if ($last['state'] === 'failed') {
+        return lang(array(
+            'string' => 'Rebuilding the visitors table to make its file smaller stopped: {var:1}. The table is as it was and works as before.',
+            'vars' => array($last['error']),
+        ));
+    }
+
+    return '';
+}
+
+/**
+ * Why the table is not rebuilt, in a sentence for the screen; '' when there
+ * is nothing to say.
+ *
+ * @param string $reason pg_visitor_shrink_hold_reason(), or 'in_use'
+ * @param array  $last   pg_visitor_shrink_last()
+ * @return string
+ */
+function pg_visitor_shrink_reason_text($reason, $last)
+{
+    switch ($reason) {
+
+        case 'engine':
+            return lang('Only a table on InnoDB is rebuilt this way; a table on MyISAM gets a smaller file when it is moved to InnoDB.');
+
+        case 'moving':
+            return lang('The table is being moved to InnoDB, which gives the room back to the disk as well.');
+
+        case 'shared_tablespace':
+            return lang('The database server keeps InnoDB tables in one shared file (innodb_file_per_table is off), which does not get smaller when a table is rebuilt.');
+
+        case 'small':
+            return lang('Too little of the file is free for a rebuild to be worth it.');
+
+        case 'failed':
+            return pg_visitor_shrink_result_text($last) . ' ' . lang('The general job tries again a week later; Shrink now tries now.');
+
+        case 'recent':
+            return lang('The table was rebuilt in the last week; the general job looks at it again after that.');
+
+        case 'backlog':
+            return lang('Once the old records are gone, the general job gives this room back to the disk on its own, at the quietest hour of the day.');
+
+        case 'disk_unknown':
+            return lang(array('string' => 'The general job does not give it back on its own, because the free disk space of the database server cannot be read from here. Rebuilding the table needs about {var:1} free while it runs.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+
+        case 'disk_low':
+            return lang(array('string' => 'The general job does not give it back on its own, because the database server has less free disk space than rebuilding the table needs, about {var:1}.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+
+        case 'hour':
+        case '':
+            return lang(array('string' => 'The general job gives it back to the disk on its own at {var:1}, the quietest hour of the day by the page views of the last two weeks: it rebuilds the table while the site keeps running.', 'vars' => array(sprintf('%02d:00', (int) $last['quiet_hour']))));
+
+        case 'in_use':
+            return lang('The table was in use (a long query or a backup was running), so it was left as it is. The general job tries again at the quietest hour of the day.');
     }
 
     return '';
