@@ -136,6 +136,7 @@ $editor = array(
         'addMethod'              => lang('+ method'),
         'selectProductPlaceholder' => '– ' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('product')))) . ' –',
         'disabledProduct'        => lang('DISABLED'),
+        'recycledProduct'        => lang('IN RECYCLE BIN'),
         'added'                  => lang('added'),
         'remove'                 => lang('Remove'),
         'removeCondition'        => lang('Remove condition'),

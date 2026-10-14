@@ -3627,6 +3627,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     $pg_mode       = isset($context['mode']) ? $context['mode'] : 'create';
     $pg_product_id = isset($context['product_id']) ? (int) $context['product_id'] : 0;
 
+    // A product in the Recycle Bin is shown but cannot be saved or deleted
+    // here (edit_product.php refuses the write too); the way back is
+    // restoring it in the Catalog Manager, so that is what the screen offers.
+    $pg_recycled = ($pg_mode === 'edit') && !empty($context['recycled']);
+    $pg_bin_link = '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="btn-text">' . lang('Open the Recycle Bin') . '</span></a>';
+
     // What a new product starts as. Written as values rather than as markup
     // defaults so that the create screen and the edit screen read from the same
     // place: a switch is on because a value says so, never because of which
@@ -4480,6 +4486,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+            ' . ($pg_recycled
+                ? '<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
+                : '') . '
         </div>
     </div>
 
@@ -5364,12 +5373,13 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 <nav class="buttons navigation text-center mb-4" aria-label="' . lang('data edit buttons') . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
+                            ' . ($pg_recycled ? $pg_bin_link : '
                             <button type="submit" id="pg_pb_create" name="submit_create" value="Create" class="btn my-1 btn-success">
                                 <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-2"></span><span class="btn-text">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
                                 ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
-                                : '') . '
+                                : '')) . '
                         </div>
                     </div>
                 </nav>
@@ -6037,10 +6047,13 @@ function pg_pb_quick_update($product_id, $field, $value)
     $product_id = (int) $product_id;
     $columns = pg_pb_quick_edit_columns();
 
+    // A product in the Recycle Bin is not on the list this is called from; a
+    // row left on a page opened before it went there is refused like a
+    // missing one, or switching it on would put it back on sale from the bin.
     $current = db_item(
         "SELECT id, name, short_description, enabled, price, inventory, inventory_quantity, keywords
         FROM products
-        WHERE id = '" . $product_id . "'");
+        WHERE (id = '" . $product_id . "')" . pg_catalog_bin_live_sql('products'));
 
     if (!$current) {
         return array('ok' => false, 'code' => 'not_found', 'message' => lang('Product not found.'));

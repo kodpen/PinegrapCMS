@@ -230,7 +230,10 @@
         h += '<option value="">' + esc(placeholder) + '</option>';
         PRODUCTS.forEach(function (p) {
             if (exclude && exclude.indexOf(p.id) >= 0) { return; }
-            h += '<option value="' + p.id + '"' + (selectedId == p.id ? ' selected' : '') + '>' + esc(p.label) + (p.code ? ' · ' + esc(p.code) : '') + (p.enabled ? '' : ' [' + esc(L.disabledProduct) + ']') + '</option>';
+            // A product in the Recycle Bin is not offered; the one this row
+            // already names stays, so the row keeps saying what it holds.
+            if (p.recycled && (selectedId != p.id)) { return; }
+            h += '<option value="' + p.id + '"' + (selectedId == p.id ? ' selected' : '') + '>' + esc(p.label) + (p.code ? ' · ' + esc(p.code) : '') + (p.recycled ? ' [' + esc(L.recycledProduct) + ']' : (p.enabled ? '' : ' [' + esc(L.disabledProduct) + ']')) + '</option>';
         });
         return h + '</select>';
     }
@@ -886,7 +889,10 @@
         return METHODS.map(function (m) { return m.id; });
     }
     function quickStart(key) {
-        var firstProduct = PRODUCTS.length ? PRODUCTS[0].id : 0;
+        var firstProduct = 0;
+        for (var p = 0; p < PRODUCTS.length; p++) {
+            if (!PRODUCTS[p].recycled) { firstProduct = PRODUCTS[p].id; break; }
+        }
         // The deepest group is the most likely campaign target: the top of the
         // tree is usually "All product groups", which discounts the catalogue.
         var firstGroup = 0;

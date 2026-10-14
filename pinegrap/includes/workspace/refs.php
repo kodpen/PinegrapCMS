@@ -806,8 +806,9 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             break;
 
         case 'product':
+            // Not what is in the Recycle Bin, as for groups below.
             $found = db_values("SELECT id FROM products
-                WHERE (name LIKE '%" . $like . "%' OR short_description LIKE '%" . $like . "%'" . (($number !== '') ? " OR id = '" . (int) $number . "'" : '') . ")
+                WHERE (name LIKE '%" . $like . "%' OR short_description LIKE '%" . $like . "%'" . (($number !== '') ? " OR id = '" . (int) $number . "'" : '') . ")" . pg_catalog_bin_live_sql('products') . "
                 ORDER BY enabled DESC, short_description LIMIT " . $limit);
             break;
 

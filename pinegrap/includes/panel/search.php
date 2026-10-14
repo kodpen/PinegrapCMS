@@ -299,11 +299,12 @@ function pg_panel_backend_search($request, $action)
 
     // ── E-commerce (manager+ or manage_ecommerce) ────────────────────────
     if ($can_ecommerce) {
-        // Products
+        // Products; not those in the Recycle Bin, which the catalogue lists
+        // no longer show either.
         $rows = db_items(
             "SELECT id, name, short_description, image_name
              FROM products
-             WHERE (name LIKE '$s' OR short_description LIKE '$s')
+             WHERE (name LIKE '$s' OR short_description LIKE '$s')" . pg_catalog_bin_live_sql('products') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -321,7 +322,7 @@ function pg_panel_backend_search($request, $action)
         $rows = db_items(
             "SELECT id, name
              FROM product_groups
-             WHERE name LIKE '$s'
+             WHERE (name LIKE '$s')" . pg_catalog_bin_live_sql('product_groups') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {

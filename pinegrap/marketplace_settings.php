@@ -1559,10 +1559,11 @@ $unmatched = array();
 
 if ($selected) {
 
+	// Products in the Recycle Bin are not offered for matching.
 	$unmatched = (array) db_items("SELECT products.id, products.name, products.title
 		FROM products
 		WHERE products.id NOT IN (
-			SELECT product_id FROM marketplace_product_map WHERE account_id = '" . e($selected_id) . "')
+			SELECT product_id FROM marketplace_product_map WHERE account_id = '" . e($selected_id) . "')" . pg_catalog_bin_live_sql('products') . "
 		ORDER BY products.name ASC
 		LIMIT 2000");
 

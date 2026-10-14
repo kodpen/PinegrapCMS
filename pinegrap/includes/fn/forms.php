@@ -802,7 +802,10 @@ function select_page_type($page_type, $user)
     }
     return $output;
 }
-function get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = true, $format = 'text', $include_blank_option = false, $include_disabled = true)
+// $include_recycled false leaves out the groups in the Recycle Bin, for a list
+// of places a group can be put; the rest keep them, because a setting or a
+// product that already names one must not lose it on the next save.
+function get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = true, $format = 'text', $include_blank_option = false, $include_disabled = true, $include_recycled = true)
 {
     global $user;
     // If the format is text, then prepare output variable for that.
@@ -815,11 +818,14 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
     // If this is the first time this function has run, then get all product groups and put them in an array,
     // and determine if a blank option should be added.
     if (count($product_groups) == 0) {
-        $sql_where = "";
+        $sql_where = "WHERE 1 = 1";
         // If disabled product groups should not be included, then add SQL where
         // filter.
         if (!$include_disabled) {
-            $sql_where = "WHERE enabled = '1'";
+            $sql_where .= " AND enabled = '1'";
+        }
+        if (!$include_recycled) {
+            $sql_where .= pg_catalog_bin_live_sql('product_groups');
         }
         // get all product groups
         $query = "SELECT
@@ -1714,8 +1720,14 @@ function prepare_page_for_email($html)
     return $html;
 }
 // outputs the form's <select> product list for selecting a product
+//
+// A product in the Recycle Bin is not offered, except the one already chosen
+// (see pg_catalog_bin_live_sql()), which is marked so.
 function select_product($selected_value = '', $value_type = 'id')
 {
+    $keep_id = (($value_type === 'id') && is_scalar($selected_value)) ? (int) $selected_value : 0;
+    $keep_binned = ($keep_id > 0) && pg_catalog_product_binned($keep_id);
+
     $query = "SELECT
             id,
             name,
@@ -1723,6 +1735,7 @@ function select_product($selected_value = '', $value_type = 'id')
             short_description,
             price
         FROM products
+        WHERE 1 = 1" . pg_catalog_bin_live_sql('products', $keep_id) . "
         ORDER BY name";
 
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -1741,7 +1754,9 @@ function select_product($selected_value = '', $value_type = 'id')
 
         $output_disabled_label = '';
         // Append a label when the product is disabled.
-        if ($row['enabled'] == 0) {
+        if ($keep_binned && ((int) $row['id'] === $keep_id)) {
+            $output_disabled_label = ' [' . lang('IN RECYCLE BIN') . ']';
+        } elseif ($row['enabled'] == 0) {
             $output_disabled_label = ' [' . lang('DISABLED') . ']';
         }
 
@@ -1758,12 +1773,18 @@ function select_product($selected_value = '', $value_type = 'id')
 
 
 // get an array of products for pick lists
-function get_product_options($include_blank_option = true)
+//
+// Products in the Recycle Bin are left out, except $keep_id: the product the
+// record being edited already points at (see pg_catalog_bin_live_sql()).
+function get_product_options($include_blank_option = true, $keep_id = 0)
 {
     $product_options = array();
     if ($include_blank_option) {
         $product_options['-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('product')))) . '-'] = '';
     }
+    // A posted value can be anything; only a whole id is kept.
+    $keep_id = is_scalar($keep_id) ? (int) $keep_id : 0;
+    $keep_binned = ($keep_id > 0) && pg_catalog_product_binned($keep_id);
     // get all products
     $query = "SELECT
             id,
@@ -1772,13 +1793,16 @@ function get_product_options($include_blank_option = true)
             short_description,
             price
         FROM products
+        WHERE 1 = 1" . pg_catalog_bin_live_sql('products', $keep_id) . "
         ORDER BY name ASC";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     // loop through each product in order to add it to array
     while ($row = mysqli_fetch_assoc($result)) {
         $output_disabled_label = '';
         // If this product is disabled, then output "disabled" next to the name and short description.
-        if ($row['enabled'] == 0) {
+        if ($keep_binned && ((int) $row['id'] === $keep_id)) {
+            $output_disabled_label = ' [' . lang('IN RECYCLE BIN') . ']';
+        } elseif ($row['enabled'] == 0) {
             $output_disabled_label = ' [' . lang('DISABLED') . ']';
         }
         $label = h($row['name']) . ' - ' . h($row['short_description']) . ' (' . prepare_amount($row['price'] / 100) . ')' . $output_disabled_label;

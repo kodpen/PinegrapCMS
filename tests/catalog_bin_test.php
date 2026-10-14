@@ -7,7 +7,10 @@
  * and the rule that every place which deletes a product or a group - the
  * product screen, the product list, the variant set list, the group screen,
  * the Catalog Manager, the external API and the Workspace - bins it through
- * those statements, with the permanent delete left to emptying the bin.
+ * those statements, with the permanent delete left to emptying the bin; and
+ * that what is in the bin is not offered by the screens a product is picked
+ * on, nor counted or dropped by the group screen, nor written by the product
+ * screen.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -195,4 +198,70 @@ function test_catalog_bin_product_rows_are_deleted_in_one_place_only()
 	sort($found);
 
 	pg_assert_same(array('product_builder.php'), $found, 'files that delete product rows');
+}
+
+function test_catalog_bin_product_pickers_leave_the_bin_out()
+{
+	// Every list a product is chosen from reads the bin through the one
+	// helper, so a product deleted here is not offered for an order line, a
+	// group, a short link, a document or a reference somewhere else.
+	$forms = catalog_bin_test_source('includes/fn/forms.php');
+
+	pg_assert_contains("pg_catalog_bin_live_sql('products', \$keep_id)", catalog_bin_test_function_body($forms, 'get_product_options'), 'get_product_options()');
+	pg_assert_contains("pg_catalog_bin_live_sql('products', \$keep_id)", catalog_bin_test_function_body($forms, 'select_product'), 'select_product()');
+
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_function_body(catalog_bin_test_source('includes/panel/commerce.php'), 'pg_panel_get_unselected_products'), 'group screen: products loaded on scroll');
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('add_product_group.php'), 'new group screen');
+	pg_assert_contains("pg_catalog_bin_live_sql('p')", catalog_bin_test_function_body(catalog_bin_test_source('includes/erp/products.php'), 'erp_product_search'), 'ERP document lines');
+	pg_assert_contains('pg_catalog_product_binned($by_barcode', catalog_bin_test_function_body(catalog_bin_test_source('includes/erp/products.php'), 'erp_product_search'), 'ERP document lines: by barcode');
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('includes/workspace/refs.php'), 'Workspace references');
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('includes/panel/search.php'), 'panel search: products');
+	pg_assert_contains("pg_catalog_bin_live_sql('product_groups')", catalog_bin_test_source('includes/panel/search.php'), 'panel search: groups');
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('marketplace_settings.php'), 'marketplace matching');
+
+	// The offer editor keeps the products an offer already names, flagged,
+	// and offers only the rest.
+	pg_assert_contains("'recycled' =>", catalog_bin_test_function_body(catalog_bin_test_source('edit_offer_f.php'), '_pg_offer_products'), 'offers: flagged');
+
+	$editor = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/offer_editor.js');
+
+	pg_assert_contains('if (p.recycled && (selectedId != p.id)) { return; }', $editor, 'offers: not offered unless chosen');
+}
+
+function test_catalog_bin_edit_screens_keep_the_product_they_point_at()
+{
+	// Left off its own select, the stored product falls back to the first
+	// option and the next save points the record elsewhere.
+	foreach (array('edit_short_link.php', 'edit_calendar_event.php', 'edit_email_campaign_profile.php') as $file) {
+		pg_assert_contains("get_product_options(true, \$liveform->get_field_value('product_id'))", catalog_bin_test_source($file), $file);
+	}
+}
+
+function test_catalog_bin_group_screen_neither_lists_nor_drops_binned_rows()
+{
+	$source = catalog_bin_test_source('edit_product_group.php');
+
+	pg_assert_contains("parent_id = '\" . e(\$_GET['id']) . \"'\" . pg_catalog_bin_live_sql('product_groups')", $source, 'sub-groups in the bin are not listed or counted');
+	pg_assert_contains("product_group = '\" . e(\$_GET['id']) . \"'\" . pg_catalog_bin_live_sql('products')", $source, 'products in the bin are not listed');
+
+	// Their group links survive the save that cannot post them back.
+	pg_assert_contains("AND product NOT IN (SELECT id FROM products WHERE recycled = '1')", $source, 'the save keeps the links of binned products');
+	pg_assert_contains('in_array((int) $product_id, $kept_product_ids, true)', $source, 'and does not add them a second time');
+}
+
+function test_catalog_bin_product_screen_does_not_write_a_binned_product()
+{
+	$source = catalog_bin_test_source('edit_product.php');
+
+	$guard = strpos($source, 'if ($product_binned) {');
+
+	pg_assert_true($guard !== false, 'the guard is there');
+	pg_assert_true($guard < strpos($source, 'pg_catalog_bin_product('), 'before the delete');
+	pg_assert_true($guard < strpos($source, 'pg_pb_update_product('), 'before the save');
+	pg_assert_contains("'recycled'   => \$product_binned", $source, 'the screen is told');
+
+	$builder = catalog_bin_test_source('product_builder.php');
+
+	pg_assert_contains("(\$pg_recycled ? \$pg_bin_link :", $builder, 'no save or delete button for it');
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_function_body($builder, 'pg_pb_quick_update'), 'the list\'s quick edit refuses it too');
 }
