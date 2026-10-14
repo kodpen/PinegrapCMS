@@ -380,6 +380,24 @@ function ws_channel_folder_rename($channel, $name)
  */
 function ws_store_upload($viewer, $channel, $original_name, $data)
 {
+    $parts = explode('base64,', (string) $data, 2);
+    $binary = base64_decode(str_replace(' ', '+', end($parts)), true);
+
+    return ws_store_upload_bytes($viewer, $channel, $original_name, $binary);
+}
+
+/**
+ * Stores a file posted into a channel, from its bytes: the panel's base64
+ * once decoded, or a file the external API received as a form part.
+ *
+ * @param array        $viewer
+ * @param array        $channel
+ * @param string       $original_name
+ * @param string|false $binary false when the bytes could not be decoded
+ * @return array ok, error, file_id, name (the name the author gave it)
+ */
+function ws_store_upload_bytes($viewer, $channel, $original_name, $binary)
+{
     if (!ws_can_post_channel($viewer, $channel)) {
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
     }
@@ -391,10 +409,7 @@ function ws_store_upload($viewer, $channel, $original_name, $data)
         return array('ok' => false, 'error' => function_exists('pg_upload_blocked_message') ? pg_upload_blocked_message($original_name) : lang('This file type is not allowed.'));
     }
 
-    $parts = explode('base64,', (string) $data, 2);
-    $binary = base64_decode(str_replace(' ', '+', end($parts)), true);
-
-    if (($binary === false) || ($binary === '')) {
+    if (($binary === false) || ((string) $binary === '')) {
         return array('ok' => false, 'error' => lang('The file could not be read.'));
     }
 
@@ -462,4 +477,47 @@ function ws_store_upload($viewer, $channel, $original_name, $data)
     }
 
     return array('ok' => true, 'error' => '', 'file_id' => $file_id, 'name' => mb_substr($original_name, 0, 200));
+}
+
+/**
+ * Takes back a file ws_store_upload_bytes() kept, when the message it was
+ * for could not be written after all.
+ *
+ * @param int $file_id
+ */
+function ws_upload_discard($file_id)
+{
+    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'");
+
+    if ($stored === '') {
+        return;
+    }
+
+    @unlink(FILE_DIRECTORY_PATH . '/' . basename($stored));
+    db("DELETE FROM files WHERE id = '" . (int) $file_id . "'");
+}
+
+/**
+ * How a channel's file is handed out: pictures, sound, video and PDF with
+ * their own type, to be shown where they are opened; anything else, and
+ * anything a browser could run (HTML, SVG), as plain bytes to be saved.
+ *
+ * @param string $name the name the author gave it
+ * @return array mime, inline (bool)
+ */
+function ws_file_type($name)
+{
+    $types = array(
+        'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp',
+        'avif' => 'image/avif', 'bmp' => 'image/bmp', 'pdf' => 'application/pdf',
+        'mp4' => 'video/mp4', 'webm' => 'video/webm', 'mov' => 'video/quicktime', 'm4v' => 'video/mp4', 'ogv' => 'video/ogg',
+        'mp3' => 'audio/mpeg', 'm4a' => 'audio/mp4', 'wav' => 'audio/wav', 'ogg' => 'audio/ogg', 'oga' => 'audio/ogg',
+        'opus' => 'audio/ogg', 'aac' => 'audio/aac', 'weba' => 'audio/webm',
+    );
+
+    $extension = strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION));
+
+    return isset($types[$extension])
+        ? array('mime' => $types[$extension], 'inline' => true)
+        : array('mime' => 'application/octet-stream', 'inline' => false);
 }

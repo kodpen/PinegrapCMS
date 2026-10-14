@@ -333,6 +333,80 @@ function api_send_html($status_code, $html) {
 
 }
 
+// The one exit for a file. A record is JSON and goes through api_send(); a file
+// a record points at - a picture posted in a channel - is sent as its own bytes,
+// so a phone can show it or save it without decoding a JSON string first, and a
+// large one is never held in memory three times over. It writes the same log
+// row as api_send(), and every output buffer is dropped first: a stray warning
+// must not land inside the file, and a buffer would hold the whole file.
+//
+// The ETag is the file's address, size and modification time, so a client that
+// kept its copy is answered 304 with no body. Cache-Control is private and
+// no-store as for every answer: the copy the client keeps is its own. A type a
+// browser shows (a picture, a PDF) may go inline; everything else is an
+// attachment, and nosniff keeps a browser from reading it as anything else.
+function api_send_file($path, $mime, $file_name, $inline = false) {
+
+	// A buffer PHP will not let go of (zlib.output_compression) ends the loop
+	// rather than spinning on it.
+	while ((ob_get_level() > 0) && @ob_end_clean()) {
+
+	}
+
+	clearstatcache(true, $path);
+
+	$size = (int)@filesize($path);
+
+	$etag = '"' . substr(sha1($path . '|' . $size . '|' . (int)@filemtime($path)), 0, 32) . '"';
+
+	$status_code = api_etag_matches($etag) ? 304 : 200;
+
+	if (!headers_sent()) {
+
+		header('X-Request-Id: ' . api_request_id());
+
+		header('Cache-Control: private, no-store');
+
+		pg_send_nosniff();
+
+		header('ETag: ' . $etag);
+
+		foreach (api_extra_headers() as $name => $value) {
+
+			header($name . ': ' . $value);
+
+		}
+
+		if ($status_code === 200) {
+
+			// A name in plain letters for old clients beside the real one
+			// (RFC 6266); neither can break out of the header.
+			$ascii = trim(preg_replace('/[^A-Za-z0-9._ -]+/', '_', (string)$file_name));
+
+			header('Content-Type: ' . $mime);
+
+			header('Content-Length: ' . $size);
+
+			header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . (($ascii !== '') ? $ascii : 'file') . '"; filename*=UTF-8\'\'' . rawurlencode((string)$file_name));
+
+		}
+
+		http_response_code($status_code);
+
+	}
+
+	api_log_request($status_code, '');
+
+	if ($status_code === 200) {
+
+		readfile($path);
+
+	}
+
+	exit();
+
+}
+
 // Headers collected during the request (rate limit counters, Retry-After,
 // Location) and flushed by api_send(). Kept in one place so a handler can add
 // one without reaching for header() and losing it to the buffer reset.

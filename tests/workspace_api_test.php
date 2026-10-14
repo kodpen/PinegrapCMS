@@ -7,8 +7,9 @@
  * handler, no two routes answer the same method on the same path, and each
  * action becomes one MCP tool. Also the scopes the search asks of each kind
  * of panel record (includes/workspace/api_day.php), who a call from a
- * device writes as, which of its messages ask an assistant, and where what
- * they ask is carried on.
+ * device writes as, which of its messages ask an assistant, where what
+ * they ask is carried on, and how a channel's file is handed out
+ * (includes/workspace/files.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -274,4 +275,45 @@ function test_ws_api_carry_on_where()
 	pg_assert_same('after', ws_api_carry_on_where(true, true), 'PHP-FPM, the sync');
 	pg_assert_same('here', ws_api_carry_on_where(false, true), 'IIS, the sync');
 	pg_assert_same('', ws_api_carry_on_where(false, false), 'IIS, a message written');
+}
+
+// A file is posted and fetched with the caller's own token; neither is an
+// MCP tool, since a model has no use for a file's bytes, and the download is
+// described as the file itself rather than a record.
+function test_ws_api_files_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	pg_assert_true(isset($routes['workspace.files.create']), 'workspace.files.create is declared');
+	pg_assert_same('POST', $routes['workspace.files.create']['method']);
+	pg_assert_same('/workspace/channels/{id}/files', $routes['workspace.files.create']['path']);
+	pg_assert_same('workspace:write', $routes['workspace.files.create']['scope']);
+	pg_assert_same('WorkspaceMessage', $routes['workspace.files.create']['returns']);
+	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.files.create']), 'posting a file is no MCP tool');
+
+	pg_assert_true(isset($routes['workspace.files.get']), 'workspace.files.get is declared');
+	pg_assert_same('GET', $routes['workspace.files.get']['method']);
+	pg_assert_same('/workspace/messages/{id}/file', $routes['workspace.files.get']['path']);
+	pg_assert_same('workspace:read', $routes['workspace.files.get']['scope']);
+	pg_assert_true(!empty($routes['workspace.files.get']['binary']), 'the download answers with the file');
+	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.files.get']), 'the download is no MCP tool');
+}
+
+// What a browser shows is sent with its own type and inline; anything else,
+// and anything a browser would run, as bytes to be saved.
+function test_ws_file_type()
+{
+	pg_assert_same(array('mime' => 'image/jpeg', 'inline' => true), ws_file_type('photo.jpg'));
+	pg_assert_same(array('mime' => 'image/jpeg', 'inline' => true), ws_file_type('PHOTO.JPEG'));
+	pg_assert_same(array('mime' => 'application/pdf', 'inline' => true), ws_file_type('offer.pdf'));
+	pg_assert_same(array('mime' => 'video/mp4', 'inline' => true), ws_file_type('clip.mp4'));
+	pg_assert_same(array('mime' => 'audio/mp4', 'inline' => true), ws_file_type('voice.m4a'));
+
+	foreach (array('page.html', 'logo.svg', 'feed.xml', 'script.js', 'report.docx', 'archive.tar.gz', 'README', 'photo.jpg.php') as $name) {
+		pg_assert_same(array('mime' => 'application/octet-stream', 'inline' => false), ws_file_type($name), $name . ' is saved, not shown');
+	}
 }

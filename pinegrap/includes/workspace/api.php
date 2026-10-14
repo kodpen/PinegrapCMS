@@ -391,6 +391,40 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.files.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/files',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_files_create',
+            'returns'     => 'WorkspaceMessage',
+            'form_file'   => 'file',
+            'mcp'         => false,
+            'summary'     => 'Post a file in a channel',
+            'description' => 'Posts a picture, a video, a document or any other file into a channel the owner may post in, as a message carrying it, the way the paperclip in the panel does; text goes with it. Send the file as multipart/form-data in a part named file, with name and text as form fields if wanted - the way for a large file - or as content_base64 in a JSON body with name. What the channel takes is what the panel takes: at most 20 MB, or less where the server sets a lower limit (422 beyond it); no programs, scripts or server files, and no SVG, HTML, XML or JavaScript; a picture has to be a picture. The file goes into the channel\'s folder in the file manager, and a discussion\'s into its channel\'s. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. The answer is the message; its file.api_url fetches the file with the same token (GET /workspace/messages/{id}/file). Send an Idempotency-Key so a retried upload does not post twice.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The file\'s name with its extension, as readers see it. Required with content_base64; a form part\'s own file name is used when it is left out.'),
+                array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'description' => 'The file, base64 encoded, in a JSON body. Leave it out when the file is sent as a form part named file.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'Words to go with the file. Tags are written as tokens, as when writing.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.files.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/messages/{id}/file',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_files_get',
+            'binary'      => true,
+            'mcp'         => false,
+            'summary'     => 'Download the file of a message',
+            'description' => 'The file a message carries, as its own bytes rather than JSON, with the Bearer token or the application key every other call uses; file.url in the message is the site\'s own address, which opens only in a browser signed in to the site. Whoever may read the message may fetch its file; a message deleted for everyone has none (404). Pictures, sound, video and PDF come with their own Content-Type and inline; anything else as application/octet-stream and as an attachment. Content-Disposition carries the name the author gave it. The ETag stays the same while the file does, so If-None-Match gets 304 with no body. id may be a message of a discussion the person is in.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
             'id'           => 'workspace.messages.update',
             'method'       => 'POST',
             'also_accepts' => array('PATCH'),

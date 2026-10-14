@@ -13,7 +13,8 @@
  * Three contracts are enforced:
  *   1. Every route in api_schema() declares 'returns', except the few that
  *      answer with a document rather than a record (the OpenAPI file itself,
- *      the console page and its fragment) or with no content at all.
+ *      the console page and its fragment), with a file ('binary' => true) or
+ *      with no content at all.
  *   2. Every object name a route or a declaration refers to is registered in
  *      api_openapi_objects() and the function behind it exists.
  *   3. Every field a presenter puts in its answer is declared. This is the one
@@ -322,7 +323,11 @@ foreach ($blocks as $block) {
 
 	$declares = (strpos($block, "'returns'") !== false);
 
-	if (!$declares && !in_array($id, $without_body, true)) {
+	// A route that answers with a file (api_send_file()) says so instead, and
+	// the document describes its 200 as the file's bytes.
+	$binary = (bool) preg_match("/'binary'\s*=> true/", $block);
+
+	if (!$declares && !$binary && !in_array($id, $without_body, true)) {
 		$problems[] = $id . ': no \'returns\' - nothing describes what this endpoint answers with.';
 		continue;
 	}

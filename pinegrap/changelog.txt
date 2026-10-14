@@ -1568,6 +1568,17 @@
   --------------------------------------------------------
 
   [YENİ] Çalışma Alanı: telefon ya da bilgisayar
+         uygulaması bir kanala fotoğraf, video, belge
+         ya da başka bir dosya gönderebiliyor; panelin
+         ataç düğmesindeki kurallar geçerli (en çok 20 MB,
+         program ve betik yok) ve dosya kanalın Dosya
+         Yöneticisi'ndeki klasörüne gidiyor. Kanaldaki
+         dosyalar da uygulamadan indirilebiliyor
+         (önceden yalnız panele giriş yapılmış tarayıcıda
+         açılıyordu); mesajda dosyanın türü ve boyutu
+         görünüyor.
+
+  [YENİ] Çalışma Alanı: telefon ya da bilgisayar
          uygulaması kişinin gelen kutusunu okuyabiliyor.
          Anılma, verilen görev, onay isteği, başlamak
          üzere olan toplantı gibi her satır panelin
