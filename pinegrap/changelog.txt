@@ -770,6 +770,19 @@
   E-TİCARET: SİPARİŞLER
   --------------------------------------------------------
 
+  [YENİ] Siparişler listesinde durum, siparişi açmadan
+         satırda değişiyor: Durum hücresine tıklayın (ya
+         da dokunun) ve Tamamlanmış ya da Dışa Aktarılmış'ı
+         seçin; kayıt hemen yapılıyor. Dışa aktarılmış bir
+         siparişi yeniden dışa aktarmak için Tamamlanmış'a
+         döndürmek artık tek tık. Değişiklik Site
+         Günlüğü'ne eski ve yeni durumla yazılıyor;
+         Çalışma Alanı'ndaki "sipariş durumu değişince"
+         kuralları ve webhook'lar haber alıyor. Müşteriye
+         e-posta gitmiyor. İptal etmek satırdaki İptal
+         düğmesinde, iptal edilmiş siparişi geri almak
+         sipariş ekranında kalıyor.
+
   [YENİ] Siparişler listesi de aynı anda birden çok
          sütuna göre sıralanıyor, örneğin durum artan,
          aynı durumda toplam azalan. Başlığa Shift ile
