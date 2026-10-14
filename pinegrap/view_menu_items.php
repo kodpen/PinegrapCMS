@@ -25,6 +25,15 @@ if ((isset($_GET['id']) == false) || ($_GET['id'] == '')) {
     output_error(lang('Sorry, the page could not be found.'), 404);
 }
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM menus WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // get menu name
 $query = "SELECT name FROM menus WHERE id = '" . escape($_GET['id']) . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

@@ -84,6 +84,99 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Kapısı olmayan 37 panel ekranı `?id[]=` ile 500 vermiyor, kimliksiz ve var olmayan kayıtta "Kayıt bulunamadı" (2026-10-14)
+
+**Neden.** #417'nin panel taramasından kalan K2. Bu ekranlarda c651716'daki
+kayıt kapısı hiç yoktu: kimliği doğrudan `escape()`, `e()`, `h()` ya da
+liveform dizinine (`new liveform('x', $_REQUEST['id'])`) veriyorlardı.
+`?id[]=x` 500 veriyordu; kimliksiz ya da silinmiş kayıtla açılınca yarı boş
+form basıp 1–21 uyarı yazıyorlardı (`edit_javascript`, `edit_theme_css`
+kimliksiz açılışta `data/files` klasörünü dosya diye okumaya çalışıyordu).
+Birkaçında kayıt yoksa durduran bir denetim vardı (`edit_comment`,
+`edit_custom_style`, `edit_field`, `edit_file`, `edit_menu_item`,
+`edit_submitted_form`, `view_order`, `duplicate_folder`, `view_menu_items`)
+ama dizi o denetime varmadan `escape()`'te düşüyordu. Hepsi 2026.4.9'da da
+var.
+
+**Ne değişti.** 32 ekrana alan erişim denetiminin hemen ardına #417 /
+#422'deki kapı: `$id = is_scalar($_REQUEST['id'] ?? null) ? (int)
+$_REQUEST['id'] : 0;` ve ekranın tablosunda `COUNT(*)`; kayıt yoksa
+`output_error(lang('Record not found.') …, 404)`. Tablolar: `ad_regions`,
+`arrival_dates`, `auto_dialogs`, `calendar_event_locations`, `comments`,
+`commissions`, `cregion.cregion_id` (ortak ve tasarımcı bölgesi),
+`contact_groups`, `style.style_id` (özel stil, görsel editör, kaynak
+görünümü), `files` (dosya, tasarım dosyası, JS/CSS/tema/editör),
+`dregion.dregion_id`, `email_campaign_profiles`, `form_fields`,
+`login_regions`, `menus` (menü, menü öğeleri listesi), `menu_items`,
+`recurring_commission_profiles`, `ship_date_adjustments`, `forms`,
+`verified_shipping_addresses`, `folder.folder_id`, `product_groups`,
+`orders`, `email_campaigns`. Kapı, kimliği kullanan ilk satırdan (rol
+denetimi, kişi grubu erişim denetimi, liveform) önce duruyor; `$_REQUEST`
+POST'ta gönderilen gizli `id`'yi de okuduğu için kaydet/sil yolu aynı
+kapıdan geçiyor (`edit_auto_dialog` formu gizli alan taşımıyor, kimlik
+form adresinden geliyor). Özel durumlar:
+- `edit_page.php`: kapı, ekranın yetki denetimi için seçtiği
+  `$requested_page_id`'yi okuyor (POST'ta `$_POST`, değilse `$_GET`; aynı
+  adlı çerez denetimi kandırmasın diye).
+- `view_email_campaign.php`: kapı yalnız yönetici yolunda; alıcı
+  bağlantısındaki `?r=` dizi gelirse ya da yoksa "verilmedi" sayılıyor
+  (`$_GET['r']` boş metne çekiliyor). Bilinmeyen referans kodu, kişisi
+  silinmiş alıcı ve geçerli kodla açılışta yazılan `$user` uyarıları da
+  gitti (görünen çıktı aynı).
+- `view_order_report.php`, `view_visitor_report.php`: kimlik isteğe bağlı
+  (kimliksiz = yeni rapor). Dizi kimlik `unset` ediliyor, ekran yeni rapor
+  olarak açılıyor; verilen kimlik var olmayan bir rapora aitse "Kayıt
+  bulunamadı" 404.
+- `add_theme_file.php`: `id` yalnız klasörü önceden seçiyor; dizi gelirse
+  verilmedi sayılıyor.
+- Normal açılışta uyarı yazan iki yer: `edit_design_file.php` resim ya da
+  düzenleyicisi olmayan dosyada `$output_thumbnail`, `$output_image_info`,
+  `$output_edit_file_button` tanımsızdı ve sonda hiç kurulmamış `$output`
+  basılıyordu (satır kaldırıldı, boş metin basıyordu); `edit_menu_item.php`
+  seviyesinin ilk öğesinde üstte öğe yokken `$row['id']` null'dan
+  okunuyordu.
+
+Var olan "bulunamadı" denetimleri yerinde bırakıldı (artık kapı önce
+çalışıyor; var olmayan kimlikte metin "Kayıt bulunamadı." ve durum 404).
+Şema, dil dosyası (`Record not found.` ve `Go back` zaten var), JS değişikliği
+yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, DEBUG açık).** Boş tablolara
+(reklam bölgesi, komisyon, yinelenen komisyon, kargo günü ayarı, doğrulanmış
+adres, e-posta kampanyası ve alıcısı, dinamik bölge) birer kayıt eklendi.
+`panel-tarama-araclari/scan.py` 37 ekranda (parametresiz, kendi
+parametreleri `=1`, her parametre dizi olarak; 680 istek): eski kodda 49
+istek 500 verdi (37'si `?id[]=`, 8'i `?send_to[]=`, 3'ü `?from[]=`, 1'i
+`?r[]=`; send_to/from olanlar kimliksiz isteklerdi), 578 istek uyarı ya da
+ölümcül hata yazdı (176 ayrı satır). Yeni kodda 500 yok; uyarı yazan tek
+istek `view_order_report.php?id=1` (aşağıda). Kalan kullanım dışı satırı
+yalnız 404 ekranının liveform `h(null)`'ı (K9). Eski kod
+(`origin/development`) ikinci portta, istekler sırayla iki sunucuya: var
+olan kayıtla 44 normal panel açılışı (her ekran, resim/CSS/JS tasarım
+dosyası, seviyenin ilk ve ikinci menü öğesi, kimliksiz yeni rapor) ve 3
+alıcı bağlantısı (geçerli kod, bilinmeyen kod, kodsuz) aynı HTML'i verdi;
+yeni kodda bunlar uyarı yazmıyor (`view_order_report.php?id=1` dışında). 74 kötü istekte: `?id[]=1`
+eskide 37'si 500, yenide 34'ü 404, rapor ekranları ve `add_theme_file` 200;
+`?id=999999` eskide 30'u 200 (yarı boş form) ve 6'sı 404, yenide 36'sı 404
+(`add_theme_file` iki kodda aynı). 30 ekranda form değiştirilmeden
+yeniden gönderildi: hepsi eskisi gibi yönlendirdi, hiçbiri kapıya takılmadı.
+`tests/panel_id_gate_test.php`'ye bu ekranların kapıyı taşıdığını denetleyen
+test eklendi. `tools/lint.php`, `tools/test.php`, `check_lang`,
+`check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler; görsel editörün Ajax
+kaydı tarayıcıda denenmedi (form gizli `id`'yi gönderiyor, kod okumayla).
+
+**Bilerek yapılmayan.** K1 (#422) dosyalarına dokunulmadı; çakışan dosya
+yoktu. `send_to[]` / `from[]` (K3) kapıdan geçen geçerli kimlikle hâlâ 500
+veriyor: taramada yalnız kimliksiz istek oldukları için 404'e düştüler.
+`view_order_report.php` normal açılıştaki `$sql_summarize_by_3` ve
+`$output_date_changer` uyarıları K6'da. `view_order.php` POST yolunda
+liveform'un `id`'si (`(int) $liveform->get('id')`) aynen kaldı: kapı artık
+diziyi oraya ulaştırmıyor. Liveform `h(null)` (K9) dokunulmadı.
+
+---
+
 ## 2026.4.10 — Geri Dönüşüm Kutusundaki ürün seçicilerde çıkmıyor, grup ekranı kutudakileri saymıyor, ürün ekranı kutudaki ürünü kaydetmiyor (2026-10-14)
 
 **Neden.** #416'nın "Bilerek yapılmayan" maddesindeki üç uç. Kutu bir

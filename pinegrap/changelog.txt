@@ -2839,6 +2839,21 @@
          bağlantıda varsa 1 numaralı belgeyi açıyordu;
          artık belgenin bulunamadığını söylüyor.
 
+  [DÜZELTME] Kayıt kontrolü olmayan 37 düzenleme ve
+         görüntüleme ekranı (sayfa, dosya, tasarım dosyası,
+         tema, sayfa stili, bölgeler, menü ve menü öğesi,
+         form alanı, gönderilen form, yorum, sipariş,
+         kampanya, komisyon, kişi grubu ve diğerleri) da
+         ?id[]=… bağlantısıyla hata sayfası veriyordu;
+         kayıt numarası olmadan ya da silinmiş bir kayıtla
+         açılınca yarı boş form gösterip hata günlüğüne
+         uyarı yazıyordu. Artık üçünde de "Kayıt
+         bulunamadı" gösteriyor. Sipariş ve ziyaretçi
+         raporları böyle bir bağlantıyla yeni rapor
+         ekranını açıyor. E-posta kampanyasının "tarayıcıda
+         görüntüle" bağlantısı açılınca hata günlüğüne
+         uyarı yazmıyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
