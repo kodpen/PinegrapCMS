@@ -84,6 +84,71 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: gelen kutusunda sonradan değişen satırlar, changed_since (2026-10-14)
+
+**Neden.** #377 (mobil API planının M4 dilimi) gelen kutusunu API'ye açtı,
+ama uygulamanın elindeki satırlarda sonradan ne değiştiğini (yeni gelen
+satır, panelde, zilde ya da başka bir cihazda okundu işaretlenen satır,
+değişen notun yeniden gelen bildirimi) tek istekle almanın yolu yoktu:
+uygulama `GET /workspace/sync`'in `inbox_unread` sayısı değişince ilk
+sayfayı baştan okuyordu. Kanal mesajlarında aynı iş için #371 (M2)
+`changed_since` + `since_id` vermişti; uygulama iki yerde aynı deseni
+kullansın diye gelen kutusuna da aynısı eklendi.
+
+**Ne değişti.**
+- `GET /workspace/inbox?changed_since=<an>`: o andan beri yazılan, yeniden
+  gelen ya da okunan satırlar, eskiden yeniye (`id` sırası), her biri
+  şimdiki haliyle (`read` güncel). `since_id` sayfalar: `limit` kadar
+  satır dönerse son satırın kimliğiyle yeniden sorulur (M2'nin kuralı).
+  `unread` ve `cursor` bu kipte yok sayılır; `changed_since` olmadan
+  `since_id` bir şey değiştirmez. An ISO-8601 ya da Unix zamanı; sitenin
+  saatiyle, önceki cevabın `Date` başlığı.
+- Şema adımı yok. `ws_inbox` satırı yalnız yazılırken (`created_at`),
+  değişen notun bildirimi okunmamışken yeniden gelirken (`notes.php`,
+  `created_at` şimdiye taşınır) ve okunurken (`read_at`) değişir; satırı
+  yerinde değiştiren her yer bu iki damgadan birini yazıyor (gelen kutusu
+  okundu, zil `pg_notification_mark_read()`, kanal okundu
+  `ws_channel_mark_read()`, görevi açma, okundu bilgisi, görünürlük
+  süzgeci). Koşul `ws_api_inbox_changed_where()`: `created_at >= an OR
+  read_at >= an`.
+- Kişinin artık göremediği şeyle ilgili satır atlanır ve sayfa arkasındaki
+  satırlarla doldurulur (`ws_api_inbox_changed()`), böylece "limit kadar
+  satır döndü, devam et" kuralı bozulmaz. İlk okuma sayfa kadar satır
+  alır; gizli satıra rastlarsa 100'erli adımlarla, en çok 20 tur sürer.
+- Görünürlük ve Claude süzgeci `ws_api_inbox_reachable_rows()`'a ayrıldı;
+  `ws_api_inbox_present_rows()` onu kullanır. Değişenlerde yalnız sayfaya
+  giren satırlar anlatılır.
+- MCP: `workspace_inbox_list` aracı `changed_since` ve `since_id`
+  alanlarını rotadan kendiliğinden aldı.
+
+Şema değişikliği yok, yeni izin kapsamı yok, yeni metin yok.
+
+**Bilerek yapılmayan.** Tamamen silinen satır (silinen mesajdaki anılma,
+silinen ya da paylaşımı kaldırılan not, süresi dolup temizlenen tartışma)
+iz bırakmadığı için değişenlerde gelmez; kişinin artık göremediği şeyle
+ilgili satır da gelmez (liste kuralı). Uygulama elindeki satırı
+`GET /workspace/inbox/{id}` 404 verince atar. Silineni bildirmek için
+panelin silmelerini işarete çevirmek ya da ayrı bir silinenler tablosu
+gerekirdi; ikisi de bu dilimin dışında. `GET /workspace/sync` hâlâ
+yalnız `inbox_unread` taşır: aynı aralıkta bir satır okunup bir yenisi
+gelirse sayı değişmez, uygulama `changed_since`'i kendi aralığıyla da
+çağırabilir (değişiklik yoksa ETag ile 304). Eşitleme cevabına gelen
+kutusunun değişim işaretini eklemek ayrı küçük iş.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye iki test (rota
+parametreleri ve MCP aracı; `ws_api_inbox_changed_where()`). Sandbox'ta
+"Ekip cihazları" oturumuyla: `changed_since` yalnız yeni ve yeniden gelen
+satırları verdi, değişmemiş okunmuş ve okunmamış satırları vermedi;
+`POST /workspace/inbox/read` sonrası okunan satır `read: true` ile geldi;
+`limit=1` + `since_id` üç sayfada üç satırı verip boş döndü; `unread=true`
+yok sayıldı; Unix zamanı da kabul edildi; bozuk an 422 `changed_since`;
+aynı istek `If-None-Match` ile 304. Arka arkaya 150 gizli satırın
+ardındaki satır `limit=1` ve `limit=2` ile tek çağrıda geldi, gizli
+satırlar okundu sayıldı, `sync` `inbox_unread` doğru kaldı. Sunucu
+günlüğünde hata yok.
+
+---
+
 ## 2026.4.10 — Dış API: Çalışma Alanı kanalına dosya gönderme ve dosyayı jetonla indirme (2026-10-14)
 
 **Neden.** Mobil API ve Claude kanalı planının M5 dilimi

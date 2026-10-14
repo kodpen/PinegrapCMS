@@ -1567,6 +1567,12 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: uygulama, elindeki gelen
+         kutusu satırlarında sonradan ne değiştiğini
+         (yeni gelenler, panelde ya da zilde okunanlar)
+         baştan okumadan tek istekle alabiliyor; kanal
+         mesajlarındaki değişenlerle aynı yöntemle.
+
   [YENİ] Çalışma Alanı: telefon ya da bilgisayar
          uygulaması bir kanala fotoğraf, video, belge
          ya da başka bir dosya gönderebiliyor; panelin
