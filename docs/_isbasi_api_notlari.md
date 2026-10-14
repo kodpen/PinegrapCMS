@@ -1,3 +1,8 @@
+---
+name: _isbasi_api_notlari
+description: Logo İşbaşı API notes (environments, endpoints, unverified points); read before any İşbaşı driver work
+---
+
 # Logo İşbaşı API — okunan belgelerden çıkarılan notlar
 
 Kaynak: `https://developers.isbasi.com/` (İşbaşı hesabıyla giriş ister) ve

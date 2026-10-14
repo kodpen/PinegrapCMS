@@ -1,3 +1,8 @@
+---
+name: _plan_calisma_alani
+description: Workspace module plan (channels, tasks, plan board, calendar, notes): decisions, phases, ws_ tables
+---
+
 # Pinegrap Çalışma Alanı — kanal, görev, plan panosu (v1 taslak)
 
 **Durum:** v1.2 — bütün kararlar verildi, faz 1 uygulandı (bkz. `docs/degisiklikler.md`, 2026.4.4 Çalışma Alanı) · **Tarih:** 2026-09-23 · **Kod adı:** `workspace` (önek `ws_`)

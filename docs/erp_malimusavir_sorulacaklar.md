@@ -1,3 +1,8 @@
+---
+name: erp_malimusavir_sorulacaklar
+description: Questions for the accountant about ERP behaviour; answers fill each item
+---
+
 # ERP — mali müşavire sorulacaklar
 
 **Başlangıç:** 2026-09-24 · **Kapsam:** Pinegrap ERP (ön muhasebe) · **Kullanım:** her maddenin

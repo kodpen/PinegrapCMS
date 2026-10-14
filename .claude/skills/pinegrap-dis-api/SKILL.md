@@ -367,7 +367,7 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
   önce runner listesine bak.
 - Ortak dosyalarda **yalnız ekleme** yap, tam yeniden yazma (`tr.json`,
   `changelog.txt`, açık sürümün migration dosyası, `init.php`,
-  `docs/CLAUDE-tam.md`, `docs/degisiklikler.md`). Yazmadan önce
+  `docs/degisiklikler.md`, `docs/sema-adimlari.md`). Yazmadan önce
   `git fetch origin development && git merge origin/development`, push'tan önce
   `development` üzerine rebase; PR'ın tabanı `development`'tır, `main` değil.
 

@@ -1,3 +1,8 @@
+---
+name: refactor_altyapi_raporu
+description: Refactor and infrastructure candidates with evidence (22 findings, 2026-10-08)
+---
+
 # Pinegrap CMS: refactor ve altyapı adayları (kanıtlı)
 
 Depo durumu: `development` @ `0294c42`. Kod tabanında hiçbir dosya değiştirilmedi; ölçümler grep/diff/python/node ile `/tmp` altında yapıldı.

@@ -1,3 +1,8 @@
+---
+name: _get_file_kopyalar
+description: Function copies inside get_file.php: which have an original, how they diverged, which stay as copies (check_copies.php)
+---
+
 # `get_file.php` fonksiyon kopyaları
 
 `router.php` dosya isteklerini `init.php`'den ve `functions.php`'den geçirmeden

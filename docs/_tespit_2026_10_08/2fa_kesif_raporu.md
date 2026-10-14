@@ -1,3 +1,8 @@
+---
+name: 2fa_kesif_raporu
+description: Two-step sign-in (2FA) discovery report: where sessions open, where the gate goes, risks
+---
+
 # İki adımlı oturum açma (2FA) — kimlik doğrulama haritası ve riskler (keşif raporu)
 
 Yalnız kod okuması; hiçbir dosya değiştirilmedi, çalışan örnek kurulmadı. Yollar `pinegrap/` köküne göre.

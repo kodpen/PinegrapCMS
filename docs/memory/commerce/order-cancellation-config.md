@@ -1,0 +1,30 @@
+---
+name: order-cancellation-config
+description: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and Iyzipay auto-refund gates.
+---
+
+## Which config defines control cancellation? (data/config.php)
+- `ECOMMERCE_ORDER_CANCEL_ALLOWED` (bool, default `false`): customer self-service cancel enabled.
+- `ECOMMERCE_ORDER_CANCEL_UNTIL_SHIPPED` (bool, default `true`): cancel only before shipping.
+- `ECOMMERCE_CANCEL_EMAIL_NOTIFICATION` (bool, default `true`): customer email on cancel.
+- `ECOMMERCE_ORDER_CANCEL_AUTO_REFUND` (bool, default `false`): opt-in Iyzipay auto-refund.
+
+## Endpoint and order_view tokens
+- `cancel_order.php`: CSRF + ownership check + status update. Refund is manual (gateway dashboard); a REFUND ACTION REQUIRED log entry is left.
+- Tokens: `__cancel_form` (pre-built form: CSRF + order_id + reason + submit + refund warning), `__cancel_status` (alert for the `?cancelled=1|shipped|already` flash).
+- Visibility flags (auto-wired in order_view default tree): `can_cancel` (config on + status != 'cancelled' + optionally not yet shipped), `is_cancelled`, `cancel_flash_success` / `cancel_flash_shipped` / `cancel_flash_already`.
+
+## New columns
+- 2026.1.26 `orders`: `cancelled_at INT(10) UNSIGNED`, `cancelled_by INT(10) UNSIGNED`, `cancellation_reason VARCHAR(500)`.
+- 2026.1.27 `orders` (defensive `SHOW COLUMNS` probe `_orders_has_refund_columns()`): `refund_status ENUM('', 'pending', 'refunded', 'failed', 'manual_required')`, `refunded_at INT(10) UNSIGNED NULL`, `refund_reference VARCHAR(255)` (gateway transaction ID).
+
+## Email notification (inside `process_order_cancellation`, defensive try/catch)
+- Gated by `ECOMMERCE_CANCEL_EMAIL_NOTIFICATION`. HTML mail to the customer's `billing_email_address` via the `email()` helper (Turkish text: `Order Cancelled`, `Cancellation reason`, refund note).
+- Silently skipped when `EMAIL_ADDRESS` is missing or `billing_email_address` is empty.
+
+## Iyzipay auto-refund (opt-in)
+- When `ECOMMERCE_ORDER_CANCEL_AUTO_REFUND` is true: `\Iyzipay\Model\Cancel::create` is called and the result written to `orders.refund_status`.
+- A failed Cancel does NOT roll back the cancellation: it is logged and the operator refunds manually.
+- Tried only when `payment_method` is `Iyzipay` or `Pay With Iyzico` AND `transaction_id` is set AND `total > 0`.
+
+Related: docs/memory/commerce/order-cancellation-flow.md

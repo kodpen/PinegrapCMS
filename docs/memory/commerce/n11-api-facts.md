@@ -1,0 +1,21 @@
+---
+name: n11-api-facts
+description: n11 REST API facts for the connector: headers, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints, GMT+3 dates, discount fields, stockCode.
+---
+
+## How does the n11 API behave? (developer.n11.com)
+- Host `api.n11.com`, headers `appKey` / `appSecret` (the docs write them two different ways in two services; the connector sends both). SOAP services are NOT used.
+
+## How does the async product side work?
+- `price-stock-update` (1000 SKU/request) -> `taskId` -> `task-details/page-query` -> SUCCESS/FAIL PER SKU.
+- Saying "success" on submission is wrong.
+- `REJECT` is permanent; an `IN_QUEUE` without an id is retried. Never put the two in the same branch (it made an accepted batch permanently failed).
+
+## How do orders work?
+- `GET /rest/delivery/v1/shipmentPackages`: dates in milliseconds and GMT+3 (sending UTC shifts the window by three hours); pages start at 0, max 100.
+- `PUT /rest/order/v1/update` only does `Created -> Picking`.
+- In a line, `stockCode` is the seller's code (matching uses this); `productId` is n11's and useless here; `orderLineId` is the id needed for confirmation.
+- `mallDiscount` is NOT counted: it is n11's money, paid to the seller as if it did not exist. Only `sellerDiscount` and `sellerCouponDiscount` are this order's discount.
+- Prices are decimal and a comma may appear.
+
+Related: docs/memory/commerce/marketplace-order-status-sync.md

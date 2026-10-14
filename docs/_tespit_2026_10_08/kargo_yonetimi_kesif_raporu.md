@@ -1,3 +1,8 @@
+---
+name: kargo_yonetimi_kesif_raporu
+description: Shipping management discovery report: current infrastructure and gaps (file:line evidence)
+---
+
 # Kargo (sevkiyat) yönetimi — mevcut altyapı ve eksikler (keşif raporu)
 
 Yalnız kod okuması; hiçbir dosya değiştirilmedi, çalışan örnek kurulmadı (yalnız `pg_shipping_carriers()` desenleri PHP CLI'da tek başına denendi). Yollar `pinegrap/` köküne göre. Verilmiş kararlardaki `orders.tracking_company`, `orders.notes`, `orders.tracking_code` maddeleri ve `get_express_order.php` hesaplaması eksik diye yazılmadı.

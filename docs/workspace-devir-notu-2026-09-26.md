@@ -1,3 +1,8 @@
+---
+name: workspace-devir-notu-2026-09-26
+description: Workspace handover note (2026-09-26): rules, state at hand-over, open items list
+---
+
 # Çalışma Alanı (Workspace) — devir notu (güncel: 2026-09-26)
 
 Pinegrap'a gömülü ekip modülü: kanallar, görevler, plan panosu, iş takvimi, notlar, kanalda Claude. Kod adı `workspace`, önek `ws_`. **2026.4.4 yayında ve kapalı; açık sürüm 2026.4.5.** **Hiçbir şey commit edilmedi** (git işi Erdal'ın / git ajanının).

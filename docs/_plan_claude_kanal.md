@@ -1,3 +1,8 @@
+---
+name: _plan_claude_kanal
+description: Calling Claude into a Workspace channel via a Claude routine (Phase 1 done); scope decisions and leftovers
+---
+
 # Çalışma Alanı — Claude'u kanala çağırmak (Faz 1)
 
 **Durum (2026-10-14):** 1.0–1.5, 1.7 ve onaylı değişiklik taslağı (1.8) bitti; taslaklar ve

@@ -1,9 +1,10 @@
 # Static checks and unit tests that gate every pull request: PHP syntax across
 # the product tree, translation-key consistency, designer binding tokens, the
 # external API schema, the unit tests under tests/, the function copies in
-# get_file.php, a JavaScript syntax check of the large panel scripts and
-# whether every .min.js still matches its sources. None of them needs a
-# database.
+# get_file.php, a JavaScript syntax check of the large panel scripts,
+# whether every .min.js still matches its sources and whether the memory
+# index (docs/memory/README.md) matches the files it lists. None of them
+# needs a database.
 #
 # tools/ and tests/ are tracked on the development branch only; main and the
 # release branches carry the product alone. There the PHP steps find no
@@ -74,3 +75,7 @@ jobs:
       - name: Minified scripts match their sources (tools/build_js.php --check)
         if: ${{ hashFiles('tools/build_js.php') != '' }}
         run: php tools/build_js.php --check
+
+      - name: Memory index matches its files (tools/memory_index.php --check)
+        if: ${{ hashFiles('tools/memory_index.php') != '' }}
+        run: php tools/memory_index.php --check

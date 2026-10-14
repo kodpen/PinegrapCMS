@@ -1,3 +1,8 @@
+---
+name: _plan_oauth
+description: OAuth 2.1 authorization server for MCP (phases A-D, F done); remaining items
+---
+
 # OAuth 2.1 yetkilendirme sunucusu — MCP hazırlığı (2026.4.10)
 
 **Durum (2026-10-14):** Faz A (#244), B, C ve D (#245, #246) ve F (Çalışma Alanı'nda MCP

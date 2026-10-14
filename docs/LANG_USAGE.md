@@ -1,3 +1,8 @@
+---
+name: LANG_USAGE
+description: lang() syntax: plain strings, {var:N} variables, plurals and usage examples
+---
+
 # PineGrap `lang()` Kullanım Rehberi
 
 ## 1. Basit string

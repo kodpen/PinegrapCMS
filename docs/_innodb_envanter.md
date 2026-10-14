@@ -1,3 +1,8 @@
+---
+name: _innodb_envanter
+description: InnoDB inventory (2026.4.8, steps 8.10-8.14): table list and groups behind pg_innodb_table_groups()
+---
+
 # InnoDB envanteri (2026.4.8, 8.10–8.14)
 
 Kaynak: `pinegrap/data/backups/english_default/sql.sql` ve
