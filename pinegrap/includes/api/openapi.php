@@ -107,6 +107,14 @@ function api_openapi_build() {
 
 					$property['nullable'] = true;
 
+					// An enum lists every value it takes, so a nullable one
+					// lists null as well, or a validator refuses the clear.
+					if (isset($property['enum'])) {
+
+						$property['enum'][] = null;
+
+					}
+
 				}
 
 				$body_properties[$param['name']] = $property;

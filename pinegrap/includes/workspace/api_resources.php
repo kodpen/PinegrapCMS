@@ -1669,6 +1669,682 @@ function ws_api_channels_group($params)
     api_ok(ws_api_channel_group_move_present($channel, $group_id, $move, $changes, ws_api_channel_present(ws_api_channel_brief($viewer, $after))));
 }
 
+/* ---------------------------------------------------------------------------
+   Arranging the groups of channels
+   --------------------------------------------------------------------------- */
+
+/**
+ * Runs a module function that writes its own line in the activity log in the
+ * name of the signed-in person (ws_group_save() and the others) with the
+ * owner of the application as that person: the API keeps no session, and the
+ * panel's line would otherwise carry no name.
+ *
+ * @param callable $call
+ * @return mixed what $call returns
+ */
+function ws_api_as_owner($call)
+{
+    $app = api_current_app();
+
+    if (!isset($_SESSION) || !is_array($_SESSION)) {
+        $_SESSION = array();
+    }
+
+    $had = array_key_exists('sessionusername', $_SESSION);
+    $old = $had ? $_SESSION['sessionusername'] : null;
+    $_SESSION['sessionusername'] = (string) ($app['owner']['username'] ?? '');
+
+    try {
+        return call_user_func($call);
+    } finally {
+        if ($had) {
+            $_SESSION['sessionusername'] = $old;
+        } else {
+            unset($_SESSION['sessionusername']);
+        }
+    }
+}
+
+/**
+ * The owner of the application as somebody who arranges the groups of
+ * channels: staff, on a database that has them. Anybody else gets 403 before
+ * anything about a group is said.
+ *
+ * @return array the reader (ws_api_viewer())
+ */
+function ws_api_channel_groups_staff()
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_groups_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    if (!ws_can_manage_groups($viewer)) {
+        api_fail(403, 'forbidden', lang('Only staff can arrange the groups of channels.'));
+    }
+
+    return $viewer;
+}
+
+/**
+ * @param int $id
+ * @return array the group's row
+ */
+function ws_api_channel_group_or_404($id)
+{
+    $group = ws_group((int) $id);
+
+    if (!$group) {
+        api_fail_not_found(lang('Group'));
+    }
+
+    return $group;
+}
+
+/**
+ * Answers a refusal of the module's group functions: 403 for a missing right,
+ * 422 for the rest, on the field it names.
+ *
+ * @param array $result ok, error, field
+ */
+function ws_api_channel_group_refused($result)
+{
+    $error = (string) $result['error'];
+
+    if (in_array($error, array(lang('Only staff can arrange the groups of channels.'), lang('Only staff can give access on a group.')), true)) {
+        api_fail(403, 'forbidden', $error);
+    }
+
+    api_fail_validation($error, (($result['field'] ?? '') !== '') ? $result['field'] : null);
+}
+
+/**
+ * A group as GET /workspace/channel-groups lists it to staff.
+ *
+ * @param array $viewer
+ * @param int   $group_id
+ * @return array|null null when there is no such group
+ */
+function ws_api_channel_group_one($viewer, $group_id)
+{
+    foreach (ws_groups_for($viewer) as $group) {
+        if ((int) $group['id'] === (int) $group_id) {
+            return ws_api_channel_group_present($group + array('path' => ws_group_path($group['id'])), ws_can_manage_groups($viewer));
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Where a group named so stands inside that one, as path names it.
+ *
+ * @param int    $parent_id 0 for the top
+ * @param string $name
+ * @return string
+ */
+function ws_api_channel_group_path_under($parent_id, $name)
+{
+    return (((int) $parent_id > 0) ? ws_group_path($parent_id) . ' › ' : '') . (string) $name;
+}
+
+/**
+ * The names of the channels the owner of the application reads, out of these.
+ * A channel they do not read - a private one they are not in - is counted
+ * wherever a change to the groups reaches it, never named, as on the panel.
+ *
+ * @param array $viewer
+ * @param int[] $channel_ids
+ * @return string[] channel id => name
+ */
+function ws_api_channel_groups_seen($viewer, $channel_ids)
+{
+    $out = array();
+
+    foreach (array_unique(array_map('intval', (array) $channel_ids)) as $channel_id) {
+        $channel = ws_channel($channel_id);
+
+        if ($channel && ws_can_read_channel($viewer, $channel) && (!ws_api_is_claude() || ws_claude_channel_allowed($channel))) {
+            $out[$channel_id] = (string) $channel['name'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Channels or groups by id and name.
+ *
+ * @param string[] $names id => name
+ * @param string   $key   what the id is called
+ * @return array[]
+ */
+function ws_api_channel_group_named($names, $key)
+{
+    $out = array();
+
+    foreach ((array) $names as $id => $name) {
+        $out[] = array($key => (int) $id, 'name' => (string) $name);
+    }
+
+    return $out;
+}
+
+/**
+ * One channel a change to the groups brings people into or takes them out of.
+ *
+ * @param int    $channel_id
+ * @param string $name
+ * @param int[]  $added
+ * @param int[]  $removed
+ * @return array
+ */
+function ws_api_channel_group_membership_present($channel_id, $name, $added, $removed)
+{
+    return array(
+        'channel_id' => (int) $channel_id,
+        'name'       => (string) $name,
+        'joining'    => ws_api_channel_group_people($added),
+        'leaving'    => ws_api_channel_group_people($removed),
+    );
+}
+
+/**
+ * Whom a change to the groups brings into channels and takes out of them,
+ * channel by channel, as ws_group_sync_plan() foresees it or the sync did it.
+ * joining and leaving count every membership; a channel the owner of the
+ * application does not read is counted in unseen_channels, not named.
+ *
+ * @param array[]  $changes channel id => added, removed (user ids)
+ * @param string[] $seen    channel id => name (ws_api_channel_groups_seen())
+ * @return array
+ */
+function ws_api_channel_group_memberships_present($changes, $seen)
+{
+    $out = array(
+        'joining'         => 0,
+        'leaving'         => 0,
+        'channels'        => array(),
+        'unseen_channels' => 0,
+    );
+
+    foreach ((array) $changes as $channel_id => $change) {
+        $added = (array) ($change['added'] ?? array());
+        $removed = (array) ($change['removed'] ?? array());
+
+        if (empty($added) && empty($removed)) {
+            continue;
+        }
+
+        $out['joining'] += count($added);
+        $out['leaving'] += count($removed);
+
+        if (isset($seen[(int) $channel_id])) {
+            $out['channels'][] = ws_api_channel_group_membership_present($channel_id, $seen[(int) $channel_id], $added, $removed);
+        } else {
+            $out['unseen_channels'] += 1;
+        }
+    }
+
+    return $out;
+}
+
+// What ws_api_channel_group_memberships_present() returns.
+function ws_api_channel_group_memberships_schema()
+{
+    return array(
+        'joining'         => 'integer',
+        'leaving'         => 'integer',
+        'channels'        => array(array(
+            'channel_id' => 'integer',
+            'name'       => 'string',
+            'joining'    => array(array('user_id' => 'integer', 'name' => 'string')),
+            'leaving'    => array(array('user_id' => 'integer', 'name' => 'string')),
+        )),
+        'unseen_channels' => 'integer',
+    );
+}
+
+/**
+ * What changing a group answers with, and what its dry run says it would be.
+ *
+ * @param array $group       ws_api_channel_group_present()
+ * @param array $memberships ws_api_channel_group_memberships_present()
+ * @return array
+ */
+function ws_api_channel_group_change_present($group, $memberships)
+{
+    return array(
+        'group'       => $group,
+        'memberships' => $memberships,
+    );
+}
+
+// What ws_api_channel_group_change_present() returns.
+function ws_api_channel_group_change_schema()
+{
+    return array(
+        'group'       => 'WorkspaceChannelGroup',
+        'memberships' => 'WorkspaceChannelGroupMemberships',
+    );
+}
+
+/**
+ * What taking a group away does, and what its dry run says it would do: where
+ * what was in it goes, whose access ends and who leaves which channel.
+ *
+ * @param array    $group       the group's row with its path, read before it goes
+ * @param int[]    $channel_ids the channels in it
+ * @param string[] $groups      the groups in it, id => name
+ * @param int[]    $holders     the people who held access on it
+ * @param string[] $seen        ws_api_channel_groups_seen()
+ * @param array    $memberships ws_api_channel_group_memberships_present()
+ * @param bool     $deleted     false on a dry run
+ * @return array
+ */
+function ws_api_channel_group_removal_present($group, $channel_ids, $groups, $holders, $seen, $memberships, $deleted)
+{
+    $channels = array();
+    $unseen = 0;
+
+    foreach ((array) $channel_ids as $channel_id) {
+        if (isset($seen[(int) $channel_id])) {
+            $channels[(int) $channel_id] = $seen[(int) $channel_id];
+        } else {
+            $unseen++;
+        }
+    }
+
+    return array(
+        'id'              => (int) $group['id'],
+        'name'            => (string) $group['name'],
+        'path'            => (string) ($group['path'] ?? $group['name']),
+        'parent_id'       => ((int) $group['parent_id'] > 0) ? (int) $group['parent_id'] : null,
+        'channels'        => ws_api_channel_group_named($channels, 'channel_id'),
+        'unseen_channels' => $unseen,
+        'groups'          => ws_api_channel_group_named($groups, 'id'),
+        'access'          => ws_api_channel_group_people($holders),
+        'memberships'     => $memberships,
+        'deleted'         => (bool) $deleted,
+    );
+}
+
+// What ws_api_channel_group_removal_present() returns.
+function ws_api_channel_group_removal_schema()
+{
+    return array(
+        'id'              => 'integer',
+        'name'            => 'string',
+        'path'            => 'string',
+        'parent_id'       => 'integer?',
+        'channels'        => array(array('channel_id' => 'integer', 'name' => 'string')),
+        'unseen_channels' => 'integer',
+        'groups'          => array(array('id' => 'integer', 'name' => 'string')),
+        'access'          => array(array('user_id' => 'integer', 'name' => 'string')),
+        'memberships'     => 'WorkspaceChannelGroupMemberships',
+        'deleted'         => 'boolean',
+    );
+}
+
+/**
+ * Somebody who holds access on a group, with who gave it and on which group.
+ *
+ * @param array $person   ws_group_access_people() row
+ * @param int   $group_id
+ * @return array
+ */
+function ws_api_channel_group_holder_present($person, $group_id)
+{
+    return array(
+        'user_id'    => (int) $person['id'],
+        'name'       => (string) $person['name'],
+        'granted_by' => ((string) ($person['granted_by'] ?? '') !== '') ? (string) $person['granted_by'] : null,
+        'granted_at' => ((int) ($person['granted_at'] ?? 0) > 0) ? api_time($person['granted_at']) : null,
+        'group_id'   => (int) $group_id,
+        'group_path' => ws_group_path($group_id),
+    );
+}
+
+/**
+ * Who holds access on a group, as Access on the group in its menu lists them:
+ * on the group itself, and on the groups above it, whose access reaches here
+ * too; and what that access reaches.
+ *
+ * @param int $group_id
+ * @return array
+ */
+function ws_api_channel_group_access_present($group_id)
+{
+    $people = array();
+    $above = array();
+
+    foreach (ws_group_access_people($group_id) as $person) {
+        $people[] = ws_api_channel_group_holder_present($person, $group_id);
+    }
+
+    foreach (array_slice(ws_group_chain($group_id), 1) as $parent_id) {
+        foreach (ws_group_access_people($parent_id) as $person) {
+            $above[] = ws_api_channel_group_holder_present($person, $parent_id);
+        }
+    }
+
+    return array(
+        'group_id' => (int) $group_id,
+        'path'     => ws_group_path($group_id),
+        'people'   => $people,
+        'above'    => $above,
+        'reach'    => ws_group_reach($group_id),
+    );
+}
+
+// What ws_api_channel_group_access_present() returns.
+function ws_api_channel_group_access_schema()
+{
+    $holder = array(
+        'user_id'    => 'integer',
+        'name'       => 'string',
+        'granted_by' => 'string?',
+        'granted_at' => 'string?',
+        'group_id'   => 'integer',
+        'group_path' => 'string',
+    );
+
+    return array(
+        'group_id' => 'integer',
+        'path'     => 'string',
+        'people'   => array($holder),
+        'above'    => array($holder),
+        'reach'    => array('groups' => 'integer', 'channels' => 'integer', 'private' => 'integer', 'archived' => 'integer'),
+    );
+}
+
+/**
+ * What giving or taking back access on a group answers with: who holds it
+ * now (as it stands before the change, in a dry run) and who comes into or
+ * leaves which channel.
+ *
+ * @param int   $group_id
+ * @param array $memberships ws_api_channel_group_memberships_present()
+ * @return array
+ */
+function ws_api_channel_group_access_change_present($group_id, $memberships)
+{
+    return array(
+        'access'      => ws_api_channel_group_access_present($group_id),
+        'memberships' => $memberships,
+    );
+}
+
+// What ws_api_channel_group_access_change_present() returns.
+function ws_api_channel_group_access_change_schema()
+{
+    return array(
+        'access'      => 'WorkspaceChannelGroupAccess',
+        'memberships' => 'WorkspaceChannelGroupMemberships',
+    );
+}
+
+/**
+ * Creates a group of channels the way New group in the sidebar does. Staff
+ * work, gated on the owner of the application's rights; an application key
+ * may do it.
+ */
+function ws_api_channel_groups_create($params)
+{
+    $viewer = ws_api_channel_groups_staff();
+
+    // The checks ws_group_save() makes, made first so that a dry run meets
+    // the same refusals.
+    $name = ws_group_clean_name($params['name'] ?? '');
+
+    if ($name === '') {
+        api_fail_validation(lang('A group needs a name.'), 'name');
+    }
+
+    $parent_id = max(0, (int) ($params['parent_id'] ?? 0));
+    $refused = ws_group_place_refused(0, $parent_id);
+
+    if ($refused !== '') {
+        api_fail_validation($refused, 'parent_id');
+    }
+
+    $color = ws_palette_place_of($params['color'] ?? '');
+
+    api_dry_run_stop('created', 'workspace_channel_group', array(
+        'name'      => $name,
+        'parent_id' => ($parent_id > 0) ? $parent_id : null,
+        'path'      => ws_api_channel_group_path_under($parent_id, $name),
+        'color'     => ($color > 0) ? ws_palette_hex($color) : null,
+    ));
+
+    $result = ws_api_as_owner(function () use ($viewer, $name, $color, $parent_id) {
+        return ws_group_save($viewer, array('id' => 0, 'name' => $name, 'color' => $color, 'parent_id' => $parent_id));
+    });
+
+    if (!$result['ok']) {
+        ws_api_channel_group_refused($result);
+    }
+
+    api_ok(ws_api_channel_group_one($viewer, $result['id']), 201);
+}
+
+/**
+ * Changes a group of channels: its name and colour as the group's form does,
+ * its place as the sidebar's moves do. A move inside another group changes
+ * who is in its channels, so the answer, like the dry run before it, names
+ * who comes in and who leaves.
+ */
+function ws_api_channel_groups_update($params)
+{
+    $viewer = ws_api_channel_groups_staff();
+    $group = ws_api_channel_group_or_404($params['id']);
+    $id = (int) $group['id'];
+
+    $saving = array_key_exists('name', $params) || array_key_exists('color', $params);
+    $reordering = array_key_exists('before_id', $params);
+
+    if (!$saving && !$reordering && !array_key_exists('parent_id', $params)) {
+        api_fail_validation(lang('Send at least one of name, color, parent_id or before_id.'));
+    }
+
+    // The whole row first, then what was sent on top of it.
+    $name = array_key_exists('name', $params) ? ws_group_clean_name($params['name']) : (string) $group['name'];
+
+    if ($name === '') {
+        api_fail_validation(lang('A group needs a name.'), 'name');
+    }
+
+    $color = array_key_exists('color', $params) ? ws_palette_place_of($params['color']) : ws_palette_place($group['color']);
+    $parent_id = array_key_exists('parent_id', $params) ? max(0, (int) $params['parent_id']) : (int) $group['parent_id'];
+    $refused = ws_group_place_refused($id, $parent_id);
+
+    if ($refused !== '') {
+        api_fail_validation($refused, 'parent_id');
+    }
+
+    // ws_group_move() puts a group it cannot place in front of before_id
+    // last without a word; here that is a mistake worth naming.
+    $before_id = max(0, (int) ($params['before_id'] ?? 0));
+
+    if ($before_id > 0) {
+        $before = ws_group($before_id);
+
+        if (!$before || ($before_id === $id) || ((int) $before['parent_id'] !== $parent_id)) {
+            api_fail_validation(lang('before_id must be another group of the level the group ends up on.'), 'before_id');
+        }
+    }
+
+    $moved = ($parent_id !== (int) $group['parent_id']);
+    $plan = $moved ? ws_group_move_plan($id, $parent_id) : array();
+    $seen = ws_api_channel_groups_seen($viewer, array_keys($plan));
+
+    api_dry_run_stop('updated', 'workspace_channel_group', ws_api_channel_group_change_present(array_merge(ws_api_channel_group_one($viewer, $id), array(
+        'name'      => $name,
+        'parent_id' => ($parent_id > 0) ? $parent_id : null,
+        'path'      => ws_api_channel_group_path_under($parent_id, $name),
+        'color'     => ($color > 0) ? ws_palette_hex($color) : null,
+    )), ws_api_channel_group_memberships_present($plan, $seen)));
+
+    $synced = array();
+
+    // The form saves the name, the colour and the place - last among the
+    // groups there - and writes the line in the activity log. The sidebar's
+    // move writes none, and is what puts a group in front of another one.
+    if ($saving) {
+        $result = ws_api_as_owner(function () use ($viewer, $id, $name, $color, $parent_id) {
+            return ws_group_save($viewer, array('id' => $id, 'name' => $name, 'color' => $color, 'parent_id' => $parent_id));
+        });
+
+        if (!$result['ok']) {
+            ws_api_channel_group_refused($result);
+        }
+
+        $synced = $result['synced'];
+    }
+
+    if ($reordering || ($moved && !$saving)) {
+        $result = ws_group_move($viewer, $id, $parent_id, $before_id);
+
+        if (!$result['ok']) {
+            ws_api_channel_group_refused($result);
+        }
+
+        $synced += $result['synced'];
+    }
+
+    $seen += ws_api_channel_groups_seen($viewer, array_diff(array_keys($synced), array_keys($seen)));
+
+    api_ok(ws_api_channel_group_change_present(ws_api_channel_group_one($viewer, $id), ws_api_channel_group_memberships_present($synced, $seen)));
+}
+
+/**
+ * Takes a group of channels away the way its menu does: what was in it moves
+ * up, the access given on it ends, and so do the memberships only that
+ * access had given. The answer, like the dry run before it, says all three.
+ */
+function ws_api_channel_groups_delete($params)
+{
+    $viewer = ws_api_channel_groups_staff();
+    $group = ws_api_channel_group_or_404($params['id']);
+    $id = (int) $group['id'];
+
+    // What moves up and whose access ends, read before it does.
+    $channel_ids = array_map('intval', (array) db_values("SELECT id FROM ws_channels WHERE group_id = '" . $id . "'"));
+    $groups = array();
+    $holders = array();
+
+    foreach (ws_groups_all() as $child_id => $row) {
+        if ((int) $row['parent_id'] === $id) {
+            $groups[(int) $child_id] = (string) $row['name'];
+        }
+    }
+
+    foreach (ws_group_access_people($id) as $person) {
+        $holders[] = (int) $person['id'];
+    }
+
+    $row = $group + array('path' => ws_group_path($id));
+    $plan = ws_group_remove_plan($id);
+    $seen = ws_api_channel_groups_seen($viewer, array_merge($channel_ids, array_keys($plan)));
+
+    api_dry_run_stop('deleted', 'workspace_channel_group', ws_api_channel_group_removal_present($row, $channel_ids, $groups, $holders, $seen, ws_api_channel_group_memberships_present($plan, $seen), false));
+
+    $result = ws_api_as_owner(function () use ($viewer, $id) {
+        return ws_group_remove($viewer, $id);
+    });
+
+    if (!$result['ok']) {
+        ws_api_channel_group_refused($result);
+    }
+
+    $seen += ws_api_channel_groups_seen($viewer, array_diff(array_keys($result['synced']), array_keys($seen)));
+
+    api_ok(ws_api_channel_group_removal_present($row, $channel_ids, $groups, $holders, $seen, ws_api_channel_group_memberships_present($result['synced'], $seen), true));
+}
+
+function ws_api_channel_groups_access($params)
+{
+    ws_api_channel_groups_staff();
+    $group = ws_api_channel_group_or_404($params['id']);
+
+    api_ok(ws_api_channel_group_access_present($group['id']));
+}
+
+/**
+ * Gives colleagues access on a group the way Give access does: they become
+ * members of every channel in it and in the groups inside it. The answer,
+ * like the dry run before it, names who comes into which channel.
+ */
+function ws_api_channel_groups_access_grant($params)
+{
+    $viewer = ws_api_channel_groups_staff();
+    $group = ws_api_channel_group_or_404($params['id']);
+    $id = (int) $group['id'];
+
+    // The panel offers only the team: anybody else is left out, and nobody
+    // left is the panel's own refusal.
+    $user_ids = array_values(array_intersect(ws_api_user_ids($params['user_ids'] ?? array(), 'user_ids'), ws_team_ids()));
+
+    if (empty($user_ids)) {
+        api_fail_validation(lang('Choose who gets the access.'), 'user_ids');
+    }
+
+    $plan = ws_group_access_plan($id, $user_ids, array());
+    $seen = ws_api_channel_groups_seen($viewer, array_keys($plan));
+
+    api_dry_run_stop('granted', 'workspace_channel_group_access', ws_api_channel_group_access_change_present($id, ws_api_channel_group_memberships_present($plan, $seen)));
+
+    $result = ws_api_as_owner(function () use ($viewer, $id, $user_ids) {
+        return ws_group_access_grant($viewer, $id, $user_ids);
+    });
+
+    if (!$result['ok']) {
+        ws_api_channel_group_refused(array('error' => $result['error'], 'field' => 'user_ids'));
+    }
+
+    $seen += ws_api_channel_groups_seen($viewer, array_diff(array_keys($result['synced']), array_keys($seen)));
+
+    api_ok(ws_api_channel_group_access_change_present($id, ws_api_channel_group_memberships_present($result['synced'], $seen)));
+}
+
+/**
+ * Takes the access on a group back from one person the way Take the access
+ * back does. The panel offers it only for somebody who holds the access; for
+ * anybody else nothing is written, not even the line in the activity log.
+ */
+function ws_api_channel_groups_access_revoke($params)
+{
+    $viewer = ws_api_channel_groups_staff();
+    $group = ws_api_channel_group_or_404($params['id']);
+    $id = (int) $group['id'];
+    $user_id = (int) $params['user_id'];
+    $holds = ((int) db_value("SELECT COUNT(*) FROM ws_channel_group_access WHERE group_id = '" . $id . "' AND user_id = '" . $user_id . "'") > 0);
+
+    $plan = $holds ? ws_group_access_plan($id, array(), array($user_id)) : array();
+    $seen = ws_api_channel_groups_seen($viewer, array_keys($plan));
+
+    api_dry_run_stop('revoked', 'workspace_channel_group_access', ws_api_channel_group_access_change_present($id, ws_api_channel_group_memberships_present($plan, $seen)));
+
+    $synced = array();
+
+    if ($holds) {
+        $result = ws_api_as_owner(function () use ($viewer, $id, $user_id) {
+            return ws_group_access_revoke($viewer, $id, array($user_id));
+        });
+
+        if (!$result['ok']) {
+            ws_api_channel_group_refused($result);
+        }
+
+        $synced = $result['synced'];
+    }
+
+    $seen += ws_api_channel_groups_seen($viewer, array_diff(array_keys($synced), array_keys($seen)));
+
+    api_ok(ws_api_channel_group_access_change_present($id, ws_api_channel_group_memberships_present($synced, $seen)));
+}
+
 function ws_api_messages_ack($params)
 {
     $viewer = ws_api_viewer();
