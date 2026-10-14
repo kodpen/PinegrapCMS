@@ -34,12 +34,13 @@ if (is_scalar($_REQUEST['currency_id'] ?? null) && $_REQUEST['currency_id']) {
             WHERE id = '" . escape($_SESSION['ecommerce']['currency_id']) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        $currency_code = $row['code'];
+        $currency_code = $row['code'] ?? '';
         
         // if there is a currency code, then continue
         if ($currency_code != '') {
             // if visitor tracking is on, update visitor record with currency code
-            if (VISITOR_TRACKING == true) {
+            // (a bot, or a post without a page view first, has no visitor record)
+            if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
                 $query = 
                     "UPDATE visitors
                     SET
@@ -56,8 +57,10 @@ if (is_scalar($_REQUEST['currency_id'] ?? null) && $_REQUEST['currency_id']) {
             }
         }
     }
-    
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
-    exit();
 }
+
+// Back to the page the form was on, also when no currency came with it (that
+// used to leave the visitor on a blank page).
+header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
+exit();
 ?>

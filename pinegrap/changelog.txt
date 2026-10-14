@@ -564,6 +564,15 @@
          olduğu sitelerde o ziyaretçinin gezindiği her
          sayfa hata veriyordu; artık seçim yok sayılıyor.
 
+  [DÜZELTME] Para birimi seçicisi para birimi
+         olmadan gönderilince boş sayfa çıkıyordu; artık
+         ziyaretçi bulunduğu sayfaya dönüyor. Para birimi
+         seçimi ve sepete ilk ürünün eklenmesi (kasa
+         satışı dahil), ziyaret kaydı olmayan bir istekte
+         (arama motoru botu ya da sitede önce sayfa
+         açmamış biri) hata günlüğüne uyarı yazıyordu;
+         artık yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
