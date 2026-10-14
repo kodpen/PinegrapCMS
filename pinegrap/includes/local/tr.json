@@ -23176,5 +23176,9 @@
     "Only the person, signed in on a device, can pin a message, take the pin off or close it; an application cannot do it for them.": "Bir mesajı yalnız cihazında oturum açmış kişinin kendisi sabitleyebilir, sabitlemeyi kaldırabilir ya da kapatabilir; bir uygulama onun adına yapamaz.",
     "A discussion has no message pinned to the top.": "Bir tartışmada en üste sabitlenmiş mesaj olmaz.",
     "Only a message, a note, a decision or a task card can be pinned.": "Yalnız bir mesaj, not, karar ya da görev kartı sabitlenebilir.",
-    "Only the people in a channel keep the pinned message closed; anybody else closes it on their own screen.": "Sabitlenmiş mesajı yalnız kanaldaki kişiler kapalı tutar; başkaları onu kendi ekranında kapatır."
+    "Only the people in a channel keep the pinned message closed; anybody else closes it on their own screen.": "Sabitlenmiş mesajı yalnız kanaldaki kişiler kapalı tutar; başkaları onu kendi ekranında kapatır.",
+    "Only the person, signed in on a device, can pin or order their channels; an application cannot do it for them.": "Kanallarını yalnız cihazında oturum açmış kişinin kendisi sabitleyebilir ya da sıralayabilir; bir uygulama onun adına yapamaz.",
+    "Send pinned, order or both.": "pinned, order ya da ikisini birden gönderin.",
+    "A discussion is not in the channel list, so it cannot be pinned or put in order.": "Tartışma kanal listesinde yer almaz; sabitlenemez ve sıraya konamaz.",
+    "Only the people in a channel pin it or put it in order.": "Bir kanalı yalnız üyeleri sabitler ya da sıraya koyar."
 }

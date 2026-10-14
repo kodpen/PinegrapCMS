@@ -203,7 +203,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_channels_list',
             'returns'     => array('list' => 'WorkspaceChannel'),
             'summary'     => 'List workspace channels',
-            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
+            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). They come in the owner\'s own order, as their sidebar shows them: the pinned ones first, then by order, then by name; pinned and order on each channel say where it stands (POST /workspace/channels/{id}/prefs). active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
             'params'      => array(
                 array('name' => 'archived', 'in' => 'query', 'type' => 'bool', 'description' => 'The archived channels instead.'),
                 array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the channels tied to this customer.'),
@@ -558,6 +558,24 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'notify', 'in' => 'body', 'type' => 'enum', 'values' => array('all', 'mentions', 'none'), 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.prefs',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/prefs',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channels_prefs',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceChannel',
+            'summary'     => 'Pin a channel or move it in the person\'s list',
+            'description' => 'Sets the person\'s own place for a channel in their list, as the panel\'s sidebar keeps it; only the fields sent change. pinned keeps the channel at the top of the list, as the pin beside its name does, and false takes the pin off. order moves it to that place among the channels the person is in (1 is the top), as dragging it does: the ones from that place on move one down. Pinned channels come first, so a pinned channel takes a place among the pinned ones and any other one a place after them; a place past either end is taken as the nearest it can be. Each call numbers the person\'s channels again as the list shows them, so order on every channel is its place in GET /workspace/channels, which lists them in that order (null on a channel the person is not in, and on all of them until the list is first numbered, by a call here or a drag on the panel). Either field in a public channel the person is not in joins them to it, as the panel does; in a private channel they are not in it is answered with 409 not_member, and a discussion is refused with 422. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since the list is the person\'s own.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'pinned', 'in' => 'body', 'type' => 'bool', 'description' => 'Keep the channel at the top of the person\'s list; false takes the pin off.'),
+                array('name' => 'order', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100000, 'description' => 'The place among the channels the person is in, 1 for the top.'),
             ),
         ),
 

@@ -84,6 +84,72 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kanalı listenin başına sabitleme ve kişinin kendi kanal sırası (2026-10-14)
+
+**Neden.** M6'nın (#381) kapsam dışı bıraktığı parça: telefondaki ekip
+uygulaması kanalın bildirim düzeyini seçebiliyordu ama kişinin panelde
+kanal listesinde tuttuğu diğer tercihlere (kanalı en üste sabitleme,
+sürükleyerek verdiği sıra) API'den ulaşılamıyordu; kanal nesnesi de
+bunları taşımıyordu.
+
+**Ne değişti.**
+- `POST /workspace/channels/{id}/prefs` {`pinned`, `order`}: yalnız
+  gönderilen alan değişir, ikisi de yoksa 422. `pinned` panelin
+  `ws_channel_pin()`'i (kanal adının yanındaki raptiye). `order`, kişinin
+  içinde olduğu kanallar arasında kanalın gideceği yer (1 en üst), panelde
+  sürüklemek gibi: o yerden sonrakiler bir aşağı kayar. Yeni ortak
+  fonksiyon `ws_channel_place()` (`channels.php`) listeyi
+  `ws_channels_for()`'un sırasıyla okur, kanalı yerine koyar ve panelin
+  `ws_channel_order()`'ıyla baştan numaralar. Sabitlenmiş kanallar hep
+  önde olduğu için sabitlenmiş kanal sabitlenmişler arasında, diğeri
+  onlardan sonra bir yer alır; uçların dışındaki yer en yakın geçerli
+  yere çekilir. Her çağrı (yalnız `pinned` gönderilse de) listeyi yeniden
+  numaraladığı için her kanaldaki `order` `GET /workspace/channels`'taki
+  yeriyle aynıdır.
+- `WorkspaceChannel`'a `pinned` ve `order` alanları eklendi (`order`
+  kişinin içinde olmadığı kanalda ve liste hiç numaralanmamışken `null`).
+  Kanal listesi zaten kişinin sırasıyla geliyordu (`ws_channels_for()`);
+  açıklaması bunu söylüyor. Eşitleme aynı nesneyi taşır; liste işareti
+  sunulan listenin `crc32`'si olduğu için sabitleme ya da sıra değişince
+  liste yeniden gelir.
+- `notify` gibi: herkese açık kanalda kişi içinde değilse onu kanala katar
+  (panelin `ws_channel_pin()`'i de böyle), içinde olmadığı özel kanal 409
+  `not_member`, tartışma 422 (kanal listesinde yer almaz). Yalnız cihaz
+  oturumundan (`ws_api_person_only()`; uygulama anahtarı 403, OAuth
+  bağlantısı kabul), `dry_run` alır, MCP aracı değil (`'mcp' => false`).
+
+Şema değişikliği yok (`ws_channel_members.sort` ve `pinned` 4.84'ten beri
+var), yeni izin kapsamı yok (`workspace:write`), `tr.json`'da 4 yeni metin,
+JS ve panelin davranışı değişmedi. Site Günlüğü'ne satır yazılmaz: panel de
+sabitleme ve sırayı günlüğe yazmıyor.
+
+**Bilerek yapılmayan.** Kanalın grubu kişisel bir tercih değil: gruplar
+çalışma alanınındır, herkes için aynıdır ve yalnız personel düzenler;
+kanalı bir gruba taşımak o grupta erişimi olanları kanala katar (panel
+taşımadan önce kimin gireceğini önizletiyor). Bu yüzden bu uca girmedi.
+Panelde grup açık / kapalı durumu yalnız tarayıcıda (`localStorage`)
+tutuluyor, sunucuda kişisel bir grup tercihi yok.
+
+**Doğrulama.** `tests/workspace_api_test.php`: rota (yöntem, yol, kapsam,
+cevap, `dry_run`, MCP aracı değil, iki alan da isteğe bağlı, `order` en
+az 1) ve kanal sunumu (`pinned`, `order`; numaralanmamış kanalda `null`,
+alanlar şemayla aynı sırada). Sandbox'ta ekip cihazları oturumuyla beş
+kanalda: yalnız `pinned` (kanal başa geçti, liste 1-5 numaralandı),
+sabitlenmemiş kanala `order: 1` (sabitlenmişlerden hemen sonraya),
+`pinned` + `order: 1` (en başa), `pinned` + `order: 99` (sabitlenmişlerin
+sonuna), sabitlemeyi kaldırma (sabitlenmemişlerin başına), `order: 99`
+(en sona); her adımda `order` listedeki yerle aynı. Prova (`?dry_run` ve
+`X-Dry-Run`) hiçbir şeyi değiştirmedi; boş gövde, `order: 0`, sayı
+olmayan `order`, geçersiz `pinned` ve `group` alanı 422, olmayan kanal
+404, uygulama anahtarı 403 (uygulama anahtarıyla liste sahibinin
+`pinned` / `order`'ını gösteriyor), içinde olunmayan herkese açık kanal
+prova `joins: true`, gerçek istekte kişiyi kattı; eşitlemede alanlar
+geliyor; OpenAPI'de yol var. Sunucu günlüğünde uyarı yok; `lint`,
+`check_lang`, `check_api_schema`, `test`, `build_js --check`,
+`check_copies` temiz.
+
+---
+
 ## 2026.4.10 — Dış API: gelen kutusunun değişenlerinde silinen satırlar (2026-10-14)
 
 **Neden.** #379 gelen kutusuna `changed_since` verdi, ama tamamen silinen

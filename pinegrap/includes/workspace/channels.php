@@ -989,3 +989,62 @@ function ws_channel_order($viewer, $channel_ids)
 
     return array('ok' => true, 'error' => '');
 }
+
+/**
+ * Moves a channel to a place in this person's own order, the way dragging it
+ * in the list does, and numbers the channels they are in again from the top
+ * as the list shows them. Pinned channels come first: a pinned one takes a
+ * place among them, any other one after them, and a place past either end
+ * is taken as the nearest it can be. A public channel is joined on the way.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param int   $place 1 for the top; 0 keeps the place it holds now
+ * @return array ok, error
+ */
+function ws_channel_place($viewer, $channel, $place = 0)
+{
+    if (!ws_channel_order_ready()) {
+        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    if (!ws_channel_membership($channel['id'], $viewer['id'])) {
+        $joined = ws_channel_join($viewer, $channel);
+
+        if (!$joined['ok']) {
+            return $joined;
+        }
+    }
+
+    // The channels of the same list (open or archived) in the order
+    // ws_channels_for() gives them.
+    $rows = (array) db_items("SELECT c.id, m.pinned
+        FROM ws_channels c
+        INNER JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
+        WHERE c.archived_at " . (((int) $channel['archived_at'] > 0) ? '> 0' : '= 0') . " AND c.kind <> 'thread'
+        ORDER BY (m.pinned = 1) DESC, (m.sort = 0), m.sort, c.name");
+
+    $ids = array();
+    $pinned = 0;
+    $is_pinned = false;
+    $held = 0;
+
+    foreach ($rows as $row) {
+        if ((int) $row['id'] === (int) $channel['id']) {
+            $is_pinned = !empty($row['pinned']);
+            $held = count($ids) + 1;
+            continue;
+        }
+
+        $ids[] = (int) $row['id'];
+        $pinned += empty($row['pinned']) ? 0 : 1;
+    }
+
+    $place = ((int) $place > 0) ? (int) $place : (($held > 0) ? $held : count($ids) + 1);
+    $place = $is_pinned ? min($place, $pinned + 1) : max($place, $pinned + 1);
+    $place = max(1, min($place, count($ids) + 1));
+
+    array_splice($ids, $place - 1, 0, array((int) $channel['id']));
+
+    return ws_channel_order($viewer, $ids);
+}

@@ -1592,6 +1592,16 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: telefon ya da bilgisayar
+         uygulamasıyla oturum açan kişi bir kanalı kendi
+         listesinin başına sabitleyebiliyor, sabitlemeyi
+         kaldırabiliyor ve kanalı listesinde istediği
+         yere taşıyabiliyor (panelde raptiye ve
+         sürükleyerek sıralama gibi). Kanal listesinde her
+         kanalın sabitlenip sabitlenmediği ve kişinin
+         sırasındaki yeri görünüyor. Uygulama anahtarıyla
+         bağlanan entegrasyonlar bunu kişi adına yapamaz.
+
   [YENİ] Çalışma Alanı: uygulama, gelen kutusunda
          sonradan değişenleri alırken silinen satırları
          da öğreniyor (silinen mesajdaki anılma, silinen
