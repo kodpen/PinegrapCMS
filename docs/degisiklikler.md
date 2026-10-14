@@ -84,6 +84,98 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Uzak ajan: konuşma sürüyor, yanıt takma adın kendi adıyla görünüyor (2026-10-14)
+
+**Neden.** Uzak ajanın beşinci ve son dilimi (`docs/_plan_tersine_oauth.md` →
+"4.6 Uzak ajan"). İki eksik kalmıştı. Birincisi: ajanın yanıtına verilen
+cevap ajanın önceki yanıtını alıntılayarak gidiyordu; kendi konuşmasını
+tutan bir ajan (başka bir Pinegrap sitesi, bir şirketin asistanı) her
+cevapta sıfırdan başlıyor ve kendi yanıtını alıntıdan okuyordu. İkincisi:
+yanıt soranın adıyla kilitli bir mesaj olarak yazıldığı için kanalda
+soranın kendi sözü gibi görünüyordu (yalnız ilk satırı "@x, `araç`
+aracıyla yanıtladı" diyordu) ve soran, yanıt kendi adıyla geldiği için
+hiçbir bildirim almıyordu.
+
+**Ne değişti.**
+
+- Şema adımı 10.111 (`upgrade_2026_4_10_workspace_mcp_conversations()`):
+  `ws_ai_requests.mcp_conversation` VARCHAR(255) '' (`mcp_task_note`'tan
+  sonra) ve `idx_reply (reply_message_id)`. Dizin, kanal ekranının her
+  mesaj sayfasında "bu mesajlardan hangisi bir ajanın yanıtı" sorusu için;
+  `ws_mcp_ask_server()`'ın cevap sorgusu da ondan yararlanır.
+- `includes/workspace/mcp_agent.php`, konuşma:
+  - `ws_mcp_agent_conversation_argument()` (saf): aracın, mesajın gittiği
+    argümandan başka, zorunlu olmayan, adı konuşma diyen bir metin
+    argümanı (`conversation_id`, `conversationId`, `context_id`,
+    `contextId`, `thread_id`, `threadId`, `session_id`, `sessionId`; ilk
+    bulunan). `ws_mcp_agent_tool()` bunu `conversation` olarak döner.
+  - `ws_mcp_agent_conversation_of()` (saf): yanıtın `structuredContent`'inde
+    o adın (yoksa öteki adların) altındaki metin ya da sayı; 255 baytı aşan
+    ya da denetim karakteri taşıyan kimlik alınmaz. Aracın konuşma
+    argümanı yoksa hiçbir kimlik saklanmaz: geri verilemeyecek kimlik
+    tutulmaz.
+  - Kimlik, yanıt yazılırken isteğe saklanır (`ws_mcp_agent_post()`;
+    hemen gelen yanıtta, arka planda biten işte ve onaylı çağrıda).
+  - `ws_mcp_agent_earlier()`: bu isteğin izlediği yanıtın isteği (kanalda
+    cevaplanan mesajı aynı sunucunun ajanı yanıtlamışsa o; görevde aynı
+    ajanın son yanıtlanmış çalışması). `ws_mcp_agent_conversation_carried()`
+    (saf) onun kimliğini, aynı hesap konuşuyorsa verir: oturumsuz
+    (taşıyıcı, başlık, temel) sunucuda herkes sitenin tek kimlik bilgisiyle
+    gittiği için herkes; OAuth'lu sunucuda yalnız konuşmayı başlatan kişi.
+  - Kimlik giderse istek yalnız yeni mesajı taşır: kanalda cevaplanan
+    yanıt, görevde "Bu görevdeki son yanıtınız" alıntılanmaz. Görevin
+    başlığı ve açıklaması yine gider (görev değişmiş olabilir).
+- `mcp_agent.php`, kimlik: `ws_mcp_agent_answers_map()` bir mesaj sayfası
+  için tek sorguyla yanıt mesajı → istek; `ws_mcp_agent_answer_split()`
+  (saf) yanıtın ilk satırındaki aracı (kod aralığından, dilden bağımsız)
+  ve satırdan sonraki yanıtı ayırır; `ws_mcp_agent_answer_view()` ekranın
+  göstereceği göndereni kurar: ad `@takmaad`, unvan "MCP ajanı", baş
+  harfli simge, `about` "araç aracıyla, Ad için yanıtladı", `app` ve
+  `mcp` işaretleri.
+- `messages.php` (`ws_message_payloads()` / `ws_message_payload()`): yanıt
+  mesajı ajanın adıyla, `sender_kind = 'app'` ve `mine = false` olarak
+  çizilir, gövdesi ilk satırı olmadan. Kayıt değişmez: mesaj veritabanında
+  soranın adıyla ve ilk satırıyla kalır.
+- Bildirim: yanıt yazılınca soran `agent_answer` türünde bildirim alır
+  (gelen kutusu, zil, telefon; ekrana bakarken sohbet gecikmesiyle).
+  Başlığı "@takmaad, #kanal kanalında size yanıt verdi", gövdesi yanıtın
+  ilk satırsız özeti (`ws_mcp_agent_inbox_describe()`). Kanal okununca
+  bahsetmeler gibi okunmuş sayılır (`ws_channel_mark_read()`). Görevdeki
+  yanıtın bildirimi zaten vardı (`task_assistant`).
+- `assets/js/workspace.js` (+ `.min.js`): ajan yanıtının adının yanında
+  "MCP ajanı" rozeti (üstüne gelince araç ve soran); ajanın yanıtına cevap
+  yazılırken "Bunu @x yazmadan da @x yanıtlar." ipucu.
+- `includes/local/tr.json`: 5 yeni metin.
+
+**Ödün.** Kayıt soranın adıyla kaldığı için ajanın adı yalnız mesajı
+çizen yolda (`ws_message_payloads()`: kanal, tartışma, kanal içi arama,
+kararlar listesi) görünür; genel arama (komut paleti ve API araması),
+sabitlenen mesaj, Genel Bakış, zaman çizelgesi, bildirim özetleri ve API
+mesajı soranın adıyla ve "@x, `araç` aracıyla yanıtladı" satırıyla
+gösterir (satır bu yüzden kayıtta duruyor). Yeni bir gönderen türü (`sender_kind`) 27 dosyada 160'tan çok
+dalı değiştirecekti; tek küçük PR'a sığmadı. Konuşma kimliği yalnız
+yapısal yanıtın en üst düzeyinde aranır; `_meta`'da ya da iç içe nesnede
+verilen kimlik okunmaz. Dev'in kendi MCP sunucusu konuşma kimliği
+vermediği için konuşma dev'de denenemez; yalnız gerileme denenir.
+
+**Denendi.** Birim testleri (`tests/workspace_mcp_test.php`: konuşma
+argümanının seçimi, yanıttan kimlik okuma ve reddedilenler, OAuth'lu
+sunucuda başkasının konuşmayı sürdürmemesi, yanıtın ilk satırının
+ayrılması). Sandbox'ta şema adımı 10.110'dan sonra iki kez koşturuldu
+(ikincisinde "zaten var"). `192.0.2.2:8001`'de konuşma kimliği veren
+sahte bir 2026-07-28 ajanıyla: kanalda `@helpdesk` sorusunun yanıtı kimliği
+sakladı, yanıta verilen iki cevap `conversation_id` ile ve alıntısız gitti;
+konuşma argümanı olmayan araçta cevap eskisi gibi alıntılı gitti, kimlik
+saklanmadı; görevde ikinci çalışma kimlikle ve "son yanıtınız" alıntısı
+olmadan gitti; soran `agent_answer` bildirimi aldı, kanal okununca okundu
+oldu. Tarayıcıda (Playwright) yanıtlar `@helpdesk` adı, "MCP ajanı" rozeti
+ve rozet açıklamasıyla, ilk satırsız çizildi; konsolda hata yok. Onaylı
+(OAuth) yolda konuşma kimliği uçtan uca denenmedi (aynı yardımcıları
+kullanıyor). `tools/` denetimleri, `tests/` (766) ve `build_js.php --check`
+geçti.
+
+---
+
 ## 2026.4.10 — Programlanmış işlem bir cümleyle kuruluyor (2026-10-14)
 
 **Neden.** Çalışma Alanı araştırmasının P2 2.2 maddesi. Programlanmış

@@ -7723,6 +7723,14 @@
                 meta.appendChild(el('span', 'badge rounded-pill ws-guest-badge', t('guest_badge')));
             }
 
+            // An MCP agent's answer, under the agent's own name: who asked and
+            // through which tool are on its mark (mcp_agent.php).
+            if (message.sender && message.sender.mcp) {
+                var agentMark = el('span', 'badge rounded-pill bg-info-subtle text-info-emphasis', message.sender.title);
+                agentMark.title = message.sender.about || '';
+                meta.appendChild(agentMark);
+            }
+
             meta.appendChild(el('span', '', message.time));
 
             if (message.kind === 'decision' || message.kind === 'note') {
@@ -10868,6 +10876,8 @@
                 row.appendChild(el('span', 'text-body-secondary ms-1', t('claude_reply_hint')));
             } else if (!self.editing && self.reply.sender && self.reply.sender.ai && self.channel.ai && self.channel.ai.available) {
                 row.appendChild(el('span', 'text-body-secondary ms-1', t('ai_reply_hint')));
+            } else if (!self.editing && self.reply.sender && self.reply.sender.mcp) {
+                row.appendChild(el('span', 'text-body-secondary ms-1', t('mcp_reply_hint', self.reply.sender.mcp)));
             }
             var cancel = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('cancel'));
             cancel.addEventListener('click', function () { self.cancelCompose(); });

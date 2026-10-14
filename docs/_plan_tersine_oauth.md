@@ -17,7 +17,7 @@ yapılır.
 
 | Madde | Ne | Efor | Not |
 |---|---|---|---|
-| 4.6 uzak ajan | MCP sunucusunun kendisi ajan (seviye C) | dilim başına K | dilim 1-4 bitti (#347, #353, #356, #358); 5 aşağıda |
+| 4.6 uzak ajan | MCP sunucusunun kendisi ajan (seviye C) | dilim başına K | bitti: beş dilim (#347, #353, #356, #358, #361) |
 | 4.5 | Çalışma Alanı takvim eşitleme (Google Takvim / Outlook) | Adım 0 K, OAuth O–B | Adım 0 OAuth'suz: gizli iCal adresi |
 | 4.7 | Notlar: Notion ve OneNote | O (Notion MCP üzerinden K) | 4.6 hazır, Notion MCP takma adla bağlanabilir |
 | 4.8 | Medyaya Drive / OneDrive / Dropbox'tan dosya almak | K–O | kişisel bağlantı |
@@ -158,7 +158,7 @@ Efor: K küçük, O orta, B büyük. "Şart" sağlayıcının istediğidir (2026
 - İstenirse tek seçenek: OpenRouter'ın PKCE akışı kişinin kendi anahtarını üretir; OpenAI uyumlu
   olduğu için `includes/workspace/ai.php`'ye "kendi modelini bağla" olarak oturur. Efor K.
 
-### 4.6 Uzak ajan (seviye C; Faz F'nin son parçası)
+### 4.6 Uzak ajan (seviye C; Faz F'nin son parçası) — bitti
 
 - **Ne:** sunucunun kendisi bir ajan (başka bir Pinegrap sitesi, bir şirketin asistanı): mesajı
   alır, yanıtlar. Pinegrap AI'a gerek yok; zekâ karşı tarafta. Yönetici "mesajı alan aracı"
@@ -177,7 +177,7 @@ Efor: K küçük, O orta, B büyük. "Şart" sağlayıcının istediğidir (2026
 | 2 | Uzun süren iş: `tools/call` MCP `tasks` ekiyle (2026-07-28; her istek `_meta` içinde istemci yeteneğini bildirir). Görev kimliği istekte saklanır (şema 10.110: `ws_ai_requests.mcp_task`, `mcp_task_poll`, `mcp_task_note`; `ws_mcp_calls.status` += `running`), ekranlar ve saatlik iş `tasks/get` ile sunucunun istediği aralıkla yoklar; sonuç `completed` yanıtının içinde gelir (ekte `tasks/result` yok). Satırda "@x üzerinde çalışıyor: <sunucunun ilerleme sözü>" ve soranla yöneticiye "Durdur" (`tasks/cancel`); kural kalkarsa ya da bir gün geçerse görev sunucuda da iptal. Ek bilgi isteyen görev (`input_required`, `tasks/update`) henüz desteklenmiyor: iptal edilir. | bitti (#353) |
 | 3 | Görevde uzak ajan: göreve devir (`mcp:<id>`) ve görev notunda `@takmaad`, ajan kipindeki sunucuda Pinegrap AI yerine doğrudan araca (görevin numarası ve başlığı, açıklaması, talimat, ajanın bu görevdeki son yanıtı); istek `ws_ai_requests` `agent = 'mcp'`, `task_id`; yanıt görevin Asistan bölümüne (`ws_task_delegation_answer()`). Takma ad Pinegrap AI bağlı olmasa da görevde seçilir; çekmecedeki Durdur süren işi `tasks/cancel` ile iptal eder. Şema yok. | bitti (#356) |
 | 4 | Yazan ajan aracı: OAuth'lu sunucuda `approve` kurallı araç seçilebilir; her mesaj önce `mcp_call` onay kartında bekler, soranın kendi hesabıyla gider (`ws_mcp_calls_propose()` / `ws_mcp_call_run()`), yanıt karar mesajı yerine ajanın yanıtı olarak düşer. Bekleyen istek `ws_ai_requests.status = 'sent'` (satırda "@x: Ad onaylayınca gönderilecek", ekranlar hızlanmaz); onay `ws_mcp_agent_approved()` ile isteği yalnız soranın hesabıyla gönderir, uzun iş #353'ün yolundan; bırakma ya da Durdur isteği ve kartı birlikte kapatır; saatlik iş bağlamı gitmiş bekleyenleri kapatır. Taşıyıcı / temel kimlikli sunucuda kural değişmedi (yalnız okuyan). Şema yok. | bitti (#358) |
-| 5 | Konuşmanın sürmesi ve kimlik: sunucu yapısal sonuçta bir konuşma kimliği dönüyorsa saklanıp sonraki cevapta geri gönderilir (bugün yalnız cevaplanan mesaj alıntılanıyor); yanıtın takma adın kendi üye kimliğiyle görünmesi (`ws_app_sender()` / `refs.php` genelleştirmesi) — bugün soranın adıyla, başında "@x, `araç` aracıyla yanıtladı". | isteğe bağlı |
+| 5 | Konuşmanın sürmesi ve kimlik: sunucu yapısal sonuçta (`structuredContent`) bir konuşma kimliği dönüyor ve aracın girdi şemasında aynı adlı isteğe bağlı metin argümanı (`conversation_id`, `context_id`, `thread_id`, `session_id`, camelCase hâlleri) varsa kimlik istekte saklanır, ajanın yanıtına verilen cevap (kanalda) ya da görevdeki sonraki istek onu bu argümanla geri gönderir ve önceki yanıtı alıntılamaz; OAuth'lu sunucuda yalnız konuşmayı başlatan sürdürür, argümanı olmayan araçta eski alıntı. Yanıt kanalda takma adın kendi adıyla görünür ("@x", "MCP ajanı" rozeti, üzerine gelince araç ve soran; baş satır gizli), soran zilde "@x, #kanal kanalında size yanıt verdi" bildirimi alır, cevap çubuğu "Bunu @x yazmadan da @x yanıtlar" der. Kayıt soranın adıyla kalır (genel arama, sabitlenen mesaj ve API soranı ve baş satırı görür); `ws_app_sender()` / `refs.php` genelleştirilmedi. Şema 10.111: `ws_ai_requests.mcp_conversation`, `idx_reply`. | bitti (#361) |
 
 ---
 

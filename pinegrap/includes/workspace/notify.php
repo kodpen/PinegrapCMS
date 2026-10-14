@@ -33,6 +33,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param int    $user_id
  * @param string $kind     mention | assigned | completed | invited | note | note_shared | note_updated | note_answer
  *                         | unblocked (a task waited for is done: task_links.php)
+ *                         | agent_answer (an MCP agent answered what one asked it: mcp_agent.php)
  *                         | approval_requested | approval_decided | approval_reminder | ack_reminder
  *                         | approval_answered (somebody outside the team answered: approval_guests.php)
  *                         | task_note (a note on a task one is on: task_work.php)
@@ -96,7 +97,7 @@ function ws_notify($user_id, $kind, $data)
             // the queue is worked right here instead of waiting for the
             // scheduled job, which not every site runs every minute.
             $looking = ws_seen_recently($user_id);
-            $delay = (in_array($kind, array('mention', 'guest_message'), true) && $looking) ? pg_push_chat_delay() : 0;
+            $delay = (in_array($kind, array('mention', 'guest_message', 'agent_answer'), true) && $looking) ? pg_push_chat_delay() : 0;
 
             pg_push_enqueue($user_id, 'ws', $inbox_id, $delay);
 
@@ -376,6 +377,13 @@ function ws_inbox_describe($viewer, $row)
         case 'approval_answered':
             if (function_exists('ws_approval_inbox_describe')) {
                 return ws_approval_inbox_describe($viewer, $row, $actor, $base);
+            }
+            break;
+
+        // An MCP agent answered what the person asked it (mcp_agent.php).
+        case 'agent_answer':
+            if (function_exists('ws_mcp_agent_inbox_describe')) {
+                return ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base);
             }
             break;
 

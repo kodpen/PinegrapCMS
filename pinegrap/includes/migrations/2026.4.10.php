@@ -44,6 +44,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_visitor_retention();      // 10.3
 	upgrade_2026_4_10_workspace_mcp_agent();    // 10.89
 	upgrade_2026_4_10_workspace_mcp_tasks();    // 10.110
+	upgrade_2026_4_10_workspace_mcp_conversations(); // 10.111
 
 }
 
@@ -841,6 +842,26 @@ function upgrade_2026_4_10_workspace_mcp_tasks() {
 	install_add_column('ws_ai_requests', 'mcp_task_note', "VARCHAR(255) NOT NULL DEFAULT '' AFTER mcp_task_poll");
 
 	install_note('Workspace: an MCP agent may work on a message in the background. The site asks the service how the work goes until it ends, the line under the message says it is working, and the person who asked can stop it.');
+
+}
+
+// Conversations an MCP agent keeps (2026.4.10, 10.111;
+// includes/workspace/mcp_agent.php).
+//
+// An agent that keeps a conversation of its own gives its id back in the
+// structured part of its answer; ws_ai_requests.mcp_conversation keeps it
+// ('' when it gave none), and the next request that follows that answer - a
+// reply to it in the channel, the next run on the same task - sends it back,
+// so the agent goes on with what it already knows instead of reading its own
+// answer quoted. The index on reply_message_id finds the request an answer
+// came from: the channel screen asks it for every page of messages, to show
+// the agent's answers under the agent's own name.
+function upgrade_2026_4_10_workspace_mcp_conversations() {
+
+	install_add_column('ws_ai_requests', 'mcp_conversation', "VARCHAR(255) NOT NULL DEFAULT '' AFTER mcp_task_note");
+	install_add_index('ws_ai_requests', 'idx_reply', "INDEX idx_reply (reply_message_id)");
+
+	install_note('Workspace: an MCP agent that keeps a conversation goes on with it when somebody replies to its answer, and its answers show under its own name in the channel.');
 
 }
 

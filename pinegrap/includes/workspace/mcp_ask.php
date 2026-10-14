@@ -217,6 +217,7 @@ function ws_mcp_js_strings()
         'mcp_agent_stop_ask' => lang('Stop this request? Work the agent does in the background is cancelled on the service too, and an answer still on its way is not posted.'),
         'mcp_agent_changes'  => lang('Waiting for approval before it goes to the agent'),
         'mcp_agent_sent'     => lang('Sent with your own account. The agent\'s answer comes in as soon as it gives one.'),
+        'mcp_reply_hint'     => ws_js_template('@{var:1} answers this without @{var:1}.', 1),
         'mcp_connect_me'     => lang('Connect my account'),
         'mcp_connect_again'  => lang('Connect my account again'),
         'mcp_connect_ask'    => ws_js_template('Connect your own account to @{var:1}? You sign in on the service and come back here.', 1),

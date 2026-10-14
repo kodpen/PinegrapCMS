@@ -19,6 +19,6 @@ yetkilendirme sunucusu" ve sonraki 2026.4.10 bölümleri; kurallar
    üçüncü dilim (göreve devir ve görev notunda `@takmaad` ajan kipindeki sunucunun kendisine,
    yanıt görevin Asistan bölümüne, şema yok) 2026-10-14'te bitti (#356). Dördüncü dilim (OAuth'lu
    sunucuda yazan ajan aracı: her mesaj soranın onay kartında bekler, onayla soranın kendi hesabıyla
-   gider, şema yok) 2026-10-14'te bitti (#358). Görev notunda
+   gider, şema yok) 2026-10-14'te bitti (#358). Beşinci ve son dilim (konuşma kimliği saklanıp sonraki cevapta geri gidiyor, yanıt takma adın kendi adıyla görünüyor, şema 10.111) 2026-10-14'te bitti (#361); 4.6 tamam. Görev notunda
    `@takmaad` ile sormak 2026-10-14'te bitti (#345, `docs/degisiklikler.md` → "Görev notunda
    @takmaad").

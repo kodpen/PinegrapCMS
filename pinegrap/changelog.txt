@@ -1074,6 +1074,29 @@
          Asistan bölümüne) geliyor. Kartı bir kenara bırakmak
          ya da "Durdur" isteği kapatıyor. Görevde de aynı.
 
+  [YENİ] Kendi yanıtlayan MCP sunucusunun yanıtları kanalda
+         kendi adıyla görünüyor: soranın adı yerine takma ad
+         (@takmaad), "MCP ajanı" rozeti ve baş harfli
+         simgesiyle; rozetin üzerine gelince hangi araçla ve
+         kim için yanıtladığı yazıyor. Soran kişi yanıt
+         gelince bildirim alıyor (gelen kutusu, zil, telefon).
+         Ajanın yanıtına cevap yazarken kutunun üstünde
+         cevabın takma ad yazılmadan da ajana gittiği
+         söyleniyor.
+
+  [YENİ] Kendi yanıtlayan MCP sunucusu kendi konuşmasını
+         sürdürebiliyor: sunucu yanıtında bir konuşma
+         kimliği veriyor ve aracı bunu geri alıyorsa, yanıta
+         verilen cevap (görevde aynı ajanın sonraki
+         çalışması) o kimlikle gidiyor; ajan önceki yanıtını
+         alıntı olarak değil kendi konuşmasından biliyor.
+         Kişilerin kendi hesabıyla bağlandığı sunucuda
+         konuşmayı yalnız onu başlatan kişi sürdürüyor;
+         başka biri cevap verirse yeni bir konuşma başlıyor.
+
+  [ŞEMA] Ajan isteklerine konuşma kimliği kolonu ve
+         yanıt mesajına göre arama dizini eklenir.
+
   [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
          örneğin müşteriye e-postayla sorulabiliyor. Onay
          formunda "Ekip dışından müşteriler" bölümüne ad ve
