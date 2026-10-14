@@ -618,7 +618,7 @@ function get_express_order($properties) {
                         $recipient_options[lang('myself')] = lang('myself');
 
                         // if there is at least one recipient stored in session
-                        if ($_SESSION['ecommerce']['recipients']) {
+                        if (!empty($_SESSION['ecommerce']['recipients'])) {
                             // loop through all recipients to build recipient options
                             foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                                 $recipient_options[$recipient] = $recipient;
@@ -901,7 +901,7 @@ function get_express_order($properties) {
                     $quick_add_ship_to_options[lang('myself')] = lang('myself');
 
                     // if there is at least one recipient stored in session
-                    if ($_SESSION['ecommerce']['recipients']) {
+                    if (!empty($_SESSION['ecommerce']['recipients'])) {
                         // loop through all recipients to build recipient options
                         foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                             $quick_add_ship_to_options[$recipient] = $recipient;
@@ -3800,7 +3800,7 @@ function get_express_order($properties) {
                             $recipient_options[lang('myself')] = lang('myself');
 
                             // if there is at least one recipient stored in session
-                            if ($_SESSION['ecommerce']['recipients']) {
+                            if (!empty($_SESSION['ecommerce']['recipients'])) {
                                 // loop through all recipients to build recipient options
                                 foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                                     $recipient_options[$recipient] = $recipient;
@@ -4000,7 +4000,7 @@ function get_express_order($properties) {
                     $quick_add['ship_to_options'][lang('myself')] = lang('myself');
 
                     // if there is at least one recipient stored in session
-                    if ($_SESSION['ecommerce']['recipients']) {
+                    if (!empty($_SESSION['ecommerce']['recipients'])) {
                         // loop through all recipients to build recipient options
                         foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                             $quick_add['ship_to_options'][$recipient] = $recipient;
@@ -4767,6 +4767,10 @@ function get_express_order($properties) {
                             foreach ($item['fields'] as $field_key => $field) {
 
                                 $html_name = 'order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_form_field_' . $field['id'];
+
+                                // Layouts read the submitted form title of every field and
+                                // quantity; it is filled below only for a reference code field.
+                                $item['fields'][$field_key]['titles'][$quantity_number] = array('title' => '', 'title_label' => '');
 
                                 // If the value for this field has not been set yet,
                                 // (e.g. the form has not been submitted by the customer),

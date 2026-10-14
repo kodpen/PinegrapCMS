@@ -84,6 +84,104 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Sepet sayfası hızlı ekleme kapalıyken boş form çizmiyor; sepet ve hızlı sipariş açılışta ve hata sonrası uyarı yazmıyor (2026-10-14)
+
+**Neden.** #447'nin kalanları. Sandbox'ta eski kodla yeniden üretildi;
+hepsi 2026.4.9'da da var.
+
+- Sepet sayfasının örnek düzenleri (`data/layouts/248.php`, teklif sepeti
+  `497.php`) her açılışta 138–203'te beş uyarı yazıyordu (`label`,
+  `recipient`, `quantity`, `amount`, `available_products`) ve hızlı ekleme
+  kapalıyken içinde boş bir "Ürün" seçim kutusu olan işlevsiz bir hızlı
+  ekleme formu çiziyordu. Neden `get_shopping_cart.php`: 8f062db9
+  (`$quick_add['system'] .=` satırının "tanımsız anahtar" uyarısı için)
+  diziyi `$quick_add['system'] = ''` ile başlattı; dizi hızlı ekleme
+  kapalıyken de dolu olunca düzenin `if ($quick_add):` kapısı açık kaldı.
+  Panelden üretilmemiş özel düzen (`includes/templates/shopping_cart.php`)
+  aynı kapıyı kullanıyor.
+- Ürün formlu bir kalem sepetteyken sepet düzenleri 611/615'te, hızlı
+  sipariş düzeni (256) 573'te her alan ve adet için `titles` uyarısı
+  yazıyordu. #440'ın "256 hata sonrası çizimde uyarı" kalanı buydu: hata
+  sonrası sayfa yeniden çizilirken sepette ürün formlu kalem vardı. #447
+  formsuz sepetle denediği için üretemedi. Başlık yalnız referans kodu
+  alanı bir başvuruyla eşleşince dolduruluyordu.
+- Çok alıcılı sitede hızlı ekleme açıkken (ve sepetin, hızlı siparişin
+  alıcı listelerinde) oturumda alıcı yokken `$_SESSION['ecommerce']['recipients']`
+  uyarısı.
+- Hızlı siparişin hata yolunda: kargo adresi geçersiz, boş ya da ülkesi
+  hiçbir kargo bölgesinde değilken `shipping.php` 1571 (`arrival_date_id`,
+  zorunlu yöntem denetimi tarih göndermiyor) ve 2247 (hata yanıtında
+  `shipping_methods` yok); bilinmeyen hediye çeki kodunda
+  `express_order.php` 654 ve `order_preview.php` 104 (`db_item()` satır
+  yokken `null`); adet kutusu gönderilmeyen formda `express_order.php` 410.
+
+**Ne değişti.**
+
+- `get_shopping_cart.php`: `$quick_add` yalnız hızlı ekleme ürün grubu
+  açık ve ürünlüyken dolduruluyor; `system` anahtarı o blokta `=` ile
+  atanıyor. Hızlı ekleme kapalıyken (grup seçilmemiş, kapalı ya da ürünsüz)
+  düzenlere boş dizi gidiyor. **Görünen değişiklik:** bu durumda sepet
+  sayfasındaki boş hızlı ekleme formu (etiketi "Ürün", seçeneksiz bir
+  seçim kutusu, düğmesiz) kalktı; 8f062db9 öncesindeki davranış buydu.
+  Hızlı ekleme açıkken HTML aynı.
+- `get_shopping_cart.php` ve `get_express_order.php` ürün formunun her
+  alanına, her adet için boş başlık (`titles[<adet>] = ['title' => '',
+  'title_label' => '']`) veriyor; referans kodu eşleşirse eskisi gibi
+  dolduruluyor. Alıcı listesi okumaları `!empty()` ile.
+- `shipping.php`: `arrival_date_id` verilmezse 0; zorunlu yöntem denetimi
+  hata yanıtını boş liste sayıyor (eskisi de `null` ile aynı sonuca
+  varıyordu).
+- `express_order.php` / `order_preview.php`: bulunmayan hediye çeki
+  `array('id' => '')`; `express_order.php` adet kutusu gönderilmeyen
+  kalemi olduğu gibi bırakıyor (eskisi de uyarıdan sonra dokunmuyordu).
+
+Uyarı susturulmadı. Şema, dil anahtarı, JS yok. Test:
+`tests/cart_layout_warnings_test.php` (eski kodda üçü de başarısız).
+
+**`cart_action.php`'nin #447'de yalnız kaynakta değişen kolları.**
+Sandbox'ta #447 öncesi kodla (66f53d9e, üçüncü port) karşılaştırıldı,
+yönetici oturumu ve `define('ECOMMERCE_SAVE_FOR_LATER', true)` ile. 16
+istek: çevrimdışı ödeme işareti (1, yok, 0, özellik kapalı, oturumsuz
+ziyaretçi), "sonra al" / "sepete geri al", başka siparişin kalemi, kalemsiz
+istek, sonra al + ödemeye geç, hepsi saklıyken ödemeye geç. Yönlendirme ve
+`orders` / `order_items` satırları iki kodda aynı, iki kodda da uyarı yok.
+Tek fark #447'nin bilerek getirdiği: `offline_payment_allowed[]=1` eskide
+işareti açıyordu, yenide "verilmedi" (kutu boş) sayılıp kapatıyor. Bu PR
+`cart_action.php`'ye dokunmadı.
+
+**Bilerek yapılmayan.** Sistem düzenli (`layout_type = 'system'`) sepet ve
+hızlı sipariş sayfalarının eski uyarıları (kurulumla gelen sayfalar özel
+düzenli): `get_shopping_cart.php` 574/576 (`$output_ship_to_and_add_name_rows`,
+`$output_amount_row`), 632–633; `get_express_order.php` 1075–1095,
+2640–2740 (`$contact`), 1669/1672, 2314, 2854, 3277, 3712. Sepet
+düzenlerinin yinelenen kalem bölümü (248.php 1363 `$field['title']`)
+denenmedi. `submit_order.php` 291/3859'daki aynı hediye çeki okuması (kart
+uygulandıktan sonra silinirse) dokunulmadı.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod `origin/development`
+worktree'sinden ikinci portta, aynı veritabanı ve aynı oturumla.
+Sepet (248), teklif sepeti (497) ve hızlı sipariş (256) sayfaları özel ve
+sistem düzende, tek ve çok alıcılı, boş ve dolu (kargolu ürün, ürün formlu
+etkinlik, referans kodlu ürün, bağış) sepetle, hızlı ekleme üç durumda
+(hediye sepetleri grubu, 25 ürünlü grup içinde bağış, kapalı): 56 açılış.
+Hızlı ekleme açıkken ve hızlı siparişte HTML bire bir aynı; kapalıyken
+(ayrıca grup kapalı, grup ürünsüz) tek fark boş formun 20 satırının
+kalkması. Özel düzenli 28 açılışta eskide 258 uyarı satırı, yenide 0;
+sistem düzenli 28 açılışta 160'tan 152'ye (alıcı listesi gitti, kalanlar
+yukarıda). Referans kodu eşleşince başlık
+("Konu: …") iki kodda da gösteriliyor. Hızlı siparişte 22 hatalı gönderim
+(boş form, geçersiz/boş ülke, bölgesiz ABD eyaleti, yöntemsiz / bilinmeyen
+/ dizi kargo yöntemi, geçersiz varış tarihi, boş eyalet ve posta kodu,
+koşul onayı yok, bozuk kart, değiştirilmiş toplam, bilinmeyen indirim ve
+hediye çeki kodu, geçerli hediye çeki, dizi / 0 / 3 adet, boş ürün formu):
+yönlendirme ve kalem adetleri iki kodda aynı, eskide 286 uyarı satırı,
+yenide 0, hiçbir sipariş tamamlanmadı. Sipariş önizlemede bilinmeyen ve
+geçerli hediye çeki: aynı sonuç, eskide 1 uyarı, yenide 0.
+`tools/test.php`, lint, dil, kopya, bağlama, API şeması ve
+`build_js.php --check` geçti.
+
+---
+
 ## 2026.4.10 — InnoDB'deki ziyaretçi tablosunun dosyası temizlikten sonra kendiliğinden küçülüyor (2026-10-14)
 
 **Neden.** Temizlik (10.3) eski satırları siler ama InnoDB dosyası

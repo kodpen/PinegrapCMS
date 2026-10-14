@@ -97,7 +97,8 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                     balance,
                     expiration_date
                 FROM gift_cards
-                WHERE code = '" . escape($gift_card_code)  . "'");
+                WHERE code = '" . escape($gift_card_code)  . "'")
+                ?: array('id' => ''); // no card with this code
 
             // If a gift card could not be found in this system,
             // and givex is disabled, then output error.
