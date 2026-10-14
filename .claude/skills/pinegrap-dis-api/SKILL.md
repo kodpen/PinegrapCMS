@@ -108,6 +108,12 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   eklenir (`contacts.timestamp` güncellenmiyor → müşterilerde yok).
 - Sahibin `manage_*` evet/hayır bayrakları `api_load_owner()`'da boolean'a
   çevrilir; ham 'no' stringi `== true` ile doğru çıkar.
+- Pinegrap AI ve MCP ajanı bir model ya da ajan çağrısı kadar sürer; API
+  ucu onları `ws_api_assistants_carry_on()` ile sürdürür, yeri
+  `ws_api_carry_on_where()` söyler: PHP-FPM'de yanıttan sonra, IIS'te
+  yalnız açık uygulamanın yokladığı `GET /workspace/sync` çağrının içinde
+  (bir adım), mesaj yazma ucunda hiç. Uzun iş başlatan yeni uç da bu yolu
+  kullanır, yanıtı bekletmez.
 
 ## OAuth 2.1 (2026.4.10, `oauth.php`, `includes/oauth/`)
 
