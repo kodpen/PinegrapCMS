@@ -84,6 +84,91 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Siparişler listesi ortak tablo yardımcısında: çoklu sıralama; bozuk tarih değeri listeyi çökertmiyor (2026-10-14)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyordu (#331'den #354'e); Siparişler (`view_orders.php`) bilerek ayrı
+bırakılmıştı. Liste sıralamayı oturumda çevrilmiş başlık adıyla
+(`['ecommerce']['view_orders']['sort'/'order']`) tutup kendi `switch`'iyle
+tek sütunluk ORDER BY kuruyordu. Bu PR'la sunucuda sıralanan panel
+listelerinden eski sıralama kodunu kullanan kalmadı (taramada
+`get_column_heading()`/`asc_or_desc()` çağırıp `pg_list_state()`
+kullanmayan ekran yok).
+
+Aynı ekranda #350 ve #351'de kapatılan tarih açığı da vardı. İstekteki her
+değer oturuma kopyalanıyor, varsayılan aralık ise yalnız `start_month`
+oturumda yokken kuruluyordu. `?start_month=x` tek başına gelince
+`start_year` hiç yazılmadığı için yıl hesabı (`'' - 1`) TypeError veriyordu;
+`?stop_year=abc` `mktime()`'da TypeError veriyordu (aynı değerle yıl
+seçimi döngüsü de bitmezdi, Rehber'deki gibi). Değer oturumda kaldığı için
+liste oturum kapanana ya da `?reset=true` ile açılana kadar hata
+sayfasında kalıyordu. 2026.4.9'da da var.
+
+**Ne değişti.** Sıralanabilen sütunlar kodla tanımlandı: `first_name`,
+`last_name`, `status`, `order_number`, `total`, `user`, `tracking_code`,
+`member_id` (başlığı `MEMBER_ID_LABEL`), `affiliate_code` (yalnız ortaklık
+programı açıkken) ve `order_date`. Varsayılan eskisi gibi sipariş tarihi
+azalan; yeni seçilen sütun artan başlar. Sıra
+`pg_list_state('view_orders', …)` ile okunur, ORDER BY
+`pg_list_order_by()` ile yalnız ekranın kod → SQL eşlemesinden yazılır
+(SQL ifadeleri eskisiyle aynı). Başlıklar `get_column_heading()`'e düzey
+listesi verir; Shift+tık ve düzey numarası ürünlerdeki gibi çalışır. Araç
+çubuğunda `pg-toolbar-grow`'dan sonra, durum ve tür seçiminin soluna
+`pg_list_sort_menu()` eklendi. Durum, tür, gelişmiş filtreler ve tarih
+aralığı eskisi gibi ekranın kendi oturum anahtarında durduğu için
+sıralama değişince korunuyor. `?reset=true` (Kargo Raporu, pano ve
+karşılama özeti bağlantıları) artık `['list_state']['view_orders']`'ı da
+siliyor, yani taze görünüm varsayılan sırayla açılıyor; eskiden de
+sıralama bu sıfırlamayla siliniyordu.
+
+Tarih için #351'deki kalıp: altı parçanın (`start_`/`stop_` `month`,
+`day`, `year`) her biri 1–4 haneli bir sayı değilse kendi varsayılanına
+(bir ay önce → bugün) dönüyor. Kontrol varsayılan bloğunun yerine,
+istekteki değerler oturuma kopyalandıktan hemen sonra koşuyor; Kargo
+Raporu'nun `start_year=2000`/`stop_year=2030` bağlantıları ve satış
+haritasının bağlantısı geçerli değer taşıdığı için etkilenmiyor.
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor. Türkçe panelde
+varsayılan sıradayken Sipariş Tarihi başlığı ok göstermiyordu (oturuma
+İngilizce 'Order Date' yazılıyordu), artık gösteriyor. Eski
+`sort=<başlık>&order=desc` bağlantıları `pg_list_sort_parse()` ile tek
+düzey olarak okunur. Eski oturum anahtarı
+(`['ecommerce']['view_orders']['sort'/'order']`) artık okunmuyor; ilk
+açılışta liste varsayılanla başlar. Sütunlar, Tür sütununun sıralanmaması,
+Dışa Aktar düğmeleri (sabit sıralarıyla), Paraşüt dışa aktarımı, toplu
+işlemler, satır düğmeleri, istatistik şeridi, dönem gezgini, tarayıcıdaki
+arama ve sayfa başına kayıt seçimi değişmedi. Ortak yardımcıya,
+`backend.src.js`'e ve `tr.json`'a dokunulmadı; kullanılan metinler zaten
+vardı. Satır içi hızlı güncelleme bu PR'ın kapsamında değil (yardımcıya
+henüz birleşmedi). Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; son 31 günde 8 sipariş, 3
+kullanıcı, 3 üye kimlikli kişi, ortaklık programı açık, Türkçe panel).**
+On sütunun her biri iki yönde, sütunların her sıralı ikilisi (ilk azalan,
+ikinci artan) ve üç üç düzeyli birleşim, aynı ORDER BY'lı SQL'in sıralama
+değerleri dizisini verdi (113 denetim, hepsi geçti; doğrulayıcı ters
+beklentiyle hata verdi). Parametresiz yeniden açılışta iki düzeyli sıra
+korundu; `?reset=true` varsayılana döndü ve Sipariş Tarihi'nde aşağı ok
+çıktı; eski Türkçe bağlantı `sort=Toplam&order=desc` sıraladı; bozuk değer
+(`id;drop table x:desc`) varsayılana düştü. Durum filtresi (Dışa
+Aktarılmış) ve gelişmiş filtre (soyad Kaya) sıralama değişince korundu.
+Eski kodla `?start_month=x` ve `?stop_year=abc` 500 verdi (günlükte
+`Unsupported operand types: string - int` ve `mktime(): Argument #6
+($year) must be of type ?int`), sonraki parametresiz açılış da 500
+verdi; yeni kodla bunlar, `stop_month=1e9`, `start_year=99999` ve boş
+`start_day` 200 döndü, varsayılan aralıkla 8 sipariş listelendi ve PHP
+günlüğüne bu ekrandan satır düşmedi. Tarayıcıda 1400 pikselde başlığa tık
+tek sütuna, Shift+tık aynı sekmede ikinci düzeye çevirdi; menü iki düzeyi,
+"Ardından şuna göre sırala" seçimini ve varsayılana dönüşü gösterdi; 390
+pikselde menü araç çubuğunda satıra sarıldı, yatay kaydırma yok.
+`tools/lint.php`, `check_lang.php`, `test.php` (775 test),
+`check_copies.php` ve `build_js.php --check` temiz.
+
+**Doğrulanamayan.** Gerçek sipariş hacmiyle (binlerce satır) hız ve
+dev.pinegrap.com'daki görünüm denenmedi.
+
+---
+
 ## 2026.4.10 — Kanalda @ai programlanmış işlemin taslağını hazırlıyor (2026-10-14)
 
 **Neden.** Bir önceki değişiklik (aşağıda, "bir cümleyle kuruluyor")
