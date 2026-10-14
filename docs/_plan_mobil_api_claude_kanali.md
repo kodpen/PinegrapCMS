@@ -6,7 +6,7 @@ Alanı kanalına üye gibi katılması. Her dilim tek küçük PR'dır ve uçtan
 `docs/_plan_api_mobil.md` (cihaz oturumu, bildirim + push, ETag) ve `docs/_plan_claude_kanal.md`
 (rutinle `@Claude`, Faz 1) bitmiş işlerin plan dosyalarıdır; kalanları bu plana taşındı.
 
-**Karar beklemeden başlayabilen dilimler:** M2, M3, M4 ve M5. Bunlar 2026-09-27 kararının
+**Karar beklemeden başlayabilen dilimler:** M1–M6. Bunlar 2026-09-27 kararının
 ("uygulamaya özel uç yazılmaz, her istemcinin işine yarayan genel yetenek eklenir") çizgisinde.
 Diğer dilimler aşağıdaki kararlardan birini bekler; hangisini beklediği §0 tablosunda yazıyor.
 
