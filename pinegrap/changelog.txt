@@ -728,6 +728,16 @@
   E-TİCARET: KARGO
   --------------------------------------------------------
 
+  [YENİ] Nakliye yöntemleri listesinde temel ücret ve
+         kalem ücreti yöntemi açmadan, satırda değişiyor:
+         hücreye tıklayın, yazın, Enter'a basın ya da
+         kutudan çıkın; kayıt hemen yapılıyor ve "Son
+         Değişiklik" sütunu yenileniyor. Boş bırakmak
+         ücreti sıfırlıyor. Değişiklik Site Günlüğü'ne eski
+         ve yeni tutarıyla yazılıyor. Ara toplama göre
+         değişen temel ücret yalnız yöntemin kendi
+         ekranından değişiyor.
+
   [DÜZELTME] UPS anlık kargo fiyatları UPS'in yeni REST
          API'sinden alınıyor. UPS erişim anahtarı,
          kullanıcı adı ve parolayla girişi kaldırdığı için
@@ -1345,6 +1355,18 @@
 
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
+
+  [YENİ] Cari fiyatları ekranında ürünün cari fiyatı ve
+         iskontosu hücresine tıklanıp yazılınca hemen
+         kaydediliyor; tablonun altındaki Kaydet düğmesi
+         kalktı, kaydetmeden çıkınca değişiklik artık
+         kaybolmuyor. Hem fiyatı hem iskontoyu boşaltmak
+         ürünü listeden çıkarıyor; satır sayfa yenilenene
+         kadar "Listeden çıkarıldı" olarak kalıyor ve
+         yeniden bir değer yazmak ürünü geri koyuyor.
+         "Diğer her şeyde iskonto" kendi Kaydet düğmesiyle
+         kaydediliyor. Değişiklikler Site Günlüğü'ne
+         yazılıyor.
 
   [YENİ] Minimum stok ekranında minimum, hücresine
          tıklanıp yazılınca hemen kaydediliyor; boş

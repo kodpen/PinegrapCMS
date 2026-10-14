@@ -6835,6 +6835,152 @@ function get_shipping_service_name($service)
             break;
     }
 }
+
+/**
+ * The shipping method list's columns that change in place
+ * (pg_list_edit_table()): the base rate and the item rate, the two that move
+ * with the carrier's prices. An empty box is no charge, the way the method's
+ * own screen saves it.
+ *
+ * @return array field => definition
+ */
+function pg_shipping_method_edit_columns()
+{
+    return array(
+        'base_rate' => array('type' => 'money', 'label' => lang('Base Rate'), 'empty' => true),
+        'item_rate' => array('type' => 'money', 'label' => lang('Item Rate'), 'empty' => true),
+    );
+}
+
+/**
+ * The shipping method list's cells a quick edit changes, drawn the one way
+ * the list and the answer to an edit both use. A variable base rate shows
+ * every step with the subtotal it starts at.
+ *
+ * @param array $method a shipping_methods row with base_rate,
+ *                      variable_base_rate, base_rate_2..4 and their
+ *                      _subtotal, item_rate, timestamp and user (the
+ *                      username of the last change, or empty)
+ * @return array 'base_rate', 'item_rate' and 'last_modified' => array('html', 'class')
+ */
+function pg_shipping_method_list_cells($method)
+{
+    $money = function ($cents) {
+        return pg_format_money(((int) $cents) / 100, BASE_CURRENCY_SYMBOL);
+    };
+
+    if (!empty($method['variable_base_rate'])) {
+        $base_rate = $money($method['base_rate']) . ' (@' . $money(0) . ')';
+
+        for ($number = 2; $number <= 4; $number++) {
+            if (!empty($method['base_rate_' . $number . '_subtotal'])) {
+                $base_rate .= '<br>' . $money($method['base_rate_' . $number]) . ' (@' . $money($method['base_rate_' . $number . '_subtotal']) . ')';
+            }
+        }
+    } else {
+        $base_rate = $money($method['base_rate']);
+    }
+
+    return array(
+        'base_rate'     => array('html' => $base_rate, 'class' => 'align-middle text-end'),
+        'item_rate'     => array('html' => $money($method['item_rate']), 'class' => 'align-middle text-end'),
+        'last_modified' => array(
+            'html'  => get_relative_time(array('timestamp' => $method['timestamp']))
+                . (((string) ($method['user'] ?? '') !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h((string) $method['user'])))) : ''),
+            'class' => 'align-middle',
+        ),
+    );
+}
+
+/**
+ * Write one quick edit from the shipping method list the way the method's
+ * screen (edit_shipping_method.php) writes the same box: the amount read by
+ * pg_normalize_amount() and kept in cents, the last change stamped with who
+ * made it, a line in the Site Log.
+ *
+ * A variable base rate has a step for each order subtotal; the list does not
+ * offer it, and a request for it is refused, since one box cannot say which
+ * step it means.
+ *
+ * @param int    $method_id
+ * @param string $field   a key of pg_shipping_method_edit_columns()
+ * @param string $value   as pg_list_edit_parse() read it, '' for no charge
+ * @param int    $user_id
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_shipping_method_quick_update($method_id, $field, $value, $user_id)
+{
+    $method_id = (int) $method_id;
+    $columns = pg_shipping_method_edit_columns();
+
+    if (!isset($columns[$field])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $read = function () use ($method_id) {
+        return db_item(
+            "SELECT
+                shipping_methods.id,
+                shipping_methods.name,
+                shipping_methods.base_rate,
+                shipping_methods.variable_base_rate,
+                shipping_methods.base_rate_2,
+                shipping_methods.base_rate_2_subtotal,
+                shipping_methods.base_rate_3,
+                shipping_methods.base_rate_3_subtotal,
+                shipping_methods.base_rate_4,
+                shipping_methods.base_rate_4_subtotal,
+                shipping_methods.item_rate,
+                shipping_methods.timestamp,
+                user.user_username AS user
+            FROM shipping_methods
+            LEFT JOIN user ON shipping_methods.user = user.user_id
+            WHERE shipping_methods.id = '" . $method_id . "'");
+    };
+
+    $current = $read();
+
+    if (!$current) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('The shipping method could not be found.'));
+    }
+
+    if (($field === 'base_rate') && !empty($current['variable_base_rate'])) {
+        return array('ok' => false, 'code' => 'variable', 'message' => lang('This shipping method has a base rate for each order subtotal. Change it in the shipping method.'));
+    }
+
+    $cents = (trim((string) $value) === '') ? 0 : round(((float) pg_normalize_amount($value)) * 100);
+
+    // The rate columns are INT UNSIGNED.
+    if ($cents > 4294967295) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns[$field]['label']))));
+    }
+
+    $cents = (int) $cents;
+
+    // The same amount again writes nothing and logs nothing; the list is
+    // still redrawn from what is stored.
+    if ((int) $current[$field] !== $cents) {
+        db("UPDATE shipping_methods
+            SET " . (($field === 'item_rate') ? 'item_rate' : 'base_rate') . " = '" . $cents . "',
+                user = '" . (int) $user_id . "',
+                timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $method_id . "'");
+
+        log_activity(
+            lang(array(
+                'string' => 'shipping method ({var:1}) was changed on the shipping method list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array((string) $current['name'], $columns[$field]['label'], pg_format_number(((int) $current[$field]) / 100, 2), pg_format_number($cents / 100, 2)),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+    }
+
+    $method = $read();
+    $cells = pg_shipping_method_list_cells($method);
+
+    return array('ok' => true, 'value' => pg_format_input_amount(((int) $method[$field]) / 100))
+        + $cells[$field]
+        + array('cells' => array('last_modified' => $cells['last_modified']));
+}
 // Gets flat array of product groups for menu on catalog and catalog detail pages.
 function get_product_groups($properties)
 {

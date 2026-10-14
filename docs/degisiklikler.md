@@ -84,6 +84,75 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Listeden hızlı güncelleme: ERP cari fiyatları ve nakliye ücretleri (2026-10-14)
+
+**Neden.** #364'ün açtığı hızlı güncelleme kalıbının ilk iki aday listesi.
+ERP'de bir carinin ürün fiyatı ya da iskontosu bütün tabloyu gönderen tek
+bir formla kaydediliyordu; Kaydet'e basmadan çıkan kişi değişikliği
+kaybediyordu. Nakliye yöntemlerinde taşıyıcının fiyatı değişince her
+yöntemi açıp formu baştan kaydetmek gerekiyordu.
+
+**ERP Cari fiyatları** (`erp_account_prices.php`). Cari fiyatı ve İskonto %
+hücreye tıklanarak değişir (tür `money`, ikisi de boş bırakılabilir). İstek
+aynı ekrana gider; carinin numarası tablonun adresindedir
+(`erp_account_prices.php?account_id=N`). İzin Minimum stok ekranınınki: ERP
+açık, rol < 3 ya da ERP yönetimi, muhasebecinin salt okunur hakkı değil
+(salt okunur kullanıcıda ve şema yokken hücreler düz kalır). Kayıt
+`erp_account_price_quick_save()` → mevcut `erp_account_prices_save()`: diğer
+koşul saklandığı gibi geçirilir, yalnız yazılan değişir; okuma ekranın kendi
+okuyucularıyla (`erp_kurus()`, `erp_fx_rate_in()`), iskonto 0–100 denetimi
+kaydetme fonksiyonununki. Fiyat ürün fiyatının sınırını (INT) aşamaz. Aynı
+değer yazmaz ve günlüğe düşmez.
+
+Boşaltma kuralı ekranın kendi kuralıdır: ürün ne fiyat ne iskonto taşırsa
+listeden çıkar (`erp_account_prices_save()` satırı siler). Hızlı güncellemede
+bu, son koşulu boşaltmak demektir; satır sayfa yenilenene kadar yerinde
+kalır, ürün hücresinde "Listeden çıkarıldı" rozeti çıkar ve yeniden fiyat ya
+da iskonto yazmak ürünü listeye geri koyar (kayıt `ON DUPLICATE KEY` ile
+yeniden açılır). Yanlışlıkla boşaltılan bir ürün böylece aynı ekranda geri
+alınır; ayrı bir silme düğmesi eklenmedi. Site Günlüğü'ne "erp: ürünün (KOD)
+carideki (Cari) fiyatı değiştirildi: Alan "eski" iken "yeni" oldu" ya da
+"erp: ürün (KOD) carinin (Cari) fiyat listesinden çıkarıldı" yazılır.
+
+Tablonun içindeki giriş kutuları ve sayfanın altındaki yapışkan Kaydet
+düğmesi kaldırıldı. Form artık yalnız "Diğer her şeyde iskonto (%)"
+kutusunu taşır, Kaydet düğmesi o kartın içindedir; bildirimi "Carinin
+iskontosu kaydedildi." Hücrelerin çizimi tek yerde
+(`erp_account_price_cells()`): fiyat liste fiyatı gibi para biçiminde,
+iskonto sondaki sıfırlar atılarak; boş koşul "—". Kutunun açıldığı değer
+`erp_account_price_input()` / `erp_account_rate_input()` (sitenin ondalık
+işaretiyle, gruplamasız); eski satır içi kapanışların yerini aldılar.
+
+**Nakliye yöntemleri** (`view_shipping_methods.php`). Ana Oran (temel ücret)
+ve Öğe Oranı (kalem ücreti) hücreye tıklanarak değişir; boş kutu ücretsiz
+demektir, yöntemin kendi ekranının boş kutuyu kaydettiği gibi. İzin listenin
+izni (rol < 3 ya da e-ticaret yönetimi). Kayıt
+`pg_shipping_method_quick_update()` (`includes/fn/ecommerce.php`):
+`edit_shipping_method.php` ile aynı okuyucu (`pg_normalize_amount()` →
+kuruş, `round`), aynı damga (`user`, `timestamp`); sütun `INT UNSIGNED`
+olduğu için üst sınır onunki. Site Günlüğü'ne "nakliye yöntemi (Ad) nakliye
+yöntemleri listesinde değiştirildi: Alan "eski" iken "yeni" oldu" yazılır.
+Cevap "Son Değişiklik" hücresini de yeniler (`data-pg-cell="last_modified"`).
+Değişken temel ücret açık olan yöntemde her ara toplam için ayrı bir ücret
+olduğundan hücre düz kalır; doğrudan istek gelirse "Bu nakliye yönteminde
+her sipariş ara toplamı için ayrı bir temel ücret var…" ile reddedilir.
+Hücrelerin çizimi `pg_shipping_method_list_cells()`'e taşındı (değişken
+temel ücretin basamakları dahil); liste ve cevap aynı biçimi kullanır.
+
+Betiğe (`backend.src.js`) ve ortak yardımcıya (`includes/fn/output.php`)
+dokunulmadı. Şema değişikliği yok.
+
+**Kapsam dışı / sonraki grup.** Anahtar kodlar (Etkin) ve Hediye kartları
+(Notlar; bakiye ayrı iz istediği için hariç). Nakliye yöntemlerinde ağırlık
+ücretleri ve değişken temel ücretin basamakları listede değişmiyor.
+
+**Testler.** `tests/list_edit_lists_test.php` (3 test): iki ekranın
+sütunlarının boş kutuyu ve rakamı kabul edip eksi işaretini ve simgeyi
+reddetmesi; nakliye hücrelerinin tek ve değişken temel ücreti, kalem ücretini
+ve kaçışlı kullanıcı adını çizmesi.
+
+---
+
 ## 2026.4.10 — Siparişler listesinde durum satırda değişiyor (2026-10-14)
 
 **Neden.** Buglar listesinin 5. maddesi ("Tüm tablolar listede hızlı

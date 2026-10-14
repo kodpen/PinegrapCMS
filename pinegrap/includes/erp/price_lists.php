@@ -206,3 +206,207 @@ function erp_account_price_count($account_id)
 {
     return erp_price_lists_ready() ? (int) db_value("SELECT COUNT(*) FROM erp_account_prices WHERE account_id = '" . (int) $account_id . "'") : 0;
 }
+
+/**
+ * An account price as its input box shows it: the store's decimal mark, no
+ * grouping (1250,00 or 1250.00), and nothing for none.
+ *
+ * @param int $kurus
+ * @return string
+ */
+function erp_account_price_input($kurus)
+{
+    return ((int) $kurus > 0) ? number_format(((int) $kurus) / 100, 2, erp_decimal_comma() ? ',' : '.', '') : '';
+}
+
+/**
+ * A discount rate as its input box and the list show it: the store's decimal
+ * mark and no trailing zeros (12,5), and nothing for none.
+ *
+ * @param float|string $rate
+ * @return string
+ */
+function erp_account_rate_input($rate)
+{
+    if ((float) $rate <= 0) {
+        return '';
+    }
+
+    $mark = erp_decimal_comma() ? ',' : '.';
+
+    return rtrim(rtrim(number_format((float) $rate, 3, $mark, ''), '0'), $mark);
+}
+
+/**
+ * The account price list's columns that change in place
+ * (pg_list_edit_table()): the product's price and its discount, either one
+ * left empty for none. Both are read as amounts here and by the screen's own
+ * readers on save (erp_kurus(), erp_fx_rate_in()).
+ *
+ * @return array field => definition
+ */
+function erp_account_price_edit_columns()
+{
+    return array(
+        'price'    => array('type' => 'money', 'label' => lang('Account price'), 'empty' => true),
+        'discount' => array('type' => 'money', 'label' => lang('Discount %'), 'empty' => true),
+    );
+}
+
+/**
+ * The account price list's cells, drawn the one way the list and the answer
+ * to a quick edit both use: the product with its code and badges, the price
+ * and the discount, a dash for none. 'sort' is what the browser sorts the
+ * column by (data-sort). A row whose 'on_list' is empty was taken off the
+ * list a moment ago; it keeps its place until the page is reloaded and says
+ * so, and typing a price or a discount puts it back.
+ *
+ * @param array $row product_name, product_sku, enabled, price, discount_rate
+ *                   and, from erp_account_price_quick_save(), on_list
+ * @return array 'product', 'price' and 'discount' => array('html', 'class'[, 'sort'])
+ */
+function erp_account_price_cells($row)
+{
+    $name = (trim((string) $row['product_name']) !== '') ? (string) $row['product_name'] : (string) $row['product_sku'];
+    $sku = trim((string) $row['product_sku']);
+    $price = (int) $row['price'];
+    $rate = (float) $row['discount_rate'];
+    $none = '<span class="text-body-secondary">—</span>';
+
+    return array(
+        'product' => array(
+            'html'  => h($name)
+                . ((($sku !== '') && ($sku !== trim($name))) ? '<div class="small text-body-secondary font-monospace">' . h($sku) . '</div>' : '')
+                . (((string) $row['enabled'] !== '1') ? ' <span class="badge text-bg-secondary">' . lang('Not on sale') . '</span>' : '')
+                . ((array_key_exists('on_list', $row) && empty($row['on_list'])) ? ' <span class="badge text-bg-warning">' . lang('Taken off the list') . '</span>' : ''),
+            'class' => '',
+        ),
+        'price' => array(
+            'html'  => ($price > 0) ? h(erp_money_out($price)) : $none,
+            'class' => 'text-end text-nowrap',
+            'sort'  => $price,
+        ),
+        'discount' => array(
+            'html'  => ($rate > 0) ? h(erp_account_rate_input($rate)) : $none,
+            'class' => 'text-end text-nowrap',
+            'sort'  => number_format($rate, 3, '.', ''),
+        ),
+    );
+}
+
+/**
+ * One of an account's terms changed on its price list, saved by
+ * erp_account_prices_save() like the rest, and the answer to the quick edit:
+ * the cell, and the product's cell, which says when the product left the
+ * list.
+ *
+ * erp_account_prices_save() takes a product off the list when it is left
+ * with neither a price nor a discount, and the list keeps that rule: clearing
+ * the last term takes the product off, and typing one again puts it back.
+ * The other term is passed on as stored, so only the typed one changes.
+ *
+ * @param int    $account_id
+ * @param int    $product_id
+ * @param string $field   'price' or 'discount'
+ * @param string $value   the amount as typed, or '' for none
+ * @param int    $user_id
+ * @return array the answer for pg_list_edit_reply()
+ */
+function erp_account_price_quick_save($account_id, $product_id, $field, $value, $user_id)
+{
+    $account_id = (int) $account_id;
+    $product_id = (int) $product_id;
+    $columns = erp_account_price_edit_columns();
+
+    if (!erp_price_lists_ready()) {
+        return array('ok' => false, 'code' => 'not_ready', 'message' => lang('Account prices come with the software update; run the update to use them.'));
+    }
+
+    if (!isset($columns[$field])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $account = erp_account($account_id);
+
+    if (!is_array($account)) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('The account could not be found.'));
+    }
+
+    $read = function () use ($account_id, $product_id) {
+        return db_item("SELECT p.id, p.name AS product_sku, p.short_description AS product_name, p.enabled,
+                (e.product_id IS NOT NULL) AS on_list, COALESCE(e.price, 0) AS price, COALESCE(e.discount_rate, 0) AS discount_rate
+            FROM products p
+            LEFT JOIN erp_account_prices e ON e.product_id = p.id AND e.account_id = '" . $account_id . "'
+            WHERE p.id = '" . $product_id . "'");
+    };
+
+    $before = $read();
+
+    if (!$before) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Product not found.'));
+    }
+
+    // The stored terms as erp_account_prices_save() reads them back exactly:
+    // a point before the cents, three places for the rate.
+    $stored_price = (int) $before['price'];
+    $terms = array(
+        'price'    => ($stored_price > 0) ? intdiv($stored_price, 100) . '.' . str_pad((string) ($stored_price % 100), 2, '0', STR_PAD_LEFT) : '',
+        'discount' => ((float) $before['discount_rate'] > 0) ? number_format((float) $before['discount_rate'], 3, '.', '') : '',
+    );
+    $terms[$field] = trim((string) $value);
+
+    $price = ($terms['price'] === '') ? 0 : erp_kurus($terms['price']);
+    $rate = ($terms['discount'] === '') ? 0.0 : erp_fx_rate_in($terms['discount']);
+
+    // The column is a BIGINT; a price is held to what a product's own price
+    // can be (products.price, a signed INT).
+    if ($price > 2147483647) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns['price']['label']))));
+    }
+
+    // The same terms again write nothing and log nothing; neither does
+    // clearing a product that is already off the list.
+    $same = !empty($before['on_list'])
+        ? (($price === $stored_price) && (abs($rate - (float) $before['discount_rate']) < 0.0005))
+        : (($price === 0) && ($rate <= 0));
+
+    if (!$same) {
+        $saved = erp_account_prices_save($account_id, array($product_id => $terms), $user_id);
+
+        if (!$saved['success']) {
+            return array('ok' => false, 'code' => 'invalid', 'message' => $saved['error']);
+        }
+    }
+
+    $after = $read();
+
+    if (!$same) {
+        if (!empty($before['on_list']) && empty($after['on_list'])) {
+            log_activity(lang(array(
+                'string' => 'erp product ({var:1}) was taken off the price list of account ({var:2})',
+                'vars'   => array((string) $before['product_sku'], (string) $account['title']),
+            )), $_SESSION['sessionusername'] ?? '');
+        } else {
+            $shown = function ($row) use ($field) {
+                if (empty($row['on_list'])) {
+                    return '—';
+                }
+
+                $text = ($field === 'price') ? erp_account_price_input($row['price']) : erp_account_rate_input($row['discount_rate']);
+
+                return ($text !== '') ? $text : '—';
+            };
+
+            log_activity(lang(array(
+                'string' => 'erp price of product ({var:1}) for account ({var:2}) was changed: {var:3} from "{var:4}" to "{var:5}"',
+                'vars'   => array((string) $before['product_sku'], (string) $account['title'], $columns[$field]['label'], $shown($before), $shown($after)),
+            )), $_SESSION['sessionusername'] ?? '');
+        }
+    }
+
+    $cells = erp_account_price_cells($after);
+
+    return array('ok' => true, 'value' => ($field === 'price') ? erp_account_price_input($after['price']) : erp_account_rate_input($after['discount_rate']))
+        + $cells[$field]
+        + array('cells' => array('product' => $cells['product']));
+}
