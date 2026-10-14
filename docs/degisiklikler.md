@@ -84,6 +84,81 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: kanal durumu, check-in ve eskiyen iş süzgeci (2026-10-14)
+
+**Neden.** Çalışma Alanı araştırmasının P2 2.4 maddesi
+(`notes/workspace-arastirma.md` §4): projelerde "işiniz ne durumda"
+sorusunun tek bir cevabı yoktu; haftalık durum, düzenli soru (check-in) ve
+eskiyen işin hatırlatması eksikti (Asana smart status, Linear Pulse,
+Basecamp check-in). Madde, anket ve programlanmış işlem altyapısının
+üstüne kurulacak biçimde yazılmıştı; yeni ekran açılmadı.
+
+**Ne değişti.**
+
+- Şema adımı 10.87 (`upgrade_2026_4_10_workspace_status()`): üç tablo.
+  `ws_status_updates` (mesaj başına bir satır, `uk_message`; `health`
+  ENUM on_track/at_risk/off_track; `idx_channel (channel_id, id)` başlıktaki
+  son durum için), `ws_checkins` (mesaj, kanal, soru) ve
+  `ws_checkin_answers` (birincil anahtar `(checkin_id, user_id)`: kişi başı
+  tek yanıt, yerinde değişir, boş yanıt satırı siler). 10.85 olay
+  otomasyonuna, 10.86 toplantıya ayrılmıştı; olay otomasyonu şema adımı
+  almadı, 10.85 boş kaldı.
+- Yeni modül `includes/workspace/status.php`:
+  - Durum güncellemesinin metni mesajın kendisidir; ilk satır kalın
+    "**Durum: Riskte**" olur. Böylece bildirimde, e-postada ve API'de
+    durum ayrı bir alana bakmadan okunur; ekran mesajın sol kenarını duruma
+    göre renklendirir. Başlıktaki etiket, mesajı silinmemiş en yeni
+    satırdan gelir.
+  - `ws_status_facts()`: açık, geciken, son yedi günde biten görev,
+    `WS_STATUS_STALE_DAYS` (7) gündür değişmeyen açık görev (`GREATEST
+    (updated_at, created_at)`: notlar `ws_task_notes_recount()` ile
+    `updated_at`'i ilerletiyor, hiç değişmemiş görevde `updated_at` boş
+    olabilir), haftanın kararları ve açık onay istekleri. Kanalın görevleri
+    kanalı okuyan herkese açık olduğu için (`ws_can_see_task()`) ayrı yetki
+    süzgeci yok. `ws_status_suggest()` (saf, test var) bunlardan bir durum
+    önerir: en az üç ya da açıkların yarısı gecikmişse Gecikti, herhangi
+    bir geciken ya da eskiyen görev varsa Riskte.
+  - `ws_status_draft()`: anahtar olmadan da çalışan kural tabanlı taslak.
+    `ws_status_ai_draft()`: Pinegrap AI'a tek senkron çağrı (toplu metin
+    yazarının, `bulk.php`, deseni), rakamlar, görev ve karar başlıkları ile
+    son check-in'in yanıtları JSON olarak gider. Yalnız
+    `ws_ai_ready()` ve `ws_ai_channel_allowed()` doğruysa sunulur; değilse
+    düğme hiç çıkmaz (misafirli kanal ve izin verilmemiş özel kanal dahil).
+  - Check-in yanıtını kanalda yazabilen herkes verir
+    (`ws_can_post_channel()`); kart yanıtları ve kanalın şu anki üyelerinden
+    henüz yanıtlamayanları gösterir. Eski bir sürümdeki (era) check-in'e
+    yanıt verilmez.
+  - Durum güncellemesi ve check-in tartışmada (discussion) yazılmaz: durum
+    kanalındır ve tartışma temizlenirken (`ws_threads_purge()`) bu satırlar
+    geride kalırdı. Sunucu ikisini de reddeder, + menüsü tartışmada
+    göstermez.
+- Programlanmış işlem: yeni `checkin` adımı (kanal + soru; boş soru
+  varsayılan soruyla kaydedilir), haftalık tekrarla düzenli soru olur.
+  "Kişilere görevlerini e-postayla gönder" adımına `stale` süzgeci: eskiyen
+  işlerin hatırlatması ayrı bir motor yazılmadan bununla programlanır.
+  Cümleden kurma (`scheduled_draft.php`) iki yeniliği de tanıyor.
+- Ekran: `assets/js/workspace_status.js` (`workspace.min.js` paketinde),
+  + menüsünde "Durum güncellemesi" ve "Check-in sor", başlıkta durum
+  etiketi, mesaj kartı ve programlanmış işlem kutusu. Panel API izin
+  listesine (`includes/panel/actions.php`) beş eylem eklendi.
+
+**Ödünler.** Durum ve check-in için dış API ucu, MCP aracı ve webhook olayı
+yazılmadı (madde istemiyordu); gerekirse ayrı PR. Check-in kapanmaz ve
+yanıtlayanlara ayrıca bildirim gitmez: soru bir mesaj olduğu için kanalın
+olağan okunmamış sayacı ve bildirimi yeterli görüldü. Misafir ekranı
+(`workspace_guest.js`) durum mesajını metniyle okur, renk ve check-in kartı
+yalnız ekibin ekranında.
+
+**Doğrulama.** Sandbox'ta: şema adımı iki kez koştu (ilkinde üç tablo,
+ikincide üçü de atlandı); kanalda tohum görevlerle rakamlar, önerilen durum
+(Riskte), taslak, paylaşma, başlık etiketi ve renkli kenar; check-in sorma,
+yanıtlama ve yanıtı değiştirme; programlanmış işlem kutusu ve
+`ws_scheduled_do()` ile çalışan `checkin` adımı; `stale` süzgecinin yalnız
+eskiyen görevi seçmesi; 390 px telefonda yatay kaydırma yok. Pinegrap AI
+taslağı anahtar olmadığı için denenemedi.
+
+---
+
 ## 2026.4.10 — Tablolarda listeden hızlı güncelleme: ürünlerde stok, fiyat, durum ve kısa açıklama, ERP'de minimum stok (2026-10-14)
 
 **Neden.** Ürün sahibinin Buglar listesinin 5. maddesi: "Tüm tablolar listede

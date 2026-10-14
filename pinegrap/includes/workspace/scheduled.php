@@ -1612,6 +1612,23 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'rule'       => $checked['rule'],
             ));
 
+        // A check-in in a channel (status.php): the question, asked of the
+        // channel's people each time it runs.
+        case 'checkin':
+            $channel = ws_channel((int) ($action['channel_id'] ?? 0));
+
+            if (!$channel || !function_exists('ws_status_ready') || !ws_status_ready() || ws_channel_is_thread($channel) || !ws_can_post_channel($viewer, $channel)) {
+                return $fail(lang('Choose a channel you can write in.'));
+            }
+
+            $question = ws_checkin_question((string) ($action['question'] ?? ''));
+
+            return array('ok' => true, 'error' => '', 'action' => array(
+                'type'       => 'checkin',
+                'channel_id' => (int) $channel['id'],
+                'question'   => ($question !== '') ? $question : ws_checkin_default_question(),
+            ));
+
         case 'change':
             $types = ws_change_types();
             $record_type = (string) ($action['record'] ?? '');
@@ -2269,6 +2286,13 @@ function ws_scheduled_action_text($viewer, $action)
                 implode(', ', array_filter(array_map('ws_person_name', (array) ($action['approvers'] ?? array())))),
                 (string) ($action['title'] ?? ''),
                 $channel ? '#' . $channel['name'] : lang('a channel that is gone'))));
+
+        case 'checkin':
+            $channel = ((int) ($action['channel_id'] ?? 0) > 0) ? ws_channel((int) $action['channel_id']) : null;
+
+            return lang(array('string' => 'Ask for a check-in in {var:1}: “{var:2}”', 'vars' => array(
+                $channel ? '#' . $channel['name'] : lang('a channel that is gone'),
+                (string) ($action['question'] ?? ''))));
 
         case 'trigger':
             return ((int) ($action['delay'] ?? 0) > 0)
@@ -3636,6 +3660,23 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
             }
 
             return array('ok' => true, 'text' => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $created['message_id']);
+
+        // A check-in, asked in the creator's name; somebody no longer able
+        // to write in the channel cannot ask there.
+        case 'checkin':
+            $channel = ws_channel((int) $action['channel_id']);
+
+            if (!$channel || !function_exists('ws_checkin_start') || !ws_status_ready()) {
+                return $fail(lang('The channel to write in is gone.'));
+            }
+
+            $started = ws_checkin_start($viewer, $channel, (string) $action['question']);
+
+            if (!$started['ok']) {
+                return $fail(lang(array('string' => 'Could not write in #{var:1}: {var:2}', 'vars' => array($channel['name'], $started['error']))));
+            }
+
+            return array('ok' => true, 'text' => lang(array('string' => 'asked for a check-in in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $started['message_id']);
     }
 
     return $fail(lang('Nothing to do.'));
@@ -3736,6 +3777,9 @@ function ws_scheduled_digest_filters()
         'open'    => lang('all open tasks'),
         'week'    => lang('due within a week, and overdue'),
         'overdue' => lang('overdue only'),
+        // Going stale: open, and nobody changed it or wrote a note on it for
+        // WS_STATUS_STALE_DAYS (status.php).
+        'stale'   => lang('untouched for a week or more'),
     );
 }
 
@@ -3770,6 +3814,10 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
 
         case 'week':
             $where[] = "t.due_date IS NOT NULL AND t.due_date <> '0000-00-00' AND t.due_date <= '" . date('Y-m-d', strtotime('+7 days')) . "'";
+            break;
+
+        case 'stale':
+            $where[] = "GREATEST(t.updated_at, t.created_at) < '" . (time() - (defined('WS_STATUS_STALE_DAYS') ? WS_STATUS_STALE_DAYS : 7) * 86400) . "'";
             break;
     }
 

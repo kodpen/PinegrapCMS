@@ -45,6 +45,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_mcp_agent();    // 10.89
 	upgrade_2026_4_10_workspace_mcp_tasks();    // 10.110
 	upgrade_2026_4_10_workspace_mcp_conversations(); // 10.111
+	upgrade_2026_4_10_workspace_status();       // 10.87
 
 }
 
@@ -941,5 +942,56 @@ function upgrade_2026_4_10_visitor_retention() {
 	}
 
 	install_note('Visitor records: rows older than 90 days are removed a little at a time by the general job, after each day is added up into a daily summary the visitor report and the API go on reading. The period, or no limit, is set in Site Settings, SEO, Visitor Tracking; the Database Engine screen shows the table and can start the cleanup by hand.');
+
+}
+
+// How a channel's work stands (2026.4.10, 10.87; includes/workspace/status.php).
+//
+// ws_status_updates is one row per status update: the message that says it
+// (message_id, uk_message, so a page of messages finds its updates with one
+// read), the channel, and health - on_track, at_risk or off_track. The text is
+// the message's; the newest row of a channel whose message is not deleted is
+// the state its header shows (idx_channel).
+//
+// ws_checkins is one row per check-in: its message, its channel and the
+// question as asked. ws_checkin_answers keeps one answer per person and
+// check-in (the primary key), changed in place; an empty answer deletes the
+// row.
+function upgrade_2026_4_10_workspace_status() {
+
+	install_create_table('ws_status_updates', "CREATE TABLE ws_status_updates (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		health      ENUM('on_track','at_risk','off_track') NOT NULL DEFAULT 'on_track',
+		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_message (message_id),
+		KEY idx_channel (channel_id, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_checkins', "CREATE TABLE ws_checkins (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		question    VARCHAR(255) NOT NULL DEFAULT '',
+		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_message (message_id),
+		KEY idx_channel (channel_id, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_checkin_answers', "CREATE TABLE ws_checkin_answers (
+		checkin_id  INT UNSIGNED NOT NULL,
+		user_id     INT UNSIGNED NOT NULL,
+		body        TEXT NULL,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (checkin_id, user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a channel can post a status update - on track, at risk or off track - drafted from its tasks and decisions, and ask its people a check-in question they each answer on one card; a scheduled action can ask it every week.');
 
 }

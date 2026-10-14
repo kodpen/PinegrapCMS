@@ -1291,6 +1291,14 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // Status updates and check-ins (includes/workspace/status.php).
+        case 'ws_status_facts':
+        case 'ws_status_ai':
+        case 'ws_status_post':
+        case 'ws_checkin_start':
+        case 'ws_checkin_answer':
+            return ws_status_action($viewer, $action, $request);
+
         // Approval requests (includes/workspace/approvals.php).
         case 'ws_approval_create':
             $channel = ws_action_channel($viewer, $request, 'post');

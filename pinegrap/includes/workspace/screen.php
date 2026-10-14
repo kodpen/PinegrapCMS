@@ -673,6 +673,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // Approval requests, the people outside the team they ask, and read
     // receipts (approvals.php, approval_guests.php, acks.php).
     $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings());
+    // Status updates and check-ins (status.php, assets/js/workspace_status.js).
+    $strings = array_merge($strings, ws_status_js_strings());
     // A task handed to an assistant (delegation.php,
     // assets/js/workspace_task_delegate.js).
     $strings = array_merge($strings, ws_delegation_js_strings());
@@ -718,6 +720,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'pins'         => ws_pins_ready(),
         'approvals'    => ws_approvals_ready() ? array('max' => WS_APPROVAL_MAX_PEOPLE, 'guests' => ws_approval_can_ask_guests($viewer) ? WS_APPROVAL_MAX_GUESTS : 0) : null,
         'acks'         => ws_acks_ready(),
+        'status'       => ws_status_js_config(),
         'blocks'       => ws_blocks_ready(),
         'customer'     => ws_customer_ready(),
         'templates'    => ws_templates_js_config($viewer),

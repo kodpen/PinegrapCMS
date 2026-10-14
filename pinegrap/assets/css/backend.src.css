@@ -10545,6 +10545,165 @@ button.ws-thread-bar:hover {
 .ws-msg-note {
   border-left-color: var(--bs-info);
 }
+/* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
+.ws-msg-status {
+  border-left: 3px solid var(--bs-success);
+}
+.ws-msg-status-at_risk {
+  border-left-color: var(--bs-warning);
+}
+.ws-msg-status-off_track {
+  border-left-color: var(--bs-danger);
+}
+.ws-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  margin-right: .35rem;
+  padding: 0 .5rem;
+  border: 0;
+  border-radius: 1rem;
+  font-size: .72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+.ws-status-on_track {
+  background: rgba(var(--bs-success-rgb), .14);
+  color: var(--bs-success-text-emphasis);
+}
+.ws-status-at_risk {
+  background: rgba(var(--bs-warning-rgb), .2);
+  color: var(--bs-warning-text-emphasis);
+}
+.ws-status-off_track {
+  background: rgba(var(--bs-danger-rgb), .14);
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-status-facts {
+  margin-bottom: 1rem;
+  padding: .6rem .7rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .6rem;
+  background: var(--bs-tertiary-bg);
+}
+.ws-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+.ws-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: .1rem .5rem;
+  border-radius: 1rem;
+  font-size: .75rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+}
+.ws-status-chip-warn {
+  border-color: rgba(var(--bs-warning-rgb), .6);
+  color: var(--bs-warning-text-emphasis);
+}
+.ws-status-stale-task {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  width: 100%;
+  padding: .2rem 0;
+  border: 0;
+  background: transparent;
+  font-size: .8rem;
+  text-align: left;
+  color: var(--bs-body-color);
+}
+.ws-status-stale-task:hover .ws-grow {
+  text-decoration: underline;
+}
+.ws-status-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.ws-status-choice {
+  border: 1px solid transparent;
+  border-radius: 1rem;
+}
+.btn-check:checked + .ws-status-choice {
+  border-color: currentColor;
+  box-shadow: 0 0 0 1px currentColor;
+}
+.ws-checkin {
+  max-width: 34rem;
+  margin-top: .4rem;
+  padding: .55rem .65rem .5rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid rgb(var(--ws-accent-rgb));
+  border-radius: .6rem;
+  background: var(--bs-body-bg);
+}
+.ws-checkin-head {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .4rem;
+  font-size: .8rem;
+}
+.ws-checkin-head > .bi {
+  color: rgb(var(--ws-accent-rgb));
+}
+.ws-checkin-count {
+  margin-left: auto;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-checkin-answers {
+  margin: 0 0 .4rem;
+  padding: 0;
+  list-style: none;
+}
+.ws-checkin-answer {
+  display: flex;
+  gap: .5rem;
+  padding: .35rem 0;
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-checkin-answer:first-child {
+  border-top: 0;
+}
+.ws-checkin-face {
+  flex: 0 0 1.6rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+}
+.ws-checkin-text {
+  min-width: 0;
+  font-size: .85rem;
+}
+.ws-checkin-who {
+  display: flex;
+  gap: .4rem;
+  align-items: baseline;
+}
+.ws-checkin-time {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-checkin-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ws-checkin-waiting {
+  margin-bottom: .4rem;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-checkin-form-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: .35rem;
+}
 .ws-msg-tools {
   position: absolute;
   top: -.6rem;

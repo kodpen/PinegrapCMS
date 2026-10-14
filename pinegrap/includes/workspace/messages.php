@@ -172,6 +172,8 @@ function ws_message_payloads($viewer, $rows)
         // Approval requests and read receipts (approvals.php, acks.php).
         'approvals'  => function_exists('ws_approvals_map') ? ws_approvals_map($ids, $viewer) : array(),
         'acks'       => function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array(),
+        // Status updates and check-ins (status.php).
+        'status'     => function_exists('ws_status_cards_map') ? ws_status_cards_map($viewer, $ids) : array(),
         'list_tasks' => ws_checklist_tasks_map($viewer, $ids),
         'can_post'   => $can_post,
         // Requests to Claude, and the tasks and record changes its answers
@@ -317,6 +319,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'reactions'   => $deleted ? array() : ($extra['reactions'][$id] ?? array()),
         'poll'        => $deleted ? null : ($extra['polls'][$id] ?? null),
         'approval'    => $deleted ? null : ($extra['approvals'][$id] ?? null),
+        'status_card' => $deleted ? null : ($extra['status'][$id] ?? null),
         // A read receipt asked for, and whether the reader may ask for one.
         'ack'         => $deleted ? null : ($extra['acks'][$id] ?? null),
         // The same test as ws_ack_can_request(), from what is known already.

@@ -7120,6 +7120,14 @@
                 topic.appendChild(document.createTextNode(' '));
             }
 
+            // How the work stands, from the latest status update
+            // (workspace_status.js).
+            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
+
+            if (statusPill) {
+                topic.appendChild(statusPill);
+            }
+
             if (channel.department) {
                 topic.appendChild(el('span', 'badge me-1', channel.department.name)).style.background = channel.department.color;
             }
@@ -7864,6 +7872,16 @@
                 main.appendChild(window.PGWsApprovals.card(message, self, featureHelpers()));
             }
 
+            // A status update's colour, or a check-in's card
+            // (workspace_status.js).
+            if (message.status_card && window.PGWsStatus) {
+                var statusCard = window.PGWsStatus.card(message, self, featureHelpers(), node);
+
+                if (statusCard) {
+                    main.appendChild(statusCard);
+                }
+            }
+
             if (message.list_tasks && message.list_tasks.length) {
                 main.appendChild(self.listTasksNode(message));
             }
@@ -7950,7 +7968,7 @@
                         return;
                     }
 
-                    if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll, .ws-approval, .ws-ack')) {
+                    if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll, .ws-approval, .ws-ack, .ws-checkin')) {
                         return;
                     }
 
@@ -10510,6 +10528,12 @@
                     BOOT.interact ? { icon: 'bi-bar-chart-line', label: t('start_poll'), action: function () { self.pollForm({}); } } : null,
                     (CFG.approvals && window.PGWsApprovals) ? { icon: 'bi-patch-question', label: t('apv_new'), action: function () {
                         window.PGWsApprovals.form(self, featureHelpers());
+                    } } : null,
+                    (CFG.status && window.PGWsStatus && !self.isThread) ? { icon: 'bi-activity', label: t('st_new'), action: function () {
+                        window.PGWsStatus.form(self, featureHelpers());
+                    } } : null,
+                    (CFG.status && window.PGWsStatus && !self.isThread) ? { icon: 'bi-person-raised-hand', label: t('ci_new'), action: function () {
+                        window.PGWsStatus.checkinForm(self, featureHelpers());
                     } } : null,
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
@@ -13452,7 +13476,8 @@
         var chains = !!config.chains;
         var groups = [
             [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')], ['task_digest', t('sa_do_task_digest')]] : [])
-                .concat((config.approvals && window.PGWsApprovals) ? [['approval', t('sa_do_approval')]] : [])],
+                .concat((config.approvals && window.PGWsApprovals) ? [['approval', t('sa_do_approval')]] : [])
+                .concat((CFG.status && window.PGWsStatus) ? [['checkin', t('sa_do_checkin')]] : [])],
             [t('sa_group_records'), Object.keys(config.changes || {}).length ? [['change', t('sa_do_change')]] : []],
             [t('sa_group_web'), chains ? [['report', t('sa_do_report')], ['web_check', t('sa_do_web_check')], ['webhook', t('sa_do_webhook')]] : []],
             [t('sa_group_chain'), chains ? [['trigger', t('sa_do_trigger')]] : []]
@@ -13975,7 +14000,12 @@
             reader = window.PGWsApprovals.scheduledEditor(detail, given('approval', null), featureHelpers());
         }
 
-        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change, approval: approval };
+        // A check-in in a channel (workspace_status.js).
+        function checkin() {
+            reader = window.PGWsStatus.scheduledEditor(detail, given('checkin', null), featureHelpers());
+        }
+
+        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change, approval: approval, checkin: checkin };
 
         function draw() {
             clear(detail);

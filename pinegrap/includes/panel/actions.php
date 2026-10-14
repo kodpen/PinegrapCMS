@@ -283,6 +283,8 @@ function pg_panel_actions()
         'ws_check', 'ws_poll_create', 'ws_poll_vote', 'ws_poll_close',
         'ws_poll_edit', 'ws_approval_create', 'ws_approval_decide',
         'ws_approval_close', 'ws_ack_request', 'ws_ack', 'ws_ack_people',
+        'ws_status_facts', 'ws_status_ai', 'ws_status_post', 'ws_checkin_start',
+        'ws_checkin_answer',
         'ws_task_tick', 'ws_task_item_add', 'ws_task_note_add',
         'ws_task_note_edit', 'ws_task_note_delete',
         'ws_task_recurrence_end', 'ws_channel_claude', 'ws_ai_draft_accept',
