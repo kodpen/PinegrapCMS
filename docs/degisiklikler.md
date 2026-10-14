@@ -84,6 +84,52 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kanal oluşturma, mesaj silme ve şablon uygulama Site Günlüğü'ne adsız yazıyordu (2026-10-14)
+
+**Neden.** `ws_channel_create()`, `ws_message_delete()` (başkasının mesajı)
+ve `ws_template_apply()` Site Günlüğü satırını panel oturumundaki
+kullanıcı adıyla (`$_SESSION['sessionusername']`) yazıyor. API oturum
+tutmadığı için `POST /workspace/channels`, personelin başkasının mesajını
+sildiği `DELETE /workspace/messages/{id}` (ve `…/delete`) ve
+`POST /workspace/channels/{id}/apply-template` satırı boş kullanıcı adıyla
+yazıyordu; MCP araçları aynı işleyicilerden geçtiği için onlar da. #400
+kanal grubu uçlarında bunu `ws_api_as_owner()` ile çözmüş, kanal
+oluşturmayı kapsam dışı bırakmıştı.
+
+**Ne değişti.**
+- Üç işleyici panelin fonksiyonunu `ws_api_as_owner()` içinde çağırıyor:
+  satır uygulama sahibinin kullanıcı adını taşıyor (ekip cihazları
+  oturumu ve OAuth'ta oturum açan kişi, uygulama anahtarında uygulamanın
+  sahibi; kanal grubu uçları ve `ws_change_log()` ile aynı). Satırın
+  metni, sayısı ve ne zaman yazıldığı aynı; kişinin kendi mesajını
+  silmesi panelde olduğu gibi satır yazmıyor.
+- `ws_api_as_owner()` dosyanın başına, `ws_api_log()`'un yanına
+  taşındı; davranışı aynı.
+- Test: `test_ws_api_panel_log_lines_carry_the_owner`
+  `includes/workspace/` altında Site Günlüğü'nü oturumdaki adla yazan
+  fonksiyonları bulup `api*.php` işleyicilerinin onları yalnız
+  `ws_api_as_owner()` içinde çağırdığını denetliyor (düzeltme öncesi
+  kodda üç çağrı için kırmızı); `test_ws_api_calls_as_owner_scan`
+  taramanın kendisini.
+
+Şema değişikliği yok, izin yok, API belgesi, `tr.json` ve JS değişmedi.
+
+**Bilerek yapılmayan.** Zil satırı (`notifications.user`,
+`ws_bell_add()`) API'den tetiklenen bildirimlerde hâlâ boş kullanıcı adı
+taşıyor; Site Günlüğü değil, ayrı iş. Panelin oturumla çalışan
+fonksiyonları (Pinegrap AI'ın kanal oluşturma eylemi, misafir odası, ilk
+kanal) API'den çağrılmadığı için dokunulmadı.
+
+**Doğrulama.** `test.php` (tam takım), `lint`, `check_lang`,
+`check_api_schema`, `check_copies`, `build_js --check` temiz. Sandbox'ta
+yeni kod ve yanında eski `development` aynı veritabanında: uygulama
+anahtarıyla kanal oluşturma ve şablon uygulama, ekip cihazları oturumuyla
+başkasının mesajını silme yeni kodda `admin`, eski kodda boş kullanıcı
+adıyla birer satır yazdı; kişinin kendi mesajını silmesi satır yazmadı.
+OAuth bağlantısıyla denenmedi.
+
+---
+
 ## 2026.4.10 — Katalog ve kullanıcı dizini dizi terimle 500 veriyordu, `liveform` dizi değerde formu düşürüyordu (2026-10-14)
 
 **Neden.** #397'nin bilerek bıraktığı parçalar, hepsi 2026.4.9'da var.

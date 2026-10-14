@@ -8,8 +8,10 @@
  * action becomes one MCP tool. Also the scopes the search asks of each kind
  * of panel record (includes/workspace/api_day.php), who a call from a
  * device writes as, which of its messages ask an assistant, where what
- * they ask is carried on, and how a channel's file is handed out
- * (includes/workspace/files.php).
+ * they ask is carried on, how a channel's file is handed out
+ * (includes/workspace/files.php), and that a handler calls the panel's
+ * functions that log in the signed-in person's name as the application's
+ * owner.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -1150,4 +1152,141 @@ function test_ws_api_channel_group_removal_present()
 	pg_assert_same(array(array('id' => 8, 'name' => 'Istanbul')), $out['groups']);
 	pg_assert_false($out['deleted'], 'a dry run deletes nothing');
 	pg_assert_same(array_keys(ws_api_channel_group_removal_schema()), array_keys($out), 'the answer has the declared fields in order');
+}
+
+/**
+ * The workspace functions that write their own line in the activity log in
+ * the name of the signed-in person: log_activity() and the session's user
+ * name in one function body.
+ *
+ * @return string[] function names
+ */
+function pg_test_ws_api_session_loggers()
+{
+	$names = array();
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/workspace/*.php') as $file) {
+		if (strpos(basename($file), 'api') === 0) {
+			continue;
+		}
+
+		$parts = preg_split('/^function\s+(\w+)\s*\(/m', (string) file_get_contents($file), -1, PREG_SPLIT_DELIM_CAPTURE);
+
+		for ($i = 1; $i < count($parts); $i += 2) {
+			$body = $parts[$i + 1];
+
+			if ((strpos($body, 'log_activity(') !== false) && (strpos($body, "\$_SESSION['sessionusername']") !== false)) {
+				$names[] = $parts[$i];
+			}
+		}
+	}
+
+	return $names;
+}
+
+/**
+ * The calls of the given functions in a PHP source, each with whether it
+ * sits inside a closure handed to ws_api_as_owner().
+ *
+ * @param string   $source
+ * @param string[] $names
+ * @return array[] name, line, as_owner
+ */
+function pg_test_ws_api_calls_as_owner($source, $names)
+{
+	$tokens = token_get_all($source);
+	$wanted = array_flip($names);
+	$significant = array();
+
+	foreach ($tokens as $token) {
+		if (!is_array($token) || !in_array($token[0], array(T_WHITESPACE, T_COMMENT, T_DOC_COMMENT), true)) {
+			$significant[] = $token;
+		}
+	}
+
+	$depth = 0;
+	$owner = array();
+	$pending = false;
+	$calls = array();
+	$count = count($significant);
+
+	for ($i = 0; $i < $count; $i++) {
+		$token = $significant[$i];
+
+		if ($token === '{' || (is_array($token) && in_array($token[0], array(T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES), true))) {
+			$depth++;
+
+			// The body of the closure handed to ws_api_as_owner().
+			if ($pending && ($token === '{')) {
+				$owner[] = $depth;
+				$pending = false;
+			}
+
+			continue;
+		}
+
+		if ($token === '}') {
+			if (!empty($owner) && (end($owner) === $depth)) {
+				array_pop($owner);
+			}
+
+			$depth--;
+			continue;
+		}
+
+		if (!is_array($token) || ($token[0] !== T_STRING) || (($significant[$i + 1] ?? null) !== '(')) {
+			continue;
+		}
+
+		$previous = $significant[$i - 1] ?? null;
+
+		if (is_array($previous) && in_array($previous[0], array(T_FUNCTION, T_OBJECT_OPERATOR, T_DOUBLE_COLON), true)) {
+			continue;
+		}
+
+		if ($token[1] === 'ws_api_as_owner') {
+			$pending = is_array($significant[$i + 2] ?? null) && ($significant[$i + 2][0] === T_FUNCTION);
+		} elseif (isset($wanted[$token[1]])) {
+			$calls[] = array('name' => $token[1], 'line' => $token[2], 'as_owner' => !empty($owner));
+		}
+	}
+
+	return $calls;
+}
+
+// The scan above tells a call inside the closure from one beside it.
+function test_ws_api_calls_as_owner_scan()
+{
+	$source = "<?php\nfunction a() {\n    \$x = ws_api_as_owner(function () use (\$y) {\n        if (\$y) { \$s = \"{\$y}\"; }\n        return ws_channel_create(\$y);\n    });\n    ws_channel_create(\$x);\n}\n";
+	$calls = pg_test_ws_api_calls_as_owner($source, array('ws_channel_create'));
+
+	pg_assert_same(2, count($calls));
+	pg_assert_true($calls[0]['as_owner'], 'inside the closure');
+	pg_assert_same(5, $calls[0]['line']);
+	pg_assert_false($calls[1]['as_owner'], 'after the closure');
+}
+
+// The API keeps no session: a handler calls a panel function that writes its
+// activity log line in the name of the signed-in person inside
+// ws_api_as_owner(), or the line is written with no name.
+function test_ws_api_panel_log_lines_carry_the_owner()
+{
+	$loggers = pg_test_ws_api_session_loggers();
+
+	foreach (array('ws_channel_create', 'ws_message_delete', 'ws_template_apply', 'ws_group_save') as $name) {
+		pg_assert_true(in_array($name, $loggers, true), $name . '() writes its line in the name of the signed-in person');
+	}
+
+	$found = array();
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/workspace/api*.php') as $file) {
+		foreach (pg_test_ws_api_calls_as_owner((string) file_get_contents($file), $loggers) as $call) {
+			$found[$call['name']] = true;
+			pg_assert_true($call['as_owner'], basename($file) . ':' . $call['line'] . ' calls ' . $call['name'] . '() inside ws_api_as_owner()');
+		}
+	}
+
+	foreach (array('ws_channel_create', 'ws_message_delete', 'ws_template_apply', 'ws_group_save') as $name) {
+		pg_assert_true(isset($found[$name]), 'the API calls ' . $name . '()');
+	}
 }
