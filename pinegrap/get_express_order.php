@@ -4148,6 +4148,10 @@ function get_express_order($properties) {
 
             foreach ($recipients as $key => $recipient) {
 
+                // 'name' is read while it is being built below, and a recipient
+                // without a salutation or a last name never got it started.
+                $recipient['name'] = '';
+
                 $recipient['shipping'] = false;
 
                 if ($recipient['id']) {

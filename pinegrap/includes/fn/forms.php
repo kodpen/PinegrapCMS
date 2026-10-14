@@ -3066,6 +3066,8 @@ function get_suffix_options()
 }
 function get_tax_rate_for_address($country_code, $state_code)
 {
+    // stays empty when the state is known but lies in none of the country's tax zones
+    $valid_tax_zone_id = '';
     // declare tax zones for country array that we will use to store all valid tax zones for country
     $tax_zones_for_country = array();
     // get all tax zones that contain country
