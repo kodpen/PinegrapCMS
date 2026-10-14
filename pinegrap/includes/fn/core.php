@@ -622,11 +622,23 @@ function pg_schema_has($table, $column = null)
 
 function h($content)
 {
+    // A NULL column, an unset field value or a missing optional parameter
+    // prints as nothing. htmlspecialchars() returns '' for null as well, but
+    // PHP 8.1 deprecates passing it, so every such call logged a line.
+    if ($content === null) {
+        return '';
+    }
+
     return htmlspecialchars($content, ENT_QUOTES | ENT_HTML401, 'UTF-8');
 }
 
 function escape($string)
 {
+    // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
+    if ($string === null) {
+        return '';
+    }
+
     if (isset(db::$con) && db::$con) {
         return mysqli_real_escape_string(db::$con, $string);
     }

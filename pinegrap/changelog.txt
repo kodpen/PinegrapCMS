@@ -3040,6 +3040,14 @@
          indirmesi aynı durumda hata sayfası yerine
          etkinliğin bulunamadığını söylüyor.
 
+  [DÜZELTME] Hata ayıklama açıkken panelin neredeyse her
+         ekranı ve yönetici oturumuyla açılan site
+         sayfalarının çoğu, boş bir alanı ekrana ya da
+         sorguya yazarken hata günlüğüne "Passing null…
+         is deprecated" satırı yazıyordu. Artık boş değer
+         sessizce boş yazılıyor; ekranlar ve kayıtlar
+         eskisiyle aynı.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
