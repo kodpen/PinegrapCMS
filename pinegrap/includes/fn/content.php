@@ -351,7 +351,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     }
     $connect_to_contact = '';
     // if there is a connect to contact passed in the URL string then prepare and save it
-    if (isset($_GET['connect_to_contact']) == true) {
+    // (only a string can be one; an array from connect_to_contact[]= counts as not passed)
+    if ((isset($_GET['connect_to_contact']) == true) && is_string($_GET['connect_to_contact'])) {
         $connect_to_contact = trim(mb_strtolower($_GET['connect_to_contact']));
     }
     $contact = array();
@@ -566,7 +567,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
             $field['label'] .= '*';
         }
         $default_value = '';
-        $value_from_query_string = trim(isset($_GET['value_' . $field['id']]) ? $_GET['value_' . $field['id']] : '');
+        // An array (value_<id>[]=) is not a value for one field, so it counts as not passed.
+        $value_from_query_string = trim((isset($_GET['value_' . $field['id']]) && is_string($_GET['value_' . $field['id']])) ? $_GET['value_' . $field['id']] : '');
         // If a default value was passed in the query string, then use that.
         if ($value_from_query_string != '') {
             $default_value = $value_from_query_string;

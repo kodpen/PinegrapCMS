@@ -22,6 +22,11 @@ function get_email_preferences($properties = array()) {
 
     $form = new liveform('email_preferences');
 
+    // The address and signature from an email preferences link. Only a string can be
+    // either; an array (id[]=) is no link at all and must not reach trim() or h().
+    $link_id = (isset($_GET['id']) && is_string($_GET['id'])) ? $_GET['id'] : '';
+    $link_signature = (isset($_GET['sig']) && is_string($_GET['sig'])) ? $_GET['sig'] : '';
+
     // if user is logged in, get e-mail information for user
     if (pg_session_signed_in() == true) {
         // get user information to find contact
@@ -44,7 +49,9 @@ function get_email_preferences($properties = array()) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
-        $opt_in = $row['opt_in'];
+        // A user without a contact record (an administrator created in the control
+        // panel) has no opt-in setting yet, so the box starts unchecked.
+        $opt_in = is_array($row) ? $row['opt_in'] : '';
     
     // else user is not logged in
     } else {
@@ -52,12 +59,12 @@ function get_email_preferences($properties = array()) {
         // from an email preferences link in an email campaign, so require that the visitor login or register.
         // A link without the signature (issued before links were signed) takes the same route: the
         // visitor signs in and lands back here on the signed-in path.
-        if (!($_GET['id'] ?? '') || !($_GET['sig'] ?? '')) {
+        if (!$link_id || !$link_signature) {
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri()));
             exit();
         }
         
-        $email_address = str_rot13(base64_decode(trim($_GET['id'])));
+        $email_address = str_rot13(base64_decode(trim($link_id)));
         
         if (validate_email_address($email_address) == false) {
             output_error(lang('The id for the email address is not valid.'));
@@ -65,7 +72,7 @@ function get_email_preferences($properties = array()) {
         
         // The signature proves the link was issued by this site for this address; without it
         // the id alone would let anyone who can spell an address change that contact's preferences.
-        if (pg_email_preferences_signature_valid($email_address, trim($_GET['sig'])) == false) {
+        if (pg_email_preferences_signature_valid($email_address, trim($link_signature)) == false) {
             output_error(lang('The email preferences link is not valid.'));
         }
         
@@ -195,8 +202,8 @@ function get_email_preferences($properties = array()) {
     $system =
         get_token_field() . '
 
-        <input type="hidden" name="id" value="' . h($_GET['id'] ?? '') . '">
-        <input type="hidden" name="sig" value="' . h($_GET['sig'] ?? '') . '">';
+        <input type="hidden" name="id" value="' . h($link_id) . '">
+        <input type="hidden" name="sig" value="' . h($link_signature) . '">';
 
     // If this is being outputted on the frontend, then call frontend JS function.
     if ($page_id) {

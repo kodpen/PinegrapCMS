@@ -84,6 +84,84 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Site sayfaları: beş ekranda daha PHP uyarıları, dizi parametresiyle 500 (2026-10-14)
+
+**Neden.** #389 kendi altı dosyasını temizlerken taramanın bulduğu beş
+ekranı kapsam dışında bıraktı: ortaklık başvuru formu, Hesabım profil,
+e-posta tercihleri, özel form ve oturumsuz açılan çıkış sayfası. Bu
+ekranlar sandbox'ta eski kodla (oturumsuz, yönetici, düzenleme kipinde
+yönetici; 14 özel form sayfası, her biri ek parametrelerle, toplam 410
+istek) yeniden üretildi: bu dosyalarda 43 farklı satırda 281 uyarı ve
+107 istekte HTTP 500. Hepsi 2026.4.9'da da var.
+
+Görünür hatalar (500):
+
+- Özel form sayfası adreste bir değer dizi olarak gelince
+  (`?connect_to_contact[]=x`, `?add_watcher[]=x`, `?value_<alan>[]=x`)
+  `mb_strtolower()`, `trim()` ya da `h()` diziyi alamadı (`TypeError`).
+  Sistem düzenli formda aynı iki değer `get_form_info()`'da
+  (`includes/fn/content.php` 354, 569) okunuyor, orada da düzeltildi.
+- E-posta tercihleri sayfası `?id[]=x` ya da `?sig[]=x` ile:
+  oturumsuz ziyaretçide `trim()`, oturum açmış kişide gizli alanlardaki
+  `h()` 500 verdi.
+
+Görünmeyen uyarılar (çıktı aynı):
+
+- `get_affiliate_sign_up_form_screen_content.php` 60–73,
+  `get_my_account_profile.php` 57–74, `get_email_preferences.php` 47:
+  rehber kaydı olmayan kullanıcı (panelde açılan yönetici) için kişi
+  satırı yok, `$row` null. Ortaklık formunda ayrıca `$output .=` ilk
+  atamaydı (230) ve şartlar sayfası seçilmemişse `$output_terms` hiç
+  kurulmuyordu.
+- `get_custom_form_screen_content.php` 47: "Sonrası için Kaydet" açık
+  formda `?<sayfa>_save_confirmation` olmadan her açılış; 177 ve 676:
+  `?add_watcher=` verilip `add_watcher_page_id` verilmeyince.
+- `includes/fn/auth.php` 3233 (`get_token_field()`): oturum açmamış
+  ziyaretçi çıkış sayfasını açınca `logout()` oturumu bitirip "Giriş
+  yapmadın." hata sayfasını basıyor; o sayfadaki formlar artık
+  oturumda olmayan jetonu okuyordu.
+
+**Ne değişti.** Değerler kullanılmadan önce kuruluyor; uyarı
+susturulmadı (`@` ya da hata düzeyi yok).
+- Özel formda `connect_to_contact`, `add_watcher`, `add_watcher_page_id`
+  fonksiyonun başında bir kez, yalnız metinse okunuyor; dizi verilmemiş
+  sayılıyor. `value_<alan>` ve `get_form_info()`'daki iki okuma da yalnız
+  metni alıyor. `_save_confirmation` `?? ''` ile okunuyor.
+- E-posta tercihleri `id` ve `sig`'i bir kez, yalnız metinse okuyor.
+  Dizi gelince oturum açmış kişiye sayfa açılıyor; oturumsuz ziyaretçi
+  imzasız bağlantı gibi giriş sayfasına gidiyor (önceden 500; `id`
+  geçersizken `sig[]` verilince "kimlik geçerli değil" hatası
+  çıkıyordu, artık giriş sayfası).
+- Kişi satırı yoksa profil ve ortaklık formunda okunan sütunlar null
+  başlıyor (eski çıktıyla birebir aynı kalsın diye boş metin değil:
+  boş metinde liste kutuları `value=""` özniteliğini kaybediyordu).
+  E-posta tercihlerinde abonelik kutusu işaretsiz başlıyor.
+- `get_token_field()` jeton yoksa boş değer yazıyor, yanındaki
+  `get_token_query_string_field()` gibi.
+Şema, dil dosyası ve JS değişikliği yok.
+
+**Bilerek yapılmayan.** Bu sayfaların formlarını işleyen POST betikleri
+(`affiliate_sign_up_form.php`, `my_account_profile.php`,
+`email_preferences.php`, `custom_form.php`) taranmadı. Aynı `value_<alan>[]=`
+okuması `includes/fn/custom_form.php`'de iki yerde daha var: görsel
+tasarımcının özel form widget'ı (`pg_cf_field_initial_value()`, 1123;
+`(string)` ile okuyor, 500 değil "Array" ve uyarı) ve hızlı sipariş
+(`prepare_custom_form()`, 2330; `trim()` dizide 500). Ayrıca üye
+giriş/kayıt sayfasının şablondan gelen düzeni (`data/layouts/982.php` 70,
+`$captcha_question`) oturumsuz her açılışta uyarı yazıyor. Ayrı işler.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod `origin/development`
+worktree'sinden ikinci portta sunuldu, aynı 410 istek iki sunucuda
+koşturuldu: yeni kodda bu dosyalardan hiç uyarı ve hiç 500 yok (kalan
+tek satır yukarıdaki `982.php`). HTML karşılaştırması (jeton, CAPTCHA,
+port, görüntülenme sayacı ve oturum listesi normalize): 500'den
+düzelenler ve `?id=x&sig[]=y` dışında bütün sayfalar aynı. Özel formda
+`value_<alan>=` ile açılan alanın öznitelik sırası yalnız tarama
+sırasında farklı çıktı; sebebi eski kodda bir önceki isteğin 500 verip
+form oturumunu temizlememesi, temiz oturumla iki kod aynı. `tools/test.php`,
+lint, dil, kopya denetimleri ve `build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek sayfalar.
+
 ## 2026.4.10 — API belgesi: mobil uçların belgesi koda uyduruldu (2026-10-14)
 
 **Neden.** #369–#387 ile gelen Çalışma Alanı mobil uçları (kişinin adıyla
