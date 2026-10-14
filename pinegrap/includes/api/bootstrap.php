@@ -291,7 +291,7 @@ function api_run() {
 
 		if ($key !== '') {
 
-			$hash = api_idempotency_hash($params);
+			$hash = api_idempotency_hash(api_idempotency_input($route, $params));
 
 			api_idempotency_context((int)$app['id'], $key, $hash);
 

@@ -294,11 +294,18 @@ function ws_message_file_send($viewer, $message, $channel, $name, $data)
         return array('ok' => false, 'error' => $stored['error'], 'message_id' => 0);
     }
 
-    return ws_message_send($viewer, $channel, '', array(
+    $result = ws_message_send($viewer, $channel, '', array(
         'file_id'   => $stored['file_id'],
         'file_name' => $stored['name'],
         'parent_id' => (int) $message['id'],
     ));
+
+    // No message, no file: a copy nobody can reach is not left behind.
+    if (!$result['ok']) {
+        ws_upload_discard($stored['file_id']);
+    }
+
+    return $result;
 }
 
 /**

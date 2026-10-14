@@ -29,6 +29,7 @@ function api_status_text($code) {
 		200 => 'OK',
 		201 => 'Created',
 		204 => 'No Content',
+		206 => 'Partial Content',
 		304 => 'Not Modified',
 		400 => 'Bad Request',
 		401 => 'Unauthorized',
@@ -38,6 +39,7 @@ function api_status_text($code) {
 		409 => 'Conflict',
 		410 => 'Gone',
 		413 => 'Payload Too Large',
+		416 => 'Range Not Satisfiable',
 		422 => 'Unprocessable Entity',
 		429 => 'Too Many Requests',
 		500 => 'Internal Server Error',
@@ -345,6 +347,12 @@ function api_send_html($status_code, $html) {
 // no-store as for every answer: the copy the client keeps is its own. A type a
 // browser shows (a picture, a PDF) may go inline; everything else is an
 // attachment, and nosniff keeps a browser from reading it as anything else.
+//
+// A Range header gets that part of the file alone (206), so a player starts a
+// video from its first bytes and jumps ahead without fetching the rest; If-Range
+// with an ETag that no longer matches gets the whole file instead, so a part of
+// the old file is never stitched onto the new one. If-None-Match is settled
+// first, as RFC 9110 13.2.2 orders them.
 function api_send_file($path, $mime, $file_name, $inline = false) {
 
 	// A buffer PHP will not let go of (zlib.output_compression) ends the loop
@@ -361,6 +369,24 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 
 	$status_code = api_etag_matches($etag) ? 304 : 200;
 
+	$range = null;
+
+	if ($status_code === 200) {
+
+		$range = api_file_range($etag, $size);
+
+		if ($range === false) {
+
+			$status_code = 416;
+
+		} elseif (is_array($range)) {
+
+			$status_code = 206;
+
+		}
+
+	}
+
 	if (!headers_sent()) {
 
 		header('X-Request-Id: ' . api_request_id());
@@ -371,13 +397,15 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 
 		header('ETag: ' . $etag);
 
+		header('Accept-Ranges: bytes');
+
 		foreach (api_extra_headers() as $name => $value) {
 
 			header($name . ': ' . $value);
 
 		}
 
-		if ($status_code === 200) {
+		if (($status_code === 200) || ($status_code === 206)) {
 
 			// A name in plain letters for old clients beside the real one
 			// (RFC 6266); neither can break out of the header.
@@ -385,9 +413,25 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 
 			header('Content-Type: ' . $mime);
 
+			header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . (($ascii !== '') ? $ascii : 'file') . '"; filename*=UTF-8\'\'' . rawurlencode((string)$file_name));
+
+		}
+
+		if ($status_code === 200) {
+
 			header('Content-Length: ' . $size);
 
-			header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . (($ascii !== '') ? $ascii : 'file') . '"; filename*=UTF-8\'\'' . rawurlencode((string)$file_name));
+		} elseif ($status_code === 206) {
+
+			header('Content-Range: bytes ' . $range[0] . '-' . $range[1] . '/' . $size);
+
+			header('Content-Length: ' . ($range[1] - $range[0] + 1));
+
+		} elseif ($status_code === 416) {
+
+			header('Content-Range: bytes */' . $size);
+
+			header('Content-Length: 0');
 
 		}
 
@@ -401,9 +445,82 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 
 		readfile($path);
 
+	} elseif ($status_code === 206) {
+
+		api_send_file_part($path, $range[0], $range[1] - $range[0] + 1);
+
 	}
 
 	exit();
+
+}
+
+// The part of the file a Range header asks for, as pg_http_byte_range() reads
+// it: array(first, last), null for the whole file, false when it lies past the
+// end. If-Range names the copy the client holds a part of; when that is not
+// this file any more - or it is a date, which this exit never sends - the whole
+// file goes out rather than a part of something else.
+function api_file_range($etag, $size) {
+
+	$header = api_header('Range');
+
+	if ($header === '') {
+
+		return null;
+
+	}
+
+	$if_range = trim(api_header('If-Range'));
+
+	if (($if_range !== '') && ($if_range !== $etag)) {
+
+		return null;
+
+	}
+
+	return pg_http_byte_range($header, $size);
+
+}
+
+// Streams $length bytes from $first in pieces, so a part of a large video is
+// never read into memory whole.
+function api_send_file_part($path, $first, $length) {
+
+	$handle = @fopen($path, 'rb');
+
+	if (!$handle) {
+
+		return;
+
+	}
+
+	if (($first > 0) && (@fseek($handle, $first) !== 0)) {
+
+		fclose($handle);
+
+		return;
+
+	}
+
+	while (($length > 0) && !feof($handle)) {
+
+		$chunk = fread($handle, (int)min(1048576, $length));
+
+		if (($chunk === false) || ($chunk === '')) {
+
+			break;
+
+		}
+
+		echo $chunk;
+
+		$length -= strlen($chunk);
+
+		flush();
+
+	}
+
+	fclose($handle);
 
 }
 

@@ -1443,7 +1443,15 @@ function ws_handle_action($action, $request)
                 'file_name' => $stored['name'],
             ));
 
-            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
+            // A message that could not be written (too many too fast, too
+            // long) takes its file back with it, as the external API does.
+            if (!$result['ok']) {
+                ws_upload_discard($stored['file_id']);
+
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('message_id' => $result['message_id']));
 
         // A conversation with a guest (guests.php): started, a new link
         // given, ended. Staff in the room only; the functions check.

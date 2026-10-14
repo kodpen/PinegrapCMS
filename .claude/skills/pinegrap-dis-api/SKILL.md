@@ -67,6 +67,12 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   `'form_file' => 'file'` bildirir (OpenAPI'ye multipart eklenir) ve
   `$_FILES`'ı yalnız `api_send_hook() === null` iken okur
   (`ws_api_upload_input()`, `GET/POST /workspace/.../file(s)`).
+  `api_send_file()` `Range` / `If-Range`'i kendisi karşılar (206, 416,
+  `Accept-Ranges`); uç ayrıca bir şey yapmaz. `'form_file'` rotasında
+  `Idempotency-Key` parmak izi parçanın adını, boyutunu ve SHA-256'sını
+  kapsar (`api_idempotency_input()`); dosyayı başka adla alan yeni bir
+  yol açarsan oraya da kat. Görselin küçük kopyası `ws_file_preview()`
+  (`pg_process_image_file()`, `write => false`); kopya `data/temp`'te.
 - Sonradan kişinin kendi adıyla iş yapan kayıt (zamanlanmış mesaj gibi) yalnız
   cihaz oturumundan açılır (`ws_api_person_only()`); uygulama anahtarı okur ve
   iptal eder. Uygulamanın yazdığı her şey uygulama adıyla görünür.
