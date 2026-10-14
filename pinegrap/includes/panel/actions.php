@@ -250,6 +250,7 @@ function pg_panel_actions()
     // handler checks the session and the token, the module decides the rest.
     foreach (array(
         'ws_bootstrap', 'ws_channels', 'ws_channel_open', 'ws_channel_get',
+        'ws_brief_recap',
         'ws_message_seen', 'ws_scheduled_list', 'ws_scheduled_get',
         'ws_scheduled_targets', 'ws_scheduled_save', 'ws_scheduled_status',
         'ws_scheduled_run_now', 'ws_scheduled_preview', 'ws_scheduled_draft',

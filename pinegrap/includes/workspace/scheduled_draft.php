@@ -273,7 +273,7 @@ function ws_scheduled_draft_messages($text, $lists, $language)
     if ($chains) {
         $actions[] = '{"type":"notify","user_ids":[P],"text":"..."}: a notification to people of the team.';
         $actions[] = '{"type":"task","title":"...","description":"...","priority":"' . implode('|', $lists['priorities']) . '","assignees":[P],"channel_id":C or 0,"due_in":days or ""}: opens a task.';
-        $actions[] = '{"type":"task_digest","mode":"mine|channel","channel_id":C or 0,"user_ids":[P],"only":"' . implode('|', $lists['digest']) . '","subject":"...","intro":"..."}: e-mails people their tasks. mine: each person the tasks they are on (of one channel, or of all with 0); channel: the tasks of one channel to its members. user_ids [] is everybody concerned. only: open all open tasks, week due within a week and overdue, overdue overdue only, stale open tasks nobody changed for a week or more.';
+        $actions[] = '{"type":"task_digest","mode":"mine|channel","channel_id":C or 0,"user_ids":[P],"only":"' . implode('|', $lists['digest']) . '","subject":"...","intro":"...","missed":0|1,"ai":0|1}: e-mails people their tasks. mine: each person the tasks they are on (of one channel, or of all with 0); channel: the tasks of one channel to its members. user_ids [] is everybody concerned. only: open all open tasks, week due within a week and overdue, overdue overdue only, stale open tasks nobody changed for a week or more. missed 1 adds what each person has not read yet (a morning summary); ai 1 has Pinegrap AI sum that up in a few sentences.';
 
         if (!empty($lists['metrics'])) {
             $actions[] = '{"type":"report","title":"...","metrics":[M],"channel_id":C or 0,"to":["address"]}: the counts, written in a channel and / or e-mailed.';
@@ -710,6 +710,8 @@ function ws_scheduled_draft_action($action, $lists, $joined = false)
                 'only'       => in_array($only, (array) $lists['digest'], true) ? $only : 'open',
                 'subject'    => ws_scheduled_draft_line($action['subject'] ?? '', 250),
                 'intro'      => ws_scheduled_draft_text($action['intro'] ?? '', 2000),
+                'missed'     => empty($action['missed']) ? 0 : 1,
+                'ai'         => (empty($action['missed']) || empty($action['ai'])) ? 0 : 1,
             );
 
         case 'report':

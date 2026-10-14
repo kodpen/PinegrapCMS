@@ -1301,6 +1301,32 @@
          dokunulmamış görevler. Eskiyen işlerin
          hatırlatması bununla programlanıyor.
 
+  [YENİ] Kanal karşılaması siz yokken olanı söylüyor:
+         "Siz yokken: 12 yeni mesaj (çoğunu Ayşe yazdı),
+         2 karar yazıldı, size bir görev verildi,
+         Mehmet 3 mesaj yazdı." Satıra yazılan kararlar,
+         size verilen ve biten görevler, onayınızı
+         bekleyen istekler ve müşterinin (misafirin)
+         yazdıkları giriyor.
+
+  [YENİ] Pinegrap AI'ın okuyabildiği kanallarda, en az
+         üç yeni mesaj varsa karşılamada "Kaçırdıklarımı
+         özetle" düğmesi var. Pinegrap AI son
+         gelişinizden bu yana yazılanları okuyup iki-dört
+         cümleyle anlatıyor: önce sizden istenen, sonra
+         kararlar, sonra açık kalanlar.
+
+  [YENİ] Görev e-postasına "Herkesin kaçırdıklarını
+         ekle" seçeneği: kanal kanal okunmamış mesajlar,
+         kararlar, size verilen görevler ve onayınızı
+         bekleyen istekler. Görevi olmayan ama bir şey
+         kaçırmış kişiye de e-posta gider. İsteğe bağlı
+         olarak Pinegrap AI bunu birkaç cümleyle özetler;
+         özete yalnız Pinegrap AI'ın okuyabildiği
+         kanallar girer ve özet, işlemi genel iş
+         çalıştırdığında yazılır. Yeni hazır işlem:
+         "E-postayla sabah özeti" (her iş günü 08:30).
+
   [ŞEMA] Durum güncellemeleri, check-in'ler ve yanıtları
          için üç yeni tablo oluşturulur.
 

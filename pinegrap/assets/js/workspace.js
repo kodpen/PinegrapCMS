@@ -8323,6 +8323,49 @@
                 text.appendChild(el('div', 'ws-brief-line', line));
             });
 
+            // Pinegrap AI's summary of what was missed, written once asked
+            // for and kept on the greeting while the channel stays open.
+            var buttons = el('div', 'ws-brief-buttons');
+
+            if (brief.recap) {
+                var recapBox = el('div', 'ws-brief-recap');
+                var showRecap = function () {
+                    clear(recapBox);
+                    recapBox.appendChild(el('div', 'ws-brief-recap-text', brief.recap.text));
+                    recapBox.appendChild(el('div', 'ws-brief-recap-by', t('brief_recap_by')));
+                };
+
+                text.appendChild(recapBox);
+
+                if (brief.recap.text) {
+                    showRecap();
+                } else {
+                    var channelId = self.channel.id;
+                    var ask = button('btn btn-sm ws-brief-action', t('brief_recap'), 'bi-stars');
+                    ask.addEventListener('click', function () {
+                        ask.disabled = true;
+                        clear(ask);
+                        ask.appendChild(el('span', 'spinner-border spinner-border-sm me-1'));
+                        ask.appendChild(document.createTextNode(t('brief_recap_wait')));
+
+                        api('ws_brief_recap', { channel_id: channelId, since_id: brief.recap.since_id }).then(function (data) {
+                            brief.recap.text = data.text || '';
+                            ask.remove();
+                            showRecap();
+                        }).catch(function (error) {
+                            ask.disabled = false;
+                            clear(ask);
+                            ask.appendChild(icon('bi-stars', 'me-1'));
+                            ask.appendChild(document.createTextNode(t('brief_recap')));
+                            fail(error);
+                        });
+                    });
+                    buttons.appendChild(ask);
+                }
+            }
+
+            text.appendChild(buttons);
+
             if (brief.advice && brief.advice.action !== 'none') {
                 var go = button('btn btn-sm ws-brief-action', brief.advice.label, brief.advice.icon);
                 go.addEventListener('click', function () {
@@ -8340,7 +8383,7 @@
                         }
                     }
                 });
-                text.appendChild(go);
+                buttons.appendChild(go);
             } else if (brief.advice) {
                 text.appendChild(el('div', 'ws-brief-hint', brief.advice.label));
             }
@@ -13665,7 +13708,7 @@
 
         // Each person their tasks by e-mail, or one channel's tasks.
         function taskDigest() {
-            var data = given('task_digest', { mode: 'mine', channel_id: 0, user_ids: [], only: 'open', subject: '', intro: '' });
+            var data = given('task_digest', { mode: 'mine', channel_id: 0, user_ids: [], only: 'open', subject: '', intro: '', missed: 0, ai: 0 });
             var modes = el('div', 'btn-group btn-group-sm ws-sa-modes');
             var mode = data.mode || 'mine';
             var channel = saChannelSelect(data.channel_id || 0, t('sa_digest_all_channels'));
@@ -13704,6 +13747,38 @@
             detail.appendChild(peopleBox);
             detail.appendChild(saLabelled(t('sa_subject'), subject));
             detail.appendChild(saLabelled(t('sa_digest_intro'), intro, t('sa_digest_intro_help')));
+
+            // What each person missed, and Pinegrap AI's few sentences on it
+            // where it is set up.
+            function digestSwitch(label, help, checked) {
+                var wrap = el('div', 'form-check form-switch mb-2');
+                var input = el('input', 'form-check-input');
+                var caption = el('label', 'form-check-label small', label);
+
+                input.type = 'checkbox';
+                input.id = nextId('ws-sa-digest-');
+                input.setAttribute('role', 'switch');
+                input.checked = !!checked;
+                caption.htmlFor = input.id;
+                wrap.appendChild(input);
+                wrap.appendChild(caption);
+                wrap.appendChild(el('div', 'form-text mt-0', help));
+                detail.appendChild(wrap);
+
+                return input;
+            }
+
+            var missed = digestSwitch(t('sa_digest_missed'), t('sa_digest_missed_help'), data.missed);
+            var ai = config.recap_ai ? digestSwitch(t('sa_digest_ai'), t('sa_digest_ai_help'), data.ai) : null;
+
+            function showAi() {
+                if (ai) {
+                    ai.closest('.form-check').classList.toggle('d-none', !missed.checked);
+                }
+            }
+
+            missed.addEventListener('change', showAi);
+            showAi();
             showMode();
 
             reader = function () {
@@ -13714,7 +13789,10 @@
                     user_ids: people.value(),
                     only: only.value,
                     subject: subject.value,
-                    intro: intro.value
+                    intro: intro.value,
+                    missed: missed.checked ? 1 : 0,
+                    // Kept as it was where Pinegrap AI is not set up now.
+                    ai: (missed.checked && (ai ? ai.checked : !!data.ai)) ? 1 : 0
                 };
             };
         }
@@ -14137,6 +14215,15 @@
             name: t('sa_tpl_task_mail'),
             rules: [{ type: 'at', date: monday, time: '09:00', repeat: 'weekly', every: 1, days: [1] }],
             action: { type: 'task_digest', mode: channelId ? 'channel' : 'mine', channel_id: channelId, user_ids: [], only: 'open', subject: t('sa_tpl_task_mail_subject'), intro: '' },
+            follow: []
+        } });
+
+        // Every working morning, each person what they missed and the tasks
+        // due this week: to the one who sets it up, others can be added.
+        out.push({ key: 'morning', label: t('sa_tpl_morning'), icon: 'bi-sunrise', help: t('sa_tpl_morning_help'), data: {
+            name: t('sa_tpl_morning'),
+            rules: [{ type: 'at', date: tomorrow, time: '08:30', repeat: 'workdays' }],
+            action: { type: 'task_digest', mode: 'mine', channel_id: 0, user_ids: [me], only: 'week', subject: t('sa_tpl_morning_subject'), intro: '', missed: 1, ai: config.recap_ai ? 1 : 0 },
             follow: []
         } });
 

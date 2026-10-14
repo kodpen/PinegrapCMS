@@ -438,6 +438,9 @@ function ws_js_strings()
         'view_image'             => lang('View the picture'),
         'who_carries'            => lang('Who carries the work'),
         'work_calendar'          => lang('Work Calendar'),
+        'brief_recap'            => lang('Sum up what I missed'),
+        'brief_recap_wait'       => lang('Pinegrap AI is reading…'),
+        'brief_recap_by'         => lang('Summed up by Pinegrap AI'),
     );
 }
 
