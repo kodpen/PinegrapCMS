@@ -1,3 +1,8 @@
+---
+name: _plan_gelen_kutusu
+description: Incoming e-mail (IMAP) into Workspace: plan only, slices G1-G9, schema 10.85, owner questions in section 9
+---
+
 # Plan — Gelen e-posta: müşterinin e-postası Çalışma Alanı'na düşsün
 
 **Durum (2026-10-14):** yalnız plan, kod yok. Konu Çalışma Alanı araştırmasının (paylaşılan

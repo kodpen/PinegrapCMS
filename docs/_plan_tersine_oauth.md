@@ -1,3 +1,8 @@
+---
+name: _plan_tersine_oauth
+description: Reverse OAuth: Pinegrap connecting to outside accounts (Gmail/M365, Search Console, sign-in, backups to cloud, carriers); leftovers
+---
+
 # Plan — Tersine OAuth: Pinegrap'ın dış hesaplara bağlanması
 
 **Durum (2026-10-14):** ortak altyapı (§3, A modeli; #282) ve önerilen beş senaryo bitti:

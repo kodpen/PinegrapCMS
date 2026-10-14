@@ -38,5 +38,7 @@ yazarken ERP muhasebe sözleşmesini okumak dikkat dağıtır.
   `pinegrap/includes/fn/core.php`.
 - Bu klasör `.gitignore` altındadır (`.claude/`), depoya girmez —
   `CLAUDE.md` ve `docs/` ile aynı çizgide, iç geliştirme bağlamıdır.
-- Tam arşiv `docs/CLAUDE-tam.md`'dir. Yeni bir kalıcı kural ortaya çıktığında
-  ilgili skill'e **ve** arşive yaz; skill kısa kalsın, vaka anlatısı arşive gitsin.
+- Ayrıntı ve gerekçeler `docs/memory/` altındaki hafıza dosyalarındadır (indeks
+  `docs/memory/README.md`). Yeni bir kalıcı kural ortaya çıktığında ilgili
+  skill'e **ve** ilgili hafıza dosyasına yaz; skill kısa kalsın, ayrıntı hafıza
+  dosyasına gitsin.

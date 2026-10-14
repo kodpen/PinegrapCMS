@@ -1,0 +1,48 @@
+---
+name: settings-modal-architecture
+description: Site Settings modal architecture: file map, the eight categories and their cards, moving a card, adding a new category.
+---
+
+## Why is Site Settings a modal and not a screen?
+- A setting is almost always needed in the middle of another job; going to a page means abandoning it. The old single screen (5219 lines, one `<form>` writing 247 columns per save) was split into eight categories, which then moved into a modal.
+
+## Which files make it up?
+```
+Modal (main path)
+  includes/settings/modal.php      shell: header button + empty dialog + extras box
+  settings_pane.php                endpoint: GET ?pane=<cat> cards, POST saves, both JSON
+  includes/settings/fragment.php   pg_settings_fragment() / pg_settings_apply()
+  assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgInitInjected()
+Page (no-JavaScript path; not linked from the panel)
+  settings_<category>.php          8 thin wrappers: init + PG_SETTINGS_KEY + screen.php
+  includes/settings/screen.php     page flow: shell, toolbar, save bar, POST/redirect
+  settings2.php                    hub (deleted later)
+  settings.php                     OLD single screen; orphan, in the Cleanup list
+Shared
+  includes/settings/registry.php   the ONE list: categories, sections, keywords, related screens
+  includes/settings/prep.php       GET preparation (every category runs all of it)
+  includes/settings/<cat>.php      cards -> $pg_settings_cards (+ $pg_settings_modals, $pg_settings_scripts)
+  includes/settings/<cat>.save.php what that category writes
+```
+
+## Which categories and cards exist (27 sections)?
+| Pane | Cards |
+|---|---|
+| `general` | server, software, channel, datetime, cron |
+| `appearance` | theme, editor |
+| `features` | features, images |
+| `seo` | seo, analytics |
+| `contact` | campaigns, chat, mailchimp |
+| `security` | session, device, signin, membership |
+| `firewall` | waf, bots, iplists |
+| `commerce` | store, shipping, giftcards, invoice, payments, affiliate |
+
+## How do you move a card?
+- Two edits: the `sections` entry in `registry.php`, and moving the card block between `includes/settings/<key>.php` files.
+- Column ownership follows the card: move the columns it writes between the `<key>.save.php` files too, otherwise the column is ownerless and never written.
+- When moving to another category also add a row to `pg_settings_legacy_anchors()` (see settings-modal-entry-points).
+
+## How do you add a new category?
+- Entry in `registry.php` + `includes/settings/<key>.php` + `<key>.save.php` + `settings_<key>.php` wrapper (for the page path). There is no menu entry to highlight.
+
+Related: docs/memory/ui/settings-card-save-rules.md

@@ -1,3 +1,8 @@
+---
+name: _plan_ziyaretci_temizleme
+description: Visitor records retention, daily rollup, chunked deletion, MyISAM to InnoDB; "Ertelenenler" (deferred) items
+---
+
 # Ziyaretçi kayıtları: saklama süresi, günlük özet, parça parça silme (2026.4.10, şema 10.3)
 
 Durum: birinci parça (#343) ve ikinci parça (MyISAM tablonun kendiliğinden

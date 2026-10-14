@@ -1,3 +1,8 @@
+---
+name: _plan_kargo
+description: Shipping/carrier management plan (2026-10-08): carrier APIs, tracking, local verification steps
+---
+
 # Plan 3 — E-ticaret: kargo (sevkiyat) yönetimi ve yerel doğrulama (ana ajan Fable 5.1, alt ajanlar Opus 5.5)
 
 Durum: plan (2026-10-08). Kaynak keşif: `docs/_tespit_2026_10_08/kargo_yonetimi_kesif_raporu.md` (dosya:satır kanıtları orada; yeniden keşif yapma).

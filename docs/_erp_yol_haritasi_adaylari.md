@@ -1,3 +1,8 @@
+---
+name: _erp_yol_haritasi_adaylari
+description: ERP roadmap candidates after phases -1 to 5: legislation, competitor features, building blocks (research, not decisions)
+---
+
 # ERP — sonradan eklenebilecek özellikler (yol haritası adayları)
 
 **Tarih:** 2026-09-20 · **Durum:** araştırma notu, karar değil · **Kapsam:** `docs/_plan_erp.md` Faz -1–5 bittikten sonrası

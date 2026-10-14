@@ -1,3 +1,8 @@
+---
+name: _plan_api_mobil
+description: External API for team devices: session, notifications/push, ETag done; remaining items moved to _plan_mobil_api_claude_kanali.md
+---
+
 # Dış API — mobil / ekip cihazı yetenekleri (2026.4.5)
 
 **Durum (2026-10-14):** A (cihaz oturumu), B (bildirim + push) ve C (ETag / 304, `fields=`,

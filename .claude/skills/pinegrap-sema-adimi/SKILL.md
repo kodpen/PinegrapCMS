@@ -12,8 +12,8 @@ birini bitirdiğini söyle.
 
 Yeni şema değişikliği **açık (yayınlanmamış) sürümün** içine alt adım olarak
 eklenir. Yeni sürüm numarası yalnız yayın sonrası açılır. Hangi sürümün açık
-olduğunu `docs/degisiklikler.md` başındaki "Dağıtım durumu" söyler; o dosya depo
-dışıdır (geliştirme makinasında durur) — erişemiyorsan **tahmin etme, sor**.
+olduğunu `docs/memory/release/release-status.md` söyler — erişemiyorsan
+**tahmin etme, sor**.
 
 2026-10-13 itibarıyla 2026.4.9 yayında ve kapalı (`includes/migrations/2026.4.9.php`
 dokunulmaz). **Açık sürüm 2026.4.10**: `versions.php` satırı, changelog
@@ -66,7 +66,8 @@ alt adımlar `upgrade_2026_4_9_<konu>()` gibi (2026.4.4'te
    Yeni madde başlık bloğunun (`---`) hemen altına, önceki en yeni maddenin
    üstüne girer.
 
-7. **`docs/CLAUDE-tam.md` sürüm tablosuna** alt adımı işle.
+7. **`docs/sema-adimlari.md` tablosunun sonuna** alt adımı satır olarak ekle
+   (dosyayı baştan okuma; adım ararken `grep`).
 
 ## Genel kurallar
 

@@ -1,3 +1,8 @@
+---
+name: _plan_erp_ozellikler
+description: ERP features plan, phases 6-9 (done); remaining manual checks on dev
+---
+
 # Plan — ERP özellikleri: Faz 6–9
 
 **Durum (2026-10-14):** Faz 6, 7, 8 (8a, 8b, 8c) ve 9 bitti (PR #270–#319, API parçası

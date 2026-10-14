@@ -1,3 +1,8 @@
+---
+name: component-development-guide
+description: Mandatory reading before writing a Style Designer palette component: node model, canvas, serialization, checklist
+---
+
 # Pinegrap Style Designer — Component Geliştirme Rehberi
 
 > **Hedef kitle:** Bu rehber, Pinegrap Style Designer için yeni component (hero, CTA, features, testimonials, pricing, stats, vs.) geliştirecek **AI agent'lar için** referans dokümandır. Instruction-dense. Kullanım için değil, üretim için.

@@ -1,0 +1,38 @@
+---
+name: multi-page-design-model
+description: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
+---
+
+## What is a design and where is its data? (2026.4.4, migration 4.22)
+- A design = a `style` row with `style_layout='visual_designer'` + N pages linked by the `page_style` FK.
+| Where | What |
+|---|---|
+| `page.page_tree_json` | the page's layout tree |
+| `page.page_tree_code` | HTML generated from the tree; render reads THIS (`get_page_content.php`) |
+| `style.style_custom_css/js/fonts` | assets shared by all pages (Styles / JavaScript / Fonts / Theme panels) |
+| `style.theme_id`, `collection`, `additional_body_classes`, `style_head` | already style-level |
+| `style.style_tree_json`, `style_code`, `page.page_custom_*` | FALLBACK only; the new editor never writes them; save resets `page.page_custom_*` |
+
+## How must queries read the tree?
+- Always `pg_page_tree_sql_expr()` = `COALESCE(NULLIF(page.page_tree_json,''), style.style_tree_json)`; never LIKE directly on `style.style_tree_json`. Single page: `pg_page_tree_json($page_id)`.
+- `pg_multi_page_design_ready()` probes all five columns at once; bridge rule: never assume a new column exists.
+
+## What counts as a "visual designer page"?
+- NOT `layout_type='system'`: that column is `system` on every standard page and legacy system layouts use it too.
+- Criterion is `pg_page_is_visual_design()`: the page's own `page_style` is `visual_designer` OR it has its own tree.
+- Edit link everywhere via `pg_page_edit_url()` (view_pages, explorer, edit_page.php redirect).
+- `select_style()` does not list visual designs: they cannot be assigned as folder/page default.
+
+## Start screen and lists
+- `view_system_styles.php` (`pg_designer_start_screen`, menu `$menu_items[21]`): New -> `add_system_style.php` (straight to canvas), Import -> `?start=import` (`sdDesign.autoImport`), Designs list. Editor exit and delete return here.
+- `view_styles.php` shows only `style_layout <> 'visual_designer'`; `add_style.php` is to be removed.
+- Designs list is a standard DataTable, no bulk-select column. Row Delete -> `designer/design_delete` (live pages go to the bin, the style is deleted).
+- Design Delete button: `pg_designer_style_live_usage()` does not count binned pages; binned pages are left untouched.
+
+## Bin and folder rules
+- A binned page is not listed as a tab: every query reading a design's pages adds `pg_designer_not_binned_sql()`.
+- Tab Delete -> `designer/page_delete` -> explorer `explorer_recycle_delete` (Recycle Bin, `page_style` kept).
+- Tab Detach -> `api.php designer/page_detach` (new style + copy of assets). The last saved page cannot be detached ("Delete the design instead"). The last page can be deleted: it goes to the Recycle Bin, the design stays with no pages and the editor returns home (`_pgLeaveEmpty()`).
+- `page_folder` is never written as 0 (`pg_designer_save_page` turns it into root); a page with 0 is invisible in the File Manager and cannot be sent to the bin.
+
+Related: docs/memory/designer/multi-page-designer-editor.md

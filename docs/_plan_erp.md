@@ -1,3 +1,8 @@
+---
+name: _plan_erp
+description: ERP plan v3 (phases -1 to 5 done); remaining e-document (Phase 3) items, owned by Erdal locally
+---
+
 # Pinegrap ERP — Plan (v3)
 
 **Durum (2026-10-14):** Faz -1, 0, 1, 2, 4 ve 5 bitti (2026.4.4; ayrıntı

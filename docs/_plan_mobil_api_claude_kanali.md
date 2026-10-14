@@ -1,3 +1,8 @@
+---
+name: _plan_mobil_api_claude_kanali
+description: SHELVED (no mobile app): remaining API gaps for a mobile client (M1-M6 done) and Claude as channel member (C1-C5); restart point
+---
+
 # Plan — Mobil API ve Claude kanalı
 
 **Durum (2026-10-14):** M1–M6 bitti ve development'ta; her dilimin PR'ı ve squash commit'i §0

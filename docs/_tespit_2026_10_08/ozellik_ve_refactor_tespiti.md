@@ -1,3 +1,8 @@
+---
+name: ozellik_ve_refactor_tespiti
+description: Feature and refactor candidates summary (2026-10-08) linking the three discovery reports
+---
+
 # Pinegrap CMS — Özellik ve refactor adayları (tespit raporu, 2026-10-08)
 
 Kaynak: `development` @ `0294c42`. Üç paralel kod incelemesi (kargo, kimlik doğrulama, refactor/altyapı). Hiçbir dosya değiştirilmedi; çalışan örnek kurulmadı. Ayrıntı ve dosya:satır kanıtları şu üç dosyada:

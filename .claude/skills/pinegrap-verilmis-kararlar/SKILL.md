@@ -28,7 +28,7 @@ kuralın ihlalidir.
 | `api.php` `update_dashboard_appearance` — genel kapı (rol ≤ 1) arkasında, muafiyet listesinde değil | Kalır: pano görünüm seçicileri (`includes/fn/output.php`) `role < 2` dalında çiziliyor, uç kuralı UI ile aynı; site geneli yazım. Kardeşleri (`update_dashboard_widgets`, push uçları) muaf olsa da "kardeşleri muaf, bu değil" bulgusu değildir (2026-10-08). |
 | `includes/settings/prep.php` — Google Client Secret'ın Güvenlik formuna geri render edilmesi | Operatör tercihi; kural 10'un "sırrı geri render etme" maddesinin yazılı istisnası (#62). |
 | `edit_calendar.php`, `edit_contact_group.php` — rol 3'ün kendisine atanan takvim/grubu yeniden adlandırması ve (boşsa) silmesi | Kalır; oluşturma yasağı ayrı karardır (#59). |
-| `pg_write_permission_repair()` — klasör 0777 / dosya 0666 | Kalır; gerekçe `docs/CLAUDE-tam.md` "Onarım" satırında (#59). |
+| `pg_write_permission_repair()` — klasör 0777 / dosya 0666 | Kalır; gerekçe `docs/memory/release/stale-migration-file-protection.md` (#59). |
 | `test_secure_mode.php` — `init.php` yüklemez, oturum/anahtar kapısı yok | Kalır; sayfa tam da site kilitliyken cevap vermek için böyle tasarlandı (#70). |
 | `pg_curl_tls()` — `ALLOW_INSECURE_UPDATE_TLS` bayrağı ödeme, lisans ve kargo çağrılarını da kapsar | Kalır; operatörün config.php'de açıkça verdiği tek son çare (#70). |
 | `editor_select_image.php` — `UNSPLASH_ACCESS_KEY` istemciye basılır | Tasarım gereği: Access Key istemci tarafı client_id'dir, gizli olan Secret Key'dir (#62). |
