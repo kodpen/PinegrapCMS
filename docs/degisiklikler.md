@@ -84,6 +84,116 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kanal grubu oluşturma, değiştirme, silme ve grup yetkisi (2026-10-14)
+
+**Neden.** #392 kanalı bir gruba taşımayı ve grupların listesini API'ye
+açtı; grupların kendisini düzenlemek (oluşturma, ad, renk, yer, silme) ve
+grupta yetki verip geri almak dışarıda kaldı. Bunlar panelde personelin
+yaptığı işler; API'den yapılamıyordu.
+
+**Ne değişti.**
+- Uçlar, hepsi panelin fonksiyonlarıyla (`includes/workspace/groups.php`):
+  - `POST /workspace/channel-groups` {`name`, `color`, `parent_id`} →
+    `WorkspaceChannelGroup` (201). `ws_group_save()`.
+  - `POST|PATCH /workspace/channel-groups/{id}` {`name`, `color`,
+    `parent_id`, `before_id`} → `WorkspaceChannelGroupChange` {`group`,
+    `memberships`}. Ad ya da renk gelirse grubun formu gibi
+    `ws_group_save()` (Site Günlüğü satırı yazar); yalnız yer gelirse
+    kenar çubuğundaki sürükleme / Yukarı / Aşağı gibi `ws_group_move()`
+    (panel gibi satır yazmaz). `before_id` aynı seviyedeki başka bir grubun
+    önüne koyar; panel yerleştiremediği `before_id`'yi sessizce sona
+    atıyor, API 422 (`before_id`) veriyor.
+  - `DELETE /workspace/channel-groups/{id}` (IIS için
+    `POST /workspace/channel-groups/{id}/delete`) →
+    `WorkspaceChannelGroupRemoval`: `ws_group_remove()`; kanallar ve alt
+    gruplar bir üst gruba çıkar, gruptaki yetki ve yalnız onun verdiği
+    üyelikler biter. Cevap ve prova taşınan kanalları (`channels`,
+    görülmeyenler `unseen_channels`), alt grupları (`groups`), yetkisi biten
+    kişileri (`access`) ve üyelik değişimini (`memberships`) verir.
+  - `GET /workspace/channel-groups/{id}/access` →
+    `WorkspaceChannelGroupAccess`: panelin "Grup yetkisi" penceresi
+    (`people`, üst gruplardan gelen `above`, `reach`).
+  - `POST /workspace/channel-groups/{id}/access` {`user_ids`} (yetki ver,
+    `ws_group_access_grant()`) ve `DELETE|POST
+    /workspace/channel-groups/{id}/access/{user_id}` (geri al,
+    `ws_group_access_revoke()`) → `WorkspaceChannelGroupAccessChange`
+    {`access`, `memberships`}. Ekipte olmayan kimlikler düşer, kimse
+    kalmazsa 422 (`user_ids`). Yetkisi olmayan kişiden geri alma hata
+    değildir ve hiçbir şey yazmaz (panel bu düğmeyi yalnız yetkisi olana
+    gösteriyor; panelin fonksiyonu yine de günlüğe satır yazardı).
+- Kapı #392 ile aynı: `workspace:read` / `workspace:write`, uygulama
+  sahibinin hakları (`ws_can_manage_groups()`: rol 0-2); uygulama anahtarı,
+  ekip cihazları oturumu ve OAuth kabul, personel olmayan 403. Olmayan grup
+  (yolda) 404, gövdedeki hatalar 422 ve alan adıyla, grup tabloları yoksa
+  503. Yazan uçların hepsi prova alır.
+- Üyeliği değiştiren yazımlar (başka gruba taşıma, silme, yetki verme /
+  geri alma) kimin hangi kanala girip çıktığını hem cevapta hem provada
+  verir (`WorkspaceChannelGroupMemberships`: `joining` / `leaving` sayıları,
+  kanal kanal adlar, sahibin okumadığı kanallar yalnız `unseen_channels`'ta
+  sayı; panel de bu kanalları yalnız sayıyor). Prova
+  `ws_group_sync_plan()` ile hesaplanır: `ws_group_sync_channel()`'ın
+  hesabı yazmadan, kanalların grubu ve yetki satırları değişmiş sayılarak
+  (`ws_group_move_plan()`, `ws_group_remove_plan()`,
+  `ws_group_access_plan()`). Cevap tahminden değil eşitlemenin gerçekten
+  yaptığından gelir: `ws_group_save()`, `ws_group_move()`,
+  `ws_group_remove()`, `ws_group_access_grant()` ve
+  `ws_group_access_revoke()` artık `synced` (kanal → eklenen / çıkarılan)
+  döner, `ws_group_sync_tree()` `channels` ekledi. Panel bu alanları
+  kullanmıyor.
+- `ws_group_sync_channel()` ve `ws_channel_move_group()`'un ortak hesabı
+  saf iki fonksiyona çıktı (`ws_group_wanted_from()`,
+  `ws_group_sync_split()`); davranış aynı.
+- Renk, gruptaki `color` gibi paletin renk kodudur (`ws_palette_hexes()`,
+  `ws_palette_place_of()`); `null` ya da boş renksiz. OpenAPI ve MCP
+  null alabilen bir seçim listesinin listesine `null`'u da ekliyor
+  (yoksa sıkı bir doğrulayıcı temizlemeyi reddeder).
+- Panelin Site Günlüğü satırları (`… kanal grubu (…) kaydedildi`,
+  `… kaldırıldı`, `… yetki verildi / alındı`) API'de de yazılır ve uygulama
+  sahibinin kullanıcı adını taşır (`ws_api_as_owner()`: API oturum
+  tutmadığı için panelin fonksiyonu adı oturumdan okuyamıyordu).
+
+Şema değişikliği yok, yeni izin kapsamı yok, `tr.json`'da 2 yeni metin, JS
+değişmedi. MCP: kanal oluşturma ve değiştirme araç olduğu için altı yeni uç
+da araç (`workspace_channel_groups_create`, `_update`, `_delete`,
+`_access`, `_access_grant`, `_access_revoke`); `…/delete` takma adı araç
+değil.
+
+**Bilerek yapılmayan.** Kanal grubu olay (webhook) duyurmuyor: panel de
+duyurmuyor. `GET /workspace/channel-groups/{id}/access` provası yok, okuma.
+Grup yetkisi verme cevabı yeni yetki alanları ayrıca listelemiyor;
+`access.people` yetkisi olanların tamamı.
+
+**Doğrulama.** `tests/workspace_api_test.php`: altı yazma ucu ve okuma
+(yöntem, yol, kapsam #392 ile aynı, cevap nesnesi, prova, PATCH / POST
+takma adları, MCP'de altı araç, `delete_post` araç değil, renk seçimi
+paletle aynı), `ws_group_wanted_from()` (en yakın grup, ekip dışı
+sayılmaz), `ws_group_sync_split()` (kendi katılan ve sahip kalır),
+`ws_group_chain_moved()` / `ws_group_chain_removed()`,
+`ws_palette_place_of()`, üyelik ve silme sunumları (görülmeyen kanal
+sayılır, alanlar şemayla aynı sırada). `tests/mcp_test.php`: null alabilen
+seçim listesi `null` içerir. Sandbox'ta uygulama anahtarıyla: oluşturma
+(prova yazmadı, 201, iç içe yol "Müşteriler › İstanbul", 5. seviye 422,
+bilinmeyen renk / boş ad / olmayan üst grup / fazladan alan 422, personel
+olmayan 403); yetki verme provası ve gerçeği (görünen kanalda kişi adıyla,
+yöneticinin içinde olmadığı özel kanal `unseen_channels: 1`, `via_group`
+yazıldı, kanala satır düştü, günlükte `admin`); alt grubun erişimi
+(`above`'da üst gruptaki kişi), personel olmayan 403, olmayan grup 404;
+grubu başka gruba taşıma provası ve gerçeği (iki üyelik bitti, günlüğe
+satır yok), kendi içine 422, yanlış `before_id` 422, `before_id` ile sıra,
+aynı `parent_id` sırayı bozmadı, ad + renk günlüğe yazdı, ad + geri taşıma
+üyelikleri geri getirdi; yetkisi olmayandan geri alma (yazmadı, günlük
+satırı yok), prova ve `POST` ile geri alma; silme provası (yazmadı) ve
+gerçeği (kanal ve alt grup üste çıktı, yetki satırı silindi, `via_group`
+üyelikleri bitti), `…/delete` ile silme, ikinci silme 404; MCP
+`tools/list`'te altı araç ve renk listesinde `null`, `tools/call` ile
+değiştirme provası; OpenAPI'de beş yol ve
+beş nesne; API belgesinde uçlar. Sunucu günlüğünde uyarı yok. `lint`,
+`check_lang`, `check_api_schema`, `check_bindings`, `test`, `check_copies`,
+`build_js --check` temiz. Panelin kendi ekranı sandbox'ta tıklanmadı
+(fonksiyonların panel cevabı değişmedi; yalnız yeni anahtarlar eklendi).
+
+---
+
 ## 2026.4.10 — Dış API: "Benden sil" kişinin öbür cihazlarına eşitleniyor (2026-10-14)
 
 **Neden.** #393'ün belge taramasının bıraktığı bulgu. Kişi bir mesajı

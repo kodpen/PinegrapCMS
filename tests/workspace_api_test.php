@@ -921,3 +921,167 @@ function test_ws_api_channel_group_move_present()
 	pg_assert_same(array(), $out['leaving']);
 	pg_assert_same(array_keys(ws_api_channel_group_move_schema()), array_keys($out), 'the answer has the declared fields in order');
 }
+
+// Arranging the groups themselves is staff work, gated the way moving a
+// channel into a group is: the permission that changes a channel, a rehearsal
+// on every write, and one MCP tool per action; the removal addressed as a
+// POST for IIS is no second tool.
+function test_ws_api_channel_group_management_routes()
+{
+	$routes = array();
+	$offered = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+
+		if (pg_mcp_route_is_offered($route)) {
+			$offered[] = pg_mcp_tool_name($route['id']);
+		}
+	}
+
+	$expected = array(
+		'workspace.channel_groups.create'        => array('POST', '/workspace/channel-groups', 'WorkspaceChannelGroup'),
+		'workspace.channel_groups.update'        => array('POST', '/workspace/channel-groups/{id}', 'WorkspaceChannelGroupChange'),
+		'workspace.channel_groups.delete'        => array('DELETE', '/workspace/channel-groups/{id}', 'WorkspaceChannelGroupRemoval'),
+		'workspace.channel_groups.delete_post'   => array('POST', '/workspace/channel-groups/{id}/delete', 'WorkspaceChannelGroupRemoval'),
+		'workspace.channel_groups.access.grant'  => array('POST', '/workspace/channel-groups/{id}/access', 'WorkspaceChannelGroupAccessChange'),
+		'workspace.channel_groups.access.revoke' => array('DELETE', '/workspace/channel-groups/{id}/access/{user_id}', 'WorkspaceChannelGroupAccessChange'),
+	);
+
+	foreach ($expected as $id => $shape) {
+		$route = $routes[$id] ?? null;
+
+		pg_assert_true(is_array($route), $id . ' is declared');
+		pg_assert_same($shape[0], $route['method'], $id);
+		pg_assert_same($shape[1], $route['path'], $id);
+		pg_assert_same($shape[2], $route['returns'], $id);
+		pg_assert_same($routes['workspace.channels.group']['scope'], $route['scope'], $id . ' asks what moving a channel into a group asks');
+		pg_assert_true(!empty($route['dry_run']), $id . ' rehearses');
+	}
+
+	pg_assert_same(array('PATCH'), $routes['workspace.channel_groups.update']['also_accepts'], 'PATCH beside POST');
+	pg_assert_same(array('POST'), $routes['workspace.channel_groups.access.revoke']['also_accepts'], 'POST beside DELETE for IIS');
+
+	$access = $routes['workspace.channel_groups.access'] ?? null;
+
+	pg_assert_true(is_array($access), 'who holds access is read');
+	pg_assert_same('GET', $access['method']);
+	pg_assert_same('/workspace/channel-groups/{id}/access', $access['path']);
+	pg_assert_same('workspace:read', $access['scope']);
+	pg_assert_same('WorkspaceChannelGroupAccess', $access['returns']);
+
+	foreach (array('workspace_channel_groups_create', 'workspace_channel_groups_update', 'workspace_channel_groups_delete',
+		'workspace_channel_groups_access', 'workspace_channel_groups_access_grant', 'workspace_channel_groups_access_revoke') as $tool) {
+		pg_assert_contains($tool, $offered);
+	}
+
+	pg_assert_false(in_array('workspace_channel_groups_delete_post', $offered, true), 'the POST alias is no tool');
+
+	$body = array();
+
+	foreach ($routes['workspace.channel_groups.update']['params'] as $param) {
+		if (($param['in'] ?? '') === 'body') {
+			$body[$param['name']] = $param;
+		}
+	}
+
+	pg_assert_same(array('name', 'color', 'parent_id', 'before_id'), array_keys($body));
+	pg_assert_same(ws_palette_hexes(), $body['color']['values'], 'a colour is one of the palette\'s');
+	pg_assert_true(!empty($body['color']['nullable']) && !empty($body['parent_id']['nullable']), 'null clears the colour and puts the group at the top');
+}
+
+// Who a chain of groups wants in a channel: the nearest group that gives the
+// access is the one named, and only people in the team count.
+function test_ws_group_wanted_from()
+{
+	$rows = array(
+		array('group_id' => 3, 'user_id' => 10),
+		array('group_id' => 1, 'user_id' => 10),
+		array('group_id' => 1, 'user_id' => 11),
+		array('group_id' => 9, 'user_id' => 12),
+		array('group_id' => 1, 'user_id' => 99),
+	);
+
+	pg_assert_same(array(10 => 3, 11 => 1), ws_group_wanted_from(array(3, 1), $rows, array(10, 11, 12)));
+	pg_assert_same(array(10 => 1, 11 => 1), ws_group_wanted_from(array(1), $rows, array(10, 11, 12)), 'a group below gives nothing upwards');
+	pg_assert_same(array(), ws_group_wanted_from(array(), $rows, array(10, 11, 12)), 'no group, nobody');
+}
+
+// Bringing a channel in step: in come the wanted who are not members, out go
+// only the members a group had brought whom no group wants now.
+function test_ws_group_sync_split()
+{
+	$members = array(
+		10 => array('role' => 'member', 'via_group' => 3),
+		11 => array('role' => 'member', 'via_group' => 0),
+		12 => array('role' => 'owner', 'via_group' => 3),
+		13 => array('role' => 'member', 'via_group' => 1),
+	);
+
+	$split = ws_group_sync_split($members, array(10 => 1, 14 => 1));
+
+	pg_assert_same(array(14), $split['in']);
+	pg_assert_same(array(13), $split['out'], 'joined by themselves (11) and the owner (12) stay');
+
+	$none = ws_group_sync_split($members, array(10 => 3, 13 => 1));
+
+	pg_assert_same(array(), $none['in']);
+	pg_assert_same(array(), $none['out']);
+}
+
+// A channel's chain once a group on it goes inside another one, or is taken
+// away.
+function test_ws_group_chain_after_a_change()
+{
+	pg_assert_same(array(5, 3, 7, 8), ws_group_chain_moved(array(5, 3, 1), 3, array(7, 8)), 'what is above the group changes, what is below stays');
+	pg_assert_same(array(3), ws_group_chain_moved(array(3, 1), 3, array()), 'to the top');
+	pg_assert_same(array(4, 2), ws_group_chain_moved(array(4, 2), 3, array(7)), 'a channel the group is not above');
+	pg_assert_same(array(5, 1), ws_group_chain_removed(array(5, 3, 1), 3), 'what was in it moves up');
+	pg_assert_same(array(1), ws_group_chain_removed(array(3, 1), 3), 'its own channels go to the group it was in');
+}
+
+// A colour is written as the code the list shows; anything else is none.
+function test_ws_palette_place_of()
+{
+	$hexes = ws_palette_hexes();
+
+	pg_assert_same(count(ws_palette()), count($hexes));
+	pg_assert_same(1, ws_palette_place_of($hexes[0]));
+	pg_assert_same(count($hexes), ws_palette_place_of(strtoupper($hexes[count($hexes) - 1])));
+	pg_assert_same(0, ws_palette_place_of(''));
+	pg_assert_same(0, ws_palette_place_of('#000000'));
+	pg_assert_same($hexes[4], ws_palette_hex(ws_palette_place_of($hexes[4])), 'the round trip');
+}
+
+// A channel the owner of the application does not read is counted, never
+// named; a channel nobody comes into or leaves is left out.
+function test_ws_api_channel_group_memberships_present()
+{
+	$out = ws_api_channel_group_memberships_present(array(
+		4 => array('added' => array(10, 11), 'removed' => array(12)),
+		6 => array('added' => array(), 'removed' => array()),
+	), array(6 => 'general'));
+
+	pg_assert_same(2, $out['joining']);
+	pg_assert_same(1, $out['leaving']);
+	pg_assert_same(array(), $out['channels'], 'the private channel is not named');
+	pg_assert_same(1, $out['unseen_channels']);
+	pg_assert_same(array_keys(ws_api_channel_group_memberships_schema()), array_keys($out), 'the answer has the declared fields in order');
+}
+
+// Taking a group away names what moves up and counts what the owner of the
+// application does not read.
+function test_ws_api_channel_group_removal_present()
+{
+	$memberships = ws_api_channel_group_memberships_present(array(), array());
+	$group = array('id' => 7, 'parent_id' => 0, 'name' => 'Customers', 'path' => 'Customers');
+
+	$out = ws_api_channel_group_removal_present($group, array(4, 5), array(8 => 'Istanbul'), array(), array(4 => 'sales'), $memberships, false);
+
+	pg_assert_same(null, $out['parent_id'], 'what was in it goes to the top');
+	pg_assert_same(array(array('channel_id' => 4, 'name' => 'sales')), $out['channels']);
+	pg_assert_same(1, $out['unseen_channels']);
+	pg_assert_same(array(array('id' => 8, 'name' => 'Istanbul')), $out['groups']);
+	pg_assert_false($out['deleted'], 'a dry run deletes nothing');
+	pg_assert_same(array_keys(ws_api_channel_group_removal_schema()), array_keys($out), 'the answer has the declared fields in order');
+}

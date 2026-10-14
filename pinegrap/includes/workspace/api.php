@@ -161,6 +161,11 @@ function ws_openapi_objects()
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
         'WorkspaceMessageThread'    => 'ws_api_message_thread_schema',
         'WorkspaceApprovalRecord'   => 'ws_api_approval_record_schema',
+        'WorkspaceChannelGroupMemberships'  => 'ws_api_channel_group_memberships_schema',
+        'WorkspaceChannelGroupChange'       => 'ws_api_channel_group_change_schema',
+        'WorkspaceChannelGroupRemoval'      => 'ws_api_channel_group_removal_schema',
+        'WorkspaceChannelGroupAccess'       => 'ws_api_channel_group_access_schema',
+        'WorkspaceChannelGroupAccessChange' => 'ws_api_channel_group_access_change_schema',
     );
 }
 
@@ -594,8 +599,122 @@ function ws_api_routes()
             'handler'     => 'ws_api_channel_groups_list',
             'returns'     => array('list' => 'WorkspaceChannelGroup'),
             'summary'     => 'List the groups of channels',
-            'description' => 'The groups the sidebar sorts channels into. They are the same for everybody and only staff arrange them; whoever holds access on a group becomes a member of every channel in it and in the groups inside it. Staff see every group, with access counting the people who hold access on it; anybody else sees only the groups that hold a channel they see and the groups those are in, and access is null for them. parent_id builds the tree (null at the top) and path names a group with the ones above it, as "Customers › Istanbul". mine is true on a group that gave the owner of the application access themselves. group_id on a channel says which group it is in; POST /workspace/channels/{id}/group moves it.',
+            'description' => 'The groups the sidebar sorts channels into. They are the same for everybody and only staff arrange them; whoever holds access on a group becomes a member of every channel in it and in the groups inside it. Staff see every group, with access counting the people who hold access on it; anybody else sees only the groups that hold a channel they see and the groups those are in, and access is null for them. parent_id builds the tree (null at the top) and path names a group with the ones above it, as "Customers › Istanbul". mine is true on a group that gave the owner of the application access themselves. group_id on a channel says which group it is in; POST /workspace/channels/{id}/group moves it. Staff create, change and take away groups with POST /workspace/channel-groups, POST /workspace/channel-groups/{id} and DELETE /workspace/channel-groups/{id}, and give access with /workspace/channel-groups/{id}/access.',
             'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.channel_groups.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/channel-groups',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_groups_create',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceChannelGroup',
+            'summary'     => 'Create a group of channels',
+            'description' => 'Adds a group to the channel list the way New group in the sidebar does: a heading with a name and a colour, at the top level or inside another group (parent_id), last among the groups there. Groups are the same for everybody and only staff arrange them, so the owner of the application must be staff; anybody else is refused with 403. Groups go at most ' . WS_GROUP_DEPTH . ' levels deep (422 on parent_id). A new group is empty: POST /workspace/channels/{id}/group moves a channel into it and POST /workspace/channel-groups/{id}/access gives people access on it. The activity log gets the line the panel writes. Send an Idempotency-Key so a retried call does not create two groups.',
+            'params'      => array(
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 80, 'required' => true, 'description' => 'Runs of spaces are made one.'),
+                array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours, as color on a group shows it; null or empty for none.'),
+                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The group it goes inside (GET /workspace/channel-groups); 0 or null for the top level.'),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channel_groups.update',
+            'method'       => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path'         => '/workspace/channel-groups/{id}',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_groups_update',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelGroupChange',
+            'summary'      => 'Change a group of channels',
+            'description'  => 'Changes only the fields sent, the way Change the group, Move up, Move down and dragging a group in the sidebar do; staff alone may (403 otherwise). parent_id moves the group with everything in it inside another group, or to the top level with 0 or null, last there unless before_id says where; before_id puts it in front of another group of the same level, or last with 0. A group cannot go inside itself or one of its own groups, nor deeper than ' . WS_GROUP_DEPTH . ' levels (422 on parent_id). A move changes who is in its channels: whoever holds access on a group above its new place comes into every channel in it and in the groups inside it, the private ones too, and the people only its old place had brought in leave. memberships names them channel by channel, in the answer and in a dry run (X-Dry-Run: true): ask the dry run first to show the question before the move. A channel the owner of the application does not read is only counted. A new name or colour writes the panel\'s line in the activity log. PATCH is accepted beside POST.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 80),
+                array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours; null or empty for none.'),
+                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The group it goes inside; 0 or null for the top level.'),
+                array('name' => 'before_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Another group of the level it ends up on, which it goes in front of; 0 or null puts it last.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channel_groups.delete',
+            'method'      => 'DELETE',
+            'path'        => '/workspace/channel-groups/{id}',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_groups_delete',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceChannelGroupRemoval',
+            'summary'     => 'Take a group of channels away',
+            'description' => 'Takes a group away the way Take the group away in its menu does; staff alone may (403 otherwise). No channel is deleted: the channels and the groups in it move up to the group it was in (parent_id, null for the top level), and channels and groups list them. The access given on it ends (access names whose), and with it the memberships only that access had given: memberships names who leaves which channel. Ask a dry run (X-Dry-Run: true) first to show all of it before anything changes. A channel the owner of the application does not read is only counted (unseen_channels). The activity log gets the line the panel writes. It cannot be undone. POST /workspace/channel-groups/{id}/delete does the same for servers that refuse DELETE.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channel_groups.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/channel-groups/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_groups_delete',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceChannelGroupRemoval',
+            'summary'     => 'Take a group of channels away, addressed as a POST',
+            'description' => 'The same as DELETE /workspace/channel-groups/{id}, for clients and servers that cannot send DELETE. It has an address of its own because POST /workspace/channel-groups/{id} is the change.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channel_groups.access',
+            'method'      => 'GET',
+            'path'        => '/workspace/channel-groups/{id}/access',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_channel_groups_access',
+            'returns'     => 'WorkspaceChannelGroupAccess',
+            'summary'     => 'Who holds access on a group of channels',
+            'description' => 'The people who hold access on the group itself and who gave it to them, as Access on the group in its menu lists them; above lists the people whose access on a group further up reaches here too. Whoever holds access on a group is a member of every channel in it and in the groups inside it, the private ones too, and of the channels moved into them later. reach counts what that is: the groups inside it, and the channels with the private and the archived ones among them. Staff alone may ask (403 otherwise).',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channel_groups.access.grant',
+            'method'      => 'POST',
+            'path'        => '/workspace/channel-groups/{id}/access',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_groups_access_grant',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceChannelGroupAccessChange',
+            'summary'     => 'Give people access on a group of channels',
+            'description' => 'Gives these colleagues access on the group the way Give access does; staff alone may (403 otherwise). They become members of every channel in it and in the groups inside it, the private ones too, and of the channels moved into them later; each channel gets a line naming who came in. Ids of people who are not in the team are left out (422 when nobody is left), and somebody who already holds the access keeps it as it was. memberships names who comes into which channel, in the answer and in a dry run (X-Dry-Run: true): ask the dry run first to show the question the panel asks. A channel the owner of the application does not read is only counted. The activity log gets the line the panel writes.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'required' => true, 'description' => 'User ids of the colleagues who get the access.'),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channel_groups.access.revoke',
+            'method'       => 'DELETE',
+            'also_accepts' => array('POST'),
+            'path'         => '/workspace/channel-groups/{id}/access/{user_id}',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_groups_access_revoke',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelGroupAccessChange',
+            'summary'      => 'Take back somebody\'s access on a group of channels',
+            'description'  => 'Takes the access on the group back from one person the way Take the access back does; staff alone may (403 otherwise). They leave the channels only that access had brought them into: a channel they joined by themselves, one they own and one a group still brings them into keeps them. Each channel they leave gets a line saying so. Access given on a group further up is taken back there, not here. Somebody who did not hold access on the group is not an error. memberships names who leaves which channel, in the answer and in a dry run (X-Dry-Run: true). The activity log gets the line the panel writes. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
         ),
 
         array(

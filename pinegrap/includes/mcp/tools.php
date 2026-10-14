@@ -90,6 +90,14 @@ function pg_mcp_param_schema($param) {
 
 		$schema['type'] = array($schema['type'], 'null');
 
+		// An enum lists every value it takes, so a nullable one lists null
+		// as well, or the client's validator refuses the clear.
+		if (isset($schema['enum'])) {
+
+			$schema['enum'][] = null;
+
+		}
+
 	}
 
 	return $schema;

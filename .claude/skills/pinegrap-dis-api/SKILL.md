@@ -90,6 +90,13 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   sahibin haklarıyla kapılanır (uygulama anahtarı kabul). Erişim değiştiren
   yazım kimin girip çıktığını hem cevapta hem provada adıyla verir
   (`POST /workspace/channels/{id}/group`, panelin önizleme fonksiyonu).
+  Önizleme fonksiyonu olmayan panel yazımı için tahmini
+  `ws_group_sync_plan()` gibi eşitlemenin hesabını yazmadan yapan bir
+  fonksiyonla kur, cevabı eşitlemenin gerçekten yaptığından ver; sahibin
+  okumadığı kanal adıyla değil sayıyla geçer (kanal grubu uçları).
+- Kendi Site Günlüğü satırını `$_SESSION['sessionusername']` ile yazan
+  panel fonksiyonu API'den `ws_api_as_owner()` içinde çağrılır; yoksa
+  satır adsız düşer.
 - Çalışma Alanı araması (`GET /workspace/search`) panel kayıtlarını türü
   okuyan kapsamla süzer: `ws_api_search_record_scopes()`
   (`includes/workspace/api_day.php`). `ws_record_type_keys()`'e yeni bir

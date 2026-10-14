@@ -1659,6 +1659,16 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: yöneticiler kanal gruplarını
+         API'den de düzenleyebiliyor: grup oluşturma,
+         adını, rengini ve yerini değiştirme, grubu
+         kaldırma, grupta kimin yetkisi olduğunu görme,
+         yetki verme ve geri alma (paneldeki gibi). Kanal
+         üyeliğini değiştiren her işlemde, önce prova ile,
+         sonra cevapta hangi kanala kimin gireceği ve
+         kimin çıkacağı adlarıyla görünüyor; görülmeyen
+         özel kanallar yalnız sayılıyor.
+
   [DÜZELTME] Çalışma Alanı: kişi bir mesajı bir
          cihazında "Benden sil" ile kaldırınca öbür
          cihazları ve panelde açık duran ekranları da

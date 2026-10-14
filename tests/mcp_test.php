@@ -124,6 +124,20 @@ function test_mcp_tool_from_route()
 	pg_assert_same('{}', json_encode($create['inputSchema']['properties']), 'no parameters is an empty object, not a list');
 }
 
+// A nullable enum takes null as well: its list says so, or a client that
+// checks the list refuses the clear the router accepts.
+function test_mcp_nullable_enum_lists_null()
+{
+	$schema = pg_mcp_param_schema(array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => array('#b5534b', '#c9774a'), 'nullable' => true));
+
+	pg_assert_same(array('string', 'null'), $schema['type']);
+	pg_assert_same(array('#b5534b', '#c9774a', null), $schema['enum']);
+
+	$plain = pg_mcp_param_schema(array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('public', 'private')));
+
+	pg_assert_same(array('public', 'private'), $plain['enum'], 'a required choice stays as it is');
+}
+
 function test_mcp_arguments_are_sorted_by_where_the_route_reads_them()
 {
 	$split = pg_mcp_arguments(mcp_test_route(), array(
