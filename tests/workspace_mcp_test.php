@@ -9,8 +9,9 @@
  * credential headers, the arguments a waiting call shows, the form a
  * tool that reads is run with (mcp_form.php), and the tool that takes the
  * messages of a server that is an agent itself, what it is sent for a
- * workspace task, how often its tasks are asked about and who may stop a
- * request to it (mcp_agent.php).
+ * workspace task, how often its tasks are asked about, who may stop a
+ * request to it, the conversation it keeps and its answer without the head
+ * line (mcp_agent.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -510,7 +511,7 @@ function test_workspace_mcp_agent_tool_must_be_turned_on()
 	$server['agent_tool'] = 'ask';
 
 	pg_assert_true(ws_mcp_agent_mode($server));
-	pg_assert_same(array('name' => 'ask', 'argument' => 'message', 'approve' => false), ws_mcp_agent_tool($server));
+	pg_assert_same(array('name' => 'ask', 'argument' => 'message', 'approve' => false, 'conversation' => ''), ws_mcp_agent_tool($server));
 
 	// Turned off, or no longer listed: the server stays an agent, but the
 	// tool cannot be used.
@@ -532,13 +533,13 @@ function test_workspace_mcp_agent_tool_must_be_turned_on()
 	pg_assert_same(array('ask' => 'message', 'lookup' => 'message', 'send' => 'message'), ws_mcp_agent_candidates($oauth), 'a tool that writes may take the messages there');
 
 	$oauth['agent_tool'] = 'send';
-	pg_assert_same(array('name' => 'send', 'argument' => 'message', 'approve' => true), ws_mcp_agent_tool($oauth), 'each message asks first');
+	pg_assert_same(array('name' => 'send', 'argument' => 'message', 'approve' => true, 'conversation' => ''), ws_mcp_agent_tool($oauth), 'each message asks first');
 
 	$oauth['agent_tool'] = 'ask';
-	pg_assert_same(array('name' => 'ask', 'argument' => 'message', 'approve' => true), ws_mcp_agent_tool($oauth), 'so does one the administrator turned on to ask first');
+	pg_assert_same(array('name' => 'ask', 'argument' => 'message', 'approve' => true, 'conversation' => ''), ws_mcp_agent_tool($oauth), 'so does one the administrator turned on to ask first');
 
 	$oauth['agent_tool'] = 'lookup';
-	pg_assert_same(array('name' => 'lookup', 'argument' => 'message', 'approve' => false), ws_mcp_agent_tool($oauth), 'one that reads only answers at once');
+	pg_assert_same(array('name' => 'lookup', 'argument' => 'message', 'approve' => false, 'conversation' => ''), ws_mcp_agent_tool($oauth), 'one that reads only answers at once');
 
 	// The same rules on a server that no longer signs in with OAuth count
 	// for nothing: nobody's own account could run them.
@@ -547,6 +548,66 @@ function test_workspace_mcp_agent_tool_must_be_turned_on()
 
 	pg_assert_same(array('ask' => 'message', 'lookup' => 'message'), ws_mcp_agent_candidates($plain), 'a tool that writes cannot take messages without OAuth');
 	pg_assert_same(null, ws_mcp_agent_tool($plain));
+}
+
+function test_workspace_mcp_agent_conversation_goes_back_in_its_argument()
+{
+	$text = array('type' => 'string');
+
+	pg_assert_same('conversation_id', ws_mcp_agent_conversation_argument(workspace_mcp_test_schema_tool('a', array('type' => 'object', 'properties' => array('message' => $text, 'conversation_id' => $text), 'required' => array('message')))), 'an optional text named for it');
+	pg_assert_same('contextId', ws_mcp_agent_conversation_argument(workspace_mcp_test_schema_tool('b', array('type' => 'object', 'properties' => array('prompt' => $text, 'contextId' => array('type' => array('string', 'null')))))), 'whatever the usual name, and it may be null');
+	pg_assert_same('conversation_id', ws_mcp_agent_conversation_argument(workspace_mcp_test_schema_tool('c', array('type' => 'object', 'properties' => array('message' => $text, 'session_id' => $text, 'conversation_id' => $text), 'required' => array('message')))), 'the likeliest name first');
+	pg_assert_same('', ws_mcp_agent_conversation_argument(workspace_mcp_test_schema_tool('d', array('type' => 'object', 'properties' => array('message' => $text), 'required' => array('message')))), 'a tool without one');
+	pg_assert_same('', ws_mcp_agent_conversation_argument(workspace_mcp_test_schema_tool('e', array('type' => 'object', 'properties' => array('message' => $text, 'thread_id' => array('type' => 'integer')), 'required' => array('message')))), 'a number is not taken');
+	pg_assert_same('', ws_mcp_agent_conversation_argument(workspace_mcp_test_schema_tool('f', array('type' => 'object', 'properties' => array('message' => $text, 'thread_id' => array('type' => 'string', 'enum' => array('a', 'b'))), 'required' => array('message')))), 'nor a fixed list');
+	pg_assert_same('', ws_mcp_agent_conversation_argument(workspace_mcp_test_schema_tool('g', array('type' => 'object', 'properties' => array('conversation_id' => $text), 'required' => array('conversation_id')))), 'not the argument the message goes into');
+
+	$server = workspace_mcp_test_server(array(workspace_mcp_test_schema_tool('ask', array('type' => 'object', 'properties' => array('message' => $text, 'conversation_id' => $text), 'required' => array('message')))), array('ask' => 'auto_declared'));
+	$server['agent_tool'] = 'ask';
+
+	pg_assert_same(array('name' => 'ask', 'argument' => 'message', 'approve' => false, 'conversation' => 'conversation_id'), ws_mcp_agent_tool($server));
+	pg_assert_same('conversation_id', ws_mcp_agent_conversation_argument_of($server, 'ask'), 'the tool a call went to');
+	pg_assert_same('', ws_mcp_agent_conversation_argument_of($server, 'other'), 'a tool that no longer takes the messages');
+}
+
+function test_workspace_mcp_agent_conversation_is_read_from_the_structured_answer()
+{
+	$result = function ($structured) {
+		return array('content' => array(array('type' => 'text', 'text' => 'Done.')), 'structuredContent' => $structured);
+	};
+
+	pg_assert_same('c-41', ws_mcp_agent_conversation_of($result(array('conversation_id' => 'c-41', 'answer' => 'Done.')), 'conversation_id'));
+	pg_assert_same('ctx 9', ws_mcp_agent_conversation_of($result(array('contextId' => ' ctx 9 ')), 'conversation_id'), 'under another usual name, trimmed');
+	pg_assert_same('77', ws_mcp_agent_conversation_of($result(array('thread_id' => 77)), 'thread_id'), 'a number is an id too');
+	pg_assert_same('', ws_mcp_agent_conversation_of($result(array('conversation_id' => 'c-41')), ''), 'a tool that takes none is given none back');
+	pg_assert_same('', ws_mcp_agent_conversation_of(array('content' => array()), 'conversation_id'), 'no structured answer');
+	pg_assert_same('', ws_mcp_agent_conversation_of($result(array('conversation_id' => array('id' => 'x'))), 'conversation_id'), 'an object is not an id');
+	pg_assert_same('', ws_mcp_agent_conversation_of($result(array('conversation_id' => str_repeat('x', 256))), 'conversation_id'), 'too long to keep');
+	pg_assert_same('', ws_mcp_agent_conversation_of($result(array('conversation_id' => "a\nb")), 'conversation_id'), 'a control character');
+	pg_assert_same('', ws_mcp_agent_conversation_of($result(array('conversation_id' => true)), 'conversation_id'), 'a flag is not an id');
+}
+
+function test_workspace_mcp_agent_conversation_is_carried_on_by_the_same_account()
+{
+	$earlier = array('requested_by' => 7, 'mcp_conversation' => 'c-41');
+	$site = array('auth_kind' => 'bearer');
+	$oauth = array('auth_kind' => 'oauth');
+
+	pg_assert_same('c-41', ws_mcp_agent_conversation_carried($site, $earlier, 7), 'the one who started it');
+	pg_assert_same('c-41', ws_mcp_agent_conversation_carried($site, $earlier, 8), 'anybody, on the site\'s one credential');
+	pg_assert_same('c-41', ws_mcp_agent_conversation_carried($oauth, $earlier, 7), 'the one who started it, with their own account');
+	pg_assert_same('', ws_mcp_agent_conversation_carried($oauth, $earlier, 8), 'somebody else\'s account starts a new one');
+	pg_assert_same('', ws_mcp_agent_conversation_carried($site, array('requested_by' => 7, 'mcp_conversation' => ''), 7), 'the agent gave none');
+	pg_assert_same('', ws_mcp_agent_conversation_carried($site, array('requested_by' => 7), 7), 'before the schema step');
+	pg_assert_same('', ws_mcp_agent_conversation_carried($site, null, 7), 'nothing it follows');
+}
+
+function test_workspace_mcp_agent_answer_is_read_without_its_first_line()
+{
+	$body = ws_mcp_agent_answer_body('helpdesk', 'ask', "Order 1045 left today.\nTracking: 1Z99.");
+
+	pg_assert_same(array('tool' => 'ask', 'text' => "Order 1045 left today.\nTracking: 1Z99."), ws_mcp_agent_answer_split($body));
+	pg_assert_same(array('tool' => '', 'text' => 'One line only'), ws_mcp_agent_answer_split('One line only'), 'not an answer an agent posted');
 }
 
 function test_workspace_mcp_agent_approved_call_goes_with_the_askers_account()

@@ -198,6 +198,9 @@ function ws_message_payloads($viewer, $rows)
         // in one (threads.php).
         'threads'    => ws_threads_map($viewer, $ids),
         'copies'     => ws_thread_copies_map($ids),
+        // The answers MCP agents gave, kept in their askers' names
+        // (mcp_agent.php).
+        'agents'     => function_exists('ws_mcp_agent_answers_map') ? ws_mcp_agent_answers_map($ids) : array(),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -247,6 +250,18 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         $sender = ws_guest_sender((int) $row['sender_id']);
     }
 
+    // An MCP agent's answer is kept in the name of the person who asked
+    // (mcp_agent.php) and drawn under the agent's own: to them too it is an
+    // answer that came, not a message of theirs.
+    $agent = (($row['sender_kind'] === 'user') && isset($extra['agents'][$id]) && function_exists('ws_mcp_agent_answer_view'))
+        ? ws_mcp_agent_answer_view($extra['agents'][$id], (string) $row['body'])
+        : null;
+
+    if ($agent) {
+        $sender = $agent['sender'];
+        $mine = false;
+    }
+
     $labels = array();
 
     foreach (ws_tokens($row['body']) as $token) {
@@ -262,14 +277,14 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'channel_id'  => (int) $row['channel_id'],
         'parent_id'   => (int) $row['parent_id'],
         'kind'        => (string) $row['kind'],
-        'sender_kind' => (string) $row['sender_kind'],
+        'sender_kind' => $agent ? 'app' : (string) $row['sender_kind'],
         'sender'      => $sender,
         'mine'        => $mine,
         // What a guest wrote is drawn with the few marks a guest may use
         // (guests.php), here as on their own page: a guest adds no table.
         'html'        => $deleted ? '' : ((($row['sender_kind'] === 'guest') && function_exists('ws_guest_render'))
             ? ws_guest_render($row['body'])
-            : ws_render_body($row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready())),
+            : ws_render_body($agent ? $agent['text'] : $row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready())),
         'raw'         => ($mine && !$deleted) ? (string) $row['body'] : '',
         'labels'      => ($mine && !$deleted) ? $labels : array(),
         'deleted'     => $deleted,

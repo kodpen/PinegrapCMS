@@ -51,6 +51,19 @@
  * What the agent answers is another service's text: it is posted as it is,
  * locked, in the name of the person who asked (as the answer of a tool run
  * with a form is, mcp_form.php), and a tag in it does not mention anybody.
+ * The channel screen draws it under the agent's own name, and the person who
+ * asked is told it came: their own message would tell them nothing. Every
+ * other place that shows the message - a search, a pin, the API - reads the
+ * line it starts with, which says who answered.
+ *
+ * An agent that keeps a conversation of its own gives its id back in the
+ * structured part of its answer, and its tool takes it in an argument named
+ * for it (conversation_id, contextId, ...). The id is kept on the request
+ * (ws_ai_requests.mcp_conversation) and sent back by the next request that
+ * follows the answer - a reply to it, the next run on the same task - which
+ * then carries the new message alone: the agent knows what it answered. On a
+ * server people sign in to, only the person who started a conversation
+ * carries it on; anybody else starts a new one.
  *
  * A task goes to such an agent too (delegation.php): handed to its alias, or
  * asked about in a note on it that writes the alias. The run is a request
@@ -93,6 +106,12 @@ define('WS_MCP_AGENT_CONTEXT_LIMIT', 2000);
 
 /** The names an agent's text argument usually has, the likeliest first. */
 define('WS_MCP_AGENT_ARGUMENT_NAMES', 'message,prompt,query,question,input,text,request,task,content');
+
+/**
+ * The names the argument and the structured answer usually give the
+ * conversation an agent keeps, the likeliest first.
+ */
+define('WS_MCP_AGENT_CONVERSATION_NAMES', 'conversation_id,conversationId,context_id,contextId,thread_id,threadId,session_id,sessionId');
 
 /** A task an agent works on in the background is stopped after this many seconds. */
 define('WS_MCP_AGENT_TASK_LIMIT', 86400);
@@ -139,6 +158,23 @@ function ws_mcp_agent_tasks_ready()
 
     if ($ready === null) {
         $ready = ws_mcp_agent_ready() && waf_table_has_column('ws_ai_requests', 'mcp_task');
+    }
+
+    return $ready;
+}
+
+/**
+ * Has the schema step that keeps an agent's conversation (2026.4.10, 10.111)
+ * run?
+ *
+ * @return bool
+ */
+function ws_mcp_agent_conversations_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_mcp_agent_ready() && waf_table_has_column('ws_ai_requests', 'mcp_conversation');
     }
 
     return $ready;
@@ -206,12 +242,7 @@ function ws_mcp_agent_argument($tool)
     $texts = array();
 
     foreach ($properties as $name => $property) {
-        $type = is_array($property) ? ($property['type'] ?? '') : '';
-
-        // A text argument that may also be null still takes a text.
-        $text = ($type === 'string') || (is_array($type) && in_array('string', $type, true) && !array_diff($type, array('string', 'null')));
-
-        if ($text && !isset($property['enum']) && !isset($property['const']) && !isset($property['format'])) {
+        if (ws_mcp_agent_takes_text($property)) {
             $texts[] = (string) $name;
         }
     }
@@ -231,6 +262,111 @@ function ws_mcp_agent_argument($tool)
     }
 
     return '';
+}
+
+/**
+ * Does an argument of a tool's input schema take any text: a string, or a
+ * string that may be null, without a fixed list of values or a format.
+ *
+ * @param mixed $property
+ * @return bool
+ */
+function ws_mcp_agent_takes_text($property)
+{
+    $type = is_array($property) ? ($property['type'] ?? '') : '';
+
+    // A text argument that may also be null still takes a text.
+    $text = ($type === 'string') || (is_array($type) && in_array('string', $type, true) && !array_diff($type, array('string', 'null')));
+
+    return $text && !isset($property['enum']) && !isset($property['const']) && !isset($property['format']);
+}
+
+/**
+ * The argument of a tool that carries on a conversation the agent keeps: a
+ * text argument it does not require, named for a conversation
+ * (conversation_id, contextId, ...), other than the one the message goes
+ * into. '' when the tool has none: each message then starts afresh, with
+ * the answer it replies to quoted.
+ *
+ * @param array $tool as the client keeps it (schema is its inputSchema as JSON)
+ * @return string
+ */
+function ws_mcp_agent_conversation_argument($tool)
+{
+    $schema = json_decode((string) ($tool['schema'] ?? ''), true);
+    $properties = (is_array($schema) && isset($schema['properties']) && is_array($schema['properties'])) ? $schema['properties'] : array();
+    $required = (is_array($schema) && isset($schema['required']) && is_array($schema['required'])) ? array_map('strval', $schema['required']) : array();
+    $message = ws_mcp_agent_argument($tool);
+
+    foreach (explode(',', WS_MCP_AGENT_CONVERSATION_NAMES) as $name) {
+        if (($name !== $message) && isset($properties[$name]) && !in_array($name, $required, true) && ws_mcp_agent_takes_text($properties[$name])) {
+            return $name;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The conversation an agent's answer says it keeps: the text its structured
+ * result gives under the name of the tool's conversation argument, or under
+ * another of the names a conversation usually has. '' when it gives none, or
+ * one that could not be sent back as it is (too long to keep, or with a
+ * control character in it).
+ *
+ * @param array|null $result   the tool's result (CallToolResult)
+ * @param string     $argument the tool's conversation argument
+ * @return string
+ */
+function ws_mcp_agent_conversation_of($result, $argument)
+{
+    // A tool that takes no conversation cannot be given one back.
+    if ((string) $argument === '') {
+        return '';
+    }
+
+    $structured = (is_array($result) && isset($result['structuredContent']) && is_array($result['structuredContent'])) ? $result['structuredContent'] : array();
+
+    foreach (array_unique(array_merge(array((string) $argument), explode(',', WS_MCP_AGENT_CONVERSATION_NAMES))) as $name) {
+        $value = $structured[$name] ?? null;
+
+        // A number is an id too; anything else is not one.
+        $value = (is_string($value) || is_int($value)) ? trim((string) $value) : '';
+
+        if (($value !== '') && (strlen($value) <= 255) && preg_match('/^[^\x00-\x1F\x7F]+$/u', $value)) {
+            return $value;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The conversation an earlier request left that this one carries on, ''
+ * for none: the agent gave one, and the same account talks to it again.
+ * Everybody reaches a server without sign-in through the site's credential,
+ * so anybody carries its conversations on; on a server people sign in to,
+ * a reply of somebody else starts a new one - what the agent read with one
+ * person's account is not for another's.
+ *
+ * @param array      $server
+ * @param array|null $earlier  the request whose answer this one follows
+ * @param int        $asker_id who asks now
+ * @return string
+ */
+function ws_mcp_agent_conversation_carried($server, $earlier, $asker_id)
+{
+    $conversation = is_array($earlier) ? trim((string) ($earlier['mcp_conversation'] ?? '')) : '';
+
+    if ($conversation === '') {
+        return '';
+    }
+
+    if (((string) ($server['auth_kind'] ?? '') === 'oauth') && ((int) $earlier['requested_by'] !== (int) $asker_id)) {
+        return '';
+    }
+
+    return $conversation;
 }
 
 /**
@@ -264,10 +400,11 @@ function ws_mcp_agent_candidates($server)
 /**
  * The tool a server's messages go to, while it can take them: chosen, still
  * listed by the server, turned on, and taking a message. approve says each
- * message waits for the approval of the person who asked.
+ * message waits for the approval of the person who asked; conversation is
+ * the argument that carries on a conversation the agent keeps, '' for none.
  *
  * @param array $server
- * @return array|null name, argument, approve
+ * @return array|null name, argument, approve, conversation
  */
 function ws_mcp_agent_tool($server)
 {
@@ -280,7 +417,28 @@ function ws_mcp_agent_tool($server)
 
     $argument = ws_mcp_agent_argument($on[$name]);
 
-    return ($argument !== '') ? array('name' => $name, 'argument' => $argument, 'approve' => !empty($on[$name]['approve'])) : null;
+    return ($argument !== '') ? array(
+        'name'         => $name,
+        'argument'     => $argument,
+        'approve'      => !empty($on[$name]['approve']),
+        'conversation' => ws_mcp_agent_conversation_argument($on[$name]),
+    ) : null;
+}
+
+/**
+ * The argument that carries on the conversation of the tool a call went to,
+ * '' when that tool is no longer the one that takes the messages, or takes
+ * none.
+ *
+ * @param array  $server
+ * @param string $tool
+ * @return string
+ */
+function ws_mcp_agent_conversation_argument_of($server, $tool)
+{
+    $current = ws_mcp_agent_tool($server);
+
+    return ($current && ($current['name'] === (string) $tool)) ? $current['conversation'] : '';
 }
 
 /**
@@ -839,13 +997,15 @@ function ws_mcp_agent_connection($server, $timeout, $asker_id, $person_only = fa
 }
 
 /**
- * What a tool's result says: the answer as text, or why there is none.
+ * What a tool's result says: the answer as text, or why there is none, and
+ * the conversation the agent keeps when the tool can be given it back.
  *
  * @param array      $server
- * @param array|null $result the tool's result (CallToolResult)
- * @return array answer, error ('' when there is an answer)
+ * @param array|null $result       the tool's result (CallToolResult)
+ * @param string     $conversation the tool's conversation argument, '' for none
+ * @return array answer, error ('' when there is an answer), conversation
  */
-function ws_mcp_agent_result($server, $result)
+function ws_mcp_agent_result($server, $result, $conversation = '')
 {
     $result = is_array($result) ? $result : array();
     $answer = pg_mcp_client_result_text($result, WS_MESSAGE_MAX);
@@ -858,7 +1018,7 @@ function ws_mcp_agent_result($server, $result)
         $error = '';
     }
 
-    return array('answer' => $answer, 'error' => $error);
+    return array('answer' => $answer, 'error' => $error, 'conversation' => ($error === '') ? ws_mcp_agent_conversation_of($result, $conversation) : '');
 }
 
 /**
@@ -910,18 +1070,21 @@ function ws_mcp_agent_call_end($call, $error)
 /**
  * Posts an agent's answer under the message that asked, in the asker's
  * name, locked, and closes the request as answered - unless it was given up
- * or stopped while the agent worked. The answer of a run on a task is kept
- * on the run instead, shown in the task's Assistant part, and the person who
- * asked is told.
+ * or stopped while the agent worked; the person who asked is told it came.
+ * The answer of a run on a task is kept on the run instead, shown in the
+ * task's Assistant part, and the person who asked is told as for the other
+ * assistants. The conversation the agent keeps, when it gave one, is kept on
+ * the request for the next one to carry on.
  *
  * @param array  $row
- * @param array  $context as ws_mcp_agent_context() answers it
- * @param string $tool    the tool that answered
+ * @param array  $context      as ws_mcp_agent_context() answers it
+ * @param string $tool         the tool that answered
  * @param string $answer
- * @param int    $call_id the record of the call
+ * @param int    $call_id      the record of the call
+ * @param string $conversation the agent's conversation, '' for none
  * @return bool answered
  */
-function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id)
+function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id, $conversation = '')
 {
     $current = (string) db_value("SELECT status FROM ws_ai_requests WHERE id = '" . (int) $row['id'] . "'");
 
@@ -931,6 +1094,10 @@ function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id)
 
     $server = $context['server'];
     $asker = $context['asker'];
+
+    if (($conversation !== '') && ws_mcp_agent_conversations_ready()) {
+        db("UPDATE ws_ai_requests SET mcp_conversation = '" . e($conversation) . "' WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
+    }
 
     if ($context['task']) {
         if (!ws_task_delegation_answer($row, ws_mcp_agent_neutral($answer, WS_MESSAGE_MAX))) {
@@ -968,9 +1135,41 @@ function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id)
 
     ws_message_touch((int) $message['id']);
 
+    // The answer is in the asker's own name, which tells them nothing: they
+    // are told it came, as somebody who mentioned them would.
+    if (function_exists('ws_notify')) {
+        ws_notify((int) $asker['id'], 'agent_answer', array('channel_id' => (int) $channel['id'], 'message_id' => $reply_id, 'actor_id' => 0));
+    }
+
     log_activity(lang(array('string' => 'the MCP agent @{var:1} answered a message in #{var:2}', 'vars' => array($server['alias'], $channel['name']))), (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $asker['id'] . "'"));
 
     return true;
+}
+
+/**
+ * The request whose answer this one follows, null for none: for a reply,
+ * the one the same agent answered the replied message with; for a run on a
+ * task, the same agent's last answered run on it.
+ *
+ * @param array $row
+ * @param array $context as ws_mcp_agent_context() answers it
+ * @return array|null
+ */
+function ws_mcp_agent_earlier($row, $context)
+{
+    if ($context['task']) {
+        $where = "task_id = '" . (int) $context['task']['id'] . "' AND id < '" . (int) $row['id'] . "'";
+    } elseif ((int) $context['message']['parent_id'] > 0) {
+        $where = "reply_message_id = '" . (int) $context['message']['parent_id'] . "'";
+    } else {
+        return null;
+    }
+
+    $earlier = db_item("SELECT * FROM ws_ai_requests
+        WHERE " . $where . " AND agent = 'mcp' AND mcp_server_id = '" . (int) $context['server']['id'] . "' AND status = 'answered'
+        ORDER BY id DESC LIMIT 1");
+
+    return is_array($earlier) ? $earlier : null;
 }
 
 /**
@@ -978,28 +1177,28 @@ function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id)
  * alias it starts with, after a quote of the message it answers when it is
  * a reply. For a run on a task: the task (ws_mcp_agent_task_compose()), with
  * the agent's last answer on it, as a reply quotes the answer it replies to.
+ * A request that carries on the agent's own conversation quotes nothing the
+ * agent answered: it knows that already.
  *
- * @param array $row
- * @param array $context as ws_mcp_agent_context() answers it
+ * @param array      $row
+ * @param array      $context as ws_mcp_agent_context() answers it
+ * @param array|null $earlier the request whose answer this one follows (ws_mcp_agent_earlier())
+ * @param bool       $carried the agent's conversation goes with it
  * @return string
  */
-function ws_mcp_agent_request_text($row, $context)
+function ws_mcp_agent_request_text($row, $context, $earlier = null, $carried = false)
 {
     $server = $context['server'];
     $asker = $context['asker'];
 
     if ($context['task']) {
         $task = $context['task'];
-
-        $earlier = (string) db_value("SELECT note_reply FROM ws_ai_requests
-            WHERE task_id = '" . (int) $task['id'] . "' AND agent = 'mcp' AND mcp_server_id = '" . (int) $server['id'] . "'
-                AND status = 'answered' AND id < '" . (int) $row['id'] . "'
-            ORDER BY id DESC LIMIT 1");
+        $answer = ($earlier && !$carried) ? trim((string) $earlier['note_reply']) : '';
 
         return ws_mcp_agent_task_compose(
             ws_task_number($task['id']) . ': ' . ws_mcp_agent_text($asker, (string) $task['title'], 300),
             ws_mcp_agent_text($asker, (string) $task['description'], WS_MCP_AGENT_TEXT_LIMIT),
-            ($earlier !== '') ? ws_mcp_agent_text($asker, $earlier, WS_MCP_AGENT_CONTEXT_LIMIT) : '',
+            ($answer !== '') ? ws_mcp_agent_text($asker, $answer, WS_MCP_AGENT_CONTEXT_LIMIT) : '',
             ws_mcp_agent_text($asker, (string) $row['note_text'], WS_MCP_AGENT_TEXT_LIMIT),
             (string) $server['alias']
         );
@@ -1010,7 +1209,7 @@ function ws_mcp_agent_request_text($row, $context)
     // A reply: the agent reads the message it answers too. An answer of an
     // agent is quoted under no name and without the line that says who
     // answered: it is posted in the asker's name, but they did not write it.
-    $parent = ((int) $message['parent_id'] > 0) ? ws_message((int) $message['parent_id']) : null;
+    $parent = (((int) $message['parent_id'] > 0) && !$carried) ? ws_message((int) $message['parent_id']) : null;
     $parent_author = '';
     $parent_text = '';
 
@@ -1055,7 +1254,17 @@ function ws_mcp_agent_run($row, $timeout)
     $message = $context['message'];
     $tool = ws_mcp_agent_tool($server);
 
-    $arguments = (string) json_encode((object) array($tool['argument'] => ws_mcp_agent_request_text($row, $context)), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    // The conversation of the answer it follows goes back to the agent, in
+    // the argument its tool takes it in.
+    $earlier = ws_mcp_agent_earlier($row, $context);
+    $conversation = ($tool['conversation'] !== '') ? ws_mcp_agent_conversation_carried($server, $earlier, (int) $asker['id']) : '';
+    $arguments = array($tool['argument'] => ws_mcp_agent_request_text($row, $context, $earlier, $conversation !== ''));
+
+    if ($conversation !== '') {
+        $arguments[$tool['conversation']] = $conversation;
+    }
+
+    $arguments = (string) json_encode((object) $arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
     // A tool that writes is not called now: the call waits for the approval
     // of the person who asked, and runs with their own account once given.
@@ -1082,15 +1291,17 @@ function ws_mcp_agent_run($row, $timeout)
     $duration = (int) round((microtime(true) - $started) * 1000);
     $task = ($out['ok'] && !empty($out['task'])) ? $out['task'] : null;
     $answer = '';
+    $kept = '';
 
     if (!$out['ok']) {
         $error = lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], ws_mcp_error_text($server, $out['status'] ?? 0, $out['error'], $conn['person']))));
     } elseif ($task) {
         $error = '';
     } else {
-        $outcome = ws_mcp_agent_result($server, $out['result']);
+        $outcome = ws_mcp_agent_result($server, $out['result'], $tool['conversation']);
         $answer = $outcome['answer'];
         $error = $outcome['error'];
+        $kept = $outcome['conversation'];
     }
 
     ws_mcp_remember($server, $conn, $out['ok'] ? '' : $error);
@@ -1128,7 +1339,7 @@ function ws_mcp_agent_run($row, $timeout)
         return false;
     }
 
-    return ws_mcp_agent_post($row, $context, $tool['name'], $answer, $call_id);
+    return ws_mcp_agent_post($row, $context, $tool['name'], $answer, $call_id, $kept);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1313,15 +1524,17 @@ function ws_mcp_agent_approved($viewer, $change, $call, $server)
     $duration = (int) round((microtime(true) - $started) * 1000);
     $task = ($out_call['ok'] && !empty($out_call['task'])) ? $out_call['task'] : null;
     $answer = '';
+    $kept = '';
 
     if (!$out_call['ok']) {
         $error = lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], ws_mcp_error_text($server, $out_call['status'] ?? 0, $out_call['error'], true))));
     } elseif ($task) {
         $error = '';
     } else {
-        $outcome = ws_mcp_agent_result($server, $out_call['result']);
+        $outcome = ws_mcp_agent_result($server, $out_call['result'], ws_mcp_agent_conversation_argument_of($server, $tool));
         $answer = $outcome['answer'];
         $error = $outcome['error'];
+        $kept = $outcome['conversation'];
     }
 
     // The call counts from now; a task's call goes on until the task ends.
@@ -1355,7 +1568,7 @@ function ws_mcp_agent_approved($viewer, $change, $call, $server)
     // The call ran: the proposal is applied even when the answer could not
     // be posted any more (the request was stopped meanwhile); the line under
     // the message says that.
-    ws_mcp_agent_post($row, $context, $tool, $answer, (int) $call['id']);
+    ws_mcp_agent_post($row, $context, $tool, $answer, (int) $call['id'], $kept);
 
     $reply_id = (int) db_value("SELECT reply_message_id FROM ws_ai_requests WHERE id = '" . (int) $row['id'] . "' AND status = 'answered'");
 
@@ -1471,7 +1684,7 @@ function ws_mcp_agent_poll($row, $timeout)
 
     switch ($task['status']) {
         case 'completed':
-            $outcome = ws_mcp_agent_result($server, $task['result']);
+            $outcome = ws_mcp_agent_result($server, $task['result'], ws_mcp_agent_conversation_argument_of($server, $tool));
 
             ws_mcp_agent_call_end($call, $outcome['error']);
 
@@ -1481,7 +1694,7 @@ function ws_mcp_agent_poll($row, $timeout)
                 return false;
             }
 
-            return ws_mcp_agent_post($row, $context, $tool, $outcome['answer'], $call ? (int) $call['id'] : 0);
+            return ws_mcp_agent_post($row, $context, $tool, $outcome['answer'], $call ? (int) $call['id'] : 0, $outcome['conversation']);
 
         case 'failed':
             $error = trim(lang('The work ended with an error') . ': ' . $task['error'], ': ');
@@ -1775,6 +1988,120 @@ function ws_mcp_agent_job()
     }
 
     ws_mcp_agent_kick(300, WS_MCP_AGENT_TIMEOUT_JOB);
+}
+
+/* ---------------------------------------------------------------------------
+   The agent's answers under its own name
+   --------------------------------------------------------------------------- */
+
+/**
+ * The requests agents answered with these messages: message id => request
+ * (mcp_server_id, requested_by). One query for a page of messages.
+ *
+ * @param int[] $message_ids
+ * @return array
+ */
+function ws_mcp_agent_answers_map($message_ids)
+{
+    $message_ids = array_values(array_filter(array_map('intval', (array) $message_ids)));
+
+    if (empty($message_ids) || !ws_mcp_agent_ready()) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT id, reply_message_id, mcp_server_id, requested_by FROM ws_ai_requests
+        WHERE reply_message_id IN (" . implode(',', $message_ids) . ") AND agent = 'mcp' AND status = 'answered'") as $row) {
+        $out[(int) $row['reply_message_id']] = $row;
+    }
+
+    return $out;
+}
+
+/**
+ * An agent's answer as it was posted (ws_mcp_agent_answer_body()): the
+ * tool named in the line it starts with - in its code span, the same in
+ * every language - and the answer after that line.
+ *
+ * @param string $body
+ * @return array tool ('' when the line names none), text
+ */
+function ws_mcp_agent_answer_split($body)
+{
+    $body = (string) $body;
+    $cut = strpos($body, "\n");
+
+    if ($cut === false) {
+        return array('tool' => '', 'text' => $body);
+    }
+
+    return array(
+        'tool' => preg_match('/`([^`]+)`/', substr($body, 0, $cut), $match) ? $match[1] : '',
+        'text' => substr($body, $cut + 1),
+    );
+}
+
+/**
+ * How the channel screen draws an agent's answer: under the agent's own
+ * name, as one of the workspace's applications, without the line that says
+ * who answered; who asked, and through which tool, are told on its mark.
+ *
+ * @param array  $request as ws_mcp_agent_answers_map() gives it
+ * @param string $body    the message the answer was posted as
+ * @return array sender, text
+ */
+function ws_mcp_agent_answer_view($request, $body)
+{
+    $server = ws_mcp_server((int) $request['mcp_server_id']);
+    $alias = $server ? (string) $server['alias'] : 'mcp';
+    $split = ws_mcp_agent_answer_split($body);
+    $asker = ws_person_name((int) $request['requested_by']);
+
+    return array(
+        'sender' => array(
+            'id'       => 0,
+            'app_id'   => 0,
+            'name'     => '@' . $alias,
+            'username' => '',
+            'role'     => 3,
+            'title'    => lang('MCP agent'),
+            'about'    => ($split['tool'] !== '')
+                ? lang(array('string' => 'Answered through {var:1}, for {var:2}', 'vars' => array($split['tool'], $asker)))
+                : lang(array('string' => 'Answered for {var:1}', 'vars' => $asker)),
+            'avatar'   => function_exists('pg_initials_avatar_url')
+                ? pg_initials_avatar_url(pg_initials($alias, ''), 'contact', 'mcp' . (int) $request['mcp_server_id'])
+                : PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
+            'presence' => 'offline',
+            'app'      => true,
+            'mcp'      => $alias,
+        ),
+        'text'   => $split['text'],
+    );
+}
+
+/**
+ * The inbox line that tells the person who asked an agent that it answered
+ * (ws_notify() kind agent_answer).
+ *
+ * @param array  $viewer
+ * @param array  $row          ws_inbox
+ * @param string $channel_name #name, '' when the channel is gone
+ * @param string $base         the panel's address
+ * @return array title, body, url, icon
+ */
+function ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base)
+{
+    $message = ((int) $row['message_id'] > 0) ? ws_message((int) $row['message_id']) : null;
+    $request = $message ? (ws_mcp_agent_answers_map(array((int) $message['id']))[(int) $message['id']] ?? null) : null;
+    $server = $request ? ws_mcp_server((int) $request['mcp_server_id']) : null;
+
+    return array(
+        'title' => lang(array('string' => '@{var:1} answered you in {var:2}', 'vars' => array($server ? $server['alias'] : 'mcp', $channel_name))),
+        'body'  => $message ? ws_plain_excerpt($viewer, ws_mcp_agent_answer_split((string) $message['body'])['text'], 140) : '',
+        'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
+        'icon'  => 'bi-plug',
+    );
 }
 
 /**
