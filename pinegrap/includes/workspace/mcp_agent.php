@@ -95,9 +95,11 @@ function ws_mcp_agent_mode($server)
 /**
  * The argument of a tool a message goes into: its one required text
  * argument, or, when it requires none, the text argument whose name says it
- * takes a message (message, prompt, query, ...), else its first one. '' when
- * the tool cannot take a message alone: it has no text argument, or it
- * requires something else too.
+ * takes a message (message, prompt, query, ...). '' when the tool cannot
+ * take a message alone: it requires something else too, or it has no
+ * argument that takes any text - one with a fixed list of values or a
+ * format (a date, an address) does not, nor does a paging cursor or a
+ * filter the tool happens to have.
  *
  * @param array $tool as the client keeps it (schema is its inputSchema as JSON)
  * @return string
@@ -113,7 +115,9 @@ function ws_mcp_agent_argument($tool)
         $type = is_array($property) ? ($property['type'] ?? '') : '';
 
         // A text argument that may also be null still takes a text.
-        if (($type === 'string') || (is_array($type) && in_array('string', $type, true) && !array_diff($type, array('string', 'null')))) {
+        $text = ($type === 'string') || (is_array($type) && in_array('string', $type, true) && !array_diff($type, array('string', 'null')));
+
+        if ($text && !isset($property['enum']) && !isset($property['const']) && !isset($property['format'])) {
             $texts[] = (string) $name;
         }
     }
@@ -132,7 +136,7 @@ function ws_mcp_agent_argument($tool)
         }
     }
 
-    return $texts[0] ?? '';
+    return '';
 }
 
 /**

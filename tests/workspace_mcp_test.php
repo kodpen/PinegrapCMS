@@ -477,13 +477,15 @@ function test_workspace_mcp_agent_argument_takes_the_message()
 	pg_assert_same('message', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('a', array('type' => 'object', 'properties' => array('message' => $text, 'lang' => $text), 'required' => array('message')))), 'the one required text');
 	pg_assert_same('q', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('b', array('type' => 'object', 'properties' => array('q' => $text), 'required' => array('q')))), 'whatever its name');
 	pg_assert_same('prompt', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('c', array('type' => 'object', 'properties' => array('style' => $text, 'prompt' => $text)))), 'nothing required: the name that says it takes a message');
-	pg_assert_same('style', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('d', array('type' => 'object', 'properties' => array('count' => array('type' => 'integer'), 'style' => $text)))), 'else the first text');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('d', array('type' => 'object', 'properties' => array('count' => array('type' => 'integer'), 'cursor' => $text)))), 'nothing required and no such name: a cursor or a filter does not take messages');
 	pg_assert_same('text', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('e', array('type' => 'object', 'properties' => array('text' => array('type' => array('string', 'null'))), 'required' => array('text')))), 'a text that may be null');
 
 	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('f', array('type' => 'object', 'properties' => array('room' => $text, 'when' => $text), 'required' => array('room', 'when')))), 'two things required');
 	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('g', array('type' => 'object', 'properties' => array('id' => array('type' => 'integer')), 'required' => array('id')))), 'the required one is not a text');
 	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('h', array('type' => 'object', 'properties' => new stdClass()))), 'no argument at all');
 	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('i', array('type' => 'object', 'properties' => array('n' => array('type' => array('string', 'integer')))))), 'a text or a number is not a text');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('j', array('type' => 'object', 'properties' => array('status' => array('type' => 'string', 'enum' => array('open', 'closed'))), 'required' => array('status')))), 'a fixed list of values is not a text');
+	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('k', array('type' => 'object', 'properties' => array('query' => array('type' => 'string', 'format' => 'date'))))), 'nor is a date');
 }
 
 function test_workspace_mcp_agent_tool_must_read_only()

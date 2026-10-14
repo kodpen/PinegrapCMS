@@ -103,8 +103,10 @@ ilk dilim, kanalda uçtan uca çalışan en küçük parçadır.
   `agent = 'mcp'` ile bekler; sütun VARCHAR, değişiklik yok.
 - Yeni modül `includes/workspace/mcp_agent.php`:
   - `ws_mcp_agent_argument($tool)` (saf): mesajın gideceği argüman — aracın tek zorunlu metin
-    argümanı; zorunlu yoksa adı mesaj aldığını söyleyen metin (`message`, `prompt`, `query`…),
-    o da yoksa ilk metin. Başka bir şey de zorunluysa ya da metin argümanı yoksa ''.
+    argümanı; zorunlu yoksa adı mesaj aldığını söyleyen metin (`message`, `prompt`, `query`…).
+    Başka bir şey de zorunluysa ya da böyle bir metin yoksa ''. Değer listesi (`enum`,
+    `const`) ya da biçimi (`format`: tarih, adres) olan argüman metin sayılmaz; sayfalama
+    imleci ya da süzgeç gibi ilk metne düşülmez, seçim listesi uzamaz.
   - `ws_mcp_agent_candidates()` / `ws_mcp_agent_tool()`: seçilebilen araç tek metinle
     çağrılabilen ve yalnız okuyan kurala açılabilen araçtır (sunucu salt okur dedi ya da bir şey
     demedi); kullanılabilmesi için seçili, sunucunun listesinde ve `auto` / `auto_declared`
