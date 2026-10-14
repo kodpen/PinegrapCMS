@@ -215,18 +215,25 @@ function test_backup_remote_normalize_defaults()
 	pg_assert_false($s3['path_style'], 'path style off');
 }
 
-// Visit records and the page and form item view counters go without rows;
-// the summaries the dashboard and the visitor report read keep theirs.
+// Visit records, the page and form item view counters and the request logs
+// go without rows; the summaries the dashboard and the visitor report read
+// keep theirs, and so does every log of what someone did.
 function test_backup_rowless_tables_scope()
 {
 	pg_assert_same(
-		array('visitors', 'visitor_content_hourly', 'submitted_form_views', 'submitted_form_view_stats'),
+		array('visitors', 'visitor_content_hourly', 'submitted_form_views', 'submitted_form_view_stats', 'waf_log', 'perf_log', 'api_request_log'),
 		array_keys(pg_backup_rowless_tables())
 	);
 
 	$settings = pg_backup_dump_settings();
 
-	foreach (array('visitor_stats_daily', 'visitor_stats_hourly', 'submitted_form_info', 'visitor_reports', 'orders', 'config') as $kept) {
+	$kept_tables = array(
+		'visitor_stats_daily', 'visitor_stats_hourly', 'submitted_form_info', 'visitor_reports', 'orders', 'config',
+		'forms', 'form_data', 'contacts', 'ws_messages', 'perf_stats', 'log', 'cron_runs',
+		'erp_audit_log', 'erp_edoc_log', 'mail_outbox', 'api_webhook_queue',
+	);
+
+	foreach ($kept_tables as $kept) {
 		pg_assert_false(in_array($kept, $settings['no-data'], true), $kept . ' keeps its rows');
 		pg_assert_false(in_array($kept, $settings['exclude-tables'], true), $kept . ' is dumped');
 	}
