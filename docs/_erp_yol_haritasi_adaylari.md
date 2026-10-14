@@ -13,35 +13,33 @@ notu var. **Erdal seçer;** sıralama önerisi en sonda.
 
 ---
 
-## 0. Durum — 2026-09-24
+## 0. Durum ve kalanlar (2026-10-14)
 
-Çalışma ağacında yapılanlar (şema etiketi parantezde; ayrıntı `docs/degisiklikler.md`):
+Biten adaylar (ayrıntı `docs/degisiklikler.md`): A2, A4 / C6 / F3 (faturayı e-postala),
+B1 (banka ekstresi; 2026.4.10'da xlsx, xls ve .ods), B6, B7, C1, C2, C3, C4 (kredi limiti
+4.98, vade farkı 2026.4.10), D1, D2 (satın alma siparişi, ERP Faz 7), D3, D5, E1, E2, E3,
+E4, F2, G1, G2, G4 ve B5'in "Faturalarım" kısmı (ERP Faz 8a). Bunların satırları §2'den
+çıkarıldı; 2026-09-24 durum tablosu ve öneri sırasıyla tam metin:
+`git show d9fec3a:docs/_erp_yol_haritasi_adaylari.md`. Sonraki seçim 2026-10-13'te proje
+notu `notes/erp-secenekler.md` (29 madde) ve `docs/_plan_erp_ozellikler.md` ile yapıldı.
+
+**Kalanlar:**
 
 | Aday | Durum |
 |---|---|
-| A2 sürücü arayüzü | yapıldı (4.61) |
-| A4 / C6 / F3 faturayı e-postala | yapıldı (4.97); okundu bilgisi yok |
-| B1 banka ekstresi + eşleme | yapıldı (4.102); yalnız CSV, Excel'den CSV kaydedilir |
-| B6 çek / senet portföyü | yapıldı (4.101); portföy ve verilen çek kasaları elle açılır |
-| B7 tezgâhta karışık ödeme | yapıldı (şema yok) |
-| C1 teklif / proforma | yapıldı (4.92); `erp_invoices`'a değil ayrı `erp_quotes` tablosuna, çünkü fatura sorgularının bir kısmı `doc_type`'a bakmıyor |
-| C2 tekrarlayan fatura | yapıldı (4.93); yalnız ERP'de yazılmış satış faturası |
-| C3 cari fiyat listesi / iskonto | yapıldı (4.94); fatura ve teklif editöründe |
-| C4 kredi limiti | yapıldı (4.98); vade farkı hesabı yok |
-| D1 alış stoğu ve maliyet | yapıldı (4.77) |
-| D3 barkodla stok sayımı | yapıldı (4.100) |
-| D5 minimum stok uyarısı | yapıldı (4.99, bildirim 4.91) |
-| E1 KDV raporu | yapıldı (şema yok); muhasebeci paketinin KDV özetiyle aynı hesap (`includes/erp/vat_report.php`) |
-| E2 kâr/zarar, E3 giderler | yapıldı (4.95, 4.96) |
-| E4 muhasebeci paketi, G4 salt okuma rolü | yapıldı (4.78) |
-| F2 panel içi bildirim + PWA push | yapıldı (4.91) |
-| G1 dönem kilidi | yapıldı (4.79) |
-| G2 denetim izi ekranı | yapıldı (4.90) |
-
-Bilerek bekleyenler: A1 gönderim (entegratör kimlikleri), A3 e-İrsaliye, B2 açık
-bankacılık, B3 iyzico hakedişi, B4 pazaryeri hakedişi, B5 ödeme linki ve
-"Faturalarım" (iyzico + mağaza hesap sayfası), C5 siparişi birden çok faturaya
-bölme (büyük iş), F1 SMS/WhatsApp (sağlayıcı sözleşmesi). ERP şema etiketinde sıradaki adım **4.104** (4.103: muhasebe kuralları; açık sorular `docs/erp_malimusavir_sorulacaklar.md`).
+| A1 e-Fatura / e-Arşiv gönderimi | İşbaşı zinciri test ortamında çalışıyor; Paraşüt sürücüsü ve canlı anahtar Erdal'ın yerel işi (`docs/_plan_erp.md` Kalanlar) |
+| A3 e-İrsaliye | başlanmadı; Erdal'ın yerel işi |
+| A5 kurumsal fatura alanları | kısmen: hızlı sipariş VKN ve vergi dairesini topluyor; "Kurumsal fatura istiyorum" anahtarı yok. Kural aşağıda |
+| B2 açık bankacılık | başlanmadı |
+| B3 sanal POS hakedişi | başlanmadı |
+| B4 pazaryeri hakediş mutabakatı | başlanmadı |
+| B5 faturaya ödeme linki | "Faturalarım" bitti, ödeme linki yok |
+| C5 kısmi faturalama ve kısmi sevk | başlanmadı |
+| C6 fatura e-postasında okundu bilgisi | e-posta bitti, okundu bilgisi yok |
+| D4 depo yönetimi | başlanmadı; dört fazlı plan aşağıda "D4 genişletmesi" (`notes/erp-secenekler.md` #17 buraya bakar) |
+| E5 grafikler ve kârlılık | kısmen: ürün ve cari kârlılığı kâr/zarar ekranında (`erp_profit.php`); kasa akışı grafiği doğrulanmadı |
+| F1 SMS / WhatsApp hatırlatma | başlanmadı (sağlayıcı sözleşmesi) |
+| G3 çok şirket | açılmaması önerildi |
 
 ---
 
@@ -81,9 +79,7 @@ girmesinin ön koşuludur. Aşağıdaki A grubu bu yüzden en başta.
 | # | Aday | Değer | İş | Bağımlılık | Not |
 |---|---|---|---|---|---|
 | A1 | **Faz 3 — e-Fatura / e-Arşiv gönderimi**: Paraşüt sürücüsünü doldurmak (kuyruk, poll + reconcile, iptal, e-arşiv iptal süresi) **ve** Logo İşbaşı sürücüsünü doldurmak (REST API, anahtar Logo desteğinden) | Zorunluluk | B + O | Paraşüt API kimliği/sandbox; İşbaşı test hesabı + API anahtarı + belgeler (`developers.isbasi.com`, giriş ister) | Plan §7 (yön değişikliği notu); kod `includes/erp/edoc/`. Hangi kimlik önce gelirse o sürücü önce. |
-| A2 | **e-belge sürücü arayüzü** — **yapıldı (2026-09-20 gece, 4.61):** `includes/erp/edoc/registry.php` sözleşmesi, `parasut.php` + `isbasi.php` sürücüleri, ERP Ayarları'nda radyo ile seçim, şifreli kimlik saklama. Kalan: sürücülerin gönderim çağrıları (A1) | Kilitlenmemek | ~~O~~ tamam | — | Erdal'ın kararı: Paraşüt ve Logo İşbaşı birlikte; ileride başka entegratör bir dosya. |
 | A3 | **e-İrsaliye** (Faz 4'te bilerek bırakıldı; §7.6 koşulu) | Orta (10M üstü mağaza) | O | A1, A2 | Dahili irsaliye altyapısı hazır; yalnız gönderim ve durum. |
-| A4 | **e-Arşiv müşteri teslimi:** fatura PDF + e-Arşiv XML'in müşteriye e-posta ile gitmesi, sipariş ekranından "faturayı gönder" | Yüksek (her satışta) | K | A1 | Bugün PDF var, e-posta yolu `email()` `attachments` ile hazır (mutabakatta kullanıldı). e-belge yokken bile "faturayı e-postala" hemen eklenebilir. |
 
 | A5 | **Kurumsal fatura alanları (checkout)** — fatura formunda "Kurumsal fatura istiyorum" anahtarı; açılınca firma adı + VKN + vergi dairesi görünür, kapalıyken bireysel müşteriye VKN sorulmaz. Aynı alanlar **hızlı siparişe** de eklenir | Yüksek (e-Fatura'nın ön şartı) | K–O | — | Bugünkü durum ve iki kural aşağıda (A5 kuralı). |
 
@@ -115,22 +111,15 @@ verilemez" değil.
 
 | # | Aday | Değer | İş | Bağımlılık | Not |
 |---|---|---|---|---|---|
-| B1 | **Banka hareketi içe aktarma (CSV/Excel) + eşleme önerisi** — bankadan indirilen ekstre → kasaya hareketler; açıklama/VKN/tutar ile cariye ve açık faturaya eşleme önerisi, operatör onaylar | Yüksek | O | yok | Açık bankacılığa giden yolun ilk, bağımsız adımı. `erp_settlement_suggest()` zaten var (fişe fatura önerisi); eksik olan içe aktarma ve cari eşlemesi. |
 | B2 | **Açık bankacılık (API) ile hesap hareketleri** — TCMB/BKM HHS-YÖS standardı; pratikte bir toplayıcı (Kobaküs, Vomsis gibi) ya da banka API mağazası (Garanti BBVA API Store) | Yüksek | B | B1, dış hesap/sözleşme | Toplayıcı ücretli; mağaza sahibinin kendi sözleşmesi. `includes/erp/bank/` sürücü arayüzü (A2 gibi). Önce B1. |
 | B3 | **Sanal POS hakedişi** — iyzico (mağazada var) ödemelerinin banka hesabına geçen net tutarı ve komisyonu: tahsilat + komisyon gideri otomatik | Yüksek (kartla satan her mağaza) | O | iyzico rapor API'si | Bugün kartlı sipariş faturalanıyor ama tahsilatı elle girilmiyor; "kart satışı = kasaya otomatik tahsilat, komisyon = gider" kapanışı. |
 | B4 | **Pazaryeri hakediş mutabakatı** — Trendyol/N11/Hepsiburada ödeme raporları → pazaryeri carisine tahsilat, komisyon/kargo kesintileri → alış faturası/gider; eksik ödeme tespiti | Yüksek (pazaryeri satıcısı için en büyük dert) | B | mevcut pazaryeri bağlayıcıları (`includes/api/outbound/connectors/`) | Rakipler bunu ayrı modül olarak satıyor (Entegra 7.500 TL). Pinegrap'ta sipariş zaten pazaryerinden geliyor; eksik olan para tarafı. |
 | B5 | **Faturaya ödeme linki + müşteri portalı** — cari kişisi mağaza hesabından "Faturalarım": PDF, açık tutar, iyzico ile öde → tahsilat otomatik | Yüksek | O | iyzico (var), kişi↔cari bağı (var) | Pinegrap'ın mağaza olması burada avantaj: müşteri hesabı sayfası zaten var, ayrı portal gerekmez. Paraşüt bunu "müşteri portalı" diye ayrıca sunuyor. |
-| B6 | **Çek / senet portföyü** — tahsilat yöntemi "çek" var ama çekin kendisi yok: vade, banka, keşideci, durum (portföyde / bankaya verildi / tahsil / karşılıksız), vadesi gelen çek uyarısı | Orta (toptancı için yüksek) | O | yok | Paraşüt/Logo'da standart. `erp_cheques` tablosu + tahsilat fişine bağ. |
-| B7 | **Kısmi ödeme ve karışık ödeme tezgâhta** (yarısı nakit yarısı kart; kalan cariye) | Orta | K | tezgâh tek adımı (var) | Bugün tutar = fatura toplamı. İki satırlı ödeme kutusu yeter. |
 
 ### C. Satış belgeleri ve ticari akış
 
 | # | Aday | Değer | İş | Bağımlılık | Not |
 |---|---|---|---|---|---|
-| C1 | **Teklif / proforma** — `doc_type` ENUM'unda `proforma` zaten var; teklif belgesi (numara, geçerlilik, durum: taslak / gönderildi / kabul / red), tek tıkla faturaya dönüşüm, PDF şablonu | Yüksek (B2B) | O | belge şablonu altyapısı (var) | Paraşüt'ün en çok kullanılan modüllerinden. Satır editörü ve şablon motoru hazır; yeni tablo yerine `erp_invoices` `doc_type='proforma'` + `status` genişletmesi tartışılmalı. |
-| C2 | **Tekrarlayan fatura / abonelik** — aylık kira, bakım, hizmet: şablon fatura + periyot, cron ile kesim, e-posta | Orta | O | cron (var), A4 | Hizmet satan mağazalar için; e-ticaret çekirdeğinde daha az. |
-| C3 | **Cari bazlı fiyat listesi / B2B iskonto** — cariye özel fiyat/iskonto oranı; elle fatura ve (ileride) B2B sipariş bunu kullanır | Orta-yüksek (toptan) | O | ürün kataloğu (var) | Kampanya iskontosu zaten satırda; cari iskontosu üçüncü katman olur (kampanya → cari → yazılan). |
-| C4 | **Cari risk / kredi limiti ve vade uyarısı** — limit aşıldığında fatura kesimi uyarısı/engeli; vade farkı hesaplama | Orta | K–O | yaşlandırma (var) | Kredi limiti tek sütun + kesimde kontrol. Vade farkı: aylık oran ayarı, ekstrede satır. |
 | C5 | **Sipariş → kısmi faturalama ve kısmi sevk** — bir siparişi iki faturaya bölmek, irsaliyeleri tek faturaya toplamak (irsaliye→fatura tek yönlü var) | Orta | O | Faz 2/4 | "Çok irsaliye → tek fatura" Paraşüt'te var; toptan sevkiyat senaryosu. |
 | C6 | **Fatura e-posta gönderimi ve okundu bilgisi** (A4 ile aynı yol) + fatura üzerinde QR/link | Yüksek | K | A4 | Küçük iş, büyük his. |
 
@@ -138,11 +127,7 @@ verilemez" değil.
 
 | # | Aday | Değer | İş | Bağımlılık | Not |
 |---|---|---|---|---|---|
-| D1 | **Alış faturasından stok girişi ve maliyet** — alış faturası kalemi ürüne bağlıysa `inventory_quantity` artsın, **birim maliyet** (son alış / ağırlıklı ortalama) tutulsun | Yüksek (kârlılık için şart) | O | products (var), alış faturası (var) | Bugün satış stoğu düşürüyor (mağaza), alış stoğu yükseltmiyor; maliyet hiç yok → kâr raporu yapılamıyor. |
-| D2 | **Satın alma siparişi (tedarikçi) → mal kabul → alış faturası** | Orta | B | D1 | Toptancı/üretici için; e-ticaret mağazası için ikinci sırada. |
-| D3 | **Stok sayım** — sayım listesi (barkodla), fark fişi, düzeltme hareketi | Orta | O | barkod (var) | Tezgâh ekranındaki barkod okutma deseni doğrudan kullanılır. |
 | D4 | **Depo yönetimi** — çoklu depo, depolar arası transfer, e-ticarette depo seçimi, siparişte çıkış deposu | Orta-yüksek | B | D1 | **Erdal 2026-09-21'de açtı** (aşağıda D4 genişletmesi). Önceki not "talep gelmeden açılmamalı" idi; talep geldi. |
-| D5 | **Minimum stok uyarısı** — ERP menü rozeti / e-posta (hatırlatma altyapısı var) | Orta | K | notify (var) | `products.inventory_quantity` + eşik sütunu; `erp_overdue_job` desenine bir iş daha. |
 
 #### D4 genişletmesi — depo yönetimi (Erdal'ın isteği, 2026-09-21)
 
@@ -204,10 +189,6 @@ maliyeti olmayan bir sistem, yanlış soruya doğru cevap verir.
 
 | # | Aday | Değer | İş | Bağımlılık | Not |
 |---|---|---|---|---|---|
-| E1 | **KDV raporu** — dönem bazında hesaplanan (satış) / indirilecek (alış) KDV, oran kırılımı, tevkifat | Yüksek (her ay) | K–O | Faz 2 | Veri hazır (`erp_invoice_items.tax_rate/tax_total`); yalnız rapor ekranı + CSV. |
-| E2 | **Gelir–gider ve kâr/zarar** — satış faturaları − alış faturaları − giderler, aylık; D1 ile brüt kâr | Yüksek | O | E3, D1 (brüt kâr için) | Paraşüt'ün ana panosu bu. Bizde pano yaşlandırma odaklı; ikinci sekme. |
-| E3 | **Gider fişleri** — fatura olmayan masraflar (kira, fatura, yakıt, SGK), kategori, tekrarlayan gider; kasadan ödeme | Yüksek | O | kasa (var) | Alış faturası "tedarikçi + kalem" istiyor; gider fişi tek satır ve kategori. Kâr/zarar için şart. |
-| E4 | **Mali müşavir paketi** — ay sonu: satış/alış fatura CSV + KDV raporu + kasa hareketleri tek zip, e-posta ile; "muhasebeci kullanıcı" salt-okuma rolü | Yüksek (her mağazanın müşaviri var) | K–O | dışa aktarım profilleri (var) | Logo/Luca XML formatı ikinci adım; önce CSV paketi. |
 | E5 | **Kasa akışı grafiği, cari kârlılığı, ürün kârlılığı** | Orta | K | E2, D1 | Kasa akışı raporuna tek grafik; kârlılık D1'e bağlı. |
 
 ### F. İletişim ve bildirim
@@ -215,41 +196,19 @@ maliyeti olmayan bir sistem, yanlış soruya doğru cevap verir.
 | # | Aday | Değer | İş | Bağımlılık | Not |
 |---|---|---|---|---|---|
 | F1 | **SMS / WhatsApp hatırlatma** — vadesi gelen/geçen fatura, ödeme linkiyle (Netgsm/İleti Merkezi/WhatsApp Business API) | Orta-yüksek | O | sağlayıcı sözleşmesi, B5 | E-posta hatırlatması var (4.55/4.56); kanal eklemek. Türkiye'de tahsilatta SMS/WhatsApp e-postadan daha etkili. |
-| F2 | **Panel içi ERP bildirimleri PWA push** — tahsilat girildi, fatura ödendi, çek vadesi | Orta | K | PWA push (var) | `erp_event()` zaten olayı üretiyor; push'a bağlamak küçük. |
-| F3 | **Müşteriye belge bildirimi** — fatura/irsaliye kesildiğinde e-posta (A4/C6) | Yüksek | K | — | — |
 
 ### G. Yönetim ve güvenlik
 
 | # | Aday | Değer | İş | Bağımlılık | Not |
 |---|---|---|---|---|---|
-| G1 | **Dönem kapanışı / kilit** — belirli tarihe kadar belgelerin değiştirilemez olması (mali müşavir beyanname verdikten sonra) | Yüksek (mevzuat pratiği) | K | — | Tek tarih ayarı + yazma fonksiyonlarında kontrol. Paraşüt'te "kasa kilidi" var. |
-| G2 | **Denetim izi ekranı** — kim, ne zaman, hangi belgede ne değiştirdi (log_activity zaten yazıyor; ERP filtresiyle ekran) | Orta | K | — | — |
 | G3 | **Çok şirket (tek panel, birden çok VKN)** | Düşük | B | — | Pinegrap tek site = tek şirket; talep yok, açılmamalı. |
-| G4 | **Kullanıcı rolü: "muhasebeci" (salt okuma + dışa aktarım)** | Orta | K | E4 | Mevcut üç yetkiye bir "salt okuma" bayrağı. |
 
 ---
 
-## 3. Öneri sırası (gerekçesiyle)
+## 3. Öneri sırası
 
-1. **A1 + A2 — e-belge (Paraşüt sürücüsü ile)**: mevzuat zorunluluğu; anahtar
-   gelir gelmez. Sürücü arayüzünü aynı anda kurmak tek entegratöre kilitlenmeyi
-   önler. Yanında **A4/C6** (faturayı e-postala) küçük ve hemen.
-2. **B1 — banka ekstresi içe aktarma + eşleme**: dış bağımlılık yok, tahsilat
-   girişinin çoğunu ortadan kaldırır; B2'nin (açık bankacılık) yolunu açar.
-3. **B4 — pazaryeri hakediş**: Pinegrap'ın pazaryeri satıcısı müşterisi için
-   en büyük fark; bağlayıcılar zaten var, yalnız para tarafı eksik.
-4. **D1 + E3 + E2 — alış stoğu/maliyet, gider fişi, kâr/zarar**: "ERP" adını
-   hak etmenin şartı; üçü bir paket.
-5. **C1 — teklif/proforma**: B2B satan mağazaların ilk sorusu; altyapı hazır.
-6. **B5 + F1 — ödeme linki, müşteri portalı, SMS/WhatsApp**: tahsilat hızını
-   asıl artıranlar; B5 mağaza hesabı sayesinde ucuz.
-7. **B6 çek/senet, C3 cari fiyat, C4 risk limiti**: toptancı paketi; talebe göre.
-8. **E1, E4, G1, G4**: küçük işler; boş bir günde toplu.
-
-**Açılmaması önerilenler (şimdilik):** G3 çok şirket, D2 satın alma siparişi —
-Pinegrap'ın hedef kitlesi (e-ticaret KOBİ) istemeden karmaşıklık getirir.
-**D4 (depo yönetimi) bu listeden çıktı:** Erdal 2026-09-21'de istedi; yeri
-D1'den sonra, yukarıdaki genişletmedeki fazlamayla.
+2026-09-20'deki sıranın büyük kısmı uygulandı (yukarıda §0). Güncel seçim proje notu
+`notes/erp-secenekler.md`'de. Açılmaması önerilen tek aday G3 (çok şirket).
 
 ---
 

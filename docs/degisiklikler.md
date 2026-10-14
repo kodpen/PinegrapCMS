@@ -84,6 +84,12 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Belgeler: biten plan dosyaları temizlendi (2026-10-14)
+
+Biten üç plan silindi (`_plan_csrf_2fa`, `_panel_api_eylemler`, `_erp_dosya_yoneticisi_hazirlik`); kısmen biten yedisinde biten bölümler çıkarıldı ve başa "Kalanlar" kondu (`_plan_erp`, `_plan_erp_ozellikler`, `_plan_oauth`, `_plan_tersine_oauth`, `_plan_claude_kanal`, `_plan_api_mobil`, `_erp_yol_haritasi_adaylari`); tam metinler git geçmişinde (`d9fec3a`).
+
+---
+
 ## 2026.4.10 — E-posta kampanya listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-14)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
@@ -10734,7 +10740,7 @@ Chromium'da çizilip (192–600 px) 5/5 çözüldü.
 ## 2026.4.8 — Panel eylem tablosu (includes/panel): software, system, explorer, search grupları (2026-10-08)
 
 **Sorun** (`docs/_tespit_2026_10_08/refactor_altyapi_raporu.md` madde 2 ve
-3; envanter `docs/_panel_api_eylemler.md`).
+3; envanter `docs/_panel_api_eylemler.md`, 2026-10-14'te silindi, git geçmişinde).
 
 - Panel `api.php`'sinde 81 case satır içinde duruyordu (`ws_`, `chat_`,
   `site_chat_` zaten modüle devrediyordu). En büyükleri `file_explorer` 823,
@@ -23585,7 +23591,7 @@ Yedeklemeler'in altında. Belge seçilince önizleme panelinde ilgili belge
 sayfasına giden seçenekler; sağ tık menüsünde de ilgili sayfaya gitme.
 
 **Nasıl.** Her şey ERP'nin salt okuyan dikişi `includes/erp/files.php`
-üzerinden (bkz. `docs/_erp_dosya_yoneticisi_hazirlik.md`); Dosya Yöneticisi
+üzerinden (bkz. `docs/_erp_dosya_yoneticisi_hazirlik.md`, 2026-10-14'te silindi; dikişin kuralları `pinegrap-erp` skill'inde); Dosya Yöneticisi
 ERP tablolarına sorgu yazmıyor.
 
 - **Sunucu (`view_folder_and_files_f.php`).** İki yeni alt eylem:
@@ -23962,7 +23968,7 @@ search/year/month/limit/offset)`, `erp_files_search()`; öğe biçimi
 `pg_explorer_file_payload()`'a benzetildi (`size: null`, `source:
 generated|provider|draft`). Dev'de 28 ms. Envanter, kurallar ve açık kararlar
 (mağaza PDF'inin dondurulması, sağlayıcı kopyasının önbelleği, mutabakat
-günlüğü): `docs/_erp_dosya_yoneticisi_hazirlik.md`. `tr.json` +15.
+günlüğü): `docs/_erp_dosya_yoneticisi_hazirlik.md` (2026-10-14'te silindi, git geçmişinde). `tr.json` +15.
 
 ## 2026.4.4 — Siparişten belge zinciri ve e-Belge kurallarının önceden denetimi (2026-09-22)
 

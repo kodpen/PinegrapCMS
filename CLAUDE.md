@@ -252,7 +252,7 @@ bağlı geliştirme klasöründe okunur (yukarı bak).
 | Tam bağlam arşivi | `docs/CLAUDE-tam.md` |
 | Değişiklik günlüğü | `docs/degisiklikler.md` |
 | API ile ERP aynı depoda: dikiş yeri ve ortak dosya kuralları | `dev/_handoff/API-ERP-koordinasyon.md` |
-| 2026-10-08 keşif raporları ve kalan uygulama planları | `docs/_tespit_2026_10_08/`, `docs/_plan_{kargo,csrf_2fa}.md` |
+| 2026-10-08 keşif raporları ve kalan uygulama planları | `docs/_tespit_2026_10_08/`, `docs/_plan_kargo.md` |
 
 Önemli değişiklikler `docs/degisiklikler.md`'ye, proje bağlamını etkileyen
 değişiklikler `docs/CLAUDE-tam.md`'ye yazılır; kalıcı bir kural ortaya çıktıysa
