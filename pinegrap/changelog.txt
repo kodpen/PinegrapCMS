@@ -2949,6 +2949,19 @@
          da kanalı açıyordu; artık boş yeni şablon formu
          açılıyor.
 
+  [DÜZELTME] Üzerinde çalışacağı kayıt adreste olmadan ya
+         da silinmiş bir kayıtla açılan form alanı ekleme,
+         menü öğesi ekleme, düzen oluşturma, ürün formu
+         önizleme ve tema tasarımcısı modülü ekranları yarı
+         boş ekran gösterip hata günlüğüne uyarı yazıyordu;
+         artık "Kayıt bulunamadı" gösteriyor. Katalog
+         menüsünün yönlendirmesi sayfasız açılınca bozuk bir
+         adrese gidiyordu; artık "sayfa bulunamadı" diyor.
+         Resim düzenleyici, paketleme fişi, dosya adı ve
+         bölge içeriği denetimleri ile e-posta kampanyası
+         ekranı aynı durumda hata günlüğüne uyarı yazmıyor.
+         Ürün formuna alan eklerken de uyarı yazılmıyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

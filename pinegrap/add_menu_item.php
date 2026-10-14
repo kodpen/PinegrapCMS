@@ -29,9 +29,16 @@ $query =
     "SELECT
         name
     FROM menus
-    WHERE id = '" . escape($_REQUEST['menu_id']) . "'";
+    WHERE id = '" . escape($_REQUEST['menu_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// Opened without a menu, or for one that no longer exists (stale link,
+// hand-typed URL): a "not found" screen instead of PHP notices from the
+// missing menu below.
+if (!$row) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
 
 $menu_id = (int)($_REQUEST['menu_id'] ?? 0);
 $menu_name = $row['name'];

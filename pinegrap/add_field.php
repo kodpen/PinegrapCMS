@@ -157,6 +157,9 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
 
     $form_type = 'product_group';
     $form_type_name = lang('product form');
+
+    // Not a page form: no page type for the position list and layout checks below.
+    $page_type = '';
     $form_type_identifier_id = 'product_group_id';
 
     // form_type is pinned as well as the id: copies generated for each product
@@ -203,6 +206,9 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
 
     $form_type = 'product';
     $form_type_name = lang('product form');
+
+    // Not a page form: no page type for the position list and layout checks below.
+    $page_type = '';
     $form_type_identifier_id = 'product_id';
     $form_type_filter =
         "form_fields." . $form_type_identifier_id . " = '" . e($_REQUEST[$form_type_identifier_id]) . "'";
@@ -238,6 +244,12 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     $pg_breadcrumb_parent = array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php');
     $output_form_designer_content_heading = lang('Create Product Form Field');
     $output_form_designer_content_subheading = lang('Create a new field on this product form.');
+
+// Opened without a page, product group or product (stale link, hand-typed
+// URL): there is no form to add the field to, so a "not found" screen instead
+// of PHP notices from the form details below that were never set.
+} else {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 // The breadcrumb ends with this screen; the product group branch has two parents.

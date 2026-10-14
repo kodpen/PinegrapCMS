@@ -45,7 +45,7 @@ $query =
         shipping_methods.name AS shipping_method_name
     FROM ship_tos
     LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
-    WHERE ship_tos.id = '" . escape($_GET['ship_to_id']) . "'";
+    WHERE ship_tos.id = '" . escape($_GET['ship_to_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // If the ship to does not exist, then output error.

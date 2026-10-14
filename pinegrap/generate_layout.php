@@ -26,7 +26,14 @@ pg_request_single_values(array('page_id'));
 
 $form = new liveform('generate_layout');
 
-$page = db_item("SELECT page_name AS name FROM page WHERE page_id = '" . e($_GET['page_id']) . "'");
+$page = db_item("SELECT page_name AS name FROM page WHERE page_id = '" . e($_GET['page_id'] ?? '') . "'");
+
+// Opened without a page, or for one that no longer exists (stale link,
+// hand-typed URL): a "not found" screen instead of PHP notices and an empty
+// layout.
+if (!$page) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
 
 require('generate_layout_content.php');
 

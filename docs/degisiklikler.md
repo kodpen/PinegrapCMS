@@ -84,6 +84,80 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Zorunlu parametresi olmadan açılan panel ekranları uyarı yazmıyor, kayıt isteyenler "Kayıt bulunamadı" diyor (2026-10-14)
+
+**Neden.** #417'nin panel taramasında K7 olarak kalan iş. Bir kayıt (sayfa,
+ürün, menü, tema dosyası) ya da tür üzerinde çalışan ekranlar o parametre
+adreste olmadan açılınca (eski sekme, elle yazılmış adres, silinmiş kayıt)
+kaydı aramadan okuyordu: php_errors.log'a her açılışta bir ile 38 arası
+"Undefined array key" / "Trying to access array offset on null" satırı,
+ekranda yarı boş form. #422 ve #424'ün kimlik kapıları listedeki ekranların
+çoğunu (`edit_page`, `edit_commission`, `view_order`, `view_email_campaign`,
+`view_system_style_source`, `view_menu_items` ...) kapatmıştı; development
+üzerinde (#425 ve #428 dahil) 367 panel ekranı parametresiz yeniden tarandı,
+uyarı yazan 10 ekran kaldı. Notun K7 listesindeki
+`add_email_campaign` (silinmiş sayfayla açılış) da bu işe alındı. Hepsi
+2026.4.9'da da var.
+
+**Ne değişti.** Kayıt bekleyen ekran kaydı yoksa #424'ün "Kayıt bulunamadı"
+404'ünü veriyor; yalnız bir soruya cevap veren uç eksik değeri boş okuyup
+eskiden verdiği cevabı veriyor. Parametre verilmiş normal açılışın çıktısı
+değişmedi.
+
+- `add_field.php`: sayfa, ürün grubu ya da ürün yoksa (hiçbir dal çalışmıyor)
+  "Kayıt bulunamadı" 404. Ürün ve ürün grubu dallarında `$page_type` boş
+  metin (önceden tanımsız; ürün formuna alan eklerken açılışta bir, kaydederken
+  iki uyarı yazıyordu).
+- `add_menu_item.php`, `preview_form.php`, `generate_layout.php`: menü, ürün
+  ya da sayfa yoksa (eksik ya da silinmiş) "Kayıt bulunamadı" 404, kaydın
+  ayrıntıları okunmadan önce.
+- `get_theme_designer_module.php` (tema tasarımcısının AJAX modülü): tema
+  dosyası yoksa 404, boş kimlik için oturuma kayıt da yazılmıyor. Var olan
+  ama tasarımcı kuralı olmayan CSS teması (K8) aynen kaldı.
+- `browse_catalog_menu.php` (ön yüzdeki katalog menüsünün yönlendirmesi):
+  sayfa yoksa bozuk adrese (`//?previous_url_id=`) yönlendirmek yerine
+  "Sayfa bulunamadı" 404; ürün grubu ya da dönüş adresi eksikse adresin o
+  parçası eskisi gibi boş, uyarısız.
+- `image_editor_edit.php`: dosyanın var olup olmadığı satırı okunmadan önce
+  denetleniyor (aynı "resim artık yok" ekranı).
+- `check_if_file_exists.php`, `get_region_content.php`,
+  `print_packing_slip.php`: eksik değer boş okunuyor; cevap ("upload", boş
+  içerik, "alıcı bulunamadı") eskisiyle aynı.
+- `add_email_campaign.php?page_id=<silinmiş>`: sayfa adı ve klasörü boş
+  okunuyor, ekran aynı.
+- Dizi gelen parametreler (K3 / K5, #425 / #428) ve kimlik satırları (K1 /
+  K2) değişmedi; aynı dosyalarda yalnız parametresiz açılış yolu.
+- Yeni `tests/panel_missing_param_test.php`: kapı kaydın ayrıntılarından önce
+  geliyor, cevap veren uçlar eksik değeri boş okuyor. Eski kodda üç test de
+  düşüyor.
+
+Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, `debug = 1`).** 367 panel ekranı
+parametresiz: uyarı yazan istek 10 → 0, ayrı uyarı satırı 76 → 0. Kullanım
+dışı uyarıları (yalnız DEBUG'da) `liveform` `h(null)` (K9) dışında 21 → 6
+(kalanlar boş değerde `h()`: `add_container`, `add_ship_date_adjustment`,
+`add_verified_shipping_address`, `duplicate_products`, `view_countries`,
+`view_styles`). 500 yok. Eski kod (`origin/development`, #428 dahil)
+ikinci portta, aynı veritabanıyla: değişen 11 ekranın 29 isteği aynı HTML'i
+ve aynı durum kodunu verdi; 21'i gerçek kayıtla normal açılış (özel form,
+ürün, ürün grubu, menü, sayfa, tema dosyası, resim, alıcı, bölge; katalog
+yönlendirmesinin `Location` başlığı), 8'i cevap veren uçların eksik ya da
+silinmiş kayıtla açılışı (yalnız günlük satırları gitti). Ürün formuna alan ekleme ve menü öğesi ekleme iki
+sunucuda da kaydetti (kayıtlar karşılaştırıldı, sonra silindi). `php -l`,
+`tools/lint.php`, `tools/test.php`, `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies` ve `build_js.php --check` geçti.
+
+**Bilerek yapılmayan (kalanlar).** Parametre verilmiş ama kaydı olmayan iki
+durum uyarı yazmaya devam ediyor: katalog yönlendirmesinde silinmiş ürün
+grubu (`includes/fn/content.php:2521`, ortak fonksiyon) ve tema tasarımcısı
+modülünde kuralı olmayan tema (K8). `print_packing_slip.php` var olan alıcıda
+da beş tanımsız değişken uyarısı yazıyor (338–354, normal açılış; K6
+türünden). Boş değerde `h()` kullanım dışı uyarıları ve `liveform.class.php:1376`
+K9'da. K6, K8, K9 notta.
+
+---
+
 ## 2026.4.10 — Panelde kalan dizi uyarıları ve sipariş raporunun normal açılış uyarıları (2026-10-14)
 
 **Neden.** #417'nin panel taramasından kalan K6: 500 vermeyen ama hata
