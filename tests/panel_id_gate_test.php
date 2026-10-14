@@ -200,4 +200,28 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 
 	// The CSS copy opens only on one of the two screens that link to the editor.
 	pg_assert_contains("!in_array(\$_POST['from'] ?? '', array('edit_theme_file', 'edit_design_file'), true)", file_get_contents(PG_FUNCTIONS_DIR . '/edit_theme_css.php'), 'edit_theme_css from');
+
+	// A file recorded here but missing from the disk opens empty with a note,
+	// and Save deletes the old file only when it is there: no PHP warning.
+	foreach (array('edit_theme_css', 'edit_javascript', 'editor_edit_file') as $screen) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
+
+		pg_assert_contains("if (is_file(FILE_DIRECTORY_PATH . '/' . \$file_name)) {\n        \$code = file_get_contents(", $source, $screen . ' reads only a file on the disk');
+		pg_assert_contains("lang('The file is recorded here but is not on the disk.')", $source, $screen . ' missing file note');
+		pg_assert_contains("if (is_file(FILE_DIRECTORY_PATH . '/' . \$file_name)) {\n            unlink(", $source, $screen . ' unlinks only a file on the disk');
+	}
+
+	// The design file screen renames and deletes: only a design file under a
+	// plain name opens, and the POST acts on the record the gate checked.
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_design_file.php');
+	$gate = strpos($source, "WHERE (id = '\" . \$id . \"') AND (design = '1')");
+	$not_found = strpos($source, "output_error(lang('Record not found.')");
+
+	pg_assert_true($gate !== false, 'edit_design_file reads the record as a design file');
+	pg_assert_contains("|| (\$stored_name !== basename(\$stored_name))", $source, 'edit_design_file plain name');
+	pg_assert_contains("|| (strpos(\$stored_name, '..') !== false)", $source, 'edit_design_file no ..');
+	pg_assert_true(($not_found !== false) && ($gate < $not_found), 'edit_design_file stops on "Record not found."');
+	pg_assert_true($not_found < strpos($source, 'validate_token_field();'), 'edit_design_file gate runs before the POST branch');
+	pg_assert_contains("validate_token_field();\n\n    // Delete and rename act on the record and the stored name the gate\n    // above checked.\n    \$_POST['id'] = \$id;", $source, 'edit_design_file POST uses the gated id');
+	pg_assert_contains("if ((\$name !== \$stored_name) && is_file(FILE_DIRECTORY_PATH . '/' . \$stored_name)) {", $source, 'edit_design_file renames only a file on the disk');
 }

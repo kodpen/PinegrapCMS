@@ -26,9 +26,16 @@ validate_area_access($user, 'designer');
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
 // "not found" screen instead of PHP notices from the unchecked row below or
-// an error page.
+// an error page. The screen renames and deletes the file, so the record must
+// also be a design file stored under a plain name in the files folder: a
+// File Manager file opened by a hand-typed URL is not found either.
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
-if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . $id . "'") < 1)) {
+$stored_name = ($id > 0) ? (string) db_value("SELECT name FROM files WHERE (id = '" . $id . "') AND (design = '1')") : '';
+if (
+    ($stored_name === '')
+    || ($stored_name !== basename($stored_name))
+    || (strpos($stored_name, '..') !== false)
+) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
@@ -312,10 +319,10 @@ if (empty($_POST['name'])) {
 
 } else {
     validate_token_field();
-    
-    $result=mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
-    $row=mysqli_fetch_array($result);
-    $stored_name = ($row) ? $row['name'] : '';
+
+    // Delete and rename act on the record and the stored name the gate
+    // above checked.
+    $_POST['id'] = $id;
 
     $name = prepare_file_name($_POST['name'] ?? '');
     
@@ -390,8 +397,11 @@ if (empty($_POST['name'])) {
         
         $result=mysqli_query(db::$con, $query) or output_error('Query failed');
         
-        // rename file's name
-        rename(FILE_DIRECTORY_PATH . '/' . $row['name'], FILE_DIRECTORY_PATH . '/' . $name);
+        // Rename the file when its name changed and it is on the disk (a
+        // file recorded here but missing from the disk has nothing to rename).
+        if (($name !== $stored_name) && is_file(FILE_DIRECTORY_PATH . '/' . $stored_name)) {
+            rename(FILE_DIRECTORY_PATH . '/' . $stored_name, FILE_DIRECTORY_PATH . '/' . $name);
+        }
 
 
         log_activity(lang(array('string'=>'design file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
