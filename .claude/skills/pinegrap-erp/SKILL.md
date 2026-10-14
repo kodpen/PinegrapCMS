@@ -292,7 +292,9 @@ ikisinde de yalnız kalanlar duruyor (e-belge sürücüleri, mali müşavir onay
   olayla duyur. İz yazımı hiçbir işi durdurmaz (hata sessiz).
 - Anlık bildirim (`includes/erp/alerts.php`): `create_notification()` +
   `pg_push_enqueue_notification()`; işi yapan kişi `notification_reads`'e
-  yazılarak hariç tutulur. Push yalnız `push_subscriptions`'ta cihazı kayıtlı
+  yazılarak hariç tutulur. Kişi ve satırdaki ad `erp_alert_current_actor()`'dan
+  gelir, `USER_ID`/`USER_USERNAME`'den doğrudan okunmaz: API ve MCP'de ikisi
+  boştur, orada uygulamanın sahibi geçer (`test_erp_alert_rows_carry_the_actor`). Push yalnız `push_subscriptions`'ta cihazı kayıtlı
   (panelde bildirimlere izin vermiş) kullanıcılara kuyruğa girer; tahsilat
   bildirimi onu giren kişiye gitmez, yani tek hesapla denemede telefona bir
   şey düşmez (ikinci kullanıcı ya da sahibi olmayan saatlik stok işi gerekir).

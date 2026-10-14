@@ -1713,6 +1713,14 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] ERP: API'den ya da yapay zekâ bağlantısından
+         kaydedilen tahsilatın zil bildirimi ("Tahsilat
+         alındı") paneldeki gibi kaydı yapanın kullanıcı
+         adını taşıyor ve kaydı yapanın kendi zilinde
+         okunmamış görünmüyor; önceden satırda "system"
+         yazıyordu ve tahsilatı kaydeden kişi de
+         bildirimi okunmamış olarak alıyordu.
+
   [DÜZELTME] API belgesi: güncelleme ve işlem uçlarında
          (ürün güncelleme, sipariş gönderme, fatura
          kesme, mesaj düzeltme ve benzerleri, 122 uç)
