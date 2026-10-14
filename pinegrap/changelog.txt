@@ -444,6 +444,12 @@
          fotoğraf galerisi hata günlüğüne uyarı yazıyordu;
          artık yazmıyor.
 
+  [DÜZELTME] Hazır şablonlardaki üyelik giriş ve kayıt
+         sayfası her açılışta hata günlüğüne CAPTCHA
+         sorusuyla ilgili uyarı yazıyordu; artık
+         yazmıyor. Sayfa eskisi gibi görünüyor, kayıt
+         yine üye numarasıyla yapılıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 

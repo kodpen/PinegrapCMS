@@ -84,6 +84,44 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Üyelik giriş sayfası özel düzende `$captcha_question` uyarısı yazıyordu (2026-10-14)
+
+**Neden.** #394'ün bıraktığı parça, 2026.4.9'da da var. Hazır şablonlardaki
+üyelik giriş/kayıt sayfası (`member-login-register`, düzen `982.php`) kayıt
+sekmesinde kayıt girişi (`registration entrance`) düzeninden kopyalanmış
+`<?php if ($captcha_question): ?>` bloğunu taşıyor. Üyelik girişi ekranı
+(`get_membership_entrance.php`) özel düzeni çizerken bu değişkeni hiç
+vermiyordu; sayfa her açılışta, oturum açık olsun olmasın,
+`php_errors.log`'a "Undefined variable $captcha_question" yazıyordu. Blok
+tanımsız değişkenle zaten gizli kalıyordu: üyelik girişi hazır düzende de
+CAPTCHA sormaz, kaydı rehberdeki üye numarası ile soyadının eşleşmesi
+geçirir (`pg_member_activate()`), POST işleyicisi de CAPTCHA denetlemez.
+
+**Ne değişti.** `render_layout()` çağrısına `'captcha_question' => ''`
+eklendi; düzendeki blok eskisi gibi gizli, uyarı yok. Davranış ve HTML
+değişmedi; şema, dil dosyası ve JS değişikliği yok. Hazır şablonlarda
+`$captcha_question` geçen öbür düzenlerin hepsi özel form ya da kayıt
+girişi sayfası; o iki ekran değişkeni her zaman veriyor (oturum açıkken
+boş), aynı sorun onlarda yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod (`origin/development`)
+ikinci bir portta: `/member-login-register` oturumsuz ve yönetici oturumuyla
+açılınca `982.php` 70'te uyarı yazıyor; yeni kodda yazmıyor. İki durumda da
+HTML aynı (oturum jetonu, sayfa görüntülenme sayacı, `?v=` sürüm damgaları ve
+alt bilgideki bülten formunun rastgele CAPTCHA sorusu dışında). Hazır
+şablonun `$captcha_question` geçen öbür 13 sayfası (özel formlar ve
+`user-login-register`) yeni kodda uyarısız açılıyor. `php -l`,
+`tools/lint.php`, `tools/test.php`, `check_*` ve `build_js.php --check`
+geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek sayfa.
+
+**Bilerek yapılmayan.** Üyelik girişinin kayıt sekmesine gerçek bir CAPTCHA
+eklenmedi; bu yeni bir davranış olur (alan görünür, kayıt denetlenir) ve
+üye numarası zaten kaydı sınırlıyor. Kurulu sitelerdeki `982.php`
+kopyalarına dokunulmadı; düzeltme ekranın kendisinde olduğu için onlar da
+uyarısız açılıyor.
+
+---
+
 ## 2026.4.10 — Dış API: kişinin kendi sözü olan uçların 403 metni ekip cihazları oturumunu söylüyor (2026-10-14)
 
 **Neden.** #399'un bıraktığı parça. `ws_api_own_words_only()` kapısı yalnız
