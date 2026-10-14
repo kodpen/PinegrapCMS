@@ -34,6 +34,8 @@ description: changelog.txt format (English, only plan-driven major features as [
 
 ## Where do details go?
 - `docs/degisiklikler.md` (Turkish, developer log): what changed, why, root cause, symptom, rejected alternatives. Append your section under its first `---`; never read it routinely.
+- It holds only the open version. On release its sections are deleted, never archived; `changelog.txt` is the permanent summary.
+- Released versions' detail is in git history only. Up to 2026.4.9 it is at commit `5a51d63c`: `git show 5a51d63c:docs/degisiklikler-arsiv/<version>.md`.
 - Write the symptom there too: "IPv6 bans did not work" alone is not searchable; "dozens of duplicate ban rows for one address while it is never blocked" is.
 
 ## Which code reads changelog.txt?

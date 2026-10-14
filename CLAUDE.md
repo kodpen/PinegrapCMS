@@ -19,8 +19,9 @@ Everything else is in memory files and skills, opened only when needed.
   by hand; CI runs `--check`.
 - `docs/degisiklikler.md` (change log) is **never read**, only written to:
   insert your `## 2026.4.10 — <title> (<date>)` section directly under the
-  file's first `---` line. Released versions are in
-  `docs/degisiklikler-arsiv/<version>.md`, also not read routinely.
+  file's first `---` line. It holds only the open version: when a version is
+  released its sections are deleted, not archived. Older detail lives only in
+  git history; `pinegrap/changelog.txt` is the permanent summary.
 - Schema step history: `docs/sema-adimlari.md`; append a row, look up with grep.
 
 ## Skills — load before the matching work
