@@ -163,7 +163,12 @@ if (!$_POST) {
        
     } else {
         // output regular delete button
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page style')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        // Once the bin holds styles, a deleted style goes there.
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+        $delete_confirmation = pg_recycle_style_ready()
+            ? lang('This page style will be moved to the Recycle Bin.')
+            : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page style'))));
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     print
@@ -302,15 +307,28 @@ else
             // output error
             output_error(lang('You may not delete this page style because it is being used by at least one folder or page.'));
         
-        // else delete the style
+        // else delete the style: to the Recycle Bin once it holds styles,
+        // where it can be restored from the file manager
         } else {
-            
-            $result=mysqli_query(db::$con, "DELETE FROM style WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 
-            db("DELETE FROM preview_styles WHERE style_id = '" . escape($_POST['id'] ?? '') . "'");
-            
-            log_activity(lang(array('string'=>'style ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
-            $notice = lang('The style was deleted successfully.');
+            if (pg_recycle_style_ready()) {
+                $recycled = pg_recycle_style((int) ($_POST['id'] ?? 0), $user);
+
+                if ($recycled['status'] != 'binned') {
+                    output_error(h($recycled['message']));
+                }
+
+                $notice = lang('The style was moved to the Recycle Bin.');
+
+            } else {
+                $result=mysqli_query(db::$con, "DELETE FROM style WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+
+                db("DELETE FROM preview_styles WHERE style_id = '" . escape($_POST['id'] ?? '') . "'");
+
+                log_activity(lang(array('string'=>'style ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+                $notice = lang('The style was deleted successfully.');
+            }
         }
     
     // Else update the style.

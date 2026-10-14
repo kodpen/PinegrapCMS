@@ -533,6 +533,16 @@ if (!$_POST) {
                 
                 $access_error_exists = false;
                 $submitted_forms_error_exists = false;
+
+                // With the recycle bin installed a page deleted here goes there,
+                // the way the file manager deletes it, and keeps everything it
+                // had until the bin is emptied. One already in the bin is
+                // deleted for good below, as the bin's own delete does.
+                require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+                $recycle_pages = pg_recycle_ready();
+                $number_of_binned_pages = 0;
+                $binned_home_page = false;
+                $bin_errors = array();
                 
                 foreach ($_POST['pages'] as $page_id) {
                     // get page properties
@@ -562,6 +572,25 @@ if (!$_POST) {
                     } else {
                         $access_granted = false;
                         $access_error_exists = true;
+                    }
+
+                    if (($access_granted == true) && ($recycle_pages == true)) {
+                        $recycled = pg_recycle_page($page_id, $user);
+
+                        if ($recycled['status'] == 'binned') {
+                            $number_of_binned_pages++;
+
+                            if ($recycled['home']) {
+                                $binned_home_page = true;
+                            }
+
+                            continue;
+                        }
+
+                        if ($recycled['status'] == 'error') {
+                            $bin_errors[] = $recycled['message'];
+                            continue;
+                        }
                     }
 
                     // if this page is a custom form, we need to check if there are submitted forms for this page,
@@ -748,6 +777,16 @@ if (!$_POST) {
 
                         $number_of_pages++;
                     }
+                }
+
+                if ($number_of_binned_pages > 0) {
+                    log_activity(lang(array('string' => '{var:1} page(s) were moved to the Recycle Bin.', 'vars' => $number_of_binned_pages)), $_SESSION['sessionusername']);
+                    $liveform->add_notice(lang(array('string' => '{var:1} page(s) were moved to the Recycle Bin.', 'vars' => $number_of_binned_pages))
+                        . ($binned_home_page ? ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.') : ''));
+                }
+
+                if (count($bin_errors) > 0) {
+                    $liveform->mark_error('bin_error', h(implode(' ', array_unique($bin_errors))));
                 }
 
                 // if more than 0 pages were deleted, then log activity

@@ -601,7 +601,13 @@ if (!$_POST) {
 
     // if the user is at least a manager or has access to delete pages, then output the delete button
     if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        // With the recycle bin installed the page goes there; one already in
+        // it is deleted for good.
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+        $delete_confirmation = (pg_recycle_ready() && !pg_recycle_is_inside($page_folder))
+            ? lang('This page will be moved to the Recycle Bin.')
+            : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page'))));
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
     print
@@ -975,6 +981,30 @@ if (!$_POST) {
         if (($user['role'] == '3') && ($user['delete_pages'] == FALSE)) {
             log_activity(lang('access denied because user does not have access to delete pages'), $_SESSION['sessionusername']);
             output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // With the recycle bin installed the page goes there, the way the file
+        // manager deletes it, and keeps everything it had until the bin is
+        // emptied. A page already in the bin is deleted for good below.
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+        if (pg_recycle_ready()) {
+            $recycled = pg_recycle_page($page_id, $user);
+
+            if ($recycled['status'] == 'error') {
+                output_error(h($recycled['message']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
+
+            if ($recycled['status'] == 'binned') {
+                log_activity(lang(array('string' => 'page ({var:1}) was moved to the Recycle Bin', 'vars' => $current_page_name)), $_SESSION['sessionusername']);
+
+                $liveform_view_pages = new liveform('view_pages');
+                $liveform_view_pages->add_notice(lang('The page was moved to the Recycle Bin.')
+                    . ($recycled['home'] ? ' ' . lang('It was the home page: the site has no home page until another page is marked as home.') : ''));
+
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_pages.php');
+                exit();
+            }
         }
         
         // if this page is a custom form, we need to check if there are submitted forms for this page,

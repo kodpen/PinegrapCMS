@@ -122,6 +122,12 @@ foreach ($styles as $style) {
         </tr>';
 }
 
+// Once the bin holds styles, the ones deleted here go there (delete_styles.php).
+require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+$delete_confirmation = pg_recycle_style_ready()
+    ? lang('The selected page styles will be moved to the Recycle Bin. Those still used by a folder or page are kept.')
+    : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('page styles'))));
+
 print
 pg_page_shell([
         'title'=> lang('All Page Styles'),
@@ -174,7 +180,7 @@ pg_page_shell([
                         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('page styles')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                 </div>
                             </div>
                         </nav>
