@@ -1502,21 +1502,7 @@ function ws_handle_action($action, $request)
             } elseif ($action === 'ws_thread_rename') {
                 $result = ws_thread_rename($viewer, $channel, (string) ($request['title'] ?? ''));
             } else {
-                $result = ws_channel_leave($viewer, $channel);
-                $thread = ws_thread($channel['id']);
-
-                // Nobody left in it: concluded, as if the last one had.
-                if ($result['ok'] && $thread && ((int) $thread['closed_at'] === 0)
-                    && ((int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'") === 0)) {
-                    db("UPDATE ws_threads SET closed_at = '" . time() . "', closed_by = '" . (int) $viewer['id'] . "',
-                            purge_at = '" . strtotime('+' . WS_THREAD_KEEP_DAYS . ' days') . "'
-                        WHERE channel_id = '" . (int) $channel['id'] . "'");
-                    db("UPDATE ws_channels SET archived_at = '" . time() . "' WHERE id = '" . (int) $channel['id'] . "'");
-                }
-
-                if ($result['ok'] && $thread) {
-                    ws_message_touch((int) $thread['message_id']);
-                }
+                $result = ws_thread_leave($viewer, $channel);
             }
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);

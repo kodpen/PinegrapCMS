@@ -765,6 +765,33 @@ function ws_can_close_poll($viewer, $poll, $channel)
 }
 
 /**
+ * May this person vote in the poll now? The checks ws_poll_vote() makes,
+ * without writing, so that a dry run meets the same refusals. A poll whose
+ * time ran out is refused as closed and said to be expired: the vote then
+ * closes it.
+ *
+ * @param array $viewer
+ * @param array $poll
+ * @return array ok, error, expired
+ */
+function ws_poll_vote_check($viewer, $poll)
+{
+    if ((int) $poll['closed_at'] > 0) {
+        return array('ok' => false, 'error' => lang('The poll is closed.'), 'expired' => false);
+    }
+
+    if (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time())) {
+        return array('ok' => false, 'error' => lang('The poll is closed.'), 'expired' => true);
+    }
+
+    if (!ws_can_post_channel($viewer, ws_channel($poll['channel_id']))) {
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'expired' => false);
+    }
+
+    return array('ok' => true, 'error' => '', 'expired' => false);
+}
+
+/**
  * Casts this person's vote, replacing the one they cast before. An empty
  * choice takes the vote back.
  *
@@ -775,18 +802,14 @@ function ws_can_close_poll($viewer, $poll, $channel)
  */
 function ws_poll_vote($viewer, $poll, $option_ids)
 {
-    if ((int) $poll['closed_at'] > 0) {
-        return array('ok' => false, 'error' => lang('The poll is closed.'));
-    }
+    $checked = ws_poll_vote_check($viewer, $poll);
 
-    if (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time())) {
-        ws_poll_close(null, $poll);
+    if (!$checked['ok']) {
+        if ($checked['expired']) {
+            ws_poll_close(null, $poll);
+        }
 
-        return array('ok' => false, 'error' => lang('The poll is closed.'));
-    }
-
-    if (!ws_can_post_channel($viewer, ws_channel($poll['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+        return array('ok' => false, 'error' => $checked['error']);
     }
 
     $valid = array_map('intval', (array) db_values("SELECT id FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "'"));

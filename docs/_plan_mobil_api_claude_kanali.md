@@ -149,8 +149,12 @@ sonraki küçük dilim.
   Alanı erişim kuralıyla verir. O kural ortak bir fonksiyona alınır (iki yerde kopyası olmaz).
   Görselde `?size=` küçük önizleme. Mesajdaki `file` alanına bu adres eklenir, eski `url` kalır.
 
-**M6 — Kanal tercihleri, anket, tartışma (K, şema yok).**
-`POST /workspace/channels/{id}/notify` {level}, `POST /workspace/polls/{id}/vote` {option_ids}
+**M6 — Kanal tercihleri, anket, tartışma (K, şema yok). Yapıldı (#381):** gövde alanı `level`
+değil `notify`, kanal nesnesindeki yeni alanla aynı; dördü de bildirim düzeyi dahil yalnız cihaz
+oturumundan (OAuth kabul), `dry_run` alır, MCP aracı değil. Panelin ayrılma mantığı
+`ws_thread_leave()`, oy denetimleri `ws_poll_vote_check()` olarak ortak fonksiyona alındı.
+Oylama açma, değiştirme ve kapatma API'de yok.
+`POST /workspace/channels/{id}/notify` {notify}, `POST /workspace/polls/{id}/vote` {option_ids}
 (mesajda anket bilgisi `poll` olarak döner), `POST /workspace/threads/{id}/join|leave`.
 Oy ve katılma yalnız cihaz oturumundan.
 

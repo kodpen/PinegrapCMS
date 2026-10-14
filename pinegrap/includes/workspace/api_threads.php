@@ -239,6 +239,110 @@ function ws_api_thread_start($params)
     api_ok(ws_api_thread_present($viewer, $thread, $room), $result['existing'] ? 200 : 201);
 }
 
+/**
+ * A discussion as joining and leaving find it: one started in a channel the
+ * owner may read, whether or not they are in it, as the bar under the
+ * message shows it. Anything else is a 404.
+ *
+ * @param array $viewer
+ * @param int   $id the discussion's id
+ * @return array the discussion's channel row, its ws_threads row
+ */
+function ws_api_thread_room_or_404($viewer, $id)
+{
+    $room = ws_channel((int) $id);
+    $parent = ws_thread_parent_channel($room);
+    $thread = $parent ? ws_thread($room['id']) : null;
+
+    if (!$thread || !ws_can_read_channel($viewer, $parent)) {
+        api_fail_not_found(lang('Discussion'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $parent['id']);
+
+    return array($room, $thread);
+}
+
+/**
+ * Joins a discussion the way Join on the bar under its message does: staff
+ * who read its channel, while it and its channel are open. The discussion
+ * gets a line saying who joined.
+ */
+function ws_api_threads_join($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_threads_ready();
+
+    list($room, $thread) = ws_api_thread_room_or_404($viewer, $params['id']);
+
+    ws_api_person_only(lang('Only the person, signed in on a device, can join or leave a discussion; an application cannot do it for them.'));
+
+    // Already in it: nothing to do.
+    if (ws_channel_membership($room['id'], $viewer['id'])) {
+        api_ok(ws_api_thread_present($viewer, $thread, $room));
+    }
+
+    // The checks ws_thread_join() makes, said one by one.
+    if (!ws_thread_can_join($viewer, $room)) {
+        if (((int) $thread['closed_at'] > 0) || ((int) $room['archived_at'] > 0)) {
+            api_fail_validation(lang('The discussion was concluded.'));
+        }
+
+        if ((int) ws_thread_parent_channel($room)['archived_at'] > 0) {
+            api_fail_validation(lang('This channel is archived. It can be read but not written in.'));
+        }
+
+        api_fail(403, 'forbidden', lang('Only staff who read its channel can join a discussion.'));
+    }
+
+    api_dry_run_stop('joined', 'workspace_thread', array('id' => (int) $room['id'], 'channel_id' => (int) $thread['parent_channel_id']));
+
+    $result = ws_thread_join($viewer, $room);
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    api_ok(ws_api_thread_present($viewer, $thread, ws_channel($room['id'])));
+}
+
+/**
+ * Leaves a discussion the way Leave in its menu does. The last one out
+ * concludes it. Somebody who was not in it is not an error.
+ */
+function ws_api_threads_leave($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_threads_ready();
+
+    list($room, $thread) = ws_api_thread_room_or_404($viewer, $params['id']);
+
+    ws_api_person_only(lang('Only the person, signed in on a device, can join or leave a discussion; an application cannot do it for them.'));
+
+    if (!ws_channel_membership($room['id'], $viewer['id'])) {
+        api_ok(ws_api_thread_present($viewer, $thread, $room));
+    }
+
+    $last = ((int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $room['id'] . "'") === 1);
+
+    api_dry_run_stop('left', 'workspace_thread', array('id' => (int) $room['id'], 'channel_id' => (int) $thread['parent_channel_id'],
+        'concludes' => $last && ((int) $thread['closed_at'] === 0)));
+
+    $result = ws_thread_leave($viewer, $room);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    // Read again: the last one out concluded it.
+    $after = db_item("SELECT * FROM ws_threads WHERE channel_id = '" . (int) $room['id'] . "'");
+
+    api_ok(ws_api_thread_present($viewer, is_array($after) ? $after : $thread, ws_channel($room['id'])));
+}
+
 /* ---------------------------------------------------------------------------
    Scheduled messages (scheduled_messages.php)
    --------------------------------------------------------------------------- */
