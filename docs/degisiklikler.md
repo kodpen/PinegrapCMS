@@ -84,6 +84,70 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ziyaret kaydı olmayan istekte para birimi seçicisi ve sepetin ilk satırı uyarı yazmıyor, para birimsiz istek geri dönüyor (2026-10-14)
+
+**Neden.** #431 ve #437'nin "Bilerek yapılmayan" maddeleri. Ziyaret kaydı
+(`visitors` satırı, oturumda `$_SESSION['software']['visitor_id']`) yalnız
+bir site sayfası açılınca `get_page.php` `init_tracking()` ile açılıyor;
+botlar hiç kayıt almıyor (#426). Kaydı olmayan iki yol o kaydı güncellemeye
+çalışıyordu:
+
+- `update_currency.php:48` (para birimi seçicisinin formu): ziyaretçi takibi
+  açıkken ziyaret kaydı olmayan istek (bot, önce sayfa açmadan gelen POST)
+  "Undefined array key visitor_id" uyarısı yazıyordu. Var olmayan bir
+  `currency_id` ayrıca satır 37'de "Trying to access array offset on null"
+  yazıyordu.
+- `includes/fn/ecommerce.php:4529` `initialize_order()` (sepetin ilk
+  satırında siparişi açan fonksiyon): kasa satışında (`add_order.php`)
+  site sayfası açmamış personel ilk ürünü ekleyince aynı uyarı. Botun
+  sepete ürün eklemesi de aynı yoldan geçiyordu.
+
+İki sorguda da `WHERE id = ''` hiçbir satıra dokunmuyordu; uyarıdan başka
+etkisi yoktu. Ayrıca `update_currency.php` para birimi gönderilmeyince
+(boş, eksik ya da dizi `currency_id`) yönlendirme `if` bloğunun içinde
+kaldığı için boş 200 sayfa veriyordu. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.**
+
+- İki `UPDATE visitors` yalnız `!empty($_SESSION['software']['visitor_id'])`
+  iken koşuyor (`VISITOR_TRACKING` koşulunun yanına). Kayıt yoksa kayıt
+  açılmıyor, sorgu atlanıyor; sipariş ve para birimi eskisi gibi yazılıyor.
+- `update_currency.php` para birimi kodunu `$row['code'] ?? ''` ile okuyor;
+  var olmayan para birimi eskisi gibi oturuma yazılıyor (`init.php` onu
+  bulamayınca ana para birimini kullanıyor), uyarı yok.
+- `update_currency.php`'nin yönlendirmesi bloğun dışına çıktı: para birimi
+  olsun olmasın ziyaretçi #431'in `pg_safe_redirect_path()` ile denetlenen
+  `send_to`'ya, yoksa ana sayfaya dönüyor. Para birimi olmayan istek
+  oturuma ve veritabanına eskisi gibi dokunmuyor.
+
+Yakın çevrede aynı türden başka okuma yok (`ecommerce.php` ve
+`update_currency.php`'de başka `visitor_id` okuması yok). Sipariş akışı
+ekranlarındaki (`shopping_cart`, `billing_information`, `submit_order`,
+`express_order`, `order_history_*`, `retrieve_order`) ve `custom_form`
+`visitor_id` okumaları kapsam dışı (devir notu).
+
+Şema, dil dosyası ve JS değişikliği yok. Test:
+`tests/visitor_record_optional_test.php` (iki dosyadaki her
+`UPDATE visitors` ziyaret kimliğini denetleyen bir `if` altında;
+yönlendirme dosyanın en üst düzeyinde; eski kodda iki test de düşüyor).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod (`origin/development`)
+ikinci portta, aynı veritabanı. Ziyaret kaydı olmayan oturumla (panel giriş
+sayfasından jeton) `update_currency.php`'ye yedi POST: eski kod üç
+"visitor_id" ve bir "array offset on null" uyarısı, para birimsiz, boş ve
+dizi `currency_id`'de boş 200 sayfa; yeni kod uyarı yok, yedisi de 302
+(`send_to=/shop` → `/shop`, `send_to` yok → `/`, `@evil.com/x` → `/`).
+Tarayıcı kullanıcı ajanıyla önce ana sayfa açılınca iki kodda da ziyaret
+satırının `currency_code`'u GBP oluyor. Kasa satışında site sayfası açmamış
+yöneticiyle ürün ekleme: eski kod `ecommerce.php:4529` uyarısı, yeni kod
+yok; JSON cevabı (satır numarası dışında) aynı. Önce ana sayfa açılınca iki
+kodda da ziyaret satırına `order_id` ve `order_created = 1` yazılıyor.
+`tools/lint.php`, `tools/test.php`, `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies`, `build_js.php --check` temiz.
+Doğrulanamadı: dev.pinegrap.com.
+
+---
+
 ## 2026.4.10 — `h(null)` ve `escape(null)` kullanım dışı satırı yazmıyor (2026-10-14)
 
 **Neden.** #417 panel taramasının K9 maddesi. Hata ayıklama açıkken

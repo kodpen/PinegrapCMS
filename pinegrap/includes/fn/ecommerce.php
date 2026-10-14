@@ -4515,7 +4515,8 @@ function initialize_order()
         // store order id in session
         $_SESSION['ecommerce']['order_id'] = mysqli_insert_id(db::$con);
         // if visitor tracking is on, update visitor record with order information, if visitor has not already created a previous order
-        if (VISITOR_TRACKING == true) {
+        // (a bot, or staff ringing up a counter sale, may have no visitor record)
+        if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
             $query = "UPDATE visitors
 
                      SET
