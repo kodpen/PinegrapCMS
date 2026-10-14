@@ -972,6 +972,22 @@
          eklenir; araç çağrısı kaydı ajan çağrılarını da
          ayırt eder.
 
+  [YENİ] Kendi yanıtlayan MCP sunucusu uzun süren bir işi
+         arka planda sürdürebiliyor: sunucu hemen yanıt
+         vermek yerine işin sürdüğünü bildiriyor, site iş
+         bitene dek soruyor ve yanıt hazır olunca mesajın
+         altına geliyor. Bu arada mesajın altındaki satır
+         işin sürdüğünü, sunucu söylüyorsa nerede olduğunu
+         gösteriyor. Soran kişi ya da bir yönetici bekleyen
+         veya süren isteği aynı satırdaki "Durdur" ile
+         durdurabiliyor; iş hizmette de iptal ediliyor. Bir
+         günü aşan iş kendiliğinden durduruluyor.
+
+  [ŞEMA] Ajan isteklerine arka planda süren işin kimliği,
+         sıradaki sorunun zamanı ve son ilerleme notu
+         kolonları eklenir; araç çağrısı kaydı süren
+         çağrıyı da ayırt eder.
+
   [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
          örneğin müşteriye e-postayla sorulabiliyor. Onay
          formunda "Ekip dışından müşteriler" bölümüne ad ve

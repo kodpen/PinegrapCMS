@@ -289,7 +289,7 @@ function pg_panel_actions()
         'ws_ai_draft_dismiss', 'ws_ai_change_apply', 'ws_ai_change_dismiss',
         'ws_ai_bulk_step', 'ws_ai_design_apply', 'ws_ai_design_revert',
         'ws_ai_design_dismiss', 'ws_claude_kick', 'ws_ai_kick', 'ws_mcp_agent_kick',
-        'ws_channel_ai', 'ws_guest_start', 'ws_guest_relink',
+        'ws_mcp_agent_cancel', 'ws_channel_ai', 'ws_guest_start', 'ws_guest_relink',
         'ws_guest_end', 'ws_channel_share', 'ws_thread_start',
         'ws_thread_join', 'ws_thread_close', 'ws_thread_rename',
         'ws_thread_leave', 'ws_share_relink', 'ws_share_end',

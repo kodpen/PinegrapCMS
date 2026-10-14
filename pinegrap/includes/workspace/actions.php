@@ -2083,6 +2083,14 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('status' => (string) $kick['status']));
 
+        // Stops a request to an MCP agent that waits or runs, and the task
+        // its agent works on (mcp_agent.php): the one who asked, or an
+        // administrator.
+        case 'ws_mcp_agent_cancel':
+            $error = function_exists('ws_mcp_agent_cancel') ? ws_mcp_agent_cancel($viewer, (int) ($request['request_id'] ?? 0)) : lang('That request could not be found.');
+
+            return ($error === '') ? ws_action_ok() : ws_action_error($error);
+
         // Whether Pinegrap AI may be asked in a channel.
         case 'ws_channel_ai':
             $channel = ws_action_channel($viewer, $request, 'manage');

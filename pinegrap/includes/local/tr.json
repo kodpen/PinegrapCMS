@@ -22970,5 +22970,13 @@
     "The tool {var:1} cannot take the messages: it must take a text and be turned on as one that reads only. Pinegrap AI answers @{var:2} meanwhile.": "{var:1} aracı mesajları alamaz: metin alan ve yalnız okuyan bir araç olarak açık olmalı. Bu arada @{var:2} için Pinegrap AI yanıtlar.",
     "Its own agent answers": "Kendi ajanı yanıtlar",
     "the MCP server @{var:1} answers its messages itself": "MCP sunucusu @{var:1} mesajlarını kendi yanıtlıyor",
-    "the MCP server @{var:1} is answered by Pinegrap AI again": "MCP sunucusu @{var:1} yeniden Pinegrap AI ile yanıtlanıyor"
+    "the MCP server @{var:1} is answered by Pinegrap AI again": "MCP sunucusu @{var:1} yeniden Pinegrap AI ile yanıtlanıyor",
+    "The MCP server asked for more input before it answers, which cannot be given from here yet.": "MCP sunucusu yanıtlamadan önce daha fazla bilgi istedi; bu bilgi henüz buradan verilemiyor.",
+    "The work ended with an error": "İş bir hatayla sona erdi",
+    "@{var:1} stopped the work.": "@{var:1} işi durdurdu.",
+    "@{var:1} asked for more input, which cannot be given from here yet.": "@{var:1} daha fazla bilgi istedi; bu bilgi henüz buradan verilemiyor.",
+    "@{var:1} did not finish the work within a day.": "@{var:1} işi bir gün içinde bitirmedi.",
+    "That request could not be found.": "Bu istek bulunamadı.",
+    "Only the person who asked, or an administrator, can stop it.": "Bunu yalnız soran kişi ya da bir yönetici durdurabilir.",
+    "Stop this request? Work the agent does in the background is cancelled on the service too, and an answer still on its way is not posted.": "Bu istek durdurulsun mu? Ajanın arka planda yaptığı iş hizmette de iptal edilir, yolda olan bir yanıt da yazılmaz."
 }

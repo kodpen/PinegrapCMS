@@ -18,6 +18,17 @@
  * the screens waiting for it (ws_mcp_agent_kick) and by the hourly job, one
  * call per request; the call is kept in ws_mcp_calls with via 'agent'.
  *
+ * An agent whose work takes longer than a call may answer with a task (the
+ * tasks extension of the current generation of the protocol): a handle the
+ * site keeps in ws_ai_requests.mcp_task and asks about (tasks/get) as often
+ * as the server asks, from the same screens and the hourly job, until the
+ * task ends; its result is posted as an answer given at once would be. The
+ * line under the message says the agent is working, in the server's own
+ * words when it gives some. The person who asked, or an administrator, can
+ * stop a request that waits or runs; a task is then cancelled on the server
+ * too (tasks/cancel), and so is one that stops meeting the rules below, asks
+ * for more input or runs longer than a day.
+ *
  * The rules of the other tools hold: the tool must be turned on as one that
  * reads only (the server says so, or the administrator declares it), it runs
  * with the asker's own account where people sign in to the service and they
@@ -64,6 +75,23 @@ define('WS_MCP_AGENT_CONTEXT_LIMIT', 2000);
 /** The names an agent's text argument usually has, the likeliest first. */
 define('WS_MCP_AGENT_ARGUMENT_NAMES', 'message,prompt,query,question,input,text,request,task,content');
 
+/** A task an agent works on in the background is stopped after this many seconds. */
+define('WS_MCP_AGENT_TASK_LIMIT', 86400);
+
+/**
+ * Seconds between two questions about a task: what the server asks for,
+ * within these bounds, and what is waited when it does not say.
+ */
+define('WS_MCP_AGENT_POLL_MIN', 2);
+define('WS_MCP_AGENT_POLL_MAX', 600);
+define('WS_MCP_AGENT_POLL_DEFAULT', 5);
+
+/** After a question about a task that did not reach the server, the next one waits this long. */
+define('WS_MCP_AGENT_POLL_RETRY', 60);
+
+/** How long one question about a task may take, in seconds. */
+define('WS_MCP_AGENT_POLL_TIMEOUT', 20);
+
 /**
  * Has the schema step that brought agents in (2026.4.10, 10.89) run?
  *
@@ -78,6 +106,41 @@ function ws_mcp_agent_ready()
     }
 
     return $ready;
+}
+
+/**
+ * Has the schema step that lets agents work in the background (2026.4.10,
+ * 10.110) run?
+ *
+ * @return bool
+ */
+function ws_mcp_agent_tasks_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_mcp_agent_ready() && waf_table_has_column('ws_ai_requests', 'mcp_task');
+    }
+
+    return $ready;
+}
+
+/**
+ * Seconds until a task is asked about again, from the interval the server
+ * asked for (milliseconds, 0 when it did not say).
+ *
+ * @param int $poll_ms
+ * @return int
+ */
+function ws_mcp_agent_poll_delay($poll_ms)
+{
+    $poll_ms = (int) $poll_ms;
+
+    if ($poll_ms <= 0) {
+        return WS_MCP_AGENT_POLL_DEFAULT;
+    }
+
+    return (int) min(WS_MCP_AGENT_POLL_MAX, max(WS_MCP_AGENT_POLL_MIN, (int) ceil($poll_ms / 1000)));
 }
 
 /**
@@ -267,12 +330,31 @@ function ws_mcp_agent_after_send($viewer, $channel, $message_id, $body)
 }
 
 /**
- * Where a request to an agent stands, as the line under it says it.
+ * May a person stop a request to an agent: the one who asked, or an
+ * administrator, while it waits or runs.
  *
- * @param array $row
- * @return array status, label, icon, session_url, agent
+ * @param array|null $viewer
+ * @param array      $row
+ * @return bool
  */
-function ws_mcp_agent_request_state($row)
+function ws_mcp_agent_can_cancel($viewer, $row)
+{
+    if (!is_array($viewer) || !in_array((string) $row['status'], array('queued', 'sent', 'running'), true)) {
+        return false;
+    }
+
+    return ((int) $viewer['id'] === (int) $row['requested_by']) || ((int) $viewer['role'] === 0);
+}
+
+/**
+ * Where a request to an agent stands, as the line under it says it. An
+ * agent working in the background says where it is in its own words.
+ *
+ * @param array      $row
+ * @param array|null $viewer who reads it: whether they may stop it
+ * @return array status, label, icon, session_url, agent, cancel
+ */
+function ws_mcp_agent_request_state($row, $viewer = null)
 {
     $server = ws_mcp_server((int) ($row['mcp_server_id'] ?? 0));
     $alias = $server ? (string) $server['alias'] : 'mcp';
@@ -287,6 +369,12 @@ function ws_mcp_agent_request_state($row)
         case 'sent':
         case 'running':
             $label = lang(array('string' => '@{var:1} is working on it', 'vars' => $alias));
+            $note = trim((string) ($row['mcp_task_note'] ?? ''));
+
+            if ($note !== '') {
+                $label .= ': ' . $note;
+            }
+
             $icon = 'bi-plug';
             break;
 
@@ -313,6 +401,7 @@ function ws_mcp_agent_request_state($row)
         'icon'        => $icon,
         'session_url' => '',
         'agent'       => 'mcp',
+        'cancel'      => ws_mcp_agent_can_cancel($viewer, $row),
     );
 }
 
@@ -428,33 +517,45 @@ function ws_mcp_agent_answer_body($alias, $tool, $answer)
 }
 
 /**
- * Closes a request as not done; the line under the message says why.
+ * Closes a request as not done - failed, or cancelled - unless it ended
+ * already; the line under the message says why.
  *
  * @param array  $row
  * @param string $reason
+ * @param string $status failed | cancelled
+ * @return bool closed here
  */
-function ws_mcp_agent_fail($row, $reason)
+function ws_mcp_agent_fail($row, $reason, $status = 'failed')
 {
-    db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e(trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $reason), 0, 250))) . "',
+    db("UPDATE ws_ai_requests SET status = '" . (($status === 'cancelled') ? 'cancelled' : 'failed') . "',
+            error = '" . e(trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $reason), 0, 250))) . "',
             answered_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
+    $closed = (mysqli_affected_rows(db::$con) > 0);
+
     ws_message_touch((int) $row['message_id']);
+
+    return $closed;
 }
 
 /**
- * Sends one request to its agent and posts the answer.
+ * What a request needs to be carried on, checked again at every step: the
+ * server, the person who asked and their right to post in the channel, a
+ * channel where Pinegrap AI may be asked, the message, and the rules of the
+ * agent (ws_mcp_agent_problem()).
  *
- * @param array $row     the request, claimed (status running)
- * @param int   $timeout seconds the call may take
- * @return bool answered
+ * @param array $row
+ * @return array error ('' when it may go on), server, asker, channel, message
  */
-function ws_mcp_agent_run($row, $timeout)
+function ws_mcp_agent_context($row)
 {
-    $fail = function ($reason) use ($row) {
-        ws_mcp_agent_fail($row, $reason);
+    $out = array('error' => '', 'server' => null, 'asker' => null, 'channel' => null, 'message' => null);
 
-        return false;
+    $fail = function ($reason) use (&$out) {
+        $out['error'] = $reason;
+
+        return $out;
     };
 
     $server = ws_mcp_server((int) $row['mcp_server_id']);
@@ -491,6 +592,162 @@ function ws_mcp_agent_run($row, $timeout)
         return $fail($problem);
     }
 
+    return array('error' => '', 'server' => $server, 'asker' => $asker, 'channel' => $channel, 'message' => $message);
+}
+
+/**
+ * The connection a request goes over: with the asker's own account when
+ * they connected one (OAuth servers), else the site's; and, once the schema
+ * step that keeps tasks has run, telling the server the site follows tasks.
+ *
+ * @param array $server
+ * @param int   $timeout
+ * @param int   $asker_id
+ * @return array
+ */
+function ws_mcp_agent_connection($server, $timeout, $asker_id)
+{
+    $conn = ws_mcp_connection($server, $timeout, (int) $asker_id);
+
+    if (ws_mcp_agent_tasks_ready()) {
+        $conn['extensions'] = array(PG_MCP_CLIENT_TASKS);
+    }
+
+    return $conn;
+}
+
+/**
+ * What a tool's result says: the answer as text, or why there is none.
+ *
+ * @param array      $server
+ * @param array|null $result the tool's result (CallToolResult)
+ * @return array answer, error ('' when there is an answer)
+ */
+function ws_mcp_agent_result($server, $result)
+{
+    $result = is_array($result) ? $result : array();
+    $answer = pg_mcp_client_result_text($result, WS_MESSAGE_MAX);
+
+    if (!empty($result['isError'])) {
+        $error = lang(array('string' => 'The tool answered with an error: {var:1}', 'vars' => trim(preg_replace('/\s+/u', ' ', mb_substr($answer, 0, 200)))));
+    } elseif ($answer === '') {
+        $error = lang(array('string' => '@{var:1} sent back an empty answer.', 'vars' => $server['alias']));
+    } else {
+        $error = '';
+    }
+
+    return array('answer' => $answer, 'error' => $error);
+}
+
+/**
+ * The record of the call a request made (ws_mcp_calls).
+ *
+ * @param array $row
+ * @return array|null
+ */
+function ws_mcp_agent_call_of($row)
+{
+    $call = db_item("SELECT * FROM ws_mcp_calls WHERE request_id = '" . (int) $row['id'] . "' AND via = 'agent' ORDER BY id DESC LIMIT 1");
+
+    return is_array($call) ? $call : null;
+}
+
+/**
+ * Ends the record of a call whose agent worked on in the background: how it
+ * ended, and how long it took from the call.
+ *
+ * @param array|null $call
+ * @param string     $error '' when it was answered
+ */
+function ws_mcp_agent_call_end($call, $error)
+{
+    if (!$call || ((string) $call['status'] !== 'running')) {
+        return;
+    }
+
+    db("UPDATE ws_mcp_calls SET status = '" . (($error === '') ? 'done' : 'failed') . "',
+            error = '" . e(mb_substr((string) $error, 0, 250)) . "',
+            duration_ms = '" . (int) min(4294967295, max(0, time() - (int) $call['created_at']) * 1000) . "',
+            finished_at = '" . time() . "'
+        WHERE id = '" . (int) $call['id'] . "' AND status = 'running'");
+}
+
+/**
+ * Posts an agent's answer under the message that asked, in the asker's
+ * name, locked, and closes the request as answered - unless it was given up
+ * or stopped while the agent worked.
+ *
+ * @param array  $row
+ * @param array  $context as ws_mcp_agent_context() answers it
+ * @param string $tool    the tool that answered
+ * @param string $answer
+ * @param int    $call_id the record of the call
+ * @return bool answered
+ */
+function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id)
+{
+    $current = (string) db_value("SELECT status FROM ws_ai_requests WHERE id = '" . (int) $row['id'] . "'");
+
+    if ($current !== 'running') {
+        return false;
+    }
+
+    $server = $context['server'];
+    $asker = $context['asker'];
+    $channel = $context['channel'];
+    $message = $context['message'];
+
+    $sent = ws_message_send($asker, $channel, ws_mcp_agent_answer_body($server['alias'], $tool, $answer), array('parent_id' => (int) $message['id']));
+
+    if (!$sent['ok']) {
+        ws_mcp_agent_fail($row, $sent['error']);
+
+        return false;
+    }
+
+    $reply_id = (int) $sent['message_id'];
+
+    // The answer is the service's, not the person's words: nobody edits it.
+    db("UPDATE ws_messages SET locked = 1 WHERE id = '" . $reply_id . "'");
+    db("UPDATE ws_mcp_calls SET message_id = '" . $reply_id . "' WHERE id = '" . (int) $call_id . "'");
+
+    if (function_exists('ws_thread_copy_sync')) {
+        ws_thread_copy_sync($reply_id);
+    }
+
+    db("UPDATE ws_ai_requests SET status = 'answered', reply_message_id = '" . $reply_id . "', answered_at = '" . time() . "', error = ''
+        WHERE id = '" . (int) $row['id'] . "'");
+
+    ws_message_touch((int) $message['id']);
+
+    log_activity(lang(array('string' => 'the MCP agent @{var:1} answered a message in #{var:2}', 'vars' => array($server['alias'], $channel['name']))), (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $asker['id'] . "'"));
+
+    return true;
+}
+
+/**
+ * Sends one request to its agent and posts the answer. An agent that works
+ * on in the background answers with a task instead: the task is kept and
+ * asked about from then on (ws_mcp_agent_poll()).
+ *
+ * @param array $row     the request, claimed (status running)
+ * @param int   $timeout seconds the call may take
+ * @return bool answered
+ */
+function ws_mcp_agent_run($row, $timeout)
+{
+    $context = ws_mcp_agent_context($row);
+
+    if ($context['error'] !== '') {
+        ws_mcp_agent_fail($row, $context['error']);
+
+        return false;
+    }
+
+    $server = $context['server'];
+    $asker = $context['asker'];
+    $channel = $context['channel'];
+    $message = $context['message'];
     $tool = ws_mcp_agent_tool($server);
 
     // A reply: the agent reads the message it answers too. An answer of an
@@ -522,8 +779,7 @@ function ws_mcp_agent_run($row, $timeout)
         @set_time_limit($timeout * 2 + 30);
     }
 
-    // With the asker's own account when they connected one (OAuth servers).
-    $conn = ws_mcp_connection($server, $timeout, (int) $asker['id']);
+    $conn = ws_mcp_agent_connection($server, $timeout, (int) $asker['id']);
     $started = microtime(true);
     $now = time();
     $out = pg_mcp_client_call_tool($conn, $tool['name'], json_decode($arguments));
@@ -534,20 +790,22 @@ function ws_mcp_agent_run($row, $timeout)
     }
 
     $duration = (int) round((microtime(true) - $started) * 1000);
-    $answer = $out['ok'] ? pg_mcp_client_result_text($out['result'], WS_MESSAGE_MAX) : '';
+    $task = ($out['ok'] && !empty($out['task'])) ? $out['task'] : null;
+    $answer = '';
 
     if (!$out['ok']) {
         $error = lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], ws_mcp_error_text($server, $out['status'] ?? 0, $out['error'], $conn['person']))));
-    } elseif ($out['is_error']) {
-        $error = lang(array('string' => 'The tool answered with an error: {var:1}', 'vars' => trim(preg_replace('/\s+/u', ' ', mb_substr($answer, 0, 200)))));
-    } elseif ($answer === '') {
-        $error = lang(array('string' => '@{var:1} sent back an empty answer.', 'vars' => $server['alias']));
-    } else {
+    } elseif ($task) {
         $error = '';
+    } else {
+        $outcome = ws_mcp_agent_result($server, $out['result']);
+        $answer = $outcome['answer'];
+        $error = $outcome['error'];
     }
 
     ws_mcp_remember($server, $conn, $out['ok'] ? '' : $error);
 
+    // A task's call goes on: it is ended when the task is (ws_mcp_agent_call_end()).
     db("INSERT INTO ws_mcp_calls (server_id, tool, arguments, via, requested_by, channel_id, message_id, request_id, status, error, duration_ms, created_at, finished_at)
         VALUES (
             '" . (int) $server['id'] . "',
@@ -558,56 +816,246 @@ function ws_mcp_agent_run($row, $timeout)
             '" . (int) $channel['id'] . "',
             '" . (int) $message['id'] . "',
             '" . (int) $row['id'] . "',
-            '" . (($error === '') ? 'done' : 'failed') . "',
+            '" . ($task ? 'running' : (($error === '') ? 'done' : 'failed')) . "',
             '" . e(mb_substr($error, 0, 250)) . "',
             '" . $duration . "',
             '" . $now . "',
-            '" . time() . "')");
+            '" . ($task ? 0 : time()) . "')");
 
     $call_id = (int) mysqli_insert_id(db::$con);
 
     db("UPDATE ws_mcp_servers SET last_used = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");
 
     if ($error !== '') {
-        return $fail($error);
-    }
+        ws_mcp_agent_fail($row, $error);
 
-    // The request may have been given up while the agent worked.
-    $current = (string) db_value("SELECT status FROM ws_ai_requests WHERE id = '" . (int) $row['id'] . "'");
-
-    if ($current !== 'running') {
         return false;
     }
 
-    $sent = ws_message_send($asker, $channel, ws_mcp_agent_answer_body($server['alias'], $tool['name'], $answer), array('parent_id' => (int) $message['id']));
+    if ($task) {
+        ws_mcp_agent_task_keep($row, $task, $conn, $call_id);
 
-    if (!$sent['ok']) {
-        return $fail($sent['error']);
+        return false;
     }
 
-    $reply_id = (int) $sent['message_id'];
+    return ws_mcp_agent_post($row, $context, $tool['name'], $answer, $call_id);
+}
 
-    // The answer is the service's, not the person's words: nobody edits it.
-    db("UPDATE ws_messages SET locked = 1 WHERE id = '" . $reply_id . "'");
-    db("UPDATE ws_mcp_calls SET message_id = '" . $reply_id . "' WHERE id = '" . $call_id . "'");
+/**
+ * Keeps the task an agent answered a call with: the request runs on, and
+ * the task is asked about after the interval the server asks for - at once
+ * when it says it ended already. A request stopped while the call was on
+ * its way gets its task cancelled on the server.
+ *
+ * @param array $row
+ * @param array $task    as pg_mcp_client_task() keeps it
+ * @param array $conn    the connection the call went over
+ * @param int   $call_id the record of the call
+ */
+function ws_mcp_agent_task_keep($row, $task, $conn, $call_id)
+{
+    $ended = in_array($task['status'], array('completed', 'failed', 'cancelled', 'input_required'), true);
+    $next = $ended ? time() : time() + ws_mcp_agent_poll_delay($task['poll_ms']);
 
-    if (function_exists('ws_thread_copy_sync')) {
-        ws_thread_copy_sync($reply_id);
+    db("UPDATE ws_ai_requests SET mcp_task = '" . e($task['id']) . "', mcp_task_poll = '" . $next . "', mcp_task_note = '" . e($task['message']) . "'
+        WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        pg_mcp_client_cancel_task($conn, $task['id']);
+        ws_mcp_agent_call_end(db_item("SELECT * FROM ws_mcp_calls WHERE id = '" . (int) $call_id . "'"), lang('Cancelled'));
+
+        return;
     }
 
-    db("UPDATE ws_ai_requests SET status = 'answered', reply_message_id = '" . $reply_id . "', answered_at = '" . time() . "', error = ''
-        WHERE id = '" . (int) $row['id'] . "'");
+    ws_message_touch((int) $row['message_id']);
+}
 
-    ws_message_touch((int) $message['id']);
+/**
+ * Asks about the task a request's agent works on and carries the request on
+ * by what the server says: the result is posted, a task that failed or was
+ * cancelled closes the request, one that asks for input is stopped (input
+ * cannot be given from here yet), and one still working is asked about
+ * again after the interval the server asks for. Every rule is checked again
+ * first: one that no longer holds stops the task.
+ *
+ * @param array $row     the request, its question claimed
+ * @param int   $timeout seconds the question may take at most
+ * @return bool answered
+ */
+function ws_mcp_agent_poll($row, $timeout)
+{
+    $context = ws_mcp_agent_context($row);
 
-    log_activity(lang(array('string' => 'the MCP agent @{var:1} answered a message in #{var:2}', 'vars' => array($server['alias'], $channel['name']))), (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $asker['id'] . "'"));
+    if ($context['error'] !== '') {
+        ws_mcp_agent_task_stop($row, $context['error']);
+
+        return false;
+    }
+
+    $server = $context['server'];
+    $call = ws_mcp_agent_call_of($row);
+    $task_id = (string) $row['mcp_task'];
+    $conn = ws_mcp_agent_connection($server, min((int) $timeout, WS_MCP_AGENT_POLL_TIMEOUT), (int) $context['asker']['id']);
+    $out = pg_mcp_client_get_task($conn, $task_id);
+
+    // A token the service no longer takes is renewed once (OAuth servers).
+    if (!$out['ok'] && ws_mcp_reauthorize($conn, $server, $out['status'])) {
+        $out = pg_mcp_client_get_task($conn, $task_id);
+    }
+
+    if (!$out['ok']) {
+        $error = lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], ws_mcp_error_text($server, $out['status'], $out['error'], $conn['person']))));
+
+        ws_mcp_remember($server, $conn, $error);
+
+        // Not reached, or the server could not answer for a moment: asked
+        // again a little later, until the task's time is up.
+        if (($out['code'] === 0) && (($out['status'] === 0) || ($out['status'] === 429) || ($out['status'] >= 500))) {
+            db("UPDATE ws_ai_requests SET mcp_task_poll = '" . (time() + WS_MCP_AGENT_POLL_RETRY) . "'
+                WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
+
+            return false;
+        }
+
+        // The server no longer knows the task, or refuses: the work is lost.
+        if (ws_mcp_agent_fail($row, $error)) {
+            ws_mcp_agent_call_end($call, $error);
+        }
+
+        return false;
+    }
+
+    ws_mcp_remember($server, $conn, '');
+
+    $task = $out['task'];
+    $tool = $call ? (string) $call['tool'] : (string) $server['agent_tool'];
+
+    switch ($task['status']) {
+        case 'completed':
+            $outcome = ws_mcp_agent_result($server, $task['result']);
+
+            ws_mcp_agent_call_end($call, $outcome['error']);
+
+            if ($outcome['error'] !== '') {
+                ws_mcp_agent_fail($row, $outcome['error']);
+
+                return false;
+            }
+
+            return ws_mcp_agent_post($row, $context, $tool, $outcome['answer'], $call ? (int) $call['id'] : 0);
+
+        case 'failed':
+            $error = trim(lang('The work ended with an error') . ': ' . $task['error'], ': ');
+
+            if (ws_mcp_agent_fail($row, $error)) {
+                ws_mcp_agent_call_end($call, $error);
+            }
+
+            return false;
+
+        case 'cancelled':
+            $reason = ($task['message'] !== '') ? $task['message'] : lang(array('string' => '@{var:1} stopped the work.', 'vars' => $server['alias']));
+
+            if (ws_mcp_agent_fail($row, $reason, 'cancelled')) {
+                ws_mcp_agent_call_end($call, $reason);
+            }
+
+            return false;
+
+        case 'input_required':
+            ws_mcp_agent_task_stop($row, lang(array('string' => '@{var:1} asked for more input, which cannot be given from here yet.', 'vars' => $server['alias'])), 'failed', $conn);
+
+            return false;
+    }
+
+    // Still working: asked about again after the interval the server asks
+    // for. What it says of its progress shows under the message.
+    db("UPDATE ws_ai_requests SET mcp_task_poll = '" . (time() + ws_mcp_agent_poll_delay($task['poll_ms'])) . "', mcp_task_note = '" . e($task['message']) . "'
+        WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
+
+    if ($task['message'] !== (string) $row['mcp_task_note']) {
+        ws_message_touch((int) $row['message_id']);
+    }
+
+    return false;
+}
+
+/**
+ * Stops a request: closes it, failed or cancelled, and when its agent works
+ * on a task, asks the server to stop that too. Stopping is the server's to
+ * do; the request is closed whatever it answers, and a server that is
+ * switched off is not called, not even to stop.
+ *
+ * @param array      $row
+ * @param string     $reason
+ * @param string     $status failed | cancelled
+ * @param array|null $conn   a connection already open to the server
+ * @return bool stopped here (false when it had ended already)
+ */
+function ws_mcp_agent_task_stop($row, $reason, $status = 'failed', $conn = null)
+{
+    if (!ws_mcp_agent_fail($row, $reason, $status)) {
+        return false;
+    }
+
+    $task_id = (string) ($row['mcp_task'] ?? '');
+
+    if ($task_id === '') {
+        return true;
+    }
+
+    ws_mcp_agent_call_end(ws_mcp_agent_call_of($row), $reason);
+
+    $server = ws_mcp_server((int) $row['mcp_server_id']);
+
+    if ($server && ((string) $server['status'] === 'active')) {
+        if (!$conn) {
+            $conn = ws_mcp_agent_connection($server, WS_MCP_AGENT_POLL_TIMEOUT, (int) $row['requested_by']);
+        }
+
+        pg_mcp_client_cancel_task($conn, $task_id);
+    }
 
     return true;
 }
 
 /**
+ * A person stops a request to an agent while it waits or runs: the one who
+ * asked, or an administrator. A task the agent works on is cancelled on the
+ * server too; an answer still on its way is not posted.
+ *
+ * @param array $viewer
+ * @param int   $request_id
+ * @return string '' when it is stopped (or had ended already), else why not
+ */
+function ws_mcp_agent_cancel($viewer, $request_id)
+{
+    $row = ws_mcp_agent_ready() ? db_item("SELECT * FROM ws_ai_requests WHERE id = '" . (int) $request_id . "' AND agent = 'mcp'") : null;
+
+    if (!is_array($row)) {
+        return lang('That request could not be found.');
+    }
+
+    if (!in_array((string) $row['status'], array('queued', 'sent', 'running'), true)) {
+        return '';
+    }
+
+    if (!ws_mcp_agent_can_cancel($viewer, $row)) {
+        return lang('Only the person who asked, or an administrator, can stop it.');
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(WS_MCP_AGENT_POLL_TIMEOUT * 2 + 30);
+    }
+
+    ws_mcp_agent_task_stop($row, lang(array('string' => 'Stopped by {var:1}.', 'vars' => ws_person_name((int) $viewer['id']))), 'cancelled');
+
+    return '';
+}
+
+/**
  * Gives up on requests that stopped moving and on the ones nobody carried
- * on in a day.
+ * on in a day, and stops the tasks agents worked on for longer than a day.
  */
 function ws_mcp_agent_watchdog()
 {
@@ -619,9 +1067,11 @@ function ws_mcp_agent_watchdog()
 
     $done = true;
     $now = time();
+    $tasks = ws_mcp_agent_tasks_ready();
 
+    // A task's request runs for as long as the task: its own limit holds.
     foreach ((array) db_items("SELECT * FROM ws_ai_requests
-        WHERE agent = 'mcp' AND status IN ('sent', 'running') AND claimed_at < '" . ($now - WS_MCP_AGENT_STALE) . "'
+        WHERE agent = 'mcp' AND status IN ('sent', 'running') AND claimed_at < '" . ($now - WS_MCP_AGENT_STALE) . "'" . ($tasks ? " AND mcp_task = ''" : '') . "
         LIMIT 50") as $row) {
         $server = ws_mcp_server((int) $row['mcp_server_id']);
         ws_mcp_agent_fail($row, lang(array('string' => '@{var:1} did not answer in time.', 'vars' => $server ? $server['alias'] : 'mcp')));
@@ -634,13 +1084,25 @@ function ws_mcp_agent_watchdog()
             WHERE id = '" . (int) $row['id'] . "' AND status = 'queued'");
         ws_message_touch((int) $row['message_id']);
     }
+
+    // Stopping a task is a call to its server: a few at a time.
+    if ($tasks) {
+        foreach ((array) db_items("SELECT * FROM ws_ai_requests
+            WHERE agent = 'mcp' AND status = 'running' AND mcp_task <> '' AND sent_at < '" . ($now - WS_MCP_AGENT_TASK_LIMIT) . "'
+            ORDER BY id LIMIT 5") as $row) {
+            $server = ws_mcp_server((int) $row['mcp_server_id']);
+            ws_mcp_agent_task_stop($row, lang(array('string' => '@{var:1} did not finish the work within a day.', 'vars' => $server ? $server['alias'] : 'mcp')));
+        }
+    }
 }
 
 /**
- * Carries the waiting requests on: takes the oldest one, sends it and posts
- * the answer, and takes another only while the budget lasts. Called by
- * every screen waiting for an answer and by the hourly job; requests are
- * taken one by one, so two screens never send the same one.
+ * Carries the waiting requests on: first asks about the tasks agents work
+ * on whose next question is due, then takes the oldest request waiting,
+ * sends it and posts the answer, and takes another only while the budget
+ * lasts. Called by every screen waiting for an answer and by the hourly
+ * job; requests and questions are claimed one by one, so two screens never
+ * send the same request or ask the same question.
  *
  * The caller closes the session first: a call that waits for the agent
  * must not hold the person's other screens up.
@@ -663,6 +1125,28 @@ function ws_mcp_agent_kick($budget = 1, $timeout = WS_MCP_AGENT_TIMEOUT)
 
     $started = time();
     $status = 'idle';
+
+    // A question is claimed by moving its time on: a screen that dies while
+    // it waits for the answer leaves it to be asked again a little later.
+    if (ws_mcp_agent_tasks_ready()) {
+        foreach ((array) db_items("SELECT * FROM ws_ai_requests
+            WHERE agent = 'mcp' AND status = 'running' AND mcp_task <> '' AND mcp_task_poll <= '" . $started . "'
+            ORDER BY mcp_task_poll, id LIMIT 5") as $row) {
+            db("UPDATE ws_ai_requests SET mcp_task_poll = '" . (time() + WS_MCP_AGENT_POLL_TIMEOUT + 30) . "'
+                WHERE id = '" . (int) $row['id'] . "' AND status = 'running' AND mcp_task_poll = '" . (int) $row['mcp_task_poll'] . "'");
+
+            if (mysqli_affected_rows(db::$con) < 1) {
+                continue;
+            }
+
+            $status = 'working';
+            ws_mcp_agent_poll($row, $timeout);
+
+            if ((time() - $started) >= $budget) {
+                return array('status' => $status);
+            }
+        }
+    }
 
     for ($guard = 0; $guard < 20; $guard++) {
         $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = 'mcp' AND status = 'queued' ORDER BY id LIMIT 1");
@@ -693,7 +1177,8 @@ function ws_mcp_agent_kick($budget = 1, $timeout = WS_MCP_AGENT_TIMEOUT)
 }
 
 /**
- * The hourly job: the watchdog, and the requests nobody's screen carried on.
+ * The hourly job: the watchdog, the questions about tasks that are due, and
+ * the requests nobody's screen carried on.
  */
 function ws_mcp_agent_job()
 {
