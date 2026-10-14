@@ -291,7 +291,7 @@ class liveform {
                     
                     // if value is an array, then this field was previously a multi-selection field, so we will use the first value in the array
                     if (is_array($value) == true) {
-                        $value = $value[0];
+                        $value = $this->first_value($value);
                     }
                 }
                 $style = $this->create_error_style($field, $style);
@@ -488,7 +488,7 @@ class liveform {
                     
                     // if value is an array, then this field was previously a multi-selection field, so we will use the first value in the array
                     if (is_array($value) == true) {
-                        $value = $value[0];
+                        $value = $this->first_value($value);
                     }
                 }
                 $style = $this->create_error_style($field, $style);
@@ -525,7 +525,7 @@ class liveform {
                     
                     // if value is an array, then this field was previously a multi-selection field, so we will use the first value in the array
                     if (is_array($value) == true) {
-                        $value = $value[0];
+                        $value = $this->first_value($value);
                     }
                 }
                 $style = $this->create_error_style($field, $style);
@@ -553,7 +553,7 @@ class liveform {
                     
                     // if value is an array, then this field was previously a multi-selection field, so we will use the first value in the array
                     if (is_array($value) == true) {
-                        $value = $value[0];
+                        $value = $this->first_value($value);
                     }
                 }
 
@@ -633,6 +633,17 @@ class liveform {
     // Shorter alias function for output_field().
     function field($attributes) {
         return $this->output_field($attributes);
+    }
+
+    // A field that holds one value shows the first value of an array value.
+    // An array without a plain first value (?name[a]=x, ?name[0][]=x) counts as
+    // no value: reading the missing key warned and h() refused a nested array.
+    function first_value($value) {
+        if (isset($value[0]) && !is_array($value[0])) {
+            return $value[0];
+        }
+
+        return '';
     }
 
     function field_in_session($field)
@@ -1320,6 +1331,13 @@ class liveform {
                 unset($field['value']);
             }
 
+            // A field that holds one value counts a value sent as an array
+            // (?name[]=x) as not given, so the tag keeps the value it was written
+            // with: h() refused the array with an error page.
+            if (isset($field['value']) && is_array($field['value'])) {
+                unset($field['value']);
+            }
+
             // Remove options attribute, because sometimes options are set for a field that might
             // end of being a hidden input or select (e.g. the field that stores a selected option
             // for an attribute for product attributes).  This prevents a PHP error where it is not
@@ -1579,7 +1597,9 @@ class liveform {
             $new_tag = $this->add_error_style_to_tag($name, $new_tag);
 
             // If there was a value set for this field in the session, then use for the content.
-            if (isset($set_value)) {
+            // A value sent as an array (?name[]=x) counts as not given, so the textarea keeps
+            // the content it was written with: h() refused the array with an error page.
+            if (isset($set_value) && !is_array($set_value)) {
                 $new_content = h($set_value);
             } else {
                 $new_content = $old_content;

@@ -84,6 +84,82 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Katalog ve kullanıcı dizini dizi terimle 500 veriyordu, `liveform` dizi değerde formu düşürüyordu (2026-10-14)
+
+**Neden.** #397'nin bilerek bıraktığı parçalar, hepsi 2026.4.9'da var.
+(1) Katalog sayfası `?query[]=x` ya da `?<sayfa kimliği>_query[]=x` ile 500
+veriyordu: hazır düzende `get_catalog.php` değeri `trim()`'liyordu, özel
+düzende `liveform`'dan okunan dizi `get_catalog_search_results()` içinde
+`escape()`'e gidiyordu. Aynı sayfa adresteki herhangi bir dizi parametreyle
+(`?foo[]=x`, `?currency_id[]=x`) arama formunun gizli alanlarında `h()`'de,
+`?previous_url_id[]=x` ile de "Geri" düğmesinin
+`isset($_SESSION['software']['urls'][dizi])` denetiminde düşüyordu (oturumda
+saklı bir katalog adresi varken). (2) Kullanıcı dizini
+(`get_form_view_directory_screen_content.php`) `?<kimlik>_query[]=x`'i arama
+alanında `h()`'ye, SQL süzgecinde `escape()`'e veriyordu. Özet bağlantılarını
+kuran `build_url()` (`includes/fn/core.php`) adresteki her parametreyi
+`urlencode()`'luyordu; bu yüzden dizi parametreli her adres dizini aramasız
+da düşürüyordu. Aynı yardımcı form listesinin sayfa bağlantılarını, form
+kaydının düzenleme bağlantısını ve kiosk adresini de kurar. (3)
+`liveform::prepare()` oturumdaki değeri dizi olan metin, gizli, e-posta
+alanına ve textarea'ya değeri `h()` ile yazıyordu. Özel düzende yapılmış bir
+forma bir alanı `body[]=x` biçiminde gönderen ziyaretçi form sayfasını her
+açılışta 500 olarak görüyordu: değer oturumda kalıyor, sayfa formu oturumdan
+silen satıra varmadan düşüyordu. `output_field()` dizi değerde ilk elemanı
+alır; `?ad[a]=x` tanımsız anahtar uyarısı yazıyor, `?ad[0][]=x` 500
+veriyordu. (4) Hazır düzende sütun sayısı 0 olan fotoğraf galerisi
+`get_photo_gallery.php`'de tanımsız `$output` uyarısı yazıyordu.
+
+**Ne değişti.** Katalog: dizi gelen arama terimi yok sayılıyor (#384 ve
+#397'nin kuralı: dizi = terim yok); sayfaya özgü terim dizi gelirse genel
+`query`'ye düşülüyor. Özel düzende dizi terim, temizle düğmesi gibi alanı
+boşaltıyor. İki düzenin arama formunda gizli alanlara yalnız metin
+parametreler giriyor; `previous_url_id` yalnız metin gelince okunuyor.
+Dizin: arama terimi bir kez okunuyor, dizi gelirse arama yok sayılıyor.
+`build_url()` dizi gelen parametreyi düşürmeden köşeli parantezli biçimde
+(`q%5B0%5D=x`, `http_build_query()`) taşıyor; metin parametrelerin yazımı
+değişmedi. `liveform`: `prepare()` tek değer tutan bir alana (radio ve
+checkbox dışındaki `<input>`, `<textarea>`) dizi değer gelince değeri
+verilmemiş sayıyor, etiket şablonda yazıldığı değerle kalıyor; radio,
+checkbox ve select dizi değeri eskisi gibi okuyor. `output_field()` dizi
+değerin ilk elemanını eskisi gibi gösteriyor; ilk elemanı olmayan ya da yine
+dizi olan değerde alanı boş yazıyor (yeni `first_value()`). Galeri:
+`$output` koşulun dışında başlatıldı. Şema, dil dosyası ve JS değişikliği
+yok. Testler: `tests/liveform_test.php` (üç test) ve `tests/core_test.php`'de
+`build_url()` testi.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod (`origin/development`)
+ikinci bir portta, yeni kod ilkinde; aynı veritabanında 50 adres: katalog
+hazır (`shop-fullwidth-2col` hazır düzene alındı) ve özel düzende arama ve
+menü açıkken, kullanıcı dizini (`members-home`, özet açık), galeri hazır
+düzende 0 ve 3 sütunla, form listesi ve arama sonuçları. Eski kodda 500 veren
+20 adres yeni kodda 200; eskiden 200 dönen adreslerin HTML'i (jeton ve
+captcha satırları dışında) aynı. Dizi parametreli sayfalar parametresiz
+eşleriyle karşılaştırıldı: fark yalnız widget bağlantılarının `send_to`'sunda,
+özel düzende arama alanının boş `value=""`'sunda, dizindeki özet
+bağlantılarının taşıdığı parametrede ve katalogda dizi terimle `<head>`'e
+RSS bağlantısının girmemesinde (`get_page_content.php` terim varsa —
+`isset()` — RSS bağlantısı vermiyor; `?query=` için de aynı). Özel form
+(`coming-soon`) eski kodda `body[]=x` gönderildikten sonra her açılışta 500
+veriyordu, yeni kodda 200 ve textarea şablondaki hâliyle. Galeri 0 sütunla
+eski kodda `php_errors.log`'a satır yazıyordu, yeni kodda yazmıyor. Yeni
+testler eski kodda hata veriyor, yenide geçiyor. `php -l`, `tools/lint.php`,
+`tools/test.php`, `check_*` ve `build_js.php --check` geçti. Doğrulanamadı:
+dev.pinegrap.com'daki gerçek sayfalar.
+
+**Bilerek yapılmayan.** Form listesi (blog) `?<kimlik>_query[]=x` ile
+`get_form_list_view.php` 2283'te `escape()`'de 500 veriyor; aynı sayfada
+metin aramayla (`?227_query=test`) tarih-saat alanı için
+`includes/fn/forms.php` 3190–3206 altı tanımsız anahtar uyarısı yazıyor.
+Katalog detay sayfası `?previous_url_id[]=x` ile (`get_catalog_detail.php`
+906, 964, 1390) aynı `isset()` hatasını veriyor. Özel form POST işleyicisi
+(`custom_form.php`) e-posta alanı dizi gelince (`325[]=x`) `preg_match()`'te
+500 veriyor. `liveform::prepare()` `type` özniteliği olmayan `<input>`'ta ve
+`value`'su olmayan checkbox'ta tanımsız anahtar uyarısı yazar. Katalogda
+dizi terimle RSS bağlantısı yine verilmiyor.
+
+---
+
 ## 2026.4.10 — API belgesi: oluşturma uçları 201, boş gelebilen kişiler null (2026-10-14)
 
 **Neden.** #393'ün belge taramasının bıraktığı iki bulgu. (1) Kayıt
@@ -431,7 +507,7 @@ sayfalar.
 `h()`'ye veriyor. `liveform::prepare()` metin alanına dizi değer gelince her
 formda `h()` hatası verir; burada yalnız arama alanı için önlendi. Hazır
 düzende sütun sayısı 0 olan galeri `get_photo_gallery.php` 662'de tanımsız
-`$output` uyarısı yazıyor.
+`$output` uyarısı yazıyor. Dördü yukarıdaki bölümde giderildi.
 
 ---
 

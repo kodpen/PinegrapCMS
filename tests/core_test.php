@@ -38,3 +38,13 @@ function test_core_parse_tax_rate_reads_comma()
 {
 	pg_assert_same('18.500', parse_tax_rate('18,5'));
 }
+
+// A parameter that arrived as an array is carried over in bracket form
+// instead of stopping the page; a plain parameter is written as before.
+function test_core_build_url_carries_array_parameter()
+{
+	pg_assert_same(
+		'/members?a=1&q%5B0%5D=x&summary=most_recent',
+		build_url(array('url' => '/members?a=1&q[]=x', 'parameters' => array('summary' => 'most_recent'))));
+	pg_assert_same('/members?a=1&summary=x', build_url(array('url' => '/members?a=1&summary=y', 'parameters' => array('summary' => 'x'))));
+}
