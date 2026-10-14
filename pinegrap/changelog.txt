@@ -3207,6 +3207,20 @@
          çubuğu liste doluyken "0 öğe" gösteriyordu;
          artık listedeki yedek sayısını gösteriyor.
 
+  [DÜZELTME] Büyük bir veritabanı yedeği kurulum
+         ekranından geri yüklenirken "sunucu yanıt
+         veremedi" ile yarıda kalabiliyordu. Yedek artık
+         sitenin yanına 20 saniyelik adımlarla yükleniyor
+         ve ekran adımları kendisi sürdürüyor; yükleme
+         bitince tablolar bir anda yer değiştiriyor. Site
+         yükleme boyunca kendi tablolarıyla açık kalır.
+         Pencere kapanırsa kurulum ekranı ve Yedekleme
+         Yöneticisi yarım kalan geri yüklemeyi gösterir;
+         kaldığı yerden sürdürülür ya da silinir. Hata
+         olursa site değişmez, sonuç Site Günlüğü'ne
+         yazılır. Geri yükleme boyunca veritabanında
+         sitenin bir kopyası daha kadar boş yer gerekir.
+
   [ŞEMA] Ayarlar tablosuna iki kolon ve günlük özet için
          yeni bir tablo eklenir; kayıtlı ziyaretçi
          raporlarının gruplama seçeneklerine "Cihaz"

@@ -1796,6 +1796,12 @@ if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'upgrade_s
 
 }
 
+if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'restore_discard') && ($automated_upgrade == false)) {
+
+	output_install_restore_discard();
+
+}
+
 if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'backup_database') && ($automated_upgrade == false)) {
 
 	output_install_database_backup($versions);
@@ -2367,6 +2373,42 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	if (($install_selected_folder != '') && (!isset($starter_site_folders[$install_selected_folder]))) {
 
 		$install_source_type = 'backup';
+
+	}
+
+	// A restore that was started and did not finish: the site still runs on its own tables, and
+	// the form opens on that backup with the id of the restore, so starting the installation
+	// continues where the last step stopped.
+	$install_unfinished_restore = pg_restore_unfinished();
+
+	$install_unfinished_restore_id = '';
+
+	$output_restore_unfinished = '';
+
+	if ($install_unfinished_restore !== null) {
+
+		$install_unfinished_restore_id = $install_unfinished_restore['id'];
+
+		if (($install_selected_folder == '') && (is_file(pg_restore_dump_path($install_unfinished_restore['folder'])))) {
+
+			$install_selected_folder = $install_unfinished_restore['folder'];
+
+			$install_source_type = 'backup';
+
+			$liveform->assign_field_value('install_from_folder', $install_selected_folder);
+
+		}
+
+		$output_restore_unfinished = '
+		<div class="alert alert-warning d-flex gap-2 align-items-start">
+			<i class="bi bi-hourglass-split"></i>
+			<div class="flex-grow-1">
+				<b>' . lang('An unfinished restore') . '</b>
+				<div class="small">' . h(lang(array('string' => '{var:1} · {var:2} · last step {var:3}', 'vars' => array($install_unfinished_restore['folder'], pg_restore_progress_text($install_unfinished_restore), date('d.m.Y H:i', (int) $install_unfinished_restore['updated']))))) . '</div>
+				<div class="small mt-1">' . lang('The site still runs on its own tables. Choose the same backup and start the installation to continue where it stopped, or discard what was loaded.') . '</div>
+				<button type="submit" class="btn btn-sm btn-outline-danger mt-2" name="install_action" value="restore_discard" formnovalidate><i class="bi bi-trash me-1"></i>' . lang('Discard') . '</button>
+			</div>
+		</div>';
 
 	}
 
@@ -3012,6 +3054,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				<form method="post" enctype="multipart/form-data" id="install_form" style="margin: 0px">
     	  	  	  	' . get_token_field() . '
 					<input type="hidden" name="progress_id" id="progress_id" value="">
+					<input type="hidden" name="restore_id" id="restore_id" value="' . h($install_unfinished_restore_id) . '">
     	  	  	  	<div class="row">
     	  	  	  	  	' . $output_upgrade . '
     	  	  	  	  	' . $output_install_option . '
@@ -3062,7 +3105,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										'id' => 'install_from_folder',
 										'name' => 'install_from_folder'
 										)) . '
-										' . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
+										' . $output_restore_unfinished . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
 										<div class="text-end mt-3"><button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
 									</div>
 								</div>
@@ -3555,6 +3598,17 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		var pg_install_seen_steps = {};
 
 		var pg_install_poll_timer = null;
+
+		// The id of the restore whose next step is posted as soon as the frame has loaded, and
+		// the flag that lets that post through without starting the screen over.
+		var pg_install_continue_id = "";
+
+		var pg_install_resuming = false;
+
+		function pg_install_stream_continue(id) {
+			pg_install_continue_id = id;
+			$("#restore_id").val(id);
+		}
 
 		function pg_install_stream_step(index, seconds, label, detail, state, percent) {
 			var console_element = document.getElementById("pg_run_console");
@@ -4381,6 +4435,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			// fatal error the runner caught on shutdown, is written there with its message, and
 			// that is far more useful than a pointer to the error log.
 			$("#pg_install_frame").on("load", function() {
+				if ((pg_install_continue_id !== "") && (pg_install_started === true) && (pg_install_finished === false)) {
+					pg_install_continue_id = "";
+					pg_install_resuming = true;
+					$("#submit").trigger("click");
+					return;
+				}
 				if ((pg_install_started === true) && (pg_install_finished === false)) {
 					pg_install_poll(function(answer) {
 						if ((pg_install_finished === false) && ((!answer) || (!answer.error))) {
@@ -4487,6 +4547,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			// page, so the output appears right here instead of on another screen.  The upgrade
 			// does not: the screen drives it one version per request (pg_upgrade_start).
 			$("#submit").on("click", function(event) {
+				// the next step of a restore: same form, same console, same progress file
+				if (pg_install_resuming === true) {
+					pg_install_resuming = false;
+					return true;
+				}
+
 				var upgrading = ($("#upgrade").length > 0) && ($("#upgrade").is(":checked"));
 
 				if ((upgrading) && (pg_upgrade_total > 0)) {
@@ -5149,85 +5215,220 @@ else {
 		// from here on the page is sent to the browser step by step
 		start_install_stream();
 
-		add_install_step(lang('Connected to the database'), $liveform->get_field_value('db_database') . '@' . $liveform->get_field_value('db_host'));
+		// The dump is loaded next to the site, a step at a time, and the loaded tables replace
+		// the site's tables in one rename at the end (includes/fn/backup_restore.php).  A step
+		// that is not the last one ends this request and the screen posts the same form again
+		// with the id of the restore, which continues where the step stopped.
+		$install_restore_id = '';
 
-		// If the database has tables in it, then get all system tables and then drop
-		// them all before we install new fresh tables.
-		// Even though the sql.sql already contains "DROP TABLE IF EXISTS" commands, we
-		// do this anyway, because there are some situations where this is still necessary.  For
-		// example if an admin is working with a new version that has new tables that the starter
-		// template does not contain yet, and the admin tries to re-install, then we need to delete
-		// the new existing tables before we install, in order to avoid SQL errors.  This is
-		// necessary because this install script will run an update, if necessary, after the install
-		// and try to create new tables.
-		
+		if ((isset($_POST['restore_id'])) && (is_string($_POST['restore_id'])) && (preg_match('/^[a-f0-9]{16}$/', $_POST['restore_id']) == 1)) {
 
-		$current_tables = db_values("SHOW TABLES");
-
-		if ($current_tables) {
-
-			$system_tables = get_tables();
-
-			foreach ($system_tables as $table) {
-
-				db("DROP TABLE IF EXISTS `" . $table . "`");
-
-			}
-
-			add_install_step(lang('Removed the tables of the old site'), lang(array('string' => '{var:1} tables', 'vars' => count($system_tables))));
+			$install_restore_id = $_POST['restore_id'];
 
 		}
 
-		// Get the MySQL version so we know whether to use utf8mb4 or utf8.
-		$mysql_version = preg_replace('#[^0-9\.]#', '', mysqli_get_server_info(db::$con));
+		$install_restore = pg_restore_state_read();
 
-		if (version_compare($mysql_version, '5.5.3', '>=') == true) {
+		$install_restore_continues = pg_restore_matches($install_restore, $install_restore_id, $install_directory_path, $liveform->get_field_value('db_database'), $liveform->get_field_value('db_host'));
 
-			$character_set = 'utf8mb4';
+		// One restore per database at a time: a second window would drop the tables the first
+		// one is loading.  The lock goes with the connection when the request ends.
+		if (pg_restore_lock($liveform->get_field_value('db_database')) == false) {
 
-		}
-		else {
-
-			$character_set = 'utf8';
-
-		}
-
-		// Update the charset for the db so that when future tables are created,
-		// they will have the correct charset.
-		db(
-
-		"ALTER DATABASE `" . e($liveform->get_field_value('db_database')) . "`
-
-			CHARACTER SET = " . $character_set . "
-
-			COLLATE = " . $character_set . "_unicode_ci");
-
-		add_install_step(lang('Set the character set'), $character_set . '_unicode_ci');
-
-		// Prepare template sql file
-		$database_file = dirname(__FILE__) . '/../data/backups/' . $install_directory_path . '/sql.sql';
-
-		// run all queries from MySQL dump file for template
-		$dump_result = parse_mysql_dump($database_file);
-
-		if ($dump_result !== true) {
-
-			$liveform->mark_error('', lang('There was an error while the database was being initialized. Please contact the software provider and include the error that appears next. MySQL error') . ': ' . h($dump_result['error']) . ' — <code>' . h($dump_result['statement']) . '</code>');
+			$liveform->mark_error('', lang('Another window is restoring a backup into this database right now. Wait for it to finish, then try again.'));
 
 			return_to_form();
 
 		}
 
-		add_install_step(lang('Loaded the content of the database'), $install_directory_path . '/sql.sql · ' . lang(array('string' => '{var:1} tables', 'vars' => count(db_values("SHOW TABLES")))));
+		if ($install_restore_continues == true) {
+
+			// the steps of the earlier requests stay on the screen and keep their numbers
+			$install_log = (isset($install_restore['log'])) ? (array) $install_restore['log'] : array();
+
+			$install_started_at = microtime(true) - ((isset($install_restore['elapsed'])) ? (float) $install_restore['elapsed'] : 0);
+
+			$install_expected_steps = (isset($install_restore['expected'])) ? (int) $install_restore['expected'] : $install_expected_steps;
+
+			write_install_progress_file(false);
+
+			// A long restore must not run out of the unlock it started with.
+			if (check_install_unlocked() == true) {
+
+				set_install_unlocked();
+
+			}
+
+		}
+		else {
+
+			add_install_step(lang('Connected to the database'), $liveform->get_field_value('db_database') . '@' . $liveform->get_field_value('db_host'));
+
+			// Get the MySQL version so we know whether to use utf8mb4 or utf8.
+			$mysql_version = preg_replace('#[^0-9\.]#', '', mysqli_get_server_info(db::$con));
+
+			if (version_compare($mysql_version, '5.5.3', '>=') == true) {
+
+				$character_set = 'utf8mb4';
+
+			}
+			else {
+
+				$character_set = 'utf8';
+
+			}
+
+			// Update the charset for the db so that when future tables are created,
+			// they will have the correct charset.
+			db(
+
+			"ALTER DATABASE `" . e($liveform->get_field_value('db_database')) . "`
+
+				CHARACTER SET = " . $character_set . "
+
+				COLLATE = " . $character_set . "_unicode_ci");
+
+			add_install_step(lang('Set the character set'), $character_set . '_unicode_ci');
+
+			$install_restore = pg_restore_begin($install_directory_path, $liveform->get_field_value('db_database'), $liveform->get_field_value('db_host'));
+
+			if ($install_restore['dropped'] > 0) {
+
+				add_install_step(lang('Removed the tables of an unfinished restore'), lang(array('string' => '{var:1} tables', 'vars' => $install_restore['dropped'])));
+
+			}
+
+		}
+
+		// Remembers the screen's steps with the restore, so the next request shows them too.
+		$install_restore_save = function () use (&$install_restore) {
+
+			global $install_log, $install_started_at, $install_expected_steps;
+
+			$install_restore['log'] = $install_log;
+
+			$install_restore['elapsed'] = microtime(true) - $install_started_at;
+
+			$install_restore['expected'] = $install_expected_steps;
+
+			pg_restore_state_write($install_restore);
+
+		};
+
+		// The log table belongs to the site that is still in place, so a failure is recorded there.
+		$install_restore_failed = function ($message, $statement) use (&$install_restore, $liveform) {
+
+			pg_restore_discard();
+
+			log_activity(lang(array('string' => 'The backup {var:1} could not be restored: {var:2} The site was not changed.', 'vars' => array($install_restore['folder'], $message))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+			$liveform->mark_error('', lang('There was an error while the database was being initialized. Please contact the software provider and include the error that appears next. MySQL error') . ': ' . h($message) . (($statement != '') ? ' — <code>' . h($statement) . '</code>' : '') . '<br>' . lang('The site was not changed: the backup was loaded next to it, and the part that was loaded has been removed.'));
+
+			return_to_form();
+
+		};
+
+		if ($install_restore['phase'] == 'load') {
+
+			$install_restore_beat = function ($state) {
+
+				global $install_progress_running;
+
+				$install_progress_running = lang(array('string' => 'Loading the database: {var:1}', 'vars' => pg_restore_progress_text($state)));
+
+				write_install_progress_file(false);
+
+			};
+
+			$install_restore_result = pg_restore_step($install_restore, $install_restore_beat);
+
+			$install_progress_running = '';
+
+			if ($install_restore_result['recovered'] !== null) {
+
+				add_install_step(lang('The server stopped the previous step, so the table it was loading is loaded again from its start'), $install_restore_result['recovered'] . ' · ' . lang(array('string' => '{var:1} seconds per step', 'vars' => $install_restore['step_seconds'])), 'warning');
+
+			}
+
+			if ($install_restore_result['status'] == 'error') {
+
+				$install_restore_failed($install_restore_result['error'], $install_restore_result['statement']);
+
+			}
+
+			if ($install_restore_result['status'] == 'more') {
+
+				// one line per step, and the bar keeps its room for the steps that come after
+				$install_expected_steps++;
+
+				add_install_step(lang('Loading the database'), pg_restore_progress_text($install_restore));
+
+				$install_restore_save();
+
+				print '
+				<div id="pg_stream_continue" data-restore-id="' . h($install_restore['id']) . '"></div>
+				<script>pg_install_stream_continue(' . json_encode($install_restore['id']) . ');</script>' . get_footer();
+
+				exit();
+
+			}
+
+			add_install_step(lang('Loaded the content of the database'), $install_directory_path . '/sql.sql · ' . lang(array('string' => '{var:1} tables', 'vars' => count($install_restore['tables']))) . ' · ' . convert_bytes_to_string((float) $install_restore['size'], 1));
+
+			$install_restore_save();
+
+		}
+
+		$install_restore_swap = pg_restore_swap($install_restore, get_tables());
+
+		if ($install_restore_swap['ok'] == false) {
+
+			// Nothing was renamed, so the site is still the old one and the loaded tables stay
+			// where they are: trying again only repeats the rename.
+			if ($install_restore_swap['retry'] == true) {
+
+				$install_restore_save();
+
+				$liveform->mark_error('', h($install_restore_swap['error']) . '<br>' . lang('The site was not changed. The loaded backup is kept, so trying again only puts it in place.'));
+
+				return_to_form();
+
+			}
+
+			$install_restore_failed($install_restore_swap['error'], '');
+
+		}
+
+		add_install_step(lang('Put the loaded tables in place of the old ones'), lang(array('string' => '{var:1} tables', 'vars' => $install_restore_swap['tables'])) . ' · ' . lang(array('string' => '{var:1} old tables removed', 'vars' => $install_restore_swap['removed'])));
+
+		$install_restore_save();
 
 		// If the MySQL server supports utf8mb4, then convert all tables that were
 		// created above from utf8 to utf8mb4.  The sql.sql file has utf8 set by default
-		// so that is why this is necessary.
-		
+		// so that is why this is necessary.  A table that is already in the right character
+		// set is left alone: converting it changes nothing, and on MySQL it copies the whole
+		// table, which on a large table takes longer than a request may run.
+		$character_set = (version_compare(preg_replace('#[^0-9\.]#', '', mysqli_get_server_info(db::$con)), '5.5.3', '>=') == true) ? 'utf8mb4' : 'utf8';
 
 		if ($character_set == 'utf8mb4') {
 
-			$tables = db_values("SHOW TABLES");
+			$tables = db_values(
+				"SELECT t.TABLE_NAME
+				FROM information_schema.TABLES AS t
+				WHERE
+					(t.TABLE_SCHEMA = DATABASE())
+					AND (t.TABLE_TYPE = 'BASE TABLE')
+					AND (
+						(t.TABLE_COLLATION <> 'utf8mb4_unicode_ci')
+						OR (t.TABLE_COLLATION IS NULL)
+						OR EXISTS (
+							SELECT 1
+							FROM information_schema.COLUMNS AS c
+							WHERE
+								(c.TABLE_SCHEMA = t.TABLE_SCHEMA)
+								AND (c.TABLE_NAME = t.TABLE_NAME)
+								AND (c.COLLATION_NAME IS NOT NULL)
+								AND (c.COLLATION_NAME <> 'utf8mb4_unicode_ci')))");
 
 			foreach ($tables as $table) {
 
@@ -5975,6 +6176,15 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 
 		log_activity(lang('The software was installed'), $liveform->get_field_value('admin_username'));
 
+		// A backup (not a starter site) says in the restored site's own log what was restored.
+		if (get_starter_site_language($install_directory_path) == '') {
+
+			log_activity(lang(array('string' => 'The backup {var:1} was restored: {var:2} in {var:3} steps, {var:4} seconds.', 'vars' => array($install_directory_path, convert_bytes_to_string((float) $install_restore['size'], 1), (int) $install_restore['steps'], number_format(microtime(true) - $install_started_at, 0)))), $liveform->get_field_value('admin_username'));
+
+		}
+
+		pg_restore_state_clear();
+
 		// If no mail server was entered under the advanced options, then we do not try to send the
 		// confirmation, because there is nothing to send it with and the message would only be
 		// confusing.  The administrator can set this up later under the email settings.
@@ -6334,6 +6544,13 @@ function start_install_stream() {
 			document.getElementById("pg_stream_percent").textContent = "%" + percent;
 			document.getElementById("pg_stream_now").textContent = label;
 		}
+		// A restore is loaded a step per request: the host screen posts the form again with
+		// the id of the restore when this request ends.
+		function pg_install_stream_continue(id) {
+			var host = pg_install_host();
+			if ((host) && (host.pg_install_stream_continue)) { host.pg_install_stream_continue(id); return; }
+			document.getElementById("pg_stream_text").textContent = ' . json_encode(lang('The backup is loaded in steps and this step is done. Start the installation again from the installation screen to load the next one.')) . ';
+		}
 		function pg_install_stream_escape(value) {
 			var element = document.createElement("span");
 			element.textContent = value;
@@ -6466,6 +6683,52 @@ function finish_install_stream() {
 	print '<script>pg_install_stream_done(' . json_encode(lang('The installation is complete')) . ');</script>';
 
 	flush_install_stream();
+
+}
+
+// Drops what an unfinished restore loaded next to the site and forgets the restore.  Like the
+// other actions of this screen it is only answered after the lock.  On a server without a site
+// the database is the one in the form.  This function never returns.
+function output_install_restore_discard() {
+
+	global $liveform;
+
+	if ((!isset($_SESSION['software']['token'])) || ($_SESSION['software']['token'] == '') || (!isset($_POST['token'])) || ($_POST['token'] !== $_SESSION['software']['token'])) {
+
+		exit(lang('Sorry, we could not accept your request because it appears that your session expired.'));
+
+	}
+
+	$state = pg_restore_state_read();
+
+	if ($state !== null) {
+
+		if ((!db::$con) && (isset($_POST['db_host'], $_POST['db_username'], $_POST['db_password'], $_POST['db_database'])) && (is_string($_POST['db_host'])) && (is_string($_POST['db_username'])) && (is_string($_POST['db_password'])) && (is_string($_POST['db_database']))) {
+
+			db::$con = @mysqli_connect($_POST['db_host'], $_POST['db_username'], $_POST['db_password'], $_POST['db_database']);
+
+		}
+
+		if (db::$con) {
+
+			pg_restore_discard();
+
+			log_activity(lang(array('string' => 'The unfinished restore of the backup {var:1} was discarded.', 'vars' => array($state['folder']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+		} else {
+
+			// Without the database only the record goes; the next restore drops the tables.
+			pg_restore_state_clear();
+
+		}
+
+		$liveform->add_notice(lang(array('string' => 'The unfinished restore of the backup {var:1} was discarded.', 'vars' => array($state['folder']))));
+
+	}
+
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/install/');
+
+	exit();
 
 }
 
@@ -7562,86 +7825,6 @@ function install_bridge_open() {
 
 }
 
-// Runs every statement of a MySQL dump.  The file is read line by line rather than with
-// file(), because a backup of a big site does not fit in memory_limit, and the statement
-// that fails is returned with the error, so the screen can say what went wrong instead of
-// "an error occurred".  Returns true, or array('statement' => ..., 'error' => ...).
-function parse_mysql_dump($url)
- {
-
-	global $install_progress_running;
-
-	$handle = @fopen($url, 'r');
-
-	if ($handle === false) {
-
-		return array('statement' => basename($url), 'error' => lang('The file could not be opened.'));
-
-	}
-
-	$query = '';
-
-	$count = 0;
-
-	while (($sql_line = fgets($handle)) !== false) {
-
-		$tsl = trim($sql_line);
-
-		if (($tsl == '') || (mb_substr($tsl, 0, 2) == '--') || (mb_substr($tsl, 0, 1) == '#')) {
-
-			continue;
-
-		}
-
-		$query .= $sql_line;
-
-		if (preg_match("/;\s*$/", $sql_line)) {
-
-			$result = mysqli_query(db::$con, trim($query));
-
-			if (!$result) {
-
-				$failed = preg_replace('/\s+/', ' ', trim(mb_substr($query, 0, 160)));
-
-				fclose($handle);
-
-				return array('statement' => $failed, 'error' => mysqli_error(db::$con));
-
-			}
-
-			$query = '';
-
-			$count++;
-
-			// a heartbeat for the screen, so a long dump does not look like a frozen page
-			if (($count % 500) == 0) {
-
-				$install_progress_running = lang(array('string' => 'sql.sql · {var:1} statements', 'vars' => number_format($count)));
-
-				write_install_progress_file(false);
-
-			}
-
-		}
-
-	}
-
-	fclose($handle);
-
-	// Dumps written by mysqldump.php (the starter sites under data/backups among them) wrap
-	// every table in SET autocommit=0 ... COMMIT and never switch autocommit back on, so the
-	// rest of this request would run inside an open transaction. On MyISAM that changes
-	// nothing; once the upgrade that follows has moved a table to InnoDB, every later write
-	// to it in this request (config.version, the administrator's password hash, the log
-	// entry) would be rolled back when the connection closes.
-	mysqli_query(db::$con, "SET autocommit = 1");
-
-	$install_progress_running = '';
-
-	return true;
-
-}
-
 function get_database_version()
  {
 
@@ -8298,6 +8481,7 @@ function get_tables() {
 		'countries',
 		'cregion',
 		'currencies',
+		'currency_rates',
 		'custom_form_confirmation_pages',
 		'custom_form_pages',
 		'dregion',
