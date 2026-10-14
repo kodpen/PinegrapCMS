@@ -131,7 +131,7 @@ function ws_api_channel_apply_template($params)
         'notes'       => count($template['body']['notes']),
     ));
 
-    $result = ws_template_apply($viewer, $channel, $template, array('app_id' => ws_api_app_id()));
+    $result = ws_template_apply($viewer, $channel, $template, array('app_id' => ws_api_writer_app_id()));
 
     if (!$result['ok']) {
         api_fail_validation($result['error']);

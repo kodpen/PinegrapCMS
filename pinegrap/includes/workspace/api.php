@@ -12,7 +12,9 @@
  * An application acts with its owner's reach: it sees the channels the owner
  * may read and may hand tasks only where the owner may. What it writes into a
  * channel is shown as written by the application, so a reader always knows a
- * message came from an integration and not from a colleague.
+ * message came from an integration and not from a colleague. A person signed
+ * in on their own device is that colleague, and writes in their own name
+ * (ws_api_writer_app_id()).
  *
  * The handlers and presenters are in api_resources.php beside this file, and
  * in the api_*.php files it loads.
@@ -311,7 +313,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_create',
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Write in a channel',
-            'description' => 'Writes a message into a channel the owner may post in; readers see it as written by the application. Tags are written as tokens - <@user:12> mentions a person (they are told), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; since the message is the application\'s, only an owner who is staff may ask, and anybody else is refused with 403 before anything is written. Send an Idempotency-Key so a retried call does not post twice.',
+            'description' => 'Writes a message into a channel the owner may post in. Written with an application key or through an OAuth connection, readers see it as written by the application. Written by a person signed in on their own device (POST /auth/login), it is theirs, as if written in the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it), joins them to a public channel they were not in and marks the channel read for them. Tags are written as tokens - <@user:12> mentions a person (they are told), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; the writer of a message or staff may ask, so for a message written as the application only an owner who is staff may, and anybody else is refused with 403 before anything is written. Send an Idempotency-Key so a retried call does not post twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
@@ -423,7 +425,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_react',
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Leave an emoji on a message',
-            'description' => 'Leaves an emoji on a message in a channel the owner may post in, as the application - for instance an eye when an integration has seen a request and a tick when it is done. on false takes it back. Readers are not notified.',
+            'description' => 'Leaves an emoji on a message in a channel the owner may post in, as the application, or as the person when they are signed in on their own device - for instance an eye when an integration has seen a request and a tick when it is done. on false takes it back. Readers are not notified.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'emoji', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'required' => true),
@@ -470,7 +472,7 @@ function ws_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceApproval',
             'summary'     => 'Ask for approval in a channel',
-            'description' => 'Writes an approval request into a channel the owner may post in; readers see it as written by the application, and the people asked are told. approvers have to be members of the channel who may write in it, up to ten. guests are people outside the team - a customer - asked by e-mail: each gets a link of their own and answers with no account; only staff (roles 0-2) may name them, up to five, and with them approvers may be left out. rule any is met by the first approval, all by everybody\'s; a refusal settles it at once and a deadline that passes lets it expire. The result is written into the channel as a locked decision, and onto the task when the request is about one. Send an Idempotency-Key so a retried call does not ask twice.',
+            'description' => 'Writes an approval request into a channel the owner may post in; readers see it as written by the application, or by the person when they are signed in on their own device, and the people asked are told. approvers have to be members of the channel who may write in it, up to ten. guests are people outside the team - a customer - asked by e-mail: each gets a link of their own and answers with no account; only staff (roles 0-2) may name them, up to five, and with them approvers may be left out. rule any is met by the first approval, all by everybody\'s; a refusal settles it at once and a deadline that passes lets it expire. The result is written into the channel as a locked decision, and onto the task when the request is about one. Send an Idempotency-Key so a retried call does not ask twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'What is to be approved, in a line.'),
@@ -811,7 +813,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_task_notes_create',
             'returns'     => 'WorkspaceTaskNote',
             'summary'     => 'Add a note to a task',
-            'description' => 'Written in the application\'s name. Tags such as <#order:1045> or <@user:12> are kept; a person mentioned is told.',
+            'description' => 'Written in the application\'s name, or in the person\'s when they are signed in on their own device. Tags such as <#order:1045> or <@user:12> are kept; a person mentioned is told.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
@@ -1098,7 +1100,7 @@ function ws_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceTemplateApplied',
             'summary'     => 'Apply a template to a channel',
-            'description' => 'Adds the template\'s tasks and notes to a public or private channel the owner of the application may write in, the way the channel menu does. The tasks are made by the owner, their dates counted in calendar days from today; a task meant for somebody the owner may not give work to is made with nobody on it and counted in unassigned. The notes become the owner\'s own and are shared in the channel. The summary and the pinned message are written only where the channel has none (summary_kept and pinned_kept say when it had); the pinned message is written as the application\'s. The channel gets a line saying the template was applied, and workspace.template.applied is announced.',
+            'description' => 'Adds the template\'s tasks and notes to a public or private channel the owner of the application may write in, the way the channel menu does. The tasks are made by the owner, their dates counted in calendar days from today; a task meant for somebody the owner may not give work to is made with nobody on it and counted in unassigned. The notes become the owner\'s own and are shared in the channel. The summary and the pinned message are written only where the channel has none (summary_kept and pinned_kept say when it had); the pinned message is written as the application\'s, or as the person\'s when they are signed in on their own device. The channel gets a line saying the template was applied, and workspace.template.applied is announced.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'template_id', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'required' => true, 'description' => 'An id from GET /workspace/templates.'),

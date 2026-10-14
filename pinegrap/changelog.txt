@@ -1967,6 +1967,17 @@
          günlük özetten geliyor; yanıttaki summary_to
          özetten gelen son günü söylüyor.
 
+  [DÜZELTME] Ekip cihazlarından (mobil uygulama) Çalışma
+         Alanı'na yazılan mesaj, tepki, görev notu, görev
+         kartı ve onay isteği yazan kişinin adıyla
+         görünüyor; önceden "Ekip cihazları (uygulama)"
+         adıyla düşüyordu. Panelde olduğu gibi kişinin
+         dakikada yirmi mesaj sınırı uygulanıyor, genel
+         kanala yazan kanala katılıyor ve kendi mesajı
+         kanalı okunmuş sayıyor. API anahtarıyla ya da
+         bağlı uygulamayla (OAuth, MCP) yazan
+         entegrasyonlar eskisi gibi uygulama adıyla yazıyor.
+
   BAĞLI HESAPLAR
   --------------------------------------------------------
 
