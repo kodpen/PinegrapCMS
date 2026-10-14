@@ -1068,6 +1068,10 @@ foreach ($order_items as $order_item) {
     if ($order_item['recurring'] == 1) {
         // if the customer can set the recurring schedule for this order item then validate values that customer entered and possibly save values
         if ($order_item['recurring_schedule_editable_by_customer'] == 1) {
+            // The schedule fields post one value each; one posted as an array counts as not
+            // given, so a required one is reported missing.
+            pg_liveform_single_values($liveform, array('recurring_payment_period_' . $order_item['id'], 'recurring_number_of_payments_' . $order_item['id'], 'recurring_start_date_' . $order_item['id']));
+
             // if the order has been submitted, then require recurring schedule fields
             if ($order_submitted == true) {
                 $liveform->validate_required_field('recurring_payment_period_' . $order_item['id'], lang('Frequency is required.'));
@@ -1189,6 +1193,11 @@ foreach ($order_items as $order_item) {
         
         // Loop through each gift card quantity.
         for ($quantity_number = 1; $quantity_number <= $number_of_gift_cards; $quantity_number++) {
+            // The gift card's fields post one value each; one posted as an array counts as not
+            // given, so a missing recipient email is reported.
+            $pg_prefix = 'order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_';
+            pg_liveform_single_values($liveform, array($pg_prefix . 'recipient_email_address', $pg_prefix . 'from_name', $pg_prefix . 'message', $pg_prefix . 'delivery_date'));
+
             // If the order has been submitted, then require recipient email address.
             if ($order_submitted == true) {
                 $liveform->validate_required_field('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', lang('Recipient Email is required.'));
@@ -1260,7 +1269,8 @@ foreach ($order_items as $order_item) {
                 label,
                 type,
                 required,
-                wysiwyg
+                wysiwyg,
+                multiple
             FROM form_fields
             WHERE (product_id = '" . $order_item['product_id'] . "') AND (form_type = 'product') AND (type != 'information')
             ORDER BY sort_order";
@@ -1294,6 +1304,10 @@ foreach ($order_items as $order_item) {
             // loop through all form fields, so that we can save form data
             foreach ($form_fields as $form_field) {
                 $html_field_name = 'order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_form_field_' . $form_field['id'];
+
+                // Only a check box group or a multi-select keeps a list; any other field posted
+                // as an array counts as not given.
+                pg_cf_keep_posted_value($liveform, $html_field_name, $form_field);
                 
                 // if the order has been submitted and if field is required, then validate field
                 if (($order_submitted == true) && ($form_field['required'] == 1)) {

@@ -3,12 +3,14 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for request values that arrive as arrays in the order flow (express
- * order, shipping address and arrival, billing information, order preview):
- * pg_cf_posted_value() (includes/fn/custom_form.php), which
- * submit_custom_form() applies to each custom shipping and billing form field,
- * and the parts of pg_liveform_single_values() (includes/fn/forms.php) the
- * order scripts rely on: a card number read as stored, and a total emptied to
- * null.
+ * order, shipping address and arrival, shipping method, billing information,
+ * order preview, shopping cart, and the add to cart forms of the catalog detail
+ * and order form pages): pg_cf_posted_value() and pg_cf_keep_posted_value()
+ * (includes/fn/custom_form.php), which submit_custom_form() and the product
+ * forms of the cart and the express order apply to each field, the parts of
+ * pg_liveform_single_values() (includes/fn/forms.php) the order scripts rely
+ * on: a card number read as stored, and a total emptied to null, and the
+ * scripts' own lists of single-value fields.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -115,4 +117,67 @@ function test_order_form_array_single_values_total_to_null()
 
 	pg_assert_same(null, $liveform->values['total'], 'array becomes null');
 	pg_assert_same('305.00', $liveform->values['total_with_surcharge'], 'string kept');
+}
+
+// A product form field keeps what pg_cf_posted_value() keeps of the posted value:
+// a list where one value belongs is replaced by '', a list that belongs is left
+// as posted, and a field not posted stays absent.
+function test_order_form_array_keep_posted_value()
+{
+	$liveform = _test_order_form_array_liveform(array(
+		'name' => array('Ali'),
+		'email' => 'guest@example.test',
+		'days' => array('Mon', 'Wed'),
+		'colors' => array('Red', 'Blue'),
+		'size' => array('M'),
+	));
+
+	pg_cf_keep_posted_value($liveform, 'name', array('type' => 'text box', 'multiple' => '0'));
+	pg_cf_keep_posted_value($liveform, 'email', array('type' => 'email address', 'multiple' => '0'));
+	pg_cf_keep_posted_value($liveform, 'days', array('type' => 'check box', 'multiple' => '0'));
+	pg_cf_keep_posted_value($liveform, 'colors', array('type' => 'pick list', 'multiple' => '1'));
+	pg_cf_keep_posted_value($liveform, 'size', array('type' => 'pick list', 'multiple' => '0'));
+	pg_cf_keep_posted_value($liveform, 'needs', array('type' => 'text area', 'multiple' => '0'));
+
+	pg_assert_same('', $liveform->values['name'], 'text box array');
+	pg_assert_same('guest@example.test', $liveform->values['email'], 'string kept');
+	pg_assert_same(array('Mon', 'Wed'), $liveform->values['days'], 'check box group');
+	pg_assert_same(array('Red', 'Blue'), $liveform->values['colors'], 'multi-select');
+	pg_assert_same('', $liveform->values['size'], 'single pick list array');
+	pg_assert_false(array_key_exists('needs', $liveform->values), 'not posted');
+}
+
+// Each order script empties a single-value field posted as an array before it
+// reads it: the shipping method step, the add to cart forms, and the cart and
+// express order fields of each item (quantity, recurring schedule, gift card,
+// product form).
+function test_order_form_array_scripts_single_values()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/shipping_method.php');
+	$normalised = strpos($source, "foreach (array('ship_to_id', 'page_id', 'next_page_id') as \$pg_post_field)");
+	pg_assert_true(($normalised !== false) && ($normalised < strpos($source, 'FROM ship_tos')), 'shipping method: ids before the recipient query');
+	$method = strpos($source, "pg_liveform_single_values(\$liveform, array('shipping_method'));");
+	pg_assert_true(($method !== false) && ($method < strpos($source, "validate_required_field('shipping_method', lang('Please select a shipping method.'));")), 'shipping method: method before it is required');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/catalog_detail.php');
+	$fields = strpos($source, "pg_liveform_single_values(\$liveform, array('product_id', 'quantity', 'ship_to', 'add_name', 'page_id', 'current_url', 'next_url', 'next_page_id'));");
+	pg_assert_true(($fields !== false) && ($fields < strpos($source, 'FROM products')), 'catalog detail: fields before the product query');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/order_form.php');
+	$fields = strpos($source, "pg_liveform_single_values(\$liveform, array('page_id', 'product_id', 'quantity', 'ship_to', 'add_name'));");
+	pg_assert_true(($fields !== false) && ($fields < strpos($source, 'FROM order_form_pages')), 'order form: fields before the page query');
+	pg_assert_contains("pg_liveform_single_values(\$liveform, array('product_' . \$product['id'], 'donation_' . \$product['id'], 'recurring_payment_period_' . \$product['id'], 'recurring_number_of_payments_' . \$product['id'], 'recurring_start_date_' . \$product['id']));", $source, 'order form: list layout fields');
+
+	foreach (array('shopping_cart', 'express_order') as $script) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $script . '.php');
+
+		pg_assert_contains("pg_liveform_single_values(\$liveform, array('recurring_payment_period_' . \$order_item['id'], 'recurring_number_of_payments_' . \$order_item['id'], 'recurring_start_date_' . \$order_item['id']));", $source, $script . ': recurring schedule');
+		pg_assert_contains("pg_liveform_single_values(\$liveform, array(\$pg_prefix . 'recipient_email_address', \$pg_prefix . 'from_name', \$pg_prefix . 'message', \$pg_prefix . 'delivery_date'));", $source, $script . ': gift card');
+		pg_assert_contains('pg_cf_keep_posted_value($liveform, $html_field_name, $form_field);', $source, $script . ': product form');
+		pg_assert_true(preg_match("/wysiwyg,\\s+multiple\\s+FROM form_fields\\s+WHERE \\(product_id = /", $source) === 1, $script . ': product form fields carry multiple');
+	}
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/shopping_cart.php');
+	pg_assert_contains("if (!\$pg_item_posted_as_list && (isset(\$_POST['donations'][\$order_item['id']]) == true)) {", $source, 'shopping cart: donation as a list kept');
+	pg_assert_contains('} elseif (!$pg_item_posted_as_list) {', $source, 'shopping cart: quantity as a list kept');
 }

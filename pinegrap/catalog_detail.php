@@ -26,6 +26,11 @@ include_once('liveform.class.php');
 $liveform = new liveform('catalog_detail');
 $liveform->add_fields_to_session();
 
+// Every field of the add to cart form holds one value (the product's options only pick the
+// product_id the form posts). One posted as an array (quantity[]=) counts as not given:
+// no product, an invalid quantity or the default recipient, as for an empty field.
+pg_liveform_single_values($liveform, array('product_id', 'quantity', 'ship_to', 'add_name', 'page_id', 'current_url', 'next_url', 'next_page_id'));
+
 // get information about product
 $query =
     "SELECT

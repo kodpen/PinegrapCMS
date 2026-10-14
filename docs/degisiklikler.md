@@ -84,6 +84,117 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Sipariş akışı: kargo yöntemi, sepete ekle formları, sepet ve hızlı siparişin ürün alanları dizi gelen değerde 500 veriyordu (2026-10-14)
+
+**Neden.** #421'in taramadığı kalanlar: kargo yöntemi adımı
+(`shipping_method.php`), ürün sayfasının ve sipariş formu sayfasının
+"Sepete Ekle" formları (`catalog_detail.php`, `order_form.php`), sepet
+sayfası (`shopping_cart.php`) ve hızlı siparişte her kalemin yinelenen
+ödeme, hediye çeki ve ürün (sipariş kalemi) formu alanları
+(`express_order.php`). Sandbox'ta eski kodla yeniden üretildi: kargolu
+ürün, bağış (müşterinin düzenlediği yinelenen ödemeli), hediye çeki ve
+ürün formlu etkinlik kaydıyla; on akışta formun her alanı tek tek dizi
+olarak (`alan[]=…`), toplam 115 istek. 45'inde HTTP 500, 5'inde uyarı.
+Hepsi 2026.4.9'da da var.
+
+Görünür hatalar (500, hepsi `TypeError`):
+
+- Değer `escape()`'e dizi olarak gidiyordu: kargo yöntemi adımında
+  `shipping_method`, `ship_to_id`, `next_page_id`; ürün sayfasında ve
+  sipariş formunda `product_id` ve `page_id`; sepette `page_id` ve
+  indirim kodu; sepette ve hızlı siparişte hediye çekinin "kimden" ve
+  mesaj alanları ile yinelenen ödemenin dönemi ve ödeme sayısı.
+- Doğrulayıcılarda (`preg_match()`): ürün sayfasında, sipariş formunda,
+  sepette ve sepetteki hızlı eklemede adet; hediye çekinin alıcı
+  e-postası ve teslim tarihi; yinelenen ödemenin başlangıç tarihi; ürün
+  formunun e-posta alanı.
+- Alıcı adında (`mb_strtolower()`): ürün sayfasının, sipariş formunun ve
+  sepetteki hızlı eklemenin `ship_to` / `add_name` alanları.
+
+Görünmeyen uyarılar: dizi gelen bağış tutarı ve sepetteki yinelenen
+ödeme dönemi "Array to string conversion" yazıyordu.
+
+**Ne değişti.** #407 ve #421'in kuralı: dizi gelen tek değerli alan
+"verilmemiş" sayılır, sonrası boş alanla aynı (zorunluysa sayfa "gerekli"
+uyarısıyla geri döner).
+
+- `shipping_method.php` `ship_to_id`, `page_id` ve `next_page_id`'yi ilk
+  sorgudan önce yalnız metinse okuyor (dizi alıcı bulunamadı hatasına
+  düşüyor); `shipping_method` `pg_liveform_single_values()`'tan geçiyor.
+  Yöntem seçilmeden gönderilen formun uyarısı çeviriden geçmiyordu
+  (Türkçe sitede İngilizce "Please select a shipping method." çıkıyordu);
+  artık `lang()` ile, `tr.json`'daki mevcut anahtarla çıkıyor.
+- `catalog_detail.php` formun tüm alanlarını, `order_form.php` sayfa,
+  açılır liste düzeninin ürün ve adedi ile alıcı alanlarını, liste
+  düzeninde de her ürünün onay kutusu, adet, bağış tutarı ve yinelenen
+  ödeme alanlarını `pg_liveform_single_values()`'a veriyor. Açılır liste
+  düzeninde ürünü bulunamayan istek (dizi ya da bilinmeyen id) satırı
+  olmayan ürünü okumuyor; ürün "şu anda mevcut değil" sayılıyor.
+- `shopping_cart.php` indirim kodunu, çevrimdışı ödeme anahtarını ve
+  hızlı ekleme alanlarını `pg_liveform_single_values()`'tan geçiriyor;
+  `page_id` ve hızlı ekleme alanlarını `express_order.php` gibi yalnız
+  metinse okuyor. Adedi ya da bağış tutarı dizi gelen kalem olduğu gibi
+  kalıyor, ama yinelenen ödeme, hediye çeki ve ürün formu alanları yine
+  denetleniyor. Sepet sayfası satırı olmayan `page_id`'de (dizi ya da
+  bilinmeyen id) satırı okumuyor; davranış eskisi gibi (etiketsiz, sonraki
+  sayfasız devam).
+- `shopping_cart.php` ve `express_order.php` her kalemin yinelenen ödeme
+  alanlarını ve her hediye çekinin dört alanını `pg_liveform_single_values()`'a
+  veriyor; ürün formu alanları `submit_custom_form()` gibi yeni
+  `pg_cf_keep_posted_value()`'dan geçiyor (alanlar `multiple` sütunuyla
+  okunuyor): onay kutusu grubu ve çoklu seçim listesini tutuyor, öbür her
+  alanda dizi boş metin oluyor. `submit_custom_form()` aynı yardımcıyı
+  kullanıyor; davranışı değişmedi.
+
+Uyarı susturulmadı. Ödeme ağ geçidinden dönüş durdurulmuyor (#430'un
+kararı); bu değişiklikler yalnız diziyi boşaltıyor. `liveform.class.php`'ye,
+başarılı bir siparişin yazdığına, şemaya, dil dosyasına ve JS'e
+dokunulmadı.
+
+Davranış farkı (yalnız elle kurulmuş istekte): ürün formunun zorunlu metin
+ve tek seçimli liste alanı dizi gelince eskiden her eleman ayrı satır
+olarak kaydedilip ödemeye geçiliyordu; artık sayfa "gerekli" uyarısıyla
+geri dönüyor (taramada 12 istek). Sipariş formunda onay kutusu ürünü
+`product_<id>[]=1` ile eskiden sepete ekleniyordu; artık seçilmemiş
+sayılıyor.
+
+**Bilerek yapılmayan.** Görsel editörün sepet widget'ının betiği
+(`cart_action.php`) ve panelin `add_to_cart` API eylemi taranmadı. #421'den
+kalan iki uyarı (`forms.php`'de her siparişte `$valid_tax_zone_id`,
+`get_express_order.php`'de selamlaması ya da soyadı boş alıcıda `name`)
+başka dosyalarda olduğu için yerinde. Önceden var olan, diziyle ilgisiz
+uyarılar: örnek verinin sepet ve hızlı sipariş düzenleri (`data/layouts`
+248 ve 256) bir alan hatasıyla geri dönülen her sayfada; hızlı siparişin
+makbuz e-postası hazırlanırken `get_order_receipt.php` 2262–2267;
+ziyaretçi kaydı olmayan istekte (bot) `visitor_id` (`ecommerce.php`,
+`shopping_cart.php`, `submit_order.php`). Sepet, ürün sayfası ve sipariş
+formu bilinmeyen `page_id`'de ayarsız devam ediyor (#430 yalnız üç
+sipariş adımını kapattı); dizi `page_id` şimdi aynı yere düşüyor. Dizi
+bekleyen yerde tek metin gelmesi (`quantity=5`) ele alınmadı.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod `origin/development`
+worktree'sinden ikinci portta sunuldu; iki tarama aynı veritabanında
+koştu. 115 isteğin 45'i eskide 500, yenide 500 yok; uyarı yazan istek
+eskide 50, yenide 0 (hızlı siparişin her makbuzundaki `get_order_receipt.php`
+uyarısı dışında, o normal siparişte de var). Ek olarak sepetteki hızlı
+eklemenin dört alanı ve açılır liste düzenli sipariş formunun dört alanı
+(yönetici girişiyle) eskide 500, yenide değil. "Gerekli" uyarıları
+sayfada görüldü (alıcı e-postası, ürün formu alanı, dönem, başlangıç
+tarihi, kargo yöntemi, adet, ürün). Normal akışlar iki kodla aynı
+veritabanından tamamlandı: altı sepete ekleme yolu, hızlı sipariş (bağış,
+yinelenen bağış, hediye çeki, ürün formlu etkinlik) ve klasik ödeme
+(kargolu ürün, ürün formu, hediye çeki, bağış; kargo adresi, kargo
+yöntemi, fatura, önizleme). 35 kayıt (sayfalar — rastgele CAPTCHA, `?r=`
+kodu, kimlikler ve sipariş numarası dışında —, POST sonuçları, `orders`,
+`order_items`, `form_data`, `order_item_gift_cards`, `ship_tos`
+satırları) bire bir aynı. `tests/order_form_array_params_test.php` eski
+kodda 1 hata ve 1 başarısızlık, yenide geçiyor. `tools/test.php`, lint,
+dil, kopya, bağlama, API şeması ve `build_js.php --check` geçti.
+Doğrulanamadı: makbuz e-postaları ayrıca karşılaştırılmadı (satırlar
+aynı); dev.pinegrap.com'daki gerçek ödeme adımları ve ödeme ağ geçitleri.
+
+---
+
 ## 2026.4.10 — ERP'de dizi gelen kayıt numarası, sayfa imleci, ekstre satırı, paket ve gün sayısı 1 sayılmıyor (2026-10-14)
 
 **Neden.** #436'nın ikinci yarısı. ERP ekranlarında `$_GET` / `$_REQUEST`'ten
@@ -205,6 +316,8 @@ alt çubuğu iki yedekli listede önce "0 öğe", sonra "2 öğe".
 **Bilerek yapılmayan.** Şema adımı yok. Geri yükleme koduna dokunulmadı.
 `seo_issue`/`seo_link` (SEO taramasının sonuçları, tekrar taranarak
 üretilebilir) günlük değil, kapsam dışı.
+
+---
 
 ## 2026.4.10 — Panel taramasının son uyarıları: şablon ve kasa satışı POST alanları, paketleme fişi, silinmiş ürün grubu (2026-10-14)
 
