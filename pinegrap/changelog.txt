@@ -1568,6 +1568,19 @@
   --------------------------------------------------------
 
   [YENİ] Çalışma Alanı: telefon ya da bilgisayar
+         uygulamasıyla oturum açan kişi bir kanalın
+         kendisine nasıl haber vereceğini seçebiliyor
+         (her mesaj, yalnız anıldığında, hiç; panelin
+         kanal menüsündeki zil), kanaldaki oylamaya oy
+         verebiliyor ya da oyunu geri alabiliyor ve bir
+         mesajın tartışmasına katılıp ayrılabiliyor.
+         Mesajda oylamanın seçenekleri, sayıları ve
+         (gizli değilse) kimin neyi seçtiği, kanalda da
+         seçili bildirim düzeyi görünüyor. Uygulama
+         anahtarıyla bağlanan entegrasyonlar bunları kişi
+         adına yapamaz.
+
+  [YENİ] Çalışma Alanı: telefon ya da bilgisayar
          uygulamasının tek eşitleme çağrısı zildeki
          bildirim sayısını da getiriyor (uygulamaya
          "Kendi hesabı" izni verildiyse; ekip

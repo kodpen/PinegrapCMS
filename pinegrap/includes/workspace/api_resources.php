@@ -110,6 +110,7 @@ function ws_api_channel_present($brief)
         'kind'          => (string) $brief['kind'],
         'topic'         => (string) $brief['topic'],
         'joined'        => (bool) $brief['joined'],
+        'notify'        => (string) ($brief['notify'] ?? 'all'),
         'contact_id'    => ((int) $brief['contact_id'] > 0) ? (int) $brief['contact_id'] : null,
         'customer_type' => (($brief['customer_type'] ?? '') !== '') ? (string) $brief['customer_type'] : null,
         'customer_id'   => ((int) ($brief['customer_id'] ?? 0) > 0) ? (int) $brief['customer_id'] : null,
@@ -129,6 +130,7 @@ function ws_api_channel_schema()
         'kind'            => 'string',
         'topic'           => 'string',
         'joined'          => 'boolean',
+        'notify'          => 'string',
         'contact_id'      => 'integer?',
         'customer_type'   => 'string?',
         'customer_id'     => 'integer?',
@@ -549,11 +551,16 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null)
 {
     // The messages the reader deleted for themselves (ws_message_hide()).
     if ($hidden === null) {
         $hidden = ws_message_hidden_ids($viewer['id'], array($row['id']));
+    }
+
+    // The poll it asks (interact.php).
+    if ($polls === null) {
+        $polls = ws_polls_map(array($row['id']), $viewer);
     }
 
     if ($reactions === null) {
@@ -629,6 +636,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         ),
         'thread'         => $deleted ? null : ($threads['threads'][(int) $row['id']] ?? null),
         'from_thread_id' => $deleted ? null : ($threads['copies'][(int) $row['id']] ?? null),
+        'poll'           => (!$deleted && isset($polls[(int) $row['id']])) ? ws_api_poll_present($polls[(int) $row['id']]) : null,
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -653,7 +661,74 @@ function ws_api_message_schema()
         'ack'         => array('wanted' => 'boolean', 'count' => 'integer', 'total' => 'integer', 'mine' => 'boolean'),
         'thread'         => array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean'),
         'from_thread_id' => 'integer?',
+        'poll'           => 'WorkspacePoll?',
         'created_at'  => 'string',
+    );
+}
+
+/**
+ * The poll a message asks, as the API shows it, from what the channel screen
+ * shows of it for this reader (ws_polls_map()). Who chose an option is left
+ * out of an anonymous poll; a guest who voted has no user id.
+ *
+ * @param array $poll one entry of ws_polls_map()
+ * @return array
+ */
+function ws_api_poll_present($poll)
+{
+    return array(
+        'id'                => (int) $poll['id'],
+        'multiple'          => !empty($poll['multiple']),
+        'anonymous'         => !empty($poll['anonymous']),
+        'closed'            => !empty($poll['closed']),
+        'closes_at'         => api_time($poll['closes_at']),
+        'voters'            => (int) $poll['voters'],
+        'voted'             => !empty($poll['voted']),
+        'can_vote'          => !empty($poll['can_vote']),
+        'options'           => array_map('ws_api_poll_option_present', array_values((array) $poll['options'])),
+        'result_message_id' => ((int) $poll['result_id'] > 0) ? (int) $poll['result_id'] : null,
+    );
+}
+
+/**
+ * One option of a poll, with who chose it.
+ *
+ * @param array $option one of ws_polls_map()'s options
+ * @return array
+ */
+function ws_api_poll_option_present($option)
+{
+    $voters = array();
+
+    foreach ((array) $option['voters'] as $voter) {
+        $voters[] = array('user_id' => ((int) $voter['id'] > 0) ? (int) $voter['id'] : null, 'name' => (string) $voter['name']);
+    }
+
+    return array(
+        'id'      => (int) $option['id'],
+        'label'   => (string) $option['label'],
+        'count'   => (int) $option['count'],
+        'mine'    => !empty($option['mine']),
+        'leading' => !empty($option['leading']),
+        'voters'  => $voters,
+    );
+}
+
+// What ws_api_poll_present() returns.
+function ws_api_poll_schema()
+{
+    return array(
+        'id'                => 'integer',
+        'multiple'          => 'boolean',
+        'anonymous'         => 'boolean',
+        'closed'            => 'boolean',
+        'closes_at'         => 'string?',
+        'voters'            => 'integer',
+        'voted'             => 'boolean',
+        'can_vote'          => 'boolean',
+        'options'           => array(array('id' => 'integer', 'label' => 'string', 'count' => 'integer', 'mine' => 'boolean', 'leading' => 'boolean',
+            'voters' => array(array('user_id' => 'integer?', 'name' => 'string')))),
+        'result_message_id' => 'integer?',
     );
 }
 
@@ -728,12 +803,13 @@ function ws_api_messages_present($viewer, $rows)
     $acks = function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array();
     $threads = ws_api_message_threads($viewer, $ids);
     $hidden = ws_message_hidden_ids($viewer['id'], $ids);
+    $polls = ws_polls_map($ids, $viewer);
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls);
     }
 
     return $out;
@@ -1283,6 +1359,37 @@ function ws_api_channels_read($params)
     api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
 }
 
+/**
+ * How a channel tells the person about what is written in it, the way the
+ * bell in the channel menu sets it: all, mentions or none. A mention in a
+ * channel set to none reaches neither the bell nor the person's devices.
+ * Choosing it in a public channel the person is not in joins them to it, as
+ * the panel does.
+ */
+function ws_api_channels_notify($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    ws_api_person_only(lang('Only the person, signed in on a device, can choose how a channel notifies them; an application cannot choose it for them.'));
+
+    $member = (bool) ws_channel_membership($channel['id'], $viewer['id']);
+
+    if (!$member && ($channel['kind'] !== 'public')) {
+        api_fail(409, 'not_member', lang('Only the people in a channel choose how it notifies them.'));
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'notify' => (string) $params['notify'], 'joins' => !$member));
+
+    $result = ws_channel_set_notify($viewer, $channel, (string) $params['notify']);
+
+    if (!$result['ok']) {
+        ws_api_channel_refused($result);
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
 function ws_api_messages_ack($params)
 {
     $viewer = ws_api_viewer();
@@ -1295,6 +1402,79 @@ function ws_api_messages_ack($params)
     ws_api_person_only();
 
     $result = function_exists('ws_ack_set') ? ws_ack_set($viewer, $message) : array('ok' => false, 'error' => lang('Invalid request.'));
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+/**
+ * Casts the person's vote in a poll, the way the poll in a channel does: the
+ * options chosen replace the ones chosen before, and an empty list takes the
+ * vote back. The answer is the message that asks the poll.
+ */
+function ws_api_polls_vote($params)
+{
+    $viewer = ws_api_viewer();
+    $poll = ws_poll((int) $params['id']);
+    $message = $poll ? ws_message((int) $poll['message_id']) : null;
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($poll['channel_id']))) {
+        api_fail_not_found(lang('Poll'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $poll['channel_id']);
+
+    ws_api_person_only();
+
+    // An earlier version of a conversation is kept as it was (eras.php).
+    if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
+        api_fail_validation(lang('This message is in an earlier version of the conversation, which is kept as it was.'));
+    }
+
+    $checked = ws_poll_vote_check($viewer, $poll);
+
+    if (!$checked['ok']) {
+        // A vote after the poll's time closes it, as in the panel; a dry run
+        // leaves that to the next vote or the hourly job.
+        if ($checked['expired'] && !api_dry_run_requested()) {
+            ws_poll_close(null, $poll);
+        }
+
+        if ($checked['error'] === lang('You cannot post in that channel.')) {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_validation($checked['error']);
+    }
+
+    $options = array_map('intval', (array) db_values("SELECT id FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "'"));
+    $chosen = array();
+
+    foreach ((array) $params['option_ids'] as $item) {
+        $option_id = (is_int($item) || (is_string($item) && ctype_digit($item))) ? (int) $item : 0;
+
+        if (!in_array($option_id, $options, true)) {
+            api_fail_validation(lang(array('string' => 'Each item of {var:1} must be the id of one of the poll\'s options.', 'vars' => 'option_ids')), 'option_ids');
+        }
+
+        $chosen[$option_id] = $option_id;
+    }
+
+    $chosen = array_values($chosen);
+
+    if ((count($chosen) > 1) && ((int) $poll['multiple'] !== 1)) {
+        api_fail_validation(lang('Only one option can be chosen in this poll.'), 'option_ids');
+    }
+
+    api_dry_run_stop('voted', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id'], 'option_ids' => $chosen));
+
+    $result = ws_poll_vote($viewer, $poll, $chosen);
 
     if (!$result['ok']) {
         api_fail_validation($result['error']);

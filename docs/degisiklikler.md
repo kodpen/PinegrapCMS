@@ -84,6 +84,89 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kanal bildirim düzeyi, oylamaya oy ve tartışmaya katılma / ayrılma (2026-10-14)
+
+**Neden.** Mobil API planının M6 dilimi
+(`docs/_plan_mobil_api_claude_kanali.md`). Kanalı sessize almak, oylamaya
+oy vermek ve bir mesajın tartışmasına katılmak ya da ayrılmak yalnız
+panelde vardı (`ws_channel_notify`, `ws_poll_vote`, `ws_thread_join` /
+`ws_thread_leave` eylemleri); API'nin mesaj nesnesinde oylama hiç
+görünmüyordu, kanal nesnesinde de kişinin seçtiği düzey yoktu.
+
+**Ne değişti.**
+- `POST /workspace/channels/{id}/notify` {`notify`: `all` | `mentions` |
+  `none`}: panelin `ws_channel_set_notify()`'ı. Gövde alanının adı plandaki
+  `level` değil, kanal nesnesindeki yeni `notify` alanıyla aynı: uygulama
+  okuduğu alanı geri yazar. Kişinin içinde olmadığı herkese açık kanalda
+  onu kanala katar (panelin yardımcısı böyle); özel kanal ya da içinde
+  olmadığı tartışma 409 `not_member`. `WorkspaceChannel`'a `notify` alanı
+  eklendi; kanal listesi ve eşitleme de taşıyor (eşitlemenin liste işareti
+  sunulan listenin `crc32`'si olduğu için düzey değişince liste yeniden
+  gelir; eski imleçle de bir kez).
+- `POST /workspace/polls/{id}/vote` {`option_ids`}: panelin
+  `ws_poll_vote()`'u. Boş liste oyu geri alır. Bilinmeyen seçenek ya da tek
+  seçimli oylamada birden çok seçenek 422 (panel sessizce süzüyordu; API
+  istemcisi hatasını görsün diye reddediyor), kapalı ya da süresi geçmiş
+  oylama ve konuşmanın önceki sürümündeki oylama 422, yalnız okuyabilen
+  403. Süresi geçmiş oylamaya gelen gerçek oy, panelde olduğu gibi onu
+  kapatır (sonuç kanala yazılır); prova kapatmaz. Cevap oylamanın mesajı.
+  Denetimler `ws_poll_vote_check()`'e alındı (`interact.php`), panelin
+  `ws_poll_vote()`'u da onu kullanıyor; prova aynı retleri alır.
+- Mesaj nesnesinde `poll` (`WorkspacePoll?`, `ws_api_poll_present()`,
+  panelin `ws_polls_map()`'inden): `id`, `multiple`, `anonymous`, `closed`,
+  `closes_at`, `voters`, `voted`, `can_vote`, `options` (`id`, `label`,
+  `count`, `mine`, `leading`, `voters`; gizli oylamada `voters` boş,
+  misafirin `user_id`'si `null`), `result_message_id`. Liste ve eşitleme
+  oylamaları bütün sayfa için tek seferde okur.
+- `POST /workspace/threads/{id}/join` ve `/leave`: panelin
+  `ws_thread_join()`'i ve ayrılma mantığı. Ayrılma `actions.php`'de satır
+  içindeydi; `ws_thread_leave()` olarak `threads.php`'ye alındı, panel de
+  onu çağırıyor (son ayrılan tartışmayı sonuçlandırır). Tartışma, içinde
+  olunmasa da üst kanalı okunabiliyorsa bulunur
+  (`ws_api_thread_room_or_404()`); zaten içindeyken katılma ve içinde
+  değilken ayrılma hata değil, tartışmayı döndürür. Katılamama sebebi
+  ayrı ayrı söylenir: sonuçlanmış tartışma ve arşivlenmiş kanal 422,
+  Kullanıcı rolü 403. Cevap `WorkspaceThread`.
+- Dördü de yalnız cihaz oturumundan (`ws_api_person_only()`; uygulama
+  anahtarı 403, OAuth bağlantısı kabul: okundu işareti ve okundu onayı
+  gibi kişinin kendi cevabı), dördü de `dry_run` alır, hiçbiri MCP aracı
+  değil (`'mcp' => false`): panelde hiçbir asistan bunları yapmıyor ve
+  bağlayıcının araç listesi değişmesin.
+
+Şema değişikliği yok, yeni izin kapsamı yok (`workspace:write`), `tr.json`'da
+6 yeni metin, JS değişmedi. Site Günlüğü'ne satır yazılmaz: panel de bu
+dört eylemi günlüğe yazmıyor.
+
+**Bilerek yapılmayan.** Oylama açma, değiştirme ve kapatma API'de yok
+(plan yalnız oyu istiyordu). Kanalın panel menüsündeki diğer kişisel
+tercihleri (sabitleme, sıra, grup) bu dilime girmedi.
+
+**Doğrulama.** `tests/workspace_api_test.php`: dört rota (yöntem, yol,
+kapsam, cevap, `dry_run`, MCP aracı değil), `WorkspacePoll` kayıtlı,
+oylama sunumu (gizli oylamada isim yok, misafirin `user_id`'si `null`,
+süresiz oylamada `closes_at` `null`, alanlar şemayla aynı sırada).
+`tools/check_api_schema.php` `ws_api_poll_present()`'ı da karşılaştırıyor.
+Sandbox'ta ekip cihazları oturumuyla: `notify` prova (`joins: false`),
+gerçek (`notify: none` liste ve eşitlemede), geçersiz değer ve eksik alan
+422, uygulama anahtarı 403, olmayan kanal 404; kanaldan çıkınca `notify`
+kişiyi yeniden kattı (`joins: true`). Oylama: prova, oy (`mine`,
+`voters`), iki kişinin oyu (sayı 2, iki isim), tek seçimlide iki seçenek
+422, başka oylamanın seçeneği ve sayı olmayan öğe 422, çok seçimli gizli
+oylamada iki seçenek (isimsiz), boş listeyle geri alma, uygulama anahtarı
+403, olmayan oylama 404; süresi geçince prova 422 ve oylama açık kaldı,
+gerçek oy 422 ve oylama kapandı (sonuç kararı kanala yazıldı,
+`result_message_id` doldu, `can_vote: false`). Tartışma: ikinci personel
+prova, katılma (iki kişi, "tartışmaya katıldı" satırı), yeniden katılma
+aynı cevap, tartışmanın kimliğiyle `notify: none`, uygulama anahtarı
+403, düz kanal kimliği 404, ayrılma (`can_join: true`), yeniden ayrılma
+aynı cevap; son kişinin provası `concludes: true`, gerçek ayrılma
+tartışmayı sonuçlandırdı (`closed`, `kept_until` 30 gün sonra), sonra
+katılma 422. OpenAPI'de dört yol ve `WorkspacePoll` var. Sunucu
+günlüğünde uyarı yok; `lint`, `check_lang`, `check_api_schema`, `test`,
+`build_js --check`, `check_copies` temiz.
+
+---
+
 ## 2026.4.10 — Dış API: eşitlemede zil sayısı, gelen kutusunun değişim anı, sabitlenmiş mesaj, sekme sayıları ve pano işareti (2026-10-14)
 
 **Neden.** #374 (`GET /workspace/sync`, aşağıda) panelin `ws_sync`'indeki

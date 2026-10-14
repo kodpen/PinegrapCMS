@@ -434,3 +434,60 @@ function test_ws_file_type()
 		pg_assert_same(array('mime' => 'application/octet-stream', 'inline' => false), ws_file_type($name), $name . ' is saved, not shown');
 	}
 }
+
+// Muting a channel, voting in a poll and joining or leaving a discussion are
+// the person's own choices from a team app: writes that rehearse, offered to
+// no MCP client.
+function test_ws_api_notify_vote_and_thread_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expect = array(
+		'workspace.channels.notify' => array('/workspace/channels/{id}/notify', 'WorkspaceChannel'),
+		'workspace.polls.vote'      => array('/workspace/polls/{id}/vote', 'WorkspaceMessage'),
+		'workspace.threads.join'    => array('/workspace/threads/{id}/join', 'WorkspaceThread'),
+		'workspace.threads.leave'   => array('/workspace/threads/{id}/leave', 'WorkspaceThread'),
+	);
+
+	foreach ($expect as $id => $shape) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+		pg_assert_same('POST', $routes[$id]['method'], $id . ' is a POST');
+		pg_assert_same($shape[0], $routes[$id]['path'], $id . ' path');
+		pg_assert_same('workspace:write', $routes[$id]['scope'], $id . ' scope');
+		pg_assert_same($shape[1], $routes[$id]['returns'], $id . ' answer');
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+	}
+
+	pg_assert_true(isset(ws_openapi_objects()['WorkspacePoll']), 'the poll object is declared');
+}
+
+// The poll on a message, from what the channel screen draws: an anonymous
+// poll names nobody, a guest who voted has no user id, and a poll open
+// until it is closed has no closes_at.
+function test_ws_api_poll_present()
+{
+	$present = ws_api_poll_present(array(
+		'id' => 7, 'multiple' => false, 'anonymous' => false, 'closed' => false, 'closes_at' => 0,
+		'voters' => 2, 'voted' => true, 'can_vote' => true, 'result_id' => 0,
+		'options' => array(
+			array('id' => 31, 'label' => 'Tuesday', 'count' => 2, 'mine' => true, 'leading' => true, 'voters' => array(
+				array('id' => 12, 'name' => 'Ayşe', 'avatar' => ''),
+				array('id' => 0, 'name' => 'Guest', 'avatar' => '', 'guest' => true),
+			)),
+			array('id' => 32, 'label' => 'Wednesday', 'count' => 0, 'mine' => false, 'leading' => false, 'voters' => array()),
+		),
+	));
+
+	pg_assert_same(7, $present['id']);
+	pg_assert_same(null, $present['closes_at'], 'open until closed');
+	pg_assert_same(null, $present['result_message_id']);
+	pg_assert_same(array(31, 32), array_column($present['options'], 'id'));
+	pg_assert_same(array(array('user_id' => 12, 'name' => 'Ayşe'), array('user_id' => null, 'name' => 'Guest')), $present['options'][0]['voters']);
+	pg_assert_true($present['options'][0]['mine'] && !$present['options'][1]['mine'], 'mine marks the person\'s choice');
+	pg_assert_same(array_keys(ws_api_poll_schema()), array_keys($present), 'the answer has the declared fields in order');
+}

@@ -70,6 +70,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 - Sonradan kişinin kendi adıyla iş yapan kayıt (zamanlanmış mesaj gibi) yalnız
   cihaz oturumundan açılır (`ws_api_person_only()`); uygulama anahtarı okur ve
   iptal eder. Uygulamanın yazdığı her şey uygulama adıyla görünür.
+- Kişinin kendi cevabı ya da tercihi (okundu onayı, okundu işareti, onay,
+  oy, kanal bildirim düzeyi, tartışmaya katılma / ayrılma) da
+  `ws_api_person_only()` ister: uygulama anahtarı 403, OAuth bağlantısı
+  kabul. Kişinin sözlerini değiştiren ya da silen uç
+  `ws_api_own_words_only()` ister; OAuth da reddedilir (plan kararı 11).
 - Çalışma Alanı araması (`GET /workspace/search`) panel kayıtlarını türü
   okuyan kapsamla süzer: `ws_api_search_record_scopes()`
   (`includes/workspace/api_day.php`). `ws_record_type_keys()`'e yeni bir

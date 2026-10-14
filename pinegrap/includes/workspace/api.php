@@ -153,6 +153,7 @@ function ws_openapi_objects()
         'WorkspaceSyncChannelState' => 'ws_api_sync_channel_state_schema',
         'WorkspaceSyncPin'          => 'ws_api_sync_pin_schema',
         'WorkspaceSyncTabCounts'    => 'ws_api_sync_tab_counts_schema',
+        'WorkspacePoll'             => 'ws_api_poll_schema',
     );
 }
 
@@ -202,7 +203,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_channels_list',
             'returns'     => array('list' => 'WorkspaceChannel'),
             'summary'     => 'List workspace channels',
-            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
+            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
             'params'      => array(
                 array('name' => 'archived', 'in' => 'query', 'type' => 'bool', 'description' => 'The archived channels instead.'),
                 array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the channels tied to this customer.'),
@@ -304,7 +305,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_list',
             'returns'     => array('list' => 'WorkspaceMessage'),
             'summary'     => 'Read a channel',
-            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. changed_since reads instead the messages already written that changed at or after a moment: an edit, a deletion, a reaction, a tick, a vote or a read receipt, each as it is now (deleted true, edited true and so on). Pass the moment of the previous read by the site\'s clock, the Date header of its answer; when as many messages as limit come back, ask again with since_id set to the last one. hidden is true on a message the person deleted for themselves (POST /workspace/messages/{id}/hide): leave it out of view, as the panel does. text is the message with every tag spelled out; body keeps the tags as written. id may also be a discussion\'s (thread.id of a message, or GET /workspace/channels/{id}/threads), read by the people in it. thread is set on a message a discussion was started from; from_thread_id on a decision, a note or a task card copied into the channel from a discussion that is still there.',
+            'description' => 'Messages oldest first. Pass since_id to read only what arrived after a message - the way to follow a channel - or before_id to page back. changed_since reads instead the messages already written that changed at or after a moment: an edit, a deletion, a reaction, a tick, a vote or a read receipt, each as it is now (deleted true, edited true and so on). Pass the moment of the previous read by the site\'s clock, the Date header of its answer; when as many messages as limit come back, ask again with since_id set to the last one. hidden is true on a message the person deleted for themselves (POST /workspace/messages/{id}/hide): leave it out of view, as the panel does. text is the message with every tag spelled out; body keeps the tags as written. id may also be a discussion\'s (thread.id of a message, or GET /workspace/channels/{id}/threads), read by the people in it. thread is set on a message a discussion was started from (POST /workspace/threads/{id}/join brings the person into it); from_thread_id on a decision, a note or a task card copied into the channel from a discussion that is still there. poll is set on a message that asks a poll: its options with their counts, who chose them unless it is anonymous, and mine on the person\'s own choices; POST /workspace/polls/{id}/vote votes.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'since_id', 'in' => 'query', 'type' => 'int', 'min' => 0),
@@ -508,6 +509,23 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.channels.notify',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/notify',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channels_notify',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceChannel',
+            'summary'     => 'Choose how a channel notifies the person',
+            'description' => 'Sets what the bell in the channel menu sets, for the person only. all (the default) and mentions are the menu\'s Tell me about every message and Only when I am mentioned; none (Never) mutes the channel: a mention there reaches neither the bell nor the person\'s devices, and the panel shows no unread count for it. notify on the channel says what is set. Choosing it in a public channel the person is not in joins them to it, as the panel does; in a private channel or a discussion they are not in it is answered with 409 not_member. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since how a channel calls for a person is the person\'s own choice. id may also be a discussion\'s the person is in.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'notify', 'in' => 'body', 'type' => 'enum', 'values' => array('all', 'mentions', 'none'), 'required' => true),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.messages.ack_request',
             'method'      => 'POST',
             'path'        => '/workspace/messages/{id}/ack-request',
@@ -552,6 +570,38 @@ function ws_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'all', 'description' => 'closed keeps the concluded ones.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.threads.join',
+            'method'      => 'POST',
+            'path'        => '/workspace/threads/{id}/join',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_threads_join',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceThread',
+            'summary'     => 'Join a discussion',
+            'description' => 'Brings the person into a discussion they are not in, the way Join on the bar under its message does; id is thread.id of the message. Staff who read the channel may join while the discussion and its channel are open (can_join on the discussion says so); the User role is refused with 403 forbidden, and a concluded discussion or an archived channel with 422. The discussion gets a line saying who joined, and from then on it is read and written with GET and POST /workspace/channels/{id}/messages. Somebody already in it is answered with the discussion and nothing changes. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.threads.leave',
+            'method'      => 'POST',
+            'path'        => '/workspace/threads/{id}/leave',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_threads_leave',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceThread',
+            'summary'     => 'Leave a discussion',
+            'description' => 'Takes the person out of a discussion, the way Leave in its menu does: they no longer read it, and it gets a line saying who left. The last one to leave concludes it, as if they had concluded it: it is kept, read only, for 30 days and then deleted. Somebody who was not in it is not an error: the answer is the discussion with joined false either way. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
@@ -629,6 +679,23 @@ function ws_api_routes()
             'description' => 'Gives the read receipt a message asks for, in the name of the person signed in. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since an integration saying its owner read something would be a receipt nobody gave. The person has to be in the message\'s channel and not its writer. ack on the message says how many of the channel\'s members have read it.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.polls.vote',
+            'method'      => 'POST',
+            'path'        => '/workspace/polls/{id}/vote',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_polls_vote',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Vote in a poll',
+            'description' => 'Casts the person\'s vote in a poll, the way the poll in a channel does: id is poll.id of the message that asks it, and option_ids are ids from its poll.options. The options sent replace the ones the person chose before, and an empty list takes the vote back. A poll that is not multiple takes one option (422 otherwise). A closed poll, a poll whose closes_at has passed and a poll of an earlier version of the conversation are refused with 422; somebody who may only read the channel with 403. The answer is the message with its poll counted again. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since a vote is the person\'s own answer.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'option_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'required' => true, 'description' => 'Ids from poll.options of the message. An empty list takes the vote back.'),
             ),
         ),
 

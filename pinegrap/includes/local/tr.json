@@ -23165,5 +23165,11 @@
     "Only the person, signed in on a device, can delete a message from their own view; an application cannot do it for them.": "Bir mesajı kendi görünümünden yalnız cihazında oturum açmış kişinin kendisi silebilir; bir uygulama onun adına yapamaz.",
     "Send the file once: as a form part named file, or as content_base64.": "Dosyayı bir kez gönderin: file adlı bir form parçası olarak ya da content_base64 olarak.",
     "Send the file as a form part named file, or as content_base64.": "Dosyayı file adlı bir form parçası olarak ya da content_base64 olarak gönderin.",
-    "Name the file, with its extension.": "Dosyaya uzantısıyla birlikte bir ad verin."
+    "Name the file, with its extension.": "Dosyaya uzantısıyla birlikte bir ad verin.",
+    "Only the person, signed in on a device, can choose how a channel notifies them; an application cannot choose it for them.": "Kanalın kendisine nasıl haber vereceğini yalnız cihazında oturum açmış kişinin kendisi seçebilir; bir uygulama onun adına seçemez.",
+    "Only the people in a channel choose how it notifies them.": "Kanalın nasıl haber vereceğini yalnız kanalın üyeleri seçer.",
+    "Each item of {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her öğe oylamanın seçeneklerinden birinin kimliği olmalı.",
+    "Only one option can be chosen in this poll.": "Bu oylamada yalnız bir seçenek seçilebilir.",
+    "Only the person, signed in on a device, can join or leave a discussion; an application cannot do it for them.": "Tartışmaya yalnız cihazında oturum açmış kişinin kendisi katılabilir ya da tartışmadan ayrılabilir; bir uygulama onun adına yapamaz.",
+    "Only staff who read its channel can join a discussion.": "Tartışmaya yalnız kanalını okuyabilen personel katılabilir."
 }

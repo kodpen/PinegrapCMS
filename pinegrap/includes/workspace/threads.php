@@ -340,6 +340,34 @@ function ws_thread_join($viewer, $channel)
 }
 
 /**
+ * Leaves a discussion. Once nobody is left in it, it is concluded, as if the
+ * last one had concluded it.
+ *
+ * @param array $viewer
+ * @param array $channel the discussion
+ * @return array ok, error
+ */
+function ws_thread_leave($viewer, $channel)
+{
+    $result = ws_channel_leave($viewer, $channel);
+    $thread = ws_thread($channel['id']);
+
+    if ($result['ok'] && $thread && ((int) $thread['closed_at'] === 0)
+        && ((int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'") === 0)) {
+        db("UPDATE ws_threads SET closed_at = '" . time() . "', closed_by = '" . (int) $viewer['id'] . "',
+                purge_at = '" . strtotime('+' . WS_THREAD_KEEP_DAYS . ' days') . "'
+            WHERE channel_id = '" . (int) $channel['id'] . "'");
+        db("UPDATE ws_channels SET archived_at = '" . time() . "' WHERE id = '" . (int) $channel['id'] . "'");
+    }
+
+    if ($result['ok'] && $thread) {
+        ws_message_touch((int) $thread['message_id']);
+    }
+
+    return $result;
+}
+
+/**
  * Concludes a discussion: kept, read only, for WS_THREAD_KEEP_DAYS days,
  * then deleted. Anybody in it may.
  *
