@@ -2991,6 +2991,24 @@
   [YENİ] Ziyaretçi raporunda "Cihaz" gruplaması:
          masaüstü, mobil, tablet.
 
+  [YENİ] Ziyaretçi tablosu hâlâ MyISAM'daysa, eski
+         kayıtlar silindikten sonra genel görev onu
+         kendiliğinden InnoDB'ye taşır: yanına birkaç bin
+         kayıtlık adımlarla bir InnoDB kopyası kurar,
+         sonunda kopya bir anda eski tablonun yerine geçer
+         ve eski tablo silinir. Site bu sırada çalışmaya
+         devam eder, dosya da küçülür. Veritabanı
+         sunucusunun boş diski okunamıyorsa ya da
+         yetmiyorsa kendiliğinden başlamaz; Veritabanı
+         Motoru'ndaki "Şimdi InnoDB'ye taşı" düğmesi
+         başlatır.
+
+  [DÜZELTME] Güvenlik duvarı kapalı sitelerde arama
+         motorlarının ve diğer botların gezdiği her sayfa
+         ziyaretçi kaydı olarak yazılıyor, ziyaretçi
+         sayısını ve tabloyu şişiriyordu; artık güvenlik
+         duvarı açıkken olduğu gibi yazılmıyor.
+
   [ŞEMA] Ayarlar tablosuna iki kolon ve günlük özet için
          yeni bir tablo eklenir; kayıtlı ziyaretçi
          raporlarının gruplama seçeneklerine "Cihaz"

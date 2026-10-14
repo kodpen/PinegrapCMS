@@ -1,6 +1,8 @@
 # Ziyaretçi kayıtları: saklama süresi, günlük özet, parça parça silme (2026.4.10, şema 10.3)
 
-Durum: birinci parça yapıldı (bu PR). Aşağıdaki "Ertelenenler" ayrı işlerdir.
+Durum: birinci parça (#343) ve ikinci parça (MyISAM tablonun kendiliğinden
+InnoDB'ye taşınması, botların yazılmaması; aşağıda "İkinci parça") yapıldı.
+"Ertelenenler" ayrı işlerdir.
 Sahibi: `includes/fn/visitor_retention.php`, Veritabanı Motoru ekranı,
 Ayarlar › SEO › Ziyaretçi Takibi.
 
@@ -104,11 +106,42 @@ sn'lik pencerelerde süreler.
 - "Ziyaretçi kayıtlarını şimdi temizle" tarayıcıda: 570.297 satır, iki adım,
   28 sn.
 
+## İkinci parça: mevcut sitelerde kimse karta bakmadan
+
+Bir müşteride yanlışlıkla silinen ürünü geri getirmek için kurulmak istenen
+950 MB'lık yedek, ağırlığını ziyaretçi tablosundan alıyordu. Yedek
+(`includes/fn/backup.php`) satırları döken bir SQL dökümüdür: silinen satır
+dökümden hemen düşer, dosyanın diskteki boyutu yedeği etkilemez.
+
+- **90 gün mevcut sitelere zaten geliyor.** 10.3 kolonu
+  `ADD COLUMN … DEFAULT 90` ile açtığı için 2026.4.9'dan yükselen her sitenin
+  `config` satırı 90 alır (sandbox'ta kolon silinip adım yeniden koşturularak
+  doğrulandı). 0 yalnız birinin elle seçtiği yerde olur; o yüzden 0'ı 90'a
+  çeviren yeni şema adımı yazılmadı (seçimi ezerdi).
+- **MyISAM tablonun InnoDB'ye taşınması** (`pg_visitor_move_run()`, genel
+  görev): `visitors` 2026.3.6'da tek `ALTER` ile InnoDB'ye taşındı; olmadığı
+  sitede MyISAM kalır, Veritabanı Motoru'nun "Tablolar MyISAM'da" listesi
+  de `visitors`'ı taşımıyordu (liste yalnız `pg_innodb_core_tables()`).
+  Temizlik gecikmesi bitince (`backlog` yok) ve veritabanı sunucusunun boş
+  diski okunabilip yeterliyse (yerel sunucu, `@@datadir`, kalan satırların
+  üç katı + 1 GB) genel görev `visitors_innodb` kopyasını kurar, birincil
+  anahtar sırasıyla 2.000 satırlık `INSERT … SELECT` parçalarıyla doldurur
+  (MyISAM'da her parça tabloyu tuttuğu kadar ara), yetişince taşıma
+  başladıktan sonra değişen ziyaretleri `stop_timestamp` dizininden yeniden
+  kopyalar, son saniyelerin satırlarını alır ve `RENAME TABLE` ile yer
+  değiştirir; eski tablo `visitors_myisam` adıyla kalır, süre içindeki her
+  satırı yenide var mı diye bakılır, sonra silinir. Durum
+  `data/temp/visitor_move.json`; kopyanın vardığı yer tablodan okunur.
+  Kartta durum ve "Şimdi InnoDB'ye taşı" (disk ve gecikme koşulunu atlar).
+- **Botlar**: güvenlik duvarı kapalıyken, izinli adreste ya da hariç yolda
+  `IS_BOT` tanımlanmadığı için her tarayıcı sayfası ziyaret yazılıyordu.
+  `init_tracking()` artık `waf_classify_bot()`'a soruyor, insan olmayan her
+  sınıfı (güvenlik duvarının atladığı sınıfların aynısı) yazmıyor.
+
 ## Ertelenenler (ayrı işler)
 
-1. **Botları hiç yazmamak**: bilinen tarayıcı/bot kullanıcı ajanları için
-   satır açılmaması (WAF bot listesi kullanılabilir). Satır sayısını en çok
-   düşürecek adım; ziyaretçi sayılarını değiştirdiği için ürün kararı ister.
+1. **Botlar** (yapıldı, ikinci parça): güvenlik duvarı açıkken zaten
+   yazılmıyordu; kapalıyken de yazılmıyor.
 2. **Uzun metin sütunlarını ayırmak**: `http_referer`, `user_agent`,
    `utm_term`, `utm_content`, `referring_search_terms`, `site_search_terms`
    satırın çoğu. Sözlük tablosuna taşımak satırı yarıdan fazla küçültür ama
@@ -119,7 +152,15 @@ sn'lik pencerelerde süreler.
 4. **IP adresini erken silmek** (KVKK): N günden sonra `ip_address = 0`.
    Tablonun tamamına UPDATE; saklama süresiyle aynı parça yöntemiyle yapılabilir.
 5. **Kendiliğinden OPTIMIZE**: sakin saatte, yeterli disk varsa. Disk dolma
-   riski yüzünden şimdilik elle.
+   riski yüzünden şimdilik elle. InnoDB'de silinen satırların yeri dosyada
+   kalır (yedeği etkilemez, diski etkiler); MyISAM'da taşıma bunu çözüyor.
+   Aynı kopyala-yer değiştir yöntemi InnoDB'yi de küçültebilir.
 6. Özetin tutmadığı gruplamalar (tam yönlendiren adres, posta kodu, sayfa
    görüntüleme sayısı, sipariş bayrakları) ve filtreli raporlar için özet:
    gerek görülürse boyut eklenir.
+7. **Yedekte ziyaretçi satırları**: yedek (`pg_backup_run_zip()`) `visitors`
+   satırlarının tamamını döker; 90 günlük satır yoğun bir sitede yine
+   yüzlerce MB olabilir. Seçenek: yedeğe yalnız yapısını almak (günlük özet
+   ve saatlik grafik tabloları kalır). Ürün kararı ister.
+8. **Büyük yedeğin geri yüklenmesi**: 950 MB'lık yedeği kurarken sunucu
+   yanıt veremedi; geri yükleme yolunun parça parça çalışması ayrı bir iş.

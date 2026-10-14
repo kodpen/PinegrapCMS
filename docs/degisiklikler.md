@@ -84,6 +84,139 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ziyaretçi tablosu: MyISAM'da kalan tablo kendiliğinden InnoDB'ye taşınıyor, botlar ziyaret olarak yazılmıyor (2026-10-14)
+
+**Neden.** Bir müşteri sitesinde yanlışlıkla silinen bir ürünü geri almak
+için 950 MB'lık veritabanı yedeği kurulamadı, sunucu yanıt vermedi; boyutun
+çoğu `visitors` tablosuydu. 10.3 saklama süresini ve parça parça silmeyi
+getirdi. Mevcut bir sitede kimse Veritabanı Motoru kartına bakmadan iki şey
+eksik kalıyordu. Birincisi, tablosu MyISAM'da kalmış siteler (2026.3.6'nın
+`ALTER`'i koşmamış ya da bitmemiş olabilir; Veritabanı Motoru'nun taşıma
+listesi `visitors`'ı içermiyor). MyISAM silmeden sonra dosyayı küçültmez,
+açılan delikler eşzamanlı eklemeyi kapatır ve her yazma tabloyu kilitler;
+kart bunu yalnız söylüyordu. İkincisi, güvenlik duvarı kapalı
+sitelerde arama motorlarının gezdiği her sayfa ziyaret olarak yazılıyordu.
+Plan `docs/_plan_ziyaretci_temizleme.md` ("İkinci parça").
+
+**Yükseltmede 90 gün için yeni şema adımı yok.** 10.3 sütunu `DEFAULT 90`
+ile ekliyor; 2026.4.10'a güncellenen her site 90 günle başlar, genel görev
+eski kayıtları kimse başlatmadan siler. 0, yalnız birinin elle seçtiği
+değerdir (dev'de ziyaretçi satırlarını korumak için bilerek 0); onu 90'a
+çeviren bir adım bu seçimi ezerdi. Yedek (`mysqldump-php`) satırları
+döktüğü için temizlik biter bitmez yedek de küçülür; dosyanın küçülmesini
+beklemez.
+
+**Ne değişti.**
+- `includes/fn/visitor_retention.php`: `pg_visitor_move_run()` genel görevde
+  (`job.php`), temizliğin işi kalmadığı turda, 15 sn. Durum
+  `data/temp/visitor_move.json`'da; taşıma sürmüyorsa tur yalnız bu dosyayı
+  okur, saatte bir (tablo MyISAM değilse ya da taşıma bittiyse günde bir)
+  birkaç küçük okumayla bakar.
+- Kendiliğinden başlama koşulları (`pg_visitor_move_hold_reason()`, sırayla):
+  tablo MyISAM; sunucu InnoDB destekliyor (`pg_innodb_capability()`);
+  satırlar bir InnoDB sayfasına sığıyor (`pg_innodb_row_estimate()`);
+  `visitors_myisam` adında tablo yok; saklama süresi 0 değil; temizlik
+  bitmiş, birikmiş iş yok; son başarısız denemenin üstünden bir hafta
+  geçmiş; veritabanı sunucusunun boş diski okunabiliyor ve en az
+  3 × (veri − boş alan + dizin) + 1 GB. Disk yalnız veritabanı aynı
+  makinedeyse (`localhost`, `127.0.0.1`, `::1`, `.`, soket; `p:` öneki ve
+  port atılır) `disk_free_space(@@datadir)` ile okunur; okunamıyorsa
+  kendiliğinden başlamaz ve kart bunu söyler.
+- Taşıma, site çalışırken:
+  1. `CREATE TABLE visitors_innodb LIKE visitors`, tablo boşken `ALTER …
+     ENGINE=InnoDB, ROW_FORMAT=DYNAMIC` ve 10.3'ün InnoDB'de kaldırdığı iki
+     dizin (`ip_address`, `idx_user_agent`) düşer. Sütunlar ad ve tipiyle
+     karşılaştırılır; tutmazsa kopya silinip baştan kurulur.
+  2. Kopya birincil anahtar pencereleriyle, 2.000 satır:
+     `INSERT INTO visitors_innodb SELECT * FROM visitors WHERE id > a AND
+     id <= b`; parçalar arasında en az parçanın sürdüğü kadar (≥ 20 ms)
+     ara. İmleç işaret dosyasında, her tur kaldığı yerden.
+  3. Yetişince değiştirme. Birinci geçiş: kopya başladığından beri değişen
+     satırlar (`stop_timestamp >= başlangıç − 60`) `DELETE … WHERE id IN`
+     ve `INSERT … SELECT … WHERE id IN` ile yeniden kopyalanır. İkinci
+     geçiş: kopyanın `AUTO_INCREMENT`'i `MAX(id) + 1000`, aradaki yeni
+     satırlar ve son saniyelerde değişenler. Sonra
+     `SET SESSION lock_wait_timeout = 5` ve tek ifadede
+     `RENAME TABLE visitors TO visitors_myisam, visitors_innodb TO
+     visitors`. Ad değişiminden hemen önce eskiye düşen yeni satırlar
+     yeniye eklenir.
+  4. Denetim: eski tablodaki saklama süresi içindeki her satır yenide var
+     mı (anti-join, `start_timestamp >= sınır`). Eksik varsa eklenir;
+     hâlâ eksik varsa taşıma "durdu" olur, eski tablo `visitors_myisam`
+     adıyla kalır, kart söyler. Yoksa eski tablo silinir, kart 30 gün
+     "önce X, şimdi Y" der, Site Günlüğü'ne bir satır düşer.
+  - İfade tabanlı replikasyonda güvenli kalsın diye `INSERT … SELECT …
+    LIMIT`, `REPLACE … SELECT` ve `INSERT IGNORE … SELECT` yok; pencere id
+    aralığıyla, yeniden kopya DELETE + INSERT ile.
+  - Sorgular `db()` yerine `@mysqli_query` ile (`db()` hatada çıkıyor): bir
+    hata kopyayı siler, tablo MyISAM'da kalır, kart nedenini söyler.
+  - Temizlikle aynı `GET_LOCK`; ikisi aynı anda koşmaz. Taşıma sürerken
+    Optimize düğmesi kapalı.
+  - Bilinen kayıp: ad değişiminin yapıldığı an eski tablodaki bir satıra
+    gelen sayfa görüntüleme güncellemesi yenisine geçmeyebilir (200 bin
+    satırlık denemede 3 görüntüleme).
+- Veritabanı Motoru › Ziyaretçi kayıtları kartı: uzun MyISAM uyarısı ilk
+  cümlesine indi, yanına neden henüz taşınmadığı (disk okunamıyor ya da
+  yetmiyor, süre 0, temizlik sürüyor, sunucu ya da satır genişliği izin
+  vermiyor, ad dolu) ya da taşımanın ilerlemesi ("yaklaşık N kaydın M
+  tanesi kopyalandı") geliyor. Yeni "Şimdi InnoDB'ye taşı" düğmesi (onay
+  metninde gereken boş disk) disk koşulunu ve beklemeleri atlar, ilk 20
+  sn'yi hemen koşar, kalanını genel görev sürdürür.
+- `get_page.php` `init_tracking()`: `IS_BOT` yalnız güvenlik duvarı
+  çalışınca tanımlanıyordu; duvar kapalıyken, izinli adreste ya da hariç
+  tutulan yolda her tarayıcı sayfası ziyaret yazılıyordu. Artık
+  `waf_classify_bot()` insan dışı derse (arama motoru, bilinen bot, araç,
+  boş kullanıcı ajanı) ziyaret yazılmıyor; engelleme ya da günlük yok.
+- 19 yeni dil anahtarı; bir anahtar ilk cümlesine indi.
+
+Şema ve JS değişikliği yok.
+
+**Ölçüm (sandbox, MariaDB 10.11, 128 MB buffer pool; 3,8 milyon satır,
+400 gün, 90 günle ~2,9 milyon satır silinecek; aynı anda siteyi taklit eden
+dört işçi: ziyaret ekleme, sayfa görüntüleme güncellemesi, tekilleştirme,
+son bir saat sayımı; genel görev gibi 15 sn'lik turlar).**
+
+- MyISAM (3.800.000 satır, 868 MB veri + 211 MB dizin): temizlik 25 tur,
+  ardışık turlarla 390 sn; 2.940.590 satır silindi, 310 gün özetlendi.
+  Temizliğin bittiği turda taşıma başladı: 518.000 satır 15,0 sn'de,
+  383.395 satır 12,6 sn'de, değiştirme + denetim + eski tablonun silinmesi
+  4,3 sn; toplam 3 tur, 32 sn. Sonuç InnoDB, ~900 bin satır, 253 MB veri +
+  56 MB dizin: 1,1 GB → 295 MB. Dakikada bir koşan genel görevle temizlik
+  ~25 dakika, taşıma ~3 dakika sürer (gerçek diskte daha çok tur).
+- Yük, MyISAM: işten önce p99 1–2 ms. Temizlik turlarında p99 50–71 ms, en
+  uzun 141 ms. Taşıma turlarında p99 34–42 ms, en uzun 271 ms; o da ad
+  değişimi değil, 1 GB'lık eski tablonun silindiği an (yavaş sorgu
+  günlüğünde `DROP TABLE` 0,66 sn). 500 ms'yi geçen tek sorgu yok.
+  Denetimin anti-join'i 2,7 sn sürüyor ama yeni tablo InnoDB (tutarlı okuma)
+  ve eski tabloya kimse yazmıyor, siteyi bekletmiyor.
+- Bütünlük, MyISAM: koşu sırasında yükün yazdığı 102.621 ziyaretin hiçbiri
+  eksik değil; 171.229 sayfa görüntüleme güncellemesinin 6'sı ad değişimi
+  anında kayboldu. Aynı deneme önceki kopya koduyla (ORDER BY LIMIT
+  pencereleri): 26 + 3 tur, en uzun 273 ms, eksik 0, kayıp 3.
+- InnoDB (aynı 3,8 milyon satır): temizlik 15 tur, 205 sn; 2.940.590 satır,
+  310 gün. Yük p99 ≤ 15 ms, en uzun 61 ms. Taşıma bakışı `none`, 0,00 sn.
+  Eksik ve kayıp 0.
+- 200 bin satırlık işlev denemesi (üç işçi): taşıma 6,3 sn, eksik 0, seed
+  satırlarının sağlama toplamı aynı.
+
+`tests/visitor_retention_test.php`'ye yerel sunucu, gereken disk ve
+başlama koşulları için dört test. `tools/lint.php`, `tools/test.php` (948
+test), `check_lang`, `check_bindings`, `check_api_schema`, `check_copies`
+ve `build_js.php --check` geçti.
+
+**Doğrulanamayan.** MySQL 8.0'da süreler (sandbox MariaDB); gerçek
+sunucunun diski; uzak veritabanı sunucusunda taşıma (kendiliğinden
+başlamaz, düğmeyle denenmedi); dev.pinegrap.com'da tablo zaten InnoDB,
+taşıma orada çalışmaz.
+
+**Bilerek yapılmayan (plan, "Ertelenenler").** Yedekten ziyaretçi
+satırlarını çıkarmak (ürün kararı, madde 7); büyük yedeğin parça parça
+geri yüklenmesi (madde 8); InnoDB'de silmeden sonra dosyanın kendiliğinden
+küçülmesi (madde 5); uzun metin sütunlarını ayırmak (madde 2), aylık
+bölümleme (madde 3), IP'nin erken silinmesi (madde 4).
+
+---
+
 ## 2026.4.10 — Kapısı olmayan 37 panel ekranı `?id[]=` ile 500 vermiyor, kimliksiz ve var olmayan kayıtta "Kayıt bulunamadı" (2026-10-14)
 
 **Neden.** #417'nin panel taramasından kalan K2. Bu ekranlarda c651716'daki
