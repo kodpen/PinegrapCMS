@@ -417,6 +417,26 @@
          görünümü eskisi gibi e-posta adresine göre
          sıralanıyor.
 
+  [DÜZELTME] Adreste sayı olmayan bir bitiş yılıyla
+         açılan Rehber hata sayfası veriyor ve oturum
+         kapanana kadar hiç açılmıyordu (yinelenen
+         kişiler görünümü dahil); artık bozuk değer
+         varsayılan tarih aralığına dönüyor.
+
+  FORMLAR VE SİTE GÜNLÜĞÜ
+  --------------------------------------------------------
+
+  [DÜZELTME] Adreste eksik ya da bozuk bir tarih
+         değeriyle açılan Gönderilen Formlar listesi
+         hata sayfası veriyor ve oturum kapanana kadar
+         hiç açılmıyordu; artık bozuk değer varsayılan
+         tarih aralığına dönüyor.
+
+  [DÜZELTME] Site Günlüğü bozuk bir tarih değeri
+         taşıyan adresle açılınca hata sayfası
+         veriyordu; artık o değerin yerine varsayılan
+         aralık kullanılıyor.
+
   SAYFALAR
   --------------------------------------------------------
 
