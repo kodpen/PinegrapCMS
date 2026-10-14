@@ -3331,12 +3331,13 @@ function init_tracking()
 	// if there is an http referer and the http referer has not already been tracked
 	if (isset($_SERVER['HTTP_REFERER']) && $_SERVER['HTTP_REFERER'] && !isset($_SESSION['software']['http_referer']))
 	{
-		// parse the http referer url in order to get host
-		$http_referer_parsed_url = parse_url($_SERVER['HTTP_REFERER']);
-		// remove www. from http referer host
-		$http_referer_host = str_replace('www.', '', $http_referer_parsed_url['host']);
-		// remove www. from http host
-		$http_host = str_replace('www.', '', $_SERVER['HTTP_HOST']);
+		// get the http referer host and remove www. from it. A referer
+		// without a host ("foo", "/path", "https:///") has an empty one.
+		$http_referer_host = str_replace('www.', '', (string) parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST));
+		// remove www. and the port from http host. The referer host above
+		// never carries the port, so a site served on one (127.0.0.1:8000)
+		// counted its own pages as a referring site.
+		$http_host = str_replace('www.', '', preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
 		// if the http referer is not from the same host as the http host, then store http referer in session
 		if ($http_referer_host != $http_host)
 		{
@@ -3440,137 +3441,148 @@ function init_tracking()
 			// if there is an http referer
 			if ($referer)
 			{
-				$referring_host_name = $http_referer_parsed_url['host'];
-				// check to see if http referer is a search engine and find search query delimiter
-				if (preg_match('/www\.google.*/i', $referer))
+				// Parse the stored referer rather than this request's. It is
+				// stored on the first page of the visit; if that page ended
+				// before the visitor record was created, this request may
+				// carry another referer or none.
+				$referer_parts = parse_url($referer);
+				if (!is_array($referer_parts))
+				{
+					$referer_parts = array();
+				}
+				$referring_host_name = $referer_parts['host'] ?? '';
+				// check to see if the referring host is a search engine and find search query delimiter.
+				// The host and not the whole address: flask.com, or another
+				// site's address that merely contains "www.google", is no search engine.
+				$delimiter = '';
+				if (preg_match('/www\.google.*/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Google';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/search\.msn.*/i', $referer))
+				elseif (preg_match('/search\.msn.*/i', $referring_host_name))
 				{
 					$referring_search_engine = 'MSN';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/search\.yahoo.*/i', $referer))
+				elseif (preg_match('/search\.yahoo.*/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Yahoo!';
 					$delimiter = 'p';
 				}
-				elseif (preg_match('/www\.bing\.com/i', $referer))
+				elseif (preg_match('/www\.bing\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Bing';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/(search\.aol\.com)|(aolsearch\.aol\.com)/i', $referer))
+				elseif (preg_match('/(search\.aol\.com)|(aolsearch\.aol\.com)/i', $referring_host_name))
 				{
 					$referring_search_engine = 'AOL';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/ask\.com/i', $referer))
+				elseif (preg_match('/(^|\.)ask\.com$/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Ask.com';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/www\.ask\.co\.uk/i', $referer))
+				elseif (preg_match('/www\.ask\.co\.uk/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Ask.com';
 					$delimiter = 'ask';
 				}
-				elseif (preg_match('/search\.earthlink\.net/i', $referer))
+				elseif (preg_match('/search\.earthlink\.net/i', $referring_host_name))
 				{
 					$referring_search_engine = 'EarthLink';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/www\.netscape\.com/i', $referer))
+				elseif (preg_match('/www\.netscape\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Netscape';
 					$delimiter = 's';
 				}
-				elseif (preg_match('/(search\.netscape\.com)|(searcht\.netscape\.com)/i', $referer))
+				elseif (preg_match('/(search\.netscape\.com)|(searcht\.netscape\.com)/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Netscape';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/www\.alltheweb\.com/i', $referer))
+				elseif (preg_match('/www\.alltheweb\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'AlltheWeb';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/msxml\.excite\.com/i', $referer))
+				elseif (preg_match('/msxml\.excite\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Excite';
 					$delimiter = 'qkw';
 				}
-				elseif (preg_match('/www\.metacrawler\.com/i', $referer))
+				elseif (preg_match('/www\.metacrawler\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'MetaCrawler';
 					$delimiter = 'qkw';
 				}
-				elseif (preg_match('/dpxml\.webcrawler\.com/i', $referer))
+				elseif (preg_match('/dpxml\.webcrawler\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'WebCrawler';
 					$delimiter = 'qkw';
 				}
-				elseif (preg_match('/search\.lycos\.com/i', $referer))
+				elseif (preg_match('/search\.lycos\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Lycos';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/www\.hotbot\.com/i', $referer))
+				elseif (preg_match('/www\.hotbot\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'HotBot';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/search\.mamma\.com/i', $referer))
+				elseif (preg_match('/search\.mamma\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Mamma.com';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/search\.cometsystems\.com/i', $referer))
+				elseif (preg_match('/search\.cometsystems\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Comet Web Search';
 					$delimiter = 'qry';
 				}
-				elseif (preg_match('/www\.overture\.com/i', $referer))
+				elseif (preg_match('/www\.overture\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Overture';
 					$delimiter = 'Keywords';
 				}
-				elseif (preg_match('/www\.looksmart\.com/i', $referer))
+				elseif (preg_match('/www\.looksmart\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'LookSmart';
 					$delimiter = 'key';
 				}
-				elseif (preg_match('/search\.looksmart\.com/i', $referer))
+				elseif (preg_match('/search\.looksmart\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'LookSmart';
 					$delimiter = 'qt';
 				}
-				elseif (preg_match('/search\.viewpoint\.com/i', $referer))
+				elseif (preg_match('/search\.viewpoint\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Viewpoint';
 					$delimiter = 'k';
 				}
-				elseif (preg_match('/search\.dmoz\.org/i', $referer))
+				elseif (preg_match('/search\.dmoz\.org/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Open Directory Project';
 					$delimiter = 'search';
 				}
-				// if a delimiter was found, get search terms
-				if ($delimiter)
+				// if a delimiter was found, get search terms. Search engines
+				// mostly send their bare address now (https://www.google.com/),
+				// so there is often no query string at all.
+				if ($delimiter && isset($referer_parts['query']))
 				{
 					// get query string items
-					parse_str($http_referer_parsed_url['query'], $query_string_items);
-					// get referring search terms from query string
-					$referring_search_terms = trim($query_string_items[$delimiter]);
-					// if magic quotes is on, then remove slashes from referring search terms
-					// PHP 7.4 depricated.
-					//if (get_magic_quotes_gpc())
-					//{
-					//	$referring_search_terms = stripslashes($referring_search_terms);
-					//}
-					$referring_search_terms = urldecode($referring_search_terms);
+					parse_str($referer_parts['query'], $query_string_items);
+					// get referring search terms from query string. parse_str()
+					// has already decoded them: decoding again turned "c%2B%2B"
+					// into "c  ". A repeated parameter (q[]=x) arrives as an
+					// array, which trim() refused with an error page.
+					$search_terms = $query_string_items[$delimiter] ?? '';
+					$referring_search_terms = is_string($search_terms) ? trim($search_terms) : '';
 				}
 			}
 			

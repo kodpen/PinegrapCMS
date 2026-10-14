@@ -346,6 +346,25 @@
          sayfanın adresine kanonik bağlıyordu. Ziyaretçi
          aynı "bulunamadı" mesajını görür.
 
+  [DÜZELTME] Ziyaretçi takibi açıkken, arama terimi
+         adreste birden çok kez geçen (?q[]=…) bir
+         bağlantıdan gelen ziyaretçi ilk sayfada hata
+         sayfası görüyordu; artık sayfa açılıyor.
+
+  [DÜZELTME] Ziyaretçi raporunda gelen site ve arama
+         terimi doğru kaydediliyor. "+" ya da "%" içeren
+         arama terimleri bozuluyordu ("c++" → "c");
+         flask.com gibi adı "ask.com" ile biten siteler
+         Ask.com, adresinde "www.google" geçen her site
+         Google sayılıyordu; portlu bir adreste (:8000)
+         açılan site kendi sayfalarını gelen site olarak
+         yazıyordu.
+
+  [DÜZELTME] Arama motoru dışındaki bir siteden ya da
+         arama terimini göndermeyen Google'dan gelen her
+         yeni ziyaretçi hata günlüğüne uyarı yazıyordu;
+         artık yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
