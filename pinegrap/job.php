@@ -393,6 +393,28 @@ if (MAILCHIMP and ECOMMERCE) {
 require_once(dirname(__FILE__) . '/includes/api/maintenance.php');
 api_maintenance_purge();
 
+// Visitor records past the retention period of the SEO settings
+// (includes/fn/visitor_retention.php): each day added up into the daily
+// summary, then its rows removed a chunk at a time. Once an hour when the
+// table is down to its period, every tick while rows are still waiting; a
+// look that finds nothing to do is one config read and one file read.
+//
+// The budget keeps a table of millions from holding up the rest of this tick:
+// the backlog of a large site goes over the next ticks, a few hundred
+// thousand rows each.
+if (pg_visitor_cleanup_due()) {
+
+    $visitor_cleanup = pg_visitor_cleanup_run(15);
+
+    if ($visitor_cleanup['deleted'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} visitor record(s) older than {var:2} days',
+            'vars'   => array(pg_format_number($visitor_cleanup['deleted'], 0), $visitor_cleanup['days']),
+        )), 'UNKNOWN');
+    }
+
+}
+
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
 pg_cron_ran('job');
 

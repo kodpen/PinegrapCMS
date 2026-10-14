@@ -84,6 +84,120 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ziyaretçi kayıtları: saklama süresi, günlük özet, parça parça silme (10.3) (2026-10-14)
+
+**Neden.** `visitors` tablosuna her ziyaret bir satır yazılıyor, hiçbiri
+silinmiyordu. Yoğun sitelerde 3,8 milyon satıra ve tek başına 800 MB'ın
+üstüne çıkıyor, siteyi kilitliyordu. Bu büyüklükteki bir tablo 2026.4.8'in
+InnoDB taşımasında sınırı (250.000 satır / 128 MB) aştığı için büyük
+olasılıkla MyISAM'da kaldı: MyISAM'da her yazma, ve o tabloyu okuyan her
+sorgu, tablonun tamamını kilitler. Plan ve ertelenenler
+`docs/_plan_ziyaretci_temizleme.md`.
+
+**Ne değişti.**
+- `config.visitor_retention_days` (varsayılan 90, 0 sınırsız, 7–3650) ve
+  `config.visitor_summary` (varsayılan 1). Ayarlar › SEO › Ziyaretçi
+  Takibi; geçersiz değer alan hatasıyla döner, değişiklik koşu işaretini
+  siler (`pg_visitor_cleanup_reset()`), sonraki genel görev turu hemen
+  bakar.
+- Modül `includes/fn/visitor_retention.php`. `pg_visitor_cleanup_run()`
+  genel görevde (`job.php`, 15 sn): birikmiş iş varken her turda, yoksa
+  saatte bir (`data/temp/visitor_cleanup.json`). Sınır, sitenin saatiyle
+  bugünden N gün önceki gece yarısı (`strtotime`, yaz saatine dayanıklı).
+  Sıra: saatlik grafik tablolarının geçmiş doldurması bitmediyse önce ona
+  pay, imlecinin üstündeki satırlara dokunulmaz; sonra özet (koşunun en
+  çok %60'ı); sonra silme. Silme: son silinecek satır `start_timestamp`
+  dizininden bir kez bulunur (yalnız zamana göre sıralı, sonra o saniyenin
+  en büyük id'si), sonra birincil anahtardan bir pencere
+  (`SELECT MAX(id) FROM (SELECT id … WHERE id > imleç ORDER BY id LIMIT
+  5000)`) ve `DELETE … WHERE id > imleç AND id <= üst AND start_timestamp
+  < sınır`. Her parça kendi kısa işlemi, aralarında 20 ms. MyISAM'da
+  (tablo kilidi) parça 1.000 satır, ara en az parçanın sürdüğü kadar.
+  `DELETE … ORDER BY id LIMIT n` kullanılmadı: MyISAM'da sunucu
+  `start_timestamp` dizinini seçip her parçada eşleşen bütün satırları
+  sıralıyordu (EXPLAIN: Using filesort, parça başına ~0,5 sn). Kilit
+  beklemesi ya da deadlock olursa koşu bırakır, sonraki tur devam eder.
+  İki koşu `GET_LOCK('pg_visitor_cleanup.<veritabanı>')` ile ayrılır.
+- `visitor_stats_daily`: gün × boyut × değer; boyut başına günün ilk 100
+  değeri (`PG_VISITOR_SUMMARY_TOP`) ve kalanların toplamı tek `is_rest`
+  satırında; toplam satırı (`dimension = ''`) en son yazılır,
+  `MAX(stat_date) WHERE dimension = ''` özetin vardığı gün. Gün önce
+  silinip yeniden yazılır, yarıda kalan gün baştan yazılır. Boyutlar raporun
+  gruplama anahtarları; tam yönlendiren adres ve posta kodu yok (neredeyse
+  her ziyarette ayrı değer). Bir gün birincil anahtar aralığından okunur
+  (id'ler zamanla artıyor; aralık günün satır sayısının iki katını
+  aşarsa `start_timestamp` dizininden).
+- Veritabanı Motoru › "Ziyaretçi kayıtları" kartı (`#visitor-records`):
+  satır, boyut, boş alan, en eski kayıt, saklama süresi, özetin vardığı
+  gün, son temizlik; silinecek satır ve tahmini boyut
+  (`pg_visitor_cleanup_preview()`, ortalama satır boyutundan). "Ziyaretçi
+  kayıtlarını şimdi temizle" onay ister; `action=visitor_cleanup&ajax=1`
+  20 sn'lik adımlar, JSON, sayaç kartta; son adımın bildirimi sayfa
+  yenilenince. JS yoksa tek adım ve yönlendirme. "Optimize et" kartta ayrı
+  ve uyarılı.
+- Uyarı: 2.000.000 satır ya da 512 MB (veri + dizin,
+  `pg_visitor_health_thresholds()`) kartta ve Sistem Durumu'nda
+  ("Visitor Records", puansız iş satırı). Boş alan 128 MB'ı ve dosyanın
+  yarısını geçince kartta Optimize bilgisi.
+- Ziyaretçi Raporu (`view_visitor_report.php`): tarih seçicili ve filtresiz
+  raporda, yıl/ay/gün + en çok bir boyutla, ilk ham günden öncesi özetten
+  (`pg_visitor_summary_report_rows()`), sonrası satırlardan; satır sorgusu
+  `start_timestamp >= pg_visitor_summary_raw_from()` ile sınırlanır (özetin
+  saydığı gün iki kez sayılmasın). Gruplar MySQL sırasına PHP'de dizilir.
+  Karşılayamadığı raporda o günlerin girmediğini söyleyen not. Yeni
+  gruplama "Cihaz" (`pg_visitor_device_sql()`; `visitor_reports`
+  ENUM'larına `'device'`).
+- Dış API `GET /reports/visitors`: aynı birleştirme, yanıtta `summary_to`
+  (özetten gelen son gün ya da null), `by=device`. Özetteki "diğer"
+  satırları toplamlarda var, `rows`'ta yok.
+
+**Şema (10.3).** `config.visitor_retention_days` SMALLINT UNSIGNED 90,
+`config.visitor_summary` TINYINT(1) UNSIGNED 1; `visitor_stats_daily`
+(`idx_dimension_date`, `idx_date`); `visitor_reports.summarize_by_1..3`
+ENUM'una `'device'` (önce tipi okunur, yalnız genişletilir). Yalnız
+InnoDB'de: `visitors.ip_address` dizini (`idx_dedup` aynı sütunla
+başlıyor) ve `idx_user_agent` (gruplama önek dizinini kullanamaz, hiçbir
+sorgu okumuyor) kaldırılır; InnoDB'de dizin kaldırmak tabloyu kopyalamaz.
+Sandbox'taki 3,8 milyon satırda ikisi ~350 MB. MyISAM'da bırakılır;
+tablo InnoDB'ye taşındıktan sonra adımları yeniden koşturmak onları da
+kaldırır. Yükseltme satır silmez. `tests/innodb_test.php` stok `config`
+sayıları 433 sütun / 8739 / 64154 bayt.
+
+**Ölçüm (sandbox, MariaDB 10.11, 128 MB buffer pool, ~3,8 milyon satır,
+400 gün; 90 günde ~2,94 milyon satır silinecek; aynı anda siteyi taklit
+eden yük: ziyaret ekleme, sayfa görüntüleme güncellemesi, tekilleştirme,
+son bir saat sayımı).**
+- InnoDB, genel görev gibi 15 sn'lik koşular: 11 koşu, 151 sn; 310 gün
+  özetlendi, 2.945.272 satır silindi. Yük: ortanca değişmedi (ekleme
+  0,8 ms), p99 ekleme ~4,5 ms, güncelleme ~3 ms, tekilleştirme ~1,5 ms; en
+  uzun 28 ms, hata yok.
+- InnoDB, tek `DELETE … WHERE start_timestamp < sınır`: 49,5 sn tek işlem;
+  yeni satırlara dokunmadığı için bu yük beklemedi, ama yarıda kesilemez,
+  kesilirse aynı süre geri alır ve 2,9 milyon satırlık geri alma kaydı
+  tutar.
+- MyISAM (3.794.000 satır, 1,03 GB; 2.939.369 silinecek), 15 sn'lik
+  koşular: 20 koşu, 277 sn; 310 gün özetlendi, koşu başına ~152.000 satır
+  (MyISAM'da özet gün başına ~0,55 sn, koşuyu o sınırlıyor). Aynı yük:
+  hata yok, en uzun bekleme 83 ms; p99 ekleme 0,5 → ~43 ms, güncelleme
+  0,4 → ~33 ms, tekilleştirme 0,9 → ~15 ms; 10 sn'de 468 yerine 290–360
+  döngü. İlk deneme `ORDER BY id LIMIT` ile parça başına 0,3–0,5 sn sürüp
+  sorguları 300–870 ms bekletti; id pencereleri bunun için.
+- MyISAM, tek `DELETE`: 24,5 sn; bu sürede tabloya giden her sorgu bekledi
+  (tekilleştirme sorgusu 24,4 sn). Bildirilen "tüm sistemi kilitliyor"
+  belirtisi bu; canlı trafikte ve soğuk diskte dakikalar sürer. Silmeden
+  sonra MyISAM dosyası da küçülmez (872 MB veri, 675 MB'ı boş).
+- Ön izleme sayımı 0,7 sn. Silmeden sonra InnoDB dosyası küçülmez
+  (1,34 GB); `OPTIMIZE TABLE` 854 bin satırda 5,5 sn, 1,34 GB → 310 MB,
+  bu sırada tek sorgu 0,85 sn bekledi.
+- Rapor ve API'nin özet + ham toplamı ham kopyayla birebir aynı (3.794.000
+  ziyaret, 18.969.998 sayfa görüntüleme; ay ay, ülke, kanal, cihaz).
+  "Şimdi temizle" tarayıcıda 570.297 satırı iki adımda, 28 sn'de sildi.
+
+**Doğrulanamayan.** Gerçek sitelerdeki veri dağılımı (gün başına satır,
+değer çeşitliliği); MySQL 8.0'da süreler (sandbox MariaDB).
+
+---
+
 ## 2026.4.10 — Belgeler: biten plan dosyaları temizlendi (2026-10-14)
 
 Biten üç plan silindi (`_plan_csrf_2fa`, `_panel_api_eylemler`, `_erp_dosya_yoneticisi_hazirlik`); kısmen biten yedisinde biten bölümler çıkarıldı ve başa "Kalanlar" kondu (`_plan_erp`, `_plan_erp_ozellikler`, `_plan_oauth`, `_plan_tersine_oauth`, `_plan_claude_kanal`, `_plan_api_mobil`, `_erp_yol_haritasi_adaylari`); tam metinler git geçmişinde (`d9fec3a`).

@@ -8536,6 +8536,7 @@ function get_tables() {
 		'seo_search_daily',
 		'visitor_stats_hourly',
 		'visitor_content_hourly',
+		'visitor_stats_daily',
 		'local_sale_history',
 		'local_sale_history_items',
 		'designer_presence',

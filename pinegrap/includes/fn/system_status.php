@@ -1577,6 +1577,7 @@ function get_system_status_checks()
         'Scheduled Tasks'          => 'Tasks',
         'Webhooks'                 => 'Webhook',
         'Storage Engine'           => 'Engine',
+        'Visitor Records'          => 'Visitors',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1606,6 +1607,7 @@ function get_system_status_checks()
         'Scheduled Tasks',
         'Webhooks',
         'Storage Engine',
+        'Visitor Records',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -2193,6 +2195,44 @@ function get_system_status_checks()
                     $engine_detail
                 );
             }
+        }
+    }
+
+    // 👣 Visitor records: the visitors table, which grows by a row per visit.
+    //
+    // Left alone it becomes the largest table of the database, millions of
+    // rows on a busy site. The general job keeps it to the retention period;
+    // this line says when it is large anyway, because the period is "no
+    // limit" or the job has not caught up yet. Reported and not scored, like
+    // Storage Engine.
+    if (function_exists('pg_visitor_retention_settings') && (($visitor_settings = pg_visitor_retention_settings()) !== false)) {
+        $visitor_catalog = pg_db_table_catalog();
+
+        if (isset($visitor_catalog['visitors'])) {
+            $visitor_row = $visitor_catalog['visitors'];
+
+            $visitor_figures = lang(array(
+                'string' => 'The visitors table holds about {var:1} records and takes {var:2}.',
+                'vars'   => array(pg_format_number($visitor_row['rows'], 0), pg_innodb_size_label($visitor_row['bytes'])),
+            ));
+
+            if ($visitor_settings['days'] > 0) {
+                $visitor_kept = lang(array(
+                    'string' => 'Records older than {var:1} days are removed a little at a time by the general job.',
+                    'vars'   => array($visitor_settings['days']),
+                ));
+            } else {
+                $visitor_kept = lang('Visitor records are kept without a limit. Set a period under Settings › SEO › Visitor Tracking.');
+            }
+
+            $output .= $makeIcon(
+                'bi-person-lines-fill',
+                pg_visitor_table_is_large($visitor_row) ? 'text-warning' : 'text-success',
+                'Visitor Records',
+                $visitor_figures . ' ' . $visitor_kept,
+                pg_innodb_size_label($visitor_row['bytes']),
+                'database_engine.php#visitor-records'
+            );
         }
     }
 

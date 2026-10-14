@@ -208,7 +208,34 @@ function api_visitors_dimensions() {
 		'state'             => 'state',
 		'city'              => 'city',
 		'form'              => 'custom_form_name',
-		'site_search_terms' => 'site_search_terms'
+		'site_search_terms' => 'site_search_terms',
+		'device'            => pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql('user_agent') : "''"
+	);
+
+}
+
+// The dimension of the daily summary (includes/fn/visitor_retention.php) each
+// one is kept under once the rows of its day are gone.
+function api_visitors_summary_dimensions() {
+
+	return array(
+		'referrer_host'     => 'referring_host_name',
+		'search_engine'     => 'referring_search_engine',
+		'search_terms'      => 'referring_search_terms',
+		'channel'           => 'pay_per_click_organic',
+		'landing_page'      => 'landing_page_name',
+		'tracking_code'     => 'tracking_code',
+		'utm_source'        => 'utm_source',
+		'utm_medium'        => 'utm_medium',
+		'utm_campaign'      => 'utm_campaign',
+		'utm_term'          => 'utm_term',
+		'utm_content'       => 'utm_content',
+		'country'           => 'country',
+		'state'             => 'state',
+		'city'              => 'city',
+		'form'              => 'custom_form_name',
+		'site_search_terms' => 'site_search_terms',
+		'device'            => 'device'
 	);
 
 }
@@ -265,8 +292,55 @@ function api_reports_visitors($params) {
 		COALESCE(SUM(order_total), 0) AS order_total";
 
 	// Whole days by the site's clock, as the other two reports count them.
-	$where = "WHERE start_timestamp >= '" . strtotime($window['first'] . ' 00:00:00') . "'
-		AND start_timestamp < '" . strtotime($window['last'] . ' 00:00:00 +1 day') . "'";
+	$start = strtotime($window['first'] . ' 00:00:00');
+	$stop = strtotime($window['last'] . ' 00:00:00 +1 day');
+
+	// Days whose rows the retention period has removed come from the daily
+	// summary: every day before the first raw one, the rows from it on. A
+	// summarized day's row the cleanup has not reached yet is not counted
+	// twice.
+	$summary_to = null;
+	$summary_rows = array();
+	$summary_total = null;
+	$raw_from = function_exists('pg_visitor_summary_raw_from') ? pg_visitor_summary_raw_from() : 0;
+
+	if ($raw_from > $start) {
+
+		$summary_last = min($window['last'], date('Y-m-d', $raw_from - 1));
+		$summary_dimensions = api_visitors_summary_dimensions();
+
+		$summary_range = "(stat_date >= '" . escape($window['first']) . "') AND (stat_date <= '" . escape($summary_last) . "')";
+
+		$summary_sums = "COALESCE(SUM(visits), 0) AS visits,
+			COALESCE(SUM(page_views), 0) AS page_views,
+			COALESCE(SUM(forms_submitted), 0) AS forms_submitted,
+			COALESCE(SUM(orders_created), 0) AS orders_created,
+			COALESCE(SUM(orders_checked_out), 0) AS orders_checked_out,
+			COALESCE(SUM(orders_completed), 0) AS orders_completed,
+			COALESCE(SUM(order_total), 0) AS order_total";
+
+		$summary_total = api_row("SELECT " . $summary_sums . " FROM visitor_stats_daily WHERE (dimension = '') AND " . $summary_range);
+
+		// A day's values outside its top ones are one remainder row there,
+		// counted in the totals and never listed as a value.
+		$summary_rows = api_rows("SELECT
+				" . (($by === 'channel') ? "IF(dim_value = '', 'neither', dim_value)" : "dim_value") . " AS value, " . $summary_sums . "
+			FROM visitor_stats_daily
+			WHERE (dimension = '" . escape($summary_dimensions[$by]) . "') AND (is_rest = 0) AND " . $summary_range . "
+			GROUP BY value
+			ORDER BY visits DESC, value ASC
+			LIMIT " . max(500, $limit * 4));
+
+		if ((int) $summary_total['visits'] > 0) {
+			$summary_to = $summary_last;
+		}
+
+		$start = max($start, $raw_from);
+
+	}
+
+	$where = "WHERE start_timestamp >= '" . (int) $start . "'
+		AND start_timestamp < '" . (int) $stop . "'";
 
 	$total = api_row("SELECT " . $sums . " FROM visitors " . $where);
 
@@ -275,7 +349,41 @@ function api_reports_visitors($params) {
 		" . $where . "
 		GROUP BY value
 		ORDER BY visits DESC, value ASC
-		LIMIT " . $limit);
+		LIMIT " . (($summary_to !== null) ? max(500, $limit * 4) : $limit));
+
+	if ($summary_to !== null) {
+
+		$figures = array('visits', 'page_views', 'forms_submitted', 'orders_created', 'orders_checked_out', 'orders_completed', 'order_total');
+
+		foreach ($figures as $figure) {
+			$total[$figure] = (int) $total[$figure] + (int) $summary_total[$figure];
+		}
+
+		// The two lists added up by value, as the database groups them:
+		// without regard to case.
+		$merged = array();
+
+		foreach (array_merge($summary_rows, $rows) as $row) {
+
+			$key = mb_strtolower((string) $row['value']);
+
+			if (!isset($merged[$key])) {
+				$merged[$key] = array('value' => (string) $row['value']) + array_fill_keys($figures, 0);
+			}
+
+			foreach ($figures as $figure) {
+				$merged[$key][$figure] += (int) $row[$figure];
+			}
+
+		}
+
+		usort($merged, function ($a, $b) {
+			return ($a['visits'] != $b['visits']) ? (($a['visits'] > $b['visits']) ? -1 : 1) : strcmp($a['value'], $b['value']);
+		});
+
+		$rows = array_slice($merged, 0, $limit);
+
+	}
 
 	$out = array();
 
@@ -291,11 +399,12 @@ function api_reports_visitors($params) {
 	}
 
 	api_ok(array(
-		'from'   => $window['first'],
-		'to'     => $window['last'],
-		'by'     => $by,
-		'totals' => api_visitors_figures($total),
-		'rows'   => $out
+		'from'       => $window['first'],
+		'to'         => $window['last'],
+		'by'         => $by,
+		'totals'     => api_visitors_figures($total),
+		'rows'       => $out,
+		'summary_to' => $summary_to
 	));
 
 }
@@ -306,8 +415,9 @@ function api_visitor_breakdown_schema() {
 		'from'   => 'string',
 		'to'     => 'string',
 		'by'     => 'string',
-		'totals' => api_visitors_figures_schema(),
-		'rows'   => array(array_merge(array('value' => 'string?'), api_visitors_figures_schema()))
+		'totals'     => api_visitors_figures_schema(),
+		'rows'       => array(array_merge(array('value' => 'string?'), api_visitors_figures_schema())),
+		'summary_to' => 'string?'
 	);
 
 }

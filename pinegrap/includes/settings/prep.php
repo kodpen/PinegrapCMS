@@ -109,6 +109,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $mailchimp_checked = ($mailchimp == 1) ? ' checked="checked"' : '';
     $mailchimp_automation_checked = ($mailchimp_automation == 1) ? ' checked="checked"' : '';
     $visitor_tracking = $row['visitor_tracking'];
+    // Visitor record retention (2026.4.10, 10.3). Read with isset so the
+    // screen opens on an installation that has not run the upgrade, where
+    // the two fields are not shown.
+    $visitor_retention_available = isset($row['visitor_retention_days']) && isset($row['visitor_summary']);
+    $visitor_retention_days = $visitor_retention_available ? (int) $row['visitor_retention_days'] : 0;
+    $visitor_summary = $visitor_retention_available ? (int) $row['visitor_summary'] : 1;
     $allowed_bots = isset($row['allowed_bots']) ? $row['allowed_bots'] : '';
     $block_unknown_bots = isset($row['block_unknown_bots']) ? (int)$row['block_unknown_bots'] : 1;
 
