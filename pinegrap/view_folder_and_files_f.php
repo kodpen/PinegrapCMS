@@ -4606,23 +4606,16 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     // would write recycled_enabled = enabled with enabled
                     // already forced to 0, and the child would come back out of
                     // the bin unpublished no matter what it was.
-                    db(
-                        "UPDATE product_groups
-                        SET recycled = '1',
-                            recycled_enabled = enabled,
-                            enabled = '0'
-                        WHERE (id IN (" . implode(',', array_map('intval', $subtree)) . ")) AND (recycled = '0')");
-
+                    //
                     // One restore record, for the group that was actually
                     // deleted. The bin lists it alone and restoring it brings
                     // the whole subtree back with it. Replaced rather than added
                     // to, so a group that arrives here twice in one batch does
-                    // not leave two records behind.
-                    db("DELETE FROM recycle_bin WHERE (item_type = 'product_group') AND (item_id = '" . e($item_id) . "')");
-
-                    db(
-                        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                        VALUES ('product_group', '" . e($item_id) . "', '" . e((int) $map[$item_id]['parent_id']) . "', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
+                    // not leave two records behind. The same statements every
+                    // other delete of a group writes (pg_catalog_bin_statements()).
+                    foreach (pg_catalog_bin_statements('product_group', $item_id, $subtree, (int) $map[$item_id]['parent_id'], $user['id']) as $statement) {
+                        db($statement);
+                    }
 
                     log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($map[$item_id]['name']))), $_SESSION['sessionusername']);
 
@@ -4630,24 +4623,16 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 } elseif ($item_kind == 'product') {
 
-                    $product = db_item("SELECT id, name FROM products WHERE id = '" . e($item_id) . "'");
+                    // The same move every screen that deletes a product makes,
+                    // product.deleted with recycled: true included. False for a
+                    // product that is gone or already in the bin.
+                    $product_name = pg_catalog_bin_product($item_id, $user['id']);
 
-                    if (is_array($product) == false) {
+                    if ($product_name === false) {
                         continue;
                     }
 
-                    db(
-                        "UPDATE products
-                        SET recycled = '1',
-                            recycled_enabled = enabled,
-                            enabled = '0'
-                        WHERE id = '" . e($item_id) . "'");
-
-                    db(
-                        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                        VALUES ('product', '" . e($item_id) . "', '0', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
-
-                    log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($product['name']))), $_SESSION['sessionusername']);
+                    log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($product_name))), $_SESSION['sessionusername']);
 
                     $binned++;
                 }
@@ -4712,6 +4697,30 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     // it is out of the bin now either way, so the stale record
                     // goes with it.
                     db("DELETE FROM recycle_bin WHERE (item_type = 'product_group') AND (item_id IN (" . $sql_ids . "))");
+
+                    // A variant set deleted from the product list took its
+                    // variants with it, each recorded with the set as the place
+                    // it came from (pg_pb_bin_variant_set()). They come back
+                    // with the set, as they went. A product binned on its own
+                    // is recorded with 0 and is not touched here.
+                    $variant_ids = array();
+
+                    foreach ((array) db_items("SELECT item_id FROM recycle_bin WHERE (item_type = 'product') AND (original_parent_id IN (" . $sql_ids . "))") as $row) {
+                        $variant_ids[] = (int) $row['item_id'];
+                    }
+
+                    if (count($variant_ids) > 0) {
+
+                        $sql_variant_ids = implode(',', $variant_ids);
+
+                        db(
+                            "UPDATE products
+                            SET recycled = '0',
+                                enabled = recycled_enabled
+                            WHERE (id IN (" . $sql_variant_ids . ")) AND (recycled = '1')");
+
+                        db("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id IN (" . $sql_variant_ids . "))");
+                    }
 
                     $restored++;
 

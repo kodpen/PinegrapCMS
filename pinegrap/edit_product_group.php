@@ -508,7 +508,7 @@ if (!$_POST) {
         // else there is not a child object in this product group, so allow delete
         } else {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';
@@ -879,11 +879,29 @@ if (!$_POST) {
     $row = mysqli_fetch_assoc($result);
     $parent_id = $row['parent_id'];
 
+    // Whether this Delete sends the group to the Recycle Bin, as the Catalog
+    // Manager deletes: decided before the image links below are cleared,
+    // because a binned group keeps them so that restoring it brings its
+    // pictures back. Emptying the bin is what runs the permanent delete.
+    $binning_group = ((($_POST['submit_button'] ?? '') == 'Delete') && ($parent_id != '0') && pg_catalog_bin_ready());
+
     // Delete product group images references (we do this for both delete and update).
-    db("DELETE FROM product_groups_images_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'");
+    if ($binning_group == false) {
+        db("DELETE FROM product_groups_images_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'");
+    }
+
+    // The group and every group under it go to the bin together, the way a
+    // folder does; the products in it stay where else they are listed.
+    if ($binning_group) {
+
+        $binned_name = pg_catalog_bin_group((int) ($_POST['id'] ?? 0), $user['id']);
+
+        if ($binned_name !== false) {
+            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($binned_name))), $_SESSION['sessionusername']);
+        }
 
     // if product group was selected for delete
-    if (($_POST['submit_button'] ?? '') == 'Delete') {
+    } elseif (($_POST['submit_button'] ?? '') == 'Delete') {
         // if the parent_id is not set to 0, allow user to delete the product group because it is not the root product group
         if ($parent_id != '0') {
             $new_product_ids = array();

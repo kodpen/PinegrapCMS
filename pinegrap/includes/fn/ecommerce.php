@@ -1340,6 +1340,161 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
 }
 
 
+/**
+ * The statements that put a catalogue row in the Recycle Bin.
+ *
+ * The catalogue's bin is a flag, not a move: the row is switched off and marked
+ * recycled, what 'enabled' was is kept in recycled_enabled so that restoring
+ * puts it back as it was, and recycle_bin holds the record the bin lists, the
+ * countdown reads and the daily purge works from. Nothing else is touched -
+ * images, groups, attributes, prices, barcodes, form fields and short links
+ * stay where they are - so restoring is the flag going back and nothing has to
+ * be rebuilt.
+ *
+ * Built apart from the queries that run them so that every screen and the API
+ * write the same three, and so the unit tests can read them.
+ *
+ * "AND recycled = '0'" keeps a row that is already in the bin from being binned
+ * again: the second pass would copy 'enabled', which binning forced to 0, over
+ * the kept value, and the row would come back out of the bin unpublished. The
+ * record is replaced rather than added to, so one row never has two.
+ *
+ * @param string $item_type 'product' or 'product_group'
+ * @param int    $item_id   the row the bin record is for
+ * @param array  $row_ids   the rows flagged with it: the product itself, or a group and the groups under it
+ * @param int    $parent_id recycle_bin.original_parent_id
+ * @param int    $user_id
+ * @return array the statements in the order they run; empty when there is nothing to bin
+ */
+function pg_catalog_bin_statements($item_type, $item_id, $row_ids, $parent_id, $user_id)
+{
+    $item_type = ($item_type === 'product_group') ? 'product_group' : 'product';
+    $table = ($item_type === 'product_group') ? 'product_groups' : 'products';
+    $item_id = (int) $item_id;
+
+    $ids = array();
+
+    foreach ((array) $row_ids as $row_id) {
+        $row_id = (int) $row_id;
+
+        if ($row_id > 0) {
+            $ids[$row_id] = $row_id;
+        }
+    }
+
+    if (($item_id <= 0) || (count($ids) == 0)) {
+        return array();
+    }
+
+    return array(
+        "UPDATE " . $table . "
+        SET recycled = '1', recycled_enabled = enabled, enabled = '0'
+        WHERE (id IN (" . implode(',', $ids) . ")) AND (recycled = '0')",
+
+        "DELETE FROM recycle_bin WHERE (item_type = '" . $item_type . "') AND (item_id = '" . $item_id . "')",
+
+        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+        VALUES ('" . $item_type . "', '" . $item_id . "', '" . (int) $parent_id . "', UNIX_TIMESTAMP(), '" . (int) $user_id . "')");
+}
+
+/**
+ * Whether deleting a product or a product group sends it to the Recycle Bin.
+ *
+ * The catalogue's bin columns arrive with an upgrade; before it a deleted
+ * product is simply gone, and the screens fall back to the permanent delete
+ * rather than pretend otherwise. The Catalog Manager decides it, so the answer
+ * is asked of the Catalog Manager.
+ *
+ * @return bool
+ */
+function pg_catalog_bin_ready()
+{
+    if (!function_exists('pg_catalog_recycle_ready')) {
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    }
+
+    return (pg_catalog_recycle_ready() == true);
+}
+
+/**
+ * Move one product to the Recycle Bin, the way the Catalog Manager's Delete does.
+ *
+ * product.deleted goes out with recycled: true, as it does when the API bins a
+ * product: the product leaves every listing, and an integration that only
+ * learned of it through a listing would otherwise never hear that it went. The
+ * marketplace queue is told for the same reason - the product is switched off.
+ *
+ * The caller has asked pg_catalog_bin_ready() first and writes its own activity
+ * line, because every screen words it its own way.
+ *
+ * @param int $product_id
+ * @param int $user_id
+ * @param int $parent_id the variant set the product went into the bin with, or 0
+ * @return string|false the product's name, or false when there was nothing to bin
+ */
+function pg_catalog_bin_product($product_id, $user_id, $parent_id = 0)
+{
+    $product_id = (int) $product_id;
+
+    $product = db_item("SELECT id, name, recycled FROM products WHERE id = '" . $product_id . "'");
+
+    // Already in the bin: binning it again would only restart its countdown.
+    if ((is_array($product) == false) || ((int) $product['recycled'] === 1)) {
+        return false;
+    }
+
+    foreach (pg_catalog_bin_statements('product', $product_id, array($product_id), $parent_id, $user_id) as $statement) {
+        db($statement);
+    }
+
+    pg_announce('product.deleted', array(
+        'id'       => $product_id,
+        'name'     => (string) $product['name'],
+        'recycled' => true));
+
+    pg_marketplace_product_changed($product_id);
+
+    return (string) $product['name'];
+}
+
+/**
+ * Move a product group, and every group under it, to the Recycle Bin.
+ *
+ * The same move the Catalog Manager makes: the whole subtree is flagged, the
+ * way a folder goes with everything inside it, and one record is written for
+ * the group that was deleted - restoring it brings the subtree back. The
+ * products in it are not binned; they stay on sale in whatever other groups
+ * list them, and keep their link to this one for when it comes back.
+ *
+ * @param int $group_id
+ * @param int $user_id
+ * @return string|false the group's name, or false when there was nothing to bin
+ *                      (no such group, the root, or already in the bin)
+ */
+function pg_catalog_bin_group($group_id, $user_id)
+{
+    $group_id = (int) $group_id;
+
+    if (pg_catalog_bin_ready() == false) {
+        return false;
+    }
+
+    $group = db_item("SELECT id, name, parent_id, recycled FROM product_groups WHERE id = '" . $group_id . "'");
+
+    // The root is the catalogue itself; edit_product_group.php and the
+    // Catalog Manager refuse to delete it too.
+    if ((is_array($group) == false) || ((int) $group['parent_id'] === 0) || ((int) $group['recycled'] === 1)) {
+        return false;
+    }
+
+    foreach (pg_catalog_bin_statements('product_group', $group_id, pg_catalog_subtree_ids($group_id), $group['parent_id'], $user_id) as $statement) {
+        db($statement);
+    }
+
+    return (string) $group['name'];
+}
+
+
 function get_effective_tax_rate($product_rate, $zone_rate)
 {
     if ($product_rate === null || $product_rate === '') {

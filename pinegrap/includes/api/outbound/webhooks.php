@@ -42,7 +42,7 @@ function api_webhook_events() {
 		// too, with recycled: true in the data: the product leaves the listing
 		// either way, and a receiver that only heard of outright deletions
 		// would keep selling one the shop no longer offers.
-		'product.deleted'      => 'A product was deleted, or moved to the Recycle Bin through the API (recycled: true)',
+		'product.deleted'      => 'A product was deleted, or moved to the Recycle Bin (recycled: true)',
 		'inventory.changed'    => 'A product stock level changed',
 		// Only where the site has set ECOMMERCE_LOW_STOCK_THRESHOLD by hand: it
 		// has no settings screen yet, and without a threshold there is no low to

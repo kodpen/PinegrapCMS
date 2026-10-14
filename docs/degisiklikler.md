@@ -84,6 +84,105 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ürün silme: ürün ekranı, ürün listesi, varyant setleri ve grup ekranı da Geri Dönüşüm Kutusuna gönderiyor (2026-10-14)
+
+**Neden.** Bir müşteri sitesinde ürün yanlışlıkla silindi ve geri
+getirmenin tek yolu 950 MB'lık veritabanı yedeğini kurmaktı. Katalog
+Yöneticisi (`view_product_groups.php`) ürün ve grubu 2026.4.4'ten beri
+Geri Dönüşüm Kutusuna atıyor (`recycled = 1`, `recycled_enabled =
+enabled`, `enabled = 0`, `recycle_bin` satırı), API ve Çalışma Alanı da;
+ama ürün düzenleme ekranının Sil düğmesi (`edit_product.php` →
+`pg_pb_delete_product()`), ürün listesinin "Seçilenleri Sil"i
+(`view_products.php` → `edit_products.php` `action=delete`, tabloları
+kendisi siliyordu), varyant setleri listesinin silmesi
+(`variant_set_action.php` → `pg_pb_delete_variant_set($id, TRUE)`, set
+ve içindeki ürünler) ve ürün grubu düzenleme ekranının silmesi
+(`edit_product_group.php`) kaydı ve bütün bağlarını kalıcı siliyordu.
+
+**Ne değişti.**
+- `includes/fn/ecommerce.php`: `pg_catalog_bin_statements()` kutuya
+  atmanın üç cümlesini kurar (bayrak `AND recycled = '0'` korumasıyla,
+  eski kutu kaydını silip yenisini yazma); `pg_catalog_bin_ready()`
+  kararı Katalog Yöneticisi'ne sorar (`pg_catalog_recycle_ready()`);
+  `pg_catalog_bin_product()` ürünü atar, `product.deleted`
+  (`recycled: true`, `pg_announce()`) duyurur ve pazaryeri kuyruğuna
+  haber verir; `pg_catalog_bin_group()` grubu alt ağacıyla atar (tek
+  kayıt, kök ve kutudaki grup reddedilir).
+- `product_builder.php`: `pg_pb_bin_variant_set()` seti ve içindeki
+  ürünleri atar; ürünlerin kutu kaydı `original_parent_id` olarak setin
+  kimliğini taşır.
+- Silme yolları: `edit_product.php`, `edit_products.php` (`delete`),
+  `variant_set_action.php` (`delete`), `edit_product_group.php` kutu
+  varsa kutuya atar, yoksa (yükseltme öncesi kurulum) eskisi gibi kalıcı
+  siler. `edit_products.php`'nin kendi silme listesi kaldırıldı, kalıcı
+  dal `pg_pb_delete_product()`'a gidiyor (aynı tablo listesi, artık
+  `product.deleted` da gidiyor). `edit_product_group.php` grup
+  görsellerinin bağını (`product_groups_images_xref`) kutuya atarken
+  silmiyor; eskiden hem silmede hem kayıtta en başta siliniyordu.
+- Onay metinleri kutu varken "… Geri Dönüşüm Kutusuna taşınacak.
+  Katalog Yöneticisi'ndeki Geri Dönüşüm Kutusundan geri yüklenebilir.";
+  bildirim ve Site Günlüğü satırları Katalog Yöneticisi'nin cümleleri
+  ("Ürün, …, Çöp Kutusuna taşındı.") ya da yeni "{n} ürün Geri Dönüşüm
+  Kutusuna taşındı." / "{n} varyant seti ve {m} ürün Geri Dönüşüm
+  Kutusuna taşındı.". `tr.json`'a 5 anahtar.
+- Kutudakiler listede yok: `view_products.php` ana sorgusu, dışa
+  aktarması ve süzgeç sayıları `products.recycled = '0'`; varyant setleri
+  listesi kutudaki seti göstermiyor, setin ürün sayısı ve fiyat aralığı
+  kutudaki ürünü saymıyor.
+- Katalog Yöneticisi: ürünü atma `pg_catalog_bin_product()`'a, grubu
+  atma `pg_catalog_bin_statements()`'a geçti (ürün tarafı artık
+  `AND recycled = '0'` korumasını ve kayıt değiştirmeyi de yapıyor,
+  `product.deleted` de gidiyor). Grup geri yüklenince kutu kaydı
+  `original_parent_id`'si o alt ağaçtaki bir grup olan ürünler de geri
+  geliyor (`AND recycled = '1'`); tek başına atılan ürünün kaydı `0`
+  taşıdığı için etkilenmiyor.
+- API (`products.php`, `product_groups.php`) ve Çalışma Alanı
+  (`changes.php`) kutu dalları aynı cümleleri kullanıyor; API'nin
+  yanıtı, prova (`X-Dry-Run`), 409'ları, günlük satırı ve webhook'u
+  aynı. Çalışma Alanı'nın ürün kutusu `pg_catalog_bin_product()`'a
+  geçti, artık `product.deleted` (`recycled: true`) gidiyor.
+  `product.deleted` olayının açıklamasındaki "through the API" kalktı.
+- Test (`tests/catalog_bin_test.php`, 9 test): cümlelerin kendisi, tamsayı
+  dönüşümü, boş girdi; API'nin varsayılanının kutu olduğu ve kutu dalının
+  kalıcı silmeden önce geldiği; panel ekranlarının, Katalog
+  Yöneticisi'nin ve Çalışma Alanı'nın ortak fonksiyonları çağırdığı;
+  `products` satırını yalnız `product_builder.php`'nin sildiği (düzeltme
+  öncesi kodda `edit_products.php` yüzünden kırmızı).
+
+Şema değişikliği yok (kutu sütunları 2026.4.4'te geldi); dev'de yalnız
+`git pull` yeter.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, Türkçe başlangıç sitesi).** Her
+yolda silmeden önce ve geri yüklemeden sonra ürünün/grubun satırı ve 14
+bağ tablosu (gruplar, bölgeler, görseller, nitelikler, barkod, kısa
+bağlantı, kampanya kuralı, etiket bulutu, form alanları…) karşılaştırıldı:
+- Ürün ekranı (D10, iki görsel, barkod, kısa bağlantı, bölge, nitelik,
+  kampanya kuralı, anahtar kelime ile): kutuda yalnız `enabled`,
+  `recycled`, `recycled_enabled` değişti, bağlar yerinde; listede yok,
+  bildirim "Ürün, D10, Çöp Kutusuna taşındı."; Katalog Yöneticisi'nden
+  geri yükleme sonrası satırlar birebir aynı. `product.deleted`
+  (`recycled: true`) kuyrukta.
+- Ürün listesi toplu silme (iki ürün): ikisi kutuda, "Tüm Ürünler" sayısı
+  27 → 25, geri yüklenince aynı.
+- Varyant seti (Ofis Sandalyesi, 3 ürün, biri önceden kapalı): set ve 3
+  ürün kutuda (`original_parent_id` = set), liste 5 → 4 set, tek geri
+  yüklemeyle set ve 3 ürün döndü, kapalı olan kapalı döndü.
+- Ürün grubu ekranı (Hediye Sepetleri, görsel bağı ile): görsel bağı ve
+  ürün bağları kutuda da yerinde, geri yüklenince aynı.
+- API: prova 200 `would: recycled`, silme 200 `{"deleted":false,
+  "recycled":true}`, ikinci silme 409 `already_recycled`; grup silme
+  kutuya. Katalog Yöneticisi'nin kendi silmesi, geri yüklemesi ve
+  API'nin kutuya attığı ürünün kalıcı silinmesi (boşaltma) çalıştı.
+- Kutusuz kurulumdaki kalıcı dal sandbox'ta denenmedi (sütunları
+  düşürmek gerekiyor); kod yolu eskisiyle aynı fonksiyon.
+
+**Bilerek yapılmayan.** Diğer panel listeleri (kampanya ürün seçicileri,
+sipariş ekranları gibi) kutudaki ürünü kapalı ürün gibi göstermeye devam
+ediyor; ürün grubu ekranının alt grup listesi kutudaki alt grubu da
+sayıyor. Sayfalar ve sayfa stilleri ayrı iş.
+
+---
+
 ## 2026.4.10 — Form listesinin gelişmiş araması dizi değerle 500 veriyordu ve her açılışta uyarı yazıyordu, katalog dizi terimle RSS bağlantısını göstermiyordu (2026-10-14)
 
 **Neden.** #408'in bıraktığı iki parça, ikisi de 2026.4.9'da var. (1) Form

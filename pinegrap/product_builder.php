@@ -2014,6 +2014,48 @@ function pg_pb_delete_variant_set($group_id, $delete_products = TRUE)
 }
 
 
+/**
+ * Move a variant set to the Recycle Bin: the group and the products in it.
+ *
+ * The bin's version of pg_pb_delete_variant_set(), and it takes the products
+ * for the same reason that one deletes them: a variant only exists as one form
+ * of its set. Each product is binned with the set's id as the place it came
+ * from, which is how restoring the set in the Catalog Manager knows to bring
+ * them back with it. Each one can still be restored on its own.
+ *
+ * @param int $group_id
+ * @param int $user_id
+ * @return array counts: group (0/1) and products, plus the set's name
+ */
+function pg_pb_bin_variant_set($group_id, $user_id)
+{
+    $group_id = (int) $group_id;
+
+    $result = array('group' => 0, 'products' => 0);
+
+    // Read before the group is flagged: the products are found through it,
+    // and the root refusal is the group helper's.
+    $products = pg_pb_group_products($group_id);
+
+    $name = pg_catalog_bin_group($group_id, $user_id);
+
+    if ($name === false) {
+        return $result;
+    }
+
+    foreach ($products as $product) {
+        if (pg_catalog_bin_product($product['id'], $user_id, $group_id) !== false) {
+            $result['products']++;
+        }
+    }
+
+    $result['group'] = 1;
+    $result['name']  = $name;
+
+    return $result;
+}
+
+
 /* ------------------------------------------------------------------ *
  * Shared markup
  * ------------------------------------------------------------------ */
@@ -3145,6 +3187,19 @@ function pg_pb_variant_sets_screen()
 
     $where = "product_groups.display_type = 'select'";
 
+    // A set in the Recycle Bin is not listed, and a variant in the bin is not
+    // counted in its set: deleting here sends them there, and the Catalog
+    // Manager's bin is where they are restored or deleted for good.
+    $live_sets_sql = '';
+    $live_variants_sql = '';
+
+    if (pg_catalog_bin_ready()) {
+        $live_sets_sql = " AND (product_groups.recycled = '0')";
+        $live_variants_sql = " AND (products.recycled = '0')";
+    }
+
+    $where .= $live_sets_sql;
+
     if ($filter_status === 'enabled') {
         $where .= " AND product_groups.enabled = '1'";
     } elseif ($filter_status === 'disabled') {
@@ -3183,7 +3238,7 @@ function pg_pb_variant_sets_screen()
         LEFT JOIN product_groups AS parent_group ON product_groups.parent_id = parent_group.id
         LEFT JOIN user ON product_groups.user = user.user_id
         LEFT JOIN products_groups_xref ON products_groups_xref.product_group = product_groups.id
-        LEFT JOIN products ON products_groups_xref.product = products.id
+        LEFT JOIN products ON (products_groups_xref.product = products.id)" . $live_variants_sql . "
         WHERE $where
         GROUP BY
             product_groups.id,
@@ -3226,7 +3281,7 @@ function pg_pb_variant_sets_screen()
             parent_group.name
         FROM product_groups
         INNER JOIN product_groups AS parent_group ON product_groups.parent_id = parent_group.id
-        WHERE product_groups.display_type = 'select'
+        WHERE (product_groups.display_type = 'select')" . $live_sets_sql . "
         ORDER BY parent_group.name");
 
 
@@ -3394,7 +3449,7 @@ function pg_pb_variant_sets_screen()
                         <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                             <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-2"></i>' . lang('Enable This') . '</button>
                             <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-2"></i>' . lang('Disable This') . '</button>
-                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang('Delete the selected variant sets and all of their products? This cannot be undone.') . '"><i class="bi bi-trash me-2"></i>' . lang('Delete') . '</button>
+                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang('Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.') : lang('Delete the selected variant sets and all of their products? This cannot be undone.')) . '"><i class="bi bi-trash me-2"></i>' . lang('Delete') . '</button>
                         </div>
                     </div>
                 </nav>
@@ -5313,7 +5368,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-2"></span><span class="btn-text">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product')))) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '') . '
                         </div>
                     </div>

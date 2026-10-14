@@ -491,6 +491,22 @@
   ÜRÜNLER
   --------------------------------------------------------
 
+  [YENİ] Ürün düzenleme ekranında, ürün listesinin
+         "Seçilenleri Sil" düğmesinde, varyant setleri
+         listesinde ve ürün grubu ekranında silinen ürün ve
+         ürün grupları artık Katalog Yöneticisi'ndeki Geri
+         Dönüşüm Kutusuna gidiyor ve görselleri, grupları,
+         fiyatları, nitelikleri, barkodları ve kısa
+         bağlantılarıyla olduğu gibi geri yüklenebiliyor.
+         Önceden bu ekranlardan silinen ürün kalıcı olarak
+         gidiyordu. Varyant seti silinince içindeki ürünler
+         de kutuya gidiyor; set geri yüklenince onlar da
+         geri geliyor. Kutudaki ürünler ürün listesinde ve
+         sayılarında görünmüyor. Kalıcı silme kutu
+         boşaltılınca ya da saklama süresi dolunca
+         yapılıyor. Kutuya taşınan ürün için Dış API'nin
+         product.deleted olayı (recycled: true) gidiyor.
+
   [YENİ] Ürün listesinde stok, fiyat, durum (Etkin / Devre
          dışı) ve kısa açıklama ürünü açmadan, satırda
          değişiyor: hücreye tıklayın, yazın, Enter'a basın

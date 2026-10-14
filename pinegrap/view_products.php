@@ -373,6 +373,17 @@ switch ($filter) {
         break;
 }
 
+// A product in the Recycle Bin is not on this list or in its counts: deleting
+// one here sends it there, and the Catalog Manager's bin is where it is
+// restored or deleted for good. Before the upgrade that adds the bin there is
+// nothing to leave out.
+$catalog_bin = pg_catalog_bin_ready();
+$live_products_sql = $catalog_bin ? " AND (products.recycled = '0')" : '';
+
+if ($live_products_sql != '') {
+    $where = ($where == '') ? ('WHERE 1 = 1' . $live_products_sql) : ($where . $live_products_sql);
+}
+
 // Headings of the columns the list can be sorted by, keyed by the code the
 // sort is kept as.
 $sort_labels = array(
@@ -519,7 +530,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
 } else {
     // get total number of results for all screens, so that we can output links to different screens
     $query = "SELECT count(id) " .
-             "FROM products";
+             "FROM products WHERE 1 = 1" . $live_products_sql;
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_results = $row[0];
@@ -536,7 +547,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $output_filter_options .= '<option value="all_product_actions"' . $all_product_actions_filter_selected . '>' . lang(array('string'=>'All Product Actions') ) . ' (' . pg_format_number($all_products, 0) . ')</option>';
 
     // get the amount of shippable products
-    $query = "SELECT count(id) FROM products WHERE shippable = '1'";
+    $query = "SELECT count(id) FROM products WHERE shippable = '1'" . $live_products_sql;
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
 
@@ -544,7 +555,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $output_filter_options .= '<option value="shippable_products"' . $shippable_product_filter_selected . '>' . lang(array('string'=>'Shippable Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // get the amount of recurring products
-    $query = "SELECT count(id) FROM products WHERE recurring = '1'";
+    $query = "SELECT count(id) FROM products WHERE recurring = '1'" . $live_products_sql;
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
 
@@ -552,7 +563,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $output_filter_options .= '<option value="recurring_products"' . $recurring_product_filter_selected . '>' . lang(array('string'=>'Recurring Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // get the amount of donation products
-    $query = "SELECT count(id) FROM products WHERE selection_type = 'donation'";
+    $query = "SELECT count(id) FROM products WHERE selection_type = 'donation'" . $live_products_sql;
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
 
@@ -560,7 +571,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $output_filter_options .= '<option value="donation_products"' . $donation_product_filter_selected . '>' . lang(array('string'=>'Donation Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // get the amount of grant access products
-    $query = "SELECT count(id) FROM products WHERE grant_private_access = '1' AND (private_folder != '0' OR send_to_page != '0')";
+    $query = "SELECT count(id) FROM products WHERE grant_private_access = '1' AND (private_folder != '0' OR send_to_page != '0')" . $live_products_sql;
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
 
@@ -568,7 +579,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $output_filter_options .= '<option value="grant_access_products"' . $grant_access_product_filter_selected . '>' . lang(array('string'=>'Grant Access Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // get the amount of membership products
-    $query = "SELECT count(id) FROM products WHERE membership_renewal != '0'";
+    $query = "SELECT count(id) FROM products WHERE membership_renewal != '0'" . $live_products_sql;
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
 
@@ -576,7 +587,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $output_filter_options .= '<option value="membership_products"' . $membership_product_filter_selected . '>' . lang(array('string'=>'Membership Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
     
     // get the amount of out of stock products
-    $query = "SELECT count(id) FROM products WHERE out_of_stock = '1'";
+    $query = "SELECT count(id) FROM products WHERE out_of_stock = '1'" . $live_products_sql;
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     
@@ -587,14 +598,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     // structure one only once the analysis half that fills its bit does.
     if (pg_seo_schema_ready()) {
 
-        $result = mysqli_query(db::$con, "SELECT count(id) FROM products WHERE (seo_score < 55) AND (seo_analysis_current = 1)") or output_error('Query failed.');
+        $result = mysqli_query(db::$con, "SELECT count(id) FROM products WHERE (seo_score < 55) AND (seo_analysis_current = 1)" . $live_products_sql) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
         $output_filter_options .= '<option value="seo_weak_products"' . $seo_weak_products_filter_selected . '>' . lang(array('string'=>'Products With a Weak SEO Score') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         if (pg_seo_structure_schema_ready()) {
 
-            $result = mysqli_query(db::$con, "SELECT count(id) FROM products WHERE (seo_flags & 32768) != 0") or output_error('Query failed.');
+            $result = mysqli_query(db::$con, "SELECT count(id) FROM products WHERE ((seo_flags & 32768) != 0)" . $live_products_sql) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
 
             $output_filter_options .= '<option value="seo_struct_error_products"' . $seo_struct_error_products_filter_selected . '>' . lang(array('string'=>'Products With HTML Structure Errors') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
@@ -1413,7 +1424,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-primary disabled" onclick="window.open(\'edit_products.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>
-                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('products')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . h($catalog_bin ? lang(array('string' => 'Selected {var:1} will be moved to the Recycle Bin. They can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('products')))) : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('products'))))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>
