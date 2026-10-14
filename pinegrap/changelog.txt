@@ -652,6 +652,18 @@
          Kısa Linkler sekmeleri hata günlüğüne her satır
          için bir uyarı yazıyordu; artık yazmıyor.
 
+  [DÜZELTME] Gönderilen Formlar'da 100'den çok form varken
+         yalnız ilk 100'ü görünüyordu: sayfa bağlantıları
+         hazırlanıyor ama ekrana basılmıyordu, hazırlanırken
+         de hata günlüğüne uyarı yazılıyordu. Artık listenin
+         altında sayfa bağlantıları çıkıyor. Gelişmiş
+         filtreler açıkken her form alanı için yazılan
+         uyarılar da kalktı.
+
+  [DÜZELTME] Ürünleri toplu çoğaltma ekranı hata günlüğüne
+         her ürün satırı için 14–22 uyarı (filtreye göre)
+         yazıyordu; artık yazmıyor.
+
   E-TİCARET: AYARLAR
   --------------------------------------------------------
 

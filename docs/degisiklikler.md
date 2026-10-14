@@ -84,6 +84,71 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Gönderilen Formlar'da sayfa bağlantıları görünüyor, ürün çoğaltma ekranı hata günlüğüne yazmıyor (2026-10-14)
+
+**Neden.** #354 kapsam dışı bıraktığı iki eski uyarıyı not etmişti; ikisi de
+2026.4.9'da var ve sandbox'ta eski kodla üretildi.
+
+Gönderilen Formlar (`view_submitted_forms.php`) 100'den çok formda sayfa
+bağlantılarını `$output_screen_links`'e hazırlıyor, her bağlantıya hiç
+tanımlanmamış `$output_filter_for_links`'i ekliyordu (açılış başına üç
+uyarı). Asıl sorun daha büyüktü: `$output_screen_links` sayfaya hiç
+basılmıyordu. Liste sunucuda 100'er satır kesildiği için 101. formdan
+sonrası ancak adrese elle `?screen=2` yazılarak ya da tarih aralığı / form
+seçimi daraltılarak görülebiliyordu; tablonun istemci tarafı arama ve
+sayfalama da yalnız o 100 satırda çalışıyor. Gelişmiş filtreler açıkken her
+form alanı için `form_field_<id>` oturum anahtarı okunuyor (her alan bir
+uyarı, örnekte açılış başına 100'ü aşkın) ve Durum seçimindeki üç
+`$status_*_selected` değişkeni tanımsız kalıyordu.
+
+Ürünleri toplu çoğaltma ekranı (`duplicate_products.php`) `view_products.php`
+kopyasıdır ama onun uyarı düzeltmelerini almamıştı: satır döngüsü yalnız
+bazı filtrelerin seçtiği sütunları (`selection_type`, `recurring_start`,
+`email_page` …) ve sorguda hiç seçilmeyen `required_product_name` ile
+`commissionable`'ı her satırda okuyordu (filtreye göre satır başına 14–22
+uyarı); `$where`, `$sql_join`, `$filter_specific_columns`,
+`$filter_specific_join` ve sekiz `*_filter_selected` değişkeni de her
+açılışta tanımsızdı (10–12 uyarı).
+
+**Ne değişti.** Gönderilen Formlar'da bağlantılar `$output_filter_for_links`
+olmadan kuruluyor; filtre, form seçimi, tarih aralığı ve sıra zaten oturumda
+olduğu için bağlantının taşıması gereken başka değer yok. Bağlantılar kartın
+altına basılıyor (Komisyonlar'da ve #350'den beri Yinelenen Komisyon
+Profilleri'nde de orada); etkin sayfanın sınıfındaki fazladan tırnak (`active"`) kaldırıldı.
+Gelişmiş filtrede alan değeri `?? ''` ile okunuyor, üç durum seçimi
+değişkeni boş başlıyor.
+
+Ürün çoğaltmada `view_products.php`'deki kalıp uygulandı: koşullu
+değişkenler dosyanın başında boş başlıyor, filtreye özgü satır değerleri
+`?? ''` ile okunuyor. Hiçbir yerde kullanılmayan `$required_product` ve
+`$commissionable` satırları kaldırıldı. NULL dönen birleştirme sütunları
+(`email_page`, `start_page` …) artık boş metin; ekrandaki karşılaştırmalar
+ve `h()` çıktısı aynı. Ortak tablo yardımcısına, JS'e ve dil dosyasına
+dokunulmadı; şema değişikliği yok.
+
+Kapsam dışı, not edildi: Gönderilen Formlar'da "Dışa Aktar" adresi elle
+`[Tümü]` form seçiliyken açılırsa bir uyarı yazıyor (düğme bu durumda
+uyarı penceresiyle durduğu için arayüzden ulaşılmıyor). Ürün çoğaltmanın
+gönderiminde "Assortment" seçimindeki `option_id` ürün özelliklerini
+kopyalayan `INSERT`'e kaçışsız giriyor; ayrı iş olarak ele alınmalı.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Ürün çoğaltmanın sekiz
+filtresinde (27 ürün) eski kod sunucu günlüğüne sekiz açılışta 1272 uyarı
+yazdı, yeni kod hiç yazmadı; sekiz filtrede tablo HTML'i eski kodla satır
+satır aynı (yalnız betik adına bağlı yardım bağlantısı ve menü vurgusu
+farklı, çünkü eski kod başka adla koştu); bir ürünü çoğaltma gönderimi
+uyarısız 302. Gönderilen Formlar'da 160 formla eski kod 1. ve 2. sayfada
+`$output_filter_for_links` uyarısı, gelişmiş filtre açıkken 100'ü aşkın
+`form_field_*` ve üç `$status_*_selected` uyarısı yazdı ve sayfa
+bağlantısı basmadı; yeni kod uyarısız, 1. sayfada 100, 2. sayfada 60 satır
+ve «, 1, 2, » bağlantıları (etkin sayfa doğru) gösterdi. Chromium: 1400 ve
+390 px'te bağlantılar kartın altında, yatay kaydırma yok, sayfa hatası
+yok. `tools/test.php` 754/754; lint, dil, bağlama, API şeması, kopya
+denetimleri ve `build_js.php --check` geçti. Doğrulanamadı:
+dev.pinegrap.com'daki gerçek kayıtlar.
+
+---
+
 ## 2026.4.10 — Dosyalar, Gönderilen Formlar, bölgeler, Site Günlüğü, ürün çoğaltma ve editörün bağlantı seçicisi ortak tablo yardımcısında: çoklu sıralama (son eski liste grubu) (2026-10-14)
 
 **Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına

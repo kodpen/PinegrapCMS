@@ -20,6 +20,21 @@ include('init.php');
 
 // only ever appended to further below, so it has to start out empty
 $output_rows = '';
+
+// These are only ever appended to, or are set only for some of the filters below, so they have
+// to start out empty.
+$where = '';
+$sql_join = '';
+$filter_specific_columns = '';
+$filter_specific_join = '';
+$all_products_filter_selected = '';
+$all_product_actions_filter_selected = '';
+$shippable_product_filter_selected = '';
+$recurring_product_filter_selected = '';
+$donation_product_filter_selected = '';
+$grant_access_product_filter_selected = '';
+$membership_product_filter_selected = '';
+$out_of_stock_products_filter_selected = '';
 $liveform = new liveform('view_products');
 $user = validate_user();
 validate_ecommerce_access($user);
@@ -1053,29 +1068,28 @@ if (!$_POST) {
             $price = $row['price'] / 100;
             $form_name = $row['form_name'];
             $seo_score = $row['seo_score'];
-            $selection_type = $row['selection_type'];
-            $default_quantity = $row['default_quantity'];
-            $required_product = $row['required_product_name'];
-            $shippable = $row['shippable'];
-            $commissionable = $row['commissionable'];
-            $recurring = $row['recurring'];
-            $recurring_start = $row['recurring_start'];
-            $number_of_payments = $row['number_of_payments'];
-            $payment_period = $row['payment_period'];
-            $recurring_schedule_editable_by_customer = $row['recurring_schedule_editable_by_customer'];
-            $start_page = $row['start_page'];
-            $grant_private_access = $row['grant_private_access'];
-            $private_folder = $row['private_folder'];
-            $membership_renewal = $row['membership_renewal'];
-            $order_receipt_message = $row['order_receipt_message'];
-            $order_receipt_bcc_email_address = $row['order_receipt_bcc_email_address'];
-            $email_page = $row['email_page'];
-            $email_bcc = $row['email_bcc'];
-            $contact_group_name = $row['contact_group_name'];
-            $custom_field_1 = $row['custom_field_1'];
-            $custom_field_2 = $row['custom_field_2'];
-            $custom_field_3 = $row['custom_field_3'];
-            $custom_field_4 = $row['custom_field_4'];
+            // Only the filters that show these columns select them.
+            $selection_type = $row['selection_type'] ?? '';
+            $default_quantity = $row['default_quantity'] ?? '';
+            $shippable = $row['shippable'] ?? '';
+            $recurring = $row['recurring'] ?? '';
+            $recurring_start = $row['recurring_start'] ?? '';
+            $number_of_payments = $row['number_of_payments'] ?? '';
+            $payment_period = $row['payment_period'] ?? '';
+            $recurring_schedule_editable_by_customer = $row['recurring_schedule_editable_by_customer'] ?? '';
+            $start_page = $row['start_page'] ?? '';
+            $grant_private_access = $row['grant_private_access'] ?? '';
+            $private_folder = $row['private_folder'] ?? '';
+            $membership_renewal = $row['membership_renewal'] ?? '';
+            $order_receipt_message = $row['order_receipt_message'] ?? '';
+            $order_receipt_bcc_email_address = $row['order_receipt_bcc_email_address'] ?? '';
+            $email_page = $row['email_page'] ?? '';
+            $email_bcc = $row['email_bcc'] ?? '';
+            $contact_group_name = $row['contact_group_name'] ?? '';
+            $custom_field_1 = $row['custom_field_1'] ?? '';
+            $custom_field_2 = $row['custom_field_2'] ?? '';
+            $custom_field_3 = $row['custom_field_3'] ?? '';
+            $custom_field_4 = $row['custom_field_4'] ?? '';
             $inventory = $row['inventory'];
     		$inventory_quantity = $row['inventory_quantity'];
     		$image_name = $row['image_name'];
