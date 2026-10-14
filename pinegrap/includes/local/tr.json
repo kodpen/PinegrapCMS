@@ -22982,5 +22982,6 @@
     "Description:": "Açıklama:",
     "Your last answer on this task:": "Bu görevdeki son yanıtınız:",
     "Instruction:": "Talimat:",
-    "the MCP agent @{var:1} answered on task {var:2}": "MCP ajanı @{var:1}, {var:2} görevinde yanıt verdi"
+    "the MCP agent @{var:1} answered on task {var:2}": "MCP ajanı @{var:1}, {var:2} görevinde yanıt verdi",
+    "The selected assortment option could not be found, so no products were duplicated.": "Seçilen Assortment seçeneği bulunamadı, bu yüzden hiçbir ürün çoğaltılmadı."
 }

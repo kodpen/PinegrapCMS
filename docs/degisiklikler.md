@@ -84,6 +84,64 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ürün çoğaltma: "Assortment" seçimindeki SQL enjeksiyonu kapandı (2026-10-14)
+
+**Neden.** #355'in kapsam dışı notu. Ürünleri toplu çoğaltma ekranının
+(`duplicate_products.php`) gönderiminde "Assortment" seçiminin değeri
+(`option_id`) `duplicate_products()`'a ham geçiyor ve kopyanın
+`products_attributes_xref` satırını yazan `INSERT`'e kaçışsız, tırnak
+içinde ekleniyordu. Ekrana `validate_ecommerce_access()` ile e-ticaret
+yetkisi olan her kullanıcı (Kullanıcı rolü dahil) giriyor; form CSRF
+jetonu istiyor ama jetonu kendi oturumu veriyor. Sandbox'ta eski kodla
+`SLEEP` içeren bir değer iki özellikli bir üründe isteği 2,0 s
+bekletti (özellik başına bir kez); değer sorguya alt sorgu da sokabiliyor.
+2026.4.9'da da var.
+
+Aynı satırlarda iki eski hata daha vardı. Döngü seçimi aynı değişkene
+geri yazdığı için "-Do not Change-" seçiliyken birden çok özelliği olan
+üründe kopyanın bütün özellikleri ilk özelliğin seçeneğini alıyordu
+(sandbox: Renk Mocha + Beden 40 olan ürünün kopyası Renk Mocha + Beden
+"Mocha"). Bir seçenek seçilince de o seçenek ürünün **her** özelliğine
+yazılıyordu (Beden seçeneği Renk'e de). Ayrıca "Silinecek Harf Sayısı"
+boşken temizleme koşulu (`!isset(...) && !is_numeric(...)`) hiç
+tutmuyordu; `-''` PHP 8'de `TypeError` verdiği için gönderim 500 ile
+duruyordu.
+
+**Ne değişti.** Seçim, tek bir ürün kopyalanmadan önce bir kez
+`product_attribute_options`'ta aranıyor: yalnız rakamlardan oluşan ve
+var olan bir seçeneğin kimliği kabul ediliyor, `duplicate_products()`'a
+satırın kendisi (`id`, `product_attribute_id`) geçiyor. Başka her değer
+(olmayan kimlik, metin, dizi) hiçbir şey yazmadan ekrana "Seçilen
+Assortment seçeneği bulunamadı, bu yüzden hiçbir ürün çoğaltılmadı."
+hatasıyla dönüyor (yeni `tr.json` anahtarı). Seçenek yalnız ait olduğu
+özelliğin satırında kullanılıyor, diğer özellikler aslın seçeneğini
+koruyor; döngü her satırda kendi değişkeniyle başlıyor. Bu `INSERT`'in üç
+değeri `(int)` ile yazılıyor. "Silinecek Harf Sayısı" sayı değilse ya da
+1'den küçükse alanın varsayılanı olan 1 kullanılıyor. Form, açılır liste
+ve liste ekranı aynı; şema değişikliği yok.
+
+Kapsam dışı, not edildi: açılır listedeki on seçenek (`21`, `134`, `23` …
+"Assortment A–Y") tek bir mağazanın kimlikleriyle koda yazılmış; başka
+sitelerde bu kimlikler yok ya da başka özelliklere ait. Düzeltmeden sonra
+bu sitelerde seçim artık çöp satır yazmıyor, hata veriyor. Listenin
+sitenin kendi özelliklerinden kurulması ayrı bir karar.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Örnek ürüne ikinci özellik
+(Beden 40) eklenip eski ve yeni kod aynı yedi gönderimle karşılaştırıldı.
+Eski kod: `SLEEP` değeri 2,04 s bekletti ve ürün yazdı; olmayan kimlik
+(999) ve dizi çöp seçenekli kopya yazdı; "Değiştirme"de Beden ilk
+özelliğin seçeneğini aldı; geçerli Beden seçeneği Renk'e de yazıldı; boş
+harf sayısı 500 verdi. Yeni kod: `SLEEP` değeri, 999 ve dizi 0,02 s'de
+`duplicate_products.php`'ye döndü, ürün yazılmadı, hata bir kez Türkçe
+göründü; "Değiştirme"de Renk Mocha + Beden 40; Beden 38 seçilince yalnız
+Beden değişti; iki ürün + Renk Yeşil seçiminde iki kopya doğru; boş harf
+sayısında kopya 1 harf silinerek yazıldı. Sekiz filtrede ekran HTML'i eski
+kodla aynı (yalnız betik adına bağlı yardım bağlantısı farklı); sunucu
+günlüğüne uyarı düşmedi. `tools/` denetimleri ve `build_js.php --check`
+geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek kayıtlar.
+
+---
+
 ## 2026.4.10 — Uzak ajan: göreve verilen ya da görev notunda yazılan takma ada ajan kendisi yanıt veriyor (2026-10-14)
 
 **Neden.** Uzak ajanın üçüncü dilimi (`docs/_plan_tersine_oauth.md` → "4.6 Uzak
