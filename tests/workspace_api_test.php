@@ -82,6 +82,41 @@ function test_ws_api_plan_item_removal_is_one_tool()
 	}
 }
 
+// A message is changed, deleted and a channel marked read with one tool each;
+// the deletion addressed as a POST is no second tool.
+function test_ws_api_message_edit_delete_and_read_are_tools()
+{
+	$offered = array();
+
+	foreach (ws_api_routes() as $route) {
+		if (pg_mcp_route_is_offered($route)) {
+			$offered[] = pg_mcp_tool_name($route['id']);
+		}
+	}
+
+	foreach (array('workspace_messages_update', 'workspace_messages_delete', 'workspace_channels_read') as $tool) {
+		pg_assert_contains($tool, $offered);
+	}
+
+	pg_assert_false(in_array('workspace_messages_delete_post', $offered, true), 'the POST alias is no tool');
+}
+
+// The list reads changed messages with changed_since, a moment.
+function test_ws_api_messages_list_takes_changed_since()
+{
+	$types = array();
+
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === 'workspace.messages.list') {
+			foreach ($route['params'] as $param) {
+				$types[$param['name']] = $param['type'];
+			}
+		}
+	}
+
+	pg_assert_true(($types['changed_since'] ?? '') === 'datetime', 'changed_since is a datetime');
+}
+
 // The search looks in a kind of record only with the scope that reads it; a
 // kind it names has to be one a tag can point at.
 function test_ws_api_search_record_scopes_name_known_kinds()

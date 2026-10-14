@@ -23154,5 +23154,7 @@
     "erp price of product ({var:1}) for account ({var:2}) was changed: {var:3} from \"{var:4}\" to \"{var:5}\"": "erp: ürünün ({var:1}) carideki ({var:2}) fiyatı değiştirildi: {var:3} \"{var:4}\" iken \"{var:5}\" oldu",
     "The shipping method could not be found.": "Nakliye yöntemi bulunamadı.",
     "This shipping method has a base rate for each order subtotal. Change it in the shipping method.": "Bu nakliye yönteminde her sipariş ara toplamı için ayrı bir temel ücret var. Nakliye yönteminin kendisinden değiştirin.",
-    "shipping method ({var:1}) was changed on the shipping method list: {var:2} from \"{var:3}\" to \"{var:4}\"": "nakliye yöntemi ({var:1}) nakliye yöntemleri listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu"
+    "shipping method ({var:1}) was changed on the shipping method list: {var:2} from \"{var:3}\" to \"{var:4}\"": "nakliye yöntemi ({var:1}) nakliye yöntemleri listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
+    "Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.": "Mesajlarını yalnız cihazında oturum açmış kişinin kendisi değiştirebilir ya da silebilir; bir uygulama onun adına yapamaz.",
+    "Only the people in a channel keep a read mark in it.": "Okundu işaretini yalnız kanalın üyeleri tutar."
 }

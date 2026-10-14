@@ -773,20 +773,23 @@ function ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $ap
  * reader already has.
  *
  * @param int $channel_id
- * @param int $since   timestamp
- * @param int $upto_id the newest message the reader holds
+ * @param int $since    timestamp
+ * @param int $upto_id  the newest message the reader holds
+ * @param int $after_id only messages after this one (the API pages with it)
+ * @param int $limit
  * @return array[]
  */
-function ws_messages_touched($channel_id, $since, $upto_id)
+function ws_messages_touched($channel_id, $since, $upto_id, $after_id = 0, $limit = 50)
 {
     if (!ws_interact_ready() || ((int) $since <= 0) || ((int) $upto_id <= 0)) {
         return array();
     }
 
     return (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND touched_at >= '" . (int) $since . "' AND id <= '" . (int) $upto_id . "'
+        WHERE channel_id = '" . (int) $channel_id . "' AND touched_at >= '" . (int) $since . "' AND id <= '" . (int) $upto_id . "'"
+        . (((int) $after_id > 0) ? " AND id > '" . (int) $after_id . "'" : '') . "
         ORDER BY id
-        LIMIT 50");
+        LIMIT " . max(1, min(200, (int) $limit)));
 }
 
 /**

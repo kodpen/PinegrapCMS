@@ -668,7 +668,18 @@ function ws_api_messages_list($params)
     $channel = ws_api_channel_or_404($viewer, $params['id']);
     $limit = (int) ($params['limit'] ?? 50);
 
-    if (!empty($params['since_id'])) {
+    if (isset($params['changed_since'])) {
+        // The messages already written that changed since a moment - an
+        // edit, a deletion, a reaction, a tick, a vote, a read receipt - the
+        // way the panel keeps an open channel up to date (ws_sync). since_id
+        // pages through them; the current conversation only.
+        if (!ws_interact_ready()) {
+            api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+        }
+
+        $after = max((int) ($params['since_id'] ?? 0), ws_channel_floor($channel['id']));
+        $rows = ws_messages_touched($channel['id'], max(1, (int) $params['changed_since']), PHP_INT_MAX, $after, $limit);
+    } elseif (!empty($params['since_id'])) {
         $rows = array_slice(ws_messages_since($channel['id'], (int) $params['since_id']), 0, $limit);
     } else {
         $rows = ws_messages_page($channel['id'], (int) ($params['before_id'] ?? 0), $limit);
@@ -775,9 +786,10 @@ function ws_api_messages_react($params)
 }
 
 /**
- * Answers that must be the person's own - a read receipt, an approval - are
- * given from a device session only: an application key acts for its owner,
- * and an integration does not read or approve in their name.
+ * Answers that must be the person's own - a read receipt, an approval, a
+ * channel marked read, a change to their own words - are given from a device
+ * session only: an application key acts for its owner, and an integration
+ * does not read, approve or rewrite in their name.
  *
  * @param string|null $refusal what the refusal says, when not an answer
  */
@@ -786,6 +798,126 @@ function ws_api_person_only($refusal = null)
     if (!function_exists('api_current_device') || (api_current_device() === null)) {
         api_fail(403, 'forbidden', ($refusal !== null) ? $refusal : lang('Only the person, signed in on a device, can give this answer; an application cannot give it for them.'));
     }
+}
+
+/**
+ * A message the owner may read, not deleted, as the edit and the deletion
+ * find it: anything else is a 404, and one of an earlier version of the
+ * conversation a 422.
+ *
+ * @param array $viewer
+ * @param int   $id
+ * @return array ws_messages row
+ */
+function ws_api_message_or_404($viewer, $id)
+{
+    $message = ws_message((int) $id);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    // An earlier version of a conversation is kept as it was (eras.php).
+    if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
+        api_fail_validation(lang('This message is in an earlier version of the conversation, which is kept as it was.'));
+    }
+
+    return $message;
+}
+
+/**
+ * A refusal of ws_message_edit() or ws_message_delete() as the API answers it.
+ *
+ * @param string      $error
+ * @param string|null $field
+ */
+function ws_api_message_refused($error, $field = null)
+{
+    $forbidden = array(
+        lang('You can only change your own messages.'),
+        lang('You can only delete your own messages.'),
+        lang('You cannot post in that channel.'),
+        lang('This decision records a change to a record. People with the User role cannot delete it.'),
+    );
+
+    if (in_array($error, $forbidden, true)) {
+        api_fail(403, 'forbidden', $error);
+    }
+
+    if ($error === lang('Access denied.')) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    api_fail_validation($error, $field);
+}
+
+function ws_api_messages_update($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_api_message_or_404($viewer, $params['id']);
+
+    ws_api_person_only(lang('Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.'));
+
+    $result = ws_message_edit($viewer, $message, (string) $params['text']);
+
+    if (!$result['ok']) {
+        ws_api_message_refused($result['error'], 'text');
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+function ws_api_messages_delete($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_api_message_or_404($viewer, $params['id']);
+
+    ws_api_person_only(lang('Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.'));
+
+    $result = ws_message_delete($viewer, $message);
+
+    if (!$result['ok']) {
+        ws_api_message_refused($result['error']);
+    }
+
+    api_ok(ws_api_message_present($viewer, ws_message($message['id']), array()));
+}
+
+/**
+ * Marks a channel read up to a message, the way opening it in the panel does:
+ * its unread count and the mentions in it up to there go.
+ */
+function ws_api_channels_read($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    ws_api_person_only();
+
+    if (!ws_channel_membership($channel['id'], $viewer['id'])) {
+        api_fail(409, 'not_member', lang('Only the people in a channel keep a read mark in it.'));
+    }
+
+    if (!empty($params['message_id'])) {
+        $message = ws_message((int) $params['message_id']);
+
+        if (!$message || ((int) $message['channel_id'] !== (int) $channel['id'])) {
+            api_fail_validation(lang('That message could not be found.'), 'message_id');
+        }
+
+        $message_id = (int) $message['id'];
+    } else {
+        $message_id = (int) db_value("SELECT MAX(id) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "'");
+    }
+
+    ws_channel_mark_read($channel['id'], $viewer['id'], $message_id);
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
 }
 
 function ws_api_messages_ack($params)
