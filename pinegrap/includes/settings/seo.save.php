@@ -47,6 +47,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // Visitor record retention (2026.4.10, 10.3): 0, or a whole number of
+    // days within the bounds the module sets. Checked here, before anything
+    // on this screen is written. Only when the form carried the field: a
+    // missing one would read as 0 and quietly lift the limit.
+    $visitor_retention_ready = pg_visitor_retention_ready() && array_key_exists('visitor_retention_days', $_POST);
+    $visitor_retention_days_input = $visitor_retention_ready ? pg_visitor_retention_days_from_input(post_value('visitor_retention_days')) : 0;
+
+    if ($visitor_retention_ready && ($visitor_retention_days_input === null)) {
+        $liveform->mark_error('visitor_retention_days', lang(array('string' => 'Keep visitor records for 0 days (no limit), or for {var:1} to {var:2} days.', 'vars' => array(PG_VISITOR_RETENTION_MIN_DAYS, PG_VISITOR_RETENTION_MAX_DAYS))));
+        return;
+    }
+
     // If old key exists and changed, delete old file and its DB record. A
     // stored key that does not fit the format is left alone rather than used
     // as a path.
@@ -202,6 +214,28 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             merchant_return_fees = '" . ((post_value('merchant_return_fees') == '1') ? 1 : 0) . "',
             custom_jsonld = '" . escape($site_custom_jsonld_input) . "',";
     }
+    // A changed retention period or summary switch clears the general job's
+    // last look, so the change applies from its next tick.
+    $sql_visitor_retention_fields = '';
+
+    if ($visitor_retention_ready) {
+
+        $visitor_summary_input = (post_value('visitor_summary') == '1') ? 1 : 0;
+
+        $visitor_retention_current = pg_visitor_retention_settings();
+
+        if (!is_array($visitor_retention_current)
+            || ($visitor_retention_current['days'] !== $visitor_retention_days_input)
+            || ($visitor_retention_current['summary'] !== ($visitor_summary_input === 1))
+        ) {
+            pg_visitor_cleanup_reset();
+        }
+
+        $sql_visitor_retention_fields =
+            "visitor_retention_days = '" . (int) $visitor_retention_days_input . "',
+            visitor_summary = '" . $visitor_summary_input . "',";
+    }
+
     $sql_cookie_consent_fields = '';
 
     if (waf_table_has_column('config', 'cookie_consent')) {
@@ -220,6 +254,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $sql_app_icon_field
             $sql_seo_jsonld_fields
             $sql_cookie_consent_fields
+            $sql_visitor_retention_fields
             strutured_data = '" . escape(post_value('strutured_data')) . "',
             indexnow_key = '" . escape(post_value('indexnow_key')) . "',
             visitor_tracking = '" . escape(post_value('visitor_tracking')) . "',

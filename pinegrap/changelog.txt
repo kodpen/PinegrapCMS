@@ -1450,6 +1450,12 @@
          Kimlik adresli uygulamalar için kayıtlı istemci
          tablosu genişler.
 
+  [YENİ] Ziyaretçi raporu (GET /reports/visitors) cihaza
+         göre de sayıyor (by=device: desktop, mobile,
+         tablet). Saklama süresini geçip silinmiş günler
+         günlük özetten geliyor; yanıttaki summary_to
+         özetten gelen son günü söylüyor.
+
   BAĞLI HESAPLAR
   --------------------------------------------------------
 
@@ -1789,6 +1795,56 @@
 
   [ŞEMA] Ayarlar tablosuna ülke kısıtlaması için altı
          kolon eklenir.
+
+  VERİTABANI
+  --------------------------------------------------------
+
+  [YENİ] Ziyaretçi kayıtları için saklama süresi:
+         Ayarlar → SEO → Ziyaretçi Takibi'nde "Ziyaretçi
+         kayıtlarını sakla" (varsayılan 90 gün, 0
+         sınırsız). Daha eski kayıtları genel görev
+         5.000'erlik parçalarla siler; tablo kilitlenmez,
+         site bu sırada çalışmaya devam eder. Yoğun
+         sitelerde milyonlarca satıra ve yüzlerce MB'a
+         ulaşan ziyaretçi tablosu böylece küçük kalır.
+
+  [YENİ] "Kayıtlar silinmeden önce günlük özet tut"
+         (varsayılan açık): her gün silinmeden önce
+         kaynağa, giriş sayfasına, kampanyaya, konuma ve
+         cihaza göre toplanır. Ziyaretçi raporu eski
+         günleri özetten okumaya devam eder; toplamlar
+         kesin kalır, bir günün ilk 100 değeri dışında
+         kalanlar "(diğer değerler)" altında toplanır.
+         Pano grafikleri saatlik özetten çizildiği için
+         etkilenmez.
+
+  [YENİ] Veritabanı Motoru ekranında "Ziyaretçi kayıtları"
+         kartı: tablonun satır sayısı, boyutu, boş alanı,
+         en eski kaydı ve son temizlik; şimdi silinecek
+         kayıt sayısı ve tahmini boyutu. "Ziyaretçi
+         kayıtlarını şimdi temizle" onay ister ve sayfa
+         açıkken adım adım ilerler. Silme diskteki dosyayı
+         kendiliğinden küçültmez, boşalan yer yeni
+         ziyaretlere kalır; "Optimize et" dosyayı ayrı ve
+         isteğe bağlı bir adım olarak küçültür (tablo
+         boyutu kadar boş disk ister, sakin bir saatte
+         yapın).
+
+  [YENİ] Ziyaretçi tablosu 2 milyon satırı ya da 512 MB'ı
+         geçince Sistem Durumu'nda "Ziyaretçi Kayıtları"
+         uyarısı çıkar; puana etki etmez.
+
+  [YENİ] Ziyaretçi raporunda "Cihaz" gruplaması:
+         masaüstü, mobil, tablet.
+
+  [ŞEMA] Ayarlar tablosuna iki kolon ve günlük özet için
+         yeni bir tablo eklenir; kayıtlı ziyaretçi
+         raporlarının gruplama seçeneklerine "Cihaz"
+         eklenir. InnoDB'deki ziyaretçi tablosundan
+         kullanılmayan iki dizin kaldırılır (tablonun
+         yaklaşık beşte biri). Yükseltme hiçbir kaydı
+         silmez; temizliği genel görev sonraki turlarında
+         azar azar yapar.
 
 
 

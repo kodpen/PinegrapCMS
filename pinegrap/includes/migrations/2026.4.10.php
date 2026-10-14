@@ -41,6 +41,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_erp_late_fee();           // 10.61
 	upgrade_2026_4_10_workspace_approval_guests(); // 10.84
 	upgrade_2026_4_10_workspace_meetings();     // 10.86
+	upgrade_2026_4_10_visitor_retention();      // 10.3
 
 }
 
@@ -781,5 +782,84 @@ function upgrade_2026_4_10_workspace_meetings() {
 	install_add_column('ws_inbox', 'event_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER task_id");
 
 	install_note('Workspace: a meeting on the plan can carry its video call link (a Jitsi room made up on the spot, or a Google Meet, Teams or Zoom link), with a Join button and a notice to its people a few minutes before it starts; a meeting note can be opened from it, and its decisions and actions brought into a channel.');
+
+}
+
+// Visitor records kept for a period (2026.4.10, 10.3; includes/fn/visitor_retention.php,
+// the Visitor Tracking card of the SEO settings, the Database Engine screen).
+//
+// One `visitors` row was written per visit and none was ever removed; on a
+// busy site the table reached millions of rows and most of a gigabyte.
+// config.visitor_retention_days is how many days of rows are kept (0 keeps
+// them all), config.visitor_summary whether each day is added up into
+// visitor_stats_daily before its rows go. Nothing is removed here: the
+// general job removes the old rows a chunk at a time after the upgrade, and
+// the Database Engine screen can start it by hand.
+//
+// visitor_stats_daily holds, per day, the visits and what they led to by
+// each thing the visitor report groups by (dimension, dim_value), the top
+// values of a dimension each on a row and the rest added up on one row
+// (is_rest). The row with dimension '' is the day's total and is written
+// last, which is what marks a day as summarized.
+//
+// visitor_reports.summarize_by_1..3 gain 'device': the summary counts the
+// device a visit came from, and the report can now group by it.
+//
+// Two indexes of `visitors` go, on InnoDB only, where dropping an index is a
+// change of the table's definition and not a copy of the table. ip_address
+// is the first column of idx_dedup (2026.1.2), which answers every lookup it
+// did. idx_user_agent (2026.2.5) is a prefix index no query uses: grouping
+// by the user agent cannot be served by a prefix, and the day's rows are
+// found through start_timestamp. Together they were about a fifth of the
+// table's size. On MyISAM both are left for the operator's conversion.
+function upgrade_2026_4_10_visitor_retention() {
+
+	install_add_column('config', 'visitor_retention_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 90");
+	install_add_column('config', 'visitor_summary', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_create_table('visitor_stats_daily', "CREATE TABLE visitor_stats_daily (
+		id                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		stat_date          DATE NOT NULL,
+		dimension          VARCHAR(32) NOT NULL DEFAULT '',
+		dim_value          VARCHAR(255) NOT NULL DEFAULT '',
+		is_rest            TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+		visits             INT UNSIGNED NOT NULL DEFAULT 0,
+		page_views         INT UNSIGNED NOT NULL DEFAULT 0,
+		forms_submitted    INT UNSIGNED NOT NULL DEFAULT 0,
+		orders_created     INT UNSIGNED NOT NULL DEFAULT 0,
+		orders_retrieved   INT UNSIGNED NOT NULL DEFAULT 0,
+		orders_checked_out INT UNSIGNED NOT NULL DEFAULT 0,
+		orders_completed   INT UNSIGNED NOT NULL DEFAULT 0,
+		order_total        BIGINT NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_dimension_date (dimension, stat_date),
+		KEY idx_date (stat_date)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Widened from what is there, never narrowed: reading the enum first keeps
+	// any value a later release may have added.
+	foreach (array('summarize_by_1', 'summarize_by_2', 'summarize_by_3') as $column) {
+
+		$info = install_column_info('visitor_reports', $column);
+
+		if (is_array($info) && (stripos((string)$info['Type'], "'device'") === false) && (preg_match('/^enum\(.*\)$/is', trim((string)$info['Type'])) === 1)) {
+
+			install_modify_column('visitor_reports', $column, preg_replace('/\)$/', ",'device')", trim((string)$info['Type'])) . " NOT NULL DEFAULT ''");
+
+		}
+
+	}
+
+	if (install_table_engine('visitors') === 'innodb') {
+
+		if (install_index_exists('visitors', 'idx_dedup')) {
+			install_drop_index('visitors', 'ip_address');
+		}
+
+		install_drop_index('visitors', 'idx_user_agent');
+
+	}
+
+	install_note('Visitor records: rows older than 90 days are removed a little at a time by the general job, after each day is added up into a daily summary the visitor report and the API go on reading. The period, or no limit, is set in Site Settings, SEO, Visitor Tracking; the Database Engine screen shows the table and can start the cleanup by hand.');
 
 }

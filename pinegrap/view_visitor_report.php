@@ -153,6 +153,12 @@ if (!$_POST) {
     if (ECOMMERCE_MULTICURRENCY == true) {
         $summarize_by_options[lang('Currency')] = 'currency_code';
     }
+
+    // The saved report keeps the choice in an ENUM the same upgrade step
+    // widened.
+    if (pg_visitor_retention_ready()) {
+        $summarize_by_options[lang('Device')] = 'device';
+    }
     
     $summarize_by_options[''] = '</optgroup>';
     $summarize_by_options[lang('Referral')] = '<optgroup>';
@@ -776,6 +782,57 @@ if (!$_POST) {
         $where .= "(visitors.start_timestamp >= $start_timestamp) AND (visitors.start_timestamp <= $stop_timestamp)";
     }
     
+    // ── The daily summary ────────────────────────────────────────────────
+    //
+    // Visitor rows older than the retention period are removed by the
+    // general job, and with the summary on each day is added up into
+    // visitor_stats_daily first. For the days before the first raw day the
+    // report reads the summary and from that day on the rows, so a window
+    // that reaches back past the period still has its totals. The summary
+    // answers the date changer's window with year / month / day and at most
+    // one other grouping; a filter, or a grouping the summary does not hold,
+    // reads the rows alone and says the older days are missing.
+    $summary_groupings = array();
+
+    for ($i = 1; $i <= 3; $i++) {
+        if ($liveform->get_field_value('summarize_by_' . $i) == '') {
+            break;
+        }
+        $summary_groupings[] = $liveform->get_field_value('summarize_by_' . $i);
+    }
+
+    $summary_rows = array();
+    $summary_notice = '';
+    $summary_raw_from = pg_visitor_summary_raw_from();
+
+    if (($summary_raw_from > 0) && ($date_filter_exists == false) && ($start_timestamp < $summary_raw_from)) {
+
+        $summary_answer = (count($filters) == 0) ? pg_visitor_summary_report_rows($start_timestamp, $stop_timestamp, $summary_groupings) : false;
+
+        if ($summary_answer === false) {
+
+            $summary_notice = lang(array(
+                'string' => 'Visits before {var:1} are kept only in the daily summary, which cannot answer this report (it holds no filters, and one grouping besides year, month and day). Those days are left out.',
+                'vars' => array(get_absolute_time(array('timestamp' => $summary_raw_from, 'type' => 'date', 'format' => 'plain_text'))),
+            ));
+
+        } else {
+
+            $summary_rows = $summary_answer;
+
+            // The summary counted these days whole; a raw row of one of them
+            // that the cleanup has not reached yet must not count twice.
+            $where .= (($where == '') ? "WHERE " : " AND ") . "(visitors.start_timestamp >= " . (int) $summary_raw_from . ")";
+
+            if (count($summary_rows) > 0) {
+                $summary_notice = lang(array(
+                    'string' => 'Visits before {var:1} come from the daily summary: the totals are exact, values outside a day\'s top {var:2} are grouped as "(other values)", and the visitors themselves are no longer listed.',
+                    'vars' => array(get_absolute_time(array('timestamp' => $summary_raw_from, 'type' => 'date', 'format' => 'plain_text')), PG_VISITOR_SUMMARY_TOP),
+                ));
+            }
+        }
+    }
+
     if ($liveform->get_field_value('summarize_by_1') != '') {
         $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1')) . ',';
         $number_of_summarize_bys = 1;
@@ -868,6 +925,30 @@ if (!$_POST) {
         $sql_order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+    $group_rows = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $group_rows[] = $row;
+    }
+
+    // The summarized days join the raw groups in the order the query would
+    // have given them.
+    if (count($summary_rows) > 0) {
+        $group_rows = array_merge($summary_rows, $group_rows);
+
+        if ($number_of_summarize_bys > 0) {
+            usort($group_rows, function ($a, $b) use ($number_of_summarize_bys) {
+                for ($i = 1; $i <= $number_of_summarize_bys; $i++) {
+                    $order = strcmp(mb_strtolower(trim((string) $a['sb' . $i])), mb_strtolower(trim((string) $b['sb' . $i])));
+                    if ($order != 0) {
+                        return $order;
+                    }
+                }
+                return 0;
+            });
+        }
+    }
+
     $results = array();
 
     // Grand totals accumulate over the group rows, so they stay correct
@@ -885,7 +966,7 @@ if (!$_POST) {
     // rows fetched below can be filed under the right heading.
     $group_index = array();
 
-    while ($row = mysqli_fetch_assoc($result)) {
+    foreach ($group_rows as $row) {
 
         $totals = array(
             'count'                 => (int) $row['row_count'],
@@ -1286,6 +1367,7 @@ if (!$_POST) {
                         </div>
                     </div>
                 </div>
+                ' . (($summary_notice !== '') ? '<div class="alert alert-info small d-flex gap-2 align-items-start mt-3 mb-0"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><div>' . h($summary_notice) . '</div></div>' : '') . '
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative table-responsive">
                         <table class="table table-striped table-hover">
@@ -1902,6 +1984,7 @@ function get_summarize_by_column($summarize_by)
         case 'day': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%d\')';
         case 'site_search_terms': return 'visitors.site_search_terms';
         case 'currency_code': return 'visitors.currency_code';
+        case 'device': return pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql('visitors.user_agent') : "''";
         case 'http_referer': return 'visitors.http_referer';
         case 'referring_host_name': return 'visitors.referring_host_name';
         case 'referring_search_engine': return 'visitors.referring_search_engine';
@@ -1934,6 +2017,14 @@ function get_summarize_by_column($summarize_by)
 
 function update_summarize_by_name($summarize_by_name, $summarize_by) {
     switch ($summarize_by) {
+        case 'device':
+            $devices = array('desktop' => lang('Desktop'), 'mobile' => lang('Mobile'), 'tablet' => lang('Tablet'));
+            if (isset($devices[$summarize_by_name])) {
+                $summarize_by_name = $devices[$summarize_by_name];
+            }
+            break;
+
+
         case 'month':
             $summarize_by_name = get_month_name_from_number($summarize_by_name);
             break;

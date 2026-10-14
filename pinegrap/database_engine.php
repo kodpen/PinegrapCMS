@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Database Engine: what the database holds and how it is doing. The findings
- * worth acting on, the tables still on MyISAM with a button to move each of
- * them to InnoDB, the result of the table health check, every table with its
- * size and free space and an OPTIMIZE button, and the facts of the database
- * server.
+ * worth acting on, the visitor records with their retention period and a
+ * cleanup to start by hand, the tables still on MyISAM with a button to move
+ * each of them to InnoDB, the result of the table health check, every table
+ * with its size and free space and an OPTIMIZE button, and the facts of the
+ * database server.
  *
  * The 2026.4.8 upgrade converts every table it can within its limits; a table
  * over them, or one an earlier attempt did not finish, is left here. Moving a
@@ -63,12 +64,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             go($database_engine_url);
         }
 
-    } elseif ($engine_action !== 'check_all') {
+    } elseif (!in_array($engine_action, array('check_all', 'visitor_cleanup'), true)) {
 
         $liveform->add_error(lang('Unknown action.'));
         go($database_engine_url);
 
     }
+
+    // The visitor cleanup is driven from the screen a step at a time: each
+    // request answers with JSON and the page asks for the next step until no
+    // old rows are left.
+    $engine_ajax = (isset($_POST['ajax']) && ($_POST['ajax'] === '1'));
 
     // The work can take minutes. The session file stays locked for as long
     // as this request holds it, which would freeze every other tab of the
@@ -166,6 +172,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $engine_text = lang(array('string' => '{var:1} repaired in {var:2} s. The server said: {var:3}', 'vars' => array($engine_table, pg_format_number($engine_result['seconds'], 1), $engine_messages($engine_result))));
             } else {
                 $engine_text = $engine_common_text('REPAIR TABLE', $engine_result);
+            }
+            break;
+
+        case 'visitor_cleanup':
+            $visitor_run = pg_visitor_cleanup_run(20);
+            $engine_ok = in_array($visitor_run['state'], array('done', 'more'), true);
+            $engine_text = pg_visitor_cleanup_result_text($visitor_run);
+
+            if ($engine_ajax) {
+
+                if (function_exists('session_status') && (session_status() === PHP_SESSION_NONE)) {
+                    @session_start();
+                }
+
+                if (($visitor_run['deleted'] > 0) || ($visitor_run['summarized'] > 0)) {
+                    log_activity(lang(array('string' => 'Database Engine: {var:1}', 'vars' => array($engine_text))), $_SESSION['sessionusername']);
+                }
+
+                // The figures of the earlier steps come back from the page,
+                // only to be added up in the sentence it shows.
+                $visitor_deleted = $visitor_run['deleted'] + (isset($_POST['deleted_so_far']) ? max(0, (int) $_POST['deleted_so_far']) : 0);
+                $visitor_summarized = $visitor_run['summarized'] + (isset($_POST['summarized_so_far']) ? max(0, (int) $_POST['summarized_so_far']) : 0);
+
+                $visitor_progress = lang(array(
+                    'string' => 'So far {var:1} visitor record(s) removed and {var:2} day(s) added to the daily summary.',
+                    'vars' => array(pg_format_number($visitor_deleted, 0), pg_format_number($visitor_summarized, 0)),
+                ));
+
+                // The last step leaves its sentence for the page that loads
+                // next.
+                if ($visitor_run['state'] !== 'more') {
+                    if ($engine_ok) {
+                        $liveform->add_notice($visitor_progress . ' ' . lang('No older records are left.'));
+                    } else {
+                        $liveform->add_error($engine_text);
+                    }
+                }
+
+                header('Content-Type: application/json; charset=utf-8');
+                header('Cache-Control: no-store');
+
+                echo json_encode(array(
+                    'ok' => $engine_ok,
+                    'state' => $visitor_run['state'],
+                    'deleted' => $visitor_run['deleted'],
+                    'summarized' => $visitor_run['summarized'],
+                    'text' => ($visitor_run['state'] === 'more') ? $visitor_progress : $engine_text,
+                ));
+
+                exit;
             }
             break;
 
@@ -393,6 +449,173 @@ if (count($engine_findings) == 0) {
     $findings_list = '
                     <ul class="list-group list-group-flush">' . $findings_rows . '
                     </ul>';
+}
+
+// -- Visitor records ----------------------------------------------------------
+
+// The visitors table grows by a row per visit and was never trimmed before
+// the retention period: on a busy site it is the largest table of the
+// database by far. Its figures, what the period would remove now, and the
+// button that removes it.
+$visitor_catalog = isset($engine_catalog['visitors']) ? $engine_catalog['visitors'] : null;
+$visitor_settings = pg_visitor_retention_settings();
+
+if (($visitor_settings === false) || ($visitor_catalog === null)) {
+
+    $visitor_card = '
+                    <div class="alert alert-secondary d-flex gap-2 align-items-start mb-0">
+                        <i class="bi bi-hourglass" aria-hidden="true"></i>
+                        <div>' . h(lang('The period for keeping visitor records arrives with the upgrade steps of this version. Run them again to see the cleanup here.')) . '</div>
+                    </div>';
+
+} else {
+
+    $visitor_preview = pg_visitor_cleanup_preview($visitor_catalog);
+    $visitor_last = pg_visitor_cleanup_last();
+    $visitor_through = $visitor_settings['summary'] ? pg_visitor_summary_through() : '';
+    $visitor_settings_link = '<a href="settings_seo.php#pgset-analytics">' . h(lang('Change')) . '</a>';
+
+    $visitor_alert = '';
+
+    if (pg_visitor_table_is_large($visitor_catalog)) {
+
+        $visitor_size = lang(array(
+            'string' => 'The visitors table holds about {var:1} records and takes {var:2}.',
+            'vars' => array(pg_format_number($visitor_catalog['rows'], 0), pg_innodb_size_label($visitor_catalog['bytes'])),
+        ));
+
+        if ($visitor_settings['days'] <= 0) {
+            $visitor_advice = lang('Visitor records are kept without a limit. Set a period under Settings › SEO › Visitor Tracking and the general job removes the older ones a little at a time.');
+        } elseif ($visitor_preview['rows'] > 0) {
+            $visitor_advice = lang(array(
+                'string' => '{var:1} of them are older than {var:2} days. The general job removes them a little at a time; the button below starts on them now.',
+                'vars' => array(pg_format_number($visitor_preview['rows'], 0), $visitor_settings['days']),
+            ));
+        } else {
+            $visitor_advice = lang(array(
+                'string' => 'All of them are from the last {var:1} days; a shorter period makes the table smaller.',
+                'vars' => array($visitor_settings['days']),
+            ));
+        }
+
+        $visitor_alert = '
+                    <div class="alert alert-warning d-flex gap-2 align-items-start">
+                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                        <div>' . h($visitor_size . ' ' . $visitor_advice) . '</div>
+                    </div>';
+    }
+
+    // On MyISAM every write to the table waits for the statement in front of
+    // it, a cleanup step included; converting the table after the cleanup
+    // also gives the room of the removed rows back to the disk.
+    if ($visitor_catalog['engine'] === 'myisam') {
+        $visitor_alert .= '
+                    <div class="alert alert-info d-flex gap-2 align-items-start">
+                        <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                        <div>' . h(lang('This table is on MyISAM, which locks the whole table for each statement: the cleanup works in small steps so visits wait only briefly. Once the old records are gone, convert it to InnoDB from Tables on MyISAM at a quiet hour; that also makes the file smaller.')) . '</div>
+                    </div>';
+    }
+
+    // Removed rows leave their room inside the table file, which keeps its
+    // size on disk. Said when that room is a large share of the file, with
+    // the button that gives it back.
+    if (($visitor_catalog['engine'] !== 'myisam') && ($visitor_catalog['free'] >= 134217728) && ($visitor_catalog['free'] >= ($visitor_catalog['bytes'] / 2))) {
+        $visitor_alert .= '
+                    <div class="alert alert-info d-flex gap-2 align-items-start">
+                        <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                        <div>' . h(lang(array(
+                            'string' => '{var:1} inside the table file is free space, left by removed records. New visits reuse it; Optimize table gives it back to the disk.',
+                            'vars' => array(pg_innodb_size_label($visitor_catalog['free'])),
+                        ))) . '</div>
+                    </div>';
+    }
+
+    if ($visitor_settings['days'] > 0) {
+        $visitor_kept = lang(array('string' => '{var:1} days', 'vars' => array($visitor_settings['days'])));
+    } else {
+        $visitor_kept = lang('Without a limit');
+    }
+
+    if (!$visitor_settings['summary']) {
+        $visitor_summary = lang('Off');
+    } elseif ($visitor_through !== '') {
+        $visitor_summary = lang(array('string' => 'On, through {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => strtotime($visitor_through . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')))));
+    } else {
+        $visitor_summary = lang('On, nothing added up yet');
+    }
+
+    if ($visitor_last['checked_at'] > 0) {
+        $visitor_last_text = lang(array(
+            'string' => '{var:1}: {var:2} removed',
+            'vars' => array(
+                get_relative_time(array('timestamp' => $visitor_last['checked_at'], 'format' => 'plain_text')),
+                pg_format_number($visitor_last['deleted'], 0),
+            ),
+        ));
+        if ($visitor_last['backlog']) {
+            $visitor_last_text .= '; ' . lang('older records still left, the general job carries on');
+        }
+    } else {
+        $visitor_last_text = lang('Not run yet');
+    }
+
+    $visitor_facts = array(
+        lang('Records') => pg_format_number($visitor_catalog['rows'], 0),
+        lang('Size') => pg_innodb_size_label($visitor_catalog['bytes']),
+        lang('Free space') => pg_innodb_size_label($visitor_catalog['free']),
+        lang('Oldest record') => ($visitor_preview['oldest'] > 0) ? get_absolute_time(array('timestamp' => $visitor_preview['oldest'], 'type' => 'date', 'format' => 'plain_text')) : '—',
+        lang('Kept for') => $visitor_kept,
+        lang('Daily summary') => $visitor_summary,
+        lang('Last cleanup') => $visitor_last_text,
+    );
+
+    $visitor_fact_list = '';
+
+    foreach ($visitor_facts as $visitor_label => $visitor_value) {
+        $visitor_fact_list .= '
+                            <dt class="col-5 col-md-4 fw-normal text-body-secondary">' . h($visitor_label) . '</dt>
+                            <dd class="col-7 col-md-8 mb-1">' . h($visitor_value) . (($visitor_label === lang('Kept for')) ? ' · ' . $visitor_settings_link : '') . '</dd>';
+    }
+
+    // What the button would remove, counted now.
+    if ($visitor_settings['days'] <= 0) {
+        $visitor_will = lang('Nothing is removed while records are kept without a limit.');
+    } elseif ($visitor_preview['rows'] > 0) {
+        $visitor_will = lang(array(
+            'string' => 'Older than {var:1}: {var:2} records, about {var:3}.',
+            'vars' => array(
+                get_absolute_time(array('timestamp' => $visitor_preview['cutoff'], 'type' => 'date', 'format' => 'plain_text')),
+                pg_format_number($visitor_preview['rows'], 0),
+                pg_innodb_size_label($visitor_preview['bytes']),
+            ),
+        ));
+    } else {
+        $visitor_will = lang(array('string' => 'No record is older than {var:1} days.', 'vars' => array($visitor_settings['days'])));
+    }
+
+    $visitor_confirm = lang(array(
+        'string' => 'Remove {var:1} visitor records older than {var:2} days now? They cannot be brought back. The work goes in small steps while this page stays open; the site keeps running meanwhile.',
+        'vars' => array(pg_format_number($visitor_preview['rows'], 0), $visitor_settings['days']),
+    ));
+
+    if ($visitor_settings['summary']) {
+        $visitor_confirm .= ' ' . lang('Each day is added to the daily summary first.');
+    } else {
+        $visitor_confirm .= ' ' . lang('The daily summary is off: those days will be gone from the visitor report.');
+    }
+
+    $visitor_enabled = ($engine_tools && ($visitor_settings['days'] > 0) && ($visitor_preview['rows'] > 0));
+
+    $visitor_card = $visitor_alert . '
+                    <dl class="row small mb-3">' . $visitor_fact_list . '
+                    </dl>
+                    <p class="mb-2">' . h($visitor_will) . '</p>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <button type="button" id="pg_visitor_cleanup" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="' . h($visitor_confirm) . '"' . ($visitor_enabled ? '' : ' disabled') . '><i class="bi bi-trash3 me-1" aria-hidden="true"></i>' . h(lang('Clean up visitor records now')) . '</button>
+                        ' . $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline-warning' : 'btn-outline-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== ''))) . '
+                    </div>
+                    <div id="pg_visitor_cleanup_progress" class="small mt-2" role="status" aria-live="polite"></div>
+                    <div class="small text-body-secondary mt-2">' . h(lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Optimize table gives it back to the disk; that is a separate, optional step.')) . '</div>';
 }
 
 // -- Tables on MyISAM ---------------------------------------------------------
@@ -690,6 +913,14 @@ echo '
                         <div class="card-body">' . $findings_list . '
                         </div>
                     </div>
+                    <div class="card mb-5" id="visitor-records">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Visitor records')) . '</span>
+                            <code class="small">visitors</code>
+                        </div>
+                        <div class="card-body">' . $visitor_card . '
+                        </div>
+                    </div>
                     <div class="card mb-5">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Tables on MyISAM')) . '</span>
@@ -795,6 +1026,67 @@ echo '
         }
         form.submit();
     });
+
+    // The visitor cleanup: one step per request, as many as it takes, with
+    // the running count in the card. The last step leaves its notice for the
+    // page that loads afterwards.
+    (function () {
+        var button = document.getElementById("pg_visitor_cleanup");
+        if (!button) {
+            return;
+        }
+        var progress = document.getElementById("pg_visitor_cleanup_progress");
+        var failed = ' . json_encode(lang('The cleanup stopped:'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+        var starting = ' . json_encode(lang('Cleaning up; keep this page open…'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+        button.addEventListener("click", function () {
+            if (button.disabled || !window.confirm(button.getAttribute("data-confirm") || "")) {
+                return;
+            }
+            var form = document.getElementById("pg_engine_form");
+            var buttons = document.querySelectorAll(".pg-engine-action, #pg_visitor_cleanup");
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = true;
+            }
+            form.elements["action"].value = "visitor_cleanup";
+            form.elements["table"].value = "visitors";
+            if (!window.fetch || !window.FormData) {
+                form.submit();
+                return;
+            }
+            var deleted = 0;
+            var summarized = 0;
+            var step = function () {
+                var data = new FormData(form);
+                data.append("ajax", "1");
+                data.append("deleted_so_far", String(deleted));
+                data.append("summarized_so_far", String(summarized));
+                window.fetch(form.getAttribute("action"), {method: "POST", body: data, credentials: "same-origin", headers: {"X-Requested-With": "XMLHttpRequest"}})
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error("HTTP " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(function (answer) {
+                        deleted += answer.deleted;
+                        summarized += answer.summarized;
+                        progress.textContent = answer.text;
+                        if (answer.state === "more") {
+                            step();
+                        } else {
+                            window.location.reload();
+                        }
+                    })
+                    .catch(function (error) {
+                        progress.textContent = failed + " " + error.message;
+                        progress.className = "small mt-2 text-danger";
+                        button.disabled = false;
+                    });
+            };
+            progress.textContent = starting;
+            step();
+        });
+    })();
 </script>' . output_footer();
 
 $liveform->remove_form();
