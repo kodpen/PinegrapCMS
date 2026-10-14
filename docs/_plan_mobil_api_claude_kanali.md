@@ -1,12 +1,14 @@
 # Plan — Mobil API ve Claude kanalı
 
-**Durum (2026-10-14):** yalnız plan, kod yok. İki iş var: (A) bir iOS / Android uygulamasının
+**Durum (2026-10-14):** M1–M6 bitti ve development'ta; her dilimin PR'ı ve squash commit'i §0
+tablosunda, ardından gelen tamamlama PR'ları A.3'te "Tamamlama PR'ları" listesinde. M7, M8 ve
+Claude kanalı (C1–C5) için kod yok. İki iş var: (A) bir iOS / Android uygulamasının
 Çalışma Alanı'nı kullanabilmesi için dış API'de kalan eksikler, (B) Claude'un bir Çalışma
 Alanı kanalına üye gibi katılması. Her dilim tek küçük PR'dır ve uçtan uca çalışır.
 `docs/_plan_api_mobil.md` (cihaz oturumu, bildirim + push, ETag) ve `docs/_plan_claude_kanal.md`
 (rutinle `@Claude`, Faz 1) bitmiş işlerin plan dosyalarıdır; kalanları bu plana taşındı.
 
-**Karar beklemeden başlayabilen dilimler:** M1–M6. Bunlar 2026-09-27 kararının
+**Karar beklemeden yapılan dilimler:** M1–M6, hepsi bitti. Bunlar 2026-09-27 kararının
 ("uygulamaya özel uç yazılmaz, her istemcinin işine yarayan genel yetenek eklenir") çizgisinde.
 Diğer dilimler aşağıdaki kararlardan birini bekler; hangisini beklediği §0 tablosunda yazıyor.
 
@@ -38,27 +40,30 @@ onaylı taslakla yazar; günlük hak dolunca istek 24 saat kuyrukta bekler, sonr
 
 Efor: K küçük, O orta, B büyük.
 
-| Dilim | Ne | Efor | Şema | Bekleyen karar |
-|---|---|---|---|---|
-| M1 | Cihaz oturumundan yazılan mesaj ve tepki kişinin kendi adıyla | K | yok (rozet için C5) | yok |
-| M2 | Mesaj düzenleme, silme, okundu işareti, değişenler | K | yok | yok |
-| M3 | Tek çağrıda eşitleme (`GET /workspace/sync`) | O | yok | yok |
-| M4 | Çalışma Alanı gelen kutusu API'de | K | yok | yok |
-| M5 | Kanala dosya yükleme ve jetonla indirme | O | yok | yok |
-| M6 | Kanal tercihleri, anket oyu, tartışmaya katılma / ayrılma | K | yok | yok |
-| M7 | Yerel push (FCM / APNs) kaydı ve gönderimi | O (+ aracı) | var | 1, 3, 4 |
-| M8 | Eski listeden kalanlar: toplu istek, silinen kayıt listesi, `sort=`, CORS | dilim başına K | yok | gerekince |
-| C1 | "Kanallarda Claude"da bağlantı türü: rutin ya da Claude Code kanalı | O | var | 5, 7 |
-| C2 | Kanal eklentisi (ayrı depo) | O | — | 5, 10 |
-| C3 | Araç onayı Çalışma Alanı'nda (izin aktarımı) | O | var | 9 |
-| C4 | Kişi başı Claude Code oturumu | O | var | 6 |
-| C5 | Bağlantıyla yazan kişinin mesajında "… ile" rozeti | K | var | 11 |
+| Dilim | Ne | Efor | Şema | Bekleyen karar | Durum |
+|---|---|---|---|---|---|
+| M1 | Cihaz oturumundan yazılan mesaj ve tepki kişinin kendi adıyla | K | yok (rozet için C5) | yok | Yapıldı: #369 `4aa682b` |
+| M2 | Mesaj düzenleme, silme, okundu işareti, değişenler | K | yok | yok | Yapıldı: #371 `124e245` |
+| M3 | Tek çağrıda eşitleme (`GET /workspace/sync`) | O | yok | yok | Yapıldı: #374 `96eaae4` |
+| M4 | Çalışma Alanı gelen kutusu API'de | K | yok | yok | Yapıldı: #377 `9c23e10` |
+| M5 | Kanala dosya yükleme ve jetonla indirme | O | yok | yok | Yapıldı: #378 `0070e24` |
+| M6 | Kanal bildirim düzeyi, anket oyu, tartışmaya katılma / ayrılma | K | yok | yok | Yapıldı: #381 `1ddb43c` |
+| M7 | Yerel push (FCM / APNs) kaydı ve gönderimi | O (+ aracı) | var | 1, 3, 4 | Başlamadı |
+| M8 | Eski listeden kalanlar: toplu istek, silinen kayıt listesi, `sort=`, CORS | dilim başına K | yok | gerekince | Başlamadı |
+| C1 | "Kanallarda Claude"da bağlantı türü: rutin ya da Claude Code kanalı | O | var | 5, 7 | Başlamadı |
+| C2 | Kanal eklentisi (ayrı depo) | O | — | 5, 10 | Başlamadı |
+| C3 | Araç onayı Çalışma Alanı'nda (izin aktarımı) | O | var | 9 | Başlamadı |
+| C4 | Kişi başı Claude Code oturumu | O | var | 6 | Başlamadı |
+| C5 | Bağlantıyla yazan kişinin mesajında "… ile" rozeti | K | var | 11 | Başlamadı |
 
 ---
 
 ## A. Mobil API
 
 ### A.1 Bugün olanlar
+
+Plan yazıldığı andaki, M1'den önceki durum; M1–M6'nın getirdikleri A.3'te. Çalışma Alanı'nın
+dış API'deki uç sayısı o gün 65'ti, M1–M6 ve tamamlamalarıyla 86 oldu.
 
 - **Kişi adına oturum:** "Ekip cihazları" uygulaması, `POST /auth/login` (parola, `otp` ile iki
   adımlı doğrulama, giriş ekranının kilidi), `/auth/refresh` (dönen yenileme jetonu),
@@ -86,6 +91,8 @@ Efor: K küçük, O orta, B büyük.
 
 ### A.2 Eksikler
 
+M7 dışındaki satırlar kapandı (A.3); "Bugün" sütunu plan yazıldığı anı anlatır.
+
 | İhtiyaç | Bugün | Eksik | Dilim |
 |---|---|---|---|
 | Mobilden yazılan mesaj kişinin olsun | Cihaz oturumundan yazılan mesaj ve tepki uygulama adıyla düşüyor ("Ekip cihazları (uygulama)"), kişi hız sınırına ve genel kanala kendiliğinden katılmaya girmiyor (`ws_api_messages_create()` her zaman `app_id` veriyor) | Cihaz oturumunda `sender_kind = 'user'` | M1 |
@@ -101,71 +108,103 @@ Efor: K küçük, O orta, B büyük.
 
 ### A.3 Dilimler
 
-**M1 — Kişinin kendi adıyla yazmak (K, şema yok). Yapıldı (#369):** görev notu, görev kartı,
-onay isteği ve şablonun sabitlenen mesajı da kişinin adıyla. Arayan cihaz oturumuysa
-(`api_current_device() !== null`) `ws_api_messages_create()` ve `ws_api_messages_react()`
+**M1 — Kişinin kendi adıyla yazmak (K, şema yok). Yapıldı (#369, `4aa682b`).** Arayan Ekip
+cihazları oturumuysa (`ws_api_device_writes_as_person()`: `oauth_client_id`'si boş cihaz satırı),
+`ws_api_writer_app_id()` 0 döner; `ws_api_messages_create()` ve `ws_api_messages_react()`
 `app_id` vermez: mesaj kişinin, hız sınırı (`ws_rate_limited()`) ve genel kanala kendiliğinden
-katılma uygulanır. Okundu isteğinin "yalnız personel isteyebilir" kuralı da o zaman uygulama
-yerine kişiye bakar. Uygulama anahtarıyla yazan entegrasyonlar değişmez. OAuth bağlantısının da
-kişi adına yazması karar 11'e bağlıdır (C5); karar gelene kadar bağlantı bugünkü gibi yazar.
-API açıklamaları ("readers see it as written by the application") güncellenir.
+katılma uygulanır. Görev notu, görev kartı, onay isteği ve şablonun sabitlenen mesajı da kişinin
+adıyla. Okundu isteğinin "yalnız personel isteyebilir" kuralı da o zaman uygulama yerine kişiye
+bakar. Uygulama anahtarıyla yazan entegrasyonlar değişmedi. OAuth bağlantısı da bir cihaz
+satırıdır, ama kişi adına yazması karar 11'e bağlıdır (C5); karar gelene kadar bugünkü gibi
+uygulamanın adıyla yazar. API açıklamaları ("Written by a person signed in on their own device
+… it is theirs") güncellendi.
 
-**M2 — Düzeltme, silme, okundu, değişenler (K, şema yok). Yapıldı (#371).**
+**M2 — Düzeltme, silme, okundu, değişenler (K, şema yok). Yapıldı (#371, `124e245`).**
 - `PATCH|POST /workspace/messages/{id}` {text}: panelin `ws_edit` kuralıyla (yalnız yazan, kilitli
   karar değil).
-- `DELETE|POST /workspace/messages/{id}/delete`: panelin `ws_delete` kuralıyla.
-- `POST /workspace/channels/{id}/read` {message_id}: `ws_channel_mark_read()`; yalnız cihaz
-  oturumu (`ws_api_person_only()`).
+- `DELETE /workspace/messages/{id}` ya da DELETE'i reddeden sunucular (varsayılan IIS) için
+  `POST /workspace/messages/{id}/delete`: panelin `ws_delete` kuralıyla.
+- `POST /workspace/channels/{id}/read` {message_id}: `ws_channel_mark_read()`; `message_id`
+  verilmezse en yeni mesaja kadar. Her cihaz oturumundan (`ws_api_person_only()`), yalnız kanalın
+  üyesi (yoksa 409 `not_member`).
 - `GET /workspace/channels/{id}/messages?changed_since=<zaman>`: `ws_messages_touched()`; yanıtta
-  `edited`, `deleted`, tepkiler ve okundu sayısı güncel.
+  `edited`, `deleted`, tepkiler ve okundu sayısı güncel. `limit` kadar mesaj dönerse sonraki sayfa
+  `since_id` ile.
+- Düzeltme ve silme yalnız Ekip cihazları oturumundan (`ws_api_own_words_only()`); uygulama
+  anahtarı ve OAuth bağlantısı 403 `forbidden` alır (OAuth karar 11'i bekler).
 
-**M3 — Tek çağrıda eşitleme (O, şema yok). Yapıldı (#374):** kanal ve tartışma listesi yalnız
-değiştiklerinde gelir; rota MCP aracı değildir. Sonradan cevaba zil sayısı (`account:read` ile), gelen
-kutusunun değişim anı ve kişinin uygulamasına açık kanalın sabitlenmiş mesajı, sekme sayıları ve
-pano işareti eklendi; sabitleme, sabitlemeyi kaldırma ve kişinin kendisi için kapatması da API'de
-(`POST /workspace/messages/{id}/pin`, `/pin/close`). `GET /workspace/sync?cursor=…&channel_id=…`:
-değişen kanallar (okunmamış sayısıyla), tartışmalar, gelen kutusu sayısı, açık kanalın yeni ve
-değişen mesajları, sonraki `cursor`. ETag / 304 ile ucuz; uygulama önündeyken 3–5 sn'de bir
-çağırır. Çağrı `ws_touch_seen()` yapar, böylece ekranda okuyan kişinin telefonu push ile ayrıca
-uyandırılmaz (panelin davranışı). `ws_sync`'in mantığı ortak bir fonksiyona alınır, iki yer aynı
-kodu kullanır. WebSocket ya da SSE yok: paylaşımlı barındırmada ve IIS'te her açık bağlantı bir
-PHP işçisi tutar; uygulama arka plandayken push, öndeyken kısa yoklama yeter.
+**M3 — Tek çağrıda eşitleme (O, şema yok). Yapıldı (#374, `96eaae4`).**
+`GET /workspace/sync?cursor=…&channel_id=…`: `channels` (okunmamış sayısıyla) ve `threads` yalnız
+değiştiklerinde gelir (yoksa `null`), `inbox_unread`, açık kanalın yeni mesajları `messages`'ta ve
+değişenleri `changed`'de, `more` / `reload` / `gone`, sonraki `cursor`. Hiçbir şey değişmediyse
+cevap öncekinin aynısıdır; ETag / 304 ile ucuz, uygulama önündeyken 3–5 sn'de bir çağırır. Ekip
+cihazları oturumundan gelen çağrı `ws_sync_seen()` yapar, böylece ekranda okuyan kişinin telefonu
+push ile ayrıca uyandırılmaz (panelin davranışı); uygulama anahtarının ve OAuth bağlantısının
+yoklaması kimseyi ekranda saymaz. `ws_sync`'in mesaj mantığı `ws_channel_news()`'e alındı, panel ve API aynı kodu kullanıyor.
+Rota MCP aracı değil (`'mcp' => false`). WebSocket ya da SSE yok: paylaşımlı barındırmada ve
+IIS'te her açık bağlantı bir PHP işçisi tutar; uygulama arka plandayken push, öndeyken kısa
+yoklama yeter.
 
-**M4 — Gelen kutusu (K, şema yok). Yapıldı (#377):** satırda `parent_channel_id`, `meeting_url`,
-tek satır `GET /workspace/inbox/{id}`; zil satırının `url`'si de düzeldi. `GET /workspace/inbox`
-(tür, kanal, mesaj, görev, not, plan öğesi, kimden, okundu; cursor), `POST
-/workspace/inbox/read` {ids | all}. Zil satırının `subject` alanı `workspace_inbox` olduğunda
-uygulama bu kaydı okuyup ilgili ekranı açar. `ws_inbox_list()` ve `ws_inbox_mark_read()`
-kullanılır.
+**M4 — Gelen kutusu (K, şema yok). Yapıldı (#377, `9c23e10`).** `GET /workspace/inbox` (`unread`,
+`limit`, `cursor`; satırda `kind`, `title`, `body`, `url`, `read`, `actor_id`, `channel_id`,
+`parent_channel_id`, `message_id`, `task_id`, `note_id`, `plan_item_id`, `meeting_url`), tek satır
+`GET /workspace/inbox/{id}`, `POST /workspace/inbox/read` {ids | all} (her cihaz oturumundan,
+`dry_run` alır). Zil satırının `subject` alanı `workspace_inbox` olduğunda uygulama bu kaydı okuyup
+ilgili ekranı açar; zil satırının `url`'sindeki `/pinegrap/pinegrap/…` hatası da düzeldi.
+`ws_inbox_visible_rows()` (panelin listesiyle aynı süzgeç), `ws_inbox_describe()` ve
+`ws_inbox_mark_read()` kullanılır. Üç rota MCP aracı olarak da gelir (`workspace_inbox_list`,
+`workspace_inbox_get`, `workspace_inbox_read`).
 
-**M5 — Dosya (O, şema yok). Yapıldı (#378; önizleme ve Range ardından geldi):** erişim kuralı
-`get_file.php`'den alınmadı; uç mesajdan gider ve mesajı okuyabilen dosyayı da alır
-(`ws_can_read_channel()`), böylece kopya oluşmadı. Dosya JSON içinde değil kendi baytlarıyla
-döner (`api_send_file()`); iki uç MCP aracı değil. `?size=` önizleme (`ws_file_preview()`,
-kopya `data/temp`'te) ve `Range` / `If-Range` (206 / 416, her `api_send_file()` cevabında)
-ardından geldi; panelin `ws_attach`'ı da yazılamayan mesajın dosyasını geri alıyor ve form
-yüklemesinin `Idempotency-Key` parmak izi dosyanın SHA-256'sını kapsıyor.
-- `POST /workspace/channels/{id}/files` (multipart ya da `content_base64`, isteğe bağlı `text`):
-  `ws_store_upload()` + `ws_message_send()`; boyut sınırı `ws_upload_max_bytes()`. Tartışmanın
-  dosyası kanalın klasörüne gider (bugünkü kural).
-- `GET /workspace/messages/{id}/file`: dosyayı Bearer jetonuyla, `get_file.php`'deki Çalışma
-  Alanı erişim kuralıyla verir. O kural ortak bir fonksiyona alınır (iki yerde kopyası olmaz).
-  Görselde `?size=` küçük önizleme. Mesajdaki `file` alanına bu adres eklenir, eski `url` kalır.
+**M5 — Dosya (O, şema yok). Yapıldı (#378, `0070e24`).**
+- `POST /workspace/channels/{id}/files`: dosya multipart `file` parçasıyla ya da JSON'da
+  `content_base64` + `name`, isteğe bağlı `text`. `ws_store_upload()` / `ws_store_upload_bytes()`
+  + `ws_message_send()`; panelin ataç kuralları, boyut sınırı `ws_upload_max_bytes()`. Tartışmanın
+  dosyası kanalın klasörüne gider (bugünkü kural). Uygulama anahtarıyla yüklenen dosyanın mesajı
+  uygulamanın adıyla.
+- `GET /workspace/messages/{id}/file`: dosya JSON içinde değil kendi baytlarıyla döner
+  (`api_send_file()`), Bearer jetonuyla ya da uygulama anahtarıyla, ETag / 304. Erişim kuralı
+  `get_file.php`'den alınmadı: uç mesajdan gider ve mesajı okuyabilen (`ws_can_read_channel()`)
+  dosyayı da alır, böylece kuralın kopyası oluşmadı. Mesajdaki `file` alanına `kind`, `size` ve
+  `api_url` eklendi, eski `url` kaldı.
+- İki rota MCP aracı değil (`'mcp' => false`).
 
-**M6 — Kanal tercihleri, anket, tartışma (K, şema yok). Yapıldı (#381):** gövde alanı `level`
-değil `notify`, kanal nesnesindeki yeni alanla aynı; dördü de bildirim düzeyi dahil yalnız cihaz
-oturumundan (OAuth kabul), `dry_run` alır, MCP aracı değil. Panelin ayrılma mantığı
-`ws_thread_leave()`, oy denetimleri `ws_poll_vote_check()` olarak ortak fonksiyona alındı.
-Oylama açma, değiştirme ve kapatma #386 ile eklendi (`POST /workspace/channels/{id}/polls`,
-`POST|PATCH /workspace/polls/{id}`, `POST /workspace/polls/{id}/close`); açma ve değiştirme
-yalnız ekip cihazları oturumundan, OAuth ile olanı karar 11'i bekliyor.
-`POST /workspace/channels/{id}/notify` {notify}, `POST /workspace/polls/{id}/vote` {option_ids}
-(mesajda anket bilgisi `poll` olarak döner), `POST /workspace/threads/{id}/join|leave`.
-Oy ve katılma yalnız cihaz oturumundan.
-Sonradan eklenen kişisel liste tercihleri: `POST /workspace/channels/{id}/prefs` {pinned, order}
-(panelin raptiyesi ve sürükleyerek sıralaması; kanal nesnesinde `pinned`, `order`), yalnız cihaz
-oturumundan, `dry_run`, MCP aracı değil. Kanalın grubu kişisel tercih değil (gruplar çalışma
-alanının, personel düzenler, gruba taşımak erişim verir), bu uca girmedi.
+**M6 — Kanal bildirim düzeyi, anket, tartışma (K, şema yok). Yapıldı (#381, `1ddb43c`).**
+`POST /workspace/channels/{id}/notify` {notify: `all` | `mentions` | `none`}; gövde alanı planın
+yazdığı `level` değil `notify`, kanal nesnesindeki yeni alanla aynı. `POST /workspace/polls/{id}/vote`
+{option_ids} (boş liste oyu geri alır; mesajda anket `poll` olarak döner, `WorkspacePoll`).
+`POST /workspace/threads/{id}/join|leave`. Dördü de yalnız cihaz oturumundan
+(`ws_api_person_only()`; OAuth kabul, uygulama anahtarı 403), `dry_run` alır, MCP aracı değil.
+Panelin ayrılma mantığı `ws_thread_leave()`, oy denetimleri `ws_poll_vote_check()` olarak ortak
+fonksiyona alındı.
+
+**Tamamlama PR'ları.** Dilimlerin dışarıda bıraktığı parçalar, her biri ayrı PR:
+- M1, #373 `11eab06`: cihazdan yazılan mesajda `@Claude`, `@ai` ve MCP takma adı panel gibi
+  isteği başlatıyor (`ws_message_ask_assistants()`).
+- M2, #375 `291e0a2`: `POST /workspace/messages/{id}/hide` ("yalnız benden sil", yalnız Ekip
+  cihazları oturumu, mesajda `hidden`) ve düzeltme, silme, okundu uçlarında `dry_run`.
+- M3, #376 `5b8ed09`: Ekip cihazları oturumundan `channel_id` ile gelen eşitleme, o kanalda bekleyen
+  Pinegrap AI ya da MCP ajanı isteğini sürdürüyor (IIS'te çağrının içinde, PHP-FPM'de cevaptan
+  sonra).
+- M3, #380 `e8bb8ec`: eşitlemede `notifications_unread` (`account:read` ile, yoksa `null`),
+  `inbox_changed_at` ve `channel_state` (sabitlenmiş mesaj, sekme sayıları, pano işareti; yalnız
+  Ekip cihazları oturumu ve `channel_id` ile, değişince).
+- M3, #385 `fa44571`: `POST /workspace/messages/{id}/pin` (`on: false` kaldırır) ve
+  `/pin/close` (kişinin kendisi için kapatma); yalnız Ekip cihazları oturumu, cevap
+  `WorkspaceSyncChannelState`.
+- M4, #379 `eef3cb0`: `GET /workspace/inbox?changed_since=` ve `since_id`.
+- M4, #383 `9e57605`: `changed_since`'te silinen gelen kutusu satırları (`deleted: true`), şema
+  10.88 (`ws_inbox_deleted`, 30 günlük iz).
+- M5, #382 `728c7d6`: `?size=` küçük kopya (`ws_file_preview()`, uzun kenar 160–1920, kopya
+  `data/temp`'te), `Range` / `If-Range` (206 / 416, her `api_send_file()` cevabında), panelin
+  `ws_attach`'ı yazılamayan mesajın dosyasını geri alıyor, form yüklemesinin `Idempotency-Key`
+  parmak izi dosyanın SHA-256'sını kapsıyor.
+- M6, #386 `a9eaf55`: oylama açma, değiştirme ve kapatma (`POST /workspace/channels/{id}/polls`,
+  `PATCH|POST /workspace/polls/{id}`, `POST /workspace/polls/{id}/close`); açma ve değiştirme
+  yalnız Ekip cihazları oturumundan, OAuth ile olanı karar 11'i bekler.
+- M6, #387 `29e165d`: kişisel liste tercihleri `POST /workspace/channels/{id}/prefs` {pinned, order}
+  (panelin raptiyesi ve sürükleyerek sıralaması; kanal nesnesinde `pinned`, `order`), yalnız cihaz
+  oturumundan, `dry_run`, MCP aracı değil. Kanalın grubu kişisel tercih değil (gruplar Çalışma
+  Alanı'nındır, personel düzenler, gruba taşımak erişim verir), bu uca girmedi.
 
 **M7 — Yerel push (O + Kodpen aracısı; karar 1, 3, 4).**
 - Uç: `POST /push/devices` {provider: `fcm` | `apns`, token, bundle_id}, `POST /push/devices/delete`.
@@ -183,7 +222,8 @@ alanının, personel düzenler, gruba taşımak erişim verir), bu uca girmedi.
 
 ### A.4 Şema
 
-- M1–M6, M8: yok.
+- M1–M6 dilimleri ve M8: yok. M4'ün tamamlaması #383 şema 10.88 ile silinen gelen kutusu
+  satırlarının izini (`ws_inbox_deleted`, 30 gün) ekledi.
 - M7: yerel push kayıtları için yeni tablo (`id`, `user_id`, `device_id`, `provider`, `token`,
   `bundle_id`, `created_at`, `last_ok_at`, `last_error`), açık sürüm 2026.4.10'un boş bir `10.x`
   etiketiyle; etiket yazılırken `includes/migrations/2026.4.10.php`'den seçilir.
@@ -385,7 +425,7 @@ idempotent yardımcılarla.
 
 ## Sıra önerisi
 
-1. M1 → M2 → M4 → M3 → M5 → M6 (kararsız; her biri ayrı PR, mobil uygulama başlamadan biter).
+1. M1 → M2 → M3 → M4 → M5 → M6 bitti (2026-10-14, kararsız; her biri ayrı PR, tamamlamaları A.3'te).
 2. Kararlar 5, 7, 10 gelince C1 ve C2 birlikte (C1 bu depoda, C2 ayrı depoda); sonra C3.
 3. Karar 1, 3, 4 gelince M7 ve aracının sözleşmesi.
 4. C4, C5 ve M8 ihtiyaç doğunca.
