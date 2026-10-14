@@ -17,6 +17,7 @@ yapılır.
 
 | Madde | Ne | Efor | Not |
 |---|---|---|---|
+| 4.6 uzak ajan | MCP sunucusunun kendisi ajan (seviye C) | dilim başına K | dilim 1 bitti (#PRNO); 2-5 aşağıda |
 | 4.5 | Çalışma Alanı takvim eşitleme (Google Takvim / Outlook) | Adım 0 K, OAuth O–B | Adım 0 OAuth'suz: gizli iCal adresi |
 | 4.7 | Notlar: Notion ve OneNote | O (Notion MCP üzerinden K) | 4.6 hazır, Notion MCP takma adla bağlanabilir |
 | 4.8 | Medyaya Drive / OneDrive / Dropbox'tan dosya almak | K–O | kişisel bağlantı |
@@ -156,6 +157,27 @@ Efor: K küçük, O orta, B büyük. "Şart" sağlayıcının istediğidir (2026
   OAuth'u yok. Pinegrap AI lisans anahtarıyla, Claude rutini tetikleme jetonuyla zaten çalışıyor.
 - İstenirse tek seçenek: OpenRouter'ın PKCE akışı kişinin kendi anahtarını üretir; OpenAI uyumlu
   olduğu için `includes/workspace/ai.php`'ye "kendi modelini bağla" olarak oturur. Efor K.
+
+### 4.6 Uzak ajan (seviye C; Faz F'nin son parçası)
+
+- **Ne:** sunucunun kendisi bir ajan (başka bir Pinegrap sitesi, bir şirketin asistanı): mesajı
+  alır, yanıtlar. Pinegrap AI'a gerek yok; zekâ karşı tarafta. Yönetici "mesajı alan aracı"
+  seçer, takma ada yazılan mesaj o araca olduğu gibi gider (`notes/mcp-arastirma.md` §3).
+- **Neden dilimli:** tam hâli kanal, uzun süren iş (MCP `tasks` eki), görev ve not, yazan araç
+  onayı ve konuşmanın sürmesini kapsıyor; tek küçük PR'a sığmıyor. Her dilim uçtan uca çalışır,
+  kendi PR'ı.
+- **Kurallar (her dilimde):** araç yalnız okuyan kuralla açıksa doğrudan çalışır, yazan araç
+  onay kartıyla (dilim 4); OAuth'lu sunucuda soranın kendi hesabı, yoksa sitenin; yalnız
+  Pinegrap AI'ın sorulabildiği kanalda (`ws_ai_channel_allowed()`); ajanın yanıtı başka bir
+  hizmetin metni: kilitli, etiketleri kimseyi anmaz, hiçbir model onu talimat olarak okumaz.
+
+| Dilim | Ne | Durum |
+|---|---|---|
+| 1 | Kanalda `@takmaad` ve ajanın yanıtına cevap → seçilen araca tek metin argümanında (cevapta cevaplanan mesaj alıntılı) → yanıt mesajın altına, soranın adıyla kilitli. İstek `ws_ai_requests` `agent = 'mcp'`, ekranlar (`ws_mcp_agent_kick`) ve saatlik iş taşır. Şema 10.89: `ws_mcp_servers.agent_tool`, `ws_mcp_calls.via` += `agent`. | bitti (#PRNO) |
+| 2 | Uzun süren iş: `tools/call` MCP `tasks` ekiyle (2026-07-28 `resultType` ≠ `complete` bugün hata); görev kimliği istekte saklanır, ekranlar ve saatlik iş `tasks/get` ile yoklar, bitince `tasks/result`; satırda "@x üzerinde çalışıyor", iptal `tasks/cancel`. `pg_mcp_client_send()` görev yanıtını hata saymaz, `ws_ai_requests`'e görev kimliği sütunu (şema). | sırada |
+| 3 | Görevde uzak ajan: göreve devir (`mcp:<id>`) ve görev notunda `@takmaad`, ajan kipindeki sunucuda Pinegrap AI yerine doğrudan araca (görevin başlığı, açıklaması, talimat), yanıt görevin Asistan bölümüne (`ws_task_delegation_answer()`). Bugün bu ikisi ajan kipinde de Pinegrap AI ile, ajan aracı sıradan bir araç olarak çalışır; Pinegrap AI bağlı değilse takma ad görevde seçilemez. | sırada |
+| 4 | Yazan ajan aracı: OAuth'lu sunucuda `approve` kurallı araç seçilebilir; her mesaj önce `mcp_call` onay kartında bekler, soranın kendi hesabıyla gider (`ws_mcp_calls_propose()` / `ws_mcp_call_run()`), yanıt karar mesajı yerine ajanın yanıtı olarak düşer. | sırada |
+| 5 | Konuşmanın sürmesi ve kimlik: sunucu yapısal sonuçta bir konuşma kimliği dönüyorsa saklanıp sonraki cevapta geri gönderilir (bugün yalnız cevaplanan mesaj alıntılanıyor); yanıtın takma adın kendi üye kimliğiyle görünmesi (`ws_app_sender()` / `refs.php` genelleştirmesi) — bugün soranın adıyla, başında "@x, `araç` aracıyla yanıtladı". | isteğe bağlı |
 
 ---
 

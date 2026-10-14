@@ -860,9 +860,14 @@ function ws_claude_requests_map($message_ids)
  */
 function ws_claude_request_state($viewer, $row, $session = false)
 {
-    // A request to Pinegrap AI says where it stands in its own words.
+    // A request to Pinegrap AI says where it stands in its own words, and
+    // so does one to an MCP server's own agent (mcp_agent.php).
     if ((($row['agent'] ?? 'claude') === 'ai') && function_exists('ws_ai_request_state')) {
         return ws_ai_request_state($viewer, $row);
+    }
+
+    if ((($row['agent'] ?? 'claude') === 'mcp') && function_exists('ws_mcp_agent_request_state')) {
+        return ws_mcp_agent_request_state($row);
     }
 
     $status = (string) $row['status'];

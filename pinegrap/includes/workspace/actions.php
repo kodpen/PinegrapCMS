@@ -1065,11 +1065,21 @@ function ws_handle_action($action, $request)
                 $claude = ws_claude_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
             }
 
+            // Written to the alias of an MCP server that is an agent itself
+            // (mcp_agent.php): queued for the agent, carried on by the
+            // screen's next call (ws_mcp_agent_kick); Pinegrap AI is not
+            // asked.
+            $agent = null;
+
+            if ($result['ok'] && function_exists('ws_mcp_agent_after_send')) {
+                $agent = ws_mcp_agent_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
+            }
+
             // The same for Pinegrap AI (ai.php): queued here, carried on by
             // the screen's next call (ws_ai_kick).
             $ai = false;
 
-            if ($result['ok'] && function_exists('ws_ai_after_send')) {
+            if ($result['ok'] && ($agent === null) && function_exists('ws_ai_after_send')) {
                 $ai = ws_ai_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
             }
 
@@ -1078,7 +1088,7 @@ function ws_handle_action($action, $request)
                 ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
             }
 
-            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $claude, 'ai' => $ai)) : ws_action_error($result['error']);
+            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $claude, 'ai' => $ai, 'agent' => ($agent === true))) : ws_action_error($result['error']);
 
         case 'ws_edit':
             $message = ws_message((int) ($request['message_id'] ?? 0));
@@ -2063,6 +2073,13 @@ function ws_handle_action($action, $request)
         // once (ai.php).
         case 'ws_ai_kick':
             $kick = function_exists('ws_ai_kick') ? ws_ai_kick() : array('status' => 'idle');
+
+            return ws_action_ok(array('status' => (string) $kick['status']));
+
+        // Sends the oldest request waiting for an MCP agent and posts its
+        // answer (mcp_agent.php). Another screen's call takes the next one.
+        case 'ws_mcp_agent_kick':
+            $kick = function_exists('ws_mcp_agent_kick') ? ws_mcp_agent_kick() : array('status' => 'idle');
 
             return ws_action_ok(array('status' => (string) $kick['status']));
 

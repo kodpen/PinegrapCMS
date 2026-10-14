@@ -42,6 +42,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_approval_guests(); // 10.84
 	upgrade_2026_4_10_workspace_meetings();     // 10.86
 	upgrade_2026_4_10_visitor_retention();      // 10.3
+	upgrade_2026_4_10_workspace_mcp_agent();    // 10.89
 
 }
 
@@ -782,6 +783,33 @@ function upgrade_2026_4_10_workspace_meetings() {
 	install_add_column('ws_inbox', 'event_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER task_id");
 
 	install_note('Workspace: a meeting on the plan can carry its video call link (a Jitsi room made up on the spot, or a Google Meet, Teams or Zoom link), with a Join button and a notice to its people a few minutes before it starts; a meeting note can be opened from it, and its decisions and actions brought into a channel.');
+
+}
+
+// MCP servers that are agents themselves (2026.4.10, 10.89;
+// includes/workspace/mcp_agent.php).
+//
+// Some servers are another service's own agent - another Pinegrap site, a
+// company's assistant - that takes a message and answers it. For such a
+// server ws_mcp_servers.agent_tool names the tool a message written to the
+// alias goes to, as it is; '' leaves the alias to Pinegrap AI, which answers
+// with the server's tools. The request waits in ws_ai_requests with agent
+// 'mcp' (a VARCHAR already), and the call is kept in ws_mcp_calls with via
+// 'agent'. The enum is widened first, so the new column also says the enum
+// has its value.
+function upgrade_2026_4_10_workspace_mcp_agent() {
+
+	$info = install_column_info('ws_mcp_calls', 'via');
+
+	if (is_array($info) && (strpos((string) $info['Type'], "'agent'") === false)) {
+		install_modify_column('ws_mcp_calls', 'via', "ENUM('ai','form','agent') NOT NULL DEFAULT 'ai'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_mcp_calls.via agent')));
+	}
+
+	install_add_column('ws_mcp_servers', 'agent_tool', "VARCHAR(128) NOT NULL DEFAULT '' AFTER tool_rules");
+
+	install_note('Workspace: an MCP server that is an agent itself can answer its alias on its own. An administrator chooses the tool that takes the messages; what is written to the alias goes to it and its answer comes back under the message, without Pinegrap AI.');
 
 }
 

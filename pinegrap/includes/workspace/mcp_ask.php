@@ -133,8 +133,10 @@ function ws_mcp_ask_server($body, $message_id = 0)
         return null;
     }
 
+    // An answer of Pinegrap AI with the server's tools, or of the server's
+    // own agent (mcp_agent.php).
     $server_id = (int) db_value("SELECT mcp_server_id FROM ws_ai_requests
-        WHERE reply_message_id = '" . (int) $message['parent_id'] . "' AND agent = 'ai' AND mcp_server_id > 0
+        WHERE reply_message_id = '" . (int) $message['parent_id'] . "' AND agent IN ('ai', 'mcp') AND mcp_server_id > 0
         ORDER BY id DESC LIMIT 1");
 
     return ($server_id > 0) ? ws_mcp_server($server_id) : null;
@@ -177,8 +179,9 @@ function ws_mcp_ask_problem($server, $asker = null, $channel_id = 0, $task_id = 
 
 /**
  * The servers the channel screen offers after @: those that can be asked.
+ * agent says the server answers on its own (mcp_agent.php).
  *
- * @return array[] alias, name
+ * @return array[] alias, name, agent
  */
 function ws_mcp_boot()
 {
@@ -186,7 +189,11 @@ function ws_mcp_boot()
 
     foreach (ws_mcp_ready() ? ws_mcp_servers() : array() as $server) {
         if (ws_mcp_ask_problem($server) === '') {
-            $out[] = array('alias' => (string) $server['alias'], 'name' => (string) $server['name']);
+            $out[] = array(
+                'alias' => (string) $server['alias'],
+                'name'  => (string) $server['name'],
+                'agent' => function_exists('ws_mcp_agent_mode') && ws_mcp_agent_mode($server),
+            );
         }
     }
 
@@ -202,6 +209,7 @@ function ws_mcp_js_strings()
 {
     return array(
         'mcp_meta'           => lang('Pinegrap AI answers with its tools'),
+        'mcp_meta_agent'     => lang('Its own agent answers'),
         'mcp_connect_me'     => lang('Connect my account'),
         'mcp_connect_again'  => lang('Connect my account again'),
         'mcp_connect_ask'    => ws_js_template('Connect your own account to @{var:1}? You sign in on the service and come back here.', 1),
