@@ -20,7 +20,9 @@ include('init.php');
 
 validate_token_field();
 
-if ($_REQUEST['currency_id']) {
+// The id is kept in the session and read on every page by init.php, so an
+// array here would stop every later page of this visit, not only this request.
+if (is_scalar($_REQUEST['currency_id'] ?? null) && $_REQUEST['currency_id']) {
     $_SESSION['ecommerce']['currency_id'] = $_REQUEST['currency_id'];
     
     // if visitor tracking is on or there is an order for this visitor, then get currency code
@@ -55,7 +57,7 @@ if ($_REQUEST['currency_id']) {
         }
     }
     
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . $_REQUEST['send_to']);
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
     exit();
 }
 ?>

@@ -84,6 +84,65 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Para birimi seçicisi `send_to`'yu güvenli yönlendirmeden geçiriyor, dizi `currency_id` oturumu düşürmüyor (2026-10-14)
+
+**Neden.** #425'in "Bilerek yapılmayan" maddesi. Para birimi seçicisinin
+formu (`update_currency.php`; katalog, sepet, sipariş sayfaları ve sepet
+widget'ı) ziyaretçiyi gizli `send_to` alanındaki adrese geri gönderiyor.
+Adres `URL_SCHEME . $_SERVER['HTTP_HOST'] . $_REQUEST['send_to']` ile ham
+kuruluyordu: `send_to=@evil.com/x` → `Location: https://site.com@evil.com/x`
+(tarayıcı `evil.com`'a gider), `.evil.com/x` → `https://site.com.evil.com/x`.
+İstek jetonlu POST olduğu için başkasına bağlantıyla yaptırılamıyordu, ama
+`send_to` için paneldeki öbür 70'i aşkın `Location`'ın geçtiği
+`pg_safe_redirect_path()` kontrolünün dışında kalan tek `Location` buydu.
+Aynı dosyada: `currency_id[]=2` diziyi oturuma yazıyordu; çoklu para birimi
+açıkken `init.php` her sayfada onu `escape()`'e verdiği için o ziyaretçinin
+bu istekten sonraki **her** sayfası 500 veriyordu (oturum bitene kadar).
+`send_to` ya da `currency_id` hiç gönderilmeyince "Undefined array key"
+uyarısı yazıyordu (K7). Hepsi 2026.4.9'da da var.
+
+**Ne değişti.**
+
+- `update_currency.php:60` öbür ekranların satırının aynısı:
+  `URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? ''))`.
+  Site içi yol (sorgu dizesi, `#` ve UTF-8 dahil) olduğu gibi kalıyor; dış
+  adres, `//`, `/\`, kontrol karakteri, dizi ya da boş `send_to` ana sayfaya
+  (`PATH`) dönüyor. `HOSTNAME` tarayıcı isteğinde `$_SERVER['HTTP_HOST']`'un
+  kendisi (`init.php`), dönülen alan adı değişmiyor.
+- `currency_id` yalnız tek değer olarak (`is_scalar()`) oturuma yazılıyor;
+  dizi gelirse istek, para birimi hiç gönderilmemiş gibi boş sayfa veriyor
+  (eskisi gibi).
+- Taramada `Location`'a ham istek değeri koyan başka dosya yok: `HOSTNAME`
+  ya da `HTTP_HOST`'tan sonra değişken koyan altı yer (`logout.php`,
+  `registration_entrance.php`, `membership_entrance.php`,
+  `catalog_detail.php`, `cancel_order.php`, `add_comment.php`) değeri
+  önceden `pg_safe_redirect_path()`'ten geçiriyor; öbürleri `send_to`'yu
+  `PATH . SOFTWARE_DIRECTORY . '/…?send_to='` sonrasına koyuyor.
+
+Şema, dil dosyası ve JS değişikliği yok. Test:
+`tests/update_currency_redirect_test.php` (5 test; son test hiçbir kök
+ekranın `Location`'da host'tan hemen sonra `$_REQUEST` / `$_GET` / `$_POST`
+koymadığını tarar, eski kodda `update_currency.php`'yi buluyordu).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski ve yeni kod aynı oturum
+açma akışıyla (panel giriş sayfasından jeton, sonra POST): normal
+`send_to=/example-page?previous_url_id=2&a[]=1#software_currency` ve UTF-8
+yol iki kodda da aynı `Location`. Eski kodda `@evil.com/x`, `.evil.com/x`,
+`https://evil.com/x` sırasıyla `http://127.0.0.1:8000@evil.com/x`,
+`…:8000.evil.com/x`, `…:8000https://evil.com/x`; yenide hepsi
+`http://127.0.0.1:8000/`. Çoklu para birimi açıkken `currency_id[]=2`
+eskide 500 ve sonraki ana sayfa da 500, yenide 200 ve ana sayfa 200.
+Jetonsuz POST eskisi gibi yönlenmeden hata sayfasında kalıyor. `tools/lint.php`, `tools/test.php`,
+`check_lang`, `check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com.
+
+**Bilerek yapılmayan.** `update_currency.php:48` ziyaretçi kaydı olmayan
+istekte (`$_SESSION['software']['visitor_id']` yok; bot ya da hariç tutulan
+IP) "Undefined array key" uyarısı yazıyor. Para birimi gönderilmeyen ya da
+dizi gelen istek eskisi gibi boş sayfa veriyor, geri yönlenmiyor.
+
+---
+
 ## 2026.4.10 — Panelde kalan 18 ekran tek değerli parametre dizi gelince 500 vermiyor (2026-10-14)
 
 **Neden.** #417'nin panel taramasından kalan K5: K1–K4 dışında, kendi tek
