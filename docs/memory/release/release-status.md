@@ -10,7 +10,7 @@ description: Last released version (2026.4.9), the open version (2026.4.10), its
 
 ## What is open?
 - 2026.4.10 (opened 2026-10-13): `versions.php` row, `changelog.txt` heading, `includes/migrations/2026.4.10.php` → `upgrade_to_2026_4_10()`, first step OAuth (10.70). New steps are added there as calls; sub-step labels `10.x`.
-- Label ranges keep the earlier pattern with the new prefix: general work from .1, ERP .58–.69 and after .90, API .70–.79, Workspace .80–.89 and .110–.119. Check `includes/migrations/2026.4.10.php` for taken numbers; history table: `docs/sema-adimlari.md`.
+- Label ranges keep the earlier pattern with the new prefix: general work from .1, ERP .58–.69 and after .90, API .70–.79, Workspace .80–.89 and .110–.119. Taken labels are the comments beside the calls in `upgrade_to_2026_4_10()` (`includes/migrations/2026.4.10.php`); each sub-step's header comment says what it changes. There is no separate step table: older steps are in their own version's migration file.
 - The next version number is the owner's; ask. A version opens with its first schema step or changelog entry.
 - Rerun on dev: set `config.version` back to the last released version (today `2026.4.9`); steps are idempotent, applied ones are skipped.
 
