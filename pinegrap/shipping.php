@@ -1568,7 +1568,8 @@ function get_shipping_methods($properties) {
     $state = $properties['state'];
     $zip_code = trim($properties['zip_code']);
     $country = $properties['country'];
-    $arrival_date_id = $properties['arrival_date_id'];
+    // The forced-method check below asks without an arrival date.
+    $arrival_date_id = $properties['arrival_date_id'] ?? 0;
     $arrival_date = $properties['arrival_date'];
 
     $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
@@ -2243,8 +2244,9 @@ function check_shipping_method($properties) {
 
         // If this method is valid, then return info. We don't return a zone because we don't
         // store/use any zone info when a method is forced.
+        // An error response (no zone or method for this address) carries no list.
         if (
-            $response['shipping_methods']
+            !empty($response['shipping_methods'])
             and array_finder($response['shipping_methods'], 'id', $shipping_method['id'])
         ) {
             return array(

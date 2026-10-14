@@ -619,6 +619,16 @@
          ilk satın alımı da öyle. Artık yazmıyor; sayfalar
          ve kayıtlar aynı.
 
+  [DÜZELTME] Sepet sayfası, hızlı ekleme kapalıyken de
+         içinde boş bir "Ürün" seçim kutusu olan işlevsiz
+         bir hızlı ekleme formu gösteriyordu; artık form
+         yalnız hızlı ekleme ürün grubu seçili, açık ve
+         içinde ürün varken çıkıyor. Hızlı ekleme açık
+         sitelerde sayfa aynı. Sepet ve hızlı sipariş
+         sayfası her açılışta, hızlı siparişte geçersiz
+         adres, kargo ya da hediye çeki kodu girilince de
+         hata günlüğüne uyarı yazıyordu; artık yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 

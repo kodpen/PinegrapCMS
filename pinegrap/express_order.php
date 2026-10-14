@@ -404,8 +404,9 @@ if ($order_submitted == false) {
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
         
-        // else this order item is not a donation
-        } else {
+        // else this order item is not a donation; a form without its quantity box
+        // leaves the quantity as it is
+        } elseif (isset($_POST['quantity'][$order_item['id']])) {
             // Remove commas from quantity.
             $_POST['quantity'][$order_item['id']] = str_replace(',', '', $_POST['quantity'][$order_item['id']]);
             
@@ -650,7 +651,8 @@ if ($order_submitted == false) {
                         balance,
                         expiration_date
                     FROM gift_cards
-                    WHERE code = '" . escape($gift_card_code)  . "'");
+                    WHERE code = '" . escape($gift_card_code)  . "'")
+                    ?: array('id' => ''); // no card with this code
 
                 // If a gift card could not be found in this system,
                 // and givex is disabled, then output error.
