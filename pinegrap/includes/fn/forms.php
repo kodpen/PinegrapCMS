@@ -1677,12 +1677,18 @@ function validate_time($time)
 // an array. Such a value counts as not given: the field is emptied, so a
 // required field is reported missing and the form comes back as it would for an
 // empty field. Fields whose control legitimately posts an array (a check box
-// group, a multi-select) must not be listed.
-function pg_liveform_single_values($liveform, $fields)
+// group, a multi-select) must not be listed. $empty is what the array is
+// replaced with: null for a field that is read as a number, where '' would stop
+// the arithmetic as the array did, and null reads as a field not posted at all.
+function pg_liveform_single_values($liveform, $fields, $empty = '')
 {
     foreach ($fields as $field) {
-        if (is_array($liveform->get_field_value($field))) {
-            $liveform->assign_field_value($field, '');
+        // The value as stored: get_field_value() decrypts a card number first,
+        // which an array cannot go through.
+        $stored = $liveform->get_field($field);
+
+        if (isset($stored['value']) && is_array($stored['value'])) {
+            $liveform->assign_field_value($field, $empty);
         }
     }
 }

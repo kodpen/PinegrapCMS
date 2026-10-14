@@ -30,6 +30,11 @@ function _test_form_array_liveform($values)
 			$this->values = $values;
 		}
 
+		public function get_field($field)
+		{
+			return array_key_exists($field, $this->values) ? array('value' => $this->values[$field]) : null;
+		}
+
 		public function get_field_value($field)
 		{
 			return isset($this->values[$field]) ? $this->values[$field] : null;

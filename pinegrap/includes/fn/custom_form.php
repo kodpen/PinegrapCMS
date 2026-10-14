@@ -2458,6 +2458,15 @@ function prepare_custom_form($properties)
         'edit_end' => $edit_end
     );
 }
+// What a custom shipping or billing form field keeps of the value a visitor posted, for
+// submit_custom_form(). A check box group and a multi-select keep their list of strings, any
+// other field one string; a list where one value belongs (name[]=x from a hand-made request)
+// counts as not given, as it does in a form list's advanced search. The validators and the
+// escaping in submit_custom_form() then only ever see strings.
+function pg_cf_posted_value($value, $field)
+{
+    return pg_form_list_search_value($value, ($field['type'] == 'check box') || (($field['type'] == 'pick list') && !empty($field['multiple'])));
+}
 // This function is used by custom shipping and billing forms to process the custom form that was
 // submitted by the visitor.  This function is not used by custom form pages or product forms,
 // because those areas require different code.
@@ -2468,7 +2477,8 @@ function submit_custom_form($properties)
     $page_id = $properties['page_id'];
     $page_type = $properties['page_type'];
     $form_type = $properties['form_type'];
-    $ship_to_id = $properties['ship_to_id'];
+    // Only the shipping form has a recipient; the billing form passes none.
+    $ship_to_id = $properties['ship_to_id'] ?? '';
     // Prefix is used on express order for custom shipping fields in order to make the field names
     // unique for each recipient, because fields might appear multiple times for multiple recipients
     // Only the express order screen passes a prefix.
@@ -2529,7 +2539,9 @@ function submit_custom_form($properties)
 
             required,
 
-            wysiwyg
+            wysiwyg,
+
+            multiple
 
         FROM form_fields
 
@@ -2545,6 +2557,11 @@ function submit_custom_form($properties)
     // Loop through all form fields, so that we can save form data.
     foreach ($fields as $field) {
         $html_field_name = $prefix . 'field_' . $field['id'];
+        $posted_value = $form->get_field_value($html_field_name);
+        $kept_value = pg_cf_posted_value($posted_value, $field);
+        if ($kept_value !== $posted_value) {
+            $form->assign_field_value($html_field_name, $kept_value);
+        }
         // If validation for required fields should be completed and field is required, then validate field.
         if (($require == true) && ($field['required'] == 1)) {
             $error_message = '';

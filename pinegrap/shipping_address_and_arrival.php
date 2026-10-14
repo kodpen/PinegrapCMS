@@ -24,6 +24,9 @@ validate_token_field();
 initialize_order();
 
 // get ship to info
+// Only a string can name the recipient or the page: ship_to_id[]= or page_id[]= finds
+// neither, as a missing id does, and the script stops below, so every later read of
+// them is a string.
 $query =
     "SELECT
         order_id,
@@ -31,7 +34,7 @@ $query =
         first_name,
         address_verified
     FROM ship_tos
-    WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
+    WHERE id = '" . escape((isset($_POST['ship_to_id']) && is_string($_POST['ship_to_id'])) ? $_POST['ship_to_id'] : '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if ship to is not found, output error
@@ -61,7 +64,7 @@ $query =
     LEFT JOIN shipping_address_and_arrival_pages ON page.page_id = shipping_address_and_arrival_pages.page_id
     LEFT JOIN page AS next_page ON shipping_address_and_arrival_pages.next_page_id = next_page.page_id
     WHERE
-        (page.page_id = '" . escape($_POST['page_id'] ?? '') . "')
+        (page.page_id = '" . escape((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : '') . "')
         AND (page.page_type = 'shipping address and arrival')";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -82,6 +85,11 @@ $liveform = new liveform('shipping_address_and_arrival');
 $ghost = $_SESSION['software']['ghost'] ?? false;
 
 $liveform->add_fields_to_session();
+
+// The address and arrival fields post one value each (the custom shipping form's fields
+// are checked by submit_custom_form()).
+pg_liveform_single_values($liveform, array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'zip_code', 'country', 'address_type', 'phone_number', 'arrival_date', 'shipping_same_as_billing'));
+pg_liveform_single_values($liveform, array('custom_arrival_date_' . $liveform->get_field_value('arrival_date')));
 
 $liveform->validate_required_field('first_name', 'First Name is required.');
 $liveform->validate_required_field('last_name', 'Last Name is required.');
@@ -145,8 +153,8 @@ if ($row[0] > 0) {
 $arrival_date = '';
 $arrival_date_code = '';
 
-// if arrival date was submitted
-if (isset($_POST['arrival_date'])) {
+// if arrival date was submitted (arrival_date[]= was emptied above and counts as not submitted)
+if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
     // get arrival date info
     $query =
         "SELECT
