@@ -3163,6 +3163,20 @@
          yedekte kalır. Yedek ekranları ve yedek
          dosyasının başı bunu söylüyor.
 
+  [YENİ] Güvenlik duvarı, performans ve API istek
+         kayıtları da veritabanı yedeğine satırsız
+         giriyor: tablolar yedekte boş durur, geri
+         yüklenen site onları boş açar ve yeni isteklerle
+         yeniden doldurur. Bu kayıtlar yalnız kendi
+         ekranlarında ve pano rakamlarında okunur, saklama
+         süreleri dolunca zaten silinir. Site günlüğü,
+         ERP kayıtları ve saatlik performans özeti yedekte
+         satırlarıyla kalır.
+
+  [DÜZELTME] Dosya Yöneticisi › Yedeklemeler'in alt
+         çubuğu liste doluyken "0 öğe" gösteriyordu;
+         artık listedeki yedek sayısını gösteriyor.
+
   [ŞEMA] Ayarlar tablosuna iki kolon ve günlük özet için
          yeni bir tablo eklenir; kayıtlı ziyaretçi
          raporlarının gruplama seçeneklerine "Cihaz"

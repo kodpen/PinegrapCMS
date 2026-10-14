@@ -84,6 +84,67 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Yedeklerde güvenlik duvarı, performans ve API istek kayıtları satırsız; Yedeklemeler sayacı (2026-10-14)
+
+**Neden.** #434'ün kalanı. #434 ziyaret ve görüntüleme kayıtlarını yedekten
+çıkarmış, diğer günlük tablolarını bilerek kapsam dışı bırakmıştı. Bunlar da
+tekrar üretilebilir, müşteri verisi taşımaz ve yoğun bir sitede dökümün
+büyük kısmı olabilir (güvenlik duvarı 20.000 satıra, API ve performans
+günlükleri 30 güne kadar tutulur).
+
+**Kapsam (`pg_backup_rowless_tables()`'a eklenen).** Yapısı yedekte kalır,
+satırları dökülmez:
+- `waf_log`: güvenlik duvarı olayları (Güvenlik Duvarı Kaydı ekranı, pano
+  tehdit kartları, panonun karşılama özeti). Otomatik yasaklar burada değil,
+  IP listesinde (`banned_ip_addresses`) durur ve satırlarıyla yedeklenir.
+- `perf_log`: yavaş istekler (Performans Kaydı ekranı).
+- `api_request_log`: API isteği başına bir satır (API Ayarları'nın 24 saatlik
+  trafik sayısı ve uygulama çekmecesindeki "Kayıtlar" sekmesi). Faturalama,
+  kota ya da hız sınırı bu tabloyu okumuyor; hız sınırı `api_rate_bucket`'ta.
+
+Bilerek satırlarıyla kalan günlükler: `log` (Site Günlüğü: kim neyi ne zaman
+yaptı; yanlışlıkla silinen bir kaydın izini bu sürer, API'deki `site_log`
+kaynağı da onu okur), `erp_audit_log`, `erp_edoc_log`, `erp_export_log`,
+`erp_parasut_log`, `erp_reconciliation_log` (ERP iş kayıtları),
+`cron_runs` (iş başına bir satır: son çalışma ve kilit; görevler bunu
+filigran olarak okuyor, boşaltmak yer kazandırmadan davranışı değiştirir),
+`perf_stats` (saatlik performans özeti, satır sınırlı; #434'te
+saatlik ziyaretçi grafiğinin kalmasıyla aynı gerekçe), `ws_mcp_calls` ve
+`ws_scheduled_runs` (Çalışma Alanı kayıtları). Hız sınırı sayaçları
+(`waf_rate`, `api_rate_bucket`, `api_device_rate`) ve `api_idempotency` saatlik
+siliniyor, küçükler; listeye alınmadı.
+
+**Ne değişti.**
+- `includes/fn/backup.php`: üç tablo `pg_backup_rowless_tables()`'a eklendi;
+  dört yedek yolu, `sql.sql` başındaki not ve `no-data` ayarı bu listeden
+  okuduğu için başka kod değişmedi.
+- Not metni üç ekranda (Yedekleme Yöneticisi, Ayarlar › Genel ›
+  Yedeklemeler, Dosya Yöneticisi › Yedeklemeler) güvenlik duvarı, performans
+  ve API istek kayıtlarını da sayıyor; durum çubuğundaki kısa metin "Ziyaret,
+  görüntüleme ve istek kayıtları yedeğe girmez". #434'ün iki eski anahtarı
+  `tr.json`'da yenileriyle değiştirildi.
+- `view_folders.php`: Yedeklemeler alt çubuğu `state.backupEntries`'i sayıyordu;
+  bu alan hiçbir yerde doldurulmuyordu (#434 öncesinden), sayaç hep "0 öğe"
+  gösteriyordu. Artık `loadBackups()`'ın verdiği listeyi (klasörler +
+  dosyalar) sayıyor; ölü alan kaldırıldı. Paylaşılan tablo yardımcısına
+  dokunulmadı.
+- `tests/backup_test.php`: kapsam testi yeni tabloları ve satırıyla kalması
+  gereken günlükleri (site günlüğü, ERP günlükleri, `cron_runs`,
+  `perf_stats`, kuyruklar, müşteri tabloları) sayıyor.
+
+**Ölçüm (sandbox, MariaDB 10.11).** 50.000 güvenlik duvarı, 20.000 performans
+ve 50.000 API isteği satırı eklenen kurulum: döküm 24,9 MB → 1,5 MB, yedek
+kurulum ekranının ayrıştırıcısıyla (`parse_mysql_dump()`) boş veritabanına
+geri yükleme 5,4 sn → 2,2 sn. 301 tablonun 301'i geri geldi; 294'ünün
+`CHECKSUM TABLE`'ı kaynakla aynı, yedi satırsız tablo boş, `AUTO_INCREMENT`
+değerlerinin hepsi aynı. Geri yüklenen veritabanında Güvenlik Duvarı Kaydı,
+Performans Kaydı, API Ayarları, pano ve ön yüz hatasız açıldı. Yedeklemeler
+alt çubuğu iki yedekli listede önce "0 öğe", sonra "2 öğe".
+
+**Bilerek yapılmayan.** Şema adımı yok. Geri yükleme koduna dokunulmadı.
+`seo_issue`/`seo_link` (SEO taramasının sonuçları, tekrar taranarak
+üretilebilir) günlük değil, kapsam dışı.
+
 ## 2026.4.10 — Panel taramasının son uyarıları: şablon ve kasa satışı POST alanları, paketleme fişi, silinmiş ürün grubu (2026-10-14)
 
 **Neden.** #432 ve #433'ün kalanları. #433'ün taraması GET'ti;
