@@ -258,6 +258,10 @@ if ($_POST) {
             $rows = (array) ($_POST['people'] ?? array());
             $saved = 0;
 
+            // Taking somebody out of the team or bringing them back moves
+            // their inbox too (ws_inbox_team_moved()).
+            $team_before = ws_inbox_team_stored(array_keys($candidates));
+
             foreach ($rows as $person_id => $row) {
                 $person_id = (int) $person_id;
 
@@ -294,6 +298,8 @@ if ($_POST) {
 
                 $saved++;
             }
+
+            ws_inbox_team_moved(array_keys($candidates), $team_before);
 
             log_activity(lang('the workspace people settings were changed'), $username);
             $liveform->add_notice(lang(array('string' => 'Saved for {var:1} people.', 'vars' => $saved)));

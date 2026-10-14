@@ -187,7 +187,13 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   kanalı açma, tartışmaya yeniden katılma) da önceden okuyamayanlar için
   `ws_inbox_reach_regained($channel, $user_ids)` çağırır: okunmuş
   satırların `read_at`'i yine ilerler, `changed_since` onları canlı
-  satır olarak geri verir. Bir liste cevabına zarf alanı (`reload` gibi)
+  satır olarak geri verir. Kişiyi ekipten çıkarabilen ya da ekibe geri
+  alabilen yeni kod (`user_role`, `manage_workspace`,
+  `ws_profiles.excluded` yazan) yazmadan önce
+  `ws_inbox_team_stored($user_ids)` okur, yazdıktan sonra
+  `ws_inbox_team_moved($user_ids, $before)` çağırır; test
+  (`test_ws_inbox_team_writers_move_the_inbox`) bu üç sütunu yazan
+  dosyaları tarar. Bir liste cevabına zarf alanı (`reload` gibi)
   `api_ok_list()`'in `$extra`'sıyla ve rotada `'list'` yanında bildirilir.
 - Kişiye özel mesaj durumu ("Benden sil", `ws_message_hides`) mesajın
   `touched_at`'ini ilerletmez: kanaldaki herkesin ekranı ve cihazı mesajı

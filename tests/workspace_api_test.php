@@ -508,6 +508,80 @@ function test_ws_inbox_task_through_channel()
 	pg_assert_same(false, ws_inbox_task_through_channel(5, array('channel_id' => 0, 'creator_id' => 3), array()), 'a task in no channel');
 }
 
+// Out of the team or back in it: only a person whose place the step changed
+// has their inbox moved; one in it all along, or out all along, does not.
+function test_ws_inbox_team_changes()
+{
+	$changes = ws_inbox_team_changes(array(1, 2, 3, 4, '5', 0, 2), array(1, 2), array('2', 3, 5));
+
+	pg_assert_same(array(1), $changes['lost'], 'taken out of the team');
+	pg_assert_same(array(3, 5), $changes['regained'], 'brought back, ids as strings too');
+
+	$none = ws_inbox_team_changes(array(7), array(7), array(7));
+
+	pg_assert_same(array(), $none['lost']);
+	pg_assert_same(array(), $none['regained'], 'in the team all along');
+
+	$outside = ws_inbox_team_changes(array(8), array(), array());
+
+	pg_assert_same(array(), $outside['regained'], 'out of it all along');
+	pg_assert_same(array(9), ws_inbox_team_changes(array(9), array(), array(9, 10))['regained'], 'somebody the step did not name is left alone');
+}
+
+/**
+ * The panel files that can write a person's role, their Workspace
+ * permission or their profile's exclusion from the team: the three things
+ * that take them out of the workspace's team or bring them back. Screens that
+ * only create an account are left out - a new account has no inbox yet.
+ *
+ * @return string[] paths relative to the software directory
+ */
+function pg_test_ws_team_writers()
+{
+	$writers = array();
+	$files = array_merge(
+		glob(PG_FUNCTIONS_DIR . '/*.php'),
+		glob(PG_FUNCTIONS_DIR . '/includes/*.php'),
+		glob(PG_FUNCTIONS_DIR . '/includes/fn/*.php'),
+		glob(PG_FUNCTIONS_DIR . '/includes/api/*.php'),
+		glob(PG_FUNCTIONS_DIR . '/includes/api/resources/*.php'),
+		glob(PG_FUNCTIONS_DIR . '/includes/mcp/*.php'),
+		glob(PG_FUNCTIONS_DIR . '/includes/oauth/*.php'),
+		glob(PG_FUNCTIONS_DIR . '/includes/workspace/*.php')
+	);
+
+	foreach ($files as $file) {
+		$code = (string) file_get_contents($file);
+
+		if (preg_match('/user_role\s*=\s*\'"\s*\./', $code)
+			|| (strpos($code, "pg_user_permission_ws_sql('set')") !== false)
+			|| preg_match('/(INSERT\s+INTO|UPDATE)\s+ws_profiles\b[^;]*\bexcluded\b/s', $code)) {
+			$writers[] = substr($file, strlen(PG_FUNCTIONS_DIR) + 1);
+		}
+	}
+
+	return $writers;
+}
+
+// Every step that can take somebody out of the team or bring them back reads
+// who is in it first and moves their inbox after, so an app's changed lines
+// carry them as taken away and as given back.
+function test_ws_inbox_team_writers_move_the_inbox()
+{
+	$writers = pg_test_ws_team_writers();
+
+	foreach (array('edit_user.php', 'workspace_settings.php', 'includes/workspace/changes.php') as $known) {
+		pg_assert_true(in_array($known, $writers, true), $known . ' is found as a writer');
+	}
+
+	foreach ($writers as $writer) {
+		$code = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $writer);
+
+		pg_assert_true(strpos($code, 'ws_inbox_team_stored(') !== false, $writer . ' reads who is in the team before it writes');
+		pg_assert_true(strpos($code, 'ws_inbox_team_moved(') !== false, $writer . ' moves the inbox after it writes');
+	}
+}
+
 // A row changes by being written, sent again or read: either stamp at or
 // after the moment counts, only the person's rows after the one given.
 function test_ws_api_inbox_changed_where()

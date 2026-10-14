@@ -24,8 +24,9 @@
  * (ws_inbox_reach_lost(), ws_inbox_visible_rows()), and for them it is gone
  * as much as a deleted one. When they come back into its reach, its read_at
  * moves again (ws_inbox_reach_regained()) and it comes back among the
- * changes as it is. An app asking from further back than the marks are kept
- * is told to read the inbox again (reload).
+ * changes as it is. Leaving the team and coming back to it does the same to
+ * every line (ws_inbox_team_moved()). An app asking from further back than
+ * the marks are kept is told to read the inbox again (reload).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

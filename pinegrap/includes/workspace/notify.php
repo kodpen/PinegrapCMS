@@ -891,6 +891,104 @@ function ws_inbox_reach_regained($channel, $user_ids = null)
 }
 
 /**
+ * The people out of a set who are in the team as the tables say now (staff,
+ * and basic users holding the Workspace permission, minus anyone their
+ * profile takes out: ws_team_condition()), read past the cache of
+ * ws_rights() and ws_team_members(). A step that may take somebody out of
+ * the team or bring them back asks before it writes, and hands the answer to
+ * ws_inbox_team_moved() after.
+ *
+ * @param int[] $user_ids
+ * @return int[]
+ */
+function ws_inbox_team_stored($user_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $user_ids))));
+
+    if (empty($ids) || !ws_ready()) {
+        return array();
+    }
+
+    return array_map('intval', (array) db_values("SELECT u.user_id FROM user u
+        LEFT JOIN ws_profiles p ON p.user_id = u.user_id
+        WHERE u.user_id IN (" . implode(',', $ids) . ") AND " . ws_team_condition()));
+}
+
+/**
+ * Who of a set left the team and who came back to it, between two readings
+ * of ws_inbox_team_stored(). Somebody in it on both, or on neither, is in
+ * neither list.
+ *
+ * @param int[] $user_ids
+ * @param int[] $before in the team before the step
+ * @param int[] $after  in the team after it
+ * @return array lost, regained: int[]
+ */
+function ws_inbox_team_changes($user_ids, $before, $after)
+{
+    $before = array_map('intval', (array) $before);
+    $after = array_map('intval', (array) $after);
+    $changes = array('lost' => array(), 'regained' => array());
+
+    foreach (array_unique(array_map('intval', (array) $user_ids)) as $user_id) {
+        if ($user_id <= 0) {
+            continue;
+        }
+
+        $was = in_array($user_id, $before, true);
+        $is = in_array($user_id, $after, true);
+
+        if ($was && !$is) {
+            $changes['lost'][] = $user_id;
+        } elseif (!$was && $is) {
+            $changes['regained'][] = $user_id;
+        }
+    }
+
+    return $changes;
+}
+
+/**
+ * People left the team or came back to it: their role changed, the Workspace
+ * permission was taken from them or given back, or the workspace settings
+ * took them out or brought them back. Out of the team, nothing of the
+ * workspace is theirs to see - the API answers them 403 - so every line of
+ * their inbox is marked read now, the ones read long before as well, as
+ * ws_inbox_reach_lost() marks the lines of a channel they lost: the badge and
+ * the bell stop counting them, and the changed lines of GET /workspace/inbox
+ * carry them as taken away from that moment. Back in the team, the read_at of
+ * every line read moves to now, as ws_inbox_reach_regained() moves it for a
+ * channel: the changed lines carry the ones they can see again as they are,
+ * still read, and the ones about what they still cannot see - a private
+ * channel they are not in - as taken away; the sync's inbox_changed_at moves.
+ * A line never read is not touched: one written while they were out comes
+ * among the changes by when it was written.
+ *
+ * Only for people whose place in the team the step changed: somebody in it
+ * all along would have every line sent again for nothing.
+ *
+ * @param int[] $user_ids the people the step may have moved
+ * @param int[] $before   ws_inbox_team_stored($user_ids), read before the step
+ */
+function ws_inbox_team_moved($user_ids, $before)
+{
+    $changes = ws_inbox_team_changes($user_ids, $before, ws_inbox_team_stored($user_ids));
+    $now = time();
+
+    foreach ($changes['lost'] as $user_id) {
+        db("UPDATE ws_inbox SET read_at = '" . $now . "' WHERE user_id = '" . $user_id . "'");
+
+        if (mysqli_affected_rows(db::$con) > 0) {
+            ws_bell_sync_read($user_id);
+        }
+    }
+
+    foreach ($changes['regained'] as $user_id) {
+        db("UPDATE ws_inbox SET read_at = '" . $now . "' WHERE user_id = '" . $user_id . "' AND read_at > 0");
+    }
+}
+
+/**
  * How long the inbox remembers a line it took away: an app that last asked
  * for changes longer ago than this reads the inbox again.
  */

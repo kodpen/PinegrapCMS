@@ -1564,6 +1564,19 @@ if (!$_POST) {
         // The ERP's read-only right, when its column exists.
         $sql_erp_readonly = pg_user_erp_readonly_sql('set');
 
+        // The role and the Workspace permission can take the person out of
+        // the workspace's team or bring them back; their inbox follows
+        // (ws_inbox_team_moved()), so whether they are in it is read first.
+        $ws_team_before = null;
+
+        if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+            if (ws_ready()) {
+                $ws_team_before = ws_inbox_team_stored(array((int) ($_POST['id'] ?? 0)));
+            }
+        }
+
         // update user
         $query =
             "UPDATE user
@@ -1601,6 +1614,10 @@ if (!$_POST) {
                 user_timestamp = UNIX_TIMESTAMP()
             WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        if ($ws_team_before !== null) {
+            ws_inbox_team_moved(array((int) ($_POST['id'] ?? 0)), $ws_team_before);
+        }
 
         // Delete current access control records in order to add new ones.
         $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($_POST['id'] ?? '') . "'";

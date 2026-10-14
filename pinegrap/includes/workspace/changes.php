@@ -3319,8 +3319,14 @@ function ws_change_write_user($viewer, $action, $record, $values)
     if (array_key_exists('role', $values)) {
         $role = (int) $values['role'];
 
+        // A role can take the person out of the team or bring them back,
+        // and their inbox follows.
+        $team = ws_inbox_team_stored(array((int) $record['id']));
+
         db("UPDATE user SET user_role = '" . $role . "', user_user = '" . (int) $viewer['id'] . "', user_timestamp = UNIX_TIMESTAMP()
             WHERE user_id = '" . (int) $record['id'] . "' AND user_role <> '0' LIMIT 1");
+
+        ws_inbox_team_moved(array((int) $record['id']), $team);
 
         ws_change_log(lang(array(
             'string' => 'User ({var:1}) was given the role {var:2} in the Workspace, on Claude\'s proposal.',
