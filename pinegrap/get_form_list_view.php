@@ -460,7 +460,18 @@ function get_form_list_view($properties) {
                 // Check if 'name' key exists and is a string before applying mb_strtolower()
                 // This prevents warnings in PHP 7.4+ and fatal errors in PHP 8.x
                 $field['name'] = isset($field['name']) && is_string($field['name']) ? mb_strtolower($field['name']) : '';
-                
+
+                // Properties left out of the JSON (most layouts give only the name)
+                // count as not set; reading them warned on every page view.
+                $field += array(
+                    'label' => null,
+                    'class' => null,
+                    'operator' => null,
+                    'size' => null,
+                    'help' => null,
+                    'dynamic' => null,
+                    'sort_order' => null);
+
                 // If this field is a button, then add to button array.
                 if (
                     ($field['name'] == 'submit_button')
@@ -484,7 +495,7 @@ function get_form_list_view($properties) {
                         // if this standard field value matches the field name, then the field name is valid,
                         // so remember that, store field info, and break out of the loop
                         if ($standard_field['value'] == $field['name']) {
-                            $field_count[$field['name']]++;
+                            $field_count[$field['name']] = ($field_count[$field['name']] ?? 0) + 1;
 
                             $advanced_search_field = array(
                                 'name' => $field['name'],
@@ -518,7 +529,7 @@ function get_form_list_view($properties) {
                                 (mb_strtolower($custom_field['name']) == $field['name'])
                                 && ($custom_field['type'] != 'information')
                             ) {
-                                $field_count[$field['name']]++;
+                                $field_count[$field['name']] = ($field_count[$field['name']] ?? 0) + 1;
 
                                 $size = '';
 
@@ -1217,8 +1228,8 @@ function get_form_list_view($properties) {
                         $option = mb_strtolower($option);
                         
                         // If a filter exists for this option, then add filter
-                        // as an ordered filter.
-                        if ($dynamic_fields[$key]['filters'][$option]) {
+                        // as an ordered filter. An option no form chose has no filter.
+                        if (isset($dynamic_fields[$key]['filters'][$option])) {
                             $ordered_filters[$option] = $dynamic_fields[$key]['filters'][$option];
                         }
 
@@ -1482,13 +1493,19 @@ function get_form_list_view($properties) {
         // If advanced search is enabled then output toggle and layout.
         if ($search_advanced) {
 
+            // A value sent as an array (?<id>_advanced[]=x) counts as not given.
+            $advanced_toggle = $liveform->get_field_value($page_id . '_advanced');
+
             // If the visitor has enabled the advanced search, or if the visitor has not enabled/disabled the advanced search,
             // and the advanced search should be enabled by default.
             if (
-                ($liveform->get_field_value($page_id . '_advanced') == 'true')
+                ($advanced_toggle == 'true')
                 ||
                 (
-                    ($liveform->field_in_session($page_id . '_advanced') == false)
+                    (
+                        ($liveform->field_in_session($page_id . '_advanced') == false)
+                        || (is_array($advanced_toggle) == TRUE)
+                    )
                     && ($search_advanced_show_by_default == 1)
                 )
             ) {
@@ -1548,7 +1565,7 @@ function get_form_list_view($properties) {
                 // If this field appears multiple times, then set html field name with occurence number on the end.
                 if ($field_count[$field['name']] > 1) {
                     // Increment field number so we have a new number for this occurence of this field.
-                    $field_number[$field['name']]++;
+                    $field_number[$field['name']] = ($field_number[$field['name']] ?? 0) + 1;
 
                     // Set the html field name with the page id, simple name, and occurence number.
                     $field['html_field_name'] = $page_id . '_' . $simple_name . '_' . $field_number[$field['name']];
@@ -1566,6 +1583,25 @@ function get_form_list_view($properties) {
                 // If this is a dynamic field then also update html field name in that array.
                 if ($field['dynamic']) {
                     $dynamic_fields[$field['name']]['html_field_name'] = $field['html_field_name'];
+                }
+
+                // A value sent as an array counts as not given, unless the field takes
+                // several values: a multi-selection pick list or a check box group
+                // (the fields that are output with [] below).
+                $field_value = $liveform->get_field_value($field['html_field_name']);
+
+                $search_value = pg_form_list_search_value(
+                    $field_value,
+                    !$field['dynamic']
+                    && ($field['group'] == 'custom')
+                    &&
+                    (
+                        (($field['type'] == 'pick list') && ($field['multiple'] == 1))
+                        || (($field['type'] == 'check box') && (count($options) > 1))
+                    ));
+
+                if ($search_value !== $field_value) {
+                    $liveform->assign_field_value($field['html_field_name'], $search_value);
                 }
 
                 // If the advanced clear button was clicked then clear field value.

@@ -3172,6 +3172,28 @@ function get_request_uri()
 }
 
 
+// The value a form list's advanced search field searches for. A field that
+// holds one value counts as not given when its value arrives as an array
+// (?<id>_<field>[]=x): the search SQL and the date and time conversion refused
+// it with an error page. A field that takes several values (a multi-selection
+// pick list or a check box group) keeps its plain values; values that are
+// arrays themselves (?<id>_<field>[0][]=x) are dropped.
+function pg_form_list_search_value($value, $multiple)
+{
+    if (is_array($value) == FALSE) {
+        return $value;
+    }
+
+    if ($multiple) {
+        $values = array_filter($value, 'is_string');
+
+        if ($values) {
+            return $values;
+        }
+    }
+
+    return '';
+}
 function prepare_form_data_for_input($data, $type)
 {
     if ($data) {

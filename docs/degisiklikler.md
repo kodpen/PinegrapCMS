@@ -84,6 +84,82 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Form listesinin gelişmiş araması dizi değerle 500 veriyordu ve her açılışta uyarı yazıyordu, katalog dizi terimle RSS bağlantısını göstermiyordu (2026-10-14)
+
+**Neden.** #408'in bıraktığı iki parça, ikisi de 2026.4.9'da var. (1) Form
+listesi sayfasında (`get_form_list_view.php`) gelişmiş arama açıkken alan
+değerleri `liveform`'dan okunup arama SQL'ine gidiyor. Tek değer tutan bir
+alana dizi gelince (`?<sayfa>_<alan>[]=x`) standart alanlar (gönderen,
+gönderim tarihi, görüntülenme sayısı, kayıt kodu) `prepare_form_data_for_input()`
+ya da `escape()`'te 500 veriyordu; özel alanlar diziyi çoklu seçim gibi
+okuyup birebir eşleşme süzgeci kuruyor, metin kutusu dizideki ilk değeri
+gösterip çoğu zaman "Sonuç bulunamadı" diyordu. İç içe dizi
+(`[0][]=x`) her alan tipinde, çoklu seçim listesi ve onay kutusu grubu
+dahil, `escape()`'te 500 veriyordu. Sandbox'ta 160 dizi isteğinin 82'si 500.
+Ayrıca gelişmiş arama açık her liste, normal açılışta da `php_errors.log`'a
+uyarı yazıyordu: düzendeki JSON'da verilmeyen özellikler (`operator`,
+`size`, `class`, `help`, `dynamic`, `sort_order`, düğmelerde `label`),
+alan sayaçları (`$field_count`, `$field_number`) ve dinamik bir alanda
+hiçbir formun seçmediği bir seçeneğin süzgeci. (2) Katalog
+sayfası (`get_page_content.php`) `?query[]=x` ya da `?<sayfa>_query[]=x` ile
+açılınca arama yapmıyor (#403), ama `<head>`'deki RSS bağlantısı terimin
+yalnız `isset()`'ine baktığı için çıkmıyordu.
+
+**Ne değişti.**
+- Tek değer tutan gelişmiş arama alanına dizi gelirse alan verilmemiş
+  sayılıyor: süzgeç kurulmuyor, alan boş görünüyor. Çoklu seçim listesi ve
+  onay kutusu grubu (sayfada `[]` ile yazılan alanlar) diziyi alıyor; içindeki
+  dizi değerler atılıyor, hiçbiri kalmazsa alan verilmemiş sayılıyor. Kural
+  `includes/fn/forms.php`'de `pg_form_list_search_value()`.
+- Gelişmiş aramanın açık/kapalı alanı (`?<sayfa>_advanced[]=x`) dizi gelirse
+  verilmemiş sayılıyor (varsayılan açık listede açık).
+- Düzende verilmeyen özellikler boş sayılıyor, sayaçlar sıfırdan başlıyor,
+  seçeneği seçilmemiş dinamik süzgeç atlanıyor; değerler öncekiyle aynı,
+  yalnız uyarılar yok.
+- Katalog RSS bağlantısını arama terimi metinse gizliyor; dizi gelen terimde
+  bağlantı terimsiz sayfadaki gibi çıkıyor.
+- `tests/forms_test.php`: `pg_form_list_search_value()` için üç test.
+- Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Örnek verideki gelişmiş aramalı
+üç liste özel sayfada ve düzenleri eski `{name: '…'}` biçiminde (aşağıya
+bakın), bu yüzden blog formuna her tipten alan (tek ve çoklu seçim listesi,
+radyo, tek ve iki seçenekli onay kutusu, tarih, tarih ve saat, saat,
+e-posta, dosya, metin alanı) eklendi; `/blog`'da varsayılan açık bir düzen
+(standart alanlar ve iki uçlu aralıklar dahil), `/blog-cards`'ta dinamik
+alanlı varsayılan kapalı bir düzen kuruldu. Eski kod (`origin/development`)
+ve yeni kod aynı sunucuda sırayla, opcache kapalı. 160 dizi isteği (`[]=x`,
+`[a]=x`, `[0][]=x`, arama düğmesiyle ve düğmesiz): eski kodda 82'si 500,
+hepsi uyarılı; yeni kodda hepsi 200, uyarı yok (oturum açmadan ve yönetici
+olarak). Dizi istekleri, dizi parametre çıkarılmış eşleriyle karşılaştırıldı:
+146'sı aynı (ayrım yalnız adresi taşıyan `send_to`'da); radyo alanında
+"[Herhangi]" `checked="checked"` yerine `checked` yazıyor (boş değerle
+açılan sayfadaki gibi); arama ve temizle düğmesi dizi gelince basılmış
+sayılmaya devam ediyor, yalnız etiketinde gelen değeri değil kendi adını
+gösteriyor. 88 normal istek (terimsiz, her alan için gerçek değer ve boş
+değer, çoklu seçimde bir ve iki değer, düğmeler, açık/kapalı) eski ve yeni
+kodda aynı HTML'i veriyor (oturum jetonu ve rastgele CAPTCHA dışında);
+eski kodda hepsi uyarılı, yeni kodda hiçbiri. Katalog (`/shop-sidebar`,
+`/shop-sidebar/Office_Chair`, `/shop-fullwidth`): dizi terimli 10 istekte
+yeni kodda RSS bağlantısı terimsiz sayfadakiyle aynı, eski kodda yoktu;
+metin terimli ve terimsiz istekler eski ve yeni kodda aynı.
+`php -l`, `tools/lint.php`, `tools/test.php` (910 test), `check_*` ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek
+sayfalar.
+
+**Bilerek yapılmayan.** Gelişmiş arama düzeni `json_decode()` ile okunuyor;
+düzenleme ekranındaki örnek ve örnek verideki üç liste (`all-conversations`,
+`all-support-tickets`, `all-services-projects`) JSON olmayan
+`{name: 'submitter', dynamic: true}` biçimini kullanıyor. Bu alanlar hiç
+çözülmüyor, sayfada `{{name: …}}` yer tutucusu olduğu gibi görünüyor (eski
+kodda da aynı). Düzeltmek bu sayfaların HTML'ini değiştirir; ayrı iş.
+Katalogda boş terimle (`?query=`) RSS bağlantısı yine çıkmıyor (eski kodda
+da aynı); özel düzendeki katalog arama alanı dizi terimle `value=""` yazıyor
+(#403'ten). `liveform`, `includes/fn/custom_form.php`,
+`get_catalog_detail.php` ve ortak tablo yardımcısına dokunulmadı.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: panelde gönderilemeyen mesajın dosyası artık hiç kaydedilmiyor (2026-10-14)
 
 **Neden.** #402'nin bıraktığı parça. Panelin ataçı (`ws_attach` eylemi) ve

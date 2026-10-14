@@ -2365,8 +2365,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         break;
                         
                     case 'catalog':
-                        // if there is not a search query then output RSS button
-                        if ((isset($_GET[$system_region_properties['page_id'] . '_query']) == FALSE) && (isset($_GET['query']) == FALSE)) {
+                        // if there is not a search query then output RSS button.
+                        // A query sent as an array (?query[]=x) is not a search
+                        // query: the catalog shows the product group without it.
+                        if (
+                            (is_string($_GET[$system_region_properties['page_id'] . '_query'] ?? null) == FALSE)
+                            && (is_string($_GET['query'] ?? null) == FALSE)
+                        ) {
                             // if an address name has been passed in the current URL, then prepare RSS button link with address name
                             if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                                 // get address name
