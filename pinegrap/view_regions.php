@@ -25,7 +25,7 @@ $liveform = new liveform('view_regions');
 
 $number_of_results = 0;
 
-$filter = isset($_GET['filter']) ? $_GET['filter'] : '';
+$filter = (isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : '';
 
 $filter_for_links = '&filter=' . $filter;
 $output_filter_for_links = h($filter_for_links);

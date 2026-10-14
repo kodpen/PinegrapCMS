@@ -45,13 +45,13 @@ foreach (pg_tr_languages() as $code => $row) {
     }
 }
 
-$language = isset($_GET['language']) ? trim((string) $_GET['language']) : '';
+$language = (isset($_GET['language']) && is_string($_GET['language'])) ? trim($_GET['language']) : '';
 
 if (!isset($targets[$language])) {
     $language = $targets ? (string) key($targets) : '';
 }
 
-$page_id = isset($_GET['page_id']) ? (int) $_GET['page_id'] : 0;
+$page_id = (isset($_GET['page_id']) && is_string($_GET['page_id'])) ? (int) $_GET['page_id'] : 0;
 
 // A group of texts that are not on a page: the catalog, the forms, the
 // cookie window. A group and a page are not selected together. The cookie
@@ -67,7 +67,7 @@ if (($language !== '') && pg_tr_ui_has_file($language)) {
     pg_tr_extract_group('ui');
 }
 
-$group = isset($_GET['group']) ? (string) $_GET['group'] : '';
+$group = (isset($_GET['group']) && is_string($_GET['group'])) ? $_GET['group'] : '';
 
 if (!isset($owner_groups[$group])) {
     $group = '';
@@ -76,13 +76,13 @@ if (!isset($owner_groups[$group])) {
 if ($group !== '') {
     $page_id = 0;
 }
-$filter = isset($_GET['filter']) ? (string) $_GET['filter'] : 'all';
+$filter = (isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : 'all';
 
 if (!in_array($filter, array('all', 'pending', 'machine', 'reviewed', 'suspicious'), true)) {
     $filter = 'all';
 }
 
-$search = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
+$search = (isset($_GET['q']) && is_string($_GET['q'])) ? trim($_GET['q']) : '';
 $page_number = isset($_GET['p']) ? max(1, (int) $_GET['p']) : 1;
 $per_page = 100;
 

@@ -101,7 +101,7 @@ pg_error_throws(true);
 
 $liveform = new liveform('settings');
 
-$pane = isset($_REQUEST['pane']) ? (string) $_REQUEST['pane'] : '';
+$pane = (isset($_REQUEST['pane']) && is_string($_REQUEST['pane'])) ? $_REQUEST['pane'] : '';
 
 if (pg_settings_category($pane) === null) {
     pg_settings_pane_respond(array('status' => 'error', 'message' => lang('Page not found.')), 404);

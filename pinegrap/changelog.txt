@@ -2932,6 +2932,23 @@
          açılınca hata sayfası veriyordu; artık ekran o
          değer hiç verilmemiş gibi açılıyor.
 
+  [DÜZELTME] Kaydedilmiş bir sipariş raporu, sipariş
+         tarihine göre süzülüyorsa ya da üçten az özet
+         düzeyi varsa her açılışta hata günlüğüne uyarı
+         yazıyordu; artık yazmıyor. Çeviriler, Sayfa
+         Tasarımcısı, Site Ayarları bölmeleri, Çalışma
+         Alanı kanal şablonu, bölge listeleri, Google ürün
+         kategorisi araması, kasa satışı ve sayfa stili
+         ekleme ekranları, adresinde dil, süzgeç, arama ya
+         da kayıt değeri birden çok kez geçen (?q[]=…,
+         ?filter[]=…) bir bağlantıyla açılınca hata
+         günlüğüne uyarı yazıp "Array" kelimesini arıyor
+         ya da sayfaya basıyordu; artık ekran o değer hiç
+         verilmemiş gibi açılıyor. Çalışma Alanı şablon
+         ekranı böyle bir bağlantıda 1 numaralı şablonu ya
+         da kanalı açıyordu; artık boş yeni şablon formu
+         açılıyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

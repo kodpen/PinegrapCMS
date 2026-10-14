@@ -469,6 +469,9 @@ if (!$_POST) {
         $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order report')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
+    // The date changer is left out when the report filters on the order date.
+    $output_date_changer = '';
+
     // if there are no order date filters, then prepare to output date changer
     if ($order_date_filter_exists == false) {
         // if the date has not been set in the session yet (or an older session
@@ -794,6 +797,11 @@ if (!$_POST) {
         $join_ship_tos = " LEFT JOIN ship_tos ON orders.id = ship_tos.order_id";
     }
     
+    // A level that is not summarized adds no column to the query.
+    $sql_summarize_by_1 = '';
+    $sql_summarize_by_2 = '';
+    $sql_summarize_by_3 = '';
+
     if ($liveform->get_field_value('summarize_by_1') != '') {
         $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1')) . ',';
         $number_of_summarize_bys = 1;
