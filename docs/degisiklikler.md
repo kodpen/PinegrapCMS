@@ -147,11 +147,12 @@ hiçbir bildirim almıyordu.
   yazılırken "Bunu @x yazmadan da @x yanıtlar." ipucu.
 - `includes/local/tr.json`: 5 yeni metin.
 
-**Ödün.** Kayıt soranın adıyla kaldığı için ajanın adı yalnız kanal ve
-tartışma ekranında görünür; arama, sabitlenen mesajlar, Genel Bakış,
-zaman çizelgesi, bildirim özetleri ve API mesajı soranın adıyla ve "@x,
-`araç` aracıyla yanıtladı" satırıyla gösterir (satır bu yüzden kayıtta
-duruyor). Yeni bir gönderen türü (`sender_kind`) 27 dosyada 160'tan çok
+**Ödün.** Kayıt soranın adıyla kaldığı için ajanın adı yalnız mesajı
+çizen yolda (`ws_message_payloads()`: kanal, tartışma, kanal içi arama,
+kararlar listesi) görünür; genel arama (komut paleti ve API araması),
+sabitlenen mesaj, Genel Bakış, zaman çizelgesi, bildirim özetleri ve API
+mesajı soranın adıyla ve "@x, `araç` aracıyla yanıtladı" satırıyla
+gösterir (satır bu yüzden kayıtta duruyor). Yeni bir gönderen türü (`sender_kind`) 27 dosyada 160'tan çok
 dalı değiştirecekti; tek küçük PR'a sığmadı. Konuşma kimliği yalnız
 yapısal yanıtın en üst düzeyinde aranır; `_meta`'da ya da iç içe nesnede
 verilen kimlik okunmaz. Dev'in kendi MCP sunucusu konuşma kimliği
