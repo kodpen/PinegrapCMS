@@ -8,7 +8,9 @@
  * ?from[]=x warned on every request. A value is read only when it is one
  * value; an array counts as not given. The same goes for the numbers that
  * pick a record: (int) turns an array into 1, so ?account_id[]=x opened the
- * first account's invoices, prices or cards without a word.
+ * first account's invoices, prices or cards without a word, ?id[]=x the
+ * first account, till or document, and ?download[]=x the first accountant's
+ * pack.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,6 +25,7 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/aging.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/cashflow.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/reconciliation.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/purchase_orders.php');
 
 // No ERP screen casts a value from the address without checking it is one
 // value.
@@ -43,11 +46,12 @@ function test_erp_request_values_no_bare_string_cast()
 	pg_assert_same(array(), $found, 'screens casting $_GET / $_REQUEST with (string)');
 }
 
-// The record a screen is filtered to, filled in from or copied comes as one
-// number; one sent as an array is not given rather than record 1.
+// The record a screen opens, is filtered to, filled in from or copied, and
+// every other number in the address (a page cursor, a line to open, the days
+// to reply), comes as one number; one sent as an array is not given rather
+// than 1.
 function test_erp_request_values_no_bare_int_cast_of_record_params()
 {
-	$names = 'account_id|contact_id|invoice_id|order_id|product_id|category_id|copy|back_order|amount';
 	$found = array();
 	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/erp_*.php'), glob(PG_FUNCTIONS_DIR . '/get_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/add_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/edit_erp_*.php'));
 
@@ -56,14 +60,55 @@ function test_erp_request_values_no_bare_int_cast_of_record_params()
 		// is taken out first; any cast left over is a bare one.
 		$source = preg_replace('/is_scalar\(\$_(GET|REQUEST)\[\'(\w+)\'\] \?\? null\)\)? \? \(int\) \$_\1\[\'\2\'\]/', '', file_get_contents($file));
 
-		if (preg_match_all('/\(int\)\s*\(?\s*\$_(GET|REQUEST)\[\'(' . $names . ')\'\]/', $source, $matches)) {
+		if (preg_match_all('/\((?:int|float)\)\s*\(?\s*\$_(GET|REQUEST)\[\'(\w+)\'\]/', $source, $matches)) {
 			foreach ($matches[2] as $name) {
 				$found[] = basename($file) . ' ' . $name;
 			}
 		}
 	}
 
-	pg_assert_same(array(), $found, 'screens casting a record number from $_GET / $_REQUEST with a bare (int)');
+	pg_assert_same(array(), $found, 'screens casting a number from $_GET / $_REQUEST with a bare (int)');
+}
+
+// A list taken from the address (the products picked for a purchase order,
+// the quantities refunded on a return) is read entry by entry; an entry that
+// is itself an array (?qty[5][]=x) is not cast to 1.
+function test_erp_request_values_no_bare_cast_of_list_entries()
+{
+	$found = array();
+	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/erp_*.php'), glob(PG_FUNCTIONS_DIR . '/get_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/add_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/edit_erp_*.php'));
+
+	foreach ($files as $file) {
+		$source = file_get_contents($file);
+
+		preg_match_all('/(\$\w+) = \(isset\(\$_(GET|REQUEST)\[\'\w+\'\]\) && is_array\(\$_\2\[/', $source, $matches);
+
+		foreach ($matches[1] as $list) {
+			if (preg_match('/\((?:int|float)\)\s*\(?\s*' . preg_quote($list, '/') . '\[/', $source)) {
+				$found[] = basename($file) . ' ' . $list;
+			}
+		}
+	}
+
+	pg_assert_same(array(), $found, 'screens casting an entry of a list from $_GET / $_REQUEST with a bare (int) or (float)');
+}
+
+// The days the counterparty is given to object: an array is not given, so
+// the letter keeps the usual 7 days instead of one.
+function test_erp_request_values_reply_days_ignores_arrays()
+{
+	$options = erp_reconciliation_options(array('reply_days' => array('30')));
+	pg_assert_same(7, $options['reply_days'], 'reconciliation reply days, array');
+
+	$options = erp_reconciliation_options(array('reply_days' => '30'));
+	pg_assert_same(30, $options['reply_days'], 'reconciliation reply days, one value');
+}
+
+// The products picked on the minimum stock screen: an entry that is itself an
+// array is no product, rather than product 1.
+function test_erp_request_values_purchase_order_products_skip_arrays()
+{
+	pg_assert_same(array(), erp_purchase_order_rows_for_products(array(array('7'), array())), 'purchase order rows from array entries');
 }
 
 // The till the cash flow screen narrows to: an array is no till.

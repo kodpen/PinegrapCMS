@@ -828,7 +828,9 @@ function erp_purchase_order_rows_for_products($product_ids)
 {
     $ids = array();
     foreach ((array) $product_ids as $id) {
-        if ((int) $id > 0) {
+        // Each entry is one number: an array inside the list
+        // (?products[0][]=x) cast to 1 and put product 1 on the order.
+        if (is_scalar($id) && ((int) $id > 0)) {
             $ids[(int) $id] = (int) $id;
         }
     }

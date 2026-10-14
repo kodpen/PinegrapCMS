@@ -78,7 +78,9 @@ function erp_reconciliation_options($input)
         $from = substr($as_of, 0, 4) . '-01-01';
     }
 
-    $reply_days = isset($input['reply_days']) ? (int) $input['reply_days'] : 7;
+    // One number: an array (?reply_days[]=x) cast to 1 and gave the
+    // counterparty one day.
+    $reply_days = is_scalar($input['reply_days'] ?? null) ? (int) $input['reply_days'] : 7;
     if (($reply_days < 0) || ($reply_days > ERP_RECONCILIATION_MAX_REPLY_DAYS)) {
         $reply_days = 7;
     }

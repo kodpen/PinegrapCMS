@@ -181,7 +181,8 @@ if ((string) $statement['status'] === 'mapping') {
             </form>' : '');
 } else {
     $statuses = erp_bank_line_statuses();
-    $open_line = (int) ($_GET['line'] ?? 0);
+    // One number: an array (?line[]=x) cast to 1 and opened the first line.
+    $open_line = is_scalar($_GET['line'] ?? null) ? (int) $_GET['line'] : 0;
     $lines = erp_bank_statement_lines($statement_id);
     $suggested = 0;
 

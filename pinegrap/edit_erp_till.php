@@ -30,7 +30,8 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php';
 
 if (!$_POST) {
 
-    $till_id = (int) ($_GET['id'] ?? 0);
+    // One number: an array (?id[]=x) cast to 1 and opened the first till.
+    $till_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
     $till = ($till_id > 0) ? db_item("SELECT * FROM erp_cash_accounts WHERE id = '" . $till_id . "' LIMIT 1") : null;
 
     if (!is_array($till)) {

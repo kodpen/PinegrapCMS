@@ -1874,6 +1874,21 @@
          gelen numara verilmemiş sayılıyor. Normal
          açılışta ekranlar aynı.
 
+  [DÜZELTME] ERP'de cari ve kasa düzenleme, kenar çekmecesi,
+         teklif ve satın alma siparişi PDF'i, e-belge ve
+         gelen e-fatura dosyası adresinde kayıt numarası
+         birden çok kez geçen (?id[]=…) bir bağlantıyla
+         açılınca 1 numaralı kaydı gösteriyordu. Aynı
+         biçimde denetim izi 1 numaralı kayda süzülüyor ya
+         da boş sayfa veriyor, banka ekstresi 1 numaralı
+         satırı açıyor, muhasebeci ekranı 1 numaralı paketi
+         indiriyor, mutabakat mektubu "1 gün içinde"
+         yazıyordu; minimum stoktan açılan satın alma
+         siparişine 1 numaralı ürün, karttan açılan iadeye
+         1 adet geliyordu. Artık böyle gelen değer
+         verilmemiş sayılıyor. Normal açılışta ekranlar
+         aynı.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.

@@ -35,8 +35,12 @@ $can_settings = defined('USER_MANAGE_ERP_SETTINGS') && USER_MANAGE_ERP_SETTINGS 
 $can_cash = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
 
 // ---------------------------------------------------------------- download
-if (isset($_GET['download'])) {
-    $package = erp_accountant_package((int) $_GET['download']);
+// One number: an array (?download[]=x) cast to 1 and sent the first pack;
+// it is not given, so the screen opens as usual.
+$download_id = is_scalar($_GET['download'] ?? null) ? (int) $_GET['download'] : null;
+
+if ($download_id !== null) {
+    $package = erp_accountant_package($download_id);
 
     if (!is_array($package) || !erp_accountant_stream($package)) {
         $liveform->mark_error('_error', lang('That pack is no longer there. Build it again.'));

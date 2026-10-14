@@ -70,7 +70,7 @@ $read_date = function ($value) {
 $options = erp_reconciliation_options(array(
     'as_of' => $read_date($_REQUEST['as_of'] ?? ''),
     'from' => $read_date($_REQUEST['from'] ?? ''),
-    'reply_days' => isset($_REQUEST['reply_days']) ? (int) $_REQUEST['reply_days'] : 7,
+    'reply_days' => is_scalar($_REQUEST['reply_days'] ?? null) ? (int) $_REQUEST['reply_days'] : 7,
 ));
 
 $html = erp_reconciliation_html($account_id, $options, $preview_template);

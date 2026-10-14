@@ -84,6 +84,67 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — ERP'de dizi gelen kayıt numarası, sayfa imleci, ekstre satırı, paket ve gün sayısı 1 sayılmıyor (2026-10-14)
+
+**Neden.** #436'nın ikinci yarısı. ERP ekranlarında `$_GET` / `$_REQUEST`'ten
+gelen sayıların kalanı hâlâ çıplak `(int)` ile okunuyordu; dizi gelince PHP
+uyarısız 1 veriyor, günlükte iz kalmıyordu. #422'nin testi yalnız
+`$_REQUEST['id']`'yi yakaladığı için `$_GET['id']` okuyan yedi ekran
+kapısızdı. Hepsi 2026.4.9'da da var.
+
+- `?id[]=x` 1 numaralı kaydı açıyordu: `edit_erp_account` (cari),
+  `edit_erp_till` (kasa), `get_erp_drawer` (listelerin kenar çekmecesi),
+  `get_erp_quote_pdf`, `get_erp_purchase_order_pdf`, `get_erp_edoc_document`
+  (e-belgenin sağlayıcı kopyası), `get_erp_inbox_file` (gelen e-fatura).
+- Diğer sayılar: `erp_audit` `id` (iz 1 numaralı kayda süzülüyordu) ve
+  `before` (boş sayfa), `erp_bank_statement` `line` (1 numaralı satır açık),
+  `erp_accountant` `download` (1 numaralı paket iniyordu), `reply_days`
+  (`erp_reconciliation`, `get_erp_reconciliation_pdf`,
+  `erp_reconciliation_options()`; mektup "1 gün içinde" diyordu).
+- Liste elemanları: minimum stok ekranından açılan satın alma siparişinde
+  `products[]` içindeki dizi 1 numaralı ürünü satıra koyuyordu; karttan
+  satır seçerek açılan iadede `qty[<satır>][]` miktarı 1 yapıyordu.
+
+**Ne değişti.** Serinin kuralı: dizi gelen tek değer "verilmedi" sayılır,
+ekran parametresiz açılışla aynı davranır, normal isteğin çıktısı değişmez.
+Okumalar #422/#436'daki satırla aynı:
+`is_scalar($_GET['x'] ?? null) ? (int) $_GET['x'] : 0` (`reply_days` için
+varsayılan 7, `download` için "indirme yok"). Liste elemanında
+`is_scalar()`: satın alma siparişi dizi elemanı atlıyor
+(`array_filter(..., 'is_scalar')`, ayrıca
+`erp_purchase_order_rows_for_products()`), iade o satırı "iade edilmedi"
+sayıyor. Hepsi GET okuması; bir şey yazılmadığı için form durdurulmuyor.
+Yeni yardımcı yok.
+
+`tests/erp_request_values_test.php`: çıplak `(int)` testi ad süzgecini
+bıraktı, artık ERP ekranlarında `$_GET` / `$_REQUEST`'ten her `(int)` ya da
+`(float)` okumasını yakalıyor (eski kodda 13 okuma); adresten alınmış listenin
+elemanını çıplak döküm de yakalanıyor (eski kodda `add_erp_return`); dizi
+`reply_days` 7; dizi elemanlı ürün listesi satır vermiyor.
+
+Şema, dil dosyası ve JS değişikliği yok. ERP POST işleyicileri (`$_POST`)
+ayrı işte; `erp_reconciliation`'ın `$_REQUEST['reply_days']` satırı GET ve
+POST'ta ortak olduğu için burada. ERP dışındaki 19 kök ekranın
+`(int) $_GET['id']` okumaları kapsam dışı (devir notu).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, `debug = 1`).** Cari, kasa, fatura
+(satırlarıyla), teklif, satın alma siparişi, gelen e-fatura, muhasebeci
+paketi (dosyasıyla), banka ekstresi satırı, denetim izi ve ürün için 1 ve 2
+numaralı kayıtlar; eski kod (`origin/development`) ikinci portta, aynı
+veritabanı. 17 durum; her biri iki kodda normal, dizi ve parametresiz,
+eski kodda ayrıca 1 numaralı kayıtla açıldı (119 istek): 17 normal ve 17 parametresiz istek eski kodla aynı HTML ve
+durum kodu; 17 dizi isteğinin hepsi yeni kodda parametresiz açılışla aynı,
+eski kodda hepsi 1 numaralı kaydın / değerin çıktısıyla aynıydı (ör.
+`get_erp_drawer?type=account&id[]=x` eski 200 "Birinci Cari", yeni 404;
+`erp_accountant?download[]=x` eski paket 1'in zip'i, yeni ekran;
+`add_erp_return?invoice_id=2&qty[3][]=x` eski 1 adet, yeni boş). Yeni kodda
+uyarı ya da ölümcül satır yok; hata sayfalarında iki kodda da aynı K9
+`htmlspecialchars(null)` kullanım dışı satırı var. `tools/lint.php`,
+`tools/test.php`, `check_lang`, `check_api_schema`, `check_copies`,
+`build_js.php --check` temiz.
+
+---
+
 ## 2026.4.10 — Yedeklerde güvenlik duvarı, performans ve API istek kayıtları satırsız; Yedeklemeler sayacı (2026-10-14)
 
 **Neden.** #434'ün kalanı. #434 ziyaret ve görüntüleme kayıtlarını yedekten
