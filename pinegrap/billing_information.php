@@ -20,6 +20,15 @@ include('init.php');
 
 validate_token_field();
 
+// The billing information is checked with the settings of the page it was
+// posted from (custom fields, custom billing form). An id that names no such
+// page (unknown, empty or posted as an array) stops here, as on the shipping
+// address and arrival step, instead of marking the billing information
+// complete without them.
+if (!pg_order_page_known($_POST['page_id'] ?? '', 'billing information')) {
+    output_error(lang('A billing information page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 initialize_order();
 
 $liveform = new liveform('billing_information');

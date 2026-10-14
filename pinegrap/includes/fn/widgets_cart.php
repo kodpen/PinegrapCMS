@@ -1986,12 +1986,16 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
 
     // ── Resolve our page id ──────────────────────────────────────────────────
     // Used as the form's hidden `page_id` so express_order.php can look up
-    // the express_order_pages config row (it gracefully degrades when the row
-    // is absent — labels become empty, no custom forms render).
+    // the express_order_pages config row. express_order.php turns away an id
+    // that names no express order page, so a page reached without its name
+    // (the home page at the site root) takes the id of the page being rendered.
     $_eo_page_id = 0;
     if (isset($_GET['page'])) {
         $_eo_page_id = (int)db_value("SELECT page_id FROM page WHERE page_name = '"
             . e((string)$_GET['page']) . "' LIMIT 1");
+    }
+    if ($_eo_page_id <= 0) {
+        $_eo_page_id = (int)pg_rendered_page();
     }
     if ($_eo_page_id > 0) {
         $_SESSION['ecommerce']['express_order_page_id'] = $_eo_page_id;

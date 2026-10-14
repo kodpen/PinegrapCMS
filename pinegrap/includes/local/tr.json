@@ -23242,5 +23242,8 @@
     "The old table is kept as {var:1}; once you have looked at it, it can be dropped.": "Eski tablo {var:1} adıyla duruyor; inceledikten sonra kaldırılabilir.",
     "Move the visitors table to InnoDB now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the move on.": "Ziyaretçi tablosu şimdi InnoDB'ye taşınsın mı? Site çalışmaya devam ederken yanına birkaç bin kayıtlık adımlarla bir kopya kurulur; bu yüzden eski tablo kaldırılana kadar veritabanı sunucusunda yaklaşık {var:1} boş disk gerekir. Taşımayı genel görev sürdürür.",
     "a table named {var:1} is in the way": "{var:1} adlı bir tablo yolu kapatıyor",
-    "This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.": "Bu ürün grubu Geri Dönüşüm Kutusunda. Değiştirmeden önce Katalog Yöneticisi'ndeki Geri Dönüşüm Kutusundan geri yükleyin."
+    "This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.": "Bu ürün grubu Geri Dönüşüm Kutusunda. Değiştirmeden önce Katalog Yöneticisi'ndeki Geri Dönüşüm Kutusundan geri yükleyin.",
+    "An express order page could not be found for the id that was passed.": "İletilen kimlik için bir hızlı sipariş sayfası bulunamadı.",
+    "An order preview page could not be found for the id that was passed.": "İletilen kimlik için bir sipariş önizleme sayfası bulunamadı.",
+    "A billing information page could not be found for the id that was passed.": "İletilen kimlik için bir fatura bilgileri sayfası bulunamadı."
 }

@@ -35,6 +35,18 @@ if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode']
     }
 }
 
+// The form names the order preview page it was posted from, and the order is
+// placed with that page's settings (terms, payment options, receipt e-mail,
+// next page). An id that names no such page (unknown, empty or posted as an
+// array) stops here, as on the shipping address and arrival step, instead of
+// placing the order without them. A gateway callback brings back the id its
+// submit was checked with.
+if (
+    !in_array(($_GET['mode'] ?? ''), array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'), true)
+    && !pg_order_page_known($_POST['page_id'] ?? '', 'order preview')
+) {
+    output_error(lang('An order preview page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
 
 initialize_order();
 
