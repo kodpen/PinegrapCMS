@@ -54,6 +54,13 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   üstüne** `api_dry_run_stop(...)` çağır; erken koyulan duruş yapılmamış
   doğrulamayı vaat eder. Toplu uçta `api_dry_run_requested()` ile satır satır
   çalış, yazmayı atla, sonucu sonda ver.
+- Panel fonksiyonu denetimlerini yazımın içinde yapıyorsa onları
+  `*_check()` olarak ayır, gerçek fonksiyon da önce onu çağırsın; uç provada
+  aynısını çağırıp durur (`ws_message_send_check()`, `ws_upload_check()`,
+  `ws_reaction_check()`, `ws_ack_set_check()`, `ws_approval_decide_check()`,
+  `ws_task_note_add_check()`). Dosya provası diske yazmaz:
+  `ws_upload_inspect()` baytlara bellekte bakar. Süresi dolmuş kaydı kapatan
+  yan etki (oylama, onay isteği) provada atlanır.
 - Kısmi güncellemede önce mevcut satırdan tam `$data` kur, sonra gelen alanları
   üstüne koy.
 - Gövdesiz cevap veren uç (`api_send(204, ...)`) rotada `'status' => 204`

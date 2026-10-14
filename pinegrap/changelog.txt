@@ -1677,6 +1677,16 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: mesaj yazma, kanala dosya
+         gönderme, emoji bırakma, okundu onayı verme,
+         onay isteğini cevaplama ve göreve not ekleme de
+         deneme isteği (X-Dry-Run) alıyor: her denetimi
+         yapıp hiçbir şey yazmadan cevap veriyor. Dosya
+         denemesinde dosya diske ve dosya yöneticisine
+         yazılmıyor; onay cevabının denemesi isteğin
+         cevaptan sonra onaylanacağını, reddedileceğini
+         ya da açık kalacağını söylüyor.
+
   [DÜZELTME] Çalışma Alanı API'si: yalnız ekip
          cihazları oturumunun yapabildiği işlerde
          (mesajını düzeltme, silme ya da kendi

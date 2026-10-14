@@ -590,6 +590,69 @@ function ws_approvals_map($message_ids, $viewer)
 }
 
 /**
+ * Whether the person may give this answer: the checks of
+ * ws_approval_decide(), made on their own and writing nothing, so that the
+ * API's dry run meets the same refusals. A request whose time ran out is
+ * refused with expired set; settling it is the caller's to do.
+ *
+ * @param array  $viewer
+ * @param array  $approval
+ * @param string $decision approve | reject
+ * @return array ok, error, expired, outcome (what the request would be after
+ *               the answer: open, approved or rejected)
+ */
+function ws_approval_decide_check($viewer, $approval, $decision)
+{
+    if (!in_array($decision, array('approve', 'reject'), true)) {
+        return array('ok' => false, 'error' => lang('Invalid request.'), 'expired' => false);
+    }
+
+    if ((int) $approval['closed_at'] > 0) {
+        return array('ok' => false, 'error' => lang('The approval request is closed.'), 'expired' => false);
+    }
+
+    if (((int) $approval['closes_at'] > 0) && ((int) $approval['closes_at'] <= time())) {
+        return array('ok' => false, 'error' => lang('The approval request is closed.'), 'expired' => true);
+    }
+
+    $answer = db_item("SELECT decision FROM ws_approval_people
+        WHERE approval_id = '" . (int) $approval['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
+
+    if (!is_array($answer)) {
+        return array('ok' => false, 'error' => lang('You were not asked to approve this.'), 'expired' => false);
+    }
+
+    if ((string) $answer['decision'] !== 'pending') {
+        return array('ok' => false, 'error' => lang('You have already answered.'), 'expired' => false);
+    }
+
+    $message = ws_message($approval['message_id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0)) {
+        return array('ok' => false, 'error' => lang('That approval request could not be found.'), 'expired' => false);
+    }
+
+    if (!ws_can_post_channel($viewer, ws_channel($approval['channel_id']))) {
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'expired' => false);
+    }
+
+    // The answers as they would stand, the way ws_approval_evaluate() reads
+    // them after the answer is written.
+    $decisions = array();
+
+    foreach (ws_approval_people($approval['id']) as $row) {
+        $decisions[] = ((int) $row['user_id'] === (int) $viewer['id']) ? (($decision === 'approve') ? 'approved' : 'rejected') : (string) $row['decision'];
+    }
+
+    foreach (function_exists('ws_approval_guests_of') ? ws_approval_guests_of($approval['id']) : array() as $row) {
+        $decisions[] = (string) $row['decision'];
+    }
+
+    return array('ok' => true, 'error' => '', 'expired' => false,
+        'outcome' => ws_approval_outcome($approval['rule'], $decisions, time(), (int) $approval['closes_at']));
+}
+
+/**
  * One person's answer: approve or refuse, with a note. Only the people
  * asked, each once, while the request is open and they may write in its
  * channel.
@@ -602,40 +665,15 @@ function ws_approvals_map($message_ids, $viewer)
  */
 function ws_approval_decide($viewer, $approval, $decision, $note = '')
 {
-    if (!in_array($decision, array('approve', 'reject'), true)) {
-        return array('ok' => false, 'error' => lang('Invalid request.'));
-    }
+    $checked = ws_approval_decide_check($viewer, $approval, $decision);
 
-    if ((int) $approval['closed_at'] > 0) {
-        return array('ok' => false, 'error' => lang('The approval request is closed.'));
-    }
+    if (!$checked['ok']) {
+        // Its time ran out before the answer came: it expires now.
+        if ($checked['expired']) {
+            ws_approval_evaluate($approval);
+        }
 
-    // Its time ran out before the answer came: it expires now.
-    if (((int) $approval['closes_at'] > 0) && ((int) $approval['closes_at'] <= time())) {
-        ws_approval_evaluate($approval);
-
-        return array('ok' => false, 'error' => lang('The approval request is closed.'));
-    }
-
-    $answer = db_item("SELECT decision FROM ws_approval_people
-        WHERE approval_id = '" . (int) $approval['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
-
-    if (!is_array($answer)) {
-        return array('ok' => false, 'error' => lang('You were not asked to approve this.'));
-    }
-
-    if ((string) $answer['decision'] !== 'pending') {
-        return array('ok' => false, 'error' => lang('You have already answered.'));
-    }
-
-    $message = ws_message($approval['message_id']);
-
-    if (!$message || ((int) $message['deleted_at'] > 0)) {
-        return array('ok' => false, 'error' => lang('That approval request could not be found.'));
-    }
-
-    if (!ws_can_post_channel($viewer, ws_channel($approval['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+        return array('ok' => false, 'error' => $checked['error']);
     }
 
     $note = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $note)), 0, 255);

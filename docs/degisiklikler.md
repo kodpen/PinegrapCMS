@@ -84,6 +84,72 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: altı Çalışma Alanı yazımına prova (2026-10-14)
+
+**Neden.** #393'ün belge taraması, mobil uygulamanın en sık yazdığı altı uçta
+`X-Dry-Run` / `?dry_run` olmadığını buldu (belgede bu altısında "Prova
+edilebilir" satırı yoktu):
+`POST /workspace/channels/{id}/messages`, `POST /workspace/channels/{id}/files`,
+`POST /workspace/messages/{id}/reactions`, `POST /workspace/messages/{id}/ack`,
+`POST /workspace/approvals/{id}/decide`, `POST /workspace/tasks/{id}/notes`.
+Prova isteyen çağrı 400 `dry_run_unsupported` alıyordu; uygulama gövdesini
+denemek için gerçek mesaj yazmak, gerçek onay vermek zorundaydı.
+
+**Ne değişti.**
+- Altı rota `'dry_run' => true` taşıyor; API belgesi her birinde "Prova
+  edilebilir" satırını, OpenAPI `X-Dry-Run` ve `dry_run` parametresini, MCP
+  aracı (dosya yükleme dışındakiler) `dry_run` argümanını kendiliğinden
+  veriyor.
+- Panel fonksiyonlarının yazmadan önceki denetimleri ayrı `*_check()`
+  fonksiyonlarına alındı; gerçek fonksiyon önce onu çağırıyor, API ucu da
+  provada aynısını çağırıp `api_dry_run_stop()` ile duruyor. Böylece provanın
+  reddi gerçeğin reddiyle aynı kod, aynı alan:
+  `ws_message_send_check()` (yazma izni, boş mesaj, uzunluk, kişinin dakikada
+  yirmi mesaj sınırı), `ws_upload_check()` / `ws_upload_inspect()` (ad, boyut,
+  tür, resmin gerçekten resim olması, sayfa/program içeriği),
+  `ws_reaction_check()` (emoji, mesaj, yazma izni, mesaj başına yirmi farklı
+  emoji), `ws_ack_set_check()` (onay istenmiş mi, kişi sayılanlardan mı),
+  `ws_approval_decide_check()` (açık mı, süresi dolmuş mu, kişiye sorulmuş mu,
+  cevaplamış mı), `ws_task_note_add_check()` (görünürlük, boş / uzun not).
+- Prova cevabı API'nin ortak biçimi (`dry_run`, `would`, `resource`,
+  `detail`): mesaj `created` / `workspace_message` (`channel_id`, `kind`,
+  `ack`, kişiyi herkese açık kanala katacak mı: `joins`); dosya `created` /
+  `workspace_message` (`file`: ad, tür, boyut); tepki `added` / `removed` /
+  `workspace_reaction` (`changes`: emoji zaten varsa ya da yoksa false); okundu
+  onayı `acknowledged` / `workspace_read_receipt` (`changes`: kişi zaten onay
+  verdiyse false); onay kararı `decided` / `workspace_approval` (`outcome`:
+  cevaptan sonra istek `open`, `approved` ya da `rejected`); görev notu
+  `created` / `workspace_task_note` (`task_id`).
+- Dosya provası dosyayı diske yazmıyor: içerik denetimi (resim mi, sayfa ya
+  da program gibi mi okunuyor) artık baytlar üzerinde bellekte yapılıyor
+  (`getimagesizefromstring()`, `finfo_buffer()`), kanalın klasörü de
+  açılmıyor. Form parçası PHP'nin kendi geçici yükleme dosyasıdır, istek
+  bitince PHP siler. Gerçek yüklemede de reddedilen dosya artık önce diske
+  yazılıp sonra silinmiyor ve kanala klasör açtırmıyor; API'de mesaj metni
+  reddedilecekse dosya hiç tutulmuyor (önceden tutulup geri alınıyordu).
+- Süresi dolmuş onay isteğine gerçek cevap isteği "süresi doldu" diye
+  kapatıyordu, öyle kalıyor; prova kapatmıyor (oylamadaki gibi: sonraki gerçek
+  cevaba ya da saatlik işe bırakıyor).
+- `Idempotency-Key` provada tüketilmiyor (yönlendirici zaten böyle: prova
+  anahtar kaydı yazmaz, aynı anahtarla gelen gerçek çağrı yazılır). Site
+  Günlüğü'ne provada satır yazılmıyor; bu altı uç gerçek çağrıda da yazmıyor.
+
+Şema değişikliği yok, izin yok, `tr.json`'da yeni metin yok, JS değişmedi.
+Panel davranışı aynı (aynı denetimler, aynı sıra).
+
+**Doğrulama.** Sandbox'ta (`tools/setup_sandbox.sh`) uygulama anahtarı ve iki
+ekip cihazı oturumuyla altı ucun her biri: provada mesaj, dosya, klasör,
+tepki, okundu onayı, onay cevabı, görev notu, gelen kutusu ve Site Günlüğü
+sayıları değişmedi, `data/files`'a dosya düşmedi; boş / uzun metin, `.php`
+adı, resim olmayan `.png`, `.txt` adlı HTML, bozuk base64, emoji olmayan
+metin, sorulmamış kişi, süresi dolmuş istek, uygulama anahtarıyla okundu
+onayı ve onay, dakika sınırı provada gerçek çağrıyla aynı kodu ve alanı
+verdi; aynı `Idempotency-Key` ile provadan sonra gerçek çağrı yazıldı.
+OpenAPI'de altı işlemde `X-Dry-Run` / `dry_run` var. `lint`, `check_lang`,
+`check_api_schema`, `build_js --check`, `test.php` temiz.
+
+---
+
 ## 2026.4.10 — Üyelik giriş sayfası özel düzende `$captcha_question` uyarısı yazıyordu (2026-10-14)
 
 **Neden.** #394'ün bıraktığı parça, 2026.4.9'da da var. Hazır şablonlardaki

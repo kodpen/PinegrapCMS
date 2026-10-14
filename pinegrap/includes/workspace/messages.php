@@ -490,6 +490,41 @@ function ws_rate_limited($user_id)
 }
 
 /**
+ * Whether this message may be written: the checks of ws_message_send(), made
+ * on their own so that the API's dry run meets the same refusals.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $body
+ * @param array  $options as for ws_message_send()
+ * @return array ok, error, body (the text as it would be stored)
+ */
+function ws_message_send_check($viewer, $channel, $body, $options = array())
+{
+    if (!ws_can_post_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+    }
+
+    $body = ws_tokens_normalise(trim((string) $body));
+    $file_id = (int) ($options['file_id'] ?? 0);
+
+    // A forward may carry the messages alone, without words of its own.
+    if (($body === '') && ($file_id <= 0) && ((int) ($options['task_id'] ?? 0) <= 0) && ((int) ($options['forwards'] ?? 0) <= 0)) {
+        return array('ok' => false, 'error' => lang('The message is empty.'));
+    }
+
+    if (mb_strlen($body) > WS_MESSAGE_MAX) {
+        return array('ok' => false, 'error' => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)));
+    }
+
+    if (((int) ($options['app_id'] ?? 0) === 0) && ws_rate_limited($viewer['id'])) {
+        return array('ok' => false, 'error' => lang('You are sending messages too quickly. Please wait a moment.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'body' => $body);
+}
+
+/**
  * Writes a message into a channel and tells the people it mentions.
  *
  * @param array  $viewer
@@ -502,28 +537,15 @@ function ws_rate_limited($user_id)
  */
 function ws_message_send($viewer, $channel, $body, $options = array())
 {
-    if (!ws_can_post_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'message_id' => 0);
+    $checked = ws_message_send_check($viewer, $channel, $body, $options);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'message_id' => 0);
     }
 
-    $body = ws_tokens_normalise(trim((string) $body));
+    $body = $checked['body'];
     $file_id = (int) ($options['file_id'] ?? 0);
-
-    // A forward may carry the messages alone, without words of its own.
-    if (($body === '') && ($file_id <= 0) && ((int) ($options['task_id'] ?? 0) <= 0) && ((int) ($options['forwards'] ?? 0) <= 0)) {
-        return array('ok' => false, 'error' => lang('The message is empty.'), 'message_id' => 0);
-    }
-
-    if (mb_strlen($body) > WS_MESSAGE_MAX) {
-        return array('ok' => false, 'error' => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)), 'message_id' => 0);
-    }
-
     $app_id = (int) ($options['app_id'] ?? 0);
-
-    if (($app_id === 0) && ws_rate_limited($viewer['id'])) {
-        return array('ok' => false, 'error' => lang('You are sending messages too quickly. Please wait a moment.'), 'message_id' => 0);
-    }
-
     $kind = (string) ($options['kind'] ?? 'message');
 
     if (!in_array($kind, array('message', 'note', 'decision', 'task'), true)) {

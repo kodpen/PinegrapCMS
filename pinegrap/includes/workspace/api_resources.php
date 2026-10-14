@@ -918,6 +918,21 @@ function ws_api_messages_create($params)
         }
     }
 
+    // The checks ws_message_send() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_message_send_check($viewer, $channel, (string) $params['text'], array('app_id' => $app_id));
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'text');
+    }
+
+    api_dry_run_stop('created', 'workspace_message', array(
+        'channel_id' => (int) $channel['id'],
+        'kind'       => $kind,
+        'ack'        => $ack,
+        'joins'      => ($app_id === 0) && ($channel['kind'] === 'public') && !ws_channel_membership($channel['id'], $viewer['id']),
+    ));
+
     $result = ws_message_send($viewer, $channel, (string) $params['text'], array(
         'kind'   => $kind,
         'app_id' => $app_id,
@@ -1133,9 +1148,32 @@ function ws_api_files_create($params)
     }
 
     $upload = ws_api_upload_input($params);
-    $stored = isset($upload['bytes'])
-        ? ws_store_upload_bytes($viewer, $channel, $upload['name'], $upload['bytes'])
-        : ws_store_upload($viewer, $channel, $upload['name'], $upload['base64']);
+    $bytes = isset($upload['bytes']) ? $upload['bytes'] : ws_upload_decode($upload['base64']);
+
+    // The checks the file and its message meet, made on the bytes in memory
+    // before anything is kept, so that a dry run meets the same refusals and
+    // leaves nothing behind: no file on the disk, no folder for the channel.
+    // A form part is PHP's own upload, which it deletes when the request ends.
+    $checked = ws_upload_check($viewer, $channel, $upload['name'], $bytes);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], $upload['field']);
+    }
+
+    // The file it is about to carry stands in for its id: words are optional
+    // beside a file.
+    $message = ws_message_send_check($viewer, $channel, (string) ($params['text'] ?? ''), array('app_id' => $app_id, 'file_id' => PHP_INT_MAX));
+
+    if (!$message['ok']) {
+        api_fail_validation($message['error'], 'text');
+    }
+
+    api_dry_run_stop('created', 'workspace_message', array(
+        'channel_id' => (int) $channel['id'],
+        'file'       => array('name' => mb_substr($checked['name'], 0, 200), 'kind' => ws_file_kind($checked['name']), 'size' => strlen((string) $bytes)),
+    ));
+
+    $stored = ws_store_upload_bytes($viewer, $channel, $upload['name'], $bytes);
 
     if (!$stored['ok']) {
         if ($stored['error'] === lang('The file could not be saved.')) {
@@ -1211,7 +1249,24 @@ function ws_api_messages_react($params)
     }
 
     $on = !array_key_exists('on', $params) || !empty($params['on']);
-    $result = ws_reaction_set($viewer, $message, (string) $params['emoji'], ws_api_writer_app_id(), $on);
+    $app_id = ws_api_writer_app_id();
+
+    // The checks ws_reaction_set() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_reaction_check($viewer, $message, (string) $params['emoji'], $app_id, $on);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'emoji');
+    }
+
+    api_dry_run_stop($on ? 'added' : 'removed', 'workspace_reaction', array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'emoji'      => $checked['emoji'],
+        'changes'    => $checked['changes'],
+    ));
+
+    $result = ws_reaction_set($viewer, $message, (string) $params['emoji'], $app_id, $on);
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], 'emoji');
@@ -2362,7 +2417,21 @@ function ws_api_messages_ack($params)
 
     ws_api_person_only();
 
-    $result = function_exists('ws_ack_set') ? ws_ack_set($viewer, $message) : array('ok' => false, 'error' => lang('Invalid request.'));
+    // The checks ws_ack_set() makes, made first so that a dry run meets the
+    // same refusals.
+    $checked = function_exists('ws_ack_set_check') ? ws_ack_set_check($viewer, $message) : array('ok' => false, 'error' => lang('Invalid request.'));
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error']);
+    }
+
+    api_dry_run_stop('acknowledged', 'workspace_read_receipt', array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'changes'    => $checked['changes'],
+    ));
+
+    $result = ws_ack_set($viewer, $message);
 
     if (!$result['ok']) {
         api_fail_validation($result['error']);
@@ -3081,6 +3150,27 @@ function ws_api_approvals_decide($params)
 
     ws_api_person_only();
 
+    // The checks ws_approval_decide() makes, made first so that a dry run
+    // meets the same refusals. An answer after the request's time closes it,
+    // as in the panel; a dry run leaves that to the next answer or the hourly
+    // job.
+    $checked = ws_approval_decide_check($viewer, $approval, (string) $params['decision']);
+
+    if (!$checked['ok']) {
+        if ($checked['expired'] && !api_dry_run_requested()) {
+            ws_approval_evaluate($approval);
+        }
+
+        api_fail_validation($checked['error'], 'decision');
+    }
+
+    api_dry_run_stop('decided', 'workspace_approval', array(
+        'id'         => (int) $approval['id'],
+        'message_id' => (int) $approval['message_id'],
+        'decision'   => (string) $params['decision'],
+        'outcome'    => $checked['outcome'],
+    ));
+
     $result = ws_approval_decide($viewer, $approval, (string) $params['decision'], (string) ($params['note'] ?? ''));
 
     if (!$result['ok']) {
@@ -3521,6 +3611,17 @@ function ws_api_task_notes_create($params)
 {
     $viewer = ws_api_viewer();
     $task = ws_api_task_or_404($viewer, $params['id']);
+
+    // The checks ws_task_note_add() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_task_note_add_check($viewer, $task, (string) $params['text']);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'text');
+    }
+
+    api_dry_run_stop('created', 'workspace_task_note', array('task_id' => (int) $task['id']));
+
     $result = ws_task_note_add($viewer, $task, (string) $params['text'], ws_api_writer_app_id());
 
     if (!$result['ok']) {
