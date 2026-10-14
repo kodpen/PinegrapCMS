@@ -2565,7 +2565,7 @@ function ws_change_dismiss($viewer, $change_id)
 
     // A call of an MCP server's tool is kept as set aside too.
     if (($change['record_type'] === 'mcp_call') && (mysqli_affected_rows(db::$con) === 1) && function_exists('ws_mcp_call_dismissed')) {
-        ws_mcp_call_dismissed($change);
+        ws_mcp_call_dismissed($change, $viewer);
     }
 
     ws_message_touch($change['message_id']);

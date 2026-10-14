@@ -1061,6 +1061,19 @@
          Çekmecedeki "Durdur" süren işi hizmette de iptal
          ediyor.
 
+  [YENİ] Kendi yanıtlayan MCP sunucusunda yazan araç: kişilerin
+         kendi hesabıyla bağlandığı (OAuth'lu) sunucuda
+         mesajları alan araç, hizmette bir şey değiştiren ve
+         "onay ister" olarak açılmış bir araç da olabiliyor.
+         Takma ada yazılan her mesaj önce, soran kişiye
+         gösterilen "Ajana gitmeden önce onay bekliyor"
+         kartında duruyor; mesajın altındaki satır kimin
+         onayını beklediğini söylüyor. Kişi onaylayınca mesaj
+         onun kendi hesabıyla gidiyor ve ajanın yanıtı karar
+         mesajı yerine yanıt olarak mesajın altına (görevde
+         Asistan bölümüne) geliyor. Kartı bir kenara bırakmak
+         ya da "Durdur" isteği kapatıyor. Görevde de aynı.
+
   [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
          örneğin müşteriye e-postayla sorulabiliyor. Onay
          formunda "Ekip dışından müşteriler" bölümüne ad ve

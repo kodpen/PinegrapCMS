@@ -2124,7 +2124,7 @@ function ws_api_change_present($row, $entry, $people)
     return array(
         'id'                  => (int) $row['id'],
         'status'              => (string) $row['status'],
-        'agent'               => ((string) ($row['agent'] ?? '') === 'ai') ? 'ai' : 'claude',
+        'agent'               => in_array((string) ($row['agent'] ?? ''), array('ai', 'mcp'), true) ? (string) $row['agent'] : 'claude',
         'request_id'          => ((int) $row['request_id'] > 0) ? (int) $row['request_id'] : null,
         'channel_id'          => (int) $row['channel_id'],
         'message_id'          => (int) $row['message_id'],

@@ -17,6 +17,8 @@ yetkilendirme sunucusu" ve sonraki 2026.4.10 bölümleri; kurallar
    `@takmaad` doğrudan ajanın aracına, şema 10.89) 2026-10-14'te bitti (#347); ikinci dilim (uzun
    süren iş MCP görevleriyle, istek durdurulabiliyor, şema 10.110) 2026-10-14'te bitti (#353);
    üçüncü dilim (göreve devir ve görev notunda `@takmaad` ajan kipindeki sunucunun kendisine,
-   yanıt görevin Asistan bölümüne, şema yok) 2026-10-14'te bitti (#356). Görev notunda
+   yanıt görevin Asistan bölümüne, şema yok) 2026-10-14'te bitti (#356). Dördüncü dilim (OAuth'lu
+   sunucuda yazan ajan aracı: her mesaj soranın onay kartında bekler, onayla soranın kendi hesabıyla
+   gider, şema yok) 2026-10-14'te bitti (#PRNO). Görev notunda
    `@takmaad` ile sormak 2026-10-14'te bitti (#345, `docs/degisiklikler.md` → "Görev notunda
    @takmaad").

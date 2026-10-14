@@ -9066,7 +9066,11 @@
             var self = this;
             var box = el('div', 'ws-drafts ws-changes');
 
-            box.appendChild(el('div', 'ws-drafts-title', t((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')));
+            // A message to an MCP server's own agent whose tool writes waits
+            // under itself for its asker's approval (mcp_agent.php).
+            var agent = message.changes.every(function (change) { return change.agent; });
+
+            box.appendChild(el('div', 'ws-drafts-title', t(agent ? 'mcp_agent_changes' : ((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes'))));
 
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
@@ -9198,7 +9202,7 @@
                             }
 
                             api('ws_ai_change_apply', { change_id: change.id }).then(function () {
-                                toast(t('change_done'), 'success');
+                                toast(t(change.agent ? 'mcp_agent_sent' : 'change_done'), 'success');
                                 self.sync();
                             }).catch(function (error) {
                                 fail(error);

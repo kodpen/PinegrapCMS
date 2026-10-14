@@ -29,14 +29,24 @@
  * too (tasks/cancel), and so is one that stops meeting the rules below, asks
  * for more input or runs longer than a day.
  *
- * The rules of the other tools hold: the tool must be turned on as one that
- * reads only (the server says so, or the administrator declares it), it runs
+ * The rules of the other tools hold: the tool must be turned on, as one that
+ * reads only (the server says so, or the administrator declares it) or, on a
+ * server people sign in to, as one whose calls wait for approval; it runs
  * with the asker's own account where people sign in to the service and they
  * connected one, else with the site's, and it is asked only in a channel
  * where Pinegrap AI could be asked: what is written in a private channel
  * leaves the site only where its people allowed it. The agent reads the
  * message and, for a reply, the message it answers, nothing else of the
  * channel.
+ *
+ * A tool whose calls wait for approval (rule 'approve', mcp.php) is not
+ * called when a message is written to it. The call is kept as pending and
+ * waits as a proposal of record_type 'mcp_call' (mcp_ask.php) under the
+ * message that asked, or on the task, while the request waits as 'sent'.
+ * Only the person who asked can run it, and only with their own account;
+ * it then goes to the agent as any request does (ws_mcp_agent_approved()),
+ * and what the agent answers is posted as its answer rather than as a
+ * decision. Setting the proposal aside, or stopping the request, ends both.
  *
  * What the agent answers is another service's text: it is posted as it is,
  * locked, in the name of the person who asked (as the answer of a tool run
@@ -225,10 +235,10 @@ function ws_mcp_agent_argument($tool)
 
 /**
  * The tools of a server that could take its messages: one that can take a
- * message alone and that may be turned on as reading only (the server says
- * it reads only, or says nothing either way). A tool that writes waits for
- * an approval before each call, which a message to an agent does not have
- * yet.
+ * message alone and that may be turned on - as reading only (the server says
+ * it reads only, or says nothing either way), or, on a server people sign in
+ * to, as one whose every message waits for the approval of the person who
+ * asked, which is how a tool that writes is turned on there.
  *
  * @param array $server
  * @return array tool name => the argument the message goes into
@@ -236,11 +246,12 @@ function ws_mcp_agent_argument($tool)
 function ws_mcp_agent_candidates($server)
 {
     $out = array();
+    $approve = ws_mcp_can_approve($server);
 
     foreach (ws_mcp_tools($server) as $name => $tool) {
         $argument = ws_mcp_agent_argument($tool);
 
-        if (($argument !== '') && (ws_mcp_tool_can_run($tool) !== '')) {
+        if (($argument !== '') && ($approve || (ws_mcp_tool_can_run($tool) !== ''))) {
             $out[(string) $name] = $argument;
         }
     }
@@ -252,23 +263,24 @@ function ws_mcp_agent_candidates($server)
 
 /**
  * The tool a server's messages go to, while it can take them: chosen, still
- * listed by the server, turned on as reading only, and taking a message.
+ * listed by the server, turned on, and taking a message. approve says each
+ * message waits for the approval of the person who asked.
  *
  * @param array $server
- * @return array|null name, argument
+ * @return array|null name, argument, approve
  */
 function ws_mcp_agent_tool($server)
 {
     $name = trim((string) ($server['agent_tool'] ?? ''));
     $on = ws_mcp_tools_on($server);
 
-    if (($name === '') || !isset($on[$name]) || !empty($on[$name]['approve'])) {
+    if (($name === '') || !isset($on[$name])) {
         return null;
     }
 
     $argument = ws_mcp_agent_argument($on[$name]);
 
-    return ($argument !== '') ? array('name' => $name, 'argument' => $argument) : null;
+    return ($argument !== '') ? array('name' => $name, 'argument' => $argument, 'approve' => !empty($on[$name]['approve'])) : null;
 }
 
 /**
@@ -290,13 +302,45 @@ function ws_mcp_agent_problem($server, $asker = null, $channel_id = 0, $task_id 
     }
 
     if (!ws_mcp_agent_tool($server)) {
-        return lang(array('string' => 'The tool that takes the messages of @{var:1} ({var:2}) is no longer turned on as one that reads only. An administrator chooses it again in Workspace Settings › MCP servers.', 'vars' => array(
+        // On a server people sign in to, a tool that writes may take the
+        // messages too, each one approved: only being turned off stops it.
+        return lang(array('string' => ws_mcp_can_approve($server)
+            ? 'The tool that takes the messages of @{var:1} ({var:2}) is no longer turned on. An administrator turns it on again in Workspace Settings › MCP servers.'
+            : 'The tool that takes the messages of @{var:1} ({var:2}) is no longer turned on as one that reads only. An administrator chooses it again in Workspace Settings › MCP servers.', 'vars' => array(
             $server['alias'],
             '`' . str_replace('`', '', (string) $server['agent_tool']) . '`',
         )));
     }
 
     return '';
+}
+
+/**
+ * Why a person may not ask the agents for more now, '' when they may: a few
+ * of their requests may wait at a time, in channels and on tasks together,
+ * those that wait for their approval among them.
+ *
+ * @param int $user_id
+ * @return string
+ */
+function ws_mcp_agent_limit_problem($user_id)
+{
+    $waiting = db_items("SELECT status FROM ws_ai_requests
+        WHERE agent = 'mcp' AND requested_by = '" . (int) $user_id . "' AND status IN ('queued', 'sent', 'running')");
+    $waiting = is_array($waiting) ? $waiting : array();
+
+    if (count($waiting) < WS_MCP_AGENT_PER_PERSON) {
+        return '';
+    }
+
+    // A request that waits as sent waits for its asker to approve it.
+    foreach ($waiting as $row) {
+        if ((string) $row['status'] === 'sent') {
+            return lang(array('string' => '{var:1} of your requests to MCP agents are still waiting, some of them for your approval. Approve those or set them aside first.', 'vars' => WS_MCP_AGENT_PER_PERSON));
+        }
+    }
+
+    return lang(array('string' => '{var:1} of your requests to MCP agents are still waiting. Please wait for those to be answered.', 'vars' => WS_MCP_AGENT_PER_PERSON));
 }
 
 /**
@@ -329,11 +373,10 @@ function ws_mcp_agent_after_send($viewer, $channel, $message_id, $body)
         return false;
     }
 
-    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE agent = 'mcp' AND requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')");
+    $limit = ws_mcp_agent_limit_problem((int) $viewer['id']);
 
-    if ($waiting >= WS_MCP_AGENT_PER_PERSON) {
-        ws_message_system($channel['id'], lang(array('string' => '{var:1} of your requests to MCP agents are still waiting. Please wait for those to be answered.', 'vars' => WS_MCP_AGENT_PER_PERSON)));
+    if ($limit !== '') {
+        ws_message_system($channel['id'], $limit);
         return false;
     }
 
@@ -371,7 +414,10 @@ function ws_mcp_agent_can_cancel($viewer, $row)
 
 /**
  * Where a request to an agent stands, as the line under it says it. An
- * agent working in the background says where it is in its own words.
+ * agent working in the background says where it is in its own words. A
+ * request that waits for its asker's approval (sent) is shown as approval:
+ * nothing is to be carried on for it until then, so the screens neither
+ * hurry nor send it.
  *
  * @param array      $row
  * @param array|null $viewer who reads it: whether they may stop it
@@ -390,6 +436,11 @@ function ws_mcp_agent_request_state($row, $viewer = null)
             break;
 
         case 'sent':
+            $label = lang(array('string' => 'Goes to @{var:1} once {var:2} approves it', 'vars' => array($alias, ws_person_name((int) $row['requested_by']))));
+            $icon = 'bi-shield-check';
+            $status = 'approval';
+            break;
+
         case 'running':
             $label = lang(array('string' => '@{var:1} is working on it', 'vars' => $alias));
             $note = trim((string) ($row['mcp_task_note'] ?? ''));
@@ -640,6 +691,10 @@ function ws_mcp_agent_fail($row, $reason, $status = 'failed')
 
     $closed = (mysqli_affected_rows(db::$con) > 0);
 
+    if ($closed) {
+        ws_mcp_agent_drop_pending($row, $reason);
+    }
+
     if ($closed && ($status !== 'cancelled') && ((int) ($row['task_id'] ?? 0) > 0) && function_exists('ws_task_delegation_told')) {
         ws_task_delegation_told($row, 'failed');
     }
@@ -647,6 +702,37 @@ function ws_mcp_agent_fail($row, $reason, $status = 'failed')
     ws_mcp_agent_touch($row);
 
     return $closed;
+}
+
+/**
+ * A request that ended leaves no call waiting for approval: the call is kept
+ * as dismissed, and its proposal ends - set aside by the person who stopped
+ * the request, or failed with the reason the request ended.
+ *
+ * @param array  $row
+ * @param string $reason
+ * @param int    $by who set it aside, 0 when nobody did
+ */
+function ws_mcp_agent_drop_pending($row, $reason, $by = 0)
+{
+    $calls = (array) db_values("SELECT id FROM ws_mcp_calls WHERE request_id = '" . (int) $row['id'] . "' AND via = 'agent' AND status = 'pending'");
+
+    if (empty($calls)) {
+        return;
+    }
+
+    $ids = implode(',', array_map('intval', $calls));
+
+    db("UPDATE ws_mcp_calls SET status = 'dismissed', finished_at = '" . time() . "' WHERE id IN (" . $ids . ") AND status = 'pending'");
+
+    if (function_exists('ws_changes_ready') && ws_changes_ready()) {
+        db("UPDATE ws_ai_changes SET status = '" . (((int) $by > 0) ? 'dismissed' : 'failed') . "',
+                error = '" . (((int) $by > 0) ? '' : e(mb_substr((string) $reason, 0, 250))) . "',
+                decided_by = '" . (int) $by . "', decided_at = '" . time() . "'
+            WHERE request_id = '" . (int) $row['id'] . "' AND record_type = 'mcp_call' AND record_id IN (" . $ids . ") AND status = 'pending'");
+    }
+
+    ws_mcp_agent_touch($row);
 }
 
 /**
@@ -731,17 +817,19 @@ function ws_mcp_agent_context($row)
 
 /**
  * The connection a request goes over: with the asker's own account when
- * they connected one (OAuth servers), else the site's; and, once the schema
- * step that keeps tasks has run, telling the server the site follows tasks.
+ * they connected one (OAuth servers), else the site's - only their own for
+ * a call they approved; and, once the schema step that keeps tasks has run,
+ * telling the server the site follows tasks.
  *
  * @param array $server
  * @param int   $timeout
  * @param int   $asker_id
+ * @param bool  $person_only only the asker's own account will do
  * @return array
  */
-function ws_mcp_agent_connection($server, $timeout, $asker_id)
+function ws_mcp_agent_connection($server, $timeout, $asker_id, $person_only = false)
 {
-    $conn = ws_mcp_connection($server, $timeout, (int) $asker_id);
+    $conn = ws_mcp_connection($server, $timeout, (int) $asker_id, (bool) $person_only);
 
     if (ws_mcp_agent_tasks_ready()) {
         $conn['extensions'] = array(PG_MCP_CLIENT_TASKS);
@@ -784,6 +872,19 @@ function ws_mcp_agent_call_of($row)
     $call = db_item("SELECT * FROM ws_mcp_calls WHERE request_id = '" . (int) $row['id'] . "' AND via = 'agent' ORDER BY id DESC LIMIT 1");
 
     return is_array($call) ? $call : null;
+}
+
+/**
+ * Was a call run on the approval of the person who asked? Then it went with
+ * their own account, and so does everything that follows it: the questions
+ * about its task, and stopping that task.
+ *
+ * @param array|null $call
+ * @return bool
+ */
+function ws_mcp_agent_call_approved($call)
+{
+    return is_array($call) && ((int) ($call['approved_by'] ?? 0) > 0);
 }
 
 /**
@@ -956,6 +1057,14 @@ function ws_mcp_agent_run($row, $timeout)
 
     $arguments = (string) json_encode((object) array($tool['argument'] => ws_mcp_agent_request_text($row, $context)), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
+    // A tool that writes is not called now: the call waits for the approval
+    // of the person who asked, and runs with their own account once given.
+    if ($tool['approve']) {
+        ws_mcp_agent_propose($row, $context, $tool['name'], $arguments);
+
+        return false;
+    }
+
     if (function_exists('set_time_limit')) {
         @set_time_limit($timeout * 2 + 30);
     }
@@ -1022,6 +1131,255 @@ function ws_mcp_agent_run($row, $timeout)
     return ws_mcp_agent_post($row, $context, $tool['name'], $answer, $call_id);
 }
 
+/* ---------------------------------------------------------------------------
+   Messages that wait for approval
+   --------------------------------------------------------------------------- */
+
+/**
+ * Keeps the call a request would make with a tool whose calls wait for
+ * approval and puts it before the person who asked: a proposal of kind
+ * mcp_call (mcp_ask.php) under the message that asked, or on the task. The
+ * request then waits as sent until it is approved (ws_mcp_agent_approved()),
+ * set aside, or stopped. Calls nothing.
+ *
+ * @param array  $row       the request, claimed (status running)
+ * @param array  $context   as ws_mcp_agent_context() answers it
+ * @param string $tool
+ * @param string $arguments as JSON
+ * @return bool waiting for approval
+ */
+function ws_mcp_agent_propose($row, $context, $tool, $arguments)
+{
+    // Without the card nobody could approve it, and it would wait forever.
+    if (!function_exists('ws_mcp_calls_propose') || !function_exists('ws_changes_store')) {
+        ws_mcp_agent_fail($row, lang('The call could not be kept.'));
+
+        return false;
+    }
+
+    $message = $context['message'];
+    $message_id = $message ? (int) $message['id'] : 0;
+
+    db("INSERT INTO ws_mcp_calls (server_id, tool, arguments, via, requested_by, channel_id, message_id, request_id, status, created_at)
+        VALUES (
+            '" . (int) $context['server']['id'] . "',
+            '" . e($tool) . "',
+            '" . e($arguments) . "',
+            'agent',
+            '" . (int) $row['requested_by'] . "',
+            '" . (int) $row['channel_id'] . "',
+            '" . $message_id . "',
+            '" . (int) $row['id'] . "',
+            'pending',
+            '" . time() . "')");
+
+    $call_id = (int) mysqli_insert_id(db::$con);
+
+    if ($call_id <= 0) {
+        ws_mcp_agent_fail($row, lang('The call could not be kept.'));
+
+        return false;
+    }
+
+    ws_mcp_calls_propose($row, $message_id, array($call_id));
+
+    db("UPDATE ws_ai_requests SET status = 'sent' WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
+
+    // Stopped while the call was being kept: nothing waits for it.
+    if (mysqli_affected_rows(db::$con) < 1) {
+        ws_mcp_agent_drop_pending($row, lang('Cancelled'));
+
+        return false;
+    }
+
+    ws_mcp_agent_touch($row);
+
+    return true;
+}
+
+/**
+ * Sends a message that waited for approval, now that the person who asked
+ * applied its proposal (ws_mcp_call_run()): the request goes to the agent
+ * with their own account, never the site's, and what the agent answers is
+ * posted as its answer - under the message, or in the task's Assistant part
+ * - instead of a decision; the proposal then points at that answer. An agent
+ * that works on in the background is followed as for any request. A token
+ * the service refused gives the proposal back, and the request goes on
+ * waiting, to be run once the account is connected again; anything else
+ * that stops the call ends the proposal and the request together.
+ *
+ * @param array      $viewer
+ * @param array      $change ws_ai_changes, taken (status applying)
+ * @param array      $call   ws_mcp_calls, via agent
+ * @param array|null $server
+ * @return array ok, error, stale, decision_id
+ */
+function ws_mcp_agent_approved($viewer, $change, $call, $server)
+{
+    $end = function ($status, $error = '', $decision_id = 0) use ($change, $viewer) {
+        db("UPDATE ws_ai_changes SET status = '" . e($status) . "', error = '" . e(mb_substr((string) $error, 0, 250)) . "',
+                decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "', decision_message_id = '" . (int) $decision_id . "'
+            WHERE id = '" . (int) $change['id'] . "'");
+        ws_message_touch($change['message_id']);
+    };
+
+    $out = function ($ok, $error = '', $decision_id = 0) {
+        return array('ok' => $ok, 'error' => $error, 'stale' => false, 'decision_id' => (int) $decision_id);
+    };
+
+    // Ends the proposal, the call and the request, for one reason.
+    $fail = function ($row, $error) use ($end, $out, $call) {
+        $end('failed', $error);
+
+        db("UPDATE ws_mcp_calls SET status = 'failed', approved_by = 0, error = '" . e(mb_substr((string) $error, 0, 250)) . "', finished_at = '" . time() . "'
+            WHERE id = '" . (int) $call['id'] . "' AND status = 'pending'");
+
+        if ($row) {
+            ws_mcp_agent_fail($row, $error);
+        }
+
+        return $out(false, $error);
+    };
+
+    $row = db_item("SELECT * FROM ws_ai_requests WHERE id = '" . (int) $call['request_id'] . "' AND agent = 'mcp'");
+    $row = is_array($row) ? $row : null;
+
+    if (!$row || ((string) $row['status'] !== 'sent')) {
+        return $fail(null, lang('The request this call waited for has ended.'));
+    }
+
+    $problem = ws_mcp_call_state_problem($call, $server);
+
+    if (($problem === '') && ((string) $call['status'] !== 'pending')) {
+        $problem = lang('Somebody has already decided about this proposal.');
+    }
+
+    if ($problem !== '') {
+        return $fail($row, $problem);
+    }
+
+    $now = time();
+
+    // Taken from its wait, so a Stop or a second click finds it running.
+    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . $now . "', sent_at = '" . $now . "'
+        WHERE id = '" . (int) $row['id'] . "' AND status = 'sent'");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return $fail(null, lang('The request this call waited for has ended.'));
+    }
+
+    $row = array_merge($row, array('status' => 'running', 'claimed_at' => $now, 'sent_at' => $now));
+
+    $give_back = function () use ($change, $row) {
+        db("UPDATE ws_ai_requests SET status = 'sent' WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
+        db("UPDATE ws_ai_changes SET status = 'pending' WHERE id = '" . (int) $change['id'] . "' AND status = 'applying'");
+        ws_message_touch($change['message_id']);
+        ws_mcp_agent_touch($row);
+    };
+
+    $context = ws_mcp_agent_context($row);
+
+    if ($context['error'] !== '') {
+        return $fail($row, $context['error']);
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(WS_MCP_AGENT_TIMEOUT * 2 + 30);
+    }
+
+    $conn = ws_mcp_agent_connection($server, WS_MCP_AGENT_TIMEOUT, (int) $viewer['id'], true);
+
+    if (empty($conn['headers'])) {
+        $give_back();
+
+        return $out(false, lang(array('string' => 'Connect your own account to @{var:1} to run it: the call runs with it.', 'vars' => $server['alias'])));
+    }
+
+    $tool = (string) $call['tool'];
+    $started = microtime(true);
+    $out_call = pg_mcp_client_call_tool($conn, $tool, json_decode((string) $call['arguments']));
+
+    if (!$out_call['ok'] && ws_mcp_reauthorize($conn, $server, $out_call['status'] ?? 0)) {
+        $out_call = pg_mcp_client_call_tool($conn, $tool, json_decode((string) $call['arguments']));
+    }
+
+    // Refused before anything ran: it can be run again once connected again.
+    if (!$out_call['ok'] && ((int) ($out_call['status'] ?? 0) === 401)) {
+        $give_back();
+
+        return $out(false, ws_mcp_error_text($server, 401, '', true));
+    }
+
+    $duration = (int) round((microtime(true) - $started) * 1000);
+    $task = ($out_call['ok'] && !empty($out_call['task'])) ? $out_call['task'] : null;
+    $answer = '';
+
+    if (!$out_call['ok']) {
+        $error = lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], ws_mcp_error_text($server, $out_call['status'] ?? 0, $out_call['error'], true))));
+    } elseif ($task) {
+        $error = '';
+    } else {
+        $outcome = ws_mcp_agent_result($server, $out_call['result']);
+        $answer = $outcome['answer'];
+        $error = $outcome['error'];
+    }
+
+    // The call counts from now; a task's call goes on until the task ends.
+    db("UPDATE ws_mcp_calls SET
+            status = '" . ($task ? 'running' : (($error === '') ? 'done' : 'failed')) . "',
+            approved_by = '" . (int) $viewer['id'] . "',
+            error = '" . e(mb_substr($error, 0, 250)) . "',
+            duration_ms = '" . $duration . "',
+            created_at = '" . $now . "',
+            finished_at = '" . ($task ? 0 : time()) . "'
+        WHERE id = '" . (int) $call['id'] . "'");
+
+    db("UPDATE ws_mcp_servers SET last_used = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");
+
+    log_activity(lang(array('string' => 'ran the tool {var:1} of the MCP server @{var:2} with their own account', 'vars' => array($tool, $server['alias']))), (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $viewer['id'] . "'"));
+
+    if ($error !== '') {
+        $end('failed', $error);
+        ws_mcp_agent_fail($row, $error);
+
+        return $out(false, $error);
+    }
+
+    if ($task) {
+        ws_mcp_agent_task_keep($row, $task, $conn, (int) $call['id']);
+        $end('applied');
+
+        return $out(true);
+    }
+
+    // The call ran: the proposal is applied even when the answer could not
+    // be posted any more (the request was stopped meanwhile); the line under
+    // the message says that.
+    ws_mcp_agent_post($row, $context, $tool, $answer, (int) $call['id']);
+
+    $reply_id = (int) db_value("SELECT reply_message_id FROM ws_ai_requests WHERE id = '" . (int) $row['id'] . "' AND status = 'answered'");
+
+    $end('applied', '', $reply_id);
+
+    return $out(true, '', $reply_id);
+}
+
+/**
+ * A message that waited for approval was set aside on its card: the request
+ * ends with it, cancelled, and says by whom.
+ *
+ * @param array $call ws_mcp_calls, via agent
+ * @param int   $by   who set it aside
+ */
+function ws_mcp_agent_set_aside($call, $by)
+{
+    $row = db_item("SELECT * FROM ws_ai_requests WHERE id = '" . (int) $call['request_id'] . "' AND agent = 'mcp'");
+
+    if (is_array($row)) {
+        ws_mcp_agent_fail($row, lang(array('string' => 'Set aside by {var:1}', 'vars' => ws_person_name((int) $by))), 'cancelled');
+    }
+}
+
 /**
  * Keeps the task an agent answered a call with: the request runs on, and
  * the task is asked about after the interval the server asks for - at once
@@ -1076,7 +1434,7 @@ function ws_mcp_agent_poll($row, $timeout)
     $server = $context['server'];
     $call = ws_mcp_agent_call_of($row);
     $task_id = (string) $row['mcp_task'];
-    $conn = ws_mcp_agent_connection($server, min((int) $timeout, WS_MCP_AGENT_POLL_TIMEOUT), (int) $context['asker']['id']);
+    $conn = ws_mcp_agent_connection($server, min((int) $timeout, WS_MCP_AGENT_POLL_TIMEOUT), (int) $context['asker']['id'], ws_mcp_agent_call_approved($call));
     $out = pg_mcp_client_get_task($conn, $task_id);
 
     // A token the service no longer takes is renewed once (OAuth servers).
@@ -1185,13 +1543,15 @@ function ws_mcp_agent_task_stop($row, $reason, $status = 'failed', $conn = null)
         return true;
     }
 
-    ws_mcp_agent_call_end(ws_mcp_agent_call_of($row), $reason);
+    $call = ws_mcp_agent_call_of($row);
+
+    ws_mcp_agent_call_end($call, $reason);
 
     $server = ws_mcp_server((int) $row['mcp_server_id']);
 
     if ($server && ((string) $server['status'] === 'active')) {
         if (!$conn) {
-            $conn = ws_mcp_agent_connection($server, WS_MCP_AGENT_POLL_TIMEOUT, (int) $row['requested_by']);
+            $conn = ws_mcp_agent_connection($server, WS_MCP_AGENT_POLL_TIMEOUT, (int) $row['requested_by'], ws_mcp_agent_call_approved($call));
         }
 
         pg_mcp_client_cancel_task($conn, $task_id);
@@ -1229,7 +1589,11 @@ function ws_mcp_agent_cancel($viewer, $request_id)
         @set_time_limit(WS_MCP_AGENT_POLL_TIMEOUT * 2 + 30);
     }
 
-    ws_mcp_agent_task_stop($row, lang(array('string' => 'Stopped by {var:1}.', 'vars' => ws_person_name((int) $viewer['id']))), 'cancelled');
+    $reason = lang(array('string' => 'Stopped by {var:1}.', 'vars' => ws_person_name((int) $viewer['id'])));
+
+    // A call that waited for approval is set aside by whoever stopped it.
+    ws_mcp_agent_drop_pending($row, $reason, (int) $viewer['id']);
+    ws_mcp_agent_task_stop($row, $reason, 'cancelled');
 
     return '';
 }
@@ -1251,8 +1615,9 @@ function ws_mcp_agent_watchdog()
     $tasks = ws_mcp_agent_tasks_ready();
 
     // A task's request runs for as long as the task: its own limit holds.
+    // One that waits for its asker's approval (sent) is not running at all.
     foreach ((array) db_items("SELECT * FROM ws_ai_requests
-        WHERE agent = 'mcp' AND status IN ('sent', 'running') AND claimed_at < '" . ($now - WS_MCP_AGENT_STALE) . "'" . ($tasks ? " AND mcp_task = ''" : '') . "
+        WHERE agent = 'mcp' AND status = 'running' AND claimed_at < '" . ($now - WS_MCP_AGENT_STALE) . "'" . ($tasks ? " AND mcp_task = ''" : '') . "
         LIMIT 50") as $row) {
         $server = ws_mcp_server((int) $row['mcp_server_id']);
         ws_mcp_agent_fail($row, lang(array('string' => '@{var:1} did not answer in time.', 'vars' => $server ? $server['alias'] : 'mcp')));
@@ -1358,11 +1723,57 @@ function ws_mcp_agent_kick($budget = 1, $timeout = WS_MCP_AGENT_TIMEOUT)
 }
 
 /**
- * The hourly job: the watchdog, the questions about tasks that are due, and
- * the requests nobody's screen carried on.
+ * Why a request that waits for its asker's approval can never be sent, ''
+ * while it still can: what it was about is gone - the server, the person
+ * who asked, the message (deleted), or the task (or the asker's sight of
+ * it). Rules that may hold again (a server turned off for a while, an
+ * account to connect) are the card's to show and are checked when it is
+ * approved.
+ *
+ * @param array $row
+ * @return string
+ */
+function ws_mcp_agent_approval_gone($row)
+{
+    if (!ws_mcp_server((int) $row['mcp_server_id'])) {
+        return lang('That MCP server could not be found.');
+    }
+
+    $asker = ws_ai_viewer((int) $row['requested_by']);
+
+    if (!$asker) {
+        return lang('The person who asked is no longer a member of the workspace.');
+    }
+
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        $task = function_exists('ws_task') ? ws_task((int) $row['task_id']) : null;
+
+        return (!$task || !ws_can_see_task($asker, $task)) ? lang('The task could not be found, or the person who asked may no longer see it.') : '';
+    }
+
+    $message = ws_message((int) $row['message_id']);
+
+    return (!$message || ((int) $message['deleted_at'] > 0)) ? lang('The message that asked was deleted.') : '';
+}
+
+/**
+ * The hourly job: the requests that wait for an approval they can no longer
+ * use are closed, so they do not hold a place among their asker's; then the
+ * watchdog, the questions about tasks that are due, and the requests
+ * nobody's screen carried on.
  */
 function ws_mcp_agent_job()
 {
+    if (ws_mcp_agent_ready()) {
+        foreach ((array) db_items("SELECT * FROM ws_ai_requests WHERE agent = 'mcp' AND status = 'sent' ORDER BY id LIMIT 100") as $row) {
+            $gone = ws_mcp_agent_approval_gone($row);
+
+            if ($gone !== '') {
+                ws_mcp_agent_fail($row, $gone);
+            }
+        }
+    }
+
     ws_mcp_agent_kick(300, WS_MCP_AGENT_TIMEOUT_JOB);
 }
 
@@ -1385,10 +1796,19 @@ function ws_mcp_agent_settings_field($server, $admin)
     $current = trim((string) ($server['agent_tool'] ?? ''));
     $options = '<option value="">' . h(lang('Pinegrap AI, with the tools turned on below')) . '</option>';
     $candidates = ws_mcp_agent_candidates($server);
+    $approve = ws_mcp_can_approve($server);
+    $tools = ws_mcp_tools($server);
+    $rules = ws_mcp_tool_rules($server);
 
     foreach ($candidates as $name => $argument) {
+        // A tool that writes, or one turned on to ask first, waits for an
+        // approval before each message.
+        $asks = $approve && ((($rules[$name] ?? '') === 'approve') || (ws_mcp_tool_can_run($tools[$name]) === ''));
+
         $options .= '<option value="' . h($name) . '"' . (($name === $current) ? ' selected' : '') . '>'
-            . h(lang(array('string' => 'The service\'s own agent, through {var:1} (the message goes into {var:2})', 'vars' => array($name, $argument)))) . '</option>';
+            . h(lang(array('string' => $asks
+                ? 'The service\'s own agent, through {var:1} (the message goes into {var:2}; each message waits for approval)'
+                : 'The service\'s own agent, through {var:1} (the message goes into {var:2})', 'vars' => array($name, $argument)))) . '</option>';
     }
 
     // A tool chosen before that the server no longer offers stays visible.
@@ -1397,21 +1817,28 @@ function ws_mcp_agent_settings_field($server, $admin)
     }
 
     $problem = (($current !== '') && !ws_mcp_agent_tool($server))
-        ? '<div class="form-text text-danger">' . h(lang('This tool cannot take the messages now: turn it on below as one that reads only.')) . '</div>'
+        ? '<div class="form-text text-danger">' . h($approve ? lang('This tool cannot take the messages now: turn it on below.') : lang('This tool cannot take the messages now: turn it on below as one that reads only.')) . '</div>'
         : '';
+
+    // On a server people sign in to, a tool that writes can take the
+    // messages too: each one waits for its asker's approval.
+    $rule = $approve
+        ? lang('The tool must be turned on below. One that reads only answers at once; one that changes things on the service waits, before each message, for the person who asked to approve it, and then runs with their own account.')
+        : lang('The tool must be turned on below as one that reads only.');
 
     return '
         <div class="mb-3">
             <label class="form-label small fw-semibold" for="' . $field . '">' . h(lang(array('string' => 'Who answers @{var:1}', 'vars' => $server['alias']))) . '</label>
             <select class="form-select form-select-sm" name="mcp_agent_tool" id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
-            <div class="form-text">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task\'s title and description, and the answer comes back in the task\'s Assistant part. Pinegrap AI is not needed. The tool must be turned on below as one that reads only.')) . '</div>
+            <div class="form-text">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task\'s title and description, and the answer comes back in the task\'s Assistant part. Pinegrap AI is not needed.')) . ' ' . h($rule) . '</div>
             ' . $problem . '
         </div>';
 }
 
 /**
  * Saves the tool that takes a server's messages, with the tools form. It
- * must be turned on, by the rules just saved, as one that reads only.
+ * must be turned on, by the rules just saved, as one that reads only - or,
+ * on a server people sign in to, as one whose calls wait for approval.
  *
  * @param array    $server the row before the save
  * @param array    $rules  the rules just saved
@@ -1430,9 +1857,13 @@ function ws_mcp_agent_settings_save($server, $rules, $liveform)
 
     if ($wanted !== '') {
         $rule = (string) ($rules[$wanted] ?? '');
+        $approve = ws_mcp_can_approve($server);
+        $allowed = $approve ? array('auto', 'auto_declared', 'approve') : array('auto', 'auto_declared');
 
-        if (!isset($candidates[$wanted]) || !in_array($rule, array('auto', 'auto_declared'), true)) {
-            $liveform->add_error(lang(array('string' => 'The tool {var:1} cannot take the messages: it must take a text and be turned on as one that reads only. Pinegrap AI answers @{var:2} meanwhile.', 'vars' => array($wanted, $server['alias']))));
+        if (!isset($candidates[$wanted]) || !in_array($rule, $allowed, true)) {
+            $liveform->add_error(lang(array('string' => $approve
+                ? 'The tool {var:1} cannot take the messages: it must take a text and be turned on. Pinegrap AI answers @{var:2} meanwhile.'
+                : 'The tool {var:1} cannot take the messages: it must take a text and be turned on as one that reads only. Pinegrap AI answers @{var:2} meanwhile.', 'vars' => array($wanted, $server['alias']))));
             $wanted = '';
             $ok = false;
         }
