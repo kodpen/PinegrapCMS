@@ -84,6 +84,84 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: ekibe geri alınan kişinin gelen kutusu satırları değişenlerde yeniden geliyor (2026-10-14)
+
+**Neden.** #395'in bıraktığı parça. Kişi ekipten çıkınca (rolü değişince,
+Çalışma Alanı izni alınınca ya da Çalışma Alanı ayarlarındaki "Ekipte değil"
+işaretiyle) gelen kutusu satırlarına hiçbir şey olmuyordu; API ona 403
+veriyordu. Ekibe geri alınınca satırların damgaları kıpırdamadığı için
+`GET /workspace/inbox?changed_since=` boş geliyor, eşitlemenin
+`inbox_changed_at`'i ilerlemiyordu. 403'te satırları bırakan uygulama
+onları ancak gelen kutusunu baştan okuyunca görüyordu; çıkarken okunmamış
+satırlar değişenlere hiç girmiyordu.
+
+**Ne değişti.**
+- `notify.php`'de üç fonksiyon. `ws_inbox_team_stored($user_ids)`: verilen
+  kişilerden ekipte olanlar, tablolardan şimdiki haliyle
+  (`ws_team_condition()`), `ws_rights()` ve `ws_team_members()`
+  önbelleklerinin dışından. `ws_inbox_team_changes($user_ids, $before,
+  $after)`: kim çıktı, kim döndü (ekipte kalan ya da hiç girmeyen ikisinde
+  de yok). `ws_inbox_team_moved($user_ids, $before)`: adımdan sonra çağrılır.
+- Çıkışta kişinin **bütün** satırlarının `read_at`'i şimdiye çekilir,
+  önceden okunmuşlar da (`ws_inbox_reach_lost()`'un kanal için yaptığı
+  gibi); zil `ws_bell_sync_read()` ile eşitlenir. Değişenler onları o
+  andan itibaren silinmiş olarak verir.
+- Dönüşte **okunmuş** satırların `read_at`'i yine şimdiye çekilir
+  (`ws_inbox_reach_regained()` gibi). Değişenler görebildiği satırları
+  olduğu gibi ve okunmuş, hâlâ göremediklerini (ör. o arada çıkarıldığı
+  özel kanal) `deleted: true` ile verir; `inbox_changed_at` ilerler,
+  `inbox_unread` değişmez. Okunmamış satıra dokunulmaz: dışarıdayken
+  yazılan satır `created_at`'iyle gelir.
+- Satır satır görünürlük denetimi yerine tek `UPDATE`: kaydetme ekranı
+  kişinin bütün gelen kutusunu PHP'de dolaşmaz; hangi satırın canlı,
+  hangisinin silinmiş gideceğine `ws_api_inbox_changed_rows()` okurken
+  zaten karar veriyor.
+- Kayıp tarafı bilerek eklendi: çıkışta işaretlenmeyen okunmamış eski
+  satırlar dönüşte değişenlere giremezdi (okunmuş yapılmadan damgaları
+  ilerlemez).
+- Çağıranlar, yalnız ekipteki yeri gerçekten değişenler için (ekipte
+  kalanın her satırı boşuna yeniden gitmesin): `edit_user.php` kaydı
+  (rol ve Çalışma Alanı izni; modül açıksa bootstrap yüklenir),
+  `ws_change_write_user()` (Claude'un önerdiği rol değişikliği),
+  `workspace_settings.php` kişiler kaydı (ekipten çıkarma işareti; bütün
+  adaylar için bir okuma). `add_user.php` ve `import_users.php` yalnız yeni
+  hesap açar, gelen kutuları yoktur.
+- API belgesinde `GET /workspace/inbox` açıklamasına (ve `?openapi=1`)
+  ekipten çıkma ve geri alınma cümlesi. Beceri dosyası
+  (`.claude/skills/pinegrap-dis-api/SKILL.md`) bu üç sütunu yazan yeni
+  kodun iki fonksiyonu çağırmasını söyler.
+
+Şema adımı yok, yeni izin kapsamı yok, yeni metin yok, JS değişmedi.
+
+**Bilerek yapılmayan.** Ekipte kalıp yalnız "Ekip panosunu gör" hakkı
+değişen kişi (ör. yöneticiden, panosuz Çalışma Alanı izinli temel
+kullanıcıya inen) için bir şey yapılmaz: kanalsız bir görevi yalnız pano
+hakkıyla görüyorsa (sahibi, atananı ya da bölüm lideri değilse) o görevle
+ilgili satırları değişenlerde silinmiş ya da geri gelmiş görünmez. Bu sürümden önce ekipten çıkarılmış
+birinin okunmamış satırları dönüşte değişenlere girmez (kayıpta
+işaretlenmemişlerdir); okunmuş olanları gelir.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye iki test:
+`test_ws_inbox_team_changes` (çıkan, dönen, kalan, hiç girmeyen) ve
+`test_ws_inbox_team_writers_move_the_inbox` (rol, Çalışma Alanı izni ya da
+`ws_profiles.excluded` yazan panel dosyalarını tarar, her birinin iki
+fonksiyonu çağırdığını denetler; `changes.php`'deki çağrı kaldırılınca
+kırmızı). Sandbox'ta gerçek ekranlarla: Ayşe (yönetici) kullanıcı
+ekranında temel kullanıcıya indirildi, Cem (Çalışma Alanı izinli temel
+kullanıcı) Çalışma Alanı ayarlarında "Ekipte değil" yapıldı; ikisinin de
+altı satırı (üçü okunmamış) okundu, zildeki altı satırı okunmuş oldu,
+ekip cihazları oturumu 403 aldı. Dışarıdayken ikisi de bir özel kanaldan
+çıkarıldı. Ayşe Claude'un rol önerisiyle (`ws_change_write_user()`), Cem
+ayarlardan geri alındı: değişenlerde dört satır canlı ve okunmuş, o özel
+kanalın iki satırı `deleted: true`; `inbox_unread` 0, `inbox_changed_at`
+dönüş anında. Cem ikinci turda kullanıcı ekranında Çalışma Alanı izni
+kapatılıp açılarak aynı sonucu verdi; birinin kaydı ötekinin satırlarına
+dokunmadı, rolü değişmeyen kayıt hiçbir satırı kıpırdatmadı. HTTP ile
+(ekip cihazları oturumu) aynı senaryo: yeni kodda altı satır, eski
+`development`'ta (8001, aynı veritabanı) dönüşten sonra sıfır satır.
+
+---
+
 ## 2026.4.10 — Site formları: dört POST betiği ve özel form fonksiyonları dizi gelen değerde 500 veriyordu (2026-10-14)
 
 **Neden.** #394 sayfaların ekranlarını temizlerken bu ekranların
