@@ -400,6 +400,8 @@ $explorer_lang = array(
     'backups' => lang('Backups'),
     'backups_note' => lang('Website backups on the server. They are stored outside the web site, so they can only be downloaded from here.'),
     'backups_empty' => lang('There are no backups yet.'),
+    'backups_rowless' => lang('Visit and view records are not backed up'),
+    'backups_rowless_note' => lang('Database backups leave out the rows of visit records, page view counts and form item view counts: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.'),
     // Short links: a name at the root of the site that stands for something
     // else. They sit under Pages because a page is what most of them point at.
     'short_links' => lang('Short Links'),
@@ -5704,7 +5706,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             document.getElementById('explorer_statusbar').innerHTML =
                 '<span>' + esc(fmt(L.backups_counts, [entries.length])) + '</span>' +
                 progressHtml() +
-                '<span class="' + pushRightClass() + '">' + esc(L.disk_usage) + ': ' + esc(state.backupTotal) + '</span>';
+                '<span class="' + pushRightClass() + '" title="' + esc(L.backups_rowless_note) + '"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' + esc(L.backups_rowless) + '</span>' +
+                '<span>' + esc(L.disk_usage) + ': ' + esc(state.backupTotal) + '</span>';
             return;
         }
 

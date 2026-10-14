@@ -3117,6 +3117,19 @@
          sayısını ve tabloyu şişiriyordu; artık güvenlik
          duvarı açıkken olduğu gibi yazılmıyor.
 
+  [YENİ] Veritabanı yedekleri ziyaret kayıtlarını, sayfa
+         görüntüleme sayılarını ve form öğesi görüntüleme
+         sayılarını almıyor: bu tablolar yedekte boş
+         durur, geri yüklenen site onları boş açar ve
+         saymaya devam eder. Yoğun sitelerde yedek birkaç
+         kat küçülür, geri yükleme hızlanır. Otomatik
+         yedek, Yedekleme Yöneticisi, Dosya Yöneticisi ›
+         Yedeklemeler ve güncelleme öncesi yedek için
+         geçerli. Günlük ziyaretçi özeti, saatlik ziyaretçi
+         grafiği ve okuyucuya görünen görüntülenme sayısı
+         yedekte kalır. Yedek ekranları ve yedek
+         dosyasının başı bunu söylüyor.
+
   [ŞEMA] Ayarlar tablosuna iki kolon ve günlük özet için
          yeni bir tablo eklenir; kayıtlı ziyaretçi
          raporlarının gruplama seçeneklerine "Cihaz"

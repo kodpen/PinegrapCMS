@@ -135,6 +135,7 @@ if (!$_POST) {
 	                            <div class="row">
 	                                <div class="col-12 my-1">
 	                                    ' . $output_warnings_for_backup . '
+	                                    <div class="form-text mt-0">' . lang('Database backups leave out the rows of visit records, page view counts and form item view counts: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.') . '</div>
 	                                </div>
 	                                <div class="col-12 my-1">
 	                                    <div class="progress d-none">

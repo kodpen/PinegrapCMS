@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the automatic backup helpers in includes/fn/backup.php: which
- * names count as automatic backups, which ones a retention deletes, and the
- * Signature Version 4 pieces of the S3 upload.
+ * names count as automatic backups, which ones a retention deletes, the
+ * Signature Version 4 pieces of the S3 upload, and which tables the database
+ * dump carries without their rows.
  *
  * The SigV4 vectors are the IAM example from the AWS documentation ("Create a
  * signed AWS API request"): the example secret key with date 20150830,
@@ -212,4 +213,57 @@ function test_backup_remote_normalize_defaults()
 
 	pg_assert_same('', $s3['bucket'], 'bucket');
 	pg_assert_false($s3['path_style'], 'path style off');
+}
+
+// Visit records and the page and form item view counters go without rows;
+// the summaries the dashboard and the visitor report read keep theirs.
+function test_backup_rowless_tables_scope()
+{
+	pg_assert_same(
+		array('visitors', 'visitor_content_hourly', 'submitted_form_views', 'submitted_form_view_stats'),
+		array_keys(pg_backup_rowless_tables())
+	);
+
+	$settings = pg_backup_dump_settings();
+
+	foreach (array('visitor_stats_daily', 'visitor_stats_hourly', 'submitted_form_info', 'visitor_reports', 'orders', 'config') as $kept) {
+		pg_assert_false(in_array($kept, $settings['no-data'], true), $kept . ' keeps its rows');
+		pg_assert_false(in_array($kept, $settings['exclude-tables'], true), $kept . ' is dumped');
+	}
+}
+
+// The move's working copies are left out altogether, visitors itself is not.
+function test_backup_dump_settings_skip_visitor_move_tables()
+{
+	$settings = pg_backup_dump_settings();
+
+	pg_assert_same(array('visitors_innodb', 'visitors_myisam'), $settings['exclude-tables']);
+	pg_assert_false(in_array('visitors', $settings['exclude-tables'], true), 'visitors keeps its structure');
+}
+
+// Mysqldump refuses a setting it does not know; these are accepted.
+function test_backup_dump_settings_accepted_by_mysqldump()
+{
+	include_once(PG_FUNCTIONS_DIR . '/mysqldump.php');
+
+	$dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=127.0.0.1;dbname=pinegrap_test', 'user', 'pass', pg_backup_dump_settings());
+
+	pg_assert_true($dump instanceof \Ifsnop\Mysqldump\Mysqldump);
+}
+
+// The note is SQL comments only, names every table and comes first.
+function test_backup_dump_note_is_comments_naming_each_table()
+{
+	$note = pg_backup_dump_note();
+	$lines = explode(PHP_EOL, rtrim($note, PHP_EOL));
+
+	foreach ($lines as $line) {
+		pg_assert_same('--', substr($line, 0, 2), $line);
+	}
+
+	foreach (array_keys(pg_backup_rowless_tables()) as $table) {
+		pg_assert_contains('--   ' . $table . ' ', $note, $table);
+	}
+
+	pg_assert_same('-- Pinegrap database backup', $lines[0]);
 }
