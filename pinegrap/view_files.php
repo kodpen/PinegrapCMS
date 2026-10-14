@@ -53,66 +53,35 @@ $filters_in_array =
         'my_private_files'=>lang('My Private Access Files')
     );
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['files']['sort'] = $_REQUEST['sort'];
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'type'          => lang('Type'),
+    'size'          => lang('Size'),
+    'optimized'     => lang('Optimized'),
+    'folder'        => lang('Folder'),
+    'description'   => lang('Description'),
+    'last_modified' => lang('Last Modified'),
+);
 
-    // clear order
-    $_SESSION['software']['files']['order'] = '';
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store sort in session
-    $_SESSION['software']['files']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
+$list_state = pg_list_state('view_files', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['files']['sort']) == false) {
-    $_SESSION['software']['files']['sort'] = '';
-}
-
-switch (($_SESSION['software']['files']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'name';
-        break;
-    case lang('Folder'):
-        $sort_column = 'folder_name';
-        break;
-    case lang('Type'):
-        $sort_column = 'type';
-        break;
-    case lang('Size'):
-        $sort_column = 'size';
-        break;
-
-    case lang('Optimized'):
-        $sort_column = 'optimized';
-        break;
-
-    case lang('Description'):
-        $sort_column = 'description';
-        break;
-    case lang('Last Modified'):
-        $sort_column = 'timestamp';
-        break;
-    default:
-        $sort_column = 'timestamp';
-        $_SESSION['software']['files']['sort'] = lang('Last Modified');
-        break;
-}
-
-if (!empty($_SESSION['software']['files']['order'])) {
-    $asc_desc = sql_order_direction($_SESSION['software']['files']['order'] ?? '');
-} elseif ($sort_column == 'timestamp') {
-    $asc_desc = 'desc';
-    $_SESSION['software']['files']['order'] = 'desc';
-} else {
-    $asc_desc = 'asc';
-    $_SESSION['software']['files']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'name',
+    'type'          => 'type',
+    'size'          => 'size',
+    'optimized'     => 'optimized',
+    'folder'        => 'folder_name',
+    'description'   => 'description',
+    'last_modified' => 'timestamp',
+));
 
 $folders_that_user_has_access_to = array();
 
@@ -318,7 +287,7 @@ $query =
     LEFT JOIN folder ON files.folder = folder.folder_id
     LEFT JOIN user ON files.user = user.user_id
     WHERE " . $where . "
-    ORDER BY $sort_column $asc_desc";
+    ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $files = array();
 while ($row = mysqli_fetch_assoc($result)) {
@@ -549,6 +518,7 @@ echo
                             <a class="btn btn-sm btn-primary m-1 " href="create_file.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <a class="btn btn-sm btn-outline-primary m-1 " href="view_folders.php"><span class="bi bi-folder2-open me-2"></span>' . lang(array('string'=>'File Manager') ) . '</a>
                             <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_files.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) . '
                             <form id="search_form" action="view_files.php" method="get" class="search_form">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm">
@@ -577,13 +547,13 @@ echo
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
                                         ' . $output_thumbnail_heading_cell . '
-                                        <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Type'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Size'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Optimized'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
+                                        <th>' . get_column_heading(lang('Type'), $sort_levels, '', $output_filter_for_links, 'type') . '</th>
+                                        <th>' . get_column_heading(lang('Size'), $sort_levels, '', $output_filter_for_links, 'size') . '</th>
+                                        <th>' . get_column_heading(lang('Optimized'), $sort_levels, '', $output_filter_for_links, 'optimized') . '</th>
+                                        <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $output_filter_for_links, 'folder') . '</th>
+                                        <th>' . get_column_heading(lang('Description'), $sort_levels, '', $output_filter_for_links, 'description') . '</th>
+                                        <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_rows . '</tbody>

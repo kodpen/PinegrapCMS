@@ -194,27 +194,34 @@ if (!$_POST) {
     // get query data for URL
     $keys_and_values = h("&start_month=$start_month&start_day=$start_day&start_year=$start_year&stop_month=$stop_month&stop_day=$stop_day&stop_year=$stop_year");
 
-    switch((isset($_GET['sort']) ? $_GET['sort'] : '')) {
-        case lang('Time'):
-        $sort_column = 'log_timestamp';
-        break;
-        case lang('User'):
-        $sort_column = 'log_user';
-        break;
-        case lang('Description'):
-        $sort_column = 'log_description';
-        break;
-        case lang('IP Address'):
-        $sort_column = 'log_ip';
-        break;
-        default:
-        $sort_column = 'log_timestamp';
-    }
-    if(isset($_GET['sort'])) {
-        $asc_desc = strtoupper(sql_order_direction(isset($_GET['order']) ? $_GET['order'] : ''));
-    } else {
-        $asc_desc = 'DESC';
-    }
+    // The columns this list sorts by, in the order the table shows them.
+    // pg_list_state() keeps the choice in the session as a code, so it survives
+    // a language change, and falls back to the default for anything else.
+    $sort_columns = array(
+        'time'        => lang('Time'),
+        'user'        => lang('User'),
+        'description' => lang('Description'),
+        'ip_address'  => lang('IP Address'),
+    );
+
+    $sort_default = array('sort' => 'time', 'order' => 'desc');
+
+    $list_state = pg_list_state('view_log', $sort_columns, $sort_default);
+    $sort_levels = $list_state['sorts'];
+
+    // The column each sort code orders by, in SQL and in the rows below. Only
+    // codes pg_list_state() let through reach pg_list_order_by(), and it
+    // writes nothing but these. Rows that tie on every level keep the order
+    // they were logged in, in the first level's direction.
+    $sort_keys = array(
+        'time'        => 'log_timestamp',
+        'user'        => 'log_user',
+        'description' => 'log_description',
+        'ip_address'  => 'log_ip',
+    );
+
+    $tie_direction = ($sort_levels[0]['order'] === 'desc') ? 'desc' : 'asc';
+    $order_by = pg_list_order_by($sort_levels, $sort_keys) . ', log_id ' . $tie_direction;
 
     // Determine whether to include error_log entries (only for admins and if enabled in settings)
     $include_error_logs = (defined('USER_ROLE') && (USER_ROLE < 1) && !empty($_SESSION['software']['settings']['view_log']['error_log']));
@@ -271,7 +278,7 @@ if (!$_POST) {
         $query = "SELECT log_id, log_description, log_ip, log_user, log_timestamp "
             ."FROM log "
             ."WHERE (log_timestamp >= $start_timestamp) AND (log_timestamp <= $stop_timestamp) "
-            ."ORDER BY $sort_column $asc_desc, log_id $asc_desc ";
+            ."ORDER BY $order_by ";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
         while ($row = mysqli_fetch_assoc($result)) {
@@ -299,7 +306,7 @@ if (!$_POST) {
             ."FROM log "
             ."WHERE (log_timestamp >= $start_timestamp) AND (log_timestamp <= $stop_timestamp) ";
         // keep SQL ordering as a stable base; final ordering will be enforced after merging
-        $query .= "ORDER BY $sort_column $asc_desc, log_id $asc_desc ";
+        $query .= "ORDER BY $order_by ";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         while ($row = mysqli_fetch_assoc($result)) {
             if ($row['log_user'] == '') {
@@ -449,21 +456,30 @@ if (!$_POST) {
         // Merge and sort
         $all_entries = array_merge($db_logs, $error_logs);
 
-        if (strtoupper($asc_desc) === 'ASC') {
-            usort($all_entries, function($a, $b) {
-            if ($a['log_timestamp'] == $b['log_timestamp']) {
-                return strcmp($a['log_id'], $b['log_id']);
+        // The error_log entries have no rows in the database, so the merged
+        // list is sorted here, by the same levels. Text is compared without
+        // regard to case, as the database does.
+        usort($all_entries, function ($a, $b) use ($sort_levels, $sort_keys, $tie_direction) {
+            foreach ($sort_levels as $level) {
+                $key = $sort_keys[$level['sort']];
+                $a_value = $a[$key] ?? '';
+                $b_value = $b[$key] ?? '';
+
+                if ($key === 'log_timestamp') {
+                    $result = ((int) $a_value) <=> ((int) $b_value);
+                } else {
+                    $result = strcasecmp((string) $a_value, (string) $b_value);
+                }
+
+                if ($result !== 0) {
+                    return ($level['order'] === 'desc') ? -$result : $result;
+                }
             }
-            return ($a['log_timestamp'] < $b['log_timestamp']) ? -1 : 1;
-            });
-        } else {
-            usort($all_entries, function($a, $b) {
-            if ($a['log_timestamp'] == $b['log_timestamp']) {
-                return strcmp($b['log_id'], $a['log_id']);
-            }
-            return ($a['log_timestamp'] > $b['log_timestamp']) ? -1 : 1;
-            });
-        }
+
+            $result = strnatcmp((string) $a['log_id'], (string) $b['log_id']);
+
+            return ($tie_direction === 'desc') ? -$result : $result;
+        });
 
         // Build rows
         foreach ($all_entries as $row) {
@@ -524,14 +540,6 @@ if (!$_POST) {
     // Quick date range shortcuts.  The advanced filter panel needs six dropdowns for the
     // most common ranges, so the ranges people actually use are exposed as one click links.
     $today_timestamp = mktime(0, 0, 0, date('m'), date('d'), date('Y'));
-    // Carry the active sort over so switching the range does not silently reset the order.
-    $output_sort_query = '';
-    if (isset($_REQUEST['sort']) && ($_REQUEST['sort'] != '')) {
-        $output_sort_query .= '&amp;sort=' . h(urlencode($_REQUEST['sort']));
-    }
-    if (isset($_REQUEST['order']) && ($_REQUEST['order'] != '')) {
-        $output_sort_query .= '&amp;order=' . h(urlencode($_REQUEST['order']));
-    }
     $quick_ranges = array(
         array('label' => lang('Today'),        'from' => $today_timestamp),
         array('label' => lang('Last 7 Days'),  'from' => $today_timestamp - (6 * 86400)),
@@ -545,8 +553,7 @@ if (!$_POST) {
             . '&amp;start_year=' . date('Y', $range_start)
             . '&amp;stop_month=' . date('m')
             . '&amp;stop_day=' . date('d')
-            . '&amp;stop_year=' . date('Y')
-            . $output_sort_query;
+            . '&amp;stop_year=' . date('Y');
         // A range is active when both ends match what is currently being displayed.
         $range_is_active = ((date('Y-m-d', $start_timestamp) == date('Y-m-d', $range_start))
             && (date('Y-m-d', $stop_timestamp) == date('Y-m-d')));
@@ -556,7 +563,7 @@ if (!$_POST) {
     // user about this button, so it has to be reachable from the screen.
     $view_all_is_active = ((date('Y-m-d', $start_timestamp) == date('Y-m-d', $oldest_timestamp))
         && (date('Y-m-d', $stop_timestamp) == date('Y-m-d')));
-    $output_quick_ranges .= '<a class="btn ' . ($view_all_is_active ? 'btn-primary' : 'btn-outline-secondary') . '" href="view_log.php?view=all' . $output_sort_query . '">' . lang('View All') . '</a>';
+    $output_quick_ranges .= '<a class="btn ' . ($view_all_is_active ? 'btn-primary' : 'btn-outline-secondary') . '" href="view_log.php?view=all">' . lang('View All') . '</a>';
 
     // Type filter buttons.  They only make sense when error_log entries are mixed in,
     // otherwise every row is a site log.  Filtering happens client side on the already
@@ -657,10 +664,6 @@ if (!$_POST) {
                     </div>
                 </div>
         
-                <!-- Prevent undefined index warnings by checking if keys exist -->
-                <input type="hidden" name="sort" value="' . (isset($_REQUEST['sort']) ? h($_REQUEST['sort']) : '') . '">
-                <input type="hidden" name="order" value="' . (isset($_REQUEST['order']) ? h($_REQUEST['order']) : '') . '">
-        
                 <script>
                     // Set initial values for date selectors using escaped JS-safe values
                     document.form.start_month.value = "' . escape_javascript($start_month) . '";
@@ -700,6 +703,15 @@ if (!$_POST) {
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             ' . $output_control_buttons . '
+                            <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_log.php', $sort_columns, $sort_levels, $sort_default, array(
+                                'start_month' => $start_month,
+                                'start_day'   => $start_day,
+                                'start_year'  => $start_year,
+                                'stop_month'  => $stop_month,
+                                'stop_day'    => $stop_day,
+                                'stop_year'   => $stop_year,
+                            )) . '
                         </nav>
                     </div>
                     <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
@@ -718,11 +730,11 @@ if (!$_POST) {
                         <table class="chart table-hover table " style="width:100%;display:none">
                             <thead>
                                 <tr>
-                                    <th>' .asc_or_desc(lang('Time'),'view_log', $keys_and_values). '</th>
-                                    <th>' .asc_or_desc(lang('Type'),'view_log', $keys_and_values). '</th>
-                                    <th>' .asc_or_desc(lang('User'),'view_log', $keys_and_values). '</th>
-                                    <th>' .asc_or_desc(lang('Description'),'view_log', $keys_and_values). '</th>
-                                    <th>' .asc_or_desc(lang('IP Address'),'view_log', $keys_and_values). '</th>
+                                    <th>' . get_column_heading(lang('Time'), $sort_levels, '', $keys_and_values, 'time') . '</th>
+                                    <th>' . lang('Type') . '</th>
+                                    <th>' . get_column_heading(lang('User'), $sort_levels, '', $keys_and_values, 'user') . '</th>
+                                    <th>' . get_column_heading(lang('Description'), $sort_levels, '', $keys_and_values, 'description') . '</th>
+                                    <th>' . get_column_heading(lang('IP Address'), $sort_levels, '', $keys_and_values, 'ip_address') . '</th>
                                 </tr>
                             </thead>
                             ' . $output_rows . '

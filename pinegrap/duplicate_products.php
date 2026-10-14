@@ -29,7 +29,7 @@ validate_ecommerce_access($user);
 
 if (!$_POST) {
     // If there is a filter then store it in a session
-    if ($_GET['filter']) {
+    if ($_GET['filter'] ?? '') {
         $_SESSION['software']['view_products']['filter'] = $_GET['filter'];
     }
 
@@ -39,26 +39,6 @@ if (!$_POST) {
     }
 
     $filter = ($_SESSION['software']['view_products']['filter'] ?? '');
-
-    // if sort was set, update session
-    if (isset($_REQUEST['sort'])) {
-        // store sort in session
-        $_SESSION['software']['ecommerce']['view_products']['sort'] = $_REQUEST['sort'];
-
-        // clear order
-        $_SESSION['software']['ecommerce']['view_products']['order'] = '';
-    }
-
-    // if order was set, update session
-    if (isset($_REQUEST['order'])) {
-        $_SESSION['software']['ecommerce']['view_products']['order'] = sql_order_direction($_REQUEST['order'], '');
-    }
-
-    // If the sort is not set, then set to default.
-    if (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') == '') {
-        $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-        $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-    }
 
     // If a screen was passed and it is a positive integer, then use it.
     // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
@@ -76,29 +56,16 @@ if (!$_POST) {
         $screen = 1;
     }
 
+    // The full product list's sort columns.
+    $sort_codes = array('id', 'short_description', 'enabled', 'price', 'taxable', 'product_form', 'selection_type', 'default_quantity', 'shippable', 'recurring_payment', 'inventory_quantity', 'last_modified', 'custom_field_1', 'custom_field_2', 'custom_field_3', 'custom_field_4');
+    $sort_default = 'last_modified';
+
     // Set where statement and page headers for the filter
     switch ($filter) {
         case 'all_product_actions':
-            // if the sort session does not apply to this screen then reset it to the default
-            if((($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'ID') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Short Description') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Enabled') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Price') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Set Start Page') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Grant Private Access') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Membership Renewal') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Order Receipt Message') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Order Receipt BCC') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'E-mail Page') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'E-mail Page BCC') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Contact Group') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'SEO') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Inventory Quantity') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Last Modified') ))) {
-                
-                $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-                $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-            }
+            // The columns this filter can be sorted by; pg_list_state() below
+            // falls back to the default for any other.
+            $sort_codes = array('id', 'short_description', 'enabled', 'price', 'set_start_page', 'grant_private_access', 'membership_renewal', 'order_receipt_message', 'order_receipt_bcc', 'email_page', 'email_page_bcc', 'contact_group', 'inventory_quantity', 'last_modified');
 
             $sql_join = "LEFT JOIN contact_groups ON contact_groups.id = products.contact_group_id ";
 
@@ -111,28 +78,9 @@ if (!$_POST) {
             break;
 
         case 'shippable_products':
-            // if the sort session does not apply to this screen then reset it to the default
-            if((($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'ID') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Short Description') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Enabled') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Price') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Taxable') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Product Form') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Weight') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'PWP') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'SWP') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Dim') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Cont Req') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Prep') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Free Ship') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Extra Ship') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'SEO') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Inventory Quantity') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Last Modified') ))) {
-                
-                $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-                $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-            }
+            // The columns this filter can be sorted by; pg_list_state() below
+            // falls back to the default for any other.
+            $sort_codes = array('id', 'short_description', 'enabled', 'price', 'taxable', 'product_form', 'weight', 'pwp', 'swp', 'dim', 'cont_req', 'prep', 'free_ship', 'extra_ship', 'inventory_quantity', 'last_modified');
 
             // If where is blank
             if ($where == '') {
@@ -154,23 +102,9 @@ if (!$_POST) {
             $shippable_product_filter_selected = ' selected="selected"';
             break;
         case 'recurring_products':
-            // if the sort session does not apply to this screen then reset it to the default
-            if((($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'ID') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Short Description') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Enabled') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Price') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Taxable') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Product Form') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Start') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Number of Payments') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Payment Period') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'SEO') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Inventory Quantity') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Last Modified') ))) {
-                
-                $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-                $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-            }
+            // The columns this filter can be sorted by; pg_list_state() below
+            // falls back to the default for any other.
+            $sort_codes = array('id', 'short_description', 'enabled', 'price', 'taxable', 'product_form', 'start', 'number_of_payments', 'payment_period', 'inventory_quantity', 'last_modified');
 
             // If where is blank
             if ($where == '') {
@@ -192,25 +126,9 @@ if (!$_POST) {
             $recurring_product_filter_selected = ' selected="selected"';
             break;
         case 'donation_products':
-            // if the sort session does not apply to this screen then reset it to the default
-            if((($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'ID') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Short Description') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Enabled') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Default Amount (Price)') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Taxable') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Product Form') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Recurring Payment') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Start') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Number of Payments') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Payment Period') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Allow to Schedule') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'SEO') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Inventory Quantity') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Last Modified') ))) {
-                
-                $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-                $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-            }
+            // The columns this filter can be sorted by; pg_list_state() below
+            // falls back to the default for any other.
+            $sort_codes = array('id', 'short_description', 'enabled', 'price', 'taxable', 'product_form', 'recurring_payment', 'start', 'number_of_payments', 'payment_period', 'allow_to_schedule', 'inventory_quantity', 'last_modified');
 
             // If where is blank
             if ($where == '') {
@@ -232,22 +150,9 @@ if (!$_POST) {
             $donation_product_filter_selected = ' selected="selected"';
             break;
         case 'grant_access_products':
-            // if the sort session does not apply to this screen then reset it to the default
-            if((($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'ID') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Short Description') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Enabled') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Price') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Taxable') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Product Form') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Set Start Page') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Grant Private Access') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'SEO') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Inventory Quantity') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Last Modified') ))) {
-                
-                $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-                $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-            }
+            // The columns this filter can be sorted by; pg_list_state() below
+            // falls back to the default for any other.
+            $sort_codes = array('id', 'short_description', 'enabled', 'price', 'taxable', 'product_form', 'set_start_page', 'grant_private_access', 'inventory_quantity', 'last_modified');
 
             // If where is blank
             if ($where == '') {
@@ -269,23 +174,9 @@ if (!$_POST) {
             $grant_access_product_filter_selected = ' selected="selected"';
             break;
         case 'membership_products':
-            // if the sort session does not apply to this screen then reset it to the default
-            if((($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'ID') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Short Description') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Enabled') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Price') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Taxable') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Product Form') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Recurring Payment') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Set Start Page') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Membership Renewal') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'SEO') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Inventory Quantity') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Last Modified') ))) {
-                
-                $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-                $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-            }
+            // The columns this filter can be sorted by; pg_list_state() below
+            // falls back to the default for any other.
+            $sort_codes = array('id', 'short_description', 'enabled', 'price', 'taxable', 'product_form', 'recurring_payment', 'set_start_page', 'membership_renewal', 'inventory_quantity', 'last_modified');
 
             // If where is blank
             if ($where == '') {
@@ -310,27 +201,10 @@ if (!$_POST) {
             case 'out_of_stock_products':
             
 
-                // if the sort session does not apply to this screen then reset it to the default
-                if(
-                    (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'ID') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Short Description') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Enabled') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Price') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Taxable') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Product Form') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Selection Type') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Default Quantity') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Shippable') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Last Modified') ))
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL)
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL)
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL)
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL)
-                    && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Out of Stock Date') ))
-                ) {
-                    $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Out of Stock Date') );
-                    $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-                }
+                // The columns this filter can be sorted by; pg_list_state() below
+                // falls back to the default for any other.
+                $sort_codes = array('id', 'short_description', 'enabled', 'price', 'taxable', 'product_form', 'selection_type', 'default_quantity', 'shippable', 'last_modified', 'custom_field_1', 'custom_field_2', 'custom_field_3', 'custom_field_4', 'out_of_stock_date');
+                $sort_default = 'out_of_stock_date';
                 // If where is blank
                 if ($where == '') {
                     $where .= "WHERE ";
@@ -351,30 +225,6 @@ if (!$_POST) {
         case 'all_products':
         default:
 
-            // if the sort session does not apply to this screen then reset it to the default
-            if(
-                (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'ID') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Short Description') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Enabled') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Price') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Taxable') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Product Form') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Selection Type') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Default Quantity') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Shippable') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Recurring Payment') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'SEO') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Inventory Quantity') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != lang(array('string'=>'Last Modified') ))
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL)
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL)
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL)
-                && (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '') != ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL)
-            ) {
-                $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-                $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-            }
-
             // Change the heading and subheading.
             $heading = lang(array('string'=>'All Products') );
             $subheading = lang(array('string'=>'Merchandise, downloads, donations, recurring fees, memberships, and simple payments.') );
@@ -384,148 +234,104 @@ if (!$_POST) {
             break;
     }
 
-    // if the sort is not set yet, then default it to empty so that the switch below falls
-    // through to its default case
-    if (isset($_SESSION['software']['ecommerce']['view_products']['sort']) == false) {
-        $_SESSION['software']['ecommerce']['view_products']['sort'] = '';
+    // Headings of the columns the list can be sorted by, keyed by the code the
+    // sort is kept as.
+    $sort_labels = array(
+        'id'                    => lang('ID'),
+        'short_description'     => lang('Short Description'),
+        'enabled'               => lang('Enabled'),
+        'price'                 => ($filter == 'donation_products') ? lang('Default Amount (Price)') : lang('Price'),
+        'taxable'               => lang('Taxable'),
+        'product_form'          => lang('Product Form'),
+        'selection_type'        => lang('Selection Type'),
+        'default_quantity'      => lang('Default Quantity'),
+        'shippable'             => lang('Shippable'),
+        'weight'                => lang('Weight'),
+        'pwp'                   => lang('PWP'),
+        'swp'                   => lang('SWP'),
+        'dim'                   => lang('Dim'),
+        'cont_req'              => lang('Cont Req'),
+        'prep'                  => lang('Prep'),
+        'free_ship'             => lang('Free Ship'),
+        'extra_ship'            => lang('Extra Ship'),
+        'recurring_payment'     => lang('Recurring Payment'),
+        'allow_to_schedule'     => lang('Allow to Schedule'),
+        'order_receipt_message' => lang('Order Receipt Message'),
+        'order_receipt_bcc'     => lang('Order Receipt BCC'),
+        'email_page'            => lang('E-mail Page'),
+        'email_page_bcc'        => lang('E-mail Page BCC'),
+        'contact_group'         => lang('Contact Group'),
+        'start'                 => lang('Start'),
+        'number_of_payments'    => lang('Number of Payments'),
+        'payment_period'        => lang('Payment Period'),
+        'set_start_page'        => lang('Set Start Page'),
+        'grant_private_access'  => lang('Grant Private Access'),
+        'membership_renewal'    => lang('Membership Renewal'),
+        'custom_field_1'        => ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL,
+        'custom_field_2'        => ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL,
+        'custom_field_3'        => ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL,
+        'custom_field_4'        => ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL,
+        'inventory_quantity'    => lang('Inventory Quantity'),
+        'last_modified'         => lang('Last Modified'),
+        'out_of_stock_date'     => lang('Out of Stock Date'),
+    );
+
+    // A custom field with no label has no column, and neither has Taxable
+    // while tax is off, so they cannot be sorted by.
+    $sort_columns = array();
+
+    foreach ($sort_codes as $code) {
+        if (($sort_labels[$code] != '') && (($code != 'taxable') || (ECOMMERCE_TAX == true))) {
+            $sort_columns[$code] = $sort_labels[$code];
+        }
     }
 
-    switch (($_SESSION['software']['ecommerce']['view_products']['sort'] ?? '')) {
-        case lang(array('string'=>'ID') ):
-            $sort_column = 'products.name';
-            break;
+    $sort_default = array('sort' => $sort_default, 'order' => 'desc');
 
-        case lang(array('string'=>'Enabled') ):
-            $sort_column = 'products.enabled';
-            break;
+    $list_state = pg_list_state('duplicate_products', $sort_columns, $sort_default);
+    $sort_levels = $list_state['sorts'];
 
-        case lang(array('string'=>'Short Description') ):
-            $sort_column = 'products.short_description';
-            break;
-        case lang(array('string'=>'Price') ):
-        case lang(array('string'=>'Default Amount (Price)') ):
-            $sort_column = 'products.price';
-            break;
-        case lang(array('string'=>'Taxable') ):
-            $sort_column = 'products.taxable';
-            break;
-        case lang(array('string'=>'Product Form') ):
-            $sort_column = 'products.form_name';
-            break;
-        case lang(array('string'=>'Selection Type') ):
-            $sort_column = 'products.selection_type';
-            break;
-        case lang(array('string'=>'Default Quantity') ):
-            $sort_column = 'products.default_quantity';
-            break;
-        case lang(array('string'=>'Shippable') ):
-            $sort_column = 'products.shippable';
-            break;
-        case lang(array('string'=>'Weight') ):
-            $sort_column = 'products.weight';
-            break;
-        case lang(array('string'=>'PWP') ):
-            $sort_column = 'products.primary_weight_points';
-            break;
-        case lang(array('string'=>'SWP') ):
-            $sort_column = 'products.secondary_weight_points';
-            break;
-        case lang(array('string'=>'Dim') ):
-            $sort_column = 'products.length';
-            break;
-        case lang(array('string'=>'Cont Req') ):
-            $sort_column = 'products.container_required';
-            break;
-        case lang(array('string'=>'Prep') ):
-            $sort_column = 'products.preparation_time';
-            break;
-        case lang(array('string'=>'Free Ship') ):
-            $sort_column = 'products.free_shipping';
-            break;
-        case lang(array('string'=>'Extra Ship') ):
-            $sort_column = 'products.extra_shipping_cost';
-            break;
-        case lang(array('string'=>'Recurring Payment') ):
-            $sort_column = 'products.recurring';
-            break;
-        case lang(array('string'=>'SEO') ):
-            $sort_column = 'products.seo_score';
-            break;
-        case lang(array('string'=>'Allow to Schedule') ):
-            $sort_column = 'products.recurring_schedule_editable_by_customer';
-            break;
-        case lang(array('string'=>'Order Receipt Message') ):
-            $sort_column = 'products.order_receipt_message';
-            break;
-        case lang(array('string'=>'Order Receipt BCC') ):
-            $sort_column = 'products.order_receipt_bcc_email_address';
-            break;
-        case lang(array('string'=>'E-mail Page') ):
-            $sort_column = 'products.email_page';
-            break;
-        case lang(array('string'=>'E-mail Page BCC') ):
-            $sort_column = 'products.email_bcc';
-            break;
-        case lang(array('string'=>'Contact Group') ):
-            $sort_column = 'contact_group_name';
-            break;
-        case lang(array('string'=>'Start') ):
-            $sort_column = 'products.start';
-            break;
-        case lang(array('string'=>'Number of Payments') ):
-            $sort_column = 'products.number_of_payments';
-            break;
-        case lang(array('string'=>'Payment Period') ):
-            $sort_column = 'products.payment_period';
-            break;
-        case lang(array('string'=>'Set Start Page') ):
-            $sort_column = 'start_page';
-            break;
-        case lang(array('string'=>'Grant Private Access') ):
-            $sort_column = 'private_folder';
-            break;
-        case lang(array('string'=>'Membership Renewal') ):
-            $sort_column = 'products.membership_renewal';
-            break;
-
-        case ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL:
-            $sort_column = 'products.custom_field_1';
-            break;
-
-        case ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL:
-            $sort_column = 'products.custom_field_2';
-            break;
-
-        case ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL:
-            $sort_column = 'products.custom_field_3';
-            break;
-
-        case ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL:
-            $sort_column = 'products.custom_field_4';
-            break;
-        case lang(array('string'=>'Inventory Quantity') ):
-                $sort_column = 'products.inventory_quantity';
-                break;
-        case lang(array('string'=>'Last Modified') ):
-            $sort_column = 'products.timestamp';
-            break;
-        case lang(array('string'=>'Out of Stock Date') ):
-            $sort_column = 'products.out_of_stock_timestamp';
-            break;
-        default:
-            $sort_column = 'products.timestamp';
-            $_SESSION['software']['ecommerce']['view_products']['sort'] = lang(array('string'=>'Last Modified') );
-    }
-
-    if (!empty($_SESSION['software']['ecommerce']['view_products']['order'])) {
-        $asc_desc = sql_order_direction($_SESSION['software']['ecommerce']['view_products']['order'] ?? '');
-    } elseif ($sort_column == 'products.timestamp') {
-        $asc_desc = 'desc';
-        $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';
-    } else {
-        $asc_desc = 'asc';
-        $_SESSION['software']['ecommerce']['view_products']['order'] = 'asc';
-    }
+    // What each sort code orders by. Only codes pg_list_state() let through
+    // reach pg_list_order_by(), and it writes nothing but these.
+    $order_by = pg_list_order_by($sort_levels, array(
+        'id'                    => 'products.name',
+        'short_description'     => 'products.short_description',
+        'enabled'               => 'products.enabled',
+        'price'                 => 'products.price',
+        'taxable'               => 'products.taxable',
+        'product_form'          => 'products.form_name',
+        'selection_type'        => 'products.selection_type',
+        'default_quantity'      => 'products.default_quantity',
+        'shippable'             => 'products.shippable',
+        'weight'                => 'products.weight',
+        'pwp'                   => 'products.primary_weight_points',
+        'swp'                   => 'products.secondary_weight_points',
+        'dim'                   => 'products.length',
+        'cont_req'              => 'products.container_required',
+        'prep'                  => 'products.preparation_time',
+        'free_ship'             => 'products.free_shipping',
+        'extra_ship'            => 'products.extra_shipping_cost',
+        'recurring_payment'     => 'products.recurring',
+        'allow_to_schedule'     => 'products.recurring_schedule_editable_by_customer',
+        'order_receipt_message' => 'products.order_receipt_message',
+        'order_receipt_bcc'     => 'products.order_receipt_bcc_email_address',
+        'email_page'            => 'products.email_page',
+        'email_page_bcc'        => 'products.email_bcc',
+        'contact_group'         => 'contact_group_name',
+        'start'                 => 'products.start',
+        'number_of_payments'    => 'products.number_of_payments',
+        'payment_period'        => 'products.payment_period',
+        'set_start_page'        => 'start_page',
+        'grant_private_access'  => 'private_folder',
+        'membership_renewal'    => 'products.membership_renewal',
+        'custom_field_1'        => 'products.custom_field_1',
+        'custom_field_2'        => 'products.custom_field_2',
+        'custom_field_3'        => 'products.custom_field_3',
+        'custom_field_4'        => 'products.custom_field_4',
+        'inventory_quantity'    => 'products.inventory_quantity',
+        'last_modified'         => 'products.timestamp',
+        'out_of_stock_date'     => 'products.out_of_stock_timestamp',
+    ));
 
 
     // if user requested to export products, then export them
@@ -796,7 +602,7 @@ if (!$_POST) {
                 mpn
             FROM products
             ' . $where . '
-            ORDER BY ' . $sort_column . ' ' . $asc_desc;
+            ORDER BY ' . $order_by;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $products = mysqli_fetch_items($result);
 
@@ -1024,7 +830,7 @@ if (!$_POST) {
         /* Build filter specific table headers, sql joins and columns */
         if ((ECOMMERCE_TAX == true) && ($filter != 'all_product_actions')) {
             $output_tax_header =
-                '<th>' . get_column_heading(lang(array('string'=>'Taxable') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+                '<th>' . get_column_heading(lang('Taxable'), $sort_levels, '', '', 'taxable') . '</th>';
         }
 
         if (($filter == 'all_products') || ($filter == 'out_of_stock_products')) {
@@ -1043,34 +849,34 @@ if (!$_POST) {
 
             // If the first custom product field is active, then output heading for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                $output_custom_field_1_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL, ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+                $output_custom_field_1_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL, $sort_levels, '', '', 'custom_field_1') . '</th>';
             }
 
             $output_custom_field_2_heading = '';
 
             // If the second custom product field is active, then output heading for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                $output_custom_field_2_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL, ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+                $output_custom_field_2_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL, $sort_levels, '', '', 'custom_field_2') . '</th>';
             }
 
             $output_custom_field_3_heading = '';
 
             // If the third custom product field is active, then output heading for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                $output_custom_field_3_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL, ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+                $output_custom_field_3_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL, $sort_levels, '', '', 'custom_field_3') . '</th>';
             }
 
             $output_custom_field_4_heading = '';
 
             // If the fourth custom product field is active, then output heading for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                $output_custom_field_4_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL, ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+                $output_custom_field_4_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL, $sort_levels, '', '', 'custom_field_4') . '</th>';
             }
 
             $output_all_products_headers = 
-                '<th>' . get_column_heading(lang(array('string'=>'Selection Type') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Default Quantity') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Shippable') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
+                '<th>' . get_column_heading(lang('Selection Type'), $sort_levels, '', '', 'selection_type') . '</th>
+                <th>' . get_column_heading(lang('Default Quantity'), $sort_levels, '', '', 'default_quantity') . '</th>
+                <th>' . get_column_heading(lang('Shippable'), $sort_levels, '', '', 'shippable') . '</th>
                 ' . $output_custom_field_1_heading . '
                 ' . $output_custom_field_2_heading . '
                 ' . $output_custom_field_3_heading . '
@@ -1099,7 +905,7 @@ if (!$_POST) {
             $filter_specific_columns .= 
             "products.recurring as recurring,";
             
-            $output_recurring_header = '<th>' . get_column_heading(lang(array('string'=>'Recurring Payment') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';   
+            $output_recurring_header = '<th>' . get_column_heading(lang('Recurring Payment'), $sort_levels, '', '', 'recurring_payment') . '</th>';
         }
 
         if ($filter == 'all_product_actions') {
@@ -1116,15 +922,15 @@ if (!$_POST) {
             $filter_specific_join .= "LEFT JOIN page AS email_page ON email_page.page_id = products.email_page ";
 
             $output_all_product_actions_headers = 
-                '<th>' . get_column_heading(lang(array('string'=>'Order Receipt Message') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Order Receipt BCC') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'E-mail Page') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'E-mail Page BCC') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Contact Group') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+                '<th>' . get_column_heading(lang('Order Receipt Message'), $sort_levels, '', '', 'order_receipt_message') . '</th>
+                <th>' . get_column_heading(lang('Order Receipt BCC'), $sort_levels, '', '', 'order_receipt_bcc') . '</th>
+                <th>' . get_column_heading(lang('E-mail Page'), $sort_levels, '', '', 'email_page') . '</th>
+                <th>' . get_column_heading(lang('E-mail Page BCC'), $sort_levels, '', '', 'email_page_bcc') . '</th>
+                <th>' . get_column_heading(lang('Contact Group'), $sort_levels, '', '', 'contact_group') . '</th>';
 
         // else output product form header
         } else {
-            $output_product_form_header = '<th>' . get_column_heading(lang(array('string'=>'Product Form') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+            $output_product_form_header = '<th>' . get_column_heading(lang('Product Form'), $sort_levels, '', '', 'product_form') . '</th>';
         }
 
         if ($filter == 'shippable_products') {
@@ -1143,14 +949,14 @@ if (!$_POST) {
                 products.extra_shipping_cost,";
 
             $output_shipping_headers =
-                '<th>' . get_column_heading(lang(array('string'=>'Weight') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'PWP') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'SWP') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Dim') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Cont Req') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Prep') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Free Ship') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Extra Ship') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
+                '<th>' . get_column_heading(lang('Weight'), $sort_levels, '', '', 'weight') . '</th>
+                <th>' . get_column_heading(lang('PWP'), $sort_levels, '', '', 'pwp') . '</th>
+                <th>' . get_column_heading(lang('SWP'), $sort_levels, '', '', 'swp') . '</th>
+                <th>' . get_column_heading(lang('Dim'), $sort_levels, '', '', 'dim') . '</th>
+                <th>' . get_column_heading(lang('Cont Req'), $sort_levels, '', '', 'cont_req') . '</th>
+                <th>' . get_column_heading(lang('Prep'), $sort_levels, '', '', 'prep') . '</th>
+                <th>' . get_column_heading(lang('Free Ship'), $sort_levels, '', '', 'free_ship') . '</th>
+                <th>' . get_column_heading(lang('Extra Ship'), $sort_levels, '', '', 'extra_ship') . '</th>
                 <th>' . lang(array('string'=>'Allowed Zones') ) . '</th>
                 <th>' . lang(array('string'=>'Disallowed Zones') ) . '</th>';
         }
@@ -1165,21 +971,21 @@ if (!$_POST) {
                 products.recurring_schedule_editable_by_customer as recurring_schedule_editable_by_customer,";
 
             $output_recurring_option_headers = 
-                '<th>' . get_column_heading(lang(array('string'=>'Start') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Number of Payments') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                <th>' . get_column_heading(lang(array('string'=>'Payment Period') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+                '<th>' . get_column_heading(lang('Start'), $sort_levels, '', '', 'start') . '</th>
+                <th>' . get_column_heading(lang('Number of Payments'), $sort_levels, '', '', 'number_of_payments') . '</th>
+                <th>' . get_column_heading(lang('Payment Period'), $sort_levels, '', '', 'payment_period') . '</th>';
         }
 
         if ($filter == 'donation_products') {
 
             // Output dontaine price header
-            $output_price_header = '<th>' . get_column_heading(lang(array('string'=>'Default Amount (Price)') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+            $output_price_header = '<th>' . get_column_heading(lang('Default Amount (Price)'), $sort_levels, '', '', 'price') . '</th>';
 
-            $output_recurring_set_schedule_header = '<th>' . get_column_heading(lang(array('string'=>'Allow to Schedule') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+            $output_recurring_set_schedule_header = '<th>' . get_column_heading(lang('Allow to Schedule'), $sort_levels, '', '', 'allow_to_schedule') . '</th>';
 
         // else output the default price header
         } else {
-            $output_price_header = '<th>' . get_column_heading(lang(array('string'=>'Price') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+            $output_price_header = '<th>' . get_column_heading(lang('Price'), $sort_levels, '', '', 'price') . '</th>';
         }
 
         if (($filter == 'grant_access_products') || 
@@ -1192,7 +998,7 @@ if (!$_POST) {
             // Set filter specific sql joins
             $filter_specific_join .= "LEFT JOIN page ON page.page_id = products.send_to_page ";
 
-            $output_start_page_header = '<th>' . get_column_heading(lang(array('string'=>'Set Start Page') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+            $output_start_page_header = '<th>' . get_column_heading(lang('Set Start Page'), $sort_levels, '', '', 'set_start_page') . '</th>';
         }
 
         if (($filter == 'grant_access_products') || ($filter == 'all_product_actions')) {
@@ -1203,16 +1009,16 @@ if (!$_POST) {
             // Set filter specific sql joins
             $filter_specific_join .= "LEFT JOIN folder ON folder.folder_id = products.private_folder ";
 
-            $output_private_folder_access_headers = '<th>' . get_column_heading(lang(array('string'=>'Grant Private Access') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+            $output_private_folder_access_headers = '<th>' . get_column_heading(lang('Grant Private Access'), $sort_levels, '', '', 'grant_private_access') . '</th>';
         }
 
         if (($filter == 'membership_products') || ($filter == 'all_product_actions')) {
 
-            $output_add_membership_header = '<th>' . get_column_heading(lang(array('string'=>'Membership Renewal') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+            $output_add_membership_header = '<th>' . get_column_heading(lang('Membership Renewal'), $sort_levels, '', '', 'membership_renewal') . '</th>';
         }
         if ($filter == 'out_of_stock_products') {
 
-            $output_out_of_stock_timestamp_header = '<th>' . get_column_heading(lang(array('string'=>'Out of Stock Date') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+            $output_out_of_stock_timestamp_header = '<th>' . get_column_heading(lang('Out of Stock Date'), $sort_levels, '', '', 'out_of_stock_date') . '</th>';
         }
         /* get results for just this screen*/
         $query = "SELECT
@@ -1237,7 +1043,7 @@ if (!$_POST) {
                  $sql_join
                  $filter_specific_join
                  $where
-                 ORDER BY $sort_column $asc_desc";
+                 ORDER BY $order_by";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         while ($row = mysqli_fetch_assoc($result)) {
             $product_id = $row['id'];
@@ -1636,7 +1442,7 @@ if (!$_POST) {
                 $output_out_of_stock_timestamp_column = '<td class="align-middle">' . get_relative_time(array('timestamp' => $row['out_of_stock_timestamp'])) . '</td>';
             }else{
 
-                $output_inventory_headers ='<th>' . get_column_heading(lang(array('string'=>'Inventory Quantity') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>';
+                $output_inventory_headers ='<th>' . get_column_heading(lang('Inventory Quantity'), $sort_levels, '', '', 'inventory_quantity') . '</th>';
                 $output_inventory_columns ='<td class="align-middle text-center text-success h5 fw-bolder" title="' . lang('Inventory tracking is not active for this product/service') . '">-</td>';
                 if ($inventory == 1){
                     if ($inventory_quantity >= 10){
@@ -1683,8 +1489,14 @@ if (!$_POST) {
                     ' . $liveform->output_errors() . '
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
-
-                    
+                    <div class="row mb-2 flex-wrap">
+                        <div class="col-12 text-center text-md-start">
+                            <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                                <div class="pg-toolbar-grow"></div>
+                                ' . pg_list_sort_menu('duplicate_products.php', $sort_columns, $sort_levels, $sort_default) . '
+                            </nav>
+                        </div>
+                    </div>
                     <div class="card my-4">
                         <div class="card-body p-0 position-relative">
                             <form name="form"  action="duplicate_products.php" method="post"> 
@@ -1710,9 +1522,9 @@ if (!$_POST) {
                                             </th>
 
                                             ' . $output_image_header . ' 
-                                            <th>' . get_column_heading(lang(array('string'=>'ID') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                                            <th>' . get_column_heading(lang(array('string'=>'Short Description') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
-                                            <th>' . get_column_heading(lang(array('string'=>'Enabled') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th> 
+                                            <th>' . get_column_heading(lang('ID'), $sort_levels, '', '', 'id') . '</th>
+                                            <th>' . get_column_heading(lang('Short Description'), $sort_levels, '', '', 'short_description') . '</th>
+                                            <th>' . get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled') . '</th>
                                             ' . ($output_price_header ?? '') . ' 
                                             ' . ($output_inventory_headers ?? '') . '
                                             ' . ($output_tax_header ?? '') . '  
@@ -1726,7 +1538,7 @@ if (!$_POST) {
                                             ' . ($output_private_folder_access_headers ?? '') . ' 
                                             ' . ($output_add_membership_header ?? '') . ' 
                                             ' . ($output_all_product_actions_headers ?? '') . ' 
-                                            <th>' . get_column_heading(lang(array('string'=>'Last Modified') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th> 
+                                            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                             ' . ($output_out_of_stock_timestamp_header ?? '') . ' 
                                         </tr>
                                     </thead>
