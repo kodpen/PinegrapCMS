@@ -240,6 +240,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Sort (Shift+click adds a level)' => lang('Sort (Shift+click adds a level)'),
         'Ascending' => lang('Ascending'),
         'Descending' => lang('Descending'),
+        'The change could not be saved. Check the connection and try again.' => lang('The change could not be saved. Check the connection and try again.'),
     );
 
     return '
@@ -1098,6 +1099,272 @@ function pg_list_sort_menu($url, $columns, $levels, $default, $query = array())
         . '</button>'
         . '<ul class="dropdown-menu dropdown-menu-end" style="min-width: min(20rem, 90vw);">' . $rows . $form . $reset . '</ul>'
         . '</div>';
+}
+
+/*
+ * Quick edit on list screens: a cell changed in place, without leaving the
+ * list.
+ *
+ * A screen describes the columns it lets change once, as field => definition:
+ *
+ *   'type'     'text', 'integer', 'money' or 'select'
+ *   'label'    the column's heading, for the input's name and the messages
+ *   'max'      the longest text, or the highest number
+ *   'min'      the lowest number (integer; 0 when not given)
+ *   'empty'    an integer or an amount may be left empty, which reads as ''
+ *   'required' a text may not be left empty
+ *   'options'  value => label for 'select', in the order they are offered
+ *
+ * The table names the address that takes the change and carries the
+ * definitions (pg_list_edit_table()); each cell that can change carries its
+ * field, record and current value (pg_list_edit_cell()). backend.src.js opens
+ * an input on the cell and posts the new value to that address. The screen
+ * answers before it draws anything: pg_list_edit_request() checks the request
+ * and the value, the screen writes it with its own save code, and
+ * pg_list_edit_reply() sends back the cell drawn the way the list draws it,
+ * so the list shows what was stored rather than what was typed.
+ */
+
+/**
+ * Whether this request is a quick edit from a list (backend.src.js sends
+ * pg_list_edit with every one).
+ *
+ * @return bool
+ */
+function pg_list_edit_requested()
+{
+    return isset($_POST['pg_list_edit']);
+}
+
+/**
+ * The attributes a list table takes for quick edit: the address the changes
+ * go to and the column definitions the script builds its inputs from.
+ * Nothing when there is no column to change, so a viewer who may not change
+ * the list gets a plain table.
+ *
+ * @param string $url     the screen that answers the change, e.g. 'view_products.php'
+ * @param array  $columns field => definition
+ * @return string
+ */
+function pg_list_edit_table($url, $columns)
+{
+    if (!$columns) {
+        return '';
+    }
+
+    $client = array();
+
+    foreach ($columns as $field => $column) {
+        $entry = array(
+            'type'  => (string) ($column['type'] ?? 'text'),
+            'label' => (string) ($column['label'] ?? $field),
+        );
+
+        foreach (array('min', 'max') as $key) {
+            if (isset($column[$key])) {
+                $entry[$key] = (int) $column[$key];
+            }
+        }
+
+        // Pairs rather than an object: an object with numeric keys comes
+        // back in numeric order, and the order of the choices is the screen's.
+        if (isset($column['options'])) {
+            $entry['options'] = array();
+
+            foreach ((array) $column['options'] as $value => $label) {
+                $entry['options'][] = array((string) $value, (string) $label);
+            }
+        }
+
+        $client[(string) $field] = $entry;
+    }
+
+    return ' data-pg-edit-url="' . h($url) . '" data-pg-edit-columns="' . h(json_encode($client, JSON_UNESCAPED_UNICODE)) . '"';
+}
+
+/**
+ * The attributes of a cell that changes in place: its field, the record it
+ * belongs to and the value the input opens with. Nothing when the field is
+ * not one the list lets change, which is how a screen leaves a single cell
+ * (a product that does not track stock) or a viewer without the right out.
+ * The hint is the pencil backend.src.js draws on the cell, not a title: the
+ * panel turns every title into a hover popover, one per cell of the list.
+ *
+ * @param array      $columns field => definition
+ * @param string     $field
+ * @param int        $id      the record's number
+ * @param string|int $value   the stored value, as the input should show it
+ * @return string
+ */
+function pg_list_edit_cell($columns, $field, $id, $value)
+{
+    if (!isset($columns[$field]) || ((int) $id <= 0)) {
+        return '';
+    }
+
+    return ' data-pg-edit="' . h((string) $field) . '" data-pg-edit-id="' . (int) $id . '"'
+        . ' data-pg-edit-value="' . h((string) $value) . '" tabindex="0"';
+}
+
+/**
+ * A typed value read the way its column says, or the reason it cannot be.
+ * Only the shape is decided here; turning an amount into minor units is the
+ * screen's, with the reader its own form uses, so the list and the edit
+ * screen cannot read the same typing two ways.
+ *
+ *   text     trimmed, control characters turned into spaces (a one-line
+ *            field; a pasted value often brings a line break)
+ *   integer  an int, or '' when the column allows empty
+ *   money    the digits and separators as typed, spaces taken out
+ *   select   the value of one of the options, as a string
+ *
+ * @param array $column the column's definition
+ * @param mixed $raw    the posted value
+ * @return array array('ok' => bool, 'value' => the value read, 'error' => the reason, for the operator)
+ */
+function pg_list_edit_parse($column, $raw)
+{
+    $label = (string) ($column['label'] ?? '');
+    $value = is_scalar($raw) ? trim((string) $raw) : '';
+
+    $fail = function ($message) {
+        return array('ok' => false, 'value' => null, 'error' => $message);
+    };
+
+    $pass = function ($value) {
+        return array('ok' => true, 'value' => $value, 'error' => '');
+    };
+
+    if (!mb_check_encoding($value, 'UTF-8')) {
+        return $fail(lang('The value could not be read.'));
+    }
+
+    switch ((string) ($column['type'] ?? '')) {
+        case 'text':
+            $value = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value));
+
+            if (($value === '') && !empty($column['required'])) {
+                return $fail(lang(array('string' => '{var:1|c} is required', 'vars' => array($label))));
+            }
+
+            if (isset($column['max']) && (mb_strlen($value, 'UTF-8') > (int) $column['max'])) {
+                return $fail(lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array($label, (int) $column['max']))));
+            }
+
+            return $pass($value);
+
+        case 'integer':
+            if (($value === '') && !empty($column['empty'])) {
+                return $pass('');
+            }
+
+            $min = (int) ($column['min'] ?? 0);
+            $max = (int) ($column['max'] ?? 2147483647);
+
+            if ((preg_match('/^-?[0-9]{1,15}$/', $value) !== 1) || ((int) $value < $min) || ((int) $value > $max)) {
+                return $fail(lang(array('string' => '{var:1} takes a whole number from {var:2} to {var:3}.', 'vars' => array($label, pg_format_number($min, 0), pg_format_number($max, 0)))));
+            }
+
+            return $pass((int) $value);
+
+        case 'money':
+            $value = preg_replace('/[\s\x{00A0}]+/u', '', $value);
+
+            if (($value === '') && !empty($column['empty'])) {
+                return $pass('');
+            }
+
+            if (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1) {
+                return $fail(lang(array('string' => '{var:1} takes an amount, such as {var:2}.', 'vars' => array($label, pg_format_number(12.5, 2)))));
+            }
+
+            return $pass($value);
+
+        case 'select':
+            foreach ((array) ($column['options'] ?? array()) as $option => $text) {
+                if ((string) $option === $value) {
+                    return $pass((string) $option);
+                }
+            }
+
+            return $fail(lang(array('string' => 'Choose one of the values offered for {var:1}.', 'vars' => array($label))));
+    }
+
+    return $fail(lang('This column cannot be changed here.'));
+}
+
+/**
+ * The change a quick edit asks for, checked: a POST from a signed-in user the
+ * screen lets change the list, carrying the session's token, naming a column
+ * the list offers and a record by its number, with a value that fits the
+ * column. Anything else is answered here in JSON and the request ends there;
+ * validate_user()'s login redirect, validate_token_field() and the access
+ * checks answer with a page the script could not read.
+ *
+ * @param array    $columns field => definition
+ * @param callable $allowed function ($user): whether this user may change the list
+ * @return array array('user' => the user, 'field' => field, 'id' => record number,
+ *               'value' => the value pg_list_edit_parse() read)
+ */
+function pg_list_edit_request($columns, $allowed)
+{
+    if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+        header('Allow: POST');
+        pg_list_edit_reply(array('ok' => false, 'code' => 'method', 'message' => lang('Access denied.')), 405);
+    }
+
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'session', 'message' => lang('Your session has expired. Reload the page and sign in again.')), 401);
+    }
+
+    $user = validate_user();
+
+    if (!call_user_func($allowed, $user)) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'denied', 'message' => lang('Access denied.')), 403);
+    }
+
+    $session_token = (string) ($_SESSION['software']['token'] ?? '');
+    $post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+
+    if (($session_token === '') || !hash_equals($session_token, $post_token)) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'session', 'message' => lang('Your session has expired. Reload the page and sign in again.')), 403);
+    }
+
+    $field = (isset($_POST['field']) && is_string($_POST['field'])) ? $_POST['field'] : '';
+    $id = (isset($_POST['id']) && is_scalar($_POST['id']) && (preg_match('/^[1-9][0-9]{0,9}$/', (string) $_POST['id']) === 1)) ? (int) $_POST['id'] : 0;
+
+    if (!isset($columns[$field]) || ($id <= 0)) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.')), 422);
+    }
+
+    $parsed = pg_list_edit_parse($columns[$field], $_POST['value'] ?? '');
+
+    if (!$parsed['ok']) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'invalid', 'message' => $parsed['error']), 422);
+    }
+
+    return array('user' => $user, 'field' => $field, 'id' => $id, 'value' => $parsed['value']);
+}
+
+/**
+ * Answer a quick edit and end the request. A success carries 'ok' => true,
+ * the cell's new 'value' (what the input opens with next time) and what the
+ * list should draw: the cell's 'html', 'class', 'title' and 'sort' (its
+ * data-sort, for a table the browser sorts), each only when it changes, and
+ * 'cells' for the other cells of the row that change with it, keyed by their
+ * data-pg-cell name. A refusal carries 'ok' => false and a 'message'.
+ *
+ * @param array $data
+ * @param int   $status
+ */
+function pg_list_edit_reply($data, $status = 200)
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    header('X-Robots-Tag: noindex');
+    echo json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+    exit();
 }
 
 

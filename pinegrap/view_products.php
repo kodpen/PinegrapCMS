@@ -19,6 +19,21 @@
 include('init.php');
 require_once(dirname(__FILE__) . '/seo.php');
 
+// A cell of the list changed in place (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen; the write is the product screen's own (pg_pb_quick_update()).
+if (pg_list_edit_requested()) {
+    include_once('product_builder.php');
+
+    $edit = pg_list_edit_request(pg_pb_quick_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_pb_quick_update($edit['id'], $edit['field'], $edit['value']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 // only ever appended to further below, so it has to start out empty
 $output_rows = '';
 
@@ -57,6 +72,9 @@ $user = validate_user();
 validate_ecommerce_access($user);
 
 include_once('product_builder.php');
+
+// The columns an operator can change on the list without opening the product.
+$quick_edit = pg_pb_quick_edit_columns();
 
 // Two views of the same catalog: every product, or the variant sets that group
 // them. Remembered per session like the filter below it, so returning from an
@@ -880,9 +898,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
 
         $product_id = $row['id'];
         $name = h($row['name']);
-        $enabled = $row['enabled'];
         $short_description = $row['short_description'];
-        $price = $row['price'] / 100;
         $form_name = $row['form_name'];
         $seo_score = $row['seo_score'];
         $selection_type = isset($row['selection_type']) ? $row['selection_type'] : '';
@@ -909,7 +925,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         $custom_field_3 = isset($row['custom_field_3']) ? $row['custom_field_3'] : '';
         $custom_field_4 = isset($row['custom_field_4']) ? $row['custom_field_4'] : '';
         $inventory = $row['inventory'];
-		$inventory_quantity = $row['inventory_quantity'];
 		$image_name = $row['image_name'];
         // set checkmark image for columns to use
         $output_checkmark = '<span class="material-icons">task_alt</span>';
@@ -917,20 +932,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         // set link url
         $output_link_url = 'edit_product.php?id=' . $row['id'];
 
-        $output_name_and_short_description_color_class = '';
-        $output_enabled_check_mark = '';
-
-        // If this product is enabled, then use green color class for name and short description,
-        // and output check mark for enabled column.
-        if ($enabled == 1) {
-            $output_name_and_short_description_color_class = 'text-success';
-            $output_enabled_check_mark = $output_checkmark;
-        
-        // Otherwise this product is disabled, so use red color class for name and short description,
-        // and do not output check mark for enabled column.
-        } else {
-            $output_name_and_short_description_color_class = 'text-danger';
-        }
+        // The cells a quick edit can change, drawn by the same function that
+        // draws them again in the answer to an edit: green name and short
+        // description for an enabled product, red for a disabled one, the
+        // enabled check mark, the price and the stock.
+        $list_cells = pg_pb_list_cells($row);
         
         // if tax is on, prepare tax data
 
@@ -1279,17 +1285,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         }else{
 
             $output_inventory_headers ='<th>' . get_column_heading(lang(array('string'=>'Inventory Quantity') ), $sort_levels, $asc_desc, '', 'inventory_quantity') . '</th>';
-            $output_inventory_columns ='<td class="align-middle text-center text-success h5 fw-bolder" title="' . lang('Inventory tracking is not active for this product/service') . '">-</td>';
-            if ($inventory == 1){
-                if ($inventory_quantity >= 10){
-                    $output_inventory_columns ='<td class="align-middle text-center text-success h5 fw-bolder">'.$inventory_quantity.'</td>';
-                }else{
-                    $output_inventory_columns ='<td class="align-middle text-center text-warning h5 fw-bolder">'.$inventory_quantity.'</td>';
-                }
-                if ($inventory_quantity == 0){
-                    $output_inventory_columns ='<td class="align-middle text-center text-danger h5 fw-bolder">'.$inventory_quantity.'</td>';
-                }
-            }
+
+            // Only a product that tracks stock has a count to change here.
+            $stock_cell = $list_cells['inventory_quantity'];
+            $output_inventory_columns = '<td class="' . $stock_cell['class'] . '"'
+                . (($inventory == 1)
+                    ? pg_list_edit_cell($quick_edit, 'inventory_quantity', $product_id, pg_pb_quick_edit_value('inventory_quantity', $row))
+                    : ' title="' . h($stock_cell['title']) . '"')
+                . '>' . $stock_cell['html'] . '</td>';
 
         }
         
@@ -1310,10 +1313,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 ' . (defined('BARCODE_ENABLED') && BARCODE_ENABLED && !empty($row['barcode_count']) ? '<button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2" title="' . lang('Print Barcode') . '" onclick="pgPrintProductBarcode(' . (int)$row['id'] . ')"><i class="bi bi-printer"></i></button>' : '') . '
             </td>
             ' . $output_image_column . '
-            <td class="align-middle chart_label ' . $output_name_and_short_description_color_class . '">' . $name . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . (int) $row['id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($row) . '</a></td>
-            <td class=" align-middle ' . $output_name_and_short_description_color_class . '">' . h($short_description) . '</td>
-            <td class="align-middle text-center">' . $output_enabled_check_mark . '</td>
-            <td class="align-middle text-end">' . prepare_amount($price) . '</td>
+            <td class="' . $list_cells['name']['class'] . '" data-pg-cell="name">' . $name . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . (int) $row['id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($row) . '</a></td>
+            <td class="' . $list_cells['short_description']['class'] . '"' . pg_list_edit_cell($quick_edit, 'short_description', $product_id, pg_pb_quick_edit_value('short_description', $row)) . '>' . $list_cells['short_description']['html'] . '</td>
+            <td class="' . $list_cells['enabled']['class'] . '"' . pg_list_edit_cell($quick_edit, 'enabled', $product_id, pg_pb_quick_edit_value('enabled', $row)) . '>' . $list_cells['enabled']['html'] . '</td>
+            <td class="' . $list_cells['price']['class'] . '"' . pg_list_edit_cell($quick_edit, 'price', $product_id, pg_pb_quick_edit_value('price', $row)) . '>' . $list_cells['price']['html'] . '</td>
             ' . $output_inventory_columns . '
             ' . $output_tax_column . '
             ' . $output_product_form_column . '
@@ -1372,7 +1375,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                             <input type="hidden" name="edit_tax_rate_method">
                             <input type="hidden" name="edit_tax_rate_value">
                             <input type="hidden" name="edit_inventory_quantity">
-                            <table class="chart table-hover table" style="width:100%;display:none">
+                            <table class="chart table-hover table" style="width:100%;display:none"' . pg_list_edit_table('view_products.php', $quick_edit) . '>
                                 <thead>
                                     <tr>
                                         <th class="noVis">

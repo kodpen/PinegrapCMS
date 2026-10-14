@@ -5881,3 +5881,204 @@ function pg_pb_apply_stock_flag(&$product, $product_id = 0)
     }
 }
 
+
+
+/* ------------------------------------------------------------------ *
+ * Quick edit on the product list
+ * ------------------------------------------------------------------ */
+
+/**
+ * The product list's columns that change in place (pg_list_edit_table()):
+ * the ones an operator changes most often without needing the rest of the
+ * product screen. The short description is the column's own length.
+ *
+ * @return array field => definition
+ */
+function pg_pb_quick_edit_columns()
+{
+    return array(
+        'short_description'  => array('type' => 'text', 'label' => lang('Short Description'), 'max' => 100),
+        'enabled'            => array('type' => 'select', 'label' => lang('Enabled'), 'options' => array('1' => lang('Enabled'), '0' => lang('Disabled'))),
+        'price'              => array('type' => 'money', 'label' => lang('Price')),
+        'inventory_quantity' => array('type' => 'integer', 'label' => lang('Inventory Quantity'), 'min' => 0, 'max' => 9999999),
+    );
+}
+
+/**
+ * The product list's cells a quick edit changes, drawn the one way the list
+ * and the answer to an edit both use. Each is array('html' => content,
+ * 'class' => the cell's classes) and, for the stock, a 'title'. The name and
+ * the short description take their colour from the enabled flag.
+ *
+ * @param array $product a products row with at least short_description,
+ *                       enabled, price, inventory and inventory_quantity
+ * @return array cell => array('html', 'class'[, 'title'])
+ */
+function pg_pb_list_cells($product)
+{
+    $state = ((string) $product['enabled'] === '1') ? 'text-success' : 'text-danger';
+    $quantity = (int) $product['inventory_quantity'];
+
+    if ((string) $product['inventory'] !== '1') {
+        $stock = array(
+            'html'  => '-',
+            'class' => 'align-middle text-center text-success h5 fw-bolder',
+            'title' => lang('Inventory tracking is not active for this product/service'),
+        );
+    } else {
+        $stock = array(
+            'html'  => (string) $quantity,
+            'class' => 'align-middle text-center h5 fw-bolder ' . (($quantity <= 0) ? 'text-danger' : (($quantity < 10) ? 'text-warning' : 'text-success')),
+            'title' => '',
+        );
+    }
+
+    return array(
+        'name'               => array('class' => 'align-middle chart_label ' . $state),
+        'short_description'  => array('html' => h((string) $product['short_description']), 'class' => 'align-middle ' . $state),
+        'enabled'            => array('html' => ((string) $product['enabled'] === '1') ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
+        'price'              => array('html' => prepare_amount(((int) $product['price']) / 100), 'class' => 'align-middle text-end'),
+        'inventory_quantity' => $stock,
+    );
+}
+
+/**
+ * What a product list cell's input opens with: the stored value, the price
+ * in the site's decimal style without grouping, which pg_pb_price_to_cents()
+ * reads back either way.
+ *
+ * @param string $field
+ * @param array  $product
+ * @return string
+ */
+function pg_pb_quick_edit_value($field, $product)
+{
+    if ($field === 'price') {
+        return pg_format_input_amount(((int) $product['price']) / 100);
+    }
+
+    return (string) $product[$field];
+}
+
+/**
+ * Write one quick edit from the product list with what the product screen's
+ * save does for the same column: the price read by pg_pb_price_to_cents(),
+ * the out-of-stock flag recalculated by pg_pb_apply_stock_flag(), the tag
+ * cloud kept in step with the enabled flag, the marketplaces told about a
+ * price, stock or availability change, the SEO analysis marked stale when a
+ * column it reads changed, and the last change stamped with who made it.
+ *
+ * The stock only changes on a product that tracks it. The list does not
+ * offer it on one that does not: starting to track stock decides what the
+ * shop does at zero, and that belongs on the product screen.
+ *
+ * @param int    $product_id
+ * @param string $field a key of pg_pb_quick_edit_columns()
+ * @param mixed  $value as pg_list_edit_parse() read it
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_pb_quick_update($product_id, $field, $value)
+{
+    $product_id = (int) $product_id;
+    $columns = pg_pb_quick_edit_columns();
+
+    $current = db_item(
+        "SELECT id, name, short_description, enabled, price, inventory, inventory_quantity, keywords
+        FROM products
+        WHERE id = '" . $product_id . "'");
+
+    if (!$current) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Product not found.'));
+    }
+
+    $change = array();
+
+    switch ($field) {
+        case 'short_description':
+            $change['short_description'] = (string) $value;
+            break;
+
+        case 'enabled':
+            $change['enabled'] = ((string) $value === '1') ? '1' : '0';
+            break;
+
+        case 'price':
+            $change['price'] = pg_pb_price_to_cents($value);
+
+            // products.price is a signed INT of minor units.
+            if ($change['price'] > 2147483647) {
+                return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns['price']['label']))));
+            }
+
+            break;
+
+        case 'inventory_quantity':
+            if ((string) $current['inventory'] !== '1') {
+                return array('ok' => false, 'code' => 'not_tracked', 'message' => lang('This product does not track stock. Turn stock tracking on in the product first.'));
+            }
+
+            $change['inventory'] = '1';
+            $change['inventory_quantity'] = (int) $value;
+            pg_pb_apply_stock_flag($change, $product_id);
+            break;
+
+        default:
+            return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $product = array_merge($current, $change);
+    $changed = ((string) $current[$field] !== (string) $product[$field]);
+
+    // The same value again writes nothing and logs nothing; the list is still
+    // redrawn from what is stored.
+    if ($changed) {
+        $change['timestamp'] = time();
+        $change['user'] = defined('USER_ID') ? USER_ID : 0;
+
+        // The analysis reads the short description and the enabled flag
+        // (pg_seo_recalculate()); the price and the stock are not part of it.
+        if (($field === 'short_description') || ($field === 'enabled')) {
+            $change['seo_analysis_current'] = 0;
+        }
+
+        pg_pb_update_row('products', $change, 'id', $product_id);
+
+        if ($field === 'enabled') {
+            pg_pb_sync_tag_cloud_keywords($product_id, $current['keywords'], ($change['enabled'] === '1'));
+        }
+
+        if (($field !== 'short_description') && function_exists('pg_marketplace_product_changed')) {
+            pg_marketplace_product_changed($product_id);
+        }
+
+        $shown = function ($product) use ($field) {
+            switch ($field) {
+                case 'enabled':
+                    return ((string) $product['enabled'] === '1') ? lang('Enabled') : lang('Disabled');
+                case 'price':
+                    return pg_format_number(((int) $product['price']) / 100, 2);
+            }
+
+            return (string) $product[$field];
+        };
+
+        log_activity(
+            lang(array(
+                'string' => 'product ({var:1}) was changed on the product list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array($current['name'], $columns[$field]['label'], $shown($current), $shown($product)),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+    }
+
+    $cells = pg_pb_list_cells($product);
+    $reply = array('ok' => true, 'value' => pg_pb_quick_edit_value($field, $product)) + $cells[$field];
+
+    if ($field === 'enabled') {
+        $reply['cells'] = array(
+            'name'              => $cells['name'],
+            'short_description' => array('class' => $cells['short_description']['class']),
+        );
+    }
+
+    return $reply;
+}

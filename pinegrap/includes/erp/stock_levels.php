@@ -149,6 +149,103 @@ function erp_stock_minimums_save($values, $user_id = 0)
 }
 
 /**
+ * The minimum stock list's column that changes in place
+ * (pg_list_edit_table()): the minimum, empty for none.
+ *
+ * @return array field => definition
+ */
+function erp_stock_minimum_edit_columns()
+{
+    return array(
+        'min_quantity' => array('type' => 'integer', 'label' => lang('Minimum'), 'min' => 0, 'max' => ERP_STOCK_MINIMUM_MAX, 'empty' => true),
+    );
+}
+
+/**
+ * The minimum stock list's stock and minimum cells, drawn the one way the
+ * list and the answer to a quick edit both use: the stock in red with a Low
+ * badge at or below a minimum, the minimum or a dash for none. 'sort' is
+ * what the browser sorts the column by (data-sort).
+ *
+ * @param array $row inventory_quantity and min_quantity of a product
+ * @return array 'stock' and 'min_quantity' => array('html', 'class', 'sort')
+ */
+function erp_stock_minimum_cells($row)
+{
+    $quantity = (int) $row['inventory_quantity'];
+    $minimum = (int) $row['min_quantity'];
+    $low = ($minimum > 0) && ($quantity <= $minimum);
+
+    return array(
+        'stock' => array(
+            'html'  => h(erp_quantity_text($quantity)) . ($low ? ' <span class="badge text-bg-danger">' . lang('Low') . '</span>' : ''),
+            'class' => 'align-middle text-end' . ($low ? ' text-danger fw-bold' : ''),
+            'sort'  => $quantity,
+        ),
+        'min_quantity' => array(
+            'html'  => ($minimum > 0) ? h(erp_quantity_text($minimum)) : '<span class="text-body-secondary">—</span>',
+            'class' => 'align-middle text-end',
+            'sort'  => $minimum,
+        ),
+    );
+}
+
+/**
+ * One minimum changed on the list, saved by erp_stock_minimums_save() like
+ * the rest, and the answer to the quick edit: the minimum's cell and the
+ * stock's, which turns low or back with it.
+ *
+ * @param int        $product_id
+ * @param int|string $value   a whole number, or '' for none
+ * @param int        $user_id
+ * @return array the answer for pg_list_edit_reply()
+ */
+function erp_stock_minimum_quick_save($product_id, $value, $user_id)
+{
+    $product_id = (int) $product_id;
+
+    $read = function () use ($product_id) {
+        return db_item("SELECT p.id, p.name, p.short_description, p.inventory, p.inventory_quantity, COALESCE(m.min_quantity, 0) AS min_quantity
+            FROM products p
+            LEFT JOIN erp_stock_minimums m ON m.product_id = p.id
+            WHERE p.id = '" . $product_id . "'");
+    };
+
+    $before = $read();
+
+    if (!$before) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Product not found.'));
+    }
+
+    // erp_stock_minimums_save() passes over a product that does not track
+    // stock without a word; here that has to be said.
+    if ((string) $before['inventory'] !== '1') {
+        return array('ok' => false, 'code' => 'not_tracked', 'message' => lang('This product does not track stock. Turn stock tracking on in the product first.'));
+    }
+
+    $saved = erp_stock_minimums_save(array($product_id => (string) $value), $user_id);
+
+    if (!$saved['success']) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => $saved['error']);
+    }
+
+    $after = $read();
+
+    if ($saved['changed'] > 0) {
+        log_activity(lang(array(
+            'string' => 'erp minimum stock of product ({var:1}) was changed from {var:2} to {var:3}',
+            'vars'   => array((string) $before['name'], (int) $before['min_quantity'], (int) $after['min_quantity']),
+        )), $_SESSION['sessionusername'] ?? '');
+    }
+
+    $cells = erp_stock_minimum_cells($after);
+
+    return array('ok' => true, 'value' => ((int) $after['min_quantity'] > 0) ? (string) (int) $after['min_quantity'] : '')
+        + $cells['min_quantity']
+        + array('cells' => array('stock' => $cells['stock']));
+}
+
+/**
  * The products at or below their minimum, the furthest below first. Only
  * products on sale; a switched-off product is not bought again.
  *
