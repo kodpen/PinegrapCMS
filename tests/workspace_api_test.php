@@ -138,6 +138,40 @@ function test_ws_api_messages_list_takes_changed_since()
 	pg_assert_true(($types['changed_since'] ?? '') === 'datetime', 'changed_since is a datetime');
 }
 
+// A message the reader deleted for themselves since the moment counts as
+// changed for them alone: those ids join the touched_at range and the rest of
+// the condition stays as it was; with none, the range is read alone.
+function test_ws_messages_touched_where()
+{
+	pg_assert_same("channel_id = '3' AND touched_at >= '1700000000' AND id <= '900'", ws_messages_touched_where(3, 1700000000, 900));
+	pg_assert_same("channel_id = '3' AND touched_at >= '1700000000' AND id <= '900' AND id > '40'", ws_messages_touched_where('3', 1700000000, 900, 40, array()));
+	pg_assert_same("channel_id = '3' AND (touched_at >= '1700000000' OR id IN (41,77)) AND id <= '900' AND id > '40'", ws_messages_touched_where(3, 1700000000, 900, 40, array('41', 77, 77, 0, -2)));
+}
+
+// Without a reader, a moment or a message held there is nothing of the
+// reader's own to look for, and the database is not asked.
+function test_ws_message_hidden_since_needs_a_reader()
+{
+	pg_assert_same(array(), ws_message_hidden_since(0, 3, 1700000000, 900));
+	pg_assert_same(array(), ws_message_hidden_since(7, 3, 0, 900));
+	pg_assert_same(array(), ws_message_hidden_since(7, 3, 1700000000, 0));
+}
+
+// The person's other devices are told of a message hidden on one of them by
+// the two reads that follow changes, and the hide says so.
+function test_ws_api_hide_reaches_the_other_devices_in_the_docs()
+{
+	$descriptions = array();
+
+	foreach (ws_api_routes() as $route) {
+		$descriptions[$route['id']] = (string) ($route['description'] ?? '');
+	}
+
+	pg_assert_true(strpos($descriptions['workspace.messages.list'], 'deleted for themselves since then') !== false, 'changed_since names hidden messages');
+	pg_assert_true(strpos($descriptions['workspace.sync'], 'deleted for themselves since') !== false, 'sync names hidden messages');
+	pg_assert_true(strpos($descriptions['workspace.messages.hide'], 'other devices') !== false, 'hide names the other devices');
+}
+
 // The sync an app polls is a read and no tool: a model gains nothing from a
 // cursor, and a route can stay out of MCP by saying so.
 function test_ws_api_sync_is_a_read_and_no_tool()

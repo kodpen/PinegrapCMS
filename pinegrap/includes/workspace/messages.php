@@ -106,15 +106,29 @@ function ws_messages_since($channel_id, $since_id)
  *
  * @param array   $viewer
  * @param array[] $rows
+ * @param array   $options hidden_as_deleted: the rows are changes of messages
+ *                         the screen already shows, so one the person hid
+ *                         comes as deleted rather than not at all
  * @return array[]
  */
-function ws_message_payloads($viewer, $rows)
+function ws_message_payloads($viewer, $rows, $options = array())
 {
     // The messages the person deleted for themselves stay out of their view.
-    $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, (array) $rows));
+    // Among the changes to messages a screen already shows, one they hid
+    // since, on another screen or device, comes as deleted: the screen takes
+    // it away as it does a message deleted for everyone.
+    $rows = (array) $rows;
+    $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, $rows));
 
-    if (!empty($hidden)) {
-        $rows = array_values(array_filter((array) $rows, function ($row) use ($hidden) {
+    if (!empty($hidden) && !empty($options['hidden_as_deleted'])) {
+        foreach ($rows as $i => $row) {
+            if (isset($hidden[(int) $row['id']]) && ((int) $row['deleted_at'] === 0)) {
+                $rows[$i]['deleted_at'] = time();
+                $rows[$i]['body'] = '';
+            }
+        }
+    } elseif (!empty($hidden)) {
+        $rows = array_values(array_filter($rows, function ($row) use ($hidden) {
             return !isset($hidden[(int) $row['id']]);
         }));
     }
@@ -801,26 +815,63 @@ function ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $ap
 /**
  * The messages of a channel that changed after they were written - an edit,
  * a reaction, a tick, a vote - since a moment, up to the newest one the
- * reader already has.
+ * reader already has. With a reader, also the ones that reader deleted for
+ * themselves since then: the message stays as it is for everybody else, so
+ * hiding it does not stamp touched_at (the others' screens would draw it
+ * again for nothing), and only the reader's own row in ws_message_hides says
+ * when it went. Their other screens and devices learn it here.
  *
  * @param int $channel_id
  * @param int $since    timestamp
  * @param int $upto_id  the newest message the reader holds
  * @param int $after_id only messages after this one (the API pages with it)
  * @param int $limit
+ * @param int $user_id  the reader, 0 for none
  * @return array[]
  */
-function ws_messages_touched($channel_id, $since, $upto_id, $after_id = 0, $limit = 50)
+function ws_messages_touched($channel_id, $since, $upto_id, $after_id = 0, $limit = 50, $user_id = 0)
 {
     if (!ws_interact_ready() || ((int) $since <= 0) || ((int) $upto_id <= 0)) {
         return array();
     }
 
+    $limit = max(1, min(200, (int) $limit));
+    $hidden = ws_message_hidden_since($user_id, $channel_id, $since, $upto_id, $after_id, $limit);
+
     return (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND touched_at >= '" . (int) $since . "' AND id <= '" . (int) $upto_id . "'"
-        . (((int) $after_id > 0) ? " AND id > '" . (int) $after_id . "'" : '') . "
+        WHERE " . ws_messages_touched_where($channel_id, $since, $upto_id, $after_id, $hidden) . "
         ORDER BY id
-        LIMIT " . max(1, min(200, (int) $limit)));
+        LIMIT " . $limit);
+}
+
+/**
+ * The condition ws_messages_touched() reads with: the channel's messages
+ * stamped at or after the moment, and the ones given besides (those the
+ * reader hid since then), up to the newest one held and after the one given.
+ * With none given it is the touched_at range alone, which idx_touched
+ * answers.
+ *
+ * @param int   $channel_id
+ * @param int   $since
+ * @param int   $upto_id
+ * @param int   $after_id
+ * @param int[] $also_ids
+ * @return string
+ */
+function ws_messages_touched_where($channel_id, $since, $upto_id, $after_id = 0, $also_ids = array())
+{
+    $also_ids = array_values(array_unique(array_filter(array_map('intval', (array) $also_ids), function ($id) {
+        return $id > 0;
+    })));
+
+    $changed = "touched_at >= '" . (int) $since . "'";
+
+    if (!empty($also_ids)) {
+        $changed = "(" . $changed . " OR id IN (" . implode(',', $also_ids) . "))";
+    }
+
+    return "channel_id = '" . (int) $channel_id . "' AND " . $changed . " AND id <= '" . (int) $upto_id . "'"
+        . (((int) $after_id > 0) ? " AND id > '" . (int) $after_id . "'" : '');
 }
 
 /**
@@ -836,8 +887,9 @@ function ws_messages_touched($channel_id, $since, $upto_id, $after_id = 0, $limi
  * @param array $options new: false reads no new messages (an earlier version
  *                       of the conversation is on the screen); first_page:
  *                       with nothing held, the newest this many rather than
- *                       the conversation from its start; after_id, limit: as
- *                       ws_messages_touched() takes them
+ *                       the conversation from its start; after_id, limit,
+ *                       user_id (the reader, whose own hidden messages count
+ *                       as changed): as ws_messages_touched() takes them
  * @return array new, changed (ws_messages rows, oldest first)
  */
 function ws_channel_news($channel_id, $held_id, $since, $options = array())
@@ -858,7 +910,7 @@ function ws_channel_news($channel_id, $held_id, $since, $options = array())
 
     return array(
         'new'     => $new,
-        'changed' => ws_messages_touched($channel_id, $since, $held_id, (int) ($options['after_id'] ?? 0), (int) ($options['limit'] ?? 50)),
+        'changed' => ws_messages_touched($channel_id, $since, $held_id, (int) ($options['after_id'] ?? 0), (int) ($options['limit'] ?? 50), (int) ($options['user_id'] ?? 0)),
     );
 }
 
@@ -1075,6 +1127,36 @@ function ws_message_hidden_ids($user_id, $message_ids)
 }
 
 /**
+ * The messages of a channel the person deleted for themselves at or after a
+ * moment, up to the newest one they hold and after the one given, lowest
+ * first: what ws_messages_touched() adds to the changes for them. A message
+ * past the first $limit of these could not make the first $limit of the
+ * changes either, so no more are read.
+ *
+ * @param int $user_id
+ * @param int $channel_id
+ * @param int $since    timestamp
+ * @param int $upto_id
+ * @param int $after_id
+ * @param int $limit
+ * @return int[]
+ */
+function ws_message_hidden_since($user_id, $channel_id, $since, $upto_id, $after_id = 0, $limit = 200)
+{
+    if (((int) $user_id <= 0) || ((int) $since <= 0) || ((int) $upto_id <= 0) || !ws_message_hides_ready()) {
+        return array();
+    }
+
+    return array_map('intval', (array) db_values("SELECT h.message_id FROM ws_message_hides h
+        INNER JOIN ws_messages m ON m.id = h.message_id
+        WHERE h.user_id = '" . (int) $user_id . "' AND h.hidden_at >= '" . (int) $since . "'
+            AND m.channel_id = '" . (int) $channel_id . "' AND m.id <= '" . (int) $upto_id . "'"
+            . (((int) $after_id > 0) ? " AND m.id > '" . (int) $after_id . "'" : '') . "
+        ORDER BY h.message_id
+        LIMIT " . max(1, min(200, (int) $limit))));
+}
+
+/**
  * Whether the person may delete a message for themselves: the checks of
  * ws_message_hide(), made on their own for the API's dry run.
  *
@@ -1110,6 +1192,9 @@ function ws_message_hide($viewer, $message)
         return $checked;
     }
 
+    // touched_at is left alone: nothing changed for anybody else. hidden_at
+    // is what the person's other screens and devices look for
+    // (ws_messages_touched()).
     db("INSERT IGNORE INTO ws_message_hides (message_id, user_id, hidden_at)
         VALUES ('" . (int) $message['id'] . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
 

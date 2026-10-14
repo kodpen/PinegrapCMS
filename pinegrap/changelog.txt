@@ -1659,6 +1659,14 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] Çalışma Alanı: kişi bir mesajı bir
+         cihazında "Benden sil" ile kaldırınca öbür
+         cihazları ve panelde açık duran ekranları da
+         onu hemen kaldırıyor; önceden mesaj orada
+         kanal baştan okunana ya da sayfa yenilenene
+         kadar kalıyordu. Kanaldaki diğer kişilerin
+         cihazlarına bir şey gitmiyor.
+
   [DÜZELTME] API belgesi: her uçta deneme isteği
          (X-Dry-Run) alıp almadığı yazıyor; OpenAPI
          belgesinde boş gelebilen alanlar (mesajın

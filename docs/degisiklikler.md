@@ -84,6 +84,70 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: "Benden sil" kişinin öbür cihazlarına eşitleniyor (2026-10-14)
+
+**Neden.** #393'ün belge taramasının bıraktığı bulgu. Kişi bir mesajı
+kendinden gizleyince (`POST /workspace/messages/{id}/hide`, #375; panelde
+"Benden sil") yalnız `ws_message_hides`'a satır yazılıyordu. Kanal
+mesajlarının değişenleri (`GET /workspace/channels/{id}/messages?changed_since=`,
+#371) ve eşitlemenin `changed` listesi (`GET /workspace/sync`, #374) mesajın
+`touched_at`'ine bakar; gizleme onu ilerletmediği için kişinin öbür cihazı
+gizlemeyi ancak kanalı baştan okuyunca öğreniyordu. Panelde açık duran öbür
+ekran da (başka bilgisayar, başka sekme) mesajı sayfa yenilenene kadar
+gösteriyordu.
+
+**Ne değişti.**
+- `ws_messages_touched()` (`messages.php`) isteğe bağlı okuyucu alır
+  (`$user_id`); okuyucu verilince `touched_at` aralığına okuyucunun o andan
+  beri gizlediği mesajlar da eklenir. Gizleme anı zaten vardı:
+  `ws_message_hides.hidden_at` (2026.4.5, 5.80). Yeni yardımcılar:
+  `ws_message_hidden_since()` (kişinin o kanalda o andan beri gizlediği
+  mesaj kimlikleri, en düşük `$limit` tanesi) ve
+  `ws_messages_touched_where()` (koşul; kimlik yoksa eskisi gibi yalnız
+  `touched_at` aralığı, `idx_touched` cevaplar). `ws_channel_news()`
+  okuyucuyu `user_id` seçeneğiyle geçirir.
+- Kişi bazlı, #390'a simetrik: #390 gelen kutusunda kişinin kendi satırının
+  damgasını (`read_at`) ilerletti, çünkü satır tek kişinindir. Mesaj ise
+  herkesindir; `touched_at`'i ilerletmek kanaldaki herkesin cihazına boşuna
+  "değişti" gönderirdi. Bu yüzden damga kişinin kendi gizleme kaydıdır ve
+  değişen mesaj yalnız ona döner. İşaret yeni değil: API'de mesajın
+  `hidden` alanı (#375) `true` gelir, mesaj olduğu gibi (silinmiş olarak
+  değil); uygulama onu ekrandan kaldırır, `since_id` / `before_id` saymaya
+  devam eder.
+- API: `GET /workspace/channels/{id}/messages?changed_since=` ve
+  `GET /workspace/sync`'in `changed`'i okuyucuyu (`ws_api_viewer()`)
+  geçirir. Uygulama anahtarı sahibinin gizlediklerini görür (okumada
+  `hidden` da sahibe göre).
+- Panel: `ws_sync` okuyucuyu geçirir; `ws_message_payloads()`'a üçüncü
+  parametre (`hidden_as_deleted`): ekranda zaten duran mesajların
+  değişenlerinde gizlenen mesaj atlanmak yerine silinmiş olarak çizilir, JS
+  onu herkesten silinen mesaj gibi kaldırır (JS değişmedi).
+- Belge: liste, eşitleme ve gizleme uçlarının açıklamaları (API belgesi,
+  OpenAPI, MCP araç açıklamaları).
+
+Şema adımı yok (`hidden_at` 2026.4.5'ten beri yazılıyor), yeni izin kapsamı
+yok, yeni metin yok, JS değişmedi. Gizlemeyi geri alma yok (ne panelde ne
+API'de), bu yüzden geri almanın eşitlenmesi de yok.
+
+**Bilerek yapılmayan.** `ws_message_hides`'da yalnız `user_id`'yle başlayan
+indeks var; kişinin gizleme sayısı az olduğu için `hidden_at` taraması bu
+indeksle yeterli, şema adımı açılmadı. Eski bir anla sorulursa gizlemeler
+yine gelir (kayıt silinmez); süre sınırı yok.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye üç test (koşul metni,
+okuyucusuz/ansız çağrının veritabanına gitmemesi, üç uç açıklaması).
+Sandbox'ta "Ekip cihazları" ile aynı kişinin iki cihazı ve
+ikinci bir kişi: birinci cihaz iki mesajı gizleyince ikinci cihazın
+`changed_since`'i ikisini `hidden: true` getirdi (`limit=1` + `since_id`
+sırayla), eşitlemenin `changed`'i de; sonraki eşitleme tekrarlamadı. İkinci
+kişinin `changed_since`'i boş, eşitlemesi aynı imleçle aynı cevap ve
+`If-None-Match` ile 304. Panelde (Playwright, iki tarayıcı) yöneticinin
+açık kanal ekranı telefondan gizlenen mesajı yaklaşık 3 saniyede kaldırdı,
+yeniden yüklemede de yok; ikinci kişinin açık ekranında mesaj duruyor.
+Tarayıcı konsolunda ve sunucu günlüğünde hata yok.
+
+---
+
 ## 2026.4.10 — Arama sayfası `?query[]=x` ile 500 veriyordu, galeri kanonik adresi klasör numarasını olduğu gibi yazıyordu (2026-10-14)
 
 **Neden.** #391'in bilerek bıraktığı iki parça, ikisi de 2026.4.9'da var.

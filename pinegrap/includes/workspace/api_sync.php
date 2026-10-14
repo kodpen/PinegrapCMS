@@ -479,6 +479,7 @@ function ws_api_sync($params)
                 'first_page' => WS_API_SYNC_FIRST_PAGE,
                 'after_id'   => ws_channel_floor($channel_id),
                 'limit'      => WS_API_SYNC_MAX,
+                'user_id'    => (int) $viewer['id'],
             ));
 
             $sync['messages'] = ws_api_messages_present($viewer, $news['new']);

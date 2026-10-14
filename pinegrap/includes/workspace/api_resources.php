@@ -789,15 +789,17 @@ function ws_api_messages_list($params)
 
     if (isset($params['changed_since'])) {
         // The messages already written that changed since a moment - an
-        // edit, a deletion, a reaction, a tick, a vote, a read receipt - the
-        // way the panel keeps an open channel up to date (ws_sync). since_id
-        // pages through them; the current conversation only.
+        // edit, a deletion, a reaction, a tick, a vote, a read receipt, and
+        // for the person alone one they deleted for themselves on another
+        // device - the way the panel keeps an open channel up to date
+        // (ws_sync). since_id pages through them; the current conversation
+        // only.
         if (!ws_interact_ready()) {
             api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
         }
 
         $after = max((int) ($params['since_id'] ?? 0), ws_channel_floor($channel['id']));
-        $rows = ws_messages_touched($channel['id'], max(1, (int) $params['changed_since']), PHP_INT_MAX, $after, $limit);
+        $rows = ws_messages_touched($channel['id'], max(1, (int) $params['changed_since']), PHP_INT_MAX, $after, $limit, (int) $viewer['id']);
     } elseif (!empty($params['since_id'])) {
         $rows = array_slice(ws_messages_since($channel['id'], (int) $params['since_id']), 0, $limit);
     } else {
