@@ -1098,8 +1098,10 @@ function pg_cf_submitter_contact()
  */
 function pg_cf_connect_to_contact_off()
 {
+    // Only a string can be the switch; connect_to_contact[]= counts as not passed.
     return isset($_GET['connect_to_contact'])
-        && trim(mb_strtolower((string)$_GET['connect_to_contact'], 'UTF-8')) === 'false';
+        && is_string($_GET['connect_to_contact'])
+        && trim(mb_strtolower($_GET['connect_to_contact'], 'UTF-8')) === 'false';
 }
 
 /**
@@ -1120,8 +1122,9 @@ function pg_cf_field_initial_value($field, $lf, $folder_id = 0)
         $stored = $lf->get_field_value($id);
         if (is_array($stored) || ($stored !== '' && $stored !== null)) return $stored;
     }
-    if (isset($_GET['value_' . $id]) && trim((string)$_GET['value_' . $id]) !== '') {
-        return trim((string)$_GET['value_' . $id]);
+    // An array (value_<id>[]=) is not a value for one control, so it counts as not passed.
+    if (isset($_GET['value_' . $id]) && is_string($_GET['value_' . $id]) && trim($_GET['value_' . $id]) !== '') {
+        return trim($_GET['value_' . $id]);
     }
     if (!empty($field['contact_field'])) {
         $contact = pg_cf_submitter_contact();
@@ -2193,7 +2196,8 @@ function prepare_custom_form($properties)
     // Form type is used by express order to specify whether custom shipping or billing fields
     // should be dealt with
     $form_type = $properties['form_type'];
-    $ship_to_id = $properties['ship_to_id'];
+    // Only the shipping form has a recipient; the billing form passes none.
+    $ship_to_id = $properties['ship_to_id'] ?? '';
     // Prefix is used on express order for custom shipping fields in order to make the field names
     // unique for each recipient, because fields might appear multiple times for multiple recipients
     // Only the express order screen passes a prefix.
@@ -2202,7 +2206,8 @@ function prepare_custom_form($properties)
     $folder_id = $properties['folder_id'];
     // Is edit mode on or off.
     $edit = $properties['edit'];
-    $form_name = $properties['form_name'];
+    // Added to the edit-mode title when a caller names the form.
+    $form_name = $properties['form_name'] ?? '';
     $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
     // If the necessary ids were passed, then get values that visitor has submitted in the past,
     // that are stored in the db, and prefill.
@@ -2327,7 +2332,8 @@ function prepare_custom_form($properties)
         // (e.g. the form has not been submitted by the customer),
         // then set default value.
         if (!$form->field_in_session($html_name)) {
-            $value_from_query_string = trim(isset($_GET['value_' . $field['id']]) ? $_GET['value_' . $field['id']] : '');
+            // An array (value_<id>[]=) is not a value for one field, so it counts as not passed.
+            $value_from_query_string = trim((isset($_GET['value_' . $field['id']]) && is_string($_GET['value_' . $field['id']])) ? $_GET['value_' . $field['id']] : '');
             // If a default value was passed in the query string, then use that.
             if ($value_from_query_string != '') {
                 $form->set($html_name, $value_from_query_string);

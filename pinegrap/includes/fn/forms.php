@@ -1670,6 +1670,22 @@ function validate_time($time)
         return true;
     }
 }
+// A form processor's single-value fields, after liveform::add_fields_to_session().
+// A text box, a hidden field or a radio button posts one string, but a hand-made
+// request can post any of them as an array (name[]=x), and the escaping, string
+// and validation functions the processors hand the value to stop the request on
+// an array. Such a value counts as not given: the field is emptied, so a
+// required field is reported missing and the form comes back as it would for an
+// empty field. Fields whose control legitimately posts an array (a check box
+// group, a multi-select) must not be listed.
+function pg_liveform_single_values($liveform, $fields)
+{
+    foreach ($fields as $field) {
+        if (is_array($liveform->get_field_value($field))) {
+            $liveform->assign_field_value($field, '');
+        }
+    }
+}
 function prepare_page_for_email($html)
 {
     // find if there is a base tag in the HTML

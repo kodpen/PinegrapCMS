@@ -84,6 +84,97 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Site formları: dört POST betiği ve özel form fonksiyonları dizi gelen değerde 500 veriyordu (2026-10-14)
+
+**Neden.** #394 sayfaların ekranlarını temizlerken bu ekranların
+formlarını işleyen POST betiklerini ve `includes/fn/custom_form.php`'deki
+iki `?value_<alan>[]=` okumasını ayrı işe bıraktı. Sandbox'ta eski kodla
+(oturum açmış yönetici ve oturumsuz ziyaretçi; ortaklık başvurusu, Hesabım
+profil, e-posta tercihleri ve yedi özel form; her alan tek tek dizi olarak,
+hem doğrulama hatasıyla geri dönen hem kaydı yazan yoldan; toplam 455
+istek) yeniden üretildi: 202 istekte HTTP 500 ya da uyarı. Hepsi
+2026.4.9'da da var.
+
+Görünür hatalar (500):
+
+- `liveform::add_fields_to_session()` `alan[]=x`'i dizi olarak saklıyor,
+  betikler değeri `escape()`, `validate_email_address()`,
+  `validate_date()`, `trim()`, `mb_strtolower()` ya da `urlencode()`'a
+  veriyordu (`TypeError`). Ortaklık başvurusunda her alan, profilde her
+  sütun (vergi alanları `trim()`'de), e-posta tercihlerinde adres,
+  abonelik ve liste kutuları ile `id`, özel formda e-posta, tarih,
+  `page_id`, `connect_to_contact`, `add_watcher` ve tek seçimli liste.
+- Özel formda dosya alanı `44[]` adıyla gönderilince `$_FILES` dizisinin
+  her anahtarı dizi geliyordu; `prepare_file_name()` 500 verdi.
+- Hızlı sipariş (`prepare_custom_form()`, özel ödeme ya da kargo formu
+  olan sayfa) `?value_<alan>[]=x` ile 500 verdi.
+- Doğrulama hatasıyla dönen formun sayfası dizi değeri `h()`'ye verip
+  500 veriyordu; bu yol #403'ün `liveform` düzeltmesiyle de kapandı, bu
+  değişiklikle dizi oturuma hiç girmiyor.
+
+Görünmeyen uyarılar:
+
+- Görsel editörün özel form widget'ı (`pg_cf_field_initial_value()`,
+  `pg_cf_connect_to_contact_off()`) `(string)` ile okuyordu: alana
+  "Array" yazıyor, uyarı düşüyordu.
+- E-posta tercihlerinde `sig[]` ve tek tıkla abonelikten çıkmada
+  `?id[]=` / `?sig[]=`: "Array to string conversion".
+- `affiliate_sign_up_form.php` 109: hazır ekran `current_page_id=0`
+  gönderir, şartlar sayfası sorgusu satır döndürmez; her gönderimde uyarı.
+- `custom_form.php`: dosya alanı istekte hiç yoksa iki uyarı.
+- `prepare_custom_form()`: ödeme formu `ship_to_id`, iki çağrı da
+  `form_name` vermiyor; özel formu olan hızlı sipariş sayfasının her
+  açılışında iki uyarı.
+
+**Ne değişti.** Yeni `pg_liveform_single_values()`
+(`includes/fn/forms.php`): betik `add_fields_to_session()`'dan sonra tek
+değer tutan alanlarını listeler, dizi gelen değer boş metne çevrilir. Yani
+dizi "verilmemiş" sayılıyor, sonrası boş alanla aynı: zorunlu alan
+"gerekli" hatasıyla geri döner, zorunlu olmayan boş yazılır. Özel formda
+liste onay kutusu grubu ve çoklu seçim dışındaki her alanı, gizli
+alanları (`folder_id`, `send_to`, `add_watcher`, `add_watcher_page_id`)
+ve CAPTCHA cevabını kapsar; tuzak alan (`body`) dışarıda, içine dizi de
+gelse gönderen bot sayılmaya devam ediyor. Profilde saat dilimi listede değil: dizi
+orada zaten "geçersiz saat dilimi" hatası veriyordu. Doğrudan okunan
+`$_POST` değerleri (`current_page_id`, `next_page_id`, `id`, `sig`,
+`connect_to_contact`, özel formun ilk `page_id` sorgusu) ve tek tık
+çıkıştaki `$_GET` değerleri yalnız metinse okunuyor; dizi `page_id`
+"sayfa bulunamadı" hatasıyla durur. Dizi adlı dosya alanı boş dosya
+kontrolünün gönderdiği hâle getiriliyor (`UPLOAD_ERR_NO_FILE`).
+`pg_cf_field_initial_value()`, `pg_cf_connect_to_contact_off()` ve
+`prepare_custom_form()` `value_<alan>` / `connect_to_contact`'ı yalnız
+metinse okuyor, #394'ün `get_form_info()`'daki biçimiyle. Uyarı
+susturulmadı. `liveform.class.php`'ye dokunulmadı. Şema, dil dosyası ve
+JS değişikliği yok.
+
+Davranış farkı (yalnız elle kurulmuş istekte): zorunlu tek değerli bir
+alan dizi gelince eskiden her elemanı ayrı satır olarak kaydediliyordu
+(ortaklık şartları kutusunda dizi kabul sayılıyordu); artık form
+"gerekli" uyarısıyla geri dönüyor. Taramada 8 istek böyle değişti.
+
+**Bilerek yapılmayan.** `submit_custom_form()` (hızlı sipariş, fatura
+bilgileri, kargo adresi ve sipariş gönderiminin özel formları) ve onu
+çağıran `express_order.php`, `billing_information.php`,
+`shipping_address_and_arrival.php`, `submit_order.php` POST'ları
+taranmadı; tarih, saat ve e-posta alanında dizi aynı `TypeError`'ı verir.
+Ayrı iş.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod `origin/development`
+worktree'sinden ikinci portta sunuldu; iki tarama aynı veritabanı
+dökümünden başladı. 455 isteğin 245'i aynı sonuç, 202'si eskide 500 ya
+da uyarıyken yenide temiz, 8'i yukarıdaki davranış farkı; yeni kodda
+hiç 500 ve uyarı yok (#403 birleştikten sonra da). Ayrıca oturumsuz
+e-posta tercihleri `id[]`/`sig[]`, tek tıkla çıkış, dosya alanı `44[]`
+(eski 500, yeni kayıt dosyasız), hızlı sipariş `?value_<alan>[]=` (eski
+500, yeni 200) ve widget'ı işleyen geçici betikle `?value_1[]=x`
+(eski `value="Array"`, yeni boş; metin değer ikisinde de aynı) denendi.
+`tests/form_array_params_test.php` eski kodda 4 hata, yenide geçiyor;
+`tools/test.php`, lint, dil, kopya, bağlama, API şeması ve
+`build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek formlar.
+
+---
+
 ## 2026.4.10 — Dış API: tetiklenen Çalışma Alanı bildiriminin zil satırı adsız yazılıyordu (2026-10-14)
 
 **Neden.** #404'ün bıraktığı parça. Çalışma Alanı'nın her bildirimi
