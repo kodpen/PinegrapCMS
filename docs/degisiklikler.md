@@ -84,6 +84,71 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Takvim, etkinlik konumu, menü, kısa link ve ürün özelliği listeleri ortak tablo yardımcısında: çoklu sıralama (2026-10-14)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331 ürünler, #335 Rehber, #336 Sayfalar, #338 Kullanıcılar,
+#340 e-ticaret ayar listeleri, #341 e-posta kampanyaları). Filtresi
+olmayan beş liste tek PR'da taşındı: Takvimler (`view_calendars.php`),
+Etkinlik Konumları (`view_calendar_event_locations.php`), Tüm Menüler
+(`view_menus.php`), Kısa Linkler (`view_short_links.php`) ve Tüm Ürün
+Özellikleri (`view_product_attributes.php`). Beşi de istekteki her değeri
+oturuma kopyalayan bir döngüyle sıralamayı çevrilmiş başlık adıyla tutup
+kendi `switch`'iyle tek sütunluk ORDER BY kuruyordu.
+
+Takvimler, Etkinlik Konumları ve Menüler'de yön (`order`) ORDER BY'a yalnız
+`escape()` ile yazılıyordu; tırnak içermeyen bir değer sorguya olduğu gibi
+giriyordu. Sandbox'ta eski kodla `?order=asc, (SELECT SLEEP(0.3))` satır
+başına 0,3 saniye bekletti (6 takvimde 1,8 s, 5 konumda ve 5 menüde 1,5 s)
+ve değer oturumda kaldığı için sonraki açılışlarda da koştu. Takvimler'e
+takvim yetkisi olan her kullanıcı (rolü Kullanıcı olanlar dahil),
+Etkinlik Konumları'na Yönetici ve üstü, Menüler'e Tasarımcı ve üstü
+girebiliyor. 2026.4.9'da da var. Kısa Linkler ve Ürün Özellikleri
+yönü zaten `sql_order_direction()` ile süzüyordu; aynı yük orada koşmadı.
+
+**Ne değişti.** Her listenin sıralanabilen sütunları kodla tanımlandı:
+Takvimler ve Etkinlik Konumları `name`, `created`, `last_modified`; Menüler
+`name`, `effect`, `created`, `last_modified`; Kısa Linkler `name`,
+`destination_type`, `created`, `last_modified`; Ürün Özellikleri `name`,
+`label`, `created`, `last_modified`. Beşinde de varsayılan eskisi gibi
+son değişiklik azalan. Sıra `pg_list_state('<liste>', …)` ile okunur,
+ORDER BY `pg_list_order_by()` ile yalnız ekranın kod → SQL eşlemesinden
+yazılır (sütunlar eskisiyle aynı; Hedef Türü ve Efekt eskisi gibi
+veritabanındaki değere göre). Başlıklar `get_column_heading()`'e düzey
+listesi verir; Shift+tık ve düzey numarası ürünlerdeki gibi çalışır. Araç
+çubuğunun sağına `pg_list_sort_menu()` eklendi (`pg-toolbar-grow`
+boşluğuyla). İstekteki her değeri oturuma kopyalayan döngü yalnız
+sıralama için vardı (başka okuyanı yok), beş dosyadan da kaldırıldı;
+Kısa Linkler'deki, yalnız o döngü için oturum dizisini hazırlayan
+blok da gitti. Ortak yardımcıya, `backend.src.js`'e ve `tr.json`'a
+dokunulmadı; kullanılan metinler zaten vardı.
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor. Eski
+`sort=<başlık>&order=desc` bağlantıları `pg_list_sort_parse()` ile tek
+düzey olarak okunur. Sütunlar, Oluştur düğmesi (Takvimler'de yalnız
+Yönetici ve üstüne), satır düğmeleri (Genişlet, Düzenle, Ziyaret Et,
+özellik seçenekleri açılır listesi), tarayıcıdaki arama ve sayfa başına
+kayıt seçimi değişmedi; Takvimler hâlâ yalnız kullanıcının erişebildiği
+takvimleri gösteriyor. Satır içi hızlı güncelleme bu PR'ın kapsamında
+değil. Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 6 takvim, 5 etkinlik konumu, 5
+menü, 4 kısa link, 5 ürün özelliği).** Beş listede her sütun iki
+yönde ve sütunların her ikili birleşimi (ilk azalan, ikinci artan), aynı
+ORDER BY'lı SQL'in sıralama değerleri dizisini verdi; varsayılan son
+değişiklik azalan; parametresiz yeniden açılışta iki düzeyli sıra
+korundu; yönsüz kod (`sort=name`) artan, varsayılan sütun azalan başladı;
+bozuk değer (`id;drop table x:desc`) varsayılana düştü; Türkçe başlıklı
+eski bağlantı (`sort=Adı&order=desc`) sıraladı (240 denetim, hepsi
+geçti). Yeni kodla `order`/`sort` içine konan `SLEEP` hiç koşmadı.
+Tarayıcıda başlığa tık tek sütuna, Shift+tık aynı sekmede ikinci düzeye
+çevirdi; menü iki düzeyi gösterdi; 390 piksel genişlikte menü açıkken de
+yatay kaydırma yok. Sunucu günlüğünde bu beş dosyadan uyarı yok.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek kayıtlar, rolü Kullanıcı olan
+bir takvim yetkilisiyle Takvimler ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Ziyaretçi kayıtları: saklama süresi, günlük özet, parça parça silme (10.3) (2026-10-14)
 
 **Neden.** `visitors` tablosuna her ziyaret bir satır yazılıyor, hiçbiri
