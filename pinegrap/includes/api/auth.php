@@ -173,8 +173,9 @@ function api_read_bearer() {
 // Authenticate, or answer and exit. Returns the application row with its
 // effective scopes already worked out.
 //
-// A Bearer token is a person signed in on a device (includes/api/devices.php);
-// anything else is an application's key and secret. The two never mix: a
+// A Bearer token is a person's own team devices session or an OAuth connection
+// (includes/api/devices.php); anything else is an application's key and
+// secret. The two never mix: a
 // device application carries no secret, so its key cannot be used as HTTP
 // Basic credentials.
 function api_authenticate($input) {

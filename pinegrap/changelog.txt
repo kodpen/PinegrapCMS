@@ -1790,6 +1790,17 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] API belgesi: OpenAPI belgesindeki kimlik
+         açıklamaları üç arayanı ayrı ayrı anlatıyor:
+         uygulama anahtarı, kişinin kendi ekip
+         cihazları oturumu (POST /auth/login) ve OAuth
+         bağlantısı; hangisinin neyi yapabildiğini
+         (kendi mesajını düzeltme, okundu işaretleme,
+         webhook yönetimi) yazıyor. Önceden Bearer
+         "cihazında oturum açmış kişi" diyor, OAuth
+         bağlantısını anmıyordu. Uçların cevabı
+         değişmedi.
+
   [DÜZELTME] ERP: API'den ya da yapay zekâ bağlantısından
          kaydedilen tahsilatın zil bildirimi ("Tahsilat
          alındı") paneldeki gibi kaydı yapanın kullanıcı

@@ -1030,6 +1030,8 @@ function api_product_group_schema() {
 
 	return array(
 		'id'                => 'integer',
+		// A DEFAULT NULL column that every create path writes, so not nullable
+		// (api_openapi_type_spec() says when a field is).
 		'name'              => 'string',
 		'slug'              => 'string',
 		'enabled'           => 'boolean',
