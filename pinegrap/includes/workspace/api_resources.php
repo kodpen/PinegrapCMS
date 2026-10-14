@@ -111,6 +111,8 @@ function ws_api_channel_present($brief)
         'topic'         => (string) $brief['topic'],
         'joined'        => (bool) $brief['joined'],
         'notify'        => (string) ($brief['notify'] ?? 'all'),
+        'pinned'        => !empty($brief['pinned']),
+        'order'         => ((int) ($brief['sort'] ?? 0) > 0) ? (int) $brief['sort'] : null,
         'contact_id'    => ((int) $brief['contact_id'] > 0) ? (int) $brief['contact_id'] : null,
         'customer_type' => (($brief['customer_type'] ?? '') !== '') ? (string) $brief['customer_type'] : null,
         'customer_id'   => ((int) ($brief['customer_id'] ?? 0) > 0) ? (int) $brief['customer_id'] : null,
@@ -131,6 +133,8 @@ function ws_api_channel_schema()
         'topic'           => 'string',
         'joined'          => 'boolean',
         'notify'          => 'string',
+        'pinned'          => 'boolean',
+        'order'           => 'integer?',
         'contact_id'      => 'integer?',
         'customer_type'   => 'string?',
         'customer_id'     => 'integer?',
@@ -188,6 +192,8 @@ function ws_api_channel_brief($viewer, $channel)
         'my_member' => $membership ? 1 : 0,
         'my_notify' => $membership['notify'] ?? 'all',
         'my_role'   => $membership['role'] ?? '',
+        'my_pinned' => $membership['pinned'] ?? 0,
+        'my_sort'   => $membership['sort'] ?? 0,
     )));
 }
 
@@ -1394,6 +1400,68 @@ function ws_api_channels_notify($params)
     api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'notify' => (string) $params['notify'], 'joins' => !$member));
 
     $result = ws_channel_set_notify($viewer, $channel, (string) $params['notify']);
+
+    if (!$result['ok']) {
+        ws_api_channel_refused($result);
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * The person's own place for a channel in their list, the way the panel's
+ * sidebar keeps it: pinned to the top or not, and its place in their order.
+ * Only the fields sent change. The pin is set first, and pinned channels come
+ * first, so a pinned channel's place is among the pinned ones and any other's
+ * after them. Either one in a public channel the person is not in joins them
+ * to it, as the panel does.
+ */
+function ws_api_channels_prefs($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    ws_api_person_only(lang('Only the person, signed in on a device, can pin or order their channels; an application cannot do it for them.'));
+
+    if (!array_key_exists('pinned', $params) && !array_key_exists('order', $params)) {
+        api_fail_validation(lang('Send pinned, order or both.'));
+    }
+
+    if ($channel['kind'] === 'thread') {
+        api_fail_validation(lang('A discussion is not in the channel list, so it cannot be pinned or put in order.'));
+    }
+
+    if (!ws_channel_order_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $member = (bool) ws_channel_membership($channel['id'], $viewer['id']);
+
+    if (!$member && ($channel['kind'] !== 'public')) {
+        api_fail(409, 'not_member', lang('Only the people in a channel pin it or put it in order.'));
+    }
+
+    $would = array('id' => (int) $channel['id'], 'joins' => !$member);
+
+    foreach (array('pinned', 'order') as $field) {
+        if (array_key_exists($field, $params)) {
+            $would[$field] = $params[$field];
+        }
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', $would);
+
+    if (array_key_exists('pinned', $params)) {
+        $result = ws_channel_pin($viewer, $channel, (bool) $params['pinned']);
+
+        if (!$result['ok']) {
+            ws_api_channel_refused($result);
+        }
+    }
+
+    // The list is numbered again either way, so order on every channel
+    // matches the place the list shows it at.
+    $result = ws_channel_place($viewer, $channel, (int) ($params['order'] ?? 0));
 
     if (!$result['ok']) {
         ws_api_channel_refused($result);

@@ -77,7 +77,8 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   cihaz oturumundan açılır (`ws_api_person_only()`); uygulama anahtarı okur ve
   iptal eder. Uygulamanın yazdığı her şey uygulama adıyla görünür.
 - Kişinin kendi cevabı ya da tercihi (okundu onayı, okundu işareti, onay,
-  oy, kanal bildirim düzeyi, tartışmaya katılma / ayrılma) da
+  oy, kanal bildirim düzeyi, kanalı sabitleme ve sırası, tartışmaya
+  katılma / ayrılma) da
   `ws_api_person_only()` ister: uygulama anahtarı 403, OAuth bağlantısı
   kabul. Kişinin sözlerini değiştiren ya da silen uç
   `ws_api_own_words_only()` ister; OAuth da reddedilir (plan kararı 11).

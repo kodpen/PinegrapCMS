@@ -160,6 +160,10 @@ Oylama açma, değiştirme ve kapatma API'de yok.
 `POST /workspace/channels/{id}/notify` {notify}, `POST /workspace/polls/{id}/vote` {option_ids}
 (mesajda anket bilgisi `poll` olarak döner), `POST /workspace/threads/{id}/join|leave`.
 Oy ve katılma yalnız cihaz oturumundan.
+Sonradan eklenen kişisel liste tercihleri: `POST /workspace/channels/{id}/prefs` {pinned, order}
+(panelin raptiyesi ve sürükleyerek sıralaması; kanal nesnesinde `pinned`, `order`), yalnız cihaz
+oturumundan, `dry_run`, MCP aracı değil. Kanalın grubu kişisel tercih değil (gruplar çalışma
+alanının, personel düzenler, gruba taşımak erişim verir), bu uca girmedi.
 
 **M7 — Yerel push (O + Kodpen aracısı; karar 1, 3, 4).**
 - Uç: `POST /push/devices` {provider: `fcm` | `apns`, token, bundle_id}, `POST /push/devices/delete`.

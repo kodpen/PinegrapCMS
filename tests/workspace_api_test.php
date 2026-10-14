@@ -617,3 +617,60 @@ function test_ws_api_pin_routes()
 
 	pg_assert_true(is_array($on) && ($on['type'] === 'bool') && ($on['default'] === true), 'on pins by default');
 }
+
+// Pinning a channel and moving it in the list are the person's own sidebar:
+// a write that rehearses, offered to no MCP client, whose fields the channel
+// object carries under the same names.
+function test_ws_api_channel_prefs_route()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$route = $routes['workspace.channels.prefs'] ?? null;
+
+	pg_assert_true(is_array($route), 'the route is declared');
+	pg_assert_same('POST', $route['method']);
+	pg_assert_same('/workspace/channels/{id}/prefs', $route['path']);
+	pg_assert_same('workspace:write', $route['scope']);
+	pg_assert_same('WorkspaceChannel', $route['returns']);
+	pg_assert_true(!empty($route['dry_run']), 'it rehearses');
+	pg_assert_false(pg_mcp_route_is_offered($route), 'it is no MCP tool');
+
+	$body = array();
+
+	foreach ($route['params'] as $param) {
+		if (($param['in'] ?? '') === 'body') {
+			$body[$param['name']] = $param;
+			pg_assert_true(empty($param['required']), $param['name'] . ' may be left out');
+		}
+	}
+
+	pg_assert_same(array('pinned', 'order'), array_keys($body));
+	pg_assert_same(1, $body['order']['min'], 'the top is place 1');
+	pg_assert_true(array_key_exists('pinned', ws_api_channel_schema()) && array_key_exists('order', ws_api_channel_schema()), 'the channel carries both');
+}
+
+// A channel the person never placed has no order; a public one they are not
+// in is neither pinned nor placed.
+function test_ws_api_channel_present_prefs()
+{
+	$brief = array(
+		'id' => 4, 'name' => 'sales', 'kind' => 'public', 'topic' => '', 'joined' => true, 'notify' => 'all',
+		'pinned' => true, 'sort' => 3, 'contact_id' => 0, 'customer_type' => '', 'customer_id' => 0,
+		'department_id' => 0, 'archived' => false, 'unread' => 0, 'last_message_at' => 0,
+	);
+
+	$present = ws_api_channel_present($brief);
+
+	pg_assert_true($present['pinned']);
+	pg_assert_same(3, $present['order']);
+
+	$present = ws_api_channel_present(array_merge($brief, array('joined' => false, 'pinned' => false, 'sort' => 0)));
+
+	pg_assert_false($present['pinned']);
+	pg_assert_same(null, $present['order']);
+	pg_assert_same(array_keys(ws_api_channel_schema()), array_keys($present), 'the answer has the declared fields in order');
+}
