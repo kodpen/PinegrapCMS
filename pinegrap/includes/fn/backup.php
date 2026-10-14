@@ -329,6 +329,62 @@ function pg_backup_dump_settings()
 
 
 /**
+ * How many bytes of the database a backup copies, from the sizes of its tables.
+ *
+ * The tables pg_backup_dump_settings() dumps without their rows or leaves out
+ * are not counted: what they add to sql.sql is a CREATE TABLE or nothing.
+ * Every other table counts at its data and index size, the figure the
+ * estimate before a backup has always used.
+ *
+ * @param array $table_bytes table name => data and index bytes
+ * @return float
+ */
+function pg_backup_estimate_bytes(array $table_bytes)
+{
+    $settings = pg_backup_dump_settings();
+    $left_out = array_merge($settings['no-data'], $settings['exclude-tables']);
+
+    $bytes = 0.0;
+
+    foreach ($table_bytes as $table => $size) {
+
+        if (in_array((string) $table, $left_out, true)) {
+            continue;
+        }
+
+        $bytes += (float) $size;
+    }
+
+    return $bytes;
+}
+
+
+/**
+ * The size of this database and the part of it a backup copies.
+ *
+ * information_schema's data and index lengths, the storage engine's own
+ * estimate. A host that hides information_schema gives zeros for both.
+ *
+ * @return array array('database' => float, 'backup' => float) in bytes
+ */
+function pg_backup_database_size()
+{
+    $table_bytes = array();
+
+    $rows = db_items("SELECT TABLE_NAME AS name, DATA_LENGTH + INDEX_LENGTH AS bytes FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()");
+
+    foreach ($rows as $row) {
+        $table_bytes[(string) $row['name']] = (float) $row['bytes'];
+    }
+
+    return array(
+        'database' => (float) array_sum($table_bytes),
+        'backup'   => pg_backup_estimate_bytes($table_bytes),
+    );
+}
+
+
+/**
  * The lines a backup's sql.sql starts with.
  *
  * SQL comments, so every restore path skips them. English and fixed: the file

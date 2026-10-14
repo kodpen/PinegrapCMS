@@ -168,7 +168,9 @@ dökümden hemen düşer, dosyanın diskteki boyutu yedeği etkilemez.
    söyleyen bir yorumla başlar, yedek ekranları not gösterir. Güvenlik
    duvarı, performans ve API istek günlükleri (`waf_log`, `perf_log`,
    `api_request_log`) de aynı listeye girdi (PR #438); Site Günlüğü, ERP
-   günlükleri, `cron_runs` ve `perf_stats` satırlarıyla kalır.
+   günlükleri, `cron_runs` ve `perf_stats` satırlarıyla kalır. Güncelleme
+   ekranındaki yedek boyutu tahmini ve boş alan uyarısı bu tabloları aynı
+   listeden okuyup saymıyor (`pg_backup_database_size()`).
 8. **Büyük yedeğin geri yüklenmesi** (yapıldı): 950 MB'lık yedeği kurarken
    sunucu yanıt veremedi. Kurulum ekranı yedeği artık sitenin yanına
    (`pgr_new_` önekli tablolara) 20 saniyelik adımlarla yüklüyor, kaldığı

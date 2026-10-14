@@ -1746,7 +1746,8 @@ function install_table_size($table) {
 //   'locked'           => bool    another run holds the lock right now
 //   'last'             => array   what the previous run left behind at a pending version, or null
 //   'backup_available' => bool    a database backup can be written from this screen
-//   'database_bytes'   => float   the size of the database, for the backup
+//   'database_bytes'   => float   the size of the database
+//   'backup_bytes'     => float   the part of it a backup copies (pg_backup_database_size())
 // )
 function install_preflight($versions, $from_key) {
 
@@ -1778,7 +1779,8 @@ function install_preflight($versions, $from_key) {
 			'locked' => false,
 			'last' => null,
 			'backup_available' => false,
-			'database_bytes' => 0
+			'database_bytes' => 0,
+			'backup_bytes' => 0
 		);
 
 	} finally {
@@ -1795,7 +1797,7 @@ function install_preflight_checks($versions, $from_key) {
 
 	$checks = array();
 
-	$result = array('checks' => array(), 'locked' => false, 'last' => null, 'backup_available' => false, 'database_bytes' => 0);
+	$result = array('checks' => array(), 'locked' => false, 'last' => null, 'backup_available' => false, 'database_bytes' => 0, 'backup_bytes' => 0);
 
 	// the pending versions, and the tables they rewrite
 	$pending = array();
@@ -1993,20 +1995,30 @@ function install_preflight_checks($versions, $from_key) {
 
 	}
 
-	// backup
+	// backup: the tables a backup dumps without their rows are not part of it
 	$database_bytes = 0;
+
+	$backup_bytes = 0;
 
 	try {
 
-		$database_bytes = (float) db_value("SELECT SUM(DATA_LENGTH + INDEX_LENGTH) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()");
+		$database_size = pg_backup_database_size();
+
+		$database_bytes = $database_size['database'];
+
+		$backup_bytes = $database_size['backup'];
 
 	} catch (Throwable $e) {
 
 		$database_bytes = 0;
 
+		$backup_bytes = 0;
+
 	}
 
 	$result['database_bytes'] = $database_bytes;
+
+	$result['backup_bytes'] = $backup_bytes;
 
 	$backups_path = dirname(__FILE__) . '/../../data/backups';
 
@@ -2020,11 +2032,21 @@ function install_preflight_checks($versions, $from_key) {
 
 	}
 
-	$backup_value = install_size_label($database_bytes);
+	$backup_value = install_size_label($backup_bytes);
 
 	if ($free !== false) {
 
 		$backup_value .= ' · ' . lang(array('string' => '{var:1} free', 'vars' => install_size_label($free)));
+
+	}
+
+	// says why the figure is below the database size other screens show, once
+	// the left-out rows are worth mentioning
+	$backup_note = '';
+
+	if (($database_bytes - $backup_bytes) >= 1048576) {
+
+		$backup_note = lang(array('string' => 'Without the rows of visit, view and request records, which backups leave out. The whole database is {var:1}.', 'vars' => install_size_label($database_bytes)));
 
 	}
 
@@ -2037,7 +2059,7 @@ function install_preflight_checks($versions, $from_key) {
 			'detail' => lang('The pdo_mysql extension is not loaded, so a backup cannot be written from this screen. Take one from the Backups area of the File Manager before you start.')
 		);
 
-	} elseif (($free !== false) && ($free < ($database_bytes * 2))) {
+	} elseif (($free !== false) && ($free < ($backup_bytes * 2))) {
 
 		$result['backup_available'] = true;
 
@@ -2045,14 +2067,14 @@ function install_preflight_checks($versions, $from_key) {
 			'label' => lang('Database backup'),
 			'value' => $backup_value,
 			'state' => 'warning',
-			'detail' => lang('There may not be enough free space for a copy of the database. Make room first, or take the backup somewhere else.')
+			'detail' => trim(lang('There may not be enough free space for a copy of the database. Make room first, or take the backup somewhere else.') . ' ' . $backup_note)
 		);
 
 	} else {
 
 		$result['backup_available'] = true;
 
-		$checks[] = array('label' => lang('Database backup'), 'value' => $backup_value, 'state' => 'ok', 'detail' => '');
+		$checks[] = array('label' => lang('Database backup'), 'value' => $backup_value, 'state' => 'ok', 'detail' => $backup_note);
 
 	}
 

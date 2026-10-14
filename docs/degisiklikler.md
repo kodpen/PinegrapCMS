@@ -84,6 +84,56 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Güncelleme ekranının yedek boyutu tahmini satırsız tabloları saymıyor (2026-10-14)
+
+**Neden.** #434 ve #438'in kalanı. Güncelleme ekranının "Başlamadan önce"
+kartındaki "Veritabanı yedeği" satırı bütün veritabanının boyutunu
+(`information_schema`'daki veri + indeks toplamı) gösteriyor ve boş alan
+uyarısını (boş alan < 2 × boyut) da ona göre veriyordu. Yedek artık yedi
+tabloyu satırsız döktüğü için yoğun bir sitede tahmin yedeğin birkaç katı
+çıkıyor, disk yettiği hâlde "yeterli boş alan olmayabilir" uyarısı
+görünebiliyordu.
+
+**Ne değişti.**
+- `includes/fn/backup.php`: `pg_backup_estimate_bytes($table_bytes)` (saf;
+  tablo → bayt dizisinden `pg_backup_dump_settings()`'in `no-data` ve
+  `exclude-tables` listelerindeki tabloları düşer) ve
+  `pg_backup_database_size()` (`information_schema`'dan tablo başına
+  boyutu okur, `database` ve `backup` döner). Liste kopyalanmadı:
+  Mysqldump'a verilen ayarın kendisinden okunuyor, ileride
+  `pg_backup_rowless_tables()`'a eklenen tablo tahminden de kendiliğinden
+  düşer. `visitors_innodb`/`visitors_myisam` (taşıma kopyaları, hiç
+  dökülmez) de sayılmıyor.
+- `includes/migrations/runner.php` (`install_preflight_checks()`): satırın
+  değeri ve boş alan karşılaştırması yeni tahmini kullanıyor; 2 katsayısı
+  aynı. Düşülen kısım 1 MB'ı geçince satırın altında "Yedeğe girmeyen
+  ziyaret, görüntüleme ve istek kayıtlarının satırları hariç. Veritabanının
+  tamamı … ." yazıyor (Sistem Durumu ve pano veritabanının tamamını
+  gösterdiği için iki rakamın neden farklı olduğunu söylüyor). Sonuca
+  `backup_bytes` eklendi, `database_bytes` veritabanının tamamı olarak
+  kaldı.
+- Tahmin yapan başka ekran yok: Yedekleme Yöneticisi, Dosya Yöneticisi ›
+  Yedeklemeler ve Ayarlar › Genel › Yedeklemeler yalnız diskteki yedeklerin
+  gerçek boyutunu gösteriyor; Sistem Durumu ve panonun depolama kartı
+  (`pg_storage_usage()`) yedek değil veritabanı boyutu olduğu için
+  değişmedi.
+- `tests/backup_test.php`: satırsız ve atlanan her tablonun tahminden
+  düştüğü, kalanların (string boyut dahil) sayıldığı test.
+
+**Ölçüm (sandbox, MariaDB 10.11).** Yeni kurulum: veritabanı 17 MB, tahmin
+15 MB, gerçek `sql.sql` 1,5 MB. 150.000 ziyaret, 50.000 saatlik sayfa
+görüntüleme, 80.000 form öğesi görüntüleme, 40'ar bin güvenlik duvarı,
+performans ve API isteği ile 20.000 site günlüğü satırı eklenince:
+veritabanı 165 MB (kart önce bunu gösteriyordu), tahmin 20 MB, gerçek
+`sql.sql` 4,8 MB. Tahmin diskteki boyuttur (boş InnoDB tablosu da en az
+16 KB, indeksler dahil), döküm her zaman ondan küçük; boş alan payı bu
+yüzden değiştirilmedi.
+
+**Bilerek yapılmayan.** Şema adımı yok. Tahmin `sql.sql`'in gerçek boyutuna
+göre yeniden ölçeklenmedi (katsayılara dokunulmadı).
+
+---
+
 ## 2026.4.10 — Ziyaret kaydı olmayan istekte para birimi seçicisi ve sepetin ilk satırı uyarı yazmıyor, para birimsiz istek geri dönüyor (2026-10-14)
 
 **Neden.** #431 ve #437'nin "Bilerek yapılmayan" maddeleri. Ziyaret kaydı
