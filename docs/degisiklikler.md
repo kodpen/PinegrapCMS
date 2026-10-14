@@ -84,6 +84,77 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Veritabanı yedekleri ziyaret kayıtlarını, sayfa ve form öğesi görüntüleme sayılarını almıyor (2026-10-14)
+
+**Neden.** Ziyaretçi temizleme planının (`docs/_plan_ziyaretci_temizleme.md`)
+"Ertelenenler" 7. maddesi; ürün sahibi 2026-10-14'te onayladı: ziyaretçi
+listeleri, form ve sayfa görüntülemeleri yedeklere girmesin. 90 günlük
+saklamadan sonra da yoğun bir sitede bu satırlar dökümün çoğu ve geri
+yüklemenin en uzun kısmı; geri yüklenen bir sitenin onlara ihtiyacı yok.
+
+**Kapsam (`pg_backup_rowless_tables()`).** Yapısı (`CREATE TABLE`, mevcut
+`AUTO_INCREMENT` ile) yedekte kalır, satırları dökülmez:
+- `visitors`: her ziyaret bir satır (ziyaretçi listesi, ziyaretçi raporunun
+  ham günleri).
+- `visitor_content_hourly`: sayfa ve içerik başına saatlik görüntüleme (pano,
+  Sayfalar listesi, sayfa bilgisi "Sayfa Görünümleri", SEO trafik raporu).
+- `submitted_form_views`: form öğesi görüntülemesi, görüntüleme başına bir
+  satır (2026.4.1 öncesinin tablosu; geçiş sürüyorsa dolu).
+- `submitted_form_view_stats`: form öğesi görüntülemesi, gün başına (form
+  görünüm dizininin yöneticiye gösterdiği "en çok görüntülenen" listesi).
+
+Hiç yedeklenmeyen (`pg_backup_skipped_tables()`): `visitors_innodb` ve
+`visitors_myisam`, #426'nın MyISAM → InnoDB taşımasının çalışma kopyaları;
+yalnız `data/temp/visitor_move.json` ile anlamlılar, o dosya yedekte yok.
+
+Satırlarıyla kalan: `visitor_stats_daily` (saklama süresini geçmiş günlerin
+özeti; başka kopyası yok), `visitor_stats_hourly` (pano ziyaretçi grafiği,
+günde 24 satır), `submitted_form_info.number_of_views` (okuyucuya görünen
+sayaç; tablo başka bilgiler de taşıyor), `visitor_reports`.
+
+**Ne değişti.**
+- `includes/fn/backup.php`: `pg_backup_dump_database($file)` dört yedek
+  yolunun ortak dökümü oldu: otomatik yedek (arşiv ve klasör), Yedekleme
+  Yöneticisi ile Dosya Yöneticisi › Yedeklemeler'in adım adım yedeği
+  (`includes/panel/software.php`, `create_mysql_dumb`) ve güncelleme öncesi
+  yedek (`install_backup_database()`). `mysqldump-php`'ye `no-data` ve
+  `exclude-tables` ayarları gidiyor; kütüphaneye dokunulmadı.
+- Dosyanın başında (`pg_backup_dump_note()`) hangi tabloların satırsız
+  döküldüğünü söyleyen İngilizce SQL yorumu. Kütüphane dosyasını `wb` ile
+  açtığı için döküm önce `sql.sql.part`'a yazılır, not ve döküm `sql.sql`'e
+  kopyalanır, `.part` silinir. Kopya eksik yazılırsa (dolu disk) iki dosya
+  da silinir ve hata her yolun mevcut hata yolundan döner.
+- Not üç ekranda: Yedekleme Yöneticisi'nde "Yedekleme Oluştur veya
+  Güncelle" kartı, Ayarlar › Genel › Yedeklemeler (saklama açıklamasının
+  altında), Dosya Yöneticisi › Yedeklemeler durum çubuğu (kısa metin,
+  üstüne gelince tamamı).
+- `get_search_results.php`: oturumdaki ziyaretçi satırı yoksa (geri
+  yüklenen yedekten sonra açık kalan oturum) "Trying to access array offset
+  on null" uyarısı yazıyordu; satır yoksa terim boş başlıyor.
+
+**Geri yükleme.** Geri yükleme koduna dokunulmadı. Satırsız tablolar boş
+açılır; ziyaret, sayfa ve form öğesi görüntülemeleri ilk istekten itibaren
+yeniden sayılır. Ziyaretçi raporu son saklama dönemini boş gösterir, eski
+günler özetten gelir. Aynı sunucuya geri yüklemede açık oturumların
+ziyaretçi satırı yok: o oturumların sayfa görüntülemeleri ziyaret satırına
+yazılmaz (zaten "satır yoksa geç" yolu vardı), saatlik sayaçlara yazılır.
+
+**Ölçüm (sandbox, MariaDB 10.11).** 206 bin ziyaret satırı, 2.671 saatlik
+içerik satırı, 682 + 234 form öğesi görüntüleme satırı, 5.000 + 1.000
+satırlık iki taşıma kopyası: döküm 53,4 MB → 1,5 MB. Yedek kurulum
+ekranının ayrıştırıcısıyla (`parse_mysql_dump()`) boş bir veritabanına
+geri yüklendi (1,7 sn): 297 tablonun `CHECKSUM TABLE`'ı kaynağıyla aynı,
+dört tablo boş (yapısı ve `AUTO_INCREMENT` aynı), iki taşıma kopyası yok.
+Geri yüklenen veritabanında ön yüz, pano, ziyaretçi raporu, Veritabanı
+Motoru, SEO ve Sayfalar hatasız açıldı; ilk sayfa görüntülemeleri
+`visitor_content_hourly`'ye yazıldı. Otomatik (arşiv ve klasör), panelden
+adım adım ve güncelleme öncesi yedek ayrı ayrı alındı; dördünün de başında
+not var, `visitors` satırı yok.
+
+**Bilerek yapılmayan.** `waf_log`, `perf_log`, `api_request_log` gibi diğer
+günlük tabloları kapsam dışı (karar yalnız ziyaret ve görüntüleme
+kayıtları için). Güncelleme öncesi yedek ekranındaki boyut tahmini hâlâ
+bütün veritabanının boyutu (üst sınır olarak doğru).
 ## 2026.4.10 — Zorunlu parametresi olmadan açılan panel ekranları uyarı yazmıyor, kayıt isteyenler "Kayıt bulunamadı" diyor (2026-10-14)
 
 **Neden.** #417'nin panel taramasında K7 olarak kalan iş. Bir kayıt (sayfa,

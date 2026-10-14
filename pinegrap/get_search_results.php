@@ -62,8 +62,10 @@ function get_search_results($properties) {
         $db_query = "SELECT site_search_terms FROM visitors WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
         $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        $site_search_terms = $row['site_search_terms'];
-        
+        // The session can name a row that is gone: a restored backup carries
+        // no visitor rows.
+        $site_search_terms = is_array($row) ? (string) $row['site_search_terms'] : '';
+
         // if there are search terms, then add a delimiter
         if ($site_search_terms != '') {
             $site_search_terms .= '|';

@@ -5,7 +5,8 @@
  * Automatic backups: the weekly archive auto_backup.php writes, how many of
  * them are kept, and the copy sent to a remote store (FTP, an S3-compatible
  * bucket, or Google Drive, OneDrive or Dropbox through a connected account:
- * includes/fn/backup_cloud.php).
+ * includes/fn/backup_cloud.php). Also the database dump every backup writes,
+ * the hand-made and pre-upgrade ones included (pg_backup_dump_database()).
  *
  * Only names produced by pg_backup_auto_name() are ever deleted here. The
  * install dumps under data/backups (english_default, turkish_default), the
@@ -255,6 +256,147 @@ function pg_backup_delete_tree($path)
     }
 
     return @rmdir($path);
+}
+
+
+// ----------------------------------------------------------------------------
+// Database dump
+// ----------------------------------------------------------------------------
+
+/**
+ * Tables every backup dumps without their rows.
+ *
+ * One row per visit, and the counters every page view and form item view
+ * adds to. On a busy site they are most of the dump and most of the time a
+ * restore takes, and nothing else in the database needs their rows: the
+ * structure is dumped, so a restored site opens them empty and counts on.
+ * The readers' counter of a form item (submitted_form_info.number_of_views),
+ * the daily visitor summary (visitor_stats_daily) and the hourly visitor
+ * chart (visitor_stats_hourly) keep their rows.
+ *
+ * @return array table name => what its rows are, as the dump's note says it
+ */
+function pg_backup_rowless_tables()
+{
+    return array(
+        'visitors'                  => 'visit records',
+        'visitor_content_hourly'    => 'page views per hour',
+        'submitted_form_views'      => 'form item views, one row each',
+        'submitted_form_view_stats' => 'form item views per day',
+    );
+}
+
+
+/**
+ * Tables every backup leaves out altogether.
+ *
+ * The two working copies the move of a MyISAM visitors table to InnoDB keeps
+ * while it runs (pg_visitor_move_run()). They only mean something next to that
+ * run's marker in data/temp, which no backup carries, and one of them is as
+ * large as visitors.
+ *
+ * @return array table names
+ */
+function pg_backup_skipped_tables()
+{
+    return array(PG_VISITOR_MOVE_COPY, PG_VISITOR_MOVE_OLD);
+}
+
+
+/**
+ * The settings Mysqldump is given for a backup.
+ *
+ * @return array
+ */
+function pg_backup_dump_settings()
+{
+    return array(
+        'no-data'        => array_keys(pg_backup_rowless_tables()),
+        'exclude-tables' => pg_backup_skipped_tables(),
+    );
+}
+
+
+/**
+ * The lines a backup's sql.sql starts with.
+ *
+ * SQL comments, so every restore path skips them. English and fixed: the file
+ * may be restored on a site in another language.
+ *
+ * @return string
+ */
+function pg_backup_dump_note()
+{
+    $lines = array(
+        '-- Pinegrap database backup',
+        '--',
+        '-- These tables are dumped without their rows and are empty after a restore:',
+    );
+
+    foreach (pg_backup_rowless_tables() as $table => $rows) {
+        $lines[] = '--   ' . str_pad($table, 27) . $rows;
+    }
+
+    $lines[] = '-- The daily visitor summary (visitor_stats_daily) and the hourly visitor';
+    $lines[] = '-- chart (visitor_stats_hourly) are backed up with their rows.';
+    $lines[] = '--';
+
+    return implode(PHP_EOL, $lines) . PHP_EOL;
+}
+
+
+/**
+ * Dump the database into $file for a backup.
+ *
+ * Mysqldump opens its file with "wb" and has no way to put anything ahead of
+ * its own header, so the dump is written beside $file first and copied in
+ * behind the note. Without the rows of pg_backup_rowless_tables() that copy
+ * is small.
+ *
+ * @param string $file path of the dump to write
+ * @throws Exception when the dump or the copy fails; neither file is left behind
+ */
+function pg_backup_dump_database($file)
+{
+    include_once(PG_FUNCTIONS_DIR . '/mysqldump.php');
+
+    $part = $file . '.part';
+
+    try {
+        $dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD, pg_backup_dump_settings());
+        $dump->start($part);
+    } catch (\Exception $e) {
+        @unlink($part);
+        throw $e;
+    }
+
+    clearstatcache(true, $part);
+
+    $note = pg_backup_dump_note();
+    $size = @filesize($part);
+    $in = @fopen($part, 'rb');
+    $out = ($in !== false) ? @fopen($file, 'wb') : false;
+
+    // A short write is what a full disk gives, not false.
+    $written = ($size !== false)
+        && ($out !== false)
+        && (@fwrite($out, $note) === strlen($note))
+        && (@stream_copy_to_stream($in, $out) === $size);
+
+    if ($in !== false) {
+        fclose($in);
+    }
+
+    if ($out !== false) {
+        $written = @fclose($out) && $written;
+    }
+
+    @unlink($part);
+
+    if (!$written) {
+        @unlink($file);
+        throw new \Exception(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => array(basename($file)))));
+    }
 }
 
 
@@ -572,13 +714,10 @@ function pg_backup_run_zip($name)
         return '';
     }
 
-    include_once(PG_FUNCTIONS_DIR . '/mysqldump.php');
-
     // The database first: if the run is cut short while the files are being
     // added, the dump is what matters most.
     try {
-        $dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD);
-        $dump->start($work . '/sql.sql');
+        pg_backup_dump_database($work . '/sql.sql');
     } catch (\Exception $e) {
         pg_backup_delete_tree($work);
         log_activity(lang(array('string' => 'Software Auto Backup error: {var:1}', 'vars' => array($e->getMessage()))), 'SYSTEM');
@@ -635,11 +774,8 @@ function pg_backup_run_folder($name)
         @mkdir($folder, 0777, true);
     }
 
-    include_once(PG_FUNCTIONS_DIR . '/mysqldump.php');
-
     try {
-        $dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD);
-        $dump->start($folder . '/sql.sql');
+        pg_backup_dump_database($folder . '/sql.sql');
     } catch (\Exception $e) {
         // An empty folder left by a failed dump is not a backup.
         if (is_dir($folder) && (count(glob($folder . '/*')) === 0)) {

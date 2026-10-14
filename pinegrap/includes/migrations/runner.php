@@ -2114,9 +2114,8 @@ function install_backup_database($database_version) {
 
 	try {
 
-		$dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD);
-
-		$dump->start($path . '/sql.sql');
+		// The dump the Backups area writes, visit and view rows left out.
+		pg_backup_dump_database($path . '/sql.sql');
 
 	} catch (\Throwable $e) {
 

@@ -158,9 +158,13 @@ dökümden hemen düşer, dosyanın diskteki boyutu yedeği etkilemez.
 6. Özetin tutmadığı gruplamalar (tam yönlendiren adres, posta kodu, sayfa
    görüntüleme sayısı, sipariş bayrakları) ve filtreli raporlar için özet:
    gerek görülürse boyut eklenir.
-7. **Yedekte ziyaretçi satırları**: yedek (`pg_backup_run_zip()`) `visitors`
-   satırlarının tamamını döker; 90 günlük satır yoğun bir sitede yine
-   yüzlerce MB olabilir. Seçenek: yedeğe yalnız yapısını almak (günlük özet
-   ve saatlik grafik tabloları kalır). Ürün kararı ister.
+7. **Yedekte ziyaretçi satırları** (yapıldı, PR #434; ürün sahibi
+   2026-10-14'te onayladı): her veritabanı yedeği (otomatik, panelden elle,
+   güncelleme öncesi) `visitors`, `visitor_content_hourly`,
+   `submitted_form_views` ve `submitted_form_view_stats` tablolarını yalnız
+   yapısıyla döker (`pg_backup_rowless_tables()`); taşımanın çalışma
+   kopyaları (`visitors_innodb`, `visitors_myisam`) hiç dökülmez. Günlük
+   özet ve saatlik ziyaretçi grafiği satırlarıyla kalır. `sql.sql` bunu
+   söyleyen bir yorumla başlar, yedek ekranları not gösterir.
 8. **Büyük yedeğin geri yüklenmesi**: 950 MB'lık yedeği kurarken sunucu
    yanıt veremedi; geri yükleme yolunun parça parça çalışması ayrı bir iş.
