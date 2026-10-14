@@ -393,6 +393,14 @@
          aynı sırayla geçiyor. Başlığa Shift'siz tıklamak
          eskisi gibi tek sütuna göre sıralıyor.
 
+  [YENİ] Tüm Ürün Özellikleri listesi de aynı anda
+         birden çok sütuna göre sıralanıyor, örneğin
+         etiket artan, aynı etikette ad artan. Başlığa
+         Shift ile tıklamak sonraki düzeyi ekliyor;
+         telefonda ya da klavyeyle araç çubuğundaki
+         "Sıralama" menüsü kullanılıyor. Seçilen sıralama
+         panel dili değişince kaybolmuyor.
+
   REHBER
   --------------------------------------------------------
 
@@ -422,6 +430,14 @@
          sıralama değişince korunuyor. Seçilen sıralama
          panel dili değişince ve masaüstü/mobil stil
          geçişinde kaybolmuyor.
+
+  [YENİ] Kısa Linkler listesi de aynı anda birden çok
+         sütuna göre sıralanıyor, örneğin hedef türü
+         artan, aynı türde ad artan. Başlığa Shift ile
+         tıklamak sonraki düzeyi ekliyor; telefonda ya da
+         klavyeyle araç çubuğundaki "Sıralama" menüsü
+         kullanılıyor. Seçilen sıralama panel dili
+         değişince kaybolmuyor.
 
   KULLANICILAR
   --------------------------------------------------------
@@ -462,6 +478,26 @@
          kullanıcı sorguya kendi komutunu ekleyebiliyordu.
          Artık yalnız listenin sütunları ve artan/azalan
          kabul ediliyor.
+
+  TAKVİMLER VE MENÜLER
+  --------------------------------------------------------
+
+  [YENİ] Takvimler, Etkinlik Konumları ve Tüm Menüler
+         listeleri de aynı anda birden çok sütuna göre
+         sıralanıyor, örneğin efekt artan, aynı efektte
+         ad artan. Başlığa Shift ile tıklamak sonraki
+         düzeyi ekliyor; telefonda ya da klavyeyle araç
+         çubuğundaki "Sıralama" menüsü kullanılıyor.
+         Seçilen sıralama panel dili değişince
+         kaybolmuyor.
+
+  [GÜVENLİK] Bu üç listede adres çubuğuna yazılan
+         sıralama yönü veritabanı sorgusuna olduğu gibi
+         giriyordu; listeye girebilen oturum açmış bir
+         kullanıcı (Takvimler'de takvim yetkisi olan
+         Kullanıcı rolü dahil) sorguya kendi komutunu
+         ekleyebiliyordu. Artık yalnız listenin
+         sütunları ve artan/azalan kabul ediliyor.
 
   E-TİCARET: AYARLAR
   --------------------------------------------------------

@@ -29,47 +29,27 @@ if ($user['role'] > 2) {
     output_error(lang('Access denied.'));
 }
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['calendars']['view_calendar_event_locations'][$key] = trim($value);
-    }
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'created'       => lang('Created'),
+    'last_modified' => lang('Last Modified'),
+);
 
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['calendars']['view_calendar_event_locations']['sort']) == false) {
-    $_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] = '';
-}
+$list_state = pg_list_state('view_calendar_event_locations', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-switch (($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'calendar_event_locations.name';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'calendar_event_locations.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'calendar_event_locations.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'calendar_event_locations.last_modified_timestamp';
-        $_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] = lang('Last Modified');
-        $_SESSION['software']['calendars']['view_calendar_event_locations']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['calendars']['view_calendar_event_locations']['order']) == false) {
-    $_SESSION['software']['calendars']['view_calendar_event_locations']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'calendar_event_locations.name',
+    'created'       => 'calendar_event_locations.created_timestamp',
+    'last_modified' => 'calendar_event_locations.last_modified_timestamp',
+));
 
 // get all calendar locations
 $query =
@@ -84,7 +64,7 @@ $query =
     FROM calendar_event_locations
     LEFT JOIN user as created_user ON calendar_event_locations.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON calendar_event_locations.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['calendars']['view_calendar_event_locations']['order'] ?? ''));
+    ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -151,6 +131,8 @@ pg_page_shell(
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="add_calendar_event_location.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_calendar_event_locations.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -160,9 +142,9 @@ pg_page_shell(
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendar_event_locations']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendar_event_locations']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendar_event_locations']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>

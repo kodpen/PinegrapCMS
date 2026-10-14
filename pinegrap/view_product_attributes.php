@@ -23,55 +23,29 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_product_attributes');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_product_attributes'][$key] = trim($value);
-    }
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'label'         => lang('Label & Options'),
+    'created'       => lang('Created'),
+    'last_modified' => lang('Last Modified'),
+);
 
-// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
-if (isset($_SESSION['software']['ecommerce']['view_product_attributes']['order'])) {
-    $_SESSION['software']['ecommerce']['view_product_attributes']['order'] = sql_order_direction($_SESSION['software']['ecommerce']['view_product_attributes']['order'], '');
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_product_attributes']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_product_attributes']['sort'] = '';
-}
+$list_state = pg_list_state('view_product_attributes', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-switch (($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'product_attributes.name';
-        break;
-
-    case lang('Label & Options'):
-        $sort_column = 'product_attributes.label';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'product_attributes.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'product_attributes.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'product_attributes.last_modified_timestamp';
-        $_SESSION['software']['ecommerce']['view_product_attributes']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_product_attributes']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_product_attributes']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_product_attributes']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'product_attributes.name',
+    'label'         => 'product_attributes.label',
+    'created'       => 'product_attributes.created_timestamp',
+    'last_modified' => 'product_attributes.last_modified_timestamp',
+));
 
 $all_product_attributes = 0;
 
@@ -96,7 +70,7 @@ $query =
     FROM product_attributes
     LEFT JOIN user AS created_user ON product_attributes.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON product_attributes.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '');
+    ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $product_attributes = mysqli_fetch_items($result);
 
@@ -192,6 +166,8 @@ echo
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_product_attribute.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_product_attributes.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
                 </div>
@@ -202,10 +178,10 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Label & Options'), ($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                    <th>' . get_column_heading(lang('Label & Options'), $sort_levels, '', '', 'label') . '</th>
+                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
