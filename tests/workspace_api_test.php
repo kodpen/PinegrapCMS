@@ -557,3 +557,37 @@ function test_ws_file_preview_sends_the_original()
 	@unlink($text);
 	@rmdir($directory);
 }
+
+// The pin bar's actions are writes of the person's own app: they can be
+// rehearsed, answer with the channel's state the sync carries, and are no
+// MCP tools.
+function test_ws_api_pin_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$paths = array('workspace.messages.pin' => '/workspace/messages/{id}/pin', 'workspace.messages.pin_close' => '/workspace/messages/{id}/pin/close');
+
+	foreach ($paths as $id => $path) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+		pg_assert_same('POST', $routes[$id]['method']);
+		pg_assert_same($path, $routes[$id]['path']);
+		pg_assert_same('workspace:write', $routes[$id]['scope']);
+		pg_assert_same('WorkspaceSyncChannelState', $routes[$id]['returns']);
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' takes dry_run');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+	}
+
+	$on = null;
+
+	foreach ($routes['workspace.messages.pin']['params'] as $param) {
+		if ($param['name'] === 'on') {
+			$on = $param;
+		}
+	}
+
+	pg_assert_true(is_array($on) && ($on['type'] === 'bool') && ($on['default'] === true), 'on pins by default');
+}

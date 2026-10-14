@@ -1592,6 +1592,14 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: ekip cihazlarıyla oturum açan
+         kişi telefonundan bir mesajı kanalın en üstüne
+         sabitleyebiliyor, sabitlemeyi kaldırabiliyor ve
+         sabitlenmiş mesajı kendisi için kapatabiliyor;
+         panelde olduğu gibi kanal kimin sabitlediğini
+         yazıyor. Uygulama önce deneme isteğiyle ne
+         olacağını görebiliyor.
+
   [YENİ] Çalışma Alanı: uygulama kanaldaki bir
          fotoğrafın küçük kopyasını isteyebiliyor; liste
          gösteren telefon her fotoğrafın aslını indirmek

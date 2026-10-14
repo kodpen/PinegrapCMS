@@ -23172,5 +23172,9 @@
     "Only one option can be chosen in this poll.": "Bu oylamada yalnız bir seçenek seçilebilir.",
     "Only the person, signed in on a device, can join or leave a discussion; an application cannot do it for them.": "Tartışmaya yalnız cihazında oturum açmış kişinin kendisi katılabilir ya da tartışmadan ayrılabilir; bir uygulama onun adına yapamaz.",
     "Only staff who read its channel can join a discussion.": "Tartışmaya yalnız kanalını okuyabilen personel katılabilir.",
-    "Only a picture has a smaller copy.": "Küçük kopyası yalnız görselin olur."
+    "Only a picture has a smaller copy.": "Küçük kopyası yalnız görselin olur.",
+    "Only the person, signed in on a device, can pin a message, take the pin off or close it; an application cannot do it for them.": "Bir mesajı yalnız cihazında oturum açmış kişinin kendisi sabitleyebilir, sabitlemeyi kaldırabilir ya da kapatabilir; bir uygulama onun adına yapamaz.",
+    "A discussion has no message pinned to the top.": "Bir tartışmada en üste sabitlenmiş mesaj olmaz.",
+    "Only a message, a note, a decision or a task card can be pinned.": "Yalnız bir mesaj, not, karar ya da görev kartı sabitlenebilir.",
+    "Only the people in a channel keep the pinned message closed; anybody else closes it on their own screen.": "Sabitlenmiş mesajı yalnız kanaldaki kişiler kapalı tutar; başkaları onu kendi ekranında kapatır."
 }
