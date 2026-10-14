@@ -84,6 +84,80 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: açık uygulamanın eşitlemesi Pinegrap AI ve MCP ajanı isteğini sürdürüyor, IIS'te de (2026-10-14)
+
+**Neden.** #373 ekip cihazından yazılan mesajda `@ai` ya da ajan olan bir
+MCP sunucusunun takma adı anılınca isteği kuyruğa koydu, ama kuyruğu
+yalnız sunucu yanıtı önce gönderebiliyorsa (PHP-FPM,
+`fastcgi_finish_request()`) yanıttan sonra sürdürdü. IIS'te (dev ve müşteri
+siteleri) ve mod_php'de istek, biri kanalı panelde açana ya da saatlik iş
+çalışana kadar bekliyordu; telefonda kanalı açık tutan kişi yanıt
+alamıyordu. Panelde işi açık ekran sürdürür: ekran kanaldaki bir mesajın
+altında bekleyen Pinegrap AI ya da MCP ajanı isteği görünce `ws_ai_kick` ve
+`ws_mcp_agent_kick` eylemlerini ayrı bir istekle çağırır
+(`workspace.js`, `schedule`).
+
+**Ne değişti.**
+- `includes/workspace/api_sync.php`, `GET /workspace/sync`: ekip
+  cihazları oturumundan (`ws_api_device_writes_as_person()`, `ws_sync_seen()`
+  ile aynı koşul) `channel_id` ile çağrılınca ve kişi kanalı okuyabiliyorsa,
+  `ws_api_sync_waiting()` kanalda `queued`, `sent` ya da `running` duran
+  `ai` ve `mcp` isteklerine bakar (panel ekranının işareti) ve
+  `ws_api_assistants_carry_on(…, true)` ile sürdürür. Kanal artık bir kez
+  okunuyor; `$now` işten sonra alınıyor, böylece çağrının içinde yazılan
+  yanıt ve değişen mesajlar aynı cevaba giriyor, imleç ondan sonrasını
+  arıyor.
+- `includes/workspace/api_resources.php`: `ws_api_carry_on_where()` (saf
+  fonksiyon) yeri söyler: yanıtı önce gönderebilen sunucuda `after`
+  (#373'teki kapanış fonksiyonu, panelin bütçesiyle), gönderemeyen sunucuda
+  yalnız eşitlemede `here`, mesaj yazma ucunda hiç. `here`'de bir ajan
+  çağrısı (`ws_mcp_agent_kick()` varsayılan bütçe 1 sn) ve bir model
+  çağrısı (`ws_ai_kick(1)`) yapılır; eşitleme en çok o kadar tutulur, bir
+  sonraki eşitleme sonraki adımı alır.
+- İzinler ve sınır panelle aynı: istek, soranın yetkisiyle çalışır;
+  Pinegrap AI site genelinde tek çağrıyı `GET_LOCK('pg_ws_ai_run')` ile
+  tutar, işi başka yerde süren bir çağrı hemen döner; ajan istekleri tek
+  tek sahiplenilir, iki çağrı aynı isteği göndermez. Uygulama anahtarının
+  ve OAuth bağlantısının yoklaması kimse ekranda değil sayılır, işi
+  sürdürmez. Eşitlemenin hız sınırı API'nin cihaz başı sayılan dakika
+  sınırıdır (`api_rate_limit_check()`).
+- API açıklaması (`includes/workspace/api.php`): `workspace.sync` bunu
+  söylüyor; `workspace.messages.create` IIS'te işi "uygulamanın sonraki
+  `GET /workspace/sync`'i" sürdürür diyor.
+- `.claude/skills/pinegrap-dis-api/SKILL.md`: uzun iş başlatan uçlar için
+  kural.
+
+Şema değişikliği yok, yeni izin kapsamı yok, yeni metin yok, MCP aracı yok
+(eşitleme `'mcp' => false`), JS değişmedi.
+
+**Bilerek yapılmayan.** Ayrı bir "kuyruğu sürdür" ucu açılmadı: API mesaj
+nesnesi isteğin durumunu taşımadığı için uygulama ne zaman çağıracağını
+bilemezdi; eşitleme zaten birkaç saniyede bir geliyor. IIS'te iş sürerken o
+eşitleme çağrısı model ya da ajan çağrısı kadar sürer (Pinegrap AI'da en
+çok `WS_AI_CALL_TIMEOUT`, 55 sn); istemci beklemeden bırakırsa iş
+`ignore_user_abort()` ile sürer, sonraki eşitleme sonucu getirir.
+Claude'un kuyrukta bekleyen isteği (`ws_claude_tick()`) eşitlemede yeniden
+denenmez; panelde de ekran açılışındaki `ws_tick`'e aittir. Kanal açık
+değilken (yalnız kanal listesi) iş sürmez, panelde olduğu gibi.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye bir test
+(`ws_api_carry_on_where()`: FPM'de iki uçta `after`, IIS'te eşitlemede
+`here`, mesaj yazmada boş). Sandbox'ta (PHP'nin kendi sunucusu,
+`fastcgi_finish_request()` yok, yani IIS yolu) ekip cihazı oturumuyla,
+kanala bayat bir `running` Pinegrap AI isteği ve olmayan sunucuya `queued`
+bir MCP ajanı isteği yazılarak: `channel_id`'siz eşitleme ve development'ın
+kodu ikisine de dokunmadı; yeni kodla `channel_id=1` eşitlemesi aynı
+çağrıda AI isteğini bekçiyle "zamanında yanıt vermedi", ajan isteğini
+sahiplenip "Bu MCP sunucusu bulunamadı" ile kapattı (iki kick de çalıştı).
+Uygulama anahtarıyla (Basic) aynı çağrı isteğe dokunmadı; başka kanalda
+bekleyen istek `channel_id=1` ile beklemede kaldı, `channel_id=2` ile
+sürdü. İmleç, ETag ile 304 ve olmayan kanalda `gone: true` değişmedi.
+Sunucu günlüğünde uyarı yok. Gerçek bir model ya da ajan çağrısı
+denenmedi (anahtar ve ajan sunucusu yok); çağrılan kod panelin eylemleriyle
+aynı.
+
+---
+
 ## 2026.4.10 — Dış API: Çalışma Alanı mesajını yalnız kendi görünümünden silme ve mesaj uçlarında dry_run (2026-10-14)
 
 **Neden.** #371 (aşağıda, "Çalışma Alanı mesajını düzeltme, silme, kanalı

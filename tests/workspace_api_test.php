@@ -7,7 +7,8 @@
  * handler, no two routes answer the same method on the same path, and each
  * action becomes one MCP tool. Also the scopes the search asks of each kind
  * of panel record (includes/workspace/api_day.php), who a call from a
- * device writes as, and which of its messages ask an assistant.
+ * device writes as, which of its messages ask an assistant, and where what
+ * they ask is carried on.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -223,4 +224,16 @@ function test_ws_api_message_asks_assistants()
 	pg_assert_false(ws_api_message_asks_assistants(7, 'message'), 'an application\'s message does not ask');
 	pg_assert_false(ws_api_message_asks_assistants(0, 'decision'), 'a decision does not ask');
 	pg_assert_false(ws_api_message_asks_assistants(0, 'note'), 'a note does not ask');
+}
+
+// Pinegrap AI and an MCP agent asked from a device: after the answer where
+// the server can send it first; where it cannot, only an open app's sync,
+// which waits for news anyway, does the work in the call, and a message
+// written leaves it to the next sync, the panel's screens and the hourly job.
+function test_ws_api_carry_on_where()
+{
+	pg_assert_same('after', ws_api_carry_on_where(true, false), 'PHP-FPM, a message written');
+	pg_assert_same('after', ws_api_carry_on_where(true, true), 'PHP-FPM, the sync');
+	pg_assert_same('here', ws_api_carry_on_where(false, true), 'IIS, the sync');
+	pg_assert_same('', ws_api_carry_on_where(false, false), 'IIS, a message written');
 }

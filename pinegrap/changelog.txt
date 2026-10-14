@@ -2036,10 +2036,11 @@
          önceden yalnız panelden yazılınca başlıyordu.
          Kanalın izinleri panelle aynı: asistana kapalı
          kanalda kanala nedenini söyleyen bir satır düşer.
-         Claude hemen çalışır; Pinegrap AI ve kendisi ajan
-         olan MCP sunucusu, sunucu yanıtı önce
-         gönderebiliyorsa hemen, yoksa kanalı açık bir
-         ekran ya da saatlik iş tarafından sürdürülür.
+         Claude hemen çalışır. Pinegrap AI ve kendisi ajan
+         olan MCP sunucusu da beklemez: uygulamada kanal
+         açık kaldıkça uygulamanın güncel kalma çağrısı
+         işi sürdürür, IIS'te de; panelde kanalı açık
+         ekranlar ve saatlik iş de sürdürür.
 
   BAĞLI HESAPLAR
   --------------------------------------------------------

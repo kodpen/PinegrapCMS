@@ -18,6 +18,13 @@
  * poll every few seconds cheap without a connection held open, which on
  * shared hosting and IIS would hold a PHP worker for each open app.
  *
+ * Pinegrap AI and an MCP server's own agent work only while somebody carries
+ * them on. While a request to one waits in the open channel, a person's app
+ * does it here as the panel's screen does (ws_api_sync_waiting()): right after
+ * the answer where the server can send it first, otherwise in the call, one
+ * step at a time; a call that finds the work under way elsewhere returns at
+ * once.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -187,10 +194,35 @@ function ws_api_sync_schema()
     );
 }
 
+/**
+ * What waits in a channel for an assistant only a screen carries on: a
+ * request to Pinegrap AI or to an MCP server's own agent still queued, sent
+ * or running - the sign on which the panel's screen calls ws_ai_kick and
+ * ws_mcp_agent_kick (workspace.js, schedule). Claude works on claude.ai and
+ * needs nobody.
+ *
+ * @param int $channel_id
+ * @return array claude, agent, ai, as ws_message_ask_assistants() returns them
+ */
+function ws_api_sync_waiting($channel_id)
+{
+    $waiting = array('claude' => false, 'agent' => false, 'ai' => false);
+
+    if (!function_exists('ws_ai_schema_ready') || !ws_ai_schema_ready()) {
+        return $waiting;
+    }
+
+    foreach ((array) db_items("SELECT DISTINCT agent FROM ws_ai_requests
+        WHERE agent IN ('ai', 'mcp') AND status IN ('queued', 'sent', 'running') AND channel_id = '" . (int) $channel_id . "'") as $row) {
+        $waiting[((string) $row['agent'] === 'mcp') ? 'agent' : 'ai'] = true;
+    }
+
+    return $waiting;
+}
+
 function ws_api_sync($params)
 {
     $viewer = ws_api_viewer();
-    $now = time();
     $claude = ws_api_is_claude();
 
     $cursor = array('t' => 0, 'c' => 0, 'm' => 0, 'ch' => '', 'th' => '');
@@ -207,9 +239,29 @@ function ws_api_sync($params)
     // them, as with the panel's screen open: a mention's banner waits, and
     // banners whose wait is over go out. An integration's poll is nobody
     // looking.
-    if (ws_api_device_writes_as_person(function_exists('api_current_device') ? api_current_device() : null)) {
+    $person = ws_api_device_writes_as_person(function_exists('api_current_device') ? api_current_device() : null);
+
+    if ($person) {
         ws_sync_seen($viewer['id']);
     }
+
+    // The channel open on the screen, while the person may read it.
+    $channel_id = (int) ($params['channel_id'] ?? 0);
+    $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
+
+    if ($channel && (!ws_can_read_channel($viewer, $channel) || ($claude && !ws_claude_channel_allowed($channel)))) {
+        $channel = null;
+    }
+
+    // Pinegrap AI and an MCP server's own agent work only while somebody
+    // carries them on: the panel's screen does while a request waits in the
+    // channel it shows, and so does the person's app. Before anything is
+    // read, so a call that does the work here brings what it wrote.
+    if ($person && $channel) {
+        ws_api_assistants_carry_on(ws_api_sync_waiting($channel_id), true);
+    }
+
+    $now = time();
 
     $sync = array(
         'cursor'       => '',
@@ -263,13 +315,10 @@ function ws_api_sync($params)
     // The channel open on the screen: what was written since the previous
     // call, and what of the messages already sent changed since then. A
     // channel opened now starts with its newest page.
-    $channel_id = (int) ($params['channel_id'] ?? 0);
-
     if ($channel_id > 0) {
         $mark['c'] = $channel_id;
-        $channel = ws_channel($channel_id);
 
-        if (!$channel || !ws_can_read_channel($viewer, $channel) || ($claude && !ws_claude_channel_allowed($channel))) {
+        if (!$channel) {
             $sync['gone'] = true;
         } else {
             $held = ((int) $cursor['c'] === $channel_id) ? (int) $cursor['m'] : 0;

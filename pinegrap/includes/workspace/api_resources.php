@@ -809,16 +809,33 @@ function ws_api_message_asks_assistants($app_id, $kind)
 }
 
 /**
- * Carries on what a message from the person's device asked. Claude's routine
- * is started at once, as for a task handed over: one short call to the
- * routine's trigger. Pinegrap AI and an MCP agent take a model call or the agent's
- * answer, so they run only after the answer has gone back to the device,
- * where the server can finish a response early (PHP-FPM); elsewhere the
- * screens that have the channel open and the hourly job carry them on.
+ * Where an API call carries Pinegrap AI and an MCP agent on: 'after' the
+ * answer has gone back, where the server can send it first (PHP-FPM);
+ * 'here', before the answer, where it cannot (IIS, mod_php) but the caller
+ * is an open app that waits for news anyway (GET /workspace/sync); ''
+ * otherwise, and the app's next sync, the screens that have the channel open
+ * and the hourly job carry them on.
+ *
+ * @param bool $answer_first fastcgi_finish_request() exists
+ * @param bool $here         the call may be held while the work is done
+ * @return string after | here | ''
+ */
+function ws_api_carry_on_where($answer_first, $here)
+{
+    return $answer_first ? 'after' : ($here ? 'here' : '');
+}
+
+/**
+ * Carries on what a message from the person's device asked, or what waits
+ * in the channel an open app syncs. Claude's routine is started at once, as
+ * for a task handed over: one short call to the routine's trigger. Pinegrap
+ * AI and an MCP agent take a model call or the agent's answer, so they run
+ * where ws_api_carry_on_where() says.
  *
  * @param array $asked ws_message_ask_assistants()
+ * @param bool  $here  the call may be held while the work is done
  */
-function ws_api_assistants_carry_on($asked)
+function ws_api_assistants_carry_on($asked, $here = false)
 {
     if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
         ws_claude_dispatch();
@@ -826,8 +843,23 @@ function ws_api_assistants_carry_on($asked)
 
     $agent = !empty($asked['agent']) && function_exists('ws_mcp_agent_kick');
     $ai = !empty($asked['ai']) && function_exists('ws_ai_kick');
+    $where = ws_api_carry_on_where(function_exists('fastcgi_finish_request'), $here);
 
-    if ((!$agent && !$ai) || !function_exists('fastcgi_finish_request')) {
+    if ((!$agent && !$ai) || ($where === '')) {
+        return;
+    }
+
+    // One agent call and one model call at most, so the app's sync is held
+    // no longer than that; its next sync takes the next step.
+    if ($where === 'here') {
+        if ($agent) {
+            ws_mcp_agent_kick();
+        }
+
+        if ($ai) {
+            ws_ai_kick(1);
+        }
+
         return;
     }
 
