@@ -20,8 +20,9 @@ include('init.php');
 
 validate_token_field();
 
-// The id is stored in the session and reused in later SQL, so keep it an integer.
-$order_id = (int) ($_GET['id'] ?? 0);
+// The id is stored in the session and reused in later SQL, so keep it an
+// integer. An id sent as an array counts as not given (it would read as order 1).
+$order_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 
 // get order information
 $query =

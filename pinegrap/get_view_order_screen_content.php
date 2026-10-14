@@ -18,8 +18,9 @@
 
 function get_view_order_screen_content($properties)
 {
-    // The id is used in SQL, session comparisons and links below, so keep it an integer.
-    $order_id = (int) ($_GET['id'] ?? 0);
+    // The id is used in SQL, session comparisons and links below, so keep it an
+    // integer. An id sent as an array counts as not given (it would read as order 1).
+    $order_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
     $page_id = $properties['page_id'];
 
     // These are only added to / set further below under some conditions, but they are always

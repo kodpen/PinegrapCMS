@@ -3025,6 +3025,21 @@
          hata günlüğüne uyarı yazıyordu; artık yazmıyor,
          çıktı aynı.
 
+  [DÜZELTME] Teklif düzenleme ve çoğaltma, sayfa stili
+         çoğaltma, başka kullanıcı olarak giriş ve SEO
+         ayrıntı paneli, adresinde kayıt numarası birden
+         çok kez geçen (?id[]=…) bir bağlantıyla 1
+         numaralı kaydı açıyor, çoğaltıyor ya da hata
+         sayfası veriyordu; artık kaydın bulunamadığını
+         söylüyor. Hesabım'daki sipariş görüntüleme,
+         siparişi geri alma, yeniden sipariş ve silme
+         bağlantıları böyle bir bağlantıda müşterinin 1
+         numaralı siparişini kullanıyordu (silme onu
+         siliyordu); artık siparişin bulunamadığını
+         söylüyor. Takvim etkinliğinin iCalendar
+         indirmesi aynı durumda hata sayfası yerine
+         etkinliğin bulunamadığını söylüyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

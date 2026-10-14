@@ -22,6 +22,12 @@ validate_area_access($user, 'designer');
 
 validate_token_field();
 
+// An id sent as an array (?id[]=x) is no record: (int) would read it as 1
+// and copy style 1.
+if (isset($_GET['id']) && !is_scalar($_GET['id'])) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // get original style information
 $query =
     "SELECT
