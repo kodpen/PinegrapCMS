@@ -78,14 +78,14 @@ if ($_POST) {
         'body' => '',
     )));
     $body_json = $data['body'];
-} elseif ((int) ($_GET['id'] ?? 0) > 0) {
+} elseif (is_string($_GET['id'] ?? null) && ((int) $_GET['id'] > 0)) {
     $template = ws_template((int) $_GET['id']);
 
     if (!$template) {
         output_error(lang('That template could not be found.') . ' <a href="' . h($settings_url) . '">' . lang('Back') . '</a>');
     }
-} elseif ((string) ($_GET['copy'] ?? '') !== '') {
-    $source = ws_template((string) $_GET['copy']);
+} elseif (is_string($_GET['copy'] ?? null) && ($_GET['copy'] !== '')) {
+    $source = ws_template($_GET['copy']);
 
     if (!$source) {
         output_error(lang('That template could not be found.') . ' <a href="' . h($settings_url) . '">' . lang('Back') . '</a>');
@@ -98,7 +98,7 @@ if ($_POST) {
         'uses'     => 0,
         'archived' => false,
     ));
-} elseif ((int) ($_GET['channel'] ?? 0) > 0) {
+} elseif (is_string($_GET['channel'] ?? null) && ((int) $_GET['channel'] > 0)) {
     $channel = ws_channel((int) $_GET['channel']);
 
     if (!$channel || !ws_can_read_channel($viewer, $channel)) {

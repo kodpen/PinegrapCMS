@@ -84,6 +84,63 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Panelde kalan dizi uyarıları ve sipariş raporunun normal açılış uyarıları (2026-10-14)
+
+**Neden.** #417'nin panel taramasından kalan K6: 500 vermeyen ama hata
+günlüğüne uyarı yazan dokuz ekran. Sekizi tek değerli bir parametreyi
+`(string)` ya da denetimsiz okuyordu; dizi gelince (`?q[]=x`) "Array to
+string conversion" yazıp değeri "Array" olarak kullanıyordu:
+`translations` (`language`, `group`, `filter`, `q`; "Array" aranıyordu),
+`page_designer` (`type`, `id`, `url`; JS'e "Array" basılıyordu),
+`settings_pane` (`pane`), `workspace_template` (`copy`; "şablon
+bulunamadı" ekranı), `view_regions` (`filter`; sıralama bağlantılarına
+`filter=Array`, `includes/fn/output.php` `pg_list_sort_menu()`'de ikinci
+uyarı), `google_taxonomy_action` (`q`), `add_order` (`request`, arama
+isteklerinde `q`), `add_system_style` (`start`). `(int)` dizide 1 verdiği
+için `workspace_template` `?id[]=` / `?channel[]=` ile 1 numaralı şablonu
+ya da kanalı, `translations` `?page_id[]=` ile 1 numaralı sayfayı
+seçiyordu. `view_order_report` ise normal açılışta uyarı yazıyordu:
+kaydedilmiş rapor sipariş tarihine göre süzülüyorsa `$output_date_changer`
+hiç kurulmuyordu, üçten az özet düzeyinde `$sql_summarize_by_2` / `_3`
+sorguya tanımsız giriyordu. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Serinin kuralı: dizi gelen tek değerli parametre
+"verilmedi" sayılır, normal isteğin HTML'i değişmez. Sekiz ekranda okuma
+satırı `isset($_GET['x']) && is_string($_GET['x'])` (`calendars.php`,
+`view_files.php` kalıbı) oldu; `(int)` okumaları da yalnız metin geldiğinde
+yapılıyor. `view_order_report` tarih değiştiriciyi ve üç özet sütununu
+dallardan önce boş metinle başlatıyor (boş metin, tanımsız değişkenin
+bastığıyla aynı). Şema, dil dosyası, JS değişikliği yok. Yeni
+`tests/panel_string_params_test.php`: listedeki parametreler `is_string()`
+ile denetleniyor, eski denetimsiz biçimler kalmadı, sipariş raporunun
+varsayılanları ilk kullanımdan önce (eski kodda iki test de düşüyor).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, DEBUG açık).**
+`panel-tarama-araclari/scan.py` önce bütün panelde (367 ekran, 6.760 istek;
+K6 dışındakiler K3, K4, K5, K7, K8'e ait) sonra dokuz ekranda (179 istek):
+uyarı yazan istek 14 → 0, ayrı dosya:satır 18 → 0. Kalan tek günlük satırı
+`workspace_template?id=1`'deki liveform `h(null)` kullanım dışı satırı
+(K9, eskisinde de var). Eski kod (`origin/development`) ikinci portta,
+istekler sırayla iki sunucuya: gerçek değerlerle 38 normal istek (dil,
+grup, süzgeç, arama, sayfa; beş bölge listesi; Site Ayarları bölmeleri ve
+bilinmeyen bölme 404; şablon kimliği, yerleşik şablon kopyası, kanal;
+kasa satışı ürün ve müşteri araması; sayfa stili `start=import`
+yönlendirmesi; tarih süzgeçli kayıtlı rapor ve tarih aralıklı yeni rapor)
+aynı HTML'i verdi. 18 dizi isteğinden 16'sı eski kodda uyarı yazdı, yenide
+0; her biri yeni kodda aynı adresin o parametre olmadan açılışıyla aynı
+durumu ve HTML'i verdi. `tools/lint.php`, `tools/test.php` (969 test),
+`check_lang`, `check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek
+veriler.
+
+**Bilerek yapılmayan.** Taramanın kapsamı GET; `workspace_template` ve
+`add_order`'ın POST yollarındaki `(string) ($_POST['x'] ?? '')` okumaları
+(jetonlu kayıt istekleri) değişmedi. `google_taxonomy_action`'da dizi
+`action` uyarı yazmadan "bulunamadı" yanıtı veriyor, olduğu gibi kaldı.
+K7 (zorunlu parametresiz açılış), K8, K9'a dokunulmadı.
+
+---
+
 ## 2026.4.10 — Para birimi seçicisi `send_to`'yu güvenli yönlendirmeden geçiriyor, dizi `currency_id` oturumu düşürmüyor (2026-10-14)
 
 **Neden.** #425'in "Bilerek yapılmayan" maddesi. Para birimi seçicisinin

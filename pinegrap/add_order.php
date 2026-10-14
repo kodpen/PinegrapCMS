@@ -30,7 +30,7 @@
 include('init.php');
 include_once('liveform.class.php');
 
-$request = isset($_GET['request']) ? (string) $_GET['request'] : '';
+$request = (isset($_GET['request']) && is_string($_GET['request'])) ? $_GET['request'] : '';
 $ajax = ($request !== '') || (strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest');
 
 /**
@@ -74,7 +74,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/local_sale.php');
    searched, the list is ordered by the name people know.
    --------------------------------------------------------- */
 if ($request === 'search_products') {
-    $q = trim((string) ($_GET['q'] ?? ''));
+    $q = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
     if ($q === '') {
         add_order_json(array('results' => array()));
     }
@@ -109,7 +109,7 @@ if ($request === 'search_products') {
    own. The sale is billed to whichever is picked.
    --------------------------------------------------------- */
 if ($request === 'search_customers') {
-    $q = trim((string) ($_GET['q'] ?? ''));
+    $q = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
     if ($q === '') {
         add_order_json(array('results' => array()));
     }

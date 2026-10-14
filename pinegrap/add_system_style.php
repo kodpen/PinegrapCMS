@@ -34,7 +34,7 @@ $from_pages = (isset($_GET['from']) && $_GET['from'] === 'pages')
 // Straight onto the canvas. ?start=import opens the file-import dialog on top
 // of it and ?start=paste the paste-HTML box; the choice is made on
 // view_system_styles.php.
-$start = isset($_GET['start']) ? (string)$_GET['start'] : '';
+$start = (isset($_GET['start']) && is_string($_GET['start'])) ? $_GET['start'] : '';
 
 // An import or a paste is asked the framework first, like a blank design:
 // a project on another Bootstrap goes into a custom design, with its own
