@@ -114,6 +114,41 @@ function ws_channel_pin_hide($viewer, $channel)
 }
 
 /**
+ * The message pinned to the top of a channel, or null: none pinned, or the
+ * one pinned was deleted since. The panel's screen (ws_channel_pin_present())
+ * and an app's sync (ws_api_sync_channel_state()) both read it here.
+ *
+ * @param array $channel
+ * @return array|null ws_messages row
+ */
+function ws_channel_pinned_message($channel)
+{
+    if (!ws_pins_ready() || ((int) ($channel['pinned_message_id'] ?? 0) <= 0)) {
+        return null;
+    }
+
+    $message = ws_message((int) $channel['pinned_message_id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || ((int) $message['channel_id'] !== (int) $channel['id'])) {
+        return null;
+    }
+
+    return $message;
+}
+
+/**
+ * Has this reader closed the pinned message (ws_channel_pin_hide())?
+ *
+ * @param array|null $membership
+ * @param array      $message the pinned message
+ * @return bool
+ */
+function ws_channel_pin_hidden($membership, $message)
+{
+    return is_array($membership) && ((int) ($membership['pin_hidden'] ?? 0) === (int) $message['id']);
+}
+
+/**
  * The pinned message of a channel as its screen shows it, or null.
  *
  * @param array      $viewer
@@ -123,13 +158,9 @@ function ws_channel_pin_hide($viewer, $channel)
  */
 function ws_channel_pin_present($viewer, $channel, $membership)
 {
-    if (!ws_pins_ready() || ((int) ($channel['pinned_message_id'] ?? 0) <= 0)) {
-        return null;
-    }
+    $message = ws_channel_pinned_message($channel);
 
-    $message = ws_message((int) $channel['pinned_message_id']);
-
-    if (!$message || ((int) $message['deleted_at'] > 0) || ((int) $message['channel_id'] !== (int) $channel['id'])) {
+    if (!$message) {
         return null;
     }
 
@@ -156,7 +187,7 @@ function ws_channel_pin_present($viewer, $channel, $membership)
         'text'      => $text,
         'time'      => ws_time_label($message['created_at']),
         'pinned_by' => ws_person_name($channel['pinned_by'] ?? 0),
-        'hidden'    => is_array($membership) && ((int) ($membership['pin_hidden'] ?? 0) === (int) $message['id']),
+        'hidden'    => ws_channel_pin_hidden($membership, $message),
         // Its read receipt, and whether the reader may ask for one (acks.php).
         'ack'       => function_exists('ws_acks_map') ? (ws_acks_map(array($message), $viewer)[(int) $message['id']] ?? null) : null,
         'ack_can_request' => function_exists('ws_ack_can_request') && ws_ack_can_request($viewer, $message),

@@ -18,6 +18,11 @@
  * poll every few seconds cheap without a connection held open, which on
  * shared hosting and IIS would hold a PHP worker for each open app.
  *
+ * A person's own app also gets what the panel's channel screen shows around
+ * the messages - the message pinned to the top, the marks beside the tabs and
+ * a mark of the board - each time it changed (ws_api_sync_channel_state()),
+ * and every caller allowed to read the person's bell gets its count.
+ *
  * Pinegrap AI and an MCP server's own agent work only while somebody carries
  * them on. While a request to one waits in the open channel, a person's app
  * does it here as the panel's screen does (ws_api_sync_waiting()): right after
@@ -57,32 +62,41 @@ if (!defined('WS_API_SYNC_FIRST_PAGE')) {
 /**
  * The state an answer left the app in, as the cursor it hands back: the
  * moment of the call (changed messages are looked for from there), the
- * channel open then and the newest message of it sent, and a mark of the
- * channel list and of the discussion list as they were sent.
+ * channel open then and the newest message of it sent, a mark of the
+ * channel list and of the discussion list as they were sent, and a mark of
+ * the open channel's state as it was sent. The last is left out while there
+ * is none, so the cursor of a call that carries no channel state is written
+ * as it was before there was one.
  *
- * @param array $mark t, c, m, ch, th
+ * @param array $mark t, c, m, ch, th, p
  * @return string
  */
 function ws_api_sync_cursor_write($mark)
 {
-    $packed = json_encode(array(
+    $packed = array(
         't'  => (int) $mark['t'],
         'c'  => (int) $mark['c'],
         'm'  => (int) $mark['m'],
         'ch' => (string) $mark['ch'],
         'th' => (string) $mark['th'],
-    ));
+    );
 
-    return rtrim(strtr(base64_encode($packed), '+/', '-_'), '=');
+    if ((string) ($mark['p'] ?? '') !== '') {
+        $packed['p'] = (string) $mark['p'];
+    }
+
+    return rtrim(strtr(base64_encode(json_encode($packed)), '+/', '-_'), '=');
 }
 
 /**
  * A cursor ws_api_sync_cursor_write() made, read back; null for anything
  * else. Nothing in it opens a door - the channel is checked again, the
- * message id only bounds a read in it - so it is not signed.
+ * message id only bounds a read in it - so it is not signed. A cursor
+ * without a channel state mark, an app's from before there was one among
+ * them, reads with an empty one, so the state is sent once.
  *
  * @param string $cursor
- * @return array|null t, c, m, ch, th
+ * @return array|null t, c, m, ch, th, p
  */
 function ws_api_sync_cursor_read($cursor)
 {
@@ -117,7 +131,11 @@ function ws_api_sync_cursor_read($cursor)
         }
     }
 
-    return array('t' => $mark['t'], 'c' => $mark['c'], 'm' => $mark['m'], 'ch' => $mark['ch'], 'th' => $mark['th']);
+    if (isset($mark['p']) && (!is_string($mark['p']) || !preg_match('/^[0-9a-f]{8}$/', $mark['p']))) {
+        return null;
+    }
+
+    return array('t' => $mark['t'], 'c' => $mark['c'], 'm' => $mark['m'], 'ch' => $mark['ch'], 'th' => $mark['th'], 'p' => (string) ($mark['p'] ?? ''));
 }
 
 /**
@@ -163,6 +181,128 @@ function ws_api_sync_thread_schema()
     );
 }
 
+/**
+ * What the panel's channel screen shows around the messages of the open
+ * channel, read where the panel's ws_sync reads it: the message pinned to the
+ * top (pins.php), the marks beside the tabs (ws_channel_tab_counts()) and a
+ * mark that moves whenever a card of the channel's board would
+ * (ws_channel_board_stamp()). A discussion has no tabs and no board of its
+ * own, and a guest's room no board, as on the panel.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @return array channel_id, pin, tab_counts, board
+ */
+function ws_api_sync_channel_state($viewer, $channel)
+{
+    $pin = null;
+    $message = ws_channel_pinned_message($channel);
+
+    if ($message) {
+        $presented = ws_api_messages_present($viewer, array($message));
+
+        $pin = array(
+            'message'   => $presented[0],
+            'pinned_by' => ws_api_person_ref($channel['pinned_by'] ?? 0),
+            'pinned_at' => ((int) ($channel['pinned_at'] ?? 0) > 0) ? (int) $channel['pinned_at'] : 0,
+            'hidden'    => ws_channel_pin_hidden(ws_channel_membership($channel['id'], $viewer['id']), $message),
+        );
+    }
+
+    return array(
+        'channel_id' => (int) $channel['id'],
+        'pin'        => $pin,
+        'tab_counts' => ws_channel_is_thread($channel) ? null : ws_channel_tab_counts($channel),
+        'board'      => ws_channel_board_available($channel) ? ws_channel_board_stamp($channel) : null,
+    );
+}
+
+/**
+ * The open channel's state as the sync answers with it.
+ *
+ * @param array $state ws_api_sync_channel_state()
+ * @return array
+ */
+function ws_api_sync_channel_state_present($state)
+{
+    return array(
+        'channel_id' => (int) $state['channel_id'],
+        'pin'        => ($state['pin'] !== null) ? ws_api_sync_pin_present($state['pin']) : null,
+        'tab_counts' => ($state['tab_counts'] !== null) ? ws_api_sync_tab_counts_present($state['tab_counts']) : null,
+        'board'      => ($state['board'] !== null) ? (string) $state['board'] : null,
+    );
+}
+
+// What ws_api_sync_channel_state_present() returns.
+function ws_api_sync_channel_state_schema()
+{
+    return array(
+        'channel_id' => 'integer',
+        'pin'        => 'WorkspaceSyncPin?',
+        'tab_counts' => 'WorkspaceSyncTabCounts?',
+        'board'      => 'string?',
+    );
+}
+
+function ws_api_sync_pin_present($pin)
+{
+    return array(
+        'message'   => $pin['message'],
+        'pinned_by' => $pin['pinned_by'],
+        'pinned_at' => ((int) $pin['pinned_at'] > 0) ? api_time($pin['pinned_at']) : null,
+        'hidden'    => (bool) $pin['hidden'],
+    );
+}
+
+// What ws_api_sync_pin_present() returns.
+function ws_api_sync_pin_schema()
+{
+    return array(
+        'message'   => 'WorkspaceMessage',
+        'pinned_by' => array('user_id' => 'integer', 'name' => 'string'),
+        'pinned_at' => 'string?',
+        'hidden'    => 'boolean',
+    );
+}
+
+function ws_api_sync_tab_counts_present($counts)
+{
+    return array(
+        'decisions' => (int) $counts['decisions'],
+        'tasks'     => (int) $counts['tasks'],
+        'summary'   => (bool) $counts['summary'],
+    );
+}
+
+// What ws_api_sync_tab_counts_present() returns.
+function ws_api_sync_tab_counts_schema()
+{
+    return array(
+        'decisions' => 'integer',
+        'tasks'     => 'integer',
+        'summary'   => 'boolean',
+    );
+}
+
+/**
+ * The number on the person's bell, for a caller allowed to read it: the
+ * Own account permission (account:read), which a person's own sign-in always
+ * holds and an application only when the operator gave it. null otherwise,
+ * as GET /auth/me leaves its unread out.
+ *
+ * @param array $owner
+ * @param array $scopes the caller's, api_current_scopes()
+ * @return int|null
+ */
+function ws_api_sync_bell($owner, $scopes)
+{
+    if (!api_has_scope($scopes, 'account:read') || !function_exists('api_notifications_unread_count')) {
+        return null;
+    }
+
+    return api_notifications_unread_count($owner);
+}
+
 function ws_api_sync_present($sync)
 {
     return array(
@@ -170,11 +310,13 @@ function ws_api_sync_present($sync)
         'channels'     => ($sync['channels'] !== null) ? array_values($sync['channels']) : null,
         'threads'      => ($sync['threads'] !== null) ? array_values($sync['threads']) : null,
         'inbox_unread' => (int) $sync['inbox_unread'],
+        'notifications_unread' => ($sync['notifications_unread'] !== null) ? (int) $sync['notifications_unread'] : null,
         'gone'         => (bool) $sync['gone'],
         'messages'     => array_values($sync['messages']),
         'more'         => (bool) $sync['more'],
         'changed'      => array_values($sync['changed']),
         'reload'       => (bool) $sync['reload'],
+        'channel_state' => ($sync['channel_state'] !== null) ? ws_api_sync_channel_state_present($sync['channel_state']) : null,
     );
 }
 
@@ -186,11 +328,13 @@ function ws_api_sync_schema()
         'channels'     => 'WorkspaceChannel[]?',
         'threads'      => 'WorkspaceSyncThread[]?',
         'inbox_unread' => 'integer',
+        'notifications_unread' => 'integer?',
         'gone'         => 'boolean',
         'messages'     => 'WorkspaceMessage[]',
         'more'         => 'boolean',
         'changed'      => 'WorkspaceMessage[]',
         'reload'       => 'boolean',
+        'channel_state' => 'WorkspaceSyncChannelState?',
     );
 }
 
@@ -225,7 +369,7 @@ function ws_api_sync($params)
     $viewer = ws_api_viewer();
     $claude = ws_api_is_claude();
 
-    $cursor = array('t' => 0, 'c' => 0, 'm' => 0, 'ch' => '', 'th' => '');
+    $cursor = array('t' => 0, 'c' => 0, 'm' => 0, 'ch' => '', 'th' => '', 'p' => '');
 
     if (isset($params['cursor']) && ($params['cursor'] !== '')) {
         $cursor = ws_api_sync_cursor_read($params['cursor']);
@@ -268,11 +412,13 @@ function ws_api_sync($params)
         'channels'     => null,
         'threads'      => null,
         'inbox_unread' => ws_inbox_unread_count($viewer['id']),
+        'notifications_unread' => ws_api_sync_bell(api_current_app()['owner'], api_current_scopes()),
         'gone'         => false,
         'messages'     => array(),
         'more'         => false,
         'changed'      => array(),
         'reload'       => false,
+        'channel_state' => null,
     );
 
     // The sidebar, sent again only when something in it changed.
@@ -302,6 +448,7 @@ function ws_api_sync($params)
         'm'  => 0,
         'ch' => ws_api_sync_mark($channels),
         'th' => ws_api_sync_mark($threads),
+        'p'  => '',
     );
 
     if ($mark['ch'] !== $cursor['ch']) {
@@ -335,6 +482,20 @@ function ws_api_sync($params)
             $sync['reload'] = (count($news['changed']) >= WS_API_SYNC_MAX);
 
             $mark['m'] = !empty($news['new']) ? (int) $news['new'][count($news['new']) - 1]['id'] : $held;
+
+            // What the screen shows around the messages, for a person's own
+            // app only: an integration polling for messages has no screen to
+            // draw it on, and the reads are not free. Sent again only when
+            // it changed; the channel's id is in it, so another channel's
+            // state is never taken for this one's.
+            if ($person) {
+                $state = ws_api_sync_channel_state($viewer, $channel);
+                $mark['p'] = ws_api_sync_mark($state);
+
+                if ($mark['p'] !== $cursor['p']) {
+                    $sync['channel_state'] = $state;
+                }
+            }
         }
     }
 
@@ -343,7 +504,8 @@ function ws_api_sync($params)
     // the answer is the same and its ETag still matches.
     $moved = !empty($sync['messages']) || !empty($sync['changed'])
         || ($sync['channels'] !== null) || ($sync['threads'] !== null)
-        || ($mark['c'] !== (int) $cursor['c']) || ($mark['m'] !== (int) $cursor['m']);
+        || ($mark['c'] !== (int) $cursor['c']) || ($mark['m'] !== (int) $cursor['m'])
+        || ($mark['p'] !== $cursor['p']);
 
     if ($moved) {
         $mark['t'] = $now;

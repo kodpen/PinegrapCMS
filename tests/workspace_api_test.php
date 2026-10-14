@@ -30,6 +30,7 @@ if (!defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
 function test_ws_api_routes_reach_a_handler()
@@ -164,21 +165,84 @@ function test_ws_api_sync_is_a_read_and_no_tool()
 // so a damaged cursor is a 400 and not a silent fresh start.
 function test_ws_api_sync_cursor_round_trip()
 {
-	$mark = array('t' => 1760414400, 'c' => 12, 'm' => 4815, 'ch' => '0a1b2c3d', 'th' => 'ffffffff');
-	$cursor = ws_api_sync_cursor_write($mark);
+	foreach (array('', '9f8e7d6c') as $state) {
+		$mark = array('t' => 1760414400, 'c' => 12, 'm' => 4815, 'ch' => '0a1b2c3d', 'th' => 'ffffffff', 'p' => $state);
+		$cursor = ws_api_sync_cursor_write($mark);
 
-	pg_assert_true((bool) preg_match('/^[A-Za-z0-9_-]+$/', $cursor), 'the cursor is URL safe');
-	pg_assert_same($mark, ws_api_sync_cursor_read($cursor));
+		pg_assert_true((bool) preg_match('/^[A-Za-z0-9_-]+$/', $cursor), 'the cursor is URL safe');
+		pg_assert_same($mark, ws_api_sync_cursor_read($cursor));
 
-	// The same state, the same cursor: an answer after which nothing changed
-	// is the same bytes, so its ETag matches.
-	pg_assert_same($cursor, ws_api_sync_cursor_write($mark));
+		// The same state, the same cursor: an answer after which nothing
+		// changed is the same bytes, so its ETag matches.
+		pg_assert_same($cursor, ws_api_sync_cursor_write($mark));
+	}
 
 	foreach (array('', 'abc', 'not a cursor!', rtrim(strtr(base64_encode('{"t":1}'), '+/', '-_'), '='),
 		ws_api_sync_cursor_write(array('t' => 1, 'c' => 0, 'm' => 0, 'ch' => 'xyz', 'th' => '00000000')),
+		ws_api_sync_cursor_write(array('t' => 1, 'c' => 0, 'm' => 0, 'ch' => '00000000', 'th' => '00000000', 'p' => 'xyz')),
+		rtrim(strtr(base64_encode('{"t":1,"c":0,"m":0,"ch":"00000000","th":"00000000","p":7}'), '+/', '-_'), '='),
 		rtrim(strtr(base64_encode('{"t":-1,"c":0,"m":0,"ch":"00000000","th":"00000000"}'), '+/', '-_'), '=')) as $bad) {
 		pg_assert_same(null, ws_api_sync_cursor_read($bad), 'refused: ' . $bad);
 	}
+}
+
+// A cursor an app holds from before the channel state was added still reads,
+// with no state mark, so the state is sent once; and a call that carries no
+// state writes its cursor as before, so an app key's ETag still matches.
+function test_ws_api_sync_cursor_without_state_mark()
+{
+	$before = rtrim(strtr(base64_encode('{"t":1760414400,"c":12,"m":4815,"ch":"0a1b2c3d","th":"ffffffff"}'), '+/', '-_'), '=');
+
+	pg_assert_same(array('t' => 1760414400, 'c' => 12, 'm' => 4815, 'ch' => '0a1b2c3d', 'th' => 'ffffffff', 'p' => ''), ws_api_sync_cursor_read($before));
+	pg_assert_same($before, ws_api_sync_cursor_write(ws_api_sync_cursor_read($before)));
+}
+
+// The open channel's state: each part as the panel's screen has it, nothing
+// added on the way out, and a channel's state never marked like another's.
+function test_ws_api_sync_channel_state_present()
+{
+	$message = array('id' => 77, 'channel_id' => 12, 'kind' => 'message', 'text' => 'Kargo yarın');
+
+	$state = array(
+		'channel_id' => 12,
+		'pin'        => array('message' => $message, 'pinned_by' => array('user_id' => 3, 'name' => 'Erdal'), 'pinned_at' => 0, 'hidden' => 1),
+		'tab_counts' => array('decisions' => '4', 'tasks' => 2, 'summary' => 1),
+		'board'      => 'd41d8cd98f00b204e9800998ecf8427e',
+	);
+
+	$out = ws_api_sync_channel_state_present($state);
+
+	pg_assert_same(array_keys(ws_api_sync_channel_state_schema()), array_keys($out));
+	pg_assert_same(array_keys(ws_api_sync_pin_schema()), array_keys($out['pin']));
+	pg_assert_same($message, $out['pin']['message']);
+	pg_assert_same(null, $out['pin']['pinned_at'], 'no moment, no time');
+	pg_assert_same(true, $out['pin']['hidden']);
+	pg_assert_same(array('decisions' => 4, 'tasks' => 2, 'summary' => true), $out['tab_counts']);
+	pg_assert_same('d41d8cd98f00b204e9800998ecf8427e', $out['board']);
+
+	// A discussion: no pin, no tabs, no board.
+	$thread = ws_api_sync_channel_state_present(array('channel_id' => 40, 'pin' => null, 'tab_counts' => null, 'board' => null));
+
+	pg_assert_same(array('channel_id' => 40, 'pin' => null, 'tab_counts' => null, 'board' => null), $thread);
+
+	// Two channels with nothing pinned, counted or on a board are still two
+	// marks: a switch always sends the new channel's state.
+	pg_assert_false(ws_api_sync_mark(array('channel_id' => 40, 'pin' => null, 'tab_counts' => null, 'board' => null))
+		=== ws_api_sync_mark(array('channel_id' => 41, 'pin' => null, 'tab_counts' => null, 'board' => null)), 'the channel is in the mark');
+
+	// Closing the pin on the panel moves the mark.
+	$closed = $state;
+	$closed['pin']['hidden'] = 0;
+
+	pg_assert_false(ws_api_sync_mark($state) === ws_api_sync_mark($closed), 'hiding the pin moves it');
+}
+
+// The bell is the Own account permission's: without it the count is left out
+// rather than refused, as GET /auth/me leaves its unread out.
+function test_ws_api_sync_bell_needs_own_account()
+{
+	pg_assert_same(null, ws_api_sync_bell(array('id' => 1, 'role' => 0), array('workspace:read', 'workspace:write')));
+	pg_assert_same(null, ws_api_sync_bell(array('id' => 1, 'role' => 0), array()));
 }
 
 // A list's mark moves when the list does, and only then.

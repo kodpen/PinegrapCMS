@@ -84,6 +84,80 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: eşitlemede zil sayısı, sabitlenmiş mesaj, sekme sayıları ve pano işareti (2026-10-14)
+
+**Neden.** #374 (`GET /workspace/sync`, aşağıda) panelin `ws_sync`'indeki
+kanal ekranına özgü parçaları ve zil sayısını bilerek dışarıda bıraktı:
+telefon uygulaması sabitlenen mesajı, sekmelerin yanındaki sayıları ve
+panonun değiştiğini öğrenmek için ayrı çağrı yapacak bir uç bulamıyordu,
+zil sayısı için de her yoklamada `GET /notifications/unread-count`'u ayrıca
+çağırmak zorundaydı.
+
+**Ne değişti.**
+- `notifications_unread` (zil sayısı, `api_notifications_unread_count()`,
+  `GET /notifications/unread-count`'un sayısı): yalnız arayan "Kendi hesabı"
+  okuma iznini (`account:read`) taşıyorsa, yoksa `null`
+  (`ws_api_sync_bell()`; `GET /auth/me`'nin `unread`'i gibi reddetmez,
+  boş bırakır). Yeni izin kapsamı açılmadı: zilin izni zaten `account:read`.
+  Ekip cihazları oturumunda hep vardır (`api_device_scopes()`); uygulama
+  anahtarı ve OAuth bağlantısında yalnız operatör ya da kişi verdiyse.
+  Bu izni taşımayan mevcut uygulamalara kendiliğinden verilmez.
+- `channel_state` (`ws_api_sync_channel_state()`): yalnız ekip cihazları
+  oturumundan, `channel_id` verilince ve kanal okunabiliyorsa; içindekiler
+  önceki cevaptan beri değiştiyse gönderilir, yoksa `null`. Alanlar:
+  `channel_id`; `pin` (sabitlenen mesaj `WorkspaceMessage` olarak,
+  `pinned_by`, `pinned_at`, `hidden` — kişi panelde kapattıysa);
+  `tab_counts` (`ws_channel_tab_counts()`: kararlar ve notlar, açık
+  görevler, özet yazılı mı; tartışmada `null`); `board`
+  (`ws_channel_board_stamp()`: kanalın görevleri, kararları, dosyaları,
+  sabitlenen mesajı ya da özeti değişince değişen işaret; tartışmada ve
+  misafir odasında `null`). Panelin okuduğu yerden okunur:
+  sabitlenen mesaj için `ws_channel_pinned_message()` ve
+  `ws_channel_pin_hidden()` `pins.php`'ye alındı, panelin
+  `ws_channel_pin_present()`'ı da onları kullanıyor.
+- İmleç: kanal durumunun işareti (`p`, `crc32`, kanal kimliği işaretin
+  içinde, böylece iki boş kanal aynı sayılmaz) yalnız durum gönderilince
+  yazılır. Durum taşımayan çağrının imleci eskisiyle bayt bayt aynı; eski
+  imleç (`p` yok) okunur ve durum bir kez gönderilir. Hiçbir şey
+  değişmediyse cevap aynı kalır, ETag ile 304 eskisi gibi. Zil sayısı
+  imlece girmez (`inbox_unread` gibi): değişince cevap değişir, imleç aynı
+  kalır.
+- OpenAPI: `WorkspaceSyncChannelState`, `WorkspaceSyncPin`,
+  `WorkspaceSyncTabCounts`; rota açıklaması iki alanı anlatıyor. Rota
+  `'mcp' => false` kalıyor.
+
+Şema değişikliği yok, yeni izin kapsamı yok, yeni metin yok, JS değişmedi.
+
+**Bilerek yapılmayan.** Kanal durumu uygulama anahtarına ve OAuth
+bağlantısına verilmez: ekranı olmayan bir entegrasyonun yoklaması bu
+okumaların (iki sayım, iki pano okuması, sabitlenen mesaj) bedelini
+ödemesin; "ekranda sayılma" kuralıyla aynı çizgi. Panelin `ws_sync`'indeki
+görev kartı HTML'i, misafir şeridi, paylaşım durumu, kişinin programlanmış
+mesaj sayısı ve `scheduled_due` API'ye alınmadı (HTML ve panelin kendi
+tetikleyicisi). Sabitleme ve sabitlenmiş mesajı kapatma uçları yok.
+
+**Doğrulama.** `tests/workspace_api_test.php`: imleç gidiş-dönüşü `p` ile
+ve `p`'siz, eski imlecin okunması ve aynı baytlarla yeniden yazılması,
+bozuk `p`'nin reddi, kanal durumu sunumu (alanlar şemayla aynı, tartışmada
+`null`'lar, iki kanalın işareti farklı, `hidden` işareti değiştiriyor),
+`account:read`'siz zil `null`. Sandbox'ta ekip cihazları oturumuyla: ilk
+çağrıda `channel_state` (pin `null`, sayılar 0, pano işareti) ve
+`notifications_unread: 0`; ikinci çağrıda `channel_state: null`, aynı
+imleç, ETag ile 304. Mesaj sabitlenince `pin` (mesaj 2, `pinned_by`,
+`pinned_at`) geldi ve pano işareti değişti; kanala görev açılınca
+`tab_counts.tasks: 1`, pano işareti yine değişti; `pin_hidden` yazılınca
+`hidden: true`. Bildirim satırı eklenince `notifications_unread: 1`, imleç
+aynı kaldı. Uygulama anahtarıyla `notifications_unread: null`,
+`channel_state: null` ve imlecinde `p` yok. `p`'si çıkarılmış imleçle
+durum bir kez geldi. Tartışmanın kimliğiyle durum `pin`, `tab_counts`,
+`board` `null`. Panelin Çalışma Alanı ekranı Chromium'da açıkken
+`ws_sync` cevabında `pin` (id 2, `hidden: true`) eskisi gibi geldi,
+konsolda hata yok. Sunucu günlüğünde bu değişiklikten uyarı yok;
+`lint`, `check_lang`, `check_api_schema`, `test`, `build_js --check`
+temiz.
+
+---
+
 ## 2026.4.10 — Dış API: gelen kutusunda sonradan değişen satırlar, changed_since (2026-10-14)
 
 **Neden.** #377 (mobil API planının M4 dilimi) gelen kutusunu API'ye açtı,

@@ -120,6 +120,12 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   yalnız açık uygulamanın yokladığı `GET /workspace/sync` çağrının içinde
   (bir adım), mesaj yazma ucunda hiç. Uzun iş başlatan yeni uç da bu yolu
   kullanır, yanıtı bekletmez.
+- `GET /workspace/sync`'e "yalnız değişince" gelen yeni bir parça
+  eklerken işaretini imlece **isteğe bağlı** anahtar olarak yaz
+  (`ws_api_sync_cursor_write()`, örnek `p`): boşken yazılmaz, eksikken
+  okunur; yoksa uygulamaların elindeki imleç 400 alır ya da her şey bir
+  kez yeniden gelir. Başka bir izne bağlı sayı (zil, `account:read`)
+  izin yoksa `null` döner, reddedilmez.
 
 ## OAuth 2.1 (2026.4.10, `oauth.php`, `includes/oauth/`)
 
