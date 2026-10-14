@@ -328,6 +328,47 @@ function test_ws_api_inbox_list_takes_changed_since()
 	pg_assert_true(isset($properties['changed_since']) && isset($properties['since_id']), 'the tool takes both');
 }
 
+// The inbox's listing says beside the page whether the app must read it
+// again (reload), and the document describes that field next to data and
+// page; a listing that names nothing beside 'list' stays as it was.
+function test_ws_api_inbox_list_declares_reload()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
+
+	$list = null;
+
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === 'workspace.inbox.list') {
+			$list = $route;
+		}
+	}
+
+	pg_assert_same(array('list' => 'WorkspaceInboxItem', 'reload' => 'boolean'), $list['returns']);
+
+	$schema = api_openapi_success_schema($list);
+
+	pg_assert_same(array('data', 'page', 'reload'), array_keys($schema['properties']));
+	pg_assert_same('boolean', $schema['properties']['reload']['type']);
+
+	$plain = api_openapi_success_schema(array('returns' => array('list' => 'WorkspaceInboxItem')));
+
+	pg_assert_same(array('data', 'page'), array_keys($plain['properties']));
+}
+
+// Lines taken away are remembered for a while: a moment within it reads the
+// changes whole, a moment further back is told to read the inbox again.
+function test_ws_api_inbox_reload()
+{
+	$now = 1700000000;
+	$keep = 30 * 86400;
+
+	pg_assert_same(false, ws_api_inbox_reload($now - 60, $now, $keep));
+	pg_assert_same(false, ws_api_inbox_reload($now - $keep, $now, $keep));
+	pg_assert_same(true, ws_api_inbox_reload($now - $keep - 1, $now, $keep));
+	pg_assert_same(true, ws_api_inbox_reload(0, $now, $keep));
+	pg_assert_same(false, ws_api_inbox_reload($now + 60, $now, $keep));
+}
+
 // A row changes by being written, sent again or read: either stamp at or
 // after the moment counts, only the person's rows after the one given.
 function test_ws_api_inbox_changed_where()

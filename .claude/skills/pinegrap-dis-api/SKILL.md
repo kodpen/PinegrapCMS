@@ -146,6 +146,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   `ws_inbox_deleted`'a düşer, `GET /workspace/inbox?changed_since=` ve
   eşitlemenin `inbox_changed_at`'i silineni ancak böyle görür. Satırı
   yerinde değiştiren kod da `created_at` ya da `read_at`'i ilerletir.
+  Kişiyi bir kanalın erişiminden çıkaran yeni kod (üyelik silme, kanalı
+  kapatma) `ws_inbox_reach_lost($channel, $user_ids)` çağırır: göremediği
+  satırların `read_at`'i ilerler, `changed_since` onları `deleted: true`
+  ile verir. Bir liste cevabına zarf alanı (`reload` gibi)
+  `api_ok_list()`'in `$extra`'sıyla ve rotada `'list'` yanında bildirilir.
 
 ## OAuth 2.1 (2026.4.10, `oauth.php`, `includes/oauth/`)
 

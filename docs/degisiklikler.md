@@ -84,6 +84,86 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: gelen kutusunun değişenlerinde artık görülemeyen satırlar ve baştan okuma işareti (2026-10-14)
+
+**Neden.** #383'ün bilerek bıraktığı iki kenar durumu. (1) Kişinin artık
+göremediği şeyle ilgili satır (çıkarıldığı özel kanal, onun tartışmaları,
+onsuz özel yapılan kanal) `changed_since`'te gelmiyordu: satır yerinde
+durur, damgaları kıpırdamaz, liste kuralı (`ws_inbox_visible_rows()`)
+yalnız gizler. Uygulama onu ancak tek satır okuması 404 verince
+öğreniyordu. (2) Silinenlerin izi 30 gün tutuluyor; daha eski bir anla
+soran uygulamaya sunucu bir şey demiyordu, tarihleri uygulamanın kendisi
+karşılaştırmalıydı.
+
+**Ne değişti.**
+- Artık görülemeyen satır değişenlerde `deleted: true` ile gelir, #383'ün
+  silinen satırıyla aynı biçimde (id, kind, created_at; başlık, metin,
+  adres boş, kimlikler `null`, `read: true`). Ayrı bir işaret yerine
+  `deleted` seçildi: gelen kutusu satırı tek kişinindir, başkası için
+  "duran" bir satır yok; o kişi için silinmiş satırla aynı şeydir ve tek
+  satır okuması ikisinde de 404. #371'in kanal mesajlarındaki karşılığı da
+  budur: mesaj kişiye görünmez olunca kanal okuması 404 olur, eşitleme
+  `gone` der; satır düzeyinde ayrı alan olan `hidden` (#375) kişinin
+  kendi seçimidir ve mesajı tam içeriğiyle verir, buraya uymaz.
+- `ws_inbox_reach_lost($channel, $user_ids = null)` (`notify.php`): kişi
+  kanalın erişiminden çıkınca o kanalla, kanalda açılan tartışmalarla ve
+  kanalın görevlerinden kişinin artık göremediğiyle ilgili satırlarının
+  `read_at`'ini şimdiye çeker (önceden okunmuşlar dahil). Böylece
+  `changed_since` onları damgasıyla bulur, `inbox_changed_at` (#380)
+  ilerler, zil sayısı ve `inbox_unread` hemen düşer
+  (`ws_bell_sync_read()`). Kanalı hâlâ okuyan (herkese açık kanal, açık
+  inceleme) bir şey kaybetmez. Çağıran yerler: `ws_channel_leave()`
+  (ayrılma, sahibin çıkarması, tartışmadan ayrılma), grup erişimiyle
+  gelen üyeliğin bitmesi (`groups.php`), `ws_channel_make_private()`
+  (dışarıda kalan herkes; seyrek adım, gelen kutusu tablosu bir kez
+  taranır). Görev satırı kanal taşımadığı için kişi başına en yeni 500
+  tanesi tek tek kurala sorulur (`WS_INBOX_REACH_TASK_READ`); görevin
+  sahibi ve atananları görmeye devam eder.
+- `ws_api_inbox_changed_rows()` (`api_inbox.php`): `changed_since`'in
+  bulduğu satırlardan kişinin göremediğini atlamak yerine silinmiş olarak
+  verir. Claude'un çalıştığı uygulama, sorulabildiği kanal dışındakileri
+  eskisi gibi hiç duymaz (`ws_api_inbox_claude_may_hear()`, silinen
+  izlerle ortak).
+- Baştan okuma işareti: `GET /workspace/inbox` cevabında `data` ve
+  `page`'in yanında `reload` (boolean). `changed_since` izlerin tutulduğu
+  30 günden eskiyse `true` (`ws_api_inbox_reload()`); satırlar yine
+  gelir, cevap 200 kalır. Ad ve anlam eşitlemenin `reload`'uyla aynı
+  (#374: "kanalı yeniden okuyun"). `changed_since` olmadan hep `false`.
+- `api_ok_list()`'e beşinci parametre `$extra` (liste zarfına alan),
+  `api_openapi_success_schema()` `'returns' => array('list' => …)`
+  yanındaki alanları belgeye ekler; rota
+  `array('list' => 'WorkspaceInboxItem', 'reload' => 'boolean')` der.
+- MCP: `workspace_inbox_list` aracı cevabı ve açıklamayı rotadan alır;
+  yeni parametre yok.
+
+Şema adımı yok, yeni izin kapsamı yok (`workspace:read`), yeni metin yok,
+JS değişmedi.
+
+**Bilerek yapılmayan.** Erişim başka yoldan kaybolursa (bir toplantı
+silinir, inceleme süresi biter, satırın mesajı anılma dışı bir türde
+silinir) satır yalnız okunmamışsa, bir liste onu bulup okundu
+işaretlediğinde değişenlere girer; okunmuşsa uygulama eskisi gibi 404 ile
+öğrenir. Kişi kanala geri alınırsa satırlar listede yeniden görünür ama
+değişenlerde canlı olarak dönmez; uygulama ilk sayfayı okuyunca alır.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye iki test
+(`ws_api_inbox_reload()` sınırları; rota `reload`'u bildiriyor ve OpenAPI
+200 şeması `data`, `page`, `reload`, yalnız `list` diyen rota eskisi
+gibi). Sandbox'ta "Ekip cihazları" oturumuyla: özel kanaldan ayrılan
+kişinin o kanaldaki biri okunmuş biri okunmamış iki satırı `changed_since`
+ile `deleted: true` geldi, tek okuma 404, eşitlemenin `inbox_unread`'i
+1'den 0'a düştü, `inbox_changed_at` ayrılma anına ilerledi; `limit=1` +
+`since_id` ikisini sırayla verdi. Panelde kanal özel yapılınca dışarıda
+kalan kişinin satırı aynı biçimde geldi, üyelerinki değişmedi. Sahip kişiyi
+özel kanaldan çıkarınca kanalın tartışması ve kişinin olmayan görevi
+hakkındaki satırlar `deleted: true` geldi, kişiye atanan görevin iki satırı
+gelmedi ve listede kaldı. 40 gün önceki anla `reload: true`, 29 günle
+`false`; normal listede `reload: false`. OpenAPI belgesinde gelen kutusu
+200'ü `data`, `page`, `reload`; diğer listeler değişmedi. Sunucu
+günlüğünde hata yok.
+
+---
+
 ## 2026.4.10 — Site sayfaları: altı ekranda PHP uyarıları, dizi ve metin parametresiyle 500 (2026-10-14)
 
 **Neden.** #384'ün taraması (sandbox'taki 181 sayfa, oturumsuz ve yönetici

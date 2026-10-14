@@ -19,7 +19,11 @@
  * read_at is set), so those two stamps say when, with no column of its own.
  * A row taken away for good leaves a mark in ws_inbox_deleted for a while
  * (ws_inbox_delete()), and comes back among the changes as deleted, the way a
- * deleted message does.
+ * deleted message does. So does a row about something the person can no
+ * longer see: it is marked read when it goes out of their reach
+ * (ws_inbox_reach_lost(), ws_inbox_visible_rows()), and for them it is gone
+ * as much as a deleted one. An app asking from further back than the marks
+ * are kept is told to read the inbox again (reload).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -131,9 +135,10 @@ function ws_api_inbox_present($viewer, $row)
  * A line taken away (ws_inbox_delete()), as the changed lines carry it: its
  * id, its kind and when it was written, with deleted true and nothing of what
  * it said, as a deleted message comes back with its text gone. It no longer
- * waits, so it is read.
+ * waits, so it is read. A line about something the person can no longer see
+ * is carried the same way.
  *
- * @param array $row ws_inbox_deleted row
+ * @param array $row ws_inbox_deleted row, or a ws_inbox row out of reach
  * @return array
  */
 function ws_api_inbox_deleted_present($row)
@@ -182,9 +187,27 @@ function ws_api_inbox_schema()
 }
 
 /**
+ * May the application Claude works through hear of a line about a channel?
+ * Only about one Claude may be asked in, as with its channel reads
+ * (ws_api_channel_or_404()); a line about no channel, always.
+ *
+ * @param int $channel_id
+ * @return bool
+ */
+function ws_api_inbox_claude_may_hear($channel_id)
+{
+    if ((int) $channel_id <= 0) {
+        return true;
+    }
+
+    $channel = ws_channel((int) $channel_id);
+
+    return $channel && ws_claude_channel_allowed($channel);
+}
+
+/**
  * May the application Claude works through read this line? Only about a
- * channel Claude may be asked in, as with its channel reads
- * (ws_api_channel_or_404()).
+ * channel Claude may be asked in.
  *
  * @param array $viewer
  * @param array $row ws_inbox row
@@ -192,15 +215,7 @@ function ws_api_inbox_schema()
  */
 function ws_api_inbox_claude_may_read($viewer, $row)
 {
-    $channel_id = ws_api_inbox_place($viewer, $row)['channel_id'];
-
-    if ($channel_id <= 0) {
-        return true;
-    }
-
-    $channel = ws_channel($channel_id);
-
-    return $channel && ws_claude_channel_allowed($channel);
+    return ws_api_inbox_claude_may_hear(ws_api_inbox_place($viewer, $row)['channel_id']);
 }
 
 /**
@@ -358,12 +373,8 @@ function ws_api_inbox_deleted($viewer, $since, $after_id, $upto_id)
     $lines = array();
 
     foreach ($rows as $row) {
-        if ($claude && ((int) $row['channel_id'] > 0)) {
-            $channel = ws_channel((int) $row['channel_id']);
-
-            if (!$channel || !ws_claude_channel_allowed($channel)) {
-                continue;
-            }
+        if ($claude && !ws_api_inbox_claude_may_hear($row['channel_id'])) {
+            continue;
         }
 
         $lines[(int) $row['id']] = ws_api_inbox_deleted_present($row);
@@ -378,11 +389,65 @@ function ws_api_inbox_deleted($viewer, $since, $after_id, $upto_id)
 }
 
 /**
+ * Out of a set of the owner's changed rows, in the order given, what the
+ * changed lines carry of each: a row they may see as it is now, and a row
+ * about something they can no longer see as taken away. The row is still
+ * there, but it is the owner's alone and nothing of it may be shown to them
+ * any more, so for them it is gone as much as a deleted line - GET
+ * /workspace/inbox/{id} answers 404 for both. The application Claude works
+ * through hears of neither outside the channels it may be asked in.
+ *
+ * @param array   $viewer
+ * @param array[] $rows ws_inbox rows of the viewer
+ * @return array[] row, gone
+ */
+function ws_api_inbox_changed_rows($viewer, $rows)
+{
+    $claude = ws_api_is_claude();
+    $seen = array();
+
+    foreach (ws_inbox_visible_rows($viewer, $rows) as $row) {
+        $seen[(int) $row['id']] = true;
+    }
+
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        $gone = !isset($seen[(int) $row['id']]);
+
+        if ($claude && !($gone ? ws_api_inbox_claude_may_hear($row['channel_id']) : ws_api_inbox_claude_may_read($viewer, $row))) {
+            continue;
+        }
+
+        $out[] = array('row' => $row, 'gone' => $gone);
+    }
+
+    return $out;
+}
+
+/**
+ * Is a moment too far back for the changed lines to be whole? Lines taken
+ * away are remembered for a while (WS_INBOX_DELETED_KEEP); from further back
+ * some may have gone unremembered, so the app is told to read the inbox again
+ * from the first page, as the sync's reload tells it to read a channel again.
+ *
+ * @param int $since timestamp the app asked from
+ * @param int $now
+ * @param int $keep  seconds the marks are kept
+ * @return bool
+ */
+function ws_api_inbox_reload($since, $now, $keep)
+{
+    return (int) $since < ((int) $now - (int) $keep);
+}
+
+/**
  * The lines of the owner's inbox that changed at or after a moment, oldest
- * first, after a line, each as it is now; a line taken away comes back as
- * deleted. Lines out of the owner's reach are passed over and the page filled
- * from the rows after them, so as many lines as limit means more may follow -
- * the rule the app pages a channel's changed messages by.
+ * first, after a line, each as it is now; a line taken away, or about
+ * something the owner can no longer see, comes back as deleted. Lines the
+ * application Claude works through may not hear of are passed over and the
+ * page filled from the rows after them, so as many lines as limit means more
+ * may follow - the rule the app pages a channel's changed messages by.
  *
  * @param array $viewer
  * @param int   $since    timestamp
@@ -398,17 +463,16 @@ function ws_api_inbox_changed($viewer, $since, $after_id, $limit)
     $kept = array();
     $upto = 0;
 
-    // The first read takes as many rows as the page holds. Rows out of reach
-    // are few - only rows changed since the moment are read, and a hidden one
-    // is marked read the first time - so a read that meets them goes on in
-    // larger steps, a bounded number of times, and a moment far back does
-    // not walk the whole inbox in one call.
+    // The first read takes as many rows as the page holds. Rows passed over
+    // are few - only Claude's, about a channel it may not be asked in - so a
+    // read that meets them goes on in larger steps, a bounded number of
+    // times, and a moment far back does not walk the whole inbox in one call.
     for ($round = 0; $round < 20; $round++) {
         $rows = (array) db_items("SELECT * FROM ws_inbox WHERE " . ws_api_inbox_changed_where($viewer['id'], $since, $after) . "
             ORDER BY id
             LIMIT " . $chunk);
 
-        $kept = array_merge($kept, ws_api_inbox_reachable_rows($viewer, $rows));
+        $kept = array_merge($kept, ws_api_inbox_changed_rows($viewer, $rows));
 
         if ((count($kept) >= $limit) || (count($rows) < $chunk)) {
             $upto = 0;
@@ -423,8 +487,8 @@ function ws_api_inbox_changed($viewer, $since, $after_id, $limit)
 
     $lines = array();
 
-    foreach (array_slice($kept, 0, $limit) as $row) {
-        $lines[(int) $row['id']] = ws_api_inbox_present($viewer, $row);
+    foreach (array_slice($kept, 0, $limit) as $item) {
+        $lines[(int) $item['row']['id']] = $item['gone'] ? ws_api_inbox_deleted_present($item['row']) : ws_api_inbox_present($viewer, $item['row']);
     }
 
     // The lines taken away go in among them by id, so since_id pages past
@@ -454,7 +518,11 @@ function ws_api_inbox_list($params)
     $limit = max(1, min(WS_API_INBOX_MAX, (int) ($params['limit'] ?? 30)));
 
     if (isset($params['changed_since'])) {
-        api_ok_list(ws_api_inbox_changed($viewer, (int) $params['changed_since'], (int) ($params['since_id'] ?? 0), $limit), $limit);
+        $since = (int) $params['changed_since'];
+
+        api_ok_list(ws_api_inbox_changed($viewer, $since, (int) ($params['since_id'] ?? 0), $limit), $limit, null, null, array(
+            'reload' => ws_api_inbox_reload($since, time(), WS_INBOX_DELETED_KEEP),
+        ));
     }
 
     $where = array("user_id = '" . (int) $viewer['id'] . "'");
@@ -484,7 +552,7 @@ function ws_api_inbox_list($params)
         $next = api_cursor_encode($last['id'], $last['id']);
     }
 
-    api_ok_list(ws_api_inbox_present_rows($viewer, $rows), $limit, $next);
+    api_ok_list(ws_api_inbox_present_rows($viewer, $rows), $limit, $next, null, array('reload' => false));
 }
 
 function ws_api_inbox_get($params)

@@ -771,6 +771,7 @@ function ws_group_sync_channel($viewer, $channel, $group_id = null)
 
         ws_channel_membership_forget();
         ws_channel_folder_access($channel, $gone, false);
+        ws_inbox_reach_lost($channel, $gone);
         $out['removed'] = $gone;
     }
 

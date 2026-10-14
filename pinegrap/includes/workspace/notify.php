@@ -545,7 +545,8 @@ function ws_inbox_list($viewer, $limit = 50)
  * The rows of a person's inbox they may still see, in the order given - for
  * the workspace screen and for the API alike. The others are about a
  * channel, a task, a message or a note gone from their reach, and are marked
- * read so the badge does not count them.
+ * read so the badge does not count them; the changed lines of the API carry
+ * a row so marked as taken away (ws_api_inbox_changed_rows()).
  *
  * @param array   $viewer
  * @param array[] $rows ws_inbox rows of the viewer
@@ -669,6 +670,101 @@ function ws_inbox_mark_task_read($user_id, $task_id)
 
     if (mysqli_affected_rows(db::$con) > 0) {
         ws_bell_sync_read($user_id);
+    }
+}
+
+/**
+ * The most lines about a lost channel's tasks one person's check reads. A
+ * line about a task names no channel, and the task's creator and its people
+ * keep seeing it, so each is looked at on its own, the newest first.
+ */
+if (!defined('WS_INBOX_REACH_TASK_READ')) {
+    define('WS_INBOX_REACH_TASK_READ', 500);
+}
+
+/**
+ * People went out of a channel's reach: they left it, its owner took them
+ * out, a group stopped bringing them in, or it was made private without them.
+ * Their lines about it, about the discussions started in it and about its
+ * tasks they no longer see are marked read now, the ones read long before as
+ * well, as the inbox marks a line it finds out of reach (ws_inbox_visible_rows()).
+ * The badge stops counting them at once, and that moment is what the changed
+ * lines of GET /workspace/inbox find them by and carry them as taken away
+ * from, and what moves the sync's inbox_changed_at. Somebody who still reads
+ * the channel - anybody in a public one, an administrator with an inspection
+ * open - loses nothing.
+ *
+ * @param array      $channel
+ * @param int[]|null $user_ids null: everybody told something about it
+ */
+function ws_inbox_reach_lost($channel, $user_ids = null)
+{
+    $channel_id = is_array($channel) ? (int) $channel['id'] : 0;
+
+    if ($channel_id <= 0) {
+        return;
+    }
+
+    // A discussion is read only while the channel it was started in is.
+    $channels = array($channel_id);
+
+    if (function_exists('ws_threads_ready') && ws_threads_ready()) {
+        foreach ((array) db_items("SELECT channel_id FROM ws_threads WHERE parent_channel_id = '" . $channel_id . "'") as $row) {
+            $channels[] = (int) $row['channel_id'];
+        }
+    }
+
+    $in = implode(',', $channels);
+
+    // Made private: whoever was told something there. A rare step, so one
+    // pass over the inbox is fine.
+    if ($user_ids === null) {
+        $user_ids = array();
+
+        foreach ((array) db_items("SELECT DISTINCT user_id FROM ws_inbox WHERE channel_id IN (" . $in . ")") as $row) {
+            $user_ids[] = (int) $row['user_id'];
+        }
+    }
+
+    // As it is now, after the step that called.
+    $channel = ws_channel($channel_id);
+    $now = time();
+
+    foreach (array_unique(array_map('intval', (array) $user_ids)) as $user_id) {
+        if ($user_id <= 0) {
+            continue;
+        }
+
+        $rights = ws_rights_for_id($user_id);
+
+        if (ws_can_read_channel($rights, $channel)) {
+            continue;
+        }
+
+        db("UPDATE ws_inbox SET read_at = '" . $now . "' WHERE user_id = '" . $user_id . "' AND channel_id IN (" . $in . ")");
+
+        $moved = mysqli_affected_rows(db::$con);
+        $gone = array();
+
+        foreach ((array) db_items("SELECT * FROM ws_inbox
+            WHERE user_id = '" . $user_id . "' AND channel_id NOT IN (" . $in . ")
+            AND task_id IN (SELECT id FROM ws_tasks WHERE channel_id = '" . $channel_id . "')
+            ORDER BY id DESC
+            LIMIT " . WS_INBOX_REACH_TASK_READ) as $row) {
+            if (!ws_inbox_row_visible($rights, $row)) {
+                $gone[] = (int) $row['id'];
+            }
+        }
+
+        if (!empty($gone)) {
+            db("UPDATE ws_inbox SET read_at = '" . $now . "' WHERE id IN (" . implode(',', $gone) . ")");
+
+            $moved += mysqli_affected_rows(db::$con);
+        }
+
+        if ($moved > 0) {
+            ws_bell_sync_read($user_id);
+        }
     }
 }
 
