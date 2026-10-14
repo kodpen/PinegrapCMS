@@ -23,6 +23,10 @@ $output_rows = '';
 
 $user = validate_user();
 
+// The form's page, product and product group are single values; one sent as an
+// array (?page_id[]=x) counts as not given: it ended in an error page.
+pg_request_single_values(array('page_id', 'product_id', 'product_group_id'));
+
 $output_layout_buttons = '';
 $output_product_id_to_url = '';
 $output_rss_table_heading = '';

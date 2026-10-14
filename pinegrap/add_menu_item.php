@@ -20,6 +20,10 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// The menu is one value; one sent as an array (?menu_id[]=x) counts as not
+// given: it ended in an error page.
+pg_request_single_values(array('menu_id'));
+
 // get menu id and name that we will add the menu item to, to use for later
 $query =
     "SELECT

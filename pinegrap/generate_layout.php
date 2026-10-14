@@ -20,6 +20,10 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 
+// The page is one value; one sent as an array (?page_id[]=x) counts as not
+// given: it ended in an error page.
+pg_request_single_values(array('page_id'));
+
 $form = new liveform('generate_layout');
 
 $page = db_item("SELECT page_name AS name FROM page WHERE page_id = '" . e($_GET['page_id']) . "'");

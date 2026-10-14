@@ -22,6 +22,10 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// The file name is one value; one sent as an array (?file_name[]=x) counts as
+// not given: it ended in an error page.
+pg_request_single_values(array('file_name'));
+
 $file_name = prepare_file_name($_GET['file_name']);
 
 // check if there is already a file with the file name

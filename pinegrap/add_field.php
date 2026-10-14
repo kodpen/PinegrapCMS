@@ -23,6 +23,10 @@ $user = validate_user();
 
 $liveform = new liveform('add_field');
 
+// The form's page, product group and product are single values; one sent as an
+// array (?page_id[]=x) counts as not given: it ended in an error page.
+pg_request_single_values(array('page_id', 'product_group_id', 'product_id'));
+
 // if there is a page_id supplied in the query string, then this is a page form
 if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     validate_area_access($user, 'user');

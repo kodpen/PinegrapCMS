@@ -22,6 +22,10 @@ include_once('includes/user_permissions.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
+// The contact is one value; one sent as an array (?contact_id[]=x) counts as
+// not given: it ended in an error page.
+pg_request_single_values(array('contact_id'));
+
 if (!$_POST) {
     $email_address = '';
 

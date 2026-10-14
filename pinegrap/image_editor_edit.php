@@ -19,6 +19,10 @@
 include ('init.php');
 
 $user = validate_user();
+
+// The image and the record it belongs to are single values; one sent as an
+// array (?file_name[]=x) counts as not given: it ended in an error page.
+pg_request_single_values(array('file_name', 'object_type', 'object_id', 'column_to_update'));
 $file_name = '';
 $send_to = '';
 $object_type = '';

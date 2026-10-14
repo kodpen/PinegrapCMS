@@ -21,6 +21,10 @@ include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// The recipient is one value; one sent as an array (?ship_to_id[]=x) counts
+// as not given: it ended in an error page.
+pg_request_single_values(array('ship_to_id'));
+
 // Get ship to info.
 $query =
     "SELECT

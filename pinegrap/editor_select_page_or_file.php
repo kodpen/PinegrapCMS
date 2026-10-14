@@ -19,6 +19,10 @@
 include('init.php');
 $user = validate_user();
 
+// The editor's callback is one value; one sent as an array
+// (?CKEditorFuncNum[]=x) counts as not given: it ended in an error page.
+pg_request_single_values(array('CKEditorFuncNum'));
+
 // store all values collected in request to session
 foreach ($_REQUEST as $key => $value) {
     // if the value is a string then add it to the session
