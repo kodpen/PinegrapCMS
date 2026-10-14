@@ -35,6 +35,13 @@
  * CREATE/DROP DATABASE are skipped, and anything else stops the restore with
  * the statement, before the site has changed.
  *
+ * A backup can also be an archive (data/backups/<name>.zip, what the automatic
+ * backup writes). Its sql.sql, files/ and layouts/ are extracted first, in
+ * steps of their own, into data/temp/restore_<id>, and every file is checked
+ * against the archive's checksum before anything is loaded, so a damaged
+ * archive stops the restore while the site is still untouched. The working
+ * folder goes with the restore's record.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -100,6 +107,176 @@ function pg_restore_state_path()
 function pg_restore_dump_path($folder)
 {
     return PG_FUNCTIONS_DIR . '/data/backups/' . $folder . '/sql.sql';
+}
+
+
+/**
+ * Whether a backup is an archive (data/backups/<name>.zip) rather than a
+ * folder.
+ *
+ * @param string $folder the backup's name in data/backups
+ * @return bool
+ */
+function pg_restore_is_archive($folder)
+{
+    return (is_string($folder) && (strtolower(substr($folder, -4)) === '.zip'));
+}
+
+
+/**
+ * The file a restore starts from, which has to stay the same while it runs:
+ * the archive itself, or the dump of a folder.
+ *
+ * @param string $folder
+ * @return string
+ */
+function pg_restore_source_path($folder)
+{
+    return pg_restore_is_archive($folder) ? PG_FUNCTIONS_DIR . '/data/backups/' . $folder : pg_restore_dump_path($folder);
+}
+
+
+/**
+ * Where an archive is extracted while it is restored.
+ *
+ * @param string $id the restore's id
+ * @return string
+ */
+function pg_restore_work_path($id)
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/restore_' . $id;
+}
+
+
+/**
+ * The folder the restore reads sql.sql, files/ and layouts/ from: the backup
+ * folder, or the folder an archive was extracted into.
+ *
+ * @param array $state
+ * @return string
+ */
+function pg_restore_content_path(array $state)
+{
+    if (!empty($state['archive'])) {
+        return pg_restore_work_path($state['id']);
+    }
+
+    return PG_FUNCTIONS_DIR . '/data/backups/' . $state['folder'];
+}
+
+
+/**
+ * Deletes the working folders that archives were extracted into.
+ *
+ * @param string $id only this restore's folder; '' for every one
+ */
+function pg_restore_work_delete($id = '')
+{
+    $temp = PG_FUNCTIONS_DIR . '/data/temp';
+
+    $entries = is_dir($temp) ? @scandir($temp) : false;
+
+    if ($entries === false) {
+        return;
+    }
+
+    foreach ($entries as $entry) {
+        if ((preg_match('/^restore_([a-f0-9]{16})$/', $entry, $match) === 1) && (($id === '') || ($match[1] === $id)) && is_dir($temp . '/' . $entry)) {
+            pg_backup_delete_tree($temp . '/' . $entry);
+        }
+    }
+}
+
+
+/**
+ * What a backup archive holds for a restore.
+ *
+ * sql.sql sits at the top of the archive (the automatic backup, an archive
+ * the Backup Manager downloads) or in one folder (a backup folder zipped by
+ * hand), the way the installation screen's upload takes it. The restore
+ * extracts sql.sql and the files directly under files/ and layouts/ next to
+ * it, which is what the installation copies; everything else is left in the
+ * archive, and so is a name that could point outside the working folder.
+ *
+ * @param string $path
+ * @return array ok, error, entries (each: index in the archive, name below
+ *               the backup, size, crc), size (their uncompressed total) and
+ *               folders (files and layouts, when the archive has them)
+ */
+function pg_restore_archive_read($path)
+{
+    $answer = array('ok' => false, 'error' => '', 'entries' => array(), 'size' => 0, 'folders' => array());
+
+    if (!class_exists('ZipArchive')) {
+        $answer['error'] = lang('Zip support is not available on this server, so the archive cannot be extracted.');
+        return $answer;
+    }
+
+    $zip = new ZipArchive();
+
+    if (!is_file($path) || (@$zip->open($path) !== true)) {
+        $answer['error'] = lang('The archive could not be opened. It might be damaged.');
+        return $answer;
+    }
+
+    $stats = array();
+    $root = null;
+
+    for ($index = 0; $index < $zip->numFiles; $index++) {
+
+        $stat = $zip->statIndex($index);
+
+        if ($stat === false) {
+            continue;
+        }
+
+        $stat['name'] = str_replace('\\', '/', $stat['name']);
+        $stats[$index] = $stat;
+
+        if ($stat['name'] === 'sql.sql') {
+            $root = '';
+        } elseif (($root === null) && (preg_match('/^([^\/]+)\/sql\.sql$/', $stat['name'], $match) === 1)) {
+            $root = $match[1] . '/';
+        }
+    }
+
+    $zip->close();
+
+    if ($root === null) {
+        $answer['error'] = lang('The archive has no sql.sql, so it is not the backup of a site.');
+        return $answer;
+    }
+
+    foreach ($stats as $index => $stat) {
+
+        if (($root !== '') && (strpos($stat['name'], $root) !== 0)) {
+            continue;
+        }
+
+        $name = (string) substr($stat['name'], strlen($root));
+
+        if (preg_match('/^(files|layouts)\/(.*)$/s', $name, $match) === 1) {
+
+            $answer['folders'][$match[1]] = true;
+
+            // The folder itself, what sits in a folder below it, and a name
+            // Windows would read as a device, a stream or another folder.
+            if (($match[2] === '') || ($match[2] === '.') || ($match[2] === '..') || (preg_match('/[\x00-\x1f\/\\\\:*?"<>|]/', $match[2]) === 1)) {
+                continue;
+            }
+
+        } elseif ($name !== 'sql.sql') {
+            continue;
+        }
+
+        $answer['entries'][] = array('index' => $index, 'name' => $name, 'size' => (float) $stat['size'], 'crc' => (int) $stat['crc']);
+        $answer['size'] += (float) $stat['size'];
+    }
+
+    $answer['folders'] = array_keys($answer['folders']);
+    $answer['ok'] = true;
+
+    return $answer;
 }
 
 
@@ -390,8 +567,17 @@ function pg_restore_state_write(array $state)
 }
 
 
+/**
+ * Forgets the restore, and the folder its archive was extracted into.
+ */
 function pg_restore_state_clear()
 {
+    $state = pg_restore_state_read();
+
+    if (($state !== null) && !empty($state['archive'])) {
+        pg_restore_work_delete($state['id']);
+    }
+
     @unlink(pg_restore_state_path());
 }
 
@@ -405,7 +591,7 @@ function pg_restore_unfinished()
 {
     $state = pg_restore_state_read();
 
-    if (($state === null) || !in_array($state['phase'], array('load', 'loaded'), true)) {
+    if (($state === null) || !in_array($state['phase'], array('extract', 'load', 'loaded'), true)) {
         return null;
     }
 
@@ -450,7 +636,8 @@ function pg_restore_progress_text(array $state)
 
 /**
  * Whether a posted restore belongs to the recorded one: same id, same
- * folder, the same file as when it started and the same database.
+ * folder, the same file as when it started (the archive, for an archive) and
+ * the same database.
  *
  * @param array|null $state
  * @param string     $id
@@ -474,11 +661,16 @@ function pg_restore_matches($state, $id, $folder, $database, $host)
         return true;
     }
 
-    $file = pg_restore_dump_path($folder);
+    $file = pg_restore_source_path($folder);
 
     clearstatcache(true, $file);
 
-    return (is_file($file) && ((float) filesize($file) === (float) $state['size']) && ((int) filemtime($file) === (int) $state['mtime']));
+    // A record written before archives could be restored names the dump's
+    // size and time only.
+    $size = isset($state['source_size']) ? $state['source_size'] : $state['size'];
+    $mtime = isset($state['source_mtime']) ? $state['source_mtime'] : $state['mtime'];
+
+    return (is_file($file) && ((float) filesize($file) === (float) $size) && ((int) filemtime($file) === (int) $mtime));
 }
 
 
@@ -545,8 +737,10 @@ function pg_restore_discard()
 
 
 /**
- * Starts a restore of a backup folder: drops what an earlier restore left
- * behind and records a new one.
+ * Starts a restore of a backup folder or archive: drops what an earlier
+ * restore left behind and records a new one. An archive starts with its
+ * extraction; size and offset count the bytes extracted until the dump is
+ * loaded.
  *
  * @param string $folder
  * @param string $database
@@ -557,18 +751,34 @@ function pg_restore_begin($folder, $database, $host)
 {
     $dropped = pg_restore_drop_tables();
 
-    $file = pg_restore_dump_path($folder);
+    pg_restore_work_delete();
+
+    $archive = pg_restore_is_archive($folder);
+
+    $file = pg_restore_source_path($folder);
 
     clearstatcache(true, $file);
+
+    $size = (float) @filesize($file);
+
+    if ($archive) {
+        $contents = pg_restore_archive_read($file);
+        $size = $contents['size'];
+    }
 
     $state = array(
         'id' => bin2hex(random_bytes(8)),
         'folder' => $folder,
-        'size' => (float) @filesize($file),
+        'archive' => $archive,
+        'source_size' => (float) @filesize($file),
+        'source_mtime' => (int) @filemtime($file),
+        'size' => $size,
         'mtime' => (int) @filemtime($file),
         'database' => $database,
         'host' => $host,
-        'phase' => 'load',
+        'phase' => $archive ? 'extract' : 'load',
+        'extract_index' => 0,
+        'extract_written' => 0,
         'offset' => 0,
         'statements' => 0,
         'sets' => array(),
@@ -720,6 +930,211 @@ function pg_restore_recover(array &$state)
 
 
 /**
+ * Extracts the archive into the restore's working folder for up to the
+ * state's step seconds, from where the last step stopped.
+ *
+ * A file a step did not finish is written on from the byte the state
+ * recorded; the archive is read again up to there (a compressed file cannot
+ * be entered half-way), so the checksum covers the whole file and a step the
+ * server killed half-way through a write loses nothing. That reading does not
+ * count against the step's writing: after it the step still writes for at
+ * least half its seconds, so a very large dump keeps moving. Every file is
+ * checked against its size and checksum in the archive when it is complete.
+ * The site's tables are not touched here.
+ *
+ * @param array         $state     updated and written; once everything is
+ *                                 extracted the phase is 'load', and size and
+ *                                 offset count the dump
+ * @param callable|null $heartbeat called with the state about once a second
+ * @return array status 'more', 'done' or 'error'; error and statement on
+ *               error; recovered: true when the last step was killed
+ */
+function pg_restore_extract_step(array &$state, $heartbeat = null)
+{
+    $answer = array('status' => 'error', 'error' => '', 'statement' => $state['folder'], 'recovered' => false);
+
+    $contents = pg_restore_archive_read(pg_restore_source_path($state['folder']));
+
+    if (!$contents['ok']) {
+        $answer['error'] = $contents['error'];
+        return $answer;
+    }
+
+    $work = pg_restore_work_path($state['id']);
+
+    // The whole archive's room is asked for before the first byte, so a full
+    // disk does not stop the restore half-way through a file.
+    if (((int) $state['extract_index'] === 0) && ((float) $state['extract_written'] === 0.0)) {
+
+        $free = function_exists('disk_free_space') ? @disk_free_space(PG_FUNCTIONS_DIR . '/data') : false;
+
+        if (($free !== false) && ($free < ($contents['size'] + 67108864))) {
+            $answer['error'] = lang(array('string' => 'There is not enough free disk space to extract the archive: {var:1} is needed, {var:2} is free.', 'vars' => array(convert_bytes_to_string($contents['size'] + 67108864, 1), convert_bytes_to_string((float) $free, 1))));
+            return $answer;
+        }
+    }
+
+    if (!empty($state['running'])) {
+        $answer['recovered'] = true;
+        $state['recovered']++;
+        $state['step_seconds'] = max(4, (int) floor($state['step_seconds'] / 2));
+    }
+
+    $state['running'] = true;
+    $state['steps']++;
+    pg_restore_state_write($state);
+
+    foreach (array_merge(array(''), $contents['folders']) as $folder) {
+        if (!is_dir($work . '/' . $folder) && !@mkdir($work . '/' . $folder, 0755, true)) {
+            $answer['statement'] = 'data/temp/' . basename($work) . '/' . $folder;
+            $answer['error'] = lang('The folder could not be created.');
+            return $answer;
+        }
+    }
+
+    // The working folder is closed to the web like the backups folder is.
+    @file_put_contents($work . '/.htaccess', 'deny from all');
+
+    $zip = new ZipArchive();
+
+    if ($zip->open(pg_restore_source_path($state['folder'])) !== true) {
+        $answer['error'] = lang('The archive could not be opened. It might be damaged.');
+        return $answer;
+    }
+
+    $deadline = microtime(true) + (int) $state['step_seconds'];
+    $next_beat = microtime(true) + 1;
+    $finished = true;
+    $count = count($contents['entries']);
+
+    while ((int) $state['extract_index'] < $count) {
+
+        $entry = $contents['entries'][(int) $state['extract_index']];
+        $written = (float) $state['extract_written'];
+        $damaged = lang(array('string' => 'The archive is damaged: {var:1} does not match its checksum.', 'vars' => array($entry['name'])));
+
+        $answer['statement'] = $state['folder'] . ' › ' . $entry['name'];
+
+        $stream = method_exists($zip, 'getStreamIndex') ? $zip->getStreamIndex($entry['index']) : $zip->getStream($zip->getNameIndex($entry['index']));
+        $handle = @fopen($work . '/' . $entry['name'], 'c+b');
+
+        if (($stream === false) || ($handle === false)) {
+            if ($stream !== false) {
+                fclose($stream);
+            }
+            $zip->close();
+            $answer['error'] = ($stream === false) ? $damaged : lang('The file could not be written.');
+            return $answer;
+        }
+
+        $crc = hash_init('crc32b');
+
+        // What an earlier step wrote is read again for the checksum.
+        $skip = $written;
+
+        while ($skip > 0) {
+
+            $chunk = @stream_get_contents($stream, (int) min(1048576, $skip));
+
+            if (($chunk === false) || ($chunk === '')) {
+                break;
+            }
+
+            hash_update($crc, $chunk);
+            $skip -= strlen($chunk);
+        }
+
+        ftruncate($handle, (int) $written);
+        fseek($handle, (int) $written);
+
+        if ($written > 0) {
+            $deadline = max($deadline, microtime(true) + max(1, (int) floor($state['step_seconds'] / 2)));
+        }
+
+        $stopped = false;
+
+        while ($skip <= 0) {
+
+            $chunk = @stream_get_contents($stream, 1048576);
+
+            if (($chunk === false) || ($chunk === '')) {
+                break;
+            }
+
+            if (fwrite($handle, $chunk) !== strlen($chunk)) {
+                fclose($stream);
+                fclose($handle);
+                $zip->close();
+                $answer['error'] = lang('The file could not be written.');
+                return $answer;
+            }
+
+            hash_update($crc, $chunk);
+            $written += strlen($chunk);
+            $state['offset'] += strlen($chunk);
+
+            $now = microtime(true);
+
+            if (($heartbeat !== null) && ($now >= $next_beat)) {
+                call_user_func($heartbeat, $state);
+                $next_beat = $now + 1;
+            }
+
+            if (($now >= $deadline) && ($written < $entry['size'])) {
+                $stopped = true;
+                break;
+            }
+        }
+
+        fclose($stream);
+        fclose($handle);
+
+        if ($stopped) {
+            $state['extract_written'] = $written;
+            $finished = false;
+            break;
+        }
+
+        if (($skip > 0) || ($written !== $entry['size']) || (hash_final($crc) !== sprintf('%08x', $entry['crc'] & 0xFFFFFFFF))) {
+            $zip->close();
+            $answer['error'] = $damaged;
+            return $answer;
+        }
+
+        $state['extract_index']++;
+        $state['extract_written'] = 0;
+
+        if (microtime(true) >= $deadline) {
+            $finished = ((int) $state['extract_index'] >= $count);
+            break;
+        }
+    }
+
+    $zip->close();
+
+    if ($finished) {
+
+        $dump = $work . '/sql.sql';
+
+        clearstatcache(true, $dump);
+
+        $state['phase'] = 'load';
+        $state['offset'] = 0;
+        $state['size'] = (float) @filesize($dump);
+        $state['extracted'] = $count;
+    }
+
+    $state['running'] = false;
+    pg_restore_state_write($state);
+
+    $answer['status'] = $finished ? 'done' : 'more';
+    $answer['statement'] = '';
+
+    return $answer;
+}
+
+
+/**
  * Loads the dump for up to the state's step seconds, from where the last step
  * stopped.
  *
@@ -734,7 +1149,7 @@ function pg_restore_step(array &$state, $heartbeat = null)
 {
     $answer = array('status' => 'error', 'error' => '', 'statement' => '', 'recovered' => null);
 
-    $handle = @fopen(pg_restore_dump_path($state['folder']), 'rb');
+    $handle = @fopen(pg_restore_content_path($state) . '/sql.sql', 'rb');
 
     if ($handle === false) {
         $answer['statement'] = $state['folder'] . '/sql.sql';

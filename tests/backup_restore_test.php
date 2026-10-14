@@ -4,8 +4,9 @@
  *
  * Tests for the step-by-step restore in includes/fn/backup_restore.php: how a
  * dump statement is classified, which table name is pointed at the restore's
- * own tables, and what a step hands to the next one (session variables, the
- * LOCK TABLES that is still held).
+ * own tables, what a step hands to the next one (session variables, the
+ * LOCK TABLES that is still held), and what a restore takes out of a backup
+ * archive.
  *
  * The statements are the shapes mysqldump.php (the Backup Manager), the
  * mysqldump command line and phpMyAdmin write.
@@ -201,4 +202,94 @@ function test_backup_restore_percent()
 	pg_assert_same(0, pg_restore_percent(array('offset' => 0, 'size' => 0)));
 	pg_assert_same(43, pg_restore_percent(array('offset' => 437, 'size' => 1000)));
 	pg_assert_same(100, pg_restore_percent(array('offset' => 1000, 'size' => 1000)));
+}
+
+// A backup is an archive when its name ends in .zip, in any case.
+function test_backup_restore_is_archive()
+{
+	pg_assert_true(pg_restore_is_archive('auto_backup_2026-10-41.zip'));
+	pg_assert_true(pg_restore_is_archive('Site.ZIP'));
+	pg_assert_false(pg_restore_is_archive('site_backup'));
+	pg_assert_false(pg_restore_is_archive('zip'));
+	pg_assert_false(pg_restore_is_archive(array('site.zip')));
+}
+
+// An archive is read from the folder it is extracted into; a folder backup from
+// its own folder. The file that has to stay the same is the archive itself.
+function test_backup_restore_paths_of_an_archive()
+{
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/temp/restore_aaaaaaaaaaaaaaaa', pg_restore_content_path(array('id' => 'aaaaaaaaaaaaaaaa', 'folder' => 'site.zip', 'archive' => true)));
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/backups/site_backup', pg_restore_content_path(array('id' => 'aaaaaaaaaaaaaaaa', 'folder' => 'site_backup')));
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/backups/site.zip', pg_restore_source_path('site.zip'));
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/backups/site_backup/sql.sql', pg_restore_source_path('site_backup'));
+
+	// While it is extracted, the archive has to be the one the restore started with.
+	$state = array('id' => 'aaaaaaaaaaaaaaaa', 'folder' => 'no_such_backup.zip', 'database' => 'site', 'host' => 'localhost', 'phase' => 'extract', 'size' => 1, 'mtime' => 1, 'source_size' => 1, 'source_mtime' => 1);
+	pg_assert_false(pg_restore_matches($state, 'aaaaaaaaaaaaaaaa', 'no_such_backup.zip', 'site', 'localhost'), 'archive is not there');
+}
+
+// What a restore takes out of an archive: sql.sql at the top or in one folder,
+// and the files directly under files/ and layouts/ next to it. Nothing that
+// could land outside the working folder, and nothing else.
+function test_backup_restore_archive_read()
+{
+	if (!class_exists('ZipArchive')) {
+		return;
+	}
+
+	$dir = sys_get_temp_dir() . '/pg_restore_test_' . bin2hex(random_bytes(4));
+	mkdir($dir);
+
+	$make = function ($name, array $entries) use ($dir) {
+		$zip = new ZipArchive();
+		$zip->open($dir . '/' . $name, ZipArchive::CREATE);
+		foreach ($entries as $entry => $contents) {
+			if (substr($entry, -1) === '/') {
+				$zip->addEmptyDir(rtrim($entry, '/'));
+			} else {
+				$zip->addFromString($entry, $contents);
+			}
+		}
+		$zip->close();
+		return $dir . '/' . $name;
+	};
+
+	// The automatic backup's archive.
+	$dump = "CREATE TABLE `config` (`id` int);\n";
+	$read = pg_restore_archive_read($make('auto.zip', array('sql.sql' => $dump, 'files/logo.png' => 'png', 'files/.htaccess' => 'deny from all', 'layouts/1.php' => '<?php')));
+	pg_assert_true($read['ok'], 'automatic backup');
+	pg_assert_same(array('sql.sql', 'files/logo.png', 'files/.htaccess', 'layouts/1.php'), array_column($read['entries'], 'name'));
+	pg_assert_same(array('files', 'layouts'), $read['folders']);
+	pg_assert_same((float) (strlen($dump) + 3 + 13 + 5), $read['size']);
+	pg_assert_same(hash('crc32b', $dump), sprintf('%08x', $read['entries'][0]['crc'] & 0xFFFFFFFF), 'checksum as the archive has it');
+
+	// A backup folder zipped by hand, with things the restore leaves alone.
+	$read = pg_restore_archive_read($make('hand.zip', array(
+		'site/' => '',
+		'site/sql.sql' => $dump,
+		'site/files/a.jpg' => 'a',
+		'site/files/sub/b.jpg' => 'b',
+		'site/files/../../config.php' => 'outside',
+		'site/layouts/a:b' => 'a stream on Windows',
+		'site/notes.txt' => 'n',
+		'other/files/c.jpg' => 'c',
+	)));
+	pg_assert_true($read['ok'], 'folder in the archive');
+	pg_assert_same(array('sql.sql', 'files/a.jpg'), array_column($read['entries'], 'name'));
+	pg_assert_same(array('files', 'layouts'), $read['folders']);
+
+	// No dump, no backup; and a file that is not an archive.
+	$read = pg_restore_archive_read($make('nodump.zip', array('files/a.jpg' => 'a')));
+	pg_assert_false($read['ok'], 'no sql.sql');
+	pg_assert_true($read['error'] !== '', 'says why');
+
+	file_put_contents($dir . '/broken.zip', 'not an archive');
+	pg_assert_false(pg_restore_archive_read($dir . '/broken.zip')['ok'], 'not an archive');
+	pg_assert_false(pg_restore_archive_read($dir . '/missing.zip')['ok'], 'not there');
+
+	foreach (array('auto.zip', 'hand.zip', 'nodump.zip', 'broken.zip') as $name) {
+		@unlink($dir . '/' . $name);
+	}
+
+	rmdir($dir);
 }

@@ -3377,6 +3377,27 @@
          boyuta bakıyor. Veritabanının tamamı satırın
          altında yazıyor.
 
+  [YENİ] Otomatik yedeğin yazdığı .zip arşivleri ve
+         yedekler klasörüne kopyalanan .zip yedekler
+         kurulum ekranındaki "Sunucudaki yedek" listesinde
+         çıkıyor ve aynı adım adım yolla geri yükleniyor:
+         arşiv önce kendi adımlarıyla açılır, her dosyası
+         arşivdeki sağlama toplamıyla denetlenir. Bozuk ya
+         da sql.sql içermeyen arşivde site değişmez.
+         Arşivi açmak için dökümün boyutu kadar boş disk
+         gerekir. Yedekte files ya da layouts klasörü
+         yoksa sitenin kendi dosyaları korunur.
+
+  [DÜZELTME] Bir yedek geri yüklenirken kurulum
+         formundaki yönetici, yedekte aynı e-posta ya da
+         kullanıcı adıyla bir kullanıcı olsa da ikinci
+         kez ekleniyor ve girilen parolayla giriş
+         yapılamıyordu. Artık yedekteki kullanıcılar
+         olduğu gibi kalır; aynı kullanıcı varsa yeni
+         hesap eklenmez, o kullanıcı yönetici olur ve
+         formdaki parolayla giriş yapar. Kurulum ekranı
+         bunu tek cümleyle söyler.
+
   [ŞEMA] Ayarlar tablosuna iki kolon ve günlük özet için
          yeni bir tablo eklenir; kayıtlı ziyaretçi
          raporlarının gruplama seçeneklerine "Cihaz"
