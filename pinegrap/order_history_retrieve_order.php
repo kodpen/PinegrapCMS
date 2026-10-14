@@ -93,7 +93,7 @@ if ($tracking_code != '') {
 
 $sql_utm = "";
 
-if ($_SESSION['software']['utm_source']) {
+if (!empty($_SESSION['software']['utm_source'])) {
     $sql_utm =
         "utm_source = '" . e($_SESSION['software']['utm_source']) . "',
         utm_medium = '" . e($_SESSION['software']['utm_medium']) . "',
@@ -133,7 +133,8 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if visitor tracking is on, update visitor record with order information, if visitor has not already created order or retrieved an order
-if (VISITOR_TRACKING == true) {
+// (a visitor who signed in without a page view first has no visitor record)
+if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
     $query =
         "UPDATE visitors
         SET

@@ -76,7 +76,7 @@ function retrieve_order($request) {
 
     $sql_utm = "";
 
-    if ($_SESSION['software']['utm_source']) {
+    if (!empty($_SESSION['software']['utm_source'])) {
         $sql_utm =
             "utm_source = '" . e($_SESSION['software']['utm_source']) . "',
             utm_medium = '" . e($_SESSION['software']['utm_medium']) . "',
@@ -114,9 +114,10 @@ function retrieve_order($request) {
         WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
 
     // If visitor tracking is on, update visitor record with order information, if visitor has not
-    // already created order or retrieved an order.
+    // already created order or retrieved an order. A bot, or a request without a page view
+    // first, has no visitor record.
 
-    if (VISITOR_TRACKING) {
+    if (VISITOR_TRACKING && !empty($_SESSION['software']['visitor_id'])) {
 
         db("
             UPDATE visitors SET

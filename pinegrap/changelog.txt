@@ -603,6 +603,22 @@
          bulunamadı." gibi) Türkçe sitede İngilizce
          görünüyordu; artık Türkçe.
 
+  [DÜZELTME] Ortaklık (affiliate) kodlu bir siparişi
+         tamamlamak hata sayfası veriyordu ve sipariş
+         tamamlanmamış kalıyordu (PHP 8); artık sipariş
+         tamamlanıyor ve ortağın komisyonu yazılıyor.
+
+  [DÜZELTME] Sepet, fatura bilgileri, sipariş
+         tamamlama, hızlı sipariş, sepeti kurtarma
+         bağlantısı, sipariş geçmişinden kurtarma ve
+         yineleme ile özel form gönderimi, ziyaret
+         kaydı olmayan bir istekte (arama motoru botu ya
+         da sitede önce sayfa açmamış biri) ya da
+         kampanya (utm) bilgisi olmadan hata günlüğüne
+         uyarı yazıyordu; özel erişim veren bir ürünün
+         ilk satın alımı da öyle. Artık yazmıyor; sayfalar
+         ve kayıtlar aynı.
+
   ÜRÜNLER
   --------------------------------------------------------
 

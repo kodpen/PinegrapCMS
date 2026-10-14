@@ -97,13 +97,13 @@ $query =
         '$contact_id',
         '$reference_code',
         '" . escape(get_tracking_code()) . "',
-        '" . e($_SESSION['software']['utm_source']) . "',
-        '" . e($_SESSION['software']['utm_medium']) . "',
-        '" . e($_SESSION['software']['utm_campaign']) . "',
-        '" . e($_SESSION['software']['utm_term']) . "',
-        '" . e($_SESSION['software']['utm_content']) . "',
+        '" . e($_SESSION['software']['utm_source'] ?? '') . "',
+        '" . e($_SESSION['software']['utm_medium'] ?? '') . "',
+        '" . e($_SESSION['software']['utm_campaign'] ?? '') . "',
+        '" . e($_SESSION['software']['utm_term'] ?? '') . "',
+        '" . e($_SESSION['software']['utm_content'] ?? '') . "',
         '" . escape(get_affiliate_code()) . "',
-        '" . escape($_SESSION['software']['http_referer']) . "',
+        '" . escape($_SESSION['software']['http_referer'] ?? '') . "',
         IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
         '" . escape(VISITOR_CURRENCY_CODE) . "',
         '" . $offline_payment_allowed . "')";
@@ -233,7 +233,8 @@ foreach ($ship_tos as $ship_to) {
 }
 
 // if visitor tracking is on, update visitor record with order information, if visitor has not already created a previous order
-if (VISITOR_TRACKING == true) {
+// (a visitor who signed in without a page view first has no visitor record)
+if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
     $query =
         "UPDATE visitors
         SET
