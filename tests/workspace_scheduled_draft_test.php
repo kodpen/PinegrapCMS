@@ -288,3 +288,19 @@ function test_workspace_scheduled_draft_ai_words()
 	pg_assert_same(lang('I propose it below. Nothing is changed until you press Apply under it.'), ws_ai_proposed_line($mixed), 'the words for the rest');
 	pg_assert_same(lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.'), ws_ai_proposed_words('Ayarladım.', $drafts), 'a short "I set it up" replaced');
 }
+
+// A morning summary: what each person missed rides on the task e-mail, and
+// Pinegrap AI's sentences only with it.
+function test_workspace_scheduled_draft_tidy_task_digest_missed()
+{
+	$action = array('type' => 'task_digest', 'mode' => 'mine', 'channel_id' => 0, 'user_ids' => array(1), 'only' => 'week', 'subject' => 'Good morning');
+	$draft = array('name' => 'Morning summary', 'when' => array('type' => 'at', 'date' => '2026-10-15', 'time' => '08:30', 'repeat' => 'workdays'), 'follow' => array(), 'missing' => '');
+
+	$tidy = ws_scheduled_draft_tidy($draft + array('action' => $action + array('missed' => true, 'ai' => 1)), workspace_scheduled_draft_lists());
+	pg_assert_same(1, $tidy['data']['action']['missed'], 'what was missed');
+	pg_assert_same(1, $tidy['data']['action']['ai'], 'summed up by Pinegrap AI');
+
+	$tidy = ws_scheduled_draft_tidy($draft + array('action' => $action + array('ai' => 1)), workspace_scheduled_draft_lists());
+	pg_assert_same(0, $tidy['data']['action']['missed'], 'not asked for');
+	pg_assert_same(0, $tidy['data']['action']['ai'], 'no summary without what was missed');
+}

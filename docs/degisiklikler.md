@@ -84,6 +84,99 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: siz yokken olanlar ve sabah özeti (2026-10-14)
+
+**Neden.** Çalışma Alanı araştırmasının P2 2.5 maddesi ("Kaçırdıkların ve
+sabah özeti"). Kanal karşılaması (`ws_channel_briefing()`) son gelişten
+bu yana yalnız mesaj sayısını ve en çok yazanı söylüyordu; karar, görev
+devri, müşterinin yazdığı ve bekleyen onay ayrı satırlarda ya da hiç
+görünmüyordu. Sabah e-postası için de görev e-postası
+(`task_digest`) yalnız görev listesi gönderiyordu.
+
+**Ne değişti.**
+- `includes/workspace/briefing.php` yeni bölüm "What was missed".
+  `ws_recap_channel()` bir kanalda son görülen mesajdan sonrasını sayar:
+  başkalarının mesajları (tek gruplu okuma: sayı, en çok yazan, misafirler),
+  o mesajın zamanından sonra yazılan kararlar (`marked_at`), okuyana verilen
+  açık görevler (`ws_task_assignees.assigned_at`), biten görevler, okuyanın
+  kararını bekleyen onay istekleri. Karar ve görevler en fazla
+  `WS_RECAP_LOOKBACK` (30) gün geriye bakar; aylarca açılmamış kanal
+  geçmişini saymasın diye. `ws_recap_parts()` / `ws_recap_sentence()`
+  bunları "Siz yokken: 4 yeni mesaj (çoğunu Ayşe yazdı), bir karar
+  yazıldı, size bir görev verildi, Mehmet 2 mesaj yazdı." cümlesine
+  çevirir; misafirin mesajları sayıdan düşülür, adıyla ayrıca söylenir.
+- Karşılama: sayıdan fazlası varsa (`ws_recap_says_more()`) bu cümle eski
+  "N yeni mesaj" satırının yerine geçer ve anılmadan sonra ilk satır olur.
+  Yalnız mesaj varsa eski satır aynen kalır.
+- Pinegrap AI özeti (karşılama): kanalda Pinegrap AI'a izin varsa
+  (`ws_ai_channel_state()['available']`: misafir odası ve dışarıyla
+  paylaşılan kanal hiçbir zaman) ve en az `WS_RECAP_AI_MIN` (3) yeni mesaj
+  varsa karşılama `recap.since_id` taşır; ekranda "Kaçırdıklarımı özetle"
+  düğmesi çıkar. Yeni panel eylemi `ws_brief_recap` (`includes/panel/
+  actions.php` listesine eklendi) → `ws_recap_ai()`: son görülen mesajdan
+  sonraki en fazla 80 mesaj, 9.000 karakter (yenileri tutulur), etiketler
+  okuyanın haklarıyla ada çevrilip `<@...>` biçimi atılır, tek
+  `pg_ai_chat()` çağrısı. Cevaptan etiket, `**` ve başlık işaretleri
+  temizlenir, 1.500 karakterle sınırlanır. Kanal açılınca her şey okundu
+  işaretlendiği için `since_id` karşılamayla birlikte gelir. Özet,
+  kanal açık kaldıkça sekme değişse de karşılamada durur.
+- Sabah özeti: `task_digest` eylemine iki seçenek, `missed` ve `ai`
+  (`ai` yalnız `missed` ile). `ws_recap_person()` kişinin katıldığı,
+  bildirimi kapalı olmayan, okunmamışı olan kanalları (en çok okunmamış
+  önce, en fazla 8) ve kişiye bekleyenleri (okunmamış anılma, açılmamış
+  görev devri, onay istekleri) toplar; `ws_recap_mail_html()` e-postaya
+  "Kaçırdıklarınız" bölümünü yazar. Görevi olmayan ama bir şey kaçırmış
+  kişiye de e-posta gider (önceden görevsize hiç gitmiyordu; seçenek
+  kapalıyken davranış aynı). `ai` açıkken `ws_recap_person_ai()` yalnız
+  Pinegrap AI'ın okuyabildiği kanalları modele gönderir; öbür kanalların
+  adı bile gitmez, listede sayılarla kalır.
+- AI özeti yalnız arka plan çalışmasında yazılır
+  (`pg_cron_is_background_run()`: genel iş ya da crontab). Ekranın
+  tetiklediği çalışmada ve "Şimdi çalıştır"da model çağrılmaz; Pinegrap
+  AI'ın kendi kuralı ("model çağrısı ekrana giden yolda yapılmaz") ile
+  aynı. Bir çalışma modele en fazla `WS_RECAP_MAIL_AI_BUDGET` (150 sn)
+  harcar, kalan kişiler sayılı listeyi alır; programlanmış işlemin kilidi
+  (`WS_SCHEDULED_LOCK`, 600 sn) içinde kalır.
+- Form: "Herkesin kaçırdıklarını ekle" ve (Pinegrap AI hazırsa,
+  `CFG.scheduled.recap_ai`) "Pinegrap AI birkaç cümleyle özetlesin"
+  anahtarları. Yeni hazır işlem "E-postayla sabah özeti": her iş günü
+  08:30, kişinin kendisine, bu hafta vadesi gelen görevler + kaçırdıkları.
+  Özet satırı "(…, kaçırdıklarıyla birlikte (Pinegrap AI özetiyle))".
+- Cümleden kurma (`scheduled_draft.php`, #360) `missed` ve `ai`'yi tanır.
+- Mevcut çeviri düzeltildi: "Optional. Nobody gets an e-mail with nothing
+  in it." artık "İçinde hiçbir şey olmayan…" (eskisi "görev olmayan"
+  diyordu; kaçırdıklar seçeneğiyle görevsiz e-posta da gidebiliyor).
+
+Şema değişikliği yok. Yeni metinler `tr.json`'da (36 anahtar).
+
+**Bilerek yapılmayan.** Özet önbelleğe alınmaz (her tıklama bir model
+çağrısı; düğme beklerken kapalı). Kişiye özel ayrı bir "sabah özeti
+ayarı" yok: programlanmış işlemle kurulur. Kanal karşılaması kapatılmışsa
+(o gün o kanalda) düğme de görünmez. Tartışmalar (thread kanalları)
+e-postadaki listeye girmez; kenar çubuğu da onları saymaz.
+
+**Doğrulama.** `tests/workspace_recap_test.php` yedi test (ifadeler ve
+sırası, tekil biçimler, e-postada kişiye ait olanların çıkması, cümle,
+"daha fazlası var mı", etiket temizliği, modele giden olgular);
+`tests/workspace_scheduled_draft_test.php`'ye bir test. Sandbox'ta
+ai.pinegrap.com yerine yerel sahte bir model ile (uç adresi yalnız
+denemede değiştirildi): #genel'de "Siz yokken: 4 yeni mesaj (çoğunu ayse
+yazdı), bir karar yazıldı, size bir görev verildi." satırı ve
+"Kaçırdıklarımı özetle" düğmesi; tıklayınca "Pinegrap AI okuyor…", cevap
+karşılamada (etiket ve `**` temizlenmiş), modele giden istemde yalnız
+son görülenden sonraki dört mesaj. Misafir odasında "Siz yokken: Mehmet
+Yılmaz 2 mesaj yazdı." ve düğme yok. Görev e-postası CLI'da (arka plan)
+`missed`+`ai` ile iki kişiye gitti: "Kaçırdıklarınız", "Sizi
+bekleyenler: size bir görev verildi.", kanal listesi, AI paragrafı;
+misafir odasının mesajları modele gitmedi. Formdan "E-postayla sabah
+özeti" şablonu iki anahtar açık kaydedildi (`missed:1, ai:1`); ekrandan
+"Şimdi çalıştır" model çağırmadı. Sandbox'ta posta sunucusu olmadığı için
+web'den gönderim "gönderilemedi" döndü; e-posta gövdesi CLI'da sahte
+sendmail ile okundu. dev.pinegrap.com'da Pinegrap AI anahtarı olmadığı
+için orada yalnız sayılı satır ve liste denenebilir.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: kanal durumu, check-in ve eskiyen iş süzgeci (2026-10-14)
 
 **Neden.** Çalışma Alanı araştırmasının P2 2.4 maddesi

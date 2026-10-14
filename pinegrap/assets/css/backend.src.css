@@ -13434,6 +13434,32 @@ a.ws-chip:hover {
   right: .6rem;
   font-size: .65rem;
 }
+.ws-brief-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: .4rem;
+}
+.ws-brief-buttons:empty,
+.ws-brief-recap:empty {
+  display: none;
+}
+/* Pinegrap AI's summary of what was missed. */
+.ws-brief-recap {
+  margin-top: .45rem;
+  padding-left: .65rem;
+  border-left: 2px solid rgba(var(--ws-accent-rgb), .45);
+}
+.ws-brief-recap-text {
+  font-size: .88rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  color: var(--bs-body-color);
+}
+.ws-brief-recap-by {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+  margin-top: .15rem;
+}
 
 /* Context menus: the panel's own look, placed at the pointer. */
 .ws-ctx.contextmenu.popover {

@@ -771,6 +771,9 @@ function ws_scheduled_js_config($viewer)
         // sentence (scheduled_draft.php).
         'draft'        => function_exists('ws_scheduled_draft_ready') && ws_scheduled_draft_ready($viewer),
         'digest_only'  => ws_scheduled_digest_filters(),
+        // Whether the task e-mail can offer Pinegrap AI's summary of what
+        // was missed (briefing.php).
+        'recap_ai'     => function_exists('ws_ai_ready') && ws_ai_ready(),
         'records'      => $records,
         'changes'      => $changes,
         'metrics'      => $metrics,
@@ -1441,7 +1444,9 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
             ));
 
         // Each person their tasks by e-mail (a weekly list, say): their own
-        // open tasks, or the open tasks of one channel.
+        // open tasks, or the open tasks of one channel. With missed, each
+        // e-mail also says what the person has not read yet; with ai,
+        // Pinegrap AI puts that into a few sentences (briefing.php).
         case 'task_digest':
             $mode = ((string) ($action['mode'] ?? 'mine') === 'channel') ? 'channel' : 'mine';
             $digest_channel = max(0, (int) ($action['channel_id'] ?? 0));
@@ -1470,6 +1475,8 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'only'       => $only,
                 'subject'    => mb_substr(trim(preg_replace('/[\r\n]+/', ' ', (string) ($action['subject'] ?? ''))), 0, 250),
                 'intro'      => mb_substr(trim(str_replace("\r\n", "\n", (string) ($action['intro'] ?? ''))), 0, 2000),
+                'missed'     => empty($action['missed']) ? 0 : 1,
+                'ai'         => (empty($action['missed']) || empty($action['ai'])) ? 0 : 1,
             ));
 
         // A call to another system: Slack, Teams, n8n, Zapier, Make.
@@ -2220,6 +2227,12 @@ function ws_scheduled_action_text($viewer, $action)
                 ? implode(', ', array_filter(array_map('ws_person_name', (array) $action['user_ids'])))
                 : ((($action['mode'] ?? '') === 'channel') ? lang('the members of the channel') : lang('everybody with open tasks'));
             $what = (string) (ws_scheduled_digest_filters()[$action['only'] ?? 'open'] ?? '');
+
+            if (!empty($action['missed'])) {
+                $what = !empty($action['ai'])
+                    ? lang(array('string' => '{var:1}, and what they missed, summed up by Pinegrap AI', 'vars' => $what))
+                    : lang(array('string' => '{var:1}, and what they missed', 'vars' => $what));
+            }
 
             return (($action['mode'] ?? '') === 'channel')
                 ? lang(array('string' => 'E-mail the tasks of {var:1} ({var:2}) to {var:3}', 'vars' => array($channel ? '#' . $channel['name'] : lang('a channel that is gone'), $what, $who)))
@@ -3788,6 +3801,13 @@ function ws_scheduled_digest_filters()
  * one channel, or in all), or the open tasks of one channel to each person
  * who reads it. Somebody with nothing to list gets no e-mail.
  *
+ * With missed, each e-mail also says what the person has not read yet (in
+ * that channel, or in all of theirs), and somebody with no tasks but
+ * something missed gets one too. With ai, Pinegrap AI writes that part in a
+ * few sentences - only in a background run (the general job), never on the
+ * way to a screen, and for as many people as WS_RECAP_MAIL_AI_BUDGET allows;
+ * the rest get the counted list alone.
+ *
  * @return array ok, text, message_id
  */
 function ws_scheduled_task_digest($viewer, $row, $action, $context)
@@ -3840,6 +3860,9 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
     $sent = 0;
     $tried = 0;
     $listed = 0;
+    $missed = !empty($action['missed']) && function_exists('ws_recap_person');
+    $ai_until = ($missed && !empty($action['ai']) && pg_cron_is_background_run() && function_exists('ws_ai_ready') && ws_ai_ready())
+        ? time() + WS_RECAP_MAIL_AI_BUDGET : 0;
 
     foreach ($people as $user_id) {
         $address = (string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) $user_id . "'");
@@ -3853,13 +3876,22 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
             INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . (int) $user_id . "'
             WHERE " . implode(' AND ', $where) . " ORDER BY (t.due_date IS NULL), t.due_date, t.id LIMIT 200");
 
-        if (empty($tasks)) {
+        $recap = $missed ? ws_recap_person($rights, $channel_id) : null;
+
+        if (empty($tasks) && (!$recap || $recap['empty'])) {
             continue;
+        }
+
+        $summary = '';
+
+        if ($recap && !$recap['empty'] && ($ai_until > time())) {
+            $answer = ws_recap_person_ai($rights, $recap, max(20, min(ws_ai_call_timeout(), $ai_until - time())));
+            $summary = $answer['ok'] ? $answer['text'] : '';
         }
 
         $tried++;
 
-        if (ws_scheduled_mail(array($address), $subject, ws_scheduled_digest_html($rights, $tasks, $subject, $intro, ($mode === 'channel')), 'html') > 0) {
+        if (ws_scheduled_mail(array($address), $subject, ws_scheduled_digest_html($rights, $tasks, $subject, $intro, ($mode === 'channel'), $recap ? ws_recap_mail_html($recap, $summary) : ''), 'html') > 0) {
             $sent++;
             $listed += count($tasks);
         }
@@ -3877,16 +3909,18 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
 }
 
 /**
- * The body of a task e-mail: a short table, each task linked to its page.
+ * The body of a task e-mail: a short table, each task linked to its page,
+ * and what the person missed above it when the action asks for that.
  *
  * @param array   $reader  the person it goes to
  * @param array[] $tasks
  * @param string  $title
  * @param string  $intro
  * @param bool    $with_people list who is on each task
+ * @param string  $missed  ws_recap_mail_html(), '' for none
  * @return string HTML
  */
-function ws_scheduled_digest_html($reader, $tasks, $title, $intro, $with_people)
+function ws_scheduled_digest_html($reader, $tasks, $title, $intro, $with_people, $missed = '')
 {
     $base = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/';
     $statuses = ws_task_statuses();
@@ -3926,8 +3960,10 @@ function ws_scheduled_digest_html($reader, $tasks, $title, $intro, $with_people)
         . '<h2 style="font-size:18px;margin:0 0 12px">' . h($title) . '</h2>'
         . '<p style="margin:0 0 12px">' . h(lang(array('string' => 'Hello {var:1},', 'vars' => ws_person_name($reader['id'])))) . '</p>'
         . (($intro !== '') ? '<p style="margin:0 0 12px">' . nl2br(h($intro), false) . '</p>' : '')
-        . '<table style="border-collapse:collapse;width:100%;max-width:760px">' . $head . $rows . '</table>'
-        . '<p style="margin:16px 0 0"><a href="' . h($base . 'workspace_tasks.php') . '">' . h(lang('Open My Tasks')) . '</a></p>'
+        . $missed
+        . (empty($tasks) ? '' : (($missed !== '') ? '<h3 style="font-size:16px;margin:16px 0 8px">' . h($with_people ? lang('Tasks') : lang('Your tasks')) . '</h3>' : '')
+            . '<table style="border-collapse:collapse;width:100%;max-width:760px">' . $head . $rows . '</table>'
+            . '<p style="margin:16px 0 0"><a href="' . h($base . 'workspace_tasks.php') . '">' . h(lang('Open My Tasks')) . '</a></p>')
         . '<p style="margin:12px 0 0;color:#6b7280;font-size:12px">' . h(lang(array('string' => 'Sent by the Workspace of {var:1} on {var:2}.', 'vars' => array((string) HOSTNAME_SETTING, date('d.m.Y H:i'))))) . '</p>'
         . '</div>';
 }
@@ -4599,6 +4635,13 @@ function ws_scheduled_js_strings()
         'sa_digest_subject_placeholder' => lang('The name of the scheduled action'),
         'sa_digest_intro'   => lang('A few words above the list'),
         'sa_digest_intro_help' => lang('Optional. Nobody gets an e-mail with nothing in it.'),
+        'sa_digest_missed'  => lang('Add what each person missed'),
+        'sa_digest_missed_help' => lang('Unread messages by channel, decisions, tasks handed to them, approvals waiting for them. Somebody with no tasks but something missed gets the e-mail too.'),
+        'sa_digest_ai'      => lang('Have Pinegrap AI sum it up in a few sentences'),
+        'sa_digest_ai_help' => lang('Only channels Pinegrap AI may read go to it. Written when the general job runs the action; otherwise the e-mail has the counted list.'),
+        'sa_tpl_morning'    => lang('Morning summary by e-mail'),
+        'sa_tpl_morning_help' => lang('Every working morning: what you missed in the channels and your tasks due this week.'),
+        'sa_tpl_morning_subject' => lang('Good morning: what you missed'),
         'sa_next_runs'      => lang('Next runs'),
         'sa_duplicate'      => lang('Duplicate'),
         'sa_copy_of'        => ws_js_template('Copy of {var:1}', 1),

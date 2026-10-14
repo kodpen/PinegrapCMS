@@ -910,6 +910,29 @@ function ws_handle_action($action, $request)
                 'now'      => time(),
             ));
 
+        // Pinegrap AI's few sentences on what the reader missed, asked from
+        // the channel's greeting. Opening the channel marked everything
+        // read, so the greeting hands back the message the visit began
+        // after (briefing.php).
+        case 'ws_brief_recap':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (is_string($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(WS_AI_CALL_TIMEOUT + 30);
+            }
+
+            $recap = ws_recap_ai($viewer, $channel, max(0, (int) ($request['since_id'] ?? 0)));
+
+            if (!$recap['ok']) {
+                return ws_action_error($recap['error']);
+            }
+
+            return ws_action_ok(array('text' => $recap['text']));
+
         case 'ws_sync':
             $out = array('messages' => array(), 'tasks' => array(), 'now' => time());
             $channel_id = (int) ($request['channel_id'] ?? 0);
