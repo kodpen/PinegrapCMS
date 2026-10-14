@@ -41,12 +41,16 @@ if (!$_POST) {
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
     $output_image_header = $show_image ? '<th>' . lang('Image') . '</th>' : '';
 
-    $total_unselected = (int) db_value("SELECT COUNT(*) FROM products");
+    // Products in the Recycle Bin are not offered for the new group.
+    $live_products_sql = pg_catalog_bin_live_sql('products');
+
+    $total_unselected = (int) db_value("SELECT COUNT(*) FROM products WHERE 1 = 1" . $live_products_sql);
 
     // Preload first 50 products so the page isn't empty on load.
     $initial_products = db_items(
         "SELECT id, name, enabled, short_description, image_name, price
          FROM products
+         WHERE 1 = 1" . $live_products_sql . "
          ORDER BY timestamp DESC
          LIMIT 50"
     );
@@ -85,7 +89,7 @@ if (!$_POST) {
             '<div class="col-12 col-md-4 my-2">' .
             '<label for="parent_id" class="form-label">*' . lang('Parent Product Group') . '</label>' .
             '<select required style="width:100%" class="select2 form-select" id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
-            get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE) .
+            get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE, 'text', false, true, false) .
             '</select></div>';
     } else {
         $output_parent_group_select_block = '<input type="hidden" name="parent_id" value="0" />';

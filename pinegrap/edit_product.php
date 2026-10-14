@@ -71,6 +71,13 @@ if (!$product) {
         404);
 }
 
+// A product in the Recycle Bin is no longer on any list, but its address
+// still opens it. It is shown so the operator can see what is in the bin, and
+// is not written: saving would switch it back on while it is in the bin (the
+// bin keeps it off), and deleting it again would only restart its countdown.
+// Restoring it in the Catalog Manager is the way back to editing it.
+$product_binned = pg_catalog_product_binned($product_id);
+
 
 /* ------------------------------------------------------------------ *
  * Save
@@ -79,6 +86,10 @@ if (!$product) {
 if ($_POST) {
 
     validate_token_field();
+
+    if ($product_binned) {
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
+    }
 
     // Delete first: the rest of this block writes the product, and doing that
     // on the way to deleting it is work nobody sees and one more chance to
@@ -156,4 +167,5 @@ if ($_POST) {
 pg_pb_render_product_screen($product, array(
     'mode'       => 'edit',
     'product_id' => $product_id,
+    'recycled'   => $product_binned,
 ));

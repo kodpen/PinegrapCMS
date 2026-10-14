@@ -511,6 +511,20 @@
          açılınca RSS bağlantısını göstermiyordu; artık
          terimsiz sayfadaki gibi gösteriyor.
 
+  [DÜZELTME] Hızlı sipariş, kargo adresi, fatura
+         bilgileri ve sipariş önizleme sayfaları, bir
+         alanı birden çok değerle (alan[]=…) gönderen bir
+         istekte ödemenin ortasında hata sayfası
+         veriyordu; artık o alan boş gönderilmiş
+         sayılıyor: zorunluysa sayfa "gerekli" uyarısıyla
+         geri geliyor. Özel kargo ve ödeme formlarının
+         tarih, saat ve e-posta alanları da böyle; onay
+         kutusu ve çoklu seçim alanları eskisi gibi
+         birden çok değer alıyor. Özel ödeme formu açık
+         fatura bilgileri ve hızlı sipariş sayfaları her
+         gönderimde hata günlüğüne uyarı yazıyordu; artık
+         yazmıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
@@ -529,6 +543,33 @@
          boşaltılınca ya da saklama süresi dolunca
          yapılıyor. Kutuya taşınan ürün için Dış API'nin
          product.deleted olayı (recycled: true) gidiyor.
+
+  [DÜZELTME] Geri Dönüşüm Kutusundaki ürün artık ürün
+         seçen ekranlarda çıkmıyor: kısa bağlantı, takvim
+         etkinliği, e-posta kampanyası, kampanya editörü,
+         ürün grubu ekranının ürün listesi, ERP belge
+         satırları (arama ve barkod), panel araması,
+         Çalışma Alanı referansları ve pazaryeri eşleştirme.
+         Önceden "devre dışı" ürün gibi seçilebiliyordu. Bir
+         kayıt kutudaki ürünü zaten gösteriyorsa o ürün
+         kendi seçicisinde "GERİ DÖNÜŞÜM KUTUSUNDA" ekiyle
+         kalıyor, kaydetmek bağlantıyı koparmıyor.
+
+  [DÜZELTME] Ürün grubu ekranı kutudaki alt grupları ve
+         ürünleri listelemiyor ve saymıyor; yalnız kutuda
+         alt grubu olan grup "önce alt grupları silin"
+         demeden silinebiliyor. Grubu kaydetmek kutudaki
+         ürünün grup bağını silmiyor, ürün geri yüklenince
+         grubuna dönüyor. Üst grup seçicisinde kutudaki
+         gruplar çıkmıyor.
+
+  [DÜZELTME] Kutudaki bir ürün adresiyle açılınca ekran
+         "Bu ürün Geri Dönüşüm Kutusunda" uyarısını ve
+         kutuya giden bağlantıyı gösteriyor; Kaydet ve Sil
+         düğmeleri yok, kaydetme isteği reddediliyor.
+         Önceden kaydedip ürünü kutudayken yeniden
+         yayına almak mümkündü. Ürün listesindeki satır
+         içi düzenleme de kutudaki ürünü değiştirmiyor.
 
   [YENİ] Ürün listesinde stok, fiyat, durum (Etkin / Devre
          dışı) ve kısa açıklama ürünü açmadan, satırda

@@ -177,6 +177,231 @@ diziyi oraya ulaştırmıyor. Liveform `h(null)` (K9) dokunulmadı.
 
 ---
 
+## 2026.4.10 — Geri Dönüşüm Kutusundaki ürün seçicilerde çıkmıyor, grup ekranı kutudakileri saymıyor, ürün ekranı kutudaki ürünü kaydetmiyor (2026-10-14)
+
+**Neden.** #416'nın "Bilerek yapılmayan" maddesindeki üç uç. Kutu bir
+bayrak (`recycled = 1`, `enabled = 0`), satır yerinde duruyor; bu yüzden
+(1) ürün seçen ekranlar kutudaki ürünü "devre dışı" ürün gibi sunuyordu
+ve seçilebiliyordu; (2) ürün grubu ekranı kutudaki alt grubu alt grup
+olarak listeleyip sayıyordu (alt grubu yalnız kutuda olan grup "önce alt
+grupları silin" diyordu), kutudaki ürünü de grubun ürünleri arasında
+gösteriyordu; (3) kutudaki ürün `edit_product.php?id=…` ile uyarısız
+açılıp kaydedilebiliyordu. Vitrin yalnız `enabled`'a baktığı için Durum
+açık kaydedilen ürün kutudayken yeniden satışa çıkıyordu; Sil de kutu
+kaydını yenileyip geri sayımı baştan başlatıyordu.
+
+**Ne değişti.**
+- `includes/fn/ecommerce.php`: `pg_catalog_bin_live_sql($table, $keep_id
+  = 0)` Katalog Yöneticisi'nin süzgecini (`pg_catalog_live_filter()`)
+  `pg_catalog_bin_ready()` kapısıyla verir; kutu yoksa boş. `$keep_id`
+  verilirse o satır kutuda olsa da kalır. `pg_catalog_product_binned()`
+  tek ürünü sorar. Yeni işaret yok, #416'nın `recycled` sütunu.
+- Seçiciler: `get_product_options()` (kısa bağlantı, takvim etkinliği,
+  e-posta kampanyası, Katalog Yöneticisi'nin kısa bağlantı sihirbazı) ve
+  `select_product()` (ürün ekranının "gerekli ürün"ü) kutudakini
+  bırakır; düzenleme ekranları (`edit_short_link.php`,
+  `edit_calendar_event.php`, `edit_email_campaign_profile.php`) kaydın
+  zaten gösterdiği ürünü `$keep_id` olarak verir ve o seçenek
+  "[GERİ DÖNÜŞÜM KUTUSUNDA]" ekiyle kalır. Kalmasaydı `<select>` ilk
+  seçeneğe düşer, sonraki kayıt bağlantıyı sessizce başka ürüne ya da
+  boşa çevirirdi. Kampanya editörü (`_pg_offer_products()` +
+  `offer_editor.js`) listeyi etiketler için tam tutar, ürünlere
+  `recycled` ekler; seçici kutudakini yalnız satırın zaten seçtiği ürünse
+  gösterir, hızlı başlangıç ilk kutuda olmayan ürünü alır. Ürün grubu
+  ekranlarının "seçilmemiş ürünler" listesi ve sayısı (`add_product_group.php`,
+  `edit_product_group.php`, kaydırınca yükleyen `get_unselected_products`),
+  ERP belge satırı araması (`erp_product_search()`, barkod eşleşmesi ve
+  `get_erp_products.php?barcode=` dahil), panel araması (ürün ve ürün
+  grubu), Çalışma Alanı ürün referansı araması (grubunki zaten
+  `recycled = 0` idi) ve pazaryeri eşleştirme listesi süzülür.
+- Grup ekranı (`edit_product_group.php`): alt grup listesi ve
+  `$child_product_group_exists` kutudakini saymaz; grubun ürün listesi
+  kutudaki ürünü göstermez. Kaydetme `products_groups_xref`'i silip
+  postalanandan yeniden yazdığı için kutudaki ürünün satırı silmeden
+  korunur (`AND product NOT IN (SELECT id FROM products WHERE recycled =
+  '1')`), eski bir formun yine postaladığı kutudaki ürün ikinci kez
+  eklenmez (tabloda benzersiz anahtar yok). Üst grup seçicisi
+  (`get_product_group_options()`'a `$include_recycled`, yeni grup
+  ekranında da) kutudaki grupları göstermez; grubun kendi üst grubu
+  kutudaysa (tek başına geri yüklenmiş alt grup) liste eskisi gibi tam
+  kalır, yoksa kayıt grubu ilk seçeneğe taşırdı. Diğer grup seçicileri
+  (ürün ekranının grupları, sayfa ayarları, kısa bağlantı) değişmedi:
+  oradaki seçili kutu grubu tutulmazsa kayıt bağı koparırdı.
+- Ürün ekranı: `edit_product.php` kutudaki ürünü gösterir ama POST'u
+  hiçbir şey yazmadan aynı ekrana geri gönderir (Kaydet de Sil de).
+  `pg_pb_render_product_screen()` `recycled` bağlamıyla üstte uyarı ve
+  "Geri Dönüşüm Kutusunu Aç" (`view_product_groups.php?view=bin`)
+  gösterir, kayıt çubuğunda Kaydet/Sil yerine aynı bağlantı durur.
+  Geri yükleme Katalog Yöneticisi'nin kutusunda; ikinci bir geri yükleme
+  kodu yazılmadı. Ürün listesinin satır içi düzenlemesi
+  (`pg_pb_quick_update()`) kutudaki ürünü "Ürün bulunamadı." diye
+  reddeder.
+- `tr.json`'a 3 anahtar.
+- Test (`tests/catalog_bin_test.php`, +4): seçicilerin ortak yardımcıyı
+  kullandığı, düzenleme ekranlarının mevcut ürünü verdiği, grup
+  ekranının kutudakini ne listeleyip ne düşürdüğü, ürün ekranının
+  yazmadan önce durduğu. Düzeltme öncesi kodda 4'ü kırmızı.
+
+Şema değişikliği yok; dev'de yalnız `git pull` yeter.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, Türkçe başlangıç sitesi).**
+Mega Hediye Sepeti (43, gruplar 27/41/51) ürün ekranının Sil'iyle,
+İndirilenler (49, Mağaza'nın alt grubu) grup ekranının Sil'iyle kutuya
+atıldı; bir kısa bağlantı 43'e, biri 42'ye bağlıydı.
+- Ürün ekranı 43: uyarı ve iki kutu bağlantısı, Kaydet/Sil yok; Durum
+  açık Kaydet POST'u ve Sil POST'u ekrana döndü, satır (`enabled 0`,
+  `recycled 1`) ve kutu kaydının tarihi değişmedi. 42'de uyarı yok,
+  düğmeler var. Satır içi düzenleme 43'e 422 `not_found`.
+- Kısa bağlantı ekleme: 43 yok, 42 var. 43'e bağlı bağlantının
+  düzenlemesi: 43 seçili, etiket "CGB-078 - Mega Hediye Sepeti (₺79,95)
+  [GERİ DÖNÜŞÜM KUTUSUNDA]"; 42'ye bağlı olanda 43 yok.
+- Grup 27: ürün listesinde 43 yok, 41 var; seçilmemiş listede 43 yok.
+  27, eski formdaki gibi 41, 42 ve 43 postalanarak kaydedildi: 43'ün 27
+  bağı tek satır ve sıra numarasıyla kaldı. Mağaza (37) alt grupları 27,
+  28, 43 (49 yok); üst grup seçicilerinde 49 yok. Hediye Dükkanı'nın (51)
+  tek alt grubu (56) kutuya atılınca Sil düğmesi gerçek silme oldu.
+- Kampanya editörü: JSON'da 43 `recycled: 1`; "hediye" hızlı
+  başlangıcının iki ürün seçicisinde 43 yok, 42 var.
+- Panel araması "Hediye Sepeti" → 41, 42; "ndirilenler" grubu → 23 (49
+  yok). Çalışma Alanı ve ERP açılınca ürün referansı ve belge araması →
+  41, 42; `?barcode=CGB-078` → `null`, `CGB-077` → 42.
+- Katalog Yöneticisi'nden 43 geri yüklendi: `enabled 1`, ürün ekranı
+  Kaydet'li, kısa bağlantı eklemede 43 var, grup 27'nin listesinde 43
+  yeniden işaretli (bağ korunduğu için).
+- Takvim etkinliği, e-posta kampanyası, kampanya, pazaryeri, ERP cari
+  fiyatları ekranları 200; bu değişiklikten PHP uyarısı yok
+  (`edit_calendar_event.php` 215/455'teki `recurrence_number` uyarısı
+  eskiden var).
+
+**Bilerek yapılmayan.** Ürün ekranının grup seçicisi, sayfa ayarlarındaki
+ve kısa bağlantıdaki grup seçicileri kutudaki grubu "[DEVRE DIŞI]"
+olarak göstermeye devam ediyor (seçili olanı tutmak ağaç yürüyüşünde
+atalarını da gerektiriyor). Depo girişi/çıkışı barkod ekranları, kasa
+(`local_sale.php` barkod eşleşmesi) ve Dış API listeleri dokunulmadı.
+Kutudaki grubun kendi ekranı (`edit_product_group.php?id=…`) uyarısız
+açılıyor. Katalog Yöneticisi'nin kısa bağlantı sihirbazı listeyi bir kez
+ve kayıttan bağımsız aldığı için kutudaki ürüne giden bir bağlantıyı
+orada düzenlemek ürünü yeniden seçtiriyor (klasik
+`edit_short_link.php` tutuyor).
+
+---
+
+## 2026.4.10 — Sipariş akışı: hızlı sipariş, kargo adresi, fatura bilgileri ve sipariş önizleme dizi gelen değerde 500 veriyordu (2026-10-14)
+
+**Neden.** #407 site formlarını temizlerken `submit_custom_form()`'u ve
+onu çağıran dört sipariş betiğini ayrı işe bıraktı. Sandbox'ta eski kodla
+(kargolu ürün ve aidat; klasik ödeme adımları — kargo adresi, fatura
+bilgileri, sipariş önizleme — ve hızlı siparişin güncelle, satın al ve
+yalnız aidatla satın al yolları; her alan ve her özel kargo/ödeme formu
+alanı tek tek dizi olarak, ayrıca formda olmayan ama betiğin okuduğu
+alanlar; toplam 347 istek) yeniden üretildi: 180 istekte HTTP 500, 137'sinde
+uyarı. Hepsi 2026.4.9'da da var.
+
+Görünür hatalar (500, hepsi `TypeError`):
+
+- `liveform::add_fields_to_session()` `alan[]=x`'i dizi olarak saklıyor,
+  betikler değeri `escape()`'e veriyordu: her fatura ve kargo alanı
+  (`billing_*`, `shipping_<alıcı>_*`, kargo adresi sayfasının alanları),
+  `page_id`, `next_page_id`, `ship_to_id`, indirim kodu, hediye çeki kodu,
+  kart sahibi, güvenlik kodu, PO numarası, referans kaynağı, alıcının
+  kargo yöntemi; özel formun onay kutusu grubu ve çoklu seçimi iç içe
+  dizi (`alan[0][]=x`) gelince (130 istek).
+- Özel kargo ve ödeme formunun e-posta, tarih, tarih-saat ve saat alanı
+  `validate_email_address()` / `validate_date()`'ten (`preg_match()`,
+  `explode()`) geçerken; fatura e-postası da öyle.
+- Kart numarası `decrypt_credit_card_number()`'da (`substr()`), son
+  kullanma tarihi `explode()`'da, vergi numarası ve vergi dairesi
+  `trim()`'de, sipariş toplamı (`total`) `* 100`'de, hızlı siparişte ürün
+  adedi (`quantity[<kalem>][]=`) `preg_match()`'te, alıcının posta kodu ve
+  adresi `trim()`'de, varış tarihi `isset()`'te.
+
+Görünmeyen uyarılar:
+
+- `submit_custom_form()` 2471: ödeme formu `ship_to_id` vermiyor; özel
+  ödeme formu olan fatura bilgileri ve hızlı sipariş sayfasının her
+  gönderiminde (normal siparişte de) uyarı.
+- "Array to string conversion": özel formun zengin metin alanı
+  (`editor.php`), hızlı siparişin bağış tutarı (`ecommerce.php`), hızlı
+  siparişin ve sipariş gönderiminin sayfa ve toplam okumaları.
+
+**Ne değişti.** #407'nin kuralı: dizi gelen tek değerli alan "verilmemiş"
+sayılır, sonrası boş alanla aynı (zorunluysa sayfa "gerekli" uyarısıyla
+geri döner).
+
+- `submit_custom_form()` her alanın değerini yeni
+  `pg_cf_posted_value()`'dan geçiriyor; o da #415'in
+  `pg_form_list_search_value()`'sunu kullanıyor: onay kutusu grubu ve
+  çoklu seçim listesini olduğu gibi tutuyor (içindeki iç içe dizi
+  elemanları atılıyor, hiçbiri kalmazsa alan boş), öbür her alanda dizi
+  boş metin oluyor. Doğrulayıcılar ve `escape()` artık yalnız metin
+  görüyor. Ödeme formunun olmayan `ship_to_id`'si boş okunuyor.
+- `shipping_address_and_arrival.php`, `billing_information.php`,
+  `express_order.php` (yalnız ödeme ağ geçidinden dönüş dışında; her
+  alıcının adres, varış tarihi ve kargo yöntemi alanları dahil) ve
+  `submit_order.php` `add_fields_to_session()`'dan sonra tek değerli
+  alanlarını `pg_liveform_single_values()`'a veriyor. Doğrudan okunan
+  `$_POST`/`$_REQUEST` değerleri (`page_id`, `next_page_id`, `ship_to_id`,
+  `arrival_date`, hızlı ekleme alanları) yalnız metinse okunuyor; dizi
+  boş sayılıyor. Hızlı siparişte adedi ya da bağış tutarı dizi gelen
+  kalem olduğu gibi kalıyor.
+- `pg_liveform_single_values()` değeri `get_field()` ile saklandığı gibi
+  okuyor (`get_field_value()` kart numarasını önce çözüyordu, dizi orada
+  düşüyordu) ve yeni `$empty` parametresi alıyor: sipariş toplamları
+  (`total`, `total_with_surcharge`) `null`'a çevriliyor, çünkü `''` de
+  `* 100`'de aynı `TypeError`'ı verir; `null` gönderilmemiş toplam gibi
+  okunuyor.
+- Sayfa ayarı satırı olmayan `page_id`'de (dizi ya da bilinmeyen id)
+  fatura bilgileri, hızlı sipariş ve sipariş gönderimi ayar okumalarında
+  uyarı yazmıyor; davranış eskisi gibi (ayarsız devam).
+
+Uyarı susturulmadı. `liveform.class.php`'ye, başarılı bir siparişin
+yazdığına, şemaya, dil dosyasına ve JS'e dokunulmadı.
+
+Davranış farkı (yalnız elle kurulmuş istekte): zorunlu özel metin alanı
+dizi gelince eskiden kabul ediliyordu, şartlar kutusu `terms[]=1` ile
+onaylanmış sayılıyordu; artık sayfa "gerekli" uyarısıyla geri dönüyor.
+Ödeme yöntemi dizi gelince eskiden "Lütfen bir ödeme yöntemi seçin",
+artık "Bir ödeme yöntemi gereklidir" diyor (ikisinde de sipariş
+verilmiyor). Taramada 11 istek böyle değişti.
+
+**Bilerek yapılmayan.** Dizi bekleyen yerde tek metin gelmesi
+(`quantity=5`) ele alınmadı. Taranmayanlar: kargo yöntemi adımı
+(`shipping_method.php`), hızlı siparişin yinelenen ödeme ve hediye çeki
+alıcısı alanları, ürün (sipariş kalemi) formları. Önceden var olan,
+diziyle ilgisiz uyarılar yerinde: her siparişte
+`$valid_tax_zone_id` (`forms.php`), özel kargo formlu hızlı siparişte
+`form_name` (`content.php` 1569), hızlı siparişte selamlaması ya da
+soyadı boş alıcıda `name` (`get_express_order.php` 4175/4179), ülkesi
+boş alıcıda `shipping.php` 1571/2247, ürünsüz hızlı eklemede
+`quick_add_product_id` (`express_order.php`). Sipariş akışında bilinmeyen
+`page_id` siparişi sayfanın ayarları olmadan (makbuz e-postası ve zorunlu
+özel alanlar olmadan) veriyor; bu da önceden vardı, dizi `page_id` şimdi
+aynı yere düşüyor.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod `origin/development`
+worktree'sinden ikinci portta sunuldu; iki tarama aynı veritabanı
+dökümünden başladı. 347 isteğin 180'i eskide 500, yenide 500 yok (ya
+sipariş veriliyor ya doğrulama uyarısıyla dönüyor); 125'i aynı sonuç ama
+eskideki uyarılar yok; 31'i aynı sonuç, aynı (diziyle ilgisiz) uyarılar;
+11'i yukarıdaki davranış farkı. Yeni kodda 5 istekte görülen
+`get_express_order.php` ve `shipping.php` uyarıları eskide 500'ün
+arkasında kalan, boş alanla eski kodda da çıkan uyarılar (boş
+selamlama/soyad/ülke ile eski kodda denendi). Normal siparişler aynı
+dökümden iki kodla dörder yoldan (klasik kargolu, eksik zorunlu alan ve
+hatalı tarihle dönen fatura, hızlı sipariş kargolu + aidat, yalnız aidat)
+tamamlandı: sayfalar (rastgele CAPTCHA dışında), `orders`, `order_items`,
+`ship_tos`, `form_data`, `contacts`, `user` satırları (kart numarasının
+her şifrelemede değişen şifreli metni dışında) ve üç makbuz e-postası
+(MIME sınırı, tarih ve Message-ID dışında) bire bir aynı; hata günlüğünde
+yalnız `ship_to_id` uyarısı eksik. `tests/order_form_array_params_test.php`
+eski kodda 4 hata ve 1 başarısızlık, yenide geçiyor;
+`tests/form_array_params_test.php` güncellendi. `tools/test.php`, lint,
+dil, kopya, bağlama, API şeması ve `build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek ödeme adımları ve ödeme
+ağ geçitleri.
+
+---
+
 ## 2026.4.10 — Kimlik kapılı 40 panel ekranı `?id[]=` ile 500 vermiyor, ERP ekranları 1 numaralı belgeyi açmıyor (2026-10-14)
 
 **Neden.** #417'nin panel taramasından kalan K1. c651716'daki "Kayıt

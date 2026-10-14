@@ -63,6 +63,17 @@ $ghost = $_SESSION['software']['ghost'] ?? false;
 if (!$is_gateway_return) {
     $liveform->add_fields_to_session();
 
+    // The billing, payment and quick add fields post one value each, and so do each
+    // recipient's address, arrival date and shipping method; the custom forms' fields are
+    // checked by submit_custom_form(), the totals by submit_order().
+    pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'billing_same_as_shipping', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'offline_payment_allowed', 'special_offer_code', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name'));
+
+    foreach (db_values("SELECT id FROM ship_tos WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'") as $pg_ship_to_id) {
+        $pg_prefix = 'shipping_' . $pg_ship_to_id . '_';
+        pg_liveform_single_values($liveform, array($pg_prefix . 'salutation', $pg_prefix . 'first_name', $pg_prefix . 'last_name', $pg_prefix . 'company', $pg_prefix . 'address_1', $pg_prefix . 'address_2', $pg_prefix . 'city', $pg_prefix . 'state', $pg_prefix . 'zip_code', $pg_prefix . 'country', $pg_prefix . 'address_type', $pg_prefix . 'phone_number', $pg_prefix . 'arrival_date', $pg_prefix . 'method'));
+        pg_liveform_single_values($liveform, array($pg_prefix . 'custom_arrival_date_' . $liveform->get_field_value($pg_prefix . 'arrival_date')));
+    }
+
     // Errors of the previous submit go before this one is checked; every
     // check below re-marks what still applies. (submit_order() used to do
     // this and so also discarded the errors raised here.)
@@ -117,6 +128,15 @@ if (!$is_gateway_return) {
 
 $liveform->clear_notices();
 
+// The form names its page by id, and the quick add form its product, recipient, quantity and
+// amount; each is one string. One posted as an array (page_id[]=) counts as empty, so every
+// read of them below, and submit_order()'s, gets a string.
+foreach (array('page_id', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name') as $pg_post_field) {
+    if (isset($_POST[$pg_post_field]) && !is_string($_POST[$pg_post_field])) {
+        $_POST[$pg_post_field] = '';
+    }
+}
+
 $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
 
 // Get properties for the express order page.
@@ -129,12 +149,13 @@ $query =
     FROM express_order_pages
     WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_assoc($result);
+// No row when the id names no express order page: no custom forms then.
+$row = mysqli_fetch_assoc($result) ?: array();
 
-$shopping_cart_label = $row['shopping_cart_label'];
-$custom_shipping_form = $row['shipping_form'];
-$special_offer_code_label = $row['special_offer_code_label'];
-$custom_billing_form = $row['form'];
+$shopping_cart_label = $row['shopping_cart_label'] ?? '';
+$custom_shipping_form = $row['shipping_form'] ?? '';
+$special_offer_code_label = $row['special_offer_code_label'] ?? '';
+$custom_billing_form = $row['form'] ?? '';
 
 add_pending_offers($liveform);
 
@@ -340,6 +361,15 @@ if (
 if ($order_submitted == false) {
     // loop through all order items in order
     foreach ($order_items as $key => $order_item) {
+        // An item's donation amount and quantity are one string each; one posted as an
+        // array (quantity[<item>][]=) counts as not given, and the item stays as it is.
+        if (
+            (isset($_POST['donations'][$order_item['id']]) && !is_string($_POST['donations'][$order_item['id']]))
+            || (isset($_POST['quantity'][$order_item['id']]) && !is_string($_POST['quantity'][$order_item['id']]))
+        ) {
+            continue;
+        }
+
         // if this order item is a donation
         if (isset($_POST['donations'][$order_item['id']]) == true) {
             // read the amount as typed (1.250,00 / 1,250.00 / 1250,5)

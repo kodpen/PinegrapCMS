@@ -29,7 +29,8 @@ function submit_order($type) {
     }
     
    
-    $page_id = $_REQUEST['page_id'];
+    // Only a string can name the page; page_id[]= counts as empty.
+    $page_id = (isset($_REQUEST['page_id']) && is_string($_REQUEST['page_id'])) ? $_REQUEST['page_id'] : '';
     
 
     $liveform = new liveform($type_value);
@@ -414,6 +415,12 @@ function submit_order($type) {
             $liveform->add_fields_to_session();
         }
 
+        // The billing and payment fields post one value each (express_order.php has done this
+        // for an express order already), and the totals the visitor saw are compared below as
+        // numbers, so an array there counts as a total not posted.
+        pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms'));
+        pg_liveform_single_values($liveform, array('total', 'total_with_surcharge'), null);
+
         // Clear stale field errors from a PREVIOUS submit before re-validating.
         // Without this, a payment_gateway error from a prior Iyzipay/PayPal
         // failure (e.g. expired SSL CA, mid-flow timeout) stays in session and
@@ -447,13 +454,14 @@ function submit_order($type) {
                 FROM express_order_pages
                 WHERE page_id = '" . escape($page_id) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
+            // No row when the id names no express order page: no custom fields then.
+            $row = mysqli_fetch_assoc($result) ?: array();
 
-            $custom_field_1_label = $row['custom_field_1_label'];
-            $custom_field_1_required = $row['custom_field_1_required'];
-            $custom_field_2_label = $row['custom_field_2_label'];
-            $custom_field_2_required = $row['custom_field_2_required'];
-            $form = $row['form'];
+            $custom_field_1_label = $row['custom_field_1_label'] ?? '';
+            $custom_field_1_required = $row['custom_field_1_required'] ?? '';
+            $custom_field_2_label = $row['custom_field_2_label'] ?? '';
+            $custom_field_2_required = $row['custom_field_2_required'] ?? '';
+            $form = $row['form'] ?? '';
 
             // if there is a custom field 1 label and custom field 1 is required, then validate required field
             if (($custom_field_1_label != '') && ($custom_field_1_required == 1)) {
@@ -956,20 +964,21 @@ function submit_order($type) {
         LEFT JOIN page ON " . $type_value . "_pages.terms_page_id = page.page_id
         WHERE " . $type_value . "_pages.page_id = '" . escape($page_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
+    // No row when the id names no page of this type: none of its settings then.
+    $row = mysqli_fetch_assoc($result) ?: array();
     
-    $terms_page_name = $row['page_name'];
-    $offline_payment_always_allowed = $row['offline_payment_always_allowed'];
-    $auto_registration = $row['auto_registration'];
-    $pre_save_hook_code = $row['pre_save_hook_code'];
-    $post_save_hook_code = $row['post_save_hook_code'];
-    $order_receipt_email = $row['order_receipt_email'];
-    $order_receipt_email_subject = $row['order_receipt_email_subject'];
-    $order_receipt_email_format = $row['order_receipt_email_format'];
-    $order_receipt_email_header = $row['order_receipt_email_header'];
-    $order_receipt_email_footer = $row['order_receipt_email_footer'];
-    $order_receipt_email_page_id = $row['order_receipt_email_page_id'];
-    $next_page_id = $row['next_page_id'];
+    $terms_page_name = $row['page_name'] ?? '';
+    $offline_payment_always_allowed = $row['offline_payment_always_allowed'] ?? '';
+    $auto_registration = $row['auto_registration'] ?? '';
+    $pre_save_hook_code = $row['pre_save_hook_code'] ?? '';
+    $post_save_hook_code = $row['post_save_hook_code'] ?? '';
+    $order_receipt_email = $row['order_receipt_email'] ?? '';
+    $order_receipt_email_subject = $row['order_receipt_email_subject'] ?? '';
+    $order_receipt_email_format = $row['order_receipt_email_format'] ?? '';
+    $order_receipt_email_header = $row['order_receipt_email_header'] ?? '';
+    $order_receipt_email_footer = $row['order_receipt_email_footer'] ?? '';
+    $order_receipt_email_page_id = $row['order_receipt_email_page_id'] ?? '';
+    $next_page_id = $row['next_page_id'] ?? '';
     
     // The order preview layouts shipped with the turkish_default install seed post the
     // translated label of the offline payment option as the field value instead of the
