@@ -14186,6 +14186,12 @@
         node.querySelector('.offcanvas-title').textContent = item ? t('sa_edit') : t('sa_new_long');
         footer.classList.remove('d-none');
 
+        // ── in a sentence: Pinegrap AI fills the form in ──
+
+        if (!item && config.draft) {
+            body.appendChild(saSentenceBox(context, onDone, preset));
+        }
+
         // ── a ready one: cards to start from ──
 
         var templates = item ? [] : saTemplates(context);
@@ -14639,9 +14645,86 @@
 
         showOffcanvas(node);
 
+        // An empty form starts in the sentence box where there is one.
         if (!touchScreen() && !item && !preset) {
-            setTimeout(function () { name.focus(); }, 250);
+            setTimeout(function () { (body.querySelector('.ws-sa-sentence textarea') || name).focus(); }, 250);
         }
+    }
+
+    // What the action should do, in the person's words. Pinegrap AI turns it
+    // into the form's steps (includes/workspace/scheduled_draft.php) and the
+    // form opens again with them, the way a ready-made one does; nothing is
+    // saved until the person saves. A form filled in this way keeps the
+    // sentence and says what was left out or left open.
+    function saSentenceBox(context, onDone, preset) {
+        var drafted = !!(preset && preset.key === 'sentence');
+        var box = el('div', 'ws-sa-sentence');
+        var area = saArea(drafted ? preset.sentence : '', 2, t('sa_sentence_placeholder'));
+        var row = el('div', 'ws-sa-sentence-row');
+        var go = button('btn btn-sm btn-outline-primary', t('sa_sentence_fill'), 'bi-stars');
+        var said = el('div', 'ws-sa-sentence-said small');
+
+        area.maxLength = 500;
+        box.appendChild(el('label', 'form-label small mb-1', t('sa_sentence')));
+        row.appendChild(area);
+        row.appendChild(go);
+        box.appendChild(row);
+        box.appendChild(said);
+
+        function say(text, notes, error) {
+            clear(said);
+            said.classList.toggle('text-danger', !!error);
+
+            if (text) {
+                said.appendChild(el('div', '', text));
+            }
+
+            if ((notes || []).length) {
+                var list = el('ul', 'mb-0 ps-3');
+
+                notes.forEach(function (note) { list.appendChild(el('li', '', note)); });
+                said.appendChild(list);
+            }
+        }
+
+        say(drafted ? t('sa_sentence_done') : t('sa_sentence_help'), drafted ? preset.notes : []);
+
+        function fill() {
+            var text = area.value.trim();
+
+            if (!text) {
+                area.focus();
+                return;
+            }
+
+            go.disabled = true;
+            area.readOnly = true;
+            say(t('sa_sentence_working'));
+
+            api('ws_scheduled_draft', { text: text, channel_id: (context && context.channel_id) || 0 }).then(function (result) {
+                scheduledForm(context, null, onDone, { key: 'sentence', sentence: text, data: result.draft, notes: result.notes || [] });
+            }).catch(function (error) {
+                go.disabled = false;
+                area.readOnly = false;
+                say(error.message, [], true);
+            });
+        }
+
+        go.addEventListener('click', fill);
+        area.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                fill();
+            }
+        });
+
+        // Typing here is not filling the form in: the summary beside the
+        // steps waits for the steps.
+        ['input', 'change'].forEach(function (name) {
+            box.addEventListener(name, function (event) { event.stopPropagation(); });
+        });
+
+        return box;
     }
 
     // The card of one scheduled action: in its channel, in its note and in

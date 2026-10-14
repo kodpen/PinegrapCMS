@@ -84,6 +84,76 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Programlanmış işlem bir cümleyle kuruluyor (2026-10-14)
+
+**Neden.** Çalışma Alanı araştırmasının P2 2.2 maddesi. Programlanmış
+işlemin formu güçlü ama uzun: dört adım, her birinde birkaç seçim. "Her
+pazartesi 09:00'da herkese geciken görevlerini e-postayla gönder" gibi bir
+isteği forma dökmek, formu tanımayan için zordu.
+
+**Ne değişti.**
+- Yeni `includes/workspace/scheduled_draft.php`. Formun üstünde
+  "Bir cümleyle anlatın" kutusu; "Formu doldur" (ya da Ctrl+Enter)
+  `ws_scheduled_draft` eylemini çağırır. `ws_scheduled_draft()` cümleyi
+  Pinegrap AI'a tek bir `pg_ai_chat()` çağrısıyla gönderir, dönen JSON'u
+  `ws_scheduled_draft_parse()` ile okur (kod bloğu, önünde söz, gevşek
+  JSON), `ws_scheduled_draft_tidy()` ile formun aldığı biçime getirir.
+  Form, hazır işlemlerin açıldığı yoldan (`preset`) taslakla yeniden açılır.
+  **Hiçbir şey kaydedilmez**; kişi adımlara ve özete
+  (`ws_scheduled_preview()`) bakar, eksik kalanı tamamlar, kaydeder.
+  Kayıt `ws_scheduled_save()`'in her zamanki denetiminden geçer.
+- Modele giden: cümle; bugün, yarın, haftanın sonraki günlerinin tarihleri
+  ve gelecek ayın ilk günü (model gün saymasın diye); bu sitede formun
+  sunduğu "ne zaman", koşul ve eylem türleri (5.85 zincirleri yoksa yalnız
+  kanala yaz ve e-posta, tek "sonra"); kişinin görebildiği olaylar
+  (#359'un `ws_events_js_config()` listesi ve süzgeç değerleri) ve sayaçlar;
+  takım adlarıyla; okuduğu kanallar. Özel kanalın adı yalnız Pinegrap AI'a
+  açıksa gider (`ws_ai_channel_allowed()`); misafirle paylaşılan kanal hiç
+  gitmez. Formun açıldığı kanal her zaman sunulur, adı gidemiyorsa
+  "this channel" olarak.
+- Toparlama (`ws_scheduled_draft_tidy()` ve küçük okuyucular): bilinmeyen
+  tür ve anahtar atılır; sunulmayan kanal ve kişi kimliği boşalır (kanala
+  yaz ve onay isteğinde formun açıldığı kanala düşer); geçersiz e-posta
+  adresi atılır; tekrar, süzgeç, öncelik, biçim formun listesinden;
+  dakika tekrarı en az 5; para sayacı kuruşa çevrilir (form öyle okur).
+  Kayıt koşulu ve kayıt değişikliği (`change`) gibi elle kayıt seçmeyi
+  isteyen kısımlar alınmaz. Anlaşılamayan zaman yarın 09:00'a kurulur.
+  Dışarıda kalan her şey ve modelin "eksik" cümlesi kutunun altında
+  yazılır.
+- Kutu yalnız `ws_scheduled_draft_ready()` doğruysa (programlayabilen
+  personel, Pinegrap AI hazır) görünür (`CFG.scheduled.draft`). AI hazır
+  değilken form eskisi gibidir; eylem doğrudan çağrılırsa "Bu sitede
+  Pinegrap AI hazır değil" der.
+- Kutuya yazmak formun özetini tetiklemez (olaylar kutuda durdurulur). Boş
+  form açılınca imleç kutudadır.
+
+Şema değişikliği yok. Yeni metinler `tr.json`'da (13 anahtar). Yeni eylem
+`ws_scheduled_draft` (`includes/panel/actions.php`).
+
+**Bilerek yapılmayan.** Kanalda `@ai` ile yazılan istekten taslak kurma
+(araştırma notunun örneğindeki yol) bu değişikliğe girmedi; giriş noktası
+formun kendisi. Kayıt koşulu, kayıt değişikliği ve başka bir işlemi
+başlatma (`trigger` eylemi) elle seçilir. İstek sayısına ayrı bir sınır
+konmadı: eylem yalnız personele açık, Pinegrap AI'ın kendi bekletmesi
+(`hold_until`) geçerli.
+
+**Doğrulama.** `tests/workspace_scheduled_draft_test.php` dokuz test
+(cevabı okuma, haftalık görev e-postası, sunulmayan kimliklerin atılması,
+dışarıda kalanın notu, zincirsiz veritabanı, olay kuralı, sayaç koşulu,
+zaman sınırları, istemin içeriği). Sandbox'ta ai.pinegrap.com yerine
+yerel sahte bir model ile Playwright: cümle haftalık pazartesi 09:00,
+"yalnız iş günü", geciken görev e-postası ve başarılı olursa kanala yaz
+olarak doldu, sunulmayan kişi (999) atıldı, kaydedilen satır doğru; olay
+cümlesi "Görev durumu Bekliyor olduğunda, kanalda" + 09:00–18:00 koşulu
+olarak doldu, kayıt koşulu notla dışarıda kaldı; okunamayan cevapta hata
+kutunun altında, düğme yeniden açık; AI'a kapalı özel kanalın adı isteme
+hiç girmedi, form o kanalda açılınca yalnız "this channel" olarak gitti;
+Pinegrap AI kapalıyken kutu yok, eylem hata veriyor. dev.pinegrap.com'da
+Pinegrap AI anahtarı olmadığı için orada yalnız formun değişmediği
+denenebilir.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı olayları programlanmış işlemi başlatıyor (2026-10-14)
 
 **Neden.** Çalışma Alanı araştırmasının P2 2.1 maddesi. Programlanmış

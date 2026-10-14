@@ -767,6 +767,9 @@ function ws_scheduled_js_config($viewer)
         'join'         => ws_scheduled_join_ready(),
         // What an event rule offers (watch.php): null where it cannot be had.
         'events'       => function_exists('ws_events_js_config') ? ws_events_js_config($viewer) : null,
+        // The box above the form that has Pinegrap AI fill it in from a
+        // sentence (scheduled_draft.php).
+        'draft'        => function_exists('ws_scheduled_draft_ready') && ws_scheduled_draft_ready($viewer),
         'digest_only'  => ws_scheduled_digest_filters(),
         'records'      => $records,
         'changes'      => $changes,

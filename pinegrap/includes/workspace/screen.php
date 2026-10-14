@@ -645,7 +645,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // Scheduled actions (includes/workspace/scheduled.php) and the messages
     // scheduled from the writing box (scheduled_messages.php).
     if (function_exists('ws_scheduled_js_strings')) {
-        $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
+        $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings(), ws_scheduled_draft_js_strings());
     }
 
     // The event rule of a scheduled action and a channel's watch switch
