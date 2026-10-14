@@ -82,7 +82,7 @@ if (!defined('PG_INIT_LOADED')) {
 						<strong><?=h($recipient['ship_to_name'])?></strong>
 						<?php endif ?>
 					</h3>
-                    <?php if($status != 'incomplete'):?>
+                    <?php if ($status != 'incomplete' and $recipient['shipping_tracking_numbers']):?>
 					    <div>
                             Tracking Number<?php if (count($recipient['shipping_tracking_numbers']) > 1):?>s<?php endif;?>:
                         	<?php foreach ($recipient['shipping_tracking_numbers'] as $key => $shipping_tracking_number):?>

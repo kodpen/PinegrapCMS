@@ -38,6 +38,13 @@ function get_view_order_screen_content($properties)
     // order, so they have to start out empty.
     $output_ship_tos = '';
     $output_recurring_ship_tos = '';
+
+    // Set while the order's items are listed, which does not happen for an
+    // order without items, but read for the totals and the layout either way.
+    $recurring_products_exist = false;
+    $applied_offers = array();
+    $output_recurring_products = '';
+
     $device_type = $properties['device_type'];
 
 
@@ -1456,12 +1463,14 @@ function get_view_order_screen_content($properties)
                 custom_field_1_label,
                 custom_field_2_label
             FROM billing_information_pages
-            WHERE page_id = '" . escape($_SESSION['ecommerce']['billing_information_page_id']) . "'";
+            WHERE page_id = '" . escape($_SESSION['ecommerce']['billing_information_page_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
-        $custom_field_1_label = $row['custom_field_1_label'];
-        $custom_field_2_label = $row['custom_field_2_label'];
+        // The labels come from the billing information page of this visit's
+        // checkout; a customer who only looks back at an order has none.
+        $custom_field_1_label = $row['custom_field_1_label'] ?? '';
+        $custom_field_2_label = $row['custom_field_2_label'] ?? '';
 
         // if there is a custom field 1 label and custom field 1 is not blank, then prepare to output data
         if (($custom_field_1_label != '') && ($custom_field_1 != '')) {
@@ -1793,7 +1802,8 @@ function get_view_order_screen_content($properties)
                 $recipient['shipping'] = true;
             }
 
-
+            // The layout counts and loops over this list for a completed order.
+            $recipient['shipping_tracking_numbers'] = array();
 
             if ($status != 'incomplete') {
                 $query =
@@ -1825,7 +1835,9 @@ function get_view_order_screen_content($properties)
                     $recipient['country'] = mb_strtoupper($recipient['country']);
                 }
 
-                $recipient['update_url'] = PATH . encode_url_path(get_page_name($_SESSION['ecommerce']['shipping_address_and_arrival_page_id'])) . '?ship_to_id=' . $recipient['id'];
+                $recipient['update_url'] = PATH . encode_url_path(get_page_name($_SESSION['ecommerce']['shipping_address_and_arrival_page_id'] ?? '')) . '?ship_to_id=' . $recipient['id'];
+
+                $recipient['name'] = '';
 
                 if ($recipient['salutation'] and $recipient['last_name']) {
                     $recipient['name'] = $recipient['salutation'];
@@ -2208,8 +2220,9 @@ function get_view_order_screen_content($properties)
 
             // If there is an offer applied to this ship to
             // and offer has not already been added to applied offers array,
-            // then store this offer as an applied offer
-            if ($recipient['offer_id'] and !in_array($recipient['offer_id'], $applied_offers)) {
+            // then store this offer as an applied offer (the recipient of the
+            // unshippable items is no ship to and has no offer)
+            if (!empty($recipient['offer_id']) and !in_array($recipient['offer_id'], $applied_offers)) {
                 $applied_offers[] = $recipient['offer_id'];
             }
 
@@ -2421,12 +2434,14 @@ function get_view_order_screen_content($properties)
                 custom_field_1_label,
                 custom_field_2_label
             FROM billing_information_pages
-            WHERE page_id = '" . e($_SESSION['ecommerce']['billing_information_page_id']) . "'";
+            WHERE page_id = '" . e($_SESSION['ecommerce']['billing_information_page_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
-        $custom_field_1_label = $row['custom_field_1_label'];
-        $custom_field_2_label = $row['custom_field_2_label'];
+        // The labels come from the billing information page of this visit's
+        // checkout; a customer who only looks back at an order has none.
+        $custom_field_1_label = $row['custom_field_1_label'] ?? '';
+        $custom_field_2_label = $row['custom_field_2_label'] ?? '';
 
         $fields = array();
 
@@ -2497,6 +2512,8 @@ function get_view_order_screen_content($properties)
         }
 
         $auto_registration = false;
+        $auto_registration_email_address = '';
+        $auto_registration_password = '';
 
         if (($_SESSION['software']['auto_registration']['email_address'] ?? '') != '') {
             $auto_registration = true;
