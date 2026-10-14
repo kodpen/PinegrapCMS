@@ -21,7 +21,9 @@
  * by Pinegrap AI. A call of its tools that writes waits on the task as a
  * card of type mcp_call that only the person who asked can run, with their
  * own account; the card and the picker offer to connect that account, and
- * the service's sign-in comes back to the task.
+ * the service's sign-in comes back to the task. A server that is an agent
+ * itself runs the task on its own (agent mcp): it is carried on the same way
+ * as Pinegrap AI, by the screens waiting for it (ws_mcp_agent_kick).
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -37,6 +39,12 @@
 
     var POLL_AI = 4000;
     var POLL_CLAUDE = 8000;
+
+    // The call that carries a run on, by its assistant; Claude's routine
+    // runs on its own.
+    function kickFor(agent) {
+        return (agent === 'ai') ? 'ws_ai_kick' : ((agent === 'mcp') ? 'ws_mcp_agent_kick' : '');
+    }
 
     // Server-rendered markup: escaped on the PHP side before it got here.
     function html(node, markup) {
@@ -267,7 +275,8 @@
                     return;
                 }
 
-                var step = (state.open_agent === 'ai') ? h.api('ws_ai_kick').catch(function () {}) : Promise.resolve();
+                var kick = kickFor(state.open_agent);
+                var step = kick ? h.api(kick).catch(function () {}) : Promise.resolve();
 
                 step.then(function () {
                     return h.api('ws_task_delegation', { task_id: task.id });
@@ -282,7 +291,7 @@
                 }).catch(function () {
                     schedule();
                 });
-            }, (state.open_agent === 'ai') ? POLL_AI : POLL_CLAUDE);
+            }, kickFor(state.open_agent) ? POLL_AI : POLL_CLAUDE);
         }
 
         // What an action answers: the whole task, whose people may have

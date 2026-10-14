@@ -22953,7 +22953,7 @@
     "It could not be sent within a day.": "Bir gün içinde gönderilemedi.",
     "Pinegrap AI, with the tools turned on below": "Pinegrap AI, aşağıda açılan araçlarla",
     "This tool cannot take the messages now: turn it on below as one that reads only.": "Bu araç şu an mesajları alamıyor: aşağıda yalnız okuyan bir araç olarak açın.",
-    "A server that is an agent itself - another Pinegrap site, a company's own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. Pinegrap AI is not needed. The tool must be turned on below as one that reads only.": "Kendisi bir ajan olan sunucu (başka bir Pinegrap sitesi, bir şirketin kendi asistanı) kendi yanıtlayabilir: takma ada yazılan mesaj, cevapladığı mesajla birlikte olduğu gibi burada seçilen araca gider, yanıt mesajın altına gelir. Pinegrap AI gerekmez. Araç aşağıda yalnız okuyan bir araç olarak açık olmalı.",
+    "A server that is an agent itself - another Pinegrap site, a company's own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task's title and description, and the answer comes back in the task's Assistant part. Pinegrap AI is not needed. The tool must be turned on below as one that reads only.": "Kendisi bir ajan olan sunucu (başka bir Pinegrap sitesi, bir şirketin kendi asistanı) kendi yanıtlayabilir: takma ada yazılan mesaj, cevapladığı mesajla birlikte olduğu gibi burada seçilen araca gider, yanıt mesajın altına gelir. Takma ada verilen görev ya da takma adı yazan görev notu, görevin başlığı ve açıklamasıyla ona gider; yanıt görevin Asistan bölümüne gelir. Pinegrap AI gerekmez. Araç aşağıda yalnız okuyan bir araç olarak açık olmalı.",
     "The tool that takes the messages of @{var:1} ({var:2}) is no longer turned on as one that reads only. An administrator chooses it again in Workspace Settings › MCP servers.": "@{var:1} için mesajları alan araç ({var:2}) artık yalnız okuyan bir araç olarak açık değil. Bir yönetici onu Çalışma Alanı Ayarları › MCP sunucuları'ndan yeniden seçer.",
     "@{var:1} cannot be asked in this channel: what is written here leaves the site only where Pinegrap AI may be asked. Somebody who manages the channel can allow it from the channel menu.": "@{var:1} bu kanalda sorulamaz: burada yazılanlar siteden yalnız Pinegrap AI'ın sorulabildiği kanallarda çıkar. Kanalı yöneten biri bunu kanal menüsünden açabilir.",
     "{var:1} of your requests to MCP agents are still waiting. Please wait for those to be answered.": "MCP ajanlarına gönderdiğiniz {var:1} istek hâlâ bekliyor. Lütfen onların yanıtlanmasını bekleyin.",
@@ -22978,5 +22978,9 @@
     "@{var:1} did not finish the work within a day.": "@{var:1} işi bir gün içinde bitirmedi.",
     "That request could not be found.": "Bu istek bulunamadı.",
     "Only the person who asked, or an administrator, can stop it.": "Bunu yalnız soran kişi ya da bir yönetici durdurabilir.",
-    "Stop this request? Work the agent does in the background is cancelled on the service too, and an answer still on its way is not posted.": "Bu istek durdurulsun mu? Ajanın arka planda yaptığı iş hizmette de iptal edilir, yolda olan bir yanıt da yazılmaz."
+    "Stop this request? Work the agent does in the background is cancelled on the service too, and an answer still on its way is not posted.": "Bu istek durdurulsun mu? Ajanın arka planda yaptığı iş hizmette de iptal edilir, yolda olan bir yanıt da yazılmaz.",
+    "Description:": "Açıklama:",
+    "Your last answer on this task:": "Bu görevdeki son yanıtınız:",
+    "Instruction:": "Talimat:",
+    "the MCP agent @{var:1} answered on task {var:2}": "MCP ajanı @{var:1}, {var:2} görevinde yanıt verdi"
 }

@@ -15,6 +15,8 @@ yetkilendirme sunucusu" ve sonraki 2026.4.10 bölümleri; kurallar
 2. Faz F, isteğe bağlı: uzak ajan (proje notu `notes/mcp-arastirma.md`, üçüncü seviye).
    Dilimlere bölündü, plan `docs/_plan_tersine_oauth.md` → "4.6 Uzak ajan"; ilk dilim (kanalda
    `@takmaad` doğrudan ajanın aracına, şema 10.89) 2026-10-14'te bitti (#347); ikinci dilim (uzun
-   süren iş MCP görevleriyle, istek durdurulabiliyor, şema 10.110) 2026-10-14'te bitti (#353). Görev notunda
+   süren iş MCP görevleriyle, istek durdurulabiliyor, şema 10.110) 2026-10-14'te bitti (#353);
+   üçüncü dilim (göreve devir ve görev notunda `@takmaad` ajan kipindeki sunucunun kendisine,
+   yanıt görevin Asistan bölümüne, şema yok) 2026-10-14'te bitti (#356). Görev notunda
    `@takmaad` ile sormak 2026-10-14'te bitti (#345, `docs/degisiklikler.md` → "Görev notunda
    @takmaad").

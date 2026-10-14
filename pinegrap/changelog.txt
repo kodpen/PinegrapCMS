@@ -1031,6 +1031,18 @@
          kolonları eklenir; araç çağrısı kaydı süren
          çağrıyı da ayırt eder.
 
+  [YENİ] Kendi yanıtlayan MCP sunucusu görevde de kendisi
+         yanıt veriyor: görevi onun takma adına vermek ya
+         da görev notunda takma adını yazmak işi Pinegrap
+         AI'a değil sunucunun kendisine gönderiyor. Görevin
+         başlığı, açıklaması ve talimat gidiyor; sonraki
+         notta ajanın aynı görevdeki son yanıtı da. Yanıt
+         görevin Asistan bölümüne geliyor, görevi veren
+         kişi bildirim alıyor. Bu takma adlar Pinegrap AI
+         bağlı olmasa da görevlerde seçilebiliyor.
+         Çekmecedeki "Durdur" süren işi hizmette de iptal
+         ediyor.
+
   [YENİ] Müşteri onayı: onay isteği ekip dışından birine,
          örneğin müşteriye e-postayla sorulabiliyor. Onay
          formunda "Ekip dışından müşteriler" bölümüne ad ve

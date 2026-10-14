@@ -84,6 +84,83 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Uzak ajan: göreve verilen ya da görev notunda yazılan takma ada ajan kendisi yanıt veriyor (2026-10-14)
+
+**Neden.** Uzak ajanın üçüncü dilimi (`docs/_plan_tersine_oauth.md` → "4.6 Uzak
+ajan"). #347'den beri kendisi ajan olan bir MCP sunucusu (ayarlarda "ajan
+aracı" seçili) kanalda takma adını kendi yanıtlıyordu, görevde ise hâlâ
+Pinegrap AI çalışıyordu: görevi takma ada vermek (#333) ya da görev notunda
+`@takmaad` yazmak (#345) Pinegrap AI'ı o sunucunun araçlarıyla
+çalıştırıyordu. Pinegrap AI bağlı değilse takma ad görevde hiç
+seçilemiyordu. Şema yok: görevin çalışması zaten `ws_ai_requests`'te
+(`task_id`, `note_text`, `note_reply`, `mcp_server_id`); ajanın çalışması
+aynı satıra `agent = 'mcp'` ile yazılır.
+
+**Ne değişti.**
+
+- `includes/workspace/delegation.php`:
+  - Takma adın kuyruğu sunucuya göre seçilir (`ws_assistant_agent_of()`,
+    saf): ajan modundaki sunucu `mcp`, kalanı eskisi gibi `ai`. Çalışma
+    `agent = 'mcp'` ve `mcp_server_id` ile açılır; `ws_task_run_key()` onu
+    da `mcp:<id>` okur.
+  - `ws_assistants()`: ajan modundaki sunucu, Pinegrap AI bağlı olmasa da
+    listelenir; kuralı kanaldakiyle aynı (`ws_mcp_agent_problem()`: sunucu
+    açık, ajan aracı açık ve yalnız okuyan, OAuth'lu sunucuda kişinin
+    hesabı). Çekmecenin seçicisi, görev notu ve takma adın bildirimi
+    (`ws_task_delegation_alias_problem()`) aynı kuralı okur.
+  - Ajana yalnız Pinegrap AI'a sorulabilen yerde sorulur: görevin kanalı
+    varsa `ws_ai_channel_allowed()` (özel kanalda yapay zekâ anahtarı).
+    Kişi başı sınır MCP ajanlarınınki (3, kanaldaki isteklerle ortak).
+  - Çekmecedeki "Durdur", süren ajan çalışmasının sunucudaki görevini de
+    iptal eder (`ws_mcp_agent_task_stop()`, `tasks/cancel`).
+- `includes/workspace/mcp_agent.php`:
+  - Ajana giden metin `ws_mcp_agent_task_compose()` (saf) ile yazılır:
+    görevin numarası ve başlığı, "Açıklama:", aynı ajanın bu görevdeki son
+    yanıtı ("Bu görevdeki son yanıtınız:", alıntı olarak) ve "Talimat:"
+    (devrin talimatı ya da notun metni; baştaki `@takmaad` atılır, notta
+    yalnız takma ad yazıyorsa talimat bölümü yok). Diğer notlar, kişiler ve
+    tarihler gitmez. Metinler kanaldaki sınırlarla kesilir.
+  - Yanıt mesaj yerine görevin Asistan bölümüne yazılır
+    (`ws_task_delegation_answer()`: notun yanıtı, devredenin bildirimi,
+    çekmecede "@takmaad yanıtladı"). `<@` / `<#` etiketleri bozulur, yanıt
+    kimseyi anmaz. Hata da devrin yolundan bildirilir
+    (`ws_task_delegation_told()`).
+  - Kurallar her gönderimde ve her soruda yeniden denetlenir: soran görevi
+    göremiyorsa, kanalın izni kalktıysa, sunucu ya da araç kapatıldıysa
+    istek kapanır (süren görev sunucuda da iptal edilir).
+  - Arka planda süren iş (#353) görevde de aynı yoldan: çekmecede ilerleme
+    sözü, bitince yanıt.
+- `assets/js/workspace_task_delegate.js` (+ `.min.js`): çekmece ajanın
+  çalışmasını beklerken `ws_mcp_agent_kick` çağırır (Pinegrap AI'da
+  `ws_ai_kick` gibi).
+- API'de `workspace.tasks.delegate` açıklaması ajanın kendi yanıtladığını ve
+  neyi okuduğunu yazar; ayarlardaki ajan aracı yardım metnine görev cümlesi
+  eklendi.
+
+**Ödün.** Ajan görevin notlarını, tarihlerini ve atananlarını okumaz;
+isterse kendi araçlarıyla okur. Yazan çağrı için onay kartı (`mcp_call`)
+yok: kanaldaki gibi ajan kendi kuralıyla çalışır. Ekranı açık kimse yoksa
+istek saatlik işte gönderilir. Pinegrap'ın kendi `workspace_search` aracı
+`q`'yu 200 karakterle sınırlar: dev'de bu araç ajan seçilirse kısa başlıklı,
+açıklamasız bir görevle denenir.
+
+**Denendi.** Birim testleri (`tests/workspace_delegation_test.php`: takma
+adın kuyruğu, çalışmanın anahtarı; `tests/workspace_mcp_test.php`: görevin
+metni, son yanıtın alıntısı, talimattaki takma ad, yanıtta etiketlerin
+bozulması). Sandbox'ta `192.0.2.2:8001`'de sahte bir 2026-07-28 ajanıyla
+(`ask` aracı), Pinegrap AI bağlı değilken: takma ad listede ve çekmecede
+seçildi; devir başlık, açıklama ve talimatla gitti, yanıt Asistan bölümüne
+düştü, devreden bildirim aldı; notta `@helpdesk` son yanıtı alıntıladı;
+yalnız takma ad yazan not yalnız görevi gönderdi; uzun iş görevle döndü,
+çekmecede "Adım 2/2", sonra yanıt; çekmeceden durdurma sunucuya
+`tasks/cancel` gönderdi; aracın hatası (devreden bildirim aldı), kişi başı
+sınır, yapay zekâ izni olmayan özel kanaldaki görev, tüm araçlar kapalıyken
+takma adın listeden çıkması ve notun bildirimi. Kanaldaki `@helpdesk`
+değişmedi. Tarayıcıda (Playwright) çekmecenin seçicisi, "@helpdesk
+bekleniyor" ve ekranın `ws_mcp_agent_kick` çağırması.
+
+---
+
 ## 2026.4.10 — Gönderilen Formlar'da sayfa bağlantıları görünüyor, ürün çoğaltma ekranı hata günlüğüne yazmıyor (2026-10-14)
 
 **Neden.** #354 kapsam dışı bıraktığı iki eski uyarıyı not etmişti; ikisi de
