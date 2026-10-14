@@ -23,69 +23,37 @@ validate_area_access($user, 'designer');
 
 $liveform = new liveform('view_design_files');
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_design_files']['sort'] = $_REQUEST['sort'];
-
-    // clear order
-    $_SESSION['software']['design']['view_design_files']['order'] = '';
-}
-
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_design_files']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
-
 $output_clear_button = '';
 
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'type'          => lang('Type'),
+    'size'          => lang('Size'),
+    'optimized'     => lang('Optimized'),
+    'folder'        => lang('Folder'),
+    'description'   => lang('Description'),
+    'last_modified' => lang('Last Modified'),
+);
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['design']['view_design_files']['sort']) == false) {
-    $_SESSION['software']['design']['view_design_files']['sort'] = '';
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-switch (($_SESSION['software']['design']['view_design_files']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'name';
-        break;
-    case lang('Folder'):
-        $sort_column = 'folder_name';
-        break;
-    case lang('Type'):
-        $sort_column = 'type';
-        break;
-    case lang('Size'):
-        $sort_column = 'size';
-        break;
+$list_state = pg_list_state('view_design_files', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Optimized'):
-        $sort_column = 'optimized';
-        break;
-
-    case lang('Description'):
-        $sort_column = 'description';
-        break;
-    case lang('Last Modified'):
-        $sort_column = 'timestamp';
-        break;
-    default:
-        $sort_column = 'timestamp';
-        $_SESSION['software']['design']['view_design_files']['sort'] = lang('Last Modified');
-        break;
-}
-
-if (!empty($_SESSION['software']['design']['view_design_files']['order'])) {
-    $asc_desc = sql_order_direction($_SESSION['software']['design']['view_design_files']['order'] ?? '');
-} elseif ($sort_column == 'timestamp') {
-    $asc_desc = 'desc';
-    $_SESSION['software']['design']['view_design_files']['order'] = 'desc';
-} else {
-    $asc_desc = 'asc';
-    $_SESSION['software']['design']['view_design_files']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'name',
+    'type'          => 'type',
+    'size'          => 'size',
+    'optimized'     => 'optimized',
+    'folder'        => 'folder_name',
+    'description'   => 'description',
+    'last_modified' => 'timestamp',
+));
 
 // get all stylesheet files
 $query =
@@ -118,7 +86,7 @@ $query =
     LEFT JOIN folder ON files.folder = folder.folder_id
     LEFT JOIN user ON files.user = user.user_id
     WHERE (files.design = '1')
-    ORDER BY $sort_column $asc_desc";
+    ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $files = array();
@@ -263,6 +231,8 @@ pg_page_shell(
                     <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="add_design_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-2">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_design_files.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -286,13 +256,13 @@ pg_page_shell(
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
                                     <th>' . lang('Thumbnail') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Type'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Size'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Optimized'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                    <th>' . get_column_heading(lang('Type'), $sort_levels, '', '', 'type') . '</th>
+                                    <th>' . get_column_heading(lang('Size'), $sort_levels, '', '', 'size') . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Optimized'), $sort_levels, '', '', 'optimized') . '</th>
+                                    <th>' . get_column_heading(lang('Folder'), $sort_levels, '', '', 'folder') . '</th>
+                                    <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

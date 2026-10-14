@@ -24,75 +24,39 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_containers');
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['ecommerce']['view_containers']['sort'] = $_REQUEST['sort'];
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'enabled'       => lang('Enabled'),
+    'length'        => lang('Length'),
+    'width'         => lang('Width'),
+    'height'        => lang('Height'),
+    'weight'        => lang('Weight'),
+    'cost'          => lang('Cost'),
+    'created'       => lang('Created'),
+    'last_modified' => lang('Last Modified'),
+);
 
-    // clear order
-    $_SESSION['software']['ecommerce']['view_containers']['order'] = '';
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store order in session
-    $_SESSION['software']['ecommerce']['view_containers']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
+$list_state = pg_list_state('view_containers', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_containers']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_containers']['sort'] = '';
-}
-
-switch (($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'containers.name';
-        break;
-
-    case lang('Enabled'):
-        $sort_column = 'containers.enabled';
-        break;
-
-    case lang('Length'):
-        $sort_column = 'containers.length';
-        break;
-
-    case lang('Width'):
-        $sort_column = 'containers.width';
-        break;
-
-    case lang('Height'):
-        $sort_column = 'containers.height';
-        break;
-
-    case lang('Weight'):
-        $sort_column = 'containers.weight';
-        break;
-
-    case lang('Cost'):
-        $sort_column = 'containers.cost';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'containers.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'containers.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'containers.last_modified_timestamp';
-        $_SESSION['software']['ecommerce']['view_containers']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_containers']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_containers']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_containers']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'containers.name',
+    'enabled'       => 'containers.enabled',
+    'length'        => 'containers.length',
+    'width'         => 'containers.width',
+    'height'        => 'containers.height',
+    'weight'        => 'containers.weight',
+    'cost'          => 'containers.cost',
+    'created'       => 'containers.created_timestamp',
+    'last_modified' => 'containers.last_modified_timestamp',
+));
 
 $containers = db_items(
     "SELECT
@@ -111,7 +75,7 @@ $containers = db_items(
     FROM containers
     LEFT JOIN user AS created_user ON containers.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON containers.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')));
+    ORDER BY $order_by");
 
 $output_rows = '';
 
@@ -206,6 +170,8 @@ echo
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1" href="add_container.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_containers.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
                 </div>
@@ -216,15 +182,15 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Enabled'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Length'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Width'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Height'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Weight'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
-                                    <th class="text-end">' . get_column_heading(lang('Cost'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled') . '</th>
+                                    <th>' . get_column_heading(lang('Length'), $sort_levels, '', '', 'length') . '</th>
+                                    <th>' . get_column_heading(lang('Width'), $sort_levels, '', '', 'width') . '</th>
+                                    <th>' . get_column_heading(lang('Height'), $sort_levels, '', '', 'height') . '</th>
+                                    <th>' . get_column_heading(lang('Weight'), $sort_levels, '', '', 'weight') . '</th>
+                                    <th class="text-end">' . get_column_heading(lang('Cost'), $sort_levels, '', '', 'cost') . '</th>
+                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
