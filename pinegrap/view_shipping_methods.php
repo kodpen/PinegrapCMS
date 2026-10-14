@@ -18,10 +18,27 @@
 
 include('init.php');
 
+// A rate changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen; the write is the one the shipping method's screen makes
+// (pg_shipping_method_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_shipping_method_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_shipping_method_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 // only ever appended to further below, so it has to start out empty
 $output_rows = '';
 $user = validate_user();
 validate_ecommerce_access($user);
+
+// The rates an operator can change on the list without opening the method.
+$quick_edit = pg_shipping_method_edit_columns();
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -114,21 +131,10 @@ while ($row = mysqli_fetch_array($result)) {
     $start_time = $row['start_time'];
     $end_time = $row['end_time'];
     $service = $row['service'];
-    $base_rate = $row['base_rate'];
-    $variable_base_rate = $row['variable_base_rate'];
-    $base_rate_2 = $row['base_rate_2'];
-    $base_rate_2_subtotal = $row['base_rate_2_subtotal'];
-    $base_rate_3 = $row['base_rate_3'];
-    $base_rate_3_subtotal = $row['base_rate_3_subtotal'];
-    $base_rate_4 = $row['base_rate_4'];
-    $base_rate_4_subtotal = $row['base_rate_4_subtotal'];
     $primary_weight_rate = sprintf("%01.2lf", $row['primary_weight_rate'] / 100);
     $secondary_weight_rate = sprintf("%01.2lf", $row['secondary_weight_rate'] / 100);
-    $item_rate = sprintf("%01.2lf", $row['item_rate'] / 100);
     $handle_days = $row['handle_days'];
     $base_transit_days = $row['base_transit_days'];
-    $username = $row['user'];
-    $timestamp = $row['timestamp'];
     
     $current_time = date('Y-m-d H:i:s');
     
@@ -147,28 +153,10 @@ while ($row = mysqli_fetch_array($result)) {
         $realtime_rate = '<span class="material-icons">task_alt</span>';
     }
 
-    $output_base_rate = '';
-
-    // If variable base rate is enabled, then show all base rates.
-    if ($variable_base_rate) {
-        $output_base_rate .= pg_format_money($base_rate / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money(0, BASE_CURRENCY_SYMBOL) . ')';
-
-        if ($base_rate_2_subtotal) {
-            $output_base_rate .= '<br>' . pg_format_money($base_rate_2 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_2_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
-        }
-
-        if ($base_rate_3_subtotal) {
-            $output_base_rate .= '<br>' . pg_format_money($base_rate_3 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_3_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
-        }
-
-        if ($base_rate_4_subtotal) {
-            $output_base_rate .= '<br>' . pg_format_money($base_rate_4 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_4_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
-        }
-
-    // Otherwise variable base rate is disabled, so just show the base rate.
-    } else {
-        $output_base_rate = pg_format_money($base_rate / 100, BASE_CURRENCY_SYMBOL);
-    }
+    // The cells a quick edit can change, drawn by the same function that
+    // draws them again in the answer to an edit: the base rate (each step of
+    // a variable one), the item rate and the last change.
+    $list_cells = pg_shipping_method_list_cells($row);
 
     // For handle days, show blank instead of zero.
     if (!$handle_days) {
@@ -215,14 +203,6 @@ while ($row = mysqli_fetch_array($result)) {
     $output_link_url ='edit_shipping_method.php?id=' . $id;
     
     $number_of_results++;
-    
-            
-    $last_modified_username = '';
-            
-    if ($row['user']) {
-        $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user']) ) ) );
-    }
-
 
     $output_rows .=
         '<tr>
@@ -235,17 +215,17 @@ while ($row = mysqli_fetch_array($result)) {
             <td class="align-middle"><span class="badge text-dark fw-light">' . h($code) . '</span></td>
             <td class="align-middle">' . h(get_shipping_service_name($service)) . '</td>
             <td class="align-middle text-center">' . $realtime_rate . '</td>
-            <td class="align-middle text-end">' . $output_base_rate . '</td>
+            <td class="' . $list_cells['base_rate']['class'] . '"' . ($row['variable_base_rate'] ? '' : pg_list_edit_cell($quick_edit, 'base_rate', $id, pg_format_input_amount($row['base_rate'] / 100))) . '>' . $list_cells['base_rate']['html'] . '</td>
             <td class="align-middle text-end">' . pg_format_money($primary_weight_rate, BASE_CURRENCY_SYMBOL) . '</td>
             <td class="align-middle text-end">' . pg_format_money($secondary_weight_rate, BASE_CURRENCY_SYMBOL) . '</td>
-            <td class="align-middle text-end">' . pg_format_money($item_rate, BASE_CURRENCY_SYMBOL) . '</td>
+            <td class="' . $list_cells['item_rate']['class'] . '"' . pg_list_edit_cell($quick_edit, 'item_rate', $id, pg_format_input_amount($row['item_rate'] / 100)) . '>' . $list_cells['item_rate']['html'] . '</td>
             <td class="align-middle text-end">' . h($handle_days) . '</td>
             <td class="align-middle text-center">' . $base_transit_days . '</td>
             <td class="align-middle text-center">' . $street_address . '</td>
             <td class="align-middle text-center">' . $po_box . '</td>
             <td class="align-middle">' . $output_zones . '</td>
             <td class="align-middle text-center">' . $protected . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . $last_modified_username . '</td>
+            <td class="' . $list_cells['last_modified']['class'] . '" data-pg-cell="last_modified">' . $list_cells['last_modified']['html'] . '</td>
         </tr>';
 }
 
@@ -272,7 +252,7 @@ pg_page_shell([
             </div>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none;">
+                    <table class="chart table-hover table " style="width:100%;display:none;"' . pg_list_edit_table('view_shipping_methods.php', $quick_edit) . '>
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>

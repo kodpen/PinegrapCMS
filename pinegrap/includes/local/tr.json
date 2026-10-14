@@ -23146,5 +23146,13 @@
     "{var:1}, and what they missed, summed up by Pinegrap AI": "{var:1}, kaçırdıklarıyla birlikte (Pinegrap AI özetiyle)",
     "Only a complete or exported order changes status here. Cancel an order with its Cancel Order button; bring a cancelled order back with Restore Order on the order screen.": "Burada yalnız tamamlanmış ya da dışa aktarılmış bir siparişin durumu değişir. Siparişi satırdaki \"Siparişi İptal Et\" düğmesiyle iptal edin; iptal edilmiş siparişi sipariş ekranındaki \"Siparişi Geri Al\" ile geri alın.",
     "The order changed in the meantime. Reload the list and try again.": "Sipariş bu arada değişti. Listeyi yenileyip yeniden deneyin.",
-    "order ({var:1}) was changed on the order list: {var:2} from \"{var:3}\" to \"{var:4}\"": "sipariş ({var:1}) sipariş listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu"
+    "order ({var:1}) was changed on the order list: {var:2} from \"{var:3}\" to \"{var:4}\"": "sipariş ({var:1}) sipariş listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
+    "Taken off the list": "Listeden çıkarıldı",
+    "Click a price or a discount to change it; it is saved as soon as you press Enter or leave the box.": "Değiştirmek için fiyata ya da iskontoya tıklayın; Enter'a bastığınızda ya da kutudan çıktığınızda hemen kaydedilir.",
+    "The account's discount was saved.": "Carinin iskontosu kaydedildi.",
+    "erp product ({var:1}) was taken off the price list of account ({var:2})": "erp: ürün ({var:1}) carinin ({var:2}) fiyat listesinden çıkarıldı",
+    "erp price of product ({var:1}) for account ({var:2}) was changed: {var:3} from \"{var:4}\" to \"{var:5}\"": "erp: ürünün ({var:1}) carideki ({var:2}) fiyatı değiştirildi: {var:3} \"{var:4}\" iken \"{var:5}\" oldu",
+    "The shipping method could not be found.": "Nakliye yöntemi bulunamadı.",
+    "This shipping method has a base rate for each order subtotal. Change it in the shipping method.": "Bu nakliye yönteminde her sipariş ara toplamı için ayrı bir temel ücret var. Nakliye yönteminin kendisinden değiştirin.",
+    "shipping method ({var:1}) was changed on the shipping method list: {var:2} from \"{var:3}\" to \"{var:4}\"": "nakliye yöntemi ({var:1}) nakliye yöntemleri listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu"
 }
