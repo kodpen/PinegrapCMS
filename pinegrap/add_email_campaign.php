@@ -36,8 +36,10 @@ if (!$_POST) {
         $query = "SELECT page_name, page_folder FROM page WHERE page_id = '" . escape($_GET['page_id']) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        $page_name = $row['page_name'];
-        $folder_id = $row['page_folder'];
+        // A page that no longer exists (stale link, hand-typed URL) leaves
+        // these empty, as before, without the PHP notices.
+        $page_name = $row['page_name'] ?? '';
+        $folder_id = $row['page_folder'] ?? '';
         
         // if the user has edit access to the page, then prepare to show body preview row and set iframe source
         if (check_edit_access($folder_id) == true) {

@@ -35,9 +35,16 @@ $query =
         form_name,
         form_label_column_width
     FROM products
-    WHERE id = '" . escape($_GET['product_id']) . "'";
+    WHERE id = '" . escape($_GET['product_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// Opened without a product, or for one that no longer exists (stale link,
+// hand-typed URL): a "not found" screen instead of PHP notices and an empty
+// form.
+if (!$row) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
 
 $product_name = $row['name'];
 $short_description = $row['short_description'];

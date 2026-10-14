@@ -32,6 +32,13 @@ $object_id = 'base_object';
 // get the file id
 $file_id = ($_GET['file_id'] ?? '');
 
+// Opened without a theme file, or for one that no longer exists (stale
+// designer tab, hand-typed URL): a "not found" answer instead of PHP notices
+// from a module with no properties, and no session entry for an empty id.
+if (!is_scalar($file_id) || ((int) $file_id < 1) || ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . (int) $file_id . "'") < 1)) {
+    output_error(lang('Record not found.'), 404);
+}
+
 // get the module id
 $module_id = ($_GET['module_id'] ?? '');
 
