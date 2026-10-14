@@ -32,8 +32,10 @@ function add_to_cart($request) {
 
     if (isset($request['quantity']) && ($request['quantity'] !== '')) {
 
+        // A list or an object ([2], {"a": 2}) is not a quantity either.
         if (
-            (preg_match('/^\d+$/', (string) $request['quantity']) == 0)
+            !is_scalar($request['quantity'])
+            || (preg_match('/^\d+$/', (string) $request['quantity']) == 0)
             || ((int) $request['quantity'] < 1)
         ) {
             return error_response(lang('Please enter a valid quantity.'));
@@ -42,16 +44,24 @@ function add_to_cart($request) {
         $quantity = (int) $request['quantity'];
     }
 
+    // The body is JSON, so any of these can arrive as a list, an object or
+    // not at all. A product id that is not one value names no product; a
+    // form or notice that is not text is left out, as when none is sent.
+    $product_id = is_array($request['product'] ?? null) ? ($request['product']['id'] ?? '') : '';
+    $product_id = (is_string($product_id) || is_int($product_id)) ? $product_id : '';
+    $form_name = is_string($request['form'] ?? null) ? $request['form'] : '';
+    $notice = is_string($request['notice'] ?? null) ? $request['notice'] : '';
+
     initialize_order();
 
     $item = array();
 
-    $item['id'] = add_order_item($request['product']['id'], $quantity, $donation_amount = 0, 'myself', '');
+    $item['id'] = add_order_item($product_id, $quantity, $donation_amount = 0, 'myself', '');
 
     $form = '';
 
-    if ($request['form']) {
-        $form = new liveform($request['form']);
+    if ($form_name) {
+        $form = new liveform($form_name);
     }
 
     if (!$item['id']) {
@@ -65,8 +75,8 @@ function add_to_cart($request) {
         return error_response($message);
     }
 
-    if ($form and $request['notice']) {
-        $form->add_notice($request['notice']);
+    if ($form and $notice) {
+        $form->add_notice($notice);
     }
     
     // Initialize arrays and counters

@@ -84,6 +84,107 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Sipariş akışının son kalanları: editörün sepet widget'ı ve sepete ekle API'si dizi değerde, her siparişteki uyarılar (2026-10-14)
+
+**Neden.** #421, #430 ve #440'ın kalanları. Sandbox'ta eski kodla yeniden
+üretildi; hepsi 2026.4.9'da da var.
+
+- Görsel editörün sepet widget'ının betiği (`cart_action.php`) dizi gelen
+  değeri sessizce yanlış yazıyordu: `quantities[<kalem>][]=` `(int)` ile 1
+  (boş dizi 0, yani kalem siliniyordu); bağış tutarı dizi gelince 0
+  okunuyor ve bağış sepetten çıkıyordu; hızlı eklemede
+  `quick_add_ship_to[]` / `quick_add_add_name[]` "Array" adlı bir alıcı
+  açıp ürünü ona ekliyordu; `quick_add_product_id[]` 1 numaralı ürün
+  sayılıyordu; ürün formunun metin alanı dizi gelince elemanları virgülle
+  birleştirip yazıyordu, iç içe dizi "Array" yazıyordu. Yinelenen ödeme
+  alanları, indirim kodu ve `checkout_to` dizi gelince "Array to string
+  conversion" uyarısı yazıyor, indirim kodunda sayfa `"Array" teklif kodu
+  geçersiz` diyordu.
+- Panelin `add_to_cart` API eylemi (`add_to_cart.php`, ürün düğmesinin
+  JSON isteği): `product` metin (`"70"`) ya da `product.id` liste / nesne
+  gelince 500 (`TypeError`); `form` ya da `quantity` liste / nesne gelince
+  uyarı. Normal istekte de uyarı vardı: vitrin düğmesi `form` göndermezse
+  (`request.form` tanımsızken `JSON.stringify` anahtarı atıyor) her
+  tıklamada "Undefined array key \"form\"".
+- Her siparişte hata günlüğüne yazılan, diziyle ilgisiz uyarılar:
+  `get_tax_rate_for_address()` (`forms.php`) eyaleti tanınan ama ülkesinin
+  hiçbir vergi bölgesinde olmayan adreste (ör. Teksas dışı bir ABD eyaleti)
+  `$valid_tax_zone_id` tanımsız; kargolu hızlı siparişte unvanı ya da
+  soyadı boş alıcıda `get_express_order.php` `$recipient['name']`
+  (başlamadan okunuyordu; unvan çoğu siparişte boş); hızlı siparişin makbuzu
+  hem sayfada hem e-postada `get_order_receipt.php` 2262–2267 ve kargoluysa
+  1669 (oturum fatura bilgileri ve kargo adresi sayfasını hiç görmediği
+  için anahtar yok, satır yok).
+
+**Ne değişti.** #407 / #421 / #440'ın kuralı: dizi gelen tek değerli alan
+"verilmemiş" sayılır, sonrası boş alanla aynı.
+
+- `cart_action.php` indirim kodunu, çevrimdışı ödeme anahtarını, hızlı
+  ekleme alanlarını, `save_item_id`'yi ve `checkout_to`'yu siparişe
+  dokunmadan önce `pg_request_single_values()`'a veriyor (dizi silinir).
+  Adedi ya da bağış tutarı dizi gelen kalem atlanıyor, olduğu gibi kalıyor
+  (`shopping_cart.php` #440'ta da böyle). Ürün formu alanı
+  `pg_cf_posted_value()`'dan geçiyor (alan `multiple` ile okunuyor): onay
+  kutusu ve çoklu seçim listesini tutup virgülle birleştiriyor (eskisi
+  gibi), öbür alanlarda dizi boş metin. Yinelenen ödeme alanları dizi
+  gelince boş okunuyor: dönem ve başlangıç tarihi ürünün varsayılanına
+  düşüyor, ödeme sayısı boş (ClearCommerce / First Data'da "gerekli").
+  Hızlı eklemede dizi alıcı boş sayılıyor; çok alıcılı sitede kargolu
+  üründe "alıcı seçmelisiniz" uyarısı çıkıyor. Hediye çeki alanları zaten
+  diziyi atlıyordu; değişmedi.
+- `add_pending_offers()` (`ecommerce.php`; her sepet, hızlı sipariş ve
+  widget) bekleyen teklifin alıcı ve isim alanlarını yalnız metinse
+  okuyor.
+- `add_to_cart.php`: liste / nesne `quantity` eskisi gibi "Lütfen geçerli
+  bir miktar girin." (uyarısız, sepet açılmadan); ürün kimliği yalnız
+  `product` nesnesindeki metin ya da tam sayı `id`'den okunuyor, başka her
+  şey "ürün eklenemedi" yanıtı; `form` ve `notice` yalnız metinse
+  kullanılıyor, gelmezse uyarı yok.
+- `get_tax_rate_for_address()` `$valid_tax_zone_id`'yi boş başlatıyor;
+  `get_express_order.php` her alıcının `name`'ini makbuzdaki
+  (`get_order_receipt.php`) gibi boş başlatıyor; `get_order_receipt.php`
+  oturumdaki iki sayfa kimliğini `?? ''` ile, özel alan etiketlerini
+  satır yoksa boş okuyor. Hepsi eskiden de boş/yanlış değer üretiyordu:
+  sayfa ve e-posta çıktısı aynı.
+
+Uyarı susturulmadı. Şema, dil anahtarı, JS yok.
+
+**Bilerek yapılmayan.** Sepet sayfasının örnek düzeni (`data/layouts`
+248 ve teklif sepeti 497) her açılışta 138–203 (`label`, `recipient`,
+`quantity`, `amount`, `available_products`) ve 611 (`titles`) uyarısı
+yazıyor; nedeni `get_shopping_cart.php`: `$quick_add['system'] = ''`
+hızlı ekleme kapalıyken de diziyi dolu yapıyor, düzen boş hızlı ekleme
+formunu çiziyor. Düzeltmek görünen HTML'i değiştireceği (boş form
+kalkacak) ve başka dosyada olduğu için kalanlarda. Hızlı sipariş düzeninde
+(256) hata sonrası çizimde uyarı sandbox'ta yeniden üretilemedi (alan
+hatası, kart hatası, koşul onayı, dizi alanlar). `cart_action.php`'nin
+çevrimdışı ödeme ve "sonra al" kolları yalnız kaynak üzerinden denendi
+(yönetici ve `ECOMMERCE_SAVE_FOR_LATER` gerekiyor). Botlarda `visitor_id`
+uyarısı ayrı işte. Dizi beklenen yerde tek değer (`quantities=5`) ele
+alınmadı.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod `origin/development`
+worktree'sinden ikinci portta, aynı veritabanıyla. `cart_action.php`: her
+durumda yeni bir sepet (kargolu ürün, ürün formlu etkinlik kaydı, hediye
+çeki, yinelenen ve formlu bağış) ve 20 istek; eskide 11'i uyarı yazdı,
+yenide 0; normal güncelleme, indirim kodu ve hızlı ekleme iki kodda aynı
+satırları yazdı (`order_items`, `form_data`, `order_item_gift_cards`,
+`orders`). Farklar yalnız dizi gelen alanda ve yukarıda anlatıldığı gibi
+(eskide bağış silindi ve "Array" alıcısı açıldı, yenide kalem olduğu gibi /
+"alıcı" uyarısı). `add_to_cart` API'sine 13 istek: eskide 4'ü 500, 7'si
+uyarı; yenide 0 / 0, normal üç istek aynı yanıt ve satır. Dört hızlı sipariş
+(bağış; kargolu ürün unvansız ve "Mr."; ABD Arizona fatura adresiyle bağış):
+hızlı sipariş sayfası, hata sonrası sayfa, makbuz sayfası (rastgele
+CAPTCHA ve kimlikler dışında) ve `orders`, `order_items`, `ship_tos`
+satırları bire bir aynı; eskide 6–10 uyarı satırı, yenide 0.
+`php tools/test.php order_form_array` eski kodda 4 başarısızlık ve 1 hata,
+yenide geçiyor. `tools/test.php`, lint, dil, kopya, bağlama, API şeması ve
+`build_js.php --check` geçti. Doğrulanamadı: makbuz e-postaları ayrıca
+karşılaştırılmadı (aynı fonksiyon, aynı değerler); gerçek ödeme ağ
+geçitleri.
+
+---
+
 ## 2026.4.10 — ERP formları dizi gelen tek değerli alanı "Array" diye kaydetmiyor, 1 numaralı kaydı seçmiyor (2026-10-14)
 
 **Neden.** #427'nin son kalanı: ERP ekranlarının POST işleyicileri. Formlar

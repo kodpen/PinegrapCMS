@@ -181,3 +181,100 @@ function test_order_form_array_scripts_single_values()
 	pg_assert_contains("if (!\$pg_item_posted_as_list && (isset(\$_POST['donations'][\$order_item['id']]) == true)) {", $source, 'shopping cart: donation as a list kept');
 	pg_assert_contains('} elseif (!$pg_item_posted_as_list) {', $source, 'shopping cart: quantity as a list kept');
 }
+
+// The add_to_cart API action reads a JSON body, where the quantity can arrive as
+// a list or an object. It is answered as an invalid quantity before any cart is
+// opened, without the "Array to string conversion" warning it used to write.
+function test_order_form_array_add_to_cart_quantity_list()
+{
+	require_once(PG_FUNCTIONS_DIR . '/add_to_cart.php');
+
+	foreach (array(array(2), array('a' => 2), array()) as $quantity) {
+		$response = add_to_cart(array('product' => array('id' => 70), 'quantity' => $quantity));
+
+		pg_assert_same('error', $response['status'], 'quantity ' . json_encode($quantity));
+		pg_assert_same(lang('Please enter a valid quantity.'), $response['message'], 'quantity ' . json_encode($quantity) . ': message');
+	}
+}
+
+// The rest of the body is read before the cart is opened: a product id that is
+// not one value names no product (a string product or an id list stopped the
+// request with a TypeError), and a form name or notice that is not text, or is
+// not sent at all (the storefront button sends no form), is left out.
+function test_order_form_array_add_to_cart_body_values()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_to_cart.php');
+
+	$guard = strpos($source, "\$product_id = is_array(\$request['product'] ?? null) ? (\$request['product']['id'] ?? '') : '';");
+	pg_assert_true(($guard !== false) && ($guard < strpos($source, 'initialize_order();')), 'product id read before the cart is opened');
+	pg_assert_contains("\$product_id = (is_string(\$product_id) || is_int(\$product_id)) ? \$product_id : '';", $source, 'product id is one value');
+	pg_assert_contains("add_order_item(\$product_id, \$quantity,", $source, 'checked id added');
+	pg_assert_contains("\$form_name = is_string(\$request['form'] ?? null) ? \$request['form'] : '';", $source, 'form name');
+	pg_assert_contains("\$notice = is_string(\$request['notice'] ?? null) ? \$request['notice'] : '';", $source, 'notice');
+	pg_assert_false(strpos($source, "\$request['product']['id'], \$quantity") !== false, 'raw product id no longer added');
+	pg_assert_false(strpos($source, "if (\$request['form'])") !== false, 'raw form no longer read');
+}
+
+// The designer's cart widget posts to cart_action.php. Its one-value fields
+// posted as an array count as not given: the coupon, the quick add fields, the
+// saved item and the checkout address are dropped before the order is opened; a
+// row's quantity or donation amount posted as a list leaves the row as it is
+// ((int) made the quantity 1, the amount parsed as 0 removed the row); a product
+// form field keeps what pg_cf_posted_value() keeps; the recurring schedule
+// fields read a list as blank.
+function test_order_form_array_cart_action()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/cart_action.php');
+
+	$single = strpos($source, "pg_request_single_values(array('special_offer_code', 'offline_payment_allowed', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name', 'save_item_id', 'checkout_to'));");
+	pg_assert_true(($single !== false) && ($single < strpos($source, 'initialize_order();')), 'one-value fields before the order is opened');
+
+	$skip = strpos($source, 'if (!is_string($q)) continue;');
+	pg_assert_true(($skip !== false) && ($skip < strpos($source, '$q   = (int)$q;')), 'quantity list skipped before the cast');
+
+	$skip = strpos($source, 'if (!is_string($raw)) continue;');
+	pg_assert_true(($skip !== false) && ($skip < strpos($source, '$amount = pg_parse_amount($raw);')), 'donation list skipped before it is parsed');
+
+	pg_assert_contains("SELECT type, multiple FROM form_fields", $source, 'product form field carries multiple');
+	pg_assert_contains("\$raw = pg_cf_posted_value(\$raw, array('type' => \$f_type, 'multiple' => is_array(\$f_meta) ? \$f_meta['multiple'] : 0));", $source, 'product form value kept as pg_cf_posted_value() keeps it');
+
+	foreach (array('_p' => '_n_period', '_c' => '_n_payments', '_d' => '_n_start') as $variable => $name) {
+		pg_assert_contains('$' . $variable . ' = trim(is_string($_POST[$' . $name . '] ?? null) ? $_POST[$' . $name . '] : \'\');', $source, 'recurring ' . $name);
+	}
+
+	pg_assert_false(strpos($source, "trim((string)(\$_POST[") !== false, 'no (string) cast of a posted value left');
+}
+
+// A pending offer's recipient fields, read by every cart and the express order,
+// are one value each.
+function test_order_form_array_pending_offer_recipient()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
+
+	pg_assert_contains("\$ship_to = is_string(\$ship_to) ? \$ship_to : '';", $source, 'ship to');
+	pg_assert_contains("\$add_name = is_string(\$add_name) ? \$add_name : '';", $source, 'add name');
+}
+
+// Warnings that every order wrote, unrelated to arrays: an address in no tax
+// zone of its country left $valid_tax_zone_id undefined; an express order
+// recipient without a salutation read a name that was never started; and an
+// express order's receipt read the billing information and shipping address
+// pages from a session that never named them. The values the page gets are the
+// same empty ones as before.
+function test_order_form_array_order_warnings()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/forms.php');
+	$function = substr($source, strpos($source, 'function get_tax_rate_for_address('));
+	$start = strpos($function, "\$valid_tax_zone_id = '';");
+	pg_assert_true(($start !== false) && ($start < strpos($function, 'SELECT tax_zone_id')), 'tax zone id starts empty');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/get_express_order.php');
+	$start = strpos($source, "                \$recipient['name'] = '';");
+	pg_assert_true(($start !== false) && ($start < strpos($source, "\$recipient['name'] = \$recipient['salutation'];")), 'recipient name starts empty');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/get_order_receipt.php');
+	pg_assert_same(2, substr_count($source, "\$_SESSION['ecommerce']['billing_information_page_id'] ?? ''"), 'billing information page');
+	pg_assert_same(2, substr_count($source, "\$custom_field_1_label = \$row['custom_field_1_label'] ?? '';"), 'custom field 1 label');
+	pg_assert_same(2, substr_count($source, "\$custom_field_2_label = \$row['custom_field_2_label'] ?? '';"), 'custom field 2 label');
+	pg_assert_contains("\$_SESSION['ecommerce']['shipping_address_and_arrival_page_id'] ?? ''", $source, 'shipping address page');
+}

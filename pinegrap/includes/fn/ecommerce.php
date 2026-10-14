@@ -4120,8 +4120,11 @@ function add_pending_offers($liveform)
                     // if shipping is on, recipient mode is multi-recipient, and the offer is adding a product that is shippable
                     // make sure that a recipient was selected or entered
                     if ((ECOMMERCE_SHIPPING == true) && (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') && ($offer_action['add_product_shippable'] == 1)) {
+                        // One value each; one posted as an array counts as not given.
                         $ship_to = $_POST['pending_offer_' . $offer_action['offer_id'] . '_' . $offer_action['id'] . '_ship_to'] ?? '';
                         $add_name = $_POST['pending_offer_' . $offer_action['offer_id'] . '_' . $offer_action['id'] . '_add_name'] ?? '';
+                        $ship_to = is_string($ship_to) ? $ship_to : '';
+                        $add_name = is_string($add_name) ? $add_name : '';
                         if ($add_name == lang('or add name')) {
                             $add_name = '';
                         }

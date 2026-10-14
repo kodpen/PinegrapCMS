@@ -553,6 +553,24 @@
          edilince çıkan uyarı Türkçe sitede İngilizce
          görünüyordu; artık Türkçe.
 
+  [DÜZELTME] Görsel editörün sepet widget'ı, bir alanı
+         birden çok değerle (alan[]=…) gönderen istekte
+         ürünün adedini 1 yapıyor, bağışı sepetten
+         çıkarıyor, hızlı eklemede ürünü "Array" adlı bir
+         alıcıya ekliyordu; artık o alan boş gönderilmiş
+         sayılıyor: adedi ya da tutarı böyle gelen ürün
+         olduğu gibi kalıyor, gereken alan uyarı veriyor.
+         Ürün düğmesinin sepete ekleme isteği ürünü
+         beklenmeyen biçimde gönderince hata sayfası
+         veriyordu; artık "ürün eklenemedi" diyor.
+
+  [DÜZELTME] Siparişlerde hata günlüğüne yazılan
+         uyarılar giderildi: hiçbir vergi bölgesinde
+         olmayan eyaletli adres, unvanı boş alıcılı
+         kargolu hızlı sipariş, hızlı siparişin makbuzu
+         ve ürün düğmesiyle sepete ekleme. Sayfalar ve
+         sipariş kayıtları değişmedi.
+
   [GÜVENLİK] Para birimi seçicisi, seçimden sonra
          dönülecek adres olarak yalnız sitenin kendi
          sayfalarını kabul ediyor. Başka bir adrese

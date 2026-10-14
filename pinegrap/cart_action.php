@@ -37,6 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // The token travels in every cart form (update, coupon, save for later).
 validate_token_field();
 
+// The coupon code, the offline payment switch, the quick add fields, the saved
+// item and the checkout address post one value each. One posted as an array
+// (special_offer_code[]=) counts as not given, so every read below gets a
+// string and quick_add_product_id[] no longer reads as product 1.
+pg_request_single_values(array('special_offer_code', 'offline_payment_allowed', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name', 'save_item_id', 'checkout_to'));
+
 // Resolve the active session order. initialize_order creates one when
 // missing, so $oid is always > 0 after this call.
 initialize_order();
@@ -62,6 +68,9 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
     $applied = 0;
     foreach ($qty_arr as $iid => $q) {
         $iid = (int)$iid;
+        // quantities[<id>][]= is not a quantity: (int) made it 1, or 0 and the
+        // row was removed. The row keeps its quantity.
+        if (!is_string($q)) continue;
         $q   = (int)$q;
         if ($iid <= 0) continue;
         if ($q <= 0) {
@@ -86,6 +95,9 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
     foreach ($don_arr as $iid => $raw) {
         $iid = (int)$iid;
         if ($iid <= 0) continue;
+        // An amount posted as an array parsed as 0, which removed the row;
+        // it keeps its amount instead.
+        if (!is_string($raw)) continue;
         // Anti-tamper: the row must belong to THIS session's order.
         $owns = (int)db_value("SELECT id FROM order_items
                                WHERE id = '$iid' AND order_id = '$oid' LIMIT 1");
@@ -153,14 +165,17 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         if (!$owns) continue;
 
         // Resolve field type for proper storage of date / datetime / time.
-        $f_meta = db_item("SELECT type FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
+        $f_meta = db_item("SELECT type, multiple FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
         $f_type = is_array($f_meta) ? (string)$f_meta['type'] : 'text box';
 
         // Collect raw value(s) from POST. Multi-select / checkbox arrays
-        // collapse to a comma-joined string for storage.
+        // collapse to a comma-joined string for storage. Any other field
+        // posted as an array counts as not given, and a list entry that is
+        // itself a list is dropped (pg_cf_posted_value()).
         $raw = isset($_POST[$key]) ? $_POST[$key] : '';
+        $raw = pg_cf_posted_value($raw, array('type' => $f_type, 'multiple' => is_array($f_meta) ? $f_meta['multiple'] : 0));
         if (is_array($raw)) {
-            $raw = implode(', ', array_map('strval', $raw));
+            $raw = implode(', ', $raw);
         }
         $raw = trim((string)$raw);
 
@@ -305,7 +320,7 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
 
             // Frequency: one of the known periods; blank falls back to the
             // product's, which is what the control was showing anyway.
-            $_p = trim((string)($_POST[$_n_period] ?? ''));
+            $_p = trim(is_string($_POST[$_n_period] ?? null) ? $_POST[$_n_period] : '');
             if ($_p !== '') {
                 if (in_array($_p, $_rec_periods, true)) {
                     $_period = $_p;
@@ -316,7 +331,7 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
             }
 
             // Number of payments: digits only; the gateway sets the range.
-            $_c = trim((string)($_POST[$_n_payments] ?? ''));
+            $_c = trim(is_string($_POST[$_n_payments] ?? null) ? $_POST[$_n_payments] : '');
             if ($_c === '') {
                 if ($_rec_cc && ($_rec_gateway === 'ClearCommerce' || $_rec_gateway === 'First Data Global Gateway')) {
                     $lf->mark_error($_n_payments, lang('Number of Payments is required.'));
@@ -343,7 +358,7 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
             if ($_rec_cc && $_rec_gateway === 'ClearCommerce') {
                 $_start = date('Y-m-d');
             } else {
-                $_d = trim((string)($_POST[$_n_start] ?? ''));
+                $_d = trim(is_string($_POST[$_n_start] ?? null) ? $_POST[$_n_start] : '');
                 if ($_d !== '') {
                     $_iso = '';
                     if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $_d, $_dm) && checkdate((int)$_dm[2], (int)$_dm[3], (int)$_dm[1])) {
