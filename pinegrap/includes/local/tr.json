@@ -23044,5 +23044,13 @@
     "Answered through {var:1}, for {var:2}": "{var:1} aracıyla, {var:2} için yanıtladı",
     "Answered for {var:1}": "{var:1} için yanıtladı",
     "@{var:1} answered you in {var:2}": "@{var:1}, {var:2} kanalında size yanıt verdi",
-    "@{var:1} answers this without @{var:1}.": "Bunu @{var:1} yazmadan da @{var:1} yanıtlar."
+    "@{var:1} answers this without @{var:1}.": "Bunu @{var:1} yazmadan da @{var:1} yanıtlar.",
+    "A drafted scheduled action is saved from its form: open it there and save it.": "Taslak programlanmış işlem kendi formundan kaydedilir: formda açıp kaydedin.",
+    "I drafted it below. Nothing is scheduled until you open it in the form and save it.": "Taslağını aşağıya hazırladım. Formda açıp kaydedene kadar hiçbir şey programlanmaz.",
+    "Nothing is scheduled until you open the draft in the form and save it.": "Taslağı formda açıp kaydedene kadar hiçbir şey programlanmaz.",
+    "Scheduled actions Pinegrap AI drafts": "Pinegrap AI'ın hazırladığı programlanmış işlem taslakları",
+    "Open in the form": "Formda aç",
+    "Scheduled once {var:1}, who asked for it, opens it in the form and saves it": "İsteyen {var:1} formda açıp kaydedince programlanır",
+    "Saved by {var:1} · {var:2}": "{var:1} kaydetti · {var:2}",
+    "See the scheduled action": "Programlanmış işleme git"
 }

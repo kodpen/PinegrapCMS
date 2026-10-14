@@ -1226,6 +1226,19 @@
          AI'ın hazır olduğu sitelerde görünür; öbür
          sitelerde form eskisi gibidir.
 
+  [YENİ] Aynısı kanalda @ai ile de oluyor: "@ai her
+         pazartesi 09:00'da herkese geciken görevlerini
+         e-postayla gönder" yazınca Pinegrap AI
+         programlanmış işlemin taslağını hazırlayıp
+         yanıtının altına koyuyor. Kartta ne zaman
+         çalışacağı, ne yapacağı ve sonraki çalışmaları
+         görünür; "Formda aç" taslağı dolu formla açar,
+         kaydeden yine sizsiniz. Kaydedince kart kimin
+         kaydettiğini ve işleme giden bağlantıyı
+         gösterir. Taslağın adımlarını yalnız isteyen
+         görür; kanaldaki öbürleri yalnız bir taslağın
+         beklediğini görür.
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 

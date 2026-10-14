@@ -239,3 +239,52 @@ function test_workspace_scheduled_draft_messages()
 	pg_assert_false(strpos($older[1]['content'], 'task_digest') !== false, 'no task e-mail without the chains');
 	pg_assert_false(strpos($older[1]['content'], '"type":"event"') !== false, 'no event rule without events');
 }
+
+// Asked of @ai in a channel: the sentence waits for a call of its own, two
+// at most, and not when no turn would be left for the answer.
+function test_workspace_scheduled_draft_ai_propose_waits_for_its_step()
+{
+	$state = array('proposals' => array('tasks' => array(), 'changes' => array()));
+	$row = array('id' => 1, 'ai_steps' => 1);
+
+	$first = ws_scheduled_draft_ai_propose($row, $state, array('sentence' => "  Every Monday\n at 9, e-mail   the team  "));
+	pg_assert_true(!empty($first['ok']), 'taken');
+	pg_assert_same(array('Every Monday at 9, e-mail the team'), $state['scheduled_todo'], 'kept on one line, waiting');
+
+	pg_assert_true(isset(ws_scheduled_draft_ai_propose($row, $state, array('sentence' => ' '))['error']), 'an empty sentence');
+
+	$state['proposals']['scheduled'] = array(array('sentence' => 'x', 'data' => array(), 'notes' => array()));
+	pg_assert_true(isset(ws_scheduled_draft_ai_propose($row, $state, array('sentence' => 'One more'))['error']), 'two for one request');
+	pg_assert_same(1, count($state['scheduled_todo']), 'nothing more waits');
+
+	$late = array('proposals' => array());
+	pg_assert_true(isset(ws_scheduled_draft_ai_propose(array('id' => 1, 'ai_steps' => WS_AI_MAX_STEPS - 2), $late, array('sentence' => 'Every day'))['error']), 'no turn left');
+	pg_assert_false(isset($late['scheduled_todo']), 'nothing waits then');
+}
+
+// Only a request written in a channel is offered the tool: not one from a
+// note, a task or an MCP server's alias, nor one with nobody to ask for.
+function test_workspace_scheduled_draft_ai_offered_only_in_a_channel()
+{
+	$asker = array('id' => 1, 'member' => true, 'role' => 0);
+
+	pg_assert_false(ws_scheduled_draft_ai_offered(array('channel_id' => 3, 'note_id' => 4), $asker), 'from a note');
+	pg_assert_false(ws_scheduled_draft_ai_offered(array('channel_id' => 0, 'task_id' => 9), $asker), 'on a task');
+	pg_assert_false(ws_scheduled_draft_ai_offered(array('channel_id' => 3, 'mcp_server_id' => 2), $asker), 'to an alias');
+	pg_assert_false(ws_scheduled_draft_ai_offered(array('channel_id' => 3), null), 'nobody asked');
+}
+
+// An answer that only drafts a scheduled action says it waits in the form,
+// not that something is applied.
+function test_workspace_scheduled_draft_ai_words()
+{
+	$drafts = array('proposals' => array('scheduled' => array(array('data' => array()))));
+	$mixed = array('proposals' => array('scheduled' => array(array('data' => array())), 'tasks' => array(array('title' => 'x'))));
+
+	pg_assert_true(ws_ai_only_drafts($drafts), 'only a draft');
+	pg_assert_false(ws_ai_only_drafts($mixed), 'a task beside it');
+	pg_assert_false(ws_ai_only_drafts(array('proposals' => array())), 'nothing proposed');
+	pg_assert_same(lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.'), ws_ai_proposed_line($drafts), 'the words for a draft');
+	pg_assert_same(lang('I propose it below. Nothing is changed until you press Apply under it.'), ws_ai_proposed_line($mixed), 'the words for the rest');
+	pg_assert_same(lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.'), ws_ai_proposed_words('Ayarladım.', $drafts), 'a short "I set it up" replaced');
+}
