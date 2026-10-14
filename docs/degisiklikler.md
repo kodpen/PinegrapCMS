@@ -84,6 +84,62 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Arama sayfası `?query[]=x` ile 500 veriyordu, galeri kanonik adresi klasör numarasını olduğu gibi yazıyordu (2026-10-14)
+
+**Neden.** #391'in bilerek bıraktığı iki parça, ikisi de 2026.4.9'da var.
+(1) Arama sonuçları sayfası arama terimi dizi olarak gelince (`?query[]=x`,
+`?<sayfa kimliği>_query[]=x`) 500 veriyordu: kanonik adresi kuran
+`get_page_content.php` `switch`'i ve `get_search_results.php` aynı değeri
+`trim()`'liyordu. İkisi aşılsa da sayfa düşüyordu: `get_search_results.php`
+formun gizli alanlarını adresteki her parametreden `h()` ile kuruyor, özel
+düzende arama alanının değerini de `liveform` `h()`'den geçiriyordu; adreste
+herhangi bir dizi parametre (`?foo[]=x`) aynı hatayı veriyordu. (2) Fotoğraf
+galerisi dalı `folder_id`'yi denetimsiz ve `urlencode()`'suz yazıyordu:
+`?folder_id=` boşken kanonik adres `?folder_id=` ile, `?folder_id=189%20`'de
+boşlukla, `0189` ve `189.0`'da olduğu gibi bitiyordu (galeri bunları 189
+diye açıyor); `?folder_id[]=x` "Array" yazıp uyarı düşürüyordu. Dizi ya da
+kapsam dışı bir klasör numarası galeride "Erişim reddedildi" verir; bu yolda
+`log_activity()` oturumsuz ziyaretçide tanımsız `sessionusername` okuyup bir
+uyarı daha yazıyordu.
+
+**Ne değişti.** Arama: dizi gelen arama terimi yok sayılıyor (#384'ün `?q[]=`
+için seçtiği gibi: dizi = terim yok); sayfaya özgü terim dizi gelirse genel
+`query`'ye düşülüyor, kanonik adres de aynı kuralla kuruluyor. Gizli alanlara
+yalnız metin parametreler giriyor; özel düzende arama alanı dizi değerde boş
+kalıyor. Gelişmiş aramanın hazır (sistem) düzeninde terimsiz açılış
+`$output_featured_items` / `$output_catalog_items` tanımsız diye iki uyarı
+yazıyordu; ikisi koşulun dışında başlatıldı. Galeri: kanonik adrese yalnız
+pozitif tam sayı (`FILTER_VALIDATE_INT`) yazılıyor, `(int)` ile
+normalleştirilerek (`189 ` → `189`); başka her şey yok sayılıyor, adres
+yalın kalıyor. Galerideki iki `log_activity()` çağrısı `?? ''` aldı.
+Galerinin hangi klasörü açtığı ve "Erişim reddedildi" davranışı değişmedi.
+`switch`'in öbür dalları değişmedi. Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod (`origin/development`)
+ikinci bir portta, yeni kod ilkinde; aynı veritabanında 17 arama ve 17 galeri
+adresi bileşimi, arama sayfası özel ve hazır düzende, gelişmiş ve basit
+aramayla, galeri özel ve hazır düzende açıldı. Eski kodda 500 veren 9 arama
+adresi artık 200; eskiden çalışan arama adreslerinin HTML'i (jeton ve captcha
+satırları dışında) aynı. `?query[]=x` sayfası `/site-search` ile,
+`?216_query[]=x&query=test` sayfası `?query=test` ile aynı (yalnız `send_to`
+ve arama alanındaki boş `value=""` farklı). Galeride kanonik adres yalnız boş, sayı olmayan ve dizi değerlerde
+değişti; `?folder_id=189` ve sayfanın kendi klasörü aynı. Özel düzende eski
+kod bu adreslerin 16'sında `php_errors.log`'a satır yazıyordu, yeni kod
+hiçbirinde yazmıyor; hazır düzende kalan tek satır aşağıdaki galeri uyarısı.
+`php -l`, `tools/lint.php`, `tools/test.php`, `check_*` ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki gerçek
+sayfalar.
+
+**Bilerek yapılmayan.** Katalog sayfası (`get_catalog.php` 67–72) aynı
+`?query[]=x` değerini `trim()`'liyor; kullanıcı dizini
+(`get_form_view_directory_screen_content.php` 424) `?<kimlik>_query[]=x`'i
+`h()`'ye veriyor. `liveform::prepare()` metin alanına dizi değer gelince her
+formda `h()` hatası verir; burada yalnız arama alanı için önlendi. Hazır
+düzende sütun sayısı 0 olan galeri `get_photo_gallery.php` 662'de tanımsız
+`$output` uyarısı yazıyor.
+
+---
+
 ## 2026.4.10 — Dış API: kanala geri alınan kişinin gelen kutusu satırları değişenlerde yeniden geliyor (2026-10-14)
 
 **Neden.** #390'ın bilerek bıraktığı parça. Kişi özel kanaldan çıkınca o
@@ -235,6 +291,8 @@ sırasında farklı çıktı; sebebi eski kodda bir önceki isteğin 500 verip
 form oturumunu temizlememesi, temiz oturumla iki kod aynı. `tools/test.php`,
 lint, dil, kopya denetimleri ve `build_js.php --check` geçti.
 Doğrulanamadı: dev.pinegrap.com'daki gerçek sayfalar.
+
+---
 
 ## 2026.4.10 — API belgesi: mobil uçların belgesi koda uyduruldu (2026-10-14)
 
@@ -405,7 +463,7 @@ sayfalar.
 500 veriyor, ama `get_search_results.php` de aynı değeri `trim()`'liyor;
 ikisi birlikte ayrı iş. Fotoğraf galerisi dalı `folder_id`'yi
 `urlencode()`'suz ve dizi denetimsiz yazıyor (`?folder_id[]=x` →
-"Array" ve uyarı).
+"Array" ve uyarı). İkisi yukarıdaki bölümde giderildi.
 
 ---
 

@@ -40,12 +40,14 @@ function get_search_results($properties) {
 
     $query = '';
     
-    // if there is a specific query for this page, then use it
-    if (isset($_GET[$page_id . '_query'])) {
+    // if there is a specific query for this page, then use it.
+    // A query sent as an array (?query[]=x) counts as no query:
+    // trim() refused it with an error page.
+    if (isset($_GET[$page_id . '_query']) && is_string($_GET[$page_id . '_query'])) {
         $query = trim($_GET[$page_id . '_query']);
         
     // else if there is a general query, then use it (this is for backwards compatibility)
-    } else if (isset($_GET['query'])) {
+    } else if (isset($_GET['query']) && is_string($_GET['query'])) {
         $query = trim($_GET['query']);
     }
 
@@ -96,8 +98,9 @@ function get_search_results($properties) {
     // loop through the query string parameters in order to prepare hidden fields for each query string parameter,
     // so that we don't lose any when the form is submitted
     foreach ($query_string_parameters as $name => $value) {
-        // if this is not the specific query parameter (already going to be a field for that), then add hidden field for it
-        if ($name != $page_id . '_query') {
+        // if this is not the specific query parameter (already going to be a field for that), then add hidden field for it.
+        // A parameter sent as an array (?foo[]=x) is left out: h() refused it with an error page.
+        if (($name != $page_id . '_query') && is_string($value)) {
             $output_hidden_fields .= '<input type="hidden" name="' . h($name) . '" value="' . h($value) . '">';
         }
     }
@@ -526,12 +529,12 @@ function get_search_results($properties) {
                 $site_search_value = 'Search';
             }
 
+            $output_featured_items = '';
+            $output_catalog_items = '';
             $output_results = '';
 
             // If the search query is not blank, then continue to search.
             if ($query != '') {
-
-                $output_featured_items = '';
 
                 // If there is at least one featured item, then prepare to output them.
                 if (count($featured_items) > 0) {
@@ -567,8 +570,6 @@ function get_search_results($properties) {
                         '   </div>
                         </fieldset>';
                 }
-
-                $output_catalog_items = '';
 
                 // if the amount of catalog items is greater than 0, then output items
                 if (count($catalog_items) > 0) {
@@ -1000,6 +1001,12 @@ function get_search_results($properties) {
     } else {
 
         $form->add_fields_to_session();
+
+        // A query sent as an array (?<id>_query[]=x) counts as no query above,
+        // so the search field shows none either: h() refused it with an error page.
+        if (is_array($form->get($page_id . '_query'))) {
+            $form->set($page_id . '_query', '');
+        }
 
         $attributes = 'action="" method="get"';
         

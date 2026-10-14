@@ -373,6 +373,13 @@
          birden çok kez geçen (?page_number[]=…) adres
          hata sayfası veriyordu; artık liste açılıyor.
 
+  [DÜZELTME] Fotoğraf galerisi sayfası boş ya da sayı
+         olmayan bir klasör numarasıyla (?folder_id=,
+         ?folder_id=12%20) açılınca kanonik adres bu
+         değeri olduğu gibi taşıyordu; artık yalnız
+         geçerli bir klasör numarası yazılıyor, başka bir
+         değerde adres yalın kalıyor.
+
   SİTE SAYFALARI
   --------------------------------------------------------
 
@@ -414,6 +421,15 @@
          sayfalarını açınca; "Sonrası için Kaydet" açık
          özel form, ?add_watcher= ile açılan özel form ve
          oturum açmadan açılan çıkış sayfası hata
+         günlüğüne uyarı yazıyordu; artık yazmıyor.
+
+  [DÜZELTME] Arama sonuçları sayfası, adresinde arama
+         terimi ya da başka bir değer birden çok kez geçen
+         (?query[]=…) bir bağlantıyla açılınca hata
+         sayfası veriyordu; artık sayfa açılıyor, böyle
+         gelen arama terimi yok sayılıyor. Hazır düzende
+         terimsiz açılan arama sayfası ve kapsamı dışında
+         bir klasörle açılan fotoğraf galerisi hata
          günlüğüne uyarı yazıyordu; artık yazmıyor.
 
   ÜRÜNLER
