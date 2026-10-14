@@ -109,6 +109,7 @@ function api_schema() {
 			'handler' => 'api_products_create',
 			'dry_run' => true,
 			'returns' => 'Product',
+			'status'  => 201,
 			'summary' => 'Add a product',
 			'description' => 'Creates one product. name is the merchant SKU and has to be free: a name already in the catalogue is refused with 409 rather than quietly stored under a different one. Stock may be set here because the row does not exist yet and nothing can be racing it - afterwards it belongs to the inventory endpoint. Send an Idempotency-Key so a retried call does not leave two products behind.',
 			'params'  => array(
@@ -336,6 +337,7 @@ function api_schema() {
 			'handler' => 'api_product_groups_create',
 			'dry_run' => true,
 			'returns' => 'ProductGroup',
+			'status'  => 201,
 			'summary' => 'Add a product group',
 			'description' => 'A new category page under the parent named, or under the top of the catalogue when none is. It starts switched off unless enabled=true is sent, so a category an import is still filling does not appear in the navigation half-empty. The address is made from the short description or the name by the catalogue\'s own rule. A name another group already has is refused with 409 name_taken: the name is the group\'s code in the panel. Existing groups are not moved through the API.',
 			'params'  => array(
@@ -441,6 +443,7 @@ function api_schema() {
 			'handler' => 'api_product_attributes_create',
 			'dry_run' => true,
 			'returns' => 'ProductAttribute',
+			'status'  => 201,
 			'summary' => 'Create a product attribute',
 			'description' => 'An attribute with its options, as the attribute screen makes it. The name has to be free (409 name_taken names the attribute that has it), and at least one option is needed. Then give products their option with POST /products or POST /products/{id}, attributes.',
 			'params'  => array(
@@ -857,6 +860,7 @@ function api_schema() {
 			'handler' => 'api_contact_groups_create',
 			'dry_run' => true,
 			'returns' => 'ContactGroup',
+			'status'  => 201,
 			'summary' => 'Create a contact group',
 			'description' => 'An empty group, as the contact group screen makes it. The name has to be free, whatever its case (409 name_taken names the group that has it). Only an account from the manager role up may create one (403 forbidden otherwise), as on the contact group screens. Put contacts in with POST /contact-groups/{id}/members.',
 			'params'  => array(
@@ -1016,6 +1020,7 @@ function api_schema() {
 			'handler' => 'api_gift_cards_create',
 			'dry_run' => true,
 			'returns' => 'GiftCard',
+			'status'  => 201,
 			'summary' => 'Issue a gift card',
 			'description' => 'One card worth amount, with a new sixteen-digit code, as the gift cards screen issues it - for a prize, a refund or a card sold outside the store. The answer carries the code; nothing is mailed to anyone.',
 			'params'  => array(
@@ -1171,6 +1176,7 @@ function api_schema() {
 			'handler' => 'api_calendar_events_create',
 			'dry_run' => true,
 			'returns' => 'CalendarEvent',
+			'status'  => 201,
 			'summary' => 'Add an event',
 			'description' => 'A one-off event on the calendars named, unpublished unless published=true is sent. An all-day event runs from the start of its first day to the end of its last; any other event has to end after it starts. Times without an offset are read as the site\'s wall clock. Repeats, reservations, rooms and the page a visitor goes to next are set on the event\'s own screen. Publishing needs the publishing right where the owner is not a manager: 403 forbidden otherwise.',
 			'params'  => array(
@@ -1269,6 +1275,7 @@ function api_schema() {
 			'handler' => 'api_webhooks_create',
 			'dry_run' => true,
 			'returns' => 'Webhook',
+			'status'  => 201,
 			'summary' => 'Subscribe to events',
 			'description' => 'The signing secret is returned once, here. Each delivery carries X-Pinegrap-Signature: t=<unix>,v1=HMAC-SHA256(t + "." + body) - check it, and refuse a timestamp older than a few minutes.',
 			'params'  => array(
@@ -1409,6 +1416,7 @@ function api_schema() {
 			'handler' => 'api_customers_create',
 			'dry_run' => true,
 			'returns' => 'Customer',
+			'status'  => 201,
 			'summary' => 'Add a customer',
 			'description' => 'The plain fields of the address book record. Needs at least a name, a company or an e-mail address - a row with none of those is not a customer. Nothing is de-duplicated: two people at one address is a real thing and neither the table nor the panel refuses it, so an integration that wants an upsert looks first with GET /customers?email=. Membership, contact groups, the affiliate record and the ERP columns are not written here.',
 			'params'  => array(
@@ -1791,6 +1799,7 @@ function api_schema() {
 			'handler' => 'api_folders_create',
 			'dry_run' => true,
 			'returns' => 'Folder',
+			'status'  => 201,
 			'summary' => 'Create a folder',
 			'description' => 'A new, empty folder. Left without access it inherits the rule of its parent. A private folder admits the people given access to it on the folder screen; until then only staff open what is in it. Nothing is created inside the drafts folder or the recycle bin.',
 			'params'  => array(
@@ -1893,6 +1902,7 @@ function api_schema() {
 			'handler' => 'api_menus_create',
 			'dry_run' => true,
 			'returns' => 'Menu',
+			'status'  => 201,
 			'summary' => 'Add a menu',
 			'description' => 'An empty menu, shown nowhere until a designer places it in a design. Only for an application whose owner is an administrator or a designer (403 otherwise), as on the menus screen. The name is how designs place the menu: letters, numbers and dashes, unique (409 name_taken), and it is not changed through the API afterwards. Menus are not removed through the API either: the menus screen shows where a menu is used.',
 			'params'  => array(
@@ -1934,6 +1944,7 @@ function api_schema() {
 			'handler' => 'api_menu_items_create',
 			'dry_run' => true,
 			'returns' => 'MenuItem',
+			'status'  => 201,
 			'summary' => 'Add a menu item',
 			'description' => 'It links to a page (page_id) or to an address (url), or to nothing (a heading for the items under it). A page in the Recycle Bin or kept off the site as a draft is refused; an address must be http, https, mailto or tel, or a path on this site. It goes last among its siblings, or after the one named in after (0: first).',
 			'params'  => array(
@@ -2135,6 +2146,7 @@ function api_schema() {
 			'handler' => 'api_short_links_create',
 			'dry_run' => true,
 			'returns' => 'ShortLink',
+			'status'  => 201,
 			'summary' => 'Add a short link',
 			'description' => 'A name a visitor types (letters, numbers, . _ - / [ ]; spaces become _) that leads to a page, a product group or product on a catalog page, a file or another address. The name is refused with 409 name_taken when a page, file, folder or other short link already answers at it. mode=timed needs duration, one of 3600, 86400, 259200, 604800, 2592000 or 7776000 seconds. mode=once takes no name: the answer carries token_url, the generated address, which is shown this once and kept nowhere.',
 			'params'  => array(
@@ -2251,6 +2263,7 @@ function api_schema() {
 			'handler' => 'api_files_create',
 			'dry_run' => true,
 			'returns' => 'File',
+			'status'  => 201,
 			'summary' => 'Upload a file',
 			'description' => 'Images and PDFs only, and the bytes have to be what the name claims - the file is opened and checked rather than trusted. SVG is not accepted: it is markup, it can carry script, and the site serves it inline. The folder is the one the operator chose for applications and cannot be named in the request. Send the bytes as content_base64, or a source_url for this site to fetch - that fetch resolves the name once, pins the address it checked and refuses anything on this network.',
 			'params'  => array(
@@ -2439,6 +2452,7 @@ function api_schema() {
 			'handler' => 'api_key_codes_create',
 			'dry_run' => true,
 			'returns' => array('data' => 'KeyCode[]'),
+			'status'  => 201,
 			'summary' => 'Create key codes',
 			'description' => 'One code of your own choosing, or quantity new ten-character codes, for an existing offer code, as the key code screen makes them. The answer lists what was made under data, even when that is one code; nothing is mailed to anyone. A code already in use, or one that is an offer\'s own code (checkout would apply that offer and never read the key code), is refused. Single-use codes are what an offer hands out one per customer.',
 			'params'  => array(
@@ -2532,6 +2546,7 @@ function api_schema() {
 			'handler' => 'api_design_pages_create',
 			'dry_run' => true,
 			'returns' => 'DesignPage',
+			'status'  => 201,
 			'summary' => 'Add a page to a design, as a draft',
 			'description' => 'A new page of the design, always kept off the site in the drafts folder: it opens in the Visual Page Editor with the design\'s other pages, and a person publishes it there. It starts as an empty canvas, or with the layout of another page of the same design (copy_from; its title, description and settings are not copied). Fill it with proposals (POST /design/pages/{id}/proposals). folder_id is the folder the page is published to (GET /folders), the top folder when left out. name is the page\'s address: spaces and & become _, and 409 name_taken when a page, file, short link or folder already answers at it. 409 page_has_form when the page to copy has a form of its own (the editor duplicates those).',
 			'params'  => array(
@@ -2588,6 +2603,7 @@ function api_schema() {
 			'handler' => 'api_design_proposals_create',
 			'dry_run' => true,
 			'returns' => 'DesignProposal',
+			'status'  => 201,
 			'summary' => 'Propose a change of a page',
 			'description' => 'Nothing on the page changes here. The operations are checked against the page - each must find what it names, and the page they make must be valid - and kept as a proposal that a designer previews and applies, in the Visual Page Editor or under the workspace answer it was made for. A failing operation is refused with 422 and its index in field (ops[2]). Operations, in order: update {node, text, classes, add_classes, remove_classes, style, attrs, name}; set_props {node, props} for a <pg-keep> part; replace {node, html}; insert {parent + index, or before / after, html}; remove {node}; move {node, parent + index, or before / after}; page {html} for the whole page; css {css} for the page\'s own CSS block ("" removes it). In html, an element that keeps its data-pg stays that element, with its settings, notes and data; one without is new; a <pg-keep> left out is removed. Script, event handlers, frames, forms and <style> are removed from html, and CSS loses @import, script and outside url() - dropped says what went. removed names the parts the page runs that the change takes away. With request_id (Claude\'s application only) the proposal answers that workspace request: it is shown in the editor that asked, or under the answer in the channel.',
 			'params'  => array(
@@ -2637,6 +2653,7 @@ function api_schema() {
 			'public'  => true,
 			'handler' => 'api_auth_login',
 			'returns' => 'AuthSession',
+			'status'  => 201,
 			'summary' => 'Sign a person in on a device',
 			'description' => 'For an app a staff member signs in to with their own panel account, not for an integration: an integration uses its application key and secret. Needs a Team devices application switched on in API settings; client_key names one, and without it the site\'s first active one is used, so a general app only needs the site address. The sign-in screen\'s own limits apply in the same counters - after a few failures the answer is 429 until the wait is over or the person signs in on the website once. Only an account with panel rights can sign in. An account that uses two-step verification also sends the current code from its authenticator app, or one of its recovery codes, in otp; without it the answer is 401 mfa_required, and a wrong code is 401 unauthorized. An account whose role the site requires two-step verification for, and which has not set it up yet, is refused with 403 mfa_setup_required until the person sets it up on the website. The answer holds an access token for the Authorization: Bearer header (one hour) and a refresh token for POST /auth/refresh (thirty days, replaced every time it is used). Every call made with the access token acts as this person, capped by the application\'s permissions.',
 			'params'  => array(
@@ -2818,6 +2835,7 @@ function api_schema() {
 			'handler' => 'api_push_subscribe',
 			'dry_run' => true,
 			'returns' => array('subscribed' => 'boolean'),
+			'status'  => 201,
 			'summary' => 'Register this device for push',
 			'description' => 'Web push, the same the installed panel uses. Send the subscription\'s endpoint and its two keys. The push carries no text: it wakes the device, which then asks GET /notifications?unread=true what to show, so nothing a notification says passes through the push service. A registration made with a device token ends when the device is signed out.',
 			'params'  => array(

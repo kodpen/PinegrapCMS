@@ -10,7 +10,7 @@
  * suite that asserts fields the endpoint never had - which is how a working
  * endpoint comes back as a page of red assertions.
  *
- * Three contracts are enforced:
+ * Four contracts are enforced:
  *   1. Every route in api_schema() declares 'returns', except the few that
  *      answer with a document rather than a record (the OpenAPI file itself,
  *      the console page and its fragment), with a file ('binary' => true) or
@@ -20,6 +20,10 @@
  *   3. Every field a presenter puts in its answer is declared. This is the one
  *      that rots: a field added to api_product_present() without a line in
  *      api_product_schema() is a field no client can see.
+ *   4. A handler that answers 201 has a route that says so ('status' => 201,
+ *      or array(201, 200)), and a route that says so has a handler that does.
+ *      The document promises 200 otherwise, and a generated client reads the
+ *      201 of a create as an answer it was never told about.
  *
  * Static on purpose - it reads the files rather than running the API, so it
  * needs no database, no credentials and no site.
@@ -134,6 +138,7 @@ $presenters = array(
 	'ws_api_channel_group_removal_schema'       => 'ws_api_channel_group_removal_present',
 	'ws_api_channel_group_access_schema'        => 'ws_api_channel_group_access_present',
 	'ws_api_channel_group_access_change_schema' => 'ws_api_channel_group_access_change_present',
+	'ws_api_note_source_schema'       => 'ws_api_note_source_present',
 	'api_device_schema'               => 'api_device_present',
 	'api_notification_schema'         => 'api_notification_present',
 	'api_auth_session_schema'         => 'api_auth_session_present',
@@ -176,6 +181,21 @@ function pg_api_function_body($source, $name)
 	}
 
 	return null;
+}
+
+/**
+ * Whether code holds this whole number outside its comments and strings - a
+ * status the handler passes on, not a "201" in a sentence about it.
+ */
+function pg_api_code_has_number($body, $number)
+{
+	foreach (token_get_all('<?php ' . $body) as $token) {
+		if (is_array($token) && ($token[0] === T_LNUMBER) && ($token[1] === (string) $number)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /**
@@ -274,6 +294,7 @@ array_shift($blocks);
 $routes = 0;
 $referenced = array();
 $dry_flagged = 0;
+$created = 0;
 
 // Where the handlers live: the API's own resource files and whatever a module
 // keeps beside its declaration.
@@ -325,6 +346,38 @@ foreach ($blocks as $block) {
 				&& (strpos($body, 'api_dry_run_requested(') === false)) {
 
 				$problems[] = $id . ': declares dry_run, but ' . $found[1] . '() never stops for it - X-Dry-Run would write.';
+
+			}
+
+		}
+
+	}
+
+	// The status of a create. The handler sends it and the route table
+	// declares it for the document, and nothing else ties the two together.
+	if (preg_match("/'handler'\s*=> '([a-z_]+)'/", $head, $found)) {
+
+		$body = pg_api_function_body($handler_sources, $found[1]);
+
+		if ($body !== null) {
+
+			$answers_201 = pg_api_code_has_number($body, 201);
+
+			$declares_201 = (bool) preg_match("/'status'\s*=>\s*(array\([0-9, ]*\b201\b|201\b)/", $block);
+
+			if ($answers_201) {
+
+				$created++;
+
+			}
+
+			if ($answers_201 && !$declares_201) {
+
+				$problems[] = $id . ': ' . $found[1] . '() answers 201, but the route declares no \'status\' => 201 - the document promises 200.';
+
+			} elseif ($declares_201 && !$answers_201) {
+
+				$problems[] = $id . ': declares \'status\' => 201, but ' . $found[1] . '() never answers 201.';
 
 			}
 
@@ -544,7 +597,7 @@ foreach ($problems as $problem) {
 }
 
 echo "\nChecked " . $routes . " route(s), " . $checked . " object declaration(s), "
-	. count($used) . " error code(s) and " . $dry_flagged . " rehearsable write(s).\n";
+	. count($used) . " error code(s), " . $dry_flagged . " rehearsable write(s) and " . $created . " create(s) answering 201.\n";
 
 if (empty($problems)) {
 	echo "OK: every endpoint says what it answers with.\n";

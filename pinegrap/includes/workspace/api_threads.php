@@ -645,7 +645,7 @@ function ws_api_note_version_schema()
         'id'       => 'integer',
         'note_id'  => 'integer',
         'title'    => 'string',
-        'saved_by' => array('user_id' => 'integer', 'name' => 'string'),
+        'saved_by' => 'WorkspacePerson?',
         'saved_at' => 'string?',
         'size'     => 'integer',
         'text'     => 'string?',
