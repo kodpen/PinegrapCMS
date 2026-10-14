@@ -45,59 +45,6 @@ $max = 100;
 // get number of screens
 $number_of_screens = ceil($number_of_results / $max);
 
-// If a screen was passed and it is a positive integer, then use it.
-// These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-if (
-    isset($_REQUEST['screen'])
-    and $_REQUEST['screen']
-    and is_numeric($_REQUEST['screen'])
-    and $_REQUEST['screen'] > 0
-    and $_REQUEST['screen'] == round($_REQUEST['screen'])
-) {
-    $screen = (int) $_REQUEST['screen'];
-
-// Otherwise, use the default, which is the first screen.
-} else {
-    $screen = 1;
-}
-
-$output_screen_links = '';
-
-if ($number_of_screens > 1) {
-    $output_screen_links .= '
-            <nav class="mt-3 navigation " aria-label="data pagination"> 
-                <ul class="pagination pagination-sm flex-wrap justify-content-center">';
-    // build Previous button if necessary
-    $previous = $screen - 1;
-    // if previous screen is greater than zero, output previous link
-    if ($previous > 0) {
-        $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_recurring_commission_profiles.php?screen=' . $previous . '" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
-    }else{
-        $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
-    }
-
-    // build HTML output for links to screens
-    for ($i = 1; $i <= $number_of_screens; $i++) { 
-        // if this number is the current screen, then select option
-        if ($i == $screen) {
-            $active = 'active"';
-        // else this number is not the current screen, so do not select option
-        } else {
-            $active = '';
-        }
-        $output_screen_links .= '<li class="page-item mt-1 mb-1 ' . $active . '"><a class="page-link " href="view_recurring_commission_profiles.php?screen=' . $i . '">' . $i . '</a></li>';
-    }
-    // build Next button if necessary
-    $next = $screen + 1;
-    // if next screen is less than or equal to the total number of screens, output next link
-    if ($next <= $number_of_screens) {
-        $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_recurring_commission_profiles.php?screen=' . $next . '" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
-    }else{
-        $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
-    }
-    $output_screen_links .= '</ul></nav>';
-}
-
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
 // a language change, and falls back to the default for anything else.
@@ -136,6 +83,47 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified'  => 'recurring_commission_profiles.last_modified_timestamp',
 ));
 
+// pg_list_state() hands back the page as a positive whole number (1 when the
+// address has none or a bogus one), so it can go straight into LIMIT below.
+$screen = $list_state['screen'];
+
+$output_screen_links = '';
+
+if ($number_of_screens > 1) {
+    $output_screen_links .= '
+            <nav class="mt-3 navigation " aria-label="data pagination"> 
+                <ul class="pagination pagination-sm flex-wrap justify-content-center">';
+    // build Previous button if necessary
+    $previous = $screen - 1;
+    // if previous screen is greater than zero, output previous link
+    if ($previous > 0) {
+        $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_recurring_commission_profiles.php?screen=' . $previous . '" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
+    }else{
+        $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
+    }
+
+    // build HTML output for links to screens
+    for ($i = 1; $i <= $number_of_screens; $i++) { 
+        // if this number is the current screen, then select option
+        if ($i == $screen) {
+            $active = 'active';
+        // else this number is not the current screen, so do not select option
+        } else {
+            $active = '';
+        }
+        $output_screen_links .= '<li class="page-item mt-1 mb-1 ' . $active . '"><a class="page-link " href="view_recurring_commission_profiles.php?screen=' . $i . '">' . $i . '</a></li>';
+    }
+    // build Next button if necessary
+    $next = $screen + 1;
+    // if next screen is less than or equal to the total number of screens, output next link
+    if ($next <= $number_of_screens) {
+        $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_recurring_commission_profiles.php?screen=' . $next . '" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
+    }else{
+        $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
+    }
+    $output_screen_links .= '</ul></nav>';
+}
+
 // get results for just this screen
 $query =
     "SELECT
@@ -159,7 +147,8 @@ $query =
     LEFT JOIN orders ON recurring_commission_profiles.order_id = orders.id
     LEFT JOIN user as created_user ON recurring_commission_profiles.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON recurring_commission_profiles.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $order_by";
+    ORDER BY $order_by
+    LIMIT " . (($screen - 1) * $max) . ", " . $max;
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $recurring_commission_profiles = array();
@@ -271,6 +260,7 @@ pg_page_shell([
                     </table>
                 </div>
             </div>
+            ' . $output_screen_links . '
         </div>
     </div>
 </main>

@@ -57,19 +57,27 @@ if (isset($_REQUEST['advanced_filters']) == true) {
     }
 }
 
-// if the form has not been submitted yet, then set default values for fields
-if (isset($_SESSION['software']['ecommerce']['view_commissions']['start_month']) == FALSE) {
-    // set the start date to a month ago
-    $_SESSION['software']['ecommerce']['view_commissions']['start_month'] = date('m', time() - 2678400);
-    $_SESSION['software']['ecommerce']['view_commissions']['start_day'] = date('d', time() - 2678400);
-    $_SESSION['software']['ecommerce']['view_commissions']['start_year'] = date('Y', time() - 2678400);
-    
-    // set the stop date to today
-    $_SESSION['software']['ecommerce']['view_commissions']['stop_month'] = date('m');
-    $_SESSION['software']['ecommerce']['view_commissions']['stop_day'] = date('d');
-    $_SESSION['software']['ecommerce']['view_commissions']['stop_year'] = date('Y');
-    
-    // set status to [All]
+// Default range: a month ago to today. Each date part is checked on its own:
+// mktime() below throws a TypeError for a missing, non-numeric or oversized
+// value, and since the value is kept in the session, one bad address would
+// otherwise break the list for the rest of the session.
+$date_defaults = array(
+    'start_month' => date('m', time() - 2678400),
+    'start_day'   => date('d', time() - 2678400),
+    'start_year'  => date('Y', time() - 2678400),
+    'stop_month'  => date('m'),
+    'stop_day'    => date('d'),
+    'stop_year'   => date('Y'),
+);
+
+foreach ($date_defaults as $key => $value) {
+    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['ecommerce']['view_commissions'][$key] ?? ''))) {
+        $_SESSION['software']['ecommerce']['view_commissions'][$key] = $value;
+    }
+}
+
+// set status to [All]
+if (isset($_SESSION['software']['ecommerce']['view_commissions']['status']) == FALSE) {
     $_SESSION['software']['ecommerce']['view_commissions']['status'] = '[' . lang('All') . ']';
 }
 
@@ -391,27 +399,18 @@ $paid_total = $row['paid_total'];
 
 // if the advanced filters are off
 if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] ?? '') == false) {
-    $output_header_with_options = pg_page_shell([
-        'title'=> lang('All Commissions'),
-        'extra classes'=>'products',
-        'icon'=>'store',
-        'heading'=>lang('All Commissions'),
-        'heading_description' => lang('View all order commissions.'),
-    ]);
     $output_advanced_filters_value = 'true';
     $output_advanced_filters_label = lang('Add Advanced Filters');
-    $output_advanced_filters = '';
-    $advanced_filters_icon = 'filter_list';
-    $output_advanced_filters_class = 'btn-primary';
+    $advanced_filters_icon = 'bi-funnel';
+    $output_advanced_filters_class = '';
     $output_advanced_filters = '';
 
 // else the advanced filters are on
 } else {
-    $output_header_with_options = pg_page_shell(array('extra classes'=>'filters_active'));
     $output_advanced_filters_value = 'false';
     $output_advanced_filters_label = lang('Remove Advanced Filters');
-    $advanced_filters_icon = 'filter_list_off';
-    $output_advanced_filters_class = 'btn-danger';
+    $advanced_filters_icon = 'bi-funnel-fill';
+    $output_advanced_filters_class = ' active';
 
     $output_advanced_filters ='
     <div class="advanced_filters advanced-filter-bar position-fixed-md"  id="advanced_filters" >
@@ -449,9 +448,15 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
 }
 
 print
-$output_header_with_options . '     
-' . $output_advanced_filters . '
+pg_page_shell([
+        'title'=> lang('All Commissions'),
+        'extra classes'=>'products',
+        'icon'=>'store',
+        'heading'=>lang('All Commissions'),
+        'heading_description' => lang('View all order commissions.'),
+    ]) . '
 <main id="content" class="container-fluid">
+    ' . $output_advanced_filters . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -464,6 +469,7 @@ $output_header_with_options . '
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_commissions.php', $sort_columns, $sort_levels, $sort_default) . '
+                        <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_commissions.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     </nav>
                 </div>
             </div>

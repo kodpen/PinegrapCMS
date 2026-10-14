@@ -84,6 +84,81 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Komisyonlar'da gelişmiş filtre düğmesi, Yinelenen Komisyon Profilleri'nde sayfalama (2026-10-14)
+
+**Neden.** #348 iki listeyi ortak tablo yardımcısına taşırken iki eski
+eksiği not edip dokunmamıştı. Tüm Komisyonlar'da (`view_commissions.php`)
+gelişmiş filtre paneli (tarih aralığı) vardı ama onu açan düğme yoktu;
+panel yalnız adrese `?advanced_filters=true` yazılarak açılıyordu. Kod
+düğmenin değişkenlerini (`$output_advanced_filters_*`, Material ikon
+adları) hazırlıyor ama hiçbir yere basmıyordu; panel açıkken sayfa da
+başlıksız bir kabukla (`pg_page_shell(array('extra classes' =>
+'filters_active'))`) çiziliyordu. Tüm Yinelenen Komisyon Profilleri
+(`view_recurring_commission_profiles.php`) sayfa sayısını ve
+bağlantılarını hesaplıyor ama göstermiyordu, sorguda da LIMIT yoktu: her
+açılışta bütün profiller yükleniyor, DataTables onları tarayıcıda 100'erli
+bölüyordu. Etkin sayfa sınıfına fazladan bir tırnak (`'active"'`) da
+karışmıştı.
+
+Sandbox'ta denerken Komisyonlar'da eski bir çökme daha çıktı: tarih
+parçaları istekten oturuma tek tek yazılıyor, varsayılanlar ise yalnız
+`start_month` hiç yokken kuruluyordu. Eksik (`?start_month=01` tek başına),
+sayı olmayan (`?start_month=x`) ya da çok uzun bir parça `mktime()`'a
+string olarak gidiyor ve PHP 8'de `TypeError` ("Beklenmeyen bir hata
+oluştu") veriyordu. Değer oturumda kaldığı için liste o oturumun sonraki
+her açılışında da çöküyordu; böyle bir bağlantıya tıklayan yönetici
+Komisyonlar'ı oturumu kapanana kadar açamıyordu. Eski kodla sandbox'ta
+üretildi; 2026.4.9'da da var.
+
+**Ne değişti.** Komisyonlar: araç çubuğuna, sıralama menüsünün sağına
+Siparişler ve Rehber'deki (#335) düğme aynı kalıpla eklendi (`btn-ghost`;
+kapalıyken `bi-funnel`, açıkken `bi-funnel-fill` ve `active`; başlığı ve
+`aria-label`'ı "Gelişmiş Filtreler Ekle" / "Gelişmiş Filtreleri Kaldır").
+Sayfa kabuğu iki durumda da aynı (başlık ve açıklama yerinde); panel
+Siparişler'deki gibi `<main>`'in içinde çiziliyor. Altı tarih parçasının
+her biri ayrı denetleniyor: oturumda yoksa ya da 1–4 haneli bir sayı
+değilse o parça varsayılana (bir ay önce → bugün) dönüyor. Bozuk bir
+değer listeyi artık çökertmiyor, zaten bozulmuş bir oturum da sonraki
+açılışta kendini düzeltiyor. Durum varsayılanı (`[Tümü]`) yalnız oturumda
+yokken kuruluyor.
+
+Yinelenen Profiller: sayfa numarası ortak yardımcının (`pg_list_state()`)
+döndürdüğü `screen` değerinden okunuyor (Ürünler'deki gibi; elle yazılmış
+denetim kaldırıldı, kural aynı: pozitif tam sayı, yoksa 1). Sorgu `LIMIT`
+ile 100 kayıt getiriyor, bağlantılar tablonun altında Komisyonlar'daki
+gibi çıkıyor. Sıralama oturumda tutulduğu için bağlantılar yalnız
+`screen` taşıyor ve çoklu sıra sayfalar arasında korunuyor. Fazladan
+tırnak düzeltildi.
+
+Ödün: Yinelenen Profiller'de tarayıcıdaki arama ve sayfa başına kayıt
+seçimi artık açık sayfanın 100 kaydı içinde çalışıyor (Komisyonlar ve
+Rehber'deki gibi). Sütunlar, varsayılan sıralar ve çoklu sıralama
+değişmedi. Ortak yardımcıya, `backend.src.js`'e ve `tr.json`'a
+dokunulmadı; kullanılan metinler zaten vardı. Şema değişikliği yok.
+Hâlâ dokunulmayan: Komisyonlar'daki durum filtresi (`$sql_status`) hiç
+uygulanmıyor (#348'in notu). Siparişler (`view_orders.php`) ve Gönderilen
+Formlar (`view_submitted_forms.php`) tarih parçalarını aynı biçimde
+`mktime()`'a veriyor; bu PR'da bakılmadı.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 250 yinelenen profil, 12
+komisyon; 47 denetim, hepsi geçti).** Yinelenen Profiller varsayılan
+sırayla 100 / 100 / 50 satırlık üç sayfa verdi, satırlar aynı ORDER BY'lı
+SQL'in sırasıyla eşleşti; `amount:asc` ikinci sayfada korundu; iki
+düzeyli sıra (`frequency:asc,amount:desc`) ikinci sayfada doğru 100
+satırı verdi; `screen` için `abc`, `0`, `-2`, `1.5`, `1;select` ilk
+sayfaya düştü, sondan sonraki sayfa boş geldi (sorgu hatası yok); tek
+etkin sayfa öğesi, fazladan tırnak yok; tarayıcıda 2'ye tıklayınca ikinci
+sayfa açıldı ve etkin oldu. Komisyonlar'da düğme kapalıyken `bi-funnel`,
+panel yok; tıklayınca panel açıldı, düğme `bi-funnel-fill` + `active`,
+başlık aynı kaldı; panelden Güncelle'de panel açık kaldı; araç
+çubuğundaki düğme ve panelin X'i paneli kapattı. Altı bozuk ya da eksik
+tarih isteğinin her biri ve ardından gelen düz açılış listeyi gösterdi
+(eski kodla `?start_month=x` ve sonraki açılış hata sayfası verdi). 390
+pikselde iki listede de yatay kaydırma yok; konsolda hata yok.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek kayıtlar.
+
+---
+
 ## 2026.4.10 — Uzak ajan: kendisi ajan olan MCP sunucusu takma adını kendi yanıtlıyor (10.89) (2026-10-14)
 
 **Neden.** Faz F'nin son parçası, seviye C (`notes/mcp-arastirma.md` §3): bazı MCP

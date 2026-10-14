@@ -520,6 +520,24 @@
          tıklamak listeyi sıralamıyordu; artık sipariş
          numarasına göre sıralıyor.
 
+  [DÜZELTME] Komisyonlar listesinin araç çubuğunda
+         gelişmiş filtreleri (tarih aralığı) açıp
+         kapatan düğme var; panel önceden yalnız adres
+         çubuğundan açılabiliyordu. Panel açıkken sayfa
+         başlığı da yerinde kalıyor.
+
+  [DÜZELTME] Yinelenen Komisyon Profilleri listesi,
+         Komisyonlar gibi 100 kayıtlık sayfalarla
+         açılıyor ve altında sayfa bağlantıları çıkıyor;
+         önceden her açılışta bütün profiller birden
+         yükleniyordu.
+
+  [DÜZELTME] Adreste eksik ya da bozuk bir tarih
+         değeriyle açılan Komisyonlar listesi hata
+         sayfası veriyor ve oturum kapanana kadar hiç
+         açılmıyordu; artık bozuk değer varsayılan
+         tarih aralığına dönüyor.
+
   [GÜVENLİK] Bu altı listede adres çubuğuna yazılan
          sıralama yönü veritabanı sorgusuna olduğu gibi
          giriyordu; listeye girebilen oturum açmış bir
