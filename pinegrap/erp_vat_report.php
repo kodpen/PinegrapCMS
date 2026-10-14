@@ -24,8 +24,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_vat_report');
 
-// Each value is one value; one sent as an array (?month[]=x) counts as not
-// given: it wrote "Array to string conversion" into the log.
+// The period comes from the address; a value sent as an array (?month[]=x)
+// counts as not given: it wrote "Array to string conversion" into the log.
 $input = array(
     'range' => is_string($_GET['range'] ?? null) ? $_GET['range'] : 'month',
     'month' => is_string($_GET['month'] ?? null) ? $_GET['month'] : date('Y-m'),

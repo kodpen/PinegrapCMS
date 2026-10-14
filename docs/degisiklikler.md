@@ -84,6 +84,79 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — ERP ekranları dizi gelen süzgeç, tarih ve aramada "Array to string conversion" uyarısı yazıyordu (2026-10-14)
+
+**Neden.** #417'nin panel taramasında K4 olarak kalan iş. ERP ekranları
+adresteki tek değerli parametreleri `(string) ($_GET['x'] ?? '')` ile
+okuyordu; değer dizi gelince (`?status[]=x`, `?from[]=x`) PHP "Array" yapıp
+her istekte php_errors.log'a "Array to string conversion" yazıyordu. 500
+yoktu: değer "Array" metniyle aranıyor ya da beyaz listede bulunmayıp
+varsayılana düşüyordu. Sandbox'ta 68 ERP ekranı, `notes/panel-tarama-araclari`
+taramasının genişletilmiş hâliyle (kayıt isteyen ekranlar 1 numaralı cariyle,
+giderler tarih aralığıyla, kasa akışı tahmin görünümüyle de) 1.406 istek: eski
+kodda 28 ekranda 83 istek, 29 dosyada 68 ayrı satır uyarı yazdı. Hepsi
+2026.4.9'da da var.
+
+**Ne değişti.** Serinin kuralı: dizi gelen tek değerli parametre "verilmedi"
+sayılır, normal isteğin çıktısı değişmez.
+
+- Yeni yardımcı eklenmedi: serinin (#384–#422) satır içi `is_string()`
+  deseni kullanıldı. Ortak bir "istekten metin" yardımcısı her okuma yerini
+  yine tek tek değiştirmeyi gerektirirdi; tek satırda birçok yeri kurtaran
+  yer yalnız aşağıdaki üç kütüphane fonksiyonuydu.
+- Değer okuyan satırlar `is_string($_GET['x'] ?? null) ? $_GET['x'] : <eski
+  varsayılan>` oldu: `erp_audit`, `erp_cashflow` (hızlı aralık),
+  `erp_cheques`, `erp_expenses`, `erp_inbox`, `erp_invoices`, `erp_profit`,
+  `erp_purchase_orders`, `erp_quotes`, `erp_stock_minimums`,
+  `erp_vat_report`, `erp_waybills`, `erp_account_prices`, `erp_account_sync`,
+  `erp_accountant_download`, `get_erp_contacts`, `get_erp_drawer`,
+  `get_erp_products`, `get_erp_rate`, `add_erp_manual_invoice`,
+  `add_erp_receipt`. `isset($_GET['x']) ? (string) $_GET['x']` biçimindekiler
+  (`erp_export` `download` / `entity` / `done`, `erp_profit` `orders`,
+  `get_erp_products` `barcode`) koşula `is_string()` aldı; dizi `download`
+  artık "dosya artık yok" uyarısıyla yönlenmiyor, dizi `barcode` arama
+  sonucuna düşüyor (verilmemiş gibi).
+- Yalnız katı karşılaştırmada kullanılan değerlerde (`=== 'csv'`, `===
+  'xlsx'`, `=== 'forecast'`, `=== 'xml'`, `in_array(..., true)`) `(string)`
+  kaldırıldı: dizi hiçbir metne eşit değil, uyarı da yok (`erp_aging.php`
+  zaten böyle okuyordu).
+- `erp_account_sync_item.php` `q`'yu beş yerde okuyor; dizi gelirse başta
+  `$_GET`'ten çıkarılıyor (#417'deki `get_page.php` gibi).
+- `erp_aging_as_of()`, `erp_cashflow_options()` (tarih ve gruplama) ve
+  `erp_reconciliation_options()`: dizi değer tarih sayılmıyor
+  (`is_scalar()`), varsayılana düşüyor. Yaşlandırma, faturalar, kasa akışı,
+  mutabakat ekranları ve API aynı fonksiyonlardan geçiyor; skaler girdide
+  davranış birebir aynı. `get_erp_reconciliation_pdf.php`'nin kendi tarih
+  okuyucusu da `is_string()` aldı.
+- Kimlik (`id`, `K1`, #422) ve `send_to` (K3) satırlarına dokunulmadı.
+- Yeni `tests/erp_request_values_test.php`: hiçbir ERP ekranı adresteki
+  değeri `(string)` ile okumuyor; üç kütüphane fonksiyonu dizi tarihte
+  varsayılanı veriyor. Eski kodda iki test de düşüyor.
+
+Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, `debug = 1`).** Aynı 1.406 istek
+yeni kodda: uyarı yazan istek 83 → 0, ayrı satır 68 → 0; durum kodları aynı
+(bir istek: `erp_export?download[]=` 302 → 200, verilmemiş sayıldığı için).
+Kalan tek günlük satırı `liveform.class.php:1376` `h(null)` kullanım dışı
+uyarısı (K9, iki kodda da aynı). Eski kod (`origin/development`) ikinci
+portta: değişen 30 dosyanın 71 normal isteği (süzgeçler, tarih aralıkları,
+çeyrek / yıl, tahmin ufku, dışa aktarma, çekmece, ürün ve kur uçları, cari
+fiyatları, mutabakat ve HTML mektubu, elle fatura, tahsilat) aynı HTML'i
+verdi; tek fark `erp_audit?format=csv`'nin, iki sunucunun ortak
+veritabanına yazdığı "dışa aktarıldı" satırının sayısı. `php -l`,
+`tools/lint.php`, `tools/test.php`, `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies` ve `build_js.php --check` geçti.
+Doğrulanamadı: e-belge sağlayıcısı isteyen `erp_account_sync_item.php`
+(sandbox'ta sağlayıcı yok) ve dev.pinegrap.com'daki gerçek veriler.
+
+**Bilerek yapılmayan (kalanlar).** ERP ekranlarında `(int) ($_GET['account_id']
+?? 0)` gibi kimlik dışı sayı okumaları dizide sessizce 1 oluyor (uyarı yok;
+`erp_invoices?account_id[]=x` 1 numaralı carinin faturalarını süzer). POST
+işleyicileri taranmadı. K5–K9 notta.
+
+---
+
 ## 2026.4.10 — Ziyaretçi tablosu: MyISAM'da kalan tablo kendiliğinden InnoDB'ye taşınıyor, botlar ziyaret olarak yazılmıyor (2026-10-14)
 
 **Neden.** Bir müşteri sitesinde yanlışlıkla silinen bir ürünü geri almak
