@@ -791,6 +791,150 @@ function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
 }
 
 /**
+ * The order list's column that changes in place (pg_list_edit_table()): the
+ * status, between complete and exported. Those two are the moves that are
+ * only a status write; the export makes the same one. Cancelling is not:
+ * process_order_cancellation() asks for a reason, refunds and mails the
+ * customer, so it stays on the row's Cancel button with its confirmation.
+ * Bringing a cancelled order back stays on the order screen's Restore, and
+ * an incomplete order is a cart nobody has checked out.
+ *
+ * @return array field => definition
+ */
+function pg_order_quick_edit_columns()
+{
+    return array(
+        'status' => array('type' => 'select', 'label' => lang('Status'), 'options' => array('complete' => lang('Complete'), 'exported' => lang('Exported'))),
+    );
+}
+
+/**
+ * The order list's status cell, drawn the one way the list and the answer to
+ * a quick edit both use: the status badge, "Awaiting Payment" for a bank
+ * transfer whose money has not arrived, and the Parasut mark.
+ *
+ * @param array $order      status, payment_method, paid_at, parasut_exported
+ *                          and parasut_invoice_id of an order
+ * @param bool  $paid_known whether orders.paid_at exists (the 2026.4.4
+ *                          upgrade); without it nothing is known to be unpaid
+ * @return string
+ */
+function pg_order_list_status_html($order, $paid_known)
+{
+    $status = (string) ($order['status'] ?? '');
+    $html = '';
+
+    if ($status == 'incomplete') {
+        $html = '<span class="badge bg-warning text-dark bg-gradient fw-light">' . lang('Incomplete') . '</span>';
+    } elseif ($status == 'complete') {
+        $html = '<span class="badge bg-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
+    } elseif ($status == 'exported') {
+        $html = '<span class="badge bg-success bg-gradient fw-light">' . lang('Exported') . '</span>';
+    } elseif (($status == 'canceled') || ($status == 'cancelled')) {
+        $html = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
+    }
+
+    // A bank transfer order whose money has not arrived is complete but not
+    // paid; a second badge says so without changing the status itself.
+    if ($paid_known && pg_order_awaiting_payment($order)) {
+        $html .= '<span class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
+    }
+
+    // parasut_exported is set by two different things: the spreadsheet export
+    // and an invoice raised through the API. Only parasut_invoice_id tells
+    // them apart, so the tooltip is chosen from that rather than claiming an
+    // invoice exists for an order that was only exported to a file.
+    $parasut_invoice_id = trim((string) ($order['parasut_invoice_id'] ?? ''));
+
+    if (((int) ($order['parasut_exported'] ?? 0) != 0) || ($parasut_invoice_id !== '')) {
+        $title = ($parasut_invoice_id !== '')
+            ? lang('An invoice was created for this order in Parasut')
+            : lang('This order has been exported for upload to parasut.com');
+        $html .= '<span title="' . h($title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
+    }
+
+    return $html;
+}
+
+/**
+ * Write one quick edit from the order list: the status moved between the
+ * ones pg_order_quick_edit_columns() offers, the way the API and the
+ * Workspace move it. The order is marked modified, the Site Log gets the old
+ * and the new status and order.status_changed is announced (the Workspace
+ * and the webhooks). The customer is not mailed: no screen mails on this
+ * move.
+ *
+ * The write only lands while the order still has the status it was read
+ * with, so a cancellation that arrives in between is not overwritten.
+ *
+ * @param int    $order_id
+ * @param string $field  a key of pg_order_quick_edit_columns()
+ * @param string $value  as pg_list_edit_parse() read it
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_order_quick_update($order_id, $field, $value)
+{
+    $order_id = (int) $order_id;
+    $columns = pg_order_quick_edit_columns();
+
+    if (!isset($columns[$field]['options'][(string) $value])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $read = function () use ($order_id) {
+        return db_item("SELECT * FROM orders WHERE id = '" . $order_id . "'");
+    };
+
+    $order = $read();
+
+    if (!$order) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Order not found.'));
+    }
+
+    $previous = (string) $order['status'];
+
+    if (!isset($columns['status']['options'][$previous])) {
+        return array('ok' => false, 'code' => 'status', 'message' => lang('Only a complete or exported order changes status here. Cancel an order with its Cancel Order button; bring a cancelled order back with Restore Order on the order screen.'));
+    }
+
+    // The same status again writes nothing and logs nothing; the cell is
+    // still redrawn from what is stored.
+    if ($previous !== (string) $value) {
+        db("UPDATE orders
+            SET status = '" . e($value) . "', last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $order_id . "' AND status = '" . e($previous) . "'");
+
+        $written = (mysqli_affected_rows(db::$con) > 0);
+        $order = $read();
+
+        if (!$written || !$order || ((string) $order['status'] !== (string) $value)) {
+            return array('ok' => false, 'code' => 'changed', 'message' => lang('The order changed in the meantime. Reload the list and try again.'));
+        }
+
+        log_activity(
+            lang(array(
+                'string' => 'order ({var:1}) was changed on the order list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array((string) $order['order_number'], $columns['status']['label'], $columns['status']['options'][$previous], $columns['status']['options'][(string) $value]),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+
+        pg_announce('order.status_changed', array(
+            'id'           => $order_id,
+            'order_number' => $order['order_number'],
+            'status'       => (string) $value,
+            'previous'     => $previous,
+        ));
+    }
+
+    return array(
+        'ok'    => true,
+        'value' => (string) $order['status'],
+        'html'  => pg_order_list_status_html($order, array_key_exists('paid_at', $order)),
+        'class' => 'align-middle',
+    );
+}
+
+/**
  * Resolve the CSS classes for an order-status badge.
  *
  * Designer-owned: each stage has its own widget setting, so the colour

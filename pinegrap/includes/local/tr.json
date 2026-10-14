@@ -23143,5 +23143,8 @@
     "{var:1} wrote": "{var:1} yazdı",
     "{var:1} wrote {var:2} messages": "{var:1} {var:2} mesaj yazdı",
     "{var:1}, and what they missed": "{var:1}, kaçırdıklarıyla birlikte",
-    "{var:1}, and what they missed, summed up by Pinegrap AI": "{var:1}, kaçırdıklarıyla birlikte (Pinegrap AI özetiyle)"
+    "{var:1}, and what they missed, summed up by Pinegrap AI": "{var:1}, kaçırdıklarıyla birlikte (Pinegrap AI özetiyle)",
+    "Only a complete or exported order changes status here. Cancel an order with its Cancel Order button; bring a cancelled order back with Restore Order on the order screen.": "Burada yalnız tamamlanmış ya da dışa aktarılmış bir siparişin durumu değişir. Siparişi satırdaki \"Siparişi İptal Et\" düğmesiyle iptal edin; iptal edilmiş siparişi sipariş ekranındaki \"Siparişi Geri Al\" ile geri alın.",
+    "The order changed in the meantime. Reload the list and try again.": "Sipariş bu arada değişti. Listeyi yenileyip yeniden deneyin.",
+    "order ({var:1}) was changed on the order list: {var:2} from \"{var:3}\" to \"{var:4}\"": "sipariş ({var:1}) sipariş listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu"
 }

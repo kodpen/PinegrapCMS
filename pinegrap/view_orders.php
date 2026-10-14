@@ -18,6 +18,20 @@
 
 include('init.php');
 
+// A status changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON before anything below runs: the
+// request is not copied into the list's session filters, and the write is
+// the order module's own (pg_order_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_order_quick_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_order_quick_update($edit['id'], $edit['field'], $edit['value']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 // only ever appended to further below, so it has to start out empty
 $output_rows = '';
 $output = '';
@@ -35,6 +49,10 @@ $liveform = new liveform('view_orders');
 
 $user = validate_user();
 validate_ecommerce_access($user);
+
+// The column an operator can change on the list without opening the order:
+// the status, between complete and exported.
+$quick_edit = pg_order_quick_edit_columns();
 
 // If the reset parameter was sent in the query string,
 // then clear all session values for this screen.
@@ -2440,8 +2458,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $billing_first_name = $row['billing_first_name'];
         $billing_last_name = $row['billing_last_name'];
         $status = $row['status'];
-        $parasut_exported = $row['parasut_exported'];
-        $parasut_invoice_id = trim((string) $row['parasut_invoice_id']);
         $order_number = $row['order_number'];
         $username = $row['username'];
         $tracking_code = $row['tracking_code'];
@@ -2523,31 +2539,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
 
         
-        $output_status = '';
-        if($status == 'incomplete'){
-            $output_status = '<span class="badge bg-warning text-dark bg-gradient fw-light">' . lang(ucwords($status)) . '</span>';
-        }else if($status == 'complete'){
-            $output_status = '<span class="badge bg-primary bg-gradient fw-light">' . lang(ucwords($status)) . '</span>';
-        }else if($status == 'exported'){
-            $output_status = '<span class="badge bg-success bg-gradient fw-light">' . lang(ucwords($status)) . '</span>';
-        }else if($status == 'canceled' || $status == 'cancelled'){
-            $output_status = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
-        }
-        // A bank transfer order whose money has not arrived is complete but not
-        // paid; a second badge says so without changing the status itself.
-        if ($paid_at_column_exists && pg_order_awaiting_payment($row)) {
-            $output_status .= '<span class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
-        }
-        // parasut_exported is set by two different things: the spreadsheet export
-        // and an invoice raised through the API. Only parasut_invoice_id tells
-        // them apart, so the tooltip is chosen from that rather than claiming an
-        // invoice exists for an order that was only exported to a file.
-        if(($parasut_exported != 0) || ($parasut_invoice_id !== '')){
-            $parasut_badge_title = ($parasut_invoice_id !== '')
-                ? lang('An invoice was created for this order in Parasut')
-                : lang('This order has been exported for upload to parasut.com');
-            $output_status = $output_status . '<span title="' . h($parasut_badge_title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
-        }
+        // The status badge, "Awaiting Payment" and the Parasut mark, drawn by
+        // the same function that draws them again in the answer to a quick
+        // edit. Only a complete or exported order's status changes here.
+        $output_status = pg_order_list_status_html($row, $paid_at_column_exists);
+        $output_status_edit = isset($quick_edit['status']['options'][$status])
+            ? pg_list_edit_cell($quick_edit, 'status', $id, $status)
+            : '';
         
 
 
@@ -2585,7 +2583,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 </td>
                 <td class="align-middle">' . h($billing_first_name) . '</td>
                 <td class="align-middle">' . h($billing_last_name) . '</td>
-                <td class="align-middle">' . $output_status . '</td>
+                <td class="align-middle"' . $output_status_edit . '>' . $output_status . '</td>
                 <td class="align-middle">' . $output_order_type . '</td>
                 <td class="align-middle">' . $order_number . '</td>
                 <td class="align-middle text-end">' . prepare_amount($total) . '</td>
@@ -3191,7 +3189,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         <form name="form"  action="edit_orders.php" method="post" class="view_orders"> 
                             ' . get_token_field() . ' 
                             <input type="hidden" name="action">
-                            <table class="chart table-hover table " style="width:100%;display:none">
+                            <table class="chart table-hover table " style="width:100%;display:none"' . pg_list_edit_table('view_orders.php', $quick_edit) . '>
                                 <thead>
                                     <tr>
                                         <th class="noVis">

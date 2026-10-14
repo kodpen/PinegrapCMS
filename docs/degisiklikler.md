@@ -84,6 +84,77 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Siparişler listesinde durum satırda değişiyor (2026-10-14)
+
+**Neden.** Buglar listesinin 5. maddesi ("Tüm tablolar listede hızlı
+güncelleme özelliği alacak") #364'le ürünlere ve ERP Minimum stoğa geldi;
+sıradaki liste Siparişler'di. Bir siparişin durumunu değiştirmek için
+siparişi açmak gerekiyordu, üstelik sipariş ekranında durum için bir alan
+yok: Dışa Aktarılmış yalnız dışa aktarmayla, Tamamlanmış'a dönüş yalnız
+API'yle yapılabiliyordu. Dışa aktarılmış bir siparişi yeniden dışa aktarmak
+isteyen operatörün panelde yolu yoktu.
+
+**Ne değişti.** `view_orders.php`'de Durum hücresi #364'ün seçim kalıbıyla
+açılır; seçenekler Tamamlanmış ve Dışa Aktarılmış
+(`pg_order_quick_edit_columns()`, `includes/fn/ecommerce.php`). Yalnız bu iki
+durumdaki siparişin hücresi düzenlenebilir; Tamamlanmamış (ödemesi bitmemiş
+sepet) ve İptal Edildi düz kalır. İptal bilerek seçeneklere konmadı:
+`process_order_cancellation()` neden sorar, ödemeyi iade etmeyi dener ve
+müşteriye e-posta atar; geri alınamaz. Bu yüzden satırdaki onaylı "Siparişi
+İptal Et" düğmesinde kalır. İptal edilmiş siparişi geri almak da sipariş
+ekranının onaylı "Siparişi Geri Al" düğmesinde kalır (iptal kayıtlarını
+temizler, hediye kartlarını yeniden açar). Doğrudan bir istekle bu
+durumlardan birine ya da birinden geçilmek istenirse 422 ile ve bu
+düğmeleri gösteren bir iletiyle reddedilir.
+
+İstek, ekran sayfayı çizmeden ve istek değerlerini listenin oturum
+filtrelerine kopyalamadan önce yakalanır (`view_orders.php` `$_REQUEST`'i
+oturuma yazıyor; yakalama bu döngünün üstünde). İzin listeninkidir
+(`validate_ecommerce_access()` ile aynı: rol < 3 ya da e-ticaret yönetimi).
+Kayıt `pg_order_quick_update()`'tedir ve API'nin ve Çalışma Alanı'nın
+iptal dışı durum değişikliğiyle aynı şeyi yapar: `orders.status` yazılır,
+`last_modified_timestamp` güncellenir (ShipWorks gibi değişen siparişleri
+çeken entegrasyonlar görsün diye; sipariş ekranının kaydı da bunu yapar),
+Site Günlüğü'ne "sipariş (NUMARA) sipariş listesinde değiştirildi: Durum
+"eski" iken "yeni" oldu" yazılır ve `pg_announce('order.status_changed')`
+Çalışma Alanı olaylarına ve webhook kuyruğuna gider (sipariş ekranının Geri
+Al'ı da aynı olayı aynı biçimde duyurur). Bu geçişte hiçbir ekran müşteriye
+e-posta atmadığı için burada da atılmaz. Yazma `WHERE status = <okunan>`
+koşuluyla yapılır: arada başka bir yol siparişi iptal ettiyse üzerine
+yazılmaz, cevap "Sipariş bu arada değişti…" olur. Aynı durum yeniden
+seçilirse hiçbir şey yazılmaz.
+
+Durum hücresinin çizimi (durum rozeti, "Ödeme bekleniyor" rozeti, Paraşüt
+işareti) listeden `pg_order_list_status_html()`'e taşındı; liste ve hızlı
+güncellemenin cevabı aynı fonksiyonu kullanır, rozetler değişmedi.
+Kullanılmayan `$parasut_exported` / `$parasut_invoice_id` değişkenleri
+kaldırıldı. Betiğe (`backend.src.js`) ve ortak yardımcıya
+(`includes/fn/output.php`) dokunulmadı. Şema değişikliği yok.
+
+**Testler.** `tests/order_quick_edit_test.php` (6 test): sunulan seçenekler
+(yalnız complete ve exported), iptal / tamamlanmamış / büyük harfli değerin
+reddi, her durumun rozeti (eski `canceled` yazımı dahil), "Ödeme bekleniyor"
+rozetinin `paid_at` sütunu yokken çıkmaması ve dışa aktarılmış siparişte
+de çıkması, Paraşüt işaretinin iki ipucu, hücrenin taşıdığı değer.
+
+**Doğrulandı (sandbox, MariaDB, Chromium).** Durum: Herhangi listesinde tamamlanmış ve dışa
+aktarılmış beş siparişin hücresi düzenlenebilir, iptal edilmiş sipariş düz
+çıktı; tablo yalnız iki seçeneği taşıdı. Tamamlanmış → Dışa Aktarılmış
+seçilince 200 döndü, veritabanında durum ve `last_modified_timestamp`
+yazıldı, hücre yeşil rozetle yeniden çizildi ve yeşil yanıp söndü; geri
+Tamamlanmış'a da döndü. Havale bekleyen siparişte "Ödeme bekleniyor", Paraşüt
+işaretli siparişte işaret değişiklikten sonra yerinde kaldı. Escape ve aynı
+değer istek göndermedi. Site Günlüğü'ne dört satır, Çalışma Alanı açıkken
+`ws_events_in`'e her değişiklik için `order.status_changed` ({id,
+order_number, status, previous}) düştü. Doğrudan isteklerde iptal edilmiş ve
+tamamlanmamış sipariş 422 `status`, `cancelled` değeri 422, başka alan 422,
+olmayan sipariş 422 `not_found`, yanlış jeton 403; listenin Durum filtresi
+isteklerden sonra değişmedi. 390 piksel dokunmatik ekranda dokunuş seçimi
+açtı ve kaydetti. Doğrulanamadı: Safari / iOS, gerçek webhook aboneliği,
+dev.pinegrap.com'daki gerçek siparişler.
+
+---
+
 ## 2026.4.10 — Çalışma Alanı: siz yokken olanlar ve sabah özeti (2026-10-14)
 
 **Neden.** Çalışma Alanı araştırmasının P2 2.5 maddesi ("Kaçırdıkların ve
