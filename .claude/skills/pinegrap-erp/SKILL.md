@@ -8,7 +8,8 @@ description: "Pinegrap CMS'in ERP (ön muhasebe) modülünde çalışırken kull
 Bu modüldeki hatalar sessiz muhasebe hatasıdır: aynı para iki kez sayılır,
 numara boşa harcanır, KDV iki yerden farklı hesaplanır. Maddeleri atlama.
 
-Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5, bitti) ve `docs/_plan_erp_ozellikler.md` (Faz 6–9).
+Plan dosyaları `docs/_plan_erp.md` (Faz -1 – 5) ve `docs/_plan_erp_ozellikler.md` (Faz 6–9): fazlar bitti,
+ikisinde de yalnız kalanlar duruyor (e-belge sürücüleri, mali müşavir onayı, elle doğrulamalar).
 
 ## Modül kapısı ve kurulum
 
