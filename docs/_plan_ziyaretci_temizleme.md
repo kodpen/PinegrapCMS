@@ -151,7 +151,7 @@ dökümden hemen düşer, dosyanın diskteki boyutu yedeği etkilemez.
    barındırmada her sunucuda yok.
 4. **IP adresini erken silmek** (KVKK): N günden sonra `ip_address = 0`.
    Tablonun tamamına UPDATE; saklama süresiyle aynı parça yöntemiyle yapılabilir.
-5. **Kendiliğinden küçültme** (yapıldı, PR #PRNO): InnoDB'deki tablo,
+5. **Kendiliğinden küçültme** (yapıldı, PR #453): InnoDB'deki tablo,
    dosyasının boş alanı ≥ 128 MB ve kalan satırların yarısından fazlaysa,
    genel görevce son iki haftanın en sakin saatinde
    `ALTER TABLE … FORCE, ALGORITHM=INPLACE, LOCK=NONE` ile çevrimiçi yeniden
