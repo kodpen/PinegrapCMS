@@ -55,7 +55,7 @@ gerçek şemadan okundu (`information_schema.COLUMNS` / `STATISTICS`).
   sınırında 64.069 bayt (1,46 KB pay) vardı. 8.17
   (`upgrade_2026_4_8_config_text_columns()`) her VARCHAR kolonu TEXT yapar:
   MySQL 8.0'da 7064 / 8126, SQL katmanında 2126 / 65.535. Tahmin:
-  `pg_innodb_row_estimate()`; ayrıntı `docs/degisiklikler.md`.
+  `pg_innodb_row_estimate()`; ayrıntı git geçmişindeki `docs/degisiklikler.md`.
 
 ## Kodda motora bağlı yerler
 
@@ -79,7 +79,7 @@ gerçek şemadan okundu (`information_schema.COLUMNS` / `STATISTICS`).
   oturum önbelleği. InnoDB'de tam sayım; değiştirilmedi.
 - **Döküm geri yükleme:** `install/index.php` `parse_mysql_dump()` dökümdeki
   `SET autocommit=0`'ı bağlantıda açık bırakıyordu; 2026.4.8'de sonuna
-  `SET autocommit = 1` eklendi (ayrıntı `docs/degisiklikler.md`).
+  `SET autocommit = 1` eklendi (ayrıntı git geçmişindeki `docs/degisiklikler.md`).
 
 ## Tablo listesi
 

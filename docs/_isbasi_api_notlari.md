@@ -370,7 +370,7 @@ kurulur (Paraşüt `inbox` yeteneğini zaten bildiriyor).
 Gelen faturalar bu taslakla kuruldu (2026-09-23): sözleşmede
 `erp_edoc_<kod>_inbox($from, $to, $page)` ve `_inbox_document($item,
 $format)`, tablo `erp_edoc_inbox` (4.67), ekranlar `erp_inbox.php` /
-`erp_inbox_document.php`. Ayrıntı `docs/degisiklikler.md`.
+`erp_inbox_document.php`. Ayrıntı git geçmişindeki `docs/degisiklikler.md`.
 
 ## Gelen e-faturalar — gerçek yanıtlar (2026-09-23, test ortamı)
 

@@ -61,12 +61,11 @@ alt adımlar `upgrade_2026_4_9_<konu>()` gibi (2026.4.4'te
    satırı olmalı: yoksa kısa bir cümleyle ekle, varsa değişen alanı o cümleye
    ekle; ikinci satır açma. Yalnız plan ile gelen büyük özellik kendi
    `[NEW]` satırını alır; düzeltmeler sürümün tek `[FIX]` satırında kalır.
-   Biçim: `docs/memory/release/upgrade-changelog-rules.md`. Belirti ve
-   ayrıntı yalnız `docs/degisiklikler.md`'ye.
+   Biçim: `docs/memory/release/upgrade-changelog-rules.md`.
 
-6. **`docs/degisiklikler.md`** — kararın gerekçesini, kök sebebi ve ödünü yaz.
-   Yeni madde başlık bloğunun (`---`) hemen altına, önceki en yeni maddenin
-   üstüne girer.
+6. **`docs/memory/`** — kararın gerekçesini, kök sebebi, belirtiyi ve ödünü
+   ilgili konu dosyasına yaz (yoksa yeni dosya aç, sonra
+   `php tools/memory_index.php`). Ayrı bir değişiklik günlüğü yok.
 
 7. **`docs/sema-adimlari.md` tablosunun sonuna** alt adımı satır olarak ekle
    (dosyayı baştan okuma; adım ararken `grep`).

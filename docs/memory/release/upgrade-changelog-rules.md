@@ -1,6 +1,6 @@
 ---
 name: upgrade-changelog-rules
-description: changelog.txt format (English, only plan-driven major features as [NEW], one [FIX]/[SECURITY]/[SCHEME] line per version) vs the detailed docs/degisiklikler.md.
+description: changelog.txt format (English, only plan-driven major features as [NEW], one [FIX]/[SECURITY]/[SCHEME] line per version); the detail goes to docs/memory.
 ---
 
 ## What goes into pinegrap/changelog.txt?
@@ -33,9 +33,7 @@ description: changelog.txt format (English, only plan-driven major features as [
 - In the open version the file describes the final state: a fix to something added in the same version changes nothing here.
 
 ## Where do details go?
-- `docs/degisiklikler.md` (Turkish, developer log): what changed, why, root cause, symptom, rejected alternatives. Append your section under its first `---`; never read it routinely.
-- It holds only the open version. On release its sections are deleted, never archived; `changelog.txt` is the permanent summary.
-- Released versions' detail is in git history only. Up to 2026.4.9 it is at commit `5a51d63c`: `git show 5a51d63c:docs/degisiklikler-arsiv/<version>.md`.
+- In the matching `docs/memory/` topic file (what changed, why, root cause, rejected alternatives, PR number); there is no developer change log. See docs/memory/workflow/owner-rules.md "How are changes recorded?".
 - Write the symptom there too: "IPv6 bans did not work" alone is not searchable; "dozens of duplicate ban rows for one address while it is never blocked" is.
 
 ## Which code reads changelog.txt?

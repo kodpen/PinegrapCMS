@@ -1,6 +1,6 @@
 ---
 name: owner-rules
-description: Standing rules from the owner (Erdal) on docs, pages, plans, templates, language, the shelved mobile app and who edits which notes
+description: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, templates, language, the shelved mobile app and who edits which notes
 ---
 
 ## Where does user documentation go?
@@ -18,8 +18,9 @@ description: Standing rules from the owner (Erdal) on docs, pages, plans, templa
 ## Is there a mobile app?
 - No (owner decision 2026-10-14). The API endpoints built for it stay; docs never say "mobile app"; do not re-ask the mobile questions. Restart point: `docs/_plan_mobil_api_claude_kanali.md`.
 
-## How are changes logged?
-- Under the open version in `docs/degisiklikler.md` (detail and reasons; append only, never read it).
+## How are changes recorded?
+- As memory, not in a change log (owner rule 2026-10-14; `docs/degisiklikler.md` and its archive were removed and are never recreated). A PR that changes behaviour adds or updates the matching `docs/memory/` topic file: what it does now, why, the symptom it fixed (searchable words), the PR number. No per-version or dated list; stale lines are corrected in place.
+- The old developer log is in git history only: every version through #456 `git show 6930e15f:docs/degisiklikler.md`, the last 2026.4.10 state (through #460) `git show f2b14157:docs/degisiklikler.md`.
 - `pinegrap/changelog.txt` is English and carries only plan-driven major features as one-line [NEW] entries; all other changes share the version's single [FIX] / [SECURITY] / [SCHEME] lines (owner rule 2026-10-14). Format: docs/memory/release/upgrade-changelog-rules.md
 
 ## How big is a task?

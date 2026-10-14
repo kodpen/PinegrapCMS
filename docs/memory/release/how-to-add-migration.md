@@ -21,6 +21,6 @@ function upgrade_to_2026_4_5() {
 ```
 3. Run it from the upgrade UI; no manual SQL. Run twice on the dev DB: the second time the screen must say "zaten yerindeydi".
 4. **New table: add it to `get_tables()` in `install/index.php`** (tables DROPped before a clean install; used only for DROP, order irrelevant). If skipped, a clean install into the same DB leaves the old table, the post-install upgrade sees it and skips "already exists", and the site opens on the old schema; no error because the step is idempotent - silently wrong. `functions.php` `check_and_repair_database_tables()` once kept a second list; it now finds tables from `information_schema`, add nothing there.
-5. Changelog: the version needs one [SCHEME] line naming the area (docs/memory/release/upgrade-changelog-rules.md); the detail goes to docs/degisiklikler.md.
+5. Changelog: the version needs one [SCHEME] line naming the area (docs/memory/release/upgrade-changelog-rules.md); the detail goes to the matching docs/memory file, the step's row to docs/sema-adimlari.md.
 
 Related: docs/memory/release/migration-step-helpers.md

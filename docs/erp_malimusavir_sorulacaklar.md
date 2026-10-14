@@ -9,7 +9,7 @@ description: Questions for the accountant about ERP behaviour; answers fill each
 "Cevap" satırı müşavirin cevabıyla doldurulur; "Ayar" yazan maddelerde cevap ekrandan seçilir,
 kod değişmez. Cevabı gelen madde ilgili ekrana ya da yeni bir işe dönüşür.
 
-Kaynaklar: `docs/_plan_erp.md` (§6.5 iade, §11 mevzuat notu), `docs/degisiklikler.md`,
+Kaynaklar: `docs/_plan_erp.md` (§6.5 iade, §11 mevzuat notu), git geçmişindeki `docs/degisiklikler.md`,
 `docs/_isbasi_api_notlari.md`, `docs/_erp_devir_notu.md` ("Mali müşavire").
 
 ---

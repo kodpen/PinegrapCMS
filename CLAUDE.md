@@ -8,7 +8,9 @@ Everything else is in memory files and skills, opened only when needed.
 - Index: `docs/memory/README.md` — one line per file. Read it, then open only
   the files the task needs. It also lists the plans (`docs/_plan_*.md`) and
   other documents.
-- When something must be remembered, add or update a file under
+- Changes are kept as memory; there is no change log. When something must be
+  remembered, or a PR changes behaviour (what it does now, why, the symptom it
+  fixed, the PR number), add or update a file under
   `docs/memory/<folder>/`: English, one topic per file, at most 4 KB, written
   as questions (`## …?`) with short answers, starting with frontmatter:
   `---` / `name: <file name without .md>` / `description: <one line>` / `---`.
@@ -17,11 +19,6 @@ Everything else is in memory files and skills, opened only when needed.
 - The index is generated: run `php tools/memory_index.php` after adding,
   renaming or deleting a file and commit the result. Never edit or merge it
   by hand; CI runs `--check`.
-- `docs/degisiklikler.md` (change log) is **never read**, only written to:
-  insert your `## 2026.4.10 — <title> (<date>)` section directly under the
-  file's first `---` line. It holds only the open version: when a version is
-  released its sections are deleted, not archived. Older detail lives only in
-  git history; `pinegrap/changelog.txt` is the permanent summary.
 - Schema step history: `docs/sema-adimlari.md`; append a row, look up with grep.
 
 ## Skills — load before the matching work
@@ -93,9 +90,8 @@ Branches: work from `development`, PRs to `development`, never to `main`.
    Every other change is covered by the open version's single
    `[FIX] Miscellaneous bug fixes and new features.`,
    `[SECURITY] Implemented various security fixes.` and one short
-   `[SCHEME] …` line: add them once if missing, never one line per fix. The
-   detail goes to `docs/degisiklikler.md` only. Layout and order:
-   `docs/memory/release/upgrade-changelog-rules.md`.
+   `[SCHEME] …` line: add them once if missing, never one line per fix.
+   Layout and order: `docs/memory/release/upgrade-changelog-rules.md`.
 
 ## When a task is done
 

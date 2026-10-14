@@ -6,7 +6,7 @@ description: ERP plan v3 (phases -1 to 5 done); remaining e-document (Phase 3) i
 # Pinegrap ERP — Plan (v3)
 
 **Durum (2026-10-14):** Faz -1, 0, 1, 2, 4 ve 5 bitti (2026.4.4; ayrıntı
-`docs/degisiklikler.md`, sözleşme `.claude/skills/pinegrap-erp/SKILL.md`). Devamı
+git geçmişindeki `docs/degisiklikler.md`, sözleşme `.claude/skills/pinegrap-erp/SKILL.md`). Devamı
 `docs/_plan_erp_ozellikler.md` (Faz 6–9). Biten bölümler bu dosyadan çıkarıldı; planın
 tam metni git geçmişinde: `git show d9fec3a:docs/_plan_erp.md`.
 
@@ -225,7 +225,7 @@ ister — bir test hesabı gerekir).
 İşbaşı'da `myInvoicesList` + `DocumentUblDatawithuuid`. Liste `erp_inbox.php`,
 inceleme `erp_inbox_document.php`; alma onaylı ve **taslak** alış faturası yazar,
 tedarikçi carisi yoksa UBL'den açılır. Tevkifat, KDV dışı vergi ve belge geneli
-indirim reddedilir (ERP tutamıyor). Ayrıntı `docs/degisiklikler.md`.
+indirim reddedilir (ERP tutamıyor). Ayrıntı git geçmişindeki `docs/degisiklikler.md`.
 
 **Cari eşitleme (2026-09-23, 4.69):** sözleşmeye `accounts` / `account` / `account_save`,
 yetenek `accounts`; İşbaşı'da `firms/firms`, `GET firms/{id}`, `PUT firms` (önce oku, yalnız
@@ -233,7 +233,7 @@ kendi alanlarını değiştir). Kartlar `erp_edoc_accounts`'ta, bağ orada; verg
 cariyle eşleşen kart okumada bağlanır, farklar alan alan onayla eşitlenir, kart ERP'ye alınır
 ya da cari sağlayıcıya gönderilir. Bakiye aktarılmaz. Bağlı carinin faturası kartın koduyla
 gider; faturanın durumu sorulunca İşbaşı'nın kullandığı kart bağlanır. Ekranlar
-`erp_account_sync.php`, `erp_account_sync_item.php`. Ayrıntı `docs/degisiklikler.md`.
+`erp_account_sync.php`, `erp_account_sync_item.php`. Ayrıntı git geçmişindeki `docs/degisiklikler.md`.
 
 **Ön koşullar (Paraşüt sürücüsü):**
 1. **API kimlik bilgisi** — `client_id`/`client_secret` self-servis değil, destek üzerinden. *(Mevcut kurulumda alan dolu mu, kontrol edilecek.)*

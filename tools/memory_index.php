@@ -23,8 +23,6 @@
  *                       at most MAX_MEMORY_BYTES bytes per file
  *   docs/_plan_*.md     frontmatter required
  *   other docs/**.md    indexed when they carry frontmatter, else skipped
- * docs/degisiklikler.md is never indexed: the change log is appended to, not
- * read.
  *
  * A new memory folder needs a line in FOLDERS; files directly in docs/memory/
  * are not allowed.
@@ -224,10 +222,7 @@ function memory_index_files($docs) {
 
 		$relative = str_replace('\\', '/', substr($file->getPathname(), strlen($docs) + 1));
 
-		if (
-			($relative === 'memory/README.md' || (strncmp($relative, 'memory/', 7) === 0 && basename($relative) === 'README.md'))
-			|| $relative === 'degisiklikler.md'
-		) {
+		if ($relative === 'memory/README.md' || (strncmp($relative, 'memory/', 7) === 0 && basename($relative) === 'README.md')) {
 			continue;
 		}
 
