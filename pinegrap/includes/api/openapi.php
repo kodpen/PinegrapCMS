@@ -700,7 +700,9 @@ function api_openapi_components()
  * What one route answers with, as the 200 content.
  *
  * A route declares it as 'returns' => 'Product' for the object itself, or
- * array('list' => 'Product') for the listing envelope around it. A route that
+ * array('list' => 'Product') for the listing envelope around it; a listing
+ * that carries a field of its own beside data and page names it there too,
+ * array('list' => 'WorkspaceInboxItem', 'reload' => 'boolean'). A route that
  * returns something with no shape worth naming - the OpenAPI document, the
  * console's own HTML - declares nothing and keeps the bare description it had.
  *
@@ -719,10 +721,13 @@ function api_openapi_success_schema($route)
 
     if (is_array($returns) && isset($returns['list'])) {
 
+        $beside = $returns;
+        unset($beside['list']);
+
         return api_openapi_type_spec(array(
             'data' => $returns['list'] . '[]',
             'page' => 'Paging'
-        ));
+        ) + $beside);
 
     }
 

@@ -575,8 +575,10 @@ function api_ok($data, $status_code = 200) {
 
 // A page of a collection. next_cursor is null on the last page, which is what a
 // client loops on; total is absent unless it was asked for, because COUNT(*)
-// over a large catalogue on every poll costs more than it tells.
-function api_ok_list($rows, $limit, $next_cursor = null, $total = null) {
+// over a large catalogue on every poll costs more than it tells. A listing may
+// carry a field or two of its own beside data and page ($extra, declared next
+// to 'list' in its route's returns), such as the inbox's reload.
+function api_ok_list($rows, $limit, $next_cursor = null, $total = null, $extra = array()) {
 
 	$page = array(
 		'limit'       => (int)$limit,
@@ -590,7 +592,7 @@ function api_ok_list($rows, $limit, $next_cursor = null, $total = null) {
 
 	}
 
-	api_send(200, array('data' => array_values($rows), 'page' => $page));
+	api_send(200, array('data' => array_values($rows), 'page' => $page) + (array)$extra);
 
 }
 
