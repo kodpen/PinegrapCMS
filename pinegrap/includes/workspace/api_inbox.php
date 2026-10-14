@@ -242,6 +242,27 @@ function ws_api_inbox_changed_where($user_id, $since, $after_id)
 }
 
 /**
+ * The last moment anything in a person's inbox changed as changed_since
+ * finds it: the newest created_at of the unread rows (a line written, or sent
+ * again - only an unread line is sent again) and the newest read_at of any
+ * row (a row read was written before it was read). Both read idx_user: the
+ * unread rows, which are few, and one end of it, so an app's sync can ask
+ * every few seconds.
+ *
+ * @param int $user_id
+ * @return int timestamp, 0 for an inbox that never held a line
+ */
+function ws_api_inbox_changed_at($user_id)
+{
+    $user_id = (int) $user_id;
+
+    $written = (int) db_value("SELECT COALESCE(MAX(created_at), 0) FROM ws_inbox WHERE user_id = '" . $user_id . "' AND read_at = 0");
+    $read = (int) db_value("SELECT COALESCE(MAX(read_at), 0) FROM ws_inbox WHERE user_id = '" . $user_id . "'");
+
+    return max($written, $read);
+}
+
+/**
  * The lines of the owner's inbox that changed at or after a moment, oldest
  * first, after a line, each as it is now. Lines out of the owner's reach are
  * passed over and the page filled from the rows after them, so as many lines

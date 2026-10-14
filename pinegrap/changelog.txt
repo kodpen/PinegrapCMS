@@ -1567,6 +1567,19 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: telefon ya da bilgisayar
+         uygulamasının tek eşitleme çağrısı zildeki
+         bildirim sayısını da getiriyor (uygulamaya
+         "Kendi hesabı" izni verildiyse; ekip
+         cihazlarıyla oturum açan kişide her zaman).
+         Kişinin uygulamasına açık kanalın sabitlenmiş
+         mesajı, sekmelerdeki sayılar (kararlar ve
+         notlar, açık görevler, özet) ve panonun
+         değiştiği de geliyor, yalnız değiştiklerinde.
+         Gelen kutusunun en son ne zaman değiştiği de
+         geliyor; uygulama yalnız değişen satırları
+         okuyabiliyor.
+
   [YENİ] Çalışma Alanı: uygulama, elindeki gelen
          kutusu satırlarında sonradan ne değiştiğini
          (yeni gelenler, panelde ya da zilde okunanlar)
