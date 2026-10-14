@@ -711,16 +711,31 @@ function api_openapi_components()
         )
     ));
 
-    // What a rehearsal answers with (api_dry_run_stop()); detail is there only
-    // when the endpoint has something to say about what it would have done.
-    $schemas['DryRun'] = api_openapi_type_spec(array(
+    $schemas['DryRun'] = api_openapi_dry_run_schema();
+
+    return $schemas;
+}
+
+/**
+ * What a rehearsal answers with (api_dry_run_stop()). detail is there only
+ * when the endpoint has something to say about what it would have done; the
+ * other three are always sent, and dry_run is a field no record carries - it
+ * is what tells a rehearsal from a record where the two share a 200.
+ *
+ * @return array
+ */
+function api_openapi_dry_run_schema()
+{
+    $schema = api_openapi_type_spec(array(
         'dry_run'  => 'boolean',
         'would'    => 'string',
         'resource' => 'string',
         'detail'   => 'object'
     ));
 
-    return $schemas;
+    $schema['required'] = array('dry_run', 'would', 'resource');
+
+    return $schema;
 }
 
 /**
@@ -818,6 +833,26 @@ function api_openapi_responses($route) {
 	// there instead, 204 for an answer with no body at all.
 	$codes = api_openapi_success_codes($route);
 
+	// A rehearsal of a write whose real answer is a 200 answers 200 as well,
+	// with the dry-run answer in place of the record (api_dry_run_stop()), so
+	// that 200 describes both. anyOf rather than oneOf: a record schema names
+	// no required field, so a dry-run answer fits it too, and a validator
+	// holding oneOf to exactly one match would refuse every rehearsal.
+	// DryRun comes first and requires dry_run, which no record carries, so a
+	// client that takes the first match reads each answer as what it is.
+	$answer_200 = $success;
+
+	$rehearsed = !empty($route['dry_run']) && isset($success['content']['application/json']['schema']);
+
+	if ($rehearsed) {
+
+		$answer_200['content']['application/json']['schema'] = array('anyOf' => array(
+			array('$ref' => '#/components/schemas/DryRun'),
+			$success['content']['application/json']['schema']
+		));
+
+	}
+
 	foreach ($codes as $code) {
 
 		if ($code === 204) {
@@ -831,7 +866,11 @@ function api_openapi_responses($route) {
 		} elseif (count($codes) > 1) {
 
 			$responses[(string)$code] = array('description' => 'The record that was already there, handed back instead of a new one; the description of the endpoint says when.'
-				. (!empty($route['dry_run']) ? ' A rehearsal (X-Dry-Run: true) answers 200 too, with {"dry_run": true, ...} and nothing written.' : '')) + $success;
+				. ($rehearsed ? ' A rehearsal (X-Dry-Run: true) answers 200 too, with {"dry_run": true, ...} and nothing written.' : '')) + $answer_200;
+
+		} elseif ($rehearsed) {
+
+			$responses[(string)$code] = array('description' => 'Success. A rehearsal (X-Dry-Run: true) answers 200 too, with {"dry_run": true, ...} and nothing written.') + $answer_200;
 
 		} else {
 

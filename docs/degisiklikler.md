@@ -84,6 +84,83 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — API belgesi: 200 dönen yazmalarda prova cevabı, kişi dışı boş gelebilen alanlar (2026-10-14)
+
+**Neden.** #401'in bıraktığı üç iş. (1) Provası olan ve gerçekte 200 dönen
+yazma uçlarında (güncelleme, işlem, silme; 122 rota, takma adlarıyla 151
+işlem) prova cevabı (`api_dry_run_stop()`, `{"dry_run": true, ...}`)
+OpenAPI'de yalnız kaydın şemasıyla yazılıydı: belgeden üretilen istemci
+provanın cevabını kayıt sanıyordu. (2) Nullable taraması kişi alanlarıyla
+sınırlıydı. (3) OAuth istemci kaydının 201'i API belgesinde yoktu.
+
+**Ne değişti.**
+- `api_openapi_responses()`: provası olan rotanın 200'ü artık
+  `anyOf: [DryRun, kaydın şeması]`; açıklaması provanın da 200 döndüğünü
+  söylüyor. 201 + 200 dönen üç rotada (`workspace.threads.start`,
+  `erp.waybills.invoice`, `erp.accounts.late_fee_invoice`) 200 de böyle.
+  Oluşturma ve 204 uçlarının ayrı prova 200'ü (`DryRun`) değişmedi.
+- `oneOf` değil `anyOf`: kayıt şemaları hiçbir alanı zorunlu tutmadığı için
+  prova cevabı kaydın şemasına da uyuyor; `oneOf` "yalnız biri" ister ve
+  sıkı bir doğrulayıcı (`openapi-schema-validator` ile denendi) her prova
+  cevabını reddederdi, bütün üyeleri deneyen üretilmiş istemciler de
+  (openapi-generator Python) "birden çok eşleşme" hatası verirdi.
+  `DryRun` önce geliyor ve artık `dry_run`, `would`, `resource`'u zorunlu
+  tutuyor (yeni `api_openapi_dry_run_schema()`); hiçbir kayıtta `dry_run`
+  alanı yok, bu yüzden ilk eşleşeni alan istemci her cevabı doğru okur.
+- Nullable taraması: her nesnenin sunucu fonksiyonunda `null`,
+  `api_time()`, `erp_api_date()` ve `*_ref()` veren alanlar ve ham
+  sütun değerleri bildirimle karşılaştırıldı. Gerçekten boş gelebilen ve
+  boş olamaz yazılı olanlar:
+  - `Customer.first_name`, `last_name`, `email`, `company`, `phone`,
+    `address.*`: `contacts` sütunları `DEFAULT NULL`, kişi bilinenle açılıyor
+    (e-posta tercihleri yalnız adresle, `POST /customers` yalnız verilen
+    alanlarla), `api_customer_phone()` üç numara da boşsa `null`.
+  - `Product.short_description`: `DEFAULT NULL` sütun; sütunu olmayan bir
+    tabloyla içe aktarılan ürün onu yazmıyor.
+  - `Meta.ecommerce.default_tax_rate`: sitenin ülkesi hiçbir vergi
+    bölgesinde değilse `null` (kod yorumu da öyle diyordu).
+  - `WorkspaceRecord.lines`: yalnız sipariş satırlarıyla okunuyor
+    (`ws_ai_record_present()`), öbür kayıtlarda `null`. Satır içi liste
+    nullable yazılamadığı için yeni nesne `WorkspaceRecordLine` ve
+    `'WorkspaceRecordLine[]?'`.
+- #400'ün kanal grubu nesneleri tarandı, düzeltme gerekmedi: boş
+  gelebilenler (`parent_id`, `color`, `access`, taşımada `group_id`,
+  `group_path`, `previous_group_id`, yetkide `granted_by`, `granted_at`)
+  zaten `?` taşıyor, gerisi hep dolu. Test bunu sabitliyor.
+- `tests/api_openapi_status_test.php`: 5 yeni test (200 yazmanın iki
+  biçimi; `DryRun`'un zorunlu alanları ve hiçbir nesnede `dry_run` alanı
+  olmaması; üç tablo + çeviri modülünde provası olan her rotanın 200'ü;
+  kişi dışı nullable alanlar; kanal grubu nesneleri), iki test yeni 200'e
+  göre güncellendi.
+
+Uçların davranışı, şema, dil dosyası ve JS değişmedi; değişen OpenAPI
+üreticisi ve nesne bildirimleri.
+
+**Bilerek yapılmayan.** OAuth istemci kaydı (`POST oauth.php/register`,
+201) API'nin OpenAPI belgesine eklenmedi: `integration.php`'nin değil
+OAuth yetkilendirme sunucusunun ucu; RFC 7591'in kendi biçimiyle
+(`{"error", "error_description"}`) cevap veriyor, API kimliği almıyor,
+yalnız OAuth açıkken var ve istemciler onu RFC 8414 belgesinden
+(`.well-known/oauth-authorization-server`, `registration_endpoint`)
+buluyor. Yanındaki `authorize`, `token` ve `revoke` da belgede değil;
+yalnız kaydı eklemek yarım, hepsini eklemek tarayıcı yönlendirmeli bir
+akışı REST istemci üreticisine anlatmak olurdu. Ham sütunda `DEFAULT NULL`
+olup her ekleme yolunda yazılan alanlar (ürün ve grup adı, sayfa başlığı,
+dosya adı ve türü) işaretlenmedi. Bearer şemasının açıklaması (#405
+artığı) bu işin dışında.
+
+**Doğrulama.** Sandbox'sız: OpenAPI belgesi CLI'da modüller açık üretildi
+(380 işlem), önce ve sonra `openapi-spec-validator` ile geçerli. Fark:
+151 işlemin 200'ü `anyOf`, provası olan her işlemin 200'ü ya `DryRun` ya
+`anyOf`; değişen bileşenler `DryRun`, `Customer`, `Product`, `Meta`,
+`WorkspaceRecord`, yeni `WorkspaceRecordLine`. Örnek cevaplar
+`openapi-schema-validator` ile: prova ve ürün cevabı `anyOf`'a uyuyor,
+prova cevabı `oneOf`'a uymuyor; adsız müşteri yeni şemaya uyuyor, eskisine
+uymuyordu. `lint`, `check_lang`, `check_bindings`, `check_api_schema`,
+`check_copies`, `build_js --check`, `tools/test.php` yeşil.
+
+---
+
 ## 2026.4.10 — Site formları: dört POST betiği ve özel form fonksiyonları dizi gelen değerde 500 veriyordu (2026-10-14)
 
 **Neden.** #394 sayfaların ekranlarını temizlerken bu ekranların

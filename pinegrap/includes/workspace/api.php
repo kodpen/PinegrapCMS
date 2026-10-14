@@ -132,6 +132,7 @@ function ws_openapi_objects()
         'WorkspaceChannelContext' => 'ws_api_channel_context_schema',
         'WorkspaceChangeType'     => 'ws_api_claude_change_type_schema',
         'WorkspaceRecord'         => 'ws_api_claude_record_schema',
+        'WorkspaceRecordLine'     => 'ws_api_claude_record_line_schema',
         'WorkspaceChannelMember'  => 'ws_api_channel_member_schema',
         'WorkspaceChannelMembers' => 'ws_api_channel_members_schema',
         'WorkspaceChange'         => 'ws_api_change_schema',

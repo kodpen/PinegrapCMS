@@ -469,6 +469,8 @@ function ws_api_claude_record_present($read)
     );
 }
 
+// lines is null for every record but an order, the only one read with its
+// lines (ws_ai_record_present()).
 function ws_api_claude_record_schema()
 {
     return array(
@@ -477,8 +479,14 @@ function ws_api_claude_record_schema()
         'about'  => 'string',
         'status' => 'string',
         'fields' => 'object?',
-        'lines'  => array(array('product' => 'string?', 'name' => 'string', 'quantity' => 'integer', 'unit_price' => 'string', 'line_tax' => 'string')),
+        'lines'  => 'WorkspaceRecordLine[]?',
     );
+}
+
+// One line of a document a record reads (ws_api_claude_record_schema()).
+function ws_api_claude_record_line_schema()
+{
+    return array('product' => 'string?', 'name' => 'string', 'quantity' => 'integer', 'unit_price' => 'string', 'line_tax' => 'string');
 }
 
 /**
