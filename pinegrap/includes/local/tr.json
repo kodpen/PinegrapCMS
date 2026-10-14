@@ -23171,5 +23171,6 @@
     "Each item of {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her öğe oylamanın seçeneklerinden birinin kimliği olmalı.",
     "Only one option can be chosen in this poll.": "Bu oylamada yalnız bir seçenek seçilebilir.",
     "Only the person, signed in on a device, can join or leave a discussion; an application cannot do it for them.": "Tartışmaya yalnız cihazında oturum açmış kişinin kendisi katılabilir ya da tartışmadan ayrılabilir; bir uygulama onun adına yapamaz.",
-    "Only staff who read its channel can join a discussion.": "Tartışmaya yalnız kanalını okuyabilen personel katılabilir."
+    "Only staff who read its channel can join a discussion.": "Tartışmaya yalnız kanalını okuyabilen personel katılabilir.",
+    "Only a picture has a smaller copy.": "Küçük kopyası yalnız görselin olur."
 }

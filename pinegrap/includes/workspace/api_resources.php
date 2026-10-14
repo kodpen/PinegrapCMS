@@ -1096,7 +1096,7 @@ function ws_api_files_create($params)
 
 /**
  * Sends the file a message carries to whoever may read the message, as its
- * own bytes.
+ * own bytes, a part of it (Range) or, for a picture, a smaller copy (size).
  */
 function ws_api_files_get($params)
 {
@@ -1118,6 +1118,18 @@ function ws_api_files_get($params)
     }
 
     $type = ws_file_type($message['file_name']);
+
+    if (!empty($params['size'])) {
+        if (ws_file_kind($message['file_name']) !== 'image') {
+            api_fail_validation(lang('Only a picture has a smaller copy.'), 'size');
+        }
+
+        $preview = ws_file_preview($path, (int) $params['size']);
+
+        if ($preview !== null) {
+            api_send_file($preview['path'], $preview['mime'], (string) $message['file_name'], true);
+        }
+    }
 
     api_send_file($path, $type['mime'], (string) $message['file_name'], $type['inline']);
 }

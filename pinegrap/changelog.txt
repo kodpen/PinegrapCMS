@@ -833,6 +833,12 @@
   ÇALIŞMA ALANI
   --------------------------------------------------------
 
+  [DÜZELTME] Ataçla ya da düzenlenmiş kopya olarak
+         gönderilen bir dosyanın mesajı yazılamadığında
+         (çok hızlı art arda gönderim gibi) dosya Dosya
+         Yöneticisi'ndeki kanal klasöründe sahipsiz
+         kalıyordu; artık mesajla birlikte geri alınıyor.
+
   [HIZ] Çalışma Alanı ekranları daha hafif açılıyor. Bir
          ekranın yüklediği JavaScript yaklaşık 5 MB'tan
          2,2 MB'a, dosya sayısı 59'dan 16-18'e indi.
@@ -1566,6 +1572,20 @@
 
   DIŞ API
   --------------------------------------------------------
+
+  [YENİ] Çalışma Alanı: uygulama kanaldaki bir
+         fotoğrafın küçük kopyasını isteyebiliyor; liste
+         gösteren telefon her fotoğrafın aslını indirmek
+         zorunda kalmıyor. Videolar da parça parça
+         indirilebiliyor: uygulama videoyu tamamı inmeden
+         oynatmaya başlıyor ve ileri sarabiliyor, yarıda
+         kalan bir indirme kaldığı yerden sürüyor.
+
+  [DÜZELTME] Çalışma Alanı: uygulama aynı tekrar
+         anahtarıyla (Idempotency-Key) aynı ad ve metinle
+         ama başka bir dosya gönderdiğinde ilk dosyanın
+         mesajı geri dönüyordu; artık dosyanın kendisi de
+         karşılaştırılıyor ve farklı dosya reddediliyor.
 
   [YENİ] Çalışma Alanı: telefon ya da bilgisayar
          uygulamasıyla oturum açan kişi bir kanalın

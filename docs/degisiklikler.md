@@ -84,6 +84,85 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kanal görselinin küçük kopyası, dosyada Range; panelde yazılamayan mesajın dosyası geri alınıyor (2026-10-14)
+
+**Neden.** #378 (mobil API planının M5 dilimi) kanal dosyasını jetonla
+indirme ucunu açtı ve dört parçayı kapsam dışında bıraktı: görselde küçük
+önizleme yoktu (liste gösteren telefon her fotoğrafın aslını indiriyordu),
+`Range` yoktu (iOS AVPlayer adresten oynatırken parça ister; uygulama videoyu
+önce bütün indirmek zorundaydı), panelin ataç yolu mesaj yazılamadığında
+dosyayı Dosya Yöneticisi'nde sahipsiz bırakıyordu (API yolu geri alıyordu)
+ve multipart yüklemede `Idempotency-Key` parmak izi dosyayı değil yalnız
+`name` ve `text`'i kapsıyordu.
+
+**Ne değişti.**
+- `GET /workspace/messages/{id}/file?size=N` (1–4096): görselin küçük
+  kopyası; uzun kenarı 160, 320, 640, 1280 ya da 1920'nin N'ye eşit ya da
+  büyük ilki (en çok 1920, `ws_file_preview_edge()`). Sabit basamaklar
+  diskte görsel başına basamak kadar kopya tutar ve çağıranın her ekran
+  genişliği için yeniden çizdirmesini önler. Çizim dosya yöneticisinin
+  optimize / boyutlandır motoru (`pg_process_image_file()`, `write =>
+  false`, kalite 80): görselin kendi biçiminde, EXIF dönüşü uygulanmış,
+  metadata'sız. Kopya `data/temp/workspace_previews/` altında, adı
+  saklanan dosyanın adı + boyutu + değişme anı + basamağın SHA-1'i; aynı
+  adla değiştirilen dosya yeni kopya alır. Ara dosyaya yazılıp taşınır
+  (yarım kopya okunmaz); yeni kopya yazılırken 50'de bir 30 günden eski
+  kopyalar süpürülür (`ws_file_preview_sweep()`). Görsel zaten küçükse,
+  küçültülemiyorsa (hareketli GIF, kütüphanenin okumadığı biçim, bellek
+  yetmezse) ya da kopya yazılamazsa asıl gider. Görsel olmayan dosyada
+  `size` 422. Erişim kuralı indirmeyle aynı (mesajı okuyabilen).
+- `api_send_file()` (`includes/api/response.php`) artık `Range`'i
+  karşılıyor: tek aralık 206 + `Content-Range`, aralık dosya sonundan
+  sonra başlıyorsa 416 + `Content-Range: bytes */boyut`; her cevapta
+  `Accept-Ranges: bytes`. `If-Range` ETag'i tutmuyorsa (ya da tarihse;
+  bu çıkış `Last-Modified` göndermiyor) dosyanın tamamı 200 ile gider.
+  Birden çok aralık, başka birim ya da okunamayan başlık yok sayılır ve
+  dosyanın tamamı gider (RFC 9110 izin veriyor). `If-None-Match` önce
+  bakılır (304). Parça 1 MB'lık dilimlerle okunur, bellekte bütün
+  tutulmaz (`api_send_file_part()`). Ayrıştırma saf fonksiyon:
+  `pg_http_byte_range()` (`includes/fn/files.php`). OpenAPI'de `binary`
+  rotalara `Range` / `If-Range` başlıkları ve 206 / 416 cevapları eklendi;
+  `api_status_text()` 206 ve 416'yı tanıyor.
+- Panelin `ws_attach`'ı ve düzenlenmiş kopyayı yanıt olarak gönderen
+  `ws_message_file_send()` mesaj yazılamazsa (hız sınırı, 4000 karakteri
+  aşan metin) dosyayı `ws_upload_discard()` ile geri alıyor; API yolu
+  zaten böyleydi.
+- `Idempotency-Key` parmak izi `'form_file'` rotasında form parçasının
+  adını, boyutunu ve SHA-256'sını da kapsıyor (`api_idempotency_input()`,
+  `includes/api/idempotency.php`); aynı anahtar, aynı ad ve metinle başka
+  dosya artık ilk mesajla cevaplanmıyor, 409 `idempotency_key_reused`.
+  Aynı dosyanın tekrarı yine ilk cevabı alıyor. Özet yalnız anahtar
+  gönderildiğinde hesaplanır.
+
+Şema değişikliği yok, yeni izin kapsamı yok, MCP aracı yok (iki rota
+`'mcp' => false` kalıyor). Yeni metin `tr.json`'da (1 anahtar).
+
+**Bilerek yapılmayan.** Kopyalar her istekte değil yalnız yeni kopya
+yazılırken süpürülüyor; silinen mesajın kopyası en geç 30 gün sonra
+gidiyor (API onu zaten vermiyor: dosya satırı ve dosya yoksa 404). BMP'nin
+kopyası BMP kalıyor (biçim dönüştürülmüyor). `HEAD` isteği API'de
+yönlendirilmiyor (405, eskisi gibi); oynatıcılar `GET` + `Range` kullanıyor. Panelin
+`get_file.php` yolu `Range` desteklemiyor; bu dilim yalnız API çıkışına
+dokundu.
+
+**Doğrulama.** `tests/http_byte_range_test.php` (yeni: aralık biçimleri,
+dosyaya kırpma, sonu aşan aralık, yok sayılan başlıklar) ve
+`tests/workspace_api_test.php`'ye üç test (`size` parametresi, basamaklar,
+küçük ya da görsel olmayan dosyada asıl). Sandbox'ta uygulama anahtarıyla:
+2400×1600 JPEG `size=300` → 320×213 JPEG, ikinci istek aynı ETag, ETag ile
+304; `size=3000` → 1920×1280; `size=0` ve `size=99999` 422; videoda
+`size` 422; asıl dosya bayt bayt aynı. 1,8 MB video: tamamı 200 +
+`Accept-Ranges`, `bytes=0-1` ve `bytes=1000000-` 206 doğru `Content-Range`
+ve bayt bayt aynı, sonu aşan 416, `If-Range` tutarken 206, tutmazken 200,
+jetonsuz 401. Aynı anahtarla aynı dosya iki kez 201 ve aynı mesaj, başka
+dosya 409; tabloda tek mesaj ve tek dosya. Panelde (`api.php`,
+`ws_attach`): başarılı ek 1 dosya + 1 mesaj; 20000 karakterlik metin ve
+hız sınırı hataları sonrası dosya tablosu ve diskte değişiklik yok. JPEG,
+PNG, WebP ve GIF kopyaları ayrıca CLI'da çizildi. Sunucu günlüğünde hata
+yok.
+
+---
+
 ## 2026.4.10 — Dış API: kanal bildirim düzeyi, oylamaya oy ve tartışmaya katılma / ayrılma (2026-10-14)
 
 **Neden.** Mobil API planının M6 dilimi

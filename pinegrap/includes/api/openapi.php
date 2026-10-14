@@ -154,6 +154,27 @@ function api_openapi_build() {
 				'schema'      => array('type' => 'string')
 			);
 
+			// A file is also sent in parts (api_send_file()).
+			if (!empty($route['binary'])) {
+
+				$parameters[] = array(
+					'name'        => 'Range',
+					'in'          => 'header',
+					'required'    => false,
+					'description' => 'One range of bytes, such as bytes=0-1048575 or bytes=-500. The answer is 206 with that part and Content-Range; a range past the end is 416. Several ranges, or one that cannot be read, get the whole file.',
+					'schema'      => array('type' => 'string')
+				);
+
+				$parameters[] = array(
+					'name'        => 'If-Range',
+					'in'          => 'header',
+					'required'    => false,
+					'description' => 'The ETag of the file you hold a part of. When the file has changed since, the whole new file comes back (200) rather than a part of it.',
+					'schema'      => array('type' => 'string')
+				);
+
+			}
+
 		}
 
 		if (!empty($parameters)) {
@@ -772,6 +793,17 @@ function api_openapi_responses($route) {
 	if ($route['method'] === 'GET') {
 
 		$responses['304'] = array('description' => 'Not modified: the ETag sent in If-None-Match still matches. No body.');
+
+		if (!empty($route['binary'])) {
+
+			$responses['206'] = array(
+				'description' => 'The part of the file the Range header asked for; Content-Range says which bytes of how many.',
+				'content'     => array('application/octet-stream' => array('schema' => array('type' => 'string', 'format' => 'binary')))
+			);
+
+			$responses['416'] = array('description' => 'The range starts past the end of the file. Content-Range: bytes */size gives the size. No body.');
+
+		}
 
 	} else {
 

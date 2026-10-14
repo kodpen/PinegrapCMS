@@ -491,3 +491,69 @@ function test_ws_api_poll_present()
 	pg_assert_true($present['options'][0]['mine'] && !$present['options'][1]['mine'], 'mine marks the person\'s choice');
 	pg_assert_same(array_keys(ws_api_poll_schema()), array_keys($present), 'the answer has the declared fields in order');
 }
+
+// The download takes a size for a picture's smaller copy, bounded so the
+// query string cannot ask for anything absurd.
+function test_ws_api_files_get_takes_a_size()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $candidate) {
+		if ($candidate['id'] === 'workspace.files.get') {
+			$route = $candidate;
+		}
+	}
+
+	$size = null;
+
+	foreach ((array) ($route['params'] ?? array()) as $param) {
+		if ($param['name'] === 'size') {
+			$size = $param;
+		}
+	}
+
+	pg_assert_true(is_array($size), 'size is declared');
+	pg_assert_same('query', $size['in']);
+	pg_assert_same('int', $size['type']);
+	pg_assert_same(1, $size['min']);
+	pg_assert_same(4096, $size['max']);
+}
+
+// A smaller copy is drawn at one of a few fixed edges: the first at least as
+// large as asked, the largest of them at most.
+function test_ws_file_preview_edge()
+{
+	pg_assert_same(160, ws_file_preview_edge(1));
+	pg_assert_same(160, ws_file_preview_edge(160));
+	pg_assert_same(320, ws_file_preview_edge(161));
+	pg_assert_same(640, ws_file_preview_edge(600));
+	pg_assert_same(1280, ws_file_preview_edge(1000));
+	pg_assert_same(1920, ws_file_preview_edge(1500));
+	pg_assert_same(1920, ws_file_preview_edge(4096));
+}
+
+// A picture already no larger than the edge, and a file that is no picture,
+// are sent as they are; nothing is drawn or kept for them.
+function test_ws_file_preview_sends_the_original()
+{
+	$directory = sys_get_temp_dir() . '/pg_ws_preview_test_' . getmypid();
+	@mkdir($directory);
+
+	$text = $directory . '/notes.jpg';
+	file_put_contents($text, 'not a picture');
+	pg_assert_same(null, ws_file_preview($text, 160), 'not a picture');
+
+	if (function_exists('imagecreatetruecolor') && function_exists('imagepng')) {
+		$small = $directory . '/small.png';
+		$image = imagecreatetruecolor(150, 90);
+		imagepng($image, $small);
+		imagedestroy($image);
+
+		pg_assert_same(null, ws_file_preview($small, 160), 'no larger than the edge');
+		pg_assert_same(null, ws_file_preview($small, 1), 'smaller than the smallest edge');
+		@unlink($small);
+	}
+
+	@unlink($text);
+	@rmdir($directory);
+}

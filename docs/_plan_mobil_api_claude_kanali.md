@@ -137,11 +137,13 @@ tek satır `GET /workspace/inbox/{id}`; zil satırının `url`'si de düzeldi. `
 uygulama bu kaydı okuyup ilgili ekranı açar. `ws_inbox_list()` ve `ws_inbox_mark_read()`
 kullanılır.
 
-**M5 — Dosya (O, şema yok). Yapıldı (#378; önizleme ve Range hariç):** erişim kuralı
+**M5 — Dosya (O, şema yok). Yapıldı (#378; önizleme ve Range ardından geldi):** erişim kuralı
 `get_file.php`'den alınmadı; uç mesajdan gider ve mesajı okuyabilen dosyayı da alır
 (`ws_can_read_channel()`), böylece kopya oluşmadı. Dosya JSON içinde değil kendi baytlarıyla
-döner (`api_send_file()`); iki uç MCP aracı değil. `?size=` önizleme ve video için `Range`
-sonraki küçük dilim.
+döner (`api_send_file()`); iki uç MCP aracı değil. `?size=` önizleme (`ws_file_preview()`,
+kopya `data/temp`'te) ve `Range` / `If-Range` (206 / 416, her `api_send_file()` cevabında)
+ardından geldi; panelin `ws_attach`'ı da yazılamayan mesajın dosyasını geri alıyor ve form
+yüklemesinin `Idempotency-Key` parmak izi dosyanın SHA-256'sını kapsıyor.
 - `POST /workspace/channels/{id}/files` (multipart ya da `content_base64`, isteğe bağlı `text`):
   `ws_store_upload()` + `ws_message_send()`; boyut sınırı `ws_upload_max_bytes()`. Tartışmanın
   dosyası kanalın klasörüne gider (bugünkü kural).
