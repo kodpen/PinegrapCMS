@@ -122,7 +122,8 @@ API açıklamaları ("readers see it as written by the application") güncelleni
 **M3 — Tek çağrıda eşitleme (O, şema yok). Yapıldı (#374):** kanal ve tartışma listesi yalnız
 değiştiklerinde gelir; rota MCP aracı değildir. Sonradan cevaba zil sayısı (`account:read` ile), gelen
 kutusunun değişim anı ve kişinin uygulamasına açık kanalın sabitlenmiş mesajı, sekme sayıları ve
-pano işareti eklendi. `GET /workspace/sync?cursor=…&channel_id=…`:
+pano işareti eklendi; sabitleme, sabitlemeyi kaldırma ve kişinin kendisi için kapatması da API'de
+(`POST /workspace/messages/{id}/pin`, `/pin/close`). `GET /workspace/sync?cursor=…&channel_id=…`:
 değişen kanallar (okunmamış sayısıyla), tartışmalar, gelen kutusu sayısı, açık kanalın yeni ve
 değişen mesajları, sonraki `cursor`. ETag / 304 ile ucuz; uygulama önündeyken 3–5 sn'de bir
 çağırır. Çağrı `ws_touch_seen()` yapar, böylece ekranda okuyan kişinin telefonu push ile ayrıca

@@ -1532,6 +1532,118 @@ function ws_api_messages_ack_request($params)
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
 }
 
+/**
+ * The message pinned to the top of a channel (pins.php) is set from the
+ * person's own app: the channel then says who pinned it, so like a change
+ * to their words it comes from a team devices session only. The pin bar is
+ * drawn from the channel's state, which reaches that session alone
+ * (ws_api_sync_channel_state()).
+ *
+ * @param array $viewer
+ * @param int   $id the message's
+ * @return array message, channel
+ */
+function ws_api_pin_target($viewer, $id)
+{
+    $message = ws_api_message_or_404($viewer, $id);
+
+    ws_api_own_words_only(lang('Only the person, signed in on a device, can pin a message, take the pin off or close it; an application cannot do it for them.'));
+
+    if (!ws_pins_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    return array('message' => $message, 'channel' => ws_channel($message['channel_id']));
+}
+
+/**
+ * Pins a message to the top of its channel in place of the one there, or
+ * with on false takes it off, the way Pin to the top and Take the pin off in
+ * the message menu do. Asking for what already is - pinning the pinned one,
+ * taking the pin off another message - changes nothing and writes no line,
+ * so a retried call does not say twice that a message was pinned, and an
+ * app that missed a newer pin does not take it off.
+ */
+function ws_api_messages_pin($params)
+{
+    $viewer = ws_api_viewer();
+    $target = ws_api_pin_target($viewer, $params['id']);
+    $message = $target['message'];
+    $channel = $target['channel'];
+
+    if (ws_channel_is_thread($channel)) {
+        api_fail_validation(lang('A discussion has no message pinned to the top.'));
+    }
+
+    if (!ws_can_pin($viewer, $channel)) {
+        api_fail(403, 'forbidden', ((int) $channel['archived_at'] > 0) ? lang('This channel is archived. It can be read but not written in.') : lang('You cannot post in that channel.'));
+    }
+
+    $on = !array_key_exists('on', $params) || !empty($params['on']);
+    $current = ws_channel_pinned_message($channel);
+    $pinned = $current ? (int) $current['id'] : 0;
+
+    if ($on && !in_array($message['kind'], array('message', 'note', 'decision', 'task'), true)) {
+        api_fail_validation(lang('Only a message, a note, a decision or a task card can be pinned.'));
+    }
+
+    $changes = $on ? ($pinned !== (int) $message['id']) : ($pinned === (int) $message['id']);
+
+    api_dry_run_stop($on ? 'pinned' : 'unpinned', 'workspace_pin', array(
+        'channel_id' => (int) $channel['id'],
+        'message_id' => (int) $message['id'],
+        'replaces'   => ($on && $changes && ($pinned > 0)) ? $pinned : null,
+        'changes'    => $changes,
+    ));
+
+    if ($changes) {
+        $result = ws_channel_pin_message($viewer, $channel, $on ? (int) $message['id'] : 0);
+
+        if (!$result['ok']) {
+            api_fail_validation($result['error']);
+        }
+    }
+
+    api_ok(ws_api_sync_channel_state_present(ws_api_sync_channel_state($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * Closes the pinned message for the person, the way the cross on the pin
+ * bar does: it stays closed for them, on every screen, until another one is
+ * pinned. Only the message pinned now can be closed; for any other nothing
+ * changes, so a newer pin the app has not drawn yet stays open.
+ */
+function ws_api_messages_pin_close($params)
+{
+    $viewer = ws_api_viewer();
+    $target = ws_api_pin_target($viewer, $params['id']);
+    $message = $target['message'];
+    $channel = $target['channel'];
+
+    if (!ws_channel_membership($channel['id'], $viewer['id'])) {
+        api_fail(409, 'not_member', lang('Only the people in a channel keep the pinned message closed; anybody else closes it on their own screen.'));
+    }
+
+    $pinned = ws_channel_pinned_message($channel);
+    $changes = $pinned && ((int) $pinned['id'] === (int) $message['id']);
+
+    api_dry_run_stop('closed', 'workspace_pin', array(
+        'channel_id' => (int) $channel['id'],
+        'message_id' => (int) $message['id'],
+        'changes'    => $changes,
+    ));
+
+    if ($changes) {
+        $result = ws_channel_pin_hide($viewer, $channel);
+
+        if (!$result['ok']) {
+            api_fail(503, 'service_unavailable', $result['error']);
+        }
+    }
+
+    api_ok(ws_api_sync_channel_state_present(ws_api_sync_channel_state($viewer, ws_channel($channel['id']))));
+}
+
 /* ---------------------------------------------------------------------------
    Approval requests (approvals.php)
    --------------------------------------------------------------------------- */

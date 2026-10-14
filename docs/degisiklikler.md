@@ -84,6 +84,80 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: mesajı kanalın en üstüne sabitleme, sabitlemeyi kaldırma ve kişinin kendisi için kapatması (2026-10-14)
+
+**Neden.** #380 açık kanalın sabitlenmiş mesajını `GET /workspace/sync`
+cevabına (`channel_state.pin`) koydu, ama API'de mesaj sabitleyen ya da
+sabitlemeyi kaldıran bir uç yoktu: ekip cihazları uygulaması panelin
+sabitleme şeridini gösterebiliyor, mesaj menüsündeki "En üste sabitle",
+"Sabitlemeyi kaldır" ve şeridin kapatma düğmesini yapamıyordu.
+
+**Ne değişti.**
+- `POST /workspace/messages/{id}/pin` (`ws_api_messages_pin()`): mesajı,
+  notu, kararı ya da görev kartını kanalın en üstüne sabitler, şu an
+  sabitli olanın yerine; `on: false` sabitlemeyi kaldırır. Panelin
+  `ws_pin` eylemiyle aynı fonksiyondan yazar
+  (`ws_channel_pin_message()`): aynı izin (`ws_can_pin()`: kanala
+  yazabilen; arşivlenmiş kanal 403, tartışma 422), kanala aynı sistem
+  satırı ("… kanalın en üstüne bir mesaj sabitledi" / "… kaldırdı"), aynı
+  `pinned_by` / `pinned_at`. Böylece `channel_state`'in işareti ve pano
+  işareti (`ws_channel_board_stamp()` `pinned_message_id`'yi okur)
+  değişir; uygulamanın sonraki eşitlemesi ve paneldeki açık ekranların
+  `ws_sync`'i değişikliği görür. Sabitli mesajı yeniden sabitlemek ya da
+  sabitli olmayan bir mesajdan sabitlemeyi kaldırmak hiçbir şey yazmaz:
+  yinelenen çağrı kanala ikinci satır yazmaz, yeni bir sabitlemeyi
+  görmemiş uygulama onu kaldırmaz (panel `message_id: 0` ile "ne sabitliyse"
+  kaldırır; API mesaja bağlı olduğu için bunu yapmaz).
+- `POST /workspace/messages/{id}/pin/close` (`ws_api_messages_pin_close()`):
+  şeridin çarpısı gibi sabitli mesajı kişi için kapatır
+  (`ws_channel_pin_hide()`, `ws_channel_members.pin_hidden`); başka bir
+  mesaj sabitlenene kadar panelde de kapalı kalır. Yalnız şu an sabitli
+  mesaj için yazar, başka mesajda hiçbir şey olmaz. Kanalın üyesi olmayan
+  409 `not_member` alır (panel onu yalnız tarayıcıda tutar; uygulama da
+  kendi ekranında tutar).
+- İkisi de yalnız ekip cihazları oturumundan (`ws_api_own_words_only()`,
+  ortak `ws_api_pin_target()`): kanal satırı kişinin adını taşıyor ve
+  sabitleme şeridini çizen `channel_state` yalnız o oturuma gidiyor.
+  Uygulama anahtarı ve OAuth bağlantısı 403 alır. `X-Dry-Run` /
+  `?dry_run=true` ile prova (`would`: `pinned`, `unpinned`, `closed`;
+  `detail.replaces` yerini alacağı mesaj, `detail.changes` bir şey
+  değişecek mi). Cevap, `GET /workspace/sync`'in `channel_state`'iyle aynı
+  nesne (`WorkspaceSyncChannelState`).
+- Rotalar `'mcp' => false`: MCP istemcisi uygulama ya da OAuth bağlantısı
+  olarak bağlanır, ikisi de reddedilir; modelin çizeceği bir şerit de yok.
+
+Şema değişikliği yok, yeni izin kapsamı yok (`workspace:write`), JS
+değişmedi, MCP aracı yok. Dört yeni metin `tr.json`'da.
+
+**Bilerek yapılmayan.** Site Günlüğü'ne satır yazılmaz: panelin sabitlemesi
+de yazmıyor, kaydı kanalın kendi satırı ("… sabitledi"). Ayrı bir hız sınırı
+yok (panelde de yok; API'nin uygulama başına kovası geçerli). Uygulama
+anahtarı ve OAuth bağlantısıyla sabitleme açılmadı: OAuth bağlantısının
+yazdıklarının nasıl görüneceği plandaki karar 11'e bağlı. Şablon uygulama
+ucunun (`POST /workspace/channels/{id}/apply-template`) şablonun mesajını
+sabitlemesi eskisi gibi her kimlikle çalışıyor.
+
+**Doğrulama.** `tests/workspace_api_test.php`: iki rota POST,
+`workspace:write`, `dry_run`, `WorkspaceSyncChannelState` döner, MCP aracı
+değil; `on` varsayılanı `true`. Sandbox'ta ekip cihazları oturumuyla:
+prova `would: pinned`, `changes: true` döndü, kanal ve sistem satırı
+değişmedi; sabitleme cevabında `pin` (mesaj 1, `pinned_by`, `pinned_at`),
+kanala bir sistem satırı düştü; aynı çağrı yinelenince satır sayısı
+değişmedi; ikinci mesajın provası `replaces: 1` verdi, sabitlenince pano
+işareti değişti; sabitli olmayan mesajda `on: false` ve kapatma hiçbir şey
+yazmadı; kapatma provası `pin_hidden`'i yazmadı, gerçek kapatma
+`hidden: true` verdi ve `pin_hidden` mesajın kimliği oldu; `on: false`
+sabitlemeyi kaldırdı, "kaldırdı" satırı düştü, `pin: null`. Sistem satırı
+422, arşivlenmiş kanal 403, olmayan mesaj 404, bilinmeyen alan 422,
+tartışmadaki mesaj 422, üye olmadığı herkese açık kanalda kapatma 409;
+uygulama anahtarıyla iki uç da 403. Sabitlemeden sonra
+`GET /workspace/sync?channel_id=` `channel_state.pin`'i o mesajla verdi.
+OpenAPI'de iki uç `X-Dry-Run`, `dry_run` ve `on` gövde alanıyla
+görünüyor. Sunucu günlüğünde uyarı yok; `lint`, `check_lang`,
+`check_api_schema`, `test`, `build_js --check` temiz.
+
+---
+
 ## 2026.4.10 — Ziyaretçi takibi: gelen site uyarısız okunuyor, arama terimi bozulmuyor, dizi parametresi sayfayı düşürmüyor (2026-10-14)
 
 **Neden.** #380'in sandbox'ta gördüğü, kapsam dışı bıraktığı uyarı:

@@ -493,6 +493,41 @@ function ws_api_routes()
             ),
         ),
 
+        // The pin bar of the channel screen, for the person's own app; a
+        // model has no pin bar to draw, and its connection is refused anyway.
+        array(
+            'id'          => 'workspace.messages.pin',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/pin',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_pin',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceSyncChannelState',
+            'summary'     => 'Pin a message to the top of its channel, or take the pin off',
+            'description' => 'Pins a message, a note, a decision or a task card to the top of its channel, the way Pin to the top in the message menu does: it takes the place of the message pinned there, and the channel says who pinned it. on false takes the pin off, the way Take the pin off does. Pinning the message already pinned, or taking the pin off a message that is not the one pinned, changes nothing and writes nothing in the channel, so a retried call is safe and a newer pin the app has not seen yet stays. Whoever may write in the channel may pin; an archived channel is refused with 403, and a discussion, which has no pinned message, with 422. Only a team devices session (a Bearer token from POST /auth/login) may, since the channel names the person: an application key and an OAuth connection are refused with 403 forbidden. The answer is the channel\'s state as GET /workspace/sync gives it in channel_state; the panel\'s screens that have the channel open show the change on their next look.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'on', 'in' => 'body', 'type' => 'bool', 'default' => true, 'description' => 'true (the default) pins the message, false takes the pin off.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.pin_close',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/pin/close',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_pin_close',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceSyncChannelState',
+            'summary'     => 'Close the pinned message for oneself',
+            'description' => 'Closes the message pinned to the top of the channel for the person, the way the cross on the pin bar does: channel_state.pin.hidden is then true, on the panel too, until another message is pinned. The others still see it. id is the pinned message; for any other message nothing changes, so a newer pin stays open. Only the people in a channel keep it closed (409 not_member otherwise; close it on the app\'s own screen instead). Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. The answer is the channel\'s state as GET /workspace/sync gives it in channel_state.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
         array(
             'id'          => 'workspace.channels.read',
             'method'      => 'POST',
