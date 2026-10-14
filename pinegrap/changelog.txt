@@ -450,6 +450,17 @@
          yazmıyor. Sayfa eskisi gibi görünüyor, kayıt
          yine üye numarasıyla yapılıyor.
 
+  [DÜZELTME] Form listesi (blog, ilan, forum, personel
+         dizini) sayfaları adresinde arama terimi birden
+         çok kez geçen (?<sayfa>_query[]=…) ve katalog
+         detay sayfaları "Geri" numarası birden çok kez
+         geçen (?previous_url_id[]=…) bir bağlantıyla
+         açılınca hata sayfası veriyordu; artık sayfa
+         açılıyor, böyle gelen değer verilmemiş sayılıyor.
+         Form listesinde yapılan her arama, tarih ve saat
+         alanları için hata günlüğüne uyarı yazıyordu;
+         artık yazmıyor, arama sonuçları aynı.
+
   ÜRÜNLER
   --------------------------------------------------------
 

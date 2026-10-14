@@ -357,12 +357,14 @@ function get_form_list_view($properties) {
             // Set old query which has an old format (this is for backwards compatibility)
             $old_query = $liveform->get_field_value('query');
 
-            // If there is a specific query for this page, then use it
-            if ($new_query != '') {
+            // If there is a specific query for this page, then use it.
+            // A query sent as an array (?<id>_query[]=x) counts as no query:
+            // the search SQL refused it with an error page.
+            if (is_string($new_query) && ($new_query != '')) {
                 $search_query = $new_query;
                 
             // else if there is an old query, then use it.
-            } else if ($old_query != '') {
+            } else if (is_string($old_query) && ($old_query != '')) {
                 $search_query = $old_query;
             }
         }
