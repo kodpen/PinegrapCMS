@@ -22,75 +22,52 @@ validate_ecommerce_access($user);
 
 $liveform = new liveform('view_key_codes');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_key_codes'][$key] = trim($value);
-    }
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'code'            => lang('Key Code'),
+    'offer_code'      => lang('Offer Code'),
+    'offer_message'   => lang('Offer Message'),
+    'enabled'         => lang('Enabled'),
+    'expiration_date' => lang('Expiration Date'),
+    'notes'           => lang('Notes'),
+    'single_use'      => lang('Single-Use'),
+    'report'          => lang('Report'),
+    'last_modified'   => lang('Last Modified'),
+);
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_key_codes']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_key_codes']['sort'] = '';
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-switch (($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? '')) {
-    case lang('Key Code'):
-        $sort_column = 'key_codes.code';
-        break;
+$list_state = pg_list_state('view_key_codes', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Offer Code'):
-        $sort_column = 'key_codes.offer_code';
-        break;
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$sort_map = array(
+    'code'            => 'key_codes.code',
+    'offer_code'      => 'key_codes.offer_code',
+    'offer_message'   => 'offers.description',
+    'enabled'         => 'key_codes.enabled',
+    'expiration_date' => 'key_codes.expiration_date',
+    'notes'           => 'key_codes.notes',
+    'single_use'      => 'key_codes.single_use',
+    'report'          => 'key_codes.report',
+    'last_modified'   => 'key_codes.timestamp',
+);
 
-    case lang('Offer Message'):
-        $sort_column = 'offers.description';
-        break;
-
-    case lang('Enabled'):
-        $sort_column = 'key_codes.enabled';
-        break;
-
-    case lang('Expiration Date'):
-        $sort_column = 'key_codes.expiration_date';
-        break;
-
-    case lang('Notes'):
-        $sort_column = 'key_codes.notes';
-        break;
-
-    case lang('Single-Use'):
-        $sort_column = 'key_codes.single_use';
-        break;
-
-    case lang('Report'):
-        $sort_column = 'key_codes.report';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'key_codes.timestamp';
-        break;
-
-    default:
-        $sort_column = 'key_codes.timestamp';
-        $_SESSION['software']['ecommerce']['view_key_codes']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_key_codes']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_key_codes']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_key_codes']['order'] = 'asc';
-}
+$order_by = pg_list_order_by($sort_levels, $sort_map);
 
 $all_key_codes = db_value("SELECT COUNT(*) FROM key_codes");
 
 // If user requested to export, then export them.
 if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
+
+    // The export does not join offers, so the offer message is looked up
+    // per row; one row per key code even when two offers share a code.
+    $export_order_by = pg_list_order_by($sort_levels, array_merge($sort_map, array(
+        'offer_message' => '(SELECT offers.description FROM offers WHERE offers.code = key_codes.offer_code LIMIT 1)',
+    )));
 
     header("Content-type: text/csv");
     header("Content-disposition: attachment; filename=key_codes.csv");
@@ -121,7 +98,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
             last_modified_user.user_username AS last_modified_username
         FROM key_codes
         LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
-        ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? '')));
+        ORDER BY $export_order_by");
 
     // If the date format is month and then day, then use that format.
     if (DATE_FORMAT == 'month_day') {
@@ -179,7 +156,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
         FROM key_codes
         LEFT JOIN offers ON key_codes.offer_code = offers.code
         LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
-        ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? '')) . "");
+        ORDER BY $order_by");
 
     // Get the current date so that later we can figure out if key codes have expired.
     $current_date = date('Y-m-d');

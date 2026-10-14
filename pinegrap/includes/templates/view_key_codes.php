@@ -35,6 +35,8 @@ if (!defined('PG_INIT_LOADED')) {
 								<a href="delete_key_codes.php" class="btn btn-link link-danger py-0 m-1"><span class="material-icons me-2">delete_forever</span><?=lang(array('string'=>'Delete All Key Codes') )?></a>
 							</div>
                         </form>
+                        <div class="pg-toolbar-grow"></div>
+                        <?=pg_list_sort_menu('view_key_codes.php', $sort_columns, $sort_levels, $sort_default)?>
                     </nav>
                 </div>
             </div>
@@ -45,15 +47,15 @@ if (!defined('PG_INIT_LOADED')) {
                         <thead>
                             <tr>
                                 <th class="noVis"><?=lang('Action')?></th>
-								<th><?=get_column_heading(lang('Key Code'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Offer Code'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Offer Message'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th class="text-center"><?=get_column_heading(lang('Enabled'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Expiration Date'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Notes'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th class="text-center"><?=get_column_heading(lang('Single-Use'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Report'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Key Code'), $sort_levels, '', '', 'code')?></th>
+								<th><?=get_column_heading(lang('Offer Code'), $sort_levels, '', '', 'offer_code')?></th>
+								<th><?=get_column_heading(lang('Offer Message'), $sort_levels, '', '', 'offer_message')?></th>
+								<th class="text-center"><?=get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled')?></th>
+								<th><?=get_column_heading(lang('Expiration Date'), $sort_levels, '', '', 'expiration_date')?></th>
+								<th><?=get_column_heading(lang('Notes'), $sort_levels, '', '', 'notes')?></th>
+								<th class="text-center"><?=get_column_heading(lang('Single-Use'), $sort_levels, '', '', 'single_use')?></th>
+								<th><?=get_column_heading(lang('Report'), $sort_levels, '', '', 'report')?></th>
+								<th><?=get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified')?></th>
                             </tr>
                         </thead>
                         <tbody>

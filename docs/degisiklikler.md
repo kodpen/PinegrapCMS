@@ -84,6 +84,115 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Yönlendirme kaynağı, kişinin siparişleri, ziyaretçi raporu, otomatik diyalog ve anahtar kod listeleri ortak tablo yardımcısında: çoklu sıralama, sıralama yönündeki SQL enjeksiyonu kapandı (2026-10-14)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyor (#331'den #349'a). #349'un "Sonraki gruplar" dökümünde ilk sıraya
+konan beş liste bu PR'da: Tüm Yönlendirme Kaynakları
+(`view_referral_sources.php`), Kişinin Tüm Siparişleri
+(`view_orders_for_contact.php`), Tüm Ziyaretçi Raporları
+(`view_visitor_reports.php`), Otomatik Diyaloglar (`view_auto_dialogs.php`
++ `includes/templates/view_auto_dialogs.php`) ve Tüm Anahtar Kodlar
+(`view_key_codes.php` + `includes/templates/view_key_codes.php`).
+Yönlendirme Kaynakları sıralamayı yalnız adreste `asc_or_desc()`
+başlıklarıyla, Kişinin Siparişleri oturumda ama yine `asc_or_desc()`
+başlıklarıyla, kalan üçü istekteki her değeri oturuma kopyalayan bir
+döngüyle tutuyordu; beşi de çevrilmiş başlık adını kendi `switch`'iyle
+tek sütunluk ORDER BY'a çeviriyordu.
+
+Otomatik Diyaloglar ve Anahtar Kodlar'da yön (`order`) ORDER BY'a yalnız
+`e()` (`escape()`) ile yazılıyordu; tırnak içermeyen bir değer sorguya
+olduğu gibi giriyordu (#341, #344, #348'deki açığın aynısı; #348'in
+dökümü bu iki ekranı `escape()` kalıbı dışında saymıştı çünkü çağrı `e()`
+adıyla yazılmış). Sandbox'ta eski kodla `?order=asc, (SELECT SLEEP(0.3))`
+8 diyalogda ve 8 anahtar kodda 2,4 s bekletti; değer oturumda kaldığı için
+sonraki her açılışta ve anahtar kodların CSV dışa aktarımında da koştu.
+Otomatik Diyaloglar'a Yönetici ve üstü, Anahtar Kodlar'a e-ticaret
+yetkisi olan Kullanıcı rolü dahil girebiliyor. 2026.4.9'da da var. Kalan
+üç listede sütun `switch`'ten geçiyor, yön `sql_order_direction()` ile
+süzülüyordu; `order` ve `sort` içindeki `SLEEP` koşmadı.
+
+**Ne değişti.** Her listenin sıralanabilen sütunları kodla tanımlandı:
+Yönlendirme Kaynakları `name`, `code`, `last_modified`; Kişinin Siparişleri
+`order_number`, `total`, `order_date`; Ziyaretçi Raporları `name`,
+`created`, `last_modified`; Otomatik Diyaloglar `name`, `enabled`, `url`,
+`width`, `height`, `delay`, `frequency`, `page`, `created`,
+`last_modified`; Anahtar Kodlar `code`, `offer_code`, `offer_message`,
+`enabled`, `expiration_date`, `notes`, `single_use`, `report`,
+`last_modified`. Varsayılan eskisi gibi: Kişinin Siparişleri'nde sipariş
+tarihi azalan, dördünde son değişiklik azalan. Sıra
+`pg_list_state('<liste>', …)` ile okunur, ORDER BY `pg_list_order_by()`
+ile yalnız ekranın kod → SQL eşlemesinden yazılır (SQL ifadeleri eskisiyle
+aynı). Başlıklar `get_column_heading()`'e düzey listesi verir; Shift+tık
+ve düzey numarası ürünlerdeki gibi çalışır. Araç çubuğunun sağına
+`pg_list_sort_menu()` eklendi (`pg-toolbar-grow` boşluğuyla); araç çubuğu
+olmayan Kişinin Siparişleri'ne yalnız menüyü taşıyan bir `#button_bar`
+eklendi, Yönlendirme Kaynakları'nda araç çubuğu sütunu #346'daki gibi
+tam genişliğe açıldı. İstekteki her değeri oturuma kopyalayan döngü üç
+ekrandan kaldırıldı; sıralama dışında onu okuyan bir şey yoktu. Ortak
+yardımcıya, `backend.src.js`'e ve `tr.json`'a dokunulmadı; kullanılan
+metinler zaten vardı. Siparişler listesine dokunulmadı (ayrı çalışmada).
+
+Aynı akışta giderilen üç eski hata:
+
+- Ziyaretçi Raporları'nda `switch` İngilizce başlıkla (`'Name'`,
+  `'Created'`) karşılaştırıyor, başlık bağlantısı ise `lang()` ile
+  çevrilmiş adı gönderiyordu; Türkçe panelde Adı ve Oluşturulma
+  tıklanınca liste hep son düzenleme azalan kalıyordu.
+- Kişinin Siparişleri'nde başlık bağlantıları kişi kimliğini (`id`)
+  taşımıyordu. Sayfanın başındaki `validate_contact_access($user,
+  $_GET['id'])` kimliksiz istekte rolü Kullanıcı olan rehber yetkilisine
+  "Erişim reddedildi" veriyordu; Yönetici ve üstü oturumdaki kişiyle
+  devam ediyordu. Sıralama bağlantıları ve menü formu artık `id`'yi
+  taşıyor. Aynı dosyada tanımsız `$row_style` ve `$keys_and_values`
+  satır başına PHP uyarısı yazıyordu, başlık hücreleri `</td>` ile
+  kapanıyordu; ikisi de düzeldi.
+- Anahtar Kodlar'ın CSV dışa aktarımı `offers` tablosunu birleştirmediği
+  için Teklif Mesajı'na göre sıralıyken `Unknown column
+  'offers.description'` hatası veriyordu (dosyada başlık satırı ve hata
+  metni). Dışa aktarım bu sütun için teklif açıklamasını alt sorguyla
+  okuyor; aynı kodu paylaşan iki teklif olsa da her anahtar kod bir satır.
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor. Eski
+`sort=<başlık>&order=desc` bağlantıları `pg_list_sort_parse()` ile tek
+düzey olarak okunur. Yönlendirme Kaynakları'nın sırası artık oturumda
+kalıyor. Kişinin Siparişleri'nde yeni bir sütun eskiden azalan, artık
+artan başlıyor (diğer listelerle aynı). Eski oturum anahtarları
+(`['ecommerce']['view_orders_for_contact']['sort'/'order']`,
+`['stats']['view_visitor_reports']`, `['view_auto_dialogs']`,
+`['ecommerce']['view_key_codes']`) artık okunmuyor; ilk açılışta liste
+varsayılanla başlar. Sütunlar, Oluştur / Web Sitesi Analitiği / İçe Aktar /
+Dışa Aktar / Tüm Anahtar Kodlarını Sil düğmeleri, satır düğmeleri,
+tarayıcıdaki arama ve sayfa başına kayıt seçimi değişmedi. Satır içi
+hızlı güncelleme bu PR'ın kapsamında değil. Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 8 yönlendirme kaynağı, bir
+kişinin 5 siparişi, 7 ziyaretçi raporu, 8 otomatik diyalog, 8 anahtar
+kod).** Beş listede her sütun iki yönde ve sütunların her ikili birleşimi
+(ilk azalan, ikinci artan), aynı ORDER BY'lı SQL'in sıralama değerleri
+dizisini verdi; varsayılan eskisi gibi; parametresiz yeniden açılışta iki
+düzeyli sıra korundu; yönsüz kod artan, varsayılan sütun azalan başladı;
+bozuk değer (`id;drop table x:desc`) varsayılana düştü; Türkçe başlıklı
+eski bağlantı (ör. `sort=Adı&order=desc`) sıraladı; Kişinin
+Siparişleri'nde her sıralama bağlantısı ve menü formu `id`'yi taşıdı;
+anahtar kod CSV'si dört farklı sırada (Teklif Mesajı dahil) listedeki
+sırayla ve her kod bir kez geldi (936 denetim, hepsi geçti; doğrulayıcı
+ters beklentiyle hata verdi). Yeni kodla `order`/`sort` içine konan
+`SLEEP` hiç koşmadı, sonraki açılış da beklemedi. Eski kodla Türkçe
+panelde Ziyaretçi Raporları `sort=Adı` ile sıralanmadı, yenisiyle
+sıralandı. Rolü Kullanıcı olan, kişinin rehber grubuna yetkili bir
+hesapla eski kimliksiz başlık bağlantısı "Erişim reddedildi" verdi, yeni
+bağlantı 5 siparişi sıraladı. Tarayıcıda 1400 pikselde başlığa tık tek
+sütuna, Shift+tık aynı sekmede ikinci düzeye çevirdi; menü iki düzeyi ve
+rozeti gösterdi; 390 pikselde menü dokunuşla açıldı, yatay kaydırma yok;
+beş sayfada da sayfa hatası yok. Sunucu günlüğünde değişiklikten sonra
+bu dosyalardan uyarı yok; tek istisna, eski kimliksiz adresin bilerek
+denenmesinde değişmeyen `$_GET['id']` satırının yazdığı tanımsız anahtar
+uyarısı (yeni bağlantılar bu adresi üretmiyor). Doğrulanamadı: dev.pinegrap.com'daki gerçek
+kayıtlar ve gerçek bir telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Gönderilen Formlar, Rehber ve Site Günlüğü: bozuk tarih değeri listeyi çökertmiyor (2026-10-14)
 
 **Neden.** #350, Komisyonlar'da kapattığı çökmenin Gönderilen Formlar
