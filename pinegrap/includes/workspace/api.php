@@ -332,7 +332,7 @@ function ws_api_routes()
             'handler'      => 'ws_api_messages_update',
             'returns'      => 'WorkspaceMessage',
             'summary'      => 'Change one\'s own message',
-            'description'  => 'Changes the text of a message, a note or a decision the person wrote, the way Edit in the message menu does: edited is then true, and only the people the new text mentions for the first time are told. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden, since its messages are the application\'s and an integration does not rewrite its owner\'s words. Somebody else\'s message, a decision that records a change to a record, an approval request and a message of an earlier version of the conversation cannot be changed. PATCH is accepted beside POST.',
+            'description'  => 'Changes the text of a message, a note or a decision the person wrote, the way Edit in the message menu does: edited is then true, and only the people the new text mentions for the first time are told. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection write as the application and are refused with 403 forbidden, so an integration does not rewrite its owner\'s words. Somebody else\'s message, a decision that records a change to a record, an approval request and a message of an earlier version of the conversation cannot be changed. PATCH is accepted beside POST.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The whole new text. Tags are written as tokens, as when writing.'),
@@ -347,7 +347,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_messages_delete',
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Delete a message for everyone',
-            'description' => 'Deletes a message the way Delete in the message menu does: the person their own, staff anybody\'s or a guest\'s. Its text, file and tags go, and the channel shows "message deleted" in its place, so the answer has deleted true. It cannot be undone. Only a device session (a Bearer token from POST /auth/login) may: an application key is refused with 403 forbidden. A message of an application, or of an earlier version of the conversation, cannot be deleted. POST /workspace/messages/{id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes a message the way Delete in the message menu does: the person their own, staff anybody\'s or a guest\'s. Its text, file and tags go, and the channel shows "message deleted" in its place, so the answer has deleted true. It cannot be undone. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. A message of an application, or of an earlier version of the conversation, cannot be deleted. POST /workspace/messages/{id}/delete does the same for servers that refuse DELETE.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),

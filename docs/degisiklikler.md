@@ -111,9 +111,13 @@ okunmamış sayısını görüyordu) ve elindeki mesajlardaki değişikliği
   sırasıyla; `since_id` ile sayfalanır, kanalın önceki sürümleri dışarıda.
   `ws_messages_touched()`'a isteğe bağlı `$after_id` ve `$limit` eklendi;
   panel çağrısı aynı. Veritabanı yükseltilmemişse (`touched_at` yok) 503.
-- Üçü de yalnız cihaz oturumundan (`ws_api_person_only()`): uygulama
-  anahtarı 403 alır, çünkü uygulamanın yazdığı mesaj uygulamanındır ve
-  entegrasyon sahibinin sözünü değiştirmez, onun adına okumaz. Önceki bir
+- Düzeltme ve silme yalnız "Ekip cihazları" oturumundan
+  (`ws_api_own_words_only()`, #369'un `ws_api_device_writes_as_person()`
+  kuralı): uygulama anahtarı ve OAuth bağlantısı uygulama adıyla yazdığı
+  için 403 alır, entegrasyon kişinin sözünü değiştirmez. Bağlantının kişi
+  adına yazması karar 11'e (C5) bağlı; karar gelince bu kural da genişler.
+  Okundu işareti okundu onayı gibi her cihaz oturumundan
+  (`ws_api_person_only()`, OAuth dahil); uygulama anahtarı 403. Önceki bir
   sürümdeki mesaj (`ws_message_in_past()`) değişmez ve silinmez (422).
 - MCP araçları: `workspace_messages_update`, `workspace_messages_delete`,
   `workspace_channels_read`; POST takma adı ayrı araç değil.
@@ -122,10 +126,9 @@ okunmamış sayısını görüyordu) ve elindeki mesajlardaki değişikliği
 metinler `tr.json`'da (2 anahtar).
 
 **Bilerek yapılmayan.** "Yalnız benden sil" (`ws_message_hide()`) API'de
-yok; dry_run yok (mesaj yazma ve tepki gibi). M1 (cihazdan yazılan mesajın
-kişinin adıyla düşmesi) ayrı dilimdir; o girene kadar cihazdan yazılan
-mesaj uygulamanın olduğu için uygulamadan düzeltilemez, panelde yazılanlar
-düzeltilir.
+yok; dry_run yok (mesaj yazma ve tepki gibi). #369'dan önce cihazdan
+yazılmış mesajlar uygulamanın adıyla durduğu için düzeltilemez; #369'dan
+sonra cihazdan ve panelden yazılanlar düzeltilir.
 
 **Doğrulama.** `tests/workspace_api_test.php`'ye iki test (üç uç birer
 araç, POST takma adı araç değil; `changed_since` bir tarih). Sandbox'ta

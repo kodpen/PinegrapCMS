@@ -787,9 +787,9 @@ function ws_api_messages_react($params)
 
 /**
  * Answers that must be the person's own - a read receipt, an approval, a
- * channel marked read, a change to their own words - are given from a device
- * session only: an application key acts for its owner, and an integration
- * does not read, approve or rewrite in their name.
+ * channel marked read - are given from a device session only: an
+ * application key acts for its owner, and an integration does not read or
+ * approve in their name.
  *
  * @param string|null $refusal what the refusal says, when not an answer
  */
@@ -797,6 +797,22 @@ function ws_api_person_only($refusal = null)
 {
     if (!function_exists('api_current_device') || (api_current_device() === null)) {
         api_fail(403, 'forbidden', ($refusal !== null) ? $refusal : lang('Only the person, signed in on a device, can give this answer; an application cannot give it for them.'));
+    }
+}
+
+/**
+ * A change to the person's own words comes from their team devices session
+ * only (ws_api_device_writes_as_person()): an application key writes as the
+ * application, and an OAuth connection writes as itself until it is settled
+ * how a connection's words are shown, so neither rewrites what the person
+ * wrote.
+ */
+function ws_api_own_words_only()
+{
+    $device = function_exists('api_current_device') ? api_current_device() : null;
+
+    if (!ws_api_device_writes_as_person($device)) {
+        api_fail(403, 'forbidden', lang('Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.'));
     }
 }
 
@@ -859,7 +875,7 @@ function ws_api_messages_update($params)
     $viewer = ws_api_viewer();
     $message = ws_api_message_or_404($viewer, $params['id']);
 
-    ws_api_person_only(lang('Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.'));
+    ws_api_own_words_only();
 
     $result = ws_message_edit($viewer, $message, (string) $params['text']);
 
@@ -877,7 +893,7 @@ function ws_api_messages_delete($params)
     $viewer = ws_api_viewer();
     $message = ws_api_message_or_404($viewer, $params['id']);
 
-    ws_api_person_only(lang('Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.'));
+    ws_api_own_words_only();
 
     $result = ws_message_delete($viewer, $message);
 
