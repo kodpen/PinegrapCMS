@@ -2851,8 +2851,8 @@
          bulunamadı" gösteriyor. Sipariş ve ziyaretçi
          raporları böyle bir bağlantıyla yeni rapor
          ekranını açıyor. E-posta kampanyasının "tarayıcıda
-         görüntüle" bağlantısı alıcıya artık uyarı
-         yazdırmıyor.
+         görüntüle" bağlantısı açılınca hata günlüğüne
+         uyarı yazmıyor.
 
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
