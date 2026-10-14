@@ -366,8 +366,7 @@ Bağlantılar), geri dönüş adresi tek: `connect.php`
 - Migration adım numaraları çakışmasın (ERP 4.58–4.69, API 4.70–4.79); yazmadan
   önce runner listesine bak.
 - Ortak dosyalarda **yalnız ekleme** yap, tam yeniden yazma (`tr.json`,
-  `changelog.txt`, açık sürümün migration dosyası, `init.php`,
-  `docs/sema-adimlari.md`). Yazmadan önce
+  `changelog.txt`, açık sürümün migration dosyası, `init.php`). Yazmadan önce
   `git fetch origin development && git merge origin/development`, push'tan önce
   `development` üzerine rebase; PR'ın tabanı `development`'tır, `main` değil.
 

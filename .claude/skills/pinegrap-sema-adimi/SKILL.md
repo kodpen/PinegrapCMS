@@ -67,8 +67,9 @@ alt adımlar `upgrade_2026_4_9_<konu>()` gibi (2026.4.4'te
    ilgili konu dosyasına yaz (yoksa yeni dosya aç, sonra
    `php tools/memory_index.php`). Ayrı bir değişiklik günlüğü yok.
 
-7. **`docs/sema-adimlari.md` tablosunun sonuna** alt adımı satır olarak ekle
-   (dosyayı baştan okuma; adım ararken `grep`).
+7. **Giriş fonksiyonunda çağrının yanına alt adım etiketini yaz**
+   (`upgrade_2026_4_10_<konu>();  // 10.x`). Alınmış etiketler buradan okunur;
+   ayrı bir adım tablosu yok.
 
 ## Genel kurallar
 

@@ -44,5 +44,4 @@ Open the index of the folder the task needs, then only the files you need.
 - _tespit_2026_10_08/refactor_altyapi_raporu.md: Refactor and infrastructure candidates with evidence (22 findings, 2026-10-08)
 - component-development-guide.md: Mandatory reading before writing a Style Designer palette component: node model, canvas, serialization, checklist
 - erp_malimusavir_sorulacaklar.md: Questions for the accountant about ERP behaviour; answers fill each item
-- sema-adimlari.md: Schema step history, one table row per migration step (version, step label, what it changed); append a row, look rows up with grep
 - workspace-devir-notu-2026-09-26.md: Workspace handover note (2026-09-26): rules, state at hand-over, open items list

@@ -19,7 +19,6 @@ Everything else is in memory files and skills, opened only when needed.
 - The index is generated: run `php tools/memory_index.php` after adding,
   renaming or deleting a file and commit the result. Never edit or merge it
   by hand; CI runs `--check`.
-- Schema step history: `docs/sema-adimlari.md`; append a row, look up with grep.
 
 ## Skills — load before the matching work
 
