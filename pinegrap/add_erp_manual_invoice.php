@@ -49,7 +49,9 @@ if (!$_POST) {
     erp_invoice_form_prefill($liveform, null, is_string($_GET['direction'] ?? null) ? $_GET['direction'] : 'sales');
 
     $card_options = array();
-    $copy_id = max(0, (int) ($_GET['copy'] ?? 0));
+    // The document to copy and the account card the screen was opened from
+    // are one value each: an array (?copy[]=x) cast to 1 and took the first.
+    $copy_id = max(0, is_scalar($_GET['copy'] ?? null) ? (int) $_GET['copy'] : 0);
 
     if ($copy_id > 0) {
         $source = db_item("SELECT * FROM erp_invoices WHERE id = '" . $copy_id . "' AND doc_type = 'invoice' AND order_id = 0 LIMIT 1");
@@ -82,8 +84,9 @@ if (!$_POST) {
     }
 
     // An invoice started from an account's card opens on that account.
-    if (((int) ($_GET['account_id'] ?? 0) > 0) && !$liveform->field_in_session('account_id')) {
-        $liveform->assign_field_value('account_id', (string) (int) $_GET['account_id']);
+    $card_account_id = is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0;
+    if (($card_account_id > 0) && !$liveform->field_in_session('account_id')) {
+        $liveform->assign_field_value('account_id', (string) $card_account_id);
     }
 
     echo

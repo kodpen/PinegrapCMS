@@ -6,7 +6,9 @@
  * (string) turns an array into "Array" and writes "Array to string
  * conversion" into the log, so a screen opened with ?status[]=x or
  * ?from[]=x warned on every request. A value is read only when it is one
- * value; an array counts as not given.
+ * value; an array counts as not given. The same goes for the numbers that
+ * pick a record: (int) turns an array into 1, so ?account_id[]=x opened the
+ * first account's invoices, prices or cards without a word.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -39,6 +41,36 @@ function test_erp_request_values_no_bare_string_cast()
 	}
 
 	pg_assert_same(array(), $found, 'screens casting $_GET / $_REQUEST with (string)');
+}
+
+// The record a screen is filtered to, filled in from or copied comes as one
+// number; one sent as an array is not given rather than record 1.
+function test_erp_request_values_no_bare_int_cast_of_record_params()
+{
+	$names = 'account_id|contact_id|invoice_id|order_id|product_id|category_id|copy|back_order|amount';
+	$found = array();
+	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/erp_*.php'), glob(PG_FUNCTIONS_DIR . '/get_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/add_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/edit_erp_*.php'));
+
+	foreach ($files as $file) {
+		// The checked read, is_scalar($_GET['x'] ?? null) ? (int) $_GET['x'],
+		// is taken out first; any cast left over is a bare one.
+		$source = preg_replace('/is_scalar\(\$_(GET|REQUEST)\[\'(\w+)\'\] \?\? null\)\)? \? \(int\) \$_\1\[\'\2\'\]/', '', file_get_contents($file));
+
+		if (preg_match_all('/\(int\)\s*\(?\s*\$_(GET|REQUEST)\[\'(' . $names . ')\'\]/', $source, $matches)) {
+			foreach ($matches[2] as $name) {
+				$found[] = basename($file) . ' ' . $name;
+			}
+		}
+	}
+
+	pg_assert_same(array(), $found, 'screens casting a record number from $_GET / $_REQUEST with a bare (int)');
+}
+
+// The till the cash flow screen narrows to: an array is no till.
+function test_erp_request_values_cashflow_till_ignores_arrays()
+{
+	$options = erp_cashflow_options(array('till' => array('1')));
+	pg_assert_same(0, $options['till'], 'cash flow till');
 }
 
 // The dates the aging, cash flow and reconciliation screens hand in from the

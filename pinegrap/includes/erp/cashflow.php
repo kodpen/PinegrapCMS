@@ -100,7 +100,9 @@ function erp_cashflow_options($input)
         $group = ($days <= 62) ? 'day' : (($days <= 400) ? 'week' : 'month');
     }
 
-    $till = (int) ($input['till'] ?? 0);
+    // One value only: an array (?till[]=x) cast to 1 and narrowed the
+    // report to the first till.
+    $till = is_scalar($input['till'] ?? null) ? (int) $input['till'] : 0;
     if (($till > 0) && ((int) db_value("SELECT COUNT(*) FROM erp_cash_accounts WHERE id = '" . $till . "'") === 0)) {
         $till = 0;
     }

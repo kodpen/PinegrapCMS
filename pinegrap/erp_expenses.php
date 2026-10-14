@@ -31,7 +31,7 @@ $ready = erp_expenses_ready();
 // wrote "Array to string conversion" into the log.
 $period_choice = is_string($_GET['period'] ?? null) ? $_GET['period'] : date('Y-m');
 $filters = array(
-    'category_id' => (int) ($_GET['category_id'] ?? 0),
+    'category_id' => is_scalar($_GET['category_id'] ?? null) ? (int) $_GET['category_id'] : 0,
     'status' => is_string($_GET['status'] ?? null) ? $_GET['status'] : 'standing',
     'query' => trim(mb_substr(is_string($_GET['q'] ?? null) ? $_GET['q'] : '', 0, 100)),
 );

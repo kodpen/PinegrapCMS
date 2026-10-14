@@ -33,8 +33,10 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_waybill.php';
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
-    $order_id = (int) ($_GET['order_id'] ?? 0);
-    $invoice_id = (int) ($_GET['invoice_id'] ?? 0);
+    // Each is one value: an array (?order_id[]=x) cast to 1 and filled the
+    // note from the first order or invoice.
+    $order_id = is_scalar($_GET['order_id'] ?? null) ? (int) $_GET['order_id'] : 0;
+    $invoice_id = is_scalar($_GET['invoice_id'] ?? null) ? (int) $_GET['invoice_id'] : 0;
     $order = null;
     $invoice = null;
     $given_lines = array();

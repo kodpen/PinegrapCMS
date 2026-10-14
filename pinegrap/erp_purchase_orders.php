@@ -26,7 +26,9 @@ $statuses = erp_purchase_order_statuses();
 $status = is_string($_GET['status'] ?? null) ? $_GET['status'] : '';
 $status = (isset($statuses[$status]) || ($status === 'waiting')) ? $status : '';
 $search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
-$account_id = max(0, (int) ($_GET['account_id'] ?? 0));
+// One value only: an array (?account_id[]=x) cast to 1 and narrowed the
+// list to the first account.
+$account_id = max(0, is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0);
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $ready = erp_purchase_orders_ready();
 

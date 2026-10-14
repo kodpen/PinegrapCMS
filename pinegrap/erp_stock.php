@@ -35,7 +35,9 @@ if (!erp_stock_ready()) {
 // figures below are the counts as they are.
 erp_stock_apply_pending();
 
-$product_id = max(0, (int) ($_GET['product_id'] ?? 0));
+// One value only: an array (?product_id[]=x) cast to 1 and showed the
+// first product's moves.
+$product_id = max(0, is_scalar($_GET['product_id'] ?? null) ? (int) $_GET['product_id'] : 0);
 $products = erp_stock_costed_products();
 $moves = erp_stock_recent_moves($product_id, 200);
 $kinds = erp_stock_kinds();

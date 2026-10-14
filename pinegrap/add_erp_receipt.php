@@ -35,7 +35,9 @@ $page_title = $is_collection ? lang('Record a Receipt') : lang('Record a Payment
 
 // Reached from an invoice: that invoice decides the account and suggests the
 // amount, so neither is left for the user to get wrong.
-$preset_invoice_id = (int) ($_REQUEST['invoice_id'] ?? 0);
+// Each of these is one value: an array (?invoice_id[]=x) cast to 1 and
+// picked the first invoice, account or order.
+$preset_invoice_id = is_scalar($_REQUEST['invoice_id'] ?? null) ? (int) $_REQUEST['invoice_id'] : 0;
 $preset_invoice = null;
 
 if ($preset_invoice_id > 0) {
@@ -53,11 +55,11 @@ if ($preset_invoice_id > 0) {
 // amount is left to the operator. Reached from an order's documents card (a
 // refund to record), the amount, the method and the words come too, and the
 // operator is sent back to the order afterwards.
-$preset_account_id = ($preset_invoice === null) ? (int) ($_REQUEST['account_id'] ?? 0) : 0;
-$preset_amount = max(0, (int) ($_GET['amount'] ?? 0));
+$preset_account_id = (($preset_invoice === null) && is_scalar($_REQUEST['account_id'] ?? null)) ? (int) $_REQUEST['account_id'] : 0;
+$preset_amount = max(0, is_scalar($_GET['amount'] ?? null) ? (int) $_GET['amount'] : 0);
 $preset_method = is_string($_GET['method'] ?? null) ? $_GET['method'] : '';
 $preset_description = trim(mb_substr(is_string($_GET['description'] ?? null) ? $_GET['description'] : '', 0, 200));
-$back_order_id = (int) ($_REQUEST['back_order'] ?? 0);
+$back_order_id = is_scalar($_REQUEST['back_order'] ?? null) ? (int) $_REQUEST['back_order'] : 0;
 
 if (($back_order_id > 0) && !db_value("SELECT id FROM orders WHERE id = '" . $back_order_id . "' LIMIT 1")) {
     $back_order_id = 0;

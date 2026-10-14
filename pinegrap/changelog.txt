@@ -1864,6 +1864,16 @@
          yazmıyor, böyle gelen değer verilmemiş sayılıyor.
          Normal açılışta ekranlar aynı.
 
+  [DÜZELTME] ERP ekranları adresinde cari, fatura, sipariş,
+         ürün, gider kategorisi ya da kasa numarası birden
+         çok kez geçen (?account_id[]=…) bir bağlantıyla
+         açılınca o numarayı 1 sayıp 1 numaralı carinin,
+         faturanın ya da kasanın verisini gösteriyordu;
+         cari fiyatlarında tablodan değiştirilen fiyat da
+         1 numaralı cariye kaydediliyordu. Artık böyle
+         gelen numara verilmemiş sayılıyor. Normal
+         açılışta ekranlar aynı.
+
   [ŞEMA] Satın alma siparişleri için yeni bir tablo
          oluşturulur; faturalara sipariş, fatura
          satırlarına sipariş satırı kolonu eklenir.

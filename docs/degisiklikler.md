@@ -147,6 +147,65 @@ istek başına onlarca uyarı yazıyor. İkisi de bu işin kapsamı dışında k
 
 ---
 
+## 2026.4.10 — ERP ekranları dizi gelen cari, fatura ve kasa numarasını 1 sayıyordu (2026-10-14)
+
+**Neden.** #427'nin kalanı. ERP ekranları kimlik kapısından (#422) geçmeyen
+kayıt numaralarını (`account_id`, `contact_id`, `invoice_id`, `order_id`,
+`product_id`, `category_id`, `copy`, `back_order`, `amount`, kasa akışının
+`till`'i) `(int) ($_GET['x'] ?? 0)` ile okuyordu. Dizi gelince
+(`?account_id[]=x`) PHP diziyi uyarısız 1 yapıyor; ekran 1 numaralı carinin,
+faturanın ya da kasanın verisini açıyordu. Günlükte iz yoktu. Bir yerde
+kayıt da yazıyordu: cari fiyatları ekranında satırda değiştirilen fiyat
+(`erp_account_prices.php`, liste hızlı düzenleme) adres dizi `account_id`
+taşıyınca 1 numaralı cariye kaydediliyordu. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Serinin kuralı: dizi gelen tek değerli parametre "verilmedi"
+sayılır, ekran parametresiz açılışla aynı davranır, normal isteğin çıktısı
+değişmez. Okuma #422'nin kimlik satırıyla aynı biçimde:
+`is_scalar($_GET['x'] ?? null) ? (int) $_GET['x'] : 0`. Yeni yardımcı yok
+(#427 gibi satır içi).
+
+- Liste ve rapor süzgeçleri: `erp_invoices` (`account_id`),
+  `erp_purchase_orders`, `erp_quotes` (`account_id`), `erp_expenses`
+  (`category_id`), `erp_stock` (`product_id`), `get_erp_products`
+  (`account_id`; cari bölgesinin vergi oranı ve cari fiyatı).
+- Kaydı açan ekranlar: `erp_account_prices` (`account_id`, hızlı düzenleme
+  dahil), `erp_account_sync_item` (`account_id`), `add_erp_return`
+  (`invoice_id`) dizi gelince parametresiz açılıştaki "bulunamadı" hatasını
+  veriyor.
+- Formu dolduran ekranlar: `add_erp_account` (`contact_id`),
+  `add_erp_manual_invoice`, `add_erp_purchase_order`, `add_erp_quote`
+  (`copy`, `account_id`), `add_erp_receipt` (`invoice_id`, `account_id`,
+  `amount`, `back_order`), `add_erp_return` (`back_order`), `add_erp_waybill`
+  (`order_id`, `invoice_id`) dizi gelince boş form açıyor.
+- `erp_cashflow_options()`: dizi `till` "tüm kasalar" (`is_scalar()`); API
+  zaten sayı veriyor, davranışı aynı.
+- `tests/erp_request_values_test.php` iki test aldı: ERP ekranlarında bu
+  adlardan biri `$_GET` / `$_REQUEST`'ten çıplak `(int)` ile okunmuyor
+  (eski kodda 15 ekranda 28 okumayı yakalıyor); dizi `till` 0.
+
+Şema, dil dosyası ve JS değişikliği yok. ERP POST işleyicileri (`$_POST`
+okumaları) ve ERP'de `$_GET['id']`'yi kapısız okuyan yedi ekran bu işin
+dışında; ikinci yarıya kaldı (devir notu).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, `debug = 1`).** Cari, fatura,
+teklif, satın alma siparişi, kasa, gider kategorisi, kişi, ürün ve sipariş
+için 1 ve 2 numaralı kayıtlar; eski kod (`origin/development`) ikinci
+portta, aynı veritabanı. 26 durum × (normal, dizi, parametresiz) × iki kod,
+156 istek: 26 normal istek eski kodla aynı HTML ve durum kodu; 26 dizi
+isteğinin hepsi yeni kodda parametresiz açılışla aynı (üç hata sayfasında
+yalnız sayfanın kendi adresi farklı); 23'ünde eski kod 1 numaralı kaydı
+gösteriyordu (ör. `erp_invoices?filter=open&account_id[]=x` "Açık · Birinci
+Cari", `add_erp_account?contact_id[]=x` 1 numaralı kişiyle dolu form,
+`add_erp_waybill?order_id[]=x` 302, `erp_cashflow?till[]=x` 1 numaralı
+kasa). Hızlı düzenleme: eski kod dizi `account_id` ile 1 numaralı cariye
+fiyat yazdı, yeni kod 422 "Cari hesap bulunamadı", yazmadı. İki kodda da
+uyarı ya da ölümcül satır yok. `tools/lint.php`, `tools/test.php`,
+`check_lang`, `check_bindings`, `check_api_schema`, `check_copies`,
+`build_js.php --check` temiz.
+
+---
+
 ## 2026.4.10 — Veritabanı yedekleri ziyaret kayıtlarını, sayfa ve form öğesi görüntüleme sayılarını almıyor (2026-10-14)
 
 **Neden.** Ziyaretçi temizleme planının (`docs/_plan_ziyaretci_temizleme.md`)
