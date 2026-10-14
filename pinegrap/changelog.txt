@@ -3124,6 +3124,20 @@
          sessizce boş yazılıyor; ekranlar ve kayıtlar
          eskisiyle aynı.
 
+  [DÜZELTME] CSS, JavaScript ve metin dosyası
+         düzenleyicileri ile Temayı Düzenle ekranı, adres
+         elle değiştirilince başka bir dosyayla da
+         açılıyordu: bir resim ya da yazı tipi metin
+         olarak görünüyor, Kaydet onun üzerine yazıyor,
+         Temayı Düzenle onu silebiliyordu. Artık her ekran
+         yalnız kendi türündeki tasarım dosyasını açıp
+         kaydediyor (CSS düzenleyicisi yalnız .css);
+         başka bir dosyada "Kayıt bulunamadı" gösteriyor.
+         Çoğalt, kopyayı her zaman asıl dosyanın adı ve
+         türüyle oluşturuyor. Bozuk bir kaydetme isteği
+         dosyayı boşaltıp hata sayfası veriyordu; artık
+         dosyaya dokunmuyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
