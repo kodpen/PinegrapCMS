@@ -186,6 +186,39 @@ function api_console_endpoints_html($try_hint = '') {
 
 			}
 
+			// The status of a success, where it is not a plain 200. The
+			// OpenAPI document carries it in responses; a reader of this page
+			// who checks for 200 alone would read a create as a failure.
+			$codes = api_openapi_success_codes($route);
+
+			$answers = '';
+
+			if ($codes === array(201)) {
+
+				$answers = lang('Answers 201 Created with the new record.');
+
+			} elseif (in_array(201, $codes, true)) {
+
+				$answers = lang('Answers 201 Created with the new record, or 200 with the one already there, as described above.');
+
+			} elseif (in_array(204, $codes, true)) {
+
+				$answers = lang('Answers 204 with no body.');
+
+			}
+
+			if ($answers !== '') {
+
+				if (!empty($route['dry_run'])) {
+
+					$answers .= ' ' . lang('A rehearsal answers 200, as nothing is written.');
+
+				}
+
+				$tables .= '<p class="doc-desc mb-0 mt-2"><i class="bi bi-reply me-1"></i>' . h($answers) . '</p>';
+
+			}
+
 			$accepts = '';
 
 			if (isset($route['also_accepts'])) {

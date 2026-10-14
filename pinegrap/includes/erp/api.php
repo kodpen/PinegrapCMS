@@ -298,6 +298,7 @@ function erp_api_routes()
             'scope' => 'erp:write',
             'handler' => 'erp_api_accounts_create',
             'returns' => 'ErpAccount',
+            'status' => 201,
             'summary' => 'Open an ERP account',
             'description' => 'Opens one customer or supplier card. A tax_number already on an active card is refused with 422 and the existing id in the message, so an integration that syncs an accounting system looks first with GET /erp/accounts?tax_number= and does not open the same company twice. contact_id ties the card to a customer record; a customer already tied to another card is refused. opening_balance posts the opening entry in the same call: positive when the account owes the store. Send an Idempotency-Key so a retried call does not open two cards.',
             'params' => array(
@@ -400,6 +401,7 @@ function erp_api_routes()
             'handler' => 'erp_api_accounts_late_fee_invoice',
             'dry_run' => true,
             'returns' => 'ErpInvoice',
+            'status' => array(201, 200),
             'summary' => 'Write an account\'s late payment fee on an invoice draft',
             'description' => 'What the panel\'s late payment fee invoice button does: the fee GET /erp/accounts/{id}/late-fee gives for the same from and as_of goes on a one-line sales invoice draft dated today, in the store currency, at the fee tax rate set in the ERP settings (the account\'s own rate when none is set), with the period on the line and each invoice\'s days and fee in the notes. The draft takes no number and charges nothing: check it, then POST /erp/invoices/{id}/issue. Once it is issued, the account\'s next fee starts the day after the period (late_fee_through), so no day is charged twice; deleting the draft charges nothing. When a fee draft of the account is already waiting, nothing is written and the answer is that draft, with 200 instead of 201. Refused with 422 while late fees are switched off or when there is nothing to charge for the period. The answer is the draft.',
             'params' => array(
@@ -471,6 +473,7 @@ function erp_api_routes()
             'handler' => 'erp_api_invoices_create',
             'dry_run' => true,
             'returns' => 'ErpInvoice',
+            'status' => 201,
             'summary' => 'Write an invoice draft',
             'description' => 'Saves a sales or purchase invoice as a draft, the way the panel\'s invoice form does: no number is taken, nothing is posted to the account, stock and the books are untouched until POST /erp/invoices/{id}/issue. The ERP works out every line\'s discount, tax and withholding and the totals; they come back in the answer. A draft in another currency may be saved without a rate: the rate recorded for its date is used, or the one of the day it is issued. Send an Idempotency-Key so a retried call does not write two drafts.',
             'params' => array(
@@ -581,6 +584,7 @@ function erp_api_routes()
             'handler' => 'erp_api_invoices_return',
             'dry_run' => true,
             'returns' => 'ErpInvoice',
+            'status' => 201,
             'summary' => 'Raise a return against an invoice',
             'description' => 'Issues a return invoice (its own number, in the return series) for the lines and quantities given: the account is credited for a sale or debited for a purchase, and the goods go back to stock the way the invoice moved them. It cannot be undone except by cancelling the return. Name each invoice line by its id (lines[].id of the invoice) with the quantity coming back, or send all true for everything still returnable. Never more than was sold and not yet returned; a full return copies the invoice\'s figures to the kurus. A draft answers 409 invoice_is_draft and a cancelled invoice 409 invoice_cancelled; refused with 422 period_locked when the return\'s date is in a locked period. The answer is the return.',
             'params' => array(
@@ -617,6 +621,7 @@ function erp_api_routes()
             'handler' => 'erp_api_orders_invoice',
             'dry_run' => true,
             'returns' => 'ErpInvoice',
+            'status' => 201,
             'summary' => 'Issue the invoice of a store order',
             'description' => 'Issues the sales invoice of a complete order, dated today, the way the order screen does: the lines, shipping and fees as the customer was charged, posted to the customer\'s account (opened from the order when the customer has none). It takes a number and cannot be edited afterwards. An order has one invoice: one already invoiced answers 409 order_already_invoiced. Refused with 422 period_locked when today is in a locked period. An order\'s invoice is never stopped by a credit limit.',
             'params' => array(
@@ -649,6 +654,7 @@ function erp_api_routes()
             'handler' => 'erp_api_invoices_recurrence',
             'dry_run' => true,
             'returns' => 'ErpInvoiceRecurrence',
+            'status' => 201,
             'summary' => 'Repeat an issued invoice',
             'description' => 'Writes the same invoice again on a schedule, with the lines and prices it has now: as a draft to check, or issued straight away (then whatever the store does after an invoice is issued happens too). Only an issued sales invoice typed in the ERP repeats; an order\'s invoice does not. An invoice that already repeats answers 409 invoice_already_repeats: stop it first.',
             'params' => array(
@@ -717,6 +723,7 @@ function erp_api_routes()
             'scope' => 'erp_cash:write',
             'handler' => 'erp_api_receipts_create',
             'returns' => 'ErpReceipt',
+            'status' => 201,
             'summary' => 'Record a receipt or a payment',
             'description' => 'Writes the money into a till and onto the account in one transaction, the way the receipt screen does: a bank feed or a marketplace settlement report can post what arrived. Name invoice_id to close that invoice with this money; never more than it is short of is allocated, the rest stays on the account. The invoice must belong to the account, be open, and for a collection be a sales invoice. The application owner must hold the ERP cash right in the panel. Send an Idempotency-Key: a bank line posted twice is a balance nobody can reconcile.',
             'params' => array(
@@ -772,6 +779,7 @@ function erp_api_routes()
             'handler' => 'erp_api_cash_transfers_create',
             'dry_run' => true,
             'returns' => 'ErpCashTransfer',
+            'status' => 201,
             'summary' => 'Move money between two tills',
             'description' => 'Records a transfer the way the Cash and Bank screen does: the amount leaves one till and arrives in the other, dated the same day, and nobody\'s account changes - cash taken to the bank, a card settlement moved to the current account. Both tills must be active and kept in one currency. In a foreign currency the rate recorded for the day is used; exchange_rate stands in only when none is recorded. The day cannot be in a locked period. The application owner must hold the ERP cash right. A transfer cannot be taken back, here or in the panel; a wrong one is put right with a transfer the other way. Send an Idempotency-Key so a retried request does not move the money twice.',
             'params' => array(
@@ -841,6 +849,7 @@ function erp_api_routes()
             'handler' => 'erp_api_waybills_create',
             'dry_run' => true,
             'returns' => 'ErpWaybill',
+            'status' => 201,
             'summary' => 'Write a delivery note',
             'description' => 'Writes a delivery note and gives it the next number of its series; it carries goods and no money. Three ways, as the panel offers them: invoice_id for an issued sales invoice (its account, lines, carrier and shipment date; an invoice written from an order ships as that order\'s note, with the invoice attached), order_id for an order (its customer\'s account, opened from the customer record when there is none, its items, its first recipient\'s address and the carrier and ship date the order screen recorded), or account_id with lines for goods typed by hand. What is sent takes the place of what the invoice or order gives: lines sent are the part that goes out. A recipient left empty is the account at the address on its card. An order or an invoice has one note: a second answers 409 order_already_shipped or 409 invoice_already_shipped; cancel the first to write another. A draft, cancelled or purchase invoice answers 409 invoice_not_shippable. Announced as erp.waybill.created. Try it with X-Dry-Run first.',
             'params' => array(
@@ -894,6 +903,7 @@ function erp_api_routes()
             'handler' => 'erp_api_waybills_invoice',
             'dry_run' => true,
             'returns' => 'ErpInvoice',
+            'status' => array(201, 200),
             'summary' => 'Invoice a delivery note',
             'description' => 'Bills the goods on the note. A note written for an order is billed the way the order is: the order\'s invoice is issued dated today (taking a number, refused for the reasons POST /erp/orders/{order_id}/invoice gives, 422 period_locked among them), or the note is tied to the invoice the order already has, which answers 200 instead of 201. A note typed by hand becomes an invoice draft with its lines and the catalogue prices where a product is known: finish the prices, then POST /erp/invoices/{id}/issue. A note already invoiced answers 409 waybill_invoiced, a cancelled one 409 waybill_cancelled. The answer is the invoice.',
             'params' => array(
@@ -970,6 +980,7 @@ function erp_api_routes()
             'scope' => 'erp:write',
             'handler' => 'erp_api_expenses_create',
             'returns' => 'ErpExpense',
+            'status' => 201,
             'summary' => 'Record an expense',
             'description' => 'Records one expense the way the panel\'s form does: amount is the total printed on the receipt, VAT included, unless includes_tax is false. tax_amount, when sent, is the VAT as the receipt prints it and wins over the one worked out from tax_rate, provided the rate could give it. The date cannot be after today, and nothing is written into a period the books are locked for. Name cash_account_id to record it as paid from that till in the same call; that needs the erp_cash:write scope and an owner who holds the ERP cash right, and the till must be kept in the expense\'s currency. Otherwise it is left to pay, with due_date if one is given. receipt_base64 keeps a picture or PDF of the receipt with it, at most 10 MB; it is checked before anything is written. Send an Idempotency-Key: a receipt posted twice is a cost counted twice.',
             'params' => array(
@@ -1127,6 +1138,7 @@ function erp_api_routes()
             'handler' => 'erp_api_quotes_create',
             'dry_run' => true,
             'returns' => 'ErpQuote',
+            'status' => 201,
             'summary' => 'Write a quote',
             'description' => 'Writes a priced offer to a customer, the way the panel\'s quote form does: it takes the next number of the quote series and is open until valid_until. A quote moves no money, no stock and no tax. The ERP works out every line\'s discount, tax and withholding and the totals; they come back in the answer. Announced as erp.quote.created. Send an Idempotency-Key so a retried call does not write two quotes.',
             'params' => array(
@@ -1187,6 +1199,7 @@ function erp_api_routes()
             'handler' => 'erp_api_quotes_invoice',
             'dry_run' => true,
             'returns' => 'ErpInvoice',
+            'status' => 201,
             'summary' => 'Turn a quote into an invoice draft',
             'description' => 'Writes an invoice draft dated today at the prices quoted, with the quote\'s number in its notes, and marks the quote invoiced. The draft takes no number: check it, then POST /erp/invoices/{id}/issue. Taken from an open, expired or accepted quote; one already invoiced, rejected or cancelled answers 409 quote_not_invoiceable. A quote in another currency leaves the rate to the day the draft is issued when none is recorded for today. Deleting the draft makes the quote accepted again. Announced as erp.quote.invoiced. The answer is the draft.',
             'params' => array(
@@ -1270,6 +1283,7 @@ function erp_api_routes()
             'handler' => 'erp_api_purchase_orders_create',
             'dry_run' => true,
             'returns' => 'ErpPurchaseOrder',
+            'status' => 201,
             'summary' => 'Write a purchase order',
             'description' => 'Writes an order to a supplier, the way the panel\'s purchase order form does: it takes the next number of the purchase order series and is open until it is sent. A purchase order moves no money, no stock and no tax. The ERP works out every line\'s discount, tax and withholding and the totals; they come back in the answer, and every line is given a key of its own (lines[].key). Announced as erp.purchase_order.created. Send an Idempotency-Key so a retried call does not write two orders.',
             'params' => array(
@@ -1330,6 +1344,7 @@ function erp_api_routes()
             'handler' => 'erp_api_purchase_orders_invoice',
             'dry_run' => true,
             'returns' => 'ErpInvoice',
+            'status' => 201,
             'summary' => 'Make a purchase invoice draft from a purchase order',
             'description' => 'Writes a purchase invoice draft for what has not come yet and is not already on a draft: the order\'s prices, today\'s date, the supplier\'s payment term, the order\'s number in its notes, and on each line the key of the order line it delivers (lines[].purchase_order_line). Repeatable, one draft per delivery. Match it to the supplier\'s bill with POST /erp/invoices/{id} (its number and date, the quantities that came), then POST /erp/invoices/{id}/issue: stock and cost move then, and the order turns partial or received. A cancelled order, one received in full and one whose every line is already on an invoice or a draft answer 409 purchase_order_not_invoiceable. In another currency the rate recorded for today is used, or the one of the day the draft is issued. Deleting the draft gives its quantities back to the order. The answer is the draft.',
             'params' => array(
@@ -1398,6 +1413,7 @@ function erp_api_routes()
             'handler' => 'erp_api_cheques_create',
             'dry_run' => true,
             'returns' => 'ErpCheque',
+            'status' => 201,
             'summary' => 'Record a cheque or a promissory note',
             'description' => 'Records one the way the cheques screen does. A received one is a collection from the account into the till it is kept in (the portfolio), so the customer\'s debt comes down the day it is taken, and it waits there with status portfolio. A given one is a payment to the account out of the till for given cheques, with status given, until the bank pays it. The amount is in the till\'s currency, at the rate of the day. The day cannot be in a locked period. The application owner must hold the ERP cash right. Move it on with POST /erp/cheques/{id}/step. Send an Idempotency-Key: a cheque recorded twice is a debt taken off twice.',
             'params' => array(
@@ -1526,6 +1542,7 @@ function erp_api_routes()
             'handler' => 'erp_api_stock_counts_create',
             'dry_run' => true,
             'returns' => 'ErpStockCount',
+            'status' => 201,
             'summary' => 'Start a stock count',
             'description' => 'Opens an empty count. Nothing changes in the store until the count is applied: add what is on the shelves with POST /erp/stock-counts/{id}/items, then POST /erp/stock-counts/{id}/apply.',
             'params' => array(

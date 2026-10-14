@@ -3854,14 +3854,26 @@ function ws_api_decision_schema()
         'text'          => 'string',
         'body'          => 'string',
         'sender_kind'   => 'string',
-        'sender'        => array('user_id' => 'integer?', 'name' => 'string'),
-        'marked_by'     => array('user_id' => 'integer', 'name' => 'string'),
+        'sender'        => 'WorkspaceMessageSender?',
+        'marked_by'     => 'WorkspacePerson?',
         'locked'        => 'boolean',
-        'claude_change' => array('type' => 'string', 'action' => 'string', 'record_id' => 'integer?'),
-        'file'          => array('name' => 'string', 'url' => 'string'),
+        'claude_change' => 'WorkspaceDecisionChange?',
+        'file'          => 'WorkspaceDecisionFile?',
         'decided_at'    => 'string',
         'created_at'    => 'string',
     );
+}
+
+// The parts of a decision that are null when it has none: the change it came
+// from, and the file it carries.
+function ws_api_decision_change_schema()
+{
+    return array('type' => 'string', 'action' => 'string', 'record_id' => 'integer?');
+}
+
+function ws_api_decision_file_schema()
+{
+    return array('name' => 'string', 'url' => 'string');
 }
 
 function ws_api_decisions_list($params)
@@ -4223,8 +4235,8 @@ function ws_api_change_schema()
         'fields'              => array(array('name' => 'string', 'label' => 'string', 'from_shown' => 'string?', 'to_shown' => 'string?')),
         'reason'              => 'string',
         'error'               => 'string',
-        'requested_by'        => array('user_id' => 'integer', 'name' => 'string'),
-        'decided_by'          => array('user_id' => 'integer', 'name' => 'string'),
+        'requested_by'        => 'WorkspacePerson?',
+        'decided_by'          => 'WorkspacePerson?',
         'decided_at'          => 'string?',
         'decision_message_id' => 'integer?',
         'can_apply'           => 'boolean',
@@ -4603,7 +4615,7 @@ function ws_api_assistant_request_schema()
         'note_id'          => 'integer?',
         'page_id'          => 'integer?',
         'node_id'          => 'string?',
-        'requested_by'     => array('user_id' => 'integer', 'name' => 'string'),
+        'requested_by'     => 'WorkspacePerson?',
         'reply_message_id' => 'integer?',
         'error'            => 'string',
         'created_at'       => 'string?',
@@ -4877,6 +4889,13 @@ function ws_api_note_source_present($source)
     );
 }
 
+// What ws_api_note_source_present() returns for a note taken from a message;
+// a note written on its own has none.
+function ws_api_note_source_schema()
+{
+    return array('channel_id' => 'integer?', 'channel_name' => 'string', 'author' => 'string');
+}
+
 /**
  * The people a note is shared with.
  *
@@ -4972,9 +4991,9 @@ function ws_api_note_schema()
         'access'      => 'string',
         'pinned'      => 'boolean',
         'unread'      => 'boolean',
-        'owner'       => array('user_id' => 'integer', 'name' => 'string'),
-        'updated_by'  => array('user_id' => 'integer', 'name' => 'string'),
-        'source'      => array('channel_id' => 'integer?', 'channel_name' => 'string', 'author' => 'string'),
+        'owner'       => 'WorkspacePerson?',
+        'updated_by'  => 'WorkspacePerson?',
+        'source'      => 'WorkspaceNoteSource?',
         'shared_with' => array(array('user_id' => 'integer', 'name' => 'string', 'can_edit' => 'boolean')),
         'shared_in'   => array(array('channel_id' => 'integer', 'name' => 'string')),
         'channel_id'  => 'integer?',

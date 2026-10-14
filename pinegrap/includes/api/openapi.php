@@ -711,6 +711,15 @@ function api_openapi_components()
         )
     ));
 
+    // What a rehearsal answers with (api_dry_run_stop()); detail is there only
+    // when the endpoint has something to say about what it would have done.
+    $schemas['DryRun'] = api_openapi_type_spec(array(
+        'dry_run'  => 'boolean',
+        'would'    => 'string',
+        'resource' => 'string',
+        'detail'   => 'object'
+    ));
+
     return $schemas;
 }
 
@@ -792,18 +801,7 @@ function api_openapi_responses($route) {
 
 	}
 
-	// A route that answers with no body at all declares 'status' => 204, and
-	// the document says so instead of promising a 200 with nothing in it.
-	$success_code = (isset($route['status']) && ((int)$route['status'] === 204)) ? '204' : '200';
-
-	if ($success_code === '204') {
-
-		$success = array('description' => 'Done. The answer has no body.');
-
-	}
-
 	$responses = array(
-		$success_code => $success,
 		'400' => array('description' => 'The request could not be read: the body is not JSON, or a cursor or header is not one this API issues.', 'content' => $error_content),
 		'401' => array('description' => 'The key or the secret is wrong, or none was sent.', 'content' => $error_content),
 		'403' => array('description' => 'The application is not allowed to do this.', 'content' => $error_content),
@@ -812,6 +810,48 @@ function api_openapi_responses($route) {
 		'429' => array('description' => 'Rate limit reached. Retry-After says how long to wait.', 'content' => $error_content),
 		'503' => array('description' => 'The API, or the part of the site this endpoint belongs to, cannot answer right now.', 'content' => $error_content)
 	);
+
+	// The status the success arrives with is the one the handler sends. A
+	// generated client that was told 200 treats the 201 of a create as an
+	// unexpected answer, so a route says what it sends: 'status' => 201 for a
+	// create, array(201, 200) for one that may hand back what was already
+	// there instead, 204 for an answer with no body at all.
+	$codes = api_openapi_success_codes($route);
+
+	foreach ($codes as $code) {
+
+		if ($code === 204) {
+
+			$responses['204'] = array('description' => 'Done. The answer has no body.');
+
+		} elseif ($code === 201) {
+
+			$responses['201'] = array('description' => 'Created. The answer is the new record.') + $success;
+
+		} elseif (count($codes) > 1) {
+
+			$responses[(string)$code] = array('description' => 'The record that was already there, handed back instead of a new one; the description of the endpoint says when.'
+				. (!empty($route['dry_run']) ? ' A rehearsal (X-Dry-Run: true) answers 200 too, with {"dry_run": true, ...} and nothing written.' : '')) + $success;
+
+		} else {
+
+			$responses[(string)$code] = $success;
+
+		}
+
+	}
+
+	// A rehearsal writes nothing, so it answers 200 even where the real call
+	// answers 201 or 204 (api_dry_run_stop()); a client that was not told
+	// reads it as an unexpected status.
+	if (!empty($route['dry_run']) && !in_array(200, $codes, true)) {
+
+		$responses['200'] = array(
+			'description' => 'A rehearsal (X-Dry-Run: true): every check passed and nothing was written.',
+			'content'     => array('application/json' => array('schema' => array('$ref' => '#/components/schemas/DryRun')))
+		);
+
+	}
 
 	if ($route['method'] === 'GET') {
 
@@ -840,6 +880,25 @@ function api_openapi_responses($route) {
 	ksort($responses, SORT_STRING);
 
 	return $responses;
+
+}
+
+/**
+ * The statuses a route succeeds with: what it declares as 'status' - one code
+ * or a list - and 200 when it declares nothing.
+ *
+ * @param array $route
+ * @return int[]
+ */
+function api_openapi_success_codes($route) {
+
+	if (!isset($route['status'])) {
+
+		return array(200);
+
+	}
+
+	return array_values(array_map('intval', (array)$route['status']));
 
 }
 

@@ -84,6 +84,74 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — API belgesi: oluşturma uçları 201, boş gelebilen kişiler null (2026-10-14)
+
+**Neden.** #393'ün belge taramasının bıraktığı iki bulgu. (1) Kayıt
+oluşturan uçlar `api_ok(..., 201)` ile cevap veriyor, ama OpenAPI üreticisi
+(`api_openapi_responses()`) yalnız 200 ya da 204 yazabiliyordu: belge her
+oluşturmada 200 vaat ediyordu ve durum koduna göre ayrışan üretilmiş
+istemciler (oapi-codegen, openapi-generator'ın bazı dilleri) başarılı
+cevabı beklenmedik sayıyordu. (2) Çalışma Alanı nesnelerinde kişiyi
+`ws_api_person_ref()` / `ws_api_person_brief_ref()` ile veren alanlar
+kimse yokken `null` dönüyor, OpenAPI'de ise boş olamaz yazıyordu.
+
+**Ne değişti.**
+- Rota tablosunda `'status'` artık 201'i ve listeyi de alıyor: işleyicisi
+  201 dönen 49 rotaya (`api/schema.php` 18, `erp/api.php` 17,
+  `workspace/api.php` 14, #400'ün kanal grubu oluşturması dahil)
+  `'status' => 201`; var olanı geri verebilen üçüne
+  (`workspace.threads.start`, `erp.waybills.invoice`,
+  `erp.accounts.late_fee_invoice`) `array(201, 200)`. Uçların davranışı
+  değişmedi.
+- `api_openapi_success_codes()` (`openapi.php`) rotanın başarı kodlarını
+  verir; `api_openapi_responses()` 201'i ("Created", kaydın şeması), 200 + 201
+  rotada 200'ü ("zaten olanı geri verir") ve 204'ü yazar. Provası olan ve
+  200 dönmeyen rotaya 200 olarak prova cevabı eklenir: yeni bileşen
+  `DryRun` (`dry_run`, `would`, `resource`, `detail`), çünkü
+  `api_dry_run_stop()` 201 / 204 yerine 200 döner. `webhooks.delete` de
+  böylece 204'ün yanında prova 200'ünü gösteriyor.
+- API belgesi sayfası (`api_console_endpoints_html()`) 200 dışı kodu her
+  uçta yazıyor: "Answers 201 Created with the new record.", 200 + 201
+  rotada ikisi, 204, provası olan uçta "A rehearsal answers 200". `tr.json`'a
+  4 metin.
+- `tools/check_api_schema.php` dördüncü sözleşme: 201 dönen işleyicinin
+  rotası `'status'` ile 201 bildirmeli, 201 bildiren rotanın işleyicisi 201
+  dönmeli (yorum ve string dışındaki `201` sayısı, token ile).
+- OpenAPI: `WorkspaceDecision.sender` (`WorkspaceMessageSender?`),
+  `marked_by` (`WorkspacePerson?`), `claude_change`, `file`;
+  `WorkspaceChange.requested_by` / `decided_by`;
+  `WorkspaceAssistantRequest.requested_by`; `WorkspaceNote.owner` /
+  `updated_by` / `source`; `WorkspaceNoteVersion.saved_by` null olabilir.
+  Yeni nesneler `WorkspaceDecisionChange`, `WorkspaceDecisionFile`,
+  `WorkspaceNoteSource` (#393'ün biçimi: satır içi nesne nullable
+  yazılamadığı için ayrı nesne + `?`). Sunucu tarafında hep `null`
+  dönüyorlardı; değişen yalnız belge.
+
+Şema değişikliği yok, izin yok, JS değişmedi, çalışan kod değişmedi (rota
+tablosundaki bildirim, OpenAPI üreticisi, belge sayfası, nesne
+bildirimleri).
+
+**Bilerek yapılmayan.** Kişi alanı dışındaki bütün nesnelerin taraması
+yapılmadı; aynı nesnede duran boş gelebilen iç içe nesneler (`claude_change`,
+`file`, `source`) düzeltildi. 200 dönen yazma uçlarında provanın cevabı
+kaydın şemasıyla aynı 200'ün altında kalıyor (önceki durum; 200'ün iki
+biçimi `oneOf` ister). `WorkspaceTaskNote.author` ve
+`WorkspaceClaudeRequest.requested_by` her zaman dolu döndüğü için
+değişmedi; görev sahibi, plan öğesini açan gibi düz sayı kimlikler 0 döner,
+`null` değil.
+
+**Doğrulama.** Sandbox'sız: OpenAPI belgesi CLI'da modüller açık üretildi
+(345 rota, 380 işlem), önce ve sonra `openapi-spec-validator` ile geçerli;
+sonra 201 olan işlem 49, prova 200'ü (`DryRun`) 37 işlemde (provası olan
+35 oluşturma ve `webhooks.delete`'in iki fiili), 11 nullable alan `allOf` +
+`nullable`. Belge sayfası CLI'da çizildi: 49 uçta 201 satırı, `webhooks.delete`'te
+204. Yeni `tests/api_openapi_status_test.php` (6 test); `lint`,
+`check_lang`, `check_bindings`, `check_api_schema` (her iki yönde bilerek
+bozulunca FAIL), `check_copies`, `build_js --check`, `tools/test.php`
+yeşil.
+
+---
+
 ## 2026.4.10 — Dış API: zamanlanmış mesaj yalnız ekip cihazları oturumundan, kişinin sözünü değiştiren uçlar MCP aracı değil (2026-10-14)
 
 **Neden.** #393'ün belge taramasının bıraktığı iki kod bulgusu.

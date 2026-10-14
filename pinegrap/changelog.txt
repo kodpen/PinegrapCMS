@@ -1659,6 +1659,20 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] API belgesi: kayıt oluşturan 49 uç (ürün,
+         müşteri, fatura, cari, kanal mesajı, görev ve
+         benzerleri) OpenAPI belgesinde ve API belgesi
+         sayfasında gerçekte döndükleri 201 Created
+         koduyla yazıyor; prova cevabı 200 olarak ayrıca
+         yazılı. Önceden 200 yazıyordu ve belgeden
+         üretilen istemciler başarılı cevabı beklenmedik
+         sayabiliyordu. Çalışma Alanı'nda kararı
+         işaretleyen, notun sahibi ve son düzenleyeni,
+         not sürümünü kaydeden, AI isteğini ve önerilen
+         değişikliği isteyen ya da karara bağlayan kişi
+         boş gelebildiği için null olabilir diye
+         işaretli.
+
   [YENİ] Çalışma Alanı: yöneticiler kanal gruplarını
          API'den de düzenleyebiliyor: grup oluşturma,
          adını, rengini ve yerini değiştirme, grubu

@@ -166,6 +166,9 @@ function ws_openapi_objects()
         'WorkspaceChannelGroupRemoval'      => 'ws_api_channel_group_removal_schema',
         'WorkspaceChannelGroupAccess'       => 'ws_api_channel_group_access_schema',
         'WorkspaceChannelGroupAccessChange' => 'ws_api_channel_group_access_change_schema',
+        'WorkspaceDecisionChange'   => 'ws_api_decision_change_schema',
+        'WorkspaceDecisionFile'     => 'ws_api_decision_file_schema',
+        'WorkspaceNoteSource'       => 'ws_api_note_source_schema',
     );
 }
 
@@ -231,6 +234,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_channels_create',
             'dry_run' => true,
             'returns'     => 'WorkspaceChannel',
+            'status'      => 201,
             'summary'     => 'Create a channel',
             'description' => 'Creates a channel the way the channel form does, with the owner of the application as its owner: a public channel is read by the whole team, a private one only by the people in it. members are brought in and told; ids of people who are not in the team are left out. The channel gets its first line in the owner\'s name. A name another open channel has is refused with 409 name_taken. Send an Idempotency-Key so a retried call does not create two channels.',
             'params'      => array(
@@ -398,6 +402,7 @@ function ws_api_routes()
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_messages_create',
             'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
             'summary'     => 'Write in a channel',
             'description' => 'Writes a message into a channel the owner may post in. Written with an application key or through an OAuth connection, readers see it as written by the application. Written by a person signed in on their own device (POST /auth/login), it is theirs, as if written in the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it), joins them to a public channel they were not in and marks the channel read for them; a message (kind message) of theirs that names @Claude, @ai or an MCP server\'s alias asks that assistant, with the same rules as the panel (a channel where it may not be asked gets a line saying why). Claude is started at once; Pinegrap AI and an MCP server\'s own agent are carried on right after the answer where the server can send the answer first, otherwise by the app\'s next GET /workspace/sync with the channel open, the screens that have it open and the hourly job. Follow the request with GET /workspace/assistant-requests. Tags are written as tokens - <@user:12> mentions a person (they are told), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; the writer of a message or staff may ask, so for a message written as the application only an owner who is staff may, and anybody else is refused with 403 before anything is written. Send an Idempotency-Key so a retried call does not post twice.',
             'params'      => array(
@@ -415,6 +420,7 @@ function ws_api_routes()
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_files_create',
             'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
             'form_file'   => 'file',
             'mcp'         => false,
             'summary'     => 'Post a file in a channel',
@@ -619,6 +625,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_channel_groups_create',
             'dry_run'     => true,
             'returns'     => 'WorkspaceChannelGroup',
+            'status'      => 201,
             'summary'     => 'Create a group of channels',
             'description' => 'Adds a group to the channel list the way New group in the sidebar does: a heading with a name and a colour, at the top level or inside another group (parent_id), last among the groups there. Groups are the same for everybody and only staff arrange them, so the owner of the application must be staff; anybody else is refused with 403. Groups go at most ' . WS_GROUP_DEPTH . ' levels deep (422 on parent_id). A new group is empty: POST /workspace/channels/{id}/group moves a channel into it and POST /workspace/channel-groups/{id}/access gives people access on it. The activity log gets the line the panel writes. Send an Idempotency-Key so a retried call does not create two groups.',
             'params'      => array(
@@ -765,6 +772,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_thread_start',
             'dry_run'     => true,
             'returns'     => 'WorkspaceThread',
+            'status'      => array(201, 200),
             'summary'     => 'Start a discussion about a message',
             'description' => 'Opens a room of its own to talk over one message of a public or private channel the owner of the application may write in - a message, a decision, a note or a task card - the way the message menu does. The owner and the person who wrote the message are in it; staff who read the channel may join it in the panel. A message has one discussion: when it already has one, that one is answered with 200 instead of a second being made, and a new one is answered with 201. Its id is then read and written with GET and POST /workspace/channels/{id}/messages. A decision, a note or a task card written in it is copied into the channel. Concluded discussions are kept, read only, for 30 days and then deleted.',
             'params'      => array(
@@ -847,6 +855,7 @@ function ws_api_routes()
             'dry_run'     => true,
             'mcp'         => false,
             'returns'     => 'WorkspaceScheduledMessage',
+            'status'      => 201,
             'summary'     => 'Schedule a message',
             'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a team devices session (a Bearer token from POST /auth/login) may schedule one: an application key and an OAuth connection write as the application and are refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person.',
             'params'      => array(
@@ -928,6 +937,7 @@ function ws_api_routes()
             'dry_run'     => true,
             'mcp'         => false,
             'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
             'summary'     => 'Ask a poll in a channel',
             'description' => 'Asks the channel a question with options to choose from, the way Poll by the composer and the /poll command do. The question is a message of the person\'s, written as from the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it) and joins them to a public channel they were not in; the people it mentions are told. Options are two to ten different texts (blank and repeated ones are left out). multiple lets a voter choose several options; anonymous keeps who chose what from everybody. closes_at closes it by itself and writes the result into the channel; left out, it stays open until it is closed with POST /workspace/polls/{id}/close. The answer is the message, with its poll (201). id may also be a discussion\'s the person is in. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection write as the application and are refused with 403 forbidden, since a poll is asked in the person\'s own name. Send an Idempotency-Key so a retried call does not ask twice.',
             'params'      => array(
@@ -1002,6 +1012,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_approvals_create',
             'dry_run'     => true,
             'returns'     => 'WorkspaceApproval',
+            'status'      => 201,
             'summary'     => 'Ask for approval in a channel',
             'description' => 'Writes an approval request into a channel the owner may post in; readers see it as written by the application with an application key or an OAuth connection, or by the person from a team devices session (POST /auth/login), and the people asked are told. approvers have to be members of the channel who may write in it, up to ten. guests are people outside the team - a customer - asked by e-mail: each gets a link of their own and answers with no account; only staff (roles 0-2) may name them, up to five, and with them approvers may be left out. rule any is met by the first approval, all by everybody\'s; a refusal settles it at once and a deadline that passes lets it expire. The result is written into the channel as a locked decision, and onto the task when the request is about one. Send an Idempotency-Key so a retried call does not ask twice.',
             'params'      => array(
@@ -1155,6 +1166,7 @@ function ws_api_routes()
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_notes_create',
             'returns'     => 'WorkspaceNote',
+            'status'      => 201,
             'summary'     => 'Write a note',
             'description' => 'Writes a new personal note of the owner of the application, as the notes screen does: nobody else sees it until the owner shares it there. body is Markdown; tags such as <#order:1045> or <@user:12> are kept as tags and checklists, tables and figures work as on the screen. A note without a title is called by its first line. Send an Idempotency-Key so a retried call does not write two notes.',
             'params'      => array(
@@ -1255,6 +1267,7 @@ function ws_api_routes()
             'scope'       => 'tasks:write',
             'handler'     => 'ws_api_tasks_create',
             'returns'     => 'WorkspaceTask',
+            'status'      => 201,
             'summary'     => 'Create a task',
             'description' => 'Creates a task. channel_id posts its card into that channel, written as POST /workspace/channels/{id}/messages writes: as the application with an application key or an OAuth connection, as the person from a team devices session. warnings says what the assignment does to the people\'s days (over their capacity, not in the department); a clash with somebody\'s leave is refused with 422 unless force is sent by an owner who may override. Send an Idempotency-Key so a retried call does not create two tasks.',
             'params'      => array_merge(array(
@@ -1298,6 +1311,7 @@ function ws_api_routes()
             'scope'       => 'tasks:write',
             'handler'     => 'ws_api_tasks_delegate',
             'returns'     => 'WorkspaceAssistantRequest',
+            'status'      => 201,
             'summary'     => 'Hand a task to an assistant',
             'description' => 'Hands an open task to Pinegrap AI (agent ai), Claude (agent claude) or an MCP server\'s alias (agent mcp:<server id>, answered by Pinegrap AI with that server\'s tools; a tool that writes waits on the task as a change of type mcp_call that only the owner can run, with their own account; a server that is an agent itself answers on its own, without Pinegrap AI, and its run is a request of agent mcp; when the tool it answers with changes things on the service, the run first waits on the task as a change of type mcp_call for the owner to approve, and then goes with their own account), as the task drawer does, and starts a run: the assistant reads the task, its notes, its channel and the records it is about (an alias reads only the task\'s title, description, state and dates and the instruction; a server\'s own agent the task\'s number, title and description, the instruction and its own last answer on the task), answers, and proposes what it would change. It writes nothing itself; its proposals wait on the task for the owner to apply (GET /workspace/changes?task_id=). The people on the task stay responsible; a task nobody is on gets the owner. For a task already with that assistant, the call is one more run with a new instruction. Only for an owner who may change the task, and never from an application an assistant works through. One run at a time on a task: 409 assistant_busy while one is under way. The answer is the run; follow it with GET /workspace/assistant-requests?task_id=, or the workspace.task.assistant_answered event. Claude is started at once; Pinegrap AI and an MCP server\'s own agent are carried on by the screens that are open and by the hourly job.',
             'params'      => array(
@@ -1343,6 +1357,7 @@ function ws_api_routes()
             'scope'       => 'tasks:write',
             'handler'     => 'ws_api_task_notes_create',
             'returns'     => 'WorkspaceTaskNote',
+            'status'      => 201,
             'summary'     => 'Add a note to a task',
             'description' => 'Written in the application\'s name with an application key or an OAuth connection, or in the person\'s from a team devices session (POST /auth/login). Tags such as <#order:1045> or <@user:12> are kept; a person mentioned is told.',
             'params'      => array(
@@ -1373,6 +1388,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_task_time_create',
             'dry_run'     => true,
             'returns'     => 'WorkspaceTaskTime',
+            'status'      => 201,
             'summary'     => 'Write time spent on a task',
             'description' => 'Written as the owner of the application\'s time: the owner must be on the task, have created it, or be staff. Announced as workspace.task.time_logged.',
             'params'      => array(
@@ -1528,6 +1544,7 @@ function ws_api_routes()
             'scope'       => 'tasks:write',
             'handler'     => 'ws_api_plan_items_create',
             'returns'     => 'WorkspacePlanItem',
+            'status'      => 201,
             'summary'     => 'Add a plan item',
             'description' => 'Puts a meeting, a customer visit, leave or another item on the planning board, as the calendar does; it takes its hours (a whole day for leave and holidays) from the people\'s capacity. scope people is about the people listed - the owner when nobody is - and the owner may plan only for themselves and the people of the departments they lead; department is the lead\'s or a settings holder\'s, company a settings holder\'s alone. Leave and holidays are whole days. Send an Idempotency-Key so a retried call does not add two items.',
             'params'      => array_merge(array(

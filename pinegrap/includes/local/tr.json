@@ -23191,5 +23191,9 @@
     "Only a public or a private channel goes into a group.": "Gruba yalnız herkese açık ya da özel bir kanal taşınır.",
     "Can be rehearsed: with X-Dry-Run: true, or dry_run=true in the query, it makes every check and answers without writing.": "Prova edilebilir: X-Dry-Run: true başlığıyla ya da sorguda dry_run=true ile her denetimi yapar ve yazmadan cevap verir.",
     "Send at least one of name, color, parent_id or before_id.": "name, color, parent_id ya da before_id alanlarından en az birini gönderin.",
-    "before_id must be another group of the level the group ends up on.": "before_id, grubun varacağı seviyedeki başka bir grup olmalı."
+    "before_id must be another group of the level the group ends up on.": "before_id, grubun varacağı seviyedeki başka bir grup olmalı.",
+    "Answers 201 Created with the new record.": "Başarılı olunca 201 Created ve yeni kaydı döner.",
+    "Answers 201 Created with the new record, or 200 with the one already there, as described above.": "Başarılı olunca 201 Created ve yeni kaydı döner; yukarıda anlatıldığı gibi var olanı verdiğinde 200 döner.",
+    "Answers 204 with no body.": "Başarılı olunca gövdesiz 204 döner.",
+    "A rehearsal answers 200, as nothing is written.": "Prova hiçbir şey yazmadığı için 200 döner."
 }
