@@ -18,6 +18,11 @@
 
 include('init.php');
 $user = validate_user();
+
+// The editor's callback and the field to fill are single values; one sent as
+// an array (?CKEditorFuncNum[]=x) counts as not given: it ended in an error
+// page.
+pg_request_single_values(array('CKEditorFuncNum', 'SingleImage', 'file_input_name'));
 $output_images = '';
 $output_warning = '';
 

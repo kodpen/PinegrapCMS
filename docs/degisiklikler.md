@@ -84,6 +84,68 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Panelde kalan 18 ekran tek değerli parametre dizi gelince 500 vermiyor (2026-10-14)
+
+**Neden.** #417'nin panel taramasından kalan K5: K1–K4 dışında, kendi tek
+değerli parametresi dizi gelince (`?page_id[]=1`) 500 veren 18 ekran.
+Parametre `escape()`, `e()`, `trim()`, `urlencode()`, `preg_match()` ya da
+`mb_strtolower()`'a gidiyor, bunlar diziyi reddediyordu: `add_email_campaign`
+(`page_id`), `add_field` ve `view_fields` (`page_id`, `product_id`,
+`product_group_id`), `add_submitted_form` (`page_id`), `add_menu_item`
+(`menu_id`), `add_user` (`contact_id`), `edit_form_item_view`,
+`edit_form_list_view`, `generate_layout` (`page_id`), `preview_form`
+(`product_id`), `print_packing_slip` (`ship_to_id`), `check_if_file_exists`
+(`file_name`), `image_editor_edit` (`file_name`; dosya varken `object_type`,
+`object_id`, `column_to_update` da), `editor_select_image`
+(`CKEditorFuncNum`, `SingleImage`, `file_input_name`),
+`editor_select_page_or_file` (`CKEditorFuncNum`), `get_theme_designer_module`
+(`file_id`, `module_id`), `import_design` (`submit_button`) ve
+`browse_catalog_menu` (`current_page_id`, `product_group_id`;
+`previous_url_id` dizi gelince yönlendirmeye `Array` yazıyordu). Hepsi
+2026.4.9'da da var.
+
+**Ne değişti.** Her ekranın başında tek satır:
+`pg_request_single_values(array(...))` (#425'in `send_to` / `from` için
+`init.php`'de çağırdığı yardımcı). Listedeki parametre dizi gelirse
+`$_GET`, `$_POST` ve `$_REQUEST`'ten çıkarılıyor; istek o parametre hiç
+verilmemiş gibi işleniyor. Parametreler ekrana özgü olduğu için çağrı
+`init.php`'de değil ekranda. Ekranın geri kalanı değişmedi;
+`edit_form_item_view` sayfa sorgusunda, liste görünümü eşindeki gibi
+`?? ''` aldı (parametresiz açılışta "Undefined array key" yazıyordu, 404
+aynı). Normal isteğin çıktısı aynı. Şema, dil dosyası, JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** `panel-tarama-araclari/scan.py`
+18 ekranda (parametresiz, kendi parametreleri `=1`, her kendi ve genel
+parametre dizi olarak; 360 istek), #425 birleştikten sonraki development'a
+karşı: 500 26 → 0. K5'e ait 30 dizi isteği artık parametresiz açılışla aynı
+durum kodunu veriyor ve onun yazmadığı günlük satırı yazmıyor
+(`import_design`'da taramanın normal isteğinden kalan liveform `h(null)`
+kullanım dışı satırı sonraki parametresiz açılışta da var). Gerçek
+kayıtlarla (özel form, form liste ve detay görünümü, ürün, ürün grubu, menü,
+kişi, resim, tema dosyası, gönderim) eski kod (`origin/development`) ikinci
+portta, istekler sırayla iki sunucuya: 51 normal istek aynı HTML'i verdi; 30
+dizi isteğinden 29'u eski kodda 500 verdi (otuzuncusu `previous_url_id[]`,
+yönlendirmede `Array`), yenisinde 0; her dizi isteği, yeni kodda aynı
+adresin o parametre olmadan açılışıyla aynı durum kodunu, aynı yönlendirmeyi
+ve aynı günlük satırlarını verdi. Yeni
+`tests/panel_single_value_params_test.php`: listedeki her ekranın çağrısı
+parametreyi taşıyor ve ekranın parametreyi `$_GET`, `$_POST` ya da
+`$_REQUEST`'ten ilk okuduğu yerden önce geliyor (çağrısı olmayan ekranda
+düşüyor). `php -l`, `tools/lint.php`, `tools/test.php` (954 test),
+`check_lang`, `check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler.
+
+**Bilerek yapılmayan.** Dizi isteği artık parametresiz açılışla aynı; bu
+ekranların bir kısmı parametresiz açılışta zaten uyarı yazıyor (`add_field`,
+`add_menu_item`, `generate_layout`, `preview_form`, `print_packing_slip`,
+`check_if_file_exists`, `image_editor_edit`, `browse_catalog_menu`,
+`get_theme_designer_module`): #417 notunun K7 ve K8'i, ayrı iş. Liveform
+`h(null)` (K9) değişmedi; formların POST yolları taranmadı (tarama yalnız
+GET), yardımcı onlarda da diziyi çıkarıyor.
+
+---
+
 ## 2026.4.10 — Sipariş akışı: bilinmeyen, boş ya da dizi `page_id` siparişi sayfanın ayarları olmadan veriyordu (2026-10-14)
 
 **Neden.** #421'den kalan madde. Hızlı sipariş (`express_order.php`),

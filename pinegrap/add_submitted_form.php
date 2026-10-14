@@ -32,6 +32,10 @@ validate_forms_access($user);
 
 include_once('liveform.class.php');
 
+// The custom form's page is one value; one sent as an array (page_id[]=x)
+// counts as not given: it ended in an error page.
+pg_request_single_values(array('page_id'));
+
 // Get the custom form's page id from the post (saving) or the query string (screen).
 $page_id = '';
 

@@ -51,6 +51,10 @@ if (pg_hosted()) {
 include_once('liveform.class.php');
 $liveform = new liveform('import_design');
 
+// The button is one value; one sent as an array (submit_button[]=x) counts as
+// not given: it ended in an error page.
+pg_request_single_values(array('submit_button'));
+
 $action = '';
 
 if ($command_line) {

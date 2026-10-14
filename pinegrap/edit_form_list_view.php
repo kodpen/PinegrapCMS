@@ -20,6 +20,10 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// The page is one value; one sent as an array (?page_id[]=x) counts as not
+// given: it ended in an error page.
+pg_request_single_values(array('page_id'));
+
 // Get various properties for page that we will use in various places below.
 $page = db_item(
     "SELECT

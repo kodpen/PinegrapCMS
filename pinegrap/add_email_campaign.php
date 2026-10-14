@@ -22,6 +22,10 @@ include('init.php');
 $user = validate_user();
 validate_email_access($user);
 
+// The page is one value; one sent as an array (?page_id[]=x) counts as not
+// given: it ended in an error page.
+pg_request_single_values(array('page_id'));
+
 // if form has not been submitted yet
 if (!$_POST) {
     // if a page id was passed in the query string, then check the HTML radio button and show and hide rows

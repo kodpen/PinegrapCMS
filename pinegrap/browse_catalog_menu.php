@@ -19,6 +19,11 @@
 // this script is used by the catalog menu to send a visitor to a specific product group that was selected in the catalog menu
 include('init.php');
 
+// The page, the product group and the return address are single values; one
+// sent as an array (?product_group_id[]=x) counts as not given: it ended in an
+// error page.
+pg_request_single_values(array('current_page_id', 'product_group_id', 'previous_url_id'));
+
 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path(get_page_name($_GET['current_page_id'])) . '/' . encode_url_path(get_catalog_item_address_name_from_id($_GET['product_group_id'], 'product group')) . '?previous_url_id=' . $_GET['previous_url_id']);
 exit();
 ?>

@@ -21,6 +21,10 @@ include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// The product is one value; one sent as an array (?product_id[]=x) counts as
+// not given: it ended in an error page.
+pg_request_single_values(array('product_id'));
+
 $liveform = new liveform('preview_form');
 
 // get product info

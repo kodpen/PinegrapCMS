@@ -2907,6 +2907,20 @@
          bir bağlantıyla hata sayfası veriyordu; artık
          giriş formu açılıyor.
 
+  [DÜZELTME] E-posta kampanyası, form alanı, gönderilmiş
+         form, menü öğesi ve kullanıcı ekleme ekranları,
+         form alanları listesi, form liste ve detay
+         görünümü düzenleme, düzen oluşturma, ürün formu
+         önizleme, paketleme fişi yazdırma, görsel
+         düzenleyici, editörün resim ve sayfa/dosya
+         seçicileri, Tema Tasarımcısı modülleri, tasarım
+         içe aktarma ve katalog menüsü bağlantısı,
+         adresinde sayfa, ürün, menü, kişi, dosya ya da
+         gönderim değeri birden çok kez geçen
+         (?page_id[]=…, ?product_id[]=…) bir bağlantıyla
+         açılınca hata sayfası veriyordu; artık ekran o
+         değer hiç verilmemiş gibi açılıyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 
