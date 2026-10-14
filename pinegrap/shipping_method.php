@@ -22,6 +22,15 @@ validate_token_field();
 
 initialize_order();
 
+// The form names the recipient, this page and the next one by id, each one string. One
+// posted as an array (ship_to_id[]=) counts as empty: no recipient is found for it and
+// the script stops below, and every later read of them gets a string.
+foreach (array('ship_to_id', 'page_id', 'next_page_id') as $pg_post_field) {
+    if (isset($_POST[$pg_post_field]) && !is_string($_POST[$pg_post_field])) {
+        $_POST[$pg_post_field] = '';
+    }
+}
+
 // get order id for ship to
 $query =
     "SELECT
@@ -59,7 +68,10 @@ $liveform = new liveform('shipping_method');
 
 $liveform->add_fields_to_session();
 
-$liveform->validate_required_field('shipping_method', 'Please select a shipping method.');
+// The method is one id; one posted as an array (shipping_method[]=) counts as not selected.
+pg_liveform_single_values($liveform, array('shipping_method'));
+
+$liveform->validate_required_field('shipping_method', lang('Please select a shipping method.'));
 
 // if an error does not exist
 if ($liveform->check_form_errors() == false) {

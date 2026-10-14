@@ -26,6 +26,19 @@ $liveform = new liveform('shopping_cart');
 $liveform->add_fields_to_session();
 $liveform->clear_notices();
 
+// The special offer code, the offline payment switch and the quick add fields post one value
+// each; the items' recurring, gift card and product form fields are checked in the loop below.
+pg_liveform_single_values($liveform, array('special_offer_code', 'offline_payment_allowed', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name'));
+
+// The form names its page by id, and the quick add form its product, recipient, quantity and
+// amount; each is one string. One posted as an array (page_id[]=) counts as empty, so every
+// read of them below gets a string.
+foreach (array('page_id', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name') as $pg_post_field) {
+    if (isset($_POST[$pg_post_field]) && !is_string($_POST[$pg_post_field])) {
+        $_POST[$pg_post_field] = '';
+    }
+}
+
 // Get page type properties that we will need in various places below.
 $page = db_item(
     "SELECT
@@ -35,6 +48,16 @@ $page = db_item(
         next_page_id_without_shipping
     FROM shopping_cart_pages
     WHERE page_id = '" . e($_POST['page_id'] ?? '') . "'");
+
+// No row when the id names no shopping cart page (unknown, empty or posted as an array): no
+// labels and no next pages then, as before, but without reading a row that is not there.
+if (!$page) {
+    $page = array(
+        'shopping_cart_label' => '',
+        'special_offer_code_label' => '',
+        'next_page_id_with_shipping' => '',
+        'next_page_id_without_shipping' => '');
+}
 
 add_pending_offers($liveform);
 
@@ -224,9 +247,16 @@ while ($row = mysqli_fetch_assoc($result)) {
 foreach ($order_items as $order_item) {
     // assume that the new quantity is equal to the old quantity until we find out otherwise
     $new_quantity = $order_item['quantity'];
+
+    // An item's donation amount and quantity are one string each; one posted as an array
+    // (quantity[<item>][]=) counts as not given: the item keeps its quantity, and its
+    // recurring, gift card and product form fields below are still checked.
+    $pg_item_posted_as_list =
+        (isset($_POST['donations'][$order_item['id']]) && !is_string($_POST['donations'][$order_item['id']]))
+        || (isset($_POST['quantity'][$order_item['id']]) && !is_string($_POST['quantity'][$order_item['id']]));
     
     // if this order item is a donation
-    if (isset($_POST['donations'][$order_item['id']]) == true) {
+    if (!$pg_item_posted_as_list && (isset($_POST['donations'][$order_item['id']]) == true)) {
         // read the amount as typed (1.250,00 / 1,250.00 / 1250,5)
         $donation_amount = pg_parse_amount($_POST['donations'][$order_item['id']]);
         
@@ -249,7 +279,7 @@ foreach ($order_items as $order_item) {
         }
     
     // else this order item is not a donation
-    } else {
+    } elseif (!$pg_item_posted_as_list) {
         // Remove commas from quantity.
         $_POST['quantity'][$order_item['id']] = str_replace(',', '', $_POST['quantity'][$order_item['id']]);
 
@@ -294,6 +324,10 @@ foreach ($order_items as $order_item) {
         if ($order_item['recurring'] == 1) {
             // if the customer can set the recurring schedule for this order item then validate values that customer entered and possibly save values
             if ($order_item['recurring_schedule_editable_by_customer'] == 1) {
+                // The schedule fields post one value each; one posted as an array counts as not
+                // given, so a required one is reported missing.
+                pg_liveform_single_values($liveform, array('recurring_payment_period_' . $order_item['id'], 'recurring_number_of_payments_' . $order_item['id'], 'recurring_start_date_' . $order_item['id']));
+
                 // if customer requested to check out, then require recurring schedule fields
                 if (isset($_POST['submit_checkout']) == true) {
                     $liveform->validate_required_field('recurring_payment_period_' . $order_item['id'], lang('Frequency is required.'));
@@ -424,6 +458,11 @@ foreach ($order_items as $order_item) {
             
             // Loop through each gift card quantity.
             for ($quantity_number = 1; $quantity_number <= $number_of_gift_cards; $quantity_number++) {
+                // The gift card's fields post one value each; one posted as an array counts as
+                // not given, so a missing recipient email is reported.
+                $pg_prefix = 'order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_';
+                pg_liveform_single_values($liveform, array($pg_prefix . 'recipient_email_address', $pg_prefix . 'from_name', $pg_prefix . 'message', $pg_prefix . 'delivery_date'));
+
                 // If customer requested to check out, then require recipient email address.
                 if (isset($_POST['submit_checkout']) == true) {
                     $liveform->validate_required_field('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', lang('Recipient Email is required.'));
@@ -495,7 +534,8 @@ foreach ($order_items as $order_item) {
                     label,
                     type,
                     required,
-                    wysiwyg
+                    wysiwyg,
+                    multiple
                 FROM form_fields
                 WHERE (product_id = '" . $order_item['product_id'] . "') AND (form_type = 'product') AND (type != 'information')
                 ORDER BY sort_order";
@@ -529,6 +569,10 @@ foreach ($order_items as $order_item) {
                 // loop through all form fields, so that we can save form data
                 foreach ($form_fields as $form_field) {
                     $html_field_name = 'order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_form_field_' . $form_field['id'];
+
+                    // Only a check box group or a multi-select keeps a list; any other field
+                    // posted as an array counts as not given.
+                    pg_cf_keep_posted_value($liveform, $html_field_name, $form_field);
                     
                     // if customer requested to check out and if field is required, then validate field
                     if ((isset($_POST['submit_checkout']) == true) && ($form_field['required'] == 1)) {

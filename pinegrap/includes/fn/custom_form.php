@@ -2458,14 +2458,28 @@ function prepare_custom_form($properties)
         'edit_end' => $edit_end
     );
 }
-// What a custom shipping or billing form field keeps of the value a visitor posted, for
-// submit_custom_form(). A check box group and a multi-select keep their list of strings, any
-// other field one string; a list where one value belongs (name[]=x from a hand-made request)
-// counts as not given, as it does in a form list's advanced search. The validators and the
-// escaping in submit_custom_form() then only ever see strings.
+// What a custom shipping, billing or product form field keeps of the value a visitor posted,
+// for submit_custom_form() and the product forms of the shopping cart and the express order.
+// A check box group and a multi-select keep their list of strings, any other field one
+// string; a list where one value belongs (name[]=x from a hand-made request) counts as not
+// given, as it does in a form list's advanced search. The validators and the escaping that
+// follow then only ever see strings.
 function pg_cf_posted_value($value, $field)
 {
     return pg_form_list_search_value($value, ($field['type'] == 'check box') || (($field['type'] == 'pick list') && !empty($field['multiple'])));
+}
+// Replaces the value a liveform holds for a custom shipping, billing or product form field
+// with what pg_cf_posted_value() keeps of it, before the field is validated and stored. A
+// value that is kept as posted is left untouched. The field needs its type and multiple
+// columns.
+function pg_cf_keep_posted_value($liveform, $html_field_name, $field)
+{
+    $posted_value = $liveform->get_field_value($html_field_name);
+    $kept_value = pg_cf_posted_value($posted_value, $field);
+
+    if ($kept_value !== $posted_value) {
+        $liveform->assign_field_value($html_field_name, $kept_value);
+    }
 }
 // This function is used by custom shipping and billing forms to process the custom form that was
 // submitted by the visitor.  This function is not used by custom form pages or product forms,
@@ -2557,11 +2571,7 @@ function submit_custom_form($properties)
     // Loop through all form fields, so that we can save form data.
     foreach ($fields as $field) {
         $html_field_name = $prefix . 'field_' . $field['id'];
-        $posted_value = $form->get_field_value($html_field_name);
-        $kept_value = pg_cf_posted_value($posted_value, $field);
-        if ($kept_value !== $posted_value) {
-            $form->assign_field_value($html_field_name, $kept_value);
-        }
+        pg_cf_keep_posted_value($form, $html_field_name, $field);
         // If validation for required fields should be completed and field is required, then validate field.
         if (($require == true) && ($field['required'] == 1)) {
             $error_message = '';

@@ -538,6 +538,21 @@
          sipariş widget'ı da kendi sayfasının ayarlarıyla
          çalışıyor.
 
+  [DÜZELTME] Kargo yöntemi adımı, ürün sayfasının ve
+         sipariş formu sayfasının "Sepete Ekle" formları,
+         sepet sayfası ve hızlı siparişte her ürünün
+         yinelenen ödeme, hediye çeki ve ürün formu
+         alanları, bir alanı birden çok değerle
+         (alan[]=…) gönderen bir istekte hata sayfası
+         veriyordu; artık o alan boş gönderilmiş
+         sayılıyor: zorunluysa sayfa "gerekli" uyarısıyla
+         geri geliyor, adedi böyle gelen ürün sepette
+         olduğu gibi kalıyor. Ürün formunun onay kutusu
+         ve çoklu seçim alanları eskisi gibi birden çok
+         değer alıyor. Kargo yöntemi seçilmeden devam
+         edilince çıkan uyarı Türkçe sitede İngilizce
+         görünüyordu; artık Türkçe.
+
   [GÜVENLİK] Para birimi seçicisi, seçimden sonra
          dönülecek adres olarak yalnız sitenin kendi
          sayfalarını kabul ediyor. Başka bir adrese
