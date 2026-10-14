@@ -1433,26 +1433,11 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            $stored = ws_store_upload($viewer, $channel, (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''));
-
-            if (!$stored['ok']) {
-                return ws_action_error($stored['error']);
-            }
-
-            $result = ws_message_send($viewer, $channel, (string) ($request['body'] ?? ''), array(
-                'file_id'   => $stored['file_id'],
-                'file_name' => $stored['name'],
-            ));
-
             // A message that could not be written (too many too fast, too
-            // long) takes its file back with it, as the external API does.
-            if (!$result['ok']) {
-                ws_upload_discard($stored['file_id']);
+            // long) keeps no file, as the external API does.
+            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''));
 
-                return ws_action_error($result['error']);
-            }
-
-            return ws_action_ok(array('message_id' => $result['message_id']));
+            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
         // A conversation with a guest (guests.php): started, a new link
         // given, ended. Staff in the room only; the functions check.

@@ -975,9 +975,12 @@
 
   [DÜZELTME] Ataçla ya da düzenlenmiş kopya olarak
          gönderilen bir dosyanın mesajı yazılamadığında
-         (çok hızlı art arda gönderim gibi) dosya Dosya
-         Yöneticisi'ndeki kanal klasöründe sahipsiz
-         kalıyordu; artık mesajla birlikte geri alınıyor.
+         (çok hızlı art arda gönderim, çok uzun metin
+         gibi) dosya Dosya Yöneticisi'ndeki kanal
+         klasöründe sahipsiz kalıyordu. Artık mesaj ve
+         dosya kaydedilmeden önce denetleniyor:
+         gönderilemeyen mesajın dosyası hiç kaydedilmiyor,
+         kanala boş klasör de açılmıyor.
 
   [HIZ] Çalışma Alanı ekranları daha hafif açılıyor. Bir
          ekranın yüklediği JavaScript yaklaşık 5 MB'tan

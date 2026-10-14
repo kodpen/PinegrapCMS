@@ -284,28 +284,8 @@ function ws_message_file_replace($viewer, $message, $channel, $name, $data)
  */
 function ws_message_file_send($viewer, $message, $channel, $name, $data)
 {
-    if (!ws_can_post_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'message_id' => 0);
-    }
-
-    $stored = ws_store_upload($viewer, $channel, $name, $data);
-
-    if (!$stored['ok']) {
-        return array('ok' => false, 'error' => $stored['error'], 'message_id' => 0);
-    }
-
-    $result = ws_message_send($viewer, $channel, '', array(
-        'file_id'   => $stored['file_id'],
-        'file_name' => $stored['name'],
-        'parent_id' => (int) $message['id'],
-    ));
-
     // No message, no file: a copy nobody can reach is not left behind.
-    if (!$result['ok']) {
-        ws_upload_discard($stored['file_id']);
-    }
-
-    return $result;
+    return ws_message_send_file($viewer, $channel, '', $name, $data, array('parent_id' => (int) $message['id']));
 }
 
 /**

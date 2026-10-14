@@ -1460,3 +1460,32 @@ function test_ws_bell_rows_carry_the_owner()
 
 	pg_assert_true(in_array('ws_bell_add', $writers, true), 'ws_bell_add() writes the bell row');
 }
+
+// A file posted from the panel (the paperclip, an edited copy sent as a
+// reply) is kept only once its message would be written, as the API's files
+// endpoint does: a refused message leaves no file, no file row and no channel
+// folder behind.
+function test_ws_message_send_file_checks_before_storing()
+{
+	$send = ws_api_test_handler_source('ws_message_send_file');
+
+	pg_assert_true(strpos($send, 'ws_upload_check(') < strpos($send, 'ws_store_upload_bytes('), 'the file is checked before it is kept');
+	pg_assert_true(strpos($send, 'ws_message_send_check(') < strpos($send, 'ws_store_upload_bytes('), 'the message is checked before the file is kept');
+	pg_assert_true(strpos($send, 'ws_store_upload_bytes(') < strpos($send, 'ws_upload_discard('), 'a message refused after all takes its file back');
+
+	$api = ws_api_test_handler_source('ws_api_files_create');
+
+	pg_assert_true(strpos($api, 'ws_message_send_check(') < strpos($api, 'ws_store_upload_bytes('), 'the API checks the message first as well');
+
+	$edited = ws_api_test_handler_source('ws_message_file_send');
+
+	pg_assert_contains('ws_message_send_file(', $edited, 'an edited copy goes through it');
+	pg_assert_false(strpos($edited, 'ws_store_upload') !== false, 'an edited copy keeps no file of its own');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$start = strpos($actions, "case 'ws_attach':");
+	$attach = ($start === false) ? '' : substr($actions, $start, strpos($actions, 'case \'', $start + 18) - $start);
+
+	pg_assert_contains('ws_message_send_file(', $attach, 'the paperclip goes through it');
+	pg_assert_false(strpos($attach, 'ws_store_upload') !== false, 'the paperclip keeps no file of its own');
+}

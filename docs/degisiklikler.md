@@ -84,6 +84,56 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Çalışma Alanı: panelde gönderilemeyen mesajın dosyası artık hiç kaydedilmiyor (2026-10-14)
+
+**Neden.** #402'nin bıraktığı parça. Panelin ataçı (`ws_attach` eylemi) ve
+düzenlenmiş kopyayı yanıt olarak gönderme (`ws_message_file_send()`:
+metin düzenleyicinin ve resim düzenleyicinin "kopya olarak gönder"i) önce
+dosyayı kaydediyor (`ws_store_upload()`), sonra mesajı yazmayı deniyordu.
+Mesaj reddedilirse (4000 karakteri aşan metin, dakikada yirmi mesaj
+sınırı) #382'den beri dosya `ws_upload_discard()` ile geri alınıyordu,
+ama o ana kadar dosya diske yazılmış, `files` satırı eklenmiş (kimliği
+harcanmış) ve kanalın ilk dosyasıysa Dosya Yöneticisi'nde kanala klasör
+(gerekirse "Workspace" klasörü de) açılmıştı; klasör boş kalıyordu.
+Sandbox'ta 4000 karakteri aşan metinle ataç gönderimi: `folder` 27 → 29
+("Workspace" ve "genel"), `files` sayısı aynı, `AUTO_INCREMENT` bir
+ilerlemiş. API'nin dosya ucu #402'den beri dosyayı ve mesajı kaydetmeden
+önce denetliyor; panel buna uyduruldu.
+
+**Ne değişti.**
+- Yeni `ws_message_send_file()` (`includes/workspace/files.php`): base64
+  dosyayı çözer, önce `ws_upload_check()` (kanala yazma yetkisi, ad, boyut,
+  içerik) sonra `ws_message_send_check()` (dosya kimliğinin yerine
+  `PHP_INT_MAX`, API'deki gibi: dosyanın yanında metin isteğe bağlı)
+  sorar; ikisi de geçerse dosyayı kaydeder ve mesajı yazar. Denetimle
+  yazma arasında mesaj yine de reddedilirse (sınır o arada doldu) dosya
+  eskisi gibi `ws_upload_discard()` ile geri alınır.
+- `ws_attach` ve `ws_message_file_send()` bu fonksiyonu çağırıyor; hata
+  metinleri ve sırası (önce dosya, sonra mesaj) aynı.
+- Başarılı gönderim değişmedi: dosya kanalın klasöründe aynı adla, aynı
+  `files` satırıyla, mesaj aynı `file_id` / `file_name` / `parent_id` ile
+  yazılıyor; Site Günlüğü'ne eskisi gibi satır yazılmıyor.
+- Test: `test_ws_message_send_file_checks_before_storing` iki denetimin
+  dosya kaydedilmeden önce yapıldığını, ataçın ve düzenlenmiş kopyanın bu
+  fonksiyondan geçtiğini, API ucunun da mesajı dosyadan önce denetlediğini
+  kaynakta denetliyor (test koşucusunda veritabanı yok).
+
+Şema değişikliği yok, izin yok, yeni metin yok, JS değişmedi. API uçlarına
+dokunulmadı. Dosyayı yerinde değiştirme (`ws_message_file_replace()`) mesaj
+yazmadığı için aynı kaldı.
+
+**Doğrulama.** Sandbox (`tools/setup_sandbox.sh`, `workspace_enabled = 1`),
+panel oturumuyla `api.php`'ye `ws_attach`: düzeltmeden önce yukarıdaki
+artık yeniden üretildi; sonra klasörü olmayan yeni kanalda 4000 karakteri
+aşan metin, `.php` adı ve dakika sınırı reddi `files`, `folder`,
+`ws_messages`, `log` sayılarını, `files` `AUTO_INCREMENT`'ını ve
+`data/files`'ı değiştirmedi. Başarılı ataç ve düzenlenmiş kopya (metin:
+`ws_file_text_save`, resim: `workspace_file_save.php?as=send`) eski kodla
+aynı satırları yazdı (kanal klasörü "Workspace" altında, dosya o klasörde,
+yanıt `parent_id` ile). `php_errors.log`'da yeni satır yok.
+
+---
+
 ## 2026.4.10 — Dış API: kaydedilen ERP tahsilatının zil satırı "system" diyordu ve kaydedenin zilinde okunmamış duruyordu (2026-10-14)
 
 **Neden.** #411'in bıraktığı parça. ERP Ayarları'nda tahsilat bildirimi
