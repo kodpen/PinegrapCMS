@@ -538,6 +538,17 @@
          sipariş widget'ı da kendi sayfasının ayarlarıyla
          çalışıyor.
 
+  [GÜVENLİK] Para birimi seçicisi, seçimden sonra
+         dönülecek adres olarak yalnız sitenin kendi
+         sayfalarını kabul ediyor. Başka bir adrese
+         (@baska-site.com/…, //baska-site.com/…)
+         gönderilen istek artık ana sayfaya dönüyor;
+         ziyaretçi bulunduğu sayfaya eskisi gibi dönüyor.
+         Para birimi birden çok değerle gönderilince
+         (currency_id[]=…) çoklu para biriminin açık
+         olduğu sitelerde o ziyaretçinin gezindiği her
+         sayfa hata veriyordu; artık seçim yok sayılıyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
