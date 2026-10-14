@@ -42,6 +42,10 @@ validate_ecommerce_access($user);
 // with a fresh view.
 if ((isset($_GET['reset'])) && ($_GET['reset'] == 'true')) {
     unset($_SESSION['software']['ecommerce']['view_orders']);
+
+    // The sort is kept apart by pg_list_state(); a fresh view starts from
+    // the default sort as well.
+    unset($_SESSION['software']['list_state']['view_orders']);
 }
 
 // store all values collected in request to session
@@ -73,14 +77,24 @@ if (isset($_SESSION['software']['ecommerce']['view_orders']['date_type']) == fal
     $_SESSION['software']['ecommerce']['view_orders']['date_type'] = 'order_date';
 }
 
-if (isset($_SESSION['software']['ecommerce']['view_orders']['start_month']) == false) {
-    $_SESSION['software']['ecommerce']['view_orders']['start_month'] = date('m', time() - 2678400);
-    $_SESSION['software']['ecommerce']['view_orders']['start_day'] = date('d', time() - 2678400);
-    $_SESSION['software']['ecommerce']['view_orders']['start_year'] = date('Y', time() - 2678400);
+// Default range: a month ago to today. Each date part is checked on its own:
+// the year math and mktime() below throw a TypeError for a missing or
+// non-numeric value, the year select loops forever on a non-numeric stop year,
+// and since the value is kept in the session, one bad address would otherwise
+// break the list for the rest of the session.
+$date_defaults = array(
+    'start_month' => date('m', time() - 2678400),
+    'start_day'   => date('d', time() - 2678400),
+    'start_year'  => date('Y', time() - 2678400),
+    'stop_month'  => date('m'),
+    'stop_day'    => date('d'),
+    'stop_year'   => date('Y'),
+);
 
-    $_SESSION['software']['ecommerce']['view_orders']['stop_month'] = date('m');
-    $_SESSION['software']['ecommerce']['view_orders']['stop_day'] = date('d');
-    $_SESSION['software']['ecommerce']['view_orders']['stop_year'] = date('Y');
+foreach ($date_defaults as $key => $value) {
+    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['ecommerce']['view_orders'][$key] ?? ''))) {
+        $_SESSION['software']['ecommerce']['view_orders'][$key] = $value;
+    }
 }
 
 if (isset($_SESSION['software']['ecommerce']['view_orders']['status']) == false) {
@@ -2295,20 +2309,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $years[] = $i;
     }
 
-    // if sort was set, update session
-    if (isset($_REQUEST['sort'])) {
-        // store sort in session
-        $_SESSION['software']['ecommerce']['view_orders']['sort'] = $_REQUEST['sort'];
-
-        // clear order
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = '';
-    }
-
-    // if order was set, update session
-    if (isset($_REQUEST['order'])) {
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = sql_order_direction($_REQUEST['order'], '');
-    }
-
     // If a screen was passed and it is a positive integer, then use it.
     // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
     if (
@@ -2325,69 +2325,46 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $screen = 1;
     }
 
-    // if the sort is not set yet, then default it to empty so that the switch below falls
-    // through to its default case
-    if (isset($_SESSION['software']['ecommerce']['view_orders']['sort']) == false) {
-        $_SESSION['software']['ecommerce']['view_orders']['sort'] = '';
+    // The columns this list sorts by, in the order the table shows them.
+    // pg_list_state() keeps the choice in the session as a code, so it
+    // survives a language change, and falls back to the default for anything
+    // else. Affiliate Code is a column only while the affiliate program is on.
+    $sort_columns = array(
+        'first_name'    => lang('First Name'),
+        'last_name'     => lang('Last Name'),
+        'status'        => lang('Status'),
+        'order_number'  => lang('Order Number'),
+        'total'         => lang('Total'),
+        'user'          => lang('User'),
+        'tracking_code' => lang('Tracking Code'),
+        'member_id'     => MEMBER_ID_LABEL,
+    );
+
+    if (AFFILIATE_PROGRAM == true) {
+        $sort_columns['affiliate_code'] = lang('Affiliate Code');
     }
 
-    switch (($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? '')) {
-        case lang('First Name'):
-            $sort_column = 'orders.billing_first_name';
-            break;
+    $sort_columns['order_date'] = lang('Order Date');
 
-        case lang('Last Name'):
-            $sort_column = 'orders.billing_last_name';
-            break;
+    $sort_default = array('sort' => 'order_date', 'order' => 'desc');
 
-        case lang('Status'):
-            $sort_column = 'orders.status';
-            break;
+    $list_state = pg_list_state('view_orders', $sort_columns, $sort_default);
+    $sort_levels = $list_state['sorts'];
 
-        case lang('Order Number'):
-            $sort_column = 'orders.order_number';
-            break;
-
-        case lang('User'):
-            $sort_column = 'user.user_username';
-            break;
-
-        case lang('Tracking Code'):
-            $sort_column = 'orders.tracking_code';
-            break;
-
-        case MEMBER_ID_LABEL:
-            $sort_column = 'contacts.member_id';
-            break;
-
-        case lang('Affiliate Code'):
-            $sort_column = 'orders.affiliate_code';
-            break;
-
-        case lang('Total'):
-            $sort_column = 'orders.total';
-            break;
-
-        case lang('Order Date'):
-            $sort_column = 'orders.order_date';
-            break;
-
-        default:
-            $sort_column = 'orders.order_date';
-            $_SESSION['software']['ecommerce']['view_orders']['sort'] = 'Order Date';
-    }
-
-    if (!empty($_SESSION['software']['ecommerce']['view_orders']['order'])) {
-        $asc_desc = sql_order_direction($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '');
-    } elseif ($sort_column == 'orders.order_date') {
-        $asc_desc = 'desc';
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = 'desc';
-    } else {
-        $asc_desc = 'asc';
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = 'asc';
-    }
-
-    
+    // What each sort code orders by. Only codes pg_list_state() let through
+    // reach pg_list_order_by(), and it writes nothing but these.
+    $order_by = pg_list_order_by($sort_levels, array(
+        'first_name'     => 'orders.billing_first_name',
+        'last_name'      => 'orders.billing_last_name',
+        'status'         => 'orders.status',
+        'order_number'   => 'orders.order_number',
+        'total'          => 'orders.total',
+        'user'           => 'user.user_username',
+        'tracking_code'  => 'orders.tracking_code',
+        'member_id'      => 'contacts.member_id',
+        'affiliate_code' => 'orders.affiliate_code',
+        'order_date'     => 'orders.order_date',
+    ));
 
     // Get all orders
     $query = "SELECT count(distinct(orders.id)) as count
@@ -2417,7 +2394,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
   
     
     if (AFFILIATE_PROGRAM == true) {
-        $output_affiliate_heading = '<th>' . get_column_heading(lang('Affiliate Code'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>';
+        $output_affiliate_heading = '<th>' . get_column_heading(lang('Affiliate Code'), $sort_levels, '', '', 'affiliate_code') . '</th>';
     }
 
 
@@ -2454,7 +2431,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
              $sql_status
              $sql_type
              GROUP BY orders.id
-             ORDER BY $sort_column $asc_desc";
+             ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $filter_totals = 0;
@@ -3202,6 +3179,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         ' . $output_gateway_buttons . '
                     </form>
                     <div class="pg-toolbar-grow"></div>
+                    ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
                     <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
@@ -3222,18 +3200,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang('Action') . '</th> 
-                                        <th>' . get_column_heading(lang('First Name'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Last Name'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('First Name'), $sort_levels, '', '', 'first_name') . '</th>
+                                        <th>' . get_column_heading(lang('Last Name'), $sort_levels, '', '', 'last_name') . '</th>
+                                        <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
                                         <th>' . lang('Type') . '</th>
-                                        <th>' . get_column_heading(lang('Order Number'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th class="text-end">' . get_column_heading(lang('Total'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('User'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Tracking Code'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(MEMBER_ID_LABEL, ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Order Number'), $sort_levels, '', '', 'order_number') . '</th>
+                                        <th class="text-end">' . get_column_heading(lang('Total'), $sort_levels, '', '', 'total') . '</th>
+                                        <th>' . get_column_heading(lang('User'), $sort_levels, '', '', 'user') . '</th>
+                                        <th>' . get_column_heading(lang('Tracking Code'), $sort_levels, '', '', 'tracking_code') . '</th>
+                                        <th>' . get_column_heading(MEMBER_ID_LABEL, $sort_levels, '', '', 'member_id') . '</th>
                                         ' . $output_affiliate_heading . '
                                         <th>' . lang('Card Data') . '</th>
-                                        <th>' . get_column_heading(lang('Order Date'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Order Date'), $sort_levels, '', '', 'order_date') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>

@@ -753,6 +753,25 @@
          Ground" hizmetinin adı, USPS'in verdiği yeni adla
          "USPS Ground Advantage" oldu.
 
+  E-TİCARET: SİPARİŞLER
+  --------------------------------------------------------
+
+  [YENİ] Siparişler listesi de aynı anda birden çok
+         sütuna göre sıralanıyor, örneğin durum artan,
+         aynı durumda toplam azalan. Başlığa Shift ile
+         tıklamak sonraki düzeyi ekliyor; telefonda ya da
+         klavyeyle araç çubuğundaki "Sıralama" menüsü
+         kullanılıyor. Durum, tür, tarih aralığı ve
+         gelişmiş filtreler sıralama değişince korunuyor.
+         Seçilen sıralama panel dili değişince
+         kaybolmuyor.
+
+  [DÜZELTME] Adreste eksik ya da bozuk bir tarih
+         değeriyle açılan Siparişler listesi hata sayfası
+         veriyor ve oturum kapanana kadar hiç açılmıyordu;
+         artık bozuk değer varsayılan tarih aralığına
+         dönüyor.
+
   ÇALIŞMA ALANI
   --------------------------------------------------------
 
