@@ -88,16 +88,20 @@ function ws_reaction_valid($emoji)
 }
 
 /**
- * Leaves an emoji on a message, or takes it back.
+ * Whether this emoji may be left on a message or taken back: the checks of
+ * ws_reaction_set(), made on their own so that the API's dry run meets the
+ * same refusals.
  *
- * @param array    $viewer
- * @param array    $message
- * @param string   $emoji
- * @param int      $app_id an application reacting for its owner (0 = the person)
- * @param bool|null $on    true to leave, false to take back, null to toggle
- * @return array ok, error
+ * @param array     $viewer
+ * @param array     $message
+ * @param string    $emoji
+ * @param int       $app_id an application reacting for its owner (0 = the person)
+ * @param bool|null $on     true to leave, false to take back, null to toggle
+ * @return array ok, error, emoji (trimmed), on (what the call does), changes
+ *               (false when the emoji already is, or is not, there), and
+ *               kind, sender and where: the reaction's row
  */
-function ws_reaction_set($viewer, $message, $emoji, $app_id = 0, $on = null)
+function ws_reaction_check($viewer, $message, $emoji, $app_id = 0, $on = null)
 {
     if (!ws_interact_ready()) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
@@ -128,16 +132,38 @@ function ws_reaction_set($viewer, $message, $emoji, $app_id = 0, $on = null)
         $on = !$has;
     }
 
-    if ($on && !$has) {
-        // A message is not a place for a hundred different emoji.
-        if ((int) db_value("SELECT COUNT(DISTINCT emoji) FROM ws_reactions WHERE message_id = '" . (int) $message['id'] . "'") >= 20) {
-            return array('ok' => false, 'error' => lang('This message already carries as many different reactions as it can.'));
-        }
+    // A message is not a place for a hundred different emoji.
+    if ($on && !$has && ((int) db_value("SELECT COUNT(DISTINCT emoji) FROM ws_reactions WHERE message_id = '" . (int) $message['id'] . "'") >= 20)) {
+        return array('ok' => false, 'error' => lang('This message already carries as many different reactions as it can.'));
+    }
 
+    return array('ok' => true, 'error' => '', 'emoji' => $emoji, 'on' => (bool) $on, 'changes' => ((bool) $on !== $has),
+        'kind' => $kind, 'sender' => $sender, 'where' => $where);
+}
+
+/**
+ * Leaves an emoji on a message, or takes it back.
+ *
+ * @param array    $viewer
+ * @param array    $message
+ * @param string   $emoji
+ * @param int      $app_id an application reacting for its owner (0 = the person)
+ * @param bool|null $on    true to leave, false to take back, null to toggle
+ * @return array ok, error
+ */
+function ws_reaction_set($viewer, $message, $emoji, $app_id = 0, $on = null)
+{
+    $checked = ws_reaction_check($viewer, $message, $emoji, $app_id, $on);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
+    }
+
+    if ($checked['on'] && $checked['changes']) {
         db("INSERT IGNORE INTO ws_reactions (message_id, sender_kind, sender_id, emoji, created_at)
-            VALUES ('" . (int) $message['id'] . "', '" . $kind . "', '" . $sender . "', '" . e($emoji) . "', '" . time() . "')");
-    } elseif (!$on && $has) {
-        db("DELETE FROM ws_reactions WHERE " . $where);
+            VALUES ('" . (int) $message['id'] . "', '" . $checked['kind'] . "', '" . $checked['sender'] . "', '" . e($checked['emoji']) . "', '" . time() . "')");
+    } elseif (!$checked['on'] && $checked['changes']) {
+        db("DELETE FROM ws_reactions WHERE " . $checked['where']);
     }
 
     ws_message_touch($message['id']);

@@ -1314,3 +1314,81 @@ function test_ws_api_panel_log_lines_carry_the_owner()
 		pg_assert_true(isset($found[$name]), 'the API calls ' . $name . '()');
 	}
 }
+
+// Writing a message, posting a file, leaving an emoji, giving a read
+// receipt, answering an approval and adding a task note can each be
+// rehearsed; the ones offered to an MCP client take dry_run as an argument.
+function test_ws_api_message_file_reaction_ack_decision_and_note_rehearse()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$ids = array('workspace.messages.create', 'workspace.files.create', 'workspace.messages.react', 'workspace.messages.ack',
+		'workspace.approvals.decide', 'workspace.tasks.notes.create');
+
+	foreach ($ids as $id) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+
+		if (pg_mcp_route_is_offered($routes[$id])) {
+			$properties = (array) pg_mcp_tool_from_route($routes[$id])['inputSchema']['properties'];
+
+			pg_assert_same('boolean', $properties['dry_run']['type'] ?? null, $id . ': the tool takes dry_run');
+		}
+	}
+
+	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.files.create']), 'the upload stays no MCP tool');
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.messages.create']), 'writing is still a tool');
+}
+
+// The panel's base64, with the data: prefix it sends or without; anything
+// that is not base64 is no file.
+function test_ws_upload_decode()
+{
+	pg_assert_same('hello', ws_upload_decode('data:text/plain;base64,aGVsbG8='));
+	pg_assert_same('hello', ws_upload_decode('aGVsbG8='));
+	pg_assert_same("\xfb\xef", ws_upload_decode('data:image/png;base64, +8='), 'a space a form turned + into is a +');
+	pg_assert_same(false, ws_upload_decode('not*base64'));
+}
+
+// What a channel says of a file from its name and bytes, without anything
+// kept: what a dry run meets before the file would reach the disk.
+function test_ws_upload_inspect()
+{
+	$ok = ws_upload_inspect("..\\dir/re\x01port.PDF", '%PDF-1.4 a document');
+
+	pg_assert_true($ok['ok'], 'a document');
+	pg_assert_same('report.PDF', $ok['name'], 'the path and control characters are left out');
+	pg_assert_same('pdf', $ok['extension']);
+
+	pg_assert_false(ws_upload_inspect('', 'bytes')['ok'], 'no name');
+	pg_assert_false(ws_upload_inspect('notes.txt', '')['ok'], 'no bytes');
+	pg_assert_false(ws_upload_inspect('notes.txt', false)['ok'], 'bytes that could not be decoded');
+
+	foreach (array('logo.svg', 'page.html', 'shell.php', 'photo.jpg.php', '.htaccess') as $name) {
+		pg_assert_false(ws_upload_inspect($name, 'bytes')['ok'], $name . ' is refused by its name');
+	}
+
+	pg_assert_false(ws_upload_inspect('photo.png', 'not a picture')['ok'], 'a picture has to be a picture');
+
+	if (function_exists('finfo_open')) {
+		pg_assert_false(ws_upload_inspect('notes.txt', "<!DOCTYPE html>\n<html><head><title>x</title></head><body><script>alert(1)</script></body></html>")['ok'], 'a page is refused whatever it is called');
+	}
+
+	if (function_exists('imagecreatetruecolor') && function_exists('imagepng')) {
+		$image = imagecreatetruecolor(4, 4);
+
+		ob_start();
+		imagepng($image);
+		$png = (string) ob_get_clean();
+		imagedestroy($image);
+
+		$picture = ws_upload_inspect('photo.png', $png);
+
+		pg_assert_true($picture['ok'], 'a real picture');
+		pg_assert_same('png', $picture['extension']);
+	}
+}

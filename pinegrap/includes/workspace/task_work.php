@@ -711,6 +711,29 @@ function ws_task_item_add($viewer, $task, $text)
 }
 
 /**
+ * Whether the person may add this note to a task: the checks of
+ * ws_task_note_add(), made on their own so that the API's dry run meets the
+ * same refusals.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $body
+ * @return array ok, error, body (the text as it would be stored)
+ */
+function ws_task_note_add_check($viewer, $task, $body)
+{
+    if (!ws_task_work_ready()) {
+        return array('ok' => false, 'error' => lang('Invalid request.'));
+    }
+
+    if (!ws_can_see_task($viewer, $task)) {
+        return array('ok' => false, 'error' => lang('That task could not be found.'));
+    }
+
+    return ws_task_note_clean($body);
+}
+
+/**
  * Adds a note to a task. Whoever can see the task may.
  *
  * @param array  $viewer
@@ -723,15 +746,7 @@ function ws_task_item_add($viewer, $task, $text)
  */
 function ws_task_note_add($viewer, $task, $body, $app_id = 0, $ask = true)
 {
-    if (!ws_task_work_ready()) {
-        return array('ok' => false, 'error' => lang('Invalid request.'), 'note_id' => 0);
-    }
-
-    if (!ws_can_see_task($viewer, $task)) {
-        return array('ok' => false, 'error' => lang('That task could not be found.'), 'note_id' => 0);
-    }
-
-    $clean = ws_task_note_clean($body);
+    $clean = ws_task_note_add_check($viewer, $task, $body);
 
     if (!$clean['ok']) {
         return $clean + array('note_id' => 0);
