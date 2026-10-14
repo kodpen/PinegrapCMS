@@ -1697,6 +1697,14 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] Çalışma Alanı: API'den ya da yapay zekâ
+         bağlantısından tetiklenen bildirimler (anma,
+         görev verme, onay isteği ve benzerleri) zilde
+         paneldeki gibi işi yapanın kullanıcı adını
+         taşıyor (telefon ya da bilgisayar uygulamasında
+         oturum açan kişi, entegrasyonda uygulamanın
+         sahibi); önceden zil satırında ad boştu.
+
   [YENİ] Çalışma Alanı: mesaj yazma, kanala dosya
          gönderme, emoji bırakma, okundu onayı verme,
          onay isteğini cevaplama ve göreve not ekleme de

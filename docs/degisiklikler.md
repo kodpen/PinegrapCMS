@@ -84,6 +84,50 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: tetiklenen Çalışma Alanı bildiriminin zil satırı adsız yazılıyordu (2026-10-14)
+
+**Neden.** #404'ün bıraktığı parça. Çalışma Alanı'nın her bildirimi
+(`ws_notify()`: anma, görev verme, görev bitti, kanala ekleme, onay
+isteği ve kararı, not paylaşımı, görev notu, tartışma, okundu isteği ve
+benzerleri) kişinin zilinde de bir satır açıyor (`ws_bell_add()`,
+`notifications.user`). Satır, işi yapanı panel oturumundaki kullanıcı
+adından (`$_SESSION['sessionusername']`) alıyordu; API ve MCP sunucusu
+oturum tutmadığı için API'den tetiklenen bildirimlerin zil satırı boş
+adla düşüyordu. Yalnız #404'ten beri `ws_api_as_owner()` içinde çağrılan
+kanal oluşturmanın "kanala eklendi" satırı adı taşıyordu.
+
+**Ne değişti.**
+- `ws_bell_add()` adı yeni `ws_bell_user()`'dan alıyor: panelde oturum
+  açan kişi; oturum yoksa API'yi çağıran uygulamanın sahibi (ekip
+  cihazları oturumu ve OAuth'ta oturum açan kişi, uygulama anahtarında
+  uygulamanın sahibi; `ws_change_log()` ve `ws_api_as_owner()` ile aynı).
+  Zamanlanmış işlerde ikisi de yok, satır eskisi gibi adsız. Tek yerde
+  olduğu için `ws_notify()`'a varan bütün API ve MCP yolları kapsanıyor.
+- Zil satırının metni, sayısı, kime gittiği ve cihaz bildirimi aynı.
+- Test: `test_ws_bell_user` adın nereden geldiğini,
+  `test_ws_bell_rows_carry_the_owner` `includes/workspace/` altında zile
+  satır yazan her fonksiyonun adı `ws_bell_user()`'dan aldığını denetliyor
+  (düzeltme öncesi kodda ikisi de kırmızı).
+
+Şema değişikliği yok, izin yok, API belgesi, `tr.json` ve JS değişmedi.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Eski kod (`origin/development`)
+ikinci bir portta, aynı veritabanında. Uygulama anahtarıyla (sahibi
+`admin`) ve `ayse`'nin ekip cihazları oturumuyla kanal açıp karşı tarafı
+ekleme, mesajda anma ve görev verme: eski kodda anma ve görev satırları
+boş adla, yeni kodda anahtarda `admin`, cihazda `ayse` adıyla yazıldı;
+kanala ekleme satırı ikisinde de adlı (#404). Her çalıştırmada üç satır,
+metinler aynı; sunucu günlüğünde uyarı yok. OAuth bağlantısıyla
+denenmedi (cihazla aynı doğrulama yolundan geçiyor).
+
+**Bilerek yapılmayan.** ERP tahsilat bildirimi (`erp_alert_event()`,
+Çalışma Alanı değil) API'den kaydedilen tahsilatta adı `USER_USERNAME`
+boş olduğu için `system` yazıyor ve kaydı yapanın kendi zilinde de
+okunmamış duruyor (`USER_ID` boş); ayrı iş, kodu okuyarak bulundu,
+denenmedi.
+
+---
+
 ## 2026.4.10 — Form listesi ve katalog detayı dizi parametreyle 500 veriyordu, form listesi araması tarih ve saat alanlarında uyarı yazıyordu (2026-10-14)
 
 **Neden.** #403'ün bıraktığı parçalar, hepsi 2026.4.9'da var. (1) Form

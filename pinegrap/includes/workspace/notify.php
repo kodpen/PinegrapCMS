@@ -981,9 +981,33 @@ function ws_bell_add($user_id, $inbox_id)
 
     $described = ws_inbox_describe(ws_rights_for_id($user_id) + array('ecommerce' => false, 'contacts' => false, 'erp' => false), $row);
 
+    $by = ws_bell_user($_SESSION['sessionusername'] ?? '', function_exists('api_current_app') ? api_current_app() : null);
+
     db("INSERT INTO notifications (action, type, title, target_user_id, reference_id, user, readed, timestamp)
         VALUES ('workspace', 'info', '" . e(mb_substr($described['title'], 0, 250)) . "', '" . (int) $user_id . "', '" . (int) $inbox_id . "',
-            '" . e((string) ($_SESSION['sessionusername'] ?? '')) . "', '0', UNIX_TIMESTAMP())");
+            '" . e($by) . "', '0', UNIX_TIMESTAMP())");
+}
+
+/**
+ * Who a bell row says set it off: the person signed in on the panel. A call
+ * through the external API or the MCP server keeps no session, so there it is
+ * the application's owner - the person signed in on a device or through
+ * OAuth, the owner of an application key - as in the activity log
+ * (ws_change_log(), ws_api_as_owner()). A scheduled job has neither.
+ *
+ * @param string     $session the panel session's user name
+ * @param array|null $app     api_current_app()
+ * @return string
+ */
+function ws_bell_user($session, $app)
+{
+    $session = (string) $session;
+
+    if ($session !== '') {
+        return $session;
+    }
+
+    return (string) ($app['owner']['username'] ?? '');
 }
 
 /**

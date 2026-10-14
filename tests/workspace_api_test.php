@@ -9,9 +9,9 @@
  * of panel record (includes/workspace/api_day.php), who a call from a
  * device writes as, which of its messages ask an assistant, where what
  * they ask is carried on, how a channel's file is handed out
- * (includes/workspace/files.php), and that a handler calls the panel's
+ * (includes/workspace/files.php), that a handler calls the panel's
  * functions that log in the signed-in person's name as the application's
- * owner.
+ * owner, and whose name a bell row carries.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -1425,4 +1425,38 @@ function test_ws_upload_inspect()
 		pg_assert_true($picture['ok'], 'a real picture');
 		pg_assert_same('png', $picture['extension']);
 	}
+}
+
+// A bell row names who set it off: the person signed in on the panel, or,
+// for a call through the API (which keeps no session), the application's
+// owner - the person on the device or behind the OAuth connection, the owner
+// of an application key.
+function test_ws_bell_user()
+{
+	pg_assert_same('ayse', ws_bell_user('ayse', null), 'the panel: the person signed in');
+	pg_assert_same('mehmet', ws_bell_user('', array('id' => 3, 'owner' => array('id' => 7, 'username' => 'mehmet'))), 'the API: the application\'s owner');
+	pg_assert_same('mehmet', ws_bell_user(null, array('id' => 3, 'owner' => array('id' => 7, 'username' => 'mehmet'))), 'no session at all');
+	pg_assert_same('ayse', ws_bell_user('ayse', array('id' => 3, 'owner' => array('id' => 7, 'username' => 'mehmet'))), 'a session set by ws_api_as_owner() stands');
+	pg_assert_same('', ws_bell_user('', array('id' => 3)), 'a call refused before its owner was loaded');
+	pg_assert_same('', ws_bell_user('', null), 'a scheduled job');
+}
+
+// Every bell row the workspace writes takes its user from ws_bell_user(),
+// whatever set it off (a mention, a task, an approval, a poll ...).
+function test_ws_bell_rows_carry_the_owner()
+{
+	$writers = array();
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/workspace/*.php') as $file) {
+		$parts = preg_split('/^function\s+(\w+)\s*\(/m', (string) file_get_contents($file), -1, PREG_SPLIT_DELIM_CAPTURE);
+
+		for ($i = 1; $i < count($parts); $i += 2) {
+			if (stripos($parts[$i + 1], 'INSERT INTO notifications') !== false) {
+				$writers[] = $parts[$i];
+				pg_assert_contains('ws_bell_user(', $parts[$i + 1], basename($file) . ': ' . $parts[$i] . '() names the user through ws_bell_user()');
+			}
+		}
+	}
+
+	pg_assert_true(in_array('ws_bell_add', $writers, true), 'ws_bell_add() writes the bell row');
 }
