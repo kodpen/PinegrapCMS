@@ -167,6 +167,30 @@ function test_ws_api_own_words_routes_are_no_tools()
 	}
 }
 
+// An OAuth connection is a device row too, so a refusal of the team devices
+// gate says which session it wants and that a connection is refused as well,
+// not "signed in on a device".
+function test_ws_api_own_words_refusals_name_the_team_devices_session()
+{
+	$texts = array();
+
+	preg_match_all("/lang\\('((?:[^'\\\\]|\\\\.)*)'\\)/", ws_api_test_handler_source('ws_api_own_words_only'), $found);
+	$texts = array_merge($texts, $found[1]);
+
+	foreach (array('api_resources.php', 'api_threads.php') as $file) {
+		preg_match_all("/ws_api_own_words_only\\(lang\\('((?:[^'\\\\]|\\\\.)*)'\\)\\)/", file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $file), $found);
+		$texts = array_merge($texts, $found[1]);
+	}
+
+	pg_assert_true(count($texts) >= 6, 'every refusal is found');
+
+	foreach ($texts as $text) {
+		pg_assert_true(strpos($text, 'team devices session (POST /auth/login)') !== false, $text);
+		pg_assert_true(strpos($text, 'OAuth connection') !== false, $text);
+		pg_assert_false(strpos($text, 'signed in on a device') !== false, $text);
+	}
+}
+
 // A scheduled message is posted later in the person's own name, so it is
 // scheduled from a team devices session only, and no MCP tool schedules one;
 // listing and deleting the owner's scheduled messages stay tools.

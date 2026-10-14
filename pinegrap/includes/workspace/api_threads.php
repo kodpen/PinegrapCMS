@@ -475,7 +475,7 @@ function ws_api_scheduled_messages_create($params)
     // which writes as the person now too, schedules one: an application key
     // and an OAuth connection write as the application, and a message they
     // scheduled would turn up later as the person's own words.
-    ws_api_own_words_only(lang('Only the person, signed in on a device, can schedule a message: it is posted later in their own name, not as the application.'));
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can schedule a message: it is posted later in their own name, while an application key or an OAuth connection writes as the application.'));
 
     if (!ws_can_post_channel($viewer, $channel)) {
         api_fail(403, 'forbidden', lang('You cannot post in that channel.'));

@@ -1252,7 +1252,7 @@ function ws_api_own_words_only($refusal = null)
     $device = function_exists('api_current_device') ? api_current_device() : null;
 
     if (!ws_api_device_writes_as_person($device)) {
-        api_fail(403, 'forbidden', ($refusal !== null) ? $refusal : lang('Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.'));
+        api_fail(403, 'forbidden', ($refusal !== null) ? $refusal : lang('Only the person\'s own team devices session (POST /auth/login) can change or delete their messages; an application key or an OAuth connection cannot do it for them.'));
     }
 }
 
@@ -1383,7 +1383,7 @@ function ws_api_messages_hide($params)
     // The limits of the application Claude works through.
     ws_api_channel_or_404($viewer, $message['channel_id']);
 
-    ws_api_own_words_only(lang('Only the person, signed in on a device, can delete a message from their own view; an application cannot do it for them.'));
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can delete a message from their own view; an application key or an OAuth connection cannot do it for them.'));
 
     if (!ws_message_hides_ready()) {
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
@@ -2512,7 +2512,7 @@ function ws_api_polls_create($params)
     // Asked in the person's own name: an application key and an OAuth
     // connection write as the application, and a poll asked so could be
     // neither changed by the person nor closed with its result in their name.
-    ws_api_own_words_only(lang('Only the person, signed in on a device, can ask a poll; an application cannot ask it in their name.'));
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can ask a poll; an application key or an OAuth connection cannot ask it in their name.'));
 
     if (!ws_interact_ready()) {
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
@@ -2576,7 +2576,7 @@ function ws_api_polls_update($params)
     $viewer = ws_api_viewer();
     $poll = ws_api_poll_or_404($viewer, $params['id']);
 
-    ws_api_own_words_only(lang('Only the person, signed in on a device, can change their poll; an application cannot change it for them.'));
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can change their poll; an application key or an OAuth connection cannot change it for them.'));
 
     $fields = array('question', 'options', 'multiple', 'anonymous', 'closes_at');
 
@@ -2759,7 +2759,7 @@ function ws_api_pin_target($viewer, $id)
 {
     $message = ws_api_message_or_404($viewer, $id);
 
-    ws_api_own_words_only(lang('Only the person, signed in on a device, can pin a message, take the pin off or close it; an application cannot do it for them.'));
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can pin a message, take the pin off or close it; an application key or an OAuth connection cannot do it for them.'));
 
     if (!ws_pins_ready()) {
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));

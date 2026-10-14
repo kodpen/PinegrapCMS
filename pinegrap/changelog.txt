@@ -1671,6 +1671,18 @@
   DIŞ API
   --------------------------------------------------------
 
+  [DÜZELTME] Çalışma Alanı API'si: yalnız ekip
+         cihazları oturumunun yapabildiği işlerde
+         (mesajını düzeltme, silme ya da kendi
+         görünümünden kaldırma, mesaj zamanlama,
+         oylama açma ve değiştirme, mesaj sabitleme)
+         403 cevabı artık ekip cihazları oturumunun
+         (POST /auth/login) gerektiğini ve uygulama
+         anahtarı gibi OAuth bağlantısının da
+         reddedildiğini söylüyor. Önceden "cihazında
+         oturum açmış kişi" diyordu; OAuth bağlantısı
+         da bir cihaz sayıldığı için yanıltıyordu.
+
   [DÜZELTME] Çalışma Alanı: API'den kanal
          oluşturulunca, başkasının mesajı silinince ya
          da bir kanala şablon uygulanınca Site Günlüğü
