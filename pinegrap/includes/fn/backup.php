@@ -274,6 +274,14 @@ function pg_backup_delete_tree($path)
  * the daily visitor summary (visitor_stats_daily) and the hourly visitor
  * chart (visitor_stats_hourly) keep their rows.
  *
+ * The same goes for the request logs the firewall, the performance monitor
+ * and the API write: each is only read for its own screen and dashboard
+ * figures, is pruned by its own retention setting, and fills again with the
+ * next request. The hourly performance summary (perf_stats) keeps its rows,
+ * and so do the logs that record what someone did (the site log, the ERP
+ * audit and e-document logs) and cron_runs, whose rows the scheduled jobs
+ * read back as their watermarks.
+ *
  * @return array table name => what its rows are, as the dump's note says it
  */
 function pg_backup_rowless_tables()
@@ -283,6 +291,9 @@ function pg_backup_rowless_tables()
         'visitor_content_hourly'    => 'page views per hour',
         'submitted_form_views'      => 'form item views, one row each',
         'submitted_form_view_stats' => 'form item views per day',
+        'waf_log'                   => 'firewall events',
+        'perf_log'                  => 'slow requests',
+        'api_request_log'           => 'API requests, one row each',
     );
 }
 

@@ -165,6 +165,9 @@ dökümden hemen düşer, dosyanın diskteki boyutu yedeği etkilemez.
    yapısıyla döker (`pg_backup_rowless_tables()`); taşımanın çalışma
    kopyaları (`visitors_innodb`, `visitors_myisam`) hiç dökülmez. Günlük
    özet ve saatlik ziyaretçi grafiği satırlarıyla kalır. `sql.sql` bunu
-   söyleyen bir yorumla başlar, yedek ekranları not gösterir.
+   söyleyen bir yorumla başlar, yedek ekranları not gösterir. Güvenlik
+   duvarı, performans ve API istek günlükleri (`waf_log`, `perf_log`,
+   `api_request_log`) de aynı listeye girdi (PR #438); Site Günlüğü, ERP
+   günlükleri, `cron_runs` ve `perf_stats` satırlarıyla kalır.
 8. **Büyük yedeğin geri yüklenmesi**: 950 MB'lık yedeği kurarken sunucu
    yanıt veremedi; geri yükleme yolunun parça parça çalışması ayrı bir iş.
