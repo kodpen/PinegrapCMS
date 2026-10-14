@@ -6,7 +6,7 @@ description: External API for team devices: session, notifications/push, ETag do
 # Dış API — mobil / ekip cihazı yetenekleri (2026.4.5)
 
 **Durum (2026-10-14):** A (cihaz oturumu), B (bildirim + push) ve C (ETag / 304, `fields=`,
-`updated_since`) bitti ve dev'de denendi (2026-09-27). Ayrıntı `docs/degisiklikler.md` →
+`updated_since`) bitti ve dev'de denendi (2026-09-27). Ayrıntı git geçmişindeki `docs/degisiklikler.md` →
 "Dış API: ekip cihazı oturumu, bildirim/push uçları, ETag ve fields=". Biten bölümler
 çıkarıldı; tam metin: `git show d9fec3a:docs/_plan_api_mobil.md`. Sahibi: API (`includes/api/**`, `api_settings.php`).
 

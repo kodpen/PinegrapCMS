@@ -74,4 +74,4 @@ eder; yalnız daha yenisinde çalışan sözdizimi kullanılmaz.
 
 Bu listeye **ekleme yapan** taraf ürün sahibidir. Bir denetimde "bu da karar mı?"
 sorusu doğduysa bulguyu yazma, PR açıklamasına soru olarak koy. Kabul edilen
-karar buraya ve `docs/degisiklikler.md`'ye yazılır.
+karar buraya ve ilgili `docs/memory/` dosyasına yazılır.

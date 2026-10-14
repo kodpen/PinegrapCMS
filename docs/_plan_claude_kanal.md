@@ -7,7 +7,7 @@ description: Calling Claude into a Workspace channel via a Claude routine (Phase
 
 **Durum (2026-10-14):** 1.0–1.5, 1.7 ve onaylı değişiklik taslağı (1.8) bitti; taslaklar ve
 ilk istek dev.pinegrap.com'da gerçek rutinle uçtan uca yanıtlandı. Ayrıntı
-`docs/degisiklikler.md` → "kanalda Claude, Faz 1 (4.87)". Kapsam kararı (Erdal): yalnız
+git geçmişindeki `docs/degisiklikler.md` → "kanalda Claude, Faz 1 (4.87)". Kapsam kararı (Erdal): yalnız
 Faz 1; Claude Console API anahtarıyla değil, Claude aboneliğiyle (rutin + API tetikleyicisi)
 çalışır, bağlantı site geneli tektir. Biten bölümler çıkarıldı; tam metin: `git show d9fec3a:docs/_plan_claude_kanal.md`.
 İlgili: `docs/_plan_calisma_alani.md` (modül). Claude Code kanalıyla anlık bağlantı (rutinin yanına ikinci

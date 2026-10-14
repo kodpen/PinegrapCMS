@@ -6,7 +6,7 @@ description: ERP features plan, phases 6-9 (done); remaining manual checks on de
 # Plan — ERP özellikleri: Faz 6–9
 
 **Durum (2026-10-14):** Faz 6, 7, 8 (8a, 8b, 8c) ve 9 bitti (PR #270–#319, API parçası
-#329, `.ods` ekstresi #330; ayrıntı `docs/degisiklikler.md`). Biten fazların bölümleri
+#329, `.ods` ekstresi #330; ayrıntı git geçmişindeki `docs/degisiklikler.md`). Biten fazların bölümleri
 çıkarıldı; tam metin: `git show d9fec3a:docs/_plan_erp_ozellikler.md`. Önceki plan `docs/_plan_erp.md`.
 
 ## Kalanlar

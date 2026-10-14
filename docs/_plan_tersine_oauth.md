@@ -11,7 +11,7 @@ ve Apple ile giriş (#306; Google girişi `signin.php` akışında, #318), 4.4 y
 OneDrive / Dropbox'a (#312), 4.6 Çalışma Alanı'nda MCP istemcisi (`docs/_plan_oauth.md`
 Faz F). 4.14'ün bu plandaki payı da bitti: Paraşüt jetonu şifreli depoda; UPS (#302), FedEx
 (#308) ve USPS (#314) REST API'leri OAuth `client_credentials` ile. Ayrıntı
-`docs/degisiklikler.md`, kurallar `.claude/skills/pinegrap-dis-api/SKILL.md` → "Bağlı
+git geçmişindeki `docs/degisiklikler.md`, kurallar `.claude/skills/pinegrap-dis-api/SKILL.md` → "Bağlı
 hesaplar". Biten bölümler (envanter, altyapının ayrıntısı, biten senaryolar, sıra)
 çıkarıldı; tam metin: `git show d9fec3a:docs/_plan_tersine_oauth.md`.
 

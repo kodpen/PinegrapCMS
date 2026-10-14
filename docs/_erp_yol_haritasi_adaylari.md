@@ -20,7 +20,7 @@ notu var. **Erdal seçer;** sıralama önerisi en sonda.
 
 ## 0. Durum ve kalanlar (2026-10-14)
 
-Biten adaylar (ayrıntı `docs/degisiklikler.md`): A2, A4 / C6 / F3 (faturayı e-postala),
+Biten adaylar (ayrıntı git geçmişindeki `docs/degisiklikler.md`): A2, A4 / C6 / F3 (faturayı e-postala),
 B1 (banka ekstresi; 2026.4.10'da xlsx, xls ve .ods), B6, B7, C1, C2, C3, C4 (kredi limiti
 4.98, vade farkı 2026.4.10), D1, D2 (satın alma siparişi, ERP Faz 7), D3, D5, E1, E2, E3,
 E4, F2, G1, G2, G4 ve B5'in "Faturalarım" kısmı (ERP Faz 8a). Bunların satırları §2'den

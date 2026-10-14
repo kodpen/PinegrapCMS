@@ -14,5 +14,5 @@ Versions, migrations and upgrade steps, change log rules, release status.
 - stale-migration-file-protection.md: Why a stale migration file survived a zip upload (0555 folders) and the protection layers: permission scan, update screen, status card, repair, extraction.
 - upgrade-automation-and-testing.md: Cron/automated upgrade entry points (AUTOMATED_UPGRADE_SECRET), admin-session behavior, and where the upgrade system test protocol lives.
 - upgrade-bridge-rule.md: Upgrade bridge rule: code lands before the schema, so login, install lock and initialize_user() must run on the previous schema; gate and mandatory test.
-- upgrade-changelog-rules.md: changelog.txt format (English, only plan-driven major features as [NEW], one [FIX]/[SECURITY]/[SCHEME] line per version) vs the detailed docs/degisiklikler.md.
+- upgrade-changelog-rules.md: changelog.txt format (English, only plan-driven major features as [NEW], one [FIX]/[SECURITY]/[SCHEME] line per version); the detail goes to docs/memory.
 - upgrade-runner-behavior.md: How the upgrade runner reacts to failing statements, locks and fatals, and how the install screen runs one version per request, with heavy-table preflight.
