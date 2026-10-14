@@ -518,6 +518,16 @@
          Birimleri listesinde sütun başlığına tıklamak
          listeyi sıralamıyordu; artık sıralıyor.
 
+  [YENİ] Ülkeler, Eyaletler/İller, Nakliye Bölgeleri,
+         Nakliye Yöntemleri ve Nakliye Varış Tarihleri
+         listeleri de aynı anda birden çok sütuna göre
+         sıralanıyor, örneğin ülke artan, aynı ülkede ad
+         artan. Başlığa Shift ile tıklamak sonraki düzeyi
+         ekliyor; telefonda ya da klavyeyle araç
+         çubuğundaki "Sıralama" menüsü kullanılıyor.
+         Seçilen sıralama listeden çıkıp dönünce ve panel
+         dili değişince kaybolmuyor.
+
   E-TİCARET: KARGO
   --------------------------------------------------------
 
