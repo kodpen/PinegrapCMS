@@ -30,7 +30,7 @@ $liveform = new liveform('erp_receipt');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php';
 
-$cash_id = (int) ($_REQUEST['id'] ?? 0);
+$cash_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $receipt = ($cash_id > 0) ? erp_receipt($cash_id) : null;
 
 if ($receipt === null) {

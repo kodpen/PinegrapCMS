@@ -22,7 +22,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_cheque');
 
-$cheque_id = (int) ($_REQUEST['id'] ?? 0);
+$cheque_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $cheque = erp_cheque($cheque_id);
 
 if ($cheque === null) {

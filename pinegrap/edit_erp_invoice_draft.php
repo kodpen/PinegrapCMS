@@ -30,7 +30,7 @@ $liveform = new liveform('edit_erp_invoice_draft');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 
-$invoice_id = (int) ($_REQUEST['id'] ?? 0);
+$invoice_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 $invoice = ($invoice_id > 0)
     ? db_item("SELECT * FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1")

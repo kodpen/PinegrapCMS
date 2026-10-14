@@ -84,6 +84,66 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Kimlik kapılı 40 panel ekranı `?id[]=` ile 500 vermiyor, ERP ekranları 1 numaralı belgeyi açmıyor (2026-10-14)
+
+**Neden.** #417'nin panel taramasından kalan K1. c651716'daki "Kayıt
+bulunamadı" kapısını ve ERP ekranlarının aynı kalıbını taşıyan 40 dosya
+kimliği `(int) ($_REQUEST['id'] ?? 0)` ile okuyordu. Dizi için `(int)` 1
+veriyor: 1 numaralı kayıt varsa kapı geçiliyordu. c651716'nın 22 ekranı
+(`edit_ad`, `edit_calendar`, `edit_calendar_event`, `edit_contact`,
+`edit_container`, `edit_country`, `edit_currency`, `edit_email_campaign`,
+`edit_folder`, `edit_gift_card`, `edit_key_code`, `edit_product_attribute`,
+`edit_product_group`, `edit_referral_source`, `edit_shipping_method`,
+`edit_short_link`, `edit_state`, `edit_tax_zone`, `edit_user`, `edit_zone`,
+`print_order`, `view_visitor`) kapıdan sonra `$_REQUEST['id']` /
+`$_GET['id']`'yi `escape()`, `h()`, `urlencode()` ya da liveform'a verip 500
+veriyordu. Kimliği yalnız `$id`'den okuyan 18 ERP ve benzeri ekran
+(`add_erp_expense`, `approve_affiliate`, `edit_erp_expense`,
+`edit_erp_invoice`, `edit_erp_invoice_draft`, `edit_erp_purchase_order`,
+`edit_erp_quote`, `edit_erp_waybill`, `erp_account_sync_item`,
+`erp_bank_statement`, `erp_cheque`, `erp_inbox_document`, `erp_receipt`,
+`erp_reconciliation`, `erp_stock_count`, `get_erp_invoice_pdf`,
+`get_erp_reconciliation_pdf`, `get_erp_waybill_pdf`) düşmüyor ama 1
+numaralı kaydı açıyordu (ERP belgesi, PDF'i, ortaklık onayı sorusu, gider
+düzenleme formu). Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** Her dosyada tek satır, #417'deki `theme_designer.php`
+kalıbı: `$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;`.
+Dizi kimlik "verilmedi" sayılıyor: 22 ekran kimliksiz açılış gibi "Kayıt
+bulunamadı" 404'ünü, ERP ekranları kendi "bulunamadı" ekranını ya da liste
+yönlendirmesini veriyor; `add_erp_expense` boş yeni gider formunu açıyor.
+Kapıdan sonraki satırlar değişmedi: kapı diziyi geçirmediği için oralara
+ulaşmıyor. Normal isteğin çıktısı aynı. Şema, dil dosyası, JS değişikliği
+yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Kırk tabloda 1 numaralı kayıt
+oluşturuldu (kurulum yalnız dokuzunda 1 numara veriyor; gerçek sitede
+hepsinde olabilir) ve `panel-tarama-araclari/scan.py` 40 ekranda koşuldu
+(parametresiz, kendi parametreleri, her parametre dizi olarak; 736 istek).
+Eski kodda 22 istek 500 verdi (hepsi `?id[]=1`), 22 istek ölümcül hata
+yazdı; yeni kodda 500 ve uyarı ya da ölümcül hata yazan istek 0. Kalan
+tek satır, 404 ekranının kendi `h(null)` kullanım dışı uyarısı (yalnız
+DEBUG açıkken; kimliksiz açılışta da yazıyor, liveform, #417'nin K9'u).
+Eski kod (`origin/development`) ikinci portta, istekler sırayla iki
+sunucuya: 120 normal istek (`?id=1`, kimliksiz, `?id=999999`) aynı HTML'i
+verdi; farklı olanlar yalnız `?id[]=1` istekleri (39'u; `erp_receipt`'te
+1 numara tahsilat değildi, iki kodda da "bulunamadı"). Yeni
+`tests/panel_id_gate_test.php`: hiçbir panel ekranı istek kimliğini
+`is_scalar()` olmadan `(int) ($_REQUEST['id'] ?? 0)` ile okumuyor (eski
+kodda 40 eşleşme). `php -l`, `tools/lint.php`, `tools/test.php` (934
+test), `check_lang`, `check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek veriler.
+
+**Bilerek yapılmayan.** #417 notundaki K2–K9: kapısı olmayan düzenleme
+ekranları (`?id[]=` 500 ve kimliksiz açılışta yarı boş form), `?send_to[]=`,
+ERP `(string) ($_GET['x'] ?? '')` "Array to string" uyarıları, diğer
+500'ler, liveform `h(null)` ve `custom_form.php`. Kapıdan sonraki
+`$_REQUEST['id']` okumaları `$id`'ye çevrilmedi: dizi artık kapıda duruyor,
+değişiklik dosya başına tek satır kalıyor.
+
+---
+
 ## 2026.4.10 — API belgesi: her eklemede yazılan boş sütunların kuralı, Bearer açıklaması üç arayanı anlatıyor (2026-10-14)
 
 **Neden.** #412 ve #405'ten kalan iki iş. (1) Ham sütunu `DEFAULT NULL`

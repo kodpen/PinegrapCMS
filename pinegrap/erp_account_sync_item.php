@@ -31,7 +31,7 @@ $liveform = new liveform('erp_account_sync_item');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_sync.php';
 $provider = erp_edoc_accounts_provider();
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $account_id = (int) ($_REQUEST['account_id'] ?? 0);
 $row = ($id > 0) ? erp_edoc_account_row($id) : null;
 $account = null;

@@ -27,7 +27,7 @@ $liveform = new liveform('edit_erp_waybill');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_waybills.php';
 
-$waybill_id = (int) ($_REQUEST['id'] ?? 0);
+$waybill_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $waybill = erp_waybill($waybill_id);
 
 if (!is_array($waybill)) {

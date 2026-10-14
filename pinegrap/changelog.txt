@@ -2785,6 +2785,19 @@
          da yaklaşan etkinlik görünümündeki takvim hata
          günlüğüne uyarı yazıyordu; artık yazmıyor.
 
+  [DÜZELTME] Kayıt düzenleme, görüntüleme ve yazdırma
+         ekranları (bölge, takvim, etkinlik, kişi, ülke,
+         para birimi, klasör, hediye kartı, ürün grubu,
+         kargo yöntemi, kullanıcı, sipariş yazdırma,
+         ziyaretçi ve diğerleri), adresinde kayıt numarası
+         birden çok kez geçen (?id[]=…) bir bağlantıyla
+         açılınca hata sayfası veriyordu; artık "Kayıt
+         bulunamadı" gösteriyor. ERP belge ekranları
+         (fatura, teklif, irsaliye, sipariş, gider, çek,
+         ekstre, sayım, mutabakat ve PDF'leri) böyle bir
+         bağlantıda varsa 1 numaralı belgeyi açıyordu;
+         artık belgenin bulunamadığını söylüyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

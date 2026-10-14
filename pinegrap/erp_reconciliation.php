@@ -27,7 +27,7 @@ $liveform = new liveform('erp_reconciliation');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php';
 
-$account_id = (int) ($_REQUEST['id'] ?? 0);
+$account_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $account = erp_account($account_id);
 
 if (!is_array($account)) {

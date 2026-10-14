@@ -37,7 +37,7 @@ if (!erp_expenses_ready()) {
     go($list_url);
 }
 
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $existing = ($id > 0) ? erp_expense($id) : null;
 
 if (($id > 0) && ($existing === null)) {
