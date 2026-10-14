@@ -798,8 +798,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 if (
                     (defined('PRETTY_URL_PATH') == false)
                     && (isset($_GET['r']) == TRUE)
+                    && is_string($_GET['r'])
                 ) {
-                    $query_string = '?r=' . $_GET['r'];
+                    $query_string = '?r=' . urlencode($_GET['r']);
                 }
 
                 break;
@@ -818,12 +819,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             case 'calendar event view':
 
                 // if there is an id in the query string, then add it to the query string
-                if (isset($_GET['id']) == TRUE) {
-                    $query_string = '?id=' . $_GET['id'];
+                if ((isset($_GET['id']) == TRUE) && is_string($_GET['id'])) {
+                    $query_string = '?id=' . urlencode($_GET['id']);
                 }
                 
                 // if there is a recurrence number in the query string, then add it to the query string
-                if (isset($_GET['recurrence_number']) == TRUE) {
+                if ((isset($_GET['recurrence_number']) == TRUE) && is_string($_GET['recurrence_number'])) {
                     // if there are no other values in the query string so far, then add question mark
                     if ($query_string == '') {
                         $query_string .= '?';
@@ -834,7 +835,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     }
                     
                     // add recurrence number to the query string
-                    $query_string .= 'recurrence_number=' . $_GET['recurrence_number'];
+                    $query_string .= 'recurrence_number=' . urlencode($_GET['recurrence_number']);
                 }
 
                 break;
@@ -2107,6 +2108,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $injected_synth_system = true;
     }
 
+    // Set by a catalog system region below. A catalog detail page, or a layout
+    // without that region, never sets it, but the comments and the item meta
+    // data further down read it.
+    $catalog_product_group_id = 0;
+
     // replace system region tags with system region content
     preg_match_all('/<system>.*?<\/system>/i', $content, $regions);
     foreach ($regions[0] as $region) {
@@ -3104,7 +3110,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                     'current_page_id'=>$system_region_properties['page_id'],
                                     'continue_button_label'=>$properties['continue_button_label'],
                                     'next_page_id'=>$properties['next_page_id'],
-                                    'form_id' => $dynamic_properties['form_id'])) . '
+                                    'form_id' => (isset($dynamic_properties['form_id']) ? $dynamic_properties['form_id'] : ''))) . '
                         </div>';
 
                     break;
@@ -3201,7 +3207,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                     'notes' => $properties['notes'],
                                     'back_button_label' => $properties['back_button_label'],
                                     'editable' => $editable,
-                                    'calendar_event_id' => $dynamic_properties['calendar_event_id'])) . '
+                                    'calendar_event_id' => (isset($dynamic_properties['calendar_event_id']) ? $dynamic_properties['calendar_event_id'] : ''))) . '
                         </div>';
                     
                     // if the mode is edit then determine if user has access to edit calendar event in order to determine if edit container should be outputted
@@ -3233,7 +3239,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             $output_query_string_recurrence_number = '';
                             
                             // if there is a recurrence number, then add recurrence number to query string
-                            if (isset($_GET['recurrence_number']) == TRUE) {
+                            if ((isset($_GET['recurrence_number']) == TRUE) && is_string($_GET['recurrence_number'])) {
                                 $output_query_string_recurrence_number = '&recurrence_number=' . h($_GET['recurrence_number']);
                             }
                             
@@ -3633,6 +3639,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             if (($system_region_properties['comments'] == '1') && (($comments_record === null) || $comments_record['visible'])) {
                 $item_id = '0';
                 $item_type = '';
+
+                // Only known when a submitted form is being shown. A form item view
+                // opened without a reference code (an editor previewing the page)
+                // has none.
+                $form_editor_user_id = '';
+                $form_editor_username = '';
+                $form_editor_email_address = '';
+                $form_submitter_user_id = '';
+
                 $sql_where = '';
                 $sql_where_watchers = '';
 
@@ -3740,7 +3755,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 $item_type = 'submitted_form';
 
                             // Otherwise if a reference code was passed through the URL, then get submitted form info in a different way.
-                            } else if ($_GET['r']) {
+                            } else if (!empty($_GET['r']) && is_string($_GET['r'])) {
                                 $query =
                                     "SELECT
                                         forms.id,
@@ -5515,7 +5530,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // Otherwise a submitted form id was not passed, so if there is a reference code,
         // then use it to get the form id.
-        } else if (!empty($_GET['r'])) {
+        } else if (!empty($_GET['r']) && is_string($_GET['r'])) {
             $submitted_form['id'] = db_value("SELECT id FROM forms WHERE reference_code = '" . escape($_GET['r']) . "'");
         }
 

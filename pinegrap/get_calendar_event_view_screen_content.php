@@ -30,7 +30,20 @@ function get_calendar_event_view_screen_content($properties)
     // update search index, then this page is being called via a web browser,
     // so set the calendar event id to the value from the query string.
     if ($calendar_event_id == '') {
-        $calendar_event_id = $_GET['id'];
+        $calendar_event_id = (isset($_GET['id']) && is_string($_GET['id'])) ? $_GET['id'] : '';
+    }
+
+    // A recurrence number is a whole number. An event opened without one is its
+    // first occurrence. Anything else (text, an array from recurrence_number[]=)
+    // would reach the date arithmetic in get_calendar_event() and stop the page.
+    $recurrence_number = '';
+
+    if (
+        isset($_REQUEST['recurrence_number'])
+        && is_string($_REQUEST['recurrence_number'])
+        && ($_REQUEST['recurrence_number'] !== '')
+    ) {
+        $recurrence_number = (string) max(0, (int) $_REQUEST['recurrence_number']);
     }
     
     include_once('liveform.class.php');
@@ -39,7 +52,7 @@ function get_calendar_event_view_screen_content($properties)
     // if the user did not come from the control panel, then prepare to output calendar event
     if ((isset($_GET['from']) == false) || (($_GET['from'] ?? '') != 'control_panel')) {
         // get calendar event data
-        $calendar_event = get_calendar_event($calendar_event_id, $_REQUEST['recurrence_number']);
+        $calendar_event = get_calendar_event($calendar_event_id, $recurrence_number);
         
         // if calendar event could not be found, then output error
         if ($calendar_event == FALSE) {
@@ -104,8 +117,8 @@ function get_calendar_event_view_screen_content($properties)
         $output_recurrence_number = '';
         
         // if there is a recurrence number, then output it
-        if ($_REQUEST['recurrence_number'] != '') {
-            $output_recurrence_number = '&recurrence_number=' . h($_REQUEST['recurrence_number']);
+        if ($recurrence_number != '') {
+            $output_recurrence_number = '&recurrence_number=' . h($recurrence_number);
         }
         
         // if edit mode is on and if the user has access to edit this calendar event, then output edit button for images
@@ -138,6 +151,7 @@ function get_calendar_event_view_screen_content($properties)
         
         $output_no_remaining_spots_message = '';
         $output_reserve_button = '';
+        $output_reserve_form = '';
         
         // if reservations is enabled and reservation product still exists and is enabled
         // and the event is not in the past, then prepare reservation info.
@@ -171,7 +185,7 @@ function get_calendar_event_view_screen_content($properties)
                         ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>get_request_uri())) . '
                         ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'page_id', 'value'=>$current_page_id)) . '
                         ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'calendar_event_id', 'value'=>$calendar_event['id'])) . '
-                        ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'recurrence_number', 'value'=>$_REQUEST['recurrence_number'])) . '
+                        ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'recurrence_number', 'value'=>$recurrence_number)) . '
                         ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'require_cookies', 'value'=>'true')) . '
                         <input type="submit" name="submit" value="' . h($calendar_event['reserve_button_label']) . '" class="software_input_submit_primary submit_button" />
                     </form>';
@@ -204,8 +218,13 @@ function get_calendar_event_view_screen_content($properties)
         
         $output_back_button = '';
         
+        // The back button returns to the calendar the visitor came from. A visitor who
+        // opened the event directly (a shared link, a search result) has none, and an
+        // empty link would only reload this page, so the button is left out.
+        $last_calendar_view_url = $_SESSION['software']['last_calendar_view_url'] ?? '';
+
         // if back button label is not blank, then prepare to output back button
-        if ($back_button_label != '') {
+        if (($back_button_label != '') && ($last_calendar_view_url != '')) {
             // if there is a reserve form, then add separation and set class
             if ($output_reserve_form != '') {
                 $output_back_button .= '&nbsp;&nbsp;';
@@ -216,7 +235,7 @@ function get_calendar_event_view_screen_content($properties)
                 $output_class = 'software_button_primary';
             }
             
-            $output_back_button .= '<a href="' . h($_SESSION['software']['last_calendar_view_url']) . '" class="' . $output_class . '">' . h($back_button_label) . '</a>';
+            $output_back_button .= '<a href="' . h($last_calendar_view_url) . '" class="' . $output_class . '">' . h($back_button_label) . '</a>';
         }
         
         $output_reserve_form_and_or_back_button = '';

@@ -84,6 +84,107 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Site sayfaları: altı ekranda PHP uyarıları, dizi ve metin parametresiyle 500 (2026-10-14)
+
+**Neden.** #384'ün taraması (sandbox'taki 181 sayfa, oturumsuz ve yönetici
+oturumuyla) kendi kapsamı dışında altı dosyada uyarı buldu:
+`get_billing_information.php`, `get_order_preview.php`,
+`get_form_item_view.php`, `get_calendar_event_view_screen_content.php`,
+`get_page_content.php` ve `get_catalog_detail.php`. Hepsinin kökü aynı:
+bir değer yalnız bir yolda kuruluyor, öbür yolda (sepet boş, adreste
+referans kodu ya da etkinlik kimliği yok, katalog bölgesi olmayan sayfa)
+okunuyordu. Aynı satırların yanında üç görünür hata çıktı. Hepsi eski
+kodla sandbox'ta üretildi; satırların hepsi 2026.4.9'da da var.
+
+- Form kaydı sayfası (blog yazısı, ilan, rehber kaydı) adreste `?r[]=x`
+  ile açılınca `e()` diziyi kaçıramadı (`TypeError`): HTTP 500. 2026.4.9'da
+  da var.
+- Takvim etkinliği sayfası `?id[]=x` ile (aynı nedenle) ya da tekrar
+  numarası sayı olmadan (`?recurrence_number=abc`,
+  `?recurrence_number[]=x`) açılınca 500 verdi: tekrar numarası
+  `get_calendar_event()`'in tarih hesabına olduğu gibi giriyordu
+  (`string + string`). 2026.4.9'da da var.
+- Takvim etkinliği takvimden değil doğrudan açılınca (paylaşılan link,
+  arama sonucu) "Takvime Geri Git" düğmesi `href=""` ile çiziliyordu,
+  tıklayan aynı sayfayı yeniden yüklüyordu (oturumda takvim adresi yok).
+  2026.4.9'da da var.
+
+Görünmeyen uyarılar (çıktı aynı, 2026.4.9'da da var):
+
+- `get_billing_information.php` 140–270: sepet boşken sipariş satırı yok,
+  `$order` null; her açılışta 19 "array offset on null". Alanlar zaten
+  kişinin rehber kaydına düşüyordu.
+- `get_order_preview.php` 58–59: aynı nedenle iki uyarı.
+- `get_form_item_view.php` 84, 124 ve `get_page_content.php` 3743, 3790,
+  4868, 4952: referans kodu olmadan açılan form kaydı sayfası (yönetici
+  sayfayı önizlerken yorum bölgesi de çiziliyor, form düzenleyici
+  değişkenleri hiç kurulmuyordu).
+- `get_calendar_event_view_screen_content.php` 33, 42, 107, 210, 219,
+  225–226 ve `get_page_content.php` 3204: kimliksiz ya da tekrar
+  numarasız açılan etkinlik; rezervasyonu olmayan etkinlikte
+  `$output_reserve_form` hiç kurulmuyordu.
+- `get_page_content.php` 3107: özel form onay sayfası `form_id`'siz
+  (yönetici önizlemesi).
+- `get_page_content.php` 5421 ve `get_catalog_detail.php` 51: ürünsüz
+  açılan katalog detay sayfası; `$catalog_product_group_id` yalnız katalog
+  bölgesinde kuruluyor, `$item` boş dizi.
+- `get_catalog_detail.php` 1312: indirimsiz ürünü olan ürün grubu
+  sayfasında (sandbox'ta "Donations") `discounted_price` anahtarı yok.
+- `get_page_content.php` 802, 822, 837: kanonik adres dizi parametresini
+  "Array" diye yazıyordu.
+
+**Ne değişti.** Değerler kullanıldıkları yerden önce kuruluyor; uyarı
+susturulmadı (`@` ya da hata düzeyi yok).
+- Fatura sayfasında sipariş satırı yoksa okunan 19 sütun boş başlıyor;
+  sipariş önizlemede iki değer boş.
+- Form kaydı sayfası referans kodunu bir kez, yalnız metinse okuyor
+  (`$reference_code`); dizi gelirse referans kodu yok sayılıyor ("referans
+  kodu geçmedi" 404'ü). `get_page_content.php`'de yorumlar ve görsel
+  editör kayıt bağlamı da `r`'yi yalnız metinse okuyor; yorum bölgesinde
+  form düzenleyici değişkenleri boş başlıyor.
+- Takvim etkinliğinde kimlik yalnız metinse okunuyor. Tekrar numarası
+  tam sayıya çevriliyor (`max(0, (int) …)`, görsel editörün etkinlik
+  widget'ı da böyle okuyor); verilmemişse boş kalıyor, böylece iCal
+  bağlantısı ve rezervasyon formu eskisi gibi. Sayı olmayan numara ilk
+  tekrarı açıyor. "Geri" düğmesi yalnız oturumda takvim adresi varsa
+  çiziliyor (görsel editör widget'ı `has_back_url` ile aynısını yapıyor).
+- `$catalog_product_group_id` sistem bölgelerinden önce 0 başlıyor;
+  davranış aynı (tanımsız değer zaten `!= 0` değildi). Katalog detayında
+  `empty($item['id'])`; indirimsiz üründe `discounted_price` null (dolar
+  çevirisi `isset()` ile bakıyor, çıktı aynı).
+- Kanonik adreste `r`, `id` ve `recurrence_number` yalnız metinse ve
+  `urlencode()` ile yazılıyor (bugünkü referans kodları ve kimlikler için
+  çıktı aynı).
+Şema, dil dosyası ve JS değişikliği yok.
+
+**Bilerek yapılmayan.** Düzenleme kipindeki yönetici, olmayan bir
+referans koduyla (`?r=yanlis`) form kaydı sayfasını açınca sayfa boş bir
+kayıtla çiziliyor ve `get_form_item_view.php` ile yorum bölgesi 13 uyarı
+yazıyor (2026.4.9'da da var); orada ne gösterileceği ayrı karar. Tarama
+başka dosyalarda da uyarı buldu: `get_affiliate_sign_up_form_screen_content.php`
+(yönetici, 14), `get_my_account_profile.php` (yönetici, 18),
+`get_email_preferences.php` 47, `get_custom_form_screen_content.php` 47,
+`includes/fn/auth.php` 3233 (oturumsuz `user-logout`). `get_page_content.php`
+790–840'ta `form list view` dalı `break`'siz `calendar event view`'a
+düşüyor (form listesinin kanonik adresine `?id=` eklenebiliyor); ayrı iş.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** 181 sayfa oturumsuz ve
+yönetici oturumuyla açıldı: eski kodda bu altı dosyadan 33 farklı satırda
+uyarı, yeni kodda hiç (kalanlar yukarıdaki başka dosyalarda). Ek girdiler
+(`?r[]=x`, `?r=bogus`, geçerli kod, `?id[]=x`, `?id=999999`, yayındaki
+tekrarlı etkinlik `?id=7`, `&recurrence_number=2`, `=abc`, `[]=x`, ürünsüz,
+`?page[]=x`, ürünlü ve olmayan ürünlü katalog detayı, boş sepetle iki
+fatura ve iki önizleme sayfası) eski kodda dört 500 verdi, yeni kodda hiçbiri
+uyarı ya da 500 vermedi; düzenleme kipinde yönetici için de aynı (yukarıdaki
+bilerek bırakılan durum hariç). Eski kod `origin/development` worktree'sinden
+ikinci bir portta sunuldu, 181 sayfanın HTML'i karşılaştırıldı: oturumsuz
+181'in 181'i aynı; yönetici oturumunda farklar yalnız sayfa görüntülenme
+sayacı ve oturum listesi sırası. Tek görünür fark takvimden gelmeyen
+ziyaretçide "Geri" düğmesinin kalkması (takvimden gelince ikisi aynı).
+`tools/test.php` 844/844; lint, dil, kopya denetimleri ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki
+gerçek sayfalar ve gerçek siparişli sepet.
+
 ## 2026.4.10 — Dış API: oylama açma, değiştirme ve kapatma (2026-10-14)
 
 **Neden.** #381 (M6, aşağıda) ekip cihazları uygulamasına oylamada oy
