@@ -84,6 +84,76 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Ziyaretçi takibi: gelen site uyarısız okunuyor, arama terimi bozulmuyor, dizi parametresi sayfayı düşürmüyor (2026-10-14)
+
+**Neden.** #380'in sandbox'ta gördüğü, kapsam dışı bıraktığı uyarı:
+personel ana sayfası (`staff-home`) açılınca `get_page.php`'de "Undefined
+variable $delimiter". Değişken `init_tracking()`'de, yeni ziyaretçi kaydı
+açılırken gelen sitenin arama motoru olup olmadığına bakan `if/elseif`
+zincirinde yalnız eşleşen bir motor için kuruluyordu. Arama motoru
+olmayan her siteden (Facebook, DuckDuckGo, bir e-posta uygulaması) gelen
+yeni ziyaretçi bu yüzden günlüğe bir uyarı yazıyordu. Sandbox'ta
+personel ana sayfasında görünmesinin nedeni ayrı bir hataydı: site
+`127.0.0.1:8000` gibi portlu bir adreste açılınca `HTTP_HOST` portu
+taşıyor, `parse_url()`'in verdiği referer host'u taşımıyor; karşılaştırma
+tutmadığı için sitenin kendi sayfası "gelen site" sayılıyordu. Uyarının
+kendisi görünen bir şeyi değiştirmiyordu: tanımsız değişken boş sayıldı,
+arama terimi zaten okunmayacaktı; sayfa çıktısı aynı (`init.php`'deki
+global `$delimiter` yol ayracıdır ve fonksiyonun içinde görünmez).
+
+Aynı blokta aynı kalıp ve iki görünür hata daha çıktı, hepsi sandbox'ta
+eski kodla üretildi; 2026.4.9'da da var:
+
+- Google bugün arama terimini göndermiyor (referer
+  `https://www.google.com/`); `query` anahtarı ve `q` değeri olmadığı için
+  her Google ziyaretçisi iki uyarı yazıyordu. Host'u olmayan referer
+  (`foo`, `/yol`, `https:///`) iki uyarı daha ekliyordu.
+- Arama terimi parametresi dizi olarak gelince (`?q[]=x`) `trim()` PHP 8'de
+  `TypeError` verdi: ziyaretçi ilk sayfada hata sayfası (HTTP 500) gördü.
+  Motor adı adresin tamamında aranıyordu; `https://baska-site/www.google/?q[]=x`
+  gibi bir sayfadaki bağlantıya tıklayan herkes buna düşüyordu.
+- Arama terimi iki kez çözülüyordu (`parse_str()` zaten çözüyor, ardından
+  `urldecode()`): Ziyaretçi raporunda "c++ 100%" araması "c   100%" oldu.
+- Motor adı adresin tamamında, kalıplar da çapasız arandığı için
+  `www.flask.com` "Ask.com", adresinde "www.google" geçen her site "Google"
+  sayılıyordu.
+- Referer oturuma ilk sayfada yazılıyor, ama host ve terim o isteğin
+  `$_SERVER['HTTP_REFERER']`'ından okunuyordu. İlk sayfa kaydı açmadan
+  bitince (yukarıdaki 500) sonraki istekte "Undefined variable
+  $http_referer_parsed_url" uyarısı çıktı ve host boş yazıldı.
+
+**Ne değişti.** `$delimiter` zincirden önce boş başlıyor. Host ve sorgu
+oturumdaki referer'dan, `parse_url()` ile okunuyor; host'u olmayan
+referer boş host veriyor. Motor kalıpları adresin tamamına değil host'a
+uygulanıyor, `ask.com` kalıbı alan adının sonuna çapalandı. Sorgu yoksa
+terim aranmıyor; değer metin değilse terim boş kalıyor; `urldecode()`
+kaldırıldı. Sitenin kendi adresiyle karşılaştırmada `HTTP_HOST`'tan port
+düşülüyor. Yalnız `get_page.php`'deki `init_tracking()` değişti; şema, dil
+dosyası ve JS değişikliği yok. Dosyanın geri kalanında aynı kalıp
+görülmedi: sandbox'taki 181 sayfa oturumsuz ve yönetici oturumuyla
+açıldı, `get_page.php` uyarı yazmadı (başka dosyalardaki uyarılar ayrı).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3).** Her istekte yeni ziyaretçi
+kaydı açılsın diye son yarım saatin kayıtları eskitildi; her referer'la
+yeni bir oturumda personel ana sayfası açıldı (yeni kodda ardından aynı
+oturumda ana sayfa da). Eski kod
+(15 referer: boş, Facebook, DuckDuckGo, `android-app://`, Google terimli
+ve terimsiz, Bing, Yahoo, `foo`, `/yol`, `https:///`, sitenin kendi portlu
+adresi, `baska-site/www.google/?q[]=x`, `flask.com`, "c%2B%2B 100%25"):
+16 uyarı ve bir 500, 500'ün ardından gelen istekte 5 uyarı daha; terim
+"c   100%", `flask.com` Ask.com, `baska-site` Google, kendi adres gelen
+site. Yeni kod (aynı 15 + `google.com.tr` terimli, Bing terimli,
+`www.google.com/search?q[]=x`): uyarı ve hata yok, her istek 302/200
+(oturumsuz personel ana sayfası girişe yönlendiriyor); terim
+"c++ 100%", Google/Bing/Yahoo terimleri doğru, `flask.com` ve `baska-site`
+motor değil, kendi adres kaydedilmedi.
+Yönetici oturumuyla personel ana sayfası DuckDuckGo referer'ıyla 200,
+uyarısız. `tools/test.php` 835/835; lint, dil, bağlama, API şeması, kopya
+denetimleri ve `build_js.php --check` geçti. Doğrulanamadı:
+dev.pinegrap.com'daki gerçek ziyaretçiler.
+
+---
+
 ## 2026.4.10 — Dış API: kanal görselinin küçük kopyası, dosyada Range; panelde yazılamayan mesajın dosyası geri alınıyor (2026-10-14)
 
 **Neden.** #378 (mobil API planının M5 dilimi) kanal dosyasını jetonla
