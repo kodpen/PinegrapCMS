@@ -1426,13 +1426,14 @@ function pg_catalog_bin_ready()
  * filter, so every screen reads the bin the same way; empty before the upgrade
  * that adds the bin, so the same queries run either way.
  *
- * $keep_id is the row a form already points at. It stays in the list even from
- * the bin: a <select> that no longer has the stored value falls back to its
- * first option, and the next save would quietly point the setting somewhere
- * else, or nowhere, while the row waits to be restored.
+ * $keep_id is the row a form already points at, or the rows of a multiple
+ * select. It stays in the list even from the bin: a <select> that no longer
+ * has the stored value falls back to its first option, and the next save would
+ * quietly point the setting somewhere else, or nowhere, while the row waits to
+ * be restored.
  *
- * @param string $table   'products' or 'product_groups', or the alias the query gives it
- * @param int    $keep_id the row to keep whatever its state, or 0
+ * @param string    $table   'products' or 'product_groups', or the alias the query gives it
+ * @param int|array $keep_id the row (or rows) to keep whatever their state, or 0
  * @return string " AND (<table>.recycled = '0')", or ''
  */
 function pg_catalog_bin_live_sql($table, $keep_id = 0)
@@ -1441,13 +1442,79 @@ function pg_catalog_bin_live_sql($table, $keep_id = 0)
         return '';
     }
 
-    $keep_id = (int) $keep_id;
+    $keep_ids = pg_catalog_keep_ids($keep_id);
 
-    if ($keep_id > 0) {
-        return " AND ((" . $table . ".recycled = '0') OR (" . $table . ".id = '" . $keep_id . "'))";
+    if (count($keep_ids) > 0) {
+        return " AND ((" . $table . ".recycled = '0') OR (" . $table . ".id IN (" . implode(',', $keep_ids) . ")))";
     }
 
     return pg_catalog_live_filter($table);
+}
+
+/**
+ * The whole, positive ids in what a form says it points at.
+ *
+ * A stored setting is a number or a string of one, a multiple select posts a
+ * list, and a hand-made request can post anything, a nested list included;
+ * only what reads as an id is kept, once.
+ *
+ * @param mixed $value
+ * @return int[]
+ */
+function pg_catalog_keep_ids($value)
+{
+    $ids = array();
+
+    foreach ((array) $value as $id) {
+        if (is_scalar($id) && ((int) $id > 0)) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    return array_values($ids);
+}
+
+/**
+ * Hangs every group of a picker on the nearest group the picker lists.
+ *
+ * get_product_group_options() walks the tree from the top, so a group whose
+ * parent is not on its list is never reached. With the bin left out that is
+ * the binned group a setting already points at (kept so the setting is not
+ * lost) when the group above it went to the bin with it, and a group restored
+ * on its own while the one above it is still in the bin. Each is moved up past
+ * the binned groups over it, to where it would sit if they were simply not
+ * there. Only binned groups are skipped: a group left off for another reason
+ * (switched off, on a list of live groups only) still hides what is under it.
+ *
+ * @param array $rows   the picker's groups, each with 'id' and 'parent_id'
+ * @param array $binned the groups in the bin, keyed by id, each with 'parent_id'
+ * @return array $rows, with parent_id moved up where it pointed into the bin
+ */
+function pg_catalog_group_rows_past_bin($rows, $binned)
+{
+    $listed = array();
+
+    foreach ($rows as $row) {
+        $listed[(int) $row['id']] = true;
+    }
+
+    foreach ($rows as $key => $row) {
+        $parent_id = (int) $row['parent_id'];
+
+        // Guarded against a parent_id loop, which a hand-edited database can
+        // produce; the row is then left where it was.
+        $guard = count($binned);
+
+        while (($parent_id > 0) && (isset($listed[$parent_id]) == false) && isset($binned[$parent_id]) && ($guard-- > 0)) {
+            $parent_id = (int) $binned[$parent_id]['parent_id'];
+        }
+
+        if (($guard >= 0) && ($parent_id !== (int) $row['parent_id'])) {
+            $rows[$key]['parent_id'] = $parent_id;
+        }
+    }
+
+    return $rows;
 }
 
 /**
@@ -1463,6 +1530,22 @@ function pg_catalog_product_binned($product_id)
     }
 
     return ((int) db_value("SELECT recycled FROM products WHERE id = '" . (int) $product_id . "'") === 1);
+}
+
+/**
+ * Whether a product group is in the Recycle Bin, deleted itself or with a
+ * group above it.
+ *
+ * @param int $group_id
+ * @return bool
+ */
+function pg_catalog_group_binned($group_id)
+{
+    if (pg_catalog_bin_ready() == false) {
+        return false;
+    }
+
+    return ((int) db_value("SELECT recycled FROM product_groups WHERE id = '" . (int) $group_id . "'") === 1);
 }
 
 /**

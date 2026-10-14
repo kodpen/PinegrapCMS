@@ -571,6 +571,23 @@
          yayına almak mümkündü. Ürün listesindeki satır
          içi düzenleme de kutudaki ürünü değiştirmiyor.
 
+  [DÜZELTME] Geri Dönüşüm Kutusundaki ürün grubu artık
+         ürün ekranının grup seçicilerinde, sayfa
+         ayarlarındaki grup seçicilerinde (katalog, arama
+         sonuçları, sipariş formu, hızlı sipariş, alışveriş
+         sepeti) ve kısa bağlantıda çıkmıyor. Önceden
+         "devre dışı" grup gibi seçilebiliyordu. Bir kayıt
+         kutudaki grubu zaten gösteriyorsa o grup kendi
+         seçicisinde "GERİ DÖNÜŞÜM KUTUSUNDA" ekiyle
+         kalıyor, kaydetmek bağı koparmıyor.
+
+  [DÜZELTME] Kutudaki bir ürün grubu adresiyle açılınca
+         ekran "Bu ürün grubu Geri Dönüşüm Kutusunda"
+         uyarısını ve kutuya giden bağlantıyı gösteriyor;
+         Kaydet ve Sil düğmeleri yok, kaydetme isteği
+         reddediliyor. Önceden kaydedip grubu kutudayken
+         yeniden yayına almak mümkündü.
+
   [YENİ] Ürün listesinde stok, fiyat, durum (Etkin / Devre
          dışı) ve kısa açıklama ürünü açmadan, satırda
          değişiyor: hücreye tıklayın, yazın, Enter'a basın

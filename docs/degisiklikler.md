@@ -84,6 +84,95 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Geri Dönüşüm Kutusundaki ürün grubu grup seçicilerinde çıkmıyor, kutudaki grubun ekranı kaydetmiyor (2026-10-14)
+
+**Neden.** #423'ün "Bilerek yapılmayan" maddesindeki iki grup ucu.
+(1) Ürün ekranının iki grup seçicisi, sayfa ayarlarındaki beş grup
+seçicisi (arama sonuçları, katalog, hızlı sipariş, sipariş formu,
+alışveriş sepeti) ve kısa bağlantı ekle/düzenle kutudaki grubu "[DEVRE
+DIŞI]" grup gibi sunuyordu ve seçilebiliyordu. #423 bunları bilerek
+bırakmıştı: seçili kutu grubu listeden düşerse `<select>` ilk seçeneğe
+düşer ve kayıt bağı koparır; tutmak için de ağaç yürüyüşü atalarını
+istiyordu (grup kutuya alt ağacıyla gider, alt grubun üstü de kutudadır).
+(2) Kutudaki grup `edit_product_group.php?id=…` ile uyarısız açılıp
+kaydedilebiliyordu; Etkin işaretli Kaydet grubu kutudayken vitrine geri
+koyuyor, `update_product_group_status()` altındakileri de açıyordu.
+
+**Ne değişti.**
+- `includes/fn/ecommerce.php`: `pg_catalog_bin_live_sql()`'in `$keep_id`'i
+  artık bir liste de alır (çoklu seçim); kimlikleri `pg_catalog_keep_ids()`
+  ayıklar (dizi içinde dizi, sıfır, eksi, yazı atılır). Yeni
+  `pg_catalog_group_rows_past_bin($rows, $binned)` (saf fonksiyon): üstü
+  kutuda olan satırı kutudaki ataların üstünden en yakın listelenen gruba
+  asar; yalnız kutudaki ataları atlar (kapalı grup yüzünden listede
+  olmayanın altı eskisi gibi erişilmez), `parent_id` döngüsünde satırı
+  yerinde bırakır. Yeni `pg_catalog_group_binned()` tek grubu sorar.
+  Yeni işaret yok, #416'nın `recycled` sütunu.
+- `get_product_group_options()`: `$include_recycled = false` iken seçili
+  grup (`$product_group_id`) ve yeni `$keep_ids` kutuda olsa da listede
+  kalır, "[GERİ DÖNÜŞÜM KUTUSUNDA]" ekiyle; kutudaki gruplar
+  `pg_catalog_group_map(true)`'dan (Katalog Yöneticisi'nin haritası)
+  okunup satırlar yukarıdaki fonksiyondan geçer. Bu aynı zamanda kutudaki
+  bir grubun altında tek başına geri yüklenmiş grubu seçicilerde yeniden
+  görünür kılar. `true` (varsayılan) eskisi gibi; Katalog Yöneticisi'nin
+  kısa bağlantı sihirbazı ve vitrin (`get_catalog.php`) değişmedi.
+- Çağıranlar `false` verir: sayfa ayarlarının beş seçicisi (seçili ayar
+  tutulur), ürün ekranının "Ürünü seçilen gruplara dahil et"i (ürünün
+  bulunduğu gruplar `$keep_ids`; kayıt bağları postalanandan yeniden
+  yazdığı için) ve varyant grubu üst grubu, kısa bağlantı düzenleme
+  (liveform değeri) ve ekleme. Grup ekranının üst grup seçicisi #423'te
+  üst grup kutudaysa bütün kutuyu listeliyordu (`$_parent_in_bin`); artık
+  yalnız o üst grup işaretli kalır. Kaydetmedeki "üst grup gerekli"
+  denetimi de aynı listeyi sayar.
+- Grup ekranı: kutudaki grupta üstte uyarı ve "Geri Dönüşüm Kutusunu Aç"
+  (`view_product_groups.php?view=bin`), kayıt çubuğunda Kaydet yerine aynı
+  bağlantı, Sil yok (#423'teki ürün ekranının deseni). POST, token
+  denetiminden hemen sonra hiçbir şey yazmadan aynı ekrana (`send_to`
+  korunarak) döner. Çoğalt bağlantısı ve "Seçili ürünleri değiştir"
+  (ürünlere gider, grubu yazmaz) kaldı.
+- `tr.json`'a 1 anahtar.
+- Test (`tests/catalog_bin_test.php`, +5): kimlik ayıklama, satır asma
+  (kutudaki iki ata, listede tutulan kutu ebeveyni, kutu dışı nedenle
+  eksik ebeveyn, döngü), seçicilerin `false` ve tutulan değerle çağrıldığı,
+  grup ekranının yazmadan önce durduğu.
+
+Şema değişikliği yok; dev'de yalnız `git pull` yeter.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, Türkçe başlangıç sitesi).**
+Mağaza (37, Tüm Ürün Grupları'nın altı) alt ağacıyla (27, 28, 43, 48, 49)
+kutuya atıldı, Ofis Malzemeleri (28, altında 48) tek başına geri yüklendi.
+Kısa bağlantı 1 grup 27'ye, katalog sayfası 997 grup 27'ye, katalog
+sayfası 985 ve arama sonuçları 216 grup 37'ye bağlı; ürün 43 grup 27, 41,
+51'de.
+- Kısa bağlantı 1: 27 seçili, "Hediye Sepetleri [GERİ DÖNÜŞÜM
+  KUTUSUNDA]" Tüm Ürün Grupları'nın altında; 37, 43, 49 yok; 28 ve 48
+  Tüm Ürün Grupları'nın altında. Kaydet: `product_group_id` 27 kaldı.
+  Kısa bağlantı ekleme: kutudakilerin hiçbiri yok.
+- Sayfa 997: 27 seçili ve işaretli. 985 ve 216: 37 seçili ve işaretli,
+  28 onun altında. 266 (sipariş formu), 248 (sepet), 256 (hızlı sipariş):
+  kutudakiler yok.
+- Ürün 43: 27, 41, 51 seçili, 27 işaretli; varyant grubu üst grubu
+  seçicisinde kutudakiler yok. Kaydet: 27 bağı kaldı.
+- Grup 28: üst grup seçicisinde yalnız 37 işaretli ve seçili, diğer kutu
+  grupları yok; Kaydet: `parent_id` 37 kaldı. Grup 21 ve yeni grup:
+  kutudakiler yok.
+- Grup 27 ve 37: uyarı, tek düğme "Geri Dönüşüm Kutusunu Aç"; grup 21'de
+  uyarı yok, Kaydet ve Sil var. 27'nin formu Etkin işaretli Save ve Delete
+  ile postalandı: ikisi de ekrana döndü (302), satır (`enabled 0`,
+  `recycled 1`), kutu kaydının tarihi ve ürün bağları değişmedi.
+- Bu değişiklikten PHP uyarısı yok; grup kaydında 1278'deki `attributes`
+  uyarısı eskiden var.
+
+**Bilerek yapılmayan.** Katalog Yöneticisi'nin kısa bağlantı sihirbazı,
+kasa ve stok barkod ekranları ve Dış API listeleri dokunulmadı. Görsel
+tasarımcının sistem widget'larındaki grup seçicisi (`list_product_groups`,
+`includes/panel/shared_component.php`) kutudaki grupları hâlâ işaretsiz
+listeliyor; ayrı bir JSON ucu ve JS seçicisi olduğu için bu PR'a alınmadı.
+Ekleme ekranlarında (kısa bağlantı) eski bir formun postaladığı kutudaki
+grup reddedilmiyor (#423'teki ürün tarafı gibi).
+
+---
+
 ## 2026.4.10 — Dizi gelen `send_to` ve `from` panel ekranlarında ve giriş sayfalarında 500 veriyordu (2026-10-14)
 
 **Neden.** #417 taramasının bıraktığı K3. Kayıttan sonra dönülecek adres

@@ -1171,7 +1171,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                             <div class="row">
                                 <div class="col-12 col-md-12 col-lg-6 my-1">
                                     <label for="search_results_product_group_id" class="form-label">' . lang('In Product Group') . '</label>
-                                    <select name="search_results_product_group_id" id="search_results_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($search_results_properties['product_group_id'] ?? ''),  $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE) . '</select>
+                                    <select name="search_results_product_group_id" id="search_results_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($search_results_properties['product_group_id'] ?? ''),  $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE, 'text', false, true, false) . '</select>
                                     <div class="form-text">' . lang('leave unselected for all product groups') . '</div>
                                 </div>
                                 <div class="col-12 col-md-12 col-lg-6 my-1">
@@ -1221,7 +1221,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         $output_ecommerce_page_type_properties =
             '<div class="col-12 col-md-6 my-2" id="catalog_product_group_id_row" style="' . $catalog_product_group_id_row_style . '">
                 <label for="catalog_product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                <select name="catalog_product_group_id" id="catalog_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($catalog_properties['product_group_id'] ?? ''), $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE) . '</select>
+                <select name="catalog_product_group_id" id="catalog_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($catalog_properties['product_group_id'] ?? ''), $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE, 'text', false, true, false) . '</select>
                 <div class="form-text text-end">' . lang('leave unselected for all product groups') . '</div>
             </div>
             <div class="col-12 my-2" id="catalog_menu_row" style="' . $catalog_menu_row_style . '">
@@ -1309,7 +1309,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_quick_add_product_group_id_row" style="' . $express_order_quick_add_product_group_id_row_style . '">
                 <label for="express_order_quick_add_product_group_id" class="form-label">' . lang('Quick Add Product Group') . '</label>
-                <select class="form-select" name="express_order_quick_add_product_group_id" id="express_order_quick_add_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($express_order_properties['quick_add_product_group_id'] ?? '')) . '</select>
+                <select class="form-select" name="express_order_quick_add_product_group_id" id="express_order_quick_add_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($express_order_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div>
             <div class="col-12 my-2" id="express_order_product_description_type_row" style="' . $express_order_product_description_type_row_style . '">
                 <label class="form-label" for="">'. lang('Product Description Type') . '</label>
@@ -1507,7 +1507,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 col-md-6 col-lg-4 my-2" id="order_form_product_group_id_row" style="' . $order_form_product_group_id_row_style . '">
                 <label class="form-label" for="order_form_product_group_id">' . lang('Product Group') . '</label>
-                <select class="form-select" id="order_form_product_group_id" name="order_form_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($order_form_properties['product_group_id'] ?? '')) . '</select>
+                <select class="form-select" id="order_form_product_group_id" name="order_form_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($order_form_properties['product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div>
             <div class="col-12 my-3" id="order_form_product_layout_row_1" style="' . $order_form_product_layout_row_1_style . '">
                 <label class="form-label">' . lang('Format') . '</label>
@@ -1554,7 +1554,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_quick_add_product_group_id_row" style="' . $shopping_cart_quick_add_product_group_id_row_style . '">
                 <label class="form-label" for="shopping_cart_quick_add_product_group_id">' . lang('Quick Add Product Group') . '</label>
-                <select class="form-select" id="shopping_cart_quick_add_product_group_id" name="shopping_cart_quick_add_product_group_id"><option value="">-' . lang('None') . '-</option>' . get_product_group_options(($shopping_cart_properties['quick_add_product_group_id'] ?? '')) . '</select>
+                <select class="form-select" id="shopping_cart_quick_add_product_group_id" name="shopping_cart_quick_add_product_group_id"><option value="">-' . lang('None') . '-</option>' . get_product_group_options(($shopping_cart_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div> 
             <div class="col-12 my-3" id="shopping_cart_product_description_type_row" style="' . $shopping_cart_product_description_type_row_style . '">
                 <label class="form-label">' . lang('Product Description Type') . '</label>

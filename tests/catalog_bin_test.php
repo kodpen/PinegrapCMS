@@ -8,9 +8,9 @@
  * product screen, the product list, the variant set list, the group screen,
  * the Catalog Manager, the external API and the Workspace - bins it through
  * those statements, with the permanent delete left to emptying the bin; and
- * that what is in the bin is not offered by the screens a product is picked
- * on, nor counted or dropped by the group screen, nor written by the product
- * screen.
+ * that what is in the bin is not offered by the screens a product or a group
+ * is picked on, nor counted or dropped by the group screen, nor written by
+ * the product screen or the group screen.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -264,4 +264,102 @@ function test_catalog_bin_product_screen_does_not_write_a_binned_product()
 
 	pg_assert_contains("(\$pg_recycled ? \$pg_bin_link :", $builder, 'no save or delete button for it');
 	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_function_body($builder, 'pg_pb_quick_update'), 'the list\'s quick edit refuses it too');
+}
+
+function test_catalog_bin_keep_ids_are_whole_positive_ids_once()
+{
+	pg_assert_same(array(5), pg_catalog_keep_ids(5), 'a stored id');
+	pg_assert_same(array(5), pg_catalog_keep_ids('5'), 'a stored id as a string');
+	pg_assert_same(array(), pg_catalog_keep_ids(''), 'nothing chosen');
+	pg_assert_same(array(), pg_catalog_keep_ids(0), 'the blank option');
+	pg_assert_same(array(3, 8), pg_catalog_keep_ids(array(3, '3', 'x', array(1), 0, -2, '8')), 'a multiple select, and what a hand-made request adds to it');
+}
+
+function test_catalog_bin_group_picker_rows_skip_the_bin_above_them()
+{
+	// 1 is the catalogue, 2 a live group under it; 3 went to the bin with 4
+	// under it; 4 is the group a setting points at, kept on the list; 5 was
+	// restored on its own while 3 stayed in the bin.
+	$rows = array(
+		array('id' => '1', 'parent_id' => '0'),
+		array('id' => '2', 'parent_id' => '1'),
+		array('id' => '4', 'parent_id' => '3'),
+		array('id' => '5', 'parent_id' => '3'),
+		array('id' => '6', 'parent_id' => '4'));
+
+	$binned = array(
+		3 => array('parent_id' => '2'),
+		4 => array('parent_id' => '3'));
+
+	$parents = array();
+
+	foreach (pg_catalog_group_rows_past_bin($rows, $binned) as $row) {
+		$parents[(int) $row['id']] = (int) $row['parent_id'];
+	}
+
+	pg_assert_same(array(1 => 0, 2 => 1, 4 => 2, 5 => 2, 6 => 4), $parents, 'hung on the nearest listed group; a listed binned parent is kept');
+}
+
+function test_catalog_bin_group_picker_rows_only_skip_binned_groups()
+{
+	// 7 is off the list for another reason (switched off on a list of live
+	// groups only); what is under it stays out of reach, as before.
+	$rows = array(array('id' => '9', 'parent_id' => '7'));
+
+	pg_assert_same($rows, pg_catalog_group_rows_past_bin($rows, array()), 'a group under one that is not in the bin');
+
+	// A parent_id loop in the bin leaves the row where it was rather than
+	// hanging the request.
+	$loop = array(
+		7 => array('parent_id' => '8'),
+		8 => array('parent_id' => '7'));
+
+	pg_assert_same($rows, pg_catalog_group_rows_past_bin($rows, $loop), 'a loop');
+}
+
+function test_catalog_bin_group_pickers_leave_the_bin_out()
+{
+	$body = catalog_bin_test_function_body(catalog_bin_test_source('includes/fn/forms.php'), 'get_product_group_options');
+
+	pg_assert_contains("pg_catalog_bin_live_sql('product_groups', array_merge(pg_catalog_keep_ids(\$product_group_id), pg_catalog_keep_ids(\$keep_ids)))", $body, 'the selected group and the kept ones stay');
+	pg_assert_contains('pg_catalog_group_rows_past_bin($product_groups, pg_catalog_group_map(true))', $body, 'and are reached by the walk');
+	pg_assert_contains("lang('IN RECYCLE BIN')", $body, 'and are marked');
+
+	// Page settings: search results, catalog, express order, order form and
+	// shopping cart.
+	$page_form = catalog_bin_test_source('includes/forms/page_form.php');
+
+	pg_assert_same(5, substr_count($page_form, "'text', false, true, false)"), 'page settings: five group pickers');
+	pg_assert_same(5, substr_count($page_form, 'get_product_group_options('), 'page settings: no other');
+
+	$builder = catalog_bin_test_source('product_builder.php');
+
+	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), FALSE, 'text', false, true, false)", $builder, 'product screen: parent group');
+	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, \$v('catalog_group_ids', array()))", $builder, 'product screen: the groups it is in stay');
+
+	pg_assert_contains("\$include_blank_option = TRUE, TRUE, FALSE, \$liveform->get_field_value('product_group_id'))", catalog_bin_test_source('edit_short_link.php'), 'short link: the group it points at stays');
+	pg_assert_contains('$include_blank_option = TRUE, TRUE, FALSE)', catalog_bin_test_source('add_short_link.php'), 'new short link');
+
+	$group = catalog_bin_test_source('edit_product_group.php');
+
+	pg_assert_contains("get_product_group_options(\$parent_id, 0, \$_GET['id'], 0, array(), FALSE, 'text', false, true, false)", $group, 'group screen: parent');
+	pg_assert_contains("get_product_group_options(0, 0, \$_POST['id'], 0, array(), FALSE, 'text', false, true, false)", $group, 'group screen: whether a parent is required');
+}
+
+function test_catalog_bin_group_screen_does_not_write_a_binned_group()
+{
+	$source = catalog_bin_test_source('edit_product_group.php');
+
+	pg_assert_contains('$group_binned = pg_catalog_group_binned($id);', $source, 'the screen asks');
+
+	$guard = strpos($source, 'if ($group_binned) {' . "\n" . '        go(');
+
+	pg_assert_true($guard !== false, 'the guard is there');
+	pg_assert_true($guard > strpos($source, 'validate_token_field();'), 'after the token check');
+	pg_assert_true($guard < strpos($source, 'pg_catalog_bin_group('), 'before the delete');
+	pg_assert_true($guard < strpos($source, 'DELETE FROM product_groups_images_xref'), 'before the save');
+
+	pg_assert_contains("lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.')", $source, 'it says so');
+	pg_assert_contains("(\$group_binned\n                                    ? '<a class=\"btn my-1 btn-secondary\"", $source, 'the bin instead of Save');
+	pg_assert_contains("if (\$group_binned) {\n        \$output_delete_button = '';", $source, 'and no Delete');
 }

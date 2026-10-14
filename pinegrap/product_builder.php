@@ -3958,6 +3958,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // Parent group (group mode) and catalog groups (single mode) are two different
     // questions, so they are two different controls — see the note in
     // pg_pb_save_new_product() about why a variant does not join browse categories.
+    //
+    // Neither offers a group in the Recycle Bin. A group this product is
+    // already in stays on its list, marked, even from the bin: the save
+    // rewrites the product's groups from what is posted, and an option missing
+    // from the list would take the product out of that group for good.
     $output_parent_group_field = '';
     $output_catalog_group_field = '';
 
@@ -3968,7 +3973,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 <label for="parent_group_id" class="form-label">' . lang('Parent Product Group') . '</label>
                 <select style="width:100%" class="select2 form-select" id="parent_group_id" name="parent_group_id" data-placeholder="' . lang('Select Parent Group') . '">
                     <option value="0">-' . lang('None') . '-</option>
-                    ' . get_product_group_options(0, 0, 0, 0, array(), FALSE) . '
+                    ' . get_product_group_options(0, 0, 0, 0, array(), FALSE, 'text', false, true, false) . '
                 </select>
                 <div class="form-text">' . lang('The new variant group is placed under this group in the catalog.') . '</div>
             </div>';
@@ -3977,7 +3982,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             '<div class="col-12 col-lg-8 my-2 pg-pb-single-only">
                 <label for="catalog_group_ids" class="form-label">' . lang('Include product in to selected groups') . '</label>
                 <select style="width:100%" class="select2 form-select" id="catalog_group_ids" name="catalog_group_ids[]" multiple="multiple" data-placeholder="' . lang('Include product in to selected groups') . '">
-                    ' . pg_pb_mark_selected(get_product_group_options(0, 0, 0, 0, array(), TRUE), $v('catalog_group_ids', array())) . '
+                    ' . pg_pb_mark_selected(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, $v('catalog_group_ids', array())), $v('catalog_group_ids', array())) . '
                 </select>
                 <div class="form-text">' . lang('A single product can sit in several groups.') . '</div>
             </div>';

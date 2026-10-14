@@ -802,10 +802,14 @@ function select_page_type($page_type, $user)
     }
     return $output;
 }
-// $include_recycled false leaves out the groups in the Recycle Bin, for a list
-// of places a group can be put; the rest keep them, because a setting or a
-// product that already names one must not lose it on the next save.
-function get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = true, $format = 'text', $include_blank_option = false, $include_disabled = true, $include_recycled = true)
+// $include_recycled false leaves out the groups in the Recycle Bin, except the
+// one already selected ($product_group_id) and $keep_ids (the ones a multiple
+// select or a form field already points at), which stay on the list marked as
+// in the bin: a <select> that no longer has the stored value falls back to its
+// first option, and the next save would quietly drop the setting or the link
+// while the group waits to be restored (see pg_catalog_bin_live_sql()). True
+// lists the bin as switched-off groups, as before it existed.
+function get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = true, $format = 'text', $include_blank_option = false, $include_disabled = true, $include_recycled = true, $keep_ids = array())
 {
     global $user;
     // If the format is text, then prepare output variable for that.
@@ -824,8 +828,9 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
         if (!$include_disabled) {
             $sql_where .= " AND enabled = '1'";
         }
-        if (!$include_recycled) {
-            $sql_where .= pg_catalog_bin_live_sql('product_groups');
+        $leave_bin_out = (!$include_recycled) && pg_catalog_bin_ready();
+        if ($leave_bin_out) {
+            $sql_where .= pg_catalog_bin_live_sql('product_groups', array_merge(pg_catalog_keep_ids($product_group_id), pg_catalog_keep_ids($keep_ids)));
         }
         // get all product groups
         $query = "SELECT
@@ -838,7 +843,9 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
 
                 parent_id,
 
-                display_type
+                display_type" . ($leave_bin_out ? ",
+
+                recycled" : "") . "
 
             FROM product_groups
 
@@ -849,6 +856,11 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
         // add each product group to an array
         while ($row = mysqli_fetch_assoc($result)) {
             $product_groups[] = $row;
+        }
+        // A kept group whose parent is in the bin, and a group restored on its
+        // own under one, would not be reached by the walk below.
+        if ($leave_bin_out) {
+            $product_groups = pg_catalog_group_rows_past_bin($product_groups, pg_catalog_group_map(true));
         }
         // If a blank option should be included, then include it.
         if ($include_blank_option == true) {
@@ -885,9 +897,12 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
             }
             $next_level = $level + 1;
             $disabled = '';
-            // If this product group is disabled, then output "[DISABLED]" on the
-            // end of the label.
-            if (!$child_product_group['enabled']) {
+            // A group in the Recycle Bin is only here because it is already
+            // selected; say where it is. Otherwise, if this product group is
+            // disabled, then output "[DISABLED]" on the end of the label.
+            if (!empty($child_product_group['recycled'])) {
+                $disabled = ' [' . lang('IN RECYCLE BIN') . ']';
+            } elseif (!$child_product_group['enabled']) {
                 $disabled = ' [' . lang('DISABLED') . ']';
             }
             // If the format is text, then prepare output for that format.
