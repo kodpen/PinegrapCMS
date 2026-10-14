@@ -58,3 +58,30 @@ function test_forms_input_time_complete()
 {
 	pg_assert_same('00:05', prepare_form_data_for_input('12:05 AM', 'time'));
 }
+
+// An advanced search field that holds one value counts as not given when its
+// value arrives as an array; a plain value is searched for as it is.
+function test_forms_list_search_value_single_field()
+{
+	pg_assert_same('', pg_form_list_search_value(array('x'), false));
+	pg_assert_same('', pg_form_list_search_value(array('a' => 'x'), false));
+	pg_assert_same('', pg_form_list_search_value(array(array('x')), false));
+	pg_assert_same('blog', pg_form_list_search_value('blog', false));
+	pg_assert_same(null, pg_form_list_search_value(null, false));
+}
+
+// A multi-selection pick list or check box group keeps its selected values.
+function test_forms_list_search_value_multiple_field_keeps_values()
+{
+	pg_assert_same(array('a', 'b'), pg_form_list_search_value(array('a', 'b'), true));
+	pg_assert_same('a', pg_form_list_search_value('a', true));
+}
+
+// Values that are arrays themselves are dropped from a multiple-value field;
+// with none left the field counts as not given.
+function test_forms_list_search_value_multiple_field_drops_nested_values()
+{
+	pg_assert_same(array(0 => 'a'), pg_form_list_search_value(array('a', array('x')), true));
+	pg_assert_same('', pg_form_list_search_value(array(array('x')), true));
+	pg_assert_same('', pg_form_list_search_value(array('b' => array('c' => 'x')), true));
+}

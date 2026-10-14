@@ -477,6 +477,17 @@
          sayfası hata günlüğüne uyarı yazıyordu; artık
          yazmıyor.
 
+  [DÜZELTME] Gelişmiş araması açık form listesi
+         sayfaları, adresinde bir arama alanı birden çok
+         kez geçen (?<sayfa>_<alan>[]=…) bir bağlantıyla
+         açılınca hata sayfası ya da yanlış sonuç
+         veriyordu; artık sayfa açılıyor, böyle gelen değer
+         verilmemiş sayılıyor. Bu sayfalar her açılışta
+         hata günlüğüne uyarı yazıyordu; artık yazmıyor.
+         Katalog sayfası arama terimi birden çok kez geçen
+         bir bağlantıyla açılınca RSS bağlantısını
+         göstermiyordu; artık gösteriyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
