@@ -23,7 +23,7 @@ kalır; `tr.json` değerleri ve `lang()` string'leri yorum değildir.
   çok `log_activity()` çağrılarında.
 - Anahtar her zaman **İngilizce kaynak metindir**, yer tutucular dahil.
 
-Tam sözdizimi: `docs/LANG_USAGE.md` (depo dışı; bağlı geliştirme klasöründe).
+Tam sözdizimi: `docs/memory/core/lang-function-syntax.md`.
 
 ## Görsel tasarımcı: `_sdT()`
 
