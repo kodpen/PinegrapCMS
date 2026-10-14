@@ -26,7 +26,10 @@
  * as the record changes (changes.php). Only the person who asked can run it,
  * with their own connected account; until they connect one the card offers
  * to. The kind is deliberately not one of ws_change_types(): no assistant
- * can propose it there, and the API's list of kinds does not name it.
+ * can propose it there, and the API's list of kinds does not name it. A
+ * message to a server's own agent whose tool writes waits on the same card
+ * (a call via 'agent', mcp_agent.php): applied, it goes to the agent, and
+ * the agent's answer is posted where the decision would be.
  *
  * A task can be handed to an alias too (delegation.php, key mcp:<server id>):
  * the run is the same request with task_id set, the model reads the task
@@ -212,6 +215,8 @@ function ws_mcp_js_strings()
         'mcp_meta_agent'     => lang('Its own agent answers'),
         'mcp_agent_stop'     => lang('Stop'),
         'mcp_agent_stop_ask' => lang('Stop this request? Work the agent does in the background is cancelled on the service too, and an answer still on its way is not posted.'),
+        'mcp_agent_changes'  => lang('Waiting for approval before it goes to the agent'),
+        'mcp_agent_sent'     => lang('Sent with your own account. The agent\'s answer comes in as soon as it gives one.'),
         'mcp_connect_me'     => lang('Connect my account'),
         'mcp_connect_again'  => lang('Connect my account again'),
         'mcp_connect_ask'    => ws_js_template('Connect your own account to @{var:1}? You sign in on the service and come back here.', 1),
@@ -899,8 +904,10 @@ function ws_mcp_call_state_problem($call, $server)
 /**
  * A proposed call as the card draws it (ws_changes_map()), in the card's
  * shape plus: blocked (why the one who asked cannot run it), connect (the
- * server to connect their own account to) and account (the server their own
- * account runs it on).
+ * server to connect their own account to), account (the server their own
+ * account runs it on) and agent (a message to a server's own agent that
+ * waits for approval, mcp_agent.php, rather than a call Pinegrap AI
+ * proposed).
  *
  * @param array $viewer
  * @param array $row      ws_ai_changes
@@ -945,8 +952,13 @@ function ws_mcp_change_entry($viewer, $row, $people, $can_post)
     }
 
     $warning = '';
+    $agent = $call && ((string) $call['via'] === 'agent');
 
-    if ($pending && $asker && ($tool !== '')) {
+    if ($pending && $asker && ($tool !== '') && $agent) {
+        $warning = $deletes
+            ? lang(array('string' => 'This sends the message to @{var:2} through {var:1}, with your own account, and its agent acts on it there. It may delete things there.', 'vars' => array($tool, $alias)))
+            : lang(array('string' => 'This sends the message to @{var:2} through {var:1}, with your own account, and its agent acts on it there.', 'vars' => array($tool, $alias)));
+    } elseif ($pending && $asker && ($tool !== '')) {
         $warning = $deletes
             ? lang(array('string' => 'This runs {var:1} on @{var:2} with your own account. It may delete things there.', 'vars' => array($tool, $alias)))
             : lang(array('string' => 'This runs {var:1} on @{var:2} with your own account.', 'vars' => array($tool, $alias)));
@@ -977,6 +989,7 @@ function ws_mcp_change_entry($viewer, $row, $people, $can_post)
         'blocked'      => $blocked,
         'connect'      => ($pending && $asker && ($problem === '') && !$works) ? array('server_id' => (int) $server['id'], 'alias' => $alias, 'again' => (bool) $mine) : null,
         'account'      => ($pending && $asker && $works) ? array('server_id' => (int) $server['id'], 'alias' => $alias) : null,
+        'agent'        => $agent,
     );
 }
 
@@ -1044,6 +1057,14 @@ function ws_mcp_call_run($viewer, $change, $channel)
 
     $call = ws_mcp_call_row((int) $change['record_id']);
     $server = $call ? ws_mcp_server((int) $call['server_id']) : null;
+
+    // A message to a server's own agent that waited for approval
+    // (mcp_agent.php): approved, it goes to the agent, and the agent's
+    // answer stands where the decision would.
+    if ($call && ((string) $call['via'] === 'agent') && function_exists('ws_mcp_agent_approved')) {
+        return ws_mcp_agent_approved($viewer, $change, $call, $server);
+    }
+
     $problem = ws_mcp_call_state_problem($call, $server);
 
     if (($problem === '') && ($call['status'] !== 'pending')) {
@@ -1155,12 +1176,20 @@ function ws_mcp_call_run($viewer, $change, $channel)
 }
 
 /**
- * A proposed call set aside: the call is kept as dismissed.
+ * A proposed call set aside: the call is kept as dismissed. A message to a
+ * server's own agent that waited for approval ends with it (mcp_agent.php).
  *
- * @param array $change ws_ai_changes
+ * @param array      $change ws_ai_changes
+ * @param array|null $viewer who set it aside
  */
-function ws_mcp_call_dismissed($change)
+function ws_mcp_call_dismissed($change, $viewer = null)
 {
     db("UPDATE ws_mcp_calls SET status = 'dismissed', finished_at = '" . time() . "'
         WHERE id = '" . (int) $change['record_id'] . "' AND status = 'pending'");
+
+    $call = ws_mcp_call_row((int) $change['record_id']);
+
+    if ($call && ((string) $call['via'] === 'agent') && function_exists('ws_mcp_agent_set_aside')) {
+        ws_mcp_agent_set_aside($call, $viewer ? (int) $viewer['id'] : (int) $change['requested_by']);
+    }
 }

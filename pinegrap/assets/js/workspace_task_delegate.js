@@ -23,7 +23,10 @@
  * own account; the card and the picker offer to connect that account, and
  * the service's sign-in comes back to the task. A server that is an agent
  * itself runs the task on its own (agent mcp): it is carried on the same way
- * as Pinegrap AI, by the screens waiting for it (ws_mcp_agent_kick).
+ * as Pinegrap AI, by the screens waiting for it (ws_mcp_agent_kick). When
+ * its tool changes things on the service, the run waits first as a card of
+ * the same type, and once the person who asked applies it, the agent's
+ * answer comes into the run.
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -136,7 +139,7 @@
 
             h.api(action, { change_id: change.id }).then(function () {
                 if (action === 'ws_ai_change_apply') {
-                    h.toast(h.t('dg_change_done'), 'success');
+                    h.toast(h.t(change.agent ? 'mcp_agent_sent' : 'dg_change_done'), 'success');
                 }
 
                 done(change);
@@ -233,7 +236,9 @@
     function changesBox(item, h, done, taskId) {
         var box = h.el('div', 'ws-drafts ws-changes ws-task-delegate-changes');
 
-        box.appendChild(h.el('div', 'ws-drafts-title', h.t((item.agent === 'ai') ? 'ai_changes' : 'claude_changes')));
+        // A run of an MCP server's own agent waits here for the approval
+        // its tool asks for before it is sent (mcp_agent.php).
+        box.appendChild(h.el('div', 'ws-drafts-title', h.t((item.agent === 'mcp') ? 'mcp_agent_changes' : ((item.agent === 'ai') ? 'ai_changes' : 'claude_changes'))));
 
         item.changes.forEach(function (change) {
             box.appendChild(changeCard(change, item.agent, h, done, taskId));

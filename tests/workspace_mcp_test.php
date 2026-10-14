@@ -490,7 +490,7 @@ function test_workspace_mcp_agent_argument_takes_the_message()
 	pg_assert_same('', ws_mcp_agent_argument(workspace_mcp_test_schema_tool('k', array('type' => 'object', 'properties' => array('query' => array('type' => 'string', 'format' => 'date'))))), 'nor is a date');
 }
 
-function test_workspace_mcp_agent_tool_must_read_only()
+function test_workspace_mcp_agent_tool_must_be_turned_on()
 {
 	$schema = array('type' => 'object', 'properties' => array('message' => array('type' => 'string')), 'required' => array('message'));
 	$tools = array(
@@ -510,7 +510,7 @@ function test_workspace_mcp_agent_tool_must_read_only()
 	$server['agent_tool'] = 'ask';
 
 	pg_assert_true(ws_mcp_agent_mode($server));
-	pg_assert_same(array('name' => 'ask', 'argument' => 'message'), ws_mcp_agent_tool($server));
+	pg_assert_same(array('name' => 'ask', 'argument' => 'message', 'approve' => false), ws_mcp_agent_tool($server));
 
 	// Turned off, or no longer listed: the server stays an agent, but the
 	// tool cannot be used.
@@ -525,12 +525,36 @@ function test_workspace_mcp_agent_tool_must_read_only()
 
 	pg_assert_same(null, ws_mcp_agent_tool($gone), 'a tool the server no longer lists takes no messages');
 
-	// On a server people sign in to, a tool that waits for an approval
-	// before each call does not take messages yet.
-	$oauth = workspace_mcp_test_server($tools, array('ask' => 'approve', 'send' => 'approve'), 'oauth');
-	$oauth['agent_tool'] = 'ask';
+	// On a server people sign in to, a tool that writes can take the
+	// messages too: each one waits for the approval of the person who asked.
+	$oauth = workspace_mcp_test_server($tools, array('ask' => 'approve', 'send' => 'approve', 'lookup' => 'auto'), 'oauth');
 
-	pg_assert_same(null, ws_mcp_agent_tool($oauth));
+	pg_assert_same(array('ask' => 'message', 'lookup' => 'message', 'send' => 'message'), ws_mcp_agent_candidates($oauth), 'a tool that writes may take the messages there');
+
+	$oauth['agent_tool'] = 'send';
+	pg_assert_same(array('name' => 'send', 'argument' => 'message', 'approve' => true), ws_mcp_agent_tool($oauth), 'each message asks first');
+
+	$oauth['agent_tool'] = 'ask';
+	pg_assert_same(array('name' => 'ask', 'argument' => 'message', 'approve' => true), ws_mcp_agent_tool($oauth), 'so does one the administrator turned on to ask first');
+
+	$oauth['agent_tool'] = 'lookup';
+	pg_assert_same(array('name' => 'lookup', 'argument' => 'message', 'approve' => false), ws_mcp_agent_tool($oauth), 'one that reads only answers at once');
+
+	// The same rules on a server that no longer signs in with OAuth count
+	// for nothing: nobody's own account could run them.
+	$plain = workspace_mcp_test_server($tools, array('ask' => 'approve', 'send' => 'approve'), 'bearer');
+	$plain['agent_tool'] = 'send';
+
+	pg_assert_same(array('ask' => 'message', 'lookup' => 'message'), ws_mcp_agent_candidates($plain), 'a tool that writes cannot take messages without OAuth');
+	pg_assert_same(null, ws_mcp_agent_tool($plain));
+}
+
+function test_workspace_mcp_agent_approved_call_goes_with_the_askers_account()
+{
+	pg_assert_true(ws_mcp_agent_call_approved(array('approved_by' => 7)), 'run on the approval of the person who asked');
+	pg_assert_false(ws_mcp_agent_call_approved(array('approved_by' => 0)), 'a call made at once');
+	pg_assert_false(ws_mcp_agent_call_approved(array()), 'a call without the column');
+	pg_assert_false(ws_mcp_agent_call_approved(null), 'no call at all');
 }
 
 function test_workspace_mcp_agent_message_with_the_one_it_answers()

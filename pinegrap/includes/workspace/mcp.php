@@ -1799,8 +1799,10 @@ function ws_mcp_settings_card($self_url, $viewer)
         $details[] = lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(count($on), count($tools))));
 
         // A server that is an agent itself answers its alias on its own.
+        // Each message of one whose tool writes waits for an approval first.
         if (function_exists('ws_mcp_agent_mode') && ws_mcp_agent_ready() && ws_mcp_agent_mode($server)) {
-            $details[] = lang(array('string' => 'answers on its own through {var:1}', 'vars' => (string) $server['agent_tool']));
+            $asks = !empty($on[(string) $server['agent_tool']]['approve']);
+            $details[] = lang(array('string' => $asks ? 'answers on its own through {var:1}, each message approved first' : 'answers on its own through {var:1}', 'vars' => (string) $server['agent_tool']));
             $agents = true;
         }
 

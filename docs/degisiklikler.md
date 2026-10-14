@@ -84,6 +84,100 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Uzak ajan: yazan ajan aracı, her mesaj soranın onayıyla ve kendi hesabıyla gidiyor (2026-10-14)
+
+**Neden.** Uzak ajanın dördüncü dilimi (`docs/_plan_tersine_oauth.md` →
+"4.6 Uzak ajan"). #347'den beri ajanın mesajlarını alan araç yalnız okuyan
+olarak açık olmak zorundaydı: başka bir şirketin asistanı gibi hizmette iş
+yapan (bilet açan, kayıt değiştiren) bir ajan seçilemiyordu, çünkü yazan
+araç her çağrıdan önce onay ister ve takma ada yazılan mesajın onay yolu
+yoktu. Şema yok: onayı bekleyen çağrı zaten `ws_mcp_calls`'ta (`via =
+'agent'`, `status = 'pending'`), kartı `ws_ai_changes`'te (`record_type =
+'mcp_call'`); isteğin bekleyişi `ws_ai_requests.status`'un var olan `sent`
+değeriyle yazılır (ajan isteklerinde başka bir anlamda kullanılmıyordu).
+
+**Ne değişti.**
+
+- `includes/workspace/mcp_agent.php`:
+  - Kişilerin kendi hesabıyla bağlandığı (OAuth'lu) sunucuda mesajları alan
+    araç "onay ister" kurallı bir araç da olabilir (`ws_mcp_agent_candidates()`,
+    `ws_mcp_agent_tool()` → `approve`). Taşıyıcı (bearer) ya da temel
+    kimlikli sunucuda kural eskisi gibi: yalnız okuyan.
+  - Böyle bir araçta istek gönderilmez: çağrı `pending` olarak saklanır,
+    soranın mesajının altına (görevde çalışmaya) `mcp_call` kartı olarak
+    düşer (`ws_mcp_agent_propose()` → `ws_mcp_calls_propose()`), istek `sent`
+    olur. Mesajın altındaki satır "@takmaad: Ad Soyad onaylayınca
+    gönderilecek" der (durum `approval`; ekranlar bu durumda hızlanmaz ve
+    `ws_mcp_agent_kick` çağırmaz). "Durdur" bekleyen isteği de kapatır.
+  - Kart onaylanınca (`ws_mcp_call_run()` → `ws_mcp_agent_approved()`) istek
+    yeniden `running` alınır ve araç yalnız soranın kendi hesabıyla çağrılır
+    (`ws_mcp_connection(..., true)`), sitenin hesabıyla asla. Yanıt karar
+    mesajı yerine ajanın yanıtı olarak düşer: kanalda mesajın altına
+    kilitli, görevde Asistan bölümüne (#356'nın yolu); kartın
+    `decision_message_id`'si o yanıtı gösterir. Arka planda süren iş (#353)
+    aynı yoldan izlenir; görevin soruları ve iptali de soranın hesabıyla
+    gider (`ws_mcp_agent_call_approved()`). Hizmetin reddettiği jeton kartı
+    geri verir, istek beklemeye devam eder; kişi hesabını yeniden bağlayınca
+    aynı kart çalışır. Başka her hata kartı, çağrıyı ve isteği birlikte
+    kapatır.
+  - Kartı bir kenara bırakmak isteği "bir kenara bırakıldı" olarak kapatır
+    (`ws_mcp_agent_set_aside()`); istek başka yoldan kapanırsa (durdurma,
+    kuralın bozulması, saatlik iş) bekleyen çağrı `dismissed`, kartı
+    `dismissed` ya da `failed` olur (`ws_mcp_agent_drop_pending()`).
+  - Saatlik iş, bağlamı gitmiş bekleyen istekleri kapatır
+    (`ws_mcp_agent_approval_gone()`: sunucu silinmiş, soran kişi yok, görev
+    silinmiş ya da görülemiyor, soran mesaj silinmiş). Bekçi takılan
+    istekleri yalnız `running`'de arar.
+  - Kişi başı sınır (3) bekleyenleri de sayar; bunlardan biri onay
+    bekliyorsa ileti "onaylayın ya da bir kenara bırakın" der
+    (`ws_mcp_agent_limit_problem()`, kanal ve görev ortak).
+  - Ayarlardaki seçici böyle bir aracın yanına "her mesaj onay bekler"
+    yazar; yardım metni OAuth'lu sunucuda yazan aracın onayla çalıştığını
+    söyler; kayıtta kural denetimi `approve`'u da kabul eder.
+- `includes/workspace/mcp_ask.php`: kart ajan çağrısında "Bu, mesajı sizin
+  hesabınızla … aracı üzerinden @takmaad hizmetine gönderir; oradaki ajan
+  onun üzerine iş yapar." uyarısını (silebilen araçta ek cümleyle) ve
+  `agent` işaretini taşır; bırakma `ws_mcp_agent_set_aside()`'ı çağırır.
+  `changes.php`: bırakan kişi geçer.
+- `includes/workspace/delegation.php`: onay bekleyen ajan çalışması
+  çekmecede "devam ediyor" sayılmaz (`open_agent` boş), ekran onu
+  hızlandırmaz; sınır iletisi ortak yardımcıdan.
+- `assets/js/workspace.js`, `workspace_task_delegate.js` (+ `.min.js`):
+  ajan kartının başlığı "Ajana gitmeden önce onay bekliyor", onay sonrası
+  bildirim "Sizin hesabınızla gönderildi. Ajanın yanıtı verir vermez
+  gelir."
+- `mcp.php`: sunucu kartında "her mesaj önce onaylanır". API:
+  `workspace.changes.list`, `workspace.assistant_requests.list`
+  (`agent = mcp`, `status = sent` onay bekler) ve `workspace.tasks.delegate`
+  açıklamaları; değişikliğin `agent` alanı `mcp` de olabilir.
+- `includes/local/tr.json`: 15 yeni metin; ajan aracı yardım metninin son
+  cümlesi ayrı anahtara alındı.
+
+**Ödün.** Onay yalnız soran kişide: bir yönetici başkasının bekleyen
+mesajını onaylayamaz (durdurabilir). Onay, sitenin hesabıyla gitmez; soran
+kendi hesabını bağlamamışsa kart "hesabınızı bağlayın" der ve bekler. Her
+mesaj ayrı kart: aynı ajanla art arda yazışmada her biri onay ister. Onay
+bekleyen istek kendiliğinden süresi dolmaz; saatlik iş yalnız bağlamı
+gitmişleri kapatır.
+
+**Denendi.** Birim testleri (`tests/workspace_mcp_test.php`: OAuth'lu
+sunucuda yazan aracın aday olması ve `approve` işareti, taşıyıcı kimlikli
+sunucuda olmaması; onaylı çağrının soranın hesabıyla gitmesi). Sandbox'ta
+`192.0.2.2:8001`'de yalnız kişinin jetonunu kabul eden sahte bir
+2026-07-28 ajanıyla (`send_message`, yazan araç): kanalda `@helpdesk`
+mesajı kart oldu, onaydan önce sunucuya hiçbir çağrı gitmedi; onay mesajı
+kişinin jetonuyla gönderdi, yanıt mesajın altına kilitli düştü (`<@user:1>`
+etiketi bozuldu), kart yanıtı gösterdi; bırakma isteği kapattı; "Durdur"
+kartı kapattı, sonra onay reddedildi; aracın hatası kartı, isteği ve
+çağrıyı kapattı; uzun iş arka planda sürdü, soru yanıtı getirdi; yalnız
+sitenin hesabı varken kart "bağlayın" dedi ve bekledi, hesap bağlanınca
+aynı kart çalıştı; soran mesaj silinince saatlik iş isteği kapattı; görevde
+devir kart oldu, çekmece ikinci çalışmayı reddetti, onay yanıtı Asistan
+bölümüne yazdı. Tarayıcıda (Playwright) kartın başlığı ve onay satırı.
+`tools/` denetimleri, `tests/` (758) ve `build_js.php --check` geçti.
+
+---
+
 ## 2026.4.10 — Ürün çoğaltma: "Assortment" seçimindeki SQL enjeksiyonu kapandı (2026-10-14)
 
 **Neden.** #355'in kapsam dışı notu. Ürünleri toplu çoğaltma ekranının

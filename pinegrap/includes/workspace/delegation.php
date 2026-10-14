@@ -478,8 +478,10 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
 
     // The agents of MCP servers share one limit, in channels and on tasks.
     if ($agent === 'mcp') {
-        if ($waiting >= WS_MCP_AGENT_PER_PERSON) {
-            return $fail(lang(array('string' => '{var:1} of your requests to MCP agents are still waiting. Please wait for those to be answered.', 'vars' => WS_MCP_AGENT_PER_PERSON)));
+        $limit = function_exists('ws_mcp_agent_limit_problem') ? ws_mcp_agent_limit_problem((int) $viewer['id']) : '';
+
+        if ($limit !== '') {
+            return $fail($limit);
         }
     } else {
         $limit = ($agent === 'ai') ? WS_AI_PER_PERSON : WS_CLAUDE_PER_PERSON;
@@ -861,12 +863,16 @@ function ws_task_delegation_detail($viewer, $task)
 
     $first = $rows ? $rows[0] : null;
 
+    // A run of an MCP server's own agent that waits for its asker's approval
+    // (mcp_agent.php) has nothing for the screens to carry on until then.
+    $carried = $open && $first && !(((string) $first['agent'] === 'mcp') && ((string) $first['status'] === 'sent'));
+
     return array(
         'delegate'   => $with,
         'assistants' => $assistants,
         'runs'       => $runs,
         'open'       => $open,
-        'open_agent' => ($open && $first) ? (string) $first['agent'] : '',
+        'open_agent' => $carried ? (string) $first['agent'] : '',
         'can_hand'   => $can_edit && ws_task_is_open($task['status']) && !empty($assistants),
         'can_stop'   => $open && ($can_edit || ($first && ((int) $first['requested_by'] === (int) $viewer['id']))),
         'can_take'   => $can_edit && ($delegate !== ''),
