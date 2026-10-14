@@ -28,7 +28,7 @@ if ($_POST) {
     validate_token_field();
 }
 
-$account_id = (int) ($_REQUEST['id'] ?? 0);
+$account_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $preview_template = null;
 
 // A draft template from the settings form: the settings gate, tried on the

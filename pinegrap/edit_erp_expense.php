@@ -25,7 +25,7 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php';
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $can_cash = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
 
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $expense = erp_expense($id);
 
 if ($expense === null) {

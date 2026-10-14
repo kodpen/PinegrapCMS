@@ -29,7 +29,7 @@ include_once('liveform.class.php');
 $liveform = new liveform('erp_inbox_document');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_inbox.php';
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $row = erp_edoc_inbox_row($id);
 
 if ($row === null) {

@@ -24,7 +24,7 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-$invoice_id = (int) ($_REQUEST['id'] ?? 0);
+$invoice_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $preview_template = null;
 
 // A draft template is a settings matter, and it is only ever posted from the

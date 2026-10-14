@@ -25,7 +25,7 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_quote');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_quotes.php';
-$quote_id = (int) ($_REQUEST['id'] ?? 0);
+$quote_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $quote = erp_quote($quote_id);
 
 if ($quote === null) {
