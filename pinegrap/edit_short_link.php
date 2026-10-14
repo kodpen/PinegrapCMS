@@ -291,7 +291,7 @@ if (!$_POST) {
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-5 my-2" id="product_group_id_row"' . $output_product_group_id_row_style . '>
                                                     <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-select', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-select', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE, TRUE, FALSE, $liveform->get_field_value('product_group_id')))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-7 my-2" id="product_id_row"' . $output_product_id_row_style . '>

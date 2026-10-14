@@ -33,6 +33,14 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM product_groups WHERE id =
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+// A group in the Recycle Bin, deleted itself or with a group above it, is no
+// longer on any list, but its address still opens it. It is shown so the
+// operator can see what is in the bin, and is not written: saving would switch
+// it back on while it is in the bin (the bin keeps it off), and deleting it
+// again does nothing. Restoring it in the Catalog Manager is the way back to
+// editing it, as for a product (edit_product.php).
+$group_binned = pg_catalog_group_binned($id);
+
 include_once('liveform.class.php');
 
 // The image picker on this screen is the one the product screens draw, so the
@@ -498,11 +506,10 @@ if (!$_POST) {
     //
     // Groups in the Recycle Bin are no place to move a group to. The one
     // exception is a parent that is itself in the bin (a sub-group restored on
-    // its own): left off the list, the select would fall to its first option
-    // and the next save would move this group there.
-    $_parent_in_bin = pg_catalog_bin_ready()
-        && ((int) db_value("SELECT recycled FROM product_groups WHERE id = '" . (int) $parent_id . "'") === 1);
-    $_parent_options_html = get_product_group_options($parent_id, 0, $_GET['id'], 0, array(), FALSE, 'text', false, true, $_parent_in_bin);
+    // its own): it stays on the list, marked, because left off it the select
+    // would fall to its first option and the next save would move this group
+    // there.
+    $_parent_options_html = get_product_group_options($parent_id, 0, $_GET['id'], 0, array(), FALSE, 'text', false, true, false);
     if ($_parent_options_html !== '') {
         $output_parent_product_group_row =
             '<div class="col-12 col-md-4 my-2">
@@ -513,8 +520,11 @@ if (!$_POST) {
         $output_parent_product_group_row = '';
     }
 
-    // Delete button: only allowed for non-root product groups.
-    if ($parent_id != 0) {
+    // Delete button: only allowed for non-root product groups, and not for a
+    // group in the Recycle Bin.
+    if ($group_binned) {
+        $output_delete_button = '';
+    } elseif ($parent_id != 0) {
         // if there is a child product group in this product group, then disable delete button
         if ($child_product_group_exists == true) {
             $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\')" ><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
@@ -553,6 +563,9 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
+                ' . ($group_binned
+                    ? '<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
+                    : '') . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
 
@@ -816,7 +829,9 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                ' . ($group_binned
+                                    ? '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="btn-text">' . lang('Open the Recycle Bin') . '</span></a>'
+                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
                                 ' . $output_delete_button . '
                             </div>
                             <span class="enable-on-selected"> 
@@ -871,6 +886,14 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
+
+    // Neither saved nor deleted while in the bin (see $group_binned above); a
+    // form opened before the group went there lands back on the screen that
+    // says so.
+    if ($group_binned) {
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $id
+            . ((is_scalar($_POST['send_to'] ?? null) && ((string) $_POST['send_to'] !== '')) ? '&send_to=' . urlencode((string) $_POST['send_to']) : ''));
+    }
     
 
     // If the max_input_vars_test hidden field is not in the post data then that means the post data was truncated,
@@ -1009,7 +1032,7 @@ if (!$_POST) {
         
         // If parent_id is blank, require it when selectable groups exist
         if (!$_POST['parent_id']) {
-            $available_parent_options = get_product_group_options(0, 0, $_POST['id'], 0, array(), FALSE);
+            $available_parent_options = get_product_group_options(0, 0, $_POST['id'], 0, array(), FALSE, 'text', false, true, false);
             if ($available_parent_options !== '') {
                 $liveform->mark_error('parent_id', lang(array('string' => '{var:1} is required', 'vars' => array(lang('Parent Product Group')))) . '.');
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $_POST['id']);
