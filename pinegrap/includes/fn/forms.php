@@ -3194,6 +3194,62 @@ function pg_form_list_search_value($value, $multiple)
 
     return '';
 }
+
+// The properties of one field tag in a form list's advanced search layout,
+// the text between the outer braces of {{...}}. The field tags the panel lists
+// are written in JavaScript object form ({name: 'subject', dynamic: true}),
+// which json_decode() refuses, so besides strict JSON this reads unquoted
+// keys, single-quoted strings and trailing commas. Strict JSON is decoded
+// as is. Returns null when the text cannot be read either way.
+function pg_form_list_advanced_field_properties($text)
+{
+    $properties = json_decode($text, true);
+
+    if (is_array($properties)) {
+        return $properties;
+    }
+
+    // One pass from left to right, so a key or a comma inside a string is
+    // never touched: a double-quoted string is kept, a single-quoted one is
+    // requoted, a key is quoted and a comma before a closing bracket dropped.
+    // Anything else is left for json_decode() to accept or refuse.
+    $json = preg_replace_callback(
+        '/"(?:[^"\\\\]|\\\\.)*"|\'((?:[^\'\\\\]|\\\\.)*)\'|([\p{L}_$][\p{L}\p{N}_$]*)(?=\s*:)|,(?=\s*[}\]])/su',
+        function ($match) {
+            if ($match[0][0] == '"') {
+                return $match[0];
+            }
+
+            if ($match[0][0] == '\'') {
+                return '"' . preg_replace_callback(
+                    '/\\\\(.)|"/su',
+                    function ($character) {
+                        if ($character[0] == '"') {
+                            return '\\"';
+                        }
+
+                        return ($character[1] == '\'') ? '\'' : $character[0];
+                    },
+                    $match[1]) . '"';
+            }
+
+            if (isset($match[2]) && ($match[2] !== '')) {
+                return '"' . $match[2] . '"';
+            }
+
+            return '';
+        },
+        $text);
+
+    // Text that is not valid UTF-8 leaves the pattern unmatched (null).
+    if (!is_string($json)) {
+        return null;
+    }
+
+    $properties = json_decode($json, true);
+
+    return is_array($properties) ? $properties : null;
+}
 function prepare_form_data_for_input($data, $type)
 {
     if ($data) {

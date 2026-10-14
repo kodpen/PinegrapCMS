@@ -453,9 +453,15 @@ function get_form_list_view($properties) {
                 // The JSON for the field was entered via the rich-text editor, so convert HTML entities to normal characters.
                 $field_json = unhtmlspecialchars($variable[1]);
 
-                // Create PHP array for field from JSON string.
-                $field = json_decode($field_json, true);
+                // Read the field's properties, from strict JSON or the
+                // JavaScript object form the panel's field tags use.
+                $field = pg_form_list_advanced_field_properties($field_json);
 
+                // A tag that cannot be read stays in the layout as typed,
+                // like a tag whose name is not a field of this form.
+                if ($field === null) {
+                    continue;
+                }
 
                 // Check if 'name' key exists and is a string before applying mb_strtolower()
                 // This prevents warnings in PHP 7.4+ and fatal errors in PHP 8.x

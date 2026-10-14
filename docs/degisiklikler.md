@@ -84,6 +84,67 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Form listesinin gelişmiş arama düzeni panelin verdiği `{name: '…'}` biçimini okumuyordu, katalog boş terimle RSS bağlantısını göstermiyordu (2026-10-14)
+
+**Neden.** #415'in bıraktığı iki parça, ikisi de 2026.4.9'da var. (1) Form
+listesinin gelişmiş arama düzenindeki her `{{…}}` etiketi `json_decode()`
+ile okunuyordu. Panelin düzenleme ekranı alanları `{{name: 'subject'}}`
+biçiminde listeliyor ve ipucu "Etiketleri Alanlardan kopyalayın" diyor;
+örnek verideki gelişmiş araması açık üç liste (`all-conversations`,
+`all-support-tickets`, `all-services-projects`) ve araması kapalı diğer
+düzenler de bu biçimde (`{name: 'submitter', dynamic: true}`). Bu JSON
+değil (anahtar tırnaksız, metin tek tırnaklı), bu yüzden bu etiketler hiç
+çözülmüyor, sayfada `{{name: …}}` yazısı olduğu gibi görünüyordu. Yalnız
+`{{"name":"subject"}}` gibi sıkı JSON çalışıyordu. (2) Katalog `?query=`
+(boş ya da yalnız boşluk) ile açılınca `get_catalog.php` terimi `trim()`
+edip terimsiz sayfayı gösteriyor, ama `get_page_content.php`'deki RSS
+koşulu terimin metin olmasına baktığı için `<head>`'deki RSS bağlantısı
+çıkmıyordu.
+
+**Ne değişti.**
+- `includes/fn/forms.php`: `pg_form_list_advanced_field_properties()`. Önce
+  sıkı JSON dener; çözülürse sonucu olduğu gibi döner, bu yüzden JSON
+  düzenlerin HTML'i değişmez. Çözülmezse tek geçişte tırnaksız anahtarları
+  tırnaklar (Türkçe harfli anahtar dahil), tek tırnaklı metni çift tırnağa
+  çevirir (içindeki `\'` ve `"` dahil), kapanış parantezinden önceki virgülü
+  atar; metinlerin içine dokunmaz. Yine okunamazsa `null` döner.
+- `get_form_list_view.php` etiketi bu fonksiyonla okuyor; okunamayan etiket
+  atlanıyor ve düzende yazıldığı gibi kalıyor (bilinmeyen alan adındaki
+  gibi), uyarı ya da 500 yok.
+- Katalog RSS bağlantısı terim boşsa ya da yalnız boşluksa da çıkıyor.
+- `tests/form_list_advanced_field_test.php`: beş test (sıkı JSON aynen,
+  nesne biçimi, sondaki virgüller, metin içinde tırnak ve kaçış, bozuk girdi
+  uyarısız `null`).
+- Paneldeki ipucu ve alan etiketleri değişmedi: verdikleri biçim artık
+  çalışıyor. Örnek veri değişmedi. Şema, dil dosyası ve JS değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, Türkçe örnek veri).** Eski kod
+(`origin/development`) ve yeni kod aynı veritabanında iki ayrı sunucuda,
+opcache kapalı. Üç örnek liste (yönetici olarak): eski kodda gelişmiş arama
+bloğunda etiketler düz yazı; yeni kodda dinamik seçim listeleri (Gönderen,
+E-posta, Şirket, Telefon, Konu; projelerde Kredi) ve Ara/Temizle düğmeleri
+çıkıyor, tarayıcıda bir e-posta seçip Ara ile süzme çalışıyor, sayfa hatası
+yok. `/forum` listesine sıkı JSON düzen (standart ve özel alan, dinamik,
+operatör, `&quot;`'lu etiket, bilinmeyen alan, JSON olmayan etiket, düğmeler)
+kuruldu: oturumsuz dört istekte (terimsiz, alanla arama, gönderen ve tarih,
+dizi değer) eski ve yeni HTML birebir aynı (oturum jetonu dışında). Katalog
+`/shop-fullwidth`: `?query=`, `?query=%20`, `?1000_query=` yeni kodda RSS
+bağlantısı terimsiz sayfadaki gibi, eski kodda yoktu; terimsiz,
+`?query=kalem`, `?query[]=x`, `?1000_query=&query=kalem` eski ve yeni
+kodda aynı. Hiçbir istek `php_errors.log`'a satır yazmadı.
+`tools/lint.php`, `check_*`, `tools/test.php` ve `build_js.php --check`
+geçti. Doğrulanamadı: dev.pinegrap.com'daki sayfalar.
+
+**Bilerek yapılmayan.** Katalogda iki uç hâlâ terimsiz sayfadan ayrı (eski
+kodda da aynı): basit aramanın Temizle düğmesi terimle gelince
+(`?<sayfa>_simple_clear`) ve `?<sayfa>_query=` ile `?query=x` birlikte
+gelince katalog terimsiz sayfayı gösteriyor ama RSS bağlantısı gizli.
+Gevşek okuyucu JavaScript'in tamamını değil, panel etiketlerinin kullandığı
+üç gevşekliği okuyor; onaltılık sayı, yorum ya da `\x41` kaçışı olan etiket
+atlanır.
+
+---
+
 ## 2026.4.10 — Sayfalar listesinden, sayfa ekranından ve görsel editörden silinen sayfa ve sayfa stili Geri Dönüşüm Kutusuna gidiyor (2026-10-14)
 
 **Neden.** Bir müşteri sitesinde yanlışlıkla silinen kaydı geri almak için

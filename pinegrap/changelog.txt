@@ -499,6 +499,18 @@
          artık yazmıyor. Haftalık görünümdeki takvim
          sayfası da her açılışta uyarı yazmıyor.
 
+  [DÜZELTME] Form listesinin gelişmiş arama düzeninde
+         panelin listelediği biçimde yazılan alanlar
+         ({{name: 'subject', dynamic: true}}) çözülmüyor,
+         sayfada olduğu gibi yazı olarak görünüyordu;
+         artık arama alanı ve düğme olarak çıkıyor. Örnek
+         verideki "Tüm Sohbetler", "Tüm Destek Biletleri"
+         ve "Tüm Hizmet Projeleri" listeleri de böyleydi.
+         JSON biçiminde yazılmış düzenler eskisi gibi.
+         Katalog sayfası boş arama terimiyle (?query=)
+         açılınca RSS bağlantısını göstermiyordu; artık
+         terimsiz sayfadaki gibi gösteriyor.
+
   ÜRÜNLER
   --------------------------------------------------------
 
