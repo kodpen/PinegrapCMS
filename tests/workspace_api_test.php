@@ -221,6 +221,42 @@ function test_ws_api_inbox_routes()
 	}
 }
 
+// The inbox picks up its changed lines as a channel does its messages: a
+// changed_since moment, paged with since_id, in the tool as well.
+function test_ws_api_inbox_list_takes_changed_since()
+{
+	$list = null;
+
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === 'workspace.inbox.list') {
+			$list = $route;
+		}
+	}
+
+	$types = array();
+
+	foreach ($list['params'] as $param) {
+		$types[$param['name']] = $param['type'];
+	}
+
+	pg_assert_same('datetime', $types['changed_since'] ?? '');
+	pg_assert_same('int', $types['since_id'] ?? '');
+
+	$properties = (array) pg_mcp_tool_from_route($list)['inputSchema']['properties'];
+
+	pg_assert_true(isset($properties['changed_since']) && isset($properties['since_id']), 'the tool takes both');
+}
+
+// A row changes by being written, sent again or read: either stamp at or
+// after the moment counts, only the person's rows after the one given.
+function test_ws_api_inbox_changed_where()
+{
+	pg_assert_same("user_id = '7' AND (created_at >= '1700000000' OR read_at >= '1700000000') AND id > '42'", ws_api_inbox_changed_where(7, 1700000000, 42));
+
+	// An unread row has read_at 0; no moment may reach it.
+	pg_assert_same("user_id = '7' AND (created_at >= '1' OR read_at >= '1') AND id > '0'", ws_api_inbox_changed_where('7', 0, -5));
+}
+
 // The inbox's addresses start at the site's root; an app gets them whole,
 // and any other address as it is.
 function test_ws_api_inbox_url()

@@ -13,6 +13,11 @@
  * address. The sentences are the panel's own (ws_inbox_describe()), and so is
  * the rule of what the person may still see (ws_inbox_visible_rows()).
  *
+ * An app that holds lines picks up what changed in them with changed_since,
+ * paged with since_id, as it does with a channel's messages: a row changes
+ * only by being written, sent again (its created_at moves) or read (its
+ * read_at is set), so those two stamps say when, with no column of its own.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -163,14 +168,13 @@ function ws_api_inbox_claude_may_read($viewer, $row)
 }
 
 /**
- * The lines the owner may see out of a set of their rows, as the API shows
- * them.
+ * The rows the owner may see out of a set of theirs, in the order given.
  *
  * @param array   $viewer
  * @param array[] $rows ws_inbox rows of the viewer
- * @return array[]
+ * @return array[] ws_inbox rows
  */
-function ws_api_inbox_present_rows($viewer, $rows)
+function ws_api_inbox_reachable_rows($viewer, $rows)
 {
     $claude = ws_api_is_claude();
     $out = array();
@@ -180,6 +184,25 @@ function ws_api_inbox_present_rows($viewer, $rows)
             continue;
         }
 
+        $out[] = $row;
+    }
+
+    return $out;
+}
+
+/**
+ * The lines the owner may see out of a set of their rows, as the API shows
+ * them.
+ *
+ * @param array   $viewer
+ * @param array[] $rows ws_inbox rows of the viewer
+ * @return array[]
+ */
+function ws_api_inbox_present_rows($viewer, $rows)
+{
+    $out = array();
+
+    foreach (ws_api_inbox_reachable_rows($viewer, $rows) as $row) {
         $out[] = ws_api_inbox_present($viewer, $row);
     }
 
@@ -198,10 +221,85 @@ function ws_api_inbox_unread($user_id)
     return (int) db_value("SELECT COUNT(*) FROM ws_inbox WHERE user_id = '" . (int) $user_id . "' AND read_at = 0");
 }
 
+/**
+ * Which of a person's rows changed at or after a moment, after a row: written
+ * then, sent again then (a note changed once more moves created_at) or read
+ * then - on the workspace screen, in the bell, here or because what the line
+ * is about went out of reach. Every writer of ws_inbox moves one of the two.
+ *
+ * @param int $user_id
+ * @param int $since    timestamp
+ * @param int $after_id only rows after this one
+ * @return string
+ */
+function ws_api_inbox_changed_where($user_id, $since, $after_id)
+{
+    $since = max(1, (int) $since);
+
+    return "user_id = '" . (int) $user_id . "'"
+        . " AND (created_at >= '" . $since . "' OR read_at >= '" . $since . "')"
+        . " AND id > '" . max(0, (int) $after_id) . "'";
+}
+
+/**
+ * The lines of the owner's inbox that changed at or after a moment, oldest
+ * first, after a line, each as it is now. Lines out of the owner's reach are
+ * passed over and the page filled from the rows after them, so as many lines
+ * as limit means more may follow - the rule the app pages a channel's
+ * changed messages by.
+ *
+ * @param array $viewer
+ * @param int   $since    timestamp
+ * @param int   $after_id
+ * @param int   $limit
+ * @return array[]
+ */
+function ws_api_inbox_changed($viewer, $since, $after_id, $limit)
+{
+    $limit = max(1, min(WS_API_INBOX_MAX, (int) $limit));
+    $after = max(0, (int) $after_id);
+    $chunk = $limit;
+    $kept = array();
+
+    // The first read takes as many rows as the page holds. Rows out of reach
+    // are few - only rows changed since the moment are read, and a hidden one
+    // is marked read the first time - so a read that meets them goes on in
+    // larger steps, a bounded number of times, and a moment far back does
+    // not walk the whole inbox in one call.
+    for ($round = 0; $round < 20; $round++) {
+        $rows = (array) db_items("SELECT * FROM ws_inbox WHERE " . ws_api_inbox_changed_where($viewer['id'], $since, $after) . "
+            ORDER BY id
+            LIMIT " . $chunk);
+
+        $kept = array_merge($kept, ws_api_inbox_reachable_rows($viewer, $rows));
+
+        if ((count($kept) >= $limit) || (count($rows) < $chunk)) {
+            break;
+        }
+
+        $last = end($rows);
+        $after = (int) $last['id'];
+        $chunk = WS_API_INBOX_MAX;
+    }
+
+    $out = array();
+
+    foreach (array_slice($kept, 0, $limit) as $row) {
+        $out[] = ws_api_inbox_present($viewer, $row);
+    }
+
+    return $out;
+}
+
 function ws_api_inbox_list($params)
 {
     $viewer = ws_api_viewer();
     $limit = max(1, min(WS_API_INBOX_MAX, (int) ($params['limit'] ?? 30)));
+
+    if (isset($params['changed_since'])) {
+        api_ok_list(ws_api_inbox_changed($viewer, (int) $params['changed_since'], (int) ($params['since_id'] ?? 0), $limit), $limit);
+    }
+
     $where = array("user_id = '" . (int) $viewer['id'] . "'");
 
     if (!empty($params['unread'])) {
