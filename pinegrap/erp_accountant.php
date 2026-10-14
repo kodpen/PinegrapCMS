@@ -55,6 +55,12 @@ if ($download_id !== null) {
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array pack as pack 1 and linked or e-mailed
+    // that one, (string) read the dates and the address as "Array".
+    pg_request_single_values(array('erp_action', 'range', 'month', 'from', 'to', 'pdfs', 'package_id', 'accountant_email', 'accountant_monthly',
+        'accountant_pdfs', 'lock_date'));
+
     $action = (string) ($_POST['erp_action'] ?? '');
 
     if ($action === 'build') {

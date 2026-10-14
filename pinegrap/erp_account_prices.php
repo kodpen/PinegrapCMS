@@ -61,6 +61,11 @@ $self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_prices.php?accou
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array product as product 1 and put it on the
+    // list, (string) read the discount as "Array" with a notice.
+    pg_request_single_values(array('erp_action', 'product_id', 'account_discount'));
+
     $action = (string) ($_POST['erp_action'] ?? 'save');
 
     if ($action === 'add') {

@@ -43,6 +43,11 @@ if ($_POST) {
 
     validate_token_field();
 
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array invoice as invoice 1 and linked the
+    // document to it.
+    pg_request_single_values(array('erp_action', 'invoice_id'));
+
     $action = (string) ($_POST['erp_action'] ?? '');
 
     if ($action === 'import') {

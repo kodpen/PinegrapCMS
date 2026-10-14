@@ -31,6 +31,10 @@ if ($_POST) {
 $account_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $preview_template = null;
 
+// The draft template is one value. One posted as an array counts as not given:
+// (string) previewed it as "Array" with a notice.
+pg_request_single_values(array('template'));
+
 // A draft template from the settings form: the settings gate, tried on the
 // account that moved last when none is named.
 if ($_POST && isset($_POST['template'])) {

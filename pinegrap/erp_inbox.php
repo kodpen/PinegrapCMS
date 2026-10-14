@@ -35,6 +35,10 @@ if ($_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (string) read the dates and the tab as "Array" with a notice.
+    pg_request_single_values(array('erp_action', 'from', 'to', 'state'));
+
     if ((($_POST['erp_action'] ?? '') === 'fetch') && ($provider !== '')) {
 
         $from = (string) ($_POST['from'] ?? '');

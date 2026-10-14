@@ -22,6 +22,11 @@ if (!validate_erp_access($user)) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 
+// Every field of the form is one value. One posted as an array counts as not
+// given: (int) read an array account as account 1 and wrote its fee draft,
+// (string) read the dates as "Array" with a notice.
+pg_request_single_values(array('account_id', 'back', 'from', 'as_of'));
+
 $account_id = (int) ($_POST['account_id'] ?? 0);
 $back = PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id;
 

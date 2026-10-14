@@ -55,6 +55,14 @@ if ($_POST) {
 
     validate_token_field();
 
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array allocation or repeat as record 1 and
+    // took that one off or stopped it, (string) wrote "Array" into the note,
+    // the buyer's card and the e-mail.
+    pg_request_single_values(array('erp_action', 'notes', 'snooze_until', 'settlement_id', 'fix_title', 'fix_tax_number', 'fix_address', 'fix_postcode',
+        'fix_city', 'fix_district', 'fix_carrier_title', 'fix_carrier_vkn', 'recur_every', 'recur_first', 'recur_end', 'recur_mode', 'recurrence_id',
+        'mail_to', 'mail_subject', 'mail_message'));
+
     if (($_POST['erp_action'] ?? '') === 'notes') {
 
         $notes = mb_substr(trim((string) ($_POST['notes'] ?? '')), 0, 5000);

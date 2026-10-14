@@ -40,6 +40,9 @@ if ($_POST) {
 
     validate_token_field();
 
+    // The action is one value; one posted as an array is no action.
+    pg_request_single_values(array('erp_action'));
+
     $action = (string) ($_POST['erp_action'] ?? '');
     $back = $self_url . (isset($tabs[$tab]) ? '?tab=' . urlencode($tab) : '');
 
@@ -70,8 +73,10 @@ if ($_POST) {
     $collect = function ($name) {
         $ids = array();
 
+        // A ticked row is one number; one sent as an array is no row, rather
+        // than card or account 1.
         foreach ((array) ($_POST[$name] ?? array()) as $value) {
-            if ((int) $value > 0) {
+            if (is_scalar($value) && ((int) $value > 0)) {
                 $ids[(int) $value] = true;
             }
         }

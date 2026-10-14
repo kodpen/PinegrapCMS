@@ -39,6 +39,13 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the forms but the lines is one value. One posted as an
+    // array counts as not given: (int) read an array account as account 1,
+    // (string) the others as "Array" with a notice, into the signer's name
+    // and the e-mail too.
+    pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('erp_action', 'signer_name', 'signature', 'mail_to', 'mail_subject',
+        'mail_message')));
+
     $action = (string) ($_POST['erp_action'] ?? 'save');
 
     if ($action === 'save') {

@@ -211,6 +211,16 @@ if (!$_POST) {
 
     validate_token_field();
 
+    $returnable = erp_returnable_lines($invoice_id);
+
+    // Every field of the form is one value, a quantity per line included. One
+    // posted as an array counts as not given: (string) read an array date or
+    // quantity as "Array" with a notice, (int) an array order to go back to
+    // as order 1.
+    pg_request_single_values(array_merge(array('issue_date', 'back_order'), array_map(function ($line) {
+        return 'qty_' . (int) $line['id'];
+    }, $returnable)));
+
     $liveform->add_fields_to_session();
 
     $back = PATH . SOFTWARE_DIRECTORY . '/add_erp_return.php?invoice_id=' . $invoice_id;
@@ -224,8 +234,8 @@ if (!$_POST) {
 
     $quantities = array();
 
-    foreach (erp_returnable_lines($invoice_id) as $line) {
-        $raw = str_replace(',', '.', trim((string) $liveform->get_field_value('qty_' . (int) $line['id'])));
+    foreach ($returnable as $line) {
+        $raw =str_replace(',', '.', trim((string) $liveform->get_field_value('qty_' . (int) $line['id'])));
         $quantities[(int) $line['id']] = ($raw === '') ? 0 : (float) $raw;
     }
 

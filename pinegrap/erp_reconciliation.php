@@ -49,6 +49,10 @@ if ($_POST) {
 
     validate_token_field();
 
+    // The action and the address are one value each. One posted as an array
+    // counts as not given: (string) read the address as "Array".
+    pg_request_single_values(array('erp_action', 'to'));
+
     if (($_POST['erp_action'] ?? '') === 'send') {
         $to = trim((string) ($_POST['to'] ?? ''));
         $result = erp_reconciliation_send($account_id, $options, $to, (int) $user['id']);
