@@ -117,6 +117,63 @@ function test_ws_api_messages_list_takes_changed_since()
 	pg_assert_true(($types['changed_since'] ?? '') === 'datetime', 'changed_since is a datetime');
 }
 
+// The sync an app polls is a read and no tool: a model gains nothing from a
+// cursor, and a route can stay out of MCP by saying so.
+function test_ws_api_sync_is_a_read_and_no_tool()
+{
+	$sync = null;
+
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === 'workspace.sync') {
+			$sync = $route;
+		}
+	}
+
+	pg_assert_true(is_array($sync), 'workspace.sync is declared');
+	pg_assert_same('GET', $sync['method']);
+	pg_assert_same('/workspace/sync', $sync['path']);
+	pg_assert_same('workspace:read', $sync['scope']);
+	pg_assert_false(pg_mcp_route_is_offered($sync), 'the sync is no MCP tool');
+
+	// The same route without the flag would be one.
+	unset($sync['mcp']);
+	pg_assert_true(pg_mcp_route_is_offered($sync), 'only the flag keeps it out');
+}
+
+// The cursor reads back what it was written from; anything else is refused,
+// so a damaged cursor is a 400 and not a silent fresh start.
+function test_ws_api_sync_cursor_round_trip()
+{
+	$mark = array('t' => 1760414400, 'c' => 12, 'm' => 4815, 'ch' => '0a1b2c3d', 'th' => 'ffffffff');
+	$cursor = ws_api_sync_cursor_write($mark);
+
+	pg_assert_true((bool) preg_match('/^[A-Za-z0-9_-]+$/', $cursor), 'the cursor is URL safe');
+	pg_assert_same($mark, ws_api_sync_cursor_read($cursor));
+
+	// The same state, the same cursor: an answer after which nothing changed
+	// is the same bytes, so its ETag matches.
+	pg_assert_same($cursor, ws_api_sync_cursor_write($mark));
+
+	foreach (array('', 'abc', 'not a cursor!', rtrim(strtr(base64_encode('{"t":1}'), '+/', '-_'), '='),
+		ws_api_sync_cursor_write(array('t' => 1, 'c' => 0, 'm' => 0, 'ch' => 'xyz', 'th' => '00000000')),
+		rtrim(strtr(base64_encode('{"t":-1,"c":0,"m":0,"ch":"00000000","th":"00000000"}'), '+/', '-_'), '=')) as $bad) {
+		pg_assert_same(null, ws_api_sync_cursor_read($bad), 'refused: ' . $bad);
+	}
+}
+
+// A list's mark moves when the list does, and only then.
+function test_ws_api_sync_mark_follows_the_list()
+{
+	$list = array(array('id' => 1, 'unread' => 0), array('id' => 2, 'unread' => 3));
+
+	pg_assert_same(ws_api_sync_mark($list), ws_api_sync_mark($list));
+	pg_assert_true((bool) preg_match('/^[0-9a-f]{8}$/', ws_api_sync_mark($list)), 'eight hex digits');
+
+	$list[1]['unread'] = 4;
+
+	pg_assert_false(ws_api_sync_mark($list) === ws_api_sync_mark(array(array('id' => 1, 'unread' => 0), array('id' => 2, 'unread' => 3))), 'an unread count moves it');
+}
+
 // The search looks in a kind of record only with the scope that reads it; a
 // kind it names has to be one a tag can point at.
 function test_ws_api_search_record_scopes_name_known_kinds()

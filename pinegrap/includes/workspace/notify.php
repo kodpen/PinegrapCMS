@@ -151,6 +151,20 @@ function ws_touch_seen($user_id)
 }
 
 /**
+ * A look from a workspace screen in front of the person - the panel's, or an
+ * app's on their own device: they count as looking (ws_notify() holds a
+ * mention's banner back while they are), and banners whose wait is over go
+ * out on the way.
+ *
+ * @param int $user_id
+ */
+function ws_sync_seen($user_id)
+{
+    ws_touch_seen($user_id);
+    ws_push_due_run();
+}
+
+/**
  * Has this person had the workspace in front of them in the last moments?
  *
  * @param int $user_id
