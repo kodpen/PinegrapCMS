@@ -3288,6 +3288,18 @@ function init_tracking()
 		return;
 	}
 
+	// The firewall marks bots only when it runs: with it switched off, on an
+	// allow-listed address or on an excluded path it never classifies the
+	// request, and every crawler page was written as a visit. The same user
+	// agent classes it skips are skipped here; nothing is blocked or logged.
+	if (!defined('IS_BOT') && function_exists('waf_classify_bot')) {
+		$tracking_bot = waf_classify_bot(isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '');
+
+		if ($tracking_bot['class'] !== 'human') {
+			return;
+		}
+	}
+
 	// Skip other Pinegrap installations calling in — licence checks, update
 	// checks, and anything else server-to-server.
 	//

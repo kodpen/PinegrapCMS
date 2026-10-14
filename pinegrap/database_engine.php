@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             go($database_engine_url);
         }
 
-    } elseif (!in_array($engine_action, array('check_all', 'visitor_cleanup'), true)) {
+    } elseif (!in_array($engine_action, array('check_all', 'visitor_cleanup', 'visitor_move'), true)) {
 
         $liveform->add_error(lang('Unknown action.'));
         go($database_engine_url);
@@ -222,6 +222,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ));
 
                 exit;
+            }
+            break;
+
+        case 'visitor_move':
+            // Asked for here, the move starts without the checks the general
+            // job waits for on its own (the period, free disk it can read);
+            // the request is in the marker, so the general job carries it on
+            // after this step, or starts it when this step finds the lock
+            // taken.
+            $visitor_move_last = pg_visitor_move_last();
+            $visitor_move_last['requested'] = true;
+            pg_visitor_move_save($visitor_move_last);
+
+            $visitor_move = pg_visitor_move_run(20);
+            $engine_ok = !in_array($visitor_move['state'], array('waiting', 'failed'), true);
+
+            if ($visitor_move['text'] !== '') {
+                $engine_text = $visitor_move['text'];
+            } elseif ($visitor_move['state'] === 'waiting') {
+                $engine_text = pg_visitor_move_reason_text(pg_visitor_move_last());
+            } elseif ($visitor_move['state'] === 'none') {
+                $engine_text = lang('The visitors table is not on MyISAM; there is nothing to move.');
+            } else {
+                $engine_text = lang('The visitors table is being moved to InnoDB. The general job carries the move on a few thousand records at a time; the Visitor records card shows how far it has come.');
             }
             break;
 
@@ -506,13 +530,56 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     }
 
     // On MyISAM every write to the table waits for the statement in front of
-    // it, a cleanup step included; converting the table after the cleanup
-    // also gives the room of the removed rows back to the disk.
+    // it, a cleanup step included. The general job moves it to InnoDB once
+    // the cleanup is through (pg_visitor_move_run()), which also gives the
+    // room of the removed rows back to the disk; this says where that stands.
+    $visitor_move = pg_visitor_move_last();
+    $visitor_moving = in_array($visitor_move['state'], array('copying', 'swapped'), true);
+    $visitor_move_text = '';
+    $visitor_move_level = 'info';
+
     if ($visitor_catalog['engine'] === 'myisam') {
+
+        if ($visitor_moving) {
+            $visitor_move_text = lang(array(
+                'string' => 'The general job is moving this table to InnoDB a few thousand records at a time while the site keeps running: {var:1} of about {var:2} records copied so far. At the end the copy takes the place of the old table in a moment, and the old table is removed.',
+                'vars' => array(pg_format_number($visitor_move['copied'], 0), pg_format_number($visitor_catalog['rows'], 0)),
+            ));
+        } elseif ($visitor_move['state'] === 'failed') {
+            $visitor_move_level = 'warning';
+            $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang('The general job tries again in a week; Move to InnoDB now tries now.');
+        } else {
+            $visitor_move_reason = pg_visitor_move_reason_text($visitor_move);
+            $visitor_move_text = lang('This table is on MyISAM, which locks the whole table for each statement: the cleanup works in small steps so visits wait only briefly.') . ' '
+                . (($visitor_move_reason !== '') ? $visitor_move_reason : pg_visitor_move_reason_text(array('reason' => 'backlog') + $visitor_move));
+        }
+
+    } elseif (isset($engine_catalog[PG_VISITOR_MOVE_OLD]) && ($visitor_move['state'] === 'failed')) {
+
+        $visitor_move_level = 'warning';
+        $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang(array(
+            'string' => 'The old table is kept as {var:1}; once you have looked at it, it can be dropped.',
+            'vars' => array(PG_VISITOR_MOVE_OLD),
+        ));
+
+    } elseif (($visitor_move['state'] === 'done') && ($visitor_move['finished_at'] > (time() - 30 * 86400))) {
+
+        $visitor_move_level = 'success';
+        $visitor_move_text = lang(array(
+            'string' => 'The visitors table was moved to InnoDB on {var:1}: {var:2} before, {var:3} now.',
+            'vars' => array(
+                get_absolute_time(array('timestamp' => $visitor_move['finished_at'], 'type' => 'date', 'format' => 'plain_text')),
+                pg_innodb_size_label($visitor_move['bytes_before']),
+                pg_innodb_size_label($visitor_move['bytes_after']),
+            ),
+        ));
+    }
+
+    if ($visitor_move_text !== '') {
         $visitor_alert .= '
-                    <div class="alert alert-info d-flex gap-2 align-items-start">
-                        <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
-                        <div>' . h(lang('This table is on MyISAM, which locks the whole table for each statement: the cleanup works in small steps so visits wait only briefly. Once the old records are gone, convert it to InnoDB from Tables on MyISAM at a quiet hour; that also makes the file smaller.')) . '</div>
+                    <div class="alert alert-' . $visitor_move_level . ' d-flex gap-2 align-items-start">
+                        <i class="bi ' . (($visitor_move_level === 'success') ? 'bi-check-circle-fill' : (($visitor_move_level === 'warning') ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill')) . '" aria-hidden="true"></i>
+                        <div>' . h($visitor_move_text) . '</div>
                     </div>';
     }
 
@@ -612,7 +679,11 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                     <p class="mb-2">' . h($visitor_will) . '</p>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
                         <button type="button" id="pg_visitor_cleanup" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="' . h($visitor_confirm) . '"' . ($visitor_enabled ? '' : ' disabled') . '><i class="bi bi-trash3 me-1" aria-hidden="true"></i>' . h(lang('Clean up visitor records now')) . '</button>
-                        ' . $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline-warning' : 'btn-outline-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== ''))) . '
+                        ' . $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline-warning' : 'btn-outline-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== '') && !$visitor_moving)) . (($visitor_catalog['engine'] === 'myisam') && !$visitor_moving ? '
+                        ' . $engine_button('visitor_move', 'visitors', lang('Move to InnoDB now'), 'bi-database-gear', 'btn-outline-warning', lang(array(
+                            'string' => 'Move the visitors table to InnoDB now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the move on.',
+                            'vars' => array(pg_innodb_size_label(pg_visitor_move_disk_needed($visitor_catalog))),
+                        )), ($engine_tools && $engine_capability['ok'])) : '') . '
                     </div>
                     <div id="pg_visitor_cleanup_progress" class="small mt-2" role="status" aria-live="polite"></div>
                     <div class="small text-body-secondary mt-2">' . h(lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Optimize table gives it back to the disk; that is a separate, optional step.')) . '</div>';

@@ -4,8 +4,9 @@
  *
  * Tests for the pure parts of the visitor retention period in
  * includes/fn/visitor_retention.php: the period as typed into the settings,
- * the boundary it gives, the remainder row of the daily summary, and the SQL
- * the device and channel are counted with.
+ * the boundary it gives, the remainder row of the daily summary, the SQL
+ * the device and channel are counted with, and what decides whether a MyISAM
+ * table is moved to InnoDB.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -133,4 +134,77 @@ function test_visitor_retention_channel_sql_without_flag()
 
 	pg_assert_false(strpos($sql, 'pay_per_click') !== false, 'no paid branch without a flag');
 	pg_assert_contains("WHEN (v.referring_search_engine <> '') THEN 'organic'", $sql);
+}
+
+// The database server is on this machine when the site connects to it by a
+// local name or address, with or without a port or the persistent prefix.
+function test_visitor_move_db_is_local()
+{
+	foreach (array('', 'localhost', 'LOCALHOST', '127.0.0.1', '127.0.0.1:3306', 'localhost:3307', 'p:localhost', 'p:127.0.0.1:3306', '::1', '[::1]', '[::1]:3306', '.') as $host) {
+		pg_assert_true(pg_visitor_move_db_is_local($host), $host);
+	}
+
+	foreach (array('db.example.com', '10.0.0.5', '10.0.0.5:3306', 'p:db.example.com', 'mysql', '[2001:db8::1]:3306', 'localhost.example.com') as $host) {
+		pg_assert_false(pg_visitor_move_db_is_local($host), $host);
+	}
+}
+
+// What is asked to be free: three times the rows that are left and the
+// indexes, and a gigabyte. Removed rows inside the file are not counted.
+function test_visitor_move_disk_needed()
+{
+	$gigabyte = 1073741824.0;
+
+	pg_assert_same($gigabyte, pg_visitor_move_disk_needed(array()), 'nothing known');
+	pg_assert_same(3 * (200.0 + 100.0) + $gigabyte, pg_visitor_move_disk_needed(array('data' => 900.0, 'free' => 700.0, 'index' => 100.0)));
+	pg_assert_same(3 * 100.0 + $gigabyte, pg_visitor_move_disk_needed(array('data' => 100.0, 'free' => 400.0, 'index' => 100.0)), 'free above data counts as no rows');
+}
+
+// The facts of a MyISAM table the general job may move on its own.
+function pg_test_visitor_move_facts($changes = array())
+{
+	return $changes + array(
+		'engine' => 'myisam',
+		'capable' => true,
+		'fits' => true,
+		'old_exists' => false,
+		'requested' => false,
+		'failed' => false,
+		'days' => 90,
+		'cleaned' => true,
+		'backlog' => false,
+		'disk_free' => 10.0 * 1073741824,
+		'needed' => 2.0 * 1073741824,
+	);
+}
+
+// Started on its own only once the cleanup is through and the disk is seen to
+// have room; each reason in the order the screen explains it.
+function test_visitor_move_hold_reason_on_its_own()
+{
+	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts()));
+	pg_assert_same('engine', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('engine' => 'innodb'))));
+	pg_assert_same('unsupported', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('capable' => false))));
+	pg_assert_same('too_wide', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('fits' => false))));
+	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('fits' => null))), 'an unknown row size does not hold it');
+	pg_assert_same('name_taken', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('old_exists' => true))));
+	pg_assert_same('failed', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('failed' => true))));
+	pg_assert_same('no_period', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('days' => 0))));
+	pg_assert_same('backlog', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('cleaned' => false))), 'the cleanup has not run yet');
+	pg_assert_same('backlog', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('backlog' => true))));
+	pg_assert_same('disk_unknown', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => null))));
+	pg_assert_same('disk_low', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => 1.0 * 1073741824))));
+}
+
+// The operator's request skips the period, the backlog, an earlier failure and
+// the disk, never what makes the move impossible.
+function test_visitor_move_hold_reason_on_request()
+{
+	$requested = array('requested' => true, 'failed' => true, 'days' => 0, 'backlog' => true, 'disk_free' => null);
+
+	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested)));
+	pg_assert_same('engine', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('engine' => 'innodb'))));
+	pg_assert_same('unsupported', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('capable' => false))));
+	pg_assert_same('too_wide', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('fits' => false))));
+	pg_assert_same('name_taken', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('old_exists' => true))));
 }

@@ -415,6 +415,23 @@ if (pg_visitor_cleanup_due()) {
 
 }
 
+// A visitors table still on MyISAM is moved to InnoDB once the cleanup has
+// brought it down to its period: an InnoDB copy built next to it a chunk at a
+// time, put in its place with one RENAME (pg_visitor_move_run()). Not in a
+// tick whose cleanup still has rows waiting, which keeps the tick short. A
+// tick with nothing under way reads one file; the look itself, a handful of
+// small reads, comes once an hour (once a day when the table is not on
+// MyISAM).
+if (pg_visitor_move_due() && (!isset($visitor_cleanup) || ($visitor_cleanup['state'] !== 'more'))) {
+
+    $visitor_move = pg_visitor_move_run(15);
+
+    if ($visitor_move['text'] !== '') {
+        log_activity($visitor_move['text'], 'UNKNOWN');
+    }
+
+}
+
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
 pg_cron_ran('job');
 

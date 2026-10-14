@@ -11,7 +11,8 @@
  * Here: a retention period for the raw rows (config.visitor_retention_days,
  * 0 keeps them all), a daily summary written before a day's rows go
  * (config.visitor_summary, table visitor_stats_daily), the removal itself in
- * short chunks the general job and the Database Engine screen run, and the
+ * short chunks the general job and the Database Engine screen run, the move
+ * of a table still on MyISAM to InnoDB once it is down to its period, and the
  * figures that screen and System Status show about the table.
  *
  * The hourly rollups (visitor_stats_hourly, visitor_content_hourly) are not
@@ -966,4 +967,993 @@ function pg_visitor_cleanup_result_text($run)
     return $text . ' ' . (($run['state'] === 'more')
         ? lang('Older records are still left; the general job carries on with them.')
         : lang('No older records are left.'));
+}
+
+// -- Moving a MyISAM visitors table to InnoDB ---------------------------------
+//
+// 2026.3.6 moved `visitors` to InnoDB with one ALTER TABLE; on a site where
+// that did not happen (the ALTER was refused, or the table came back from an
+// old backup) it is still on MyISAM. There every write to it waits for every
+// statement on it, and once the cleanup has removed rows the holes they leave
+// switch off MyISAM's concurrent inserts as well. The file also keeps the
+// size of the rows that are gone.
+//
+// ALTER TABLE ... ENGINE=InnoDB fixes both, but it copies the whole table
+// while every write to it waits: the site stops for as long as the copy takes.
+// Here the general job builds the InnoDB table next to it instead, a chunk of
+// rows per statement, copies again the visits that changed meanwhile, and
+// then puts it in the old table's place with one RENAME TABLE, which takes a
+// moment. The old table is checked against the new one and removed.
+
+/**
+ * The InnoDB table built next to a MyISAM `visitors`, and the name the MyISAM
+ * table goes under between the swap and its removal.
+ */
+define('PG_VISITOR_MOVE_COPY', 'visitors_innodb');
+define('PG_VISITOR_MOVE_OLD', 'visitors_myisam');
+
+/**
+ * The file that remembers what the last look at the move found and, during a
+ * move, when the copy began.
+ *
+ * Where the copy stands is read from the tables themselves (the highest id in
+ * the copy), so losing the file during the copy costs a longer last pass.
+ * Lost between the swap and the removal, it leaves the old table for the
+ * operator: only a table this file says the swap put there is dropped.
+ *
+ * @return string
+ */
+function pg_visitor_move_marker()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/visitor_move.json';
+}
+
+/**
+ * What the marker file holds, every key present.
+ *
+ * state: '' never looked, 'none' the table is not on MyISAM, 'waiting' on
+ * MyISAM and not started ('reason' says why), 'copying', 'swapped' (the copy
+ * is in place, the old table not removed yet), 'done', 'failed' ('error').
+ *
+ * @return array
+ */
+function pg_visitor_move_last()
+{
+    $last = @json_decode((string) @file_get_contents(pg_visitor_move_marker()), true);
+
+    if (!is_array($last)) {
+        $last = array();
+    }
+
+    return array(
+        'state' => isset($last['state']) ? (string) $last['state'] : '',
+        'reason' => isset($last['reason']) ? (string) $last['reason'] : '',
+        'error' => isset($last['error']) ? (string) $last['error'] : '',
+        'requested' => !empty($last['requested']),
+        'checked_at' => isset($last['checked_at']) ? (int) $last['checked_at'] : 0,
+        'started' => isset($last['started']) ? (int) $last['started'] : 0,
+        'synced_at' => isset($last['synced_at']) ? (int) $last['synced_at'] : 0,
+        'copied' => isset($last['copied']) ? (int) $last['copied'] : 0,
+        'last_id' => isset($last['last_id']) ? (int) $last['last_id'] : 0,
+        'needed' => isset($last['needed']) ? (float) $last['needed'] : 0.0,
+        'rows_before' => isset($last['rows_before']) ? (int) $last['rows_before'] : 0,
+        'bytes_before' => isset($last['bytes_before']) ? (float) $last['bytes_before'] : 0.0,
+        'bytes_after' => isset($last['bytes_after']) ? (float) $last['bytes_after'] : 0.0,
+        'finished_at' => isset($last['finished_at']) ? (int) $last['finished_at'] : 0,
+        'failed_at' => isset($last['failed_at']) ? (int) $last['failed_at'] : 0,
+    );
+}
+
+/**
+ * Write the marker file.
+ *
+ * @param array $last pg_visitor_move_last() with the changes
+ */
+function pg_visitor_move_save($last)
+{
+    $marker = pg_visitor_move_marker();
+
+    if (!is_dir(dirname($marker))) {
+        @mkdir(dirname($marker), 0755, true);
+    }
+
+    @file_put_contents($marker, json_encode($last), LOCK_EX);
+}
+
+/**
+ * Whether the general job should look at the move now: on every tick while
+ * one is under way or the operator asked for one, otherwise once an hour
+ * (once a day when the table is not on MyISAM at all).
+ *
+ * @return bool
+ */
+function pg_visitor_move_due()
+{
+    $last = pg_visitor_move_last();
+
+    if ($last['requested'] || in_array($last['state'], array('copying', 'swapped'), true)) {
+        return true;
+    }
+
+    $every = in_array($last['state'], array('none', 'done'), true) ? 86400 : 3600;
+
+    return $last['checked_at'] < (time() - $every);
+}
+
+/**
+ * Whether the database server runs on this machine, from the host the site
+ * connects to, so that the free space of its data directory can be read here.
+ *
+ * No database access.
+ *
+ * @param string $host DB_HOST: a name or address, with a port, or mysqli's
+ *                     "p:" prefix for a persistent connection
+ * @return bool
+ */
+function pg_visitor_move_db_is_local($host)
+{
+    $host = strtolower(trim((string) $host));
+
+    if (strpos($host, 'p:') === 0) {
+        $host = substr($host, 2);
+    }
+
+    if (preg_match('/^\[([^\]]*)\](?::\d+)?$/', $host, $match) === 1) {
+        $host = $match[1];
+    } elseif (preg_match('/^([^:]*):\d+$/', $host, $match) === 1) {
+        $host = $match[1];
+    }
+
+    return in_array($host, array('', 'localhost', '127.0.0.1', '::1', '.'), true);
+}
+
+/**
+ * Free disk space the move asks for before the general job starts it on its
+ * own, from the figures of the table now.
+ *
+ * The copy holds the rows that are left (the data less the room of removed
+ * rows, and the indexes); InnoDB keeps the same rows in up to about one and
+ * a half times the room, and the server's logs grow with the copy as well.
+ * Three times that, and a gigabyte left over for the rest of the server.
+ *
+ * No database access.
+ *
+ * @param array $catalog_row pg_db_table_catalog()['visitors']
+ * @return float bytes
+ */
+function pg_visitor_move_disk_needed($catalog_row)
+{
+    $data = isset($catalog_row['data']) ? (float) $catalog_row['data'] : 0.0;
+    $free = isset($catalog_row['free']) ? (float) $catalog_row['free'] : 0.0;
+    $index = isset($catalog_row['index']) ? (float) $catalog_row['index'] : 0.0;
+
+    return (3 * (max(0.0, $data - $free) + $index)) + 1073741824.0;
+}
+
+/**
+ * Free bytes where the database server keeps its files, or null when that
+ * cannot be read from here: the server is on another machine, the host has
+ * switched disk_free_space() off, or open_basedir keeps the directory out of
+ * reach.
+ *
+ * @return float|null
+ */
+function pg_visitor_move_disk_free()
+{
+    if (!defined('DB_HOST') || !pg_visitor_move_db_is_local(DB_HOST) || !function_exists('disk_free_space')) {
+        return null;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT @@datadir");
+
+    $row = $result ? mysqli_fetch_row($result) : null;
+
+    $directory = is_array($row) ? (string) $row[0] : '';
+
+    if ($directory === '') {
+        return null;
+    }
+
+    $free = @disk_free_space($directory);
+
+    return ($free === false) ? null : (float) $free;
+}
+
+/**
+ * Why the general job does not start moving the table now, or '' when it may.
+ *
+ * On its own it starts only once the cleanup has brought the table down to
+ * its period, so that only the rows that are kept are copied, only when it
+ * can see the free disk the copy needs, and not again for a week after a
+ * move that stopped on an error. The operator's request skips these: whoever
+ * asked has seen the space it needs on the screen.
+ *
+ * No database access.
+ *
+ * @param array $facts engine (lower case), capable (bool), fits (bool|null),
+ *                     old_exists (bool), requested (bool), failed (bool: a
+ *                     move stopped on an error in the last week),
+ *                     days (int), cleaned (bool: the cleanup has run),
+ *                     backlog (bool), disk_free (float|null), needed (float)
+ * @return string '', 'engine', 'unsupported', 'too_wide', 'name_taken',
+ *                'failed', 'no_period', 'backlog', 'disk_unknown', 'disk_low'
+ */
+function pg_visitor_move_hold_reason($facts)
+{
+    if ($facts['engine'] !== 'myisam') {
+        return 'engine';
+    }
+
+    if (!$facts['capable']) {
+        return 'unsupported';
+    }
+
+    if ($facts['fits'] === false) {
+        return 'too_wide';
+    }
+
+    if ($facts['old_exists']) {
+        return 'name_taken';
+    }
+
+    if ($facts['requested']) {
+        return '';
+    }
+
+    if ($facts['failed']) {
+        return 'failed';
+    }
+
+    if ((int) $facts['days'] <= 0) {
+        return 'no_period';
+    }
+
+    if (!$facts['cleaned'] || $facts['backlog']) {
+        return 'backlog';
+    }
+
+    if ($facts['disk_free'] === null) {
+        return 'disk_unknown';
+    }
+
+    if ((float) $facts['disk_free'] < (float) $facts['needed']) {
+        return 'disk_low';
+    }
+
+    return '';
+}
+
+/**
+ * One query of the move, through mysqli rather than db(): db() ends the
+ * request on a failed query, and a statement of the move that fails is one
+ * of its answers.
+ *
+ * @param string $sql
+ * @return mysqli_result|bool
+ */
+function pg_visitor_move_query($sql)
+{
+    return @mysqli_query(db::$con, $sql);
+}
+
+/**
+ * Engine of `visitors`, of the copy and of the old table, lower case, '' for
+ * a table that is not there.
+ *
+ * @return array name => engine
+ */
+function pg_visitor_move_engines()
+{
+    $engines = array('visitors' => '', PG_VISITOR_MOVE_COPY => '', PG_VISITOR_MOVE_OLD => '');
+
+    $result = pg_visitor_move_query(
+        "SELECT TABLE_NAME, ENGINE
+        FROM information_schema.TABLES
+        WHERE
+            (TABLE_SCHEMA = DATABASE())
+            AND (TABLE_NAME IN ('visitors', '" . PG_VISITOR_MOVE_COPY . "', '" . PG_VISITOR_MOVE_OLD . "'))");
+
+    while ($result && ($row = mysqli_fetch_row($result))) {
+        $engines[(string) $row[0]] = strtolower((string) $row[1]);
+    }
+
+    return $engines;
+}
+
+/**
+ * Whether the copy has the columns of `visitors`, in the same order and of
+ * the same types: the copy statements read SELECT *. An upgrade step that
+ * changed `visitors` after the copy began means beginning again.
+ *
+ * @return bool
+ */
+function pg_visitor_move_same_columns()
+{
+    $columns = array('visitors' => array(), PG_VISITOR_MOVE_COPY => array());
+
+    $result = pg_visitor_move_query(
+        "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+        FROM information_schema.COLUMNS
+        WHERE
+            (TABLE_SCHEMA = DATABASE())
+            AND (TABLE_NAME IN ('visitors', '" . PG_VISITOR_MOVE_COPY . "'))
+        ORDER BY TABLE_NAME, ORDINAL_POSITION");
+
+    while ($result && ($row = mysqli_fetch_row($result))) {
+        $columns[(string) $row[0]][] = $row[1] . ' ' . $row[2];
+    }
+
+    return (count($columns['visitors']) > 0) && ($columns['visitors'] === $columns[PG_VISITOR_MOVE_COPY]);
+}
+
+/**
+ * The ids a SELECT returns, as integers.
+ *
+ * @param string $sql
+ * @return array|false
+ */
+function pg_visitor_move_ids($sql)
+{
+    $result = pg_visitor_move_query($sql);
+
+    if (!$result) {
+        return false;
+    }
+
+    $ids = array();
+
+    while ($row = mysqli_fetch_row($result)) {
+        $ids[] = (int) $row[0];
+    }
+
+    return $ids;
+}
+
+/**
+ * A single number a SELECT returns, or 0.
+ *
+ * @param string $sql
+ * @return int
+ */
+function pg_visitor_move_number($sql)
+{
+    $result = pg_visitor_move_query($sql);
+
+    $row = $result ? mysqli_fetch_row($result) : null;
+
+    return is_array($row) ? (int) $row[0] : 0;
+}
+
+/**
+ * Build the empty InnoDB copy: the table's own definition, on InnoDB, without
+ * the two indexes the 2026.4.10 upgrade takes off an InnoDB `visitors`
+ * (ip_address, which idx_dedup begins with, and idx_user_agent, which no
+ * query reads). The table it replaces would otherwise keep them for good, as
+ * that upgrade leaves a MyISAM table alone.
+ *
+ * @return string '' when built, otherwise the server's error
+ */
+function pg_visitor_move_create_copy()
+{
+    $copy = PG_VISITOR_MOVE_COPY;
+
+    if (!pg_visitor_move_query("CREATE TABLE `" . $copy . "` LIKE `visitors`")) {
+        return (string) mysqli_error(db::$con);
+    }
+
+    $indexes = array();
+
+    $result = pg_visitor_move_query(
+        "SELECT DISTINCT INDEX_NAME
+        FROM information_schema.STATISTICS
+        WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = '" . $copy . "')");
+
+    while ($result && ($row = mysqli_fetch_row($result))) {
+        $indexes[(string) $row[0]] = true;
+    }
+
+    $changes = array('ENGINE=InnoDB', 'ROW_FORMAT=DYNAMIC');
+
+    if (isset($indexes['idx_dedup']) && isset($indexes['ip_address'])) {
+        $changes[] = 'DROP INDEX `ip_address`';
+    }
+
+    if (isset($indexes['idx_user_agent'])) {
+        $changes[] = 'DROP INDEX `idx_user_agent`';
+    }
+
+    // The table is empty: this is a change of its definition, not a copy.
+    if (!pg_visitor_move_query("ALTER TABLE `" . $copy . "` " . implode(', ', $changes))) {
+        $error = (string) mysqli_error(db::$con);
+        pg_visitor_move_query("DROP TABLE IF EXISTS `" . $copy . "`");
+        return $error;
+    }
+
+    return '';
+}
+
+/**
+ * Move a MyISAM `visitors` to InnoDB a step at a time, or look whether one
+ * should be started.
+ *
+ * Each run takes the cleanup's lock, so a move and a cleanup never run at
+ * the same time, and goes on from where the tables stand:
+ *
+ * - Copy: rows go into the copy in windows of the primary key, $chunk rows a
+ *   statement. On MyISAM the statement holds the table for as long as it
+ *   reads its window, and the run then leaves it free at least as long.
+ * - Last passes, once the copy has caught up with new visits: the visits
+ *   that changed after they were copied (each change to a visit comes with a
+ *   page view, and a page view moves its stop_timestamp to the moment) are
+ *   copied again in chunks, then the visits of those seconds once more.
+ * - Swap: RENAME TABLE puts the copy in place of `visitors` and the old table
+ *   under PG_VISITOR_MOVE_OLD in one statement. A visit written to the old
+ *   table between the last pass and the swap is copied right after it; the
+ *   copy's AUTO_INCREMENT was moved past them first, so no new visit takes
+ *   their ids.
+ * - Check and removal: every row of the old table within the retention
+ *   period must be in the new one (one that is not is copied); then the old
+ *   table is dropped.
+ *
+ * @param int  $budget_seconds
+ * @param int  $chunk Rows per copy statement
+ * @return array('state' => 'busy'|'none'|'waiting'|'copying'|'swapped'|'done'|'failed',
+ *               'reason' => string, 'copied' => int, 'text' => string, 'seconds' => float)
+ */
+function pg_visitor_move_run($budget_seconds = 15, $chunk = 2000)
+{
+    $started = microtime(true);
+
+    $result = array('state' => 'none', 'reason' => '', 'copied' => 0, 'text' => '', 'seconds' => 0.0);
+
+    if (!class_exists('db') || empty(db::$con)) {
+        return $result;
+    }
+
+    if (pg_visitor_move_number("SELECT GET_LOCK(" . pg_visitor_cleanup_lock_sql() . ", 0)") !== 1) {
+        $result['state'] = 'busy';
+        return $result;
+    }
+
+    if (function_exists('ignore_user_abort')) {
+        @ignore_user_abort(true);
+    }
+
+    $deadline = $started + max(1, (int) $budget_seconds);
+    $chunk = max(500, min(20000, (int) $chunk));
+
+    $last = pg_visitor_move_last();
+    $last['checked_at'] = time();
+
+    $requested_before = $last['requested'];
+
+    // The copy re-inserts every row under the session's sql_mode, the same
+    // reason pg_innodb_convert_table() sets it; put back afterwards.
+    $previous = null;
+    $previous_result = pg_visitor_move_query("SELECT @@SESSION.sql_mode, @@SESSION.lock_wait_timeout");
+
+    if ($previous_result) {
+        $previous = mysqli_fetch_row($previous_result);
+    }
+
+    pg_visitor_move_query("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
+
+    $result = pg_visitor_move_step($last, $deadline, $chunk, $result);
+
+    if (is_array($previous)) {
+        pg_visitor_move_query("SET SESSION sql_mode = '" . mysqli_real_escape_string(db::$con, (string) $previous[0]) . "'");
+        pg_visitor_move_query("SET SESSION lock_wait_timeout = " . (int) $previous[1]);
+    }
+
+    // A request the screen wrote while this run was under way is kept for
+    // the next one, unless this run has already moved the table on.
+    $on_disk = pg_visitor_move_last();
+
+    if ($on_disk['requested'] && !$requested_before && !in_array($last['state'], array('copying', 'swapped', 'done'), true)) {
+        $last['requested'] = true;
+    }
+
+    pg_visitor_move_save($last);
+
+    pg_visitor_move_query("SELECT RELEASE_LOCK(" . pg_visitor_cleanup_lock_sql() . ")");
+
+    $result['seconds'] = round(microtime(true) - $started, 2);
+
+    return $result;
+}
+
+/**
+ * The work of one pg_visitor_move_run(), under its lock.
+ *
+ * @param array $last   The marker, updated in place
+ * @param float $deadline
+ * @param int   $chunk
+ * @param array $result
+ * @return array $result
+ */
+function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
+{
+    $copy = PG_VISITOR_MOVE_COPY;
+    $old = PG_VISITOR_MOVE_OLD;
+
+    $engines = pg_visitor_move_engines();
+
+    // The copy is in place; what is left is the old table. Only a table this
+    // marker says the swap put there is checked and dropped; any other table
+    // of that name is left for the operator to look at.
+    if (($engines['visitors'] === 'innodb') && ($engines[$old] !== '') && ($last['state'] === 'swapped')) {
+        return pg_visitor_move_finish($last, $result);
+    }
+
+    if ($engines['visitors'] !== 'myisam') {
+
+        // A copy with no MyISAM table to go with it: the table was converted
+        // another way meanwhile, or a backup brought the copy back.
+        if ($engines[$copy] !== '') {
+            pg_visitor_move_query("DROP TABLE `" . $copy . "`");
+        }
+
+        if (!in_array($last['state'], array('done', 'failed'), true)) {
+            $last['state'] = 'none';
+        }
+
+        $last['requested'] = false;
+        $last['reason'] = '';
+        $result['state'] = $last['state'];
+
+        return $result;
+    }
+
+    if ($engines[$copy] === '') {
+
+        $catalog = pg_db_table_catalog();
+        $catalog_row = isset($catalog['visitors']) ? $catalog['visitors'] : array();
+
+        $settings = pg_visitor_retention_settings();
+        $cleanup = pg_visitor_cleanup_last();
+        $capability = pg_innodb_capability();
+        $estimate = $capability['ok'] ? pg_innodb_row_estimate('visitors') : null;
+
+        $last['needed'] = pg_visitor_move_disk_needed($catalog_row);
+
+        $reason = pg_visitor_move_hold_reason(array(
+            'engine' => 'myisam',
+            'capable' => $capability['ok'],
+            'fits' => is_array($estimate) ? $estimate['fits'] : null,
+            'old_exists' => ($engines[$old] !== ''),
+            'requested' => $last['requested'],
+            'failed' => (($last['state'] === 'failed') && ($last['failed_at'] > (time() - 7 * 86400))),
+            'days' => is_array($settings) ? $settings['days'] : 0,
+            'cleaned' => ($cleanup['checked_at'] > 0),
+            'backlog' => $cleanup['backlog'],
+            'disk_free' => pg_visitor_move_disk_free(),
+            'needed' => $last['needed'],
+        ));
+
+        if ($reason !== '') {
+
+            if ($last['state'] !== 'failed') {
+                $last['state'] = 'waiting';
+                $last['error'] = ($reason === 'unsupported') ? $capability['reason'] : '';
+            }
+
+            $last['requested'] = false;
+            $last['reason'] = $reason;
+
+            $result['state'] = $last['state'];
+            $result['reason'] = $reason;
+
+            return $result;
+        }
+
+        $error = pg_visitor_move_create_copy();
+
+        if ($error !== '') {
+            return pg_visitor_move_fail($last, $result, $error);
+        }
+
+        $last['state'] = 'copying';
+        $last['reason'] = '';
+        $last['error'] = '';
+        $last['requested'] = false;
+        $last['started'] = time();
+        $last['synced_at'] = 0;
+        $last['copied'] = 0;
+        $last['rows_before'] = isset($catalog_row['rows']) ? (int) $catalog_row['rows'] : 0;
+        $last['bytes_before'] = isset($catalog_row['bytes']) ? (float) $catalog_row['bytes'] : 0.0;
+        $last['finished_at'] = 0;
+
+        // Written now: a run cut off from here on must find when it began.
+        pg_visitor_move_save($last);
+
+    } elseif (($engines[$copy] !== 'innodb') || !pg_visitor_move_same_columns()) {
+
+        // Not a copy this function made, or `visitors` changed under it.
+        pg_visitor_move_query("DROP TABLE `" . $copy . "`");
+
+        $last['state'] = 'waiting';
+        $last['reason'] = 'restart';
+        $result['state'] = 'waiting';
+        $result['reason'] = 'restart';
+
+        return $result;
+    }
+
+    // The marker went missing during a copy: when the copy table was made
+    // is the next best start. Without either, a week back, which only makes
+    // the last pass look at more visits.
+    if ($last['started'] <= 0) {
+        $created = pg_visitor_move_query(
+            "SELECT UNIX_TIMESTAMP(CREATE_TIME)
+            FROM information_schema.TABLES
+            WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = '" . $copy . "')");
+        $created_row = $created ? mysqli_fetch_row($created) : null;
+        $last['started'] = (is_array($created_row) && ((int) $created_row[0] > 0)) ? (int) $created_row[0] : (time() - 7 * 86400);
+    }
+
+    $last['state'] = 'copying';
+
+    // -- Copy ----------------------------------------------------------------
+    $cursor = pg_visitor_move_number("SELECT COALESCE(MAX(id), 0) FROM `" . $copy . "`");
+    $caught_up = false;
+
+    while (microtime(true) < $deadline) {
+
+        $chunk_started = microtime(true);
+
+        // The window's upper id is read from the key first and the rows then
+        // copied by that range, the way the cleanup removes them: a plain
+        // range is the same statement on every server and safe for
+        // statement-based replication, which INSERT ... SELECT ... LIMIT is
+        // not.
+        $upper = pg_visitor_move_number(
+            "SELECT COALESCE(MAX(id), 0)
+            FROM (
+                SELECT id
+                FROM visitors
+                WHERE id > " . $cursor . "
+                ORDER BY id
+                LIMIT " . $chunk . "
+            ) AS visitor_chunk");
+
+        if ($upper <= $cursor) {
+            $caught_up = true;
+            break;
+        }
+
+        if (!pg_visitor_move_query(
+            "INSERT INTO `" . $copy . "`
+            SELECT * FROM visitors
+            WHERE (id > " . $cursor . ") AND (id <= " . $upper . ")")) {
+            return pg_visitor_move_fail($last, $result, (string) mysqli_error(db::$con));
+        }
+
+        $copied = (int) mysqli_affected_rows(db::$con);
+
+        $result['copied'] += $copied;
+        $last['copied'] += $copied;
+
+        $cursor = $upper;
+
+        // The last window of the table: what is left is the visits that
+        // arrive meanwhile, for the last passes.
+        if ($copied < $chunk) {
+            $caught_up = true;
+            break;
+        }
+
+        usleep(max(20000, (int) ((microtime(true) - $chunk_started) * 1000000)));
+    }
+
+    // The last passes and the swap want a few seconds to themselves.
+    if (!$caught_up || (($deadline - microtime(true)) < 3)) {
+        $result['state'] = 'copying';
+        return $result;
+    }
+
+    return pg_visitor_move_swap($last, $deadline, $chunk, $result);
+}
+
+/**
+ * Copy rows of `visitors` into the copy again, by id, a chunk at a time,
+ * replacing what the copy holds for them.
+ *
+ * A DELETE and an INSERT rather than REPLACE ... SELECT, which statement-based
+ * replication counts as unsafe. Nothing but this function writes to the copy,
+ * so nothing sees it between the two.
+ *
+ * @param array $ids
+ * @param int   $chunk
+ * @param float $deadline 0 for no limit
+ * @return bool|null true when done, null when the deadline came first, false
+ *                   on an error
+ */
+function pg_visitor_move_recopy($ids, $chunk, $deadline)
+{
+    foreach (array_chunk($ids, $chunk) as $part) {
+
+        if (($deadline > 0) && (microtime(true) >= $deadline)) {
+            return null;
+        }
+
+        $part_started = microtime(true);
+
+        $list = implode(',', $part);
+
+        if (!pg_visitor_move_query("DELETE FROM `" . PG_VISITOR_MOVE_COPY . "` WHERE id IN (" . $list . ")")
+            || !pg_visitor_move_query("INSERT INTO `" . PG_VISITOR_MOVE_COPY . "` SELECT * FROM visitors WHERE id IN (" . $list . ")")) {
+            return false;
+        }
+
+        if ($deadline > 0) {
+            usleep(max(20000, (int) ((microtime(true) - $part_started) * 1000000)));
+        }
+    }
+
+    return true;
+}
+
+/**
+ * The last passes and the swap of pg_visitor_move_run().
+ *
+ * @param array $last
+ * @param float $deadline
+ * @param int   $chunk
+ * @param array $result
+ * @return array $result
+ */
+function pg_visitor_move_swap(&$last, $deadline, $chunk, $result)
+{
+    $copy = PG_VISITOR_MOVE_COPY;
+    $old = PG_VISITOR_MOVE_OLD;
+
+    // The swap needs the name; a table that took it during the copy is not
+    // this function's to remove.
+    $engines = pg_visitor_move_engines();
+
+    if ($engines[$old] !== '') {
+        return pg_visitor_move_fail($last, $result, lang(array('string' => 'a table named {var:1} is in the way', 'vars' => array($old))));
+    }
+
+    // -- Visits that changed after they were copied --------------------------
+    //
+    // Read through the stop_timestamp index: the visits of the last minutes
+    // or hours, not the table. A run that runs out of time leaves synced_at
+    // as it was and the next one starts this pass again.
+    $since = ($last['synced_at'] > 0) ? ($last['synced_at'] - 2) : ($last['started'] - 60);
+    $pass_started = time();
+
+    $cursor = pg_visitor_move_number("SELECT COALESCE(MAX(id), 0) FROM `" . $copy . "`");
+
+    $changed = pg_visitor_move_ids(
+        "SELECT id FROM visitors
+        WHERE (stop_timestamp >= " . (int) $since . ") AND (id <= " . $cursor . ")");
+
+    if ($changed === false) {
+        return pg_visitor_move_fail($last, $result, (string) mysqli_error(db::$con));
+    }
+
+    $recopied = pg_visitor_move_recopy($changed, $chunk, $deadline - 2);
+
+    if ($recopied === false) {
+        return pg_visitor_move_fail($last, $result, (string) mysqli_error(db::$con));
+    }
+
+    $result['state'] = 'copying';
+
+    if ($recopied === null) {
+        return $result;
+    }
+
+    $last['synced_at'] = $pass_started;
+
+    // -- The visits of the last seconds, then the swap, back to back ---------
+    //
+    // AUTO_INCREMENT first: the copy hands out ids from past what the old
+    // table may still hand out until the swap, so a visit written there in
+    // that moment keeps its id when it is copied over afterwards.
+    $next_id = pg_visitor_move_number("SELECT COALESCE(MAX(id), 0) FROM visitors") + 1000;
+
+    if (!pg_visitor_move_query("ALTER TABLE `" . $copy . "` AUTO_INCREMENT = " . $next_id)) {
+        return pg_visitor_move_fail($last, $result, (string) mysqli_error(db::$con));
+    }
+
+    if (!pg_visitor_move_query("INSERT INTO `" . $copy . "` SELECT * FROM visitors WHERE id > " . $cursor)) {
+        return pg_visitor_move_fail($last, $result, (string) mysqli_error(db::$con));
+    }
+
+    $changed = pg_visitor_move_ids(
+        "SELECT id FROM visitors
+        WHERE (stop_timestamp >= " . ($pass_started - 2) . ") AND (id <= " . $cursor . ")");
+
+    if (($changed === false) || (pg_visitor_move_recopy($changed, $chunk, 0) === false)) {
+        return pg_visitor_move_fail($last, $result, (string) mysqli_error(db::$con));
+    }
+
+    $last_id = pg_visitor_move_number("SELECT COALESCE(MAX(id), 0) FROM `" . $copy . "`");
+
+    // RENAME waits for the statements running on either table, then takes a
+    // moment. A short wait: on a busy table the next run tries again rather
+    // than hold the queue that forms behind the waiting RENAME.
+    pg_visitor_move_query("SET SESSION lock_wait_timeout = 5");
+
+    $renamed = pg_visitor_move_query("RENAME TABLE visitors TO `" . $old . "`, `" . $copy . "` TO visitors");
+
+    if (!$renamed) {
+        $last['error'] = (string) mysqli_error(db::$con);
+        return $result;
+    }
+
+    $last['state'] = 'swapped';
+    $last['last_id'] = $last_id;
+    $last['error'] = '';
+
+    pg_visitor_move_save($last);
+
+    // Visits written to the old table between the last pass and the swap.
+    // Their ids are below the copy's AUTO_INCREMENT, so none is taken yet;
+    // should this fail all the same, the check below finds them.
+    pg_visitor_move_query("INSERT INTO visitors SELECT * FROM `" . $old . "` WHERE id > " . $last_id);
+
+    return pg_visitor_move_finish($last, $result);
+}
+
+/**
+ * After the swap: check the old table against the new one, then drop it.
+ *
+ * A row of the old table that started before the retention boundary may
+ * rightly be missing from the new one (a cleanup ran since the swap), so only
+ * the rows within the period are looked for. One that is missing is copied
+ * over; when that does not make the two agree, the old table stays and the
+ * move is marked failed.
+ *
+ * @param array $last
+ * @param array $result
+ * @return array $result
+ */
+function pg_visitor_move_finish(&$last, $result)
+{
+    $old = PG_VISITOR_MOVE_OLD;
+
+    $settings = pg_visitor_retention_settings();
+    $cutoff = is_array($settings) ? pg_visitor_retention_cutoff($settings['days'], time()) : 0;
+
+    // A plain SELECT reads the InnoDB table without locking its rows.
+    $missing_sql =
+        "SELECT o.id
+        FROM `" . $old . "` AS o
+        LEFT JOIN visitors AS n ON (n.id = o.id)
+        WHERE (n.id IS NULL) AND (o.start_timestamp >= " . (int) $cutoff . ")";
+
+    $missing = pg_visitor_move_ids($missing_sql);
+
+    if (is_array($missing) && (count($missing) > 0)) {
+
+        foreach (array_chunk($missing, 1000) as $part) {
+            pg_visitor_move_query(
+                "INSERT INTO visitors
+                SELECT * FROM `" . $old . "`
+                WHERE id IN (" . implode(',', $part) . ")");
+        }
+
+        $missing = pg_visitor_move_ids($missing_sql);
+    }
+
+    if (!is_array($missing) || (count($missing) > 0)) {
+
+        $last['state'] = 'failed';
+        $last['failed_at'] = time();
+        $last['error'] = is_array($missing)
+            ? lang(array('string' => '{var:1} record(s) of the old table could not be copied to the new one', 'vars' => array(pg_format_number(count($missing), 0))))
+            : (string) mysqli_error(db::$con);
+
+        $result['state'] = 'failed';
+        $result['text'] = pg_visitor_move_result_text($last);
+
+        return $result;
+    }
+
+    pg_visitor_move_query("DROP TABLE `" . $old . "`");
+
+    $catalog = pg_db_table_catalog();
+
+    $last['state'] = 'done';
+    $last['error'] = '';
+    $last['reason'] = '';
+    $last['requested'] = false;
+    $last['finished_at'] = time();
+    $last['bytes_after'] = isset($catalog['visitors']) ? (float) $catalog['visitors']['bytes'] : 0.0;
+
+    $result['state'] = 'done';
+    $result['text'] = pg_visitor_move_result_text($last);
+
+    return $result;
+}
+
+/**
+ * A move that stopped on an error: the copy is dropped, which gives its disk
+ * space back, and the table stays on MyISAM, where the site works as before.
+ * Not started again on its own; the screen offers to.
+ *
+ * Only ever called before the swap; after it nothing is dropped.
+ *
+ * @param array  $last
+ * @param array  $result
+ * @param string $error
+ * @return array $result
+ */
+function pg_visitor_move_fail(&$last, $result, $error)
+{
+    pg_visitor_move_query("DROP TABLE IF EXISTS `" . PG_VISITOR_MOVE_COPY . "`");
+
+    $last['state'] = 'failed';
+    $last['error'] = ($error !== '') ? $error : lang('unknown error');
+    $last['requested'] = false;
+    $last['failed_at'] = time();
+
+    $result['state'] = 'failed';
+    $result['text'] = pg_visitor_move_result_text($last);
+
+    return $result;
+}
+
+/**
+ * One sentence on how a move ended, for the activity log and the screen.
+ *
+ * @param array $last pg_visitor_move_last()
+ * @return string
+ */
+function pg_visitor_move_result_text($last)
+{
+    if ($last['state'] === 'done') {
+        return lang(array(
+            'string' => 'The visitors table was moved to InnoDB: {var:1} before, {var:2} now.',
+            'vars' => array(pg_innodb_size_label($last['bytes_before']), pg_innodb_size_label($last['bytes_after'])),
+        ));
+    }
+
+    if ($last['state'] === 'failed') {
+        return lang(array(
+            'string' => 'Moving the visitors table to InnoDB stopped: {var:1}. It stays on MyISAM and works as before.',
+            'vars' => array($last['error']),
+        ));
+    }
+
+    return '';
+}
+
+/**
+ * Why a MyISAM visitors table is not being moved, in a sentence for the
+ * screen.
+ *
+ * @param array $last pg_visitor_move_last()
+ * @return string
+ */
+function pg_visitor_move_reason_text($last)
+{
+    switch ($last['reason']) {
+
+        case 'unsupported':
+            return lang(array('string' => 'It cannot be moved to InnoDB on this server: {var:1}.', 'vars' => array($last['error'])));
+
+        case 'too_wide':
+            return lang('It cannot be moved to InnoDB as it is: its rows are too wide for an InnoDB page.');
+
+        case 'name_taken':
+            return lang(array('string' => 'A table named {var:1} is in the way of the move. Once you have looked at it and removed it, the move can start.', 'vars' => array(PG_VISITOR_MOVE_OLD)));
+
+        case 'no_period':
+            return lang('The general job moves it to InnoDB on its own once a period is set for keeping visitor records and the older ones are gone.');
+
+        case 'backlog':
+            return lang('Once the old records are gone, the general job moves it to InnoDB on its own, a few thousand records at a time while the site keeps running. That also makes the file smaller.');
+
+        case 'disk_unknown':
+            return lang(array('string' => 'The general job does not start moving it to InnoDB on its own, because the free disk space of the database server cannot be read from here. The move needs about {var:1} free until the old table is removed.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+
+        case 'disk_low':
+            return lang(array('string' => 'The general job does not start moving it to InnoDB on its own, because the database server has less free disk space than the move needs, about {var:1}.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+    }
+
+    return '';
 }
