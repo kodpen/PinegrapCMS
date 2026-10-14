@@ -96,7 +96,9 @@ if ($action and !$command_line) {
     $liveform->validate_required_field('url', lang('URL is required.'));
     $liveform->validate_required_field('max_link_level', lang('Follow Depth is required.'));
 
-    $url = $liveform->get_field_value('url');
+    // A request without the field (the required check above has marked it)
+    // reads as '' rather than null, which mb_substr() deprecates.
+    $url = (string) $liveform->get_field_value('url');
     $import_name = $liveform->get_field_value('import_name');
 
     // If the URL does not start with "http://" or "https://" then add

@@ -84,6 +84,64 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Kalan "Passing null" satırları ve `liveform::prepare()` uyarıları (2026-10-14)
+
+**Neden.** #445'in kalanları. `h()` ve `escape()` düzelince hata ayıklama
+açıkken aynı türden kullanım dışı satırını yazan yalnız birkaç yer kaldı:
+`escape_csv()` (kampanya profillerinin CSV dışa aktarması; son düzenleyeni ya
+da oluşturanı silinmiş profil), `get_page_content.php:4763`
+`mb_strtolower()` (yönetici oturumuyla açılan, yorum açık form kayıt sayfası,
+örn. `/classified-ads-item`: `get_submitter_email_address()` kayıt yokken
+`db_value()`'nun NULL'ını döndürüyordu) ve `import_design.php:104`
+`mb_substr()` (URL'siz gönderilen Tasarım İçe Aktar formu).
+`encode_url_path()` ve `escape_javascript()` #445'in taramasında
+`browse_catalog_menu`, `add_email_campaign` ve `preview_form`'da görünmüştü;
+bu ekranlar o arada düzeldi (#437, #442), yardımcılar null'a hâlâ açıktı.
+`liveform::prepare()` sayfa düzenindeki `type` özniteliği çift tırnakla
+yazılmamış ya da hiç yazılmamış bir alanı (`<input name="email">`) ve `value`'su
+olmayan onay kutusunu, alan oturumdayken (hatalı gönderimden sonra form
+yeniden çizilirken) "Undefined array key 1" ve `trim(null)` ile karşılıyordu.
+Elle yazılmış ya da eski düzenlerde olur. Hepsi 2026.4.9'da da var.
+
+**Ne değişti.** `escape_javascript()`, `escape_csv()` ve `encode_url_path()`
+(`includes/fn/core.php`) `null` alınca hemen `''` döndürüyor (#445'in
+yaklaşımı: dönen değer aynı, çağıranlar değişmedi; dizi eskisi gibi).
+`get_submitter_email_address()` (`includes/fn/mail.php`) her zaman metin
+döndürüyor; üç çağıranı da değeri yalnız doğru/yanlış ya da metin olarak
+okuyor. `liveform::prepare()` `type`'ı olmayan alanı metin alanı, `value`'su
+olmayan kutuyu `''` sayıyor (eski kod da sonuçta böyle davranıyordu).
+`import_design.php` alan değerini metin okuyor. Şema, dil dosyası ve JS
+değişikliği yok. Test: `tests/core_test.php`
+`test_core_other_escape_helpers_take_null`, `tests/liveform_test.php`
+`test_liveform_prepare_tag_without_type_or_value` (ikisi eski kodda
+`ErrorException`, yenide geçiyor).
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, `debug = 1`, development 86d5a130
+üstünde; eski kod aynı veritabanında ikinci sunucuda).** #417'nin tarayıcısı
+(367 panel ekranı, 6.760 GET): "Passing null" satırı yazan istek 5 → 0
+(`import_design` düzeltmesi sonrası etkilenen 7 ekran yeniden: 3 → 0); kalan
+682 satırın hepsi aşağıdaki takvim tarihi. 181 site sayfası yönetici
+oturumuyla: kullanım dışı satırı 1 → 0. `prepare()`: sandbox'ta yalnız
+düzeni değiştirilmiş şifremi unuttum sayfası (`type`'sız e-posta alanı,
+`value`'suz kutu) boş gönderilince eski kod 2 uyarı, yeni kod 0; yeniden
+çizilen sayfa iki oturumla aynı. HTML: 443 panel açılışı 436 aynı (7'si canlı
+veri: veritabanı motoru, oturumlar, performans günlüğü, karşılama özeti ×2,
+sunucu yolu gösteren iki ayar ekranı), CSV dışa aktarma bayt bayt aynı;
+site sayfaları yöneticide 179/181, oturumsuz 171/181 aynı (fark: CAPTCHA
+sorusu, çıkış jetonu, cihaz listesi). `tools/lint.php`, `tools/test.php`,
+`check_lang`, `check_bindings`, `check_api_schema`, `check_copies` ve
+`build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com.
+
+**Bilerek yapılmayan.** `?date[]=x` takvim görünümü olan bir sayfaya (404
+hata sayfası da olabilir) gelince `get_calendar_view_screen_content.php:52`
+diziyi oturuma yazıyor; o oturumda takvimi çizen her istek
+`includes/fn/calendar.php:48` "Array to string conversion" yazıyor (taramada
+37 ekranda 682 istek, eski ve yeni kodda aynı). Sepet ve teklif sayfası
+düzenleri (`data/backups/*/layouts/248.php` ve `497.php` 138–203, hızlı
+ekleme alanı) tanımsız anahtar uyarıları ayrı.
+
+---
+
 ## 2026.4.10 — Dosya düzenleyicileri yalnız kendi türündeki tasarım dosyasını açıp kaydediyor (2026-10-14)
 
 **Neden.** #435'in kalanı. CSS düzenleyicisi (`edit_theme_css.php`) kimlik

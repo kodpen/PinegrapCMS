@@ -58,3 +58,15 @@ function test_core_h_and_escape_take_null()
 	pg_assert_same('a &amp; &quot;b&quot;', h('a & "b"'));
 	pg_assert_same('0', h(0));
 }
+
+// The JavaScript, CSV and URL path helpers do the same for null; other values
+// are encoded as before.
+function test_core_other_escape_helpers_take_null()
+{
+	pg_assert_same('', escape_javascript(null));
+	pg_assert_same('', escape_csv(null));
+	pg_assert_same('', encode_url_path(null));
+	pg_assert_same("it\\'s", escape_javascript("it's"));
+	pg_assert_same('a""b', escape_csv('a"b'));
+	pg_assert_same('a%20b/c', encode_url_path('a b/c'));
+}
