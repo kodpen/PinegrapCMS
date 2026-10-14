@@ -329,6 +329,11 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array account, till or invoice as record 1 and
+    // posted the money there, (string) wrote "Array" into the description.
+    pg_request_single_values(array('account_id', 'cash_account_id', 'invoice_id', 'amount', 'doc_date', 'currency', 'exchange_rate', 'payment_method', 'description'));
+
     $liveform->add_fields_to_session();
 
     $back = PATH . SOFTWARE_DIRECTORY . '/add_erp_receipt.php?direction=' . $direction

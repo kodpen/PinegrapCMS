@@ -186,9 +186,23 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array id as 1, so Delete removed till 1 and
+    // Save wrote over it; (string) wrote "Array" into the name, bank or IBAN.
+    pg_request_single_values(array('id', 'name', 'kind', 'currency', 'is_active', 'bank_name', 'iban', 'opening_balance', 'submit_delete'));
+
     $liveform->add_fields_to_session();
 
     $till_id = (int) $liveform->get_field_value('id');
+
+    // This screen only changes the till it was opened for. Without one behind
+    // the id, Delete and Save would announce a change that never happened.
+    if (($till_id <= 0) || !db_value("SELECT id FROM erp_cash_accounts WHERE id = '" . $till_id . "' LIMIT 1")) {
+        $liveform->remove_form();
+        $liveform_list = new liveform('erp_cash');
+        $liveform_list->mark_error('_error', lang('The till could not be found.'));
+        go(PATH . SOFTWARE_DIRECTORY . '/erp_cash.php');
+    }
 
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
 

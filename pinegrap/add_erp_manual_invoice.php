@@ -134,6 +134,11 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form but the lines is one value. One posted as an
+    // array counts as not given: (int) read an array account as account 1,
+    // (string) wrote "Array" into the notes and trim() stopped the request.
+    pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('erp_action')));
+
     $liveform->add_fields_to_session();
 
     $action = ((string) ($_POST['erp_action'] ?? 'draft') === 'issue') ? 'issue' : 'draft';

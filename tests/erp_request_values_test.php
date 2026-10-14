@@ -10,7 +10,9 @@
  * pick a record: (int) turns an array into 1, so ?account_id[]=x opened the
  * first account's invoices, prices or cards without a word, ?id[]=x the
  * first account, till or document, and ?download[]=x the first accountant's
- * pack.
+ * pack. And for what a form posts: a screen that saves hands every one-value
+ * field to pg_request_single_values() before it reads the post, so title[]=x
+ * is not saved as "Array" and id[]=2 does not delete till 1.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -26,6 +28,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/aging.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/cashflow.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/reconciliation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/purchase_orders.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/account_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_form.php');
 
 // No ERP screen casts a value from the address without checking it is one
 // value.
@@ -109,6 +113,157 @@ function test_erp_request_values_reply_days_ignores_arrays()
 function test_erp_request_values_purchase_order_products_skip_arrays()
 {
 	pg_assert_same(array(), erp_purchase_order_rows_for_products(array(array('7'), array())), 'purchase order rows from array entries');
+}
+
+// ERP screens whose form posts have not been gone through yet. Each is
+// taken off once its fields are handed to pg_request_single_values().
+function erp_request_values_post_pending()
+{
+	return array(
+		'add_erp_invoice', 'add_erp_late_fee_invoice', 'add_erp_return', 'edit_erp_expense', 'edit_erp_invoice', 'edit_erp_purchase_order',
+		'edit_erp_quote', 'edit_erp_waybill', 'erp_account_prices', 'erp_account_sync', 'erp_accountant', 'erp_accounts', 'erp_accounts_import',
+		'erp_bank_statement', 'erp_bank_statements', 'erp_cheque', 'erp_expense_categories', 'erp_export', 'erp_inbox', 'erp_inbox_document',
+		'erp_invoices', 'erp_order_flow', 'erp_receipt', 'erp_reconciliation', 'erp_settings', 'erp_stock_count', 'get_erp_invoice_pdf',
+		'get_erp_reconciliation_pdf', 'get_erp_waybill_pdf',
+	);
+}
+
+// The pg_request_single_values() calls of a source: each call's offset and
+// the names it hands over, with a form's own list (erp_*_single_fields())
+// read from the function.
+function erp_request_values_single_value_calls($source)
+{
+	$calls = array();
+	$offset = 0;
+
+	while (($start = strpos($source, 'pg_request_single_values(', $offset)) !== false) {
+		$depth = 0;
+		$end = $start + strlen('pg_request_single_values');
+
+		for ($i = $end; $i < strlen($source); $i++) {
+			if ($source[$i] === '(') {
+				$depth++;
+			} elseif ($source[$i] === ')') {
+				$depth--;
+				if ($depth === 0) {
+					break;
+				}
+			}
+		}
+
+		$text = substr($source, $start, $i - $start + 1);
+		preg_match_all("/'(\\w+)'/", $text, $names);
+		$list = $names[1];
+
+		preg_match_all('/(erp_\w+_single_fields)\(\)/', $text, $functions);
+		foreach ($functions[1] as $function) {
+			$list = array_merge($list, $function());
+		}
+
+		$calls[] = array('offset' => $start, 'names' => $list);
+		$offset = $i;
+	}
+
+	return $calls;
+}
+
+// A screen that saves a form hands every one-value field it reads to
+// pg_request_single_values() before reading the post, the liveform's copy
+// (add_fields_to_session()) included. Lines, choices and other lists that a
+// form posts as an array on purpose are not handed over.
+function test_erp_request_values_post_fields_dropped_before_first_read()
+{
+	$lists = array('token', 'lines', 'choice');
+	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/erp_*.php'), glob(PG_FUNCTIONS_DIR . '/get_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/add_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/edit_erp_*.php'));
+	$checked = 0;
+
+	foreach ($files as $file) {
+		$screen = basename($file, '.php');
+		$source = file_get_contents($file);
+
+		if (in_array($screen, erp_request_values_post_pending(), true)) {
+			continue;
+		}
+
+		$liveform = (strpos($source, 'add_fields_to_session()') !== false);
+		preg_match_all("/\\\$_POST\\['(\\w+)'\\]/", $source, $posted, PREG_OFFSET_CAPTURE);
+		preg_match_all("/get_field_value\\('(\\w+)'\\)/", $source, $read);
+
+		if (!$liveform && empty($posted[1])) {
+			continue;
+		}
+
+		$checked++;
+		$calls = erp_request_values_single_value_calls($source);
+
+		if (empty($calls)) {
+			pg_assert_true(false, $screen . ': no pg_request_single_values() call');
+			continue;
+		}
+
+		$names = array();
+		foreach ($calls as $call) {
+			$names = array_merge($names, $call['names']);
+		}
+
+		$first_call = $calls[0]['offset'];
+
+		foreach ($posted[1] as $match) {
+			if (in_array($match[0], $lists, true)) {
+				continue;
+			}
+
+			pg_assert_true(in_array($match[0], $names, true), $screen . ': $_POST[\'' . $match[0] . '\'] not handed over');
+			pg_assert_true($match[1] > $first_call, $screen . ': $_POST[\'' . $match[0] . '\'] read before the call');
+		}
+
+		if ($liveform) {
+			pg_assert_true(strpos($source, 'add_fields_to_session()') > $first_call, $screen . ': add_fields_to_session() before the call');
+
+			foreach (array_unique($read[1]) as $field) {
+				if (!in_array($field, $lists, true)) {
+					pg_assert_true(in_array($field, $names, true), $screen . ': ' . $field . ' read from the form but not handed over');
+				}
+			}
+		}
+
+		// A shared form is read by its own reader; the screen hands over the
+		// form's list, which the next test holds to the reader.
+		if (strpos($source, 'erp_invoice_form_read(') !== false) {
+			pg_assert_true(empty(array_diff(erp_invoice_form_single_fields(), $names)), $screen . ': invoice form fields not handed over');
+		}
+
+		if (strpos($source, 'erp_account_form_check_formats(') !== false) {
+			pg_assert_true(empty(array_diff(erp_account_form_single_fields(), $names)), $screen . ': account form fields not handed over');
+		}
+	}
+
+	pg_assert_true($checked >= 15, 'screens checked: ' . $checked);
+
+	// The quick account dialog hands $_POST to erp_account_quick_create()
+	// whole; every field that reads is handed over first.
+	$quick = file_get_contents(PG_FUNCTIONS_DIR . '/erp_account_quick.php');
+	$calls = erp_request_values_single_value_calls($quick);
+	preg_match_all("/\\\$data\\['(\\w+)'\\]/", file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/account_quick.php'), $data);
+	pg_assert_true(!empty($calls) && ($calls[0]['offset'] < strpos($quick, 'erp_account_quick_create($user, $_POST)')), 'quick account: call before the create');
+	pg_assert_same(array(), empty($calls) ? array('no call') : array_values(array_diff(array_unique($data[1]), $calls[0]['names'])), 'quick account fields not handed over');
+}
+
+// The lists the shared forms give the screens name every field their own
+// code reads: a field added to a form and left off its list would be read
+// as posted again.
+function test_erp_request_values_shared_form_lists_cover_the_forms()
+{
+	$forms = array(
+		'invoice_form' => array(erp_invoice_form_single_fields(), array('lines')),
+		// The edit screen's own record number; it hands it over itself.
+		'account_form' => array(erp_account_form_single_fields(), array('id')),
+	);
+
+	foreach ($forms as $form => $list) {
+		preg_match_all("/get_field_value\\('(\\w+)'\\)/", file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/' . $form . '.php'), $read);
+		pg_assert_same(array(), array_values(array_diff(array_unique($read[1]), $list[0], $list[1])), $form . ' fields missing from its list');
+	}
 }
 
 // The till the cash flow screen narrows to: an array is no till.

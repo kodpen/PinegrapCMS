@@ -120,6 +120,10 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (string) wrote "Array" onto the card with a notice.
+    pg_request_single_values(erp_account_form_single_fields());
+
     $liveform->add_fields_to_session();
 
     $liveform->validate_required_field('title', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));

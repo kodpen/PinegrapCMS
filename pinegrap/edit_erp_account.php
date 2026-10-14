@@ -289,6 +289,11 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array id as 1 and saved over that account,
+    // (string) wrote "Array" onto the card with a notice.
+    pg_request_single_values(array_merge(erp_account_form_single_fields(), array('id', 'erp_action')));
+
     $liveform->add_fields_to_session();
 
     $account_id = (int) $liveform->get_field_value('id');

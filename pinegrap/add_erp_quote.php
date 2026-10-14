@@ -115,6 +115,11 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form but the lines is one value. One posted as an
+    // array counts as not given: (int) read an array account as account 1,
+    // (string) wrote "Array" into the notes and trim() stopped the request.
+    pg_request_single_values(erp_invoice_form_single_fields());
+
     $liveform->add_fields_to_session();
 
     // An empty date gives the quote the usual run; the form reader would put
