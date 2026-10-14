@@ -102,7 +102,8 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   okumadığı kanal adıyla değil sayıyla geçer (kanal grubu uçları).
 - Kendi Site Günlüğü satırını `$_SESSION['sessionusername']` ile yazan
   panel fonksiyonu API'den `ws_api_as_owner()` içinde çağrılır; yoksa
-  satır adsız düşer.
+  satır adsız düşer (`test_ws_api_panel_log_lines_carry_the_owner`
+  `includes/workspace/api*.php`'deki çağrıları denetler).
 - Çalışma Alanı araması (`GET /workspace/search`) panel kayıtlarını türü
   okuyan kapsamla süzer: `ws_api_search_record_scopes()`
   (`includes/workspace/api_day.php`). `ws_record_type_keys()`'e yeni bir

@@ -98,6 +98,38 @@ function ws_api_log($what)
     }
 }
 
+/**
+ * Runs a module function that writes its own line in the activity log in the
+ * name of the signed-in person (ws_channel_create(), ws_group_save() and the
+ * others) with the owner of the application as that person: the API keeps no
+ * session, and the panel's line would otherwise carry no name.
+ *
+ * @param callable $call
+ * @return mixed what $call returns
+ */
+function ws_api_as_owner($call)
+{
+    $app = api_current_app();
+
+    if (!isset($_SESSION) || !is_array($_SESSION)) {
+        $_SESSION = array();
+    }
+
+    $had = array_key_exists('sessionusername', $_SESSION);
+    $old = $had ? $_SESSION['sessionusername'] : null;
+    $_SESSION['sessionusername'] = (string) ($app['owner']['username'] ?? '');
+
+    try {
+        return call_user_func($call);
+    } finally {
+        if ($had) {
+            $_SESSION['sessionusername'] = $old;
+        } else {
+            unset($_SESSION['sessionusername']);
+        }
+    }
+}
+
 /* ---------------------------------------------------------------------------
    Channels
    --------------------------------------------------------------------------- */
@@ -275,13 +307,15 @@ function ws_api_channels_create($params)
 
     api_dry_run_stop('created', 'workspace_channel', array('name' => $name, 'kind' => $kind, 'members' => count($members)));
 
-    $result = ws_channel_create($viewer, array(
-        'name'          => (string) $params['name'],
-        'kind'          => $kind,
-        'topic'         => (string) ($params['topic'] ?? ''),
-        'department_id' => $department_id,
-        'members'       => $members,
-    ));
+    $result = ws_api_as_owner(function () use ($viewer, $params, $kind, $department_id, $members) {
+        return ws_channel_create($viewer, array(
+            'name'          => (string) $params['name'],
+            'kind'          => $kind,
+            'topic'         => (string) ($params['topic'] ?? ''),
+            'department_id' => $department_id,
+            'members'       => $members,
+        ));
+    });
 
     if (!$result['ok']) {
         ws_api_channel_refused($result);
@@ -1319,7 +1353,11 @@ function ws_api_messages_delete($params)
 
     api_dry_run_stop('deleted', 'workspace_message', array('id' => (int) $message['id'], 'channel_id' => (int) $message['channel_id'], 'mine' => $checked['mine']));
 
-    $result = ws_message_delete($viewer, $message);
+    // Somebody else's message taken out by staff leaves a line in the
+    // activity log.
+    $result = ws_api_as_owner(function () use ($viewer, $message) {
+        return ws_message_delete($viewer, $message);
+    });
 
     if (!$result['ok']) {
         ws_api_message_refused($result['error']);
@@ -1672,38 +1710,6 @@ function ws_api_channels_group($params)
 /* ---------------------------------------------------------------------------
    Arranging the groups of channels
    --------------------------------------------------------------------------- */
-
-/**
- * Runs a module function that writes its own line in the activity log in the
- * name of the signed-in person (ws_group_save() and the others) with the
- * owner of the application as that person: the API keeps no session, and the
- * panel's line would otherwise carry no name.
- *
- * @param callable $call
- * @return mixed what $call returns
- */
-function ws_api_as_owner($call)
-{
-    $app = api_current_app();
-
-    if (!isset($_SESSION) || !is_array($_SESSION)) {
-        $_SESSION = array();
-    }
-
-    $had = array_key_exists('sessionusername', $_SESSION);
-    $old = $had ? $_SESSION['sessionusername'] : null;
-    $_SESSION['sessionusername'] = (string) ($app['owner']['username'] ?? '');
-
-    try {
-        return call_user_func($call);
-    } finally {
-        if ($had) {
-            $_SESSION['sessionusername'] = $old;
-        } else {
-            unset($_SESSION['sessionusername']);
-        }
-    }
-}
 
 /**
  * The owner of the application as somebody who arranges the groups of
