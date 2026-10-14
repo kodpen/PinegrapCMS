@@ -84,6 +84,74 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dosya düzenleyicileri yalnız kendi türündeki tasarım dosyasını açıp kaydediyor (2026-10-14)
+
+**Neden.** #435'in kalanı. CSS düzenleyicisi (`edit_theme_css.php`) kimlik
+kapısından (#422) geçen her `files` satırını açıyordu: elle yazılmış
+adresle bir resim, yazı tipi ya da tasarım dosyası olmayan bir dosya
+baytlarıyla metin kutusunda görünüyor, Kaydet onu silip metinle yeniden
+yazıyordu (sandbox'ta `close.png` 280 bayttan 6 baytlık `body{}`'ye döndü).
+Kaydetme yolu adı satırdan alıp `..`'yu reddediyordu, açma yolu almıyordu:
+`../x.css` adlı bir satır `data/` altındaki dosyayı okumaya çalışıyordu.
+Çoğalt yeni dosyayı gönderilen `name` alanının adıyla açıyordu
+(`name=evil.png` → `evil.png` adlı, içi CSS olan bir tasarım dosyası).
+Kaydetmede dizi gelen `code` dosyayı önce siliyor, sonra `fwrite()`
+TypeError'ıyla 500 veriyordu: dosya 0 bayt kalıyordu. JavaScript
+düzenleyicisi (`edit_javascript.php`) ve JSON/TXT/SVG/XML düzenleyicisi
+(`editor_edit_file.php`) aynı kalıpla yazılmıştı; Temayı Düzenle
+(`edit_theme_file.php`) her dosyayı yeniden adlandırıp silebiliyordu.
+
+**Ne değişti.**
+- Dört ekranın kimlik kapısı (GET ve POST'tan önce) satırı
+  `design = '1'` koşuluyla okuyor ve saklı adın düz bir dosya adı
+  olduğunu (`basename()` ile aynı, `..` yok) ve uzantısının ekranın
+  kendi türü olduğunu denetliyor: CSS düzenleyicisi ve Temayı Düzenle
+  `css`, JavaScript düzenleyicisi `js`, metin düzenleyicisi `js`, `json`,
+  `txt`, `svg`, `xml` (kendi kod kipi listesi; Tasarım Dosyasını Düzenle
+  ekranı bunlardan JS dışındakileri buraya gönderiyor). Değilse "Kayıt
+  bulunamadı." 404, açmada da kaydetmede de. Dosyalar tek klasörde
+  (`data/files`) durduğu için "izin verilen klasör" düz ad koşulu,
+  "tema/stil dosyası" tasarım dosyası koşulu oluyor.
+- Üç metin düzenleyicisi: kaydetme yolu kapının okuduğu adı kullanıyor
+  (kendi satır sorgusu ve "Sorry, the file could not be found." çıkışı
+  kalktı); Çoğalt kopyayı saklı addan (`prepare_file_name()` +
+  `get_unique_name()`) ve satırın klasörü ve açıklamasıyla
+  oluşturuyor (CSS düzenleyicisinde tema bayrağı da), gönderilen `name`
+  hiç okunmuyor. `code`
+  `pg_request_single_values()` ile tek değer; dizi ya da hiç gelmezse
+  hiçbir şey yazılmadan düzenleyiciye geri dönülüyor. Yönlendirmeler
+  `$id` ve `send_to ?? ''` kullanıyor.
+- `edit_theme_css.php` Çoğalt: `from` yalnız `edit_theme_file` ya da
+  `edit_design_file` olabiliyor (yeni kopyanın açılacağı betik adı
+  ondan kuruluyordu), başka her değer eskiden boş `from`'un aldığı
+  `edit_theme_file`. Kaydet yolundaki `from` okumaları `?? ''`.
+- `tests/panel_id_gate_test.php`: dört ekranın kapısının tasarım dosyası,
+  düz ad ve uzantı koşullarını GET ve POST dallarından önce taşıdığını,
+  metin düzenleyicilerinin gönderilen adı okumadığını ve `code`'u dosya
+  yazılmadan önce tek değere indirdiğini denetleyen test (eski kodda
+  kırmızı).
+
+**Ölçüm (sandbox, eski kod ikinci portta).** 17 normal istek (dört
+ekranın gerçek tema, CSS, JS ve SVG dosyalarıyla, `from`/`send_to`
+çeşitleri, tema dışa aktarma, `?id=999999`, kimliksiz, `?id[]=`) eski
+kodla aynı HTML ve durum kodu. 19 yanlış dosya isteğinde (resim, yazı
+tipi, başka türden tasarım dosyası, tasarım dosyası olmayan dosya,
+`../x.css`, `sub/x.css`) eski kod 200, yeni kod 404 "Kayıt bulunamadı".
+Kaydetme: resme, `../` satırına ve Temayı Düzenle'den resme silme
+isteği 404, dosyalar aynı; dizi `code` 302 ile düzenleyiciye dönüyor,
+dosya aynı (eski kod 500, dosya 0 bayt). Normal Kaydet ve Kaydet ve Dön
+eski kodla aynı yönlendirme ve içerik. `name=evil.png` ile Çoğalt
+`sbx-font[1].css` oluşturuyor (eski kod `evil.png`). Yeni kod hata
+günlüğüne satır yazmadı.
+
+**Bilerek yapılmayan.** Şema adımı, dil anahtarı, JS yok. Diskte
+bulunmayan dosyanın açılışı (`file_get_contents()` uyarısı) değişmedi.
+Tasarım Dosyasını Düzenle (`edit_design_file.php`) tasarım dosyası
+olmayan bir kimlikle de açılıyor; o ekran dosyanın içeriğine yazmıyor,
+dokunulmadı. Resim düzenleyicisi tür listesini zaten denetliyor.
+
+---
+
 ## 2026.4.10 — Jetonlu çoğaltma ve gönderme eylemleri kaydı olmayan id'de "Kayıt bulunamadı" diyor; Hesabım sipariş ekranı uyarı yazmıyor (2026-10-14)
 
 **Neden.** #442'nin kalanları.
