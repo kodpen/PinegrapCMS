@@ -84,3 +84,21 @@ function test_liveform_output_field_first_value()
 		pg_assert_contains('value=""', $form->output_field(array('type' => 'hidden', 'name' => 'first_name')), 'no first key');
 	});
 }
+
+// An input written without a type and a check box written without a value are
+// prepared as before (a text field, a box that compares as '') without PHP
+// notices.
+function test_liveform_prepare_tag_without_type_or_value()
+{
+	_test_liveform_with_session(function ($form) {
+		$form->set('nickname', 'Ann');
+		$form->set('agree', '1');
+
+		$html = $form->prepare(
+			'<input name="nickname" value="">'
+			. '<input type="checkbox" name="agree">');
+
+		pg_assert_contains('<input name="nickname" value="Ann">', $html, 'input without type');
+		pg_assert_contains('<input type="checkbox" name="agree">', $html, 'box without value');
+	});
+}

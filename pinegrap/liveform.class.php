@@ -1298,8 +1298,9 @@ class liveform {
                 continue;
             }
 
+            // An input without a double-quoted type attribute is a text field.
             preg_match('/\stype="(.*?)"/is', $new_tag, $type_match);
-            $type = trim($type_match[1]);
+            $type = isset($type_match[1]) ? trim($type_match[1]) : '';
 
             // If the type is radio or checkbox and there is a value set in the session,
             // then prepare to check the field if it matches that value.
@@ -1307,8 +1308,9 @@ class liveform {
                 (($type == 'radio') || ($type == 'checkbox'))
                 &&  (isset($field['value']))
             ) {
+                // A box without a double-quoted value attribute compares as ''.
                 preg_match('/\svalue="(.*?)"/is', $new_tag, $value_match);
-                $value = trim($value_match[1]);
+                $value = isset($value_match[1]) ? trim($value_match[1]) : '';
 
                 if (
                     ($value == $field['value'])

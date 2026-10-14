@@ -1871,7 +1871,9 @@ function get_submitter_email_address($submitted_form_id)
             $submitter_email_address = $email_addresses[0];
         }
     }
-    return $submitter_email_address;
+    // A form without a submitter (no field, no user row) gives '' rather
+    // than the NULL db_value() returns, so callers can compare it as text.
+    return (string) $submitter_email_address;
 }
 // Sends the notification e-mails (submitter e-mail and administrator e-mail)
 // for a submitted form, and creates any auto e-mail campaigns that are

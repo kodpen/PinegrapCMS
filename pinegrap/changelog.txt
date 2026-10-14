@@ -3138,6 +3138,15 @@
          dosyayı boşaltıp hata sayfası veriyordu; artık
          dosyaya dokunmuyor.
 
+  [DÜZELTME] Aynı "Passing null" satırı kampanya
+         profillerinin CSV dışa aktarmasında, yönetici
+         oturumuyla açılan yorumlu form kayıt sayfalarında
+         ve URL'siz gönderilen Tasarım İçe Aktar formunda da
+         artık yazılmıyor. Elle yazılmış bir form düzeninde
+         türü belirtilmemiş alan ya da değeri olmayan onay
+         kutusu, form hatayla geri döndüğünde uyarı
+         yazmıyor. Ekranlar eskisiyle aynı.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

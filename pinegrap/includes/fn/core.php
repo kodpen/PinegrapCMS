@@ -674,7 +674,12 @@ function escape_like($string)
 
 function escape_javascript($string)
 {
-    if (!is_scalar($string) && !is_null($string)) {
+    // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
+    if ($string === null) {
+        return '';
+    }
+
+    if (!is_scalar($string)) {
         return $string;
     }
     // escape backslashes
@@ -692,6 +697,11 @@ function escape_javascript($string)
 
 function escape_csv($string)
 {
+    // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
+    if ($string === null) {
+        return '';
+    }
+
     return str_replace('"', '""', $string);
 }
 
@@ -1745,6 +1755,12 @@ function decode_json($content)
 // because Apache will return a 404 error.
 function encode_url_path($path)
 {
+    // A missing page or file name encodes to '' without the PHP 8.1
+    // deprecation that rawurlencode(null) logs.
+    if ($path === null) {
+        return '';
+    }
+
     return str_replace('%2F', '/', rawurlencode($path));
 }
 // Create a function that will strip out the beginning <?php tag before PHP code
