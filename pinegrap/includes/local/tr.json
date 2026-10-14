@@ -23247,5 +23247,6 @@
     "An order preview page could not be found for the id that was passed.": "İletilen kimlik için bir sipariş önizleme sayfası bulunamadı.",
     "A billing information page could not be found for the id that was passed.": "İletilen kimlik için bir fatura bilgileri sayfası bulunamadı.",
     "Visit and view records are not backed up": "Ziyaret ve görüntüleme kayıtları yedeğe girmez",
-    "Database backups leave out the rows of visit records, page view counts and form item view counts: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.": "Veritabanı yedekleri ziyaret kayıtlarının, sayfa görüntüleme sayılarının ve form öğesi görüntüleme sayılarının satırlarını almaz: bu tablolar boş olarak yedeklenir. Günlük ziyaretçi özeti ve saatlik ziyaretçi grafiği eksiksiz yedeklenir."
+    "Database backups leave out the rows of visit records, page view counts and form item view counts: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.": "Veritabanı yedekleri ziyaret kayıtlarının, sayfa görüntüleme sayılarının ve form öğesi görüntüleme sayılarının satırlarını almaz: bu tablolar boş olarak yedeklenir. Günlük ziyaretçi özeti ve saatlik ziyaretçi grafiği eksiksiz yedeklenir.",
+    "This theme has no Theme Designer settings, so it opens in the CSS editor.": "Bu temanın Tema Tasarımcısı ayarları yok; bu yüzden CSS düzenleyicisinde açıldı."
 }

@@ -2962,6 +2962,17 @@
          ekranı aynı durumda hata günlüğüne uyarı yazmıyor.
          Ürün formuna alan eklerken de uyarı yazılmıyor.
 
+  [DÜZELTME] Tema Tasarımcısı ayarı olmayan bir CSS
+         teması Tema Tasarımcısıyla açılınca (yalnız adres
+         elle yazılarak) hata günlüğüne onlarca uyarı
+         yazılıyordu ve Kaydet temanın kendi CSS'ini
+         silip yerine üretilmiş kod yazıyordu. Artık böyle
+         bir tema CSS düzenleyicisinde açılıyor ve ekranın
+         üstünde bunu söyleyen kısa bir not çıkıyor; Kaydet
+         dosyaya dokunmuyor. Tema olmayan bir dosyayla
+         açılan Tema Tasarımcısı "Kayıt bulunamadı"
+         gösteriyor.
+
   ÇOK DİLLİ SİTE
   --------------------------------------------------------
 

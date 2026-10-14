@@ -32,10 +32,16 @@ $object_id = 'base_object';
 // get the file id
 $file_id = ($_GET['file_id'] ?? '');
 
-// Opened without a theme file, or for one that no longer exists (stale
-// designer tab, hand-typed URL): a "not found" answer instead of PHP notices
-// from a module with no properties, and no session entry for an empty id.
-if (!is_scalar($file_id) || ((int) $file_id < 1) || ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . (int) $file_id . "'") < 1)) {
+// Opened without a theme file, for one that no longer exists (stale designer
+// tab, hand-typed URL) or for a file without Theme Designer settings (a
+// hand-written CSS theme): a "not found" answer instead of PHP notices from a
+// module with no properties, and no session entry for an empty id.
+if (
+    !is_scalar($file_id)
+    || ((int) $file_id < 1)
+    || ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . (int) $file_id . "'") < 1)
+    || ((int) db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . (int) $file_id . "'") < 1)
+) {
     output_error(lang('Record not found.'), 404);
 }
 
@@ -285,8 +291,12 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
     $properties = array();
     
     // if there is preview properties in the session, then set the properties array to them
-    if ((is_array($_SESSION['software']['theme_designer'][$file_id]['preview_properties'][$area][$object][$module]) == TRUE) && (empty($_SESSION['software']['theme_designer'][$file_id]['preview_properties'][$area][$object][$module]) == FALSE)) {
-        $properties = $_SESSION['software']['theme_designer'][$file_id]['preview_properties'][$area][$object][$module];
+    // (there are none when the module is asked for before the designer itself
+    // was opened in this session)
+    $session_properties = $_SESSION['software']['theme_designer'][$file_id]['preview_properties'][$area][$object][$module] ?? null;
+
+    if ((is_array($session_properties) == TRUE) && (empty($session_properties) == FALSE)) {
+        $properties = $session_properties;
         
     // else get the module's properties and values from the database
     } else {

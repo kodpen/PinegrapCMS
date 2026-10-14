@@ -84,6 +84,69 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Tema Tasarımcısı ayarı olmayan CSS teması CSS düzenleyicisinde açılıyor, Kaydet temanın CSS'ini silmiyor (2026-10-14)
+
+**Neden.** #417'nin panel taramasından kalan K8. Tema Tasarımcısı bir
+temanın `system_theme_css_rules` satırlarını düzenler ve temanın CSS
+dosyasını onlardan yeniden yazar. Panelin üç düğmesi (`edit_theme_file`,
+`edit_design_file`, önizleme araç çubuğu) satırı olmayan temayı zaten CSS
+düzenleyicisine gönderiyor; tasarımcıya böyle bir dosyayla yalnız adres elle
+yazılarak ulaşılıyordu. O zaman ekran istek başına 50'den fazla uyarı
+yazıyordu (`theme_designer.php` `preview_properties` hiç kurulmuyor,
+`generate_system_theme_css()` `null` ile çağrılıyordu), modül ucu
+(`get_theme_designer_module.php`) her alan için bir uyarı daha. Asıl sorun
+Kaydet'ti: `system_theme_css_rules` satırı olmayan dosyada da dosyayı
+`unlink()` edip yerine üretilmiş CSS yazıyordu. Sandbox'ta eski kodla
+88 baytlık elle yazılmış `font-georgia.css` Kaydet'ten sonra 53 KB
+üretilmiş CSS'e dönüştü. Tema olmayan bir dosyada da (`.eot`, resim) aynı
+yol dosyayı silip CSS yazar. 2026.4.9'da da var.
+
+**Ne değişti.** Varsayılan: tasarımcı yalnız tasarımcı ayarı olan temada
+açılıyor. `theme_designer.php` kimlik kapısının hemen ardından (GET ve POST
+dallarından önce) temanın satırlarını sayıyor. Satırı yoksa ve dosya `.css`
+ise CSS düzenleyicisine (`edit_theme_css.php?id=…`) yönleniyor; `send_to`
+metinse taşınıyor, `from` temada `edit_theme_file`, tasarım dosyasında
+`edit_design_file` (düğmelerin verdiği değerler, kırıntı yolu aynı). Ekranın
+üstünde kısa bir not: "This theme has no Theme Designer settings, so it opens
+in the CSS editor." Başka bir dosyada "Kayıt bulunamadı" (404). POST da aynı
+kapıdan geçtiği için eski bir sekmeden gelen Kaydet / Çoğalt / Önizle hiçbir
+şey yazmadan CSS düzenleyicisine dönüyor. `get_theme_designer_module.php`:
+#432'nin "dosya yoksa 404" kapısına tasarımcı satırı koşulu eklendi (satırı
+olmayan dosyada da "Kayıt bulunamadı"); tasarımcı bu oturumda açılmadan
+çağrılan modülde oturum okuması `?? null` (gerçek temada HTML aynı). Gerçek sistem temasında iki ekranın çıktısı değişmedi. Yeni
+`tests/theme_designer_rules_gate_test.php`: kapı GET dalından ve ilk
+`unlink()`'ten önce, CSS dosyası CSS düzenleyicisine, ötekiler 404'e gidiyor,
+modül ucunda kapı `switch`'ten önce. Şema adımı, JS yok; tek yeni dil anahtarı.
+
+Neden boş kural kümesiyle tasarımcıyı açmak değil: tasarımcının o temada
+gösterecek hiçbir ayarı yok ve Kaydet dosyanın CSS'ini üretilmiş kodla
+değiştirir; panelin geri kalanı da satırı olmayan temayı CSS teması sayıyor.
+
+**Doğrulandı (sandbox, MariaDB, PHP 8.3, DEBUG açık).** Eski kod
+(`origin/development`) 8001'de, yeni 8000'de, aynı `data/`. Satırı olmayan
+tema (`theme_modern.css`) ve tasarım CSS'i (`bootstrap.css`): eskisi 200 ve
+istek başına 50 uyarı (günlüğün üst sınırı), yenisi 302 → CSS düzenleyicisi,
+0 satır; tarayıcıda not görünüyor. Modül ucu satırı olmayan dosyada 8 uyarı
+→ 404. `.eot` dosyası ve var olmayan kimlik 404. Kaydet (jetonlu POST) eski
+kodda `font-georgia.css`'i değiştirdi, yenide dosyanın md5'i aynı, 0 satır.
+`add_theme_file` ile kurulan sistem temasında tasarımcı ekranı ve iki modül
+iki sunucuda aynı HTML'i verdi (varlıkların `?v=` sürüm damgası dışında);
+Kaydet eskisi gibi `reload_theme.php`'ye yönlendi, 23 satır yerinde.
+`tools/lint.php`, `tools/test.php`, `check_lang`, `check_bindings`,
+`check_api_schema`, `check_copies` ve `build_js.php --check` geçti.
+Doğrulanamadı: dev.pinegrap.com'daki gerçek temalar.
+
+**Bilerek yapılmayan.** Gerçek bir sistem temasında da tasarımcı çalışmıyor:
+sayfanın çağırdığı `init_theme_designer_accordion()`,
+`resize_theme_designer()`, `highlight_module()`,
+`open_theme_designer_accordion_module()` depoda hiçbir JS dosyasında yok,
+tarayıcıda "is not defined" (ilk commit'ten beri; "Sistem" tema türü
+`add_theme_file`'da zaten kapalı). Seyrek satırlı temada
+`generate_system_theme_css()` ve modüllerin `$properties['…']` okumaları
+istek başına onlarca uyarı yazıyor. İkisi de bu işin kapsamı dışında kaldı.
+
+---
+
 ## 2026.4.10 — Veritabanı yedekleri ziyaret kayıtlarını, sayfa ve form öğesi görüntüleme sayılarını almıyor (2026-10-14)
 
 **Neden.** Ziyaretçi temizleme planının (`docs/_plan_ziyaretci_temizleme.md`)
@@ -155,6 +218,9 @@ not var, `visitors` satırı yok.
 günlük tabloları kapsam dışı (karar yalnız ziyaret ve görüntüleme
 kayıtları için). Güncelleme öncesi yedek ekranındaki boyut tahmini hâlâ
 bütün veritabanının boyutu (üst sınır olarak doğru).
+
+---
+
 ## 2026.4.10 — Zorunlu parametresi olmadan açılan panel ekranları uyarı yazmıyor, kayıt isteyenler "Kayıt bulunamadı" diyor (2026-10-14)
 
 **Neden.** #417'nin panel taramasında K7 olarak kalan iş. Bir kayıt (sayfa,
