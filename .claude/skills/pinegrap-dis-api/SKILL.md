@@ -160,6 +160,13 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   satırların `read_at`'i yine ilerler, `changed_since` onları canlı
   satır olarak geri verir. Bir liste cevabına zarf alanı (`reload` gibi)
   `api_ok_list()`'in `$extra`'sıyla ve rotada `'list'` yanında bildirilir.
+- Kişiye özel mesaj durumu ("Benden sil", `ws_message_hides`) mesajın
+  `touched_at`'ini ilerletmez: kanaldaki herkesin ekranı ve cihazı mesajı
+  boşuna yeniden çizer. Kişinin kendi kaydının anı (`hidden_at`)
+  `ws_messages_touched()`'a okuyucuyla girer (`$user_id`;
+  `ws_channel_news()`'te `user_id` seçeneği); mesaj yalnız ona API'de
+  `hidden: true`, panelde silinmiş olarak döner. Kanalın değişen
+  mesajlarını okuyan yeni kod okuyucuyu geçirir.
 
 ## OAuth 2.1 (2026.4.10, `oauth.php`, `includes/oauth/`)
 

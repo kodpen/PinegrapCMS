@@ -948,9 +948,10 @@ function ws_handle_action($action, $request)
                     // An earlier version open on the screen takes nothing
                     // new. Messages the reader already has that changed since
                     // the last look come as well: an edit, a reaction, a tick,
-                    // a vote.
+                    // a vote, and one they deleted for themselves elsewhere.
                     $news = ws_channel_news($channel_id, (int) ($request['since_id'] ?? 0), (int) ($request['since_ts'] ?? 0), array(
-                        'new' => ((int) ($request['era_id'] ?? 0) <= 0),
+                        'new'     => ((int) ($request['era_id'] ?? 0) <= 0),
+                        'user_id' => (int) $viewer['id'],
                     ));
                     $rows = $news['new'];
 
@@ -981,7 +982,7 @@ function ws_handle_action($action, $request)
                         $out['shares'] = ws_channel_shares_state($viewer, $channel);
                     }
                     $out['messages'] = ws_message_payloads($viewer, $rows);
-                    $out['changed'] = ws_message_payloads($viewer, $news['changed']);
+                    $out['changed'] = ws_message_payloads($viewer, $news['changed'], array('hidden_as_deleted' => true));
 
                     if (!empty($rows) && !empty($request['read']) && ws_channel_membership($channel_id, $viewer['id'])) {
                         ws_channel_mark_read($channel_id, $viewer['id'], (int) $rows[count($rows) - 1]['id']);
