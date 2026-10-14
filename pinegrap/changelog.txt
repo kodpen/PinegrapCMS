@@ -1592,6 +1592,16 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: uygulama, gelen kutusunda
+         sonradan değişenleri alırken silinen satırları
+         da öğreniyor (silinen mesajdaki anılma, silinen
+         ya da artık paylaşılmayan not); kanal
+         mesajlarındaki silinenler gibi. Silinenler 30 gün
+         hatırlanıyor.
+
+  [ŞEMA] Gelen kutusundan silinen satırlar için yeni
+         bir tablo oluşturulur.
+
   [YENİ] Çalışma Alanı: ekip cihazlarıyla oturum açan
          kişi telefonundan bir mesajı kanalın en üstüne
          sabitleyebiliyor, sabitlemeyi kaldırabiliyor ve

@@ -749,7 +749,9 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
             db("DELETE FROM ws_ack_requests WHERE message_id IN (" . $messages . ")");
         }
 
-        foreach (array('ws_polls', 'ws_refs', 'ws_blocks', 'ws_inbox', 'ws_note_shares', 'ws_channel_eras', 'ws_ai_drafts', 'ws_ai_changes', 'ws_ai_requests', 'design_proposals') as $table) {
+        ws_inbox_delete("channel_id = '" . $thread_id . "'");
+
+        foreach (array('ws_polls', 'ws_refs', 'ws_blocks', 'ws_note_shares', 'ws_channel_eras', 'ws_ai_drafts', 'ws_ai_changes', 'ws_ai_requests', 'design_proposals') as $table) {
             db("DELETE FROM " . $table . " WHERE channel_id = '" . $thread_id . "'");
         }
 

@@ -84,6 +84,79 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: gelen kutusunun değişenlerinde silinen satırlar (2026-10-14)
+
+**Neden.** #379 gelen kutusuna `changed_since` verdi, ama tamamen silinen
+satır (silinen mesajdaki anılma, silinen ya da paylaşımı kaldırılan not,
+süresi dolup temizlenen tartışma) iz bırakmadığı için değişenlerde
+gelmiyordu; uygulama elindeki satırın gittiğini ancak
+`GET /workspace/inbox/{id}` 404 verince öğreniyordu. Kanal mesajlarında
+silinen mesaj değişenlerde `deleted: true` ile gelir (#371, M2); mesaj
+satırı yerinde kalıp `deleted_at` aldığı için. Gelen kutusu satırı ise
+gerçekten silinir, bu yüzden aynı deseni kurmak için silinenin kısa süreli
+bir izi gerekti.
+
+**Ne değişti.**
+- Şema 10.88: `ws_inbox_deleted` tablosu. Silinen her gelen kutusu
+  satırının kendi `id`'si (birincil anahtar), kişisi, türü, kanalı,
+  yazıldığı ve silindiği an (`idx_user (user_id, deleted_at)`,
+  `idx_deleted`).
+- `ws_inbox_delete($where)` (`notify.php`): satırları silmeden önce
+  izlerini yazar (`REPLACE INTO … SELECT`), 30 günden eski izleri aynı anda
+  temizler (`WS_INBOX_DELETED_KEEP`, en çok 500 satır), sonra satırları
+  siler. Gelen kutusundan satır silen dört yer artık bunu çağırır: mesaj
+  silme (`ws_message_delete()`, anılmalar), not silme (`ws_note_delete()`),
+  not paylaşımını kaldırma (`ws_note_unshare()`), tartışma temizliği
+  (`ws_threads_purge()`). Tablo yoksa (veritabanı adımı koşmadan) eskisi
+  gibi yalnız siler.
+- `GET /workspace/inbox?changed_since=` o andan beri silinen satırları da
+  verir: `deleted: true`, `id`, `kind`, `created_at`; başlık, metin ve
+  adres boş, kimlikler `null`, `read: true` (artık beklemiyor). Silinenler
+  yaşayan satırlarla `id` sırasına girer, `since_id` ikisini birlikte
+  sayfalar (`ws_api_inbox_changed()` + `ws_api_inbox_deleted()`, koşul
+  `ws_api_inbox_deleted_where()`). Canlı satırlar 20 turda bitmeden
+  okumayı bıraktıysa, silinenler de son okunan satırın ötesine geçmez; aynı
+  `id` hem canlı hem silinmiş görünürse (MySQL 8 öncesi yeniden başlatmada
+  kimliği yeniden veren sunucu) canlı olan kazanır. Claude'un çalıştığı
+  uygulama yalnız sorulabildiği kanalla ilgili silinenleri görür, canlı
+  satırlardaki kuralla aynı.
+- `GET /workspace/sync`'in `inbox_changed_at`'i (#380) en yeni izi de
+  sayar (`ws_api_inbox_changed_at()`, `MAX(deleted_at)` `idx_user`'ın bir
+  ucunu okur): okunmuş bir satır silinince de ilerler, uygulama
+  `changed_since` ile sorar. İzler 30 günde temizlendiği için değer geri
+  gidebilir; uygulama zaten "değişince sor" kuralıyla çalışır, boş liste
+  alır.
+- Her satırda yeni `deleted` alanı (`WorkspaceInboxItem`); normal listede
+  ve tek satır okumada hep `false`.
+- MCP: `workspace_inbox_list` aracı yeni alanı rotadan kendiliğinden alır;
+  yeni parametre yok.
+
+Yeni izin kapsamı yok (`workspace:read`), yeni metin yok.
+
+**Bilerek yapılmayan.** 30 günden eski bir anla soran uygulama o tarihten
+önceki silinenleri öğrenemez; belgede "önceki okumanız 30 günden eskiyse
+gelen kutusunu ilk sayfadan yeniden okuyun" yazıyor, sunucu bunu ayrıca
+bildirmez. Kişinin artık göremediği şeyle ilgili satır (çıkarıldığı özel
+kanal, silinen görev) silinmiş sayılmaz ve değişenlerde gelmez: satır
+yerinde durur, liste kuralı onu gizler; uygulama onu 404 ile öğrenmeye
+devam eder. Zildeki (`GET /notifications`) satırı silinen gelen kutusu
+satırına bakan bildirim olduğu gibi kalır.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye iki test
+(`ws_api_inbox_deleted_where()`; silinen satırın alanları şemayla aynı,
+`deleted` ve `read` doğru). Sandbox'ta (taze kurulum tabloyu oluşturdu)
+"Ekip cihazları" oturumuyla: iki anılmanın mesajı silinince
+`changed_since` ikisini `deleted: true` ile, araya okunan canlı satırla
+birlikte `id` sırasında verdi; `limit=1` + `since_id` üç sayfada üçünü
+verip boş döndü; normal listede silinenler yok, kalan satır
+`deleted: false`; silinen satırın tek okuması 404. 31 günlük iz bir
+sonraki silmede temizlendi. Aynı istek `If-None-Match` ile 304. Tablo
+yokken mesaj silme ve `changed_since` hatasız, eskisi gibi. Okunmuş bir
+satırın mesajı silinince eşitlemenin `inbox_changed_at`'i silme anına
+ilerledi, `inbox_unread` değişmedi. Sunucu günlüğünde hata yok.
+
+---
+
 ## 2026.4.10 — Dış API: mesajı kanalın en üstüne sabitleme, sabitlemeyi kaldırma ve kişinin kendisi için kapatması (2026-10-14)
 
 **Neden.** #380 açık kanalın sabitlenmiş mesajını `GET /workspace/sync`

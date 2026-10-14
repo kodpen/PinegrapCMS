@@ -338,6 +338,32 @@ function test_ws_api_inbox_changed_where()
 	pg_assert_same("user_id = '7' AND (created_at >= '1' OR read_at >= '1') AND id > '0'", ws_api_inbox_changed_where('7', 0, -5));
 }
 
+// A line taken away is found by when it went, only the person's marks after
+// the one given, and no further than the live rows were read when that read
+// stopped short.
+function test_ws_api_inbox_deleted_where()
+{
+	pg_assert_same("user_id = '7' AND deleted_at >= '1700000000' AND id > '42'", ws_api_inbox_deleted_where(7, 1700000000, 42));
+	pg_assert_same("user_id = '7' AND deleted_at >= '1' AND id > '0' AND id <= '900'", ws_api_inbox_deleted_where('7', 0, -5, 900));
+}
+
+// A line taken away comes back with the fields of any other line, deleted,
+// read and with nothing of what it said; a line still there is not deleted.
+function test_ws_api_inbox_deleted_present()
+{
+	$line = ws_api_inbox_deleted_present(array('id' => '12', 'kind' => 'mention', 'channel_id' => '3', 'created_at' => '1700000000', 'deleted_at' => '1700000100'));
+
+	pg_assert_same(array_keys(ws_api_inbox_schema()), array_keys($line));
+	pg_assert_same(12, $line['id']);
+	pg_assert_same('mention', $line['kind']);
+	pg_assert_true($line['deleted'], 'marked deleted');
+	pg_assert_true($line['read'], 'no longer waits');
+	pg_assert_same('', $line['title']);
+	pg_assert_same(null, $line['channel_id']);
+	pg_assert_same('2023-11-14T22:13:20Z', $line['created_at']);
+	pg_assert_same('boolean', ws_api_inbox_schema()['deleted']);
+}
+
 // The inbox's addresses start at the site's root; an app gets them whole,
 // and any other address as it is.
 function test_ws_api_inbox_url()

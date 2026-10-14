@@ -137,6 +137,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   okunur; yoksa uygulamaların elindeki imleç 400 alır ya da her şey bir
   kez yeniden gelir. Başka bir izne bağlı sayı (zil, `account:read`)
   izin yoksa `null` döner, reddedilmez.
+- Gelen kutusundan (`ws_inbox`) satır silen yeni kod doğrudan `DELETE`
+  yazmaz, `ws_inbox_delete($where)` çağırır (`notify.php`): iz
+  `ws_inbox_deleted`'a düşer, `GET /workspace/inbox?changed_since=` ve
+  eşitlemenin `inbox_changed_at`'i silineni ancak böyle görür. Satırı
+  yerinde değiştiren kod da `created_at` ya da `read_at`'i ilerletir.
 
 ## OAuth 2.1 (2026.4.10, `oauth.php`, `includes/oauth/`)
 
