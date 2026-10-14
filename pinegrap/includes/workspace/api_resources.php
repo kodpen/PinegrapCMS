@@ -549,8 +549,13 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null)
 {
+    // The messages the reader deleted for themselves (ws_message_hide()).
+    if ($hidden === null) {
+        $hidden = ws_message_hidden_ids($viewer['id'], array($row['id']));
+    }
+
     if ($reactions === null) {
         $reactions = ws_reactions_map(array($row['id']), $viewer);
     }
@@ -607,6 +612,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'task_id'     => ((int) $row['task_id'] > 0) ? (int) $row['task_id'] : null,
         'file'        => $file,
         'deleted'     => $deleted,
+        'hidden'      => isset($hidden[(int) $row['id']]),
         'edited'      => ((int) $row['edited_at'] > 0),
         'reactions'   => $deleted ? array() : $emoji,
         'ack'         => array(
@@ -635,6 +641,7 @@ function ws_api_message_schema()
         'task_id'     => 'integer?',
         'file'        => array('name' => 'string', 'url' => 'string'),
         'deleted'     => 'boolean',
+        'hidden'      => 'boolean',
         'edited'      => 'boolean',
         'reactions'   => array(array('emoji' => 'string', 'count' => 'integer')),
         'ack'         => array('wanted' => 'boolean', 'count' => 'integer', 'total' => 'integer', 'mine' => 'boolean'),
@@ -714,10 +721,13 @@ function ws_api_messages_present($viewer, $rows)
     $reactions = ws_reactions_map($ids, $viewer);
     $acks = function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array();
     $threads = ws_api_message_threads($viewer, $ids);
+    $hidden = ws_message_hidden_ids($viewer['id'], $ids);
     $out = array();
 
+    // A message the person deleted for themselves stays in the page, marked
+    // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden);
     }
 
     return $out;
@@ -875,14 +885,17 @@ function ws_api_person_only($refusal = null)
  * only (ws_api_device_writes_as_person()): an application key writes as the
  * application, and an OAuth connection writes as itself until it is settled
  * how a connection's words are shown, so neither rewrites what the person
- * wrote.
+ * wrote. Deleting a message from the person's own view is held to the same,
+ * since it cannot be undone.
+ *
+ * @param string|null $refusal what the refusal says, when not a change or a deletion
  */
-function ws_api_own_words_only()
+function ws_api_own_words_only($refusal = null)
 {
     $device = function_exists('api_current_device') ? api_current_device() : null;
 
     if (!ws_api_device_writes_as_person($device)) {
-        api_fail(403, 'forbidden', lang('Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.'));
+        api_fail(403, 'forbidden', ($refusal !== null) ? $refusal : lang('Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.'));
     }
 }
 
@@ -947,6 +960,16 @@ function ws_api_messages_update($params)
 
     ws_api_own_words_only();
 
+    // The checks ws_message_edit() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_message_edit_check($viewer, $message, (string) $params['text']);
+
+    if (!$checked['ok']) {
+        ws_api_message_refused($checked['error'], 'text');
+    }
+
+    api_dry_run_stop('updated', 'workspace_message', array('id' => (int) $message['id'], 'channel_id' => (int) $message['channel_id']));
+
     $result = ws_message_edit($viewer, $message, (string) $params['text']);
 
     if (!$result['ok']) {
@@ -965,6 +988,14 @@ function ws_api_messages_delete($params)
 
     ws_api_own_words_only();
 
+    $checked = ws_message_delete_check($viewer, $message);
+
+    if (!$checked['ok']) {
+        ws_api_message_refused($checked['error']);
+    }
+
+    api_dry_run_stop('deleted', 'workspace_message', array('id' => (int) $message['id'], 'channel_id' => (int) $message['channel_id'], 'mine' => $checked['mine']));
+
     $result = ws_message_delete($viewer, $message);
 
     if (!$result['ok']) {
@@ -972,6 +1003,48 @@ function ws_api_messages_delete($params)
     }
 
     api_ok(ws_api_message_present($viewer, ws_message($message['id']), array()));
+}
+
+/**
+ * Deletes a message from the person's own view, the way Delete for me in the
+ * message menu does: whoever wrote it, also in an earlier version of the
+ * conversation, but not a line the workspace wrote itself.
+ */
+function ws_api_messages_hide($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || ($message['kind'] === 'system') || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    ws_api_own_words_only(lang('Only the person, signed in on a device, can delete a message from their own view; an application cannot do it for them.'));
+
+    if (!ws_message_hides_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $checked = ws_message_hide_check($viewer, $message);
+
+    if (!$checked['ok']) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    api_dry_run_stop('hidden', 'workspace_message', array('id' => (int) $message['id'], 'channel_id' => (int) $message['channel_id']));
+
+    $result = ws_message_hide($viewer, $message);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
 }
 
 /**
@@ -1000,6 +1073,8 @@ function ws_api_channels_read($params)
     } else {
         $message_id = (int) db_value("SELECT MAX(id) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "'");
     }
+
+    api_dry_run_stop('read', 'workspace_channel', array('id' => (int) $channel['id'], 'message_id' => $message_id));
 
     ws_channel_mark_read($channel['id'], $viewer['id'], $message_id);
 

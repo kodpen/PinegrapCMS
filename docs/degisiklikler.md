@@ -84,6 +84,76 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: Çalışma Alanı mesajını yalnız kendi görünümünden silme ve mesaj uçlarında dry_run (2026-10-14)
+
+**Neden.** #371 (aşağıda, "Çalışma Alanı mesajını düzeltme, silme, kanalı
+okundu işaretleme…") iki parçayı bilerek dışarıda bıraktı: panelin
+"Benden sil"i (`ws_delete` + `scope: me` → `ws_message_hide()`) API'de
+yoktu, telefon uygulaması bir mesajı yalnız kendi görünümünden
+kaldıramıyordu; ve düzeltme, silme, okundu işareti `X-Dry-Run` /
+`?dry_run=true` ile denenemiyordu (400 `dry_run_unsupported`). Plan
+(`docs/_plan_mobil_api_claude_kanali.md`) ikisini ayrıca tanımlamıyor;
+aşağıdaki yorum panelin davranışına ve API'nin genel dry_run kuralına
+(`includes/api/dry_run.php`) dayanıyor.
+
+**Ne değişti.**
+- `POST /workspace/messages/{id}/hide`: `ws_message_hide()` ile, panelin
+  `can_hide` kuralı (kim yazmış olursa olsun okunabilen her mesaj, önceki
+  sürümdeki mesaj da; çalışma alanının kendi satırı ve silinmiş mesaj 404).
+  Diğerleri mesajı olduğu gibi görür, içindeki anılma zilden düşer. Geri
+  alınamaz. Yalnız "Ekip cihazları" oturumundan (`ws_api_own_words_only()`,
+  silme gibi); uygulama anahtarı ve OAuth bağlantısı kendi metniyle 403.
+  `ws_api_own_words_only()`'e isteğe bağlı `$refusal` eklendi.
+- `WorkspaceMessage`'a `hidden` (boolean): okuyan kişi mesajı kendisinden
+  sildiyse true. Liste mesajı dışarıda bırakmıyor, işaretliyor: panel gibi
+  süzseydi `limit` kadar dönmeyen sayfa `since_id` / `before_id` ile
+  sayfalayan uygulamaya "bitti" derdi. Uygulama `hidden: true` olanı
+  göstermez. Bayrak çağrının adına okuduğu kişiye göredir (uygulama
+  anahtarında sahibi); içerik boşaltılmıyor, var olan entegrasyonların
+  okuduğu değişmiyor. Gizleme mesajı `touch` etmiyor (kişiye özel; diğer
+  okuyucuların eşitlemesi tetiklenmesin), bu yüzden `changed_since` onu
+  getirmez; aynı kişinin başka cihazı bir sonraki tam okumada görür.
+- dry_run: `workspace.messages.update`, `.delete`, `.delete_post`, `.hide`
+  ve `workspace.channels.read` rotalarına `'dry_run' => true`; her biri
+  ilk yazmanın hemen üstünde `api_dry_run_stop()` çağırıyor (`would`:
+  updated, deleted, hidden, read). Denetimlerin aynı kodla yapılması için
+  `ws_message_edit_check()`, `ws_message_delete_check()` ve
+  `ws_message_hide_check()` ayrıldı (`ws_approval_input()` gibi);
+  `ws_message_edit()`, `ws_message_delete()` ve `ws_message_hide()` önce
+  bunları çağırıyor, panelin `ws_edit` / `ws_delete` davranışı aynı.
+  Mesaj yazma ve tepki uçları bu PR'da dry_run almadı.
+- MCP: yeni araç `workspace_messages_hide`; `workspace_messages_update`,
+  `workspace_messages_delete` ve `workspace_channels_read` araçlarına
+  `dry_run` alanı rotadan kendiliğinden geliyor. OpenAPI'de dört uçta
+  `X-Dry-Run` ve `dry_run` parametresi.
+
+Şema değişikliği yok, yeni izin kapsamı yok (`workspace:write`). Yeni
+metin `tr.json`'da (1 anahtar).
+
+**Bilerek yapılmayan.** Gizlemeyi geri alma yok (panelde de yok).
+Gizlenen mesaj listeden çıkarılmıyor (yukarıdaki sayfalama nedeni). OAuth
+bağlantısının kişi adına gizlemesi, düzeltme ve silme gibi karar 11'e (C5)
+bağlı.
+
+**Doğrulama.** `tests/workspace_api_test.php`'ye bir test (gizleme bir
+araç, beş rota dry_run alıyor). Sandbox'ta "Ekip cihazları" girişiyle:
+PATCH ve POST düzeltme `X-Dry-Run` ile ve `?dry_run=true` ile 200
+`would: updated`, boş metin dry run'da da gerçekte de aynı 422 `text`,
+uygulama mesajını düzeltme dry run'da 403, uygulama anahtarıyla dry run
+403; DELETE ve POST `.../delete` dry run 200 `would: deleted`, uygulama
+mesajı 403; okundu dry run 200 `would: read`, başka mesaj 422
+`message_id`, uygulama anahtarı 403; gizleme dry run 200
+`would: hidden`. Bunlardan sonra `ws_messages`, `last_read_id` ve
+`ws_message_hides` değişmemişti. Gerçek gizleme: uygulama anahtarı 403,
+kendi mesajı ve uygulamanın mesajı 200 `hidden: true`, ikinci kez 200,
+sistem satırı, olmayan ve silinmiş mesaj 404; liste gizlenenleri
+`hidden: true` ile döndürdü, diğerleri false. Mesaj yazma dry run'ı hâlâ
+400 `dry_run_unsupported`. Panelde `ws_edit` (değişti, boş metin ve
+uygulama mesajı reddedildi), `ws_delete` `scope: me` ve herkesten silme
+eskisi gibi; sunucu günlüğünde uyarı yok.
+
+---
+
 ## 2026.4.10 — Dış API: tek çağrıda eşitleme, GET /workspace/sync (2026-10-14)
 
 **Neden.** Mobil API ve Claude kanalı planının M3 dilimi

@@ -1568,6 +1568,15 @@
   --------------------------------------------------------
 
   [YENİ] Çalışma Alanı: telefon ya da bilgisayar
+         uygulamasıyla oturum açan kişi bir mesajı
+         panelin "Benden sil"i gibi yalnız kendi
+         görünümünden kaldırabiliyor; diğerleri görmeye
+         devam ediyor. Mesaj düzeltme, silme ve kanalı
+         okundu işaretleme istekleri de dry_run ile
+         önce denenebiliyor: hiçbir şey yazmadan aynı
+         denetimlerden geçip ne yapacağını söylüyor.
+
+  [YENİ] Çalışma Alanı: telefon ya da bilgisayar
          uygulaması açıkken tek bir çağrıyla güncel
          kalıyor: kanal listesi ve tartışmalar (yalnız
          değiştiklerinde), gelen kutusu sayısı, açık
