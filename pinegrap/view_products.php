@@ -410,15 +410,9 @@ foreach ($sort_codes as $code) {
 
 $list_state = pg_list_state('view_products', $sort_columns, array('sort' => $sort_default, 'order' => 'desc'));
 
-$sort = $list_state['sort'];
 $asc_desc = $list_state['order'];
 $sort_levels = $list_state['sorts'];
 $screen = $list_state['screen'];
-
-// duplicate_products.php still keeps the sort as a heading under the old key,
-// and picks up the one chosen here from it.
-$_SESSION['software']['ecommerce']['view_products']['sort'] = $sort_columns[$sort];
-$_SESSION['software']['ecommerce']['view_products']['order'] = $asc_desc;
 
 // What each sort code orders by. Only codes pg_list_state() let through
 // reach pg_list_order_by(), and it writes nothing but these.

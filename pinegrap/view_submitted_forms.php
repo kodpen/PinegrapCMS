@@ -49,11 +49,6 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['order'])) {
-    $_SESSION['software']['forms']['view_submitted_forms']['order'] = sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'], '');
-}
-
 // get all custom forms (the array will be used in multiple places in this script)
 $query = "SELECT
             page.page_id,
@@ -419,52 +414,49 @@ if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] 
     if (($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) {$where .= " AND (contacts.member_id LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) . "%')";}
 }
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['sort']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['sort'] = '';
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'custom_form'    => lang('Custom Form'),
+    'reference_code' => lang('Reference Code'),
+    'status'         => lang('Status'),
+    'contact'        => lang('Contact'),
+    'user'           => lang('User'),
+    'submitted'      => lang('Submitted'),
+    'last_modified'  => lang('Last Modified'),
+);
+
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+$list_state = pg_list_state('view_submitted_forms', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+// The contact is ordered by last name and then first name, both in the
+// level's direction, so it is handed to pg_list_order_by() as two levels.
+$order_levels = array();
+
+foreach ($sort_levels as $level) {
+    if ($level['sort'] === 'contact') {
+        $order_levels[] = array('sort' => 'contact_last_name', 'order' => $level['order']);
+        $order_levels[] = array('sort' => 'contact_first_name', 'order' => $level['order']);
+    } else {
+        $order_levels[] = $level;
+    }
 }
 
-switch (($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? '')) {
-    case 'Custom Form':
-        $sort_column = 'custom_form_pages.form_name';
-        break;
-
-    case 'Status':
-        $sort_column = 'forms.complete';
-        break;
-
-    case 'Reference Code':
-        $sort_column = 'forms.reference_code';
-        break;
-
-    case 'Contact':
-        $sort_column = 'contacts.last_name ' . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '') . ', contacts.first_name';
-        break;
-
-    case 'User':
-        $sort_column = 'submitted_user.user_username';
-        break;
-
-    case 'Submitted':
-        $sort_column = 'forms.submitted_timestamp';
-        break;
-
-    case 'Last Modified':
-        $sort_column = 'forms.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'forms.last_modified_timestamp';
-        $_SESSION['software']['forms']['view_submitted_forms']['sort'] = 'Last Modified';
-        $_SESSION['software']['forms']['view_submitted_forms']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['order']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($order_levels, array(
+    'custom_form'        => 'custom_form_pages.form_name',
+    'reference_code'     => 'forms.reference_code',
+    'status'             => 'forms.complete',
+    'contact_last_name'  => 'contacts.last_name',
+    'contact_first_name' => 'contacts.first_name',
+    'user'               => 'submitted_user.user_username',
+    'submitted'          => 'forms.submitted_timestamp',
+    'last_modified'      => 'forms.last_modified_timestamp',
+));
 
 // if user requested to export forms, export forms
 if (($_GET['submit_data'] ?? '') == 'Export Forms') {
@@ -536,7 +528,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
         $sql_data_joins
         $where
-        ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '');
+        ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $forms = array();
@@ -851,7 +843,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
              LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
              $sql_data_joins
              $where
-             ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '');
+             ORDER BY $order_by";
 
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -1269,6 +1261,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 ' . $output_delete_forms_button . '
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_submitted_forms.php', $sort_columns, $sort_levels, $sort_default) . '
                             <form id="advanced_filters_form" action="view_submitted_forms.php" method="get" class="search_form disable_shortcut">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm w-auto">
@@ -1296,13 +1289,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang('Action') . '</th> 
-                                        <th>' . get_column_heading(lang('Custom Form'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Reference Code'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Contact'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('User'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Submitted'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Custom Form'), $sort_levels, '', '', 'custom_form') . '</th>
+                                        <th>' . get_column_heading(lang('Reference Code'), $sort_levels, '', '', 'reference_code') . '</th>
+                                        <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
+                                        <th>' . get_column_heading(lang('Contact'), $sort_levels, '', '', 'contact') . '</th>
+                                        <th>' . get_column_heading(lang('User'), $sort_levels, '', '', 'user') . '</th>
+                                        <th>' . get_column_heading(lang('Submitted'), $sort_levels, '', '', 'submitted') . '</th>
+                                        <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>

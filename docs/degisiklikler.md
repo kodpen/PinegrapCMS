@@ -84,6 +84,141 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dosyalar, Gönderilen Formlar, bölgeler, Site Günlüğü, ürün çoğaltma ve editörün bağlantı seçicisi ortak tablo yardımcısında: çoklu sıralama (son eski liste grubu) (2026-10-14)
+
+**Neden.** Eski liste grupları birer PR'la `pg_list_state()` yardımcısına
+taşınıyordu (#331'den #352'ye). #352'nin "Sonraki gruplar" dökümündeki son
+grup bu PR'da: Tüm Dosyalarım (`view_files.php`), Gönderilen Formlar
+(`view_submitted_forms.php`), beş bölge listesi (`view_regions.php`: Tüm
+Reklam / Giriş / Dinamik / Tasarımcı / Ortak Bölgeler), Site Günlüğü
+(`view_log.php`), ürünleri toplu çoğaltma ekranı (`duplicate_products.php`)
+ve sayfa editörünün bağlantı seçicisi Öğelere Gözat
+(`editor_select_page_or_file.php`: Sayfalar, Dosyalar, Kısa Linkler
+sekmeleri). Bu PR'la, ayrı çalışmada taşınan Siparişler listesi dışında
+panelde sıralamayı çevrilmiş başlık adıyla tutan liste kalmadı.
+
+Altısı da sırayı başlık adıyla tutuyordu: Dosyalar, bölgeler ve ürün
+çoğaltma oturumda, Gönderilen Formlar istekteki her değeri oturuma kopyalayan
+döngüyle, Site Günlüğü yalnız adreste (hızlı aralık düğmeleri ve gelişmiş
+filtre formu `sort`/`order`'ı taşıyordu), bağlantı seçici üç sekmenin
+paylaştığı tek oturum anahtarında. Ürün çoğaltma kendi sırasını tutmuyor,
+ürün listesinin eski anahtarını (`['ecommerce']['view_products']`)
+okuyordu; #331'den beri ürün listesi bu anahtarı yalnız bu ekran için
+yazıyordu. Hepsi tek sütunluk ORDER BY (bağlantı seçicide tek dizili
+`array_multisort()`) üretiyordu.
+
+Sıralama yönü altı ekranda da `sql_order_direction()`'dan ya da sabit
+`asc`/`desc`'ten geçiyor, sütun `switch`'ten seçiliyordu. Sandbox'ta eski
+kodla `?order=asc, (SELECT SLEEP(0.3))` ve `sort` içine konan `SLEEP` hiçbir
+ekranda koşmadı (sonraki açılış dahil); bu grupta 2026.4.9'da açık yok,
+`[GÜVENLİK]` satırı yazılmadı.
+
+**Ne değişti.** Her listenin sıralanabilen sütunları kodla tanımlandı:
+Dosyalar `name`, `type`, `size`, `optimized`, `folder`, `description`,
+`last_modified`; Gönderilen Formlar `custom_form`, `reference_code`,
+`status`, `contact`, `user`, `submitted`, `last_modified` (Kişi eskisi gibi
+soyadı, sonra ad: iki ORDER BY düzeyi, ikisi de seçilen yönde); Reklam
+Bölgeleri `name`, `display_type`, `created`, `last_modified`; Giriş
+Bölgeleri `name`, `not_logged_in_header`, `login_form`,
+`not_logged_in_footer`, `logged_in_header`, `logged_in_footer`, `created`,
+`last_modified`; Dinamik Bölgeler `name`, `code`, `last_modified`;
+Tasarımcı ve Ortak Bölgeler `name`, `content`, `last_modified`; Site
+Günlüğü `time`, `user`, `description`, `ip_address`; ürün çoğaltma her
+filtrede ekrandaki başlıklar (ürün listesinin kodlarıyla: `id`,
+`short_description`, `price`, …, stokta olmayanlarda `out_of_stock_date`);
+bağlantı seçici sayfalarda `url`, `folder`, `page_type`, `last_modified`,
+dosyalarda `url`, `folder`, `size`, `last_modified`, kısa linklerde `url`,
+`destination_url`, `folder`, `last_modified`. Varsayılanlar eskisi gibi:
+Site Günlüğü'nde zaman azalan, stokta olmayan ürünlerde stoktan çıkış
+tarihi azalan, kalanlarda son değişiklik azalan.
+
+Sıra `pg_list_state('<liste>', …)` ile okunur; beş bölge listesi, bağlantı
+seçicinin üç sekmesi ayrı anahtar kullanır (`view_regions_all_ad_regions`,
+`editor_select_page_or_file_page` gibi), ürün çoğaltma tek anahtarla her
+filtrenin kendi sütunlarını kabul eder. ORDER BY `pg_list_order_by()` ile
+yalnız ekranın kod → SQL eşlemesinden yazılır (SQL ifadeleri eskisiyle
+aynı). Site Günlüğü'nde eşit satırlar eskisi gibi `log_id` ile ilk düzeyin
+yönünde ayrılır. Hata günlükleri gösterilirken (`error_log` kayıtları
+veritabanında olmadığı için liste PHP'de birleştirilir) `usort()` artık
+seçilen düzeyleri sırayla uygular: zaman sayı olarak, metin veritabanı gibi
+büyük/küçük harf ayırmadan (`strcasecmp()`), eşitlikte `log_id` doğal sırayla
+(`strnatcmp()`; eskisi `strcmp()` ile 10'u 9'dan önce koyuyordu). Bağlantı
+seçici öğeleri PHP'de topladığı için düzeyler `array_multisort()`'a sırayla
+verilir; her düzeyde eşit kalan öğeler eskisi gibi öğenin diğer
+değerleriyle ayrılır. Başlıklar `get_column_heading()`'e düzey listesi
+verir; Shift+tık ve düzey numarası ürünlerdeki gibi çalışır.
+`pg_list_sort_menu()` araç çubuğunun sağına (`pg-toolbar-grow` boşluğuyla)
+eklendi: Dosyalar'da arama formunun önüne, bölgelerde ekleme düğmesinin
+yanına, Site Günlüğü'nde hata günlüğü düğmelerinin yanına, bağlantı
+seçicide sekme düğmelerinin yanına; araç çubuğu olmayan ürün çoğaltmaya
+yalnız menüyü taşıyan bir `#button_bar` eklendi. Menü ve başlık
+bağlantıları ekranın parametrelerini taşır (Dosyalar ve bölgelerde
+`filter`, Site Günlüğü'nde tarih aralığı, bağlantı seçicide
+`CKEditorFuncNum`). Gönderilen Formlar'daki oturumdaki yönü süzen blok ve
+ürün listesindeki eski anahtarı yazan köprü (`view_products.php`)
+kaldırıldı; köprüyü okuyan başka bir şey yoktu. Ortak yardımcıya,
+`backend.src.js`'e ve `tr.json`'a dokunulmadı; kullanılan metinler zaten
+vardı.
+
+Aynı akışta giderilen eski hatalar:
+
+- Gönderilen Formlar'da `switch` İngilizce başlıkla (`'Custom Form'`,
+  `'Contact'` …) karşılaştırıyor, başlık bağlantısı ise `lang()` ile
+  çevrilmiş adı gönderiyordu; Türkçe panelde hiçbir başlık listeyi
+  sıralamıyor, liste hep son değişiklik azalan kalıyordu.
+- Site Günlüğü'nde "Hata Günlüklerini Göster" açıkken birleştirilmiş liste
+  seçilen sütunu yok sayıp hep zamana göre sıralanıyordu. Türü başlığı
+  sıralama bağlantısı gibi görünüyor ama sıralamıyordu; artık düz başlık.
+- Bağlantı seçicinin Dosyalar ve Kısa Linkler sekmeleri erişim türü
+  süzülmediğinde her satır için tanımsız `access_control_type` uyarısı
+  yazıyordu; ürün çoğaltma her açılışta tanımsız `$_GET['filter']`
+  uyarısı yazıyordu. İkisi de düzeldi.
+
+Davranış farkları: sıra panel dili değişince kaybolmuyor. Eski
+`sort=<başlık>&order=desc` bağlantıları `pg_list_sort_parse()` ile tek
+düzey olarak okunur. Site Günlüğü'nün sırası artık oturumda kalıyor; tarih
+aralığı düğmeleri ve gelişmiş filtre sırayı adreste taşımıyor. Bağlantı
+seçicide her sekmenin kendi sırası var (eskiden Dosyalar'da Boyut seçmek
+Sayfalar'a geçince sırayı varsayılana sıfırlıyordu). Ürün çoğaltma ürün
+listesinin sırasını devralmıyor, kendi sırasını tutuyor. Yönsüz seçilen
+yeni bir sütun artan başlar, varsayılan sütun azalan (diğer listelerle
+aynı). Eski oturum anahtarları (`['files']`,
+`['forms']['view_submitted_forms']['sort'/'order']`,
+`['design']['view_regions'][<filtre>]`,
+`['ecommerce']['view_products']`,
+`['editor_select_page_or_file']['sort'/'order']`) artık okunmuyor; ilk
+açılışta liste varsayılanla başlar. Sütunlar, filtreler, düğmeler, satır
+eylemleri, dışa aktarımlar, tarayıcıdaki arama ve sayfa başına kayıt seçimi
+değişmedi. Şema değişikliği yok.
+
+**Doğrulandı (sandbox, MariaDB, Chromium; 211 dosya, gönderilmiş formlar,
+beş bölge türü, 41 günlük kaydı + örnek `error_log`, 27 ürün, 181 sayfa,
+120 dosya, 6 kısa link).** Eski ve yeni kod yan yana koştu. SQL ile
+sıralanan dokuz listede (Dosyalar, Gönderilen Formlar, beş bölge, Site
+Günlüğü, ürün çoğaltmanın Tüm Ürünler ve Ürün Hareketleri görünümleri) her
+sütun iki yönde eskisiyle aynı satırları aynı sıralama değerleri dizisiyle
+verdi ve aynı ORDER BY'lı SQL'le örtüştü; sütunların her ikili birleşimi
+(ilk azalan, ikinci artan) SQL'in dizisini verdi ve parametresiz yeniden
+açılışta korundu; bozuk değer varsayılana düştü (1162 denetim, hepsi geçti). Bağlantı
+seçicinin üç sekmesinde her sütun iki yönde eskisiyle satır satır aynı
+sırayı verdi; ikili birleşimler iki yön karışımıyla PHP'nin karşılaştırma
+kurallarına göre sıralı geldi, sayfa aynı sırayı gösterdi ve yeniden
+açılışta korudu (246 denetim). Site Günlüğü'nde hata günlükleri açıkken
+her tek sütun ve her ikili birleşim birleştirilmiş listede sıralı geldi,
+`error_log` kayıtları listedeydi (81 denetim). Yeni kodla `order`/`sort`
+içine konan `SLEEP` hiç koşmadı, sonraki açılış da beklemedi. Eski kodla
+Türkçe panelde Gönderilen Formlar Türkçe başlıkla sıralanmadı, yenisiyle
+sıralandı. Tarayıcıda 1400 pikselde başlığa tık tek sütuna, Shift+tık
+ikinci düzeye çevirdi, menü rozeti 2 gösterdi; 390 pikselde altı ekranda
+yatay kaydırma yok, sayfa hatası yok. Sunucu günlüğünde değişiklikten
+sonra bu dosyalardan yeni uyarı yok; ürün çoğaltmanın satır başına yazdığı
+tanımsız anahtar ve değişken uyarıları (`required_product_name`,
+`$filter_specific_columns` …) eski kodda da aynı, bu PR'ın kapsamı dışında
+kaldı. Doğrulanamadı: dev.pinegrap.com'daki gerçek kayıtlar ve gerçek bir
+telefonda dokunuş.
+
+---
+
 ## 2026.4.10 — Uzak ajan: arka planda süren iş (MCP görevleri) ve isteği durdurma (10.110) (2026-10-14)
 
 **Neden.** Uzak ajanın ikinci dilimi (`docs/_plan_tersine_oauth.md` → "4.6 Uzak

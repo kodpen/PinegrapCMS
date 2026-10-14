@@ -31,24 +31,9 @@ $filter_for_links = '&filter=' . $filter;
 $output_filter_for_links = h($filter_for_links);
 $output_table_headers = '';
 $output_table_contents = '';
+$output_sort_menu = '';
 switch ($filter) {
     case 'all_ad_regions':
-        
-        // if sort was set, update session
-        if (isset($_REQUEST['sort'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] = $_REQUEST['sort'];
-
-            // clear order
-            $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] = '';
-        }
-        
-        // if order was set, update session
-        if (isset($_REQUEST['order'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
-        }
-        
         
         // Set the heading and subheading.
         $heading = lang('All Ad Regions');
@@ -57,41 +42,31 @@ switch ($filter) {
         // Add the create button to the button bar.
         $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_ad_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
-        // Set the sort option
-        // if the sort is not set yet (first visit to this screen), then default it to empty so the
-        // switch below falls through to its default case
-        if (isset($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort']) == false) {
-            $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] = '';
-        }
+        // The columns this list sorts by, in the order the table shows them.
+        // pg_list_state() keeps the choice in the session as a code, so it survives
+        // a language change, and falls back to the default for anything else.
+        $sort_columns = array(
+            'name'          => lang('Name'),
+            'display_type'  => lang('Display Type'),
+            'created'       => lang('Created'),
+            'last_modified' => lang('Last Modified'),
+        );
 
-        switch (($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? '')) {
-            case lang('Name'):
-                $sort_column = 'name';
-                break;
-            case lang('Display Type'):
-                $sort_column = 'display_type';
-                break;
-            case lang('Created'):
-                $sort_column = 'created_timestamp';
-                break;
-            case lang('Last Modified'):
-                $sort_column = 'last_modified_timestamp';
-                break;
-            default:
-                $sort_column = 'last_modified_timestamp';
-                $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] = lang('Last Modified');
-        }
-        
-        if (!empty($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'])) {
-            $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? '');
-        } elseif ($sort_column == 'last_modified_timestamp') {
-            $asc_desc = 'desc';
-            $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] = 'desc';
-        } else {
-            $asc_desc = 'asc';
-            $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] = 'asc';
-        }
-        
+        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+        $list_state = pg_list_state('view_regions_all_ad_regions', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
+        $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
+
+        // What each sort code orders by. Only codes pg_list_state() let through
+        // reach pg_list_order_by(), and it writes nothing but these.
+        $order_by = pg_list_order_by($sort_levels, array(
+            'name'          => 'name',
+            'display_type'  => 'display_type',
+            'created'       => 'created_timestamp',
+            'last_modified' => 'last_modified_timestamp',
+        ));
+
         // get total number of ad regions
         $query = "SELECT COUNT(id) FROM ad_regions";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -102,14 +77,14 @@ switch ($filter) {
         $output_table_headers .= '
             <tr>
                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Display Type'), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
+                <th>' . get_column_heading(lang('Display Type'), $sort_levels, '', $output_filter_for_links, 'display_type') . '</th>
                 <th>' . lang('Duration') . '</th>
                 <th class="text-center">' . lang('Autoplay') . '</th>
                 <th>' . lang('Interval') . '</th>
                 <th class="text-center">' . lang('Continuous') . '</th>
-                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Created'), $sort_levels, '', $output_filter_for_links, 'created') . '</th>
+                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
             </tr>';
 
       
@@ -129,7 +104,7 @@ switch ($filter) {
             FROM ad_regions
             LEFT JOIN user as created_user ON ad_regions.created_user_id = created_user.user_id
             LEFT JOIN user as last_modified_user ON ad_regions.last_modified_user_id = last_modified_user.user_id
-            ORDER BY " . $sort_column . " " . $asc_desc;
+            ORDER BY " . $order_by;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         
         while ($row = mysqli_fetch_array($result)){
@@ -216,25 +191,6 @@ switch ($filter) {
         
     case 'all_login_regions':
         
-        // if sort was set, update session
-        if (isset($_REQUEST['sort'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] = $_REQUEST['sort'];
-
-            // clear order
-            $_SESSION['software']['design']['view_regions']['all_login_regions']['order'] = '';
-        }
-        
-        // if order was set, update session
-        if (isset($_REQUEST['order'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_login_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
-        }
-        
-        
-
-        
-        
         // Set the heading and subheading.
         $heading = lang('All Login Regions');
         $subheading = lang('All login regions that add the login process to any page.');
@@ -242,53 +198,39 @@ switch ($filter) {
         // Add the create button to the button bar.
         $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_login_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
-        // Set the sort option
-        // if the sort is not set yet (first visit to this screen), then default it to empty so the
-        // switch below falls through to its default case
-        if (isset($_SESSION['software']['design']['view_regions']['all_login_regions']['sort']) == false) {
-            $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] = '';
-        }
+        // The columns this list sorts by, in the order the table shows them.
+        // pg_list_state() keeps the choice in the session as a code, so it survives
+        // a language change, and falls back to the default for anything else.
+        $sort_columns = array(
+            'name'                 => lang('Name'),
+            'not_logged_in_header' => lang('Not Logged In Header'),
+            'login_form'           => lang('Show Login Form'),
+            'not_logged_in_footer' => lang('Not Logged In Footer'),
+            'logged_in_header'     => lang('Logged In Header'),
+            'logged_in_footer'     => lang('Logged In Footer'),
+            'created'              => lang('Created'),
+            'last_modified'        => lang('Last Modified'),
+        );
 
-        switch (($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? '')) {
-            case lang('Name'):
-                $sort_column = 'name';
-                break;
-            case lang('Not Logged In Header'):
-                $sort_column = 'not_logged_in_header';
-                break;
-            case lang('Show Login Form'):
-                $sort_column = 'login_form';
-                break;
-            case lang('Not Logged In Footer'):
-                $sort_column = 'not_logged_in_footer';
-                break;
-            case lang('Logged In Header'):
-                $sort_column = 'logged_in_header';
-                break;
-            case lang('Logged In Footer'):
-                $sort_column = 'logged_in_footer';
-                break;
-            case lang('Created'):
-                $sort_column = 'created_timestamp';
-                break;
-            case lang('Last Modified'):
-                $sort_column = 'last_modified_timestamp';
-                break;
-            default:
-                $sort_column = 'last_modified_timestamp';
-                $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] = lang('Last Modified');
-        }
-        
-        if (!empty($_SESSION['software']['design']['view_regions']['all_login_regions']['order'])) {
-            $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? '');
-        } elseif ($sort_column == 'last_modified_timestamp') {
-            $asc_desc = 'desc';
-            $_SESSION['software']['design']['view_regions']['all_login_regions']['order'] = 'desc';
-        } else {
-            $asc_desc = 'asc';
-            $_SESSION['software']['design']['view_regions']['all_login_regions']['order'] = 'asc';
-        }
-        
+        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+        $list_state = pg_list_state('view_regions_all_login_regions', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
+        $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
+
+        // What each sort code orders by. Only codes pg_list_state() let through
+        // reach pg_list_order_by(), and it writes nothing but these.
+        $order_by = pg_list_order_by($sort_levels, array(
+            'name'                 => 'name',
+            'not_logged_in_header' => 'not_logged_in_header',
+            'login_form'           => 'login_form',
+            'not_logged_in_footer' => 'not_logged_in_footer',
+            'logged_in_header'     => 'logged_in_header',
+            'logged_in_footer'     => 'logged_in_footer',
+            'created'              => 'created_timestamp',
+            'last_modified'        => 'last_modified_timestamp',
+        ));
+
         // get total number of login regions
         $query = "SELECT COUNT(id) FROM login_regions";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -299,14 +241,14 @@ switch ($filter) {
         $output_table_headers = '            
             <tr>
                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Not Logged In Header'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th class="text-center text-nowrap">' . get_column_heading(lang('Show Login Form'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Not Logged In Footer'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Logged In Header'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Logged In Footer'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
+                <th>' . get_column_heading(lang('Not Logged In Header'), $sort_levels, '', $output_filter_for_links, 'not_logged_in_header') . '</th>
+                <th class="text-center text-nowrap">' . get_column_heading(lang('Show Login Form'), $sort_levels, '', $output_filter_for_links, 'login_form') . '</th>
+                <th>' . get_column_heading(lang('Not Logged In Footer'), $sort_levels, '', $output_filter_for_links, 'not_logged_in_footer') . '</th>
+                <th>' . get_column_heading(lang('Logged In Header'), $sort_levels, '', $output_filter_for_links, 'logged_in_header') . '</th>
+                <th>' . get_column_heading(lang('Logged In Footer'), $sort_levels, '', $output_filter_for_links, 'logged_in_footer') . '</th>
+                <th>' . get_column_heading(lang('Created'), $sort_levels, '', $output_filter_for_links, 'created') . '</th>
+                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
             </tr>
             ';
 
@@ -327,7 +269,7 @@ switch ($filter) {
             FROM login_regions
             LEFT JOIN user as created_user ON login_regions.created_user_id = created_user.user_id
             LEFT JOIN user as last_modified_user ON login_regions.last_modified_user_id = last_modified_user.user_id
-            ORDER BY " . $sort_column . " " . $asc_desc;
+            ORDER BY " . $order_by;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         
         while ($row = mysqli_fetch_array($result)){
@@ -408,25 +350,6 @@ switch ($filter) {
         break;
     case 'all_dynamic_regions':
         
-        // if sort was set, update session
-        if (isset($_REQUEST['sort'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] = $_REQUEST['sort'];
-
-            // clear order
-            $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] = '';
-        }
-        
-        // if order was set, update session
-        if (isset($_REQUEST['order'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
-        }
-        
-        
-
-     
-        
         // Set the heading and subheading.
         $heading = lang('All Dynamic Regions');
         $subheading = lang('All dynamic regions that contain PHP code and can be added to any page style.');
@@ -437,38 +360,29 @@ switch ($filter) {
         // output dynamic regions
         // if user's role is above a designer role then output dynamic region area
         if ($user['role'] < 1) {
-            // Set the sort option
-            // if the sort is not set yet (first visit to this screen), then default it to empty so the
-            // switch below falls through to its default case
-            if (isset($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort']) == false) {
-                $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] = '';
-            }
+            // The columns this list sorts by, in the order the table shows them.
+            // pg_list_state() keeps the choice in the session as a code, so it survives
+            // a language change, and falls back to the default for anything else.
+            $sort_columns = array(
+                'name'          => lang('Name'),
+                'code'          => lang('Code Preview'),
+                'last_modified' => lang('Last Modified'),
+            );
 
-            switch (($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] ?? '')) {
-                case lang('Name'):
-                    $sort_column = 'dregion_name';
-                    break;
-                case lang('Code Preview'):
-                    $sort_column = 'dregion_code';
-                    break;
-                case lang('Last Modified'):
-                    $sort_column = 'dregion_timestamp';
-                    break;
-                default:
-                    $sort_column = 'dregion_timestamp';
-                    $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] = lang('Last Modified');
-            }
-            
-            if (!empty($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'])) {
-                $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? '');
-            } elseif ($sort_column == 'dregion_timestamp') {
-                $asc_desc = 'desc';
-                $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] = 'desc';
-            } else {
-                $asc_desc = 'asc';
-                $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] = 'asc';
-            }
-            
+            $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+            $list_state = pg_list_state('view_regions_all_dynamic_regions', $sort_columns, $sort_default);
+            $sort_levels = $list_state['sorts'];
+            $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
+
+            // What each sort code orders by. Only codes pg_list_state() let through
+            // reach pg_list_order_by(), and it writes nothing but these.
+            $order_by = pg_list_order_by($sort_levels, array(
+                'name'          => 'dregion_name',
+                'code'          => 'dregion_code',
+                'last_modified' => 'dregion_timestamp',
+            ));
+
             // get total number of dynamic regions
             $query = "SELECT COUNT(dregion_id) FROM dregion";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -479,9 +393,9 @@ switch ($filter) {
             $output_table_headers .= '
             <tr>
                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Code Preview'), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
+                <th>' . get_column_heading(lang('Code Preview'), $sort_levels, '', $output_filter_for_links, 'code') . '</th>
+                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
             </tr>
             ';
             
@@ -496,7 +410,7 @@ switch ($filter) {
                     last_modified_user.user_username as user_username
                 FROM dregion
                 LEFT JOIN user as last_modified_user ON dregion.dregion_user = last_modified_user.user_id
-                ORDER BY $sort_column $asc_desc";
+                ORDER BY $order_by";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
             
             while ($row = mysqli_fetch_array($result)){
@@ -533,24 +447,6 @@ switch ($filter) {
 
     case 'all_designer_regions':
         
-        // if sort was set, update session
-        if (isset($_REQUEST['sort'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] = $_REQUEST['sort'];
-
-            // clear order
-            $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] = '';
-        }
-        
-        // if order was set, update session
-        if (isset($_REQUEST['order'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
-        }
-        
-       
-       
-        
         // Set the heading and subheading.
         $heading = lang('All Designer Regions');
         $subheading =lang('All designer regions of shared content that can be added to any page style and updated during page editing by any Site Designer.');
@@ -558,38 +454,29 @@ switch ($filter) {
         // Add the create button to the button bar.
         $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_designer_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
-        // Set the sort option
-        // if the sort is not set yet (first visit to this screen), then default it to empty so the
-        // switch below falls through to its default case
-        if (isset($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort']) == false) {
-            $_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] = '';
-        }
+        // The columns this list sorts by, in the order the table shows them.
+        // pg_list_state() keeps the choice in the session as a code, so it survives
+        // a language change, and falls back to the default for anything else.
+        $sort_columns = array(
+            'name'          => lang('Name'),
+            'content'       => lang('Content Preview'),
+            'last_modified' => lang('Last Modified'),
+        );
 
-        switch (($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] ?? '')) {
-            case lang('Name'):
-                $sort_column = 'cregion_name';
-                break;
-            case lang('Content Preview'):
-                $sort_column = 'cregion_content';
-                break;
-            case lang('Last Modified'):
-                $sort_column = 'cregion_timestamp';
-                break;
-            default:
-                $sort_column = 'cregion_timestamp';
-                $_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] = lang('Last Modified');
-        }
+        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-        if (!empty($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'])) {
-            $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? '');
-        } elseif ($sort_column == 'cregion_timestamp') {
-            $asc_desc = 'desc';
-            $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] = 'desc';
-        } else {
-            $asc_desc = 'asc';
-            $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] = 'asc';
-        }
-        
+        $list_state = pg_list_state('view_regions_all_designer_regions', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
+        $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
+
+        // What each sort code orders by. Only codes pg_list_state() let through
+        // reach pg_list_order_by(), and it writes nothing but these.
+        $order_by = pg_list_order_by($sort_levels, array(
+            'name'          => 'cregion_name',
+            'content'       => 'cregion_content',
+            'last_modified' => 'cregion_timestamp',
+        ));
+
         // Get total number of designer regions.
         $query = "SELECT COUNT(cregion_id) FROM cregion WHERE cregion_designer_type = 'yes'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -600,9 +487,9 @@ switch ($filter) {
         $output_table_headers = '
         <tr>
             <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-            <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Content Preview'), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
+            <th>' . get_column_heading(lang('Content Preview'), $sort_levels, '', $output_filter_for_links, 'content') . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
         </tr>';
         
        
@@ -619,7 +506,7 @@ switch ($filter) {
             FROM cregion
             LEFT JOIN user as last_modified_user ON cregion.cregion_user = last_modified_user.user_id
             WHERE cregion_designer_type = 'yes'
-            ORDER BY $sort_column $asc_desc";
+            ORDER BY $order_by";
 
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
@@ -654,25 +541,6 @@ switch ($filter) {
     case 'all_common_regions':
     default:
         
-        // if sort was set, update session
-        if (isset($_REQUEST['sort'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] = $_REQUEST['sort'];
-
-            // clear order
-            $_SESSION['software']['design']['view_regions']['all_common_regions']['order'] = '';
-        }
-        
-        // if order was set, update session
-        if (isset($_REQUEST['order'])) {
-            // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_common_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
-        }
-        
-       
-
-       
-        
         // Set the heading and subheading.
         $heading = lang('All Common Regions');
         $subheading =lang('All common regions of shared content that can be added to any page style and updated during page editing by any site manager.');
@@ -680,38 +548,29 @@ switch ($filter) {
         // Add the create button to the button bar.
         $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_common_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
-        // Set the sort option
-        // if the sort is not set yet (first visit to this screen), then default it to empty so the
-        // switch below falls through to its default case
-        if (isset($_SESSION['software']['design']['view_regions']['all_common_regions']['sort']) == false) {
-            $_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] = '';
-        }
+        // The columns this list sorts by, in the order the table shows them.
+        // pg_list_state() keeps the choice in the session as a code, so it survives
+        // a language change, and falls back to the default for anything else.
+        $sort_columns = array(
+            'name'          => lang('Name'),
+            'content'       => lang('Content Preview'),
+            'last_modified' => lang('Last Modified'),
+        );
 
-        switch (($_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] ?? '')) {
-            case lang('Name'):
-                $sort_column = 'cregion_name';
-                break;
-            case lang('Content Preview'):
-                $sort_column = 'cregion_content';
-                break;
-            case lang('Last Modified'):
-                $sort_column = 'cregion_timestamp';
-                break;
-            default:
-                $sort_column = 'cregion_timestamp';
-                $_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] = lang('Last Modified');
-        }
+        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-        if (!empty($_SESSION['software']['design']['view_regions']['all_common_regions']['order'])) {
-            $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? '');
-        } elseif ($sort_column == 'cregion_timestamp') {
-            $asc_desc = 'desc';
-            $_SESSION['software']['design']['view_regions']['all_common_regions']['order'] = 'desc';
-        } else {
-            $asc_desc = 'asc';
-            $_SESSION['software']['design']['view_regions']['all_common_regions']['order'] = 'asc';
-        }
-        
+        $list_state = pg_list_state('view_regions_all_common_regions', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
+        $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
+
+        // What each sort code orders by. Only codes pg_list_state() let through
+        // reach pg_list_order_by(), and it writes nothing but these.
+        $order_by = pg_list_order_by($sort_levels, array(
+            'name'          => 'cregion_name',
+            'content'       => 'cregion_content',
+            'last_modified' => 'cregion_timestamp',
+        ));
+
         // Get total number of common regions.
         $query = "SELECT COUNT(cregion_id) FROM cregion WHERE cregion_designer_type = 'no'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -722,9 +581,9 @@ switch ($filter) {
         $output_table_headers = '
         <tr>
             <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-            <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Content Preview'), ($_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
+            <th>' . get_column_heading(lang('Content Preview'), $sort_levels, '', $output_filter_for_links, 'content') . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
         </tr>';
         
         
@@ -741,7 +600,7 @@ switch ($filter) {
             FROM cregion
             LEFT JOIN user as last_modified_user ON cregion.cregion_user = last_modified_user.user_id
             WHERE cregion_designer_type = 'no'
-            ORDER BY $sort_column $asc_desc";
+            ORDER BY $order_by";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
         while ($row = mysqli_fetch_array($result)){
@@ -793,6 +652,8 @@ echo
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             ' . $button_bar_button . '
+                            <div class="pg-toolbar-grow"></div>
+                            ' . $output_sort_menu . '
                         </nav>
                     </div>
                 </div>

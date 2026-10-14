@@ -621,6 +621,37 @@
          ekleyebiliyordu. Artık yalnız listenin sütunları
          ve artan/azalan kabul ediliyor.
 
+  DOSYA, FORM, BÖLGE, SİTE GÜNLÜĞÜ VE BAĞLANTI SEÇİCİ
+  LİSTELERİ
+  --------------------------------------------------------
+
+  [YENİ] Tüm Dosyalarım, Gönderilen Formlar, Tüm Reklam,
+         Giriş, Dinamik, Tasarımcı ve Ortak Bölgeler, Site
+         Günlüğü, ürünleri toplu çoğaltma ekranı ve sayfa
+         editöründeki bağlantı seçicisi (Öğelere Gözat:
+         Sayfalar, Dosyalar, Kısa Linkler) de aynı anda
+         birden çok sütuna göre sıralanıyor, örneğin klasör
+         artan, aynı klasörde boyut azalan. Başlığa Shift
+         ile tıklamak sonraki düzeyi ekliyor; telefonda ya
+         da klavyeyle araç çubuğundaki "Sıralama" menüsü
+         kullanılıyor. Seçilen sıralama panel dili
+         değişince kaybolmuyor; Site Günlüğü'nde tarih
+         aralığı değişince de korunuyor.
+
+  [DÜZELTME] Türkçe panelde Gönderilen Formlar listesinde
+         sütun başlığına tıklamak listeyi sıralamıyordu,
+         hep son düzenlemeye göre kalıyordu; artık
+         sıralıyor.
+
+  [DÜZELTME] Site Günlüğü'nde "Hata Günlüklerini Göster"
+         açıkken liste seçilen sütunu yok sayıp hep zamana
+         göre sıralanıyordu; artık seçilen sıralamayı
+         izliyor.
+
+  [DÜZELTME] Editörün bağlantı seçicisinde Dosyalar ve
+         Kısa Linkler sekmeleri hata günlüğüne her satır
+         için bir uyarı yazıyordu; artık yazmıyor.
+
   E-TİCARET: AYARLAR
   --------------------------------------------------------
 
