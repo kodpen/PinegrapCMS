@@ -156,7 +156,9 @@ yüklemesinin `Idempotency-Key` parmak izi dosyanın SHA-256'sını kapsıyor.
 değil `notify`, kanal nesnesindeki yeni alanla aynı; dördü de bildirim düzeyi dahil yalnız cihaz
 oturumundan (OAuth kabul), `dry_run` alır, MCP aracı değil. Panelin ayrılma mantığı
 `ws_thread_leave()`, oy denetimleri `ws_poll_vote_check()` olarak ortak fonksiyona alındı.
-Oylama açma, değiştirme ve kapatma API'de yok.
+Oylama açma, değiştirme ve kapatma #386 ile eklendi (`POST /workspace/channels/{id}/polls`,
+`POST|PATCH /workspace/polls/{id}`, `POST /workspace/polls/{id}/close`); açma ve değiştirme
+yalnız ekip cihazları oturumundan, OAuth ile olanı karar 11'i bekliyor.
 `POST /workspace/channels/{id}/notify` {notify}, `POST /workspace/polls/{id}/vote` {option_ids}
 (mesajda anket bilgisi `poll` olarak döner), `POST /workspace/threads/{id}/join|leave`.
 Oy ve katılma yalnız cihaz oturumundan.

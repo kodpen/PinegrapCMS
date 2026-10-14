@@ -1613,6 +1613,17 @@
          bir tablo oluşturulur.
 
   [YENİ] Çalışma Alanı: ekip cihazlarıyla oturum açan
+         kişi telefonundan kanalda oylama açabiliyor, oy
+         gelmeden sorusunu ve seçeneklerini
+         düzeltebiliyor, oy geldikten sonra yeni seçenek
+         ekleyebiliyor ve oylamayı kapatabiliyor; sonuç
+         panelde olduğu gibi kanala karar olarak
+         yazılıyor. Uygulama önce deneme isteğiyle ne
+         olacağını görebiliyor. Uygulama anahtarıyla
+         bağlanan entegrasyonlar bunları kişi adına
+         yapamaz.
+
+  [YENİ] Çalışma Alanı: ekip cihazlarıyla oturum açan
          kişi telefonundan bir mesajı kanalın en üstüne
          sabitleyebiliyor, sabitlemeyi kaldırabiliyor ve
          sabitlenmiş mesajı kendisi için kapatabiliyor;

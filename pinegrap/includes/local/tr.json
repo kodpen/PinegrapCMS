@@ -23180,5 +23180,12 @@
     "Only the person, signed in on a device, can pin or order their channels; an application cannot do it for them.": "Kanallarını yalnız cihazında oturum açmış kişinin kendisi sabitleyebilir ya da sıralayabilir; bir uygulama onun adına yapamaz.",
     "Send pinned, order or both.": "pinned, order ya da ikisini birden gönderin.",
     "A discussion is not in the channel list, so it cannot be pinned or put in order.": "Tartışma kanal listesinde yer almaz; sabitlenemez ve sıraya konamaz.",
-    "Only the people in a channel pin it or put it in order.": "Bir kanalı yalnız üyeleri sabitler ya da sıraya koyar."
+    "Only the people in a channel pin it or put it in order.": "Bir kanalı yalnız üyeleri sabitler ya da sıraya koyar.",
+    "Only the person, signed in on a device, can ask a poll; an application cannot ask it in their name.": "Oylamayı yalnız cihazında oturum açmış kişinin kendisi açabilir; bir uygulama onun adına açamaz.",
+    "Only the person, signed in on a device, can change their poll; an application cannot change it for them.": "Oylamasını yalnız cihazında oturum açmış kişinin kendisi değiştirebilir; bir uygulama onun adına değiştiremez.",
+    "Only the person, signed in on a device, can close a poll; an application cannot close it for them.": "Oylamayı yalnız cihazında oturum açmış kişinin kendisi kapatabilir; bir uygulama onun adına kapatamaz.",
+    "Each item of {var:1} must be a text.": "{var:1} içindeki her öğe bir metin olmalı.",
+    "Each item of {var:1} needs a label.": "{var:1} içindeki her öğenin bir label alanı olmalı.",
+    "Each id in {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her id oylamanın seçeneklerinden birinin kimliği olmalı.",
+    "Send at least one of question, options, multiple, anonymous or closes_at.": "question, options, multiple, anonymous ya da closes_at alanlarından en az birini gönderin."
 }

@@ -510,6 +510,7 @@ function test_ws_api_poll_present()
 	));
 
 	pg_assert_same(7, $present['id']);
+	pg_assert_false($present['can_edit'] || $present['can_close'], 'what the person may do is false unless the screen says so');
 	pg_assert_same(null, $present['closes_at'], 'open until closed');
 	pg_assert_same(null, $present['result_message_id']);
 	pg_assert_same(array(31, 32), array_column($present['options'], 'id'));
@@ -673,4 +674,71 @@ function test_ws_api_channel_present_prefs()
 	pg_assert_false($present['pinned']);
 	pg_assert_same(null, $present['order']);
 	pg_assert_same(array_keys(ws_api_channel_schema()), array_keys($present), 'the answer has the declared fields in order');
+}
+
+// Asking, changing and closing a poll: writes that rehearse, offered to no
+// MCP client. The change answers PATCH beside POST, and its path takes no
+// method the vote or the closing answers.
+function test_ws_api_poll_create_update_close_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expect = array(
+		'workspace.polls.create' => '/workspace/channels/{id}/polls',
+		'workspace.polls.update' => '/workspace/polls/{id}',
+		'workspace.polls.close'  => '/workspace/polls/{id}/close',
+	);
+
+	foreach ($expect as $id => $path) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+		pg_assert_same('POST', $routes[$id]['method'], $id . ' is a POST');
+		pg_assert_same($path, $routes[$id]['path'], $id . ' path');
+		pg_assert_same('workspace:write', $routes[$id]['scope'], $id . ' scope');
+		pg_assert_same('WorkspaceMessage', $routes[$id]['returns'], $id . ' answers with the poll\'s message');
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+	}
+
+	pg_assert_same(array('PATCH'), $routes['workspace.polls.update']['also_accepts'], 'a change also answers PATCH');
+
+	$params = array();
+
+	foreach ($routes['workspace.polls.update']['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_false(!empty($params['question']['required']) || !empty($params['options']['required']), 'a change sends only what changes');
+	pg_assert_true(!empty($params['closes_at']['nullable']), 'null leaves the poll open until it is closed');
+}
+
+// The checks a poll is asked with, without a database: what a dry run meets
+// before anything is written.
+function test_ws_poll_input()
+{
+	$ok = ws_poll_input(array('question' => '  Which day?  ', 'options' => array('Tuesday', ' Wednesday ', 'Tuesday', ''), 'closes_at' => 0));
+
+	pg_assert_true($ok['ok'], 'a question with two different options');
+	pg_assert_same('Which day?', $ok['question']);
+	pg_assert_same(array('Tuesday', 'Wednesday'), $ok['options'], 'blank and repeated options are left out');
+	pg_assert_same(0, $ok['closes_at'], 'open until closed');
+
+	$refused = array(
+		'question'  => array('question' => '', 'options' => array('A', 'B')),
+		'options'   => array('question' => 'Q', 'options' => array('A', 'A')),
+		'closes_at' => array('question' => 'Q', 'options' => array('A', 'B'), 'closes_at' => time() + 30),
+	);
+
+	foreach ($refused as $field => $data) {
+		$result = ws_poll_input($data);
+		pg_assert_false($result['ok'], $field . ' is refused');
+		pg_assert_same($field, $result['field'], $field . ' is named');
+	}
+
+	pg_assert_false(ws_poll_input(array('question' => 'Q', 'options' => range(1, 11)))['ok'], 'eleven options are too many');
+	pg_assert_same('question', ws_poll_input(array('question' => str_repeat('a', WS_MESSAGE_MAX + 1), 'options' => array('A', 'B')))['field'], 'a question longer than a message');
+	pg_assert_true(ws_poll_input(array('question' => 'Q', 'options' => array('A', 'B'), 'closes_at' => time() + 3600))['ok'], 'closing in an hour');
 }

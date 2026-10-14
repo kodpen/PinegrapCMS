@@ -84,6 +84,93 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: oylama açma, değiştirme ve kapatma (2026-10-14)
+
+**Neden.** #381 (M6, aşağıda) ekip cihazları uygulamasına oylamada oy
+vermeyi (`POST /workspace/polls/{id}/vote`) ve mesaj nesnesinde `poll`'u
+verdi, ama oylamayı açmak, değiştirmek ve kapatmak yalnız panelde kaldı
+(`ws_poll_create`, `ws_poll_edit`, `ws_poll_close` eylemleri ve `/poll`
+komutu). Telefondaki kişi oylamasını açamıyor, oy gelmeden düzeltemiyor,
+sonucu kanala yazdıramıyordu.
+
+**Ne değişti.**
+- `POST /workspace/channels/{id}/polls` {`question`, `options` (metin
+  listesi), `multiple`, `anonymous`, `closes_at`}: panelin
+  `ws_poll_create()`'i. Soru kişinin mesajıdır (adıyla, dakikada yirmi
+  mesaj sınırıyla, herkese açık kanala katarak; andığı kişilere haber
+  gider). Cevap oylamanın mesajı, 201. Kimlik bir tartışmanınki de olabilir.
+- `POST /workspace/polls/{id}` (PATCH da kabul): panelin
+  `ws_poll_edit()`'i, kısmi güncelleme: gönderilmeyen alan olduğu gibi
+  kalır, önce oylamanın bugünkü hali kurulur, gelenler üstüne konur.
+  `options` gönderilirse bütün liste yerine geçer: `poll.options`'tan bir
+  `id` taşıyan öğe o seçeneği (ve oylarını) tutar, `id`'siz öğe yeni
+  seçenek ekler, listede olmayan seçenek kalkar. Oy verildikten sonra
+  oylu seçenek aynı sözle kalır, `multiple` ve `anonymous` değişmez (422,
+  panelin kuralı). `closes_at: null` süreyi kaldırır. Başkasının oylaması
+  403, kapanmış oylama 422. Hiç alan yoksa 422.
+- `POST /workspace/polls/{id}/close`: panelin `ws_poll_close()`'u. Soran
+  kendi oylamasını, kanalı yöneten herhangi birini kapatır (`ws_can_close_poll()`,
+  aksi 403). Sonuç panelde olduğu gibi kanala yazılır: tek kazanan
+  soranın adıyla karar, beraberlik ya da oysuz oylama sistem satırı.
+  Kapanmış oylamayı kapatmak hata değil, aynı cevabı döner.
+- `WorkspacePoll`'a `can_edit` ve `can_close` eklendi (panelin
+  `ws_polls_map()`'inde zaten vardı): uygulama düğmeleri buna göre
+  gösterir.
+- Prova (`dry_run`) üçünde de gerçek isteğin retlerini alır: açmanın
+  denetimleri `ws_poll_input()`, değiştirmeninkiler `ws_poll_edit_check()`
+  olarak `interact.php`'de ortak fonksiyona alındı; panelin
+  `ws_poll_create()` ve `ws_poll_edit()`'i de onları çağırıyor. Açmada
+  soru uzunluğu artık mesaj yazılmadan önce denetleniyor (aynı metin, aynı
+  alan); değiştirmede sorunun yeni hali mesaj düzeltme kurallarına
+  (`ws_message_edit_check()`) yazmadan önce tabi. Davranış aynı kalmalı.
+- Oy, değiştirme ve kapatma oylamayı aynı yardımcıyla bulur
+  (`ws_api_poll_or_404()`: silinmiş mesaj ya da okunamayan kanal 404,
+  konuşmanın önceki sürümü 422).
+- Açma ve değiştirme yalnız ekip cihazları oturumundan
+  (`ws_api_own_words_only()`): uygulama anahtarı ve OAuth bağlantısı
+  uygulama adıyla yazar; öyle açılmış oylamayı kişi sonra değiştiremez
+  (`ws_poll_edit()` yalnız kişinin kendi mesajını kabul ediyor) ve sonuç
+  kararı yine kişinin adıyla yazılırdı. Kapatma kişinin kararıdır, oy gibi
+  `ws_api_person_only()` (OAuth kabul). Üçü de `dry_run` alır, hiçbiri MCP
+  aracı değil (`'mcp' => false`): panelde hiçbir asistan oylama açmıyor,
+  bağlayıcının araç listesi değişmesin.
+
+Şema değişikliği yok, yeni izin kapsamı yok (`workspace:write`), `tr.json`'da
+7 yeni metin, JS değişmedi. Site Günlüğü'ne satır yazılmaz: panel de oylama
+eylemlerini günlüğe yazmıyor.
+
+**Bilerek yapılmayan.** OAuth bağlantısıyla (claude.ai bağlayıcısı)
+oylama açma ve değiştirme, bağlantının yazdığı mesajın nasıl görüneceği
+kararını bekliyor (plan kararı 11). Uygulama anahtarıyla, entegrasyon
+adına oylama da aynı sebeple yok.
+
+**Doğrulama.** `tests/workspace_api_test.php`: üç rota (yöntem, yol,
+kapsam, cevap, `dry_run`, MCP aracı değil, değiştirmede PATCH ve isteğe
+bağlı alanlar, `closes_at` nullable), `ws_poll_input()` (boş ve tekrarlı
+seçenek atılır, boş soru, tek seçenek, yakın kapanış, on bir seçenek,
+uzun soru), `WorkspacePoll`'da `can_edit` / `can_close`. Sandbox'ta iki
+ekip cihazı oturumuyla: açma provası (tekrarlı ve boş seçenek atıldı),
+uygulama anahtarı 403, tek farklı seçenek, metin olmayan seçenek, bir
+dakikadan yakın kapanış, eksik `options`, bilinmeyen alan 422, olmayan
+kanal 404; gerçek açma (soru kişinin adıyla, anma çözüldü, `can_edit` /
+`can_close` true); tartışmada açma, tartışmada olmayan kişiye 404.
+Değiştirme: boş gövde 422, prova (`added: 1`, `removed: 1`), uygulama
+anahtarı 403, soran olmayan kişi 403, bilinmeyen seçenek kimliği ve
+`label`'sız öğe 422, gerçek PATCH (yeniden adlandırma, ekleme, kaldırma,
+`multiple`, `closes_at`), yalnız soru (POST), `closes_at: null`. İki oydan
+sonra: oylu seçeneği yeniden adlandırma ve kaldırma 422, `multiple`
+değiştirme 422, yeni seçenek ekleme ve oysuz seçeneği kaldırma 200.
+Kapatma: soran olmayan ve kanalı yönetmeyen kişi 403, uygulama anahtarı
+403, prova kapatmadı, gerçek kapatma sonucu karar olarak yazdı
+(`result_message_id`), yeniden kapatma aynı cevap, kapalı oylamayı
+değiştirme ve oy 422. Panelde (Playwright, `api.php` eylemleri):
+`ws_poll_create`, `ws_poll_edit` (yeni seçenekler, boş soru reddi),
+`ws_poll_vote`, `ws_poll_close` ve `/poll` komutu eskisi gibi. Sunucu
+günlüğünde uyarı yok; `lint`, `check_lang`, `check_api_schema`, `test`,
+`build_js --check`, `check_copies` temiz.
+
+---
+
 ## 2026.4.10 — Dış API: kanalı listenin başına sabitleme ve kişinin kendi kanal sırası (2026-10-14)
 
 **Neden.** M6'nın (#381) kapsam dışı bıraktığı parça: telefondaki ekip
