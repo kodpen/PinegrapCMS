@@ -18,6 +18,18 @@
 
 include ('init.php');
 
+// The page name and the visitor's tracking, affiliate, offer and campaign
+// codes are single values. One sent as an array (?utm_source[]=x, ?a[]=x)
+// counts as not given: trim() and mb_strpos() refused it with an error page
+// on every page of the site.
+foreach (array('page', 'a', 'o', 't', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content') as $single_value_parameter)
+{
+	if (isset($_GET[$single_value_parameter]) && !is_string($_GET[$single_value_parameter]))
+	{
+		unset($_GET[$single_value_parameter]);
+	}
+}
+
 // ── Bot detection ────────────────────────────────────────────────────────────
 // Moved into waf.php, which init.php has already run by this point. It defines
 // IS_BOT, so init_tracking() below still skips crawlers exactly as before.
@@ -3667,13 +3679,15 @@ function init_tracking()
 	// Assume that we don't need to update visitor or order utm tags, until we find out otherwise.
 	$update_utm = false;
 	// If utm tags appear in the URL, then store them in session, cookie and visitor record.
+	// A link often carries utm_source alone; the tags it leaves out are stored
+	// empty, as before, without a warning for each.
 	if (isset($_GET['utm_source']) && $_GET['utm_source'])
 	{
 		$_SESSION['software']['utm_source'] = trim($_GET['utm_source']);
-		$_SESSION['software']['utm_medium'] = trim($_GET['utm_medium']);
-		$_SESSION['software']['utm_campaign'] = trim($_GET['utm_campaign']);
-		$_SESSION['software']['utm_term'] = trim($_GET['utm_term']);
-		$_SESSION['software']['utm_content'] = trim($_GET['utm_content']);
+		$_SESSION['software']['utm_medium'] = trim($_GET['utm_medium'] ?? '');
+		$_SESSION['software']['utm_campaign'] = trim($_GET['utm_campaign'] ?? '');
+		$_SESSION['software']['utm_term'] = trim($_GET['utm_term'] ?? '');
+		$_SESSION['software']['utm_content'] = trim($_GET['utm_content'] ?? '');
 		$cookie_id = 0;
 		if (!empty($_SESSION['software']['cookie_id']))
 		{

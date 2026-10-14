@@ -32,7 +32,9 @@ function checkifchecked($checkedstatus){
 // if the form was not just submitted, then prepare to output form
 if (!$_POST) {
     // if the page parameter has tags,
-    if(isset($_GET['tags'])){
+    // (a list sent as an array, ?tags[]=x, counts as not given: kept in the
+    // session, it made explode() refuse every later visit with an error page)
+    if(isset($_GET['tags']) && is_string($_GET['tags'])){
         //check if clear mode or not
         if($_GET['tags'] == 'clear'){
             //if clear redirect user to tag selection menu
@@ -45,7 +47,7 @@ if (!$_POST) {
     }
 
     //if session tags are cleared or empty output tag  selection menu
-    if(!isset($_SESSION['software']['mass_edit']['tags']) || ($_SESSION['software']['mass_edit']['tags'] ?? '') == ''){
+    if(!isset($_SESSION['software']['mass_edit']['tags']) || !is_string($_SESSION['software']['mass_edit']['tags']) || ($_SESSION['software']['mass_edit']['tags'] ?? '') == ''){
       
         $outputs = '
         <div class="row justify-content-center mt-5 pt-5">
@@ -136,6 +138,10 @@ if (!$_POST) {
         
         
         
+        // A tag the screen does not know (hand-typed ?tags=x) edits nothing,
+        // so only the buttons below are output.
+        $outputs = '';
+
         //starts of page editing
         if($output_page_editing != false){
             $outputs = '

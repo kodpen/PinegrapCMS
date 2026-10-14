@@ -63,7 +63,9 @@ if (waf_table_has_column('config', 'erp_reconciliation_template')) {
     );
 }
 
-$doc = isset($_REQUEST['doc']) && isset($documents[$_REQUEST['doc']]) ? (string) $_REQUEST['doc'] : 'invoice';
+// A document sent as an array (?doc[]=x) counts as not given: it ended in an
+// error page.
+$doc = isset($_REQUEST['doc']) && is_string($_REQUEST['doc']) && isset($documents[$_REQUEST['doc']]) ? (string) $_REQUEST['doc'] : 'invoice';
 $document = $documents[$doc];
 $default_template = $document['default'];
 $doc_url = $self_url . (($doc === 'invoice') ? '' : '?doc=' . $doc);

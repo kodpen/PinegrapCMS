@@ -94,7 +94,9 @@ if ($user['role'] == 3) {
 }
 
 // If there is a filter in the query string, save it
-if (isset($_GET['filter']) == true) {
+// (one sent as an array, ?filter[]=x, counts as not given: it ended in an
+// error page)
+if (isset($_GET['filter']) && is_string($_GET['filter'])) {
     $filter = $_GET['filter'];
 
 // else set the filter to default
@@ -1256,8 +1258,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $_SESSION['software']['view_contacts']['order'] = '';
     }
 
-    // if order was set, update session
-    if (isset($_REQUEST['order'])) {
+    // if order was set, update session (an order sent as an array counts as not given)
+    if (isset($_REQUEST['order']) && is_string($_REQUEST['order'])) {
         $_SESSION['software']['view_contacts']['order'] = sql_order_direction($_REQUEST['order'], '');
     }
 
@@ -1514,6 +1516,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         }
     }
     
+    // The image heading is set for each row below; an empty list (no duplicates)
+    // leaves it empty.
+    $output_image_header = '';
+
     // loop through all contacts that need to be outputted, so they can be outputted
     foreach ($contacts as $contact) {
         // Set link url
@@ -1802,7 +1808,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     ' . $output_phone_row . '
                     ' . $output_user_row . '
                     <td class="align-middle">' . $output_contact_groups . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username']) . '</td>
+                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username'] ?? '') . '</td>
                 </tr>';
             
         // else output the standard table layout
@@ -1824,7 +1830,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     ' . $output_opt_in_row . '
                     ' . $output_address_rows . '
                     <td class="align-middle">' . $output_contact_groups . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username']) . '</td>
+                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username'] ?? '') . '</td>
                 </tr>';
         }
     }

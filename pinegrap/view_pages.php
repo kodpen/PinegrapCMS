@@ -127,7 +127,9 @@ if (isset($_GET['analyze_seo']) && (USER_ROLE < 3)) {
 $output_clear_button = '';
 
 // If there is a filter set.
-if (isset($_GET['filter']) == true) {
+// (one sent as an array, ?filter[]=x, counts as not given: it ended in an
+// error page)
+if (isset($_GET['filter']) && is_string($_GET['filter'])) {
     // Send the filter to the search form.
     $filter = $_GET['filter'];
 } else {
