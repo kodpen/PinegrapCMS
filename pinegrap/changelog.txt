@@ -2865,10 +2865,10 @@
          görüntüle" bağlantısı açılınca hata günlüğüne
          uyarı yazmıyor.
 
-  [DÜZELTME] Kişi, kullanıcı, alan, dosya, klasör, menü
-         öğesi ve tasarım dosyası ekleme ekranları, içe
-         aktarma ekranları ve tema, JavaScript ve bölge
-         düzenleme ekranları, kayıttan sonra dönülecek
+  [DÜZELTME] Panelin ekleme, düzenleme ve içe aktarma
+         ekranları (kişi, kullanıcı, sayfa, alan, dosya,
+         klasör, menü, tasarım dosyası, tema, JavaScript,
+         bölge ve diğerleri), kayıttan sonra dönülecek
          sayfa adreste birden çok kez geçince
          (?send_to[]=…, ?from[]=…) hata sayfası veriyordu;
          artık ekran açılıyor ve kayıttan sonra her
