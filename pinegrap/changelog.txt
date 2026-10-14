@@ -1624,6 +1624,16 @@
   DIŞ API
   --------------------------------------------------------
 
+  [YENİ] Çalışma Alanı: yöneticiler bir kanalı API'den
+         bir kanal grubuna taşıyabiliyor ya da gruptan
+         çıkarabiliyor (panelde kanalı gruba sürüklemek
+         ya da "Gruba taşı" gibi). Taşımadan önce
+         prova ile, taşıdıktan sonra cevapta grubun
+         yetkisiyle kanala kimlerin gireceği ve kimlerin
+         çıkacağı adlarıyla görünüyor. Grupların listesi
+         de API'de; kanal listesinde her kanalın hangi
+         grupta olduğu görünüyor.
+
   [YENİ] Çalışma Alanı: kişi özel bir kanaldan çıkınca,
          çıkarılınca ya da kanal onsuz özel yapılınca,
          gelen kutusunda o kanalla, tartışmalarıyla ve

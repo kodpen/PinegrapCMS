@@ -783,3 +783,94 @@ function test_ws_poll_input()
 	pg_assert_same('question', ws_poll_input(array('question' => str_repeat('a', WS_MESSAGE_MAX + 1), 'options' => array('A', 'B')))['field'], 'a question longer than a message');
 	pg_assert_true(ws_poll_input(array('question' => 'Q', 'options' => array('A', 'B'), 'closes_at' => time() + 3600))['ok'], 'closing in an hour');
 }
+
+// Moving a channel into a group is staff work on the channel, gated the way
+// changing the channel is: any caller the owner's rights allow, a rehearsal,
+// and offered to an MCP client as the other channel changes are.
+function test_ws_api_channel_group_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$move = $routes['workspace.channels.group'] ?? null;
+
+	pg_assert_true(is_array($move), 'the move is declared');
+	pg_assert_same('POST', $move['method']);
+	pg_assert_same('/workspace/channels/{id}/group', $move['path']);
+	pg_assert_same($routes['workspace.channels.update']['scope'], $move['scope'], 'the permission that changes a channel');
+	pg_assert_same('WorkspaceChannelGroupMove', $move['returns']);
+	pg_assert_true(!empty($move['dry_run']), 'it rehearses');
+	pg_assert_same(pg_mcp_route_is_offered($routes['workspace.channels.update']), pg_mcp_route_is_offered($move), 'a tool when changing a channel is one');
+
+	$body = array();
+
+	foreach ($move['params'] as $param) {
+		if (($param['in'] ?? '') === 'body') {
+			$body[$param['name']] = $param;
+		}
+	}
+
+	pg_assert_same(array('group_id'), array_keys($body));
+	pg_assert_true(!empty($body['group_id']['required']) && !empty($body['group_id']['nullable']), 'group_id is sent; null takes the channel out');
+	pg_assert_same(0, $body['group_id']['min'], '0 takes the channel out');
+
+	$list = $routes['workspace.channel_groups.list'] ?? null;
+
+	pg_assert_true(is_array($list), 'the groups are listed');
+	pg_assert_same('GET', $list['method']);
+	pg_assert_same('/workspace/channel-groups', $list['path']);
+	pg_assert_same('workspace:read', $list['scope']);
+	pg_assert_same(array('list' => 'WorkspaceChannelGroup'), $list['returns']);
+	pg_assert_true(array_key_exists('group_id', ws_api_channel_schema()), 'the channel says which group it is in');
+}
+
+// How many people hold access on a group is for staff to see; a group at the
+// top has no parent, and one without a colour none.
+function test_ws_api_channel_group_present()
+{
+	$group = array('id' => 7, 'parent_id' => 0, 'name' => 'Customers', 'color' => 0, 'hex' => '', 'sort' => 1, 'access' => 3, 'mine' => true, 'path' => 'Customers');
+
+	$staff = ws_api_channel_group_present($group, true);
+
+	pg_assert_same(7, $staff['id']);
+	pg_assert_same('Customers', $staff['path']);
+	pg_assert_same(null, $staff['parent_id']);
+	pg_assert_same(null, $staff['color']);
+	pg_assert_same(3, $staff['access']);
+	pg_assert_true($staff['mine']);
+	pg_assert_same(array_keys(ws_api_channel_group_schema()), array_keys($staff), 'the answer has the declared fields in order');
+
+	$other = ws_api_channel_group_present(array_merge($group, array('parent_id' => 2, 'hex' => '#0d6efd', 'mine' => false)), false);
+
+	pg_assert_same(2, $other['parent_id']);
+	pg_assert_same('#0d6efd', $other['color']);
+	pg_assert_same(null, $other['access'], 'only staff see who holds access');
+	pg_assert_false($other['mine']);
+}
+
+// A move to where the channel already is names nobody. The dry run's detail
+// leaves the channel out; the answer carries it.
+function test_ws_api_channel_group_move_present()
+{
+	$move = array('ok' => true, 'error' => '', 'joining' => array(), 'leaving' => array(), 'joining_ids' => array(5), 'leaving_ids' => array(), 'path' => 'Customers');
+	$channel = array('id' => 4, 'group_id' => 7);
+
+	$same = ws_api_channel_group_move_present($channel, 7, $move, false);
+
+	pg_assert_false($same['changes']);
+	pg_assert_same(array(), $same['joining'], 'nothing moves, so nobody joins');
+	pg_assert_same(7, $same['group_id']);
+	pg_assert_same(7, $same['previous_group_id']);
+	pg_assert_false(array_key_exists('channel', $same), 'a dry run has no channel');
+
+	$out = ws_api_channel_group_move_present($channel, 0, array_merge($move, array('joining_ids' => array(), 'path' => '')), true, array('id' => 4));
+
+	pg_assert_true($out['changes']);
+	pg_assert_same(null, $out['group_id'], 'out of every group');
+	pg_assert_same(null, $out['group_path']);
+	pg_assert_same(array(), $out['leaving']);
+	pg_assert_same(array_keys(ws_api_channel_group_move_schema()), array_keys($out), 'the answer has the declared fields in order');
+}

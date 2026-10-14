@@ -939,18 +939,18 @@ function ws_can_move_channel_group($viewer, $channel)
 /**
  * Moves a channel into a group (0: out of every group). Asked with $preview,
  * it only says who would come in and who would go, for the question before
- * the move.
+ * the move; after the move it says who came in and who went.
  *
  * @param array $viewer
  * @param array $channel
  * @param int   $group_id
  * @param bool  $preview
- * @return array ok, error, joining, leaving (names), path
+ * @return array ok, error, joining, leaving (names), joining_ids, leaving_ids, path
  */
 function ws_channel_move_group($viewer, $channel, $group_id, $preview = false)
 {
     $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'joining' => array(), 'leaving' => array(), 'path' => '');
+        return array('ok' => false, 'error' => $error, 'joining' => array(), 'leaving' => array(), 'joining_ids' => array(), 'leaving_ids' => array(), 'path' => '');
     };
 
     if (!ws_can_move_channel_group($viewer, $channel)) {
@@ -981,19 +981,32 @@ function ws_channel_move_group($viewer, $channel, $group_id, $preview = false)
         }
     }
 
-    $names = function ($ids) {
-        return array_values(array_map('ws_person_name', $ids));
+    $answer = function ($joining, $leaving) use ($group_id) {
+        $joining = array_values(array_map('intval', (array) $joining));
+        $leaving = array_values(array_map('intval', (array) $leaving));
+
+        return array(
+            'ok'          => true,
+            'error'       => '',
+            'joining'     => array_values(array_map('ws_person_name', $joining)),
+            'leaving'     => array_values(array_map('ws_person_name', $leaving)),
+            'joining_ids' => $joining,
+            'leaving_ids' => $leaving,
+            'path'        => ($group_id > 0) ? ws_group_path($group_id) : '',
+        );
     };
 
     if ($preview) {
-        return array('ok' => true, 'error' => '', 'joining' => $names($joining), 'leaving' => $names($leaving), 'path' => ($group_id > 0) ? ws_group_path($group_id) : '');
+        return $answer($joining, $leaving);
     }
 
     db("UPDATE ws_channels SET group_id = '" . $group_id . "' WHERE id = '" . (int) $channel['id'] . "'");
 
-    ws_group_sync_channel($viewer, $channel, $group_id);
+    // What the sync really did: somebody the question named may have been
+    // let in or taken out by another change in between.
+    $synced = ws_group_sync_channel($viewer, $channel, $group_id);
 
-    return array('ok' => true, 'error' => '', 'joining' => $names($joining), 'leaving' => $names($leaving), 'path' => ($group_id > 0) ? ws_group_path($group_id) : '');
+    return $answer($synced['added'], $synced['removed']);
 }
 
 /**

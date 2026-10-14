@@ -154,6 +154,8 @@ function ws_openapi_objects()
         'WorkspaceSyncPin'          => 'ws_api_sync_pin_schema',
         'WorkspaceSyncTabCounts'    => 'ws_api_sync_tab_counts_schema',
         'WorkspacePoll'             => 'ws_api_poll_schema',
+        'WorkspaceChannelGroup'     => 'ws_api_channel_group_schema',
+        'WorkspaceChannelGroupMove' => 'ws_api_channel_group_move_schema',
     );
 }
 
@@ -576,6 +578,34 @@ function ws_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'pinned', 'in' => 'body', 'type' => 'bool', 'description' => 'Keep the channel at the top of the person\'s list; false takes the pin off.'),
                 array('name' => 'order', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100000, 'description' => 'The place among the channels the person is in, 1 for the top.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channel_groups.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/channel-groups',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_channel_groups_list',
+            'returns'     => array('list' => 'WorkspaceChannelGroup'),
+            'summary'     => 'List the groups of channels',
+            'description' => 'The groups the sidebar sorts channels into. They are the same for everybody and only staff arrange them; whoever holds access on a group becomes a member of every channel in it and in the groups inside it. Staff see every group, with access counting the people who hold access on it; anybody else sees only the groups that hold a channel they see and the groups those are in, and access is null for them. parent_id builds the tree (null at the top) and path names a group with the ones above it, as "Customers › Istanbul". mine is true on a group that gave the owner of the application access themselves. group_id on a channel says which group it is in; POST /workspace/channels/{id}/group moves it.',
+            'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.group',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/group',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channels_group',
+            'dry_run' => true,
+            'returns'     => 'WorkspaceChannelGroupMove',
+            'summary'     => 'Move a channel into a group',
+            'description' => 'Moves a public or private channel into a group of channels (GET /workspace/channel-groups), or out of every group with group_id 0 or null, the way dragging it onto a group or Move to a group in its menu does. A group is the same for everybody, so this is staff work: the owner of the application must be staff who may change the channel, and of a private channel only while they are in it; anybody else is refused with 403. Whoever holds access on the new group or on a group above it becomes a member of the channel (of a private one too, so they read it from then on), and the people only the old group had brought in leave it; the owner of the channel and the people who joined it themselves stay. joining and leaving name them, in the answer and in a dry run (X-Dry-Run: true): ask the dry run first to show the question the panel asks before the move. The channel gets a line naming who came in and who left. Moving a channel to the group it is in changes nothing, and changes is then false. A discussion or a room with a guest in it is refused with 422.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'group_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'nullable' => true, 'description' => 'A group from GET /workspace/channel-groups; 0 or null takes the channel out of its group.'),
             ),
         ),
 

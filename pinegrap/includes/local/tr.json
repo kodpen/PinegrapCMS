@@ -23187,5 +23187,6 @@
     "Each item of {var:1} must be a text.": "{var:1} içindeki her öğe bir metin olmalı.",
     "Each item of {var:1} needs a label.": "{var:1} içindeki her öğenin bir label alanı olmalı.",
     "Each id in {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her id oylamanın seçeneklerinden birinin kimliği olmalı.",
-    "Send at least one of question, options, multiple, anonymous or closes_at.": "question, options, multiple, anonymous ya da closes_at alanlarından en az birini gönderin."
+    "Send at least one of question, options, multiple, anonymous or closes_at.": "question, options, multiple, anonymous ya da closes_at alanlarından en az birini gönderin.",
+    "Only a public or a private channel goes into a group.": "Gruba yalnız herkese açık ya da özel bir kanal taşınır."
 }

@@ -85,6 +85,11 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   Sonradan yalnız kişinin değiştirebileceği bir şeyi onun adıyla açan uç
   da (oylama açma: `ws_poll_edit()` yalnız kişinin kendi mesajını kabul
   eder) `ws_api_own_words_only()` ister.
+- Herkes için aynı olan düzen (kanalı gruba taşıma) kişisel tercih
+  değildir: `ws_api_person_only()` istemez, kanal değiştirme ucu gibi
+  sahibin haklarıyla kapılanır (uygulama anahtarı kabul). Erişim değiştiren
+  yazım kimin girip çıktığını hem cevapta hem provada adıyla verir
+  (`POST /workspace/channels/{id}/group`, panelin önizleme fonksiyonu).
 - Çalışma Alanı araması (`GET /workspace/search`) panel kayıtlarını türü
   okuyan kapsamla süzer: `ws_api_search_record_scopes()`
   (`includes/workspace/api_day.php`). `ws_record_type_keys()`'e yeni bir

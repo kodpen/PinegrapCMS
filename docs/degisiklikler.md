@@ -84,6 +84,82 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Dış API: kanalı bir kanal grubuna taşıma (2026-10-14)
+
+**Neden.** #387 kanalın kişisel tercihlerini (sabitleme, sıra) API'ye
+açarken kanalın grubunu bilerek dışarıda bıraktı: gruplar çalışma
+alanınındır, herkes için aynıdır, yalnız personel düzenler ve bir kanalı
+gruba taşımak o grupta erişimi olanları kanala katar. Bu bir personel
+işidir; API'de yoktu, kanal nesnesi de kanalın hangi grupta olduğunu
+söylemiyordu.
+
+**Ne değişti.**
+- `POST /workspace/channels/{id}/group` {`group_id`}: kanalı bir gruba
+  taşır; `0` ya da `null` gruptan çıkarır. Panelin kodunu kullanır
+  (`ws_channel_move_group()`): aynı yetki (`ws_can_move_channel_group()`:
+  kanalı değiştirebilen personel, özel kanalda yalnız içindeyken; diğerleri
+  403), aynı üyelik eşitlemesi ve kanala düşen aynı satır ("… grubundaki
+  yetki … kişisini bu kanala ekledi" / "… bu kanaldan çıktı"). Kapı kanal
+  değiştirme ucuyla (`POST /workspace/channels/{id}`) aynı: `workspace:write`,
+  uygulama sahibinin hakları; uygulama anahtarı, ekip cihazları oturumu ve
+  OAuth bağlantısı kabul. Tartışma ve misafirli oda 422, olmayan grup 422
+  (`group_id`), grup tabloları yoksa 503.
+- Cevap `WorkspaceChannelGroupMove`: `group_id`, `group_path`
+  ("Müşteriler › İstanbul"), `previous_group_id`, `changes`, `joining` ve
+  `leaving` (`user_id` + `name`) ve kanalın son hali (`channel`). Prova
+  (`X-Dry-Run` / `?dry_run`) aynı alanları `detail`'de verir (kanal hariç);
+  panelin taşımadan önce sorduğu soru budur. Kanalı zaten bulunduğu gruba
+  taşımak hiçbir şey yapmaz (`changes: false`, listeler boş; panel bu durumda
+  istek atmıyor).
+- `ws_channel_move_group()` ad listelerine ek olarak `joining_ids` ve
+  `leaving_ids` döner; gerçek taşımada listeler tahminden değil
+  `ws_group_sync_channel()`'ın gerçekten eklediği ve çıkardığı kişilerden
+  gelir. Panel gerçek taşımanın cevabını kullanmıyor, önizleme aynı.
+- `GET /workspace/channel-groups`: `ws_groups_for()`'un listesi (`id`,
+  `name`, `parent_id`, `path`, `color`, `access`, `mine`). Personel bütün
+  grupları ve `access`'te grubun kendisinde erişimi olan kişi sayısını
+  görür; diğerleri yalnız gördükleri bir kanalı tutan grupları ve
+  üstlerini, `access` onlara `null`.
+- `WorkspaceChannel`'a `group_id` eklendi (gruptaysa grup, değilse `null`);
+  liste ve eşitleme taşır. Eşitlemenin kanal işareti sunulan listenin
+  `crc32`'si olduğu için uygulamalar listeyi bir kez yeniden alır.
+
+Şema değişikliği yok (grup tabloları 2026.4.5'ten beri var), yeni izin
+kapsamı yok (`workspace:read` / `workspace:write`), `tr.json`'da 1 yeni
+metin, JS değişmedi. MCP: kanal oluşturma ve değiştirme MCP aracı olduğu
+için iki uç da araç olarak sunulur (`workspace_channels_group`,
+`workspace_channel_groups_list`); taşıma aracı provayı (`dry_run`) alır.
+Site Günlüğü'ne satır yazılmaz: panel de kanalı gruba taşımayı günlüğe
+yazmıyor (grup kaydetme, silme ve grup yetkisi verme / geri alma yazıyor);
+iz kanaldaki satırdır.
+
+**Bilerek yapılmayan.** Grup oluşturma, adlandırma, taşıma, silme ve grup
+yetkisi verme / geri alma API'de yok; istenirse ayrı bir iş.
+
+**Doğrulama.** `tests/workspace_api_test.php`: iki rota (yöntem, yol,
+kapsam kanal değiştirmeyle aynı, cevap, prova, MCP'de kanal değiştirme
+gibi, `group_id` zorunlu ve `null` alabilir, en az 0), grup sunumu
+(personel olmayana `access` `null`, üst grup ve renk yoksa `null`) ve
+taşıma sunumu (yerinde taşıma kimseyi saymaz, provada `channel` yok,
+alanlar şemayla aynı sırada). Sandbox'ta: personel (rol 2) cihaz
+oturumuyla herkese açık kanalı alt gruba taşıma provası (üst gruptaki
+yetkiyle iki kişi `joining`, veritabanı değişmedi), gerçek taşıma (iki kişi
+`via_group` ile üye oldu, kanala satır düştü), aynı gruba yeniden
+(`changes: false`), özel kanalı başka gruba (yetkili yönetici `joining`),
+`null` ve `""` ile gruptan çıkarma (iki kişi `leaving`, çıktı satırı);
+personel olmayan kişinin cihazı ve uygulama anahtarı 403, personelin
+uygulama anahtarı prova + gerçek taşıma 200; olmayan grup 422 `group_id`,
+boş gövde, sayı olmayan, eksi değer ve fazladan alan 422, tartışma 422,
+olmayan ve içinde olunmayan özel kanal 404; grup listesi personelde üç grup
+ve sayılar, personel olmayanda yalnız gördüğü kanalın grubu ve üstü
+(`access: null`, `mine` doğru); kanal listesi ve eşitlemede `group_id`;
+OpenAPI'de iki yol ve nesneler; panelin kendi önizleme ve taşıması aynı
+cevabı verdi. Site Günlüğü'ne taşıma satırı düşmedi; sunucu günlüğünde
+uyarı yok. `lint`, `check_lang`, `check_api_schema`, `check_bindings`,
+`test`, `check_copies`, `build_js --check` temiz.
+
+---
+
 ## 2026.4.10 — Form listesi sayfasının kanonik adresi `?id=` taşıyordu (2026-10-14)
 
 **Neden.** `get_page_content.php`'de kanonik adresin sorgu kısmını kuran
@@ -118,6 +194,8 @@ sayfalar.
 ikisi birlikte ayrı iş. Fotoğraf galerisi dalı `folder_id`'yi
 `urlencode()`'suz ve dizi denetimsiz yazıyor (`?folder_id[]=x` →
 "Array" ve uyarı).
+
+---
 
 ## 2026.4.10 — Dış API: gelen kutusunun değişenlerinde artık görülemeyen satırlar ve baştan okuma işareti (2026-10-14)
 
@@ -300,6 +378,8 @@ ziyaretçide "Geri" düğmesinin kalkması (takvimden gelince ikisi aynı).
 `tools/test.php` 844/844; lint, dil, kopya denetimleri ve
 `build_js.php --check` geçti. Doğrulanamadı: dev.pinegrap.com'daki
 gerçek sayfalar ve gerçek siparişli sepet.
+
+---
 
 ## 2026.4.10 — Dış API: oylama açma, değiştirme ve kapatma (2026-10-14)
 

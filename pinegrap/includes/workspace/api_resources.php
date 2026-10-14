@@ -117,6 +117,7 @@ function ws_api_channel_present($brief)
         'customer_type' => (($brief['customer_type'] ?? '') !== '') ? (string) $brief['customer_type'] : null,
         'customer_id'   => ((int) ($brief['customer_id'] ?? 0) > 0) ? (int) $brief['customer_id'] : null,
         'department_id' => ((int) $brief['department_id'] > 0) ? (int) $brief['department_id'] : null,
+        'group_id'      => ((int) ($brief['group_id'] ?? 0) > 0) ? (int) $brief['group_id'] : null,
         'archived'      => (bool) $brief['archived'],
         'unread'        => (int) $brief['unread'],
         'last_message_at' => ((int) $brief['last_message_at'] > 0) ? api_time($brief['last_message_at']) : null,
@@ -139,6 +140,7 @@ function ws_api_channel_schema()
         'customer_type'   => 'string?',
         'customer_id'     => 'integer?',
         'department_id'   => 'integer?',
+        'group_id'        => 'integer?',
         'archived'        => 'boolean',
         'unread'          => 'integer',
         'last_message_at' => 'string?',
@@ -1472,6 +1474,178 @@ function ws_api_channels_prefs($params)
     }
 
     api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/* ---------------------------------------------------------------------------
+   Groups of channels
+   --------------------------------------------------------------------------- */
+
+/**
+ * A group of channels as the sidebar draws it. access counts the people who
+ * hold access on the group itself; only staff see it, as on the panel.
+ *
+ * @param array $group ws_groups_for() row, with path (ws_group_path())
+ * @param bool  $staff
+ * @return array
+ */
+function ws_api_channel_group_present($group, $staff)
+{
+    return array(
+        'id'        => (int) $group['id'],
+        'name'      => (string) $group['name'],
+        'parent_id' => ((int) $group['parent_id'] > 0) ? (int) $group['parent_id'] : null,
+        'path'      => (string) ($group['path'] ?? ''),
+        'color'     => ((string) ($group['hex'] ?? '') !== '') ? (string) $group['hex'] : null,
+        'access'    => $staff ? (int) ($group['access'] ?? 0) : null,
+        'mine'      => !empty($group['mine']),
+    );
+}
+
+// What ws_api_channel_group_present() returns.
+function ws_api_channel_group_schema()
+{
+    return array(
+        'id'        => 'integer',
+        'name'      => 'string',
+        'parent_id' => 'integer?',
+        'path'      => 'string',
+        'color'     => 'string?',
+        'access'    => 'integer?',
+        'mine'      => 'boolean',
+    );
+}
+
+function ws_api_channel_groups_list($params)
+{
+    $viewer = ws_api_viewer();
+    $staff = ws_can_manage_groups($viewer);
+    $out = array();
+
+    foreach (ws_groups_for($viewer) as $group) {
+        $out[] = ws_api_channel_group_present($group + array('path' => ws_group_path($group['id'])), $staff);
+    }
+
+    api_ok_list($out, count($out));
+}
+
+/**
+ * What moving a channel between groups answers with, and what its dry run
+ * says it would do: where the channel goes, and whom the access given on the
+ * groups brings into it and takes out of it, as the panel's question before
+ * the move names them.
+ *
+ * @param array      $channel  the channel before the move
+ * @param int        $group_id where it goes, 0 for out of every group
+ * @param array      $move     ws_channel_move_group()
+ * @param bool       $changes  false when the channel already was there
+ * @param array|null $present  the channel after the move (ws_api_channel_present()), null on a dry run
+ * @return array
+ */
+function ws_api_channel_group_move_present($channel, $group_id, $move, $changes, $present = null)
+{
+    $out = array(
+        'channel_id'        => (int) $channel['id'],
+        'group_id'          => ((int) $group_id > 0) ? (int) $group_id : null,
+        'group_path'        => ((int) $group_id > 0) ? (string) $move['path'] : null,
+        'previous_group_id' => ((int) ($channel['group_id'] ?? 0) > 0) ? (int) $channel['group_id'] : null,
+        'changes'           => (bool) $changes,
+        'joining'           => $changes ? ws_api_channel_group_people($move['joining_ids']) : array(),
+        'leaving'           => $changes ? ws_api_channel_group_people($move['leaving_ids']) : array(),
+    );
+
+    if ($present !== null) {
+        $out['channel'] = $present;
+    }
+
+    return $out;
+}
+
+/**
+ * The people a move of a channel brings in or takes out, by id and name.
+ *
+ * @param int[] $ids
+ * @return array[] user_id, name
+ */
+function ws_api_channel_group_people($ids)
+{
+    $out = array();
+
+    foreach ((array) $ids as $id) {
+        $out[] = array('user_id' => (int) $id, 'name' => ws_person_name($id));
+    }
+
+    return $out;
+}
+
+// What ws_api_channel_group_move_present() returns; channel is left out of the
+// dry run's detail.
+function ws_api_channel_group_move_schema()
+{
+    return array(
+        'channel_id'        => 'integer',
+        'group_id'          => 'integer?',
+        'group_path'        => 'string?',
+        'previous_group_id' => 'integer?',
+        'changes'           => 'boolean',
+        'joining'           => array(array('user_id' => 'integer', 'name' => 'string')),
+        'leaving'           => array(array('user_id' => 'integer', 'name' => 'string')),
+        'channel'           => 'WorkspaceChannel',
+    );
+}
+
+/**
+ * Moves a channel into a group of channels or out of every group, the way
+ * dragging it onto a group or Move to a group in its menu does. A group is
+ * the same for everybody, and whoever holds access on it becomes a member of
+ * every channel in it, so this is staff work rather than the person's own
+ * preference: it is gated like changing the channel, on the owner of the
+ * application's rights (ws_can_move_channel_group()), and an application key
+ * may do it. The answer, like the dry run before it, names who comes into the
+ * channel and who leaves it. Moving a channel to where it already is changes
+ * nothing.
+ */
+function ws_api_channels_group($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_groups_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    // A discussion or a room with a guest in it stays out of the groups.
+    if (!in_array((string) $channel['kind'], array('public', 'private'), true)) {
+        api_fail_validation(lang('Only a public or a private channel goes into a group.'));
+    }
+
+    // null and '' (a cleared nullable field) both take it out of its group.
+    $group_id = max(0, (int) ($params['group_id'] ?? 0));
+    $changes = ($group_id !== (int) ($channel['group_id'] ?? 0));
+
+    // The same checks and the same question the panel asks before the move.
+    $move = ws_channel_move_group($viewer, $channel, $group_id, true);
+
+    if (!$move['ok']) {
+        if ($move['error'] === lang('That group could not be found.')) {
+            api_fail_validation($move['error'], 'group_id');
+        }
+
+        api_fail(403, 'forbidden', $move['error']);
+    }
+
+    api_dry_run_stop('moved', 'workspace_channel', ws_api_channel_group_move_present($channel, $group_id, $move, $changes));
+
+    if ($changes) {
+        $move = ws_channel_move_group($viewer, $channel, $group_id);
+
+        if (!$move['ok']) {
+            api_fail(403, 'forbidden', $move['error']);
+        }
+    }
+
+    $after = ws_channel($channel['id']);
+
+    api_ok(ws_api_channel_group_move_present($channel, $group_id, $move, $changes, ws_api_channel_present(ws_api_channel_brief($viewer, $after))));
 }
 
 function ws_api_messages_ack($params)
