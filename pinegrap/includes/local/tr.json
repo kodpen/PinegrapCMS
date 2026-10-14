@@ -23156,5 +23156,9 @@
     "This shipping method has a base rate for each order subtotal. Change it in the shipping method.": "Bu nakliye yönteminde her sipariş ara toplamı için ayrı bir temel ücret var. Nakliye yönteminin kendisinden değiştirin.",
     "shipping method ({var:1}) was changed on the shipping method list: {var:2} from \"{var:3}\" to \"{var:4}\"": "nakliye yöntemi ({var:1}) nakliye yöntemleri listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
     "Only the person, signed in on a device, can change or delete their messages; an application cannot do it for them.": "Mesajlarını yalnız cihazında oturum açmış kişinin kendisi değiştirebilir ya da silebilir; bir uygulama onun adına yapamaz.",
-    "Only the people in a channel keep a read mark in it.": "Okundu işaretini yalnız kanalın üyeleri tutar."
+    "Only the people in a channel keep a read mark in it.": "Okundu işaretini yalnız kanalın üyeleri tutar.",
+    "key code ({var:1}) was changed on the key code list: {var:2} from \"{var:3}\" to \"{var:4}\"": "anahtar kod ({var:1}) anahtar kodlar listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
+    "These notes take more than one line. Change them in the gift card.": "Bu notlar birden çok satırdan oluşuyor. Hediye kartının kendisinden değiştirin.",
+    "The gift card changed in the meantime. Reload the list and try again.": "Hediye kartı bu arada değişti. Listeyi yenileyip yeniden deneyin.",
+    "gift card ({var:1}) was changed on the gift card list: {var:2} from \"{var:3}\" to \"{var:4}\"": "hediye kartı ({var:1}) hediye kartları listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu"
 }

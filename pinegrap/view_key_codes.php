@@ -17,10 +17,28 @@
  */
 
 include('init.php');
+
+// A key code enabled or disabled in place on the list (pg_list_edit_request()
+// in includes/fn/output.php). Answered in JSON, before anything below draws
+// the screen; the write is the one the key code's screen makes
+// (pg_key_code_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_key_code_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_key_code_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 validate_ecommerce_access($user);
 
 $liveform = new liveform('view_key_codes');
+
+// What an operator can change on the list without opening the key code.
+$quick_edit = pg_key_code_edit_columns();
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -161,27 +179,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
     // Get the current date so that later we can figure out if key codes have expired.
     $current_date = date('Y-m-d');
 
-    // Loop through the key codes in order to set the status for each one,
-    // based on enabled and expiration date fields.
+    // The cells a quick edit can change, drawn by the same function that
+    // draws them again in the answer to an edit: the code, green when it
+    // works at checkout today (enabled, not expired, its offer running), the
+    // enabled mark and the last change.
     foreach ($key_codes as $key => $key_code) {
-
-        // Default to not active, so that the template can always read this key.
-        $key_codes[$key]['status_enabled'] = false;
-
-        // If this key code is active, then store that, so a color can be used to indicate that.
-        if (
-            $key_code['enabled']
-            &&
-            (
-                ($key_code['expiration_date'] == '0000-00-00')
-                || ($key_code['expiration_date'] >= $current_date)
-            )
-            && ($key_code['offer_status'] == 'enabled')
-            && ($key_code['offer_start_date'] <= $current_date)
-            && ($key_code['offer_end_date'] >= $current_date)
-        ) {
-            $key_codes[$key]['status_enabled'] = true;
-        }
+        $key_codes[$key]['cells'] = pg_key_code_list_cells($key_code, $current_date);
     }
 
     echo pg_page_shell([

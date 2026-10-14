@@ -17,11 +17,29 @@
  */
 
 include('init.php');
+
+// A gift card's notes changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen; the write is the one the gift card's screen makes
+// (pg_gift_card_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_gift_card_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_gift_card_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 validate_ecommerce_access($user);
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_gift_cards');
+
+// What an operator can change on the list without opening the gift card.
+$quick_edit = pg_gift_card_edit_columns();
 
 $current_date = date('Y-m-d');
 
@@ -270,11 +288,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                 $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($gift_card['created_username']) ) ) );
             }
             
-            $last_modified_username = '';
-            
-            if ($gift_card['last_modified_username']) {
-                $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($gift_card['last_modified_username']) ) ) );
-            }
+            // The cells a quick edit can change, drawn by the same function
+            // that draws them again in the answer to an edit. Notes on more
+            // than one line change only on the gift card's screen.
+            $list_cells = pg_gift_card_list_cells($gift_card);
 
             $output_rows .=
                 '<tr>
@@ -286,12 +303,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                     <td class="align-middle text-end"><span class=" badge bg-secondary  fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
                     <td class="align-middle text-end"><span class=" badge bg-primary  fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
                     <td class="align-middle">' . $output_expiration_date . '</td>
-                    <td class="align-middle">' . nl2br(h($gift_card['notes'])) . '</td>
+                    <td class="' . $list_cells['notes']['class'] . '"' . (pg_gift_card_notes_fit_list($gift_card['notes']) ? pg_list_edit_cell($quick_edit, 'notes', $gift_card['id'], $gift_card['notes']) : '') . '>' . $list_cells['notes']['html'] . '</td>
                     <td class="align-middle">' . $output_from_name . '</td>
                     <td class="align-middle">' . h($gift_card['recipient_email_address']) . '</td>
                     <td class="align-middle">' . $output_delivery_date . '</td>
                     <td class="align-middle">' . get_relative_time(array('timestamp' => $gift_card['created_timestamp'])) . ' ' . $created_username . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $gift_card['last_modified_timestamp'])) . ' ' . $last_modified_username . '</td>
+                    <td class="' . $list_cells['last_modified']['class'] . '" data-pg-cell="last_modified">' . $list_cells['last_modified']['html'] . '</td>
                 </tr>';
         }
     }
@@ -370,7 +387,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                 </div>
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table " style="width:100%;display:none">
+                        <table class="chart table-hover table " style="width:100%;display:none"' . pg_list_edit_table('view_gift_cards.php', $quick_edit) . '>
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>

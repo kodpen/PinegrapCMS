@@ -6981,6 +6981,284 @@ function pg_shipping_method_quick_update($method_id, $field, $value, $user_id)
         + $cells[$field]
         + array('cells' => array('last_modified' => $cells['last_modified']));
 }
+
+/**
+ * The key code list's columns that change in place (pg_list_edit_table()):
+ * whether the code is enabled, the switch an operator turns most often
+ * without the rest of the key code's screen.
+ *
+ * @return array field => definition
+ */
+function pg_key_code_edit_columns()
+{
+    return array(
+        'enabled' => array('type' => 'select', 'label' => lang('Enabled'), 'options' => array('1' => lang('Enabled'), '0' => lang('Disabled'))),
+    );
+}
+
+/**
+ * Whether a key code works at checkout on the given day: enabled, not
+ * expired, and the offer it names enabled and running. The list colours the
+ * code by it.
+ *
+ * @param array  $key_code a key_codes row with enabled and expiration_date,
+ *                         and offer_status, offer_start_date and
+ *                         offer_end_date from the offer it names (null when
+ *                         no offer has that code)
+ * @param string $today    Y-m-d
+ * @return bool
+ */
+function pg_key_code_active($key_code, $today)
+{
+    $expires = (string) $key_code['expiration_date'];
+
+    return !empty($key_code['enabled'])
+        && (($expires === '0000-00-00') || ($expires >= $today))
+        && ((string) $key_code['offer_status'] === 'enabled')
+        && ((string) $key_code['offer_start_date'] <= $today)
+        && ((string) $key_code['offer_end_date'] >= $today);
+}
+
+/**
+ * The key code list's cells a quick edit changes, drawn the one way the list
+ * and the answer to an edit both use: the code coloured by whether it works
+ * today, the enabled mark and the last change.
+ *
+ * @param array  $key_code a row as pg_key_code_active() reads it, with
+ *                         last_modified_timestamp and last_modified_username
+ *                         (empty when nobody is recorded)
+ * @param string $today    Y-m-d
+ * @return array 'code' => array('class'), 'enabled' and 'last_modified' => array('html', 'class')
+ */
+function pg_key_code_list_cells($key_code, $today)
+{
+    $username = (string) ($key_code['last_modified_username'] ?? '');
+
+    return array(
+        'code'          => array('class' => 'chart_label align-middle ' . (pg_key_code_active($key_code, $today) ? 'status_enabled text-success' : 'status_disabled text-danger')),
+        'enabled'       => array('html' => !empty($key_code['enabled']) ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
+        'last_modified' => array(
+            'html'  => get_relative_time(array('timestamp' => $key_code['last_modified_timestamp']))
+                . (($username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : ''),
+            'class' => 'align-middle',
+        ),
+    );
+}
+
+/**
+ * Write one quick edit from the key code list the way the key code's screen
+ * (edit_key_code.php) writes the same field: the flag, the last change
+ * stamped with who made it, a line in the Site Log.
+ *
+ * @param int    $key_code_id
+ * @param string $field       a key of pg_key_code_edit_columns()
+ * @param string $value       as pg_list_edit_parse() read it
+ * @param int    $user_id
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_key_code_quick_update($key_code_id, $field, $value, $user_id)
+{
+    $key_code_id = (int) $key_code_id;
+    $columns = pg_key_code_edit_columns();
+
+    if (!isset($columns[$field]['options'][(string) $value])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    // Two offers can share a code; the list joins them the same way and
+    // colours the row by the first.
+    $read = function () use ($key_code_id) {
+        return db_item(
+            "SELECT
+                key_codes.id,
+                key_codes.code,
+                key_codes.enabled,
+                key_codes.expiration_date,
+                key_codes.timestamp AS last_modified_timestamp,
+                last_modified_user.user_username AS last_modified_username,
+                offers.status AS offer_status,
+                offers.start_date AS offer_start_date,
+                offers.end_date AS offer_end_date
+            FROM key_codes
+            LEFT JOIN offers ON key_codes.offer_code = offers.code
+            LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
+            WHERE key_codes.id = '" . $key_code_id . "'
+            LIMIT 1");
+    };
+
+    $current = $read();
+
+    if (!$current) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
+    }
+
+    $previous = !empty($current['enabled']) ? '1' : '0';
+    $enabled = ((string) $value === '1') ? '1' : '0';
+
+    // The same value again writes nothing and logs nothing; the row is still
+    // redrawn from what is stored.
+    if ($previous !== $enabled) {
+        db("UPDATE key_codes
+            SET enabled = '" . $enabled . "',
+                user = '" . (int) $user_id . "',
+                timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $key_code_id . "'");
+
+        log_activity(
+            lang(array(
+                'string' => 'key code ({var:1}) was changed on the key code list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array((string) $current['code'], $columns[$field]['label'], $columns[$field]['options'][$previous], $columns[$field]['options'][$enabled]),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+    }
+
+    $key_code = $read();
+
+    if (!$key_code) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
+    }
+
+    $cells = pg_key_code_list_cells($key_code, date('Y-m-d'));
+
+    return array('ok' => true, 'value' => !empty($key_code['enabled']) ? '1' : '0')
+        + $cells['enabled']
+        + array('cells' => array('code' => $cells['code'], 'last_modified' => $cells['last_modified']));
+}
+
+/**
+ * The gift card list's columns that change in place (pg_list_edit_table()):
+ * the notes, which an operator keeps about a card without touching its
+ * money. The balance and the expiration date stay on the gift card's screen.
+ *
+ * @return array field => definition
+ */
+function pg_gift_card_edit_columns()
+{
+    return array(
+        'notes' => array('type' => 'text', 'label' => lang('Notes')),
+    );
+}
+
+/**
+ * Whether a gift card's notes can change on the list. The list's box holds
+ * one line and reads a line break as a space, so notes written on more lines
+ * (on the gift card's screen, or the line a cancelled order adds) change only
+ * on the gift card's screen, where the lines are kept.
+ *
+ * @param string $notes
+ * @return bool
+ */
+function pg_gift_card_notes_fit_list($notes)
+{
+    return strpbrk((string) $notes, "\r\n") === false;
+}
+
+/**
+ * The gift card list's cells a quick edit changes, drawn the one way the list
+ * and the answer to an edit both use.
+ *
+ * @param array $gift_card a gift_cards row with notes,
+ *                         last_modified_timestamp and last_modified_username
+ *                         (empty when nobody is recorded)
+ * @return array 'notes' and 'last_modified' => array('html', 'class')
+ */
+function pg_gift_card_list_cells($gift_card)
+{
+    $username = (string) ($gift_card['last_modified_username'] ?? '');
+
+    return array(
+        'notes'         => array('html' => nl2br(h((string) $gift_card['notes'])), 'class' => 'align-middle'),
+        'last_modified' => array(
+            'html'  => get_relative_time(array('timestamp' => $gift_card['last_modified_timestamp']))
+                . (($username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : ''),
+            'class' => 'align-middle',
+        ),
+    );
+}
+
+/**
+ * Write one quick edit from the gift card list the way the gift card's
+ * screen (edit_gift_card.php) writes the notes: the last change stamped with
+ * who made it, a line in the Site Log.
+ *
+ * Notes on more than one line are refused (pg_gift_card_notes_fit_list()),
+ * and the write only lands on the notes that were read: cancelling the order
+ * that bought a card adds a line to its notes, and a change typed over the
+ * old notes must not wipe that line out.
+ *
+ * @param int    $gift_card_id
+ * @param string $field        a key of pg_gift_card_edit_columns()
+ * @param string $value        as pg_list_edit_parse() read it, '' for no notes
+ * @param int    $user_id
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_gift_card_quick_update($gift_card_id, $field, $value, $user_id)
+{
+    $gift_card_id = (int) $gift_card_id;
+    $columns = pg_gift_card_edit_columns();
+
+    if (!isset($columns[$field])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $read = function () use ($gift_card_id) {
+        return db_item(
+            "SELECT
+                gift_cards.id,
+                gift_cards.code,
+                gift_cards.notes,
+                gift_cards.last_modified_timestamp,
+                last_modified_user.user_username AS last_modified_username
+            FROM gift_cards
+            LEFT JOIN user AS last_modified_user ON gift_cards.last_modified_user_id = last_modified_user.user_id
+            WHERE gift_cards.id = '" . $gift_card_id . "'");
+    };
+
+    $current = $read();
+
+    if (!$current) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
+    }
+
+    if (!pg_gift_card_notes_fit_list($current['notes'])) {
+        return array('ok' => false, 'code' => 'lines', 'message' => lang('These notes take more than one line. Change them in the gift card.'));
+    }
+
+    $notes = (string) $value;
+
+    // The same notes again write nothing and log nothing; the cell is still
+    // redrawn from what is stored.
+    if ((string) $current['notes'] !== $notes) {
+        db("UPDATE gift_cards
+            SET notes = '" . e($notes) . "',
+                last_modified_user_id = '" . (int) $user_id . "',
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $gift_card_id . "' AND notes = '" . e((string) $current['notes']) . "'");
+
+        if (mysqli_affected_rows(db::$con) < 1) {
+            return array('ok' => false, 'code' => 'changed', 'message' => lang('The gift card changed in the meantime. Reload the list and try again.'));
+        }
+
+        log_activity(
+            lang(array(
+                'string' => 'gift card ({var:1}) was changed on the gift card list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array(output_gift_card_code($current['code']), $columns[$field]['label'], (string) $current['notes'], $notes),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+    }
+
+    $gift_card = $read();
+
+    if (!$gift_card) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
+    }
+
+    $cells = pg_gift_card_list_cells($gift_card);
+
+    return array('ok' => true, 'value' => (string) $gift_card['notes'])
+        + $cells['notes']
+        + array('cells' => array('last_modified' => $cells['last_modified']));
+}
 // Gets flat array of product groups for menu on catalog and catalog detail pages.
 function get_product_groups($properties)
 {

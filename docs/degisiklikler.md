@@ -84,6 +84,57 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.10 — Listeden hızlı güncelleme: anahtar kod durumu ve hediye kartı notları (2026-10-14)
+
+**Neden.** #364'ün hızlı güncelleme kalıbının ikinci aday grubu (#370'in
+"Kapsam dışı / sonraki grup" satırı). Bir anahtar kodu geçici olarak
+kapatmak ya da yeniden açmak için kodun ekranını açıp formu baştan kaydetmek
+gerekiyordu; hediye kartına kısa bir not düşmek de öyle.
+
+**Anahtar kodlar** (`view_key_codes.php`). Etkin hücresi tıklanınca Etkin /
+Devredışı listesi açılır (tür `select`, ürün listesinin Etkin sütunu gibi),
+seçim hemen kaydedilir. İzin listenin izni (rol < 3 ya da e-ticaret
+yönetimi). Kayıt `pg_key_code_quick_update()` (`includes/fn/ecommerce.php`):
+`edit_key_code.php` ile aynı yazma (`enabled`, `user`, `timestamp`); Site
+Günlüğü'ne "anahtar kod (KOD) anahtar kodlar listesinde değiştirildi: Etkin
+"Etkin" iken "Devredışı" oldu" yazılır. Aynı değer yazmaz ve günlüğe düşmez.
+Cevap Anahtar Kod hücresinin rengini (`data-pg-cell="code"`; yeşil yalnız kod
+bugün ödemede çalışıyorsa: etkin, süresi geçmemiş, teklifi açık ve
+tarihleri içinde) ve "Son Değişiklik" hücresini de yeniler. Bu kural
+`pg_key_code_active()`'e taşındı; listenin döngüsündeki eski hesap ve
+şablondaki `status_enabled` dalı yerine hücreler `pg_key_code_list_cells()`
+ile çizilir. Webhook ya da Çalışma Alanı olayı yok; anahtar kod ekranı da
+duyurmuyor.
+
+**Hediye kartları** (`view_gift_cards.php`). Notlar hücresi tıklanınca tek
+satırlık kutu açılır (tür `text`, boşaltılabilir, uzunluk sınırı yok;
+sütun `longtext` ve kartın ekranı da sınır koymuyor). İzin listenin izni.
+Kayıt `pg_gift_card_quick_update()`: `edit_gift_card.php` ile aynı yazma
+(`notes`, `last_modified_user_id`, `last_modified_timestamp`); Site Günlüğü'ne
+"hediye kartı (KOD) hediye kartları listesinde değiştirildi: Notlar "eski"
+iken "yeni" oldu". Bakiye ve son kullanma tarihi listede değişmez (bakiye
+kendi izini istiyor, #370'te kapsam dışı bırakılmıştı).
+
+Birden çok satırlı not listede değişmez: kutu tek satırdır ve satır sonunu
+boşluğa çevirir (`pg_list_edit_parse()`), kaydetmek satırları birleştirirdi.
+Bu notlar kartın ekranında, satırları korunarak değişir; hücre düz kalır
+(`pg_gift_card_notes_fit_list()`) ve doğrudan istek "Bu notlar birden çok
+satırdan oluşuyor…" ile reddedilir. Sipariş iptal edilince kartın notuna
+bir satır eklendiği için (`process_order_cancellation()`, `CONCAT`) yazma okunan
+nota koşulludur (`AND notes = '…'`); arada not değiştiyse "Hediye kartı bu
+arada değişti…" ile reddedilir ve iptal satırı ezilmez.
+
+Betiğe (`backend.src.js`) ve ortak yardımcıya (`includes/fn/output.php`)
+dokunulmadı. Şema değişikliği yok.
+
+**Testler.** `tests/list_edit_lists_test.php`'ye 5 test: anahtar kod
+sütununun yalnız 1/0 kabul etmesi; `pg_key_code_active()`'in etkin, süre,
+teklif durumu ve tarihleri ile teklifi olmayan kodu ayırması; anahtar kod
+hücrelerinin rengi, işareti ve kaçışlı kullanıcı adı; not sütununun boş ve
+tek satırı kabul edip çok satırı listede açmaması; not hücresinin kaçışı.
+
+---
+
 ## 2026.4.10 — Dış API: Çalışma Alanı mesajını düzeltme, silme, kanalı okundu işaretleme ve değişen mesajlar (2026-10-14)
 
 **Neden.** Mobil API ve Claude kanalı planının M2 dilimi
