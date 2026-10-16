@@ -30,6 +30,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-narrow-screen-bars.md: Designer toolbars below 992px hide labels, never controls: .sd-tabs-add-txt, .sd-vb-txt, flex-wrap on .sd-bp-bar, and how to measure off-screen controls.
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.
+- designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-pickers.md: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<key> values) and how the server and client resolve unsaved-tab references on save.
 - designer-palette-tabs-and-blocks.md: Designer palette has two tabs (Bileşenler building blocks, Bloklar ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
