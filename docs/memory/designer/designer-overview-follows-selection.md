@@ -8,7 +8,7 @@ description: The designer's Overview tree follows the selection from every panel
 - `_sdTreeOpenToSelection()` runs before the rows are drawn: for a newly selected node it opens the branches over it (`expandAncestorsAnywhere()`, widget chain included), so the row exists.
 - `_sdTreeRevealSelection()` runs after: it takes the row with `_sdTreeRowOf(list, node)` (object identity) and scrolls only `#sd-overview-tree-wrap` (`_sdTreeScrollRow()`).
 
-## Why did the Overview not keep up before (PR #489)?
+## Why did the Overview not keep up before (PR #494)?
 - Only a plain canvas click scrolled it, from the click handler: 80 ms later, `scrollIntoView({behavior:'smooth', block:'nearest'})`. The HTML panel, form controls, the context menu and the rest never scrolled it, so the operator clicked the element above or below again and again to find the row.
 - It took the row with `querySelector('li[data-nid="…"]')`, the first row with that id. Page trees and widget trees both count ids from `sd_1`, so on a page whose header widget comes first, a click on the page's `sd_3` scrolled to the header's `sd_3` row at the top of the tree.
 - `nearest` left the row on the panel's very edge; the smooth scroll was still running when the next element was clicked.
