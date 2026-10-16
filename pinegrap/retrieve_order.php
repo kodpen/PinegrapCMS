@@ -19,6 +19,20 @@
 // Used by shopping cart and express order pages to retrieve order for customer if there is a
 // reference code in the URL.
 
+// The reference code in the URL: ?r= or the older ?reference_code=, r first. Each is one value,
+// so an empty one or a list (?r[]=x) counts as not given and the other one is used. Returns ''
+// when neither is there; the cart and express order pages only call retrieve_order() otherwise.
+function retrieve_order_reference_code() {
+
+    foreach (array('r', 'reference_code') as $name) {
+        if (!empty($_GET[$name]) && is_string($_GET[$name])) {
+            return $_GET[$name];
+        }
+    }
+
+    return '';
+}
+
 function retrieve_order($request) {
 
     $order_label = $request['order_label'];
@@ -27,18 +41,14 @@ function retrieve_order($request) {
         $order_label = 'cart';
     }
 
-    if (!$_GET['r'] and !$_GET['reference_code']) {
+    $reference_code = retrieve_order_reference_code();
+
+    if ($reference_code == '') {
         $message = 'The ' . $order_label . ' could not be retrieved, because there is no reference code in the URL.';
         log_activity($message);
         return error_response($message);
     }
 
-    if ($_GET['r']) {
-        $reference_code = $_GET['r'];
-    } else {
-        $reference_code = $_GET['reference_code'];
-    }
-    
     $order = db_item("
         SELECT id, status FROM orders WHERE reference_code = '" . e($reference_code) . "'");
 

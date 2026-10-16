@@ -64,9 +64,9 @@ function get_shopping_cart($properties) {
     
     // If a reference code was passed in the query string, then retrieve order.
 
-    if (!empty($_GET['r']) || !empty($_GET['reference_code'])) {
+    require_once(dirname(__FILE__) . '/retrieve_order.php');
 
-        require_once(dirname(__FILE__) . '/retrieve_order.php');
+    if (retrieve_order_reference_code() != '') {
 
         $response = retrieve_order(array('order_label' => mb_strtolower($shopping_cart_label)));
 

@@ -23340,5 +23340,7 @@
     "Sign-in Buttons": "Giriş Düğmeleri",
     "Sign-up Buttons": "Kayıt Düğmeleri",
     "Turned on now: {var}": "Şu an açık olanlar: {var}",
-    "No provider is turned on now.": "Şu an açık sağlayıcı yok."
+    "No provider is turned on now.": "Şu an açık sağlayıcı yok.",
+    "A new order has been created, and it appears below.": "Yeni bir sipariş oluşturuldu ve aşağıda görüntüleniyor.",
+    "A new order has been created.": "Yeni bir sipariş oluşturuldu."
 }

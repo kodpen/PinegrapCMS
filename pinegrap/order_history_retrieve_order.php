@@ -31,7 +31,7 @@ $query =
         status
     FROM orders
     WHERE id = '" . escape($order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
 // if the order was not found, output error
 if (mysqli_num_rows($result) == 0) {
@@ -44,7 +44,7 @@ $status = $row['status'];
 
 // get user id for user
 $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
 $user_id = $row['user_id'];
 
@@ -72,11 +72,11 @@ $_SESSION['ecommerce']['order_id'] = $order_id;
 // this is the only retrieve order area where we do this.  we do not do this for the retrieve order feature for shopping cart and express order pages.
 // this is so someone can complete the ship tos for an order and then send the retrieve order link to someone else and the recipient won't have to complete the shipping
 $query = "UPDATE ship_tos SET complete = 0 WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
 // remove applied gift cards, because they might not be valid anymore
 $query = "DELETE FROM applied_gift_cards WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
 // If this visitor has a tracking code, then update tracking
 // code in order.  If this visitor does not have a tracking code,
@@ -130,7 +130,7 @@ $query =
         $sql_utm
         ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
     WHERE id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
 // if visitor tracking is on, update visitor record with order information, if visitor has not already created order or retrieved an order
 // (a visitor who signed in without a page view first has no visitor record)
@@ -145,7 +145,7 @@ if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
             (id = '" . $_SESSION['software']['visitor_id'] . "')
             AND (order_created = '0')
             AND (order_retrieved = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 }
 
 include_once('liveform.class.php');
@@ -154,7 +154,7 @@ include_once('liveform.class.php');
 if (ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) {
     // get page type for page, in order to determine which liveform to set
     $query = "SELECT page_type FROM page WHERE page_id = '" . escape(ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $page_type = $row['page_type'];
     
