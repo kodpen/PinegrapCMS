@@ -8,7 +8,8 @@ description: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json
 - JSON-LD is always an array + `json_encode()`. String concatenation is forbidden: one quoted product name invalidates the whole block and readers silently drop it.
 
 ## How is custom JSON-LD handled?
-- `page.custom_jsonld` + `config.custom_jsonld`: validate with `json_decode` on save (`output_error`); on output decode -> encode (`pg_custom_jsonld_block()`), the `/` escape makes a `</script` break-out impossible. Never echo the text as is.
+- `page.custom_jsonld` + `config.custom_jsonld`: validate with `json_decode` on save; on output decode -> encode (`pg_custom_jsonld_block()`), the `/` escape makes a `</script` break-out impossible. Never echo the text as is.
+- The SEO save (`includes/settings/seo.save.php`) marks invalid site JSON-LD (`mark_error('custom_jsonld')`, dialog `status: 'invalid'`) before the IndexNow file or a column is written. Why (PR #490): `output_error` gave the dialog a 500 after the IndexNow file was already written.
 
 ## Which rules apply to OG images and merchant data?
 - In the `media` field the value decides (`pg_resolve_submitted_form_og_image`): the field may link to rich text/video too; a video address does NOT go into og:image.
