@@ -42,9 +42,10 @@
 [NEW] UPS, FedEx and USPS rates, delivery dates and address checks now use the carriers' new REST APIs.
 [NEW] Added compact visitor records: each referring address and browser is stored once, so a new record takes about half the space.
 [NEW] Added monthly partitions for visitor records: a month older than the retention period is removed at once and its space goes back to the disk.
+[NEW] Added early removal of visitors' IP addresses: after 30 days by default the address is taken out of the visit record while the record and its figures stay.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.
-[SCHEME] New tables and columns are added for connected apps and accounts, sign-in, Workspace assistants, MCP servers, purchase orders, visitor summaries, visitor browsers, monthly visitor partitions and webhook subscriptions.
+[SCHEME] New tables and columns are added for connected apps and accounts, sign-in, Workspace assistants, MCP servers, purchase orders, visitor summaries, visitor browsers, monthly visitor partitions, the visitor IP address period and webhook subscriptions.
 ==========================================================
 2026.4.9
 [NEW] Links inside paragraphs and headings can be edited in the visual page editor.

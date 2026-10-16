@@ -55,7 +55,7 @@ $sql_http_referer = pg_visitor_text_sql('http_referer');
 $query =
     "SELECT
         visitors.id,
-        INET_NTOA(ip_address) as ip_address,
+        IF(visitors.ip_address = 0, '', INET_NTOA(visitors.ip_address)) as ip_address,
         " . $sql_http_referer . " AS http_referer,
         referring_host_name,
         referring_search_engine,
@@ -91,7 +91,7 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 $id = $row['id'];
-$ip_address = $row['ip_address'];
+$ip_address = (string) $row['ip_address'];
 $http_referer = $row['http_referer'];
 $referring_host_name = $row['referring_host_name'];
 $referring_search_engine = $row['referring_search_engine'];
@@ -121,6 +121,18 @@ $country = $row['country'];
 $start_timestamp = $row['start_timestamp'];
 $stop_timestamp = $row['stop_timestamp'];
 $site_search_terms = $row['site_search_terms'];
+
+// The address is 0 in the row once the general job took it out after its
+// period (includes/fn/visitor_ip.php), and for a visit it could not be stored
+// for (IPv6): the first says so, the second shows a dash.
+$ip_address_text = ($ip_address !== '') ? $ip_address : '-';
+$visitor_ip_settings = pg_visitor_retention_settings();
+
+if (($ip_address === '') && is_array($visitor_ip_settings) && ($visitor_ip_settings['ip_days'] > 0)
+    && ((int) $start_timestamp < pg_visitor_retention_cutoff($visitor_ip_settings['ip_days'], time()))
+) {
+    $ip_address_text = lang(array('string' => 'Removed after {var:1} days', 'vars' => array($visitor_ip_settings['ip_days'])));
+}
 
 $output_currency_row = '';
 
@@ -261,7 +273,7 @@ pg_page_shell(
             <div class="row mb-2  flex-wrap d-print-none">
                 <div class="col-12 col-sm-12 text-center text-md-start">
 
-                    <p class="p-0 m-0">' . lang('Visitor\'s IP Address') . ': ' . $ip_address . '</p>
+                    <p class="p-0 m-0">' . lang('Visitor\'s IP Address') . ': ' . h($ip_address_text) . '</p>
                 </div>
             </div>
             <div class="row">
@@ -290,7 +302,7 @@ pg_page_shell(
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-2">
                                     <div class="form-text">' . lang('IP Address') . '</div>
-                                    <h5>' . h($ip_address ? $ip_address : '-') . '</h5>
+                                    <h5>' . h($ip_address_text) . '</h5>
                                 </div>
                                 ' . $output_currency_row . '
                             </div>

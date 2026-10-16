@@ -198,7 +198,17 @@ $pg_settings_cards[] = '
                                         <div class="col-12">
                                             <div class="form-text">' . h(lang(array('string' => 'Older visitor records are removed a little at a time by the general job, so the table stays small. 0 keeps every record; otherwise at least {var:1} and at most {var:2} days.', 'vars' => array(PG_VISITOR_RETENTION_MIN_DAYS, PG_VISITOR_RETENTION_MAX_DAYS)))) . '</div>
                                         </div>
+                                        ' . ($visitor_ip_available ? '<div class="pg-f-xs">
+                                            <label for="visitor_ip_days" class="form-label">' . lang('Remove IP addresses after') . '</label>
+                                            <div class="input-group">
+                                                <input type="text" name="visitor_ip_days" id="visitor_ip_days" class="form-control" value="' . h($visitor_ip_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
+                                                <span class="input-group-text">' . lang('day(s)') . '</span>
+                                            </div>
+                                        </div>
                                         <div class="col-12">
+                                            <div class="form-text">' . h(lang(array('string' => 'The IP address of a visit is taken out of its record after this many days; the record, its source and its figures stay. 0 keeps it as long as the record; otherwise at least {var:1} and at most {var:2} days.', 'vars' => array(PG_VISITOR_IP_MIN_DAYS, PG_VISITOR_IP_MAX_DAYS)))) . '</div>
+                                        </div>
+                                        ' : '') . '<div class="col-12">
                                             <div class="form-check form-switch">
                                                 <input value="1"' . ($visitor_summary ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="visitor_summary" name="visitor_summary"/>
                                                 <label class="form-check-label" for="visitor_summary">' . lang('Keep a daily summary before records are removed') . '</label>

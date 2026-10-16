@@ -11,6 +11,7 @@ description: Why http_referer is not part of the visitor dedup key in init_track
 
 ## How is the visitor IP resolved?
 - With `waf_client_ip()`. Behind a CDN `REMOTE_ADDR` is the edge server and all visitors collapsed into a few addresses. With no trusted proxy defined it returns `REMOTE_ADDR`, so plain hosting behaves exactly as before.
+- Stored as `INET_ATON()`: an IPv6 visitor is 0, and so is a visit whose address the cleanup took out after `config.visitor_ip_days` (`visitor-ip-early-removal`). That pass leaves a visit still going on at its boundary for another day, so a zeroed row is not a fresh match for an IPv6 visitor's 30-minute lookup (only a visit lasting over a day could be).
 
 ## How is the `user_agent` column written?
 - With a defensive probe (`waf_table_has_column`): on an install with new code but un-upgraded DB the page view does not error, the column is silently skipped.

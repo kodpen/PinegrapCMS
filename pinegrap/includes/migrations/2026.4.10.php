@@ -52,6 +52,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_webhook_channel_group();  // 10.76
 	upgrade_2026_4_10_visitor_texts();          // 10.6
 	upgrade_2026_4_10_visitor_partitions();     // 10.7
+	upgrade_2026_4_10_visitor_ip();             // 10.8
 
 }
 
@@ -1278,5 +1279,23 @@ function upgrade_2026_4_10_visitor_partitions() {
 			install_log('2026.4.10 visitors not split into months: ' . $result['error']);
 			install_note('Visitor records: splitting the visitors table into monthly partitions stopped (' . $result['error'] . '). The table works as before; the general job tries the split again later.');
 	}
+
+}
+
+// The IP address of a visit taken out early (2026.4.10, 10.8;
+// includes/fn/visitor_ip.php, pg_visitor_cleanup_run(), the Visitor Tracking
+// card of the SEO settings).
+//
+// A visit kept its IP address for as long as the record, 90 days by default
+// and without a limit where the period is 0. config.visitor_ip_days is the
+// number of days after which the general job sets visitors.ip_address to 0,
+// a chunk at a time; the record and its figures stay. Nothing is changed
+// here: the column comes with 30 days, so the general job takes the address
+// out of the older visits after the upgrade, and 0 keeps it as before.
+function upgrade_2026_4_10_visitor_ip() {
+
+	install_add_column('config', 'visitor_ip_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 30");
+
+	install_note('Visitor records: the IP address of a visit is taken out of its record after 30 days by the general job, while the record and its figures stay. The period, or keeping it as long as the record, is set in Site Settings, SEO, Visitor Tracking.');
 
 }

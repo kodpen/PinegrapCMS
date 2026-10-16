@@ -115,6 +115,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $visitor_retention_available = isset($row['visitor_retention_days']) && isset($row['visitor_summary']);
     $visitor_retention_days = $visitor_retention_available ? (int) $row['visitor_retention_days'] : 0;
     $visitor_summary = $visitor_retention_available ? (int) $row['visitor_summary'] : 1;
+    // The days after which a visit's IP address goes (2026.4.10, 10.8).
+    $visitor_ip_available = $visitor_retention_available && isset($row['visitor_ip_days']);
+    $visitor_ip_days = $visitor_ip_available ? (int) $row['visitor_ip_days'] : 0;
     $allowed_bots = isset($row['allowed_bots']) ? $row['allowed_bots'] : '';
     $block_unknown_bots = isset($row['block_unknown_bots']) ? (int)$row['block_unknown_bots'] : 1;
 

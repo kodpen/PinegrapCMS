@@ -762,7 +762,10 @@ if (!$_POST) {
             case 'state': $operand_1 = 'visitors.state'; break;
             case 'zip_code': $operand_1 = 'visitors.zip_code'; break;
             case 'country': $operand_1 = 'visitors.country'; break;
-            case 'ip_address': $operand_1 = 'INET_NTOA(visitors.ip_address)'; break;
+            // 0 once the general job took the address out after its period
+            // (includes/fn/visitor_ip.php), or for an IPv6 visit: empty, as
+            // on the order report, rather than 0.0.0.0.
+            case 'ip_address': $operand_1 = 'CASE WHEN (visitors.ip_address = 0) THEN "" ELSE INET_NTOA(visitors.ip_address) END'; break;
         }
         
         // if a basic value was entered, use that value

@@ -735,6 +735,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
             : lang(array('string' => '{var:1} different values, each kept once', 'vars' => array(pg_format_number($visitor_texts, 0)))),
         lang('Oldest record') => ($visitor_preview['oldest'] > 0) ? get_absolute_time(array('timestamp' => $visitor_preview['oldest'], 'type' => 'date', 'format' => 'plain_text')) : '—',
         lang('Kept for') => $visitor_kept,
+        lang('IP addresses') => ($visitor_settings['ip_days'] > 0)
+            ? lang(array('string' => 'Taken out after {var:1} days', 'vars' => array($visitor_settings['ip_days'])))
+            : lang('Kept as long as the record'),
         lang('Daily summary') => $visitor_summary,
         lang('Last cleanup') => $visitor_last_text,
     );
@@ -753,7 +756,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                             <dt class="col-5 col-md-4 fw-normal text-body-secondary">' . h($visitor_label) . '</dt>
                             <dd class="col-7 col-md-8 mb-1">' . h($visitor_value)
                                 . (isset($visitor_sources[$visitor_label]) ? ' <span class="text-body-secondary">· ' . h($visitor_sources[$visitor_label]) . '</span>' : '')
-                                . (($visitor_label === lang('Kept for')) ? ' · ' . $visitor_settings_link : '') . '</dd>';
+                                . (in_array($visitor_label, array(lang('Kept for'), lang('IP addresses')), true) ? ' · ' . $visitor_settings_link : '') . '</dd>';
     }
 
     // What the button would remove, counted now.

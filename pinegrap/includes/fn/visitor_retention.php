@@ -61,9 +61,11 @@ function pg_visitor_retention_ready()
 }
 
 /**
- * The two settings, or false before the upgrade that adds them.
+ * The settings, or false before the upgrade that adds them. ip_days is the
+ * period after which a visit's IP address is taken out of its record
+ * (includes/fn/visitor_ip.php), 0 before its own step (10.8) as well.
  *
- * @return array('days' => int, 'summary' => bool)|false
+ * @return array('days' => int, 'summary' => bool, 'ip_days' => int)|false
  */
 function pg_visitor_retention_settings()
 {
@@ -71,7 +73,9 @@ function pg_visitor_retention_settings()
         return false;
     }
 
-    $row = db_item("SELECT visitor_retention_days, visitor_summary FROM config");
+    $ip_ready = pg_visitor_ip_ready();
+
+    $row = db_item("SELECT visitor_retention_days, visitor_summary" . ($ip_ready ? ", visitor_ip_days" : "") . " FROM config");
 
     if (!is_array($row)) {
         return false;
@@ -80,6 +84,7 @@ function pg_visitor_retention_settings()
     return array(
         'days' => (int) $row['visitor_retention_days'],
         'summary' => ((int) $row['visitor_summary'] === 1),
+        'ip_days' => $ip_ready ? (int) $row['visitor_ip_days'] : 0,
     );
 }
 
@@ -94,6 +99,24 @@ function pg_visitor_retention_settings()
  */
 function pg_visitor_retention_days_from_input($value)
 {
+    return pg_visitor_days_from_input($value, PG_VISITOR_RETENTION_MIN_DAYS, PG_VISITOR_RETENTION_MAX_DAYS);
+}
+
+/**
+ * A number of days as typed into the settings, within $min and $max, 0 for
+ * empty or 0, null for anything else (a list included).
+ *
+ * @param mixed $value
+ * @param int   $min
+ * @param int   $max
+ * @return int|null
+ */
+function pg_visitor_days_from_input($value, $min, $max)
+{
+    if (is_array($value) || is_object($value)) {
+        return null;
+    }
+
     $value = trim((string) $value);
 
     if (($value === '') || ($value === '0')) {
@@ -106,7 +129,7 @@ function pg_visitor_retention_days_from_input($value)
 
     $days = (int) $value;
 
-    if (($days < PG_VISITOR_RETENTION_MIN_DAYS) || ($days > PG_VISITOR_RETENTION_MAX_DAYS)) {
+    if (($days < (int) $min) || ($days > (int) $max)) {
         return null;
     }
 
@@ -592,7 +615,8 @@ function pg_visitor_cleanup_reset()
  *
  * Every tick while rows are waiting (a run ran out of time with work left),
  * otherwise once an hour: once the table is down to its period, all an hour
- * adds is the rows that crossed the boundary since.
+ * adds is the rows that crossed the boundary since. Also with records kept
+ * without a limit, as long as their IP addresses go after a period.
  *
  * @return bool
  */
@@ -600,7 +624,7 @@ function pg_visitor_cleanup_due()
 {
     $settings = pg_visitor_retention_settings();
 
-    if (($settings === false) || ($settings['days'] <= 0)) {
+    if (($settings === false) || (($settings['days'] <= 0) && ($settings['ip_days'] <= 0))) {
         return false;
     }
 
@@ -624,6 +648,9 @@ function pg_visitor_cleanup_due()
  * - With the summary on, only days already summarized are removed.
  * - Rows the hourly rollup backfill has not counted yet are kept until it
  *   has; the backfill gets a share of this run first.
+ * - Then, with the time left, the IP address is taken out of the visits
+ *   older than its own period (pg_visitor_ip_clear_run()); that also runs
+ *   when the records themselves are kept without a limit.
  *
  * The budget is wall clock: the run returns after the statement that crosses
  * it, so the caller's wait is about $budget_seconds plus one chunk.
@@ -639,7 +666,7 @@ function pg_visitor_cleanup_due()
  * @return array('state' => 'unavailable'|'off'|'busy'|'done'|'more',
  *               'days' => int, 'summary' => bool, 'cutoff' => int,
  *               'summarized' => int, 'deleted' => int, 'months' => int,
- *               'seconds' => float)
+ *               'ip_days' => int, 'ip_cleared' => int, 'seconds' => float)
  */
 function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
 {
@@ -653,6 +680,8 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
         'summarized' => 0,
         'deleted' => 0,
         'months' => 0,
+        'ip_days' => 0,
+        'ip_cleared' => 0,
         'seconds' => 0.0,
     );
 
@@ -664,8 +693,9 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
 
     $result['days'] = $settings['days'];
     $result['summary'] = $settings['summary'];
+    $result['ip_days'] = $settings['ip_days'];
 
-    if ($settings['days'] <= 0) {
+    if (($settings['days'] <= 0) && ($settings['ip_days'] <= 0)) {
         $result['state'] = 'off';
         return $result;
     }
@@ -713,7 +743,7 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
     // dashboard, so rows above its cursor are left alone until it passes.
     $id_ceiling = null;
 
-    if (function_exists('pg_visitor_backfill_state')) {
+    if (($cutoff > 0) && function_exists('pg_visitor_backfill_state')) {
         $backfill = pg_visitor_backfill_state();
 
         if (is_array($backfill) && !$backfill['done'] && ($backfill['max_id'] > 0)) {
@@ -729,7 +759,7 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
     $delete_before = $cutoff;
     $summary_complete = true;
 
-    if ($settings['summary']) {
+    if ($settings['summary'] && ($cutoff > 0)) {
 
         $through = pg_visitor_summary_through();
         $summary_complete = false;
@@ -779,21 +809,8 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
 
     if (!$delete_done) {
 
-        // The last row to go, found once through the start_timestamp index:
-        // the latest start before the boundary, then the highest id of that
-        // second. Ordering by the time alone lets both engines read the
-        // index from its end; adding the id to the order made MyISAM sort
-        // every row before the boundary.
-        $last_start = (int) db_value(
-            "SELECT start_timestamp
-            FROM visitors
-            WHERE start_timestamp < " . (int) $delete_before . "
-            ORDER BY start_timestamp DESC
-            LIMIT 1");
-
-        $last_id = ($last_start > 0)
-            ? (int) db_value("SELECT MAX(id) FROM visitors WHERE start_timestamp = " . $last_start)
-            : 0;
+        // The last row to go, found once through the start_timestamp index.
+        $last_id = pg_visitor_last_id_before($delete_before);
 
         if ($id_ceiling !== null) {
             $last_id = min($last_id, $id_ceiling);
@@ -804,24 +821,13 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
         }
 
         // The chunks walk the primary key from its low end, where the oldest
-        // rows are. Each one is a window of ids read from the key alone,
-        // then removed by that range: the server cannot pick another index
-        // for it, and every chunk takes the same short time however large
-        // the table is. A row in the window that started after the boundary
-        // (written out of order) stays.
+        // rows are (pg_visitor_id_window_end()). A row in the window that
+        // started after the boundary (written out of order) stays.
         $cursor = 0;
 
         while (!$delete_done && (microtime(true) < $deadline)) {
 
-            $upper = (int) db_value(
-                "SELECT MAX(id)
-                FROM (
-                    SELECT id
-                    FROM visitors
-                    WHERE (id > " . $cursor . ") AND (id <= " . $last_id . ")
-                    ORDER BY id
-                    LIMIT " . $chunk . "
-                ) AS visitor_chunk");
+            $upper = pg_visitor_id_window_end($cursor, $last_id, $chunk);
 
             if ($upper <= $cursor) {
                 $delete_done = true;
@@ -855,6 +861,19 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
         }
     }
 
+    // The IP addresses of the visits older than their own period
+    // (includes/fn/visitor_ip.php), with the time the run has left. After the
+    // removal, so a row about to go is not written first.
+    $ip_done = true;
+
+    if ($settings['ip_days'] > 0) {
+
+        $ip = pg_visitor_ip_clear_run($settings['ip_days'], $deadline, $chunk, $row_locks);
+
+        $result['ip_cleared'] = $ip['cleared'];
+        $ip_done = ($ip['state'] !== 'more');
+    }
+
     // The referring addresses and browsers no remaining visit names any more
     // (includes/fn/visitor_texts.php), with the time the run has left. It
     // goes by the oldest visit still there, so it is safe however far the
@@ -865,7 +884,7 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
 
     db("SELECT RELEASE_LOCK(" . pg_visitor_cleanup_lock_sql() . ")");
 
-    $backlog = !$delete_done || !$summary_complete || ($id_ceiling !== null);
+    $backlog = !$delete_done || !$summary_complete || ($id_ceiling !== null) || !$ip_done;
 
     $result['state'] = $backlog ? 'more' : 'done';
     $result['seconds'] = round(microtime(true) - $started, 2);
@@ -876,10 +895,64 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
         'deleted' => $result['deleted'],
         'summarized' => $result['summarized'],
         'months' => $result['months'],
+        'ip_cleared' => $result['ip_cleared'],
         'seconds' => $result['seconds'],
     )));
 
     return $result;
+}
+
+/**
+ * The highest id among the visits that started last before $before, found
+ * through the start_timestamp index: the latest start before it, then the
+ * highest id of that second. Ordering by the time alone lets both engines
+ * read the index from its end; adding the id to the order made MyISAM sort
+ * every row before the boundary. 0 when no visit started before it.
+ *
+ * @param int $before
+ * @return int
+ */
+function pg_visitor_last_id_before($before)
+{
+    $last_start = (int) db_value(
+        "SELECT start_timestamp
+        FROM visitors
+        WHERE start_timestamp < " . (int) $before . "
+        ORDER BY start_timestamp DESC
+        LIMIT 1");
+
+    return ($last_start > 0)
+        ? (int) db_value("SELECT MAX(id) FROM visitors WHERE start_timestamp = " . $last_start)
+        : 0;
+}
+
+/**
+ * The last id of the next window of up to $chunk visits after $cursor, no
+ * further than $last_id; $cursor or less when there is none.
+ *
+ * The cleanup's chunks walk the primary key from its low end, where the
+ * oldest rows are. Each one is a window of ids read from the key alone, then
+ * changed by that range: the server cannot pick another index for it, and
+ * every chunk takes the same short time however large the table is. ORDER BY
+ * id LIMIT on the statement itself was tried first and was slow: the server
+ * took the start_timestamp index.
+ *
+ * @param int $cursor
+ * @param int $last_id
+ * @param int $chunk
+ * @return int
+ */
+function pg_visitor_id_window_end($cursor, $last_id, $chunk)
+{
+    return (int) db_value(
+        "SELECT MAX(id)
+        FROM (
+            SELECT id
+            FROM visitors
+            WHERE (id > " . (int) $cursor . ") AND (id <= " . (int) $last_id . ")
+            ORDER BY id
+            LIMIT " . (int) $chunk . "
+        ) AS visitor_chunk");
 }
 
 /**
@@ -1336,6 +1409,18 @@ function pg_visitor_cleanup_result_text($run)
             return lang('Another visitor record cleanup is running (the general job, or another tab). Try again in a minute.');
     }
 
+    $ip_text = !empty($run['ip_cleared'])
+        ? ' ' . lang(array(
+            'string' => 'The IP address was taken out of {var:1} record(s) older than {var:2} days.',
+            'vars' => array(pg_format_number($run['ip_cleared'], 0), $run['ip_days']),
+        ))
+        : '';
+
+    // Records kept without a limit: the run only took IP addresses out.
+    if ($run['days'] <= 0) {
+        return lang('Visitor records are kept without a limit, so nothing was removed. The period is set under Settings › SEO › Visitor Tracking.') . $ip_text;
+    }
+
     $text = lang(array(
         'string' => '{var:1} visitor record(s) older than {var:2} days removed, {var:3} day(s) added to the daily summary, in {var:4} s.',
         'vars' => array(
@@ -1352,6 +1437,8 @@ function pg_visitor_cleanup_result_text($run)
             'vars' => array(pg_format_number($run['months'], 0)),
         ));
     }
+
+    $text .= $ip_text;
 
     return $text . ' ' . (($run['state'] === 'more')
         ? lang('Older records are still left; the general job carries on with them.')
