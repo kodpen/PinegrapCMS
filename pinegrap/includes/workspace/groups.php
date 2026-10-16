@@ -492,6 +492,7 @@ function ws_group_save($viewer, $data)
 
     $now = time();
     $synced = array();
+    $previous = $group ? ws_group_event_payload($group) : null;
 
     if ($group) {
         $moved = ((int) $group['parent_id'] !== $parent_id);
@@ -520,6 +521,12 @@ function ws_group_save($viewer, $data)
     }
 
     log_activity(lang(array('string' => 'workspace channel group ({var:1}) was saved', 'vars' => $name)), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if ($group) {
+        ws_group_announce_update($previous, $id, $viewer);
+    } else {
+        ws_group_announce('workspace.channel_group.created', ws_group($id), array('created_by' => (int) $viewer['id']));
+    }
 
     return array('ok' => true, 'error' => '', 'field' => '', 'id' => $id, 'synced' => $synced);
 }
@@ -599,6 +606,7 @@ function ws_group_move($viewer, $group_id, $parent_id, $before_id = 0)
     }
 
     $moved = ((int) $group['parent_id'] !== $parent_id);
+    $previous = ws_group_event_payload($group);
 
     // The groups there in their order, with this one where it was dropped.
     $siblings = array();
@@ -626,6 +634,10 @@ function ws_group_move($viewer, $group_id, $parent_id, $before_id = 0)
     ws_groups_forget();
 
     $synced = $moved ? ws_group_sync_tree($viewer, $group['id'])['channels'] : array();
+
+    // Only a move into another group is news: the order among the groups of
+    // one level is not part of what a group is.
+    ws_group_announce_update($previous, $group['id'], $viewer);
 
     return array('ok' => true, 'error' => '', 'synced' => $synced);
 }
@@ -655,6 +667,15 @@ function ws_group_remove($viewer, $group_id)
     $parent_id = (int) $group['parent_id'];
     $channel_ids = array_map('intval', (array) db_values("SELECT id FROM ws_channels WHERE group_id = '" . $id . "'"));
     $tree_channels = ws_group_channel_ids(ws_group_tree_ids($id));
+    $group_ids = array();
+
+    foreach (ws_groups_all() as $child_id => $row) {
+        if ((int) $row['parent_id'] === $id) {
+            $group_ids[] = (int) $child_id;
+        }
+    }
+
+    $holders = array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_group_access WHERE group_id = '" . $id . "' ORDER BY user_id"));
 
     db("UPDATE ws_channels SET group_id = '" . $parent_id . "' WHERE group_id = '" . $id . "'");
     db("UPDATE ws_channel_groups SET parent_id = '" . $parent_id . "' WHERE parent_id = '" . $id . "'");
@@ -684,6 +705,15 @@ function ws_group_remove($viewer, $group_id)
     if ($stopped > 0) {
         log_activity(lang(array('string' => 'API event subscriptions narrowed to the workspace channel group ({var:1}) were switched off: {var:2}', 'vars' => array($group['name'], $stopped))), (string) ($_SESSION['sessionusername'] ?? ''));
     }
+
+    // Announced once those subscriptions are off: they are no longer active,
+    // so the event is queued for the groups it was inside and the whole site.
+    ws_group_announce('workspace.channel_group.deleted', $group, array(
+        'channel_ids'  => $channel_ids,
+        'group_ids'    => $group_ids,
+        'access_ended' => $holders,
+        'deleted_by'   => (int) $viewer['id'],
+    ));
 
     return array('ok' => true, 'error' => '', 'synced' => $synced);
 }
@@ -1179,6 +1209,9 @@ function ws_group_access_grant($viewer, $group_id, $user_ids)
 
     $now = time();
 
+    // Whoever held it already is not news.
+    $added = array_values(array_diff($user_ids, array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_group_access WHERE group_id = '" . (int) $group['id'] . "'"))));
+
     foreach ($user_ids as $user_id) {
         db("INSERT IGNORE INTO ws_channel_group_access (group_id, user_id, granted_by, granted_at)
             VALUES ('" . (int) $group['id'] . "', '" . $user_id . "', '" . (int) $viewer['id'] . "', '" . $now . "')");
@@ -1187,6 +1220,10 @@ function ws_group_access_grant($viewer, $group_id, $user_ids)
     $result = ws_group_sync_tree($viewer, $group['id']);
 
     log_activity(lang(array('string' => 'access on the workspace channel group ({var:1}) was given to {var:2}', 'vars' => array($group['name'], implode(', ', array_map('ws_person_name', $user_ids))))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if (!empty($added)) {
+        ws_group_announce('workspace.channel_group.access_changed', $group, array('added' => $added, 'removed' => array(), 'changed_by' => (int) $viewer['id']));
+    }
 
     return array('ok' => true, 'error' => '', 'added' => $result['added'], 'synced' => $result['channels']);
 }
@@ -1218,11 +1255,19 @@ function ws_group_access_revoke($viewer, $group_id, $user_ids)
         return array('ok' => true, 'error' => '', 'removed' => 0, 'synced' => array());
     }
 
+    // Only the people who held it lose anything.
+    $removed = array_values(array_intersect($user_ids, array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_group_access
+        WHERE group_id = '" . (int) $group['id'] . "' AND user_id IN (" . implode(',', $user_ids) . ")"))));
+
     db("DELETE FROM ws_channel_group_access WHERE group_id = '" . (int) $group['id'] . "' AND user_id IN (" . implode(',', $user_ids) . ")");
 
     $result = ws_group_sync_tree($viewer, $group['id']);
 
     log_activity(lang(array('string' => 'access on the workspace channel group ({var:1}) was taken from {var:2}', 'vars' => array($group['name'], implode(', ', array_map('ws_person_name', $user_ids))))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if (!empty($removed)) {
+        ws_group_announce('workspace.channel_group.access_changed', $group, array('added' => array(), 'removed' => $removed, 'changed_by' => (int) $viewer['id']));
+    }
 
     return array('ok' => true, 'error' => '', 'removed' => $result['removed'], 'synced' => $result['channels']);
 }
@@ -1315,7 +1360,8 @@ function ws_channel_move_group($viewer, $channel, $group_id, $preview = false)
 //
 // An application's webhook subscription (api_webhooks, 2026.4.10, 10.76) can
 // name a group in channel_group_id: it then hears the workspace events of
-// the channels in that group and in the groups inside it, and nothing else.
+// the channels in that group and in the groups inside it, and the events
+// about those groups themselves, and nothing else.
 // The channel's group is read when the event happens, so a channel moved
 // into the group is heard from that moment and one moved out stops being
 // heard. What an event carries is not changed: a private channel's message
@@ -1345,8 +1391,10 @@ function ws_webhook_event_channel_id($payload)
 
 /**
  * The groups an event's channel is in, nearest first: the ids a subscription
- * narrowed to a group is matched against. Empty for an event of no channel,
- * for a channel in no group and for anything but a workspace event.
+ * narrowed to a group is matched against. An event about a group itself is
+ * matched against that group and the ones it is in
+ * (ws_webhook_group_event_groups()). Empty for an event of no channel, for a
+ * channel in no group and for anything but a workspace event.
  *
  * @param string $event
  * @param array  $payload
@@ -1356,6 +1404,10 @@ function ws_webhook_event_groups($event, $payload)
 {
     if ((strpos((string) $event, 'workspace.') !== 0) || !ws_groups_ready()) {
         return array();
+    }
+
+    if (strpos((string) $event, 'workspace.channel_group.') === 0) {
+        return ws_webhook_group_event_groups($payload);
     }
 
     $channel_id = ws_webhook_event_channel_id($payload);
@@ -1439,6 +1491,149 @@ function ws_webhook_group_removed($group_id)
     db("UPDATE api_webhooks SET status = 'disabled' WHERE id IN (" . implode(',', $ids) . ")");
 
     return count($ids);
+}
+
+// ── Events about the groups themselves ─────────────────────────────────
+//
+// workspace.channel_group.created, .updated, .access_changed and .deleted,
+// announced by the functions the channel list and the API both call, so a
+// group arranged on either is announced once. A whole-site subscription
+// hears them all; one narrowed to a group hears its own group and the
+// groups inside it.
+
+/**
+ * A group as its events carry it: the fields GET /workspace/channel-groups
+ * answers with. The path is built from the group above, so a group already
+ * taken away still has the one it had.
+ *
+ * @param array       $group ws_group() row
+ * @param string|null $above the path of the group above; read when null
+ * @return array id, name, parent_id (null at the top), path, color (hex or null)
+ */
+function ws_group_event_payload($group, $above = null)
+{
+    $parent_id = (int) ($group['parent_id'] ?? 0);
+
+    if ($above === null) {
+        $above = ($parent_id > 0) ? ws_group_path($parent_id) : '';
+    }
+    $hex = ws_palette_hex($group['color'] ?? 0);
+
+    return array(
+        'id'        => (int) $group['id'],
+        'name'      => (string) $group['name'],
+        'parent_id' => ($parent_id > 0) ? $parent_id : null,
+        'path'      => (($above !== '') ? $above . ' › ' : '') . (string) $group['name'],
+        'color'     => ($hex !== '') ? $hex : null,
+    );
+}
+
+/**
+ * Announces an event about a group: the group, then what the event adds.
+ *
+ * @param string     $event
+ * @param array|null $group ws_group() row; nothing is announced without one
+ * @param array      $extra
+ */
+function ws_group_announce($event, $group, $extra = array())
+{
+    if (empty($group) || !function_exists('pg_announce')) {
+        return;
+    }
+
+    pg_announce($event, ws_group_event_payload($group) + (array) $extra);
+}
+
+/**
+ * Announces workspace.channel_group.updated when the name, the colour or the
+ * group it is inside changed: changed lists which, previous holds the group
+ * as it was. Saving the form unchanged, or putting the group in another
+ * place among the groups of the same level, announces nothing.
+ *
+ * @param array|null $previous ws_group_event_payload() before the change
+ * @param int        $group_id
+ * @param array      $viewer
+ */
+function ws_group_announce_update($previous, $group_id, $viewer)
+{
+    $group = ws_group($group_id);
+
+    if (!$group || empty($previous)) {
+        return;
+    }
+
+    $changed = ws_group_event_changes($previous, ws_group_event_payload($group));
+
+    if (empty($changed)) {
+        return;
+    }
+
+    unset($previous['id']);
+
+    ws_group_announce('workspace.channel_group.updated', $group, array(
+        'changed'    => $changed,
+        'previous'   => $previous,
+        'updated_by' => (int) $viewer['id'],
+    ));
+}
+
+/**
+ * Which of what an event says of a group differ between two
+ * ws_group_event_payload() answers. The path is left out: it changes with a
+ * group above, which is that group's own event.
+ *
+ * @param array $previous
+ * @param array $now
+ * @return string[] name, parent_id, color, in that order
+ */
+function ws_group_event_changes($previous, $now)
+{
+    $changed = array();
+
+    foreach (array('name', 'parent_id', 'color') as $key) {
+        if (($now[$key] ?? null) !== ($previous[$key] ?? null)) {
+            $changed[] = $key;
+        }
+    }
+
+    return $changed;
+}
+
+/**
+ * The groups an event about a group is heard in: the group itself and the
+ * groups it is inside. A group moved into another one is heard on both
+ * sides, by the groups it left (previous.parent_id) too, so a subscription
+ * for those learns it is gone; a group taken away by the groups that moved
+ * up out of it (group_ids) as well. The groups are read from the event's own
+ * parent ids, which a group taken away still has.
+ *
+ * @param array $payload ws_group_event_payload() and what the event adds
+ * @return int[]
+ */
+function ws_webhook_group_event_groups($payload)
+{
+    $payload = (array) $payload;
+    $id = max(0, (int) ($payload['id'] ?? 0));
+
+    if ($id <= 0) {
+        return array();
+    }
+
+    $previous = (isset($payload['previous']) && is_array($payload['previous'])) ? $payload['previous'] : array();
+
+    $ids = array($id);
+
+    if (isset($payload['group_ids']) && is_array($payload['group_ids'])) {
+        $ids = array_merge($ids, array_filter(array_map('intval', $payload['group_ids'])));
+    }
+
+    foreach (array($payload['parent_id'] ?? 0, $previous['parent_id'] ?? 0) as $parent_id) {
+        if ((int) $parent_id > 0) {
+            $ids = array_merge($ids, ws_group_chain((int) $parent_id));
+        }
+    }
+
+    return array_values(array_unique(array_map('intval', $ids)));
 }
 
 /**

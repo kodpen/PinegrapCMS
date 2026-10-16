@@ -108,6 +108,10 @@ function ws_webhook_events()
         'workspace.task.assistant_answered' => 'An assistant finished a run on a workspace task (outcome: answered or failed; agent, request_id, requested_by). The answer itself, and what it proposed, are read with GET /workspace/assistant-requests and GET /workspace/changes by task_id',
         'workspace.approval.requested'  => 'An approval request was made in a public workspace channel: its title, rule, deadline, the people asked (guests: the names of the people outside the team) and the record it is about',
         'workspace.approval.decided'    => 'An approval request in a public workspace channel was settled - approved, rejected, expired or closed without a decision - with each person\'s answer, the answers from outside the team under guests',
+        'workspace.channel_group.created'        => 'A group of workspace channels was made, in the channel list or through the API (id, name, parent_id, path, color, created_by)',
+        'workspace.channel_group.updated'        => 'A group of workspace channels was renamed, given another colour or moved inside another group: changed lists which, previous holds the group as it was. A new place among the groups of the same level is not announced',
+        'workspace.channel_group.access_changed' => 'Access on a group of workspace channels was given (added) or taken back (removed): user ids. The channel memberships that access brings or ends follow from it and are not announced one by one',
+        'workspace.channel_group.deleted'        => 'A group of workspace channels was taken away: its channels (channel_ids) and groups (group_ids) moved up to parent_id and the access given on it ended (access_ended). Subscriptions narrowed to the groups that moved up hear it; those narrowed to the removed group are switched off first and do not',
     );
 }
 

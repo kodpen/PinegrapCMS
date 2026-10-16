@@ -4,9 +4,10 @@
  *
  * Tests for event subscriptions narrowed to a group of workspace channels
  * (api_webhooks.channel_group_id, 2026.4.10, 10.76) that need no database:
- * which channel an event happened in, that every workspace event names one,
- * that the three webhook writes take the group, and that removing a group
- * switches its subscriptions off.
+ * which channel an event happened in, that every workspace event names one
+ * (or, for an event about a group, the group), that the three webhook writes
+ * take the group, that removing a group switches its subscriptions off, and
+ * what the events about the groups themselves carry and where they go.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -55,26 +56,38 @@ function test_webhook_channel_group_other_events_name_no_group()
 }
 
 // Every event a narrowed subscription may listen to says which channel it
-// happened in, or a subscriber to a group would never hear it.
+// happened in, or a subscriber to a group would never hear it. An event about
+// a group itself is announced through ws_group_announce(), which carries the
+// group, and is matched by the group rather than by a channel.
 function test_webhook_channel_group_every_workspace_event_names_its_channel()
 {
 	$sites = array();
+	$groups = array();
 
 	foreach (glob(PG_FUNCTIONS_DIR . '/includes/workspace/*.php') as $file) {
 		$source = file_get_contents($file);
 
-		if (!preg_match_all("~pg_announce\('(workspace\.[a-z_.]+)',~", $source, $found, PREG_OFFSET_CAPTURE)) {
-			continue;
+		if (preg_match_all("~pg_announce\('(workspace\.[a-z_.]+)',~", $source, $found, PREG_OFFSET_CAPTURE)) {
+			foreach ($found[1] as $match) {
+				$rest = substr($source, $match[1]);
+				$end = strpos($rest, '));');
+				$sites[$match[0]][] = ($end === false) ? $rest : substr($rest, 0, $end);
+			}
 		}
 
-		foreach ($found[1] as $match) {
-			$rest = substr($source, $match[1]);
-			$end = strpos($rest, '));');
-			$sites[$match[0]][] = ($end === false) ? $rest : substr($rest, 0, $end);
+		if (preg_match_all("~ws_group_announce\('(workspace\.[a-z_.]+)',~", $source, $found)) {
+			foreach ($found[1] as $event) {
+				$groups[$event] = true;
+			}
 		}
 	}
 
 	foreach (array_keys(ws_webhook_events()) as $event) {
+		if (strpos($event, 'workspace.channel_group.') === 0) {
+			pg_assert_true(isset($groups[$event]) && empty($sites[$event]), $event . ' is announced with its group');
+			continue;
+		}
+
 		pg_assert_true(!empty($sites[$event]), $event . ' is announced');
 
 		foreach ((array) ($sites[$event] ?? array()) as $payload) {
@@ -82,7 +95,12 @@ function test_webhook_channel_group_every_workspace_event_names_its_channel()
 		}
 	}
 
+	foreach (array_keys($groups) as $event) {
+		pg_assert_true(array_key_exists($event, ws_webhook_events()), $event . ' is in the catalogue');
+	}
+
 	pg_assert_contains("'channel_id'", webhook_channel_group_test_source('ws_task_event_payload'), 'a task event carries its channel');
+	pg_assert_contains('ws_group_event_payload($group)', webhook_channel_group_test_source('ws_group_announce'), 'a group event carries its group');
 }
 
 // Create, change and the change addressed as a POST take the group; 0 or
@@ -144,4 +162,105 @@ function test_webhook_channel_group_removal_switches_subscriptions_off()
 	pg_assert_contains("pg_schema_has('api_webhooks', 'channel_group_id')", $removed, 'asks for the column first');
 	pg_assert_contains("SET status = 'disabled'", $removed, 'switched off, not moved up');
 	pg_assert_same(0, ws_webhook_group_removed(0), 'no group, nothing to do');
+}
+
+// The four events about a group are workspace events, so a subscription
+// narrowed to a group may listen to them; the names fit the queue's column.
+function test_webhook_channel_group_group_events_are_listed()
+{
+	$events = ws_webhook_events();
+
+	foreach (array('created', 'updated', 'access_changed', 'deleted') as $what) {
+		$event = 'workspace.channel_group.' . $what;
+
+		pg_assert_true(isset($events[$event]), $event . ' is listed');
+		pg_assert_true(strlen($event) <= 50, $event . ' fits api_webhook_queue.event');
+	}
+}
+
+// A group as its events carry it: the fields of WorkspaceChannelGroup, null
+// at the top and for no colour, the path ending in its own name.
+function test_webhook_channel_group_event_payload()
+{
+	$top = ws_group_event_payload(array('id' => '4', 'name' => 'Sales', 'parent_id' => '0', 'color' => '0'));
+
+	pg_assert_same(array('id' => 4, 'name' => 'Sales', 'parent_id' => null, 'path' => 'Sales', 'color' => null), $top);
+
+	$inside = ws_group_event_payload(array('id' => 5, 'name' => 'Istanbul', 'parent_id' => 4, 'color' => 1), 'Customers › Sales');
+
+	pg_assert_same(4, $inside['parent_id'], 'the group above');
+	pg_assert_same(ws_palette_hex(1), $inside['color'], 'the colour as the API gives it');
+	pg_assert_same('Customers › Sales › Istanbul', $inside['path'], 'the path of the group above, then its own name');
+	pg_assert_same('Istanbul', ws_group_event_payload(array('id' => 5, 'name' => 'Istanbul', 'parent_id' => 4), '')['path'], 'a group above that is gone');
+}
+
+// Only a name, a colour or a parent that really changed is announced, and
+// in a fixed order.
+function test_webhook_channel_group_event_changes()
+{
+	$was = array('id' => 5, 'name' => 'Istanbul', 'parent_id' => 4, 'path' => 'Sales › Istanbul', 'color' => null);
+
+	pg_assert_same(array(), ws_group_event_changes($was, $was), 'saved unchanged');
+	pg_assert_same(array(), ws_group_event_changes($was, array('path' => 'Customers › Istanbul') + $was), 'a group above renamed');
+	pg_assert_same(array('name'), ws_group_event_changes($was, array('name' => 'Ankara') + $was));
+	pg_assert_same(array('parent_id', 'color'), ws_group_event_changes($was, array('parent_id' => null, 'color' => '#b5534b') + $was));
+	pg_assert_same(array('parent_id'), ws_group_event_changes($was, array('parent_id' => '4') + $was), 'a parent id read as text is a change of type, never sent');
+}
+
+// An event about a group is matched by the group itself and the groups
+// above it, a group moved by the groups it left too, and a group taken away
+// by the groups that moved up out of it. A group at the top is matched by
+// itself alone, without reading the groups.
+function test_webhook_channel_group_group_event_groups()
+{
+	pg_assert_same(array(5), ws_webhook_group_event_groups(array('id' => 5, 'parent_id' => null, 'previous' => array('parent_id' => null))));
+	pg_assert_same(array(5), ws_webhook_group_event_groups(array('id' => '5', 'previous' => 'x')), 'previous that is not an object');
+	pg_assert_same(array(5, 8, 9), ws_webhook_group_event_groups(array('id' => 5, 'parent_id' => null, 'group_ids' => array(8, '9', 0, 5))), 'a group taken away: the groups that moved up out of it');
+	pg_assert_same(array(5), ws_webhook_group_event_groups(array('id' => 5, 'group_ids' => 'x')), 'group_ids that is not a list');
+	pg_assert_same(array(), ws_webhook_group_event_groups(array('id' => 0)), 'no group');
+	pg_assert_same(array(), ws_webhook_group_event_groups(array()), 'nothing');
+
+	$groups = webhook_channel_group_test_source('ws_webhook_event_groups');
+
+	pg_assert_true(strpos($groups, "'workspace.channel_group.'") < strpos($groups, 'ws_webhook_event_channel_id('), 'a group event is not looked up by channel');
+
+	$matched = webhook_channel_group_test_source('ws_webhook_group_event_groups');
+
+	pg_assert_contains("array(\$payload['parent_id'] ?? 0, \$previous['parent_id'] ?? 0)", $matched, 'the groups above it and the ones it left');
+	pg_assert_contains('ws_group_chain((int) $parent_id)', $matched);
+}
+
+// Each of the five functions the channel list and the API share announces
+// its event, after the change; access is announced only for the people whose
+// access really changed, and a removed group only once its own narrowed
+// subscriptions are switched off.
+function test_webhook_channel_group_group_events_are_announced()
+{
+	$save = webhook_channel_group_test_source('ws_group_save');
+
+	pg_assert_contains("ws_group_announce('workspace.channel_group.created'", $save);
+	pg_assert_contains('ws_group_announce_update($previous', $save);
+	pg_assert_true(strpos($save, '$previous = ') < strpos($save, 'UPDATE ws_channel_groups'), 'save: read before the change');
+
+	$move = webhook_channel_group_test_source('ws_group_move');
+
+	pg_assert_contains('ws_group_announce_update($previous', $move);
+	pg_assert_true(strpos($move, '$previous = ') < strpos($move, 'UPDATE ws_channel_groups'), 'move: read before the change');
+
+	$remove = webhook_channel_group_test_source('ws_group_remove');
+
+	pg_assert_true(strpos($remove, "ws_group_announce('workspace.channel_group.deleted'") > strpos($remove, 'ws_webhook_group_removed('), 'removal: after the narrowed subscriptions are off');
+	pg_assert_true(strpos($remove, '$holders = ') < strpos($remove, 'DELETE FROM ws_channel_group_access'), 'removal: who held access, read before it ends');
+
+	$grant = webhook_channel_group_test_source('ws_group_access_grant');
+
+	pg_assert_true(strpos($grant, '$added = ') < strpos($grant, 'INSERT IGNORE INTO ws_channel_group_access'), 'grant: who held it already, read before');
+	pg_assert_contains("if (!empty(\$added)) {\n        ws_group_announce('workspace.channel_group.access_changed'", $grant);
+
+	$revoke = webhook_channel_group_test_source('ws_group_access_revoke');
+
+	pg_assert_true(strpos($revoke, '$removed = ') < strpos($revoke, 'DELETE FROM ws_channel_group_access'), 'revoke: who held it, read before');
+	pg_assert_contains("if (!empty(\$removed)) {\n        ws_group_announce('workspace.channel_group.access_changed'", $revoke);
+
+	pg_assert_same(null, ws_group_announce('workspace.channel_group.created', null), 'no group, nothing announced');
 }

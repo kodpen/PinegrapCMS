@@ -276,8 +276,10 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 - Yeni bir `workspace.*` olayı yükünde `channel_id` taşır (görev notu gibi
   `task.channel_id` de olur): bir kanal grubuna daraltılmış abonelik
   (`api_webhooks.channel_group_id`, 2026.4.10) olayı kanalın grubuna göre
-  süzer; kanalı olmayan olay ona hiç gitmez. `tests/webhook_channel_group_test.php`
-  denetler.
+  süzer; kanalı olmayan olay ona hiç gitmez. İstisna: grubun kendisiyle ilgili
+  `workspace.channel_group.*` olayları `ws_group_announce()` ile duyurulur ve
+  grubun kendisine göre süzülür (`ws_webhook_group_event_groups()`).
+  `tests/webhook_channel_group_test.php` denetler.
 - **Toplu içe aktarma yollarından olay duyurma**; beş bin kuyruk satırı yerine
   tek listeleme yeterlidir ve bunu katalog metninde yaz.
 
