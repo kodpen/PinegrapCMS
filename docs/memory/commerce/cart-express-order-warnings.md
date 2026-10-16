@@ -43,5 +43,5 @@ signed in with and without a contact, and a deleted gift card: 942 warning
 lines on the old code, 0 after; HTML equal except ids and cart codes.
 Tests: `tests/cart_layout_warnings_test.php`.
 
-PRs: #456 (custom layouts, quick add off), #PRNUM (built-in layouts, express
+PRs: #456 (custom layouts, quick add off), #475 (built-in layouts, express
 quick add, recurring field title, deleted gift card).
