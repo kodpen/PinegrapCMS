@@ -17,6 +17,9 @@
     [SCHEME]     this version changes your database
 
 ==========================================================
+2026.11.0
+[FIX] Miscellaneous bug fixes and new features.
+==========================================================
 2026.4.10
 [NEW] Added an OAuth 2.1 authorization server and an MCP server: AI apps such as Claude and ChatGPT connect with a person's own permissions.
 [NEW] The external API and MCP tools now cover customers, product groups, menus, calendars, comments, campaigns, gift cards, visitor reports and ERP documents.

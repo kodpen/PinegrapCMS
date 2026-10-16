@@ -49,7 +49,10 @@ already made.
 
 PHP CMS (PHP 7.1–8.5, MySQL/MariaDB via `mysqli`, Bootstrap 5 + jQuery). Code
 lives under `pinegrap/`; paths in memory and skills are relative to it. Open
-version **2026.4.10**; details in `docs/memory/release/release-status.md`.
+version **2026.11.0**; details in `docs/memory/release/release-status.md`.
+Version numbers are `YYYY.M.PATCH` from 2026.11.0 on (2026.11.0, 2026.11.1,
+2026.12.0; month without a leading zero, three parts always):
+`docs/memory/release/version-numbering.md`.
 Branches: work from `development`, PRs to `development`, never to `main`.
 
 ## Fixed rules

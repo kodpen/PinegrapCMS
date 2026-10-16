@@ -15,16 +15,16 @@ eklenir. Yeni sürüm numarası yalnız yayın sonrası açılır. Hangi sürüm
 olduğunu `docs/memory/release/release-status.md` söyler — erişemiyorsan
 **tahmin etme, sor**.
 
-2026-10-13 itibarıyla 2026.4.9 yayında ve kapalı (`includes/migrations/2026.4.9.php`
-dokunulmaz). **Açık sürüm 2026.4.10**: `versions.php` satırı, changelog
-başlığı ve `includes/migrations/2026.4.10.php` → `upgrade_to_2026_4_10()`
-var (ilk adım OAuth, 10.70); yeni adım girişe çağrı olarak eklenir (alt
-adımlar `10.x`). Sonraki numarayı ürün sahibine sor. Alt adım etiketleri önceki sürümlerin yapısını yeni
-önekle korur (Çalışma Alanı .80–.89, ERP .58–.69 ve .90–, API .70–.79). Dosyayı
-ve `versions.php` satırını ilk şema adımını yazan açar; satır eklendiği an dev
-paneli yükseltme ekranına yönlenir, yükseltme hemen koşulur. Dosya açıldıktan
-sonra gelen adım dosyayı yeniden oluşturmaz, `upgrade_to_<sürüm>()` girişine
-yeni bir çağrı ekler.
+2026-10-16 itibarıyla 2026.4.10 yayında ve kapalı (`includes/migrations/2026.4.10.php`
+dokunulmaz). **Açık sürüm 2026.11.0** (yıl.ay.yama numaralarının ilki,
+`docs/memory/release/version-numbering.md`): `versions.php` satırı ve changelog
+başlığı var, migration dosyası henüz yok. İlk şema adımını yazan
+`includes/migrations/2026.11.0.php` → `upgrade_to_2026_11_0()` dosyasını açar;
+sonra gelen adım dosyayı yeniden oluşturmaz, girişe yeni bir çağrı ekler.
+Sonraki numarayı ürün sahibine sor. Alt adım etiketleri önceki sürümlerin
+yapısını `11.0.` önekiyle korur (Çalışma Alanı .80–.89, ERP .58–.69 ve .90–,
+API .70–.79). `versions.php` satırı eklendiği an dev paneli yükseltme ekranına
+yönlenir, yükseltme hemen koşulur.
 
 DB'ye dokunan her sürümün kendi dosyası olur (`2026.2.5.php` →
 `upgrade_to_2026_2_5()`); kod-only sürümler için migration dosyası eklenmez.

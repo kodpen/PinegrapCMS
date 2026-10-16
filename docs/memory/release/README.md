@@ -8,7 +8,7 @@ Versions, migrations and upgrade steps, change log rules, release status.
 - how-to-add-migration.md: Step-by-step for a DB schema change: open-version sub-step vs new number, versions.php, migration file template, get_tables() for new tables, changelog.
 - migration-step-helpers.md: How to write an upgrade step with the runner.php install_* helpers: check-then-act, exact-name probes, re-runnable data statements, enum-narrowing MODIFY.
 - migration-system-layout.md: Where DB schema changes live (includes/migrations files and roles) and how version entry functions and sub-steps are named. Direct SQL for schema is forbidden.
-- release-status.md: Last released version (2026.4.9), the open version (2026.4.10), its migration file and step-label ranges, how a release branch is built
+- release-status.md: Last released version (2026.4.10), the open version (2026.11.0, first calendar-versioned number), its migration file and step labels, how a release branch, tag and GitHub release are made
 - released-vs-open-version.md: Released versions are closed, unreleased ones open: where the status is recorded, how the upgrade loop compares versions, no new number while one is open.
 - rerun-upgrade-steps.md: How to re-run an open version's upgrade steps on a dev DB (config.version rollback, config field, Yazılımı Onar card) and the package repair card.
 - schema-probe-rules.md: Code that reads a table/column added by a migration must probe first; use pg_schema_has($table, $column) (since 2026.4.8), its cache file and invalidation.
@@ -17,3 +17,4 @@ Versions, migrations and upgrade steps, change log rules, release status.
 - upgrade-bridge-rule.md: Upgrade bridge rule: code lands before the schema, so login, install lock and initialize_user() must run on the previous schema; gate and mandatory test.
 - upgrade-changelog-rules.md: changelog.txt format (English, only plan-driven major features as [NEW], one [FIX]/[SECURITY]/[SCHEME] line per version); the detail goes to docs/memory.
 - upgrade-runner-behavior.md: How the upgrade runner reacts to failing statements, locks and fatals, and how the install screen runs one version per request, with heavy-table preflight.
+- version-numbering.md: Version numbers from 2026.11.0 on are year.month.patch (calendar versioning): what each part means, which number an open version takes, why three parts and no leading zero, step labels.
