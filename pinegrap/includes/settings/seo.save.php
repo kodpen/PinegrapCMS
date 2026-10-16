@@ -59,6 +59,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // The days after which a visit's IP address goes (2026.4.10, 10.8), the
+    // same way: only when the form carried the field.
+    $visitor_ip_ready = $visitor_retention_ready && pg_visitor_ip_ready() && array_key_exists('visitor_ip_days', $_POST);
+    $visitor_ip_days_input = $visitor_ip_ready ? pg_visitor_ip_days_from_input(post_value('visitor_ip_days')) : 0;
+
+    if ($visitor_ip_ready && ($visitor_ip_days_input === null)) {
+        $liveform->mark_error('visitor_ip_days', lang(array('string' => 'Remove IP addresses after 0 days (keep them with the record), or after {var:1} to {var:2} days.', 'vars' => array(PG_VISITOR_IP_MIN_DAYS, PG_VISITOR_IP_MAX_DAYS))));
+        return;
+    }
+
     // Structured data settings (2026.4.4). Only written where the columns
     // exist, so this code also runs safely before the database upgrade.
     $seo_jsonld_ready = waf_table_has_column('config', 'og_default_image');
@@ -232,13 +242,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         if (!is_array($visitor_retention_current)
             || ($visitor_retention_current['days'] !== $visitor_retention_days_input)
             || ($visitor_retention_current['summary'] !== ($visitor_summary_input === 1))
+            || ($visitor_ip_ready && ($visitor_retention_current['ip_days'] !== $visitor_ip_days_input))
         ) {
             pg_visitor_cleanup_reset();
         }
 
         $sql_visitor_retention_fields =
             "visitor_retention_days = '" . (int) $visitor_retention_days_input . "',
-            visitor_summary = '" . $visitor_summary_input . "',";
+            visitor_summary = '" . $visitor_summary_input . "',"
+            . ($visitor_ip_ready ? "
+            visitor_ip_days = '" . (int) $visitor_ip_days_input . "'," : "");
     }
 
     $sql_cookie_consent_fields = '';

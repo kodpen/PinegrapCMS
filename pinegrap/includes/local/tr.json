@@ -23429,5 +23429,14 @@
     "One per month, {var:1} months: {var:2} to {var:3}": "Her ay için bir tane, {var:1} ay: {var:2} – {var:3}",
     "{var:1}+ visits are past the last month, so no new month is opened; they are kept and removed a chunk at a time.": "{var:1}+ ziyaret son ayın ötesinde olduğu için yeni ay açılmadı; bu kayıtlar tutulur ve parça parça silinir.",
     "Opening the next month stopped: {var:1}": "Sonraki ayı açma durdu: {var:1}",
-    "Not split: {var:1}": "Bölünmedi: {var:1}"
+    "Not split: {var:1}": "Bölünmedi: {var:1}",
+    "Remove IP addresses after": "IP adreslerinin silineceği süre",
+    "Remove IP addresses after 0 days (keep them with the record), or after {var:1} to {var:2} days.": "IP adreslerini 0 gün (kayıtla birlikte tut) ya da {var:1} ile {var:2} gün arası bir süre sonra silin.",
+    "The IP address of a visit is taken out of its record after this many days; the record, its source and its figures stay. 0 keeps it as long as the record; otherwise at least {var:1} and at most {var:2} days.": "Bir ziyaretin IP adresi bu kadar gün sonra kaydından silinir; kayıt, kaynağı ve sayıları kalır. 0 adresi kayıt durdukça tutar; aksi halde en az {var:1}, en çok {var:2} gün.",
+    "IP addresses": "IP adresleri",
+    "Taken out after {var:1} days": "{var:1} gün sonra siliniyor",
+    "Kept as long as the record": "Kayıt durdukça tutuluyor",
+    "The IP address was taken out of {var:1} record(s) older than {var:2} days.": "{var:2} günden eski {var:1} kayıttan IP adresi silindi.",
+    "general job took the IP address out of {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydından IP adresini sildi",
+    "Removed after {var:1} days": "{var:1} gün sonra silindi"
 }
