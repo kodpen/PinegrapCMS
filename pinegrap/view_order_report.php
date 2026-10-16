@@ -492,10 +492,12 @@ if (!$_POST) {
             // string can carry anything. The year math and mktime() calls below
             // reject strings on PHP 8, and a value that reached the session would
             // break the report on every later request, so only a real calendar
-            // range is stored; anything else keeps the previous range.
+            // range is stored; anything else keeps the previous range. A part
+            // sent as an array (?start_year[]=x) counts as not given: (int) made
+            // it 1, a valid year, so the range jumped to the year 0001 and stayed.
             $requested_range = array();
             foreach (array('start_month', 'start_day', 'start_year', 'stop_month', 'stop_day', 'stop_year') as $date_part) {
-                $requested_range[$date_part] = (int) ($_GET[$date_part] ?? 0);
+                $requested_range[$date_part] = is_scalar($_GET[$date_part] ?? null) ? (int) $_GET[$date_part] : 0;
             }
             if (checkdate($requested_range['start_month'], $requested_range['start_day'], $requested_range['start_year'])
                 && checkdate($requested_range['stop_month'], $requested_range['stop_day'], $requested_range['stop_year'])) {
@@ -1704,6 +1706,12 @@ if (!$_POST) {
 // else the form has been submitted, so process form
 } else {
     validate_token_field();
+
+    // Every field of this form is one value. A field sent as an array
+    // (name[]=x, filter_1_field[]=x, last_filter_number[]=x) counts as not
+    // given: it reached escape() and ended in an error page, and an array
+    // filter count kept the filter loop running until the time limit.
+    pg_request_single_values(array_keys($_GET + $_POST));
 
     $liveform->add_fields_to_session();
     

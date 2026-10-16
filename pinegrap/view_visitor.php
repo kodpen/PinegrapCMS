@@ -38,7 +38,9 @@ if (defined('BASE_CURRENCY_SYMBOL') == false) {
 }
 
 // if the user was creating a visitor report on the previous screen, then prepare previous screen link
-if (isset($_GET['visitor_report_id']) == false) {
+// (a report id sent as an array, ?visitor_report_id[]=x, counts as not given
+// instead of ending in an error page)
+if (!is_scalar($_GET['visitor_report_id'] ?? null)) {
     $pg_previous_screen_item = array('label' => lang('Visitor Report'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php');
 
 // else the user was editing a visitor report on the previous screen, so prepare previous screen link

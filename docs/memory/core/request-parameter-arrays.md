@@ -17,6 +17,12 @@ description: How screens must treat a request parameter that arrives as an array
 - Write them only when they are text (and, for a fixed set like a calendar view, one of the set); otherwise keep the old session value. Readers also ignore a non-text session value, since an older version may have kept an array.
 - Calendars: `calendars.php` (panel, #417) and `get_calendar_view_screen_content.php` (site calendar pages) do this for calendar_id, view and date; `get_calendar()` drops a date that is not text. Symptom before the site fix: one `?date[]=x` or `?view=x` link and every calendar in that session wrote warnings ("Array to string conversion" at `includes/fn/calendar.php`); an unknown view also left the calendar empty (PR #471).
 
+## Report screens (order, visitor, shipping)?
+- Order and visitor report forms call `pg_request_single_values(array_keys($_GET + $_POST))` in the POST branch before liveform copies `$_REQUEST` into the session (no field is a list). Before (PR #478): any array field answered 500, `last_filter_number[]` looped until the 30 s limit, the visitor report then showed "Query failed" for the session.
+- Date changer parts use `is_scalar()`: `(int)` of an array is 1, so `?start_year[]=x` stuck the range at year 0001.
+- The shipping report stores only a valid Y-m-d date and a known status; a bad one stayed in the session ("The start date is invalid" or warnings on every visit).
+- `view_visitor.php` checks `visitor_report_id` with `is_scalar()` (array: 500).
+
 ## What if a record screen gets no id or an unknown id?
 - Answer "Kayıt bulunamadı" (`lang('Record not found.')`) with 404. Never fall back to record 1.
 - Token-protected action screens (duplicate, send) answer 404 on a missing record.
