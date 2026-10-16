@@ -630,9 +630,16 @@ function pg_visitor_cleanup_due()
  *
  * @param int $budget_seconds
  * @param int $chunk Rows per DELETE
+ * On a table split into months (includes/fn/visitor_partitions.php) the
+ * months that lie wholly before the boundary go first, each in a moment with
+ * DROP PARTITION; the chunks then remove what is left of the month the
+ * boundary falls in. Not while the rollup backfill is behind: a dropped month
+ * cannot leave the rows above its cursor in place.
+ *
  * @return array('state' => 'unavailable'|'off'|'busy'|'done'|'more',
  *               'days' => int, 'summary' => bool, 'cutoff' => int,
- *               'summarized' => int, 'deleted' => int, 'seconds' => float)
+ *               'summarized' => int, 'deleted' => int, 'months' => int,
+ *               'seconds' => float)
  */
 function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
 {
@@ -645,6 +652,7 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
         'cutoff' => 0,
         'summarized' => 0,
         'deleted' => 0,
+        'months' => 0,
         'seconds' => 0.0,
     );
 
@@ -760,6 +768,15 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
     // -- The removal ---------------------------------------------------------
     $delete_done = ($delete_before <= 0);
 
+    // Whole months first, where the table is split into them.
+    if (!$delete_done && ($id_ceiling === null)) {
+
+        $dropped = pg_visitor_partition_drop_run($delete_before, $deadline);
+
+        $result['deleted'] += $dropped['rows'];
+        $result['months'] = $dropped['months'];
+    }
+
     if (!$delete_done) {
 
         // The last row to go, found once through the start_timestamp index:
@@ -858,6 +875,7 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
         'backlog' => $backlog,
         'deleted' => $result['deleted'],
         'summarized' => $result['summarized'],
+        'months' => $result['months'],
         'seconds' => $result['seconds'],
     )));
 
@@ -1041,6 +1059,38 @@ function pg_visitor_table_file_paths($datadir, $database, $table, $engine)
 }
 
 /**
+ * Where the files of a table split into partitions are: one .ibd per
+ * partition, named <table>#p#<partition> by MySQL 8 and <table>#P#<partition>
+ * by MySQL 5.7 and MariaDB, as glob() patterns, the database's folder as it
+ * is spelled and in lower case.
+ *
+ * No database access.
+ *
+ * @param string $datadir  @@datadir
+ * @param string $database DATABASE()
+ * @param string $table
+ * @return array of patterns; empty when there is nothing to look for
+ */
+function pg_visitor_partition_file_patterns($datadir, $database, $table)
+{
+    $datadir = rtrim((string) $datadir, '/\\');
+    $folder = pg_visitor_db_file_name($database);
+    $file = pg_visitor_db_file_name($table);
+
+    if (($datadir === '') || ($folder === null) || ($file === null)) {
+        return array();
+    }
+
+    $patterns = array();
+
+    foreach (array_unique(array($folder, strtolower($folder))) as $spelling) {
+        $patterns[] = $datadir . '/' . $spelling . '/' . $file . '#[pP]#*.ibd';
+    }
+
+    return $patterns;
+}
+
+/**
  * The size of the visitors table's file on disk, and where the figure came
  * from:
  *
@@ -1056,6 +1106,9 @@ function pg_visitor_table_file_paths($datadir, $database, $table, $engine)
  *            added up;
  * 'shared'   the same estimate, for a table kept in InnoDB's shared file
  *            (innodb_file_per_table off), which has no file of its own.
+ *
+ * A table split into months has a file per month; their sizes are added up,
+ * from the files or from the server's list.
  *
  * @param array|null $catalog_row pg_db_table_catalog()['visitors']
  * @return array('bytes' => float, 'source' => string)
@@ -1084,9 +1137,39 @@ function pg_visitor_table_file_size($catalog_row)
         return $statistics;
     }
 
+    $partitioned = ($engine === 'innodb') && in_array(pg_visitor_partition_read('visitors')['state'], array('monthly', 'other'), true);
+
     // A data directory of a server on another machine is a path there, which
     // may name a file of another database here.
-    if (defined('DB_HOST') && pg_visitor_move_db_is_local(DB_HOST)) {
+    if (defined('DB_HOST') && pg_visitor_move_db_is_local(DB_HOST) && $partitioned) {
+
+        foreach (pg_visitor_partition_file_patterns($server[0], $server[1], 'visitors') as $pattern) {
+
+            $files = @glob($pattern);
+
+            if (!is_array($files) || (count($files) === 0)) {
+                continue;
+            }
+
+            $bytes = 0.0;
+
+            foreach ($files as $path) {
+
+                clearstatcache(true, $path);
+
+                $size = @filesize($path);
+
+                if (($size === false) || ($size < 0)) {
+                    continue 2;
+                }
+
+                $bytes += (float) $size;
+            }
+
+            return array('bytes' => $bytes, 'source' => 'file');
+        }
+
+    } elseif (defined('DB_HOST') && pg_visitor_move_db_is_local(DB_HOST)) {
 
         foreach (pg_visitor_table_file_paths($server[0], $server[1], 'visitors', $engine) as $paths) {
 
@@ -1121,10 +1204,16 @@ function pg_visitor_table_file_size($catalog_row)
 
         foreach (array('INNODB_TABLESPACES', 'INNODB_SYS_TABLESPACES') as $view) {
 
-            $result = pg_visitor_move_query(
-                "SELECT FILE_SIZE
-                FROM information_schema." . $view . "
-                WHERE NAME = '" . e($folder . '/visitors') . "'");
+            // A partition's tablespace is <folder>/visitors#p#<partition>
+            // (#P# before MySQL 8); LIKE escapes the underscores of the
+            // folder's name.
+            $result = pg_visitor_move_query($partitioned
+                ? "SELECT SUM(FILE_SIZE)
+                    FROM information_schema." . $view . "
+                    WHERE LOWER(NAME) LIKE '" . e(escape_like(strtolower($folder . '/visitors#p#'))) . "%'"
+                : "SELECT FILE_SIZE
+                    FROM information_schema." . $view . "
+                    WHERE NAME = '" . e($folder . '/visitors') . "'");
 
             $row = $result ? mysqli_fetch_row($result) : null;
 
@@ -1257,6 +1346,13 @@ function pg_visitor_cleanup_result_text($run)
         ),
     ));
 
+    if (!empty($run['months'])) {
+        $text .= ' ' . lang(array(
+            'string' => '{var:1} whole month(s) of them went at once.',
+            'vars' => array(pg_format_number($run['months'], 0)),
+        ));
+    }
+
     return $text . ' ' . (($run['state'] === 'more')
         ? lang('Older records are still left; the general job carries on with them.')
         : lang('No older records are left.'));
@@ -1277,6 +1373,12 @@ function pg_visitor_cleanup_result_text($run)
 // rows per statement, copies again the visits that changed meanwhile, and
 // then puts it in the old table's place with one RENAME TABLE, which takes a
 // moment. The old table is checked against the new one and removed.
+//
+// Where the server can partition the table, the copy is split into months
+// (includes/fn/visitor_partitions.php), so a MyISAM table comes out of the
+// move on InnoDB and split at once. An InnoDB table that is not split, too
+// large for the upgrade to split it in place, goes through the same copy:
+// that move is the 'split' kind, the one from MyISAM the 'engine' kind.
 
 /**
  * The InnoDB table built next to a MyISAM `visitors`, and the name the MyISAM
@@ -1304,9 +1406,11 @@ function pg_visitor_move_marker()
 /**
  * What the marker file holds, every key present.
  *
- * state: '' never looked, 'none' the table is not on MyISAM, 'waiting' on
- * MyISAM and not started ('reason' says why), 'copying', 'swapped' (the copy
- * is in place, the old table not removed yet), 'done', 'failed' ('error').
+ * state: '' never looked, 'none' there is nothing to move (the table is on
+ * InnoDB and split into months, or this server cannot split it), 'waiting'
+ * not started ('reason' says why), 'copying', 'swapped' (the copy is in
+ * place, the old table not removed yet), 'done', 'failed' ('error'). kind:
+ * 'engine' a move from MyISAM, 'split' an InnoDB table split into months.
  *
  * @return array
  */
@@ -1320,6 +1424,7 @@ function pg_visitor_move_last()
 
     return array(
         'state' => isset($last['state']) ? (string) $last['state'] : '',
+        'kind' => (isset($last['kind']) && ($last['kind'] === 'split')) ? 'split' : 'engine',
         'reason' => isset($last['reason']) ? (string) $last['reason'] : '',
         'error' => isset($last['error']) ? (string) $last['error'] : '',
         'requested' => !empty($last['requested']),
@@ -1357,7 +1462,7 @@ function pg_visitor_move_save($last)
 /**
  * Whether the general job should look at the move now: on every tick while
  * one is under way or the operator asked for one, otherwise once an hour
- * (once a day when the table is not on MyISAM at all).
+ * (once a day when there is nothing to move).
  *
  * @return bool
  */
@@ -1454,6 +1559,31 @@ function pg_visitor_move_disk_free()
 }
 
 /**
+ * Which move the table needs: 'engine' from MyISAM to InnoDB (split into
+ * months on the way where the server can), 'split' an InnoDB table that is
+ * not split yet, '' none.
+ *
+ * No database access.
+ *
+ * @param string $engine    of `visitors`, lower case
+ * @param string $partition pg_visitor_partition_read()['state']
+ * @param bool   $splittable the server can partition the table
+ * @return string
+ */
+function pg_visitor_move_kind($engine, $partition, $splittable)
+{
+    if ($engine === 'myisam') {
+        return 'engine';
+    }
+
+    if (($engine === 'innodb') && ($partition === 'none') && $splittable) {
+        return 'split';
+    }
+
+    return '';
+}
+
+/**
  * Why the general job does not start moving the table now, or '' when it may.
  *
  * On its own it starts only once the cleanup has brought the table down to
@@ -1464,8 +1594,8 @@ function pg_visitor_move_disk_free()
  *
  * No database access.
  *
- * @param array $facts engine (lower case), capable (bool), fits (bool|null),
- *                     old_exists (bool), requested (bool), failed (bool: a
+ * @param array $facts kind (pg_visitor_move_kind()), capable (bool), fits
+ *                     (bool|null), old_exists (bool), requested (bool), failed (bool: a
  *                     move stopped on an error in the last week),
  *                     days (int), cleaned (bool: the cleanup has run),
  *                     backlog (bool), disk_free (float|null), needed (float)
@@ -1474,7 +1604,7 @@ function pg_visitor_move_disk_free()
  */
 function pg_visitor_move_hold_reason($facts)
 {
-    if ($facts['engine'] !== 'myisam') {
+    if ($facts['kind'] === '') {
         return 'engine';
     }
 
@@ -1625,9 +1755,16 @@ function pg_visitor_move_number($sql)
  * query reads). The table it replaces would otherwise keep them for good, as
  * that upgrade leaves a MyISAM table alone.
  *
+ * With $split the copy is split into months as well, from the month of the
+ * oldest visit on (pg_visitor_partition_plan()). A move from MyISAM whose copy
+ * the server will not split builds it unsplit, as before; a split that cannot
+ * be made is an error.
+ *
+ * @param string $kind  pg_visitor_move_kind()
+ * @param bool   $split the server can partition the table
  * @return string '' when built, otherwise the server's error
  */
-function pg_visitor_move_create_copy()
+function pg_visitor_move_create_copy($kind = 'engine', $split = false)
 {
     $copy = PG_VISITOR_MOVE_COPY;
 
@@ -1656,8 +1793,26 @@ function pg_visitor_move_create_copy()
         $changes[] = 'DROP INDEX `idx_user_agent`';
     }
 
+    // The months, from the oldest visit to the months ahead. The copy comes
+    // with the key of `visitors`, which is (id) unless an earlier split made
+    // it (id, start_timestamp).
+    $split_sql = ($split || ($kind === 'split'))
+        ? pg_visitor_partition_alter_sql(pg_visitor_partition_primary($copy), pg_visitor_partition_plan_for('visitors'), $changes)
+        : null;
+
+    if (($kind === 'split') && ($split_sql === null)) {
+        pg_visitor_move_query("DROP TABLE IF EXISTS `" . $copy . "`");
+        return lang('the primary key of the table is not the one it can be split by');
+    }
+
     // The table is empty: this is a change of its definition, not a copy.
-    if (!pg_visitor_move_query("ALTER TABLE `" . $copy . "` " . implode(', ', $changes))) {
+    $done = ($split_sql !== null) && pg_visitor_move_query("ALTER TABLE `" . $copy . "` " . $split_sql);
+
+    if (!$done && ($kind !== 'split')) {
+        $done = pg_visitor_move_query("ALTER TABLE `" . $copy . "` " . implode(', ', $changes));
+    }
+
+    if (!$done) {
         $error = (string) mysqli_error(db::$con);
         pg_visitor_move_query("DROP TABLE IF EXISTS `" . $copy . "`");
         return $error;
@@ -1779,10 +1934,13 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
         return pg_visitor_move_finish($last, $result);
     }
 
-    if ($engines['visitors'] !== 'myisam') {
+    $support = pg_visitor_partition_support();
+    $kind = pg_visitor_move_kind($engines['visitors'], pg_visitor_partition_read('visitors')['state'], $support['ok']);
 
-        // A copy with no MyISAM table to go with it: the table was converted
-        // another way meanwhile, or a backup brought the copy back.
+    if ($kind === '') {
+
+        // A copy with nothing to move it for: the table was converted or
+        // split another way meanwhile, or a backup brought the copy back.
         if ($engines[$copy] !== '') {
             pg_visitor_move_query("DROP TABLE `" . $copy . "`");
         }
@@ -1798,6 +1956,8 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
         return $result;
     }
 
+    $last['kind'] = $kind;
+
     if ($engines[$copy] === '') {
 
         $catalog = pg_db_table_catalog();
@@ -1805,13 +1965,16 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
 
         $settings = pg_visitor_retention_settings();
         $cleanup = pg_visitor_cleanup_last();
-        $capability = pg_innodb_capability();
-        $estimate = $capability['ok'] ? pg_innodb_row_estimate('visitors') : null;
+
+        // An InnoDB table that is only split needs nothing of InnoDB it does
+        // not have already.
+        $capability = ($kind === 'engine') ? pg_innodb_capability() : array('ok' => true, 'reason' => '');
+        $estimate = (($kind === 'engine') && $capability['ok']) ? pg_innodb_row_estimate('visitors') : null;
 
         $last['needed'] = pg_visitor_move_disk_needed($catalog_row);
 
         $reason = pg_visitor_move_hold_reason(array(
-            'engine' => 'myisam',
+            'kind' => $kind,
             'capable' => $capability['ok'],
             'fits' => is_array($estimate) ? $estimate['fits'] : null,
             'old_exists' => ($engines[$old] !== ''),
@@ -1840,7 +2003,7 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
             return $result;
         }
 
-        $error = pg_visitor_move_create_copy();
+        $error = pg_visitor_move_create_copy($kind, $support['ok']);
 
         if ($error !== '') {
             return pg_visitor_move_fail($last, $result, $error);
@@ -1861,9 +2024,11 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
         // Written now: a run cut off from here on must find when it began.
         pg_visitor_move_save($last);
 
-    } elseif (($engines[$copy] !== 'innodb') || !pg_visitor_move_same_columns()) {
+    } elseif (($engines[$copy] !== 'innodb') || !pg_visitor_move_same_columns()
+        || (($kind === 'split') && (pg_visitor_partition_read($copy)['state'] !== 'monthly'))) {
 
-        // Not a copy this function made, or `visitors` changed under it.
+        // Not a copy this function made, `visitors` changed under it, or a
+        // copy built unsplit for a table that now is to be split.
         pg_visitor_move_query("DROP TABLE `" . $copy . "`");
 
         $last['state'] = 'waiting';
@@ -2113,11 +2278,13 @@ function pg_visitor_move_finish(&$last, $result)
     $settings = pg_visitor_retention_settings();
     $cutoff = is_array($settings) ? pg_visitor_retention_cutoff($settings['days'], time()) : 0;
 
-    // A plain SELECT reads the InnoDB table without locking its rows.
+    // A plain SELECT reads the InnoDB table without locking its rows. The
+    // start of a visit never changes, and with it in the join a table split
+    // into months looks each row up in its own month only.
     $missing_sql =
         "SELECT o.id
         FROM `" . $old . "` AS o
-        LEFT JOIN visitors AS n ON (n.id = o.id)
+        LEFT JOIN visitors AS n ON ((n.id = o.id) AND (n.start_timestamp = o.start_timestamp))
         WHERE (n.id IS NULL) AND (o.start_timestamp >= " . (int) $cutoff . ")";
 
     $missing = pg_visitor_move_ids($missing_sql);
@@ -2169,7 +2336,7 @@ function pg_visitor_move_finish(&$last, $result)
 
 /**
  * A move that stopped on an error: the copy is dropped, which gives its disk
- * space back, and the table stays on MyISAM, where the site works as before.
+ * space back, and the table stays as it was, where the site works as before.
  * Not started again on its own; the screen offers to.
  *
  * Only ever called before the swap; after it nothing is dropped.
@@ -2202,6 +2369,20 @@ function pg_visitor_move_fail(&$last, $result, $error)
  */
 function pg_visitor_move_result_text($last)
 {
+    if (($last['kind'] === 'split') && ($last['state'] === 'done')) {
+        return lang(array(
+            'string' => 'The visitors table was split into one partition per month: {var:1} before, {var:2} now.',
+            'vars' => array(pg_innodb_size_label($last['bytes_before']), pg_visitor_figure_text(pg_innodb_size_label($last['bytes_after']), $last['bytes_source'])),
+        ));
+    }
+
+    if (($last['kind'] === 'split') && ($last['state'] === 'failed')) {
+        return lang(array(
+            'string' => 'Splitting the visitors table into months stopped: {var:1}. It stays as it was and works as before.',
+            'vars' => array($last['error']),
+        ));
+    }
+
     if ($last['state'] === 'done') {
         return lang(array(
             'string' => 'The visitors table was moved to InnoDB: {var:1} before, {var:2} now.',
@@ -2220,14 +2401,37 @@ function pg_visitor_move_result_text($last)
 }
 
 /**
- * Why a MyISAM visitors table is not being moved, in a sentence for the
- * screen.
+ * Why a MyISAM visitors table is not being moved, or an InnoDB one not split
+ * into months, in a sentence for the screen.
  *
  * @param array $last pg_visitor_move_last()
  * @return string
  */
 function pg_visitor_move_reason_text($last)
 {
+    if (isset($last['kind']) && ($last['kind'] === 'split')) {
+
+        switch ($last['reason']) {
+
+            case 'name_taken':
+                return lang(array('string' => 'A table named {var:1} is in the way of the split. Once you have looked at it and removed it, the split can start.', 'vars' => array(PG_VISITOR_MOVE_OLD)));
+
+            case 'no_period':
+                return lang('The general job splits it into months on its own once a period is set for keeping visitor records and the older ones are gone.');
+
+            case 'backlog':
+                return lang('Once the old records are gone, the general job splits it into one partition per month on its own, a few thousand records at a time while the site keeps running. From then on a month older than the period goes in a moment.');
+
+            case 'disk_unknown':
+                return lang(array('string' => 'The general job does not start splitting it into months on its own, because the free disk space of the database server cannot be read from here. The split needs about {var:1} free until the old table is removed.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+
+            case 'disk_low':
+                return lang(array('string' => 'The general job does not start splitting it into months on its own, because the database server has less free disk space than the split needs, about {var:1}.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+        }
+
+        return '';
+    }
+
     switch ($last['reason']) {
 
         case 'unsupported':
@@ -2486,6 +2690,7 @@ function pg_visitor_shrink_facts($catalog_row, $last, $requested)
     return array(
         'engine' => isset($catalog_row['engine']) ? (string) $catalog_row['engine'] : '',
         'moving' => in_array($move['state'], array('copying', 'swapped'), true),
+        'partitioned' => (pg_visitor_partition_read('visitors')['state'] === 'monthly'),
         'per_table' => $per_table,
         'requested' => (bool) $requested,
         'worth' => pg_visitor_shrink_worth($catalog_row),
@@ -2510,16 +2715,21 @@ function pg_visitor_shrink_facts($catalog_row, $last, $requested)
  *
  * No database access.
  *
+ * A table split into months is not rebuilt on its own: the cleanup drops a
+ * month once all of it is older than the period, and the month's file goes
+ * with it.
+ *
  * @param array $facts engine (lower case), moving (bool: the move to InnoDB
- *                     is under way), per_table (bool|null:
+ *                     is under way), partitioned (bool: split into months),
+ *                     per_table (bool|null:
  *                     innodb_file_per_table), requested (bool), worth (bool),
  *                     failed (bool: a rebuild failed in the last week),
  *                     recent (bool: a rebuild ended in the last week),
  *                     backlog (bool), disk_free (float|null), needed (float),
  *                     hour (int, now), quiet_hour (int)
- * @return string '', 'engine', 'moving', 'shared_tablespace', 'small',
- *                'failed', 'recent', 'backlog', 'disk_unknown', 'disk_low',
- *                'hour'
+ * @return string '', 'engine', 'moving', 'shared_tablespace', 'partitioned',
+ *                'small', 'failed', 'recent', 'backlog', 'disk_unknown',
+ *                'disk_low', 'hour'
  */
 function pg_visitor_shrink_hold_reason($facts)
 {
@@ -2540,6 +2750,10 @@ function pg_visitor_shrink_hold_reason($facts)
 
     if ($facts['requested']) {
         return '';
+    }
+
+    if (!empty($facts['partitioned'])) {
+        return 'partitioned';
     }
 
     if (!$facts['worth']) {
@@ -2886,6 +3100,9 @@ function pg_visitor_shrink_reason_text($reason, $last)
 
         case 'shared_tablespace':
             return lang('The database server keeps InnoDB tables in one shared file (innodb_file_per_table is off), which does not get smaller when a table is rebuilt.');
+
+        case 'partitioned':
+            return lang('The table is split into one partition per month: once all of a month is older than the period, the general job drops it and its file goes back to the disk, so the table is not rebuilt on its own.');
 
         case 'small':
             return lang('Too little of the file is free for a rebuild to be worth it.');

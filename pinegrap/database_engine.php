@@ -236,6 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             pg_visitor_move_save($visitor_move_last);
 
             $visitor_move = pg_visitor_move_run(20);
+            $visitor_move_kind = pg_visitor_move_last()['kind'];
             $engine_ok = !in_array($visitor_move['state'], array('waiting', 'failed'), true);
 
             if ($visitor_move['text'] !== '') {
@@ -243,7 +244,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($visitor_move['state'] === 'waiting') {
                 $engine_text = pg_visitor_move_reason_text(pg_visitor_move_last());
             } elseif ($visitor_move['state'] === 'none') {
-                $engine_text = lang('The visitors table is not on MyISAM; there is nothing to move.');
+                $engine_text = lang('The visitors table is on InnoDB and split into months already, or this database server cannot split it; there is nothing to move.');
+            } elseif ($visitor_move_kind === 'split') {
+                $engine_text = lang('The visitors table is being split into one partition per month. The general job carries it on a few thousand records at a time; the Visitor records card shows how far it has come.');
             } else {
                 $engine_text = lang('The visitors table is being moved to InnoDB. The general job carries the move on a few thousand records at a time; the Visitor records card shows how far it has come.');
             }
@@ -555,6 +558,12 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     $visitor_move_text = '';
     $visitor_move_level = 'info';
 
+    // One partition per month (includes/fn/visitor_partitions.php): an InnoDB
+    // table that is not split yet is split by the same copy as the move.
+    $visitor_layout = pg_visitor_partition_read('visitors');
+    $visitor_split_support = pg_visitor_partition_support();
+    $visitor_move_kind = pg_visitor_move_kind($visitor_catalog['engine'], $visitor_layout['state'], $visitor_split_support['ok']);
+
     if ($visitor_catalog['engine'] === 'myisam') {
 
         if ($visitor_moving) {
@@ -577,6 +586,34 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
         $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang(array(
             'string' => 'The old table is kept as {var:1}; once you have looked at it, it can be dropped.',
             'vars' => array(PG_VISITOR_MOVE_OLD),
+        ));
+
+    } elseif ($visitor_move_kind === 'split') {
+
+        if ($visitor_moving) {
+            $visitor_move_text = lang(array(
+                'string' => 'The general job is splitting this table into one partition per month, a few thousand records at a time while the site keeps running: {var:1} of about {var:2} records copied so far. At the end the copy takes the place of the old table in a moment, and the old table is removed.',
+                'vars' => array(pg_format_number($visitor_move['copied'], 0), pg_format_number($visitor_catalog['rows'], 0)),
+            ));
+        } elseif (($visitor_move['state'] === 'failed') && ($visitor_move['kind'] === 'split')) {
+            $visitor_move_level = 'warning';
+            $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang('The general job tries again in a week; Split into months now tries now.');
+        } else {
+            $visitor_move_reason = ($visitor_move['kind'] === 'split') ? pg_visitor_move_reason_text($visitor_move) : '';
+            $visitor_move_text = lang('This table is not split into months yet, so old records are removed a chunk at a time and their room stays in the file until it is rebuilt.') . ' '
+                . (($visitor_move_reason !== '') ? $visitor_move_reason : pg_visitor_move_reason_text(array('kind' => 'split', 'reason' => 'backlog') + $visitor_move));
+        }
+
+    } elseif (($visitor_move['state'] === 'done') && ($visitor_move['finished_at'] > (time() - 30 * 86400)) && ($visitor_move['kind'] === 'split')) {
+
+        $visitor_move_level = 'success';
+        $visitor_move_text = lang(array(
+            'string' => 'The visitors table was split into one partition per month on {var:1}: {var:2} before, {var:3} now.',
+            'vars' => array(
+                get_absolute_time(array('timestamp' => $visitor_move['finished_at'], 'type' => 'date', 'format' => 'plain_text')),
+                pg_innodb_size_label($visitor_move['bytes_before']),
+                pg_visitor_figure_text(pg_innodb_size_label($visitor_move['bytes_after']), $visitor_move['bytes_source']),
+            ),
         ));
 
     } elseif (($visitor_move['state'] === 'done') && ($visitor_move['finished_at'] > (time() - 30 * 86400))) {
@@ -692,6 +729,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
         lang('Records') => $visitor_rows_text,
         lang('File size') => $visitor_file_text,
         lang('Free space') => pg_innodb_size_label($visitor_figures['free']),
+        lang('Monthly partitions') => pg_visitor_partition_text($visitor_layout, $visitor_catalog['engine'], $visitor_split_support),
         lang('Addresses and browsers') => ($visitor_texts === null)
             ? lang('Kept in each record')
             : lang(array('string' => '{var:1} different values, each kept once', 'vars' => array(pg_format_number($visitor_texts, 0)))),
@@ -762,12 +800,18 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                         ' . $engine_button('visitor_move', 'visitors', lang('Move to InnoDB now'), 'bi-database-gear', 'btn-outline-warning', lang(array(
                             'string' => 'Move the visitors table to InnoDB now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the move on.',
                             'vars' => array(pg_innodb_size_label(pg_visitor_move_disk_needed($visitor_catalog))),
-                        )), ($engine_tools && $engine_capability['ok'])) : '') . '
+                        )), ($engine_tools && $engine_capability['ok'])) : '') . ((($visitor_move_kind === 'split') && !$visitor_moving) ? '
+                        ' . $engine_button('visitor_move', 'visitors', lang('Split into months now'), 'bi-calendar3', 'btn-outline-secondary', lang(array(
+                            'string' => 'Split the visitors table into one partition per month now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the split on.',
+                            'vars' => array(pg_innodb_size_label(pg_visitor_move_disk_needed($visitor_catalog))),
+                        )), $engine_tools) : '') . '
                     </div>
                     <div id="pg_visitor_cleanup_progress" class="small mt-2" role="status" aria-live="polite"></div>
-                    <div class="small text-body-secondary mt-2">' . h($visitor_innodb
+                    <div class="small text-body-secondary mt-2">' . h(($visitor_layout['state'] === 'monthly')
+                        ? lang('Records are kept in one partition per month. Once all of a month is older than the period, the general job drops it in a moment and its file goes back to the disk; the records of the month the period ends in are removed a chunk at a time. Shrink now rebuilds the table at once.')
+                        : ($visitor_innodb
                         ? lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Once much of the file is free, the general job rebuilds the table at the quietest hour of the day while the site keeps running, which gives the room back to the disk; Shrink now does it at once.')
-                        : lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Optimize table gives it back to the disk; that is a separate, optional step.')) . '</div>';
+                        : lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Optimize table gives it back to the disk; that is a separate, optional step.'))) . '</div>';
 }
 
 // -- Tables on MyISAM ---------------------------------------------------------

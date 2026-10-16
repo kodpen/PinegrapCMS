@@ -165,7 +165,7 @@ function test_visitor_move_disk_needed()
 function pg_test_visitor_move_facts($changes = array())
 {
 	return $changes + array(
-		'engine' => 'myisam',
+		'kind' => 'engine',
 		'capable' => true,
 		'fits' => true,
 		'old_exists' => false,
@@ -184,7 +184,9 @@ function pg_test_visitor_move_facts($changes = array())
 function test_visitor_move_hold_reason_on_its_own()
 {
 	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts()));
-	pg_assert_same('engine', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('engine' => 'innodb'))));
+	pg_assert_same('engine', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('kind' => ''))), 'nothing to move');
+	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('kind' => 'split', 'fits' => null))), 'an InnoDB table to split');
+	pg_assert_same('backlog', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('kind' => 'split', 'backlog' => true))), 'a split waits for the cleanup too');
 	pg_assert_same('unsupported', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('capable' => false))));
 	pg_assert_same('too_wide', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('fits' => false))));
 	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('fits' => null))), 'an unknown row size does not hold it');
@@ -204,10 +206,24 @@ function test_visitor_move_hold_reason_on_request()
 	$requested = array('requested' => true, 'failed' => true, 'days' => 0, 'backlog' => true, 'disk_free' => null);
 
 	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested)));
-	pg_assert_same('engine', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('engine' => 'innodb'))));
+	pg_assert_same('engine', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('kind' => ''))));
+	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('kind' => 'split'))));
 	pg_assert_same('unsupported', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('capable' => false))));
 	pg_assert_same('too_wide', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('fits' => false))));
 	pg_assert_same('name_taken', pg_visitor_move_hold_reason(pg_test_visitor_move_facts($requested + array('old_exists' => true))));
+}
+
+// A MyISAM table is moved (and split on the way), an InnoDB one only split,
+// and only where the server can and it is not split yet.
+function test_visitor_move_kind()
+{
+	pg_assert_same('engine', pg_visitor_move_kind('myisam', 'none', true));
+	pg_assert_same('engine', pg_visitor_move_kind('myisam', 'none', false), 'moved unsplit where the server cannot split it');
+	pg_assert_same('split', pg_visitor_move_kind('innodb', 'none', true));
+	pg_assert_same('', pg_visitor_move_kind('innodb', 'none', false));
+	pg_assert_same('', pg_visitor_move_kind('innodb', 'monthly', true), 'split already');
+	pg_assert_same('', pg_visitor_move_kind('innodb', 'other', true), 'partitioned another way');
+	pg_assert_same('', pg_visitor_move_kind('', 'missing', true));
 }
 
 // A rebuild is worth it from 128 MB free that is at least half the size of
@@ -262,6 +278,7 @@ function pg_test_visitor_shrink_facts($changes = array())
 	return $changes + array(
 		'engine' => 'innodb',
 		'moving' => false,
+		'partitioned' => false,
 		'per_table' => true,
 		'requested' => false,
 		'worth' => true,
@@ -285,6 +302,7 @@ function test_visitor_shrink_hold_reason_on_its_own()
 	pg_assert_same('moving', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('moving' => true))));
 	pg_assert_same('shared_tablespace', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('per_table' => false))));
 	pg_assert_same('', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('per_table' => null))), 'an unreadable setting does not hold it');
+	pg_assert_same('partitioned', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('partitioned' => true))), 'a dropped month gives its file back');
 	pg_assert_same('small', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('worth' => false))));
 	pg_assert_same('failed', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('failed' => true))));
 	pg_assert_same('recent', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('recent' => true))));
@@ -302,6 +320,7 @@ function test_visitor_shrink_hold_reason_on_request()
 	$requested = array('requested' => true, 'worth' => false, 'failed' => true, 'recent' => true, 'backlog' => true, 'disk_free' => null, 'hour' => 14);
 
 	pg_assert_same('', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested)));
+	pg_assert_same('', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('partitioned' => true))), 'Shrink now works on a split table');
 	pg_assert_same('engine', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('engine' => 'myisam'))));
 	pg_assert_same('moving', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('moving' => true))));
 	pg_assert_same('shared_tablespace', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('per_table' => false))));

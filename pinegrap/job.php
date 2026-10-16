@@ -432,6 +432,20 @@ if (pg_visitor_move_due() && (!isset($visitor_cleanup) || ($visitor_cleanup['sta
 
 }
 
+// A visitors table split into months gets the coming months ahead of time
+// (pg_visitor_partition_open_run()), so the visits of a new month never land
+// in the partition for later visits. Once a day; a look is one read of the
+// table's partitions, and opening a month a moment.
+if (pg_visitor_partition_due()) {
+
+    $visitor_months = pg_visitor_partition_open_run();
+
+    if ($visitor_months['text'] !== '') {
+        log_activity($visitor_months['text'], 'UNKNOWN');
+    }
+
+}
+
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
 pg_cron_ran('job');
 
