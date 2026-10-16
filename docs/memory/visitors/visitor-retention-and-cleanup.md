@@ -1,10 +1,10 @@
 ---
 name: visitor-retention-and-cleanup
-description: How the visitors table is kept small: retention days, daily summary, chunked deletion, move to InnoDB, automatic rebuild, bots not recorded, rowless backups, stepwise restore
+description: How the visitors table is kept small: retention days, daily summary, chunked deletion, monthly partitions, move to InnoDB, automatic rebuild, bots not recorded, rowless backups, stepwise restore
 ---
 
 ## Why does this exist?
-- Every visit wrote a `visitors` row and nothing was deleted: 3.8 million rows and over 800 MB on busy sites. One big `DELETE` locks the table for minutes; on MyISAM every visit waits ("the whole site locks"). A client's 950 MB backup could not be restored because of this table (incident 2026-10-14).
+- Every visit wrote a `visitors` row and nothing was deleted: 3.8 million rows and over 800 MB on busy sites. One big `DELETE` locks the table for minutes; on MyISAM every visit waits. A client's 950 MB backup could not be restored because of this table (incident 2026-10-14).
 - Code: `includes/fn/visitor_retention.php`; settings: Settings › SEO › Visitor tracking; card: Database engine › Visitor records. Schema step 10.3.
 
 ## What are the rules and defaults?
@@ -16,15 +16,16 @@ description: How the visitors table is kept small: retention days, daily summary
 ## How does deletion run?
 - In `job.php` (`pg_visitor_cleanup_run()`): every tick while there is a backlog, else hourly; 15 s per run, the summary takes at most ~60 %.
 - Primary-key windows (`id > a AND id <= b AND start_timestamp < cutoff`): InnoDB 5,000 rows with 20 ms pauses, MyISAM 1,000 rows with a pause as long as the chunk took. `ORDER BY id LIMIT` was tried first and was slow (the server picked the timestamp index). `GET_LOCK` keeps runs apart.
-- "Clean visitor records now" on the card runs 20 s steps while the page is open. "Optimize" is separate and warned (needs free disk equal to the table).
+- "Clean visitor records now" on the card runs 20 s steps while the page is open. "Optimize" is separate and warned (needs free disk = table size).
 - Upgrades never delete rows.
 
 ## What else keeps it small?
-- MyISAM `visitors` moves to InnoDB by itself (`pg_visitor_move_run()`, #426) once the backlog is gone and the local DB disk has 3 × the rows + 1 GB free: copy in 2,000-row chunks, catch up changed rows, `RENAME TABLE`; old table kept as `visitors_myisam` until checked. "Move to InnoDB now" skips the disk and backlog checks.
+- One partition per month (step 10.7, #499): old months are dropped at once (`visitor-monthly-partitions`).
+- MyISAM `visitors` moves to InnoDB by itself (`pg_visitor_move_run()`, #426; split into months on the way) once the backlog is gone and the local DB disk has 3 × the rows + 1 GB free: chunked copy, catch-up of changed rows, `RENAME TABLE`. "Move to InnoDB now" skips the disk and backlog checks.
 - InnoDB file rebuilt online (`pg_visitor_shrink_*`, #453) when free space ≥ 128 MB and more than half of the remaining rows, in the quietest hour of the last two weeks, with 3 × (data + index) + 1 GB free; otherwise "Shrink now" with the missing condition.
-- Bots are not recorded even with the WAF off: `init_tracking()` asks `waf_classify_bot()`.
-- On InnoDB the `ip_address` and `idx_user_agent` indexes were dropped (~350 MB on the 3.8 M sample).
-- Referring address and user agent are kept once each in `visitor_texts`, the row holds their numbers (step 10.6, `visitor-texts-list`); the cleanup then prunes values no visit names.
+- Bots are not recorded (`init_tracking()` asks `waf_classify_bot()`, WAF on or off).
+- On InnoDB the `ip_address` and `idx_user_agent` indexes were dropped (~350 MB at 3.8 M rows).
+- Referring address and user agent are kept once each in `visitor_texts`, the row holds their numbers (step 10.6, `visitor-texts-list`); the cleanup prunes values no visit names.
 
 ## What do backups and restores do with it?
 - Every backup dumps the tables in `pg_backup_rowless_tables()` (visitors, form view tables, `waf_log`, `perf_log`, `api_request_log`, `seo_search_daily`) as structure only (#434, #438, #480; docs/memory/data/backup-rowless-tables.md); the move's working copies are never dumped; the size estimate skips them too.
