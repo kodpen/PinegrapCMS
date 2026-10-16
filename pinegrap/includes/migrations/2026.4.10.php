@@ -48,6 +48,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_status();       // 10.87
 	upgrade_2026_4_10_workspace_inbox_deleted(); // 10.88
 	upgrade_2026_4_10_style_bin();              // 10.4
+	upgrade_2026_4_10_noise_theme_file();       // 10.5
 
 }
 
@@ -1057,5 +1058,61 @@ function upgrade_2026_4_10_style_bin() {
 	}
 
 	install_note('Recycle Bin: a page style deleted in the Visual Page Editor or from the page styles list goes to the Recycle Bin with its pages, and comes back from there with its settings and the folders and pages that used it.');
+
+}
+
+// The "noise" theme of the Turkish starter site gets its file back
+// (2026.4.10, 10.5; no table changes).
+//
+// The Turkish starter site carried the theme's file as "theme_ noise.css",
+// with a space, while its files row is theme__noise.css. On every site
+// installed from it the theme had no file on the disk: its CSS editor opened
+// empty and the theme served no stylesheet. The starter site carries the
+// right name since then; this renames the file on the sites already
+// installed from it. Saving the Edit Theme screen of that theme stored the
+// row as theme_noise.css (file names lose doubled underscores), so either
+// name is the one the file takes.
+//
+// The file is renamed only when it is there, a theme row has one of those
+// names and nothing is on the disk under that name: a site that renamed the
+// file by hand, removed it, or never had it is left as it is, and a second
+// run finds nothing to do.
+function upgrade_2026_4_10_noise_theme_file() {
+
+	if (!defined('FILE_DIRECTORY_PATH')) {
+
+		return;
+
+	}
+
+	$source = FILE_DIRECTORY_PATH . '/theme_ noise.css';
+
+	if (!is_file($source)) {
+
+		return;
+
+	}
+
+	foreach (array('theme__noise.css', 'theme_noise.css') as $name) {
+
+		$recorded = (int) db_value("SELECT COUNT(*) FROM files WHERE (name = '" . $name . "') AND (design = '1')");
+
+		if (($recorded > 0) && !file_exists(FILE_DIRECTORY_PATH . '/' . $name)) {
+
+			if (@rename($source, FILE_DIRECTORY_PATH . '/' . $name)) {
+
+				install_note('Themes: the file of the "noise" theme was named "theme_ noise.css" on sites installed from the Turkish starter site, so the theme had no stylesheet. It is now ' . $name . ', the name the theme is recorded under.');
+
+			} else {
+
+				install_note('Themes: the file "theme_ noise.css" in data/files could not be renamed to ' . $name . ' (the name the "noise" theme is recorded under). Rename it by hand so the theme has its stylesheet.');
+
+			}
+
+			return;
+
+		}
+
+	}
 
 }
