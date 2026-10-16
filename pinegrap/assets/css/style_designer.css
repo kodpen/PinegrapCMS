@@ -6068,9 +6068,12 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-pal-tip-desc { margin-top: 5px; color: #c6ccd2; }
 @media (prefers-reduced-motion: reduce) { .sd-pal-tip { transition: none; } }
 
-/* Links written inside a text, listed under it in the overview
-   (_sdIlTreeRows). Not nodes: muted, and the take-out button shows on hover. */
+/* Elements written inside a text, listed under it in the overview
+   (_sdTextInnerTreeRows()). Not nodes: muted, and a link's take-out button
+   shows on hover. */
 .sd-tree-list li.sd-tree-il { color: var(--sd-text-muted); font-style: italic; }
+.sd-tree-list li.sd-tree-il.active { color: var(--sd-accent); }
+.sd-tree-list li.sd-tree-inner .sd-tree-inner-words { font-weight: 400; opacity: .75; margin-left: .25rem; }
 .sd-tree-list li.sd-tree-il .sd-tree-il-out {
     background: none; border: 0; padding: 0 .2rem; margin: 0 0 0 auto; cursor: pointer;
     color: var(--sd-text-muted); font-size: .72rem; line-height: 1; flex-shrink: 0;
@@ -6079,5 +6082,17 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-tree-list li.sd-tree-il:hover .sd-tree-il-out,
 .sd-tree-list li.sd-tree-il .sd-tree-il-out:focus-visible { opacity: 1; }
 .sd-tree-list li.sd-tree-il .sd-tree-il-out:hover { color: var(--sd-accent); }
-.sd-il-link.sd-il-flash { animation: sd-il-flash 1.2s ease; border-radius: 4px; }
-@keyframes sd-il-flash { from { background: rgba(var(--sd-accent-rgb), .28); } to { background: transparent; } }
+.sd-inner-crumbs {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px;
+    padding: 8px 10px 2px; font-size: .75rem;
+}
+.sd-inner-crumbs .bi { font-size: .6rem; opacity: .6; }
+.sd-inner-crumb {
+    background: none; border: 0; padding: 0; color: var(--sd-accent); cursor: pointer; font-size: inherit;
+}
+.sd-inner-crumb:hover { text-decoration: underline; }
+.sd-inner-note { padding: 2px 10px 6px; font-size: .7rem; color: var(--sd-text-muted); }
+.sd-inner-attr { display: flex; gap: 4px; margin-bottom: 4px; }
+.sd-inner-attr input:first-child { flex: 0 0 38%; }
+.sd-inner-acts { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.sd-inner-acts .btn { text-align: left; white-space: normal; }
