@@ -159,3 +159,31 @@ function test_db_maintenance_findings_too_wide()
 	pg_assert_same('myisam', $findings[1]['kind'], 'second kind');
 	pg_assert_same(2, count($findings), 'findings');
 }
+
+// The product and version are read from what VERSION() and
+// mysqli_get_server_info() return, including MariaDB's replication prefix.
+function test_db_maintenance_server_version()
+{
+	pg_assert_same(array('product' => 'MySQL', 'version' => '5.7.44', 'label' => 'MySQL 5.7.44'), pg_db_server_version('5.7.44-log'), 'MySQL 5.7');
+	pg_assert_same(array('product' => 'MySQL', 'version' => '8.0.12', 'label' => 'MySQL 8.0.12'), pg_db_server_version('8.0.12'), 'MySQL 8.0.12');
+	pg_assert_same(array('product' => 'MariaDB', 'version' => '10.3.39', 'label' => 'MariaDB 10.3.39'), pg_db_server_version('5.5.5-10.3.39-MariaDB-1:10.3.39+maria~ubu2004'), 'MariaDB with the prefix');
+	pg_assert_same(array('product' => 'MariaDB', 'version' => '11.8.9', 'label' => 'MariaDB 11.8.9'), pg_db_server_version('11.8.9-MariaDB-ubu2404'), 'MariaDB 11');
+	pg_assert_same(array('product' => 'MariaDB', 'version' => '10.3.28', 'label' => 'MariaDB 10.3.28'), pg_db_server_version('10.3.28-MariaDB-cll-lve'), 'MariaDB on a shared host');
+	pg_assert_same('5.6.0', pg_db_server_version('5.6')['version'], 'two parts');
+	pg_assert_same(array('product' => 'MySQL', 'version' => '', 'label' => 'MySQL'), pg_db_server_version(''), 'nothing to read');
+}
+
+// MySQL 5.7 and MariaDB 10.2 are the oldest servers the schema is built on;
+// a version that cannot be read is not refused.
+function test_db_maintenance_server_supported()
+{
+	pg_assert_false(pg_db_server_supported(pg_db_server_version('5.6.51')), 'MySQL 5.6');
+	pg_assert_true(pg_db_server_supported(pg_db_server_version('5.7.44')), 'MySQL 5.7');
+	pg_assert_true(pg_db_server_supported(pg_db_server_version('8.0.12')), 'MySQL 8.0.12');
+	pg_assert_true(pg_db_server_supported(pg_db_server_version('9.4.0')), 'MySQL 9.4');
+	pg_assert_false(pg_db_server_supported(pg_db_server_version('5.5.5-10.1.48-MariaDB-1~bionic')), 'MariaDB 10.1');
+	pg_assert_true(pg_db_server_supported(pg_db_server_version('5.5.5-10.2.44-MariaDB-1:10.2.44+maria~bionic')), 'MariaDB 10.2');
+	pg_assert_true(pg_db_server_supported(pg_db_server_version('11.8.9-MariaDB')), 'MariaDB 11.8');
+	pg_assert_true(pg_db_server_supported(pg_db_server_version('unknown')), 'unreadable');
+	pg_assert_true(pg_db_server_supported(null), 'no server');
+}

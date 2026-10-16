@@ -14,4 +14,5 @@ description: Cron/automated upgrade entry points (AUTOMATED_UPGRADE_SECRET), adm
 ## How is the upgrade system tested?
 - Test protocol: `docs/_plan_upgrade_sistemi.md` "Test protokolü".
 - A fake-MySQL harness (old/new equivalence, double run, mid-run interruption) is in the development records: the old code failed in 26 of 41 versions on a double run, at 84 interruption points; the new code failed in none.
+- On real MySQL and MariaDB servers: `tools/check_install.sh` and the CI workflow install-check.yml, see docs/memory/release/database-server-compatibility.md
 - Every new version also needs the bridge test (previous released DB + new files): see docs/memory/release/upgrade-bridge-rule.md

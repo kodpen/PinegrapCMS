@@ -11,6 +11,7 @@ install_add_index('visitors', 'idx_user_agent', "INDEX idx_user_agent (user_agen
 install_create_table('waf_rate', "CREATE TABLE waf_rate ( ... ) ENGINE=InnoDB ...");
 install_drop_column($t, $c);  install_drop_index($t, $i);  install_drop_table($t);
 install_modify_column($t, $c, $def, $required = true);   // error if column missing; $required = false after a rename
+install_drop_column_default($t, $c);   // DROP DEFAULT only when information_schema shows a default (MySQL < 8.0.13 refuses it on TEXT)
 install_rename_column($t, $old, $new, $def);            // passes if old is missing and new exists
 install_rename_table($old, $new);  install_set_engine($t, 'InnoDB');
 install_table_exists / install_column_exists / install_index_exists / install_column_info($t, $c)

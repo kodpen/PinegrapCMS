@@ -1,0 +1,77 @@
+# Installs Pinegrap through the installation screen on several MySQL and
+# MariaDB versions (tools/check_install.sh), once into an empty database and
+# once more over the tables of the first run. A fresh installation loads the
+# starter site, taken at 2021.3, and runs every schema step after it up to the
+# last version of versions.php, so a statement that one server refuses fails
+# here instead of on a customer's host: MySQL 5.7 answered the DROP DEFAULT of
+# version 2022.2 with error 1101 while MySQL 8 and MariaDB took it.
+#
+# tools/ is tracked on the development branch only; on main and the release
+# branches the steps are skipped and the job still reports.
+name: Install check
+
+on:
+  pull_request:
+  push:
+    branches: [main, development]
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: install and upgrade on ${{ matrix.db }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: ["mysql:5.7", "mysql:8.0", "mysql:8.4", "mariadb:10.3", "mariadb:10.6", "mariadb:11.4"]
+    services:
+      db:
+        image: ${{ matrix.db }}
+        # The mysql images read the MYSQL_ names, the mariadb images the MARIADB_ ones.
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: pinegrap
+          MYSQL_USER: pinegrap
+          MYSQL_PASSWORD: pinegrap
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: pinegrap
+          MARIADB_USER: pinegrap
+          MARIADB_PASSWORD: pinegrap
+        ports:
+          - 3306:3306
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        if: ${{ hashFiles('tools/check_install.sh') != '' }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, mysqli, gd, intl, xml, zip, curl
+          coverage: none
+          tools: none
+
+      # The images have no common health command, so the job asks the server itself.
+      - name: Wait for the database server
+        if: ${{ hashFiles('tools/check_install.sh') != '' }}
+        run: |
+          for _ in $(seq 1 90); do
+            if php -r 'mysqli_report(MYSQLI_REPORT_OFF); exit(@mysqli_connect("127.0.0.1", "pinegrap", "pinegrap", "pinegrap") ? 0 : 1);'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The database server did not come up." >&2
+          exit 1
+
+      - name: Install and upgrade to the last version (tools/check_install.sh)
+        if: ${{ hashFiles('tools/check_install.sh') != '' }}
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USERNAME: pinegrap
+          DB_PASSWORD: pinegrap
+          DB_DATABASE: pinegrap
+        run: bash tools/check_install.sh english_default
