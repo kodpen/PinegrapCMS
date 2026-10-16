@@ -21,6 +21,6 @@ description: Settings save outcomes: rejected input returns status invalid (no r
 - Not "not given": a module writes an empty value for a field it does not find, so the host name or a key would be blanked.
 - Fields the cards draw as lists are named under the category's `lists` in the registry with their depth (`job_dispatch_job` 1, `erp_fx_currencies` 1, `languages` 2); `fake_user` (page-path decoy) always. A new list field goes there too, or every save of its category is refused; `tests/request_unexpected_lists_test.php` checks it.
 - SMTP Settings and Private Label refuse the same way with `pg_request_unexpected_lists($_POST)` (error, redirect, config.php untouched).
-- Why (PR #NNN): 389 fields posted as lists: 190 answered 500, 15 stored "Array" (host name, subscription key, firewall lists, Mailchimp keys, ERP tax names), others ticked a box or removed a language. SMTP: every field 500. Private Label logged "Undefined array key" on every save with the box off.
+- Why (PR #483): 389 fields posted as lists: 190 answered 500, 15 stored "Array" (host name, subscription key, firewall lists, Mailchimp keys, ERP tax names), others ticked a box or removed a language. SMTP: every field 500. Private Label logged "Undefined array key" on every save with the box off.
 
 Related: docs/memory/ui/settings-card-own-button.md
