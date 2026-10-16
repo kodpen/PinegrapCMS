@@ -7471,15 +7471,63 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 	$destination_path = $backups_path . $folder_name;
 
-	if (!@mkdir($destination_path, 0755, true)) {
+	// The archive is extracted into a working folder in data/temp and moved into the backups
+	// folder only when every file came out whole, so an upload that is cut short never leaves a
+	// backup with half a database dump behind.  Every file is copied a megabyte at a time
+	// (pg_restore_archive_copy()), so a large dump does not have to fit in memory.
+	$temp_path = dirname(__FILE__) . '/../data/temp';
+
+	// An upload the server killed (time limit, restart) leaves its working folder behind.
+	$leftovers = is_dir($temp_path) ? @scandir($temp_path) : false;
+
+	if ($leftovers !== false) {
+
+		foreach ($leftovers as $leftover) {
+
+			if ((preg_match('/^upload_[0-9a-f]{16}$/', $leftover) == 1) && is_dir($temp_path . '/' . $leftover) && ((int) @filemtime($temp_path . '/' . $leftover) < (time() - 86400))) {
+
+				pg_backup_delete_tree($temp_path . '/' . $leftover);
+
+			}
+
+		}
+
+	}
+
+	$free_space = function_exists('disk_free_space') ? @disk_free_space(dirname(__FILE__) . '/../data') : false;
+
+	if (($free_space !== false) && ($free_space < ($total_size + 67108864))) {
 
 		$zip->close();
 
-		$liveform->mark_error('', lang('The backups folder is not writable, so the archive could not be extracted.'));
+		$liveform->mark_error('', lang(array('string' => 'There is not enough free disk space to extract the archive: {var:1} is needed, {var:2} is free.', 'vars' => array(convert_bytes_to_string($total_size + 67108864, 1), convert_bytes_to_string((float) $free_space, 1)))));
 
 		return;
 
 	}
+
+	$work_path = $temp_path . '/upload_' . bin2hex(random_bytes(8));
+
+	if (!@mkdir($work_path, 0755, true)) {
+
+		$zip->close();
+
+		$liveform->mark_error('', lang('The folder could not be created.') . ' data/temp/' . basename($work_path));
+
+		return;
+
+	}
+
+	// A request that dies half-way (memory, time limit) takes its working folder with it.
+	register_shutdown_function(function () use ($work_path) {
+
+		if (is_dir($work_path)) {
+
+			pg_backup_delete_tree($work_path);
+
+		}
+
+	});
 
 	$extracted_files = 0;
 
@@ -7521,7 +7569,10 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 		}
 
-		if (count($clean_parts) == 0) {
+		// A name with a character Windows cannot create (a colon opens a stream there) is left in
+		// the archive, the way the restore leaves it (pg_restore_archive_read()).  Any other file
+		// that cannot be written stops the upload.
+		if ((count($clean_parts) == 0) || (preg_match('/[\x00-\x1f:*?"<>|]/', implode('/', $clean_parts)) == 1)) {
 
 			continue;
 
@@ -7529,7 +7580,7 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 		$is_directory = (mb_substr($entry_name, -1) == '/');
 
-		$target_path = $destination_path . '/' . implode('/', $clean_parts);
+		$target_path = $work_path . '/' . implode('/', $clean_parts);
 
 		if ($is_directory == true) {
 
@@ -7551,31 +7602,45 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 		}
 
-		$contents = $zip->getFromIndex($index);
+		$copy_error = pg_restore_archive_copy($zip, $index, $target_path);
 
-		if ($contents === false) {
+		if ($copy_error != '') {
 
-			continue;
+			$zip->close();
+
+			pg_backup_delete_tree($work_path);
+
+			$liveform->mark_error('', $copy_error);
+
+			return;
 
 		}
 
-		if (@file_put_contents($target_path, $contents) !== false) {
-
-			$extracted_files++;
-
-		}
+		$extracted_files++;
 
 	}
 
 	$zip->close();
 
-	// The backups folder is already closed to the web, however we also close the new folder, so a
-	// server that ignores the parent rule still cannot serve anything from it.
-	@file_put_contents($destination_path . '/.htaccess', 'deny from all');
-
 	if ($extracted_files == 0) {
 
+		pg_backup_delete_tree($work_path);
+
 		$liveform->mark_error('', lang('The archive was empty, so nothing was extracted.'));
+
+		return;
+
+	}
+
+	// The backups folder is already closed to the web, however we also close the new folder, so a
+	// server that ignores the parent rule still cannot serve anything from it.
+	@file_put_contents($work_path . '/.htaccess', 'deny from all');
+
+	if (((!is_dir($backups_path)) && (!@mkdir($backups_path, 0755, true))) || (!@rename($work_path, $destination_path))) {
+
+		pg_backup_delete_tree($work_path);
+
+		$liveform->mark_error('', lang('The backups folder is not writable, so the archive could not be extracted.'));
 
 		return;
 

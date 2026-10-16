@@ -28,3 +28,5 @@ description: How the visitors table is kept small: retention days, daily summary
 ## What do backups and restores do with it?
 - Every backup dumps the tables in `pg_backup_rowless_tables()` (visitors, form view tables, `waf_log`, `perf_log`, `api_request_log`) as structure only (#434, #438); the move's working copies are never dumped; the size estimate skips them too.
 - Big `.sql` and `.zip` backups restore in 20 s steps into `pgr_new_` tables, then one `RENAME TABLE` (`includes/fn/backup_restore.php`, #441, #451); a half-done restore can be resumed or deleted.
+
+Related: docs/memory/platform/backup-upload-extraction.md

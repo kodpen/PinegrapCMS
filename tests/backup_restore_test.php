@@ -293,3 +293,63 @@ function test_backup_restore_archive_read()
 
 	rmdir($dir);
 }
+
+// The installation screen's upload extracts a file a megabyte at a time, so a
+// dump larger than the memory limit still comes out, whole and checked; a file
+// that does not match its checksum is not left behind.
+function test_backup_restore_archive_copy()
+{
+	if (!class_exists('ZipArchive')) {
+		return;
+	}
+
+	$dir = sys_get_temp_dir() . '/pg_restore_test_' . bin2hex(random_bytes(4));
+	mkdir($dir);
+
+	$dump = str_repeat("INSERT INTO `log` VALUES (1,'" . str_repeat('x', 200) . "');\n", 100000);
+	$size = strlen($dump);
+	$crc = hash('crc32b', $dump);
+
+	$zip = new ZipArchive();
+	$zip->open($dir . '/big.zip', ZipArchive::CREATE);
+	$zip->addFromString('site/sql.sql', $dump);
+	$zip->close();
+	unset($dump);
+
+	$zip = new ZipArchive();
+	$zip->open($dir . '/big.zip');
+
+	if (function_exists('memory_reset_peak_usage')) {
+		memory_reset_peak_usage();
+	}
+
+	$before = memory_get_usage();
+	pg_assert_same('', pg_restore_archive_copy($zip, 0, $dir . '/sql.sql'), 'copied');
+	pg_assert_true((memory_get_peak_usage() - $before) < 8 * 1048576, 'a ' . round($size / 1048576) . ' MB dump is copied within a few megabytes: ' . round((memory_get_peak_usage() - $before) / 1048576, 1) . ' MB');
+	pg_assert_same($size, filesize($dir . '/sql.sql'));
+	pg_assert_same($crc, hash_file('crc32b', $dir . '/sql.sql'));
+
+	pg_assert_true(pg_restore_archive_copy($zip, 5, $dir . '/none.sql') !== '', 'no such file in the archive');
+	pg_assert_false(file_exists($dir . '/none.sql'));
+	$zip->close();
+
+	// A stored (uncompressed) file with one byte changed after it was written.
+	$zip = new ZipArchive();
+	$zip->open($dir . '/damaged.zip', ZipArchive::CREATE);
+	$zip->addFromString('sql.sql', 'CREATE TABLE `config` (`id` int);');
+	$zip->setCompressionIndex(0, ZipArchive::CM_STORE);
+	$zip->close();
+	file_put_contents($dir . '/damaged.zip', str_replace('`config`', '`cOnfig`', file_get_contents($dir . '/damaged.zip')));
+
+	$zip = new ZipArchive();
+	$zip->open($dir . '/damaged.zip');
+	pg_assert_contains('sql.sql', pg_restore_archive_copy($zip, 0, $dir . '/damaged.sql'), 'damaged');
+	pg_assert_false(file_exists($dir . '/damaged.sql'), 'a damaged file is deleted');
+	$zip->close();
+
+	foreach (array('big.zip', 'sql.sql', 'damaged.zip') as $name) {
+		@unlink($dir . '/' . $name);
+	}
+
+	rmdir($dir);
+}
