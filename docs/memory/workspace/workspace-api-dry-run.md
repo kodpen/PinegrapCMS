@@ -4,9 +4,9 @@ description: Every Workspace write in the external API takes X-Dry-Run; the pane
 ---
 
 ## What does a rehearsal do on the Workspace endpoints?
-- Every POST/PATCH/DELETE route in `includes/workspace/api.php` (and the Claude queue in `api_claude.php`) carries `'dry_run' => true` since PR #476. With `X-Dry-Run: true` or `?dry_run=true` the handler runs the same checks as the real call and answers `200 {"dry_run": true, "would": ..., "resource": ..., "detail": {...}}`; nothing is written. A refusal is the real refusal (same status, code and field).
+- Every POST/PATCH/DELETE route in `includes/workspace/api.php` (and the Claude queue in `api_claude.php`) carries `'dry_run' => true` since PR #481. With `X-Dry-Run: true` or `?dry_run=true` the handler runs the same checks as the real call and answers `200 {"dry_run": true, "would": ..., "resource": ..., "detail": {...}}`; nothing is written. A refusal is the real refusal (same status, code and field).
 - The flag also adds the OpenAPI `X-Dry-Run`/`dry_run` parameters and the 200 `DryRun` answer, the console's "Can be rehearsed" line and the MCP tool's `dry_run` argument. No new scope, no new tool.
-- Before #476 these 16 routes answered `400 dry_run_unsupported`: tasks create/update/complete, delegate and delegate/stop, recurrence set/end, notes create/update, plan items create/update, changes apply/dismiss, Claude requests claim/answer/fail.
+- Before #481 these 16 routes answered `400 dry_run_unsupported`: tasks create/update/complete, delegate and delegate/stop, recurrence set/end, notes create/update, plan items create/update, changes apply/dismiss, Claude requests claim/answer/fail.
 
 ## How is a write made rehearsable?
 - The panel function's checks move into a `*_check()` function and the real function calls it first, so the panel and both API calls meet one set of refusals: `ws_task_create_check()`, `ws_task_update_check()`, `ws_task_set_status_check()` (tasks.php), `ws_recurrence_save_check()`, `ws_recurrence_end_check()`, `ws_note_save_check()`, `ws_event_save_check()` (plan items, schedule.php), `ws_task_delegate_check()`, `ws_task_delegation_run_check()`, `ws_task_delegation_stop_check()`, `ws_change_apply_check()`, `ws_change_apply_record_check()`, `ws_change_dismiss_check()`. Earlier ones: see the pinegrap-dis-api skill.
