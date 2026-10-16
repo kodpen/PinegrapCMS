@@ -9,7 +9,7 @@ description: Where the e-document provider settings card lives (pgset-invoice), 
 - Save writes only the selected provider's fields; an empty password keeps the stored one; a selection change calls `erp_edoc_activate` + `log_activity`.
 - If the table is missing (`waf_table_has_column('erp_edoc_providers','provider')`) the block is not printed.
 - A field type `select` (`options` = value → label) becomes a `<select>` in `prep.php`.
-- Every value is read only as one string (PR #471). `edoc_provider` missing or posted as an array leaves the provider as it is (it used to switch it off); a box missing or posted as an array keeps the stored credential (it used to store "Array" or clear it); a select value outside its `options` keeps the stored one. A normal save posts every box, so it behaves as before.
+- Every value is read only as one string (PR #476). `edoc_provider` missing or posted as an array leaves the provider as it is (it used to switch it off); a box missing or posted as an array keeps the stored credential (it used to store "Array" or clear it); a select value outside its `options` keeps the stored one. A normal save posts every box, so it behaves as before.
 
 ## How does "Bağlantıyı test et" work?
 - `get_erp_edoc_test.php` (POST, same form via `formaction`, new tab; `validate_erp_access(..., 'settings')` + token).
