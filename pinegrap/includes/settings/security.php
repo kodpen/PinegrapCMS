@@ -191,6 +191,22 @@ $signin_redirect_field = function ($id, $label) {
 };
 $signin_not_ready = '<div class="alert alert-info mb-0" role="alert">' . h(lang('The database has not been upgraded yet. Run the software update first.')) . '</div>';
 
+// Which buttons visitors see now. pg_signin_buttons() prints them together,
+// in this order, on every sign-in, registration and membership screen; a
+// provider switched on whose application is incomplete stays hidden, and
+// the card says so instead of leaving the operator to wonder.
+$signin_state = function_exists('pg_signin_button_state') ? pg_signin_button_state() : array('shown' => array(), 'hidden' => array());
+$signin_state_html = '<div class="col-12"><div class="small mb-0">'
+    . ($signin_state['shown']
+        ? '<i class="bi bi-eye me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Buttons visitors see now, together and in this order on every sign-in, registration and membership screen: {var:1}', 'vars' => implode(', ', $signin_state['shown']))))
+        : '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . h(lang('No sign-in button is shown to visitors now.')))
+    . '</div>'
+    . ($signin_state['hidden']
+        ? '<div class="alert alert-warning py-2 small mt-2 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Switched on but hidden until their settings are complete: {var:1}', 'vars' => implode(', ', $signin_state['hidden'])))) . '</div>'
+        : '')
+    . '</div>';
+
 if ($signin_ready) {
     $signin_microsoft_provider = pg_connect_provider('microsoft');
     $signin_microsoft_app_ready = is_array($signin_microsoft_provider) && pg_signin_app_ready($signin_microsoft_provider, $signin_microsoft_app);
@@ -242,6 +258,9 @@ if ($signin_ready) {
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row gy-3">
+                                                        ' . (($signin_apple_provider && !pg_signin_app_ready($signin_apple_provider, $signin_apple_app))
+                                                            ? '<div class="col-12"><div class="alert alert-warning py-2 small mb-0">' . h(lang('Fill in the Services ID, the Team ID, the Key ID and the private key. Until then the button stays hidden.')) . '</div></div>'
+                                                            : '') . '
                                                         <div class="col-12">
                                                             <ol class="small ps-3 mb-0">' . $signin_apple_steps . '</ol>
                                                         </div>'
@@ -286,7 +305,7 @@ $pg_settings_cards[] = '
                                         <div class="col-12">
                                             <div class="form-text mt-0">' . h(lang('Every provider follows the same rules: an account is found by the provider account connected to it, else by the same verified e-mail address. The staff login never opens an account, the registration and membership pages do. Two-step verification still applies.')) . '</div>
                                         </div>'
-                    . ($signin_ready ? '' : '<div class="col-12">' . $signin_not_ready . '</div>')
+                    . ($signin_ready ? $signin_state_html : '<div class="col-12">' . $signin_not_ready . '</div>')
                     . $signin_google_body . $signin_microsoft_body . $signin_apple_body . '
                 </div>
             </div>
