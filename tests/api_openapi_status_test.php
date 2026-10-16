@@ -559,3 +559,74 @@ function test_api_openapi_status_security_schemes_name_the_three_callers()
 		}
 	}
 }
+
+// The body of a top-level function in $source, or null.
+function api_openapi_status_test_function_body($source, $function)
+{
+	if (!preg_match('/\nfunction ' . preg_quote($function, '/') . '\s*\([^\n]*\)\s*\{(.*?)\n\}/s', $source, $match)) {
+		return null;
+	}
+
+	return $match[1];
+}
+
+// The Workspace and ERP objects follow the same rule as the rest: a field the
+// presenter can answer null in (an else-branch of null, or a time read from a
+// column some create path leaves 0) is declared with a question mark. The
+// times declared without one are the moments every create path writes:
+// created_at, a task's updated_at, a signature's signed_at, and a decision's
+// moment (marked_at, else created_at).
+function test_api_openapi_status_workspace_and_erp_nulls_are_declared()
+{
+	$always_written = array('created_at', 'updated_at', 'signed_at', 'tl_at');
+	$pairs = 0;
+
+	foreach (array_merge(glob(PG_FUNCTIONS_DIR . '/includes/workspace/*.php'), glob(PG_FUNCTIONS_DIR . '/includes/erp/*.php')) as $file) {
+
+		$source = file_get_contents($file);
+
+		preg_match_all('/\/\/ What (\w+)\(\) returns[^\n]*\n(?:\/\/[^\n]*\n)*function (\w+_schema)\(\)/', $source, $found, PREG_SET_ORDER);
+
+		foreach ($found as $pair) {
+
+			$schema = api_openapi_status_test_function_body($source, $pair[2]);
+			$present = api_openapi_status_test_function_body($source, $pair[1]);
+
+			pg_assert_true(($schema !== null) && ($present !== null), basename($file) . ': ' . $pair[1] . ' / ' . $pair[2]);
+
+			if (($schema === null) || ($present === null)) {
+				continue;
+			}
+
+			$pairs++;
+
+			// One field name can be declared at more than one level.
+			$nullable = array();
+
+			preg_match_all("/'(\w+)'\s*=>\s*'([^']+)'/", $schema, $declared, PREG_SET_ORDER);
+
+			foreach ($declared as $field) {
+				$nullable[$field[1]] = !empty($nullable[$field[1]]) || (substr($field[2], -1) === '?');
+			}
+
+			preg_match_all("/^\s*'(\w+)'\s*=>\s*(.+?),?\s*$/m", $present, $lines, PREG_SET_ORDER);
+
+			foreach ($lines as $line) {
+
+				if (!isset($nullable[$line[1]]) || $nullable[$line[1]]) {
+					continue;
+				}
+
+				$label = $pair[2] . '.' . $line[1] . ' <- ' . $line[2];
+
+				pg_assert_false((bool) preg_match('/(?::\s*null|^null)$/i', trim($line[2])), $label);
+
+				if (preg_match('/^api_time\(\s*\$\w+\[\'(\w+)\'\]\s*\)$/', trim($line[2]), $time)) {
+					pg_assert_true(in_array($time[1], $always_written, true), $label);
+				}
+			}
+		}
+	}
+
+	pg_assert_true($pairs > 60, 'presenters read: ' . $pairs);
+}
