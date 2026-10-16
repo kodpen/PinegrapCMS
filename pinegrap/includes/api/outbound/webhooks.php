@@ -215,10 +215,11 @@ function api_webhook_channel_groups_ready() {
 }
 
 // The workspace channel groups an event happened in, nearest first: what a
-// narrowed subscription is matched against. The workspace answers it
-// (ws_webhook_event_groups()); with the workspace switched off, or for an
-// event that happened in no channel, it is empty and a narrowed subscription
-// hears nothing.
+// narrowed subscription is matched against. For an event about a group itself
+// (workspace.channel_group.*) that is the group and the groups it is in. The
+// workspace answers it (ws_webhook_event_groups()); with the workspace
+// switched off, or for an event that happened in no channel, it is empty and
+// a narrowed subscription hears nothing.
 function api_webhook_event_channel_groups($event, $payload) {
 
 	if (!function_exists('ws_webhook_event_groups')) {

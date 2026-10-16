@@ -7,6 +7,7 @@ description: A webhook subscription narrowed to one group of Workspace channels 
 - `POST /webhooks`, `PATCH /webhooks/{id}` and `POST /webhooks/{id}/update` take `channel_group_id` since PR #486. 0, null or left out is the whole site, as every subscription was before. A group's id narrows the subscription to the workspace events of the channels in that group and in the groups inside it (any depth).
 - Body, signature (`X-Pinegrap-Signature`), queue, retries, test and secret rotation are the ordinary ones: the filter only decides which subscriptions an event is queued for. The answer (`Webhook`) carries `channel_group_id` (null when not narrowed).
 - The channel's group is read when the event happens (`ws_webhook_event_groups()`), so a channel moved into the group is heard from then on, one moved out is not.
+- Events about the groups themselves (`workspace.channel_group.*`, PR #495) are matched by the group, not a channel: see `workspace-channel-group-events.md`.
 - Which channel: `channel_id` in the event, or `task.channel_id` for `workspace.task.note_added` (`ws_webhook_event_channel_id()`). A task with no channel is heard only by whole-site subscriptions.
 - Privacy is unchanged: a private channel's message is still never announced; task events of private channels go out as before.
 
@@ -25,4 +26,4 @@ description: A webhook subscription narrowed to one group of Workspace channels 
 - Filter: `api_webhook_enqueue()` in `includes/api/outbound/webhooks.php`; checks: `api_webhook_clean_channel_group()` in `includes/api/resources/webhooks.php`; workspace side in the "Event subscriptions narrowed to a group" part of `includes/workspace/groups.php`.
 - No new scope, no MCP tool. Tests: `tests/webhook_channel_group_test.php`.
 
-**Why:** queue item q13 (channel-group webhooks). Before this a subscriber got every workspace event of the site and had to map channels to groups itself. Events about the groups themselves (created, renamed, access changed) are still not announced (#400 leftover).
+**Why:** queue item q13 (channel-group webhooks). Before this a subscriber got every workspace event of the site and had to map channels to groups itself.
