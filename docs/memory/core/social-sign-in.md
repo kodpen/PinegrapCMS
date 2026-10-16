@@ -14,7 +14,7 @@ description: Sign in with Google, Microsoft and Apple: the flow, how an account 
 
 ## What does a refused or failed sign-in show?
 - Its own screen, `pg_signin_fail()` (`output_header_secure()` + `pg_signin_failure_card()`): a title, the reason in plain text, "Geri Dön" (the page the button was on, from the start request's same-site Referer, `pg_signin_referer_path()`; else the login, registration or membership page) and "{provider} ile tekrar dene".
-- Before (#PR_FAILURE_SCREEN): every refusal went through `output_error()`, i.e. the site's error page. Most sites design that page as "page not found", so a refused sign-in looked like a 404 and the reason was easy to miss (reported on kodpen.com 2026-10-16: an administrator whose Google address was not the account's address).
+- Before (#467): every refusal went through `output_error()`, i.e. the site's error page. Most sites design that page as "page not found", so a refused sign-in looked like a 404 and the reason was easy to miss (reported on kodpen.com 2026-10-16: an administrator whose Google address was not the account's address).
 - The no-account message names the address the provider reported and the two ways out. A missing state (cookies blocked or cleared, finished in another browser or app, return address reopened) says so instead of "could not be verified", and is written to the activity log.
 - A cancel at the provider (`access_denied` and friends) shows the screen as a notice instead of silently returning to the login page, which read as "the button did nothing".
 - The response code stays 200, as `output_error()` without a code gave; the screen sends `X-Robots-Tag: noindex` and `Cache-Control: no-store`.
