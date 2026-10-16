@@ -20,4 +20,4 @@ description: Installation screen backup upload: archive extracted a megabyte at 
 - Never read an archive member with `getFromIndex()`/`getFromName()` when its size is not known to be small; use `pg_restore_archive_copy()` or the stream the way `pg_restore_extract_step()` does.
 - Paths inside the archive are rebuilt from clean parts (no `..`, empty or dot parts), so an entry cannot write outside the working folder; a name with a character Windows cannot create (`:` `*` `?` `"` `<` `>` `|`, control characters) is skipped, as the archive restore skips it.
 
-PR: #N
+PR: #473
