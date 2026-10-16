@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Writes the index of the project's memory files and plans from the
- * frontmatter at the top of each file:
+ * Writes the index of the project's memory files from the frontmatter at
+ * the top of each file:
  *
  *     ---
  *     name: invoice-allocation
@@ -11,8 +11,8 @@
  *     ---
  *
  * The index has two levels so a session reads little: docs/memory/README.md
- * lists the memory folders (FOLDERS below), the plans and the other
- * documents; docs/memory/<folder>/README.md lists that folder's files, one
+ * lists the memory folders (FOLDERS below) and the other documents;
+ * docs/memory/<folder>/README.md lists that folder's files, one
  * line each (file name and description). A session opens the top index, one
  * folder index and then only the files the task needs. The indexes are
  * generated rather than edited so that parallel branches that each add a
@@ -21,11 +21,10 @@
  * What is read:
  *   docs/memory/**.md   frontmatter required; name equals the file name;
  *                       at most MAX_MEMORY_BYTES bytes per file
- *   docs/_plan_*.md     frontmatter required
  *   other docs/**.md    indexed when they carry frontmatter, else skipped
  *
  * A new memory folder needs a line in FOLDERS; files directly in docs/memory/
- * are not allowed.
+ * are not allowed. Unfinished plans are memory files too, in docs/memory/plans/.
  *
  * Usage:  php tools/memory_index.php           write the index files
  *         php tools/memory_index.php --check   compare only; nothing is
@@ -60,12 +59,14 @@ const FOLDERS = array(
 	'data' => 'Table structures and SQL pitfalls',
 	'designer' => 'Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import',
 	'erp' => 'ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports',
+	'plans' => 'Unfinished and shelved plans: remaining work, decisions made, open questions, where to start',
 	'platform' => 'Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates',
 	'release' => 'Versions, migrations and upgrade steps, change log rules, release status',
 	'ui' => 'Panel screens, settings modal, dashboard, panel JavaScript pitfalls',
 	'visitors' => 'Visitor statistics, page and article views, search engine index flags',
 	'waf' => 'Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers',
 	'workflow' => 'Project overview, owner rules, git and branches, sandbox and dev machine',
+	'workspace' => 'Workspace module: channels, tasks, plan board, rights, Claude in channels',
 );
 
 $check = in_array('--check', array_slice($argv, 1), true);
@@ -75,7 +76,6 @@ $docs = $repository . '/docs';
 
 $errors = array();
 $folders = array();
-$plans = array();
 $others = array();
 $names = array();
 
@@ -83,14 +83,12 @@ foreach (memory_index_files($docs) as $relative) {
 
 	$path = $docs . '/' . $relative;
 	$in_memory = strncmp($relative, 'memory/', 7) === 0;
-	$is_plan = strpos($relative, '/') === false && strncmp($relative, '_plan_', 6) === 0;
-	$required = $in_memory || $is_plan;
 
 	$content = str_replace("\r", '', (string) file_get_contents($path));
 	$meta = memory_index_frontmatter($content);
 
 	if ($meta === null) {
-		if ($required) {
+		if ($in_memory) {
 			$errors[] = "docs/$relative: no frontmatter (---, name:, description:, ---)";
 		}
 		continue;
@@ -130,8 +128,6 @@ foreach (memory_index_files($docs) as $relative) {
 			continue;
 		}
 		$folders[$parts[1]][$parts[2]] = $description;
-	} elseif ($is_plan) {
-		$plans[$relative] = $description;
 	} else {
 		$others[$relative] = $description;
 	}
@@ -146,7 +142,7 @@ if ($errors) {
 }
 
 // Index path relative to docs/ => expected content.
-$indexes = array('memory/README.md' => memory_index_top($folders, $plans, $others));
+$indexes = array('memory/README.md' => memory_index_top($folders, $others));
 
 foreach ($folders as $folder => $entries) {
 	$indexes["memory/$folder/README.md"] = memory_index_folder($folder, $entries);
@@ -204,7 +200,7 @@ exit(0);
 
 /**
  * Every .md file under docs/ that may be indexed, relative to docs/, sorted.
- * The index itself and the change log with its archive are left out.
+ * The generated indexes themselves are left out.
  */
 function memory_index_files($docs) {
 
@@ -265,9 +261,9 @@ function memory_index_frontmatter($content) {
 
 /**
  * The top index: one line per memory folder (its index and what it holds),
- * then the plans, then the other documents.
+ * then the other documents.
  */
-function memory_index_top($folders, $plans, $others) {
+function memory_index_top($folders, $others) {
 
 	$lines = array(
 		'# Memory index',
@@ -286,17 +282,13 @@ function memory_index_top($folders, $plans, $others) {
 		}
 	}
 
-	foreach (array('Plans (docs/)' => $plans, 'Other documents (docs/)' => $others) as $title => $entries) {
-
-		if (!$entries) {
-			continue;
-		}
+	if ($others) {
 
 		$lines[] = '';
-		$lines[] = '## ' . $title;
+		$lines[] = '## Other documents (docs/)';
 		$lines[] = '';
 
-		foreach ($entries as $entry => $description) {
+		foreach ($others as $entry => $description) {
 			$lines[] = '- ' . $entry . ': ' . $description;
 		}
 	}

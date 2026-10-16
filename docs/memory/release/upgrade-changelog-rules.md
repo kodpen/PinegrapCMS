@@ -5,7 +5,7 @@ description: changelog.txt format (English, only plan-driven major features as [
 
 ## What goes into pinegrap/changelog.txt?
 - English only. It ships with the product and site owners read it in the panel (release notes) and on the install/upgrade screen.
-- Only major features that came from a plan (`docs/_plan_*.md`) get their own line: one short `[NEW] Added …` sentence each.
+- Only major features that came from a plan (`docs/memory/plans/`) get their own line: one short `[NEW] Added …` sentence each.
 - Everything else (fixes, small improvements, speed work) is covered by the version's single catch-all lines. Never one line per fix.
 - Owner rule (Erdal, 2026-10-14); it had been forgotten once, so `php tools/test.php changelog` now checks the tags and the one-line limits in CI.
 
