@@ -2190,6 +2190,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 WHERE page_name = '" . escape($system_page_name) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
+
+            // No page by that name: it was deleted, or it is in the Recycle
+            // Bin, which parks a binned page's name. The region has always
+            // drawn nothing then; it is emptied here before the checks below
+            // read the missing page's properties (a warning on every line).
+            if (!$row) {
+                $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', '', $content);
+                continue;
+            }
+
             $system_region_properties = $row;
         }
         

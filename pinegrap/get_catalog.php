@@ -70,7 +70,8 @@ function get_catalog($properties) {
             $mode = 'browse';
             
             // if a page name has been passed in the query string and if it contains a forward slash, then get the product group id
-            if (mb_strpos($_GET['page'], '/') !== FALSE) {
+            // (The search index update renders the page without one.)
+            if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                 // get product group address name
                 $product_group_address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
                 
@@ -1440,7 +1441,8 @@ function get_catalog($properties) {
             $mode = 'browse';
             $current_product_group_id = '';
             // if a page name has been passed in the query string and if it contains a forward slash, then get the product group id
-            if (mb_strpos($_GET['page'], '/') !== FALSE) {
+            // (The search index update renders the page without one.)
+            if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                 // get product group address name
                 $product_group_address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
                 

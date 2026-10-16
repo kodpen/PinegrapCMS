@@ -69,6 +69,15 @@ function get_form_view_directory_screen_content($properties) {
             // then continue to check if user has access.
             if (($access_control_type == 'private') || ($access_control_type == 'membership')) {
 
+                // While the search index is updated nobody is logged in, and
+                // sending the run to login/register would end it on this page
+                // (go() exits) with every later page left unindexed. The list
+                // is left out instead, as for a visitor without view access.
+                if ((USER_LOGGED_IN == false) && defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true)) {
+                    unset($form_list_views[$key]);
+                    continue;
+                }
+
                 // If the visitor is not logged in, then send visitor to login/register.
                 if (USER_LOGGED_IN == false) {
                     go(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri()));
