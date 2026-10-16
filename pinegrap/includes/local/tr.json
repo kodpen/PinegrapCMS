@@ -23386,5 +23386,8 @@
     "The page is in the Recycle Bin. Restore it in the File Manager or choose another page.": "Sayfa Geri Dönüşüm Kutusunda. Dosya Yöneticisi'nden geri yükleyin ya da başka bir sayfa seçin.",
     "The file is in the Recycle Bin. Restore it in the File Manager or choose another file.": "Dosya Geri Dönüşüm Kutusunda. Dosya Yöneticisi'nden geri yükleyin ya da başka bir dosya seçin.",
     "This short link will be moved to the Recycle Bin.": "Bu kısa bağlantı Geri Dönüşüm Kutusuna taşınacak.",
-    "The short link was moved to the Recycle Bin.": "Kısa bağlantı Geri Dönüşüm Kutusuna taşındı."
+    "The short link was moved to the Recycle Bin.": "Kısa bağlantı Geri Dönüşüm Kutusuna taşındı.",
+    "Addresses and browsers": "Yönlendiren adresler ve tarayıcılar",
+    "Kept in each record": "Her kaydın kendi içinde",
+    "{var:1} different values, each kept once": "{var:1} farklı değer, her biri bir kez tutuluyor"
 }

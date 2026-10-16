@@ -189,6 +189,8 @@ function pg_visitor_channel_sql($prefix = '')
  * can ask the summary for exactly what it groups by. The full referrer
  * address and the postcode are left out: nearly every visit has a value of
  * its own there, and a day's worth of them would be as large as the rows.
+ * The device reads the user agent through the list of visitor texts
+ * (pg_visitor_text_sql()); the query takes pg_visitor_text_joins() for it.
  *
  * @return array<string,string>
  */
@@ -216,7 +218,7 @@ function pg_visitor_summary_dimensions()
         'city' => 'city',
         'site_search_terms' => 'site_search_terms',
         'currency_code' => 'currency_code',
-        'device' => $has_user_agent ? pg_visitor_device_sql('user_agent') : "''",
+        'device' => $has_user_agent ? pg_visitor_device_sql(pg_visitor_text_sql('user_agent')) : "''",
     );
 }
 
@@ -496,7 +498,7 @@ function pg_visitor_summarize_day($date)
         // makes the cut at the top deterministic when counts tie.
         $rows = db_items(
             "SELECT " . $expression . " AS value, " . $sums . "
-            FROM " . $source . "
+            FROM " . $source . pg_visitor_text_joins($expression) . "
             WHERE " . $range . "
             GROUP BY value
             ORDER BY visits DESC, value
@@ -834,6 +836,14 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
             // same pages and the replication of a busy server keep up.
             usleep($row_locks ? 20000 : max(20000, (int) ((microtime(true) - $chunk_started) * 1000000)));
         }
+    }
+
+    // The referring addresses and browsers no remaining visit names any more
+    // (includes/fn/visitor_texts.php), with the time the run has left. It
+    // goes by the oldest visit still there, so it is safe however far the
+    // removal got.
+    if (microtime(true) < $deadline) {
+        pg_visitor_texts_prune($deadline);
     }
 
     db("SELECT RELEASE_LOCK(" . pg_visitor_cleanup_lock_sql() . ")");

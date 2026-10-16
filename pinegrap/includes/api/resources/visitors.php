@@ -209,7 +209,7 @@ function api_visitors_dimensions() {
 		'city'              => 'city',
 		'form'              => 'custom_form_name',
 		'site_search_terms' => 'site_search_terms',
-		'device'            => pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql('user_agent') : "''"
+		'device'            => pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql(pg_visitor_text_sql('user_agent')) : "''"
 	);
 
 }
@@ -345,7 +345,7 @@ function api_reports_visitors($params) {
 	$total = api_row("SELECT " . $sums . " FROM visitors " . $where);
 
 	$rows = api_rows("SELECT " . $expression . " AS value, " . $sums . "
-		FROM visitors
+		FROM visitors" . pg_visitor_text_joins($expression) . "
 		" . $where . "
 		GROUP BY value
 		ORDER BY visits DESC, value ASC

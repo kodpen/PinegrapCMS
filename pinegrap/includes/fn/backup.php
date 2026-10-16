@@ -270,6 +270,8 @@ function pg_backup_delete_tree($path)
  * adds to. On a busy site they are most of the dump and most of the time a
  * restore takes, and nothing else in the database needs their rows: the
  * structure is dumped, so a restored site opens them empty and counts on.
+ * visitor_texts is the list of referring addresses and browsers those visit
+ * rows name by number; without the rows its values name nothing.
  * The readers' counter of a form item (submitted_form_info.number_of_views),
  * the daily visitor summary (visitor_stats_daily) and the hourly visitor
  * chart (visitor_stats_hourly) keep their rows.
@@ -299,6 +301,7 @@ function pg_backup_rowless_tables()
 {
     return array(
         'visitors'                  => 'visit records',
+        'visitor_texts'             => 'referring addresses and browsers of the visit records',
         'visitor_content_hourly'    => 'page views per hour',
         'submitted_form_views'      => 'form item views, one row each',
         'submitted_form_view_stats' => 'form item views per day',
