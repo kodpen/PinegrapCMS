@@ -172,6 +172,12 @@ add_pending_offers($liveform);
 
 // if quick add form was submitted
 if (!empty($_POST['quick_add'])) {
+    // A browser posts every quick add field, empty or not; one that a hand-made request (or a
+    // designed layout without that field) leaves out counts as empty.
+    foreach (array('quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name') as $pg_post_field) {
+        $_POST[$pg_post_field] = $_POST[$pg_post_field] ?? '';
+    }
+
     // if a quick add product was selected, continue
     if ($_POST['quick_add_product_id']) {
         // get data for product
@@ -655,8 +661,8 @@ if ($order_submitted == false) {
                     ?: array('id' => ''); // no card with this code
 
                 // If a gift card could not be found in this system,
-                // and givex is disabled, then output error.
-                if (($gift_card['id'] == '') && (ECOMMERCE_GIVEX == false)) {
+                // and givex is disabled (or the code was only dashes and spaces), then output error.
+                if (($gift_card['id'] == '') && ((ECOMMERCE_GIVEX == false) || ($gift_card_code === ''))) {
                     $liveform->mark_error('gift_card_code', lang('Sorry, we could not find a gift card for that code. Please check that you entered the code correctly.'));
                     go(PATH . encode_url_path(get_page_name($_POST['page_id'])));
                 }

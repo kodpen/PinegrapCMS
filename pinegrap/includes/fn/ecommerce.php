@@ -4825,31 +4825,41 @@ function send_givex_request($type, $gift_card_code, $amount = 0)
             return $result;
         }
     }
-    // get all response values
-    preg_match_all('/<string>(.*?)<\/string>/s', $response_data, $matches);
-    // put response values in an array
+    return pg_givex_parse_response($type, $response_data);
+}
+// Reads a Givex reply: a list of strings, the transaction code, the result (0 for success),
+// then the balance of a balance check, or the authorization number and the new balance of a
+// redemption; a failure has the error text third, a non-standard reply first. The result has
+// either error_message or the values. A reply that is none of these (empty, an HTML error page,
+// a cut-off body, a balance that is not a number) is an error_message too: callers read and
+// multiply the balance. A redemption with result 0 went through at Givex whatever follows it,
+// so it stays a success; a new balance that cannot be read is left out (null).
+function pg_givex_parse_response($type, $response_data)
+{
+    $unreadable = lang('The gift card service sent a reply that could not be read');
+
+    preg_match_all('/<string>(.*?)<\/string>/s', (string) $response_data, $matches);
     $response = $matches[1];
-    // if there is an error, then return error
-    if ((isset($response[1]) == false) || ($response[1] != 0)) {
-        // if there is not a standard error, then get error message from first value
-        if (isset($response[1]) == false) {
-            $result['error_message'] = $response[0];
-            // else there is a standard error, so get error message from third value
-        } else {
-            $result['error_message'] = $response[2];
-        }
-        return $result;
+
+    if (!isset($response[1])) {
+        return array('error_message' => (isset($response[0]) && ($response[0] !== '')) ? $response[0] : $unreadable);
     }
-    // if the request is a balance check, then prepare result in a certain way
-    if ($type == 'balance') {
-        $result['balance'] = $response[2];
-        return $result;
-        // else if the request is a redemption, so prepare result in a different way
-    } elseif ($type == 'redemption') {
-        $result['authorization_number'] = $response[2];
-        $result['balance'] = $response[3];
-        return $result;
+
+    if ($response[1] != 0) {
+        return array('error_message' => (isset($response[2]) && ($response[2] !== '')) ? $response[2] : $unreadable);
     }
+
+    if ($type == 'redemption') {
+        return array(
+            'authorization_number' => $response[2] ?? '',
+            'balance' => (isset($response[3]) && is_numeric($response[3])) ? $response[3] : null);
+    }
+
+    if (!isset($response[2]) || !is_numeric($response[2]) || ($response[2] < 0)) {
+        return array('error_message' => $unreadable);
+    }
+
+    return array('balance' => $response[2]);
 }
 function protect_gift_card_code($gift_card_code)
 {

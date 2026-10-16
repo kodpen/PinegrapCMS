@@ -63,6 +63,12 @@ add_pending_offers($liveform);
 
 // if quick add form was submitted
 if (!empty($_POST['quick_add'])) {
+    // A browser posts every quick add field, empty or not; one that a hand-made request (or a
+    // designed layout without that field) leaves out counts as empty.
+    foreach (array('quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name') as $pg_post_field) {
+        $_POST[$pg_post_field] = $_POST[$pg_post_field] ?? '';
+    }
+
     // if a quick add product was selected, continue
     if ($_POST['quick_add_product_id']) {
         // get data for product
