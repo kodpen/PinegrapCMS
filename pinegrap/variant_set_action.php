@@ -117,22 +117,37 @@ switch ($action) {
         $deleted_products = 0;
         $refused          = 0;
 
+        // To the Recycle Bin when the catalogue has one, set and variants
+        // together, so a set deleted by mistake comes back whole from the
+        // Catalog Manager. Emptying the bin is what deletes them for good.
+        $binning = pg_catalog_bin_ready();
+
         foreach ($group_ids as $group_id) {
 
-            $result = pg_pb_delete_variant_set($group_id, TRUE);
+            $result = $binning
+                ? pg_pb_bin_variant_set($group_id, $user['id'])
+                : pg_pb_delete_variant_set($group_id, TRUE);
 
             if ($result['group']) {
                 $deleted_sets++;
                 $deleted_products += $result['products'];
                 log_activity(
-                    lang(array('string' => 'product group ({var:1}) was deleted', 'vars' => array($result['name']))),
+                    $binning
+                        ? lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($result['name'])))
+                        : lang(array('string' => 'product group ({var:1}) was deleted', 'vars' => array($result['name']))),
                     $_SESSION['sessionusername']);
             } else {
                 $refused++;
             }
         }
 
-        if ($deleted_sets) {
+        if ($deleted_sets && $binning) {
+            $liveform->add_notice(
+                lang(array(
+                    'string' => '{var:1} variant set{suffix:1} and {var:2} product{suffix:2} were moved to the Recycle Bin.',
+                    'vars'   => array($deleted_sets, $deleted_products),
+                    'suffix' => array(($deleted_sets === 1) ? '' : 's', ($deleted_products === 1) ? '' : 's'))));
+        } elseif ($deleted_sets) {
             $liveform->add_notice(
                 lang(array(
                     'string' => '{var:1} variant set{suffix:1} and {var:2} product{suffix:2} were deleted.',

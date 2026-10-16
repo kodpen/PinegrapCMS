@@ -172,13 +172,42 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 }
             }
 
+            // Google Drive, OneDrive, Dropbox: an account connected for
+            // backups, and a folder. Every destination's choice is kept, as
+            // for the two above.
+            $backup_cloud = array();
+
+            foreach (array_keys(pg_backup_cloud_types()) as $backup_cloud_type) {
+
+                $backup_cloud_folder = pg_backup_cloud_folder($backup_post('backup_' . $backup_cloud_type . '_folder'));
+
+                $backup_cloud[$backup_cloud_type] = pg_backup_remote_normalize($backup_cloud_type, array(
+                    'connection_id' => $backup_post('backup_' . $backup_cloud_type . '_connection'),
+                    'folder'        => ($backup_cloud_folder === null) ? '' : $backup_cloud_folder,
+                ));
+
+                if ($backup_type_value !== $backup_cloud_type) {
+                    continue;
+                }
+
+                if ($backup_cloud_folder === null) {
+                    $liveform->mark_error('backup_' . $backup_cloud_type . '_folder', lang('A folder name may hold letters, digits, spaces, dots, dashes and underscores, up to three levels separated by /.'));
+                }
+
+                $backup_cloud_account = pg_backup_cloud_account($backup_cloud_type, $backup_cloud[$backup_cloud_type]);
+
+                if (!$backup_cloud_account['ok']) {
+                    $liveform->mark_error('backup_' . $backup_cloud_type . '_connection', $backup_cloud_account['error']);
+                }
+            }
+
             // Nothing on this screen is written when the backup card is
             // refused: a half-saved category is worse than none.
             if ($liveform->check_form_errors()) {
                 return;
             }
 
-            $backup_values = array('ftp' => $backup_ftp, 's3' => $backup_s3);
+            $backup_values = array_merge(array('ftp' => $backup_ftp, 's3' => $backup_s3), $backup_cloud);
             $backup_blob_value = pg_backup_remote_encode($backup_values);
         }
 

@@ -36,7 +36,7 @@ function get_membership_entrance($properties = array()) {
         && ((time() - ((int) ($google_membership['time'] ?? 0))) <= 900));
 
     if ($google_signup) {
-        $form->add_notice(lang('Your Google account is verified. Enter your membership details to finish - a password is optional, because you can keep signing in with Google.'));
+        $form->add_notice(pg_signin_membership_notice($google_membership));
 
         if ($form->is_empty()) {
             $form->set('first_name', (string) ($google_membership['first_name'] ?? ''));
@@ -219,7 +219,7 @@ function get_membership_entrance($properties = array()) {
 
                         </table>
                         <button type="submit" name="submit_register" value="Register" class="software_input_submit_primary register_button">' . lang('Register') . '</button><br />
-                        ' . pg_google_signin_button(($_GET['send_to'] ?? ''), 'membership') . '
+                        ' . pg_signin_buttons(($_GET['send_to'] ?? ''), 'membership') . '
                     </form>
                 </div>
                 <div style="clear: both"></div>';
@@ -311,7 +311,7 @@ function get_membership_entrance($properties = array()) {
 
                             </table>
                             <button type="submit" name="submit_register" value="Register" class="software_input_submit_primary register_button">' . lang('Register') . '</button><br />
-                            ' . pg_google_signin_button(($_GET['send_to'] ?? ''), 'membership') . '
+                            ' . pg_signin_buttons(($_GET['send_to'] ?? ''), 'membership') . '
                         </form>
                     </td>
                 </tr>
@@ -388,8 +388,14 @@ function get_membership_entrance($properties = array()) {
             'forgot_password_url' => $forgot_password_url,
             'strong_password_help' => $strong_password_help,
             'opt_in_label' => OPT_IN_LABEL,
+            // The membership entrance asks no CAPTCHA question: a sign-up is let
+            // through by the membership number and surname on file
+            // (pg_member_activate()). Layouts copied from the registration
+            // entrance still test $captcha_question, so it is given, empty,
+            // and their CAPTCHA block stays hidden as it always has.
+            'captcha_question' => '',
             'register_system' => $register_system,
-            'google_signin' => pg_google_signin_button(($_GET['send_to'] ?? ''), 'membership')));
+            'google_signin' => pg_signin_buttons(($_GET['send_to'] ?? ''), 'membership')));
 
         $output = $form->prepare($output);
         

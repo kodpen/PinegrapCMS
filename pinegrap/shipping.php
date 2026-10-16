@@ -18,24 +18,6 @@
 
 // Various functions related to shipping
 
-// Carrier requests are written to the activity log for troubleshooting. The
-// account credentials they carry (USPS user id, UPS access key and password,
-// FedEx key, password, account and meter number) are replaced with a fixed
-// placeholder first, so the log never holds a working set of credentials.
-function shipping_mask_credentials($request) {
-
-    $request = preg_replace('/(USERID=")[^"]*(")/', '$1[redacted]$2', $request);
-
-    $request = preg_replace(
-        '/(<((?:ns1:)?(?:AccessLicenseNumber|UserId|Password|Key|AccountNumber|MeterNumber))>)[^<]*(<\/\2>)/',
-        '$1[redacted]$3',
-        $request
-    );
-
-    return $request;
-
-}
-
 function update_shipping_cost_for_ship_to($ship_to_id) {
 
     // get info for this ship to
@@ -487,23 +469,17 @@ function get_usps_delivery_date($properties) {
 
     $service = $properties['service'];
     $ship_date = $properties['ship_date'];
-    $zip_code = trim($properties['zip_code']);
 
-    if (!function_exists('curl_init')) {
+    // Only the first 5 digits, because USPS refuses the +4.
+    $zip_code = pg_usps_zip($properties['zip_code']);
 
-        $message = 'This website cannot communicate with shipping carrier for delivery date, because
-            cURL is not installed. The administrator of this website should install cURL.';
+    // USPS's Service Standards API signs in with the consumer key and secret
+    // of an application from the USPS Developer Portal
+    // (includes/fn/carrier_api.php). The user ID of the retired Web Tools
+    // stays in the config table, unread.
+    if (!pg_carrier_api_ready('usps')) {
 
-        log_activity($message);
-
-        return array(
-            'status' => 'error',
-            'message' => $message);
-    }
-
-    if (!USPS_USER_ID) {
-
-        $message = 'This website cannot communicate with USPS to get delivery date, because a USPS Web Tools User ID could not be found in the site settings.';
+        $message = lang('This website cannot get delivery dates from USPS, because no USPS consumer key and consumer secret are set in the site settings.');
 
         log_activity($message);
 
@@ -512,56 +488,19 @@ function get_usps_delivery_date($properties) {
             'message' => $message);
     }
 
-    // Update zip codes to only contains the first 5 characters, because USPS will error otherwise.
-    $organization_zip_code = mb_substr(ORGANIZATION_ZIP_CODE, 0, 5);
-    $zip_code = mb_substr($zip_code, 0, 5);
+    $mail_class = pg_usps_mail_class($service);
 
-    // Assume that the package will be shipped at the shipping end of day time, because we don't
-    // currently have a better way of knowing when the package will be shipped.
-    $accept_time = str_replace(':', '', ECOMMERCE_END_OF_DAY_TIME);
+    // One mail class per request: the API answers for the class it is asked
+    // about, so only this service's date is cached.
+    $path = pg_usps_delivery_path(ORGANIZATION_ZIP_CODE, $zip_code, $ship_date, $mail_class);
 
-    // We send the request below so that USPS will return info for all services (MailClass: 0), so
-    // we can store data for all services in cache table.  We do this in order to avoid having to
-    // make an API request for each service, which would cause delays.
+    $response = pg_carrier_api_call('usps', 'GET', $path, null);
 
-    $request =
-        '<SDCGetLocationsRequest USERID="' . h(USPS_USER_ID) . '">
-            <MailClass>0</MailClass>
-            <OriginZIP>' . h($organization_zip_code) . '</OriginZIP>
-            <DestinationZIP>' . h($zip_code) . '</DestinationZIP>
-            <AcceptDate>' . h($ship_date) . '</AcceptDate>
-            <AcceptTime>' . h($accept_time) . '</AcceptTime>
-        </SDCGetLocationsRequest>';
+    if ($response['error'] !== '') {
 
-    $ch = curl_init();
-
-    curl_setopt($ch, CURLOPT_URL,
-        'https://production.shippingapis.com/ShippingAPI.dll?API=SDCGetLocations&XML=' .
-        urlencode($request));
-
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-
-    // We had issues in the past where the timeout did not work, when USPS' service
-    // went down, and we were only using CURLOPT_TIMEOUT. The request would go on for
-    // too long. We are adding CURLOPT_CONNECTTIMEOUT also to attempt to resolve that.
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    $response = curl_exec($ch);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    curl_close($ch);
-
-    // If there was a cURL problem, then log the error and return false.
-    if (!$response or $curl_errno) {
-
-        $message = 
-            'An error occurred while trying to communicate with USPS for delivery date. ' .
-            'cURL Error Number: ' . $curl_errno . '. ' .
-            'cURL Error Message: ' . $curl_error . '. Request: ' . shipping_mask_credentials($request);
+        $message = lang(array(
+            'string' => 'An error occurred while trying to get a delivery date from USPS: {var:1} Request: {var:2}',
+            'vars' => array($response['error'], $path)));
 
         log_activity($message);
 
@@ -570,14 +509,12 @@ function get_usps_delivery_date($properties) {
             'message' => $message);
     }
 
-    $response_content = $response;
+    $delivery_date = pg_usps_delivery_parse($response['data'], $mail_class);
 
-    $response = @simplexml_load_string($response);
+    // If USPS did not return a delivery date for the service, then log and return error.
+    if ($delivery_date === '') {
 
-    // If there was a problem processing the XML, then log the error and return false.
-    if ($response === false) {
-
-        $message = 'An error occurred while trying to communicate with USPS for delivery date. The XML response from USPS could not be processed. ' . $response_content . ' Request: ' . shipping_mask_credentials($request);
+        $message = 'Could not get a delivery date for ' . get_shipping_service_name($service) . ', because USPS did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code (' . $zip_code . '). Request: ' . $path . ' Response: ' . $response['body'];
 
         log_activity($message);
 
@@ -586,160 +523,32 @@ function get_usps_delivery_date($properties) {
             'message' => $message);
     }
 
-    // If there was an error, then log and return false.
-    if (mb_strtolower($response->getName()) == 'error') {
-
-        $message = 
-            'An error occurred while trying to communicate with USPS for delivery date: ' .
-            $response->Description . ' Request: ' . shipping_mask_credentials($request);
-
-        log_activity($message);
-
-        return array(
-            'status' => 'error',
-            'message' => $message);
-    }
-
-    // Get all USPS services from enabled shipping methods, so we know which services we need
-    // to deal with.
-    $enabled_services = db_values(
-        "SELECT DISTINCT(service)
-        FROM shipping_methods
+    // Delete any old delivery date in db cache table that might exist.
+    db(
+        "DELETE FROM shipping_delivery_dates
         WHERE
-            (SUBSTRING(service, 1, 4) = 'usps')
-            AND (status = 'enabled')
-            AND (start_time <= NOW())
-            AND (end_time >= NOW())");
+            (service = '" . e($service) . "')
+            AND (zip_code = '" . e($zip_code) . "')
+            AND (ship_date = '" . e($ship_date) . "')");
 
-    $services = array();
+    // Insert new delivery date into db cache table.
+    db(
+        "INSERT INTO shipping_delivery_dates (
+            service,
+            zip_code,
+            ship_date,
+            delivery_date,
+            timestamp)
+        VALUES (
+            '" . e($service) . "',
+            '" . e($zip_code) . "',
+            '" . e($ship_date) . "',
+            '" . e($delivery_date) . "',
+            UNIX_TIMESTAMP())");
 
-    // If expedited services were returned, then loop through them.
-    if ($response->Expedited->Commitment) {
-
-        foreach($response->Expedited->Commitment as $service_info) {
-
-            // Figure out the service from the mail class number.
-
-            $service_value = '';
-
-            if ($service_info->MailClass == 1) {
-                $service_value = 'usps_express';
-
-            } else if ($service_info->MailClass == 2) {
-                $service_value = 'usps_priority';
-            }
-
-            $delivery_date = (string) $service_info->Location->SDD;
-
-            // If a service was not found (i.e. we don't support the service), or there was no
-            // delivery date, or no enabled shipping methods use this service, or we have already
-            // added info for this service, then continue to next service.  For some reason, USPS
-            // returns info for the same service multiple times. One might be for street and the
-            // other one might be for po, however we don't see evidence that the delivery date is
-            // different, so we are going to ignore the duplicate.
-            if (
-                !$service_value or !$delivery_date or !in_array($service_value, $enabled_services)
-                or isset($services[$service_value])
-            ) {
-                continue;
-            }
-
-            // Add service to array so we can remember it for later.
-            $services[$service_value] = array(
-                'service' => $service_value,
-                'delivery_date' => $delivery_date);
-        }
-    }
-
-    // If non-expedited services were returned, then loop through them.
-    if ($response->NonExpedited) {
-
-        foreach($response->NonExpedited as $service_info) {
-
-            // Figure out the service from the mail class number.
-
-            $service_value = '';
-
-            if ($service_info->MailClass == 6) {
-                $service_value = 'usps_ground';
-            }
-
-            $delivery_date = (string) $service_info->SchedDlvryDate;
-
-            // If a service was not found (i.e. we don't support the service), or there was no
-            // delivery date, or no enabled shipping methods use this service, or we have already
-            // added info for this service, then continue to next service.  For some reason, USPS
-            // returns info for the same service multiple times. One might be for street and the
-            // other one might be for po, however we don't see evidence that the delivery date is
-            // different, so we are going to ignore the duplicate.
-            if (
-                !$service_value or !$delivery_date or !in_array($service_value, $enabled_services)
-                or isset($services[$service_value])
-            ) {
-                continue;
-            }
-
-            // Add service to array so we can remember it for later.
-            $services[$service_value] = array(
-                'service' => $service_value,
-                'delivery_date' => $delivery_date);
-        }
-    }
-
-    // Prepare variable we will use to keep track of the delivery date for the service that this
-    // request was originally made for.
-    $service_delivery_date = '';
-
-    // Loop through the services in order to add delivery dates to cache table.
-    foreach ($services as $service_info) {
-
-        // Delete any old delivery date in db cache table that might exist.
-        db(
-            "DELETE FROM shipping_delivery_dates
-            WHERE
-                (service = '" . e($service_info['service']) . "')
-                AND (zip_code = '" . e($zip_code) . "')
-                AND (ship_date = '" . e($ship_date) . "')");
-
-        // Insert new delivery date into db cache table.
-        db(
-            "INSERT INTO shipping_delivery_dates (
-                service,
-                zip_code,
-                ship_date,
-                delivery_date,
-                timestamp)
-            VALUES (
-                '" . e($service_info['service']) . "',
-                '" . e($zip_code) . "',
-                '" . e($ship_date) . "',
-                '" . e($service_info['delivery_date']) . "',
-                UNIX_TIMESTAMP())");
-
-        // If this is the service that this request was originally made for, then remember the
-        // delivery date, so we can respond later.
-        if ($service_info['service'] == $service) {
-            $service_delivery_date = $service_info['delivery_date'];
-        }
-    }
-
-    // If USPS did not return a delivery date for the service that this request was originally
-    // made for, then log and return error.
-    if (!$service_delivery_date) {
-
-        $message = 'Could not get a delivery date for ' . get_shipping_service_name($service) . ', because USPS did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code (' . $zip_code . '). Request: ' . shipping_mask_credentials($request) . ' Response: ' . $response_content;
-
-        log_activity($message);
-
-        return array(
-            'status' => 'error',
-            'message' => $message);
-    }
-
-    // If we have gotten here, then everything worked, so return delivery date.
     return array(
         'status' => 'success',
-        'delivery_date' => $service_delivery_date);
+        'delivery_date' => $delivery_date);
 }
 
 function get_fedex_delivery_date($properties) {
@@ -760,32 +569,14 @@ function get_fedex_delivery_date($properties) {
             'message' => $message);
     }
 
-    if (!function_exists('curl_init')) {
-        $message = 'This website cannot communicate with shipping carrier for delivery date, because
-            cURL is not installed. The administrator of this website should install cURL.';
+    // FedEx's Rate API signs in with the API key and secret key of a project
+    // from the FedEx Developer Portal (includes/fn/carrier_api.php). The key,
+    // password and meter number of the retired SOAP web services stay in the
+    // config table, unread.
+    $fedex_account = trim((string) db_value("SELECT fedex_account FROM config"));
 
-        log_activity($message);
-
-        return array(
-            'status' => 'error',
-            'message' => $message);
-    }
-
-    // Get FedEx settings.
-    $config = db_item(
-        "SELECT
-            fedex_key,
-            fedex_password,
-            fedex_account,
-            fedex_meter
-        FROM config");
-
-    // If the FedEx login info is missing from the settings, then log and return false.
-    if (
-        !$config['fedex_key'] or !$config['fedex_password'] or !$config['fedex_account']
-        or !$config['fedex_meter']
-    ) {
-        $message = 'This website cannot communicate with FedEx to get delivery date, because a FedEx Key, Password, Account Number, and/or Meter Number could not be found in the site settings.';
+    if (!pg_carrier_api_ready('fedex') or ($fedex_account === '')) {
+        $message = lang('This website cannot get delivery dates from FedEx, because a FedEx API key, secret key or account number is missing from the site settings.');
 
         log_activity($message);
 
@@ -801,99 +592,22 @@ function get_fedex_delivery_date($properties) {
         $zip_code = mb_substr($zip_code, 0, 5);
     }
 
-    // If no weight was passed, then someone has probably forgotten to enter a weight for a product,
-    // so just set the weight to 1 lb.  We don't believe the weight affects the delivery date in
-    // most circumstances, so this should be fine.
-    if ($weight <= 0) {
-        $weight = 1;
-    }
+    // Every service is asked for at once, so the delivery dates of the other
+    // services land in the cache table from the same answer.
+    $request = pg_fedex_rate_request(
+        array('zip_code' => ORGANIZATION_ZIP_CODE),
+        array('zip_code' => $zip_code, 'country' => $country),
+        $ship_date,
+        $weight,
+        $fedex_account);
 
-    // We send the request below so that FedEx will return info for all services, so we can store
-    // data for all services in cache table.  We do this in order to avoid having to make an API
-    // request for each service, which would cause delays.
-    //
-    // We don't support SmartPost because FedEx does not support returning precise info for the
-    // transit time for SmartPost.  FedEx always returns 2-7 days, no matter what the zip code is.
-    // This is because FedEx SmartPost hands off the shipment to USPS, and USPS is not reliable, or
-    // does not give info to FedEx.  One workaround is to set FedEx Ground instead and add 2 extra
-    // handling days in the method, because SmartPost generally takes 1-2 days more than Ground,
-    // on average.
-    //
-    // Below we set that the package will be shipped at the shipping end of day time, because we
-    // don't currently have a better way of knowing when the package will be shipped.
+    $response = pg_carrier_api_call('fedex', 'POST', '/rate/v1/rates/quotes', $request, array('X-locale: en_US'));
 
-    $request =
-        '<?xml version="1.0"?>
-        <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="http://fedex.com/ws/rate/v20">
-            <SOAP-ENV:Body>
-                <ns1:RateRequest>
-                    <ns1:WebAuthenticationDetail>
-                        <ns1:UserCredential>
-                            <ns1:Key>' . h($config['fedex_key']) . '</ns1:Key>
-                            <ns1:Password>' . h($config['fedex_password']) . '</ns1:Password>
-                        </ns1:UserCredential>
-                    </ns1:WebAuthenticationDetail>
-                    <ns1:ClientDetail>
-                        <ns1:AccountNumber>' . h($config['fedex_account']) . '</ns1:AccountNumber>
-                        <ns1:MeterNumber>' . h($config['fedex_meter']) . '</ns1:MeterNumber>
-                    </ns1:ClientDetail>
-                    <ns1:Version>
-                        <ns1:ServiceId>crs</ns1:ServiceId>
-                        <ns1:Major>20</ns1:Major>
-                        <ns1:Intermediate>0</ns1:Intermediate>
-                        <ns1:Minor>0</ns1:Minor>
-                    </ns1:Version>
-                    <ns1:ReturnTransitAndCommit>true</ns1:ReturnTransitAndCommit>
-                    <ns1:RequestedShipment>
-                        <ns1:ShipTimestamp>' . h($ship_date) . 'T' . h(ECOMMERCE_END_OF_DAY_TIME) . ':00</ns1:ShipTimestamp>
-                        <ns1:Shipper>
-                            <ns1:Address>
-                                <ns1:PostalCode>' . h(ORGANIZATION_ZIP_CODE) . '</ns1:PostalCode>
-                                <ns1:CountryCode>US</ns1:CountryCode>
-                            </ns1:Address>
-                        </ns1:Shipper>
-                        <ns1:Recipient>
-                            <ns1:Address>
-                                <ns1:PostalCode>' . h($zip_code) . '</ns1:PostalCode>
-                                <ns1:CountryCode>' . h($country) . '</ns1:CountryCode>
-                            </ns1:Address>
-                        </ns1:Recipient>
-                        <ns1:PackageCount>1</ns1:PackageCount>
-                        <ns1:RequestedPackageLineItems>
-                            <ns1:SequenceNumber>1</ns1:SequenceNumber>
-                            <ns1:GroupPackageCount>1</ns1:GroupPackageCount>
-                            <ns1:Weight>
-                                <ns1:Units>LB</ns1:Units>
-                                <ns1:Value>' . h($weight) . '</ns1:Value>
-                            </ns1:Weight>
-                        </ns1:RequestedPackageLineItems>
-                    </ns1:RequestedShipment>
-                </ns1:RateRequest>
-            </SOAP-ENV:Body>
-        </SOAP-ENV:Envelope>';
+    if ($response['error'] !== '') {
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://ws.fedex.com:443/web-services');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    $response = curl_exec($ch);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    curl_close($ch);
-
-    // If there was a cURL problem, then log the error and return false.
-    if (!$response or $curl_errno) {
-
-        $message = 
-            'An error occurred while trying to communicate with FedEx for delivery date. ' .
-            'cURL Error Number: ' . $curl_errno . '. ' .
-            'cURL Error Message: ' . $curl_error . '. Request: ' . shipping_mask_credentials($request);
+        $message = lang(array(
+            'string' => 'An error occurred while trying to get a delivery date from FedEx: {var:1} Request: {var:2}',
+            'vars' => array($response['error'], json_encode($request))));
 
         log_activity($message);
 
@@ -902,40 +616,14 @@ function get_fedex_delivery_date($properties) {
             'message' => $message);
     }
 
-    $response_content = $response;
-
-    if (strpos($response, 'ERROR') !== false) {
-        
-        // Errors are written in SOAP envelop need to clean SOAP tags to read to xml.
-        $response = str_ireplace('SOAP-ENV:', '', $response);
-        $response = str_ireplace('SOAP:', '', $response);
-        $response = str_ireplace('v20:', '', $response);
-        $response  = simplexml_load_string($response);
-
-        $message = 
-            'An error occurred while trying to communicate with FedEx for delivery date: ' .
-            (string) $response->Body->RateReply->Notifications->Message . ' Request: ' . shipping_mask_credentials($request);
-
-        log_activity($message);
-
-        return array(
-            'status' => 'error',
-            'message' => $message);
-    }
-
-    $soap_response = $response;
-
-    // Convert SOAP to xml.
-    $response = simplexml_load_string($response, NULL, NULL, "http://schemas.xmlsoap.org/soap/envelope/");
-    $response = $response->xpath('//SOAP-ENV:Body');
-    $response = $response[0];
+    $dates = pg_fedex_delivery_parse($response['data']);
 
     // If the response is not what we expect, then log and return error.
-    if (!isset($response->RateReply->RateReplyDetails)) {
+    if (!$dates) {
 
-        $message = 
-            'An error occurred while trying to communicate with FedEx for delivery date. ' .
-            $soap_response . ' Request: ' . shipping_mask_credentials($request);
+        $message = lang(array(
+            'string' => 'FedEx answered without delivery dates: {var:1} Request: {var:2}',
+            'vars' => array($response['body'], json_encode($request))));
 
         log_activity($message);
 
@@ -959,88 +647,19 @@ function get_fedex_delivery_date($properties) {
     // request was originally made for.
     $service_delivery_date = '';
 
-    // Loop through the different services to get delivery dates.
-    foreach ($response->RateReply->RateReplyDetails as $rate_reply) {
+    foreach ($dates as $service_value => $date) {
 
-        $service_type = (string) $rate_reply->ServiceType;
-
-        $service_value = '';
-
-        // Convert service type to our service value.
-        switch ($service_type) {
-            
-            case 'FIRST_OVERNIGHT':
-                $service_value = 'fedex_first_overnight';
-                break;
-
-            case 'PRIORITY_OVERNIGHT':
-                $service_value = 'fedex_priority_overnight';
-                break;
-
-            case 'STANDARD_OVERNIGHT':
-                $service_value = 'fedex_standard_overnight';
-                break;
-
-            case 'FEDEX_2_DAY_AM':
-                $service_value = 'fedex_2_day_am';
-                break;
-
-            case 'FEDEX_2_DAY':
-                $service_value = 'fedex_2_day';
-                break;
-
-            case 'FEDEX_EXPRESS_SAVER':
-                $service_value = 'fedex_express_saver';
-                break;
-
-            case 'FEDEX_GROUND':
-                $service_value = 'fedex_ground';
-                break;
-        }
-    
-        // If this is a service that we don't support, or no enabled shipping
-        // methods use this service, then skip to next service.
-        if (!$service_value or !in_array($service_value, $enabled_services)) {
+        // If no enabled shipping methods use this service, then skip to next service.
+        if (!in_array($service_value, $enabled_services)) {
             continue;
         }
 
-        // If this is FedEx Ground, then we have to calculate the delivery date, because FedEx only
-        // returns transit time.
-        if ($service_value == 'fedex_ground') {
-            
-            $transit_time = (string) $rate_reply->TransitTime;
+        $delivery_date = $date['date'];
 
-            // Convert string value ("ONE_DAY") to number (1).
-
-            $transit_days = 0;
-
-            switch ($transit_time) {
-                case 'ONE_DAY': $transit_days = 1; break;
-                case 'TWO_DAYS': $transit_days = 2; break;
-                case 'THREE_DAYS': $transit_days = 3; break;
-                case 'FOUR_DAYS': $transit_days = 4; break;
-                case 'FIVE_DAYS': $transit_days = 5; break;
-                case 'SIX_DAYS': $transit_days = 6; break;
-                case 'SEVEN_DAYS': $transit_days = 7; break;
-                case 'EIGHT_DAYS': $transit_days = 8; break;
-                case 'NINE_DAYS': $transit_days = 9; break;
-                case 'TEN_DAYS': $transit_days = 10; break;
-                case 'ELEVEN_DAYS': $transit_days = 11; break;
-                case 'TWELVE_DAYS': $transit_days = 12; break;
-                case 'THIRTEEN_DAYS': $transit_days = 13; break;
-                case 'FOURTEEN_DAYS': $transit_days = 14; break;
-                case 'FIFTEEN_DAYS': $transit_days = 15; break;
-                case 'SIXTEEN_DAYS': $transit_days = 16; break;
-                case 'SEVENTEEN_DAYS': $transit_days = 17; break;
-                case 'EIGHTEEN_DAYS': $transit_days = 18; break;
-                case 'NINETEEN_DAYS': $transit_days = 19; break;
-                case 'TWENTY_DAYS': $transit_days = 20; break;
-            }
-
-            // If the transit days could not be found, then skip to next service.
-            if (!$transit_days) {
-                continue;
-            }
+        // FedEx Ground's date is counted from its transit time with the
+        // method's own weekend and excluded dates, as it always was; FedEx's
+        // own date is the fallback.
+        if (($service_value == 'fedex_ground') and $date['transit_days']) {
 
             // Get info for the FedEx Ground shipping method, so we know about transit on weekend
             // and excluded dates.  There could be multiple methods, but we will just get info
@@ -1058,27 +677,19 @@ function get_fedex_delivery_date($properties) {
                     AND (end_time >= NOW())
                 LIMIT 1");
 
-            // If a FedEx Ground method could not be found, then skip to next service.
-            if (!$shipping_method) {
-                continue;
+            if ($shipping_method) {
+
+                $excluded_transit_dates = db_values(
+                    "SELECT date FROM excluded_transit_dates
+                    WHERE shipping_method_id = '" . e($shipping_method['id']) . "'");
+
+                $delivery_date = calculate_delivery_date(array(
+                    'ship_date' => $ship_date,
+                    'transit_days' => $date['transit_days'],
+                    'transit_on_sunday' => $shipping_method['transit_on_sunday'],
+                    'transit_on_saturday' => $shipping_method['transit_on_saturday'],
+                    'excluded_transit_dates' => $excluded_transit_dates));
             }
-
-            $excluded_transit_dates = db_values(
-                "SELECT date FROM excluded_transit_dates
-                WHERE shipping_method_id = '" . e($shipping_method['id']) . "'");
-
-            $delivery_date = calculate_delivery_date(array(
-                'ship_date' => $ship_date,
-                'transit_days' => $transit_days,
-                'transit_on_sunday' => $shipping_method['transit_on_sunday'],
-                'transit_on_saturday' => $shipping_method['transit_on_saturday'],
-                'excluded_transit_dates' => $excluded_transit_dates));
-
-        // Otherwise this service is not FedEx Ground, so get delivery date that FedEx returns.
-        } else {
-
-            $delivery_timestamp = (string) $rate_reply->DeliveryTimestamp;
-            $delivery_date = date('Y-m-d', strtotime($delivery_timestamp));
         }
 
         // If a delivery date was not found, then skip to next service.
@@ -1587,225 +1198,49 @@ function get_shipping_realtime_rate($properties) {
 
             case 'usps':
 
-                if (!USPS_USER_ID) {
-                    log_activity(
-                        'This website cannot communicate with USPS for real-time rates, because a
-                        USPS Web Tools User ID could not be found in the site settings.');
+                // USPS's Domestic Prices API signs in with the consumer key and
+                // secret of an application from the USPS Developer Portal
+                // (includes/fn/carrier_api.php). The user ID of the retired
+                // Web Tools stays in the config table, unread.
+                if (!pg_carrier_api_ready('usps')) {
+                    log_activity(lang('This website cannot get real-time rates from USPS, because no USPS consumer key and consumer secret are set in the site settings.'));
                     return false;
                 }
 
-                $request =
-                    '<RateV4Request USERID="' . h(USPS_USER_ID) . '">';
+                // Only the mail classes of this service and of enabled shipping
+                // methods are asked for.
+                $mail_classes = array();
 
-                // Get the first 5 digits of the organization zip code, because USPS returns an
-                // error if you include +4.
-                $organization_zip_code = mb_substr(ORGANIZATION_ZIP_CODE, 0, 5);
-
-                // Loop through the pending packages in order to prepare XML for each.
-                foreach ($pending_packages as $key => $package) {
-
-                    // If any dimension is over 12 inches, then USPS considers the package size
-                    // to be "LARGE", so prepare data for that.
-                    if (
-                        ($package['length'] > 12)
-                        or ($package['width'] > 12)
-                        or ($package['height'] > 12)
-                    ) {
-
-                        // The size is large, so USPS requires us to set the container
-                        // in that case for some reason.  Otherwise, we just leave it blank.
-                        $container = 'RECTANGULAR';
-
-                        $size = 'LARGE';
-
-                    } else {
-
-                        // The size is regular, so we leave the container blank (i.e. "variable"),
-                        // because USPS does not allow "RECTANGULAR" for a regular size, for some
-                        // reason.
-                        $container = '';
-
-                        $size = 'REGULAR';
-
+                foreach (pg_usps_services() as $mail_class => $usps_service) {
+                    if (($usps_service == $service) or in_array($usps_service, $enabled_services)) {
+                        $mail_classes[] = $mail_class;
                     }
-
-                    // Determine if USPS considers the package to be machinable.
-                    if (
-                        ($package['length'] >= 6)
-                        and ($package['length'] <= 34)
-                        and ($package['width'] >= 3)
-                        and ($package['width'] <= 17)
-                        and ($package['height'] >= 0.25)
-                        and ($package['height'] <= 17)
-                        and ($package['weight'] >= 0.375)
-                        and ($package['weight'] <= 35)
-                    ) {
-                        $machinable = 'true';
-                    } else {
-                        $machinable = 'false';
-                    }
-
-                    // We request rates for all services, and not just the one service that we are
-                    // interested in here, in order to minimize carrier API requests.
-                    // The rates for the other services will get added to the cache table,
-                    // so future requests for the other services will benefit.
-
-                    $request .=
-                        '<Package ID="' . $key . '">
-                            <Service>All</Service>
-                            <ZipOrigination>' . h($organization_zip_code) . '</ZipOrigination>
-                            <ZipDestination>' . h($zip_code) . '</ZipDestination>
-                            <Pounds>' . h($package['weight']) . '</Pounds>
-                            <Ounces>0</Ounces>
-                            <Container>' . $container . '</Container>
-                            <Size>' . $size . '</Size>
-                            <Width>' . h($package['width']) . '</Width>
-                            <Length>' . h($package['length']) . '</Length>
-                            <Height>' . h($package['height']) . '</Height>
-                            <Machinable>' . $machinable . '</Machinable>
-                        </Package>';
-
-                }
-                    
-                $request .= '</RateV4Request>';
-
-                log_activity(shipping_mask_credentials($request));
-
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL,
-                    'https://production.shippingapis.com/ShippingAPI.dll?API=RateV4&XML=' .
-                    urlencode($request));
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-
-                // We had issues in the past where the timeout did not work, when USPS' service
-                // went down, and we were only using CURLOPT_TIMEOUT. The request would go on for
-                // too long. We are adding CURLOPT_CONNECTTIMEOUT also to attempt to resolve that.
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                pg_curl_tls($ch);
-                curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-                $response = curl_exec($ch);
-                $curl_errno = curl_errno($ch);
-                $curl_error = curl_error($ch);
-                curl_close($ch);
-
-                log_activity($response);
-
-                // If there was a cURL problem, then log the error and return false.
-                if ($curl_errno) {
-                    log_activity(
-                        'An error occurred while trying to communicate with USPS for real-time rates.' .
-                        'cURL Error Number: ' . $curl_errno . '. ' .
-                        'cURL Error Message: ' . $curl_error . '.');
-                    return false;
                 }
 
-                // Check if there is an error.
-                preg_match_all('/<error>(.*?)<\/error>/msi', $response, $errors, PREG_SET_ORDER);
+                // One request per package, with every mail class at once, so the
+                // other services' rates land in the cache table from the same
+                // answer.
+                foreach ($pending_packages as $package) {
 
-                // If there was at least one error, then log errors and return false.
-                if ($errors) {
+                    $request = pg_usps_rate_request(ORGANIZATION_ZIP_CODE, $zip_code, $package, $mail_classes, date('Y-m-d'));
 
-                    $log_error = '';
+                    log_activity(lang(array('string' => 'USPS rate request: {var:1}', 'vars' => array(json_encode($request)))));
 
-                    // Loop through the errors so we can add each error to log message.
-                    foreach ($errors as $error) {
+                    $response = pg_carrier_api_call('usps', 'POST', '/prices/v3/total-rates/search', $request);
 
-                        preg_match('/<number>(.*?)<\/number>/msi', $error[1], $match);
-                        $number = unhtmlspecialchars($match[1]);
-                        
-                        preg_match('/<description>(.*?)<\/description>/msi', $error[1], $match);
-                        $description = unhtmlspecialchars($match[1]);
+                    log_activity(lang(array('string' => 'USPS rate response: {var:1}', 'vars' => array($response['body']))));
 
-                        $log_error .=
-                            ' USPS Error Number: ' . $number . '. ' .
-                            'USPS Error Message: ' . $description;
-
-                    }
-
-                    log_activity(
-                        'An error occurred while trying to communicate with USPS for real-time
-                        rates.' . $log_error . ' Request: ' . shipping_mask_credentials($request));
-
-                    return false;
-
-                }
-
-                // Loop through the pending packages in order to get the rates out of the XML.
-                foreach ($pending_packages as $key => $package) {
-
-                    // Try to find the response for this package in the XMl.
-                    preg_match(
-                        '/<Package ID="' . $key . '">(.*?)<\/Package>/msi', $response, $package_match);
-
-                    // If USPS did not return info for this package, then something went wrong,
-                    // so log and return false.
-                    if (!$package_match) {
-                        log_activity(
-                            'An error occurred while trying to communicate with USPS for real-time
-                            rates.  We could not find info for a package in the USPS response. ' .
-                            'Request: ' . shipping_mask_credentials($request) . ' ' .
-                            'Response: ' . $response);
+                    if ($response['error'] !== '') {
+                        log_activity(lang(array('string' => 'An error occurred while trying to get real-time rates from USPS: {var:1}', 'vars' => array($response['error']))));
                         return false;
                     }
 
-                    // Get all postage containers from response that contain service and rate.
-                    preg_match_all(
-                        '/<Postage(.*?)>(.*?)<\/Postage>/msi',
-                        $package_match[1], $postages, PREG_SET_ORDER);
+                    foreach (pg_usps_rate_parse($response['data'], pg_usps_machinable($package)) as $rate_service => $rate) {
 
-                    // Loop through all the postages responses, in order to get rate.
-                    foreach ($postages as $postage) {
-
-                        // Get the class id so we can figure out the service.
-                        preg_match('/CLASSID="(.*?)"/si', $postage[1], $class_id_match);
-                        $class_id = isset($class_id_match[1]) ? $class_id_match[1] : '';
-
-                        // If we could not find the class id for some reason, then skip to the next
-                        // postage.
-                        if ($class_id == '') {
+                        // No enabled shipping method uses this service.
+                        if (!in_array($rate_service, $enabled_services)) {
                             continue;
                         }
-
-                        $rate_service = '';
-
-                        // Get the service from the class id.  We only support some services.
-                        switch ($class_id) {
-                            
-                            case 1:
-                                $rate_service = 'usps_priority';
-                                break;
-
-                            case 3:
-                                $rate_service = 'usps_express';
-                                break;
-
-                            case 4:
-                                $rate_service = 'usps_ground';
-                                break;
-
-                        }
-
-                        // If this is a service that we don't support, or no enabled shipping
-                        // methods use this service, then skip to next postage.
-                        if (!$rate_service or !in_array($rate_service, $enabled_services)) {
-                            continue;
-                        }
-
-                        // Get the rate.
-                        preg_match('/<Rate>(.*?)<\/Rate>/si', $postage[2], $rate_match);
-                        $rate = isset($rate_match[1]) ? $rate_match[1] : '';
-
-                        // If we could not find the rate for some reason, then skip to the next
-                        // postage.
-                        if ($rate == '') {
-                            continue;
-                        }
-
-                        // Convert to cents.
-                        $rate = $rate * 100;
 
                         // Store the info for this new rate, so later we can add rate to db.
                         $new_rates[] = array(
@@ -1816,7 +1251,7 @@ function get_shipping_realtime_rate($properties) {
                             'height' => $package['height'],
                             'rate_key' => $package['rate_key'],
                             'rate' => $rate);
-                        
+
                     }
 
                 }
@@ -1829,306 +1264,73 @@ function get_shipping_realtime_rate($properties) {
                     log_activity('This website cannot communicate with UPS for real-time rates, because UPS is disabled in the site settings.');
                     return false;
                 }
-                
-                // Get UPS settings, because we won't have global constants for them, unlike USPS,
-                // for performance reasons.
-                $config = db_item(
-                    "SELECT
-                        ups_key,
-                        ups_user_id,
-                        ups_password,
-                        ups_account
-                    FROM config");
 
-                if (!$config['ups_key'] or !$config['ups_user_id'] or !$config['ups_password']) {
-                    log_activity(
-                        'This website cannot communicate with UPS for real-time rates, because a ' .
-                        'UPS Access Key, User ID, and/or Password could not be found in the site ' .
-                        'settings.');
+                // UPS's Rating API signs in with the client ID and secret of an
+                // application from the UPS Developer Portal (includes/fn/carrier_api.php).
+                // The access key, user ID and password of the retired XML
+                // interface stay in the config table, unread.
+                if (!pg_carrier_api_ready('ups')) {
+                    log_activity(lang('This website cannot get real-time rates from UPS, because no UPS client ID and client secret are set in the site settings.'));
                     return false;
                 }
 
-                // UPS does not support passing multiple packages and showing the negotiated rate
-                // for each package, so we are going to send an API request for each package.
-                // If you send multiple packages in the same request, then UPS will only show a
-                // total negotiated rate for all packages, which creates issues for us when dealing
-                // with the cache table and etc.  We need to know the negotiated rate for each
-                // package.
+                $ups_account = trim((string) db_value("SELECT ups_account FROM config"));
 
-                $rate_information = '';
-                $shipper_number = '';
+                $organization_state = ORGANIZATION_STATE;
 
-                // If there is an account number in the site settings, then enable negotiated rates.
-                if ($config['ups_account']) {
+                // UPS takes the two-letter code; the site settings may hold
+                // the state's name.
+                if (mb_strlen((string) $organization_state) > 2) {
 
-                    $rate_information =
-                        '<RateInformation>
-                            <NegotiatedRatesIndicator/>
-                        </RateInformation>';
+                    $organization_state_code = db_value(
+                        "SELECT code
+                        FROM states
+                        WHERE name = '" . e($organization_state) . "'");
 
-                    $shipper_number = '<ShipperNumber>' . h($config['ups_account']) . '</ShipperNumber>';
-
-                }
-
-                $state_province_code = '';
-
-                // If there is a state in the site settings, then prepare to pass that to UPS,
-                // because UPS might give more accurate info if state is provided.
-                if (ORGANIZATION_STATE) {
-
-                    $organization_state = ORGANIZATION_STATE;
-
-                    // If the state in the site settings appears to be the name of the state then
-                    // check state table for 2-char state code, because that is what UPS requires.
-                    if (mb_strlen($organization_state) > 2) {
-
-                        $organization_state_code = db_value(
-                            "SELECT code
-                            FROM states
-                            WHERE name = '" . e($organization_state) . "'");
-
-                        if ($organization_state_code) {
-                            $organization_state = $organization_state_code;
-                        }
-
+                    if ($organization_state_code) {
+                        $organization_state = $organization_state_code;
                     }
 
-                    $state_province_code = '<StateProvinceCode>' . h($organization_state) . '</StateProvinceCode>';
-
                 }
 
-                // We request rates for all services (RequestOption: Shop), and not just the
-                // one service that we are interested in here, in order to minimize carrier API
-                // requests. The rates for the other services will get added to the cache table,
-                // so future requests for the other services will benefit.
+                $shipper = array(
+                    'name'      => (string) ORGANIZATION_NAME,
+                    'address_1' => (string) ORGANIZATION_ADDRESS_1,
+                    'city'      => (string) ORGANIZATION_CITY,
+                    'state'     => (mb_strlen((string) $organization_state) == 2) ? mb_strtoupper($organization_state) : '',
+                    'zip_code'  => (string) ORGANIZATION_ZIP_CODE);
 
-                // Prepare the header request info that will be the same for all packages.
-                $request_header =
-                    '<?xml version="1.0" ?>
-                    <AccessRequest xml:lang="en-US">
-                        <AccessLicenseNumber>' . h($config['ups_key']) . '</AccessLicenseNumber>
-                        <UserId>' . h($config['ups_user_id']) . '</UserId>
-                        <Password>' . h($config['ups_password']) . '</Password>
-                    </AccessRequest>
-                    <?xml version="1.0" ?>
-                    <RatingServiceSelectionRequest xml:lang="en-US">
-                        <Request>
-                            <RequestAction>Rate</RequestAction>
-                            <RequestOption>Shop</RequestOption>
-                        </Request>
-                        <Shipment>
-                            ' . $rate_information . '
-                            <Shipper>
-                                ' . $shipper_number . '
-                                <Address>
-                                    <PostalCode>' . h(ORGANIZATION_ZIP_CODE) . '</PostalCode>
-                                    ' . $state_province_code . '
-                                    <CountryCode>US</CountryCode>
-                                </Address>
-                            </Shipper>
-                            <ShipTo>
-                                <Address>
-                                    <PostalCode>' . h($zip_code) . '</PostalCode>
-                                    <StateProvinceCode>' . h($state) . '</StateProvinceCode>
-                                    <CountryCode>US</CountryCode>
-                                </Address>
-                            </ShipTo>';
+                // The rate is cached by ZIP code, so the street is not sent.
+                $ship_to = array(
+                    'state'    => (mb_strlen((string) $state) == 2) ? mb_strtoupper($state) : '',
+                    'zip_code' => $zip_code);
 
-                $request_footer =
-                    '    </Shipment>
-                    </RatingServiceSelectionRequest>';
-
+                // One request per package (see pg_ups_rate_request()). Every
+                // service is asked for at once, so the other services' rates
+                // land in the cache table from the same answer.
                 foreach ($pending_packages as $package) {
 
-                    // UPS returns an error if a dimension or weight is greater than 6 chars,
-                    // so let's reduce the length of those values, and round if necessary.
+                    $request = pg_ups_rate_request($shipper, $ship_to, $package, $ups_account);
 
-                    // Remove extra zeros on the end.
-                    $length = $package['length'] + 0;
-                    $width = $package['width'] + 0;
-                    $height = $package['height'] + 0;
-                    $weight = $package['weight'] + 0;
+                    log_activity(lang(array('string' => 'UPS rate request: {var:1}', 'vars' => array(json_encode($request)))));
 
-                    if (strlen($length) > 6) {
-                        $length = round($length, 2);
-                    }
+                    $response = pg_carrier_api_call('ups', 'POST', '/api/rating/v2409/Shop', $request, array(
+                        'transId: ' . bin2hex(random_bytes(16)),
+                        'transactionSrc: pinegrap'));
 
-                    if (strlen($width) > 6) {
-                        $width = round($width, 2);
-                    }
+                    log_activity(lang(array('string' => 'UPS rate response: {var:1}', 'vars' => array($response['body']))));
 
-                    if (strlen($height) > 6) {
-                        $height = round($height, 2);
-                    }
-
-                    if (strlen($weight) > 6) {
-                        $weight = round($weight, 2);
-                    }
-
-                    $request =
-                        $request_header . '
-                        <Package>
-                            <PackagingType>
-                                <Code>02</Code>
-                            </PackagingType>
-                            <Dimensions>
-                                <UnitOfMeasurement>
-                                    <Code>IN</Code>
-                                </UnitOfMeasurement>
-                                <Length>' . h($length) . '</Length>
-                                <Width>' . h($width) . '</Width>
-                                <Height>' . h($height) . '</Height>
-                            </Dimensions>
-                            <PackageWeight>
-                                <UnitOfMeasurement>
-                                    <Code>LBS</Code>
-                                </UnitOfMeasurement>
-                                <Weight>' . h($weight) . '</Weight>
-                            </PackageWeight>
-                        </Package>
-                        ' . $request_footer;
-
-                    log_activity(shipping_mask_credentials($request));
-
-                    $ch = curl_init();
-                    curl_setopt($ch, CURLOPT_URL, 'https://onlinetools.ups.com/ups.app/xml/Rate');
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    pg_curl_tls($ch);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-                    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-                    curl_setopt($ch, CURLOPT_POST, 1);
-                    $response = curl_exec($ch);
-                    $curl_errno = curl_errno($ch);
-                    $curl_error = curl_error($ch);
-                    curl_close($ch);
-
-                    log_activity($response);
-
-                    // If there was a cURL problem, then log the error and return false.
-                    if ($curl_errno) {
-                        log_activity(
-                            'An error occurred while trying to communicate with UPS for real-time rates.' .
-                            'cURL Error Number: ' . $curl_errno . '. ' .
-                            'cURL Error Message: ' . $curl_error . '.');
+                    if ($response['error'] !== '') {
+                        log_activity(lang(array('string' => 'An error occurred while trying to get real-time rates from UPS: {var:1}', 'vars' => array($response['error']))));
                         return false;
                     }
 
-                    // Get the response status code in order to determine if there was an error.
-                    preg_match('/<ResponseStatusCode>(.*?)<\/ResponseStatusCode>/si', $response, $match);
+                    foreach (pg_ups_rate_parse($response['data'], ($ups_account !== '')) as $rate_service => $rate) {
 
-                    // If there was an error, then log error(s) and return false.
-                    if (!isset($match[1]) || ($match[1] != '1')) {
-
-                        // Get all errors.  Normally, it appears there is just one error per
-                        // response, however it appears multiple errors can technically appear,
-                        // according to the docs, so we check for multiple errors.
-                        preg_match_all('/<Error>(.*?)<\/Error>/si', $response, $errors, PREG_SET_ORDER);
-
-                        $log_error = '';
-
-                        // Loop through the errors so we can add each error to log message.
-                        foreach ($errors as $error) {
-
-                            preg_match('/<ErrorCode>(.*?)<\/ErrorCode>/si', $error[1], $match);
-                            $code = unhtmlspecialchars($match[1]);
-                            
-                            preg_match('/<ErrorDescription>(.*?)<\/ErrorDescription>/si', $error[1], $match);
-                            $description = unhtmlspecialchars($match[1]);
-
-                            $log_error .=
-                                ' UPS Error Code: ' . $code . '. ' .
-                                'UPS Error Description: ' . $description;
-
-                        }
-
-                        log_activity(
-                            'An error occurred while trying to communicate with UPS for real-time
-                            rates.' . $log_error . ' Request: ' . shipping_mask_credentials($request));
-
-                        return false;
-
-                    }
-
-                    // Get all rated shipments. There is one for each service.
-                    preg_match_all('/<RatedShipment>(.*?)<\/RatedShipment>/si', $response,
-                        $rated_shipments, PREG_SET_ORDER);
-
-                    // Loop through all rated shipments in order to get rate for each service.
-                    foreach ($rated_shipments as $rated_shipment) {
-
-                        // Get service code.
-                        preg_match('/<Service>.*?<Code>(.*?)<\/Code>.*?<\/Service>/si',
-                            $rated_shipment[1], $match);
-                        $service_code = $match[1];
-
-                        $rate_service = '';
-
-                        // Get the service from the service code.  We only support domestic services.
-                        switch ($service_code) {
-                            
-                            case '01':
-                                $rate_service = 'ups_next_day_air';
-                                break;
-
-                            case '14':
-                                $rate_service = 'ups_next_day_air_early';
-                                break;
-
-                            case '13':
-                                $rate_service = 'ups_next_day_air_saver';
-                                break;
-
-                            case '02':
-                                $rate_service = 'ups_2nd_day_air';
-                                break;
-
-                            case '59':
-                                $rate_service = 'ups_2nd_day_air_am';
-                                break;
-
-                            case '12':
-                                $rate_service = 'ups_3_day_select';
-                                break;
-
-                            case '03':
-                                $rate_service = 'ups_ground';
-                                break;
-
-                        }
-
-                        // If this is a service that we don't support, or no enabled shipping
-                        // methods use this service, then skip to next service.
-                        if (!$rate_service or !in_array($rate_service, $enabled_services)) {
+                        // No enabled shipping method uses this service.
+                        if (!in_array($rate_service, $enabled_services)) {
                             continue;
                         }
-
-                        $rate = '';
-
-                        // If we requested negotiated rates, then look for a negotiated rate first.
-                        if ($config['ups_account']) {
-                            preg_match('/<NegotiatedRates>.*?<NetSummaryCharges>.*?<GrandTotal>.*?<MonetaryValue>(.*?)<\/MonetaryValue>.*?<\/GrandTotal>.*?<\/NetSummaryCharges>.*?<\/NegotiatedRates>/si',
-                                $rated_shipment[1], $match);
-                            $rate = $match[1];
-                        }
-
-                        // If we did not find a negotiated rate, then look for a standard rate.
-                        if ($rate == '') {
-                            preg_match('/<TotalCharges>.*?<MonetaryValue>(.*?)<\/MonetaryValue>.*?<\/TotalCharges>/si',
-                            $rated_shipment[1], $match);
-                            $rate = $match[1];
-                        }
-
-                        // If we could not find the rate for some reason, then skip to the next
-                        // service.
-                        if ($rate == '') {
-                            continue;
-                        }
-
-                        // Convert to cents.
-                        $rate = $rate * 100;
 
                         // Store the info for this new rate, so later we can add rate to db.
                         $new_rates[] = array(
@@ -2143,7 +1345,7 @@ function get_shipping_realtime_rate($properties) {
                     }
 
                 }
-                
+
                 break;
         }
 
@@ -2366,7 +1568,8 @@ function get_shipping_methods($properties) {
     $state = $properties['state'];
     $zip_code = trim($properties['zip_code']);
     $country = $properties['country'];
-    $arrival_date_id = $properties['arrival_date_id'];
+    // The forced-method check below asks without an arrival date.
+    $arrival_date_id = $properties['arrival_date_id'] ?? 0;
     $arrival_date = $properties['arrival_date'];
 
     $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
@@ -3041,8 +2244,9 @@ function check_shipping_method($properties) {
 
         // If this method is valid, then return info. We don't return a zone because we don't
         // store/use any zone info when a method is forced.
+        // An error response (no zone or method for this address) carries no list.
         if (
-            $response['shipping_methods']
+            !empty($response['shipping_methods'])
             and array_finder($response['shipping_methods'], 'id', $shipping_method['id'])
         ) {
             return array(
@@ -3175,11 +2379,12 @@ function verify_address($properties) {
         ) 
         && (($liveform->get_field_value($address_fields['country']) == 'US') || ($liveform->get_field_value($address_fields['country']) == 'USA'))
     ) {
-        // if cURL is not installed, then log error
-        if (function_exists('curl_init') == FALSE) {
-            log_activity('This website cannot communicate with USPS for address verification, because cURL is not installed. The administrator of this website should install cURL.', $_SESSION['sessionusername']);
+        // USPS's Addresses API signs in with the consumer key and secret of an
+        // application from the USPS Developer Portal (includes/fn/carrier_api.php).
+        if (!pg_carrier_api_ready('usps')) {
+            log_activity(lang('This website cannot verify addresses with USPS, because no USPS consumer key and consumer secret are set in the site settings.'), $_SESSION['sessionusername']);
             
-        // else cURL is installed, so continue address verification
+        // else the application is set, so continue address verification
         } else {
             // If the enforcement type is set to warning, then get old hash in order to determine
             // if the address has changed and we need to verify address again.
@@ -3205,224 +2410,120 @@ function verify_address($properties) {
                 (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'error')
                 || ($new_address_verification_hash != $old_address_verification_hash)
             ) {
-                // set url parameters needed to connect with USPS address verification service
-                $usps_api_url_parameters = 
-                    '<AddressValidateRequest USERID="' . h(USPS_USER_ID) . '">' . 
-                        '<Address ID="0">' . 
-                            '<Address1>' . h($liveform->get_field_value($address_fields['address_2'])) . '</Address1>' . 
-                            '<Address2>' . h($liveform->get_field_value($address_fields['address_1'])) . '</Address2>' . 
-                            '<City>' . h($liveform->get_field_value($address_fields['city'])) . '</City>' . 
-                            '<State>' . h($liveform->get_field_value($address_fields['state'])) . '</State>' . 
-                            '<Zip5>' . h($liveform->get_field_value($address_fields['zip_code'])) . '</Zip5>' . 
-                            '<Zip4></Zip4>' . 
-                        '</Address>' . 
-                    '</AddressValidateRequest>';
-                
-                // initialize cURL
-                $ch = curl_init();
-                
-                curl_setopt($ch, CURLOPT_URL, 'https://production.shippingapis.com/ShippingAPI.dll?API=Verify&XML=' . urlencode($usps_api_url_parameters));
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                $response = pg_carrier_api_call('usps', 'GET', pg_usps_address_path(array(
+                    'address_1' => $liveform->get_field_value($address_fields['address_1']),
+                    'address_2' => $liveform->get_field_value($address_fields['address_2']),
+                    'city'      => $liveform->get_field_value($address_fields['city']),
+                    'state'     => $liveform->get_field_value($address_fields['state']),
+                    'zip_code'  => $liveform->get_field_value($address_fields['zip_code']))), null);
 
-                // We had issues in the past where the timeout did not work, when USPS' service
-                // went down, and we were only using CURLOPT_TIMEOUT. The request would go on for
-                // too long. We are adding CURLOPT_CONNECTTIMEOUT also to attempt to resolve that.
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+                $verification = pg_usps_address_parse($response['status'], $response['data']);
 
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                pg_curl_tls($ch);
-                curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-                
-                // get cURL response
-                $response_data = curl_exec($ch);
-                
-                $curl_errno = curl_errno($ch);
-                $curl_error = curl_error($ch);
-                
-                curl_close($ch);
-                
-                // if there was a cURL problem, then log the error
-                if ($curl_errno) {
-                    log_activity('An error occurred while trying to communicate with your USPS Web Tools Account. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.', $_SESSION['sessionusername']);
-                
-                // else determine if an USPS error needs to be outputted or if the form fields need to be updated, and then process the action
-                } else {
-                    $usps_error = '';
-                    
-                    // get Errors
-                    preg_match('/<error>(.*?)<\/error>/msi', $response_data, $matches);
-                    $usps_error = isset($matches[1]) ? $matches[1] : '';
-                    
-                    // if there is a USPS error, then process the error
-                    if ($usps_error != '') {
-                        preg_match('/<number>(.*?)<\/number>/msi', $response_data, $matches);
-                        $usps_error_number = isset($matches[1]) ? $matches[1] : '';
-                        
-                        preg_match('/<description>(.*?)<\/description>/msi', $response_data, $matches);
-                        $usps_error_description = isset($matches[1]) ? $matches[1] : '';
-                        
-                        // determine what needs to be done based on the error code
-                        switch($usps_error_number) {
-                            // address not found error or multiple addresses found error
-                            case '-2147219401':
-                            case '-2147219403':
-                                if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = lang('We were not able to find the address in our postal database, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
-                                } else {
-                                    $message = lang('Sorry, we were not able to find the address in our postal database, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
-                                }
-
-                                // output error
-                                $liveform->mark_error($address_fields['address_1'], $message);
-                                $liveform->mark_error($address_fields['address_2'], '');
-                                $liveform->mark_error($address_fields['city'], '');
-                                $liveform->mark_error($address_fields['state'], '');
-                                $liveform->mark_error($address_fields['zip_code'], '');
-                                break;
-                                
-                            // invalid city error
-                            case '-2147219400':
-                                if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = lang('According to our postal database, the city is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
-                                } else {
-                                    $message = lang('Sorry, according to our postal database, the city is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
-                                }
-
-                                // output error
-                                $liveform->mark_error($address_fields['city'], $message);
-                                break;
-                                
-                            // invalid state error
-                            case '-2147219402':
-                                if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = lang('According to our postal database, the state/province is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
-                                } else {
-                                    $message = lang('Sorry, according to our postal database, the state/province is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
-                                }
-
-                                // output error
-                                $liveform->mark_error($address_fields['state'], $message);
-                                break;
-                            
-                            // invalid zip code error
-                            case '-2147219399':
-                                if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = lang('According to our postal database, the zip/postal code is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
-                                } else {
-                                    $message = lang('Sorry, according to our postal database, the zip/postal code is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
-                                }
-
-                                // output error
-                                $liveform->mark_error($address_fields['zip_code'], $message);
-                                break;
-                            
-                            // log all unknown errors
-                            default:
-                                log_activity('An error occurred while trying to communicate with the USPS Web Tools Account for address verification. USPS Error Number: ' . $usps_error_number . '. USPS Error Message: ' . $usps_error_description, $_SESSION['sessionusername']);
-                                break;
-                        }
-                    
-                    // else USPS did not return an error, so determine if they responded properly with a verified address.
-                    } else {
-                        // Look for an address 1 that is not blank in the response, in order to determine if USPS
-                        // responded correctly.  We have seen rare occurrences where USPS will either respond with a blank
-                        // response or a blank address possibly, so that is why this protection is necessary.
-                        // We don't want to update the address with blank info in that case, which might result in the order
-                        // being allowed to be submitted with blank info.  USPS' "address2" is actually our address 1,
-                        // so the "address2" reference below is not a mistake.
-                        preg_match('/<address2>(.*?)<\/address2>/msi', $response_data, $matches);
-
-                        // If an address 1 cannot be found in the response, then just log activity.
-                        if (trim($matches[1]) == '') {
-                            log_activity('An error occurred while trying to communicate with your USPS Web Tools Account.  USPS did not return a verified address. Response: ' . $response_data, $_SESSION['sessionusername']);
-
-                        // Otherwise an address 1 was found, so update the fields with the new address,
-                        // and also output any return text
+                // determine what needs to be done based on what USPS said about the address
+                switch ($verification['result']) {
+                    // address not found or multiple addresses found
+                    case 'not_found':
+                        if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
+                            $message = lang('We were not able to find the address in our postal database, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
                         } else {
-                            // if the address that we are verifying is a billing address, then format the address accordingly
-                            if ($address_type == 'billing') {
-                                // if the return data is a PO Box then format it correctly
-                                if (preg_match('/PO BOX/msi', unhtmlspecialchars($matches[1]), $po_matches) > 0) {
-                                    $matches[1] = preg_replace('/(.*?)PO BOX(.*?)/si', '$1PO Box$2', unhtmlspecialchars($matches[1]), 1);
-                                    
-                                // else proper case the response data
-                                } else {
-                                    $matches[1] = ucwords(mb_strtolower(unhtmlspecialchars($matches[1])));
-                                }
-                                
-                                // update the value in the liveForm
-                                $liveform->assign_field_value($address_fields['address_1'], $matches[1]);
-                                
-                                // get the response data for this field
-                                preg_match('/<address1>(.*?)<\/address1>/msi', $response_data, $matches);
-                                
-                                // if the return data is a PO Box then format it correctly
-                                if (preg_match('/PO BOX/msi', unhtmlspecialchars($matches[1]), $po_matches) > 0) {
-                                    $matches[1] = preg_replace('/(.*?)PO BOX(.*?)/si', '$1PO Box$2', unhtmlspecialchars($matches[1]), 1);
-                                    
-                                // else proper case the response data
-                                } else {
-                                    $matches[1] = ucwords(mb_strtolower(unhtmlspecialchars($matches[1])));
-                                }
-                                
-                                // update the value in the liveForm
-                                $liveform->assign_field_value($address_fields['address_2'], $matches[1]);
-                                
-                                // get the response data for this field and update the corresponding liveForm field
-                                preg_match('/<city>(.*?)<\/city>/msi', $response_data, $matches);
-                                $liveform->assign_field_value($address_fields['city'], ucwords(mb_strtolower(unhtmlspecialchars($matches[1]))));
-                                
-                            // else this is a shipping address, so set field values to the values that USPS returned
-                            } else {
-                                $liveform->assign_field_value($address_fields['address_1'], unhtmlspecialchars($matches[1]));
-                                
-                                // get the response data for this field and update the corresponding liveForm field
-                                preg_match('/<address1>(.*?)<\/address1>/msi', $response_data, $matches);
-                                $liveform->assign_field_value($address_fields['address_2'], unhtmlspecialchars($matches[1]));
-                                
-                                // get the response data for this field and update the corresponding liveForm field
-                                preg_match('/<city>(.*?)<\/city>/msi', $response_data, $matches);
-                                $liveform->assign_field_value($address_fields['city'], unhtmlspecialchars($matches[1]));
-                            }
-                            
-                            // get the response data for this field and update the corresponding liveForm field
-                            preg_match('/<state>(.*?)<\/state>/msi', $response_data, $matches);
-                            $liveform->assign_field_value($address_fields['state'], unhtmlspecialchars($matches[1]));
-                            
-                            $zip_code = '';
-                            
-                            // get the response data for this field and update the corresponding liveForm field
-                            preg_match('/<zip5>(.*?)<\/zip5>/msi', $response_data, $matches);
-                            $zip_code = unhtmlspecialchars($matches[1]);
-                            
-                            // get the response data for this field and update the corresponding liveForm field
-                            preg_match('/<zip4>(.*?)<\/zip4>/msi', $response_data, $matches);
-                            $zip_code .= '-' . unhtmlspecialchars($matches[1]);
-                            
-                            $liveform->assign_field_value($address_fields['zip_code'], $zip_code);
-                            
-                            // check for response text
-                            preg_match('/<returntext>(.*?)<\/returntext>/msi', $response_data, $matches);
-                            
-                            // if there is response text, then return an error
-                            if ($matches[1] != '') {
-                                if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = lang('Our postal database indicates that the address might be missing information, such as an apartment, suite, or box number, so please review the address below.  If there is missing information, then please add the missing information.  If you are sure that it is complete then you may leave it unchanged and continue below.');
-                                } else {
-                                    $message = lang('Sorry, our postal database indicates that the address might be missing information, such as an apartment, suite, or box number, so please review the address below.  If there is missing information, then please add the missing information.  If you are sure that it is complete then please feel free to contact us.');
-                                }
-
-                                // output error
-                                $liveform->mark_error($address_fields['address_1'], $message);
-                                $liveform->mark_error($address_fields['address_2'], '');
-                                
-                            // else there is not any response text, so the address is fully verified, so remember that
-                            } else {
-                                $address_verified = 1;
-                            }
+                            $message = lang('Sorry, we were not able to find the address in our postal database, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
                         }
-                    }
+
+                        // output error
+                        $liveform->mark_error($address_fields['address_1'], $message);
+                        $liveform->mark_error($address_fields['address_2'], '');
+                        $liveform->mark_error($address_fields['city'], '');
+                        $liveform->mark_error($address_fields['state'], '');
+                        $liveform->mark_error($address_fields['zip_code'], '');
+                        break;
+
+                    // invalid city
+                    case 'city':
+                        if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
+                            $message = lang('According to our postal database, the city is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
+                        } else {
+                            $message = lang('Sorry, according to our postal database, the city is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
+                        }
+
+                        // output error
+                        $liveform->mark_error($address_fields['city'], $message);
+                        break;
+
+                    // invalid state
+                    case 'state':
+                        if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
+                            $message = lang('According to our postal database, the state/province is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
+                        } else {
+                            $message = lang('Sorry, according to our postal database, the state/province is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
+                        }
+
+                        // output error
+                        $liveform->mark_error($address_fields['state'], $message);
+                        break;
+
+                    // invalid zip code
+                    case 'zip_code':
+                        if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
+                            $message = lang('According to our postal database, the zip/postal code is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
+                        } else {
+                            $message = lang('Sorry, according to our postal database, the zip/postal code is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
+                        }
+
+                        // output error
+                        $liveform->mark_error($address_fields['zip_code'], $message);
+                        break;
+
+                    // USPS gave no usable answer, so just log it
+                    case 'error':
+                        log_activity(lang(array(
+                            'string' => 'An error occurred while trying to verify an address with USPS: {var:1}',
+                            'vars' => array(($response['error'] !== '') ? $response['error'] : $response['body']))), $_SESSION['sessionusername']);
+                        break;
+
+                    // the address was found, so update the fields with the standardized address
+                    default:
+                        $found = $verification['address'];
+
+                        // if the address that we are verifying is a billing address, then format the address accordingly
+                        if ($address_type == 'billing') {
+                            foreach (array('address_1', 'address_2') as $field) {
+                                // if the return data is a PO Box then format it correctly
+                                if (preg_match('/PO BOX/msi', $found[$field]) > 0) {
+                                    $found[$field] = preg_replace('/(.*?)PO BOX(.*?)/si', '$1PO Box$2', $found[$field], 1);
+
+                                // else proper case the response data
+                                } else {
+                                    $found[$field] = ucwords(mb_strtolower($found[$field]));
+                                }
+                            }
+
+                            $found['city'] = ucwords(mb_strtolower($found['city']));
+                        }
+
+                        // update the values in the liveForm
+                        $liveform->assign_field_value($address_fields['address_1'], $found['address_1']);
+                        $liveform->assign_field_value($address_fields['address_2'], $found['address_2']);
+                        $liveform->assign_field_value($address_fields['city'], $found['city']);
+                        $liveform->assign_field_value($address_fields['state'], $found['state']);
+                        $liveform->assign_field_value($address_fields['zip_code'], $found['zip_code']);
+
+                        // if the address is missing an apartment, suite or box number, then return an error
+                        if ($verification['result'] == 'secondary') {
+                            if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
+                                $message = lang('Our postal database indicates that the address might be missing information, such as an apartment, suite, or box number, so please review the address below.  If there is missing information, then please add the missing information.  If you are sure that it is complete then you may leave it unchanged and continue below.');
+                            } else {
+                                $message = lang('Sorry, our postal database indicates that the address might be missing information, such as an apartment, suite, or box number, so please review the address below.  If there is missing information, then please add the missing information.  If you are sure that it is complete then please feel free to contact us.');
+                            }
+
+                            // output error
+                            $liveform->mark_error($address_fields['address_1'], $message);
+                            $liveform->mark_error($address_fields['address_2'], '');
+
+                        // else the address is fully verified, so remember that
+                        } else {
+                            $address_verified = 1;
+                        }
+                        break;
                 }
 
                 // If the verification type is warning, then get new hash and store it in session,

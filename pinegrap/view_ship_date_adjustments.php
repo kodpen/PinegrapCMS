@@ -24,44 +24,31 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_ship_date_adjustments');
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'zip_code_prefix' => lang('Zip Code Prefix'),
+    'shipping_method' => lang('Shipping Method'),
+    'adjustment'      => lang('Adjustment'),
+    'created'         => lang('Created'),
+    'last_modified'   => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? '')) {
-    case lang('Zip Code Prefix'):
-        $sort_column = 'ship_date_adjustments.zip_code_prefix';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Shipping Method'):
-        $sort_column = 'shipping_methods.name';
-        break;
+$list_state = pg_list_state('view_ship_date_adjustments', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Adjustment'):
-        $sort_column = 'ship_date_adjustments.adjustment';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'ship_date_adjustments.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'ship_date_adjustments.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'ship_date_adjustments.last_modified_timestamp';
-        $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'zip_code_prefix' => 'ship_date_adjustments.zip_code_prefix',
+    'shipping_method' => 'shipping_methods.name',
+    'adjustment'      => 'ship_date_adjustments.adjustment',
+    'created'         => 'ship_date_adjustments.created_timestamp',
+    'last_modified'   => 'ship_date_adjustments.last_modified_timestamp',
+));
 
 $ship_date_adjustments = db_items(
     "SELECT
@@ -78,7 +65,7 @@ $ship_date_adjustments = db_items(
     LEFT JOIN shipping_methods ON ship_date_adjustments.shipping_method_id = shipping_methods.id
     LEFT JOIN user AS created_user ON ship_date_adjustments.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON ship_date_adjustments.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')));
+    ORDER BY $order_by");
 
 $output_rows = '';
 
@@ -116,7 +103,7 @@ foreach ($ship_date_adjustments as $item) {
         '<tr>
             <td></td>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_ship_date_adjustment.php?id=' . $item['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_ship_date_adjustment.php?id=' . $item['id'] . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="chart_label align-middle">' . h($item['zip_code_prefix']) . '</td>
             <td class="align-middle">' . $output_shipping_method . '</td>
@@ -145,7 +132,9 @@ echo
                     <div class="col-12 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_ship_date_adjustment.php" data-loading-content="' . lang('Loading') . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="add_ship_date_adjustment.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_ship_date_adjustments.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
                 </div>
@@ -156,11 +145,11 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Zip Code Prefix'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Shipping Method'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Adjustment'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Zip Code Prefix'), $sort_levels, '', '', 'zip_code_prefix') . '</th>
+                                    <th>' . get_column_heading(lang('Shipping Method'), $sort_levels, '', '', 'shipping_method') . '</th>
+                                    <th>' . get_column_heading(lang('Adjustment'), $sort_levels, '', '', 'adjustment') . '</th>
+                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

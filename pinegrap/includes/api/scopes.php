@@ -24,13 +24,12 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 // Resource groups, in the order the permission screen shows them. 'read' or
 // 'write' set to '' means the resource does not offer that half at all:
-// inventory is write-only (stock is read through products), meta is read-only,
-// forms are read-only.
-// Offers are read and delete: a campaign that has run its course can be taken
-// off the shop from outside, but writing one cannot: an offer is a rule with a
-// condition tree and a result set behind it, and the editor that builds those
-// is where the rules live. offers:write therefore means "may remove", which the
-// endpoint's description says in as many words.
+// inventory is write-only (stock is read through products), meta is read-only.
+// offers:write covers the offer's own row - switched on or off, its message,
+// its dates - and its removal; building one cannot be done from outside: an
+// offer is a rule with a condition tree and a result set behind it, and the
+// editor that builds those is where the rules live. The endpoint descriptions
+// say so in as many words.
 function api_scope_groups() {
 
 	$groups = array(
@@ -50,14 +49,41 @@ function api_scope_groups() {
 		// rewrites a page by itself.
 		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
 
+		// What visitors wrote under pages, records, products and events.
+		// Writing is moderation: publishing, holding, featuring, removing.
+		'comments'  => array('label' => 'Comments',   'read' => 'comments:read',  'write' => 'comments:write'),
+
 		'offers'    => array('label' => 'Offers',     'read' => 'offers:read',    'write' => 'offers:write'),
+
+		// A key code gets its offer at checkout like the offer's own code, so
+		// minting one is handing out a discount, and reading them is holding
+		// codes a shopper could redeem: neither rides on offers. Writing makes
+		// codes for an existing offer, changes or removes one.
+		'key_codes' => array('label' => 'Key Codes',  'read' => 'key_codes:read', 'write' => 'key_codes:write'),
+
+		// A gift card's code is spendable money, so it is not read under
+		// orders: an integration reporting sales has no business holding the
+		// codes. Writing issues a card, changes its balance or expiry, or
+		// removes it.
+		'gift_cards' => array('label' => 'Gift Cards', 'read' => 'gift_cards:read', 'write' => 'gift_cards:write'),
+
+		// What the affiliate program owes its affiliates. Read only: the
+		// status is moved on the commissions screen, and the paying happens
+		// outside the site.
+		'commissions' => array('label' => 'Commissions', 'read' => 'commissions:read', 'write' => ''),
 
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
 
-		// Read only: a form is drawn in the page designer, with its validation,
-		// upload folders and contact mapping. What an integration needs is what
-		// came in on it.
-		'forms'     => array('label' => 'Forms',      'read' => 'forms:read',     'write' => ''),
+		// Writing is an event's words, times, calendars and publishing. Its
+		// repeats, reservation spots, rooms and the product they are sold
+		// through stay on its own screen.
+		'calendars' => array('label' => 'Calendars',  'read' => 'calendars:read', 'write' => 'calendars:write'),
+
+		// A form is drawn in the page designer, with its validation, upload
+		// folders and contact mapping, and that stays there. What an
+		// integration needs is what came in on it; writing means what the
+		// submitted-form screen writes - complete or not, and the text answers.
+		'forms'     => array('label' => 'Forms',      'read' => 'forms:read',     'write' => 'forms:write'),
 
 		// Read only: a finding is produced by the analyser, and the way to clear
 		// one is to fix what it is about through the record's own endpoint.
@@ -71,6 +97,24 @@ function api_scope_groups() {
 		// operator's own monitoring. Read only, and nothing here is sent
 		// anywhere by the site itself.
 		'system'    => array('label' => 'System',     'read' => 'system:read',    'write' => ''),
+
+		// Traffic, added up: visits, page views, what was viewed most and where
+		// visits came from. Never a single visit, which carries an address and
+		// a place.
+		'visitors'  => array('label' => 'Visitors',   'read' => 'visitors:read',  'write' => ''),
+
+		// E-mail campaigns and who they go to. Writing holds, releases,
+		// cancels, corrects or removes one; putting one together, recipients
+		// and all, stays on its own screen.
+		'campaigns' => array('label' => 'Campaigns',  'read' => 'campaigns:read', 'write' => 'campaigns:write'),
+
+		// The lists campaigns go to and who is on them. Writing makes, changes
+		// and removes a group (an empty one only), puts contacts in or takes
+		// them out and records their choice for the group's e-mail.
+		'contact_groups' => array('label' => 'Contact Groups', 'read' => 'contact_groups:read', 'write' => 'contact_groups:write'),
+
+		// Who did what on the site, from which address. Read only.
+		'site_log'  => array('label' => 'Site Log',   'read' => 'site_log:read',  'write' => ''),
 
 		// The caller's own account: its notifications, the devices it is signed
 		// in on and its push registration. A device signed in by a person always
@@ -225,6 +269,17 @@ function api_owner_scopes($owner) {
 		$scopes[] = 'offers:read';
 		$scopes[] = 'offers:write';
 
+		// The gift cards screen opens to the same people.
+		$scopes[] = 'gift_cards:read';
+		$scopes[] = 'gift_cards:write';
+
+		// And the key code screens.
+		$scopes[] = 'key_codes:read';
+		$scopes[] = 'key_codes:write';
+
+		// The commissions screen opens to the same people.
+		$scopes[] = 'commissions:read';
+
 	}
 
 	if ($manages_contacts) {
@@ -235,6 +290,12 @@ function api_owner_scopes($owner) {
 		// open a contact in the panel may let a machine add one.
 		$scopes[] = 'customers:write';
 
+		// The contact group screens open to the same people; below the
+		// manager role a user reaches only the groups given to it, which the
+		// endpoints filter for.
+		$scopes[] = 'contact_groups:read';
+		$scopes[] = 'contact_groups:write';
+
 	}
 
 	// Form submissions are the site's own incoming post: names, e-mail
@@ -244,6 +305,46 @@ function api_owner_scopes($owner) {
 	if (($role < 3) || ($owner['manage_forms'] == true)) {
 
 		$scopes[] = 'forms:read';
+
+		// The submitted-form screen opens its edit to the same right.
+		$scopes[] = 'forms:write';
+
+	}
+
+	// The calendars, to whoever the calendar screens open them to: roles 0 to
+	// 2, or a user given the calendars right - who then reads and writes only
+	// the calendars assigned to them, which the endpoints filter for, and
+	// publishes only with the publishing right. Not offered where the site
+	// does not run its calendars.
+	$manages_calendars = ($role < 3)
+		|| (isset($owner['manage_calendars']) && in_array(strtolower(trim((string)$owner['manage_calendars'])), array('yes', '1', 'true'), true));
+
+	if ((!defined('CALENDARS') || CALENDARS === true) && $manages_calendars) {
+
+		$scopes[] = 'calendars:read';
+
+		// The event screens open to the same people.
+		$scopes[] = 'calendars:write';
+
+	}
+
+	// The visitor screens open to roles 0 to 2 or the visitors right
+	// (validate_visitors_access()).
+	if (($role < 3)
+		|| (isset($owner['manage_visitors']) && in_array(strtolower(trim((string)$owner['manage_visitors'])), array('yes', '1', 'true'), true))) {
+
+		$scopes[] = 'visitors:read';
+
+	}
+
+	// The campaign screens open to roles 0 to 2 or the e-mail right
+	// (validate_email_access()); below the manager role a user reaches only
+	// the campaigns it created, which the endpoints filter for.
+	if (($role < 3)
+		|| (isset($owner['manage_emails']) && in_array(strtolower(trim((string)$owner['manage_emails'])), array('yes', '1', 'true'), true))) {
+
+		$scopes[] = 'campaigns:read';
+		$scopes[] = 'campaigns:write';
 
 	}
 
@@ -264,6 +365,14 @@ function api_owner_scopes($owner) {
 		// The SEO findings are about those same pages and the catalogue beside
 		// them, so they are the same decision.
 		$scopes[] = 'seo:read';
+
+		// Moderating what visitors wrote under those pages is the comments
+		// screen's work, which the same people do.
+		$scopes[] = 'comments:read';
+		$scopes[] = 'comments:write';
+
+		// The Site Log screen opens to the same roles.
+		$scopes[] = 'site_log:read';
 
 	}
 

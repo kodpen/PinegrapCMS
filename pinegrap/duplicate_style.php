@@ -22,6 +22,12 @@ validate_area_access($user, 'designer');
 
 validate_token_field();
 
+// An id sent as an array (?id[]=x) is no record: (int) would read it as 1
+// and copy style 1.
+if (isset($_GET['id']) && !is_scalar($_GET['id'])) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // get original style information
 $query =
     "SELECT
@@ -132,6 +138,7 @@ if ($style['layout'] === 'visual_designer' && pg_multi_page_design_ready()) {
          WHERE page_style = '" . (int)$_GET['id'] . "'
            AND layout_type = 'system'
          ORDER BY page_id ASC");
+    $copied_ids = array();
     foreach ((array)$src_pages as $src_page) {
         $new_page_name = get_unique_name(array(
             'name' => $src_page['page_name'],
@@ -152,6 +159,7 @@ if ($style['layout'] === 'visual_designer' && pg_multi_page_design_ready()) {
         }
         db("INSERT INTO page (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ")");
         $new_page_id = (int)mysqli_insert_id(db::$con);
+        if ($new_page_id > 0) $copied_ids[(string)(int)$src_page['page_id']] = $new_page_id;
 
         // The copy of a draft lands in the drafts folder with its original,
         // so it also needs the folder it goes back to when it is published.
@@ -160,6 +168,19 @@ if ($style['layout'] === 'visual_designer' && pg_multi_page_design_ready()) {
                 SELECT '$new_page_id', folder_id, UNIX_TIMESTAMP(), '" . (int)$user['id'] . "'
                 FROM page_drafts
                 WHERE page_id = '" . (int)$src_page['page_id'] . "'");
+        }
+    }
+
+    // A design file limited to some pages follows them to their copies
+    // (pg_design_asset_on_page()); left alone it would name the original's.
+    $copied_assets = db_item("SELECT style_custom_css, style_custom_js FROM style WHERE style_id = '" . (int)$new_style_id . "'");
+    if ($copied_assets && $copied_ids) {
+        $asset_css = pg_designer_resolve_asset_page_refs((string)$copied_assets['style_custom_css'], '', $copied_ids);
+        $asset_js  = pg_designer_resolve_asset_page_refs((string)$copied_assets['style_custom_js'], '', $copied_ids);
+        if ($asset_css !== (string)$copied_assets['style_custom_css'] || $asset_js !== (string)$copied_assets['style_custom_js']) {
+            db("UPDATE style
+                SET style_custom_css = '" . e($asset_css) . "', style_custom_js = '" . e($asset_js) . "'
+                WHERE style_id = '" . (int)$new_style_id . "'");
         }
     }
 }

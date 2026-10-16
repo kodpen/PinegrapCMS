@@ -85,7 +85,8 @@ function _pg_render_catalog_group_tree($parent_id, $listing_path_base, $listing_
     $lvl_cls = ($depth === 0) ? 'pg-sw-cl-tree pg-sw-cl-tree-root list-unstyled mb-0' : 'pg-sw-cl-tree-sub list-unstyled ms-3';
     $out = '<ul class="' . $lvl_cls . '">';
     foreach ($rows as $r) {
-        // URL: browse → drill into the listing on this page;
+        // URL: browse → the group on the listing page $listing_path_base
+        //      points at (this page, or the target page in 'page' mode);
         //      select → variant-chooser detail page.
         $url = '#';
         if ($r['display_type'] === 'browse' && !empty($r['address_name'])) {
@@ -614,6 +615,23 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // just $base_path (e.g. '/').
     $listing_root_url  = $base_path . encode_url_path($listing_page_slug);
 
+    // Where a group link leads. Drill-down stays on this page; 'page' sends
+    // it to the chosen catalog page, which takes the group the same way
+    // (/<page>/<group> on a designed and a classic catalog page alike). A
+    // target that is unset, unresolved or gone falls back to drill-down so
+    // the groups still lead somewhere.
+    $group_link_base = $listing_path_base;
+    if ($group_navigation === 'page') {
+        $_gn_name = $group_nav_page_id > 0
+            ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . (int)$group_nav_page_id . "' LIMIT 1")
+            : '';
+        if ($_gn_name !== '') {
+            $group_link_base = $base_path . encode_url_path($_gn_name) . '/';
+        } else {
+            $group_navigation = 'drill_down';
+        }
+    }
+
     // Resolve the active group from the URL.
     // Path-based mode (catalog on a dedicated page):
     //     `/<page-slug>/<group-slug>` — split at the first '/'.
@@ -652,6 +670,16 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // drawn as its message area alone, carrying the empty message, so the
     // designer's container and message styling stay.
     if ($url_segment_invalid) {
+        // A 404, not the page, unless a product detail widget on the same
+        // page may still show a product by that address.
+        $asked = true;
+        foreach (pg_sw_page_widgets(_pg_sw_current_page_id()) as $w) {
+            if (isset($w['cfg']['regionType']) && $w['cfg']['regionType'] === 'catalog_item_view') {
+                $asked = false;
+                break;
+            }
+        }
+        if ($asked) pg_sw_item_missing(true);
         return '<div class="pg-sw-cl-not-found">'
              . _pg_sw_render_message_only(json_decode($tree_json, true), 'catalog_listing', h($empty_message), 'warning')
              . '</div>';
@@ -948,7 +976,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '</form>';
     }
 
-    $empty_html = '<div class="pg-sw-empty text-muted py-3">' . h($empty_message) . '</div>';
+    // As an element the records' parent may hold (an item in a list, a column
+    // in a grid row).
+    $empty_html = pg_sw_state_message_html($empty_message, $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
 
     // ── Resolve detail page URL prefix (catalog uses /slug/<address_name> path style) ──
     // INTENTIONALLY independent of $_GET / pagination state — see the form_list_view
@@ -1135,6 +1165,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // happened to use.
     $atc_next_pid    = (int)(isset($cfg['add_to_cart_next_page_id']) ? $cfg['add_to_cart_next_page_id'] : 0);
     $atc_stay        = !empty($cfg['add_to_cart_stay_on_page']);
+    // No cart page chosen: back to this listing with the toast, as the
+    // product page does. catalog_detail.php would otherwise look for a
+    // catalog_detail_pages row a designed page does not have and send the
+    // visitor to the home page.
+    $atc_back        = $atc_stay || $atc_next_pid <= 0;
     $atc_software_dir = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software';
     $atc_action_url   = $base_path . $atc_software_dir . '/catalog_detail.php';
     $atc_request_uri  = function_exists('get_request_uri') ? get_request_uri() : (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/');
@@ -1413,7 +1448,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 . '<input type="hidden" name="quantity" value="1">'
                 . '<input type="hidden" name="page_id" value="' . (int)$atc_current_page_id . '">'
                 . '<input type="hidden" name="current_url" value="' . h($atc_request_uri) . '">'
-                . ($atc_stay
+                . ($atc_back
                     ? ('<input type="hidden" name="next_url" value="' . h(_pg_sw_append_query($atc_request_uri, 'cart_added', (string)$pid)) . '">')
                     : ('<input type="hidden" name="next_page_id" value="' . (int)$atc_next_pid . '">'));
             // Use HTML5 `form` attribute on the bindable button so the
@@ -1716,7 +1751,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     //     own custom HTML.
     $breadcrumb_inner_html = '';
     $breadcrumb_html       = '';
-    if ($group_navigation === 'drill_down') {
+    if ($group_navigation !== 'none') {
         $crumbs = array();
         if ($active_group_id > 0 && $active_group_id !== (int)$product_group_id) {
             $cur = $active_group_id;
@@ -1745,7 +1780,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     $bcParts[] = '<span class="active">' . h($c['name']) . '</span>';
                 } else {
                     $href = !empty($c['address_name'])
-                        ? $listing_path_base . encode_url_path((string)$c['address_name'])
+                        ? $group_link_base . encode_url_path((string)$c['address_name'])
                         : $listing_root_url;
                     $bcParts[] = '<a href="' . h($href) . '">' . h($c['name']) . '</a>';
                 }
@@ -1778,15 +1813,15 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // (parent_id=0); when configured to a specific root, it starts from
     // that root's direct children — mirroring the breadcrumb scope.
     //
-    // Only built when drill-down navigation is on; otherwise the tree
-    // wouldn't lead anywhere clickable.
+    // Only built when groups are navigable; otherwise the tree wouldn't
+    // lead anywhere clickable.
     $group_tree_inner_html = '';
     $group_tree_html       = '';
-    if ($group_navigation === 'drill_down') {
+    if ($group_navigation !== 'none') {
         $_pg_tree_root = (int)$product_group_id;
         $group_tree_inner_html = _pg_render_catalog_group_tree(
             $_pg_tree_root,
-            $listing_path_base,
+            $group_link_base,
             $listing_root_url,
             $active_group_id,
             $detail_url_prefix
@@ -1813,7 +1848,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // first, then files). True interleaved sort across both is a future step.
     $child_groups_html = '';
     $has_children = 0;
-    if ($group_navigation === 'drill_down' && $loop_template !== '') {
+    if ($group_navigation !== 'none' && $loop_template !== '') {
         // At ROOT (no active group) → show TOP-LEVEL groups (parent_id = 0).
         // When DRILLED INTO a parent → show that parent's direct children.
         // Both cases use the same loop_template so the designer's card
@@ -1936,11 +1971,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             }
             $g_rows = '';
             foreach ($children as $cg) {
-                // URL: browse → drill into child on this listing page;
+                // URL: browse → the group on this listing page, or on the
+                //      target page in 'page' mode;
                 //      select → variant-chooser detail page.
                 $cg_url = '#';
                 if ($cg['display_type'] === 'browse' && !empty($cg['address_name'])) {
-                    $cg_url = $listing_path_base . encode_url_path((string)$cg['address_name']);
+                    $cg_url = $group_link_base . encode_url_path((string)$cg['address_name']);
                 } elseif ($cg['display_type'] === 'select' && $detail_url_prefix !== '' && !empty($cg['address_name'])) {
                     $cg_url = $detail_url_prefix . encode_url_path((string)$cg['address_name']);
                 }
@@ -2302,7 +2338,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // Bootstrap 5 Toast if available, otherwise a minimal inline fallback.
     // After firing, the cart_added param is stripped from the URL via
     // history.replaceState so a refresh doesn't re-fire the toast.
-    $toast_html = $atc_stay
+    $toast_html = $atc_back
         ? pg_sw_cart_toast_script(isset($cfg['add_to_cart_toast_message']) ? $cfg['add_to_cart_toast_message'] : '',
                                   function_exists('pg_sw_cart_url') ? pg_sw_cart_url($atc_next_pid) : '')
         : '';
@@ -4274,6 +4310,20 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         pg_track_content('product', $p['id']);
     }
 
+    // The address named a product that is not there: a 404, not the page.
+    // A catalog listing on the same page reads the segment first (a group
+    // it drills into) and answers for it.
+    if (!$p && ($product_address_name !== '' || $product_id_direct > 0)) {
+        $asked = true;
+        foreach (pg_sw_page_widgets(_pg_sw_current_page_id()) as $w) {
+            if (isset($w['cfg']['regionType']) && $w['cfg']['regionType'] === 'catalog_listing') {
+                $asked = false;
+                break;
+            }
+        }
+        if ($asked) pg_sw_item_missing(true);
+    }
+
     $base_path       = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
     $currency_symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '$';
 
@@ -5800,7 +5850,7 @@ function _pg_build_catalog_listing_rss_parts($page_id, $page_name, $widget)
     }
 
     // Offer prices + category trails, resolved once for the whole feed.
-    $_disc  = function_exists('get_discounted_product_prices') ? get_discounted_product_prices() : array();
+    $_disc  = function_exists('get_discounted_product_prices') ? get_discounted_product_prices(false) : array();
     if (!is_array($_disc)) $_disc = array();
     $_paths = ($active_group_id > 0) ? _pg_catalog_product_group_paths($active_group_id) : array();
 
@@ -5845,7 +5895,7 @@ function _pg_build_catalog_item_rss_parts($page_id, $page_name, $widget)
     $title = $page_name;
     if (is_array($product)) {
         $_pid   = (int)$product['id'];
-        $_disc  = function_exists('get_discounted_product_prices') ? get_discounted_product_prices() : array();
+        $_disc  = function_exists('get_discounted_product_prices') ? get_discounted_product_prices(false) : array();
         if (!is_array($_disc)) $_disc = array();
         $_paths = ($widget['product_group_id'] > 0) ? _pg_catalog_product_group_paths($widget['product_group_id']) : array();
         $items  = _pg_build_product_rss_item($product, $channel_link, array(

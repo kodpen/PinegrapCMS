@@ -22,16 +22,37 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_javascript');
 validate_area_access($user, 'designer');
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page. The screen shows the file as text and Save writes over it,
+// so the record must also be a design file stored under a plain .js name in
+// the files folder: an image, a font or any other file is not found either,
+// on opening and on saving alike.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+$file = ($id > 0) ? db_item("SELECT id, name, folder, description FROM files WHERE (id = '" . $id . "') AND (design = '1')") : null;
+$file_name = is_array($file) ? (string) $file['name'] : '';
+if (
+    ($file_name === '')
+    || ($file_name !== basename($file_name))
+    || (strpos($file_name, '..') !== false)
+    || (mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)) !== 'js')
+) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // if there has not been a post then continue to output the page
 if (!$_POST) {
-    // get file data from databse
-    $query = "SELECT name FROM files WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-    $file_name = $row['name'];
-    
-    // get the file contents from the script file
-    $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
+    // A file recorded here but missing from the disk opens empty with a
+    // note instead of a PHP warning; Save writes it again.
+    $output_file_missing = '';
+
+    if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+        $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
+    } else {
+        $code = '';
+        $output_file_missing = '<div class="alert alert-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+    }
     
     // output the page
     print
@@ -47,7 +68,7 @@ if (!$_POST) {
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
-                ' . $liveform->output_notices() . '
+                ' . $liveform->output_notices() . $output_file_missing . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
 <h2 class="d-inline-block text-break" data-bs-content="' . lang('You are editing this JS file.') . '" title="' . lang('Edit JS') . '">[' . h($file_name) . ']</h2>
@@ -82,9 +103,9 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">arrow_backsave</span><span class="btn-text">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary" data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">control_point_duplicate</span><span class="btn-text">' . lang(array('string'=>'Duplicate') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary"><span class="material-icons me-2">arrow_backsave</span><span class="btn-text">' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary"><span class="material-icons me-2">control_point_duplicate</span><span class="btn-text">' . lang(array('string'=>'Duplicate') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -94,15 +115,30 @@ if (!$_POST) {
     
 </main>' . output_footer();
 
-    $liveform->remove_form('edit_design_file');
+    // Clears this screen's own form (edit_javascript): remove_form() takes no
+    // argument and always acts on the form the object was made for.
+    $liveform->remove_form();
     
 // else process the file
 } else {
     validate_token_field();
+
+    // The code is the file's new content. Sent as an array or not at all it
+    // counts as not given: nothing is written and the editor opens again
+    // with the file as it is (an array emptied the file and ended in an
+    // error page).
+    pg_request_single_values(array('code'));
+
+    if (!isset($_POST['code'])) {
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_javascript.php?id=' . $id);
+        exit();
+    }
     
     // if save new copy was selected, then save a new copy of the file
     if (($_POST['submit_duplicate'] ?? '') == 'Duplicate') {
-        $new_file_name = prepare_file_name($_POST['name']);
+        // The copy is named after the stored file, never the posted name,
+        // so it is always a .js file.
+        $new_file_name = prepare_file_name($file_name);
 
         $new_file_name = get_unique_name(array(
             'name' => $new_file_name,
@@ -123,15 +159,8 @@ if (!$_POST) {
         fwrite($handle, $_POST['code']);
         fclose($handle);
         
-        // get data from the file we are duplicating
-        $query =
-            "SELECT
-                folder,
-                description
-            FROM files
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
+        // data from the file we are duplicating
+        $row = $file;
         
         // insert duplicated file's data into files table
         $query =
@@ -156,7 +185,7 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $new_file_id = mysqli_insert_id(db::$con);
 
-        log_activity(lang(array('string'=>'a new copy of the JS file ({var:1}) was created', 'vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'a new copy of the JS file ({var:1}) was created', 'vars'=>$file_name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');
         $liveform = new liveform('edit_design_file');
         $liveform->add_notice(lang('A new copy of the JS file has been created.'));
@@ -168,17 +197,14 @@ if (!$_POST) {
     } else {
         include_once('liveform.class.php');
 
-        // The path is taken from the stored row, never from the posted name:
-        // a posted name is under the caller's control and could point anywhere
-        // on the file system, past the neutralisation that uploads go through.
-        $file_row = db_item("SELECT id, name FROM files WHERE id = '" . (int)($_POST['id'] ?? 0) . "'");
-        $file_name = is_array($file_row) ? (string)$file_row['name'] : '';
-        if (($file_name === '') || ($file_name !== basename($file_name)) || (strpos($file_name, '..') !== false)) {
-            output_error(lang('Sorry, the file could not be found.'));
-        }
+        // The path is the stored name the gate above checked, never the
+        // posted name: a posted name is under the caller's control and could
+        // point anywhere on the file system.
 
         // delete the existing file. we have to do this in order to avoid permission errors in certain cirumstances
-        unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+            unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        }
         
         // update the content in the file
         $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
@@ -192,7 +218,7 @@ if (!$_POST) {
                 size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
                 timestamp = UNIX_TIMESTAMP(), 
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . (int)$file_row['id'] . "'";
+            WHERE id = '" . $id . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // log the change that the file was modified
@@ -203,13 +229,13 @@ if (!$_POST) {
             
             $liveform = new liveform('edit_javascript');
             $liveform->add_notice(lang('The JavaScript file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_javascript.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode($_POST['send_to']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_javascript.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
             exit();
         } else {
             // send user back to edit design file screen
             $liveform = new liveform('edit_design_file');
             $liveform->add_notice(lang('The JavaScript file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode($_POST['send_to']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
             exit();
         }
     }

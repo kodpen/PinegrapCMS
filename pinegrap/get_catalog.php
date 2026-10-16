@@ -58,27 +58,20 @@ function get_catalog($properties) {
 
     if ($layout_type == 'system') {
     
-        $search_query = '';
         $code = '';
 
-        // If the clear button was not clicked, then get search query value.
-        if (isset($_GET[$page_id . '_simple_clear']) == false) {
-            // if there is a specific query for this page, then use it
-            if (isset($_GET[$page_id . '_query']) == TRUE) {
-                $search_query = trim($_GET[$page_id . '_query']);
-                
-            // else if there is a general query, then use it (this is for backwards compatibility)
-            } else if (isset($_GET['query']) == TRUE) {
-                $search_query = trim($_GET['query']);
-            }
-        }
+        // The clear button, this page's own query and the general query of
+        // older links are read in pg_catalog_search_term(), which the page's
+        // RSS link asks too.
+        $search_query = pg_catalog_search_term($page_id, 'system');
         
         // if there is not a search query, then set mode and prepare for mode
         if ($search_query == '') {
             $mode = 'browse';
             
             // if a page name has been passed in the query string and if it contains a forward slash, then get the product group id
-            if (mb_strpos($_GET['page'], '/') !== FALSE) {
+            // (The search index update renders the page without one.)
+            if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                 // get product group address name
                 $product_group_address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
                 
@@ -209,11 +202,13 @@ function get_catalog($properties) {
             foreach ($query_string_parameters as $name => $value) {
                 // If this is not the specific query parameter (already going to be a field for that)
                 // and not the previous url id, and not the clear field,
-                // then add hidden field for it
+                // then add hidden field for it.
+                // A parameter sent as an array (?foo[]=x) is left out: h() refused it with an error page.
                 if (
                     ($name != $page_id . '_query')
                     && ($name != 'previous_url_id')
                     && ($name != $page_id . '_simple_clear')
+                    && is_string($value)
                 ) {
                     $output_hidden_fields .= '<input type="hidden" name="' . h($name) . '" value="' . h($value) . '" />' . "\n";
                 }
@@ -1276,8 +1271,9 @@ function get_catalog($properties) {
         
         $output_back_button = '';
         
-        // if there is a previous url set, then add back button
-        if ((isset($_GET['previous_url_id']) == true) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
+        // if there is a previous url set, then add back button.
+        // An id sent as an array (?previous_url_id[]=x) is ignored: it is not a valid array key.
+        if ((isset($_GET['previous_url_id']) == true) && is_string($_GET['previous_url_id']) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
             // if back button label is blank, then set to "Back"
             if ($back_button_label == '') {
                 $back_button_label = lang('Back');
@@ -1402,11 +1398,14 @@ function get_catalog($properties) {
         $search_attributes = 'action="" method="get"';
 
         // If the clear button was clicked, then clear query.
-        if ($form->field_in_session($page_id . '_clear')) {
+        // A query sent as an array (?<id>_query[]=x) counts as no query, so the
+        // search field shows none either: the search and h() refused it with an error page.
+        if ($form->field_in_session($page_id . '_clear') || is_array($form->get($page_id . '_query'))) {
             $form->set($page_id . '_query', '');
         }
 
-        $query = $form->get($page_id . '_query');
+        // The same term the page's RSS link reads (pg_catalog_search_term()).
+        $query = pg_catalog_search_term($page_id, 'custom');
 
         // get current URL parts in order to deal with query string parameters
         $url_parts = parse_url(REQUEST_URL);
@@ -1422,12 +1421,14 @@ function get_catalog($properties) {
         foreach ($query_string_parameters as $name => $value) {
             // If this is not the specific query parameter (already going to be a field for that)
             // and not the previous url id, and not the clear field,
-            // then add hidden field for it
+            // then add hidden field for it.
+            // A parameter sent as an array (?foo[]=x) is left out: h() refused it with an error page.
             if (
                 ($name != $page_id . '_query')
                 && ($name != 'previous_url_id')
                 && ($name != $page_id . '_clear')
                 && ($name != $page_id . '_submit')
+                && is_string($value)
             ) {
                 $search_system .= '<input type="hidden" name="' . h($name) . '" value="' . h($value) . '">';
             }
@@ -1440,7 +1441,8 @@ function get_catalog($properties) {
             $mode = 'browse';
             $current_product_group_id = '';
             // if a page name has been passed in the query string and if it contains a forward slash, then get the product group id
-            if (mb_strpos($_GET['page'], '/') !== FALSE) {
+            // (The search index update renders the page without one.)
+            if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                 // get product group address name
                 $product_group_address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
                 
@@ -1736,8 +1738,9 @@ function get_catalog($properties) {
 
         $back_button_url = '';
 
-        // if there is a previous url set, then add back button
-        if ((isset($_GET['previous_url_id']) == true) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
+        // if there is a previous url set, then add back button.
+        // An id sent as an array (?previous_url_id[]=x) is ignored: it is not a valid array key.
+        if ((isset($_GET['previous_url_id']) == true) && is_string($_GET['previous_url_id']) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
             $back_button_url = $_SESSION['software']['urls'][$_GET['previous_url_id']];
 
             // If a back button label was not entered for the page, then set default label.

@@ -69,6 +69,15 @@ function get_form_view_directory_screen_content($properties) {
             // then continue to check if user has access.
             if (($access_control_type == 'private') || ($access_control_type == 'membership')) {
 
+                // While the search index is updated nobody is logged in, and
+                // sending the run to login/register would end it on this page
+                // (go() exits) with every later page left unindexed. The list
+                // is left out instead, as for a visitor without view access.
+                if ((USER_LOGGED_IN == false) && defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true)) {
+                    unset($form_list_views[$key]);
+                    continue;
+                }
+
                 // If the visitor is not logged in, then send visitor to login/register.
                 if (USER_LOGGED_IN == false) {
                     go(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri()));
@@ -396,6 +405,14 @@ function get_form_view_directory_screen_content($properties) {
 
     // If the search is enabled, then output search field.
     if (($_GET[$current_page_id . '_search'] ?? '') == 'true') {
+        // A username sent as an array (?<id>_query[]=x) counts as no search:
+        // h() and the SQL filter refused it with an error page.
+        $search_query = '';
+
+        if (isset($_GET[$current_page_id . '_query']) && is_string($_GET[$current_page_id . '_query'])) {
+            $search_query = $_GET[$current_page_id . '_query'];
+        }
+
         // get current URL parts in order to deal with query string parameters
         $url_parts = parse_url(get_request_uri());
         
@@ -421,7 +438,7 @@ function get_form_view_directory_screen_content($properties) {
                     <span>' . lang('Search by Submitter') . ':</span>
                     <span class="search">
                         <span class="simple">
-                            <input type="text" name="' . $current_page_id . '_query" value="' . h($_GET[$current_page_id . '_query'] ?? '') . '" class="software_input_text mobile_fixed_width query" style="margin-bottom: 0 !important" placeholder="' . lang('Enter Username') . '" />
+                            <input type="text" name="' . $current_page_id . '_query" value="' . h($search_query) . '" class="software_input_text mobile_fixed_width query" style="margin-bottom: 0 !important" placeholder="' . lang('Enter Username') . '" />
                             <input type="submit" title="' . lang('Search by Submitter') . '" value="" class="submit" />
                         </span>
                     </span>
@@ -429,8 +446,8 @@ function get_form_view_directory_screen_content($properties) {
             </div>';
 
         // If the visitor has searched, then prepare SQL filter for the username.
-        if (($_GET[$current_page_id . '_query'] ?? '') != '') {
-            $sql_search = "AND (SELECT user.user_username FROM user WHERE user.user_id = forms.user_id) LIKE '%" . escape(escape_like($_GET[$current_page_id . '_query'] ?? '')) . "%'";
+        if ($search_query != '') {
+            $sql_search = "AND (SELECT user.user_username FROM user WHERE user.user_id = forms.user_id) LIKE '%" . escape(escape_like($search_query)) . "%'";
         }
     }
     

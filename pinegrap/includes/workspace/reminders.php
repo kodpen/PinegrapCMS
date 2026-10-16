@@ -2,11 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - a task's e-mail reminder.
+ * Workspace - a task's reminder, and the notice that a task is overdue.
  *
  * A task can carry a time on its due date and a reminder: "so many minutes,
- * hours or days before", by e-mail, to the people on the task (to the person
- * who made it when nobody is on it). A task due on a day with no time is
+ * hours or days before", to the people on the task (to the person who made it
+ * when nobody is on it). It reaches them twice: as a line in their workspace
+ * inbox - so in the bell and, through the push queue, on their devices - and
+ * by e-mail to the ones with an address. A task due on a day with no time is
  * reckoned from WS_TASK_REMIND_DAY_TIME that day.
  *
  * When the mail goes is worked out once, as the task is saved
@@ -26,6 +28,25 @@
  * (ws_task_recurrences.remind_each). Each copy takes the newest one's time
  * either way, and its reminder only when the series says so.
  *
+ * An open task whose due time passes tells the same people once, with or
+ * without a reminder: at its time when it has one, otherwise at
+ * WS_TASK_REMIND_DAY_TIME the next morning - the moment the lists start
+ * calling it overdue. Nothing is stored on the task for it: the runs keep a
+ * watermark (cron_runs, WS_TASK_OVERDUE_MARK) and each one takes the tasks
+ * that went overdue since the last, claimed by a guarded update of the mark.
+ * A due date moved later goes overdue again later and is told again; the
+ * tasks that were already overdue when the notice arrived are not told. The
+ * same moment starts the scheduled actions that wait for a task to go
+ * overdue (ws_event(), watch.php), whether or not anybody is on the task.
+ *
+ * A meeting on the plan with a video call link (2026.4.10, 10.86) tells its
+ * people WS_MEETING_REMIND_MINUTES before it starts, with the same runs: a
+ * line in the inbox that opens the item and its Join button, and a banner on
+ * their devices. No e-mail: the notice is minutes ahead, and the link is one
+ * tap away on the screen it opens. Its moment is kept on the item
+ * (ws_events.remind_at) and claimed the same way; one that comes after the
+ * meeting ended is dropped.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -44,6 +65,110 @@ define('WS_TASK_REMIND_MAX', 86400);
 
 /** How many reminders one run sends at most. */
 define('WS_TASK_REMIND_BATCH', 20);
+
+/** The cron_runs row that marks how far the overdue notices have gone. */
+define('WS_TASK_OVERDUE_MARK', 'workspace_overdue_notices');
+
+/** How often the overdue notices are looked for, in seconds. */
+define('WS_TASK_OVERDUE_EVERY', 300);
+
+/**
+ * How far back a late run still tells, in seconds: a site whose job stopped
+ * for a week does not wake everybody about a week of old news.
+ */
+define('WS_TASK_OVERDUE_LOOKBACK', 172800);
+
+/** How many tasks with a date in its stretch one run reads at most. */
+define('WS_TASK_OVERDUE_BATCH', 2000);
+
+/** How many minutes before a meeting with a link its people are told. */
+define('WS_MEETING_REMIND_MINUTES', 10);
+
+/**
+ * Whether the database has the meeting link and its notice (2026.4.10,
+ * 10.86). Reads nothing of the workspace, like ws_task_reminders_ready().
+ *
+ * @return bool
+ */
+function ws_meetings_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        if (function_exists('waf_table_has_column')) {
+            $ready = waf_table_has_column('ws_events', 'reminded_at')
+                && waf_table_has_column('ws_inbox', 'event_id');
+        } else {
+            $ready = ((int) db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND ((TABLE_NAME = 'ws_events' AND COLUMN_NAME = 'reminded_at')
+                    OR (TABLE_NAME = 'ws_inbox' AND COLUMN_NAME = 'event_id'))") === 2);
+        }
+    }
+
+    return $ready;
+}
+
+/**
+ * Whether a meeting's notice is waiting to go: one indexed read.
+ *
+ * @return bool
+ */
+function ws_meeting_reminders_waiting()
+{
+    if (!ws_meetings_ready()) {
+        return false;
+    }
+
+    return (bool) db_value("SELECT id FROM ws_events
+        WHERE reminded_at = 0 AND remind_at > 0 AND remind_at <= '" . time() . "'
+        LIMIT 1");
+}
+
+/**
+ * Tells the people of the meetings about to start: a line in each one's
+ * inbox, which wakes their devices.
+ *
+ * @param int $limit
+ * @return int the people told
+ */
+function ws_meeting_reminders_run($limit = WS_TASK_REMIND_BATCH)
+{
+    if (!ws_meetings_ready() || !ws_enabled()) {
+        return 0;
+    }
+
+    $now = time();
+    $told = 0;
+
+    foreach ((array) db_values("SELECT id FROM ws_events
+        WHERE reminded_at = 0 AND remind_at > 0 AND remind_at <= '" . $now . "'
+        ORDER BY remind_at LIMIT " . max(1, (int) $limit)) as $event_id) {
+
+        // Claimed first: a second run that read the same row finds it taken.
+        db("UPDATE ws_events SET reminded_at = '" . $now . "' WHERE id = '" . (int) $event_id . "' AND reminded_at = 0");
+
+        if (mysqli_affected_rows(db::$con) !== 1) {
+            continue;
+        }
+
+        $event = db_item("SELECT * FROM ws_events WHERE id = '" . (int) $event_id . "'");
+
+        // Over already, or its link taken away: there is nothing to join.
+        if (!is_array($event) || ((string) $event['meeting_url'] === '') || ((int) $event['ends_at'] <= $now)) {
+            continue;
+        }
+
+        foreach (ws_event_people_ids($event) as $user_id) {
+            ws_notify($user_id, 'meeting_soon', array('event_id' => (int) $event['id'], 'actor_id' => 0, 'batch' => true));
+            $told++;
+        }
+    }
+
+    ws_push_batch_done($told > 0);
+
+    return $told;
+}
 
 /**
  * Whether the database has the reminder columns (2026.4.5, 5.111). Reads
@@ -78,6 +203,11 @@ function ws_task_reminders_ready()
  */
 function ws_task_reminders_waiting()
 {
+    // A meeting about to start goes with the same runs.
+    if (ws_meeting_reminders_waiting()) {
+        return true;
+    }
+
     if (!ws_task_reminders_ready()) {
         return false;
     }
@@ -397,13 +527,13 @@ function ws_task_reminder_copy($series, $template, $task_id)
 }
 
 /**
- * Who a task's reminder goes to: the people on it who are still on the team
- * and have an address, or the person who made it when nobody is on it.
+ * Who is told about a task's time: the people on it who are still on the
+ * team, or the person who made it when nobody is on it.
  *
  * @param array $task
- * @return array[] user_id, email
+ * @return int[]
  */
-function ws_task_reminder_people($task)
+function ws_task_notice_user_ids($task)
 {
     $ids = array();
 
@@ -416,6 +546,20 @@ function ws_task_reminder_people($task)
     if (empty($ids) && ws_is_team_member((int) $task['creator_id'])) {
         $ids[(int) $task['creator_id']] = (int) $task['creator_id'];
     }
+
+    return array_values($ids);
+}
+
+/**
+ * Who a task's reminder is e-mailed to: the people told about it
+ * (ws_task_notice_user_ids()) who have an address.
+ *
+ * @param array $task
+ * @return array[] user_id, email
+ */
+function ws_task_reminder_people($task)
+{
+    $ids = ws_task_notice_user_ids($task);
 
     if (empty($ids)) {
         return array();
@@ -476,14 +620,18 @@ function ws_task_reminder_mail($task)
 }
 
 /**
- * Sends the reminders whose time has come.
+ * Sends the reminders whose time has come: a line in the inbox of each
+ * person told, and an e-mail to each of them with an address.
  *
  * @param int $limit
- * @return array sent, skipped, failed
+ * @return array sent (reminders that went), skipped, failed (reminders whose
+ *               e-mail reached nobody)
  */
 function ws_task_reminders_run($limit = WS_TASK_REMIND_BATCH)
 {
     $result = array('sent' => 0, 'skipped' => 0, 'failed' => 0);
+
+    ws_meeting_reminders_run($limit);
 
     if (!ws_task_reminders_ready() || !ws_enabled()) {
         return $result;
@@ -510,13 +658,20 @@ function ws_task_reminders_run($limit = WS_TASK_REMIND_BATCH)
             continue;
         }
 
-        $people = ws_task_reminder_people($task);
+        $told = ws_task_notice_user_ids($task);
 
-        if (empty($people)) {
+        if (empty($told)) {
             $result['skipped']++;
             continue;
         }
 
+        // The inbox line first: it is what wakes a device, and it needs no
+        // address.
+        foreach ($told as $user_id) {
+            ws_notify($user_id, 'task_reminder', array('task_id' => (int) $task['id'], 'actor_id' => 0, 'batch' => true));
+        }
+
+        $people = ws_task_reminder_people($task);
         $mail = ws_task_reminder_mail($task);
         $sent = 0;
 
@@ -535,15 +690,162 @@ function ws_task_reminders_run($limit = WS_TASK_REMIND_BATCH)
             }
         }
 
-        if ($sent > 0) {
-            $result['sent']++;
-        } else {
+        $result['sent']++;
+
+        if (!empty($people) && ($sent === 0)) {
             $result['failed']++;
             log_activity(lang(array('string' => 'The e-mail reminder of task {var:1} could not be sent.', 'vars' => ws_task_number($task['id']))));
         }
     }
 
+    ws_push_batch_done($result['sent'] > 0);
+
     return $result;
+}
+
+/**
+ * The moment a task counts as overdue: its due time when it has one,
+ * otherwise WS_TASK_REMIND_DAY_TIME on the day after its due date. 0 without
+ * a due date.
+ *
+ * @param array $task
+ * @return int
+ */
+function ws_task_overdue_at($task)
+{
+    $date = (string) ($task['due_date'] ?? '');
+
+    if (($date === '') || ($date === '0000-00-00')) {
+        return 0;
+    }
+
+    if ((string) ($task['due_time'] ?? '') !== '') {
+        return ws_task_due_at($task);
+    }
+
+    $at = strtotime($date . ' ' . WS_TASK_REMIND_DAY_TIME . ':00 +1 day');
+
+    return ($at === false) ? 0 : (int) $at;
+}
+
+/**
+ * How far the overdue notices have gone, or null when the mark cannot be kept
+ * (cron_runs arrives with 2026.4.2). Read without the db() helpers, which
+ * treat a missing table as fatal: the general job asks before anything else
+ * of the workspace is loaded.
+ *
+ * @return int|null 0 before the first run
+ */
+function ws_task_overdue_mark()
+{
+    if (!isset(db::$con) || !db::$con) {
+        return null;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT last_run_at FROM cron_runs WHERE job_name = '" . WS_TASK_OVERDUE_MARK . "'");
+
+    if (!$result) {
+        return null;
+    }
+
+    $row = mysqli_fetch_row($result);
+
+    return $row ? (int) $row[0] : 0;
+}
+
+/**
+ * Whether it is time to look for tasks that went overdue. One read of one
+ * row; nothing of the workspace needed.
+ *
+ * @return bool
+ */
+function ws_task_overdue_due()
+{
+    $mark = ws_task_overdue_mark();
+
+    return ($mark !== null) && ($mark <= (time() - WS_TASK_OVERDUE_EVERY));
+}
+
+/**
+ * Tells the people on each open task that went overdue since the last run.
+ *
+ * The run claims its stretch of time by moving the mark from where it found
+ * it to now; a second run that read the same mark moves nothing and leaves.
+ * The first run ever only sets the mark: the tasks already overdue then are
+ * not news.
+ *
+ * @param int $limit
+ * @return int tasks told about
+ */
+function ws_task_overdue_run($limit = WS_TASK_OVERDUE_BATCH)
+{
+    if (!ws_enabled()) {
+        return 0;
+    }
+
+    $mark = ws_task_overdue_mark();
+    $now = time();
+
+    if (($mark === null) || ($mark > ($now - WS_TASK_OVERDUE_EVERY))) {
+        return 0;
+    }
+
+    if ($mark === 0) {
+        db("INSERT INTO cron_runs (job_name, last_run_at) VALUES ('" . WS_TASK_OVERDUE_MARK . "', '" . $now . "')
+            ON DUPLICATE KEY UPDATE last_run_at = IF(last_run_at = 0, VALUES(last_run_at), last_run_at)");
+
+        return 0;
+    }
+
+    db("UPDATE cron_runs SET last_run_at = '" . $now . "'
+        WHERE job_name = '" . WS_TASK_OVERDUE_MARK . "' AND last_run_at = '" . $mark . "'");
+
+    if (mysqli_affected_rows(db::$con) !== 1) {
+        return 0;
+    }
+
+    $from = max($mark, $now - WS_TASK_OVERDUE_LOOKBACK);
+
+    // A task without a time goes overdue the morning after its date, so the
+    // dates one day before the stretch can hold one too.
+    $rows = (array) db_items("SELECT id, creator_id, title, status, channel_id, due_date" . (ws_task_reminders_ready() ? ', due_time' : '') . " FROM ws_tasks
+        WHERE status IN ('todo', 'doing', 'waiting')
+        AND due_date >= '" . date('Y-m-d', $from - 86400) . "' AND due_date <= '" . date('Y-m-d', $now) . "'
+        ORDER BY due_date, id LIMIT " . max(1, (int) $limit));
+
+    $told = 0;
+
+    foreach ($rows as $task) {
+        $at = ws_task_overdue_at($task);
+
+        if (($at <= $from) || ($at > $now)) {
+            continue;
+        }
+
+        // The scheduled actions waiting for a task to go overdue
+        // (watch.php), whether or not anybody is on it to be told.
+        if (function_exists('ws_event')) {
+            ws_event('workspace.task.overdue', array(
+                'id'         => (int) $task['id'],
+                'title'      => (string) $task['title'],
+                'status'     => (string) $task['status'],
+                'channel_id' => (int) $task['channel_id'],
+                'due_date'   => (string) $task['due_date'],
+            ));
+        }
+
+        $people = ws_task_notice_user_ids($task);
+
+        foreach ($people as $user_id) {
+            ws_notify($user_id, 'task_overdue', array('task_id' => (int) $task['id'], 'actor_id' => 0, 'batch' => true));
+        }
+
+        $told += empty($people) ? 0 : 1;
+    }
+
+    ws_push_batch_done($told > 0);
+
+    return $told;
 }
 
 /**
@@ -568,19 +870,19 @@ function ws_task_reminders_js_config()
 function ws_task_reminders_js_strings()
 {
     return array(
-        'remind_head'         => lang('Time and e-mail reminder'),
+        'remind_head'         => lang('Time and reminder'),
         'remind_time'         => lang('Due time'),
-        'remind_before'       => lang('Remind by e-mail'),
+        'remind_before'       => lang('Remind'),
         'remind_unit_minutes' => lang('minutes before'),
         'remind_unit_hours'   => lang('hours before'),
         'remind_unit_days'    => lang('days before'),
         'remind_each'         => lang('Remind on every repeat'),
         'remind_none'         => lang('Leave the number empty for no reminder.'),
         'remind_needs_due'    => lang('A reminder needs a due date.'),
-        'remind_goes_at'      => ws_js_template('The e-mail goes to the people on the task on {var:1}.', 1),
-        'remind_goes_now'     => lang('The e-mail goes to the people on the task within a few minutes.'),
-        'remind_past'         => lang('The task is already due: no e-mail will go.'),
+        'remind_goes_at'      => ws_js_template('The people on the task are reminded on {var:1}, in their notifications and by e-mail.', 1),
+        'remind_goes_now'     => lang('The people on the task are reminded within a few minutes, in their notifications and by e-mail.'),
+        'remind_past'         => lang('The task is already due: no reminder will go.'),
         'remind_day_time'     => ws_js_template('No time is set, so {var:1} on the due date is taken.', 1),
-        'remind_sent'         => ws_js_template('The reminder was e-mailed on {var:1}.', 1),
+        'remind_sent'         => ws_js_template('The reminder went on {var:1}.', 1),
     );
 }

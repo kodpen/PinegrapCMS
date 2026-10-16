@@ -32,7 +32,9 @@ function checkifchecked($checkedstatus){
 // if the form was not just submitted, then prepare to output form
 if (!$_POST) {
     // if the page parameter has tags,
-    if(isset($_GET['tags'])){
+    // (a list sent as an array, ?tags[]=x, counts as not given: kept in the
+    // session, it made explode() refuse every later visit with an error page)
+    if(isset($_GET['tags']) && is_string($_GET['tags'])){
         //check if clear mode or not
         if($_GET['tags'] == 'clear'){
             //if clear redirect user to tag selection menu
@@ -45,7 +47,7 @@ if (!$_POST) {
     }
 
     //if session tags are cleared or empty output tag  selection menu
-    if(!isset($_SESSION['software']['mass_edit']['tags']) || ($_SESSION['software']['mass_edit']['tags'] ?? '') == ''){
+    if(!isset($_SESSION['software']['mass_edit']['tags']) || !is_string($_SESSION['software']['mass_edit']['tags']) || ($_SESSION['software']['mass_edit']['tags'] ?? '') == ''){
       
         $outputs = '
         <div class="row justify-content-center mt-5 pt-5">
@@ -66,7 +68,7 @@ if (!$_POST) {
             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data select buttons">
                 <div class="container">
                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                        <button type="button" id="get_form" value="Get Form" class=" btn mb-1 mt-1 btn-primary disabled" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">save</span>' . lang(array('string'=>'Get Edit Form') ) . '</button>
+                        <button type="button" id="get_form" value="Get Form" class=" btn mb-1 mt-1 btn-primary disabled"><span class="material-icons me-2">save</span>' . lang(array('string'=>'Get Edit Form') ) . '</button>
                     </div>
                 </div>
             </nav>
@@ -136,6 +138,10 @@ if (!$_POST) {
         
         
         
+        // A tag the screen does not know (hand-typed ?tags=x) edits nothing,
+        // so only the buttons below are output.
+        $outputs = '';
+
         //starts of page editing
         if($output_page_editing != false){
             $outputs = '
@@ -222,7 +228,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                     <div class="container">
                         <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                            <button type="submit" value="Save Changes" class=" btn mb-1 mt-1 btn-success" data-loading-content="' . lang(array('string'=>'Saving') ) . '" data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '"><span class="material-icons me-2">send</span>' . lang(array('string'=>'Apply Changes') ) . '</button>
+                            <button type="submit" value="Save Changes" class=" btn mb-1 mt-1 btn-success" data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '"><span class="material-icons me-2">send</span>' . lang(array('string'=>'Apply Changes') ) . '</button>
                         </div>
                     </div>
                 </nav>';

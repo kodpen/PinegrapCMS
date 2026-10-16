@@ -128,6 +128,31 @@ if ($_POST) {
 
     validate_token_field();
 
+    // Every field the cards post holds one value, except the ones drawn as
+    // lists below; a person's row carries one value per field but its days.
+    // One posted as a list (name[]=x) saved a department called "Array", and
+    // department_id[]=x or template_id[]=x was read as record 1. Nothing is
+    // written, so every setting stays as it was.
+    $ws_settings_lists = pg_request_unexpected_lists($_POST, array(
+        'workdays' => 1,
+        'members'  => 1,
+        'leads'    => 1,
+        'primary'  => 1,
+        'people'   => 3,
+        'mcp_tool' => 1,
+    ));
+
+    foreach ((is_array($_POST['people'] ?? null) ? $_POST['people'] : array()) as $person_id => $row) {
+        foreach (pg_request_unexpected_lists($row, array('workdays' => 1)) as $name) {
+            $ws_settings_lists[] = 'people[' . $person_id . '][' . $name . ']';
+        }
+    }
+
+    if ($ws_settings_lists) {
+        $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $ws_settings_lists)))));
+        go($self_url);
+    }
+
     $action = (string) ($_POST['ws_action'] ?? '');
     $username = (string) ($_SESSION['sessionusername'] ?? '');
     $anchor = '';
@@ -347,10 +372,27 @@ if ($_POST) {
 
             $anchor = '#ws-ai';
             break;
+
+        // Other services' MCP servers under an alias
+        // (includes/workspace/mcp.php).
+        case 'mcp_save':
+        case 'mcp_refresh':
+        case 'mcp_toggle':
+        case 'mcp_delete':
+        case 'mcp_tools':
+        case 'mcp_connect':
+        case 'mcp_disconnect':
+        case 'mcp_connect_me':
+        case 'mcp_disconnect_me':
+            $anchor = ws_mcp_settings_post($viewer, $action, $liveform);
+            break;
     }
 
     go($self_url . $anchor);
 }
+
+// Back from connecting an MCP server's sign-in (connect.php).
+ws_mcp_settings_returned($viewer, $liveform);
 
 // ── Output ────────────────────────────────────────────────────────────
 
@@ -518,6 +560,9 @@ echo
 pg_page_shell([
         'title' => lang('Workspace Settings'),
         'extra classes' => 'workspace workspace_settings',
+        // No code field here: CodeMirror is loaded only if the settings
+        // dialog opens a pane that has one.
+        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => lang('Workspace Settings'),
         'heading_description' => lang('Departments, working days and what the planning board counts with.'),
@@ -581,6 +626,8 @@ pg_page_shell([
             ' . ws_claude_settings_card($self_url, $viewer) . '
 
             ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
+
+            ' . ws_mcp_settings_card($self_url, $viewer) . '
         </div>
 
         <div class="col-xl-4">

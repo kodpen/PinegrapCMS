@@ -37,6 +37,14 @@ if (!$_POST) {
 
     $liveform->add_fields_to_session();
 
+    // Every column this form writes takes a single value. The timezone is left
+    // out: an array is refused below as an invalid timezone.
+    pg_liveform_single_values($liveform, array(
+        'salutation', 'first_name', 'last_name', 'suffix', 'company', 'title',
+        'business_address_1', 'business_address_2', 'business_city', 'business_state',
+        'business_zip_code', 'business_phone', 'business_fax', 'business_country',
+        'home_phone', 'mobile_phone', 'tax_number', 'tax_office'));
+
     // A designed page (the account_profile widget) names itself in
     // return_to and lists the controls it drew in pg_controls: only those
     // are required and written, the rest of the contact stays as it is.

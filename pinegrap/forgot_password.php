@@ -32,7 +32,11 @@ $page_name = db_value(
     WHERE page_type = 'forgot password'
     LIMIT 1");
 
-if ($page_name != '') {
+// A visitor the country restriction keeps to the panel stays on this
+// script's own form throughout; see pg_sign_in_kept_to_panel().
+$pg_kept_to_panel = pg_sign_in_kept_to_panel();
+
+if (($page_name != '') && !$pg_kept_to_panel) {
     $url = PATH . encode_url_path($page_name);
 } else {
     $url = PATH . SOFTWARE_DIRECTORY . '/forgot_password.php';
@@ -51,20 +55,21 @@ $send_to = $form->get_field_value('send_to');
 // back to that page instead of the legacy screen. The widget reads the same
 // liveform fields (screen, email) and notices this script leaves behind.
 $return_to = $form->get_field_value('return_to');
-if (is_scalar($return_to) && (string) $return_to !== '') {
+if (!$pg_kept_to_panel && is_scalar($return_to) && (string) $return_to !== '') {
     $url = pg_safe_redirect_path((string) $return_to, $url);
 }
 
 $form->validate_required_field('email', lang(array('string'=>'{var:1} is required.','vars'=>lang('Email') )) );
 
-// The reset link can only point at a page of type 'set password': that page
-// is the sole renderer of the set-password form. set_password.php itself only
-// handles that form's POST and starts with the CSRF check, so a link to it
-// would greet the visitor with a "session expired" error instead of the form.
-// Without such a page there is nowhere to send the visitor, so stop here,
+// The reset link points at the site's set password page (a page of type
+// 'set password', or a designed page carrying the set password widget), so
+// the password is set in the site's own design. A visitor the country
+// restriction keeps to the panel could not open that page: their link opens
+// set_password.php, which draws the built-in form on a GET.
+// Without such a page there is nowhere to send anyone else, so stop here,
 // before the account lookup and the token write, and do not mail a dead link.
 // Stopping before the lookup keeps the answer identical for every address.
-$set_password_url = get_page_type_url('set password');
+$set_password_url = pg_sign_in_screen_url('set password', 'set_password.php');
 
 if ($set_password_url === false) {
     log_activity('Forgot Password: no set password page');

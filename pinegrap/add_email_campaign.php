@@ -22,6 +22,10 @@ include('init.php');
 $user = validate_user();
 validate_email_access($user);
 
+// The page is one value; one sent as an array (?page_id[]=x) counts as not
+// given: it ended in an error page.
+pg_request_single_values(array('page_id'));
+
 // if form has not been submitted yet
 if (!$_POST) {
     // if a page id was passed in the query string, then check the HTML radio button and show and hide rows
@@ -32,8 +36,10 @@ if (!$_POST) {
         $query = "SELECT page_name, page_folder FROM page WHERE page_id = '" . escape($_GET['page_id']) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        $page_name = $row['page_name'];
-        $folder_id = $row['page_folder'];
+        // A page that no longer exists (stale link, hand-typed URL) leaves
+        // these empty, as before, without the PHP notices.
+        $page_name = $row['page_name'] ?? '';
+        $folder_id = $row['page_folder'] ?? '';
         
         // if the user has edit access to the page, then prepare to show body preview row and set iframe source
         if (check_edit_access($folder_id) == true) {
@@ -346,7 +352,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

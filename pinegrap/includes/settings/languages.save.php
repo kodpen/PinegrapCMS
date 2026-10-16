@@ -183,3 +183,36 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     pg_tr_prefixes_rewrite(($translation_source !== '') ? $translation_source : (($translation_panel_language !== '') ? $translation_panel_language : 'en'));
     pg_tr_invalidate_pages();
 }
+
+// ── the automatic language redirect (2026.4.10) ──
+if (waf_table_has_column('config', 'language_redirect')) {
+
+    $language_redirect_on = post_value('language_redirect') ? 1 : 0;
+    $language_redirect_mode = (string) post_value('language_redirect_mode');
+    $language_redirect_scope = (string) post_value('language_redirect_scope');
+    $language_redirect_fallback = trim((string) post_value('language_redirect_fallback'));
+
+    if (!in_array($language_redirect_mode, array('language', 'country', 'both'), true)) {
+        $language_redirect_mode = 'both';
+    }
+
+    if ($language_redirect_scope !== 'all') {
+        $language_redirect_scope = 'home';
+    }
+
+    // A served target language, or none. A language removed or turned off
+    // later is ignored by the redirect itself (pg_lang_pick()).
+    if (($language_redirect_fallback !== '') && (!function_exists('pg_tr_languages') || !isset(pg_tr_languages(true, true)[$language_redirect_fallback]))) {
+        $language_redirect_fallback = '';
+    }
+
+    db("UPDATE config SET
+        language_redirect = '" . $language_redirect_on . "',
+        language_redirect_mode = '" . e($language_redirect_mode) . "',
+        language_redirect_scope = '" . e($language_redirect_scope) . "',
+        language_redirect_fallback = '" . e($language_redirect_fallback) . "'");
+
+    // The location database, when the button asks for it or the redirect
+    // reads the visitor's location and the site has none yet.
+    pg_geo_db_refresh_for_screen($liveform, (bool) post_value('geo_db_refresh'), $language_redirect_on && ($language_redirect_mode !== 'language'));
+}

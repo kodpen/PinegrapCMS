@@ -27,10 +27,8 @@ if (isset($_SESSION['software']['comments']) == false) {
     $_SESSION['software']['comments'] = array();
 }
 
-foreach (array('sort', 'order', 'query') as $comments_session_key) {
-    if (isset($_SESSION['software']['comments'][$comments_session_key]) == false) {
-        $_SESSION['software']['comments'][$comments_session_key] = '';
-    }
+if (isset($_SESSION['software']['comments']['query']) == false) {
+    $_SESSION['software']['comments']['query'] = '';
 }
 
 // these are only ever appended to further below, so they have to start out empty
@@ -38,61 +36,31 @@ $where = '';
 $output_rows = '';
 $number_of_results = 0;
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['comments']['sort'] = $_REQUEST['sort'];
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'           => lang('Name'),
+    'published'      => lang('Published'),
+    'featured'       => lang('Featured'),
+    'publish_cancel' => lang('Cancel if Added First'),
+    'submitted'      => lang('Submitted'),
+);
 
-    // clear order
-    $_SESSION['software']['comments']['order'] = '';
-}
+$sort_default = array('sort' => 'submitted', 'order' => 'desc');
 
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store sort in session
-    $_SESSION['software']['comments']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
+$list_state = pg_list_state('view_comments', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-// if the sort is not set yet (first visit to this screen), then default it to empty so the
-// switch below falls through to its default case
-if (isset($_SESSION['software']['comments']['sort']) == false) {
-    $_SESSION['software']['comments']['sort'] = '';
-}
-
-switch (($_SESSION['software']['comments']['sort'] ?? ''))
-{
-    case lang('Name'):
-        $sort_column = 'name';
-        break;
-
-    case lang('Published'):
-        $sort_column = 'published';
-        break;
-    case lang('Featured'):
-        $sort_column = 'featured';
-        break;
-    case lang('Cancel if Added First'):
-        $sort_column = 'publish_cancel';
-        break;
-    case lang('Submitted'):
-        $sort_column = 'created_timestamp';
-        break;
-    default:
-        $sort_column = 'created_timestamp';
-        $_SESSION['software']['comments']['sort'] = lang('Submitted');
-}
-
-if (!empty($_SESSION['software']['comments']['order'])) {
-    $asc_desc = sql_order_direction($_SESSION['software']['comments']['order'] ?? '');
-} elseif ($sort_column == 'created_timestamp') {
-    $asc_desc = 'desc';
-    $_SESSION['software']['comments']['order'] = 'desc';
-} else {
-    $asc_desc = 'asc';
-    $_SESSION['software']['comments']['order'] = 'asc';
-}
-
-
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'           => 'name',
+    'published'      => 'published',
+    'featured'       => 'featured',
+    'publish_cancel' => 'publish_cancel',
+    'submitted'      => 'created_timestamp',
+));
 
 // get total number of comments
 $query = "SELECT COUNT(page_id) FROM comments";
@@ -147,7 +115,7 @@ $query =
     LEFT JOIN page ON page.page_id = comments.page_id
     LEFT JOIN user ON comments.created_user_id = user.user_id
     $where
-    ORDER BY $sort_column $asc_desc";
+    ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -248,7 +216,7 @@ foreach ($comments as $comment) {
         $output_rows .= '
             <tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_reference_button . '
                 </td>
                 <td class="align-middle chart_label">' . h($comment['name']) . '</td>
@@ -281,7 +249,14 @@ print
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            
+            <div class="row mb-2  flex-wrap">
+                <div class="col-12 text-center text-md-start">
+                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default) . '
+                    </nav>
+                </div>
+            </div>
             <div class="disable_shortcut">
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
@@ -289,13 +264,13 @@ print
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Published'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Featured'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                    <th>' . get_column_heading(lang('Published'), $sort_levels, '', '', 'published') . '</th>
+                                    <th>' . get_column_heading(lang('Featured'), $sort_levels, '', '', 'featured') . '</th>
                                     <th>' . lang('At a Scheduled Time') . '</th>
-                                    <th>' . get_column_heading(lang('Cancel if Added First'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Cancel if Added First'), $sort_levels, '', '', 'publish_cancel') . '</th>
                                     <th>' . lang('Message') . '</th>
-                                    <th>' . get_column_heading(lang('Submitted'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Submitted'), $sort_levels, '', '', 'submitted') . '</th>
                                 </tr>
                             </thead>
                             <tbody>

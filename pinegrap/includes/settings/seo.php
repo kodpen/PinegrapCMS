@@ -187,7 +187,35 @@ $pg_settings_cards[] = '
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>' . ($visitor_retention_available ? '
+                                        <div class="pg-f-xs">
+                                            <label for="visitor_retention_days" class="form-label">' . lang('Keep visitor records for') . '</label>
+                                            <div class="input-group">
+                                                <input type="text" name="visitor_retention_days" id="visitor_retention_days" class="form-control" value="' . h($visitor_retention_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
+                                                <span class="input-group-text">' . lang('day(s)') . '</span>
+                                            </div>
                                         </div>
+                                        <div class="col-12">
+                                            <div class="form-text">' . h(lang(array('string' => 'Older visitor records are removed a little at a time by the general job, so the table stays small. 0 keeps every record; otherwise at least {var:1} and at most {var:2} days.', 'vars' => array(PG_VISITOR_RETENTION_MIN_DAYS, PG_VISITOR_RETENTION_MAX_DAYS)))) . '</div>
+                                        </div>
+                                        ' . ($visitor_ip_available ? '<div class="pg-f-xs">
+                                            <label for="visitor_ip_days" class="form-label">' . lang('Remove IP addresses after') . '</label>
+                                            <div class="input-group">
+                                                <input type="text" name="visitor_ip_days" id="visitor_ip_days" class="form-control" value="' . h($visitor_ip_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
+                                                <span class="input-group-text">' . lang('day(s)') . '</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-text">' . h(lang(array('string' => 'The IP address of a visit is taken out of its record after this many days; the record, its source and its figures stay. 0 keeps it as long as the record; otherwise at least {var:1} and at most {var:2} days.', 'vars' => array(PG_VISITOR_IP_MIN_DAYS, PG_VISITOR_IP_MAX_DAYS)))) . '</div>
+                                        </div>
+                                        ' : '') . '<div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . ($visitor_summary ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="visitor_summary" name="visitor_summary"/>
+                                                <label class="form-check-label" for="visitor_summary">' . lang('Keep a daily summary before records are removed') . '</label>
+                                                <div class="form-text">' . lang('Each day is added up by source, landing page, campaign, place and device first, so the visitor report and the API still count it. Turned off, those days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
+                                                <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
+                                            </div>
+                                        </div>' : '') . '
                                    </div>
                                 </div>
                             </div>

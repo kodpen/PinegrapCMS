@@ -55,6 +55,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/claim',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_claim',
+            'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
             'description' => 'Marks the request as being worked on and leaves an eye on it in the channel. 409 when another run has taken it or it is closed.',
@@ -69,14 +70,15 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/answer',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_answer',
+            'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Answer a request',
-            'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept.',
+            'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. A request whose task block has an id is a run on a task: the words are kept on the task, it takes no tasks, and its changes wait on the task until the person who asked applies or sets them aside. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'required' => true),
                 array('name' => 'tasks', 'in' => 'body', 'type' => 'list', 'of' => array('title' => 'string', 'description' => 'string', 'assignees' => 'integer[]', 'due_date' => 'string', 'priority' => 'string'), 'max_items' => 10, 'description' => 'Proposed tasks, as objects of {title, description, assignees (user ids), due_date (YYYY-MM-DD), priority (low, normal, high, urgent)}.'),
-                array('name' => 'changes', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'action' => 'string', 'id' => 'integer', 'fields' => 'object', 'product_ids' => 'integer[]', 'bulk' => 'object', 'reason' => 'string'), 'max_items' => 10, 'description' => 'Proposed record changes, as objects of {type, action, id, fields, product_ids, bulk, reason}. action bulk changes many records of one kind at once (product, stock, product_group, page, file, contact, offer, calendar_event or erp_account) by the rule in bulk: {action (update or delete), scope (all, group with group_id for products, search with a word of the name, ids with a list), only_empty (a text field the records must have empty), field, operation (set with value; percent with value such as 50 or -10; add with value, money in minor units; generate with instruction, the text Pinegrap AI writes for each record, up to three text fields in field separated by commas; values with values, an object of id => new value), round (whole, for money)}; delete in bulk only where an administrator allowed it in the Workspace Settings. The card shows how many records it reaches; the person who asked applies it. type: product, stock, order, contact, erp_account, product_group, channel, user, page, form, file, offer or calendar_event. action: update (the default), create (no id; product, contact, erp_account, product_group, calendar_event), delete (no fields; product, contact, product_group, page, file, offer, calendar_event: a product, a group, a page or a file goes to the Recycle Bin), add or remove (product_group only: product_ids, a list of product ids put into the group or taken out of it). fields: an object of field => new value. product: name, title, short_description, full_description, details, meta_description, meta_keywords, keywords, brand, gtin, mpn, google_product_category, price (minor units, as GET /products gives it), enabled, taxable, tax_rate (a number such as 20, or "" to follow the tax zone), vat_exemption_code, shippable, free_shipping, extra_shipping_cost (minor units), weight, length, width, height (numbers), track_stock, backorder, out_of_stock_message, minimum_quantity, maximum_quantity, reward_points, order_receipt_message, custom_field_1 to custom_field_4, notes. stock: quantity (the new count). order: status (incomplete, complete, exported, cancelled), notes, cancellation_reason (with cancelled only), po_number, custom_field_1, custom_field_2, tracking_numbers (the whole list for an order that ships to one address; the customer is not e-mailed). contact: salutation, first_name, last_name, suffix, nickname, company, title, department, office_location, email, opt_in, phone (mobile), business_phone, business_fax, website, address_1, address_2, city, state, zip, country (the business address), home_address_1, home_address_2, home_city, home_state, home_zip, home_country, home_phone, home_fax, lead_source, tax_number, tax_office, description, member_id, expiration_date (YYYY-MM-DD). erp_account: title, email, phone, address, district, city, state, postcode, country_code (two letters), currency (three letters), tax_number, tax_office, payment_days, credit_limit (minor units), invoice_email, invoice_mail, overdue_notify_days, overdue_notify_customer, status (active, passive), notes. product_group: name, title, short_description, full_description, meta_description, meta_keywords, keywords, enabled. channel: summary; id is the channel the request came from. user: role (manager or user; never for an administrator, never for oneself), email; applied by an administrator only. page: title, meta_description, meta_keywords, search, search_keywords (a list or comma-separated words), sitemap, noindex, comments, comments_open, comments_publish, comments_login. form (a submitted form): complete, answers (an object of field name => new answer, for its text fields; only the ones given change). file: description, folder_id, content (the words of a text file only). offer: status (enabled, disabled), description, start_date, end_date (YYYY-MM-DD). calendar_event: name, short_description, location, start_time, end_time (YYYY-MM-DD HH:MM), all_day, published; a new one also takes calendar_ids (a list) and needs name, start_time and calendar_ids. A new product also takes quantity and group_ids (a list), a new ERP account kind (customer, supplier, both) and is_person, a new product group parent_id (a group id; the top of the catalogue when left out) and product_ids. A new product needs name, a new product group name, a new ERP account title, a new contact one of first_name, last_name, company, email. A new product or product group is not on sale / published unless enabled is true. reason: one line on why.'),
+                array('name' => 'changes', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'action' => 'string', 'id' => 'integer', 'fields' => 'object', 'product_ids' => 'integer[]', 'bulk' => 'object', 'reason' => 'string'), 'max_items' => 10, 'description' => 'Proposed record changes, as objects of {type, action, id, fields, product_ids, bulk, reason}. action bulk changes many records of one kind at once (product, stock, product_group, page, file, contact, offer, calendar_event or erp_account) by the rule in bulk: {action (update or delete), scope (all, group with group_id for products, search with a word of the name, ids with a list), only_empty (a text field the records must have empty), field, operation (set with value; percent with value such as 50 or -10; add with value, money in minor units; generate with instruction, the text Pinegrap AI writes for each record, up to three text fields in field separated by commas; values with values, an object of id => new value), round (whole, for money)}; delete in bulk only where an administrator allowed it in the Workspace Settings. The card shows how many records it reaches; the person who asked applies it. type: product, stock, order, contact, erp_account, product_group, channel, user, page, form, file, offer, calendar_event, task, task_note or note. action: update (the default), create (no id; product, contact, erp_account, product_group, calendar_event, task_note, note), delete (no fields; product, contact, product_group, page, file, offer, calendar_event: a product, a group, a page or a file goes to the Recycle Bin), add or remove (product_group only: product_ids, a list of product ids put into the group or taken out of it). fields: an object of field => new value. product: name, title, short_description, full_description, details, meta_description, meta_keywords, keywords, brand, gtin, mpn, google_product_category, price (minor units, as GET /products gives it), enabled, taxable, tax_rate (a number such as 20, or "" to follow the tax zone), vat_exemption_code, shippable, free_shipping, extra_shipping_cost (minor units), weight, length, width, height (numbers), track_stock, backorder, out_of_stock_message, minimum_quantity, maximum_quantity, reward_points, order_receipt_message, custom_field_1 to custom_field_4, notes. stock: quantity (the new count). order: status (incomplete, complete, exported, cancelled), notes, cancellation_reason (with cancelled only), po_number, custom_field_1, custom_field_2, tracking_numbers (the whole list for an order that ships to one address; the customer is not e-mailed). contact: salutation, first_name, last_name, suffix, nickname, company, title, department, office_location, email, opt_in, phone (mobile), business_phone, business_fax, website, address_1, address_2, city, state, zip, country (the business address), home_address_1, home_address_2, home_city, home_state, home_zip, home_country, home_phone, home_fax, lead_source, tax_number, tax_office, description, member_id, expiration_date (YYYY-MM-DD). erp_account: title, email, phone, address, district, city, state, postcode, country_code (two letters), currency (three letters), tax_number, tax_office, payment_days, credit_limit (minor units), invoice_email, invoice_mail, overdue_notify_days, overdue_notify_customer, status (active, passive), notes. product_group: name, title, short_description, full_description, meta_description, meta_keywords, keywords, enabled. channel: summary; id is the channel the request came from. user: role (manager or user; never for an administrator, never for oneself), email; applied by an administrator only. page: title, meta_description, meta_keywords, search, search_keywords (a list or comma-separated words), sitemap, noindex, comments, comments_open, comments_publish, comments_login. form (a submitted form): complete, answers (an object of field name => new answer, for its text fields; only the ones given change). file: description, folder_id, content (the words of a text file only). offer: status (enabled, disabled), description, start_date, end_date (YYYY-MM-DD). calendar_event: name, short_description, location, start_time, end_time (YYYY-MM-DD HH:MM), all_day, published; a new one also takes calendar_ids (a list) and needs name, start_time and calendar_ids. task (update only, by whoever may change the task): title, description, status (todo, doing, waiting, done, cancelled), priority (low, normal, high, urgent), start_date, due_date (YYYY-MM-DD). task_note (create only): text, and task_id (a list of one task; on a run on a task, that task when left out); it is written in the assistant\'s name. note (create only): title, body; a note of the Workspace, kept for the person who applies it. A new product also takes quantity and group_ids (a list), a new ERP account kind (customer, supplier, both) and is_person, a new product group parent_id (a group id; the top of the catalogue when left out) and product_ids. A new product needs name, a new product group name, a new ERP account title, a new contact one of first_name, last_name, company, email. A new product or product group is not on sale / published unless enabled is true. reason: one line on why.'),
             ),
         ),
 
@@ -86,6 +88,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/fail',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_fail',
+            'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Give a request up',
             'description' => 'Closes the request as not done, writes the reason under it for the person who asked and takes the eye back.',
@@ -216,13 +219,33 @@ function ws_api_claude_request_present($viewer, $row)
         );
     }
 
+    // A run on a task (delegation.php): the task as the person who asked sees
+    // it, its latest notes, and what the assistants were asked and answered
+    // on it before; message.text is the instruction, "" when the task itself
+    // says what to do.
+    $task = ws_api_claude_task_present($row);
+
+    if ($task['id'] > 0) {
+        $body = (string) $row['note_text'];
+    }
+
+    $kind = '';
+
+    if ($channel) {
+        $kind = (string) $channel['kind'];
+    } elseif ((int) ($row['note_id'] ?? 0) > 0) {
+        $kind = 'note';
+    } elseif ((int) ($row['task_id'] ?? 0) > 0) {
+        $kind = 'task';
+    }
+
     return array(
         'id'               => (int) $row['id'],
         'status'           => (string) $row['status'],
         'channel'          => array(
             'id'   => (int) $row['channel_id'],
             'name' => $channel ? (string) $channel['name'] : '',
-            'kind' => $channel ? (string) $channel['kind'] : (((int) ($row['note_id'] ?? 0) > 0) ? 'note' : ''),
+            'kind' => $kind,
         ),
         'message'          => array(
             'id'            => (int) $row['message_id'],
@@ -237,6 +260,7 @@ function ws_api_claude_request_present($viewer, $row)
             'body'  => $note ? ws_calc_plain((string) $note['body']) : '',
         ),
         'design'           => $design,
+        'task'             => $task,
         'requested_by'     => array('user_id' => (int) $row['requested_by'], 'name' => ws_person_name($row['requested_by'])),
         'reply_message_id' => ((int) $row['reply_message_id'] > 0) ? (int) $row['reply_message_id'] : null,
         'error'            => (string) $row['error'],
@@ -255,6 +279,7 @@ function ws_api_claude_request_schema()
         'message'          => array('id' => 'integer', 'text' => 'string', 'body' => 'string', 'reply_to_id' => 'integer?', 'reply_to_text' => 'string'),
         'note'             => array('id' => 'integer', 'title' => 'string', 'body' => 'string'),
         'design'           => array('page_id' => 'integer', 'page_name' => 'string', 'node_id' => 'string', 'scope' => 'string', 'from_editor' => 'boolean'),
+        'task'             => ws_api_claude_task_schema(),
         'requested_by'     => array('user_id' => 'integer', 'name' => 'string'),
         'reply_message_id' => 'integer?',
         'error'            => 'string',
@@ -270,6 +295,96 @@ function ws_api_claude_request_schema()
  * @param array $list name => [kind, limit, label, column]
  * @return array[]
  */
+/**
+ * The task block of a request: filled for a run on a task, empty otherwise.
+ * The task is read with the rights of the person who asked; channel_id is
+ * set only where Claude may be asked in the task's channel and that person
+ * reads it.
+ *
+ * @param array $row
+ * @return array
+ */
+function ws_api_claude_task_present($row)
+{
+    $out = array(
+        'id'          => 0,
+        'number'      => '',
+        'title'       => '',
+        'description' => '',
+        'status'      => '',
+        'priority'    => '',
+        'start_date'  => null,
+        'due_date'    => null,
+        'channel_id'  => 0,
+        'handed_over' => false,
+        'assignees'   => array(),
+        'notes'       => array(),
+        'earlier'     => array(),
+    );
+
+    if (((int) ($row['task_id'] ?? 0) <= 0) || !function_exists('ws_task_delegation_context')) {
+        return $out;
+    }
+
+    $asker = ws_change_viewer_for_id((int) $row['requested_by']);
+    $context = $asker ? ws_task_delegation_context($asker, $row) : null;
+
+    if (!$context) {
+        return $out;
+    }
+
+    $task = $context['task'];
+    $read = ws_ai_task_present($asker, $task);
+    $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
+    $earlier = array();
+
+    foreach ($context['earlier'] as $item) {
+        $earlier[] = array(
+            'assistant'   => $item['agent'],
+            'asked_by'    => $item['asked_by'],
+            'instruction' => $item['instruction'],
+            'answer'      => $item['answer'],
+            'error'       => $item['error'],
+        );
+    }
+
+    return array(
+        'id'          => (int) $task['id'],
+        'number'      => (string) $read['number'],
+        'title'       => (string) $read['title'],
+        'description' => (string) $read['description'],
+        'status'      => (string) $read['status'],
+        'priority'    => (string) $read['priority'],
+        'start_date'  => $read['start_date'],
+        'due_date'    => $read['due_date'],
+        'channel_id'  => ($channel && ws_claude_channel_allowed($channel) && ws_can_read_channel($asker, $channel)) ? (int) $channel['id'] : 0,
+        'handed_over' => (bool) $context['delegated'],
+        'assignees'   => array_values($read['assignees']),
+        'notes'       => array_values($read['notes']),
+        'earlier'     => $earlier,
+    );
+}
+
+// What ws_api_claude_task_present() returns.
+function ws_api_claude_task_schema()
+{
+    return array(
+        'id'          => 'integer',
+        'number'      => 'string',
+        'title'       => 'string',
+        'description' => 'string',
+        'status'      => 'string',
+        'priority'    => 'string',
+        'start_date'  => 'string?',
+        'due_date'    => 'string?',
+        'channel_id'  => 'integer',
+        'handed_over' => 'boolean',
+        'assignees'   => array('string'),
+        'notes'       => array('string'),
+        'earlier'     => array(array('assistant' => 'string', 'asked_by' => 'string', 'instruction' => 'string', 'answer' => 'string', 'error' => 'string')),
+    );
+}
+
 function ws_api_claude_change_fields_present($list)
 {
     $out = array();
@@ -357,6 +472,8 @@ function ws_api_claude_record_present($read)
     );
 }
 
+// lines is null for every record but an order, the only one read with its
+// lines (ws_ai_record_present()).
 function ws_api_claude_record_schema()
 {
     return array(
@@ -365,8 +482,14 @@ function ws_api_claude_record_schema()
         'about'  => 'string',
         'status' => 'string',
         'fields' => 'object?',
-        'lines'  => array(array('product' => 'string?', 'name' => 'string', 'quantity' => 'integer', 'unit_price' => 'string', 'line_tax' => 'string')),
+        'lines'  => 'WorkspaceRecordLine[]?',
     );
+}
+
+// One line of a document a record reads (ws_api_claude_record_schema()).
+function ws_api_claude_record_line_schema()
+{
+    return array('product' => 'string?', 'name' => 'string', 'quantity' => 'integer', 'unit_price' => 'string', 'line_tax' => 'string');
 }
 
 /**
@@ -475,6 +598,8 @@ function ws_api_claude_claim($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    api_dry_run_stop('claimed', 'workspace_claude_request', array('id' => (int) $row['id']));
+
     // One run wins when two reach for the same request.
     db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent')");
@@ -570,6 +695,8 @@ function ws_api_claude_answer($params)
             api_fail_validation(lang('A request from the Visual Page Editor is answered with text only; the page change is proposed with POST /design/pages/{id}/proposals.'), empty($params['tasks']) ? 'changes' : 'tasks');
         }
 
+        api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => 'editor'));
+
         pg_design_ai_request_answer($row, ws_tokens_normalise(trim((string) $params['text'])));
 
         ws_api_log(lang('Claude answered a request from the Visual Page Editor'));
@@ -584,6 +711,8 @@ function ws_api_claude_answer($params)
             api_fail_validation(lang('A request from a note is answered with text only: no tasks, no changes.'), empty($params['tasks']) ? 'changes' : 'tasks');
         }
 
+        api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => 'note'));
+
         $now = time();
 
         db("UPDATE ws_ai_requests SET status = 'answered', note_reply = '" . e(ws_tokens_normalise(trim((string) $params['text']))) . "',
@@ -595,6 +724,30 @@ function ws_api_claude_answer($params)
         // The answer waits in the request until somebody has the note open;
         // the one who asked is told it is there.
         ws_notify((int) $row['requested_by'], 'note_answer', array('note_id' => (int) $row['note_id'], 'actor_id' => 0));
+
+        api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
+    }
+
+    // A run on a task (delegation.php): the words are kept on the run and
+    // shown on the task, with the changes it proposes waiting under them for
+    // the person who asked, who is told.
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        if (!empty($params['tasks'])) {
+            api_fail_validation(lang('A run on a task proposes no tasks: its changes wait on the task.'), 'tasks');
+        }
+
+        $changes = ws_changes_input($params['changes'] ?? array(), (int) $row['requested_by'], 0, (int) $row['task_id']);
+
+        if (!$changes['ok']) {
+            api_fail_validation($changes['error'], 'changes');
+        }
+
+        api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => 'task', 'changes' => count($changes['rows'])));
+
+        if (ws_task_delegation_answer($row, (string) $params['text'])) {
+            ws_changes_store($row, 0, $changes['rows']);
+            ws_api_log(lang(array('string' => 'Claude answered on task {var:1}', 'vars' => ws_task_number($row['task_id']))));
+        }
 
         api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
     }
@@ -618,10 +771,28 @@ function ws_api_claude_answer($params)
         $text = $mention . ' ' . $text;
     }
 
-    $sent = ws_message_send($viewer, $channel, $text, array(
+    $options = array(
         'parent_id' => (int) $row['message_id'],
         'app_id'    => ws_api_app_id(),
+    );
+
+    // The checks ws_message_send() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_message_send_check($viewer, $channel, $text, $options);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'text');
+    }
+
+    api_dry_run_stop('answered', 'workspace_claude_request', array(
+        'id'         => (int) $row['id'],
+        'origin'     => 'channel',
+        'channel_id' => (int) $channel['id'],
+        'tasks'      => count($drafts),
+        'changes'    => count($changes['rows']),
     ));
+
+    $sent = ws_message_send($viewer, $channel, $text, $options);
 
     if (!$sent['ok']) {
         api_fail_validation($sent['error'], 'text');
@@ -674,10 +845,13 @@ function ws_api_claude_fail($params)
     $reason = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $params['reason']), 0, 250));
     $reply_id = 0;
     $channel = ((int) ($row['note_id'] ?? 0) > 0) ? null : ws_channel($row['channel_id']);
+    $told = $channel && ws_claude_channel_allowed($channel) && ws_can_post_channel($viewer, $channel);
+
+    api_dry_run_stop('failed', 'workspace_claude_request', array('id' => (int) $row['id'], 'told_in_channel' => (bool) $told));
 
     // The reason goes to the person who asked, where they asked. A channel
     // that closed to Claude meanwhile keeps only the state on the request.
-    if ($channel && ws_claude_channel_allowed($channel) && ws_can_post_channel($viewer, $channel)) {
+    if ($told) {
         $sent = ws_message_send($viewer, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
             'parent_id' => (int) $row['message_id'],
             'app_id'    => ws_api_app_id(),
@@ -688,7 +862,12 @@ function ws_api_claude_fail($params)
 
     db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e($reason) . "', reply_message_id = '" . $reply_id . "',
             answered_at = '" . time() . "'
-        WHERE id = '" . (int) $row['id'] . "'");
+        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    // A run on a task: the person who asked is told it ended undone.
+    if (((int) ($row['task_id'] ?? 0) > 0) && (mysqli_affected_rows(db::$con) > 0) && function_exists('ws_task_delegation_told')) {
+        ws_task_delegation_told($row, 'failed');
+    }
 
     ws_claude_react((int) $row['message_id'], '👀', false);
 

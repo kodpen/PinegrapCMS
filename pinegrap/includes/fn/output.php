@@ -47,11 +47,21 @@ function pg_help_url($properties = array())
 }
 
 
-// this function outputs the includes for the files needed for the control panel
-//
-// $help_topic is the "page#anchor" a screen names for its help through
-// output_header()'s 'help' property; '' looks the screen up by its script.
-function output_control_panel_header_includes($include_assistant = true, $help_topic = '')
+/**
+ * The head every panel screen shares: the theme, the libraries and
+ * backend.src.js.
+ *
+ * $help_topic is the "page#anchor" a screen names for its help through
+ * output_header()'s 'help' property; '' looks the screen up by its script.
+ *
+ * $code_editor false (output_header()'s 'code_editor' property) leaves
+ * CodeMirror and its linters, some 2 MB of script, out of the head of a
+ * screen that draws no code field of its own. They wait in a template and
+ * window.pgCodeEditorReady() (backend.src.js) loads them the first time
+ * something on the screen needs them, such as a pane of the settings dialog
+ * with a code field.
+ */
+function output_control_panel_header_includes($include_assistant = true, $help_topic = '', $code_editor = true)
 {
     $help_url = pg_help_url(array('topic' => (string) $help_topic));
 
@@ -227,8 +237,10 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Confirm' => lang('Confirm'),
         'OK' => lang('OK'),
         'Sort' => lang('Sort'),
+        'Sort (Shift+click adds a level)' => lang('Sort (Shift+click adds a level)'),
         'Ascending' => lang('Ascending'),
         'Descending' => lang('Descending'),
+        'The change could not be saved. Check the connection and try again.' => lang('The change could not be saved. Check the connection and try again.'),
     );
 
     return '
@@ -269,7 +281,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/json2/json.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
-    ' . get_codemirror_includes() . '
+    ' . ($code_editor ? get_codemirror_includes() : '<template id="pg-code-editor-assets">' . get_codemirror_includes() . '</template>') . '
     <link rel="stylesheet" type="text/css" href="' . CONTROL_PANEL_STYLESHEET_URL . '" />
     ' . $assistant_snippet . '
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/backend.src.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js') . '"></script>
@@ -727,6 +739,634 @@ function pg_period_nav($url, $range, $periods, $range_html, $class = '')
                     </div>';
 }
 
+/**
+ * The sort, direction and page number of a sortable list screen, kept in the
+ * session per screen. The sort is stored as a column code, never as the
+ * translated heading, so a choice survives a language change, and only a
+ * column the current view offers is ever handed back: anything else falls
+ * back to the default, which keeps a stale or forged value out of ORDER BY.
+ *
+ * A sort picked without a direction starts in the default direction when it
+ * is the default column and ascending otherwise. A link that still carries a
+ * heading instead of a code is matched against the labels.
+ *
+ * A list can also be sorted by several columns at once, each one ordering
+ * the rows the one before it leaves equal. The address then names the
+ * levels in order as code:direction pairs, e.g.
+ * sort=inventory_quantity:desc,price:asc (pg_list_sort_value() writes it).
+ * Every level goes through the same check as a single sort, a column named
+ * twice counts once, and when no level is left the default applies. The
+ * first level is kept in the session the way a single sort always was; the
+ * ones after it are kept under 'then', only when there are any.
+ *
+ * @param string $screen  the list's session key, e.g. 'view_products'
+ * @param array  $columns code => heading of the columns this view sorts by
+ * @param array  $default array('sort' => code, 'order' => 'asc'|'desc')
+ * @return array array('sort' => code, 'order' => 'asc'|'desc' (the first
+ *               level), 'sorts' => every level in order, each
+ *               array('sort' => code, 'order' => 'asc'|'desc'),
+ *               'screen' => page number, 1 or more)
+ */
+function pg_list_state($screen, $columns, $default)
+{
+    $state = $_SESSION['software']['list_state'][$screen] ?? array();
+    $levels = array(array('sort' => (string) ($state['sort'] ?? ''), 'order' => (string) ($state['order'] ?? '')));
+
+    if (isset($state['then']) && is_array($state['then'])) {
+        $levels = array_merge($levels, $state['then']);
+    }
+
+    if (isset($_REQUEST['sort'])) {
+        $levels = pg_list_sort_parse(is_scalar($_REQUEST['sort']) ? (string) $_REQUEST['sort'] : '', $columns);
+    }
+
+    // The direction alone, from an older link: it turns the first level.
+    if (isset($_REQUEST['order'])) {
+        $levels[0]['order'] = (is_scalar($_REQUEST['order']) && (strtolower((string) $_REQUEST['order']) === 'desc')) ? 'desc' : 'asc';
+    }
+
+    $levels = pg_list_sort_clean($levels, $columns, $default);
+    $kept = $levels[0];
+
+    if (count($levels) > 1) {
+        $kept['then'] = array_slice($levels, 1);
+    }
+
+    $_SESSION['software']['list_state'][$screen] = $kept;
+
+    // A positive whole number, or the first page: the value reaches LIMIT.
+    $page = $_REQUEST['screen'] ?? '';
+    $page = (is_scalar($page) && is_numeric($page) && ($page > 0) && ($page == round($page))) ? (int) $page : 1;
+
+    return array('sort' => $levels[0]['sort'], 'order' => $levels[0]['order'], 'sorts' => $levels, 'screen' => $page);
+}
+
+/**
+ * The sort levels a list's address asks for, not yet checked. A bare code,
+ * or a heading from an older link, is a single level with no direction;
+ * anything else is read as code:direction pairs separated by commas.
+ *
+ * @param string $value   the sort value from the address
+ * @param array  $columns code => heading of the columns the view sorts by
+ * @return array list of array('sort' => code, 'order' => direction or '')
+ */
+function pg_list_sort_parse($value, $columns)
+{
+    $value = (string) $value;
+
+    if (array_key_exists($value, $columns)) {
+        return array(array('sort' => $value, 'order' => ''));
+    }
+
+    $code = array_search($value, $columns, true);
+
+    if ($code !== false) {
+        return array(array('sort' => (string) $code, 'order' => ''));
+    }
+
+    $levels = array();
+
+    foreach (explode(',', $value) as $item) {
+        $parts = explode(':', trim($item), 2);
+        $levels[] = array('sort' => trim($parts[0]), 'order' => strtolower(trim($parts[1] ?? '')));
+    }
+
+    return $levels;
+}
+
+/**
+ * Sort levels reduced to what the view offers: unknown columns and repeats
+ * dropped, every direction asc or desc (a missing one starts the way
+ * pg_list_state() describes), and the default when nothing is left. Only
+ * what this returns may reach ORDER BY.
+ *
+ * @param array $levels  list of array('sort' => code, 'order' => direction)
+ * @param array $columns code => heading of the columns the view sorts by
+ * @param array $default array('sort' => code, 'order' => 'asc'|'desc')
+ * @return array list of array('sort' => code, 'order' => 'asc'|'desc'), never empty
+ */
+function pg_list_sort_clean($levels, $columns, $default)
+{
+    $clean = array();
+
+    foreach ((array) $levels as $level) {
+        $sort = (is_array($level) && isset($level['sort']) && is_scalar($level['sort'])) ? (string) $level['sort'] : '';
+
+        if (($sort === '') || !array_key_exists($sort, $columns) || isset($clean[$sort])) {
+            continue;
+        }
+
+        $order = (isset($level['order']) && is_scalar($level['order'])) ? (string) $level['order'] : '';
+
+        if (($order !== 'asc') && ($order !== 'desc')) {
+            $order = ($sort === $default['sort']) ? $default['order'] : 'asc';
+        }
+
+        $clean[$sort] = array('sort' => $sort, 'order' => $order);
+    }
+
+    if (!$clean) {
+        return array(array('sort' => $default['sort'], 'order' => $default['order']));
+    }
+
+    return array_values($clean);
+}
+
+/**
+ * Sort levels as the address carries them: code:direction pairs in order,
+ * separated by commas, e.g. 'inventory_quantity:desc,price:asc'.
+ *
+ * @param array $levels list of array('sort' => code, 'order' => 'asc'|'desc')
+ * @return string
+ */
+function pg_list_sort_value($levels)
+{
+    $pairs = array();
+
+    foreach ($levels as $level) {
+        $pairs[] = rawurlencode((string) $level['sort']) . ':' . (($level['order'] === 'desc') ? 'desc' : 'asc');
+    }
+
+    return implode(',', $pairs);
+}
+
+/**
+ * The levels after a Shift+click on a column heading: a column not yet
+ * sorted by joins at the end, ascending; an ascending level turns
+ * descending; a descending one leaves the list, unless it is the only
+ * level, which turns ascending again.
+ *
+ * @param array  $levels list of array('sort' => code, 'order' => 'asc'|'desc')
+ * @param string $code   the column clicked
+ * @return array
+ */
+function pg_list_sort_toggle($levels, $code)
+{
+    $code = (string) $code;
+
+    foreach ($levels as $index => $level) {
+        if ((string) $level['sort'] !== $code) {
+            continue;
+        }
+
+        if ($level['order'] === 'asc') {
+            $levels[$index]['order'] = 'desc';
+        } elseif (count($levels) > 1) {
+            array_splice($levels, $index, 1);
+        } else {
+            $levels[$index]['order'] = 'asc';
+        }
+
+        return array_values($levels);
+    }
+
+    $levels[] = array('sort' => $code, 'order' => 'asc');
+
+    return $levels;
+}
+
+/**
+ * The ORDER BY list for sort levels. Each code is looked up in $map, which
+ * holds the SQL for every column the view sorts by; a code missing from it
+ * is skipped, so nothing from the address is ever written into the query.
+ *
+ * @param array $levels list of array('sort' => code, 'order' => 'asc'|'desc'),
+ *                      as pg_list_state() returns them
+ * @param array $map    code => column or expression to sort by
+ * @return string e.g. 'products.inventory_quantity desc, products.price asc'
+ */
+function pg_list_order_by($levels, $map)
+{
+    $parts = array();
+
+    foreach ($levels as $level) {
+        $code = (string) ($level['sort'] ?? '');
+
+        if (!isset($map[$code])) {
+            continue;
+        }
+
+        $parts[] = $map[$code] . ((($level['order'] ?? '') === 'desc') ? ' desc' : ' asc');
+    }
+
+    return implode(', ', $parts);
+}
+
+/**
+ * A sortable column heading on a list sorted by levels (get_column_heading()
+ * hands over to this when it is given the levels instead of one sort).
+ *
+ * A click sorts by this column alone, reversing it when it already leads.
+ * Shift+click keeps the other levels (pg_list_sort_toggle()); the browser
+ * follows data-pg-sort-add for it (backend.src.js). Once there is more than
+ * one level, a sorted column shows its number. The number and the arrow are
+ * icons, not text, so the heading's text stays the column's name wherever
+ * it is read (the column chooser lists it).
+ *
+ * @param string $label  the heading, not escaped
+ * @param string $code   the column's sort code
+ * @param array  $levels the levels the list is sorted by
+ * @param string $extras more of the query string, starting with '&', escaped
+ * @return string
+ */
+function pg_list_sort_heading($label, $code, $levels, $extras = '')
+{
+    $code = (string) $code;
+    $levels = array_values($levels);
+    $rank = -1;
+
+    foreach ($levels as $index => $level) {
+        if ((string) $level['sort'] === $code) {
+            $rank = $index;
+            break;
+        }
+    }
+
+    $order = ($rank >= 0) ? $levels[$rank]['order'] : '';
+    $next = (($rank === 0) && ($order === 'asc')) ? 'desc' : 'asc';
+    $base = h($_SERVER['PHP_SELF'] ?? '') . '?sort=';
+
+    if ($order === '') {
+        $icon = '<i class="bi bi-arrow-down-up opacity-50 ms-1" aria-hidden="true"></i>';
+        $title = lang('Sort (Shift+click adds a level)');
+    } else {
+        $icon = '<i class="bi bi-caret-' . (($order === 'asc') ? 'up' : 'down') . '-fill ms-1" aria-hidden="true"></i>';
+        $title = ($order === 'asc') ? lang('Ascending') : lang('Descending');
+    }
+
+    $number = ((count($levels) > 1) && ($rank >= 0) && ($rank < 9))
+        ? '<i class="bi bi-' . ($rank + 1) . '-circle-fill small ms-1" aria-hidden="true"></i>'
+        : '';
+
+    return '<a href="' . $base . h(pg_list_sort_value(array(array('sort' => $code, 'order' => $next)))) . $extras . '"'
+        . ' data-pg-sort-add="' . $base . h(pg_list_sort_value(pg_list_sort_toggle($levels, $code))) . $extras . '"'
+        . ' class="link-top-row btn btn-sm" title="' . h($title) . '">' . h($label) . $icon . $number . '</a>';
+}
+
+/**
+ * The toolbar's sort menu for a list sorted by levels: the levels in order,
+ * each with its direction to reverse and a way to drop it, a list to add
+ * the next level from, and a way back to the default. Everything in it is a
+ * plain link or a GET form, so it works by touch, by keyboard and without
+ * Shift+click.
+ *
+ * @param string $url     the list screen, e.g. 'view_products.php'
+ * @param array  $columns code => heading of the columns the view sorts by
+ * @param array  $levels  the levels the list is sorted by
+ * @param array  $default array('sort' => code, 'order' => 'asc'|'desc')
+ * @param array  $query   name => value of the rest of the address that every
+ *                        link and the form keep, for a list that reads its
+ *                        view from the address, e.g. array('filter' => ...)
+ * @return string
+ */
+function pg_list_sort_menu($url, $columns, $levels, $default, $query = array())
+{
+    $kept = $query ? '&' . http_build_query($query) : '';
+
+    $link = function ($to) use ($url, $kept) {
+        return $url . '?sort=' . pg_list_sort_value($to) . $kept;
+    };
+
+    $hidden = '';
+
+    foreach ($query as $name => $value) {
+        $hidden .= '<input type="hidden" name="' . h((string) $name) . '" value="' . h((string) $value) . '">';
+    }
+
+    $levels = array_values($levels);
+    $count = count($levels);
+    $used = array();
+    $rows = '';
+
+    foreach ($levels as $index => $level) {
+        $used[(string) $level['sort']] = true;
+        $ascending = ($level['order'] === 'asc');
+
+        $reversed = $levels;
+        $reversed[$index]['order'] = $ascending ? 'desc' : 'asc';
+
+        $removed = $levels;
+        array_splice($removed, $index, 1);
+
+        $rows .= '<li class="d-flex align-items-center gap-1 px-3 py-1">'
+            . '<span class="text-body-secondary small">' . ($index + 1) . '.</span>'
+            . '<span class="flex-grow-1 text-truncate">' . h((string) ($columns[$level['sort']] ?? $level['sort'])) . '</span>'
+            . '<a class="btn btn-sm btn-ghost text-nowrap" href="' . h($link($reversed)) . '" title="' . h(lang('Reverse the direction')) . '">'
+            . '<i class="bi bi-caret-' . ($ascending ? 'up' : 'down') . '-fill me-1" aria-hidden="true"></i>' . h($ascending ? lang('Ascending') : lang('Descending')) . '</a>'
+            . (($count > 1)
+                ? '<a class="btn btn-sm btn-ghost" href="' . h($link($removed)) . '" title="' . h(lang('Remove this sort level')) . '" aria-label="' . h(lang('Remove this sort level')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>'
+                : '')
+            . '</li>';
+    }
+
+    $options = '';
+
+    foreach ($columns as $code => $label) {
+        $code = (string) $code;
+
+        if (isset($used[$code])) {
+            continue;
+        }
+
+        $choices = array(
+            'asc'  => lang(array('string' => '{var:1}, ascending', 'vars' => array($label))),
+            'desc' => lang(array('string' => '{var:1}, descending', 'vars' => array($label))),
+        );
+
+        foreach ($choices as $order => $text) {
+            $options .= '<option value="' . h(pg_list_sort_value(array_merge($levels, array(array('sort' => $code, 'order' => $order))))) . '">' . h($text) . '</option>';
+        }
+    }
+
+    // An empty first choice keeps the form from sending an empty sort, which
+    // would put the list back to the default.
+    $form = ($options === '') ? '' : '<li><form method="get" action="' . h($url) . '" class="d-flex gap-1 px-3 py-2 disable_shortcut">'
+        . $hidden
+        . '<select name="sort" class="form-select form-select-sm" required aria-label="' . h(lang('Then sort by')) . '">'
+        . '<option value="" selected>' . h(lang('Then sort by')) . '</option>' . $options . '</select>'
+        . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Add')) . '</button>'
+        . '</form></li>';
+
+    $reset = (($count === 1) && ($levels[0]['sort'] === $default['sort']) && ($levels[0]['order'] === $default['order']))
+        ? ''
+        : '<li><hr class="dropdown-divider"></li>'
+            . '<li><a class="dropdown-item link-body-emphasis" href="' . h($link(array($default))) . '"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>' . h(lang('Reset the sort order')) . '</a></li>';
+
+    return '<div class="dropdown">'
+        . '<button type="button" class="btn btn-sm btn-ghost dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">'
+        . '<i class="bi bi-sort-down me-1" aria-hidden="true"></i>' . h(lang('Sort by'))
+        . (($count > 1) ? ' <span class="badge rounded-pill text-bg-secondary">' . $count . '</span>' : '')
+        . '</button>'
+        . '<ul class="dropdown-menu dropdown-menu-end" style="min-width: min(20rem, 90vw);">' . $rows . $form . $reset . '</ul>'
+        . '</div>';
+}
+
+/*
+ * Quick edit on list screens: a cell changed in place, without leaving the
+ * list.
+ *
+ * A screen describes the columns it lets change once, as field => definition:
+ *
+ *   'type'     'text', 'integer', 'money' or 'select'
+ *   'label'    the column's heading, for the input's name and the messages
+ *   'max'      the longest text, or the highest number
+ *   'min'      the lowest number (integer; 0 when not given)
+ *   'empty'    an integer or an amount may be left empty, which reads as ''
+ *   'required' a text may not be left empty
+ *   'options'  value => label for 'select', in the order they are offered
+ *
+ * The table names the address that takes the change and carries the
+ * definitions (pg_list_edit_table()); each cell that can change carries its
+ * field, record and current value (pg_list_edit_cell()). backend.src.js opens
+ * an input on the cell and posts the new value to that address. The screen
+ * answers before it draws anything: pg_list_edit_request() checks the request
+ * and the value, the screen writes it with its own save code, and
+ * pg_list_edit_reply() sends back the cell drawn the way the list draws it,
+ * so the list shows what was stored rather than what was typed.
+ */
+
+/**
+ * Whether this request is a quick edit from a list (backend.src.js sends
+ * pg_list_edit with every one).
+ *
+ * @return bool
+ */
+function pg_list_edit_requested()
+{
+    return isset($_POST['pg_list_edit']);
+}
+
+/**
+ * The attributes a list table takes for quick edit: the address the changes
+ * go to and the column definitions the script builds its inputs from.
+ * Nothing when there is no column to change, so a viewer who may not change
+ * the list gets a plain table.
+ *
+ * @param string $url     the screen that answers the change, e.g. 'view_products.php'
+ * @param array  $columns field => definition
+ * @return string
+ */
+function pg_list_edit_table($url, $columns)
+{
+    if (!$columns) {
+        return '';
+    }
+
+    $client = array();
+
+    foreach ($columns as $field => $column) {
+        $entry = array(
+            'type'  => (string) ($column['type'] ?? 'text'),
+            'label' => (string) ($column['label'] ?? $field),
+        );
+
+        foreach (array('min', 'max') as $key) {
+            if (isset($column[$key])) {
+                $entry[$key] = (int) $column[$key];
+            }
+        }
+
+        // Pairs rather than an object: an object with numeric keys comes
+        // back in numeric order, and the order of the choices is the screen's.
+        if (isset($column['options'])) {
+            $entry['options'] = array();
+
+            foreach ((array) $column['options'] as $value => $label) {
+                $entry['options'][] = array((string) $value, (string) $label);
+            }
+        }
+
+        $client[(string) $field] = $entry;
+    }
+
+    return ' data-pg-edit-url="' . h($url) . '" data-pg-edit-columns="' . h(json_encode($client, JSON_UNESCAPED_UNICODE)) . '"';
+}
+
+/**
+ * The attributes of a cell that changes in place: its field, the record it
+ * belongs to and the value the input opens with. Nothing when the field is
+ * not one the list lets change, which is how a screen leaves a single cell
+ * (a product that does not track stock) or a viewer without the right out.
+ * The hint is the pencil backend.src.js draws on the cell, not a title: the
+ * panel turns every title into a hover popover, one per cell of the list.
+ *
+ * @param array      $columns field => definition
+ * @param string     $field
+ * @param int        $id      the record's number
+ * @param string|int $value   the stored value, as the input should show it
+ * @return string
+ */
+function pg_list_edit_cell($columns, $field, $id, $value)
+{
+    if (!isset($columns[$field]) || ((int) $id <= 0)) {
+        return '';
+    }
+
+    return ' data-pg-edit="' . h((string) $field) . '" data-pg-edit-id="' . (int) $id . '"'
+        . ' data-pg-edit-value="' . h((string) $value) . '" tabindex="0"';
+}
+
+/**
+ * A typed value read the way its column says, or the reason it cannot be.
+ * Only the shape is decided here; turning an amount into minor units is the
+ * screen's, with the reader its own form uses, so the list and the edit
+ * screen cannot read the same typing two ways.
+ *
+ *   text     trimmed, control characters turned into spaces (a one-line
+ *            field; a pasted value often brings a line break)
+ *   integer  an int, or '' when the column allows empty
+ *   money    the digits and separators as typed, spaces taken out
+ *   select   the value of one of the options, as a string
+ *
+ * @param array $column the column's definition
+ * @param mixed $raw    the posted value
+ * @return array array('ok' => bool, 'value' => the value read, 'error' => the reason, for the operator)
+ */
+function pg_list_edit_parse($column, $raw)
+{
+    $label = (string) ($column['label'] ?? '');
+    $value = is_scalar($raw) ? trim((string) $raw) : '';
+
+    $fail = function ($message) {
+        return array('ok' => false, 'value' => null, 'error' => $message);
+    };
+
+    $pass = function ($value) {
+        return array('ok' => true, 'value' => $value, 'error' => '');
+    };
+
+    if (!mb_check_encoding($value, 'UTF-8')) {
+        return $fail(lang('The value could not be read.'));
+    }
+
+    switch ((string) ($column['type'] ?? '')) {
+        case 'text':
+            $value = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value));
+
+            if (($value === '') && !empty($column['required'])) {
+                return $fail(lang(array('string' => '{var:1|c} is required', 'vars' => array($label))));
+            }
+
+            if (isset($column['max']) && (mb_strlen($value, 'UTF-8') > (int) $column['max'])) {
+                return $fail(lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array($label, (int) $column['max']))));
+            }
+
+            return $pass($value);
+
+        case 'integer':
+            if (($value === '') && !empty($column['empty'])) {
+                return $pass('');
+            }
+
+            $min = (int) ($column['min'] ?? 0);
+            $max = (int) ($column['max'] ?? 2147483647);
+
+            if ((preg_match('/^-?[0-9]{1,15}$/', $value) !== 1) || ((int) $value < $min) || ((int) $value > $max)) {
+                return $fail(lang(array('string' => '{var:1} takes a whole number from {var:2} to {var:3}.', 'vars' => array($label, pg_format_number($min, 0), pg_format_number($max, 0)))));
+            }
+
+            return $pass((int) $value);
+
+        case 'money':
+            $value = preg_replace('/[\s\x{00A0}]+/u', '', $value);
+
+            if (($value === '') && !empty($column['empty'])) {
+                return $pass('');
+            }
+
+            if (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1) {
+                return $fail(lang(array('string' => '{var:1} takes an amount, such as {var:2}.', 'vars' => array($label, pg_format_number(12.5, 2)))));
+            }
+
+            return $pass($value);
+
+        case 'select':
+            foreach ((array) ($column['options'] ?? array()) as $option => $text) {
+                if ((string) $option === $value) {
+                    return $pass((string) $option);
+                }
+            }
+
+            return $fail(lang(array('string' => 'Choose one of the values offered for {var:1}.', 'vars' => array($label))));
+    }
+
+    return $fail(lang('This column cannot be changed here.'));
+}
+
+/**
+ * The change a quick edit asks for, checked: a POST from a signed-in user the
+ * screen lets change the list, carrying the session's token, naming a column
+ * the list offers and a record by its number, with a value that fits the
+ * column. Anything else is answered here in JSON and the request ends there;
+ * validate_user()'s login redirect, validate_token_field() and the access
+ * checks answer with a page the script could not read.
+ *
+ * @param array    $columns field => definition
+ * @param callable $allowed function ($user): whether this user may change the list
+ * @return array array('user' => the user, 'field' => field, 'id' => record number,
+ *               'value' => the value pg_list_edit_parse() read)
+ */
+function pg_list_edit_request($columns, $allowed)
+{
+    if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+        header('Allow: POST');
+        pg_list_edit_reply(array('ok' => false, 'code' => 'method', 'message' => lang('Access denied.')), 405);
+    }
+
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'session', 'message' => lang('Your session has expired. Reload the page and sign in again.')), 401);
+    }
+
+    $user = validate_user();
+
+    if (!call_user_func($allowed, $user)) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'denied', 'message' => lang('Access denied.')), 403);
+    }
+
+    $session_token = (string) ($_SESSION['software']['token'] ?? '');
+    $post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+
+    if (($session_token === '') || !hash_equals($session_token, $post_token)) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'session', 'message' => lang('Your session has expired. Reload the page and sign in again.')), 403);
+    }
+
+    $field = (isset($_POST['field']) && is_string($_POST['field'])) ? $_POST['field'] : '';
+    $id = (isset($_POST['id']) && is_scalar($_POST['id']) && (preg_match('/^[1-9][0-9]{0,9}$/', (string) $_POST['id']) === 1)) ? (int) $_POST['id'] : 0;
+
+    if (!isset($columns[$field]) || ($id <= 0)) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.')), 422);
+    }
+
+    $parsed = pg_list_edit_parse($columns[$field], $_POST['value'] ?? '');
+
+    if (!$parsed['ok']) {
+        pg_list_edit_reply(array('ok' => false, 'code' => 'invalid', 'message' => $parsed['error']), 422);
+    }
+
+    return array('user' => $user, 'field' => $field, 'id' => $id, 'value' => $parsed['value']);
+}
+
+/**
+ * Answer a quick edit and end the request. A success carries 'ok' => true,
+ * the cell's new 'value' (what the input opens with next time) and what the
+ * list should draw: the cell's 'html', 'class', 'title' and 'sort' (its
+ * data-sort, for a table the browser sorts), each only when it changes, and
+ * 'cells' for the other cells of the row that change with it, keyed by their
+ * data-pg-cell name. A refusal carries 'ok' => false and a 'message'.
+ *
+ * @param array $data
+ * @param int   $status
+ */
+function pg_list_edit_reply($data, $status = 200)
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    header('X-Robots-Tag: noindex');
+    echo json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
 
 /**
  * Where to send a browser that has finished with a tool and wants the settings.
@@ -951,12 +1591,18 @@ function output_header_secure($properties = false)
         $output_fav_icon = $properties['icon'];
     }
 
+    // The update search index job prints this header from the command line
+    // too, where there is no Host header. HOSTNAME is the request's host on
+    // the web and the site's hostname setting otherwise (init.php); it is
+    // only missing for an error printed before init.php got that far.
+    $output_host = defined('HOSTNAME') ? HOSTNAME : ($_SERVER['HTTP_HOST'] ?? '');
+
     $output = '<!DOCTYPE html>
 <html lang="' . lang(array('info' => '')) . '">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,minimum-scale=1,user-scalable=no">
-    <title>' . $software_page_title . $software_title . h($_SERVER['HTTP_HOST']) . '</title>
+    <title>' . $software_page_title . $software_title . h($output_host) . '</title>
     <meta name="application-name" content="Pinegrap CMS">
     <meta name="color-scheme" content="light dark">
     <link rel="icon" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/ico/big/' . $output_fav_icon . '.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" type="image/x-icon">
@@ -973,6 +1619,17 @@ function output_header_secure($properties = false)
     return $output;
 }
 
+
+// The handler of a button that goes to $url (pgSettingsGo()), ready for an
+// attribute. The address is a JSON string first and HTML second: the
+// attribute's entities are decoded before the script runs, so an apostrophe
+// escaped for HTML alone would close a quoted string, and a send_to read
+// from the request would run as script.
+function pg_output_go_script($url)
+{
+    $json = json_encode((string)$url, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    return htmlspecialchars('pgSettingsGo(' . ($json === false ? '""' : $json) . ');', ENT_QUOTES, 'UTF-8');
+}
 
 function output_header($properties = false)
 {
@@ -1045,7 +1702,7 @@ function output_header($properties = false)
             // a link: a cancel that points at the settings has to open the
             // dialog over this screen rather than walk to a page, and the
             // delegated handler that does that for links never sees a button.
-            $output_cancel_button_action = 'OnClick="pgSettingsGo(\'' . htmlspecialchars($cancel['url'], ENT_QUOTES, 'UTF-8') . '\');"';
+            $output_cancel_button_action = 'OnClick="' . pg_output_go_script($cancel['url']) . '"';
             if (isset($cancel['title'])) {
                 $output_cancel_button_title = $cancel['title'];
             }
@@ -1174,6 +1831,39 @@ function output_header($properties = false)
         }
     }
 
+    // Connected applications (connected_apps.php), offered while the site has
+    // an OAuth application switched on: that is when a person can have one.
+    // Read without the db() helpers, which treat a failed query as fatal, so
+    // that a screen drawn before the upgrade has added the column still opens.
+    $output_connected_apps_link = '';
+    $oauth_on = @mysqli_query(db::$con, "SELECT 1 FROM api_apps WHERE kind = 'oauth' AND status = 'active' LIMIT 1");
+    if ($oauth_on && (mysqli_num_rows($oauth_on) > 0)) {
+        $output_connected_apps_link = '<li><a class="connected_apps_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connected_apps.php"' . $output_parent_target . '><i class="bi bi-plug"></i><span>' . lang('Connected applications') . '</span></a></li>';
+    }
+
+    // Calendar subscription (workspace_calendar_feed.php), offered to the
+    // members of the team while the workspace is on: a person's own address
+    // for the calendar on their phone or computer. The module is loaded the
+    // way the main menu loads it, and only then.
+    $output_calendar_feed_link = '';
+    $output_workspace_rights = null;
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && (($user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $output_workspace_rights = ws_ready() ? ws_rights($user) : null;
+        if ($output_workspace_rights && $output_workspace_rights['member']) {
+            $output_calendar_feed_link = '<li><a class="calendar_feed_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar_feed.php"' . $output_parent_target . '><i class="bi bi-calendar-plus"></i><span>' . lang('Calendar subscription') . '</span></a></li>';
+        }
+    }
+
+    // The quick note beside the bell (ws_notes_quick_markup()), for the same
+    // people while the workspace keeps notes, and the way to My Notes. Not in
+    // the toolbar, for the reason the settings are not: that header is a thin
+    // strip inside the frame of the site being edited.
+    $output_quick_note = '';
+    if (($toolbar != true) && $output_workspace_rights && $output_workspace_rights['member']) {
+        $output_quick_note = ws_notes_quick_markup($output_workspace_rights, $output_parent_target);
+    }
+
     $output_home_page_link_url = '';
     // get home page(s)
     $query = "SELECT page_name FROM page WHERE page_home = 'yes'";
@@ -1201,6 +1891,7 @@ function output_header($properties = false)
     $output_private_label_list = '';
     $output_logo = '';
     $output_feedback_link = '';
+    $output_software_distributor_link = '';
     $output_help_link = '';
 
     // Plays the tour of the frame again.  It belongs beside Help rather than
@@ -1803,7 +2494,7 @@ function output_header($properties = false)
         <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
         <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-        ' . output_control_panel_header_includes(true, $help_topic) . '
+        ' . output_control_panel_header_includes(true, $help_topic, !isset($properties['code_editor']) || $properties['code_editor']) . '
         ' . $output_tour_head . '
         ' . (isset($properties['head']) ? $properties['head'] : '') . '
     </head>
@@ -1834,6 +2525,7 @@ function output_header($properties = false)
                         <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#SearchBox" aria-label="' . lang('Search') . '"><span class="bi bi-search"></span></button>
                     </li>
                 </ul>
+                ' . $output_quick_note . '
                 ' . $output_help_button . '
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
@@ -1900,6 +2592,8 @@ function output_header($properties = false)
                                     <i class="bi bi-person"></i><span>' . lang('My Account') . '</span>
                                 </a>
                             </li>
+                            ' . $output_connected_apps_link . '
+                            ' . $output_calendar_feed_link . '
                             ' . $output_start_page_link . '
                             <li class="pg-um-section-row"><span class="pg-um-section">' . lang('Help & Support') . '</span></li>
                             ' . $output_tour_link . '
@@ -2522,7 +3216,7 @@ function output_menu($properties = false)
             . '<span class=\'input-group-text\'>' . h(lang('seconds')) . '</span>'
             . '</div>'
             . '<button type=\'submit\' class=\'btn btn-sm btn-primary w-100 mb-1\'>' . h(lang('Update')) . '</button>'
-            . '<button type=\'button\' onclick=\'reset_widgets()\' data-loading-content=\' \' class=\'btn btn-sm btn-secondary w-100\'>' . h(lang('Reset Widgets')) . '</button>'
+            . '<button type=\'button\' onclick=\'reset_widgets()\' class=\'btn btn-sm btn-secondary w-100\'>' . h(lang('Reset Widgets')) . '</button>'
             . '</form>';
     }
 
@@ -2636,6 +3330,10 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-graph-up bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
+
+        // VISITORS > Google Search Console
+        $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Google Search Console') . '</a>';
 
         // VISITORS > Analystics
         // if an external web stats link is supplied in the settings, then prepare link to web stats
@@ -2991,6 +3689,7 @@ function output_menu($properties = false)
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-building bi-me-2\'>' . lang('Accounts') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt bi-me-2\'>' . lang('Invoices') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-text bi-me-2\'>' . lang('Quotes') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_purchase_orders.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-check bi-me-2\'>' . lang('Purchase orders') . '</a>';
         // Screens only an e-document provider can fill; a store without one
         // (or with one that does not hand these over) is not shown them.
         if (pg_erp_provider_offers('inbox')) {
@@ -3148,6 +3847,7 @@ function output_menu($properties = false)
         case 'view_visitor_reports.php':
         case 'view_visitor_report.php':
         case 'view_visitor.php':
+        case 'search_console.php':
             $active_menu = 6;
             break;
         case 'view_contacts.php':
@@ -3187,6 +3887,9 @@ function output_menu($properties = false)
         case 'erp_quotes.php':
         case 'add_erp_quote.php':
         case 'edit_erp_quote.php':
+        case 'erp_purchase_orders.php':
+        case 'add_erp_purchase_order.php':
+        case 'edit_erp_purchase_order.php':
         case 'erp_inbox.php':
         case 'erp_inbox_document.php':
         case 'erp_account_sync.php':
@@ -3233,6 +3936,7 @@ function output_menu($properties = false)
         case 'workspace_board.php':
         case 'workspace_calendar.php':
         case 'workspace_timeline.php':
+        case 'workspace_mcp.php':
         case 'workspace_settings.php':
             $active_menu = 23;
             break;
@@ -5159,4 +5863,123 @@ function pg_version_assets_callback($match)
     }
 
     return $match[1] . $match[2] . $match[3] . $url . '?v=' . $versions[$url] . $match[5];
+}
+
+/**
+ * The panel scripts that are served minified, and what each is built from.
+ *
+ * Every key is a .min.js under the software directory; its value lists the
+ * sources it is made of, in the order they run. tools/build_js.php writes
+ * the .min.js files from this list (terser, flags fixed there) and its
+ * --check mode, run by CI, fails while a .min.js no longer matches its
+ * sources. A screen asks for a key through pg_js_bundle_urls(), never for a
+ * source by name, so the two cannot drift apart on the page either.
+ *
+ * The workspace's own scripts are one file: every workspace screen and the
+ * Workspace drawer of a record load the same set, so the browser fetches and
+ * compiles it once for all of them. The scripts only some screens load
+ * (the search box, the channel board, the tour) stay files of their own.
+ *
+ * @return array '<bundle>.min.js' => array('<source>.js', ...)
+ */
+function pg_js_bundles()
+{
+    return array(
+        'assets/js/workspace.min.js' => array(
+            'assets/js/workspace_editor.js',
+            'assets/js/workspace_recurrence.js',
+            'assets/js/workspace_events.js',
+            'assets/js/workspace_templates.js',
+            'assets/js/workspace_task_time.js',
+            'assets/js/workspace_task_links.js',
+            'assets/js/workspace_task_delegate.js',
+            'assets/js/workspace_task_approval.js',
+            'assets/js/workspace_approvals.js',
+            'assets/js/workspace_acks.js',
+            'assets/js/workspace_status.js',
+            'assets/js/workspace.js',
+        ),
+        'assets/js/workspace_palette.min.js'       => array('assets/js/workspace_palette.js'),
+        'assets/js/workspace_board_channel.min.js' => array('assets/js/workspace_board_channel.js'),
+        'assets/js/workspace_tour.min.js'          => array('assets/js/workspace_tour.js'),
+        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
+    );
+}
+
+/**
+ * The files a page loads for one of pg_js_bundles(): the .min.js when the
+ * site runs minified (ENVIRONMENT_SUFFIX 'min', the default), the sources one
+ * by one when it runs in development. The sources are also the answer when
+ * the .min.js is missing, so an update that left it out still serves a
+ * working screen.
+ *
+ * @param string $bundle a key of pg_js_bundles()
+ * @return array paths under the software directory, in load order
+ */
+function pg_js_bundle_files($bundle)
+{
+    $bundles = pg_js_bundles();
+
+    if (!isset($bundles[$bundle])) {
+        return array();
+    }
+
+    $minified = !defined('ENVIRONMENT_SUFFIX') || (ENVIRONMENT_SUFFIX === 'min');
+
+    if ($minified && is_file(PG_FUNCTIONS_DIR . '/' . $bundle)) {
+        return array($bundle);
+    }
+
+    return $bundles[$bundle];
+}
+
+/**
+ * The addresses of pg_js_bundle_files(), each versioned by its own
+ * modification time so a rebuilt file reaches every browser and CDN.
+ *
+ * @param string $bundle a key of pg_js_bundles()
+ * @return array URLs, in load order
+ */
+function pg_js_bundle_urls($bundle)
+{
+    $urls = array();
+
+    foreach (pg_js_bundle_files($bundle) as $file) {
+        $urls[] = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/' . $file);
+    }
+
+    return $urls;
+}
+
+/**
+ * <script> tags for one of pg_js_bundles().
+ *
+ * @param string $bundle a key of pg_js_bundles()
+ * @param bool   $defer  run after the document is parsed, in order
+ * @return string
+ */
+function pg_js_bundle_tags($bundle, $defer = true)
+{
+    $tags = '';
+
+    foreach (pg_js_bundle_urls($bundle) as $url) {
+        $tags .= '
+<script src="' . h($url) . '"' . ($defer ? ' defer' : '') . '></script>';
+    }
+
+    return $tags;
+}
+
+/**
+ * X-Content-Type-Options: nosniff, once. The firewall's copy leaves the header
+ * to the web server where its rules add it already (waf_send_nosniff());
+ * before waf.php is loaded, PHP sends it.
+ */
+function pg_send_nosniff()
+{
+    if (function_exists('waf_send_nosniff')) {
+        waf_send_nosniff();
+    } elseif (!headers_sent()) {
+        header('X-Content-Type-Options: nosniff');
+    }
 }

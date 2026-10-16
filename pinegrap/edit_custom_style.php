@@ -20,6 +20,15 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM style WHERE style_id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // If the form was not just submitted, then continue to output the page.
 if (!$_POST) {
     // Get style information.
@@ -163,7 +172,12 @@ if (!$_POST) {
        
     } else {
         // output regular delete button
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page style')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        // Once the bin holds styles, a deleted style goes there.
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+        $delete_confirmation = pg_recycle_style_ready()
+            ? lang('This page style will be moved to the Recycle Bin.')
+            : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page style'))));
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     print
@@ -177,7 +191,7 @@ if (!$_POST) {
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                <a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                             </div>
                         </nav>
                     </div>
@@ -249,8 +263,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">arrow_backsave</span><span class="btn-text">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary"><span class="material-icons me-2">arrow_backsave</span><span class="btn-text">' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
@@ -302,15 +316,28 @@ else
             // output error
             output_error(lang('You may not delete this page style because it is being used by at least one folder or page.'));
         
-        // else delete the style
+        // else delete the style: to the Recycle Bin once it holds styles,
+        // where it can be restored from the file manager
         } else {
-            
-            $result=mysqli_query(db::$con, "DELETE FROM style WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 
-            db("DELETE FROM preview_styles WHERE style_id = '" . escape($_POST['id'] ?? '') . "'");
-            
-            log_activity(lang(array('string'=>'style ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
-            $notice = lang('The style was deleted successfully.');
+            if (pg_recycle_style_ready()) {
+                $recycled = pg_recycle_style((int) ($_POST['id'] ?? 0), $user);
+
+                if ($recycled['status'] != 'binned') {
+                    output_error(h($recycled['message']));
+                }
+
+                $notice = lang('The style was moved to the Recycle Bin.');
+
+            } else {
+                $result=mysqli_query(db::$con, "DELETE FROM style WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+
+                db("DELETE FROM preview_styles WHERE style_id = '" . escape($_POST['id'] ?? '') . "'");
+
+                log_activity(lang(array('string'=>'style ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+                $notice = lang('The style was deleted successfully.');
+            }
         }
     
     // Else update the style.

@@ -5,14 +5,27 @@ include_once('liveform.class.php');
 $liveform = new liveform('editor_edit_file');
 validate_area_access($user, 'designer');
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page. The screen shows the file as text and Save writes over it,
+// so the record must also be a design file stored under a plain name in the
+// files folder, with one of the text formats below: an image, a font or any
+// other file is not found either, on opening and on saving alike.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+$file = ($id > 0) ? db_item("SELECT id, name, folder, description FROM files WHERE (id = '" . $id . "') AND (design = '1')") : null;
+$file_name = is_array($file) ? (string) $file['name'] : '';
+if (
+    ($file_name === '')
+    || ($file_name !== basename($file_name))
+    || (strpos($file_name, '..') !== false)
+    || !in_array(mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)), array('js', 'json', 'txt', 'svg', 'xml'), true)
+) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // if there has not been a post then continue to output the page
 if (!$_POST) {
-
-    // Get file data from database
-    $query = "SELECT name FROM files WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-    $file_name = $row['name'];
 
     // Detect file extension
     $extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
@@ -35,8 +48,16 @@ if (!$_POST) {
             break;
     }
 
-    // Get file content
-    $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
+    // A file recorded here but missing from the disk opens empty with a
+    // note instead of a PHP warning; Save writes it again.
+    $output_file_missing = '';
+
+    if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+        $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
+    } else {
+        $code = '';
+        $output_file_missing = '<div class="alert alert-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+    }
 
     // Output the page
     print
@@ -62,7 +83,7 @@ if (!$_POST) {
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
-                ' . $liveform->output_notices() . '
+                ' . $liveform->output_notices() . $output_file_missing . '
                 <div class="row mb-2 flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
 <h2 class="d-inline-block text-break" title="' . lang( array('string'=>'Edit {var:1}','vars'=>strtoupper($extension)) ) . '">[' . h($file_name) . ']</h2>
@@ -109,15 +130,30 @@ if (!$_POST) {
     
 </main>' . output_footer();
 
-    $liveform->remove_form('edit_design_file');
+    // Clears this screen's own form (editor_edit_file): remove_form() takes no
+    // argument and always acts on the form the object was made for.
+    $liveform->remove_form();
 
 } else {
 
     validate_token_field();
 
+    // The code is the file's new content. Sent as an array or not at all it
+    // counts as not given: nothing is written and the editor opens again
+    // with the file as it is (an array emptied the file and ended in an
+    // error page).
+    pg_request_single_values(array('code'));
+
+    if (!isset($_POST['code'])) {
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/editor_edit_file.php?id=' . $id);
+        exit();
+    }
+
     if (($_POST['submit_duplicate'] ?? '') == 'Duplicate') {
 
-        $new_file_name = prepare_file_name($_POST['name']);
+        // The copy is named after the stored file, never the posted name,
+        // so it keeps the stored file's format.
+        $new_file_name = prepare_file_name($file_name);
         $new_file_name = get_unique_name(array('name' => $new_file_name, 'type' => 'file'));
         $file_extension = pathinfo($new_file_name, PATHINFO_EXTENSION);
 
@@ -125,9 +161,7 @@ if (!$_POST) {
         fwrite($handle, $_POST['code']);
         fclose($handle);
 
-        $query = "SELECT folder, description FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
+        $row = $file;
 
         $query = "INSERT INTO files (
             name, folder, description, type, size, design, user, timestamp
@@ -144,7 +178,7 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $new_file_id = mysqli_insert_id(db::$con);
 
-        log_activity(lang(array('string'=>'a new copy of the file ({var:1}) was created', 'vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'a new copy of the file ({var:1}) was created', 'vars'=>$file_name)), $_SESSION['sessionusername']);
 
         include_once('liveform.class.php');
         $liveform = new liveform('edit_design_file');
@@ -156,16 +190,13 @@ if (!$_POST) {
 
         include_once('liveform.class.php');
 
-        // The path is taken from the stored row, never from the posted name:
-        // a posted name is under the caller's control and could point anywhere
-        // on the file system, past the neutralisation that uploads go through.
-        $file_row = db_item("SELECT id, name FROM files WHERE id = '" . (int)($_POST['id'] ?? 0) . "'");
-        $file_name = is_array($file_row) ? (string)$file_row['name'] : '';
-        if (($file_name === '') || ($file_name !== basename($file_name)) || (strpos($file_name, '..') !== false)) {
-            output_error(lang('Sorry, the file could not be found.'));
-        }
+        // The path is the stored name the gate above checked, never the
+        // posted name: a posted name is under the caller's control and could
+        // point anywhere on the file system.
 
-        unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+            unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        }
         $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
         fwrite($handle, $_POST['code']);
         fclose($handle);
@@ -174,7 +205,7 @@ if (!$_POST) {
             SET size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
                 timestamp = UNIX_TIMESTAMP(),
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . (int)$file_row['id'] . "'";
+            WHERE id = '" . $id . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'the file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);
@@ -182,12 +213,12 @@ if (!$_POST) {
         if (($_POST['submit_save'] ?? '') == 'Save') {
             $liveform = new liveform('editor_edit_file');
             $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/editor_edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode($_POST['send_to']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/editor_edit_file.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
             exit();
         } else {
             $liveform = new liveform('edit_design_file');
             $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode($_POST['send_to']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
             exit();
         }
     }

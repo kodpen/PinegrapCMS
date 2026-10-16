@@ -28,9 +28,18 @@ function get_affiliate_sign_up_form_screen_content($properties)
     $liveform = new liveform('affiliate_sign_up_form');
     
     // get user information to find contact
-    $query = "SELECT user_id, user_email, user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
+    //
+    // Nobody is signed in while the search index is updated, or when a visitor
+    // who has not signed in opens the page. There is then no user and no
+    // contact, so every field starts blank, as it always did.
+    $query = "SELECT user_id, user_email, user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    if (is_array($row) == false) {
+        $row = array('user_id' => null, 'user_contact' => null);
+    }
+
     $user_id = $row['user_id'];
     $contact_id = $row['user_contact'];
 
@@ -55,6 +64,26 @@ function get_affiliate_sign_up_form_screen_content($properties)
                  WHERE id = '" . $contact_id . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
+
+        // A user without a contact record (an administrator created in the control
+        // panel) has nothing to prefill, so every field starts blank. Null keeps the
+        // fields exactly as a missing value always printed them.
+        if (is_array($row) == false) {
+            $row = array_fill_keys(array(
+                'first_name',
+                'last_name',
+                'business_address_1',
+                'business_address_2',
+                'business_city',
+                'business_state',
+                'business_zip_code',
+                'business_country',
+                'business_phone',
+                'business_fax',
+                'email_address',
+                'company',
+                'website'), null);
+        }
         
         // assign form values
         $liveform->assign_field_value('first_name', $row['first_name']);
@@ -128,6 +157,8 @@ function get_affiliate_sign_up_form_screen_content($properties)
                 zip_code_id: "zip_code"});
         </script>';
 
+    $output_terms = '';
+
     // if a terms page is selected for this page then prepare output for terms checkbox
     if ($terms_page_name) {
         $output_terms = '<div style="margin-bottom: 15px">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'terms_and_conditions', 'name'=>'terms_and_conditions', 'class'=>'software_input_checkbox')) . '<label for="terms_and_conditions"> ' . lang(array('string' => 'I agree to the {var:1}.', 'vars' => '<a href="' . OUTPUT_PATH . $terms_page_name . '" target="_blank">' . lang('terms and conditions') . '</a>')) . '</label></div>';
@@ -144,7 +175,7 @@ function get_affiliate_sign_up_form_screen_content($properties)
     
     // we are limiting the affiliate code to 50 characters because the key code database field only supports 50 characters (group offer feature will put affiliate code in key code)
 
-    $output .=
+    $output =
         $liveform->output_errors() . '
         <form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/affiliate_sign_up_form.php" method="post">
             ' . get_token_field() . '

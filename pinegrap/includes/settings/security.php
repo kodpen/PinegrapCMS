@@ -146,15 +146,15 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
-// ── Sign in with Google ──
-$pg_settings_cards[] = '
-    <div id="pgset-signin" class="pg-set-card">
-        <div class="card">
-            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Sign in with Google') . '</span>
-            </div>
-            <div class="card-body">
-                <div class="row gy-3">
+// ── Sign in with Google, Microsoft and Apple ──
+// One card, a switch per provider. Google's application and switch are the
+// config columns it always had, and its return address is still
+// google_auth.php. The other switches go to config.signin_providers, their
+// applications to connect_apps: Microsoft's is the one of Connected
+// accounts (mail and the other features use it too), Apple's is entered
+// here because Apple only signs people in. Until the 10.74 upgrade has run
+// the card says so and only Google's fields are there.
+$signin_google_body = '
                                         <div class="col-12 ">
                                             <div class="form-check form-switch ">
                                                 <input value="1"' . $oauth_google_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="oauth_google_enabled" name="oauth_google_enabled" data-bs-target="#oauth_google_row"/>
@@ -174,13 +174,139 @@ $pg_settings_cards[] = '
                                                             <div class="form-text">' . lang('Shown as plain text on purpose: a password-type box invites the browser\'s password manager to overwrite it, which silently replaces the key on save.') . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <label class="form-label">' . lang('Authorized redirect URI (add this to your Google Cloud OAuth client)') . '</label>
-                                                            <input class="form-control" type="text" readonly onclick="this.select()" value="' . h(URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/google_auth.php') . '"/>
+                                                            <label class="form-label" for="oauth_google_redirect">' . lang('Authorized redirect URI (add this to your Google Cloud OAuth client)') . '</label>
+                                                            <input class="form-control font-monospace" type="text" id="oauth_google_redirect" readonly onclick="this.select()" value="' . h(URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/google_auth.php') . '"/>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </div>';
+
+$signin_redirect_field = function ($id, $label) {
+    return '
+                                                        <div class="col-12">
+                                                            <label class="form-label" for="' . $id . '">' . h($label) . '</label>
+                                                            <input class="form-control font-monospace" type="text" id="' . $id . '" readonly onclick="this.select()" value="' . h(pg_signin_redirect_uri()) . '"/>
+                                                        </div>';
+};
+$signin_not_ready = '<div class="alert alert-info mb-0" role="alert">' . h(lang('The database has not been upgraded yet. Run the software update first.')) . '</div>';
+
+// Which buttons visitors see now. pg_signin_buttons() prints them together,
+// in this order, on every sign-in, registration and membership screen; a
+// provider switched on whose application is incomplete stays hidden, and
+// the card says so instead of leaving the operator to wonder.
+$signin_state = function_exists('pg_signin_button_state') ? pg_signin_button_state() : array('shown' => array(), 'hidden' => array());
+$signin_state_html = '<div class="col-12"><div class="small mb-0">'
+    . ($signin_state['shown']
+        ? '<i class="bi bi-eye me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Buttons visitors see now, together and in this order on every sign-in, registration and membership screen: {var:1}', 'vars' => implode(', ', $signin_state['shown']))))
+        : '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . h(lang('No sign-in button is shown to visitors now.')))
+    . '</div>'
+    . ($signin_state['hidden']
+        ? '<div class="alert alert-warning py-2 small mt-2 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Switched on but hidden until their settings are complete: {var:1}', 'vars' => implode(', ', $signin_state['hidden'])))) . '</div>'
+        : '')
+    . '</div>';
+
+if ($signin_ready) {
+    $signin_microsoft_provider = pg_connect_provider('microsoft');
+    $signin_microsoft_app_ready = is_array($signin_microsoft_provider) && pg_signin_app_ready($signin_microsoft_provider, $signin_microsoft_app);
+
+    $signin_microsoft_body = '
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . $signin_microsoft_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="signin_microsoft" name="signin_microsoft" data-bs-target="#signin_microsoft_row"/>
+                                                <label class="form-check-label" for="signin_microsoft">' . lang('Enable Microsoft Sign-In') . '</label>
+                                            </div>
+                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="signin_microsoft_row">
+                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
+                                                <div class="popover-body">
+                                                    <div class="row gy-3">
+                                                        <div class="col-12">
+                                                            ' . ($signin_microsoft_app_ready
+                                                                ? '<div class="alert alert-success py-2 small mb-2">' . h(lang('Work, school and personal Microsoft accounts sign in through the Microsoft application of Connected accounts.')) . '</div>'
+                                                                : '<div class="alert alert-warning py-2 small mb-2">' . h(lang('Set up the Microsoft application on Connected accounts first. Until then the button stays hidden.')) . '</div>') . '
+                                                            <a href="connections.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>
+                                                        </div>'
+                                                        . $signin_redirect_field('signin_microsoft_redirect', lang('Redirect URI (add this as a further Web redirect URI to the Microsoft application)')) . '
+                                                        <div class="col-12">
+                                                            <div class="form-text">' . h(lang('A personal account\'s address counts as verified, so it can sign in to an existing account with the same address. A work or school address counts only when the directory confirms it owns the domain: in the Microsoft application, under Token configuration, add the optional claim xms_edov to the ID token. Without it, work and school accounts are refused.')) . '</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>';
+
+    $signin_apple_provider = pg_connect_provider('apple');
+    $signin_apple_steps = '';
+
+    foreach ((is_array($signin_apple_provider) ? $signin_apple_provider['setup'] : array()) as $signin_apple_step) {
+        $signin_apple_steps .= '<li>' . h($signin_apple_step) . '</li>';
+    }
+
+    $signin_apple_key_stored = is_array($signin_apple_app) && $signin_apple_app['secret_stored'];
+    $signin_apple_option = function ($name) use ($signin_apple_app) {
+        return (is_array($signin_apple_app) && isset($signin_apple_app['options'][$name])) ? (string) $signin_apple_app['options'][$name] : '';
+    };
+
+    $signin_apple_body = '
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . $signin_apple_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="signin_apple" name="signin_apple" data-bs-target="#signin_apple_row"/>
+                                                <label class="form-check-label" for="signin_apple">' . lang('Enable Apple Sign-In') . '</label>
+                                            </div>
+                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="signin_apple_row">
+                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
+                                                <div class="popover-body">
+                                                    <div class="row gy-3">
+                                                        ' . (($signin_apple_provider && !pg_signin_app_ready($signin_apple_provider, $signin_apple_app))
+                                                            ? '<div class="col-12"><div class="alert alert-warning py-2 small mb-0">' . h(lang('Fill in the Services ID, the Team ID, the Key ID and the private key. Until then the button stays hidden.')) . '</div></div>'
+                                                            : '') . '
+                                                        <div class="col-12">
+                                                            <ol class="small ps-3 mb-0">' . $signin_apple_steps . '</ol>
+                                                        </div>'
+                                                        . $signin_redirect_field('signin_apple_redirect', lang('Return URL (add this to the Services ID)')) . '
+                                                        <div class="col-12">
+                                                            <label class="form-label" for="apple_client_id">' . lang('Services ID') . '</label>
+                                                            <input class="form-control" type="text" id="apple_client_id" name="apple_client_id" value="' . h(is_array($signin_apple_app) ? $signin_apple_app['client_id'] : '') . '" maxlength="255" autocomplete="off" spellcheck="false" placeholder="com.example.signin"/>
+                                                        </div>
+                                                        <div class="col-12 col-md-6">
+                                                            <label class="form-label" for="apple_team_id">' . lang('Team ID') . '</label>
+                                                            <input class="form-control font-monospace" type="text" id="apple_team_id" name="apple_team_id" value="' . h($signin_apple_option('team_id')) . '" maxlength="10" autocomplete="off" spellcheck="false"/>
+                                                        </div>
+                                                        <div class="col-12 col-md-6">
+                                                            <label class="form-label" for="apple_key_id">' . lang('Key ID') . '</label>
+                                                            <input class="form-control font-monospace" type="text" id="apple_key_id" name="apple_key_id" value="' . h($signin_apple_option('key_id')) . '" maxlength="10" autocomplete="off" spellcheck="false"/>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <label class="form-label" for="apple_private_key">' . lang('Private key (.p8)') . '</label>
+                                                            <textarea class="form-control font-monospace small" id="apple_private_key" name="apple_private_key" rows="4" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="' . h($signin_apple_key_stored ? lang('Stored. Leave empty to keep it.') : '-----BEGIN PRIVATE KEY-----') . '"></textarea>
+                                                            <div class="form-text">' . h(lang('Kept encrypted with the site\'s key and never shown again.')) . '</div>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <a class="btn btn-sm btn-outline-secondary" href="' . h(is_array($signin_apple_provider) ? $signin_apple_provider['console_url'] : '') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => 'Apple'))) . '</a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>';
+} else {
+    $signin_microsoft_body = '';
+    $signin_apple_body = '';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-signin" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Sign in with Google, Microsoft and Apple') . '</span>
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">
+                                        <div class="col-12">
+                                            <div class="form-text mt-0">' . h(lang('Every provider follows the same rules: an account is found by the provider account connected to it, else by the same verified e-mail address. The staff login never opens an account, the registration and membership pages do. Two-step verification still applies.')) . '</div>
+                                        </div>'
+                    . ($signin_ready ? $signin_state_html : '<div class="col-12">' . $signin_not_ready . '</div>')
+                    . $signin_google_body . $signin_microsoft_body . $signin_apple_body . '
                 </div>
             </div>
         </div>

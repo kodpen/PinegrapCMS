@@ -41,31 +41,35 @@ if (!$_POST) {
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
     $output_image_header = $show_image ? '<th>' . lang('Image') . '</th>' : '';
 
-    $total_unselected = (int) db_value("SELECT COUNT(*) FROM products");
+    // Products in the Recycle Bin are not offered for the new group.
+    $live_products_sql = pg_catalog_bin_live_sql('products');
+
+    $total_unselected = (int) db_value("SELECT COUNT(*) FROM products WHERE 1 = 1" . $live_products_sql);
 
     // Preload first 50 products so the page isn't empty on load.
     $initial_products = db_items(
         "SELECT id, name, enabled, short_description, image_name, price
          FROM products
+         WHERE 1 = 1" . $live_products_sql . "
          ORDER BY timestamp DESC
          LIMIT 50"
     );
+
+    // The pictures behind each product's cover, for the image viewer.
+    $more_images = $show_image ? pg_product_more_images(array_column($initial_products, 'id')) : array();
 
     foreach ($initial_products as $urow) {
         $urow['price'] = $urow['price'] / 100;
         $ustatus_class = $urow['enabled'] == 1 ? 'text-success' : 'text-danger';
         $uoutput_image_column = '';
         if ($show_image) {
-            if (!$urow['image_name']) {
-                $uoutput_image_column = '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image')) . '</text></svg></td>';
-            } else {
-                $uoutput_image_column = '<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . $urow['image_name'] . '" /></td>';
-            }
+            $uoutput_image_column = pg_product_image_cell('product-' . (int) $urow['id'], $urow['image_name'], $urow['name'], $urow['short_description'],
+                isset($more_images[(int) $urow['id']]) ? $more_images[(int) $urow['id']] : array());
         }
         $output_rows .=
             '<tr id="' . $urow['id'] . '">' .
             '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
+            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $uoutput_image_column .
             '<td class="align-middle chart_label ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
@@ -85,7 +89,7 @@ if (!$_POST) {
             '<div class="col-12 col-md-4 my-2">' .
             '<label for="parent_id" class="form-label">*' . lang('Parent Product Group') . '</label>' .
             '<select required style="width:100%" class="select2 form-select" id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
-            get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE) .
+            get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE, 'text', false, true, false) .
             '</select></div>';
     } else {
         $output_parent_group_select_block = '<input type="hidden" name="parent_id" value="0" />';
@@ -360,7 +364,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_button" value="Create" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_button" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -370,6 +374,7 @@ if (!$_POST) {
         </div>
     ' .
         pg_pb_render_image_picker_assets() .
+        ($show_image ? _pg_lightbox_assets_once() : '') .
         '</main>' . output_footer();
 
 $liveform->remove_form();

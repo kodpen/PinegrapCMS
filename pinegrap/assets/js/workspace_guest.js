@@ -6,6 +6,9 @@
  * and asked for news every few seconds. The guest writes text with bold,
  * italics and strike-through, answers a message and leaves an emoji.
  *
+ * Served minified as assets/js/workspace_guest.min.js (pg_js_bundles(),
+ * includes/fn/output.php); after editing run `php tools/build_js.php`.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen

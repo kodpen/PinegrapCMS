@@ -79,6 +79,7 @@ function pg_panel_backend_search($request, $action)
     // ── Visitors ──────────────────────────────────────────────────────────
     $actions[] = array('label' => lang('Visitor Reports'), 'icon' => 'bi-people', 'url' => $base_url . '/view_visitor_reports.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitor', 'visit', 'zia', 'rap'));
     $actions[] = array('label' => lang('Visitor Report'), 'icon' => 'bi-graph-up', 'url' => $base_url . '/view_visitor_report.php', 'keys' => array('ziyaret rapor', 'visitor report', 'rapor ziy', 'ziyrapor'));
+    $actions[] = array('label' => lang('Google Search Console'), 'icon' => 'bi-google', 'url' => $base_url . '/search_console.php', 'keys' => array('search console', 'arama konsolu', 'google arama', 'gsc', 'site haritasi', 'sitemap', 'tiklama', 'gosterim'));
 
     // ── Contacts ──────────────────────────────────────────────────────────
     if ($can_contacts) {
@@ -144,6 +145,7 @@ function pg_panel_backend_search($request, $action)
         $actions[] = array('label' => lang('Log'), 'icon' => 'bi-journal-text', 'url' => $base_url . '/view_log.php', 'keys' => array('log', 'kayit', 'journal', 'akt'));
         $actions[] = array('label' => lang('Backups'), 'icon' => 'bi-database', 'url' => $base_url . '/backups.php', 'keys' => array('yedek', 'backup', 'bak', 'yed'));
         $actions[] = array('label' => lang('SMTP Settings'), 'icon' => 'bi-envelope-at', 'url' => $base_url . '/smtp_settings.php', 'keys' => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'));
+        $actions[] = array('label' => lang('Connected accounts'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/connections.php', 'keys' => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'));
     }
 
     // ── Design ────────────────────────────────────────────────────────────
@@ -297,11 +299,12 @@ function pg_panel_backend_search($request, $action)
 
     // ── E-commerce (manager+ or manage_ecommerce) ────────────────────────
     if ($can_ecommerce) {
-        // Products
+        // Products; not those in the Recycle Bin, which the catalogue lists
+        // no longer show either.
         $rows = db_items(
             "SELECT id, name, short_description, image_name
              FROM products
-             WHERE (name LIKE '$s' OR short_description LIKE '$s')
+             WHERE (name LIKE '$s' OR short_description LIKE '$s')" . pg_catalog_bin_live_sql('products') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -319,7 +322,7 @@ function pg_panel_backend_search($request, $action)
         $rows = db_items(
             "SELECT id, name
              FROM product_groups
-             WHERE name LIKE '$s'
+             WHERE (name LIKE '$s')" . pg_catalog_bin_live_sql('product_groups') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {

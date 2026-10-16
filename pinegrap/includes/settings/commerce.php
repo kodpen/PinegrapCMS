@@ -152,10 +152,9 @@ $pg_settings_cards[] = '
                                                                                 <label class="form-check-label" for="ecommerce_recipient_mode_multirecipient">'. lang('Multi-Recipient') . '</label>
                                                                             </div>
                                                                         </div>
-                                                                        <div class="pg-f-md">
-                                                                            <label for="usps_user_id" class="form-label">' . lang('USPS Web Tools User ID') . '</label>
-                                                                            <input type="text" name="usps_user_id" id="usps_user_id" class="form-control" value="' . h($usps_user_id) . '" maxlength="100"/>
-                                                                        </div>
+                                                                        <div class="col-12 "><h6 class="text-muted mb-0">' . lang('USPS') . '</h6></div>
+                                                                        ' . pg_carrier_api_settings_fields('usps', $usps_legacy_set) . '
+                                                                        ' . pg_carrier_api_test_button('usps') . '
                                                                         <div class="col-12 ">
                                                                             <div class="form-check form-switch">
                                                                                 <input value="1"' . $ecommerce_address_verification_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_address_verification" name="ecommerce_address_verification" data-bs-target="#ecommerce_address_verification_row"/>
@@ -165,7 +164,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-3">
-                                                                                        <div class="alert alert-primary">' . lang('Requires an approved USPS Web Tools account') . '</div>
+                                                                                        <div class="alert alert-primary">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
                                                                                         <div class="col-12 ">
                                                                                             <label class="form-label">'. lang('Enforcement') . '</label>
                                                                                             <div class="form-check">
@@ -190,22 +189,13 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-3">
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ups_key" class="form-label">' . lang('Access Key') . '</label>
-                                                                                            <input type="text" name="ups_key" id="ups_key" class="form-control" value="' . h($ups_key) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ups_user_id" class="form-label">' . lang('User ID') . '</label>
-                                                                                            <input type="text" name="ups_user_id" id="ups_user_id" class="form-control" value="' . h($ups_user_id) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ups_password" class="form-label">' . lang('Password') . '</label>
-                                                                                            <input type="password" name="ups_password" id="ups_password" class="form-control" value="' . h($ups_password) . '" maxlength="100"/>
-                                                                                        </div>
+                                                                                        ' . pg_carrier_api_settings_fields('ups', $ups_legacy_set) . '
                                                                                         <div class="pg-f-md">
                                                                                             <label for="ups_account" class="form-label">' . lang('Account Number') . '</label>
                                                                                             <input type="text" name="ups_account" id="ups_account" class="form-control" value="' . h($ups_account) . '" maxlength="100"/>
+                                                                                            <div class="form-text">' . lang('For negotiated rates. Leave empty for published rates.') . '</div>
                                                                                         </div>
+                                                                                        ' . pg_carrier_api_test_button('ups') . '
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -219,22 +209,12 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-3">
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="fedex_key" class="form-label">' . lang('Key') . '</label>
-                                                                                            <input type="text" name="fedex_key" id="fedex_key" class="form-control" value="' . h($fedex_key) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="fedex_password" class="form-label">' . lang('Password') . '</label>
-                                                                                            <input type="password" name="fedex_password" id="fedex_password" class="form-control" value="' . h($fedex_password) . '" maxlength="100"/>
-                                                                                        </div>
+                                                                                        ' . pg_carrier_api_settings_fields('fedex', $fedex_legacy_set) . '
                                                                                         <div class="pg-f-md">
                                                                                             <label for="fedex_account" class="form-label">' . lang('Account Number') . '</label>
                                                                                             <input type="text" name="fedex_account" id="fedex_account" class="form-control" value="' . h($fedex_account) . '" maxlength="100"/>
                                                                                         </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="fedex_meter" class="form-label">' . lang('Meter Number') . '</label>
-                                                                                            <input type="text" name="fedex_meter" id="fedex_meter" class="form-control" value="' . h($fedex_meter) . '" maxlength="100"/>
-                                                                                        </div>
+                                                                                        ' . pg_carrier_api_test_button('fedex') . '
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -494,7 +474,7 @@ $pg_settings_cards[] = '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_default_series">' . lang('Invoice series') . '</label>
                         <input type="text" class="form-control" id="erp_default_series" name="erp_default_series" value="' . h($erp_default_series) . '" maxlength="10" autocomplete="off" />
-                        <div class="form-text">' . lang('The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns add I.') . '</div>
+                        <div class="form-text">' . lang('The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns I, purchase invoices A.') . '</div>
                     </div>
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_number_style">' . lang('Document numbers') . '</label>
@@ -573,6 +553,20 @@ $pg_settings_cards[] = '
                             <option value="block"' . (($erp_credit_limit_mode === 'block') ? ' selected' : '') . '>' . lang('Is refused until a payment comes in') . '</option>
                         </select>
                         <div class="form-text">' . lang('The limit is set on each account card. Weighed on invoices typed in the ERP; an order\'s invoice is never held back.') . '</div>
+                    </div>' : '') . ($erp_storefront_prices_ready ? '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_storefront_account_prices_checked . ' class="form-check-input" type="checkbox" id="erp_storefront_account_prices" name="erp_storefront_account_prices" />
+                            <label class="form-check-label" for="erp_storefront_account_prices">' . lang('Account prices in the store') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('A customer whose contact is linked to an account sees and pays that account\'s prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.') . '</div>
+                    </div>' : '') . ($erp_open_account_ready ? '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_open_account_payment_checked . ' class="form-check-input" type="checkbox" id="erp_open_account_payment" name="erp_open_account_payment" />
+                            <label class="form-check-label" for="erp_open_account_payment">' . lang('Put it on my account at checkout') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account\'s payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order is invoiced from its screen as usual and is never cancelled for an unpaid transfer.') . '</div>
                     </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>

@@ -26,6 +26,11 @@ include_once('liveform.class.php');
 $liveform = new liveform('order_form');
 $liveform->add_fields_to_session();
 
+// The page, the drop-down layout's product and quantity, and the recipient each post one
+// value (the list layout's per-product fields are checked in its loop below). One posted
+// as an array (quantity[]=) counts as not given, as for an empty field.
+pg_liveform_single_values($liveform, array('page_id', 'product_id', 'quantity', 'ship_to', 'add_name'));
+
 // get page type properties for order form
 $query =
     "SELECT
@@ -100,6 +105,11 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
 
             // loop through products in order to determine which products were selected and perform validation
             foreach ($products as $product) {
+                // The product's check box, quantity or donation amount and its recurring schedule
+                // post one value each; one posted as an array counts as not given: the product is
+                // not selected, or a required schedule field is reported missing.
+                pg_liveform_single_values($liveform, array('product_' . $product['id'], 'donation_' . $product['id'], 'recurring_payment_period_' . $product['id'], 'recurring_number_of_payments_' . $product['id'], 'recurring_start_date_' . $product['id']));
+
                 // assume that the product is not available until we find out otheriwse
                 $available = FALSE;
                 
@@ -476,7 +486,9 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                 FROM products
                 WHERE id = '" . escape($liveform->get_field_value('product_id')) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-            $product = mysqli_fetch_assoc($result);
+            // No row when the id names no product (unknown, empty or posted as an array): the
+            // product then counts as not available, without reading a row that is not there.
+            $product = mysqli_fetch_assoc($result) ?: array('name' => '', 'enabled' => 0, 'short_description' => '', 'selection_type' => '', 'price' => 0, 'default_quantity' => 0, 'inventory' => 0, 'inventory_quantity' => 0, 'backorder' => 0);
             
             // If product is enabled and there are not any inventory issues,
             // then allow product to be added.

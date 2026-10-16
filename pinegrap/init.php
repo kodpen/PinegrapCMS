@@ -424,6 +424,8 @@ define('REMEMBER_ME', $row['remember_me']);
 define('FORGOT_PASSWORD_LINK', $row['forgot_password_link']);
 define('OAUTH_GOOGLE_ENABLED', $row['oauth_google_enabled']);
 define('OAUTH_GOOGLE_CLIENT_ID', $row['oauth_google_client_id']);
+// Sign-in providers besides Google whose buttons are shown (10.74).
+define('SIGNIN_PROVIDERS', (string) ($row['signin_providers'] ?? ''));
 define('BANNED_EMAIL_ADDRESSES', (string) ($row['banned_email_addresses'] ?? ''));
 define('REMEMBER_ME_DEVICE_LIMIT_ENABLED', (int) ($row['remember_me_device_limit_enabled'] ?? 0));
 define('REMEMBER_ME_DEVICE_LIMIT', (int) ($row['remember_me_device_limit'] ?? 0));
@@ -690,6 +692,13 @@ define('ERP_FX_ENABLED', isset($row['erp_fx_enabled']) ? (int) $row['erp_fx_enab
 define('ERP_FX_CURRENCIES', $row['erp_fx_currencies'] ?? 'USD,EUR,GBP');
 define('ERP_FX_AUTO_DIFF', isset($row['erp_fx_auto_diff']) ? (int) $row['erp_fx_auto_diff'] : 1);
 define('ERP_DEFAULT_DUE_DAYS', isset($row['erp_default_due_days']) ? (int) $row['erp_default_due_days'] : 0);
+// The prices an account has agreed, shown and charged in the store to the
+// member whose contact the account is linked to (2026.4.10, 10.59;
+// pg_erp_member_prices()). Off by default.
+define('ERP_STOREFRONT_ACCOUNT_PRICES', !empty($row['erp_storefront_account_prices']));
+// "Put it on my account" at checkout for a member whose account has a credit
+// limit (2026.4.10, 10.60; pg_erp_open_account()). Off by default.
+define('ERP_OPEN_ACCOUNT_PAYMENT', !empty($row['erp_open_account_payment']));
 
 // Overdue receivable reminders; zero days is off. The switches default on so
 // that setting the days is the only step.
@@ -706,10 +715,15 @@ define('PARASUT_COMPANY_ID', $row['parasut_company_id'] ?? '');
 define('PARASUT_DEFAULT_PRODUCT_ID', $row['parasut_default_product_id'] ?? '');
 define('PARASUT_DEFAULT_WAREHOUSE_ID', $row['parasut_default_warehouse_id'] ?? '');
 define('PARASUT_API_BASE', 'https://api.parasut.com');
+// Where the Parasut token was kept until 2026.4.10, in plain text. Read once
+// to move it into the sealed service tokens (includes/fn/parasut.php).
 define('PARASUT_TOKEN_CACHE', dirname(__FILE__) . '/data/parasut_token.json');
 define('ENABLE_IYZIPAY_PROTECTED_CURRENCY', $row['enable_iyzipay_protected_currency']);
 define('IYZIPAY_PROTECTED_CURRENCY_CODE', $row['iyzipay_protected_currency_code']);
 define('INDEXNOW_KEY', $row['indexnow_key']);
+// The code Google Search Console asks the pages to carry in a meta tag
+// (2026.4.10, 10.73; includes/fn/search_console.php). Empty before the upgrade.
+define('GOOGLE_SITE_VERIFICATION', (string) ($row['google_site_verification'] ?? ''));
 
 // Open Graph and structured data settings (2026.4.4). Read with a fallback so
 // an installation that takes the code without running the database upgrade
@@ -746,6 +760,12 @@ define('TRANSLATION_PREFIXES', (string) ($row['translation_prefixes'] ?? ''));
 define('TRANSLATION_GOOGLE_KEY_ENC', (string) ($row['translation_google_key'] ?? ''));
 define('TRANSLATION_STYLE_NOTE', (string) ($row['translation_style_note'] ?? ''));
 define('TRANSLATION_ATTRIBUTION', isset($row['translation_attribution']) ? (int) $row['translation_attribution'] : 1);
+// Automatic language redirect (2026.4.10, 10.1; includes/fn/language_redirect.php).
+// Off, and the defaults of its schema step, while the columns are not there.
+define('LANGUAGE_REDIRECT', !empty($row['language_redirect']));
+define('LANGUAGE_REDIRECT_MODE', in_array(($row['language_redirect_mode'] ?? ''), array('language', 'country', 'both'), true) ? (string) $row['language_redirect_mode'] : 'both');
+define('LANGUAGE_REDIRECT_SCOPE', (($row['language_redirect_scope'] ?? '') === 'all') ? 'all' : 'home');
+define('LANGUAGE_REDIRECT_FALLBACK', (string) ($row['language_redirect_fallback'] ?? ''));
 
 
 if (!defined('SOFTWARE_LANGUAGE')) {
@@ -833,6 +853,12 @@ if (
     $_POST = array_stripslashes($_POST);
     $_COOKIE = array_stripslashes($_COOKIE);
 }
+
+// Where a form goes once it is saved (send_to) and the screen it was opened
+// from (from) are single values that every screen reads from the request
+// itself (174 files), so an array is turned away here, once, before any of
+// them runs. See pg_request_single_values().
+pg_request_single_values(array('send_to', 'from'));
 
 
 // If this request was made over the web instead of a cron job,

@@ -768,7 +768,7 @@ function get_sitemap_info() {
         // The records of a list widget, under the list's own filters, on its
         // detail page when that page shows the same form to everybody.
         if (function_exists('pg_sw_page_widget') && function_exists('pg_sw_form_widget_form_page_id') && function_exists('pg_sw_form_list_filter_sql')) {
-            foreach (array('form_list_view', 'submitted_forms_list', 'form_list', 'blog_list') as $list_type) {
+            foreach (pg_sw_form_list_types() as $list_type) {
                 foreach (pg_sw_widget_pages($list_type) as $host) {
                     $host_id = (int) $host['page_id'];
 
@@ -810,10 +810,13 @@ function get_sitemap_info() {
                         $filter_join = $standard['join'];
                     }
 
-                    $output_detail_path = h(PATH . encode_url_path($indexable_pages[$detail_page_id]['page_name']));
+                    // A record of a form with pretty URLs on is listed under
+                    // its name, the address its page names as canonical.
+                    $detail_page_name = $indexable_pages[$detail_page_id]['page_name'];
+                    $pretty = pg_sw_form_pretty_urls($form_page_id);
 
                     foreach ((array) db_items(
-                        "SELECT forms.reference_code, forms.last_modified_timestamp
+                        "SELECT forms.reference_code, forms.address_name, forms.last_modified_timestamp
                         FROM forms
                         $filter_join
                         WHERE
@@ -821,7 +824,7 @@ function get_sitemap_info() {
                             AND (forms.complete = 1)
                             " . $filter_sql['where'] . "
                         ORDER BY forms.last_modified_timestamp DESC") as $record) {
-                        $add_url(URL_SCHEME . HOSTNAME_SETTING . $output_detail_path . '?r=' . h(rawurlencode((string) $record['reference_code'])), $record['last_modified_timestamp']);
+                        $add_url(URL_SCHEME . HOSTNAME_SETTING . h(pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], $pretty)), $record['last_modified_timestamp']);
                     }
                 }
             }

@@ -35,7 +35,9 @@ $page_title = $is_collection ? lang('Record a Receipt') : lang('Record a Payment
 
 // Reached from an invoice: that invoice decides the account and suggests the
 // amount, so neither is left for the user to get wrong.
-$preset_invoice_id = (int) ($_REQUEST['invoice_id'] ?? 0);
+// Each of these is one value: an array (?invoice_id[]=x) cast to 1 and
+// picked the first invoice, account or order.
+$preset_invoice_id = is_scalar($_REQUEST['invoice_id'] ?? null) ? (int) $_REQUEST['invoice_id'] : 0;
 $preset_invoice = null;
 
 if ($preset_invoice_id > 0) {
@@ -53,11 +55,11 @@ if ($preset_invoice_id > 0) {
 // amount is left to the operator. Reached from an order's documents card (a
 // refund to record), the amount, the method and the words come too, and the
 // operator is sent back to the order afterwards.
-$preset_account_id = ($preset_invoice === null) ? (int) ($_REQUEST['account_id'] ?? 0) : 0;
-$preset_amount = max(0, (int) ($_GET['amount'] ?? 0));
-$preset_method = (string) ($_GET['method'] ?? '');
-$preset_description = trim(mb_substr((string) ($_GET['description'] ?? ''), 0, 200));
-$back_order_id = (int) ($_REQUEST['back_order'] ?? 0);
+$preset_account_id = (($preset_invoice === null) && is_scalar($_REQUEST['account_id'] ?? null)) ? (int) $_REQUEST['account_id'] : 0;
+$preset_amount = max(0, is_scalar($_GET['amount'] ?? null) ? (int) $_GET['amount'] : 0);
+$preset_method = is_string($_GET['method'] ?? null) ? $_GET['method'] : '';
+$preset_description = trim(mb_substr(is_string($_GET['description'] ?? null) ? $_GET['description'] : '', 0, 200));
+$back_order_id = is_scalar($_REQUEST['back_order'] ?? null) ? (int) $_REQUEST['back_order'] : 0;
 
 if (($back_order_id > 0) && !db_value("SELECT id FROM orders WHERE id = '" . $back_order_id . "' LIMIT 1")) {
     $back_order_id = 0;
@@ -310,7 +312,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -326,6 +328,11 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
+
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array account, till or invoice as record 1 and
+    // posted the money there, (string) wrote "Array" into the description.
+    pg_request_single_values(array('account_id', 'cash_account_id', 'invoice_id', 'amount', 'doc_date', 'currency', 'exchange_rate', 'payment_method', 'description'));
 
     $liveform->add_fields_to_session();
 

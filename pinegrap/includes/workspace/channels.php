@@ -211,6 +211,9 @@ function ws_channel_detail($viewer, $channel)
 
     $brief['tab_counts'] = ws_channel_tab_counts($channel);
 
+    // The newest status update, shown beside the name (status.php).
+    $brief['status'] = function_exists('ws_status_channel_state') ? ws_status_channel_state($channel) : null;
+
     // A discussion (threads.php): what it is about, and no pin of its own.
     if (ws_channel_is_thread($channel)) {
         $thread = ws_thread($channel['id']);
@@ -325,6 +328,12 @@ function ws_channel_add_members($viewer, $channel, $user_ids, $announce = true)
 
     if (!empty($added)) {
         ws_channel_folder_access($channel, $added, true);
+
+        // Back in a channel only its members read: what their inbox said
+        // about it is theirs again.
+        if ((string) $channel['kind'] !== 'public') {
+            ws_inbox_reach_regained($channel, $added);
+        }
     }
 
     if ($announce && !empty($added)) {
@@ -531,8 +540,10 @@ function ws_channel_make_public($viewer, $channel)
 
     db("UPDATE ws_channels SET kind = 'public' WHERE id = '" . (int) $channel['id'] . "'");
 
-    // The notes shared here follow: the whole team reads them now.
+    // The notes shared here follow: the whole team reads them now, and what
+    // their inbox said about it.
     ws_channel_folder_access($channel, array(), true);
+    ws_inbox_reach_regained($channel);
 
     ws_message_system($channel['id'], lang(array(
         'string' => '{var:1} opened this channel to the whole team. Everything written in it can now be read by every team member.',
@@ -584,6 +595,9 @@ function ws_channel_make_private($viewer, $channel)
     db("UPDATE ws_channels SET kind = 'private' WHERE id = '" . (int) $channel['id'] . "'");
 
     ws_channel_folder_access($channel, array(), true);
+
+    // The rest of the team no longer sees what their inbox said about it.
+    ws_inbox_reach_lost($channel);
 
     $members = (int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'");
 
@@ -680,8 +694,10 @@ function ws_channel_leave($viewer, $channel, $user_id = 0)
     db("DELETE FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "' AND user_id = '" . $user_id . "'");
     ws_channel_membership_forget();
 
-    // Out of the channel, out of its folder.
+    // Out of the channel, out of its folder, and out of what their inbox
+    // said about it.
     ws_channel_folder_access($channel, array($user_id), false);
+    ws_inbox_reach_lost($channel, array($user_id));
 
     if ((int) $channel['owner_user_id'] === $user_id) {
         $next = (int) db_value("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "' ORDER BY joined_at LIMIT 1");
@@ -856,7 +872,7 @@ function ws_channel_mark_read($channel_id, $user_id, $message_id)
 
     db("UPDATE ws_inbox SET read_at = '" . time() . "'
         WHERE user_id = '" . (int) $user_id . "' AND channel_id = '" . (int) $channel_id . "'
-        AND read_at = 0 AND ((kind = 'mention' AND message_id <= '" . $message_id . "') OR kind = 'guest_message')");
+        AND read_at = 0 AND ((kind IN ('mention', 'agent_answer') AND message_id <= '" . $message_id . "') OR kind = 'guest_message')");
 
     if (mysqli_affected_rows(db::$con) > 0) {
         ws_bell_sync_read($user_id);
@@ -985,4 +1001,63 @@ function ws_channel_order($viewer, $channel_ids)
     }
 
     return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Moves a channel to a place in this person's own order, the way dragging it
+ * in the list does, and numbers the channels they are in again from the top
+ * as the list shows them. Pinned channels come first: a pinned one takes a
+ * place among them, any other one after them, and a place past either end
+ * is taken as the nearest it can be. A public channel is joined on the way.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param int   $place 1 for the top; 0 keeps the place it holds now
+ * @return array ok, error
+ */
+function ws_channel_place($viewer, $channel, $place = 0)
+{
+    if (!ws_channel_order_ready()) {
+        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    if (!ws_channel_membership($channel['id'], $viewer['id'])) {
+        $joined = ws_channel_join($viewer, $channel);
+
+        if (!$joined['ok']) {
+            return $joined;
+        }
+    }
+
+    // The channels of the same list (open or archived) in the order
+    // ws_channels_for() gives them.
+    $rows = (array) db_items("SELECT c.id, m.pinned
+        FROM ws_channels c
+        INNER JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
+        WHERE c.archived_at " . (((int) $channel['archived_at'] > 0) ? '> 0' : '= 0') . " AND c.kind <> 'thread'
+        ORDER BY (m.pinned = 1) DESC, (m.sort = 0), m.sort, c.name");
+
+    $ids = array();
+    $pinned = 0;
+    $is_pinned = false;
+    $held = 0;
+
+    foreach ($rows as $row) {
+        if ((int) $row['id'] === (int) $channel['id']) {
+            $is_pinned = !empty($row['pinned']);
+            $held = count($ids) + 1;
+            continue;
+        }
+
+        $ids[] = (int) $row['id'];
+        $pinned += empty($row['pinned']) ? 0 : 1;
+    }
+
+    $place = ((int) $place > 0) ? (int) $place : (($held > 0) ? $held : count($ids) + 1);
+    $place = $is_pinned ? min($place, $pinned + 1) : max($place, $pinned + 1);
+    $place = max(1, min($place, count($ids) + 1));
+
+    array_splice($ids, $place - 1, 0, array((int) $channel['id']));
+
+    return ws_channel_order($viewer, $ids);
 }

@@ -23,19 +23,27 @@ validate_calendars_access($user);
 
 $liveform = new liveform('calendars');
 
-if (isset($_GET['calendar_id']) == true) {
+// The calendar, view, status and date are kept in the session for the next
+// visit. A value sent as an array (?date[]=x) counts as not given, and a view
+// the calendar does not draw (?view=x) falls back to the monthly one: either
+// stuck in the session, and every later visit wrote PHP warnings.
+if (isset($_GET['calendar_id']) && is_string($_GET['calendar_id'])) {
     $_SESSION['software']['calendars']['calendar_id'] = $_GET['calendar_id'];
 }
 
-if (isset($_GET['view']) == true) {
+if (isset($_GET['view']) && is_string($_GET['view'])) {
     $_SESSION['software']['calendars']['view'] = $_GET['view'];
 }
 
-if (isset($_GET['status']) == true) {
+if (!in_array(($_SESSION['software']['calendars']['view'] ?? ''), array('', 'monthly', 'weekly', 'upcoming'), true)) {
+    $_SESSION['software']['calendars']['view'] = '';
+}
+
+if (isset($_GET['status']) && is_string($_GET['status'])) {
     $_SESSION['software']['calendars']['status'] = $_GET['status'];
 }
 
-if (isset($_GET['date']) == true) {
+if (isset($_GET['date']) && is_string($_GET['date'])) {
     $_SESSION['software']['calendars']['date'] = $_GET['date'];
 }
 
@@ -72,7 +80,7 @@ if($calendar_name == ''){
     $pg_breadcrumb_items[] = array('label' => lang('All Calendars'));
 }else{
     $pg_breadcrumb_items[] = array('label' => lang('View Calendars'));
-    $output_edit_calendar_button ='<a class="btn btn-sm btn-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
+    $output_edit_calendar_button ='<a class="btn btn-sm btn-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
 }
 echo
 
@@ -102,7 +110,7 @@ pg_page_shell(
                 <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
 
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_calendar_event.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_calendar_event.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
                         ' . $output_edit_calendar_button . '
                     </nav>
                 </div>

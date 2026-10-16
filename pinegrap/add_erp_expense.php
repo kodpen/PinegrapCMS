@@ -37,7 +37,7 @@ if (!erp_expenses_ready()) {
     go($list_url);
 }
 
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $existing = ($id > 0) ? erp_expense($id) : null;
 
 if (($id > 0) && ($existing === null)) {
@@ -409,8 +409,8 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_save" value="save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
-                            ' . (!is_array($existing) ? '<button type="submit" name="submit_save" value="another" class="btn my-1 btn-outline-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save and record another') . '</span></button>' : '') . '
+                            <button type="submit" name="submit_save" value="save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            ' . (!is_array($existing) ? '<button type="submit" name="submit_save" value="another" class="btn my-1 btn-outline-success"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save and record another') . '</span></button>' : '') . '
                         </div>
                     </div>
                 </nav>
@@ -568,6 +568,13 @@ $("#expense_date' . ($paid ? '-none' : '') . ', #paid_date, #due_date, #repeat_e
 } else {
 
     validate_token_field();
+
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array category or till as record 1 and paid
+    // from it, (string) wrote "Array" into the supplier and the description.
+    pg_request_single_values(array('expense_date', 'category_id', 'supplier', 'supplier_tax_number', 'document_no', 'description', 'currency', 'exchange_rate',
+        'amount', 'includes_tax', 'tax_rate', 'tax_amount', 'tax_deductible', 'pay', 'cash_account_id', 'payment_method', 'paid_date', 'due_date',
+        'repeat', 'repeat_every', 'repeat_due_days', 'repeat_end', 'repeat_pay', 'submit_save'));
 
     $liveform->add_fields_to_session();
 

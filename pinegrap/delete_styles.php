@@ -34,6 +34,12 @@ if (!$_POST['styles']) {
 $number_of_deleted_styles = 0;
 $number_of_preserved_styles = 0;
 
+// Once the bin holds styles, a style deleted here goes there and can be
+// restored from the file manager's Recycle Bin. Each one is logged by name
+// on the way in.
+require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+$recycle_styles = pg_recycle_style_ready();
+
 // Loop through all styles that where selected.
 foreach ($_POST['styles'] as $style_id) {
     // If this style is being used by a folder or page,
@@ -60,6 +66,13 @@ foreach ($_POST['styles'] as $style_id) {
         $number_of_preserved_styles++;
 
     // Otherwise this style is not being used, so delete it.
+    } elseif ($recycle_styles) {
+        $recycled = pg_recycle_style($style_id, $user);
+
+        if ($recycled['status'] == 'binned') {
+            $number_of_deleted_styles++;
+        }
+
     } else {
         db("DELETE FROM style WHERE style_id = '" . escape($style_id) . "'");
         db("DELETE FROM system_style_cells WHERE style_id = '" . escape($style_id) . "'");
@@ -70,7 +83,10 @@ foreach ($_POST['styles'] as $style_id) {
 }
 
 // If at least one style was deleted, then prepare message for that and log activity.
-if ($number_of_deleted_styles > 0) {
+if (($number_of_deleted_styles > 0) && $recycle_styles) {
+    $liveform->add_notice(lang(array('string' => '{var:1} page style(s) were moved to the Recycle Bin.', 'vars' => pg_format_number($number_of_deleted_styles, 0))));
+
+} elseif ($number_of_deleted_styles > 0) {
     if ($number_of_deleted_styles == 1) {
         $message = lang('1 page style was deleted');
     } else {

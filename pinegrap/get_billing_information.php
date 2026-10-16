@@ -137,6 +137,36 @@ function get_billing_information($properties) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $order = mysqli_fetch_assoc($result);
 
+        // A visitor who opens this page before anything is in the cart has no order
+        // yet, so there is no row. Every column then counts as blank and the fields
+        // fall back to the contact below, as they do for a blank column.
+        if (is_array($order) == false) {
+            $order = array();
+
+            foreach (array(
+                'billing_salutation',
+                'billing_first_name',
+                'billing_last_name',
+                'billing_company',
+                'billing_address_1',
+                'billing_address_2',
+                'billing_city',
+                'billing_state',
+                'billing_zip_code',
+                'billing_country',
+                'billing_phone_number',
+                'billing_fax_number',
+                'billing_email_address',
+                'custom_field_1',
+                'custom_field_2',
+                'opt_in',
+                'po_number',
+                'tax_exempt',
+                'referral_source_code') as $order_field) {
+                $order[$order_field] = '';
+            }
+        }
+
         if ($order['billing_salutation'] != '') {
             $form->assign_field_value('billing_salutation', $order['billing_salutation']);
         } else if ($contact['salutation'] != '') {

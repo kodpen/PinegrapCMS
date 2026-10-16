@@ -379,6 +379,18 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // Google Search Console figures: yesterday's and the few days before,
+        // which Google keeps revising. Daily; a site that is not linked to
+        // Search Console records the run and calls nothing. Linking puts it in
+        // the dispatch list.
+        'seo_search_job' => array(
+            'label'       => lang('Google Search Console'),
+            'script'      => 'seo_search_job.php',
+            'interval'    => 86400,
+            'stale_after' => 604800,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
     );
 }
 

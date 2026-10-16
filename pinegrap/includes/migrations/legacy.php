@@ -988,12 +988,14 @@ function upgrade_to_2022_1_9() {
 
 }
 
-// We remove default values for these columns, because mysql new releases do not support default for TEXT.
-// new upgrades do not contain default values but old upgraded sites may contain defaults.
+// Removes the defaults of these TEXT columns: MariaDB lets a TEXT column have a literal
+// default, MySQL 8 does not, so a dump of a site that kept one could not be loaded on MySQL.
+// The helper sends DROP DEFAULT only when there is a default: MySQL before 8.0.13 and
+// MariaDB before 10.2 answer it with error 1101 on any TEXT column.
 function upgrade_to_2022_2() {
-	db("ALTER TABLE config ALTER custom_css  DROP DEFAULT");
-	db("ALTER TABLE dashboard ALTER notes_widget_data  DROP DEFAULT");
-	db("ALTER TABLE user ALTER selected_appmenu_items_array  DROP DEFAULT");
+	install_drop_column_default('config', 'custom_css');
+	install_drop_column_default('dashboard', 'notes_widget_data');
+	install_drop_column_default('user', 'selected_appmenu_items_array');
 }
 
 // local_sale_history table log all local orders with barcode scanned sales.

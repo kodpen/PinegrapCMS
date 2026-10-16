@@ -127,7 +127,9 @@ if (isset($_GET['analyze_seo']) && (USER_ROLE < 3)) {
 $output_clear_button = '';
 
 // If there is a filter set.
-if (isset($_GET['filter']) == true) {
+// (one sent as an array, ?filter[]=x, counts as not given: it ended in an
+// error page)
+if (isset($_GET['filter']) && is_string($_GET['filter'])) {
     // Send the filter to the search form.
     $filter = $_GET['filter'];
 } else {
@@ -203,64 +205,10 @@ if ((strpos($filter, 'seo_') === 0) && !isset($filters_in_array[$filter])) {
     $output_filter_for_links = h($filter_for_links);
 }
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['pages']['sort'] = $_REQUEST['sort'];
-
-    // clear order
-    $_SESSION['software']['pages']['order'] = '';
-}
-
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // Whitelisted rather than stored raw: this value is interpolated into
-    // ORDER BY further down, and it is kept in the session, so an injected
-    // value would persist across requests.
-    $_SESSION['software']['pages']['order'] = (strtolower($_REQUEST['order']) === 'desc') ? 'desc' : 'asc';
-}
-
-// If a screen was passed and it is a positive integer, then use it.
-// These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-if (
-    isset($_REQUEST['screen'])
-    and $_REQUEST['screen']
-    and is_numeric($_REQUEST['screen'])
-    and $_REQUEST['screen'] > 0
-    and $_REQUEST['screen'] == round($_REQUEST['screen'])
-) {
-    $screen = (int) $_REQUEST['screen'];
-
-// Otherwise, use the default, which is the first screen.
-} else {
-    $screen = 1;
-}
-
-// If the sort session is set to Form Name or Form Enabled and the view filter is not set to custom form set the sort session to default
-if (((isset($_SESSION['software']['pages']) && ($_SESSION['software']['pages']['sort'] ?? '') == lang('Form Name') ) || (isset($_SESSION['software']['pages']) && ($_SESSION['software']['pages']['sort'] ?? '') == lang('Form Enabled') )) && ($filter != 'my_custom_form_pages')) {
-    $_SESSION['software']['pages']['sort'] = '';
-}
-
 // If a theme is being previewed then get the activated theme.
 // We will use in several places below.
 if (isset($_SESSION['software']['preview_theme_id']) && $_SESSION['software']['preview_theme_id']) {
     $activated_theme_id = db_value("SELECT id FROM files WHERE activated_" . $_SESSION['software']['device_type'] . "_theme = '1'");
-}
-
-// If the sort is set to Desktop Page Style or Mobile Page Style,
-// and the user is previewing a theme that is not the activated theme,
-// then reset the sort to the default, because we can't easily sort for preview styles.
-if (
-    (
-        (isset($_SESSION['software']['pages']) && ($_SESSION['software']['pages']['sort'] ?? '') == 'Desktop Page Style')
-        || (isset($_SESSION['software']['pages']) && ($_SESSION['software']['pages']['sort'] ?? '') == 'Mobile Page Style')
-    )
-    && (isset($_SESSION['software']['preview_theme_id']))
-    && ($_SESSION['software']['preview_theme_id'])
-    && ($_SESSION['software']['preview_theme_id'] != $activated_theme_id)
-) {
-    unset($_SESSION['software']['pages']['sort']);
-    unset($_SESSION['software']['pages']['order']);
 }
 
 $style_join_field = "";
@@ -280,12 +228,6 @@ switch ($_SESSION['software']['device_type']) {
         // output toggle to show mobile
         $output_device_type_toggle = '<a class="btn btn-sm btn-secondary p-1 material-icons" href="update_device_type.php?device_type=mobile&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show mobile Page Styles') . '">phone_iphone</a>';
 
-        // if the sort is mobile page style, then set it to desktop page style,
-        // so that the column will still be sorted correctly
-        if (isset($_SESSION['software']['pages']) && ($_SESSION['software']['pages']['sort'] ?? '') == 'Mobile Page Style') {
-            $_SESSION['software']['pages']['sort'] = 'Desktop Page Style';
-        }
-
         break;
     
     case 'mobile':
@@ -298,91 +240,62 @@ switch ($_SESSION['software']['device_type']) {
         // output toggle to show desktop
         $output_device_type_toggle = '<a class="btn btn-sm btn-secondary p-1 material-icons" href="update_device_type.php?device_type=desktop&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show desktop Page Styles') . '">computer</a>';
 
-        // if the sort is desktop page style, then set it to mobile page style,
-        // so that the column will still be sorted correctly
-        if (($_SESSION['software']['pages']['sort'] ?? '') == 'Desktop Page Style') {
-            $_SESSION['software']['pages']['sort'] = 'Mobile Page Style';
-        }
-
         break;
 }
-if(isset($_SESSION['software']['pages'])){
-    // if the sort is not set yet, then default it to empty so that the switch below falls
-    // through to its default case
-    if (isset($_SESSION['software']['pages']['sort']) == false) {
-        $_SESSION['software']['pages']['sort'] = '';
-    }
 
-    switch (($_SESSION['software']['pages']['sort'] ?? '')) {
-        case lang('Name'):
-            $sort_column = 'page_name';
-            break;
-    
-        case lang('Form Name'):
-            $sort_column = 'form_name';
-            break;
-    
-        case lang('Form Enabled'):
-            $sort_column = 'enabled';
-            break;
-    
-        case lang('Folder'):
-            $sort_column = 'folder_name';
-            break;
-    
-        case lang('Desktop Page Style'):
-        case lang('Mobile Page Style'):
-            $sort_column = 'style_name';
-            break;
-    
-        case lang('Searchable'):
-            $sort_column = 'page_search';
-            break;
-    
-        case lang('Comments'):
-            $sort_column = 'comments';
-            break;
-    
-        case lang('Page Type'):
-            $sort_column = 'page_type';
-            break;
-            
-        case lang('SEO'):
-            $sort_column = 'seo_score';
-            break;
+// A theme other than the activated one is being previewed: its styles are
+// looked up page by page further down, so the style column cannot be sorted.
+$previewing_other_theme = !empty($_SESSION['software']['preview_theme_id']) && ($_SESSION['software']['preview_theme_id'] != $activated_theme_id);
 
-        case lang('Impact'):
-            $sort_column = 'seo_impact';
-            break;
-    
-        case lang('Site Map'):
-            $sort_column = 'sitemap';
-            break;
-    
-        case lang('Last Modified'):
-            $sort_column = 'page_timestamp';
-            break;
-    
-        default:
-            $sort_column = 'page_timestamp';
-            $_SESSION['software']['pages']['sort'] = lang('Last Modified');
-            break;
-    }
-}else{
-    $sort_column = 'page_timestamp';
-    $_SESSION['software']['pages']['sort'] = lang('Last Modified');
+// The columns this view sorts by, in the order the table shows them. The
+// form columns are only on the custom form view, and the style column is
+// one code for both device types, so a sort by it carries over when the
+// device toggle is used. pg_list_state() falls back to the default for any
+// column the view does not show.
+$sort_columns = array('name' => lang('Name'));
+
+if ($filter == 'my_custom_form_pages') {
+    $sort_columns['form_name'] = lang('Form Name');
+    $sort_columns['form_enabled'] = lang('Form Enabled');
 }
 
+$sort_columns['folder'] = lang('Folder');
 
-if (isset($_SESSION['software']['pages']['order']) && ($_SESSION['software']['pages']['order'] ?? '')) {
-    $asc_desc = ($_SESSION['software']['pages']['order'] ?? '');
-} elseif ($sort_column == 'page_timestamp') {
-    $asc_desc = 'desc';
-    $_SESSION['software']['pages']['order'] = 'desc';
-} else {
-    $asc_desc = 'asc';
-    $_SESSION['software']['pages']['order'] = 'asc';
+if (!$previewing_other_theme) {
+    $sort_columns['style'] = $style_column_heading_label;
 }
+
+$sort_columns['page_type'] = lang('Page Type');
+$sort_columns['searchable'] = lang('Searchable');
+$sort_columns['comments'] = lang('Comments');
+$sort_columns['sitemap'] = lang('Site Map');
+$sort_columns['seo'] = lang('SEO');
+$sort_columns['impact'] = lang('Impact');
+$sort_columns['last_modified'] = lang('Last Modified');
+
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+$list_state = pg_list_state('view_pages', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$sort_sql = array(
+    'name'          => 'page.page_name',
+    'form_name'     => 'custom_form_pages.form_name',
+    'form_enabled'  => 'custom_form_pages.enabled',
+    'folder'        => 'folder.folder_name',
+    'style'         => 'style.style_name',
+    'page_type'     => 'page.page_type',
+    'searchable'    => 'page.page_search',
+    'comments'      => 'page.comments',
+    'sitemap'       => 'page.sitemap',
+    'seo'           => 'page.seo_score',
+    'impact'        => 'seo_impact',
+    'last_modified' => 'page.page_timestamp',
+);
+
+$order_by = pg_list_order_by($sort_levels, $sort_sql);
 
 $folders_that_user_has_access_to = array();
 
@@ -403,8 +316,8 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
             // (pg_designer_target_modal()); the classic page screen stays
             // beside it.
             ? '<button type="button" class="btn btn-sm btn-primary m-1" data-pg-design-target="add" data-from="pages"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</button>
-               <a class="btn btn-sm btn-outline-primary m-1" href="add_page.php" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page (Legacy)') . '</a>'
-            : '<a class="btn btn-sm btn-primary m-1" href="add_page.php" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</a>') . '
+               <a class="btn btn-sm btn-outline-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page (Legacy)') . '</a>'
+            : '<a class="btn btn-sm btn-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</a>') . '
         ';
 
     // If advanced search is enabled and the user is a manager or above then output "Update Search Index" button.
@@ -420,8 +333,8 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
     if (USER_ROLE < 3) {
         $output_button_bar .= '
         <div class=" btn-group btn-group-sm flex-wrap">
-            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-speedometer2 me-1"></span>' . lang('Refresh SEO Scores') . '</a>
-            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML Structure') . '</a>
+            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '"><span class="bi bi-speedometer2 me-1"></span>' . lang('Refresh SEO Scores') . '</a>
+            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML Structure') . '</a>
         </div>';
     }
 
@@ -623,8 +536,8 @@ switch ($filter) {
         $where .= ' (page_type = "custom form" OR page_type = "custom form" OR page_type = "custom form confirmation")';
 
         // Output additional table headings
-        $output_form_name_heading = '<th>' . get_column_heading(lang('Form Name'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>';
-        $output_form_enabled_heading = '<th>' . get_column_heading(lang('Form Enabled'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>';
+        $output_form_name_heading = '<th>' . get_column_heading(lang('Form Name'), $sort_levels, '', $output_filter_for_links, 'form_name') . '</th>';
+        $output_form_enabled_heading = '<th>' . get_column_heading(lang('Form Enabled'), $sort_levels, '', $output_filter_for_links, 'form_enabled') . '</th>';
 
         // Change the heading.
         $heading = lang('My Custom Form Pages');
@@ -1020,12 +933,12 @@ switch ($filter) {
 
 // If the user is previewing a theme that is not the activated theme,
 // then output unsortable column heading for style column.
-if (isset($_SESSION['software']['preview_theme_id']) && $_SESSION['software']['preview_theme_id'] && $_SESSION['software']['preview_theme_id'] != $activated_theme_id ) {
+if ($previewing_other_theme) {
     $output_style_column_heading = $style_column_heading_label;
 
 // Otherwise output sortable column.
 } else {
-    $output_style_column_heading = get_column_heading($style_column_heading_label, ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links);
+    $output_style_column_heading = get_column_heading($style_column_heading_label, $sort_levels, '', $output_filter_for_links, 'style');
 }
 
 // If where is blank
@@ -1135,7 +1048,7 @@ $query =
     " . $join_table . "
     $where
     " . $group_column_by . "
-    ORDER BY $sort_column $asc_desc";
+    ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // Declared before the loop that fills it: a filter matching nothing - now
@@ -1350,8 +1263,8 @@ if ($pages) {
             '<tr>
                 <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>
 			    <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " data-loading-content=" " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
                 </td>
                 <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
                 ' . $output_form_name_row . '
@@ -1469,7 +1382,12 @@ $output_delete_selected_button = '';
 
 // if the user is at least a manager or has access to delete pages, then output the delete selected button
 if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
-    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('pages')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    // With the recycle bin installed the pages go there (edit_pages.php).
+    require_once(dirname(__FILE__) . '/view_folder_and_files_f.php');
+    $delete_confirmation = pg_recycle_ready()
+        ? lang('The selected pages will be moved to the Recycle Bin. Those already in it will be deleted permanently.')
+        : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('pages'))));
+    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
 }
 
 echo
@@ -1496,6 +1414,7 @@ pg_page_shell(
                 </div>
                 <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
                     <div class="row justify-content-center justify-content-md-end">
+                        <div class="col-auto mt-1 mb-1">' . pg_list_sort_menu('view_pages.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) . '</div>
                         <form id="search_form" action="view_pages.php" method="get" class="search_form col-auto">
                             <input type="hidden" name="filter" value="' . h($filter) . '" />
                             <div class="input-group input-group-sm">
@@ -1529,18 +1448,18 @@ pg_page_shell(
                                         </div>
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                    <th>' . get_column_heading($output_name_heading, ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                    <th>' . get_column_heading($output_name_heading, $sort_levels, '', $output_filter_for_links, 'name') . '</th>
                                     ' . $output_form_name_heading . '
                                     ' . $output_form_enabled_heading . '
-                                    <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                    <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $output_filter_for_links, 'folder') . '</th>
                                     <th>' . $output_style_column_heading . '' . $output_device_type_toggle . '</th>
-                                    <th>' . get_column_heading(lang('Page Type'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                    <th  style="text-align: center;">' . get_column_heading(lang('Searchable'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                    <th style="text-align: center;">' . get_column_heading(lang('Comments'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                    <th style="text-align: center;">' . get_column_heading(lang('Site Map'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                    <th style="text-align: center;">' . get_column_heading(lang('SEO'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                    <th style="text-align: center;" title="' . h(lang('How much a weak score costs, weighed against how many people see the page')) . '">' . get_column_heading(lang('Impact'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['pages']['sort'] ?? ''), ($_SESSION['software']['pages']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                    <th>' . get_column_heading(lang('Page Type'), $sort_levels, '', $output_filter_for_links, 'page_type') . '</th>
+                                    <th  style="text-align: center;">' . get_column_heading(lang('Searchable'), $sort_levels, '', $output_filter_for_links, 'searchable') . '</th>
+                                    <th style="text-align: center;">' . get_column_heading(lang('Comments'), $sort_levels, '', $output_filter_for_links, 'comments') . '</th>
+                                    <th style="text-align: center;">' . get_column_heading(lang('Site Map'), $sort_levels, '', $output_filter_for_links, 'sitemap') . '</th>
+                                    <th style="text-align: center;">' . get_column_heading(lang('SEO'), $sort_levels, '', $output_filter_for_links, 'seo') . '</th>
+                                    <th style="text-align: center;" title="' . h(lang('How much a weak score costs, weighed against how many people see the page')) . '">' . get_column_heading(lang('Impact'), $sort_levels, '', $output_filter_for_links, 'impact') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>

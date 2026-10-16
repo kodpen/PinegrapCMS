@@ -26,9 +26,11 @@
  *
  * Or it waits for something to happen on the site (the "event" rule): a new
  * order, an order that changed status, a submitted form, a product low in
- * stock. The event is kept where it happened and the run picks it up
- * (includes/workspace/watch.php), putting the action in the queue with the
- * event carried, so its texts can name the record ({{record}}).
+ * stock - or in the workspace itself: a task completed, moved or gone
+ * overdue, an approval request settled, a guest writing. The event is kept
+ * where it happened and the run picks it up (includes/workspace/watch.php),
+ * putting the action in the queue with the event carried, so its texts can
+ * name the record ({{record}}).
  *
  * A scheduled message (kind "message", scheduled_messages.php) is the plain
  * bridge from the writing box: one message written now and posted later, by
@@ -340,6 +342,17 @@ function ws_scheduled_webhook_formats()
 }
 
 /**
+ * The kinds of change a scheduled action does not make: a channel's summary,
+ * and the workspace's own tasks and notes, which an assistant proposes.
+ *
+ * @return string[]
+ */
+function ws_scheduled_change_skipped()
+{
+    return array('channel', 'task', 'task_note', 'note');
+}
+
+/**
  * The kinds of record a rule can look at, and a change can be made to: the
  * kinds of change the workspace knows (a channel's summary aside - it is not
  * something to wait for), and tasks, whose state is the usual thing to wait
@@ -352,7 +365,8 @@ function ws_scheduled_record_types()
     $out = array();
 
     foreach (ws_change_types() as $type => $info) {
-        if ($type === 'channel') {
+        // A task note or a note is only ever added: nothing to wait on.
+        if (in_array($type, array('channel', 'task_note', 'note'), true)) {
             continue;
         }
 
@@ -607,8 +621,10 @@ function ws_scheduled_placeholders()
         '{{record}}'        => lang('the record it happened to, tagged'),
         '{{record_title}}'  => lang('the name of the record'),
         '{{record_link}}'   => lang('the address of the record in the panel'),
-        '{{record_status}}' => lang('the status of the order'),
-        '{{customer}}'      => lang('the customer of the order, the contact or the form'),
+        '{{record_status}}' => lang('the status of the order or the task, or how the approval request ended'),
+        '{{customer}}'      => lang('the customer of the order, the contact or the form, or the guest who wrote'),
+        '{{actor}}'         => lang('the person who completed or moved the task or settled the request, tagged'),
+        '{{message}}'       => lang('what the guest wrote'),
         '{{amount}}'        => lang('the amount of the order'),
         '{{form_fields}}'   => lang('the fields of the submitted form, a line each. Members who may not see forms read the values too.'),
         '{{count:tasks_overdue}}' => lang('a count, by its key'),
@@ -650,7 +666,7 @@ function ws_scheduled_fill($text, $context)
     // An action started by an event: the record and what is known of it,
     // read only when the text asks for one of them (watch.php). Run by hand
     // or by another action, there is no event and they are left empty.
-    if (preg_match_all('/\{\{(event|record|record_title|record_link|record_status|customer|amount|form_fields)\}\}/', $text, $asked)) {
+    if (preg_match_all('/\{\{(event|record|record_title|record_link|record_status|customer|amount|form_fields|actor|message)\}\}/', $text, $asked)) {
         $values += (!empty($context['event']) && function_exists('ws_events_fill_values'))
             ? ws_events_fill_values(is_array($context['viewer'] ?? null) ? $context['viewer'] : array(), (string) $context['event'], (array) ($context['event_payload'] ?? array()))
             : array_fill_keys($asked[0], '');
@@ -724,7 +740,7 @@ function ws_scheduled_js_config($viewer)
     $changes = array();
 
     foreach (ws_change_types() as $type => $info) {
-        if (($type === 'channel') || !ws_change_allowed($viewer, $type, 0)) {
+        if (in_array($type, ws_scheduled_change_skipped(), true) || !ws_change_allowed($viewer, $type, 0)) {
             continue;
         }
 
@@ -751,7 +767,13 @@ function ws_scheduled_js_config($viewer)
         'join'         => ws_scheduled_join_ready(),
         // What an event rule offers (watch.php): null where it cannot be had.
         'events'       => function_exists('ws_events_js_config') ? ws_events_js_config($viewer) : null,
+        // The box above the form that has Pinegrap AI fill it in from a
+        // sentence (scheduled_draft.php).
+        'draft'        => function_exists('ws_scheduled_draft_ready') && ws_scheduled_draft_ready($viewer),
         'digest_only'  => ws_scheduled_digest_filters(),
+        // Whether the task e-mail can offer Pinegrap AI's summary of what
+        // was missed (briefing.php).
+        'recap_ai'     => function_exists('ws_ai_ready') && ws_ai_ready(),
         'records'      => $records,
         'changes'      => $changes,
         'metrics'      => $metrics,
@@ -1041,14 +1063,39 @@ function ws_scheduled_rule_input($viewer, $rule)
                 $out['page_id'] = $page_id;
             }
 
-            if ($info['filter'] === 'status') {
+            // The status an order or a task moves to, or how an approval
+            // request ended; empty for any.
+            $filter_values = array(
+                'status'      => ws_events_order_statuses(),
+                'task_status' => ws_task_statuses(),
+                'outcome'     => function_exists('ws_events_approval_outcomes') ? ws_events_approval_outcomes() : array(),
+            );
+
+            if (isset($filter_values[$info['filter']])) {
                 $status = (string) ($rule['status'] ?? '');
 
-                if (($status !== '') && !isset(ws_events_order_statuses()[$status])) {
+                if (($status !== '') && !isset($filter_values[$info['filter']][$status])) {
                     return $fail(lang('Choose one of the values the field takes.'));
                 }
 
                 $out['status'] = $status;
+            }
+
+            // A workspace event in one channel the creator reads, or (0) in
+            // any; each event is checked against their rights again as it
+            // comes (watch.php).
+            if (!empty($info['channel'])) {
+                $event_channel = max(0, (int) ($rule['channel_id'] ?? 0));
+
+                if ($event_channel > 0) {
+                    $channel = ws_channel($event_channel);
+
+                    if (!$channel || ((string) $channel['kind'] === 'thread') || !ws_can_read_channel($viewer, $channel)) {
+                        return $fail(lang('That channel could not be found.'));
+                    }
+                }
+
+                $out['channel_id'] = $event_channel;
             }
 
             return array('ok' => true, 'error' => '', 'rule' => $out);
@@ -1397,7 +1444,9 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
             ));
 
         // Each person their tasks by e-mail (a weekly list, say): their own
-        // open tasks, or the open tasks of one channel.
+        // open tasks, or the open tasks of one channel. With missed, each
+        // e-mail also says what the person has not read yet; with ai,
+        // Pinegrap AI puts that into a few sentences (briefing.php).
         case 'task_digest':
             $mode = ((string) ($action['mode'] ?? 'mine') === 'channel') ? 'channel' : 'mine';
             $digest_channel = max(0, (int) ($action['channel_id'] ?? 0));
@@ -1426,6 +1475,8 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'only'       => $only,
                 'subject'    => mb_substr(trim(preg_replace('/[\r\n]+/', ' ', (string) ($action['subject'] ?? ''))), 0, 250),
                 'intro'      => mb_substr(trim(str_replace("\r\n", "\n", (string) ($action['intro'] ?? ''))), 0, 2000),
+                'missed'     => empty($action['missed']) ? 0 : 1,
+                'ai'         => (empty($action['missed']) || empty($action['ai'])) ? 0 : 1,
             ));
 
         // A call to another system: Slack, Teams, n8n, Zapier, Make.
@@ -1568,13 +1619,30 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'rule'       => $checked['rule'],
             ));
 
+        // A check-in in a channel (status.php): the question, asked of the
+        // channel's people each time it runs.
+        case 'checkin':
+            $channel = ws_channel((int) ($action['channel_id'] ?? 0));
+
+            if (!$channel || !function_exists('ws_status_ready') || !ws_status_ready() || ws_channel_is_thread($channel) || !ws_can_post_channel($viewer, $channel)) {
+                return $fail(lang('Choose a channel you can write in.'));
+            }
+
+            $question = ws_checkin_question((string) ($action['question'] ?? ''));
+
+            return array('ok' => true, 'error' => '', 'action' => array(
+                'type'       => 'checkin',
+                'channel_id' => (int) $channel['id'],
+                'question'   => ($question !== '') ? $question : ws_checkin_default_question(),
+            ));
+
         case 'change':
             $types = ws_change_types();
             $record_type = (string) ($action['record'] ?? '');
             $verb = (string) ($action['action'] ?? 'update');
             $id = (int) ($action['id'] ?? 0);
 
-            if (!isset($types[$record_type]) || ($record_type === 'channel')) {
+            if (!isset($types[$record_type]) || in_array($record_type, ws_scheduled_change_skipped(), true)) {
                 return $fail(lang('Choose what kind of record to change.'));
             }
 
@@ -1990,11 +2058,30 @@ function ws_scheduled_rule_text($viewer, $rule)
                 return lang(array('string' => 'When a form is submitted: {var:1}', 'vars' => $forms[(int) $rule['page_id']] ?? lang('a form that is gone')));
             }
 
-            if ((string) ($rule['status'] ?? '') !== '') {
-                return lang(array('string' => 'When the status of an order becomes “{var:1}”', 'vars' => ws_events_order_statuses()[$rule['status']] ?? $rule['status']));
+            $status = (string) ($rule['status'] ?? '');
+            $text = (string) $info['when'];
+
+            if ($status !== '') {
+                switch ($info['filter']) {
+                    case 'status':
+                        return lang(array('string' => 'When the status of an order becomes “{var:1}”', 'vars' => ws_events_order_statuses()[$status] ?? $status));
+
+                    case 'task_status':
+                        $text = lang(array('string' => 'When the status of a task becomes “{var:1}”', 'vars' => ws_task_status_label($status)));
+                        break;
+
+                    case 'outcome':
+                        $text = lang(array('string' => 'When an approval request ends: {var:1}', 'vars' => ws_events_approval_outcomes()[$status] ?? $status));
+                        break;
+                }
             }
 
-            return (string) $info['when'];
+            if ((int) ($rule['channel_id'] ?? 0) > 0) {
+                $event_channel = ws_channel((int) $rule['channel_id']);
+                $text = lang(array('string' => '{var:1}, in {var:2}', 'vars' => array($text, $event_channel ? '#' . $event_channel['name'] : lang('a channel that is gone'))));
+            }
+
+            return $text;
 
         case 'workday':
             return lang('Only on a working day');
@@ -2141,6 +2228,12 @@ function ws_scheduled_action_text($viewer, $action)
                 : ((($action['mode'] ?? '') === 'channel') ? lang('the members of the channel') : lang('everybody with open tasks'));
             $what = (string) (ws_scheduled_digest_filters()[$action['only'] ?? 'open'] ?? '');
 
+            if (!empty($action['missed'])) {
+                $what = !empty($action['ai'])
+                    ? lang(array('string' => '{var:1}, and what they missed, summed up by Pinegrap AI', 'vars' => $what))
+                    : lang(array('string' => '{var:1}, and what they missed', 'vars' => $what));
+            }
+
             return (($action['mode'] ?? '') === 'channel')
                 ? lang(array('string' => 'E-mail the tasks of {var:1} ({var:2}) to {var:3}', 'vars' => array($channel ? '#' . $channel['name'] : lang('a channel that is gone'), $what, $who)))
                 : lang(array('string' => 'E-mail each person their tasks ({var:1}{var:2}) · {var:3}', 'vars' => array($what, $channel ? ', #' . $channel['name'] : '', $who)));
@@ -2206,6 +2299,13 @@ function ws_scheduled_action_text($viewer, $action)
                 implode(', ', array_filter(array_map('ws_person_name', (array) ($action['approvers'] ?? array())))),
                 (string) ($action['title'] ?? ''),
                 $channel ? '#' . $channel['name'] : lang('a channel that is gone'))));
+
+        case 'checkin':
+            $channel = ((int) ($action['channel_id'] ?? 0) > 0) ? ws_channel((int) $action['channel_id']) : null;
+
+            return lang(array('string' => 'Ask for a check-in in {var:1}: “{var:2}”', 'vars' => array(
+                $channel ? '#' . $channel['name'] : lang('a channel that is gone'),
+                (string) ($action['question'] ?? ''))));
 
         case 'trigger':
             return ((int) ($action['delay'] ?? 0) > 0)
@@ -3149,6 +3249,12 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
     db("UPDATE ws_scheduled_runs SET finished_at = 0 WHERE id = '" . $run_id . "'");
     $fill['run_id'] = $run_id;
 
+    // A workspace event this run causes starts the actions waiting for it
+    // one step further down this chain (watch.php).
+    if (function_exists('ws_event_depth')) {
+        ws_event_depth($context['depth']);
+    }
+
     if (!is_array($viewer) || !ws_can_schedule($viewer)) {
         $status = 'failed';
         $steps[] = array('step' => 'rules', 'ok' => false, 'text' => lang('The one who wrote it is no longer on the staff.'));
@@ -3195,6 +3301,10 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
                 $posted = (int) $then['message_id'];
             }
         }
+    }
+
+    if (function_exists('ws_event_depth')) {
+        ws_event_depth(-1);
     }
 
     $finished = time();
@@ -3563,6 +3673,23 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
             }
 
             return array('ok' => true, 'text' => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $created['message_id']);
+
+        // A check-in, asked in the creator's name; somebody no longer able
+        // to write in the channel cannot ask there.
+        case 'checkin':
+            $channel = ws_channel((int) $action['channel_id']);
+
+            if (!$channel || !function_exists('ws_checkin_start') || !ws_status_ready()) {
+                return $fail(lang('The channel to write in is gone.'));
+            }
+
+            $started = ws_checkin_start($viewer, $channel, (string) $action['question']);
+
+            if (!$started['ok']) {
+                return $fail(lang(array('string' => 'Could not write in #{var:1}: {var:2}', 'vars' => array($channel['name'], $started['error']))));
+            }
+
+            return array('ok' => true, 'text' => lang(array('string' => 'asked for a check-in in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $started['message_id']);
     }
 
     return $fail(lang('Nothing to do.'));
@@ -3663,6 +3790,9 @@ function ws_scheduled_digest_filters()
         'open'    => lang('all open tasks'),
         'week'    => lang('due within a week, and overdue'),
         'overdue' => lang('overdue only'),
+        // Going stale: open, and nobody changed it or wrote a note on it for
+        // WS_STATUS_STALE_DAYS (status.php).
+        'stale'   => lang('untouched for a week or more'),
     );
 }
 
@@ -3670,6 +3800,13 @@ function ws_scheduled_digest_filters()
  * E-mails people their tasks: each person the open tasks they are on (in
  * one channel, or in all), or the open tasks of one channel to each person
  * who reads it. Somebody with nothing to list gets no e-mail.
+ *
+ * With missed, each e-mail also says what the person has not read yet (in
+ * that channel, or in all of theirs), and somebody with no tasks but
+ * something missed gets one too. With ai, Pinegrap AI writes that part in a
+ * few sentences - only in a background run (the general job), never on the
+ * way to a screen, and for as many people as WS_RECAP_MAIL_AI_BUDGET allows;
+ * the rest get the counted list alone.
  *
  * @return array ok, text, message_id
  */
@@ -3698,6 +3835,10 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
         case 'week':
             $where[] = "t.due_date IS NOT NULL AND t.due_date <> '0000-00-00' AND t.due_date <= '" . date('Y-m-d', strtotime('+7 days')) . "'";
             break;
+
+        case 'stale':
+            $where[] = "GREATEST(t.updated_at, t.created_at) < '" . (time() - (defined('WS_STATUS_STALE_DAYS') ? WS_STATUS_STALE_DAYS : 7) * 86400) . "'";
+            break;
     }
 
     $people = ws_scheduled_people($action['user_ids'] ?? array());
@@ -3719,6 +3860,9 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
     $sent = 0;
     $tried = 0;
     $listed = 0;
+    $missed = !empty($action['missed']) && function_exists('ws_recap_person');
+    $ai_until = ($missed && !empty($action['ai']) && pg_cron_is_background_run() && function_exists('ws_ai_ready') && ws_ai_ready())
+        ? time() + WS_RECAP_MAIL_AI_BUDGET : 0;
 
     foreach ($people as $user_id) {
         $address = (string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) $user_id . "'");
@@ -3732,13 +3876,22 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
             INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . (int) $user_id . "'
             WHERE " . implode(' AND ', $where) . " ORDER BY (t.due_date IS NULL), t.due_date, t.id LIMIT 200");
 
-        if (empty($tasks)) {
+        $recap = $missed ? ws_recap_person($rights, $channel_id) : null;
+
+        if (empty($tasks) && (!$recap || $recap['empty'])) {
             continue;
+        }
+
+        $summary = '';
+
+        if ($recap && !$recap['empty'] && ($ai_until > time())) {
+            $answer = ws_recap_person_ai($rights, $recap, max(20, min(ws_ai_call_timeout(), $ai_until - time())));
+            $summary = $answer['ok'] ? $answer['text'] : '';
         }
 
         $tried++;
 
-        if (ws_scheduled_mail(array($address), $subject, ws_scheduled_digest_html($rights, $tasks, $subject, $intro, ($mode === 'channel')), 'html') > 0) {
+        if (ws_scheduled_mail(array($address), $subject, ws_scheduled_digest_html($rights, $tasks, $subject, $intro, ($mode === 'channel'), $recap ? ws_recap_mail_html($recap, $summary) : ''), 'html') > 0) {
             $sent++;
             $listed += count($tasks);
         }
@@ -3756,16 +3909,18 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
 }
 
 /**
- * The body of a task e-mail: a short table, each task linked to its page.
+ * The body of a task e-mail: a short table, each task linked to its page,
+ * and what the person missed above it when the action asks for that.
  *
  * @param array   $reader  the person it goes to
  * @param array[] $tasks
  * @param string  $title
  * @param string  $intro
  * @param bool    $with_people list who is on each task
+ * @param string  $missed  ws_recap_mail_html(), '' for none
  * @return string HTML
  */
-function ws_scheduled_digest_html($reader, $tasks, $title, $intro, $with_people)
+function ws_scheduled_digest_html($reader, $tasks, $title, $intro, $with_people, $missed = '')
 {
     $base = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/';
     $statuses = ws_task_statuses();
@@ -3805,8 +3960,10 @@ function ws_scheduled_digest_html($reader, $tasks, $title, $intro, $with_people)
         . '<h2 style="font-size:18px;margin:0 0 12px">' . h($title) . '</h2>'
         . '<p style="margin:0 0 12px">' . h(lang(array('string' => 'Hello {var:1},', 'vars' => ws_person_name($reader['id'])))) . '</p>'
         . (($intro !== '') ? '<p style="margin:0 0 12px">' . nl2br(h($intro), false) . '</p>' : '')
-        . '<table style="border-collapse:collapse;width:100%;max-width:760px">' . $head . $rows . '</table>'
-        . '<p style="margin:16px 0 0"><a href="' . h($base . 'workspace_tasks.php') . '">' . h(lang('Open My Tasks')) . '</a></p>'
+        . $missed
+        . (empty($tasks) ? '' : (($missed !== '') ? '<h3 style="font-size:16px;margin:16px 0 8px">' . h($with_people ? lang('Tasks') : lang('Your tasks')) . '</h3>' : '')
+            . '<table style="border-collapse:collapse;width:100%;max-width:760px">' . $head . $rows . '</table>'
+            . '<p style="margin:16px 0 0"><a href="' . h($base . 'workspace_tasks.php') . '">' . h(lang('Open My Tasks')) . '</a></p>')
         . '<p style="margin:12px 0 0;color:#6b7280;font-size:12px">' . h(lang(array('string' => 'Sent by the Workspace of {var:1} on {var:2}.', 'vars' => array((string) HOSTNAME_SETTING, date('d.m.Y H:i'))))) . '</p>'
         . '</div>';
 }
@@ -4478,6 +4635,13 @@ function ws_scheduled_js_strings()
         'sa_digest_subject_placeholder' => lang('The name of the scheduled action'),
         'sa_digest_intro'   => lang('A few words above the list'),
         'sa_digest_intro_help' => lang('Optional. Nobody gets an e-mail with nothing in it.'),
+        'sa_digest_missed'  => lang('Add what each person missed'),
+        'sa_digest_missed_help' => lang('Unread messages by channel, decisions, tasks handed to them, approvals waiting for them. Somebody with no tasks but something missed gets the e-mail too.'),
+        'sa_digest_ai'      => lang('Have Pinegrap AI sum it up in a few sentences'),
+        'sa_digest_ai_help' => lang('Only channels Pinegrap AI may read go to it. Written when the general job runs the action; otherwise the e-mail has the counted list.'),
+        'sa_tpl_morning'    => lang('Morning summary by e-mail'),
+        'sa_tpl_morning_help' => lang('Every working morning: what you missed in the channels and your tasks due this week.'),
+        'sa_tpl_morning_subject' => lang('Good morning: what you missed'),
         'sa_next_runs'      => lang('Next runs'),
         'sa_duplicate'      => lang('Duplicate'),
         'sa_copy_of'        => ws_js_template('Copy of {var:1}', 1),

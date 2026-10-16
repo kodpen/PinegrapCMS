@@ -50,16 +50,29 @@ function api_console_endpoints_html($try_hint = '') {
 		'meta'           => lang('Site info'),
 		'products'       => lang('Products'),
 		'product_groups' => lang('Product Groups'),
+		'product_attributes' => lang('Product Attributes'),
 		'inventory'      => lang('Inventory'),
 		'orders'         => lang('Orders'),
 		'customers'      => lang('Customers'),
 		'pages'          => lang('Pages'),
+		'folders'        => lang('Folders'),
+		'menus'          => lang('Menus'),
+		'comments'       => lang('Comments'),
+		'short_links'    => lang('Short Links'),
+		'store'          => lang('Store set-up'),
+		'gift_cards'     => lang('Gift Cards'),
+		'commissions'    => lang('Commissions'),
+		'site_log'       => lang('Site Log'),
+		'campaigns'      => lang('Campaigns'),
+		'contact_groups' => lang('Contact Groups'),
 		'files'          => lang('Files'),
 		'forms'          => lang('Forms'),
 		'seo'            => lang('SEO'),
 		'system'         => lang('System'),
 		'reports'        => lang('Reports'),
 		'offers'         => lang('Offers'),
+		'key_codes'      => lang('Key Codes'),
+		'calendars'      => lang('Calendars'),
 		'webhooks'       => lang('Webhooks'),
 		// The groups the later resources and the modules add (includes/api/
 		// modules.php); without a line here they showed the bare route prefix.
@@ -159,6 +172,50 @@ function api_console_endpoints_html($try_hint = '') {
 			if ($tables === '') {
 
 				$tables = '<p class="small opacity-50 mb-0">' . lang('This endpoint takes no parameters.') . '</p>';
+
+			}
+
+			// Which writes can be rehearsed. The OpenAPI document declares
+			// X-Dry-Run on exactly the routes that stop for it; this page said
+			// so only in one sentence at the top, so a reader could not tell
+			// which call takes it and which answers 400 dry_run_unsupported.
+			if (!empty($route['dry_run'])) {
+
+				$tables .= '<p class="doc-desc mb-0 mt-2"><i class="bi bi-shield-check me-1"></i>'
+					. h(lang('Can be rehearsed: with X-Dry-Run: true, or dry_run=true in the query, it makes every check and answers without writing.')) . '</p>';
+
+			}
+
+			// The status of a success, where it is not a plain 200. The
+			// OpenAPI document carries it in responses; a reader of this page
+			// who checks for 200 alone would read a create as a failure.
+			$codes = api_openapi_success_codes($route);
+
+			$answers = '';
+
+			if ($codes === array(201)) {
+
+				$answers = lang('Answers 201 Created with the new record.');
+
+			} elseif (in_array(201, $codes, true)) {
+
+				$answers = lang('Answers 201 Created with the new record, or 200 with the one already there, as described above.');
+
+			} elseif (in_array(204, $codes, true)) {
+
+				$answers = lang('Answers 204 with no body.');
+
+			}
+
+			if ($answers !== '') {
+
+				if (!empty($route['dry_run'])) {
+
+					$answers .= ' ' . lang('A rehearsal answers 200, as nothing is written.');
+
+				}
+
+				$tables .= '<p class="doc-desc mb-0 mt-2"><i class="bi bi-reply me-1"></i>' . h($answers) . '</p>';
 
 			}
 

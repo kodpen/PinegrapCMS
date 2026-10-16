@@ -24,6 +24,9 @@ echo
 pg_page_shell([
         'title' => lang('Decision Timeline'),
         'extra classes' => 'workspace workspace_timeline',
+        // No code field here: CodeMirror is loaded only if the settings
+        // dialog opens a pane that has one.
+        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => lang('Decision Timeline'),
         'heading_description' => lang('Every decision taken in the channels you can read, newest first, on one screen.'),

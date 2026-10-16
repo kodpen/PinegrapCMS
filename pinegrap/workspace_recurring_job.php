@@ -58,6 +58,12 @@ if (ws_enabled() && function_exists('ws_ai_job')) {
     ws_ai_job();
 }
 
+// Messages to MCP servers that are agents themselves, nobody's screen sent
+// (includes/workspace/mcp_agent.php).
+if (ws_enabled() && function_exists('ws_mcp_agent_job')) {
+    ws_mcp_agent_job();
+}
+
 // Scheduled actions whose time has come (includes/workspace/scheduled.php).
 // The general job runs them on every tick as well; this covers a site that
 // schedules this script on its own.
@@ -76,10 +82,14 @@ if (ws_enabled() && function_exists('ws_threads_purge')) {
     ws_threads_purge();
 }
 
-// Task reminders by e-mail whose time has come; the general job looks on
-// every tick as well (includes/workspace/reminders.php).
+// Task reminders whose time has come, and the tasks that went overdue; the
+// general job looks on every tick as well (includes/workspace/reminders.php).
 if (ws_enabled() && function_exists('ws_task_reminders_run')) {
     ws_task_reminders_run();
+}
+
+if (ws_enabled() && function_exists('ws_task_overdue_run')) {
+    ws_task_overdue_run();
 }
 
 if (function_exists('pg_cron_ran')) {

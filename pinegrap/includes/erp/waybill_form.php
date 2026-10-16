@@ -36,7 +36,9 @@ if (!defined('ERP_WAYBILL_FORM_BLANK_ROWS')) {
  */
 function erp_waybill_form_line($source)
 {
-    $source = (array) $source;
+    // A field that came back as an array (lines[0][description][]=x) is
+    // not given; the row is drawn with that box empty.
+    $source = pg_request_row_values($source);
 
     $quantity = $source['quantity'] ?? '';
     if (is_int($quantity) || is_float($quantity)) {
@@ -516,21 +518,5 @@ function erp_waybill_form_read($liveform, $user)
         'created_by' => (int) ($user['id'] ?? 0),
     );
 
-    // The recipient left empty is the account: the note is delivered to the
-    // customer at their own address.
-    if (trim($data['ship_to_title']) === '') {
-        $account = erp_account($data['account_id']);
-        if (is_array($account)) {
-            $data['ship_to_title'] = (string) $account['title'];
-            if (trim($data['ship_to_address']) === '') {
-                $data['ship_to_address'] = (string) $account['address'];
-                $data['ship_to_district'] = (string) $account['district'];
-                $data['ship_to_city'] = (string) $account['city'];
-                $data['ship_to_state'] = (string) ($account['state'] ?? '');
-                $data['ship_to_country'] = (string) $account['country_code'];
-            }
-        }
-    }
-
-    return array('success' => true, 'data' => $data, 'field' => '', 'error' => '');
+    return array('success' => true, 'data' => erp_waybill_ship_to_default($data), 'field' => '', 'error' => '');
 }

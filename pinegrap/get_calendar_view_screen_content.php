@@ -27,28 +27,37 @@ function get_calendar_view_screen_content($properties) {
     // remember the current URL to this calendar view, in case we need to forward user to it in the future
     $_SESSION['software']['last_calendar_view_url'] = get_request_uri();
     
-    if (isset($_GET['calendar_id']) == true) {
+    // The calendar, view and date are kept in the session for the next visit.
+    // A value sent as an array (?date[]=x) counts as not given and leaves the
+    // kept one alone, and so does a view the calendar does not draw (?view=x):
+    // stuck in the session, either wrote PHP warnings on every later visit
+    // (the view also left the calendar empty). "?date" with no value (the
+    // This Month link) still clears the date.
+    $views = array('', 'monthly', 'weekly', 'upcoming');
+
+    if (isset($_GET['calendar_id']) && is_string($_GET['calendar_id'])) {
         $_SESSION['software']['calendar_views'][$current_page_id]['calendar_id'] = $_GET['calendar_id'];
     }
 
     // if the default view is upcoming, then the view should be upcoming, regardless of what is in the query string or session
     if ($default_view == 'upcoming') {
         $_SESSION['software']['calendar_views'][$current_page_id]['view'] = 'upcoming';
-    
+
     // else if the view is set in the query string, then use that
-    } elseif (isset($_GET['view']) == true) {
+    } elseif (isset($_GET['view']) && is_string($_GET['view']) && in_array($_GET['view'], $views, true)) {
         $_SESSION['software']['calendar_views'][$current_page_id]['view'] = $_GET['view'];
 
     // else if mobile viewing, then override default and set to weekly
     } elseif ($device_type == 'mobile') {
         $_SESSION['software']['calendar_views'][$current_page_id]['view'] = 'weekly';
 
-    // else if there is no view in the session, then use the default view
-    } elseif (isset($_SESSION['software']['calendar_views'][$current_page_id]['view']) == false) {
+    // else if there is no view in the session (or one an older version kept
+    // from a bad link), then use the default view
+    } elseif (!in_array(($_SESSION['software']['calendar_views'][$current_page_id]['view'] ?? null), $views, true)) {
         $_SESSION['software']['calendar_views'][$current_page_id]['view'] = $default_view;
     }
 
-    if (isset($_GET['date']) == true) {
+    if (isset($_GET['date']) && is_string($_GET['date'])) {
         $_SESSION['software']['calendar_views'][$current_page_id]['date'] = $_GET['date'];
     }
 

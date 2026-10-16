@@ -23,9 +23,19 @@ function get_my_account_profile($properties = array()) {
     $layout_type = get_layout_type($page_id);
 
     // get user information to find contact
-    $query = "SELECT user_contact, timezone FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
+    //
+    // Nobody is signed in while the search index is updated, and a profile
+    // page shown in a system region can be reached without signing in. There
+    // is then no user and no contact, so every field starts blank, as it
+    // always did.
+    $query = "SELECT user_contact, timezone FROM user WHERE user_username = '" . escape($_SESSION['sessionusername'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
+
+    if (is_array($row) == false) {
+        $row = array('user_contact' => null, 'timezone' => null);
+    }
+
     $contact_id = $row['user_contact'];
     $timezone = $row['timezone'];
 
@@ -53,6 +63,31 @@ function get_my_account_profile($properties = array()) {
              WHERE id = '" . $contact_id . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
+
+    // A user without a contact record (an administrator created in the control
+    // panel) has nothing to show yet, so every field starts blank. Null keeps the
+    // fields exactly as a missing value always printed them.
+    if (is_array($row) == false) {
+        $row = array_fill_keys(array(
+            'salutation',
+            'first_name',
+            'last_name',
+            'suffix',
+            'title',
+            'company',
+            'business_address_1',
+            'business_address_2',
+            'business_city',
+            'business_state',
+            'business_zip_code',
+            'business_phone',
+            'home_phone',
+            'mobile_phone',
+            'business_fax',
+            'business_country',
+            'tax_number',
+            'tax_office'), null);
+    }
 
     $salutation = $row['salutation'];
     $first_name = $row['first_name'];
@@ -202,8 +237,10 @@ function get_my_account_profile($properties = array()) {
 
         $output = '';
 
+        // Messages, not only errors: a provider connected from the
+        // sign-in section below comes back with its notice.
         $output .=
-            $form->output_errors() . '
+            $form->get_messages() . '
             <form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/my_account_profile.php" method="post" class="software">
                 ' . get_token_field() . '
                 <table style="margin-bottom: 15px">

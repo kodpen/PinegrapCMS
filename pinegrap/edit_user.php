@@ -26,7 +26,7 @@ validate_area_access($user, 'manager');
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM user WHERE user_id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -97,9 +97,14 @@ if (isset($_POST['unlock_sign_in'])) {
 //
 // Handled ahead of the edit form's own POST branch, like unlock_sign_in above:
 // it is not part of saving the user and must not fall through into the save.
-if (isset($_POST['pg_unlink_google'])) {
+if (isset($_POST['pg_unlink_google']) || isset($_POST['pg_unlink_identity'])) {
 
     validate_token_field();
+
+    // A provider of signin.php; pg_unlink_google is the older form of
+    // pg_unlink_identity=google.
+    $unlink_provider = (isset($_POST['pg_unlink_identity']) && is_string($_POST['pg_unlink_identity'])) ? $_POST['pg_unlink_identity'] : 'google';
+    $unlink_label = pg_signin_provider_label($unlink_provider);
 
     $unlink_user_id = (int) ($_POST['id'] ?? 0);
     $unlink_user = db_item(
@@ -113,21 +118,24 @@ if (isset($_POST['pg_unlink_google'])) {
         // account with a lower-privileged role, and always on their own.
         if (($unlink_user_id !== (int) USER_ID) && (USER_ROLE > 0) && (USER_ROLE >= (int) $unlink_user['user_role'])) {
             log_activity(lang(array(
-                'string' => 'access denied to disconnect Google for a higher-role user ({var:1})',
-                'vars'   => array($unlink_user['user_username']))), USER_USERNAME);
+                'string' => 'access denied to disconnect {var:1} for a higher-role user ({var:2})',
+                'vars'   => array($unlink_label, $unlink_user['user_username']))), USER_USERNAME);
             output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        // An account with no password of its own would be locked out entirely.
-        if (((int) $unlink_user['user_password_algo']) === 3) {
-            output_error(lang('This account signs in with Google only. Give it a password first, or disconnecting Google would lock it out.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        // An account left with no other way in would be locked out entirely.
+        if (!pg_signin_can_remove($unlink_user_id, $unlink_provider)) {
+            output_error(lang(array(
+                    'string' => 'This account signs in with {var:1} only. Give it a password first, or disconnecting {var:1} would lock it out.',
+                    'vars'   => $unlink_label))
+                . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        db("UPDATE user SET user_google_id = NULL WHERE user_id = '" . $unlink_user_id . "'");
+        pg_signin_identity_remove($unlink_user_id, $unlink_provider);
 
         log_activity(lang(array(
-            'string' => 'google connection removed from user ({var:1})',
-            'vars'   => array($unlink_user['user_username']))), $_SESSION['sessionusername'] ?? '');
+            'string' => '{var:1} connection removed from user ({var:2})',
+            'vars'   => array($unlink_label, $unlink_user['user_username']))), $_SESSION['sessionusername'] ?? '');
     }
 
     $unlink_send_to = '';
@@ -212,7 +220,6 @@ if (!$_POST) {
             user_id,
             user_username,
             user_email,
-            user_google_id,
             user_role,
             user_home,
             user_password_hint,
@@ -270,10 +277,7 @@ if (!$_POST) {
     $id = $row['user_id'];
     $username = $row['user_username'];
     $email = $row['user_email'];
-    $user_google_id = $row['user_google_id'];
-    $output_google_badge = (!empty($user_google_id))
-        ? ' <span class="badge bg-light text-dark border fw-light" title="' . h(lang('This account can sign in with Google.')) . '">' . lang('Google') . '</span>'
-        : '';
+    $user_identities = pg_signin_identities((int) $id);
     $role = $row['user_role'];
     $home = $row['user_home'];
     $password_hint = $row['user_password_hint'];
@@ -397,7 +401,7 @@ if (!$_POST) {
     }
 
     if ($allow_delete == true) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-loading-content="' . lang(array('string'=>'Deleting')) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('user')))) . '"><i class="bi bi-trash me-2"></i><span class="btn-text">' . lang(array('string'=>'Delete')) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('user')))) . '"><i class="bi bi-trash me-2"></i><span class="btn-text">' . lang(array('string'=>'Delete')) . '</span></button>';
     } else {
         $output_delete_button = '<button type="submit" name="submit_delete" class="btn my-1 btn-danger disabled"><i class="bi bi-trash me-2"></i><span class="btn-text">' . lang(array('string'=>'Delete')) . '</span></button>';
     }
@@ -829,7 +833,12 @@ if (!$_POST) {
     // ── Identity tags ────────────────────────────────────────────────────
     $output_identity_tags =
         '<span class="badge text-bg-primary fw-light">' . h(pg_user_role_name($role)) . '</span>'
-        . ((!empty($user_google_id)) ? '<span class="badge text-bg-light border fw-light" title="' . h(lang('This account can sign in with Google.')) . '"><i class="bi bi-google me-1"></i>Google</span>' : '')
+        . implode('', array_map(function ($identity_provider) {
+            $identity_definition = pg_connect_provider($identity_provider);
+            $identity_label = pg_signin_provider_label($identity_provider);
+            return '<span class="badge text-bg-light border fw-light" title="' . h(lang(array('string' => 'This account can sign in with {var:1}.', 'vars' => $identity_label))) . '">'
+                . '<i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . ' me-1"></i>' . h($identity_label) . '</span>';
+        }, array_keys($user_identities)))
         . ((($edit_user_session_latest > 0) && ((time() - $edit_user_session_latest) < 300)) ? '<span class="badge text-bg-success fw-light">' . h(lang('Online')) . '</span>' : '')
         . $output_identity_lock_tag;
 
@@ -879,7 +888,7 @@ if (!$_POST) {
 
         $output_contact_body =
             '<p class="small text-body-secondary mb-2">' . h(lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.')) . '</p>'
-            . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-loading-content="' . h(lang('Creating')) . '"><i class="bi bi-person-plus me-1"></i><span class="btn-text">' . h(lang('Create Contact')) . '</span></button>';
+            . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-person-plus me-1"></i><span class="btn-text">' . h(lang('Create Contact')) . '</span></button>';
 
         $output_contact_header = '';
     }
@@ -906,15 +915,37 @@ if (!$_POST) {
         ? lang(array('string' => 'Last changed {var:1}', 'vars' => date('d.m.Y', $password_changed_at)))
         : lang('Change date not recorded');
 
-    $output_google_row = (!empty($user_google_id))
-        ? '<div class="pg-fact">
-                <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
-                <div class="pg-fact-text"><b>' . h(lang('Sign in with Google')) . '</b><span>' . h(lang('Connected')) . '</span></div>
-            </div>'
+    $output_identity_rows = $user_identities
+        ? ''
         : '<div class="pg-fact">
-                <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
-                <div class="pg-fact-text"><b>' . h(lang('Sign in with Google')) . '</b><span>' . h(lang('Not connected')) . ' &middot; ' . h(lang('Signs in with a password only')) . '</span></div>
+                <span class="pg-fact-icon"><i class="bi bi-key"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang('Signs in with a password only')) . '</b><span>' . h(lang('No Google, Microsoft or Apple account is connected.')) . '</span></div>
             </div>';
+
+    foreach ($user_identities as $identity_provider => $identity) {
+        $identity_definition = pg_connect_provider($identity_provider);
+        $output_identity_rows .= '<div class="pg-fact">
+                <span class="pg-fact-icon"><i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . '"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => pg_signin_provider_label($identity_provider)))) . '</b><span>' . h(lang('Connected'))
+                    . (((string) $identity['email'] !== '') ? ' &middot; ' . h($identity['email']) : '') . '</span></div>
+            </div>';
+    }
+
+    // One's own account: a provider that is on and not connected yet can be
+    // connected from here, whatever its e-mail address (signin.php,
+    // &connect=). Not for another person's account: the provider account
+    // would be the editor's.
+    if ((int) $id === (int) USER_ID) {
+        $output_connect_buttons = pg_signin_connect_buttons((int) $id, get_request_uri(), true);
+
+        if ($output_connect_buttons !== '') {
+            $output_identity_rows .= '<div class="pg-fact">
+                <span class="pg-fact-icon"><i class="bi bi-link-45deg"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang('Connect a sign-in')) . '</b><span>' . h(lang('Connect your own account at a provider to sign in with it too.')) . '</span>'
+                    . $output_connect_buttons . '</div>
+            </div>';
+        }
+    }
 
     $output_sessions_row = ($edit_user_sessions_count > 0)
         ? '<div class="pg-fact">
@@ -925,7 +956,7 @@ if (!$_POST) {
         : '<div class="pg-fact">
                 <span class="pg-fact-icon"><i class="bi bi-laptop"></i></span>
                 <div class="pg-fact-text"><b>' . h(lang('No active sessions')) . '</b></div>
-                ' . ((!empty($user_google_id)) ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="offcanvas" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
+                ' . ($user_identities ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="offcanvas" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
             </div>';
 
     // Two-step verification: a fact row, and turning it off in the side
@@ -963,7 +994,7 @@ if (!$_POST) {
                     <span class="pg-fact-icon"><i class="bi bi-key"></i></span>
                     <div class="pg-fact-text"><b>' . h(lang('Password')) . '</b><span>' . h($output_password_note) . '</span></div>
                 </div>
-                ' . $output_google_row . $output_mfa_row . $output_sessions_row . '
+                ' . $output_identity_rows . $output_mfa_row . $output_sessions_row . '
             </div>
         </div>';
 
@@ -1009,26 +1040,30 @@ if (!$_POST) {
 
     // ── The panels that live outside the form ────────────────────────────
     //
-    // Sessions and the Google connection are their own forms, and forms cannot
-    // nest, so these sit after the main form closes. The panel says as much:
-    // the buttons in it act at once rather than on Save.
-    $output_google_panel = (!empty($user_google_id))
-        ? '<div class="pg-perm-block">
-                <div class="pg-perm-block-title">' . h(lang('Sign in with Google')) . '</div>
+    // Sessions and the sign-in connections are their own forms, and forms
+    // cannot nest, so these sit after the main form closes. The panel says as
+    // much: the buttons in it act at once rather than on Save.
+    $output_identity_panel = '';
+
+    foreach ($user_identities as $identity_provider => $identity) {
+        $identity_definition = pg_connect_provider($identity_provider);
+        $identity_label = pg_signin_provider_label($identity_provider);
+        $output_identity_panel .= '<div class="pg-perm-block">
+                <div class="pg-perm-block-title">' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => $identity_label))) . '</div>
                 <div class="d-flex align-items-start gap-3 border rounded p-3">
-                    <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
+                    <span class="pg-fact-icon"><i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . '"></i></span>
                     <div class="flex-grow-1">
-                        <p class="small mb-0">' . h(lang('The connection is tied to the Google account itself, not to the email address - changing the email here does not remove it.')) . '</p>
+                        <p class="small mb-0">' . h(lang(array('string' => 'The connection is tied to the {var:1} account itself, not to the email address - changing the email here does not remove it.', 'vars' => $identity_label))) . '</p>
                     </div>
                     <form method="post" action="edit_user.php" style="margin:0">' . get_token_field()
-                        . '<input type="hidden" name="pg_unlink_google" value="1"/>'
+                        . '<input type="hidden" name="pg_unlink_identity" value="' . h($identity_provider) . '"/>'
                         . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
                         . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
-                        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Disconnect Google')) . '</button>'
+                        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $identity_label))) . '</button>'
                     . '</form>
                 </div>
-            </div>'
-        : '';
+            </div>';
+    }
 
     // Turned off at once, one's own account included; see the handler above.
     // Not offered on one's own account while signed in as another user.
@@ -1087,7 +1122,7 @@ if (!$_POST) {
             </div>
             <div class="offcanvas-body">
                 <p class="pg-perm-panel-lead">' . h(lang('These act at once and do not wait for Save.')) . '</p>
-                ' . $output_sessions_list . $output_google_panel . $output_mfa_panel . '
+                ' . $output_sessions_list . $output_identity_panel . $output_mfa_panel . '
             </div>
             <div class="offcanvas-footer">
                 <div class="pg-perm-panel-count">' . h(lang('Sessions expire on their own after 30 days.')) . '</div>
@@ -1249,7 +1284,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="bi bi-floppy me-2"></span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="bi bi-floppy me-2"></span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
@@ -1342,6 +1377,9 @@ if (!$_POST) {
             // Revoke sign-in tokens first, as delete_users.php does, so no token
             // outlives the user row it belongs to.
             pg_auth_token_revoke_user((int) ($_POST['id'] ?? 0));
+
+            // The Microsoft and Apple identities go with the account.
+            pg_signin_identities_forget((int) ($_POST['id'] ?? 0));
 
             // delete user record
             $query = "DELETE FROM user WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
@@ -1484,11 +1522,15 @@ if (!$_POST) {
             }
         }
 
-        // if the role is allowed to be changed
-        if ($allow_role_change == true) {
-            $sql_role = " user_role = '" . escape($_POST['role'] ?? '') . "',";
+        // if the role is allowed to be changed. The last administrator's role
+        // cards are disabled and post nothing; an empty role must not reach
+        // the column, where a lenient server would store it as 0.
+        if (($allow_role_change == true) && isset($_POST['role'])) {
+            $sql_role = " user_role = '" . escape($_POST['role']) . "',";
+            $saved_role = (int) $_POST['role'];
         } else {
             $sql_role = "";
+            $saved_role = (int) $role;
         }
         
         $sql_offline_payment = '';
@@ -1630,7 +1672,7 @@ if (!$_POST) {
         }
         
         // if user that was created has a user role, then prepare to assign access to various items for user
-        if ($_POST['role'] == 3) {
+        if ($saved_role == 3) {
             // delete user and common region references in users_common_regions_xref
             $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

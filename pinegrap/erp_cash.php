@@ -56,7 +56,7 @@ foreach ($cash_accounts as $till) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_erp_till.php?id=' . $id . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_erp_till.php?id=' . $id . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="text-nowrap align-middle chart_label' . $name_class . '">' . h($till['name']) . '</td>
             <td class="align-middle">' . h($kind_labels[$till['kind']] ?? $till['kind']) . '</td>
@@ -85,11 +85,11 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_receipt.php?direction=collection" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_receipt.php?direction=payment" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-box-arrow-up me-1" aria-hidden="true"></i>' . lang('Record a Payment') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_transfer.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Transfer') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_till.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('Open a Till') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="erp_cashflow.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-graph-up-arrow me-1" aria-hidden="true"></i>' . lang('Cash flow') . '</a>
+                        <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_receipt.php?direction=collection"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_receipt.php?direction=payment"><i class="bi bi-box-arrow-up me-1" aria-hidden="true"></i>' . lang('Record a Payment') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_transfer.php"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Transfer') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_till.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('Open a Till') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="erp_cashflow.php"><i class="bi bi-graph-up-arrow me-1" aria-hidden="true"></i>' . lang('Cash flow') . '</a>
                     </nav>
 
             <div class="card my-4">

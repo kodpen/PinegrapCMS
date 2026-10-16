@@ -28,8 +28,12 @@ if ($_POST) {
     validate_token_field();
 }
 
-$account_id = (int) ($_REQUEST['id'] ?? 0);
+$account_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $preview_template = null;
+
+// The draft template is one value. One posted as an array counts as not given:
+// (string) previewed it as "Array" with a notice.
+pg_request_single_values(array('template'));
 
 // A draft template from the settings form: the settings gate, tried on the
 // account that moved last when none is named.
@@ -55,7 +59,7 @@ if (!is_array($account)) {
 // The screen's dates come in the site's format; a link's come as Y-m-d. Both
 // end up as Y-m-d or empty, and empty means the default.
 $read_date = function ($value) {
-    $value = trim((string) $value);
+    $value = is_string($value) ? trim($value) : '';
 
     if ($value === '') {
         return '';
@@ -70,7 +74,7 @@ $read_date = function ($value) {
 $options = erp_reconciliation_options(array(
     'as_of' => $read_date($_REQUEST['as_of'] ?? ''),
     'from' => $read_date($_REQUEST['from'] ?? ''),
-    'reply_days' => isset($_REQUEST['reply_days']) ? (int) $_REQUEST['reply_days'] : 7,
+    'reply_days' => is_scalar($_REQUEST['reply_days'] ?? null) ? (int) $_REQUEST['reply_days'] : 7,
 ));
 
 $html = erp_reconciliation_html($account_id, $options, $preview_template);

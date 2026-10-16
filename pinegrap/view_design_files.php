@@ -23,69 +23,37 @@ validate_area_access($user, 'designer');
 
 $liveform = new liveform('view_design_files');
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_design_files']['sort'] = $_REQUEST['sort'];
-
-    // clear order
-    $_SESSION['software']['design']['view_design_files']['order'] = '';
-}
-
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_design_files']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
-
 $output_clear_button = '';
 
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'type'          => lang('Type'),
+    'size'          => lang('Size'),
+    'optimized'     => lang('Optimized'),
+    'folder'        => lang('Folder'),
+    'description'   => lang('Description'),
+    'last_modified' => lang('Last Modified'),
+);
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['design']['view_design_files']['sort']) == false) {
-    $_SESSION['software']['design']['view_design_files']['sort'] = '';
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-switch (($_SESSION['software']['design']['view_design_files']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'name';
-        break;
-    case lang('Folder'):
-        $sort_column = 'folder_name';
-        break;
-    case lang('Type'):
-        $sort_column = 'type';
-        break;
-    case lang('Size'):
-        $sort_column = 'size';
-        break;
+$list_state = pg_list_state('view_design_files', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Optimized'):
-        $sort_column = 'optimized';
-        break;
-
-    case lang('Description'):
-        $sort_column = 'description';
-        break;
-    case lang('Last Modified'):
-        $sort_column = 'timestamp';
-        break;
-    default:
-        $sort_column = 'timestamp';
-        $_SESSION['software']['design']['view_design_files']['sort'] = lang('Last Modified');
-        break;
-}
-
-if (!empty($_SESSION['software']['design']['view_design_files']['order'])) {
-    $asc_desc = sql_order_direction($_SESSION['software']['design']['view_design_files']['order'] ?? '');
-} elseif ($sort_column == 'timestamp') {
-    $asc_desc = 'desc';
-    $_SESSION['software']['design']['view_design_files']['order'] = 'desc';
-} else {
-    $asc_desc = 'asc';
-    $_SESSION['software']['design']['view_design_files']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'name',
+    'type'          => 'type',
+    'size'          => 'size',
+    'optimized'     => 'optimized',
+    'folder'        => 'folder_name',
+    'description'   => 'description',
+    'last_modified' => 'timestamp',
+));
 
 // get all stylesheet files
 $query =
@@ -118,7 +86,7 @@ $query =
     LEFT JOIN folder ON files.folder = folder.folder_id
     LEFT JOIN user ON files.user = user.user_id
     WHERE (files.design = '1')
-    ORDER BY $sort_column $asc_desc";
+    ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $files = array();
@@ -167,14 +135,14 @@ if ($files) {
                     $optimize_percent_html = $show_optimize_percent
                         ? '<span class="ps-1 pe-2 fs-smaller">' . calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name']) . '</span>'
                         : '';
-                    $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-success border-2 " data-loading-content=" " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle"></i>' . $optimize_percent_html . '</button>';
+                    $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-success border-2 " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle"></i>' . $optimize_percent_html . '</button>';
                 }
-                $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " data-loading-content=" " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file['name']) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-brush"></i></button>';
+                $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file['name']) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-brush"></i></button>';
         }
 
 
         $output_edit_buttons = '
-        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_edit_image_button;
+        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_edit_image_button;
 
         $archived_row_style = '';
         
@@ -226,7 +194,7 @@ if ($files) {
                 <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" /></td>
                 <td class="align-middle text-start action-buttons">
                     ' . $output_edit_buttons . '
-                    <a class="m-1 btn-data-control btn btn-outline-warning border-2 " title="' . lang('Download') . '" data-loading-content=" " download="' . h($file['type']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
+                    <a class="m-1 btn-data-control btn btn-outline-warning border-2 " title="' . lang('Download') . '" download="' . h($file['type']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
                 </td>
                 <td class="align-middle text-center">' . $output_thumbnail . '</td>
                 <td class="align-middle chart_label" title="' . h($file['name']) . '">' . h($file['name']) . '</td>
@@ -262,7 +230,9 @@ pg_page_shell(
                     
                     <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_design_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_design_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-2">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_design_files.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -286,13 +256,13 @@ pg_page_shell(
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
                                     <th>' . lang('Thumbnail') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Type'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Size'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Optimized'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                    <th>' . get_column_heading(lang('Type'), $sort_levels, '', '', 'type') . '</th>
+                                    <th>' . get_column_heading(lang('Size'), $sort_levels, '', '', 'size') . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Optimized'), $sort_levels, '', '', 'optimized') . '</th>
+                                    <th>' . get_column_heading(lang('Folder'), $sort_levels, '', '', 'folder') . '</th>
+                                    <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
@@ -301,7 +271,7 @@ pg_page_shell(
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                     <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-primary disabled" onclick="window.open(\'edit_files.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('files')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('files')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                 </div>
                             </div>
                         </nav>

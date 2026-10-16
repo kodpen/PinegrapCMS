@@ -27,8 +27,10 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');
 
-$type = (string) ($_GET['type'] ?? '');
-$id = (int) ($_GET['id'] ?? 0);
+$type = is_string($_GET['type'] ?? null) ? $_GET['type'] : '';
+// One number: an array (?id[]=x) cast to 1 and opened the first record's
+// drawer.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 
 $builders = array(
     'account' => 'erp_drawer_account',

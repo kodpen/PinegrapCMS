@@ -100,6 +100,61 @@ function pg_db_table_catalog()
 }
 
 /**
+ * The product and version of a database server, from its version string.
+ *
+ * MariaDB before 11 introduces itself to the client with the replication
+ * prefix '5.5.5-', which is not its version. No database access.
+ *
+ * @param string $version_string SELECT VERSION() or mysqli_get_server_info(),
+ *                               e.g. '5.7.44-log', '5.5.5-10.3.39-MariaDB'
+ * @return array('product' => 'MySQL' or 'MariaDB', 'version' => '5.7.44',
+ *               or '' when no version can be read, 'label' => 'MySQL 5.7.44')
+ */
+function pg_db_server_version($version_string)
+{
+    $version_string = (string) $version_string;
+
+    $product = (stripos($version_string, 'mariadb') !== false) ? 'MariaDB' : 'MySQL';
+
+    $version = '';
+
+    if (preg_match('/^(\d+)\.(\d+)(?:\.(\d+))?/', preg_replace('/^5\.5\.5-/', '', trim($version_string)), $match)) {
+        $version = $match[1] . '.' . $match[2] . '.' . ((isset($match[3]) && ($match[3] !== '')) ? $match[3] : '0');
+    }
+
+    return array(
+        'product' => $product,
+        'version' => $version,
+        'label' => trim($product . ' ' . $version),
+    );
+}
+
+/**
+ * Whether the schema can be built on this server: MySQL 5.7 or later, or
+ * MariaDB 10.2 or later.
+ *
+ * The schema puts UNIQUE keys and indexes on VARCHAR(255) columns, 1020
+ * bytes in utf8mb4. MySQL 5.6 and MariaDB 10.1 allow 767 bytes per key
+ * unless innodb_large_prefix is on and each table is created with
+ * ROW_FORMAT=DYNAMIC; neither is their default and a shared host cannot
+ * change it, so the upgrade stopped at 2026.1.21 with error 1071. A
+ * version that cannot be read is not refused. No database access.
+ *
+ * @param array $server pg_db_server_version()
+ * @return bool
+ */
+function pg_db_server_supported($server)
+{
+    if ((!is_array($server)) || (empty($server['version']))) {
+        return true;
+    }
+
+    $minimum = ($server['product'] == 'MariaDB') ? '10.2.0' : '5.7.0';
+
+    return version_compare($server['version'], $minimum, '>=');
+}
+
+/**
  * What the database server is and how it is set up, for the screen to show.
  *
  * Each value is asked on its own: a variable that one server or version does
@@ -265,8 +320,9 @@ function pg_db_optimize_marker()
 }
 
 /**
- * Runs one table maintenance statement (OPTIMIZE, CHECK or REPAIR TABLE) the
- * way all three are run: the name is checked against the database's own list,
+ * Runs one table maintenance statement (OPTIMIZE, CHECK or REPAIR TABLE, and
+ * the online rebuild of pg_visitor_shrink_run()) the way all of them are
+ * run: the name is checked against the database's own list,
  * nothing starts while another maintenance statement on the table is running,
  * the wait for the metadata lock is bounded, and the rows the server answers
  * with come back as 'messages'.
@@ -280,10 +336,13 @@ function pg_db_optimize_marker()
  * @param array  $result    the answer to fill in
  * @param string $marker    a marker file to hold for the statement's duration,
  *                          or ''
+ * @param int    $lock_wait_seconds how long the statement may wait for the
+ *                          table's metadata lock, at its start and, for a
+ *                          rebuild, at its end
  * @return array $result with 'state' 'missing', 'running', 'busy', 'failed'
  *               or 'ran', and 'catalog' => the table's catalog row before
  */
-function pg_db_run_table_statement($table, $statement, $result, $marker = '')
+function pg_db_run_table_statement($table, $statement, $result, $marker = '', $lock_wait_seconds = 20)
 {
     // The name goes into the statement between backticks: it must look like
     // one of the software's names and be a table this database has.
@@ -343,7 +402,7 @@ function pg_db_run_table_statement($table, $statement, $result, $marker = '')
         }
     }
 
-    @mysqli_query(db::$con, "SET SESSION lock_wait_timeout = 20");
+    @mysqli_query(db::$con, "SET SESSION lock_wait_timeout = " . max(1, (int) $lock_wait_seconds));
 
     $started = microtime(true);
 

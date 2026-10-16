@@ -370,6 +370,20 @@ function ws_channel_folder_rename($channel, $name)
 }
 
 /**
+ * The bytes of a file the panel sends base64, after a "data:...;base64,"
+ * prefix or without one.
+ *
+ * @param string $data
+ * @return string|false false when they could not be decoded
+ */
+function ws_upload_decode($data)
+{
+    $parts = explode('base64,', (string) $data, 2);
+
+    return base64_decode(str_replace(' ', '+', end($parts)), true);
+}
+
+/**
  * Stores a file posted into a channel, base64 as the panel sends it.
  *
  * @param array  $viewer
@@ -380,27 +394,97 @@ function ws_channel_folder_rename($channel, $name)
  */
 function ws_store_upload($viewer, $channel, $original_name, $data)
 {
-    if (!ws_can_post_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
-    }
+    return ws_store_upload_bytes($viewer, $channel, $original_name, ws_upload_decode($data));
+}
 
+/**
+ * What a channel says of a file from its name and its bytes alone, before
+ * anything is kept: its name, size and type, and that a picture is a picture
+ * and nothing that reads as a page or a program is taken whatever it was
+ * called. The bytes are looked at in memory, so a refused file never reaches
+ * the disk and the API's dry run meets the same refusals.
+ *
+ * @param string       $original_name
+ * @param string|false $binary false when the bytes could not be decoded
+ * @return array ok, error, name (the name cleaned), extension
+ */
+function ws_upload_inspect($original_name, $binary)
+{
     $original_name = trim(preg_replace('/[\x00-\x1F\x7F]/', '', basename(str_replace('\\', '/', (string) $original_name))));
     $extension = strtolower((string) pathinfo($original_name, PATHINFO_EXTENSION));
+    $refused = lang('This file type is not allowed.');
 
     if (($original_name === '') || ws_upload_refused($original_name)) {
-        return array('ok' => false, 'error' => function_exists('pg_upload_blocked_message') ? pg_upload_blocked_message($original_name) : lang('This file type is not allowed.'));
+        return array('ok' => false, 'error' => function_exists('pg_upload_blocked_message') ? pg_upload_blocked_message($original_name) : $refused);
     }
 
-    $parts = explode('base64,', (string) $data, 2);
-    $binary = base64_decode(str_replace(' ', '+', end($parts)), true);
-
-    if (($binary === false) || ($binary === '')) {
+    if (($binary === false) || ((string) $binary === '')) {
         return array('ok' => false, 'error' => lang('The file could not be read.'));
     }
 
     if (strlen($binary) > ws_upload_max_bytes()) {
         return array('ok' => false, 'error' => lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor(ws_upload_max_bytes() / 1048576))));
     }
+
+    if ((ws_file_kind($original_name) === 'image') && (@getimagesizefromstring($binary) === false)) {
+        return array('ok' => false, 'error' => $refused);
+    }
+
+    if (function_exists('finfo_open')) {
+        $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+        $mime = $finfo ? (string) @finfo_buffer($finfo, $binary) : '';
+
+        if ($finfo) {
+            @finfo_close($finfo);
+        }
+
+        if (preg_match('#^(text/html|application/xhtml|application/x-php|text/x-php|application/x-httpd|application/x-msdownload|application/x-dosexec|application/x-sh|text/x-shellscript|application/x-executable|image/svg|application/javascript|text/javascript)#i', $mime)) {
+            return array('ok' => false, 'error' => $refused);
+        }
+    }
+
+    return array('ok' => true, 'error' => '', 'name' => $original_name, 'extension' => $extension);
+}
+
+/**
+ * Whether a channel takes this file from this person: the checks of
+ * ws_store_upload_bytes(), with nothing kept.
+ *
+ * @param array        $viewer
+ * @param array        $channel
+ * @param string       $original_name
+ * @param string|false $binary
+ * @return array ok, error, name (the name cleaned), extension
+ */
+function ws_upload_check($viewer, $channel, $original_name, $binary)
+{
+    if (!ws_can_post_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+    }
+
+    return ws_upload_inspect($original_name, $binary);
+}
+
+/**
+ * Stores a file posted into a channel, from its bytes: the panel's base64
+ * once decoded, or a file the external API received as a form part.
+ *
+ * @param array        $viewer
+ * @param array        $channel
+ * @param string       $original_name
+ * @param string|false $binary false when the bytes could not be decoded
+ * @return array ok, error, file_id, name (the name the author gave it)
+ */
+function ws_store_upload_bytes($viewer, $channel, $original_name, $binary)
+{
+    $checked = ws_upload_check($viewer, $channel, $original_name, $binary);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
+    }
+
+    $original_name = $checked['name'];
+    $extension = $checked['extension'];
 
     // A file of a discussion is kept in its channel's folder: the people of
     // a discussion are people who read the channel, and the file stays when
@@ -426,29 +510,6 @@ function ws_store_upload($viewer, $channel, $original_name, $data)
         return array('ok' => false, 'error' => lang('The file could not be saved.'));
     }
 
-    // A picture has to be a picture, and nothing that reads as a page or a
-    // program is kept whatever it was called.
-    if ((ws_file_kind($original_name) === 'image') && (@getimagesize($stored_path) === false)) {
-        @unlink($stored_path);
-
-        return array('ok' => false, 'error' => lang('This file type is not allowed.'));
-    }
-
-    if (function_exists('finfo_open')) {
-        $finfo = @finfo_open(FILEINFO_MIME_TYPE);
-        $mime = $finfo ? (string) @finfo_file($finfo, $stored_path) : '';
-
-        if ($finfo) {
-            @finfo_close($finfo);
-        }
-
-        if (preg_match('#^(text/html|application/xhtml|application/x-php|text/x-php|application/x-httpd|application/x-msdownload|application/x-dosexec|application/x-sh|text/x-shellscript|application/x-executable|image/svg|application/javascript|text/javascript)#i', $mime)) {
-            @unlink($stored_path);
-
-            return array('ok' => false, 'error' => lang('This file type is not allowed.'));
-        }
-    }
-
     db("INSERT INTO files (name, folder, type, size, user, design, optimized, timestamp)
         VALUES ('" . e($stored_name) . "', '" . (int) $folder_id . "', '" . e($extension) . "', '" . (int) filesize($stored_path) . "',
             '" . (int) $viewer['id'] . "', '0', '0', UNIX_TIMESTAMP())");
@@ -462,4 +523,219 @@ function ws_store_upload($viewer, $channel, $original_name, $data)
     }
 
     return array('ok' => true, 'error' => '', 'file_id' => $file_id, 'name' => mb_substr($original_name, 0, 200));
+}
+
+/**
+ * Takes back a file ws_store_upload_bytes() kept, when the message it was
+ * for could not be written after all.
+ *
+ * @param int $file_id
+ */
+function ws_upload_discard($file_id)
+{
+    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'");
+
+    if ($stored === '') {
+        return;
+    }
+
+    @unlink(FILE_DIRECTORY_PATH . '/' . basename($stored));
+    db("DELETE FROM files WHERE id = '" . (int) $file_id . "'");
+}
+
+/**
+ * Posts a file into a channel as a message carrying it, base64 as the panel
+ * sends it. The file and the message are checked before anything is kept,
+ * as the external API's files endpoint does: a message that would be refused
+ * (too long, too many too fast) leaves no file on the disk, no row in the
+ * file manager and no folder for the channel.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $body          the words beside the file, may be empty
+ * @param string $original_name
+ * @param string $data          base64
+ * @param array  $options       as for ws_message_send(), file_id and file_name aside
+ * @return array ok, error, message_id
+ */
+function ws_message_send_file($viewer, $channel, $body, $original_name, $data, $options = array())
+{
+    $binary = ws_upload_decode($data);
+    $checked = ws_upload_check($viewer, $channel, $original_name, $binary);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'message_id' => 0);
+    }
+
+    // The file it is about to carry stands in for its id: words are optional
+    // beside a file.
+    $message = ws_message_send_check($viewer, $channel, $body, array_merge($options, array('file_id' => PHP_INT_MAX)));
+
+    if (!$message['ok']) {
+        return array('ok' => false, 'error' => $message['error'], 'message_id' => 0);
+    }
+
+    $stored = ws_store_upload_bytes($viewer, $channel, $original_name, $binary);
+
+    if (!$stored['ok']) {
+        return array('ok' => false, 'error' => $stored['error'], 'message_id' => 0);
+    }
+
+    $result = ws_message_send($viewer, $channel, $body, array_merge($options, array(
+        'file_id'   => $stored['file_id'],
+        'file_name' => $stored['name'],
+    )));
+
+    // Refused after all (the limit reached in between, the row not written):
+    // no message, no file.
+    if (!$result['ok']) {
+        ws_upload_discard($stored['file_id']);
+    }
+
+    return $result;
+}
+
+/**
+ * How a channel's file is handed out: pictures, sound, video and PDF with
+ * their own type, to be shown where they are opened; anything else, and
+ * anything a browser could run (HTML, SVG), as plain bytes to be saved.
+ *
+ * @param string $name the name the author gave it
+ * @return array mime, inline (bool)
+ */
+function ws_file_type($name)
+{
+    $types = array(
+        'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp',
+        'avif' => 'image/avif', 'bmp' => 'image/bmp', 'pdf' => 'application/pdf',
+        'mp4' => 'video/mp4', 'webm' => 'video/webm', 'mov' => 'video/quicktime', 'm4v' => 'video/mp4', 'ogv' => 'video/ogg',
+        'mp3' => 'audio/mpeg', 'm4a' => 'audio/mp4', 'wav' => 'audio/wav', 'ogg' => 'audio/ogg', 'oga' => 'audio/ogg',
+        'opus' => 'audio/ogg', 'aac' => 'audio/aac', 'weba' => 'audio/webm',
+    );
+
+    $extension = strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION));
+
+    return isset($types[$extension])
+        ? array('mime' => $types[$extension], 'inline' => true)
+        : array('mime' => 'application/octet-stream', 'inline' => false);
+}
+
+/**
+ * The longest edge a smaller copy of a channel's picture is made at: the
+ * first of a few fixed sizes that is at least the one asked for, the largest
+ * of them at most. Fixed sizes keep one copy per picture and size on disk
+ * however many screen widths ask, and keep a caller from having a picture
+ * redrawn at every size from one to four thousand.
+ *
+ * @param int $wanted the longest edge the caller would like, in pixels
+ * @return int
+ */
+function ws_file_preview_edge($wanted)
+{
+    $edges = array(160, 320, 640, 1280, 1920);
+
+    foreach ($edges as $edge) {
+        if ((int) $wanted <= $edge) {
+            return $edge;
+        }
+    }
+
+    return end($edges);
+}
+
+/**
+ * A smaller copy of a channel's picture, for a phone that shows a channel's
+ * pictures in a list before anyone opens one.
+ *
+ * Drawn by the same engine that optimizes and resizes the file manager's
+ * pictures (pg_process_image_file()), in the picture's own format, upright
+ * (the EXIF turn is applied) and without its metadata. The copy is kept in
+ * data/temp under a name made of the stored file's name, its size, its time
+ * and the edge, so a file replaced under the same name gets a new copy and
+ * the old one is never served for it. Copies older than thirty days are swept
+ * now and then, and drawn again when asked for.
+ *
+ * Null - send the picture as it is - when it is no larger than the edge
+ * already, when it cannot be drawn smaller here (an animated GIF, a format
+ * the image library does not read, no image library, not enough memory) or
+ * when the copy cannot be kept.
+ *
+ * @param string $path   the stored file
+ * @param int    $wanted the longest edge asked for
+ * @return array|null path, mime
+ */
+function ws_file_preview($path, $wanted)
+{
+    $edge = ws_file_preview_edge($wanted);
+    $size = @getimagesize($path);
+
+    if (!$size || empty($size[0]) || empty($size[1]) || (max((int) $size[0], (int) $size[1]) <= $edge)) {
+        return null;
+    }
+
+    // The copy is written in the format the picture was read as, which is
+    // what its bytes are rather than what its name says.
+    $mime = image_type_to_mime_type((int) $size[2]);
+
+    if (strpos($mime, 'image/') !== 0) {
+        return null;
+    }
+
+    clearstatcache(true, $path);
+
+    $directory = PG_FUNCTIONS_DIR . '/data/temp/workspace_previews';
+    $copy = $directory . '/' . sha1(basename($path) . '|' . (int) @filesize($path) . '|' . (int) @filemtime($path) . '|' . $edge);
+
+    if (is_file($copy)) {
+        return array('path' => $copy, 'mime' => $mime);
+    }
+
+    if (!function_exists('pg_process_image_file')) {
+        return null;
+    }
+
+    $report = pg_process_image_file($path, array('max_dimension' => $edge, 'quality' => 80, 'write' => false));
+
+    if (($report['status'] !== 'success') || empty($report['resized']) || ((string) $report['data'] === '')) {
+        return null;
+    }
+
+    if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
+        return null;
+    }
+
+    // Written beside its final name and moved over it, so a request that
+    // arrives while another is still writing never reads half a picture. A
+    // move refused because another request got there first and is sending
+    // its copy (Windows keeps an open file in place) still leaves a copy.
+    $temporary = $copy . '.' . (function_exists('getmypid') ? getmypid() : uniqid());
+
+    if ((@file_put_contents($temporary, $report['data']) === false) || !@rename($temporary, $copy)) {
+        @unlink($temporary);
+
+        return is_file($copy) ? array('path' => $copy, 'mime' => $mime) : null;
+    }
+
+    if (mt_rand(1, 50) === 1) {
+        ws_file_preview_sweep($directory);
+    }
+
+    return array('path' => $copy, 'mime' => $mime);
+}
+
+/**
+ * Takes away the smaller copies drawn more than thirty days ago, every copy
+ * of a picture since deleted among them; one still asked for is drawn again.
+ *
+ * @param string $directory
+ */
+function ws_file_preview_sweep($directory)
+{
+    $before = time() - (30 * 86400);
+
+    foreach ((array) @glob($directory . '/*') as $file) {
+        if (is_file($file) && ((int) @filemtime($file) < $before)) {
+            @unlink($file);
+        }
+    }
 }

@@ -16,8 +16,12 @@
 // what the cart has to contain for it to apply, and what it then does, which is
 // what these two endpoints answer.
 //
-// Read only. Writing an offer means writing seven tables in step with each
-// other, and the editor that does so is built around a screen, not a request.
+// Building an offer means writing seven tables in step with each other, and the
+// editor that does so is built around a screen, not a request. What an
+// application may change is the part that is one row: whether the offer is
+// switched on, the message it shows, and the dates it runs between - which is
+// what a campaign calendar kept in another system needs. The rules and the
+// results stay in the editor.
 //
 // The row references the tables use between themselves - the rule id, the
 // action ids, the upsell page id, the user who last saved - stay inside. A
@@ -604,9 +608,126 @@ function api_offers_get($params) {
 
 }
 
+// Switching an offer on or off, rewording it, or moving its dates.
+//
+// One row of the seven, written the way the offer editor writes it: the dates
+// are Y-m-d, an empty end date is an offer that runs until it is switched
+// off, and the end may not come before the start. The conditions and the
+// results are not touched, so an offer the editor marked incomplete stays
+// incomplete - switching it on does not make it do anything at checkout, and
+// the answer's incomplete flag says so.
+function api_offers_update($params) {
+
+	api_offer_library();
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$row = api_row(api_offer_select() . " WHERE offers.id = '" . $id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Offer'));
+
+	}
+
+	$set = array();
+
+	if (array_key_exists('enabled', $params)) {
+
+		$set[] = "status = '" . ($params['enabled'] ? 'enabled' : 'disabled') . "'";
+
+	}
+
+	if (array_key_exists('description', $params)) {
+
+		$set[] = "description = '" . escape(trim((string)$params['description'])) . "'";
+
+	}
+
+	$start = (string)$row['start_date'];
+
+	$end = (string)$row['end_date'];
+
+	if (array_key_exists('start_date', $params)) {
+
+		$start = trim((string)$params['start_date']);
+
+		if (!_pg_offer_valid_date($start)) {
+
+			api_fail_validation(lang('start_date must be a date as YYYY-MM-DD.'), 'start_date');
+
+		}
+
+	}
+
+	if (array_key_exists('end_date', $params)) {
+
+		$end = trim((string)$params['end_date']);
+
+		if ($end === '') {
+
+			$end = PG_OFFER_OPEN_END_DATE;
+
+		} elseif (!_pg_offer_valid_date($end)) {
+
+			api_fail_validation(lang('end_date must be a date as YYYY-MM-DD, or empty for an offer with no end.'), 'end_date');
+
+		}
+
+	}
+
+	if (array_key_exists('start_date', $params) || array_key_exists('end_date', $params)) {
+
+		if ($start > $end) {
+
+			api_fail_validation(lang('The end date must not be before the start date.'), 'end_date');
+
+		}
+
+		$set[] = "start_date = '" . escape($start) . "'";
+
+		$set[] = "end_date = '" . escape($end) . "'";
+
+	}
+
+	if (empty($set)) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	api_dry_run_stop('updated', 'offer', array('id' => $id, 'code' => (string)$row['code'], 'fields' => count($set)));
+
+	api_exec("UPDATE offers SET " . implode(', ', $set) . ",
+			user = '" . (int)$app['owner']['id'] . "',
+			timestamp = UNIX_TIMESTAMP()
+		WHERE id = '" . $id . "'
+		LIMIT 1");
+
+	log_activity(lang(array(
+		'string' => 'Offer ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array((string)$row['code'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	$row = api_row(api_offer_select() . " WHERE offers.id = '" . $id . "' LIMIT 1");
+
+	$state = _pg_offer_load($id);
+
+	if ($state === false) {
+
+		api_fail_not_found(lang('Offer'));
+
+	}
+
+	api_ok(api_offer_present($row, $state, true));
+
+}
+
 // Taking an offer off the shop.
 //
-// The only write this resource has, and it is a removal rather than an edit.
+// A removal rather than an edit.
 // An offer is a rule tree - conditions the cart has to meet, results the cart
 // then gets - and building one belongs with the editor that knows those rules.
 // Removing one needs none of that knowledge, and it is the thing an

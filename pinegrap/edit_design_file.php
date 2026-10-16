@@ -22,6 +22,23 @@ include_once('liveform.class.php');
 $liveform_view_design_files = new liveform('view_design_files');
 $liveform = new liveform('edit_design_file');
 validate_area_access($user, 'designer');
+
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page. The screen renames and deletes the file, so the record must
+// also be a design file stored under a plain name in the files folder: a
+// File Manager file opened by a hand-typed URL is not found either.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+$stored_name = ($id > 0) ? (string) db_value("SELECT name FROM files WHERE (id = '" . $id . "') AND (design = '1')") : '';
+if (
+    ($stored_name === '')
+    || ($stored_name !== basename($stored_name))
+    || (strpos($stored_name, '..') !== false)
+) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $from = '';
 if(isset($_GET['from'])){
     $from = ($_GET['from'] ?? '');
@@ -63,6 +80,10 @@ if (empty($_POST['name'])) {
         $output_file_name = h($file_name);
     }
     
+    // Only set for images; other design files show neither.
+    $output_thumbnail = '';
+    $output_image_info = '';
+
     if ((mb_strtolower($file_type) == 'bmp') || (mb_strtolower($file_type) == 'gif') || (mb_strtolower($file_type) == 'jpg') || (mb_strtolower($file_type) == 'jpeg') || (mb_strtolower($file_type) == 'png') || (mb_strtolower($file_type) == 'tif') || (mb_strtolower($file_type) == 'tiff')) {
         // Get the dimensions of the image.
         $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file_name);
@@ -99,9 +120,9 @@ if (empty($_POST['name'])) {
         ){
              if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
                 $optimize_button =
-                    '<a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Processing') . '" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
+                    '<a class="btn btn-link link-secondary py-0 mb-2" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
             }
-            $image_buttons = $optimize_button . ' <a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Loading') . '" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            $image_buttons = $optimize_button . ' <a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
     }
 
     // Convert file size to a user friendly output.
@@ -110,6 +131,9 @@ if (empty($_POST['name'])) {
     // get file extension
     $file_extension = mb_strtolower(mb_substr($file_name, mb_strrpos($file_name, '.') + 1));
     
+    // Images and other formats without an editor get no edit button.
+    $output_edit_file_button = '';
+
     // if the file is either a CSS or JS file, then output the edit file button
     if (($file_extension == 'css') || ($file_extension == 'js')) {
         $edit_file_button_label = '';
@@ -143,7 +167,7 @@ if (empty($_POST['name'])) {
             $edit_file_button_location = 'edit_javascript.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri());
         }
     
-        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" data-loading-content="' . lang('Loading') . '" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
+        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
     
     }
     
@@ -153,7 +177,7 @@ if (empty($_POST['name'])) {
         $edit_file_button_label = lang( array('string'=>'Edit {var:1}','vars'=>strtoupper($file_extension)) );
         $edit_file_button_location = 'editor_edit_file.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
     
-        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" data-loading-content="' . lang('Loading') . '" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
+        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
     }
 
     $output_theme_rows = '';
@@ -217,7 +241,7 @@ if (empty($_POST['name'])) {
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 ' . $image_buttons . '
                                 <a class="btn btn-link link-secondary py-0 mb-2"  href="' . OUTPUT_PATH . $file_name . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                <a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Downloading') . '" download="image" href="' . OUTPUT_PATH . $file_name . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                <a class="btn btn-link link-secondary py-0 mb-2" download="image" href="' . OUTPUT_PATH . $file_name . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
                             </div>
                         </nav>
                     </div>
@@ -279,9 +303,9 @@ if (empty($_POST['name'])) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_edit_file_button . '
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -293,14 +317,12 @@ if (empty($_POST['name'])) {
     
     $liveform->remove_form('edit_design_file');
 
-print $output;
-
 } else {
     validate_token_field();
-    
-    $result=mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
-    $row=mysqli_fetch_array($result);
-    $stored_name = ($row) ? $row['name'] : '';
+
+    // Delete and rename act on the record and the stored name the gate
+    // above checked.
+    $_POST['id'] = $id;
 
     $name = prepare_file_name($_POST['name'] ?? '');
     
@@ -375,8 +397,11 @@ print $output;
         
         $result=mysqli_query(db::$con, $query) or output_error('Query failed');
         
-        // rename file's name
-        rename(FILE_DIRECTORY_PATH . '/' . $row['name'], FILE_DIRECTORY_PATH . '/' . $name);
+        // Rename the file when its name changed and it is on the disk (a
+        // file recorded here but missing from the disk has nothing to rename).
+        if (($name !== $stored_name) && is_file(FILE_DIRECTORY_PATH . '/' . $stored_name)) {
+            rename(FILE_DIRECTORY_PATH . '/' . $stored_name, FILE_DIRECTORY_PATH . '/' . $name);
+        }
 
 
         log_activity(lang(array('string'=>'design file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);

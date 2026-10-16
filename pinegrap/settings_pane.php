@@ -101,7 +101,7 @@ pg_error_throws(true);
 
 $liveform = new liveform('settings');
 
-$pane = isset($_REQUEST['pane']) ? (string) $_REQUEST['pane'] : '';
+$pane = (isset($_REQUEST['pane']) && is_string($_REQUEST['pane'])) ? $_REQUEST['pane'] : '';
 
 if (pg_settings_category($pane) === null) {
     pg_settings_pane_respond(array('status' => 'error', 'message' => lang('Page not found.')), 404);
@@ -165,9 +165,11 @@ if (!$_POST) {
 // ── the save ─────────────────────────────────────────────────────────────
 
 // Same check the screens use. It answers with a screen of its own, which is no
-// use here, so the comparison is made directly and refused in JSON.
+// use here, so the comparison is made directly and refused in JSON. A token
+// posted as a list never matches; cast, it logged "Array to string conversion".
 if (
     !isset($_POST['token'])
+    || !is_string($_POST['token'])
     || !isset($_SESSION['software']['token'])
     || !hash_equals((string) $_SESSION['software']['token'], (string) $_POST['token'])
 ) {

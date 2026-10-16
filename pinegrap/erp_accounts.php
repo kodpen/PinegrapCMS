@@ -30,6 +30,9 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 // Open an account for every contact that has ordered and has none yet - the
 // same reading of the card the order bridge makes, one card per contact.
+// The action is one value; one posted as an array is no action.
+pg_request_single_values(array('erp_action'));
+
 if ($_POST && (($_POST['erp_action'] ?? '') === 'sync_contacts')) {
     validate_token_field();
 
@@ -61,12 +64,12 @@ $unlinked_contacts = (int) db_value("SELECT COUNT(DISTINCT orders.contact_id)
 // toolbar can say how many there are, and the list can be narrowed to
 // them - cleaning 380 cards one failed invoice at a time is no way to
 // spend an afternoon. Nothing is drawn when no provider is chosen.
-$edoc_only = ((string) ($_GET['filter'] ?? '') === 'edoc');
+$edoc_only = (($_GET['filter'] ?? '') === 'edoc');
 $edoc_gaps = array();
 
 // Accounts past their credit limit (4.98): flagged in the list, and the list
 // can be narrowed to them.
-$over_limit_only = ((string) ($_GET['filter'] ?? '') === 'over_limit');
+$over_limit_only = (($_GET['filter'] ?? '') === 'over_limit');
 $over_limit = array();
 
 if (function_exists('erp_credit_state')) {
@@ -148,7 +151,7 @@ foreach ($accounts as $account) {
     $output_rows .=
         '<tr' . erp_drawer_row_attributes($id) . '>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td style="max-width:220px" class="text-nowrap text-truncate align-middle chart_label' . $status_class . '">' . h($account['title']) . $output_edoc_flag . '</td>
             <td class="align-middle">' . h($kind_labels[$account['kind']] ?? $account['kind']) . '</td>
@@ -196,13 +199,13 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . (!$readonly ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_account.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Create')) . '</a>' : '') . '
-                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="erp_accounts_import.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upload me-1"></i>' . lang('Import CSV') . '</a>' : '') . '
+                ' . (!$readonly ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_account.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Create')) . '</a>' : '') . '
+                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="erp_accounts_import.php"><i class="bi bi-upload me-1"></i>' . lang('Import CSV') . '</a>' : '') . '
                 ' . ((!$readonly && ($unlinked_contacts > 0)) ? '
                 <form method="post" action="erp_accounts.php" class="d-inline">
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="sync_contacts" />
-                    <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} contact(s) have placed orders but have no account. Open an account for each of them from their contact card?', 'vars' => $unlinked_contacts))) . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-person-plus me-1"></i>' . h(lang(array('string' => 'Open accounts for {var:1} contact(s) with orders', 'vars' => $unlinked_contacts))) . '</button>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} contact(s) have placed orders but have no account. Open an account for each of them from their contact card?', 'vars' => $unlinked_contacts))) . '"><i class="bi bi-person-plus me-1"></i>' . h(lang(array('string' => 'Open accounts for {var:1} contact(s) with orders', 'vars' => $unlinked_contacts))) . '</button>
                 </form>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 ' . $output_filter . '

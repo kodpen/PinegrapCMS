@@ -30,7 +30,7 @@ $liveform = new liveform('edit_erp_invoice_draft');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 
-$invoice_id = (int) ($_REQUEST['id'] ?? 0);
+$invoice_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 $invoice = ($invoice_id > 0)
     ? db_item("SELECT * FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1")
@@ -59,6 +59,16 @@ if (!$_POST) {
         WHERE l.invoice_id = '" . $invoice_id . "'
         ORDER BY l.line_no ASC, l.id ASC");
 
+    // The purchase order the draft was made from (10.58): the way back to it.
+    $purchase_order_number = ((int) ($invoice['purchase_order_id'] ?? 0) > 0)
+        ? (string) db_value("SELECT full_number FROM erp_purchase_orders WHERE id = '" . (int) $invoice['purchase_order_id'] . "' LIMIT 1")
+        : '';
+    $output_purchase_order = ($purchase_order_number !== '')
+        ? '<div class="alert alert-light d-flex align-items-center gap-2 py-2 mb-3" role="status"><i class="bi bi-cart-check" aria-hidden="true"></i><span>'
+            . '<a class="link-body-emphasis" href="edit_erp_purchase_order.php?id=' . (int) $invoice['purchase_order_id'] . '">' . h(lang(array('string' => 'From purchase order {var:1}', 'vars' => $purchase_order_number))) . '</a>'
+            . ' <span class="text-body-secondary">' . h(lang('The order counts these lines as received once the draft is issued.')) . '</span></span></div>'
+        : '';
+
     echo
     pg_page_shell([
         'title' => lang('Draft Invoice'),
@@ -78,12 +88,13 @@ if (!$_POST) {
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+            ' . $output_purchase_order . '
             ' . ((function_exists('erp_credit_draft_warning') && (($output_credit_warning = erp_credit_draft_warning($invoice)) !== ''))
                 ? '<div class="alert alert-warning"><i class="bi bi-speedometer2 me-2" aria-hidden="true"></i>' . h($output_credit_warning) . '</div>'
                 : '') . '
             ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
+                <a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
             </nav>' : '') . '
 
             <form name="form" action="edit_erp_invoice_draft.php" method="post" autocomplete="off">
@@ -93,9 +104,9 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save Draft') . '</span></button>
-                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Invoice') . '</span></button>
-                            <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Delete Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Invoice') . '</span></button>
+                            <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Delete Draft') . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -112,6 +123,11 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
+
+    // Every field of the form but the lines is one value. One posted as an
+    // array counts as not given: (int) read an array account as account 1,
+    // (string) wrote "Array" into the notes and trim() stopped the request.
+    pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('erp_action')));
 
     $action = (string) ($_POST['erp_action'] ?? 'draft');
 

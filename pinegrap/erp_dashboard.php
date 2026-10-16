@@ -46,7 +46,7 @@ $can_see_cash = ((int) $user['role'] < 3) || !empty($user['manage_erp_cash']);
 $card = function ($label, $figure, $note, $icon, $url, $figure_class = '') {
     return '
             <div class="col-12 col-md-6 col-xl-3 my-2">
-                <a href="' . h($url) . '" class="card h-100 text-decoration-none link-body-emphasis" data-loading-content="' . lang(array('string' => 'Loading')) . '">
+                <a href="' . h($url) . '" class="card h-100 text-decoration-none link-body-emphasis">
                     <div class="card-body d-flex align-items-start gap-3">
                         <i class="bi ' . $icon . ' fs-2 text-body-secondary"></i>
                         <div class="min-w-0">
@@ -97,19 +97,17 @@ if (function_exists('erp_profit_report')) {
 
     if (erp_expenses_ready()) {
         $month_expenses = $month_report['expenses']['total'];
-        $expenses_open = db_item("SELECT COUNT(*) AS count, COALESCE(SUM(total_base), 0) AS total,
-                SUM(IF(due_date > '0000-00-00' AND due_date < CURDATE(), 1, 0)) AS overdue
-            FROM erp_expenses WHERE status = 'unpaid'");
-        $open_overdue = is_array($expenses_open) ? (int) $expenses_open['overdue'] : 0;
+        $expenses_open = erp_expense_unpaid_summary();
+        $open_overdue = $expenses_open['overdue'];
 
         $output_cards_month .=
             $card(lang('Expenses this month'), erp_money_out((int) $month_expenses['total']),
                 lang(array('string' => '{var:1} expense(s)', 'vars' => (int) $month_expenses['count'])),
                 'bi-receipt-cutoff', 'erp_expenses.php?period=' . substr($month_from, 0, 7)) .
-            $card(lang('Expenses to pay'), erp_money_out(is_array($expenses_open) ? (int) $expenses_open['total'] : 0),
+            $card(lang('Expenses to pay'), erp_money_out($expenses_open['total']),
                 ($open_overdue > 0)
                     ? lang(array('string' => '{var:1} past their due date', 'vars' => $open_overdue))
-                    : lang(array('string' => '{var:1} expense(s), any date', 'vars' => is_array($expenses_open) ? (int) $expenses_open['count'] : 0)),
+                    : lang(array('string' => '{var:1} expense(s), any date', 'vars' => $expenses_open['count'])),
                 'bi-hourglass-split', 'erp_expenses.php?status=unpaid&period=dates&from=2000-01-01&to=' . date('Y-12-31'),
                 ($open_overdue > 0) ? 'text-danger' : '');
     }
@@ -147,6 +145,17 @@ if (function_exists('erp_quotes_ready') && erp_quotes_ready()) {
     $output_cards_month .= $card(lang('Open quotes'), (string) erp_quote_open_count(),
         lang(array('string' => '{var:1} expiring within 7 days', 'vars' => erp_quote_expiring_count(7))),
         'bi-file-earmark-text', 'erp_quotes.php?state=open');
+}
+
+// What the store has asked its suppliers for and is still waiting on, and
+// how much of it is past the day it was expected.
+if (function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready() && (($waiting_orders = erp_purchase_order_waiting_count()) > 0)) {
+    $late_orders = erp_purchase_order_late_count();
+    $output_cards_month .= $card(lang('Waiting purchase orders'), (string) $waiting_orders,
+        ($late_orders > 0)
+            ? lang(array('string' => '{var:1} past the expected day', 'vars' => $late_orders))
+            : lang('Goods not received in full yet'),
+        'bi-cart-check', 'erp_purchase_orders.php?status=waiting', ($late_orders > 0) ? 'text-danger' : '');
 }
 
 // ------------------------------------------------------------- cash and bank

@@ -20,8 +20,13 @@
 // So this endpoint answers the question /products cannot: which rows belong
 // together, and along which axis they differ.
 //
-// Read only. Groups are how the shop's own navigation is built, and an
-// integration reshaping them would move pages around on the live site.
+// Groups are how the shop's own navigation is built, and an integration
+// reshaping them would move pages around on the live site. So the writes stop
+// short of the tree: a group's own text and its publishing can be changed, a
+// new group can be filed under a parent that exists, products can be put into
+// and taken out of a group, and a group with no groups beneath it can be
+// deleted. Moving an existing group to another parent, or re-ordering the
+// tree, stays on the catalogue screen.
 
 if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
@@ -61,6 +66,9 @@ function api_product_group_present($row, $extras = array(), $full = false, $with
 		'attributes'   => isset($extras['attributes'][$id]) ? $extras['attributes'][$id] : array(),
 		// The products in this group. These are the variants.
 		'product_ids'  => isset($extras['products'][$id]) ? $extras['products'][$id] : array(),
+		// In the catalogue's Recycle Bin: off the shop and out of the listing,
+		// still readable by id until the bin is emptied.
+		'recycled'        => (isset($row['recycled']) && ((int)$row['recycled'] === 1)),
 		'updated_at'      => api_time($row['timestamp']),
 		'updated_at_unix' => (int)$row['timestamp'],
 		'seo'             => api_seo_block('product_group', $id, $row, $with_issues)
@@ -250,6 +258,7 @@ function api_product_group_select() {
 	return "SELECT id, name, address_name, enabled, parent_id, sort_order,
 			title, short_description, full_description, meta_description,
 			meta_keywords, keywords, image_name, display_type, attributes,
+			" . (api_catalog_bin_columns() ? "recycled," : "0 AS recycled,") . "
 			" . api_seo_columns() . "
 			timestamp
 		FROM product_groups";
@@ -259,6 +268,14 @@ function api_product_group_select() {
 function api_product_groups_list($params) {
 
 	$where = array();
+
+	// A binned group is deleted as far as the shop is concerned; it is read by
+	// id, not listed.
+	if (api_catalog_bin_columns()) {
+
+		$where[] = "recycled = '0'";
+
+	}
 
 	if (isset($params['updated_since'])) {
 
@@ -387,7 +404,7 @@ function api_product_groups_get($params) {
 	// The groups directly beneath this one, so a connector can walk the tree
 	// without a second listing call per level.
 	$children = api_rows("SELECT id FROM product_groups
-		WHERE parent_id = '" . $id . "'
+		WHERE parent_id = '" . $id . "'" . (api_catalog_bin_columns() ? " AND recycled = '0'" : '') . "
 		ORDER BY sort_order ASC, id ASC");
 
 	$out['child_ids'] = array();
@@ -541,25 +558,7 @@ function api_product_groups_update($params) {
 	// that. Only this group's pages are rebuilt: the parent case the group
 	// screen also handles is for a group that was moved, which cannot happen
 	// here.
-	$search_pages = api_rows("SELECT page_id, product_group_id FROM search_results_pages WHERE search_catalog_items = '1'");
-
-	foreach ($search_pages as $search_page) {
-
-		foreach (get_product_groups_in_product_group_tree($search_page['product_group_id']) as $group) {
-
-			if ((int)$group['id'] === $id) {
-
-				delete_tag_cloud_keywords_for_search_results_page($search_page['page_id']);
-
-				update_tag_cloud_keywords_for_search_results_page_product_group($search_page['page_id'], $search_page['product_group_id']);
-
-				break;
-
-			}
-
-		}
-
-	}
+	api_product_group_clouds($id);
 
 	if (pg_seo_schema_ready()) {
 
@@ -584,6 +583,446 @@ function api_product_groups_update($params) {
 
 }
 
+// The search results pages whose keyword cloud is built from a catalogue that
+// takes in this group. Their clouds are taken down, and built again unless the
+// group is on its way out - the order the group screens follow, so a page
+// never carries keywords from a group that is no longer there.
+function api_product_group_clouds($group_id, $clear_only = false) {
+
+	$pages = array();
+
+	foreach (api_rows("SELECT page_id, product_group_id FROM search_results_pages WHERE search_catalog_items = '1'") as $page) {
+
+		foreach ((array)get_product_groups_in_product_group_tree($page['product_group_id']) as $group) {
+
+			if ((int)$group['id'] === (int)$group_id) {
+
+				$pages[] = $page;
+
+				break;
+
+			}
+
+		}
+
+	}
+
+	foreach ($pages as $page) {
+
+		delete_tag_cloud_keywords_for_search_results_page($page['page_id']);
+
+		if (!$clear_only) {
+
+			update_tag_cloud_keywords_for_search_results_page_product_group($page['page_id'], $page['product_group_id']);
+
+		}
+
+	}
+
+	return $pages;
+
+}
+
+// A list of product ids from the body: each one has to be a product that is
+// on the shop. A missing id is a mapping mistake on the integration side, and
+// a binned one is a product the shop has let go of.
+function api_product_group_product_ids($raw, $field) {
+
+	$ids = array();
+
+	foreach ((array)$raw as $value) {
+
+		$product_id = (int)$value;
+
+		if (($product_id > 0) && !in_array($product_id, $ids, true)) {
+
+			$ids[] = $product_id;
+
+		}
+
+	}
+
+	if (empty($ids)) {
+
+		return array();
+
+	}
+
+	$found = array();
+
+	foreach (api_rows("SELECT id FROM products WHERE id IN (" . implode(',', $ids) . ")"
+		. (api_catalog_bin_columns() ? " AND recycled = '0'" : '')) as $row) {
+
+		$found[] = (int)$row['id'];
+
+	}
+
+	foreach ($ids as $product_id) {
+
+		if (!in_array($product_id, $found, true)) {
+
+			api_fail_validation(lang(array(
+				'string' => 'There is no product with the id {var:1}.',
+				'vars'   => array($product_id)
+			)), $field);
+
+		}
+
+	}
+
+	return $ids;
+
+}
+
+// The products a group holds today, by id.
+function api_product_group_member_ids($group_id) {
+
+	$ids = array();
+
+	foreach (api_rows("SELECT product FROM products_groups_xref WHERE product_group = '" . (int)$group_id . "'") as $row) {
+
+		$ids[] = (int)$row['product'];
+
+	}
+
+	return $ids;
+
+}
+
+// A new group, filed under a parent that exists.
+//
+// The same row add_product_group.php writes: a browse page with variant
+// selection on, an address made from the short description or the name by the
+// catalogue's own rule, the rich text prepared the way the editor prepares it.
+// It starts switched off unless enabled is sent, so a category an import is
+// still filling does not appear in the shop's navigation half-empty.
+//
+// The name is checked before the write, as it is for a product: it is the
+// group's code in the panel, and a second group of the same name is a mapping
+// that will be resolved to the wrong one sooner or later.
+function api_product_groups_create($params) {
+
+	$app = api_current_app();
+
+	$name = trim((string)$params['name']);
+
+	if ($name === '') {
+
+		api_fail_validation(lang(array('string' => '{var:1} is required', 'vars' => array('name'))), 'name');
+
+	}
+
+	$taken = api_value("SELECT id FROM product_groups WHERE name = '" . escape($name) . "' LIMIT 1");
+
+	if ($taken) {
+
+		api_fail(409, 'name_taken', lang(array(
+			'string' => 'A product group with the name {var:1} already exists (id {var:2}).',
+			'vars'   => array($name, (int)$taken)
+		)), 'name');
+
+	}
+
+	// Under the top of the catalogue when no parent is named, which is where
+	// the catalogue screen files a group too.
+	$parent_id = isset($params['parent_id']) ? (int)$params['parent_id'] : 0;
+
+	if ($parent_id <= 0) {
+
+		$parent_id = (int)api_value("SELECT id FROM product_groups WHERE parent_id = '0' ORDER BY id ASC LIMIT 1");
+
+	} else {
+
+		$parent = api_row("SELECT id" . (api_catalog_bin_columns() ? ", recycled" : ", 0 AS recycled") . "
+			FROM product_groups WHERE id = '" . $parent_id . "' LIMIT 1");
+
+		if (($parent === null) || ((int)$parent['recycled'] === 1)) {
+
+			api_fail_validation(lang(array(
+				'string' => 'There is no product group with the id {var:1}.',
+				'vars'   => array($parent_id)
+			)), 'parent_id');
+
+		}
+
+	}
+
+	$product_ids = array_key_exists('product_ids', $params)
+		? api_product_group_product_ids($params['product_ids'], 'product_ids')
+		: array();
+
+	$short = isset($params['short_description']) ? (string)$params['short_description'] : '';
+
+	$full = isset($params['description']) ? prepare_rich_text_editor_content_for_input((string)$params['description']) : '';
+
+	$address = prepare_catalog_item_address_name(($short !== '') ? $short : $name);
+
+	api_dry_run_stop('created', 'product_group', array('name' => $name, 'parent_id' => $parent_id, 'products' => count($product_ids)));
+
+	api_exec("INSERT INTO product_groups (name, enabled, parent_id, short_description, full_description, details, code,
+			keywords, image_name, display_type, address_name, title, meta_description, meta_keywords, attributes, user, timestamp)
+		VALUES (
+			'" . escape($name) . "',
+			'" . (!empty($params['enabled']) ? '1' : '0') . "',
+			'" . $parent_id . "',
+			'" . escape($short) . "',
+			'" . escape($full) . "',
+			'', '',
+			'" . escape(isset($params['keywords']) ? (string)$params['keywords'] : '') . "',
+			'',
+			'browse',
+			'" . escape($address) . "',
+			'" . escape(isset($params['title']) ? (string)$params['title'] : '') . "',
+			'" . escape(isset($params['meta_description']) ? (string)$params['meta_description'] : '') . "',
+			'" . escape(isset($params['meta_keywords']) ? (string)$params['meta_keywords'] : '') . "',
+			'1',
+			'" . (int)$app['owner']['id'] . "',
+			UNIX_TIMESTAMP())");
+
+	$id = (int)api_insert_id();
+
+	if ($id <= 0) {
+
+		api_fail_server(lang('The product group could not be created.'));
+
+	}
+
+	foreach ($product_ids as $product_id) {
+
+		api_exec("INSERT INTO products_groups_xref (product, product_group, sort_order)
+			VALUES ('" . $product_id . "', '" . $id . "', '0')");
+
+	}
+
+	api_product_group_clouds($id);
+
+	log_activity(lang(array(
+		'string' => 'Product group ({var:1}) was added through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($name, $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_webhook_enqueue('product_group.created', array('id' => $id, 'name' => $name));
+
+	$row = api_row(api_product_group_select() . " WHERE id = '" . $id . "' LIMIT 1");
+
+	api_ok(api_product_group_present($row, api_product_group_extras(array($id), true), true), 201);
+
+}
+
+// Putting products into a group and taking them out.
+//
+// One call does both, so a connector that re-files a category's products
+// does it in one request rather than in a remove and an add with a moment
+// between them where the products are in neither. Adding a product that is
+// already there, or removing one that is not, is not an error: the answer is
+// the group as it now is, which is what the caller wanted to reach.
+function api_product_groups_products($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$group = api_row("SELECT id, name" . (api_catalog_bin_columns() ? ", recycled" : ", 0 AS recycled") . "
+		FROM product_groups WHERE id = '" . $id . "' LIMIT 1");
+
+	if (($group === null) || ((int)$group['recycled'] === 1)) {
+
+		api_fail_not_found(lang('Product group'));
+
+	}
+
+	$add = array_key_exists('add', $params) ? api_product_group_product_ids($params['add'], 'add') : array();
+
+	// A product being taken out need not be on the shop any more: removing a
+	// binned product from a group is tidying, not a mistake.
+	$remove = array();
+
+	foreach (array_key_exists('remove', $params) ? (array)$params['remove'] : array() as $value) {
+
+		if (((int)$value > 0) && !in_array((int)$value, $remove, true)) { $remove[] = (int)$value; }
+
+	}
+
+	if (empty($add) && empty($remove)) {
+
+		api_fail_validation(lang('Send the product ids to add, to remove, or both.'));
+
+	}
+
+	if (array_intersect($add, $remove)) {
+
+		api_fail_validation(lang('A product cannot be added to and removed from a group in the same call.'), 'remove');
+
+	}
+
+	$members = api_product_group_member_ids($id);
+
+	$to_add = array_values(array_diff($add, $members));
+
+	$to_remove = array_values(array_intersect($remove, $members));
+
+	api_dry_run_stop('updated', 'product_group', array('id' => $id, 'added' => count($to_add), 'removed' => count($to_remove)));
+
+	foreach ($to_add as $product_id) {
+
+		api_exec("INSERT INTO products_groups_xref (product, product_group, sort_order)
+			VALUES ('" . $product_id . "', '" . $id . "', '0')");
+
+	}
+
+	if (!empty($to_remove)) {
+
+		api_exec("DELETE FROM products_groups_xref
+			WHERE product_group = '" . $id . "' AND product IN (" . implode(',', $to_remove) . ")");
+
+	}
+
+	if (!empty($to_add) || !empty($to_remove)) {
+
+		api_exec("UPDATE product_groups SET user = '" . (int)$app['owner']['id'] . "', timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . $id . "' LIMIT 1");
+
+		api_product_group_clouds($id);
+
+		log_activity(lang(array(
+			'string' => 'Products of product group ({var:1}) were changed through the API by the application {var:2} (key {var:3}).',
+			'vars'   => array($group['name'], $app['name'], $app['api_key'])
+		)), $app['owner']['username']);
+
+		api_webhook_enqueue('product_group.updated', array('id' => $id, 'name' => $group['name']));
+
+		foreach (array_merge($to_add, $to_remove) as $product_id) {
+
+			if (function_exists('pg_marketplace_product_changed')) {
+
+				pg_marketplace_product_changed($product_id);
+
+			}
+
+		}
+
+	}
+
+	$row = api_row(api_product_group_select() . " WHERE id = '" . $id . "' LIMIT 1");
+
+	$out = api_product_group_present($row, api_product_group_extras(array($id), true), true);
+
+	$out['added'] = count($to_add);
+
+	$out['removed'] = count($to_remove);
+
+	api_ok($out);
+
+}
+
+// Deleting a group.
+//
+// The Recycle Bin is the default, as it is for a product: the group is
+// switched off and flagged with what it was, and an operator can put it back.
+// permanent=true performs edit_product_group.php's delete - the group, its
+// links to products, images, attributes and short links - which cannot be
+// undone. The products themselves are never deleted with a group; they stay
+// wherever else they are filed.
+//
+// Two refusals either way. The root is what the whole catalogue hangs from,
+// and the group screen refuses it too. A group with groups inside it is
+// refused rather than taken with its subtree: the catalogue screen bins a
+// subtree because an operator is looking at it, and an application deleting a
+// branch of the shop's navigation in one call is exactly the reshaping this
+// resource stays out of.
+function api_product_groups_delete($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$permanent = !empty($params['permanent']);
+
+	$group = api_row("SELECT id, name, parent_id" . (api_catalog_bin_columns() ? ", recycled" : ", 0 AS recycled") . "
+		FROM product_groups WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($group === null) {
+
+		api_fail_not_found(lang('Product group'));
+
+	}
+
+	if ((int)$group['parent_id'] === 0) {
+
+		api_fail(409, 'root_group_protected', lang('This product group could not be deleted because it is the root product group.'));
+
+	}
+
+	if ((int)api_value("SELECT COUNT(*) FROM product_groups WHERE parent_id = '" . $id . "'"
+		. (api_catalog_bin_columns() ? " AND recycled = '0'" : '')) > 0) {
+
+		api_fail(409, 'group_not_empty', lang('This product group has groups inside it. Move or delete those first.'));
+
+	}
+
+	if (!$permanent) {
+
+		if (!api_catalog_bin_ready()) {
+
+			api_fail(409, 'recycle_bin_unavailable', lang('This site has no catalogue Recycle Bin. Send permanent=true to delete the product group outright.'));
+
+		}
+
+		if ((int)$group['recycled'] === 1) {
+
+			api_fail(409, 'already_recycled', lang('This product group is already in the Recycle Bin.'));
+
+		}
+
+		api_dry_run_stop('recycled', 'product_group', array('id' => $id, 'name' => $group['name']));
+
+		// The statements every panel screen writes when it bins a group. The
+		// group alone: one with groups inside it was refused above.
+		foreach (pg_catalog_bin_statements('product_group', $id, array($id), (int)$group['parent_id'], (int)$app['owner']['id']) as $statement) {
+
+			api_exec($statement);
+
+		}
+
+		log_activity(lang(array(
+			'string' => 'Product group ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).',
+			'vars'   => array($group['name'], $app['name'], $app['api_key'])
+		)), $app['owner']['username']);
+
+		api_webhook_enqueue('product_group.deleted', array('id' => $id, 'name' => $group['name'], 'recycled' => true));
+
+		api_ok(array('id' => $id, 'deleted' => false, 'recycled' => true));
+
+	}
+
+	api_dry_run_stop('deleted', 'product_group', array('id' => $id, 'name' => $group['name']));
+
+	$pages = api_product_group_clouds($id, true);
+
+	api_exec("DELETE FROM product_groups_images_xref WHERE product_group = '" . $id . "'");
+	api_exec("DELETE FROM product_groups WHERE id = '" . $id . "'");
+	api_exec("DELETE FROM products_groups_xref WHERE product_group = '" . $id . "'");
+	api_exec("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . $id . "'");
+	api_exec("DELETE FROM short_links WHERE (destination_type = 'product_group') AND (product_group_id = '" . $id . "')");
+	api_exec("DELETE FROM recycle_bin WHERE (item_type = 'product_group') AND (item_id = '" . $id . "')");
+
+	foreach ($pages as $page) {
+
+		update_tag_cloud_keywords_for_search_results_page_product_group($page['page_id'], $page['product_group_id']);
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'Product group ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($group['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_webhook_enqueue('product_group.deleted', array('id' => $id, 'name' => $group['name'], 'recycled' => false));
+
+	api_ok(array('id' => $id, 'deleted' => true, 'recycled' => false));
+
+}
+
 // What api_product_group_present() returns, declared for the OpenAPI document.
 // The last five fields are added only by the single-group endpoint, which is
 // why they are optional in the document rather than absent from it.
@@ -591,6 +1030,8 @@ function api_product_group_schema() {
 
 	return array(
 		'id'                => 'integer',
+		// A DEFAULT NULL column that every create path writes, so not nullable
+		// (api_openapi_type_spec() says when a field is).
 		'name'              => 'string',
 		'slug'              => 'string',
 		'enabled'           => 'boolean',
@@ -613,6 +1054,7 @@ function api_product_group_schema() {
 			))
 		)),
 		'product_ids'     => 'integer[]',
+		'recycled'        => 'boolean',
 		'updated_at'      => 'string?',
 		'updated_at_unix' => 'integer',
 		'seo'             => 'Seo',
@@ -620,7 +1062,10 @@ function api_product_group_schema() {
 		'meta_description' => 'string',
 		'meta_keywords'    => 'string',
 		'keywords'         => 'string',
-		'child_ids'        => 'integer[]'
+		'child_ids'        => 'integer[]',
+		'affected'         => array('groups' => 'integer', 'products' => 'integer'),
+		'added'            => 'integer',
+		'removed'          => 'integer'
 	);
 
 }

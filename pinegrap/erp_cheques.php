@@ -28,6 +28,12 @@ $self = PATH . SOFTWARE_DIRECTORY . '/erp_cheques.php';
 
 if ($_POST) {
     validate_token_field();
+
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array account or till as record 1 and booked
+    // the cheque there, (string) wrote "Array" into the serial and the bank.
+    pg_request_single_values(array('direction', 'kind', 'account_id', 'amount', 'doc_date', 'due_date', 'serial_no', 'bank_name', 'branch', 'drawer', 'till_id', 'notes'));
+
     $liveform->add_fields_to_session();
 
     $date_in = function ($field) use ($liveform) {
@@ -66,9 +72,11 @@ if (!$ready) {
     $liveform->mark_error('', lang('Cheques and notes come with the software update; run the update to use them.'));
 }
 
-$direction = in_array((string) ($_GET['direction'] ?? ''), array('received', 'given'), true) ? (string) $_GET['direction'] : '';
-$status = (string) ($_GET['status'] ?? 'open');
-$search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
+// Each filter is one value; one sent as an array (?status[]=x) counts as not
+// given: it wrote "Array to string conversion" into the log.
+$direction = in_array($_GET['direction'] ?? '', array('received', 'given'), true) ? (string) $_GET['direction'] : '';
+$status = is_string($_GET['status'] ?? null) ? $_GET['status'] : 'open';
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
 $statuses = erp_cheque_statuses();
 $kinds = erp_cheque_kinds();
 $totals = erp_cheque_totals();
@@ -180,7 +188,7 @@ $output_new = (!$ready || $readonly) ? '' : '
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'notes', 'name' => 'notes', 'class' => 'form-control', 'maxlength' => '255')) . '
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-primary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                         <span class="form-text ms-2">' . lang('Taken from a customer, it is a collection: their debt comes down now. Given to a supplier, it is a payment.') . '</span>
                     </div>
                 </div>

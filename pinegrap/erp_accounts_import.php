@@ -198,7 +198,7 @@ function erp_import_step_upload($liveform, $kind_options)
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Continue')) . '</span></button>
+                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-success"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Continue')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -392,8 +392,8 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Re-check')) . '</span></button>
-                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-success"' . ($has_title ? '' : ' disabled="disabled"') . ' data-loading-content="' . lang(array('string' => 'Importing')) . '"><i class="bi bi-check2-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Start import')) . '</span></button>
+                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline-secondary"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Re-check')) . '</span></button>
+                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Start import')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -470,14 +470,18 @@ function erp_import_step_result($outcome, $list_url)
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <a href="' . h($list_url) . '" class="btn my-1 btn-primary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-people me-2" aria-hidden="true"></i>' . lang('Accounts') . '</a>
-                            <a href="erp_accounts_import.php" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Import another file') . '</a>
+                            <a href="' . h($list_url) . '" class="btn my-1 btn-primary"><i class="bi bi-people me-2" aria-hidden="true"></i>' . lang('Accounts') . '</a>
+                            <a href="erp_accounts_import.php" class="btn my-1 btn-outline-secondary"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Import another file') . '</a>
                         </div>
                     </div>
                 </nav>';
 }
 
 // -- request handling ---------------------------------------------------------
+
+// Every field of the steps but the mapping is one value. One posted as an
+// array counts as not given: (string) read it as "Array" with a notice.
+pg_request_single_values(array('step', 'default_kind', 'import_token', 'duplicate_mode', 'submit_recheck', 'submit_run'));
 
 $step = isset($_POST['step']) ? (string) $_POST['step'] : '';
 
@@ -582,7 +586,9 @@ if ($step === 'upload') {
     $posted = isset($_POST['map']) && is_array($_POST['map']) ? $_POST['map'] : array();
     $taken = array();
     foreach ($read['header'] as $index => $unused) {
-        $field = isset($posted[$index]) ? (string) $posted[$index] : '';
+        // A column's field is one name; one posted as an array (map[0][]=x)
+        // leaves the column unmapped.
+        $field = (isset($posted[$index]) && is_scalar($posted[$index])) ? (string) $posted[$index] : '';
         if (($field === '') || !isset($fields[$field]) || isset($taken[$field])) {
             $field = '';
         }

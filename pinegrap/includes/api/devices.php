@@ -190,7 +190,11 @@ function api_device_account_has_rights($owner) {
 
 // Signs a device in: writes its row and hands back both tokens. The only moment
 // either token exists in the clear.
-function api_device_issue($app, $user_id, $name, $platform, $app_version) {
+//
+// $oauth carries what an OAuth connection adds to the row (includes/oauth/):
+// the client it belongs to, the scopes the person agreed to and the resource
+// the tokens are for. Empty for a device.
+function api_device_issue($app, $user_id, $name, $platform, $app_version, $oauth = array()) {
 
 	$access  = api_device_token_new('access');
 	$refresh = api_device_token_new('refresh');
@@ -214,9 +218,24 @@ function api_device_issue($app, $user_id, $name, $platform, $app_version) {
 
 	}
 
+	$oauth_columns = '';
+
+	$oauth_values = '';
+
+	if (!empty($oauth)) {
+
+		$oauth_columns = ', oauth_client_id, scopes, resource';
+
+		$oauth_values = ",
+			'" . (int)$oauth['client_id'] . "',
+			'" . escape(json_encode(array_values($oauth['scopes']))) . "',
+			'" . escape(mb_substr((string)$oauth['resource'], 0, 255)) . "'";
+
+	}
+
 	api_exec("INSERT INTO api_devices
 		(app_id, user_id, name, platform, app_version, access_hash, access_expires,
-		 refresh_hash, refresh_expires, created_timestamp, last_used_timestamp, last_used_ip)
+		 refresh_hash, refresh_expires, created_timestamp, last_used_timestamp, last_used_ip" . $oauth_columns . ")
 		VALUES (
 			'" . (int)$app['id'] . "',
 			'" . (int)$user_id . "',
@@ -229,7 +248,7 @@ function api_device_issue($app, $user_id, $name, $platform, $app_version) {
 			'" . $refresh_expires . "',
 			'" . $now . "',
 			'" . $now . "',
-			'" . escape(mb_substr(api_client_ip(), 0, 45)) . "'
+			'" . escape(mb_substr(api_client_ip(), 0, 45)) . "'" . $oauth_values . "
 		)");
 
 	return array(
@@ -244,12 +263,54 @@ function api_device_issue($app, $user_id, $name, $platform, $app_version) {
 
 // Exchanges a refresh token for a new pair. Answers and exits when the token is
 // not one that may be exchanged.
+function api_device_rotate($refresh_token) {
+
+	$rotated = api_device_rotate_pair($refresh_token);
+
+	if ($rotated['error'] === 'expired') {
+
+		api_fail(401, 'unauthorized', lang('The device has been signed out for too long. Sign in again.'));
+
+	}
+
+	if ($rotated['error'] !== '') {
+
+		api_fail(401, 'unauthorized', lang('The refresh token is not valid. Sign in again.'));
+
+	}
+
+	return $rotated;
+
+}
+
+// The row a refresh token belongs to, current or just replaced, without
+// touching it. Null when it belongs to none.
+function api_device_find_refresh($refresh_token) {
+
+	$hash = api_secret_hash(trim((string)$refresh_token));
+
+	$row = api_row("SELECT * FROM api_devices WHERE refresh_hash = '" . escape($hash) . "' LIMIT 1");
+
+	if ($row === null) {
+
+		$row = api_row("SELECT * FROM api_devices WHERE refresh_prev_hash = '" . escape($hash) . "' LIMIT 1");
+
+	}
+
+	return $row;
+
+}
+
+// The exchange itself, for callers that answer in their own shape - the
+// device sign-in above, and the OAuth token endpoint, which has to say
+// invalid_grant rather than unauthorized. 'error' is '' on success,
+// 'invalid' or 'expired' otherwise.
 //
 // The token is looked up among the current ones first. Found among the
 // previous ones instead, it was already exchanged: within the grace period that
 // is the same app retrying and it is exchanged again; after it, somebody else
 // is holding a copy, and the device is ended so that neither copy works.
-function api_device_rotate($refresh_token) {
+function api_device_rotate_pair($refresh_token) {
 
 	$hash = api_secret_hash(trim((string)$refresh_token));
 
@@ -262,7 +323,7 @@ function api_device_rotate($refresh_token) {
 
 		if ($replayed === null) {
 
-			api_fail(401, 'unauthorized', lang('The refresh token is not valid. Sign in again.'));
+			return array('error' => 'invalid');
 
 		}
 
@@ -275,7 +336,7 @@ function api_device_rotate($refresh_token) {
 				'vars'   => (int)$replayed['id']
 			)), (string)api_value("SELECT user_username FROM user WHERE user_id = '" . (int)$replayed['user_id'] . "' LIMIT 1"));
 
-			api_fail(401, 'unauthorized', lang('The refresh token is not valid. Sign in again.'));
+			return array('error' => 'invalid');
 
 		}
 
@@ -283,7 +344,7 @@ function api_device_rotate($refresh_token) {
 
 		if ($row === null) {
 
-			api_fail(401, 'unauthorized', lang('The refresh token is not valid. Sign in again.'));
+			return array('error' => 'invalid');
 
 		}
 
@@ -291,7 +352,7 @@ function api_device_rotate($refresh_token) {
 
 		api_device_revoke((int)$row['id']);
 
-		api_fail(401, 'unauthorized', lang('The device has been signed out for too long. Sign in again.'));
+		return array('error' => 'expired');
 
 	}
 
@@ -321,6 +382,7 @@ function api_device_rotate($refresh_token) {
 	$row['refresh_expires'] = $refresh_expires;
 
 	return array(
+		'error'           => '',
 		'row'             => $row,
 		'access_token'    => $access,
 		'access_expires'  => $access_expires,
@@ -366,16 +428,29 @@ function api_device_authenticate($token) {
 
 	}
 
+	// An OAuth connection is a row like any other device's, under the
+	// operator's OAuth application rather than a team devices one
+	// (includes/oauth/server.php).
+	$oauth = (isset($row['oauth_client_id']) && ((int)$row['oauth_client_id'] > 0));
+
 	$app = api_row("SELECT id, name, api_key, owner_user_id, scopes, ip_allowlist,
 			status, expires_at, rate_limit_per_min, kind
 		FROM api_apps
-		WHERE id = '" . (int)$row['app_id'] . "' AND kind = 'device'
+		WHERE id = '" . (int)$row['app_id'] . "' AND kind = '" . ($oauth ? 'oauth' : 'device') . "'
 		LIMIT 1");
 
 	api_device_app_check($app);
 
 	// Known from here on, so a refusal below still logs under the application.
 	api_current_app($app);
+
+	$client = null;
+
+	if ($oauth) {
+
+		$client = api_device_oauth_check($row);
+
+	}
 
 	$owner = api_load_owner((int)$row['user_id']);
 
@@ -401,9 +476,24 @@ function api_device_authenticate($token) {
 				last_used_ip = '" . escape(mb_substr(api_client_ip(), 0, 45)) . "'
 			WHERE id = '" . (int)$row['id'] . "'");
 
+		// The client's own last use moves with its connections, not only
+		// when it is issued a token: the operator's list of clients would
+		// otherwise call a client in use right now idle since its last
+		// refresh.
+		if ($oauth) {
+
+			api_exec("UPDATE oauth_clients SET last_used_timestamp = UNIX_TIMESTAMP()
+				WHERE id = '" . (int)$row['oauth_client_id'] . "'");
+
+		}
+
 	}
 
-	$scopes = api_device_scopes($app, $owner);
+	// A connection holds what the person agreed to on the consent screen and
+	// nothing it was not offered; a device holds the device ceiling.
+	$scopes = $oauth
+		? pg_oauth_effective_scopes($app, $owner, json_decode((string)$row['scopes'], true))
+		: api_device_scopes($app, $owner);
 
 	// The name every activity line and audit row uses for the caller. The
 	// person comes first because that is who did it; the device says from
@@ -415,11 +505,51 @@ function api_device_authenticate($token) {
 	$app['scopes']        = $scopes;
 	$app['device']        = $row;
 
+	if ($client !== null) {
+
+		$app['oauth_client'] = $client;
+
+	}
+
 	api_current_app($app);
 
 	api_current_scopes($scopes);
 
 	return $app;
+
+}
+
+// The checks an OAuth connection adds to a device's: its client must still be
+// switched on, and the token must have been issued for this resource. A token
+// issued for another resource of the site (RFC 8707) is refused here rather
+// than honoured, so a token handed to one service cannot be replayed at
+// another. Returns the client row.
+function api_device_oauth_check($row) {
+
+	$client = pg_oauth_ready()
+		? db_item("SELECT id, client_id, name, status FROM oauth_clients
+			WHERE id = '" . (int)$row['oauth_client_id'] . "' LIMIT 1")
+		: null;
+
+	if (!is_array($client) || ($client['status'] !== 'active')) {
+
+		api_fail(401, 'unauthorized', lang('The access token is not valid. Renew it, or sign in again.'));
+
+	}
+
+	$resource = (string)$row['resource'];
+
+	// The entry point that is answering says which resource it is; the
+	// external API is the one that exists today.
+	$here = defined('PG_OAUTH_RESOURCE') ? PG_OAUTH_RESOURCE : 'integration';
+
+	if (($resource !== '') && (pg_oauth_resource_key($resource) !== $here)) {
+
+		api_fail(401, 'unauthorized', lang('The access token was not issued for this address.'));
+
+	}
+
+	return $client;
 
 }
 

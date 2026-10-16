@@ -51,6 +51,11 @@ define('WAF_MIN_VALUE_BYTES', 3);
 // a flood by three or four orders of magnitude.
 define('WAF_LOG_WINDOW', 300);
 
+// Visitor location: the country a request comes from, for the country
+// restriction below and the language redirect. Standalone like this file, and
+// loaded with it so both bootstraps have it.
+require_once(dirname(__FILE__) . '/includes/geo.php');
+
 
 /* ─────────────────────────────────────────────────────────────────────────
    CONFIGURATION
@@ -2276,8 +2281,11 @@ function waf_send_security_headers()
         return;
     }
 
-    header('X-Content-Type-Options: nosniff');
-    header('Referrer-Policy: strict-origin-when-cross-origin');
+    waf_send_nosniff();
+
+    if (!waf_server_adds_header('Referrer-Policy')) {
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+    }
 
     // (self) rather than (): first-party use stays possible and only a
     // third-party frame is refused. A store locator or a barcode scanner on
@@ -2286,6 +2294,79 @@ function waf_send_security_headers()
 
     if ((int) waf_setting('security_frame_protection', 1) === 1) {
         header('X-Frame-Options: SAMEORIGIN');
+    }
+}
+
+/**
+ * Whether the web server adds this response header to every answer itself,
+ * so that sending it from PHP as well delivers it twice.
+ *
+ * IIS reads the site's web.config, and the rules the software gives it
+ * (includes/server_config.php) add X-Content-Type-Options in
+ * <customHeaders>. IIS appends that to whatever PHP sent - its <remove> only
+ * reaches headers IIS itself added - so every PHP response arrived with
+ * "nosniff, nosniff". The server rule stays, because it is what covers the
+ * static files PHP never serves. Referrer-Policy is no longer among those
+ * rules (a server copy overrode the no-referrer some pages send), but a
+ * web.config written earlier may still add it, and then PHP leaves it to IIS.
+ *
+ * Apache's "Header always set" replaces PHP's copy, so it never doubles.
+ * nginx's configuration cannot be read from here, so it is not detected.
+ *
+ * @param string $name header name, as written in the <add name="..."> rule
+ * @return bool
+ */
+function waf_server_adds_header($name)
+{
+    static $config = null;
+
+    if ($config === null) {
+        $config = '';
+
+        $software = isset($_SERVER['SERVER_SOFTWARE']) ? (string) $_SERVER['SERVER_SOFTWARE'] : '';
+
+        if (stripos($software, 'Microsoft-IIS') !== false) {
+            $config = waf_iis_custom_headers((string) @file_get_contents(dirname(dirname(__FILE__)) . '/web.config'));
+        }
+    }
+
+    return in_array(strtolower((string) $name), $config === '' ? array() : explode("\n", $config), true);
+}
+
+/**
+ * The header names a web.config adds in <customHeaders>, lower-cased, one per
+ * line. Commented-out rules are left out.
+ *
+ * @param string $xml the file's contents
+ * @return string
+ */
+function waf_iis_custom_headers($xml)
+{
+    $xml = preg_replace('/<!--.*?-->/s', '', (string) $xml);
+    $names = array();
+
+    if (preg_match_all('#<customHeaders\b[^>]*>(.*?)</customHeaders>#is', (string) $xml, $sections)) {
+        foreach ($sections[1] as $section) {
+            if (preg_match_all('#<add\s[^>]*\bname\s*=\s*["\']([^"\']+)["\']#i', $section, $adds)) {
+                foreach ($adds[1] as $added) {
+                    $names[] = strtolower(trim($added));
+                }
+            }
+        }
+    }
+
+    return implode("\n", array_unique($names));
+}
+
+/**
+ * X-Content-Type-Options: nosniff, from PHP only when the web server does not
+ * add it itself (waf_server_adds_header()). Every response that asks the
+ * browser not to sniff its type sends it through here.
+ */
+function waf_send_nosniff()
+{
+    if (!headers_sent() && !waf_server_adds_header('X-Content-Type-Options')) {
+        header('X-Content-Type-Options: nosniff');
     }
 }
 
@@ -2956,7 +3037,7 @@ function waf_deny($status, $reference, $always = false)
         http_response_code($status);
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: no-store, no-cache, must-revalidate');
-        header('X-Content-Type-Options: nosniff');
+        waf_send_nosniff();
 
         if ($status === 429) {
             header('Retry-After: 60');
@@ -3150,7 +3231,15 @@ function waf_user_is_authenticated()
 /**
  * REST API endpoints. Their whole purpose is to be called by scripts, so the
  * generic-HTTP-client bot class must not apply to them. They authenticate
- * with their own key/secret and are still rate limited.
+ * with their own key/secret and are still rate limited. The MCP server and the
+ * OAuth server are called the same way - by an AI application's backend,
+ * often from addresses it shares with every other site it connects to - and
+ * count their callers the same way: per application, per token, and per
+ * address for registrations (includes/mcp/, includes/oauth/). The workspace
+ * calendar address (workspace_ical.php) is read by a calendar service's
+ * servers - Google's, Microsoft's, Apple's - with the token in the address
+ * as its credential, under whatever user agent that service sends, from
+ * whichever country it runs in.
  */
 /**
  * Is this a call to the REST API?
@@ -3178,7 +3267,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $answer = waf_request_names_script(array('integration.php', 'api.php'));
+        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php'));
     }
 
     return $answer;
@@ -3434,6 +3523,14 @@ function waf_run($stage = 'init')
             waf_handle_bot($ip, $blocking);
         }
 
+        // ── Country restriction ──────────────────────────────────────────
+        // After the bot classification, which is what proves a search engine
+        // crawler is one. Off unless the operator chose countries.
+        if (empty($done['country'])) {
+            $done['country'] = true;
+            waf_handle_country($blocking);
+        }
+
         // ── Rate limiting ────────────────────────────────────────────────
         // The two limits are latched separately on purpose.
         //
@@ -3536,6 +3633,22 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
         return;
     }
 
+    // The external API, the MCP server, the OAuth endpoints and the workspace
+    // calendar address admit a caller by the credential it presents, never by
+    // its user agent, so a crawler name decides nothing there. An AI assistant working through the MCP
+    // server sends its fetcher's name (Claude-User) from its operator's API
+    // egress, which is not in the crawler ranges that operator publishes;
+    // judged as a crawler it read as a forged one and was refused - and
+    // counted towards a ban - right after it had been given a token.
+    //
+    // Returning before the good-bot branch also leaves IS_BOT undefined, so
+    // a crawler name buys no relief from the rate limits on these endpoints.
+    // api.php is not among them: it answers the site's own pages without a
+    // credential, and the bot policy below still guards it.
+    if (waf_is_api_request() && !waf_is_site_api_request()) {
+        return;
+    }
+
     if ($bot['class'] === 'good') {
         // Mark the request so visitor tracking can skip it.
         if (!defined('IS_BOT')) {
@@ -3547,6 +3660,12 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
         }
 
         $verdict = waf_verify_bot($ip, $bot['token']);
+
+        // Only a proven crawler is let past the country restriction: an
+        // unverifiable name is a claim anyone can type.
+        if ($verdict === 'verified') {
+            waf_bot_verified(true);
+        }
 
         // Only a positive rDNS mismatch is acted on. No PTR record, a DNS
         // timeout or an unverifiable operator all fail open, so a resolver
@@ -3617,6 +3736,297 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     if ($blocking) {
         waf_deny(403, waf_reference());
     }
+}
+
+/**
+ * Whether the bot classification proved this request's crawler to be the one
+ * its name claims (waf_verify_bot() answered 'verified'). Set once by
+ * waf_handle_bot(), read by the country restriction.
+ *
+ * @param bool|null $set true to record the proof
+ * @return bool
+ */
+function waf_bot_verified($set = null)
+{
+    static $verified = false;
+
+    if ($set === true) {
+        $verified = true;
+    }
+
+    return $verified;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   COUNTRY RESTRICTION
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The country codes of a stored or typed list: two letters each, upper-cased,
+ * in the order written, each once. T1 is the Tor network as Cloudflare names
+ * it. Anything else is left out.
+ *
+ * @param string $raw codes separated by commas, spaces or line breaks
+ * @return array
+ */
+function waf_country_codes($raw)
+{
+    $codes = array();
+
+    foreach (preg_split('/[\s,;]+/', strtoupper((string) $raw)) as $code) {
+        if (preg_match('/^(?:[A-Z]{2}|T1)$/', $code) && !in_array($code, $codes, true)) {
+            $codes[] = $code;
+        }
+    }
+
+    return $codes;
+}
+
+/**
+ * Whether the restriction refuses a request from this country.
+ *
+ * A request no source could place is let through unless the operator asked
+ * otherwise: a site with no location database and no edge header would
+ * otherwise turn every visitor away.
+ *
+ * @param string $code           two letters, T1, or '' when unknown
+ * @param string $mode           allow (only the listed countries) | block
+ *                               (every country but the listed ones)
+ * @param array  $list           from waf_country_codes()
+ * @param bool   $refuse_unknown
+ * @return bool
+ */
+function waf_country_refused($code, $mode, $list, $refuse_unknown)
+{
+    if (($mode !== 'allow') && ($mode !== 'block')) {
+        return false;
+    }
+
+    if ($code === '') {
+        return (bool) $refuse_unknown;
+    }
+
+    $listed = in_array($code, $list, true);
+
+    return ($mode === 'allow') ? !$listed : $listed;
+}
+
+/**
+ * Whether the request is for the control panel: an address under the software
+ * directory. get_file.php is not counted, because it serves the site's own
+ * files, which the restriction covers. Nor is api.php on its own: the store,
+ * the cart and the live chat of the site's pages talk to it as well as the
+ * panel's screens, so it counts as the panel only for signed-in staff.
+ */
+function waf_country_is_panel_request()
+{
+    if (!defined('PATH') || !defined('SOFTWARE_DIRECTORY')) {
+        return false;
+    }
+
+    $url = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+    $question = strpos($url, '?');
+
+    if ($question !== false) {
+        $url = substr($url, 0, $question);
+    }
+
+    $panel = strtolower(PATH . SOFTWARE_DIRECTORY . '/');
+
+    if (strpos(strtolower(rawurldecode($url)), $panel) !== 0) {
+        return false;
+    }
+
+    // The rewrite rules run router.php, from the software directory, for
+    // every address of the site; only a script of the panel itself counts.
+    if ((waf_script_name() === 'router.php') || waf_request_names_script(array('get_file.php'))) {
+        return false;
+    }
+
+    if (waf_is_site_api_request()) {
+        return waf_country_staff_signed_in();
+    }
+
+    return true;
+}
+
+/**
+ * Whether the session belongs to staff: an administrator, designer or manager
+ * (role below 3). The site's own member accounts are not staff. False without
+ * a session.
+ */
+function waf_country_staff_signed_in()
+{
+    if (empty($_SESSION['sessionuserid'])) {
+        return false;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT user_role FROM user WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "' LIMIT 1");
+    $row = $result ? @mysqli_fetch_assoc($result) : null;
+
+    return (is_array($row) && ((int) $row['user_role'] < 3));
+}
+
+/**
+ * Requests the restriction leaves alone:
+ *
+ *   - robots.txt and .well-known/ (waf_path_is_always_served()): certificate
+ *     renewal is checked from several countries, and a refused challenge
+ *     takes the site's certificate down months later;
+ *   - the external API, the MCP server, the OAuth endpoints and the
+ *     workspace calendar address, when the operator keeps them open: their
+ *     callers present a credential, and an integration, an AI application or
+ *     a calendar service runs wherever its provider does;
+ *   - the control panel, when the operator keeps it open, so staff abroad can
+ *     still sign in;
+ *   - a search engine crawler whose address proved its name, when the
+ *     operator lets them in.
+ *
+ * The allow list of addresses never reaches here: waf_run() returns for it
+ * before any rule.
+ */
+function waf_country_request_exempt()
+{
+    if (waf_path_is_always_served()) {
+        return true;
+    }
+
+    if ((int) waf_setting('waf_country_exempt_api', 1) && waf_is_api_request() && !waf_is_site_api_request()) {
+        return true;
+    }
+
+    if ((int) waf_setting('waf_country_exempt_panel', 1) && waf_country_is_panel_request()) {
+        return true;
+    }
+
+    if ((int) waf_setting('waf_country_exempt_bots', 1) && waf_bot_verified()) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * The country restriction: refuses a request from a country the operator
+ * blocked, or from any country but the ones they allowed. Recorded in the
+ * firewall log either way; refused only in Block mode, like every rule the
+ * firewall applies. Not an offence: a visitor from a refused country has not
+ * attacked anything, and counting them towards a ban would ban them twice.
+ *
+ * @param bool $blocking
+ */
+function waf_handle_country($blocking)
+{
+    $mode = (string) waf_setting('waf_country_mode', 'off');
+
+    if (($mode !== 'allow') && ($mode !== 'block')) {
+        return;
+    }
+
+    if (waf_country_request_exempt()) {
+        return;
+    }
+
+    $country = pg_geo_country();
+    $list = waf_country_codes(waf_setting('waf_country_list', ''));
+
+    if (!waf_country_refused($country['code'], $mode, $list, (int) waf_setting('waf_country_unknown', 0) === 1)) {
+        return;
+    }
+
+    $label = ($country['code'] !== '') ? $country['code'] . ' (' . $country['source'] . ')' : 'unknown';
+
+    waf_log_event($blocking ? 'block' : 'would-block', 'geo-country', 'country', 10, 'COUNTRY', $label);
+
+    if ($blocking) {
+        waf_deny(403, waf_reference());
+    }
+}
+
+/**
+ * Whether this visitor reaches the control panel but not the site's pages:
+ * the firewall blocks, the country restriction refuses their country, the
+ * panel is exempt from it, and their address is not on the allow list.
+ *
+ * The panel's sign-in screens ask this before handing a visitor to the
+ * site's own sign-in pages - a page built in the visual editor that carries
+ * the login, forgot password or set password widget, or a legacy page of
+ * that type. Those are pages of the site, which the restriction covers, so
+ * staff abroad were sent from the panel straight to a refusal. For such a
+ * visitor the screens keep to the panel's built-in forms, which load nothing
+ * from the site's files.
+ *
+ * False whenever it cannot tell: the panel then behaves as it always has.
+ */
+function waf_country_keeps_to_panel()
+{
+    static $answer = null;
+
+    if ($answer !== null) {
+        return $answer;
+    }
+
+    $answer = false;
+
+    try {
+        if (!isset(db::$con) || !db::$con) {
+            return $answer;
+        }
+
+        $mode = waf_mode();
+
+        // Read in this order so that an operator who has not turned the
+        // restriction on pays for no country lookup.
+        if (($mode !== 'block') || !in_array((string) waf_setting('waf_country_mode', 'off'), array('allow', 'block'), true)) {
+            return $answer;
+        }
+
+        $country = pg_geo_country();
+
+        $answer = waf_country_keeps_to_panel_decision(
+            $mode,
+            waf_config(),
+            $country['code'],
+            waf_ip_is_allowed(waf_client_ip()));
+    } catch (Exception $e) {
+        $answer = false;
+    } catch (Error $e) {
+        $answer = false;
+    }
+
+    return $answer;
+}
+
+/**
+ * The decision behind waf_country_keeps_to_panel(), from what it read.
+ *
+ * @param string $waf_mode from waf_mode()
+ * @param array  $config   the firewall's settings (waf_config())
+ * @param string $code     the visitor's country, '' when unknown
+ * @param bool   $allowed  whether the address is on the allow list
+ * @return bool
+ */
+function waf_country_keeps_to_panel_decision($waf_mode, $config, $code, $allowed)
+{
+    // Monitor mode refuses nobody, and an allowed address is never refused.
+    if (($waf_mode !== 'block') || $allowed) {
+        return false;
+    }
+
+    $config = is_array($config) ? $config : array();
+
+    // Without the exemption the panel's screens are refused too, so there is
+    // nothing to keep the visitor to.
+    if (!(int) (isset($config['waf_country_exempt_panel']) ? $config['waf_country_exempt_panel'] : 1)) {
+        return false;
+    }
+
+    return waf_country_refused(
+        (string) $code,
+        isset($config['waf_country_mode']) ? (string) $config['waf_country_mode'] : 'off',
+        waf_country_codes(isset($config['waf_country_list']) ? $config['waf_country_list'] : ''),
+        isset($config['waf_country_unknown']) && ((int) $config['waf_country_unknown'] === 1));
 }
 
 function waf_handle_rate_global($ip, $blocking)

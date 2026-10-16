@@ -18,6 +18,10 @@
 
 include('init.php');
 
+// A reference code that is missing or sent as an array (?r[]=x) counts as not
+// given.
+$_GET['r'] = (isset($_GET['r']) && is_string($_GET['r'])) ? $_GET['r'] : '';
+
 // if there is a reference code, check to see if it exists
 if ($_GET['r']) {
     // get e-mail campaign id and contact id based on reference id
@@ -31,14 +35,26 @@ if ($_GET['r']) {
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
-    $email_address = $row['email_address'];
-    $email_campaign_id = $row['email_campaign_id'];
-    $contact_id = $row['contact_id'];
+    // An unknown reference code leaves these empty and ends on the "could not
+    // be found" error below.
+    $email_address = $row['email_address'] ?? '';
+    $email_campaign_id = $row['email_campaign_id'] ?? '';
+    $contact_id = $row['contact_id'] ?? '';
     
 // else, there was no reference code so validate the user
 } else {
     $user = validate_user();
     validate_email_access($user);
+
+    // Stop early when the screen is opened without an existing record (stale
+    // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+    // "not found" screen instead of PHP notices from the unchecked row below or
+    // an error page.
+    $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+    if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM email_campaigns WHERE id = '" . $id . "'") < 1)) {
+        output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+    }
+
     $email_campaign_id = escape($_GET['id']);
 }
 
@@ -78,7 +94,7 @@ if ($format == 'plain_text') {
 }
 
 // if user has a user role, is not the creator of the e-mail campaign and there is not a reference code, then output error
-if (($user['role'] == 3) && ($created_user_id != $user['id']) && (!$_GET['r'])) {
+if (!$_GET['r'] && ($user['role'] == 3) && ($created_user_id != $user['id'])) {
     log_activity(lang('access denied to view e-mail campaign because user is not the creator of the e-mail campaign'), $_SESSION['sessionusername']);
     output_error(lang('Access denied.'));
 }
@@ -106,7 +122,9 @@ if ($_GET['r']) {
          FROM contacts
          WHERE id = '" . $contact_id . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
+
+    // A recipient whose contact was deleted since the send has no name to merge.
+    $row = mysqli_fetch_assoc($result) ?: array('first_name' => '', 'last_name' => '', 'nickname' => '', 'salutation' => '', 'suffix' => '');
 
     $first_name = trim($row['first_name']);
     $last_name = trim($row['last_name']);

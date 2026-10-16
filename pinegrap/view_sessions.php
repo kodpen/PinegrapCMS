@@ -176,7 +176,6 @@ $sessions = db_items(
         auth_tokens.last_used_at,
         auth_tokens.expires_at,
         user.user_username,
-        user.user_google_id,
         user.user_password_algo" . ($pin_column ? ", auth_tokens.pinned" : "") . "
     FROM auth_tokens
     LEFT JOIN user ON auth_tokens.user_id = user.user_id
@@ -205,15 +204,20 @@ if ($counts_result) {
     }
 }
 
-// Every account with an external sign-in connected to it. Sessions come and
-// go; a connection outlives them, and it is the thing an operator has to be
-// able to find - "who can get in with Google" is not answerable from a list
-// of current sessions alone.
-$connected_accounts = db_items(
-    "SELECT user_id, user_username, user_email, user_role, user_password_algo, user_google_id
+// Every account with an external sign-in (Google, Microsoft, Apple)
+// connected to it. Sessions come and go; a connection outlives them, and it
+// is the thing an operator has to be able to find - "who can get in with
+// Google" is not answerable from a list of current sessions alone.
+$connected_accounts = !pg_signin_schema_ready() ? array() : db_items(
+    "SELECT user_id, user_username, user_email, user_role, user_password_algo
     FROM user
-    WHERE (user_google_id IS NOT NULL) AND (user_google_id != '')
+    WHERE user_id IN (SELECT user_id FROM user_identities)
     ORDER BY user_username");
+
+// The sign-in providers of those accounts and of the sessions' accounts.
+$identity_providers = pg_signin_identities_of(array_merge(
+    array_column($connected_accounts, 'user_id'),
+    array_column($sessions, 'user_id')));
 
 $output_connected_rows = '';
 foreach ($connected_accounts as $account) {
@@ -223,7 +227,7 @@ foreach ($connected_accounts as $account) {
         . '<td class="align-middle"><a href="edit_user.php?id=' . $account_id . '">' . h((string) $account['user_username']) . '</a></td>'
         . '<td class="align-middle">' . h((string) $account['user_email']) . '</td>'
         . '<td class="align-middle">' . h(pg_user_role_name($account['user_role'])) . '</td>'
-        . '<td class="align-middle">' . pg_connected_account_label($account['user_google_id'], $account['user_password_algo']) . '</td>'
+        . '<td class="align-middle">' . pg_connected_account_label(isset($identity_providers[$account_id]) ? $identity_providers[$account_id] : array(), $account['user_password_algo']) . '</td>'
         . '<td class="align-middle">' . (isset($session_counts[$account_id]) ? (int) $session_counts[$account_id] : 0) . '</td>'
         . '<td class="align-middle text-end"><a href="edit_user.php?id=' . $account_id . '" class="btn btn-sm btn-outline-secondary">' . lang('Manage') . '</a></td>'
         . '</tr>';
@@ -362,7 +366,7 @@ foreach ($sessions as $s) {
         . ($is_current ? ' <span class="badge bg-success fw-light">' . h(lang('This device')) . '</span>' : '')
         . ($is_pinned ? ' <span class="badge bg-secondary fw-light" title="' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '"><i class="bi bi-pin-angle-fill"></i> ' . h(lang('Locked')) . '</span>' : '')
         . '</td>'
-        . '<td class="align-middle">' . pg_connected_account_label($s['user_google_id'], $s['user_password_algo']) . '</td>'
+        . '<td class="align-middle">' . pg_connected_account_label(isset($identity_providers[(int) $s['user_id']]) ? $identity_providers[(int) $s['user_id']] : array(), $s['user_password_algo']) . '</td>'
         . '<td class="align-middle">' . h((string) $s['ip_address']) . '</td>'
         . '<td class="align-middle">' . h(date('Y-m-d H:i', (int) $s['created_at'])) . '</td>'
         . '<td class="align-middle">' . $last . '</td>'

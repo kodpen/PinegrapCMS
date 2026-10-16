@@ -19,6 +19,10 @@
 include ('init.php');
 
 $user = validate_user();
+
+// The image and the record it belongs to are single values; one sent as an
+// array (?file_name[]=x) counts as not given: it ended in an error page.
+pg_request_single_values(array('file_name', 'object_type', 'object_id', 'column_to_update'));
 $file_name = '';
 $send_to = '';
 $object_type = '';
@@ -53,6 +57,14 @@ if (!$_POST)
     FROM files
     WHERE name = '" . escape($file_name) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+    // if the file does not exist (or no file name was given), then output
+    // error before its details are read
+    if (mysqli_num_rows($result) == 0)
+    {
+        output_error(lang('The image cannot be updated because it no longer exists') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $row = mysqli_fetch_assoc($result);
     $file_name_extension = $row['type'];
     $original_file_name = $row['name'];
@@ -60,12 +72,6 @@ if (!$_POST)
     $folder_id = $row['folder'];
     $design = $row['design'];
     $type = $row['type'];
-
-    // if the file does not exist, then output error
-    if (mysqli_num_rows($result) == 0)
-    {
-        output_error(lang('The image cannot be updated because it no longer exists') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-    }
 
 
     $output_png_selected   = '';

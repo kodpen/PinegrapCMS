@@ -34,7 +34,10 @@ function get_photo_gallery($properties) {
     $page_name = get_page_name($page_id);
 
     if ($layout_type == 'system') {
-        
+
+        // A gallery with no columns outputs an empty wrapper.
+        $output = '';
+
         // If the number of thumbnails is greater than 0, then prepare and display the photo gallery
         if ($number_of_columns > 0) {
             // get folder id
@@ -76,7 +79,7 @@ function get_photo_gallery($properties) {
                 
                 // if this folder is not in the array, then output an error
                 if (in_array($_GET['folder_id'], $all_child_folders) == FALSE) {
-                    log_activity("access denied because folder is not in the scope of the photo gallery page ($page_name)", $_SESSION['sessionusername']);
+                    log_activity("access denied because folder is not in the scope of the photo gallery page ($page_name)", $_SESSION['sessionusername'] ?? '');
                     output_error(lang('Access denied. <a href="javascript:history.go(-1)">Go back</a>.'));
                 }
                 
@@ -704,7 +707,7 @@ function get_photo_gallery($properties) {
             
             // if this folder is not in the array, then output an error
             if (in_array($_GET['folder_id'], $all_child_folders) == FALSE) {
-                log_activity("access denied because folder is not in the scope of the photo gallery page ($page_name)", $_SESSION['sessionusername']);
+                log_activity("access denied because folder is not in the scope of the photo gallery page ($page_name)", $_SESSION['sessionusername'] ?? '');
                 output_error(lang('Access denied. <a href="javascript:history.go(-1)">Go back</a>.'));
             }
             

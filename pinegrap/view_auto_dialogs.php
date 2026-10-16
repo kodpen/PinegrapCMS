@@ -22,74 +22,41 @@ validate_area_access($user, 'manager');
 
 $liveform = new liveform('view_auto_dialogs');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['view_auto_dialogs'][$key] = trim($value);
-    }
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'enabled'       => lang('Enabled'),
+    'url'           => lang('URL'),
+    'width'         => lang('Width'),
+    'height'        => lang('Height'),
+    'delay'         => lang('Delay'),
+    'frequency'     => lang('Frequency'),
+    'page'          => lang('Only on Page'),
+    'created'       => lang('Created'),
+    'last_modified' => lang('Last Modified'),
+);
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['view_auto_dialogs']['sort']) == false) {
-    $_SESSION['software']['view_auto_dialogs']['sort'] = '';
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-switch (($_SESSION['software']['view_auto_dialogs']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'auto_dialogs.name';
-        break;
+$list_state = pg_list_state('view_auto_dialogs', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Enabled'):
-        $sort_column = 'auto_dialogs.enabled';
-        break;
-
-    case lang('URL'):
-        $sort_column = 'auto_dialogs.url';
-        break;
-
-    case lang('Width'):
-        $sort_column = 'auto_dialogs.width';
-        break;
-
-    case lang('Height'):
-        $sort_column = 'auto_dialogs.height';
-        break;
-
-    case lang('Delay'):
-        $sort_column = 'auto_dialogs.delay';
-        break;
-
-    case lang('Frequency'):
-        $sort_column = 'auto_dialogs.frequency';
-        break;
-
-    case lang('Only on Page'):
-        $sort_column = 'auto_dialogs.page';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'auto_dialogs.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'auto_dialogs.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'auto_dialogs.last_modified_timestamp';
-        $_SESSION['software']['view_auto_dialogs']['sort'] = lang('Last Modified');
-        $_SESSION['software']['view_auto_dialogs']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['view_auto_dialogs']['order']) == false) {
-    $_SESSION['software']['view_auto_dialogs']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'auto_dialogs.name',
+    'enabled'       => 'auto_dialogs.enabled',
+    'url'           => 'auto_dialogs.url',
+    'width'         => 'auto_dialogs.width',
+    'height'        => 'auto_dialogs.height',
+    'delay'         => 'auto_dialogs.delay',
+    'frequency'     => 'auto_dialogs.frequency',
+    'page'          => 'auto_dialogs.page',
+    'created'       => 'auto_dialogs.created_timestamp',
+    'last_modified' => 'auto_dialogs.last_modified_timestamp',
+));
 
 $all_auto_dialogs = db_value("SELECT COUNT(*) FROM auto_dialogs");
 
@@ -112,7 +79,7 @@ $auto_dialogs = db_items(
     FROM auto_dialogs
     LEFT JOIN user AS created_user ON auto_dialogs.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON auto_dialogs.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . e(($_SESSION['software']['view_auto_dialogs']['order'] ?? '')));
+    ORDER BY $order_by");
 
 echo pg_page_shell(
     array(

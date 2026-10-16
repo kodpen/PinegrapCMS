@@ -493,102 +493,53 @@ if (!$_POST) {
             case 'delete':
                 $number_of_products = 0;
 
-                foreach ($_POST['products'] as $product_id) {
-                    // Cast once, up front. Everything below interpolates this
-                    // value into SQL and several of the statements did so raw,
-                    // straight out of $_POST.
+                // To the Recycle Bin when the catalogue has one, the way the
+                // Catalog Manager deletes: a product deleted by mistake from
+                // this list comes back with its images, groups, prices and
+                // links from the Catalog Manager's Recycle Bin. Emptying the
+                // bin runs the permanent delete. Before the upgrade that adds
+                // the bin, the permanent delete is all there is.
+                $binning = pg_catalog_bin_ready();
+
+                if ($binning == false) {
+                    include_once('product_builder.php');
+                }
+
+                foreach ((array) $_POST['products'] as $product_id) {
+                    // Cast once, up front: the value comes straight out of $_POST.
                     $product_id = (int) $product_id;
 
-                    $query = "DELETE FROM products ".
-                             "WHERE id = '$product_id'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-                    // Stored SEO findings for this product. Guarded on the
-                    // tables existing, because a product can be deleted on an
-                    // installation that has not run the upgrades that create
-                    // them.
-                    //
-                    // The seo_link rows matter in both directions: a link from
-                    // a deleted product's description still counts as an
-                    // incoming link when the graph decides whether a page is
-                    // an orphan, so leaving it behind hides a real orphan
-                    // forever.
-                    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
-                        db("DELETE FROM seo_issue WHERE (entity_type = 'product') AND (entity_id = '$product_id')");
+                    if ($product_id <= 0) {
+                        continue;
                     }
 
-                    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
-                        db("DELETE FROM seo_link WHERE (from_type = 'product') AND (from_id = '$product_id')");
-                        db("DELETE FROM seo_link WHERE (to_type = 'product') AND (to_id = '$product_id')");
-                    }
-                    
-                    // delete product references in products_groups_xref
-                    $query = "DELETE FROM products_groups_xref ".
-                             "WHERE product = '$product_id'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    
-                    // delete product references in products_zones_xref
-                    $query = "DELETE FROM products_zones_xref ".
-                             "WHERE product_id = '$product_id'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    
-                    // delete form fields for this product
-                    $query = "DELETE FROM form_fields WHERE (product_id = '" . $product_id . "') AND (product_id != '0')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    
-                    // delete form field options for this product
-                    $query = "DELETE FROM form_field_options WHERE (product_id = '" . $product_id . "') AND (product_id != '0')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    if ($binning) {
 
-                    // Delete target options for this product.
-                    db("DELETE FROM target_options WHERE (product_id = '" . $product_id . "') AND (product_id != '0')");
+                        // False for a product that is gone or already in the
+                        // bin; neither is counted as deleted here.
+                        if (pg_catalog_bin_product($product_id, $user['id']) === false) {
+                            continue;
+                        }
 
-                    db("DELETE FROM products_images_xref WHERE product = '" . e($product_id) . "'");
+                    } else {
 
-                    db("DELETE FROM products_attributes_xref WHERE product_id = '" . e($product_id) . "'");
-
-                    db("DELETE FROM product_submit_form_fields WHERE (product_id = '" . e($product_id) . "')");
-
-                    // Barcodes are unique across the table, so a row left behind would
-                    // keep a deleted product's barcode from ever being assigned again.
-                    db("DELETE FROM product_barcodes WHERE product_id = '" . e($product_id) . "'");
-                    
-                    // delete all of the keywords for this product
-                    $query = "DELETE FROM tag_cloud_keywords WHERE (item_id = '" . escape($product_id) . "') AND (item_type = 'product')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    
-                    // delete all of the keywords xref records for this product
-                    $query = "DELETE FROM tag_cloud_keywords_xref WHERE (item_id = '" . escape($product_id) . "') AND (item_type = 'product')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-                    // Check if this product has short links, in order to determine if we need to delete them.
-                    $query =
-                        "SELECT COUNT(*)
-                        FROM short_links
-                        WHERE
-                            (destination_type = 'product')
-                            AND (product_id = '" . escape($product_id) . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_row($result);
-
-                    // If a short link exists, then delete short links for this product.
-                    if ($row[0] != 0) {
-                        $query =
-                            "DELETE FROM short_links
-                            WHERE
-                                (destination_type = 'product')
-                                AND (product_id = '" . escape($product_id) . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        // The product screen's own delete: the row and its
+                        // images, group and zone links, attributes, barcodes,
+                        // form fields, keywords, short links, offer rules and
+                        // stored SEO findings, and the product.deleted event.
+                        pg_pb_delete_product($product_id);
                     }
 
-                    // Delete offer rule associations with product.
-                    db("DELETE FROM offer_rules_products_xref WHERE product_id = '" . e($product_id) . "'");
-                    
                     $number_of_products++;
                 }
                 
                 // If at least one product was deleted, then log this information and output a notice.
-                if ($number_of_products > 0) {
+                if (($number_of_products > 0) && $binning) {
+
+                    log_activity(lang(array('string' => '{var:1} product(s) were moved to the Recycle Bin.', 'vars' => array($number_of_products))), $_SESSION['sessionusername']);
+                    $liveform->add_notice(lang(array('string' => '{var:1} product(s) were moved to the Recycle Bin.', 'vars' => array($number_of_products))));
+
+                } elseif ($number_of_products > 0) {
                     if ($number_of_products == 1) {
                         $plural_suffix = '';
                         $verb = 'was';

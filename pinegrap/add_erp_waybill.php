@@ -33,8 +33,10 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_waybill.php';
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
-    $order_id = (int) ($_GET['order_id'] ?? 0);
-    $invoice_id = (int) ($_GET['invoice_id'] ?? 0);
+    // Each is one value: an array (?order_id[]=x) cast to 1 and filled the
+    // note from the first order or invoice.
+    $order_id = is_scalar($_GET['order_id'] ?? null) ? (int) $_GET['order_id'] : 0;
+    $invoice_id = is_scalar($_GET['invoice_id'] ?? null) ? (int) $_GET['invoice_id'] : 0;
     $order = null;
     $invoice = null;
     $given_lines = array();
@@ -148,7 +150,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-truck me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Delivery Note') . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-truck me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Delivery Note') . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -165,6 +167,12 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
+
+    // Every field of the form but the lines is one value. One posted as an
+    // array counts as not given: (int) read an array account as account 1,
+    // (string) wrote "Array" into the address, the carrier and the driver.
+    pg_request_single_values(array('account_id', 'order_id', 'invoice_id', 'issue_date', 'ship_date', 'ship_time', 'ship_to_title', 'ship_to_address',
+        'ship_to_district', 'ship_to_city', 'ship_to_state', 'ship_to_country', 'carrier_title', 'carrier_vkn', 'plate', 'driver_name', 'driver_tckn', 'notes'));
 
     $liveform->add_fields_to_session();
 

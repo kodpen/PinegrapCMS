@@ -20,9 +20,20 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 
+// The page is one value; one sent as an array (?page_id[]=x) counts as not
+// given: it ended in an error page.
+pg_request_single_values(array('page_id'));
+
 $form = new liveform('generate_layout');
 
-$page = db_item("SELECT page_name AS name FROM page WHERE page_id = '" . e($_GET['page_id']) . "'");
+$page = db_item("SELECT page_name AS name FROM page WHERE page_id = '" . e($_GET['page_id'] ?? '') . "'");
+
+// Opened without a page, or for one that no longer exists (stale link,
+// hand-typed URL): a "not found" screen instead of PHP notices and an empty
+// layout.
+if (!$page) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
 
 require('generate_layout_content.php');
 

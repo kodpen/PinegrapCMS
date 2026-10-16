@@ -276,7 +276,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // (pg_design_frameworks()); a custom design has none, and its
         // sentinel rows, should it carry any, emit nothing.
         $_bs_css_url   = $pg_design_fw['css'];
-        $_bs_icons_url = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css';
+        $_bs_icons_url = pg_design_icons_url();
         $_bs_js_url    = $pg_design_fw['js'];
         $_jquery_url   = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
 
@@ -293,13 +293,25 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // meta:  'bootstrap-css' / 'bootstrap-icons' — framework sentinels.
         //        'user-styles'                       — handwritten Styles panel rules.
         $pg_user_styles_css = '';   // collected separately; emitted as its own <style id="pg-user-styles">
+        // The design links a Bootstrap Icons sheet of its own: the stock one
+        // (the sentinel row, or the fallback below) stands down.
+        $pg_design_own_icons = false;
         if ($page_custom_css !== '') {
             $_css_inline = '';
             $_css_links  = '';
             $_css_arr = json_decode($page_custom_css, true);
             if (is_array($_css_arr)) {
                 foreach ($_css_arr as $_cf) {
+                    if (!is_array($_cf) || (isset($_cf['enabled']) && $_cf['enabled'] === false)) continue;
+                    if (!empty($_cf['meta']) || !isset($_cf['type']) || $_cf['type'] !== 'external-css') continue;
+                    if (!pg_design_asset_on_page($_cf, $page_id)) continue;
+                    if (pg_design_is_icons_url(isset($_cf['content']) ? $_cf['content'] : '')) $pg_design_own_icons = true;
+                }
+                foreach ($_css_arr as $_cf) {
                     if (isset($_cf['enabled']) && $_cf['enabled'] === false) continue;
+                    // A row limited to some pages of the design (a page's own
+                    // stylesheet) is left out everywhere else.
+                    if (!pg_design_asset_on_page($_cf, $page_id)) continue;
                     $_ctype = isset($_cf['type']) ? $_cf['type'] : 'css';
                     $_meta  = isset($_cf['meta']) ? $_cf['meta'] : '';
 
@@ -312,7 +324,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         continue;
                     }
                     if ($_meta === 'bootstrap-icons') {
-                        $_css_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_bs_icons_url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+                        if (!$pg_design_own_icons) {
+                            $_css_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_bs_icons_url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+                        }
                         $pg_has_bs_css_sentinel = true;
                         continue;
                     }
@@ -388,6 +402,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             if (is_array($_js_arr)) {
                 foreach ($_js_arr as $_jf) {
                     if (isset($_jf['enabled']) && $_jf['enabled'] === false) continue;
+                    // A page's own script (an import keeps each page's) runs
+                    // on that page only.
+                    if (!pg_design_asset_on_page($_jf, $page_id)) continue;
                     $_jtype = isset($_jf['type']) ? $_jf['type'] : 'js';
                     $_meta  = isset($_jf['meta']) ? $_jf['meta'] : '';
 
@@ -475,6 +492,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // The widgets are told what the page is drawn for: an e-mail, and the
     // record the sender passed with it (a form's confirmation: form_id; an
     // order receipt: order_id), which on an e-mail page no URL carries.
+    if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
     if (strpos($content, '<!--pg-system-widget:') !== false) {
         $pg_sw_prev_ctx = function_exists('pg_sw_render_context')
             ? pg_sw_render_context(array('email' => (bool)$email) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
@@ -780,8 +798,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 if (
                     (defined('PRETTY_URL_PATH') == false)
                     && (isset($_GET['r']) == TRUE)
+                    && is_string($_GET['r'])
                 ) {
-                    $query_string = '?r=' . $_GET['r'];
+                    $query_string = '?r=' . urlencode($_GET['r']);
                 }
 
                 break;
@@ -789,23 +808,25 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             case 'form list view':
 
                 // If there is a specific page number for this page, then use it.
-                if (isset($_GET[$page_id . '_page_number']) && $_GET[$page_id . '_page_number'] != '' and $_GET[$page_id . '_page_number'] > 1) {
+                if (isset($_GET[$page_id . '_page_number']) && is_string($_GET[$page_id . '_page_number']) && $_GET[$page_id . '_page_number'] != '' and $_GET[$page_id . '_page_number'] > 1) {
                     $query_string = '?' . $page_id . '_page_number=' . urlencode(trim($_GET[$page_id . '_page_number']));
-                    
+
                 // Otherwise if there is a general page number, then use it.
-                } else if (isset($_GET['page_number']) && $_GET['page_number'] != '' and $_GET['page_number'] > 1) {
+                } else if (isset($_GET['page_number']) && is_string($_GET['page_number']) && $_GET['page_number'] != '' and $_GET['page_number'] > 1) {
                     $query_string = '?page_number=' . urlencode(trim($_GET['page_number']));
                 }
-                
+
+                break;
+
             case 'calendar event view':
 
                 // if there is an id in the query string, then add it to the query string
-                if (isset($_GET['id']) == TRUE) {
-                    $query_string = '?id=' . $_GET['id'];
+                if ((isset($_GET['id']) == TRUE) && is_string($_GET['id'])) {
+                    $query_string = '?id=' . urlencode($_GET['id']);
                 }
                 
                 // if there is a recurrence number in the query string, then add it to the query string
-                if (isset($_GET['recurrence_number']) == TRUE) {
+                if ((isset($_GET['recurrence_number']) == TRUE) && is_string($_GET['recurrence_number'])) {
                     // if there are no other values in the query string so far, then add question mark
                     if ($query_string == '') {
                         $query_string .= '?';
@@ -816,16 +837,22 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     }
                     
                     // add recurrence number to the query string
-                    $query_string .= 'recurrence_number=' . $_GET['recurrence_number'];
+                    $query_string .= 'recurrence_number=' . urlencode($_GET['recurrence_number']);
                 }
 
                 break;
 
             case 'photo gallery':
 
-                // if a folder id is in the query string, the add it to the query string
-                if (isset($_GET['folder_id']) == TRUE) {
-                    $query_string = '?folder_id=' . $_GET['folder_id'];
+                // if a folder id is in the query string, the add it to the query string.
+                // Only a whole number is a folder id: anything else (?folder_id[]=x,
+                // ?folder_id=abc, an empty value) is ignored, so the address stays plain.
+                if (
+                    isset($_GET['folder_id'])
+                    && is_string($_GET['folder_id'])
+                    && (filter_var($_GET['folder_id'], FILTER_VALIDATE_INT, array('options' => array('min_range' => 1))) !== false)
+                ) {
+                    $query_string = '?folder_id=' . (int) $_GET['folder_id'];
                 }
 
                 break;
@@ -833,11 +860,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             case 'search results':
 
                 // If there is a specific query for this page, then use it.
-                if (($_GET[$page_id . '_query'] ?? '') != '') {
+                // A query sent as an array (?query[]=x) is ignored, as on the
+                // search results themselves: trim() refused it with an error page.
+                if (isset($_GET[$page_id . '_query']) && is_string($_GET[$page_id . '_query']) && $_GET[$page_id . '_query'] != '') {
                     $query_string = '?' . $page_id . '_query=' . urlencode(trim($_GET[$page_id . '_query']));
 
                 // Otherwise if there is a general query, then use it.
-                } else if (($_GET['query'] ?? '') != '') {
+                } else if (isset($_GET['query']) && is_string($_GET['query']) && $_GET['query'] != '') {
                     $query_string = '?query=' . urlencode(trim($_GET['query']));
                 }
 
@@ -2089,6 +2118,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $injected_synth_system = true;
     }
 
+    // Set by a catalog system region below. A catalog detail page, or a layout
+    // without that region, never sets it, but the comments and the item meta
+    // data further down read it.
+    $catalog_product_group_id = 0;
+
     // replace system region tags with system region content
     preg_match_all('/<system>.*?<\/system>/i', $content, $regions);
     foreach ($regions[0] as $region) {
@@ -2156,6 +2190,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 WHERE page_name = '" . escape($system_page_name) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
+
+            // No page by that name: it was deleted, or it is in the Recycle
+            // Bin, which parks a binned page's name. The region has always
+            // drawn nothing then; it is emptied here before the checks below
+            // read the missing page's properties (a warning on every line).
+            if (!$row) {
+                $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', '', $content);
+                continue;
+            }
+
             $system_region_properties = $row;
         }
         
@@ -2331,8 +2375,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         break;
                         
                     case 'catalog':
-                        // if there is not a search query then output RSS button
-                        if ((isset($_GET[$system_region_properties['page_id'] . '_query']) == FALSE) && (isset($_GET['query']) == FALSE)) {
+                        // If the catalog is not searching, then output RSS button.
+                        // It is asked the way the catalog reads its term: a blank
+                        // or list query, the Clear button and an empty page query
+                        // beside ?query=x all show the product group.
+                        if (pg_catalog_search_term($system_region_properties['page_id'], get_layout_type($system_region_properties['page_id'])) == '') {
                             // if an address name has been passed in the current URL, then prepare RSS button link with address name
                             if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                                 // get address name
@@ -3086,7 +3133,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                     'current_page_id'=>$system_region_properties['page_id'],
                                     'continue_button_label'=>$properties['continue_button_label'],
                                     'next_page_id'=>$properties['next_page_id'],
-                                    'form_id' => $dynamic_properties['form_id'])) . '
+                                    'form_id' => (isset($dynamic_properties['form_id']) ? $dynamic_properties['form_id'] : ''))) . '
                         </div>';
 
                     break;
@@ -3183,7 +3230,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                     'notes' => $properties['notes'],
                                     'back_button_label' => $properties['back_button_label'],
                                     'editable' => $editable,
-                                    'calendar_event_id' => $dynamic_properties['calendar_event_id'])) . '
+                                    'calendar_event_id' => (isset($dynamic_properties['calendar_event_id']) ? $dynamic_properties['calendar_event_id'] : ''))) . '
                         </div>';
                     
                     // if the mode is edit then determine if user has access to edit calendar event in order to determine if edit container should be outputted
@@ -3215,7 +3262,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             $output_query_string_recurrence_number = '';
                             
                             // if there is a recurrence number, then add recurrence number to query string
-                            if (isset($_GET['recurrence_number']) == TRUE) {
+                            if ((isset($_GET['recurrence_number']) == TRUE) && is_string($_GET['recurrence_number'])) {
                                 $output_query_string_recurrence_number = '&recurrence_number=' . h($_GET['recurrence_number']);
                             }
                             
@@ -3615,6 +3662,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             if (($system_region_properties['comments'] == '1') && (($comments_record === null) || $comments_record['visible'])) {
                 $item_id = '0';
                 $item_type = '';
+
+                // Only known when a submitted form is being shown. A form item view
+                // opened without a reference code (an editor previewing the page)
+                // has none.
+                $form_editor_user_id = '';
+                $form_editor_username = '';
+                $form_editor_email_address = '';
+                $form_submitter_user_id = '';
+
                 $sql_where = '';
                 $sql_where_watchers = '';
 
@@ -3722,7 +3778,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 $item_type = 'submitted_form';
 
                             // Otherwise if a reference code was passed through the URL, then get submitted form info in a different way.
-                            } else if ($_GET['r']) {
+                            } else if (!empty($_GET['r']) && is_string($_GET['r'])) {
                                 $query =
                                     "SELECT
                                         forms.id,
@@ -4383,7 +4439,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         } else {
                             $link_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . h(urlencode(get_request_uri() . '#software_add_comment'));
                             if (function_exists('pg_sw_sign_in_url')) {
-                                $link_url = h(pg_sw_sign_in_url(get_request_uri() . '#software_add_comment', html_entity_decode($link_url, ENT_QUOTES, 'UTF-8'), 'registration entrance', $cm_bs));
+                                $link_url = h(pg_sw_sign_in_url(get_request_uri() . '#software_add_comment', html_entity_decode($link_url, ENT_QUOTES, 'UTF-8'), 'registration entrance', $cm_bs, (int)$system_region_properties['page_id']));
                             }
                         }
                         
@@ -5497,7 +5553,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // Otherwise a submitted form id was not passed, so if there is a reference code,
         // then use it to get the form id.
-        } else if (!empty($_GET['r'])) {
+        } else if (!empty($_GET['r']) && is_string($_GET['r'])) {
             $submitted_form['id'] = db_value("SELECT id FROM forms WHERE reference_code = '" . escape($_GET['r']) . "'");
         }
 
@@ -5539,6 +5595,41 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                     $combined_title .= $title['data'];
                 }
+            }
+
+            // A designed page names the record with the widget's own title
+            // settings: the field it picks (else the RSS title fields above)
+            // and the text after it, such as "| Inbox".
+            if ($pg_sw_form_item !== null) {
+                $pg_sw_title_widget = pg_sw_page_widget($page_id, 'form_item_view');
+                $pg_sw_title_cfg = $pg_sw_title_widget ? $pg_sw_title_widget['cfg'] : array();
+                $pg_sw_title_values = array();
+                if (!empty($pg_sw_title_cfg['title_field'])) {
+                    $pg_sw_title_values['reference_code'] = (string) $pg_sw_form_item['reference_code'];
+                    $pg_sw_title_rows = db_items(
+                        "SELECT form_fields.name, form_data.data, form_data.type
+                        FROM form_data
+                        LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
+                        WHERE form_data.form_id = '" . escape($submitted_form['id']) . "'
+                        ORDER BY form_data.id ASC");
+                    foreach ((array) $pg_sw_title_rows as $pg_sw_title_row) {
+                        $pg_sw_title_name = strtolower((string) $pg_sw_title_row['name']);
+                        if ($pg_sw_title_name === '') {
+                            continue;
+                        }
+                        $pg_sw_title_value = (string) $pg_sw_title_row['data'];
+                        if (($pg_sw_title_row['type'] == 'html') && ($pg_sw_title_value != '')) {
+                            $pg_sw_title_value = trim(convert_html_to_text($pg_sw_title_value));
+                        }
+                        if ($pg_sw_title_value === '') {
+                            continue;
+                        }
+                        $pg_sw_title_values[$pg_sw_title_name] = isset($pg_sw_title_values[$pg_sw_title_name])
+                            ? $pg_sw_title_values[$pg_sw_title_name] . ', ' . $pg_sw_title_value
+                            : $pg_sw_title_value;
+                    }
+                }
+                $combined_title = pg_sw_record_title($pg_sw_title_cfg, $pg_sw_title_values, $combined_title);
             }
 
             // If submitted form title was found then override page's title.
@@ -5750,18 +5841,35 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     //
     // Not emitted for an e-mail body. There is no crawler there, and the tag
     // would only travel to the recipient's mail client as dead markup.
-    if (($page_noindex == 1) && ($email != TRUE)) {
+    //
+    // An address that names a record or product that is not there answers
+    // 404 (pg_sw_item_missing()): it is kept out of the index the same way,
+    // and has no canonical address to point at.
+    $pg_item_missing = function_exists('pg_sw_item_missing') && pg_sw_item_missing();
+
+    if ((($page_noindex == 1) || $pg_item_missing) && ($email != TRUE)) {
         $robots_content = 'noindex, ' . (($page_nofollow == 1) ? 'nofollow' : 'follow');
         $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
+    }
+
+    // The site's Google Search Console verification (search_console.php). Google
+    // reads it from the home page, and goes on reading it to keep the site
+    // verified, so it is on every page rather than on one the operator might
+    // later move. Not in an e-mail body, for the same reason as robots.
+    $site_verification_tag = '';
+
+    if (defined('GOOGLE_SITE_VERIFICATION') && (GOOGLE_SITE_VERIFICATION !== '') && ($email != TRUE)) {
+        $site_verification_tag = '<meta name="google-site-verification" content="' . h(GOOGLE_SITE_VERIFICATION) . '">';
     }
 
     // The <meta name="keywords"> tag was removed: no search engine has used it for years.
     // The keyword fields themselves stay in place, they feed site search and the tag cloud.
     $meta_tags = $robots_meta_tag .
+        (($site_verification_tag !== '') ? $site_verification_tag . "\n" . '        ' : '') .
         '<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
         $open_graph .
         $twitter_card .
-        '        <link rel="canonical" href="' . h($canonical_url) . '">';
+        ($pg_item_missing ? '' : '        <link rel="canonical" href="' . h($canonical_url) . '">');
 
     // The placeholder is written into every style the software creates, but a
     // designer editing raw style code can delete it, and then none of this block
@@ -5777,6 +5885,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = preg_replace(
             '/<\/head>/i',
             '        <meta name="robots" content="' . $robots_content . '">' . "\n" . '</head>',
+            $content,
+            1);
+    }
+
+    if (($site_verification_tag !== '') && ($meta_tags_placeholder_found == FALSE)) {
+        $content = preg_replace(
+            '/<\/head>/i',
+            '        ' . $site_verification_tag . "\n" . '</head>',
             $content,
             1);
     }
@@ -5971,7 +6087,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $stylesheet =
             '<link rel="stylesheet" href="' . htmlspecialchars($pg_design_fw['css'], ENT_QUOTES, 'UTF-8') . '">'
             . $pg_theme_links
-            . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">'
+            . (empty($pg_design_own_icons) ? '<link rel="stylesheet" href="' . htmlspecialchars(pg_design_icons_url(), ENT_QUOTES, 'UTF-8') . '">' : '')
             . $stylesheet;
     }
 

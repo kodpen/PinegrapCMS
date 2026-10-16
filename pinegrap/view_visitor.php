@@ -23,7 +23,7 @@ validate_visitors_access($user);
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM visitors WHERE id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -38,7 +38,9 @@ if (defined('BASE_CURRENCY_SYMBOL') == false) {
 }
 
 // if the user was creating a visitor report on the previous screen, then prepare previous screen link
-if (isset($_GET['visitor_report_id']) == false) {
+// (a report id sent as an array, ?visitor_report_id[]=x, counts as not given
+// instead of ending in an error page)
+if (!is_scalar($_GET['visitor_report_id'] ?? null)) {
     $pg_previous_screen_item = array('label' => lang('Visitor Report'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php');
 
 // else the user was editing a visitor report on the previous screen, so prepare previous screen link
@@ -46,12 +48,15 @@ if (isset($_GET['visitor_report_id']) == false) {
     $pg_previous_screen_item = array('label' => lang('Visitor Report'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php?id=' . h($_GET['visitor_report_id']));
 }
 
-// get visitor information
+// get visitor information (a newer visit names its referring address in the
+// list of visitor texts)
+$sql_http_referer = pg_visitor_text_sql('http_referer');
+
 $query =
     "SELECT
-        id,
-        INET_NTOA(ip_address) as ip_address,
-        http_referer,
+        visitors.id,
+        IF(visitors.ip_address = 0, '', INET_NTOA(visitors.ip_address)) as ip_address,
+        " . $sql_http_referer . " AS http_referer,
         referring_host_name,
         referring_search_engine,
         referring_search_terms,
@@ -80,13 +85,13 @@ $query =
         start_timestamp,
         stop_timestamp,
         site_search_terms
-    FROM visitors
-    WHERE id = '" . escape($_GET['id']) . "'";
+    FROM visitors" . pg_visitor_text_joins($sql_http_referer) . "
+    WHERE visitors.id = '" . $id . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 $id = $row['id'];
-$ip_address = $row['ip_address'];
+$ip_address = (string) $row['ip_address'];
 $http_referer = $row['http_referer'];
 $referring_host_name = $row['referring_host_name'];
 $referring_search_engine = $row['referring_search_engine'];
@@ -116,6 +121,18 @@ $country = $row['country'];
 $start_timestamp = $row['start_timestamp'];
 $stop_timestamp = $row['stop_timestamp'];
 $site_search_terms = $row['site_search_terms'];
+
+// The address is 0 in the row once the general job took it out after its
+// period (includes/fn/visitor_ip.php), and for a visit it could not be stored
+// for (IPv6): the first says so, the second shows a dash.
+$ip_address_text = ($ip_address !== '') ? $ip_address : '-';
+$visitor_ip_settings = pg_visitor_retention_settings();
+
+if (($ip_address === '') && is_array($visitor_ip_settings) && ($visitor_ip_settings['ip_days'] > 0)
+    && ((int) $start_timestamp < pg_visitor_retention_cutoff($visitor_ip_settings['ip_days'], time()))
+) {
+    $ip_address_text = lang(array('string' => 'Removed after {var:1} days', 'vars' => array($visitor_ip_settings['ip_days'])));
+}
 
 $output_currency_row = '';
 
@@ -256,7 +273,7 @@ pg_page_shell(
             <div class="row mb-2  flex-wrap d-print-none">
                 <div class="col-12 col-sm-12 text-center text-md-start">
 
-                    <p class="p-0 m-0">' . lang('Visitor\'s IP Address') . ': ' . $ip_address . '</p>
+                    <p class="p-0 m-0">' . lang('Visitor\'s IP Address') . ': ' . h($ip_address_text) . '</p>
                 </div>
             </div>
             <div class="row">
@@ -285,7 +302,7 @@ pg_page_shell(
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-2">
                                     <div class="form-text">' . lang('IP Address') . '</div>
-                                    <h5>' . h($ip_address ? $ip_address : '-') . '</h5>
+                                    <h5>' . h($ip_address_text) . '</h5>
                                 </div>
                                 ' . $output_currency_row . '
                             </div>

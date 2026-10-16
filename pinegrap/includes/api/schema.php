@@ -42,9 +42,9 @@ function api_version() {
 //   bool      1/0, true/false, yes/no, on/off
 //   enum      one of 'values'
 //   datetime  ISO-8601, YYYY-MM-DD or unix, stored as unix
-//   money     whole number of minor units; a decimal is refused rather than
-//             rounded, because rounding someone's price silently is worse than
-//             telling them the format is wrong
+//   money     whole number of minor units, honours 'min' and 'max'; a decimal
+//             is refused rather than rounded, because rounding someone's price
+//             silently is worse than telling them the format is wrong
 //   list      array of objects, for the bulk endpoints
 function api_schema() {
 
@@ -109,12 +109,13 @@ function api_schema() {
 			'handler' => 'api_products_create',
 			'dry_run' => true,
 			'returns' => 'Product',
+			'status'  => 201,
 			'summary' => 'Add a product',
 			'description' => 'Creates one product. name is the merchant SKU and has to be free: a name already in the catalogue is refused with 409 rather than quietly stored under a different one. Stock may be set here because the row does not exist yet and nothing can be racing it - afterwards it belongs to the inventory endpoint. Send an Idempotency-Key so a retried call does not leave two products behind.',
 			'params'  => array(
 				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The product id / SKU. Unique across the catalogue.'),
 				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool',   'description' => 'Published. Off by default, so an import can be checked before it goes live.'),
-				array('name' => 'price',             'in' => 'body', 'type' => 'money',  'description' => 'Minor units. 1999 is 19.99.'),
+				array('name' => 'price',             'in' => 'body', 'type' => 'money',  'min' => 0, 'max' => 2147483647, 'description' => 'Minor units. 1999 is 19.99.'),
 				array('name' => 'title',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'full_description',  'in' => 'body', 'type' => 'string'),
@@ -138,7 +139,9 @@ function api_schema() {
 				array('name' => 'inventory',         'in' => 'body', 'type' => 'bool',   'description' => 'Track stock for this product.'),
 				array('name' => 'inventory_quantity','in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 1000000, 'description' => 'Opening stock. Only meaningful with inventory on.'),
 				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to. A variant is a product in the article\'s group - see the product-groups endpoint.'),
-				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}: what makes this row one variant rather than another. Both ids have to belong together.')
+				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}: what makes this row one variant rather than another. Both ids have to belong together; GET /product-attributes lists them.'),
+				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it. The first is the main photo, the rest the gallery in this order. Upload a new image with POST /files first.'),
+				array('name' => 'barcode',           'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The EAN or UPC printed on the box, in the site\'s barcode format. Only on a site with barcodes switched on; a code another product carries is refused.')
 			)
 		),
 
@@ -152,12 +155,12 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Product',
 			'summary' => 'Change a product',
-			'description' => 'Only the fields present in the body are written. Stock is not changed here - use the inventory endpoint, which adjusts atomically. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
+			'description' => 'Only the fields present in the body are written. group_ids, attributes and images replace what the product has; an empty list removes all of them. Group membership can also be changed from the group\'s side with POST /product-groups/{id}/products. Stock is not changed here - use the inventory endpoint, which adjusts atomically. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
 			'params'  => array(
 				array('name' => 'id',                'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool'),
-				array('name' => 'price',             'in' => 'body', 'type' => 'money', 'description' => 'Minor units. 1999 is 19.99.'),
+				array('name' => 'price',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units. 1999 is 19.99.'),
 				array('name' => 'title',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'full_description',  'in' => 'body', 'type' => 'string'),
@@ -177,11 +180,47 @@ function api_schema() {
 				array('name' => 'height',            'in' => 'body', 'type' => 'decimal'),
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
-				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.')
+				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
+				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to, replacing the current ones. A product in no group is not shown in the shop\'s catalogue tree.'),
+				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}, replacing the current ones: what makes this row one variant rather than another. Both ids have to belong together; GET /product-attributes lists them.'),
+				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it, replacing the current ones. The first is the main photo, the rest the gallery in this order. Upload a new image with POST /files first.'),
+				array('name' => 'barcode',           'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Gives a product that has no barcode yet its code. A barcode already on the product is not replaced, because labels may already carry it; that is changed on the product screen.')
 			)
 		),
 
 		/* ----- Inventory ---------------------------------------------------- */
+
+		array(
+			'id'      => 'products.delete',
+			'method'  => 'DELETE',
+			'path'    => '/products/{id}',
+			'scope'   => 'products:write',
+			'handler' => 'api_products_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a product',
+			'description' => 'Moves the product to the catalogue\'s Recycle Bin, where an operator can put it back: it is switched off, leaves the listing and stays readable by id with recycled=true. Send permanent=true to delete it outright with the whole cleanup the product screen performs, which cannot be undone. Both send product.deleted, with recycled saying which it was. 409 recycle_bin_unavailable on a site without the bin, 409 already_recycled for a product already in it. A default IIS install answers DELETE itself before PHP is reached: POST /products/{id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
+
+		array(
+			'id'      => 'products.delete_post',
+			'method'  => 'POST',
+			'path'    => '/products/{id}/delete',
+			'scope'   => 'products:write',
+			'handler' => 'api_products_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a product, addressed as a POST',
+			'description' => 'The same deletion as DELETE /products/{id}, for clients and servers that cannot send DELETE. It has an address of its own because POST /products/{id} is already the update.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
 
 		array(
 			'id'      => 'inventory.write',
@@ -290,6 +329,182 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'product_groups.create',
+			'method'  => 'POST',
+			'path'    => '/product-groups',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_create',
+			'dry_run' => true,
+			'returns' => 'ProductGroup',
+			'status'  => 201,
+			'summary' => 'Add a product group',
+			'description' => 'A new category page under the parent named, or under the top of the catalogue when none is. It starts switched off unless enabled=true is sent, so a category an import is still filling does not appear in the navigation half-empty. The address is made from the short description or the name by the catalogue\'s own rule. A name another group already has is refused with 409 name_taken: the name is the group\'s code in the panel. Existing groups are not moved through the API.',
+			'params'  => array(
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'parent_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The group to file it under. Omitted: the top of the catalogue.'),
+				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool', 'description' => 'Published. Off when not sent.'),
+				array('name' => 'title',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'description',       'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long description; full_description on the record.'),
+				array('name' => 'meta_description',  'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'meta_keywords',     'in' => 'body', 'type' => 'string', 'max_length' => 2000),
+				array('name' => 'keywords',          'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'Words that promote the group in the site search.'),
+				array('name' => 'product_ids',       'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Products to file in it. Each has to exist and not be in the Recycle Bin.')
+			)
+		),
+
+		array(
+			'id'      => 'product_groups.products',
+			'method'  => 'POST',
+			'path'    => '/product-groups/{id}/products',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_products',
+			'dry_run' => true,
+			'returns' => 'ProductGroup',
+			'summary' => 'Put products into a group, or take them out',
+			'description' => 'Both lists in one call, so re-filing a category\'s products leaves no moment where they are in neither group. A product added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed. Products are never deleted here, only their link to this group.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Product ids to put into the group. Each has to exist and not be in the Recycle Bin.'),
+				array('name' => 'remove', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Product ids to take out of the group.')
+			)
+		),
+
+		array(
+			'id'      => 'product_groups.delete',
+			'method'  => 'DELETE',
+			'path'    => '/product-groups/{id}',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a product group',
+			'description' => 'Moves the group to the catalogue\'s Recycle Bin, where an operator can put it back. Send permanent=true to delete it outright, which cannot be undone. Its products are never deleted with it; they stay wherever else they are filed. The root group is refused (409 root_group_protected), and so is a group that still has groups inside it (409 group_not_empty): a branch of the navigation is not removed from outside in one call. POST /product-groups/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
+
+		array(
+			'id'      => 'product_groups.delete_post',
+			'method'  => 'POST',
+			'path'    => '/product-groups/{id}/delete',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a product group, addressed as a POST',
+			'description' => 'The same deletion as DELETE /product-groups/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
+			)
+		),
+
+		/* ----- Product attributes ------------------------------------------ */
+
+		array(
+			'id'      => 'product_attributes.list',
+			'method'  => 'GET',
+			'path'    => '/product-attributes',
+			'scope'   => 'products:read',
+			'handler' => 'api_product_attributes_list',
+			'returns' => array('list' => 'ProductAttribute'),
+			'summary' => 'Product attributes',
+			'description' => 'What variants are told apart by (Size, Colour), each with its options in the order the shop shows them, by id, cursor paged. name is the attribute\'s unique code, label what the shop shows. An option with no_value is the "no thanks" choice. products and product_groups count where it is used. These are the attribute_id and option_id values POST /products takes in attributes.',
+			'params'  => array(
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the label.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.get',
+			'method'  => 'GET',
+			'path'    => '/product-attributes/{id}',
+			'scope'   => 'products:read',
+			'handler' => 'api_product_attributes_get',
+			'returns' => 'ProductAttribute',
+			'summary' => 'One product attribute',
+			'description' => 'The same fields as the list, for one attribute.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.create',
+			'method'  => 'POST',
+			'path'    => '/product-attributes',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_attributes_create',
+			'dry_run' => true,
+			'returns' => 'ProductAttribute',
+			'status'  => 201,
+			'summary' => 'Create a product attribute',
+			'description' => 'An attribute with its options, as the attribute screen makes it. The name has to be free (409 name_taken names the attribute that has it), and at least one option is needed. Then give products their option with POST /products or POST /products/{id}, attributes.',
+			'params'  => array(
+				array('name' => 'name',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The attribute\'s unique code, such as size.'),
+				array('name' => 'label',   'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'What the shop shows above the options, such as Choose a size.'),
+				array('name' => 'options', 'in' => 'body', 'type' => 'list', 'of' => array('label' => 'string', 'no_value' => 'boolean'), 'max_items' => 100, 'required' => true, 'description' => 'Objects of {label, no_value}, in the order the shop shows them. Labels are distinct; no_value marks the "no thanks" choice.')
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/product-attributes/{id}',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_attributes_update',
+			'dry_run' => true,
+			'returns' => 'ProductAttribute',
+			'summary' => 'Change a product attribute',
+			'description' => 'Only what is sent is changed. options changes the options named by id and adds the ones without an id at the end; options left out stay as they are, so adding XL to a size attribute is options=[{"label":"XL"}]. An option goes only when its id is in remove_option_ids, and the products that came in it lose that option, as on the attribute screen. The attribute keeps at least one option, and no two options may read the same. Reordering options stays on the attribute screen. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'label',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'options',           'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer?', 'label' => 'string', 'no_value' => 'boolean'), 'max_items' => 100, 'description' => 'Objects of {id, label, no_value}, each with its label: with the id of one of its options to rename it or change no_value, without one to add an option.'),
+				array('name' => 'remove_option_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'Ids of its options to remove, together with every product\'s link to them.')
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.delete',
+			'method'  => 'DELETE',
+			'path'    => '/product-attributes/{id}',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_attributes_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'products' => 'integer', 'product_groups' => 'integer'),
+			'summary' => 'Delete a product attribute',
+			'description' => 'Removes the attribute and its options and takes it off every product and product group, as the attribute screen does; it cannot be undone. An attribute that a product or a product group uses is refused with 409 attribute_in_use unless force=true is sent. The answer counts the products and groups it was taken off. POST /product-attributes/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id',    'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'force', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete it even though products or product groups use it.')
+			)
+		),
+
+		array(
+			'id'      => 'product_attributes.delete_post',
+			'method'  => 'POST',
+			'path'    => '/product-attributes/{id}/delete',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_attributes_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'products' => 'integer', 'product_groups' => 'integer'),
+			'summary' => 'Delete a product attribute, addressed as a POST',
+			'description' => 'The same deletion as DELETE /product-attributes/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',    'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete it even though products or product groups use it.')
+			)
+		),
+
 		/* ----- Orders ------------------------------------------------------- */
 
 		array(
@@ -385,6 +600,659 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'customers.delete',
+			'method'  => 'DELETE',
+			'path'    => '/customers/{id}',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a customer',
+			'description' => 'Removes the address-book record with its contact groups and opt-in rows, as the contact screen does - for an erasure request received outside the panel. It cannot be undone. Orders keep their own copy of the billing and shipping details. A contact that is a user account\'s own is refused (409 customer_has_account), and so is one linked to an ERP account (409 customer_has_erp_account). Sends customer.deleted. POST /customers/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'customers.delete_post',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/delete',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a customer, addressed as a POST',
+			'description' => 'The same deletion as DELETE /customers/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Store set-up ------------------------------------------------- */
+
+		array(
+			'id'      => 'store.shipping_methods',
+			'method'  => 'GET',
+			'path'    => '/store/shipping-methods',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_shipping_methods_list',
+			'returns' => array('list' => 'StoreShippingMethod'),
+			'summary' => 'Shipping methods',
+			'description' => 'Every shipping method, in one page, with what it charges and when it is offered. Money is in minor units. What a recipient pays is the base rate (the tier whose from_subtotal the recipient\'s subtotal has reached), plus for each item primary_weight_rate x the product\'s primary weight points, secondary_weight_rate x its secondary weight points and item_rate, each times the quantity (first_item_excluded leaves the first item out of that charge), plus the same four rates of the zone the address is in, plus a carrier\'s live quote where realtime_rate is on. A method is offered while enabled, inside available_from/available_until, on the days in offered_on until their cut-off time, and for the address types it allows; a protected method is offered to the store\'s staff only.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'store.shipping_method_get',
+			'method'  => 'GET',
+			'path'    => '/store/shipping-methods/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_shipping_methods_get',
+			'returns' => 'StoreShippingMethod',
+			'summary' => 'One shipping method',
+			'description' => 'The same object as in the list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.zones',
+			'method'  => 'GET',
+			'path'    => '/store/zones',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_zones_list',
+			'returns' => array('list' => 'StoreZone'),
+			'summary' => 'Shipping zones',
+			'description' => 'The areas shipping methods ship to (zone_ids on a method), each with the countries (ISO codes) and states it covers and the rates it adds to the method\'s own. One page.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.tax_zones',
+			'method'  => 'GET',
+			'path'    => '/store/tax-zones',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_tax_zones_list',
+			'returns' => array('list' => 'StoreTaxZone'),
+			'summary' => 'Tax zones',
+			'description' => 'The areas tax is charged in, each with its rate as a percentage and the countries and states it covers. An address in no tax zone is charged no tax. GET /meta carries the rate of the store\'s own country. One page.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.countries',
+			'method'  => 'GET',
+			'path'    => '/store/countries',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_countries_list',
+			'returns' => array('list' => 'StoreCountry'),
+			'summary' => 'Countries and their states',
+			'description' => 'The countries an address can name, with their states, as the address forms offer them. default is the country the forms select first. One page.',
+			'params'  => array(
+				array('name' => 'code', 'in' => 'query', 'type' => 'string', 'max_length' => 50, 'description' => 'Only the country with this code.')
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies',
+			'method'  => 'GET',
+			'path'    => '/store/currencies',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_currencies_list',
+			'returns' => array('list' => 'StoreCurrency'),
+			'summary' => 'Currencies',
+			'description' => 'The currencies a visitor can see prices in, the base currency first. exchange_rate is how much of the currency one unit of the base currency buys. Orders are always charged in the base currency. One page.',
+			'params'  => array()
+		),
+
+		/* ----- E-mail campaigns -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_list',
+			'returns' => array('list' => 'Campaign'),
+			'summary' => 'E-mail campaigns',
+			'description' => 'Newest first, cursor paged, with how far sending has got (recipients: total, sent, failed - the job gave up after its retries - and pending). status: ready (waiting for send_at, or being sent), paused, cancelled or complete. type: manual (sent to contact groups) or automatic (made by a campaign profile when an order, reservation or form came in; profile_id, action and action_item_id say which). An account with the e-mail right but the user role sees only the campaigns it created, as on the campaign screens.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('ready', 'paused', 'cancelled', 'complete')),
+				array('name' => 'type',          'in' => 'query', 'type' => 'enum', 'values' => array('manual', 'automatic')),
+				array('name' => 'purpose',       'in' => 'query', 'type' => 'enum', 'values' => array('commercial', 'transactional')),
+				array('name' => 'profile_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the campaigns this campaign profile made.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the subject.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.get',
+			'method'  => 'GET',
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_get',
+			'returns' => 'Campaign',
+			'summary' => 'One e-mail campaign',
+			'description' => 'With the message (body: the text of a plain-text campaign, or for an HTML one the page as it was rendered when the campaign was made) and, for a manual campaign, the contact groups it was put together from: contact_group_ids it went to, excluded_contact_group_ids whose members were left out.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.recipients',
+			'method'  => 'GET',
+			'path'    => '/campaigns/{id}/recipients',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_recipients',
+			'returns' => array('list' => 'CampaignRecipient'),
+			'summary' => 'Who a campaign goes to',
+			'description' => 'In the order the job sends them, cursor paged: the address, the contact it came from, sent, pending or failed, how many attempts were made and why the last one did not go through.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('sent', 'pending', 'failed')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_update',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'summary' => 'Hold, release, cancel or correct a campaign',
+			'description' => 'Only what is sent is changed, as on the campaign screen. status paused holds it, ready lets the scheduled e-mail job send it (again), cancelled stops it; recipients already sent stay sent. Nothing is sent by this call: a ready campaign goes out when the job reaches it, and where the site runs no job it waits for Send Campaign on its screen. A sent (complete) campaign cannot be changed (409 campaign_complete). The body of an HTML campaign is the page as it was rendered and cannot be changed (409 campaign_body_is_a_page); bcc is for automatic campaigns only (409 campaign_bcc_automatic_only). A campaign is put together, recipients and all, on its own screen. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status',     'in' => 'body', 'type' => 'enum', 'values' => array('ready', 'paused', 'cancelled')),
+				array('name' => 'subject',    'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'body',       'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'from_name',  'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'reply_to',   'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'Automatic campaigns only. An empty string removes it.'),
+				array('name' => 'send_at',    'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When the job may start sending it. An empty string means as soon as the job runs.'),
+				array('name' => 'purpose',    'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial skips contacts who have opted out and carries the organisation and e-mail preferences footer; transactional goes to every recipient.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.delete',
+			'method'  => 'DELETE',
+			'path'    => '/campaigns/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign',
+			'description' => 'Removes the campaign with its recipients and contact groups, as the campaign screens do; whatever was already sent stays sent and nothing more goes out. It cannot be undone. POST /campaigns/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.delete_post',
+			'method'  => 'POST',
+			'path'    => '/campaigns/{id}/delete',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign, addressed as a POST',
+			'description' => 'The same deletion as DELETE /campaigns/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Contact groups ---------------------------------------------- */
+
+		array(
+			'id'      => 'contact_groups.list',
+			'method'  => 'GET',
+			'path'    => '/contact-groups',
+			'scope'   => 'contact_groups:read',
+			'handler' => 'api_contact_groups_list',
+			'returns' => array('list' => 'ContactGroup'),
+			'summary' => 'Contact groups',
+			'description' => 'The lists campaigns are sent to, by id, cursor paged, each with how many contacts it holds. email_subscription says whether campaigns may go to it and its members choose whether they get them; subscription_type open offers it to every contact on the e-mail preferences page, closed only to its members. An account with the contacts right but the user role sees only the groups given to it, as on the contact screens.',
+			'params'  => array(
+				array('name' => 'email_subscription', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the groups that take e-mail subscriptions, or only the ones that do not.'),
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the description.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.get',
+			'method'  => 'GET',
+			'path'    => '/contact-groups/{id}',
+			'scope'   => 'contact_groups:read',
+			'handler' => 'api_contact_groups_get',
+			'returns' => 'ContactGroup',
+			'summary' => 'One contact group',
+			'description' => 'The same fields as the list, for one group.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.create',
+			'method'  => 'POST',
+			'path'    => '/contact-groups',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_create',
+			'dry_run' => true,
+			'returns' => 'ContactGroup',
+			'status'  => 201,
+			'summary' => 'Create a contact group',
+			'description' => 'An empty group, as the contact group screen makes it. The name has to be free, whatever its case (409 name_taken names the group that has it). Only an account from the manager role up may create one (403 forbidden otherwise), as on the contact group screens. Put contacts in with POST /contact-groups/{id}/members.',
+			'params'  => array(
+				array('name' => 'name',               'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'description',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Shown with the group on the e-mail preferences page when it takes subscriptions.'),
+				array('name' => 'email_subscription', 'in' => 'body', 'type' => 'bool', 'description' => 'Campaigns may be sent to it, and its members choose whether they get them. Off when left out.'),
+				array('name' => 'subscription_type',  'in' => 'body', 'type' => 'enum', 'values' => array('open', 'closed'), 'description' => 'open offers the group to every contact on the e-mail preferences page, closed only to its members. open when left out.')
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/contact-groups/{id}',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_update',
+			'dry_run' => true,
+			'returns' => 'ContactGroup',
+			'summary' => 'Rename or change a contact group',
+			'description' => 'Only what is sent is changed. A new name has to be free (409 name_taken). Switching email_subscription off keeps the members\' choices for the group\'s e-mail, so switching it back on finds them again; subscription_type is kept while it is off. An account with the user role may change the groups given to it, as on the group screen. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',               'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'description',        'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'email_subscription', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'subscription_type',  'in' => 'body', 'type' => 'enum', 'values' => array('open', 'closed'))
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.delete',
+			'method'  => 'DELETE',
+			'path'    => '/contact-groups/{id}',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a contact group',
+			'description' => 'Only an empty group is removed, as on the contact group screen: one that still holds contacts is refused with 409 contact_group_has_members, so take them out first with POST /contact-groups/{id}/members. The accounts it was given to, the members\' choices kept for it and the campaigns\' record of having gone to it go with it; campaigns already sent stay sent. It cannot be undone. POST /contact-groups/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.delete_post',
+			'method'  => 'POST',
+			'path'    => '/contact-groups/{id}/delete',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a contact group, addressed as a POST',
+			'description' => 'The same deletion as DELETE /contact-groups/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.members',
+			'method'  => 'GET',
+			'path'    => '/contact-groups/{id}/members',
+			'scope'   => 'contact_groups:read',
+			'handler' => 'api_contact_groups_members',
+			'returns' => array('list' => 'ContactGroupMember'),
+			'summary' => 'Who is in a contact group',
+			'description' => 'By contact id, cursor paged: the contact, its own switch for all e-mail campaigns (email_opt_in) and, in a group that takes subscriptions, its choice for this group\'s e-mail (opt_in; a contact that never chose counts as opted in, as the campaign screen reads it). A campaign put together from the group reaches a member only when both are on. The full address book record is GET /customers/{id}.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'email',  'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the member with this exact address.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.members_update',
+			'method'  => 'POST',
+			'path'    => '/contact-groups/{id}/members',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_members_update',
+			'dry_run' => true,
+			'returns' => 'ContactGroup',
+			'summary' => 'Put contacts into a group, or take them out',
+			'description' => 'Both lists in one call, as the contact screen ticks a group. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed, and the contacts that actually moved are announced as contact_group.members_changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to put into the group. Each has to exist.'),
+				array('name' => 'remove', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to take out of the group.'),
+				array('name' => 'opt_in', 'in' => 'body', 'type' => 'bool', 'description' => 'The choice for this group\'s e-mail, written for every contact in add. Only for a group that takes subscriptions.')
+			)
+		),
+
+		/* ----- Site log ----------------------------------------------------- */
+
+		array(
+			'id'      => 'site_log.list',
+			'method'  => 'GET',
+			'path'    => '/site-log',
+			'scope'   => 'site_log:read',
+			'handler' => 'api_site_log_list',
+			'returns' => array('list' => 'SiteLogEntry'),
+			'summary' => 'Site log',
+			'description' => 'What was done on the site, newest first, cursor paged, as the Site Log screen lists it: the sentence it was logged with (in the site\'s language), the account that did it and the address it came from. user is null for what visitors and the site\'s own jobs did. Read only. The PHP error logs on the same screen are not here.',
+			'params'  => array(
+				array('name' => 'from',   'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'user',   'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only what this username did.'),
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the description.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		/* ----- Gift cards -------------------------------------------------- */
+
+		array(
+			'id'      => 'gift_cards.list',
+			'method'  => 'GET',
+			'path'    => '/gift-cards',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_gift_cards_list',
+			'returns' => array('list' => 'GiftCard'),
+			'summary' => 'Gift cards',
+			'description' => 'Newest first, cursor paged. Money is in minor units. status: active (balance left and not expired), used (nothing left) or expired (past expires_on, whatever is left on it). A card bought in an order carries order_id, from_name, recipient_email, message and delivery_date. code is the money itself: whoever holds it can spend the balance at checkout.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'used', 'expired')),
+				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the cards bought in this order.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the code (with or without its dashes), the notes, who it is from or the recipient\'s e-mail address.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.get',
+			'method'  => 'GET',
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_gift_cards_get',
+			'returns' => 'GiftCard',
+			'summary' => 'One gift card',
+			'description' => 'With redemptions: each order the card was spent in, how much, and the balance before and after.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.create',
+			'method'  => 'POST',
+			'path'    => '/gift-cards',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_create',
+			'dry_run' => true,
+			'returns' => 'GiftCard',
+			'status'  => 201,
+			'summary' => 'Issue a gift card',
+			'description' => 'One card worth amount, with a new sixteen-digit code, as the gift cards screen issues it - for a prize, a refund or a card sold outside the store. The answer carries the code; nothing is mailed to anyone.',
+			'params'  => array(
+				array('name' => 'amount',     'in' => 'body', 'type' => 'money', 'min' => 1, 'max' => 4294967295, 'required' => true, 'description' => 'Minor units, greater than zero. The balance starts at the same amount.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day it can be spent. Left out, it never expires.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'For the staff only.')
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_update',
+			'dry_run' => true,
+			'returns' => 'GiftCard',
+			'summary' => 'Change a gift card',
+			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'balance',    'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 4294967295, 'description' => 'Minor units, zero or more.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string removes the expiry.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.delete',
+			'method'  => 'DELETE',
+			'path'    => '/gift-cards/{id}',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a gift card',
+			'description' => 'Removes the card, as the gift cards screen does; its code stops working at once and it cannot be undone. The orders it was spent in keep their record of the spend. POST /gift-cards/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'gift_cards.delete_post',
+			'method'  => 'POST',
+			'path'    => '/gift-cards/{id}/delete',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_gift_cards_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a gift card, addressed as a POST',
+			'description' => 'The same deletion as DELETE /gift-cards/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Commissions -------------------------------------------------- */
+
+		array(
+			'id'      => 'commissions.list',
+			'method'  => 'GET',
+			'path'    => '/commissions',
+			'scope'   => 'commissions:read',
+			'handler' => 'api_commissions_list',
+			'returns' => array('list' => 'Commission'),
+			'summary' => 'Affiliate commissions',
+			'description' => 'What the affiliate program owes, cursor paged and ordered by when each commission last changed, so updated_since picks up the ones whose status moved since the last sync. Money is in minor units. status: pending, payable, ineligible or paid, set on the commissions screen; paying the affiliate happens outside the site. A commission on an order carries order_id; a recurring one is written once a period from its recurring profile and carries period and product_name. affiliate_contact_id is the affiliate\'s record under GET /customers/{id}. Read only.',
+			'params'  => array(
+				array('name' => 'status',         'in' => 'query', 'type' => 'enum', 'values' => array('pending', 'payable', 'ineligible', 'paid')),
+				array('name' => 'affiliate_code', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the commissions of this affiliate.'),
+				array('name' => 'reference_code', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The commission with this reference code.'),
+				array('name' => 'order_id',       'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the commissions on this order.'),
+				array('name' => 'created_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written at or after this moment.'),
+				array('name' => 'created_before', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written before this moment.'),
+				array('name' => 'updated_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written or changed at or after this moment.'),
+				array('name' => 'limit',          'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'commissions.get',
+			'method'  => 'GET',
+			'path'    => '/commissions/{id}',
+			'scope'   => 'commissions:read',
+			'handler' => 'api_commissions_get',
+			'returns' => 'Commission',
+			'summary' => 'One affiliate commission',
+			'description' => 'The same fields as the list, for one commission.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Calendars ---------------------------------------------------- */
+
+		array(
+			'id'      => 'calendars.list',
+			'method'  => 'GET',
+			'path'    => '/calendars',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendars_list',
+			'returns' => array('list' => 'Calendar'),
+			'summary' => 'The site\'s calendars',
+			'description' => 'Every calendar the application\'s owner may open - all of them for roles 0 to 2, the assigned ones for a user with the calendars right - with how many events each holds. One page; a site has a handful. 503 service_unavailable where the site does not run its calendars.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'calendars.events',
+			'method'  => 'GET',
+			'path'    => '/calendars/events',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_events_list',
+			'returns' => array('list' => 'CalendarEvent'),
+			'summary' => 'Events on the calendars',
+			'description' => 'In date order, cursor paged. A repeating event is answered once, with its first start and end and its recurrence rule: unit (day, week, month, year), times (how many repeats follow the first), days (the weekdays a daily or weekly repeat is limited to) and month_by (date or weekday). skipped_occurrences numbers the repeats that were cancelled. Times are the site\'s wall-clock times written with its offset. Only events on calendars the owner may open are listed.',
+			'params'  => array(
+				array('name' => 'calendar_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only events on this calendar.'),
+				array('name' => 'published',     'in' => 'query', 'type' => 'bool'),
+				array('name' => 'upcoming',      'in' => 'query', 'type' => 'bool', 'description' => 'Only events that have not ended yet, and repeating events.'),
+				array('name' => 'starts_after',  'in' => 'query', 'type' => 'datetime', 'description' => 'First start at or after this moment.'),
+				array('name' => 'starts_before', 'in' => 'query', 'type' => 'datetime', 'description' => 'First start before this moment.'),
+				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'search',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the location.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_get',
+			'method'  => 'GET',
+			'path'    => '/calendars/events/{id}',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_events_get',
+			'returns' => 'CalendarEvent',
+			'summary' => 'One event',
+			'description' => 'With its long description. An event on none of the calendars the owner may open is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_create',
+			'method'  => 'POST',
+			'path'    => '/calendars/events',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_events_create',
+			'dry_run' => true,
+			'returns' => 'CalendarEvent',
+			'status'  => 201,
+			'summary' => 'Add an event',
+			'description' => 'A one-off event on the calendars named, unpublished unless published=true is sent. An all-day event runs from the start of its first day to the end of its last; any other event has to end after it starts. Times without an offset are read as the site\'s wall clock. Repeats, reservations, rooms and the page a visitor goes to next are set on the event\'s own screen. Publishing needs the publishing right where the owner is not a manager: 403 forbidden otherwise.',
+			'params'  => array(
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'start',             'in' => 'body', 'type' => 'datetime', 'required' => true),
+				array('name' => 'end',               'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'For an all-day event, the last day it runs on.'),
+				array('name' => 'all_day',           'in' => 'body', 'type' => 'bool'),
+				array('name' => 'calendar_ids',      'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'required' => true, 'description' => 'The calendars it goes on: at least one, each one the owner may open.'),
+				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'description',       'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long description, as HTML. Scripts, event handlers and the like are removed.'),
+				array('name' => 'location',          'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Where it happens, as words. The rooms it books are set on its screen.'),
+				array('name' => 'show_start_time',   'in' => 'body', 'type' => 'bool', 'description' => 'Show the clock time with the start date. On when not sent.'),
+				array('name' => 'show_end_time',     'in' => 'body', 'type' => 'bool', 'description' => 'Show the clock time with the end date. On when not sent.'),
+				array('name' => 'published',         'in' => 'body', 'type' => 'bool', 'description' => 'Off when not sent.'),
+				array('name' => 'unpublish_days',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 65535, 'description' => 'Days after it ends that it leaves the published calendar. 45 when not sent.')
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/calendars/events/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_events_update',
+			'dry_run' => true,
+			'returns' => 'CalendarEvent',
+			'summary' => 'Change an event',
+			'description' => 'Only what is sent is changed. The times are worked out again from what is sent and what is stored whenever start, end or all_day is sent. A one-off event that books a room is checked against the room\'s other bookings (409 room_taken); a repeating one that books a room is moved on its own screen (409 repeating_event_books_room). calendar_ids replaces the calendars the owner may open; the others keep the event. A published event is closed to an owner without the publishing right (403). PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'start',             'in' => 'body', 'type' => 'datetime'),
+				array('name' => 'end',               'in' => 'body', 'type' => 'datetime'),
+				array('name' => 'all_day',           'in' => 'body', 'type' => 'bool'),
+				array('name' => 'calendar_ids',      'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50),
+				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'description',       'in' => 'body', 'type' => 'string', 'max_length' => 20000),
+				array('name' => 'location',          'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'show_start_time',   'in' => 'body', 'type' => 'bool'),
+				array('name' => 'show_end_time',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'published',         'in' => 'body', 'type' => 'bool'),
+				array('name' => 'unpublish_days',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 65535)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_delete',
+			'method'  => 'DELETE',
+			'path'    => '/calendars/events/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_events_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event',
+			'description' => 'With every repeat, its place on every calendar, the rooms it booked and the reservation spots left, as on the event screen. Reservations already sold stay with their orders.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_delete_post',
+			'method'  => 'POST',
+			'path'    => '/calendars/events/{id}/delete',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_events_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event, addressed as a POST',
+			'description' => 'The same removal as DELETE /calendars/events/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(
@@ -407,11 +1275,13 @@ function api_schema() {
 			'handler' => 'api_webhooks_create',
 			'dry_run' => true,
 			'returns' => 'Webhook',
+			'status'  => 201,
 			'summary' => 'Subscribe to events',
-			'description' => 'The signing secret is returned once, here. Each delivery carries X-Pinegrap-Signature: t=<unix>,v1=HMAC-SHA256(t + "." + body) - check it, and refuse a timestamp older than a few minutes.',
+			'description' => 'The signing secret is returned once, here. Each delivery carries X-Pinegrap-Signature: t=<unix>,v1=HMAC-SHA256(t + "." + body) - check it, and refuse a timestamp older than a few minutes. With channel_group_id the subscription hears only the workspace events of the channels in that group of channels and in the groups inside it, with the same body, signature and retries as any other.',
 			'params'  => array(
 				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'required' => true, 'description' => 'https address to call. It is checked now, not at delivery time.'),
-				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'required' => true, 'description' => 'Event names. GET this endpoint to see the list.')
+				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'required' => true, 'description' => 'Event names. GET this endpoint to see the list.'),
+				array('name' => 'channel_group_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Workspace: narrow the subscription to one group of channels (GET /workspace/channel-groups, a group the owner of the application sees). Every event must then be a workspace event; the channel\'s group is read when the event happens. 0, null or left out: the whole site.')
 			)
 		),
 
@@ -426,6 +1296,103 @@ function api_schema() {
 			'status'  => 204,
 			'summary' => 'Remove a subscription',
 			'description' => 'POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.get',
+			'method'  => 'GET',
+			'path'    => '/webhooks/{id}',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_get',
+			'returns' => 'Webhook',
+			'summary' => 'One of your event subscriptions',
+			'description' => 'With what is still queued for it and the last delivery error on file. Another application\'s subscription is answered 404, the same as one that does not exist.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.update',
+			'method'  => 'PATCH',
+			'path'    => '/webhooks/{id}',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_update',
+			'dry_run' => true,
+			'returns' => 'Webhook',
+			'summary' => 'Change a subscription',
+			'description' => 'Move the address, change the events, or switch deliveries off (disabled) and on again (active) without losing the signing secret. A subscription the site marked failing is switched back on with status=active; what is still waiting is sent again by POST /webhooks/{id}/retry, not by this call. A disabled subscription receives nothing, and the events queued for it are dropped. A plain POST to /webhooks/{id} is not this call - it has removed the subscription since the first release - so a client that cannot send PATCH, or talks to an IIS server, uses POST /webhooks/{id}/update.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'https address to call. It is checked now, not at delivery time.'),
+				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'Event names; replaces the whole list. GET /webhooks lists them.'),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('active', 'disabled')),
+				array('name' => 'channel_group_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Workspace: narrow the subscription to one group of channels, or take the narrowing off with 0 or null; left out, it stays as it is. A narrowed subscription listens to workspace events only. Removing the group switches its subscriptions off (disabled); switching one back on asks for a group that is there.')
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.update_post',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/update',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_update',
+			'dry_run' => true,
+			'returns' => 'Webhook',
+			'summary' => 'Change a subscription, addressed as a POST',
+			'description' => 'The same change as PATCH /webhooks/{id}, for clients and servers that cannot send PATCH. It has an address of its own because POST /webhooks/{id} removes the subscription.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'https address to call. It is checked now, not at delivery time.'),
+				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'Event names; replaces the whole list. GET /webhooks lists them.'),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('active', 'disabled')),
+				array('name' => 'channel_group_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Workspace: narrow the subscription to one group of channels, or take the narrowing off with 0 or null; left out, it stays as it is. A narrowed subscription listens to workspace events only. Removing the group switches its subscriptions off (disabled); switching one back on asks for a group that is there.')
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.retry',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/retry',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_retry',
+			'dry_run' => true,
+			'returns' => 'Webhook',
+			'summary' => 'Send again what is waiting',
+			'description' => 'For a receiver that is answering again: the subscription goes back to active and every queued event, including the ones that ran out of attempts, gets its full set of attempts back. The scheduled task sends them on its next run. requeued says how many.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.test',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/test',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_test',
+			'dry_run' => true,
+			'returns' => array('webhook_id' => 'integer', 'delivery_id' => 'integer', 'event' => 'string', 'queued' => 'boolean'),
+			'summary' => 'Send a test event',
+			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.rotate_secret',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/rotate-secret',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_rotate_secret',
+			'dry_run' => true,
+			'returns' => 'Webhook',
+			'summary' => 'Renew the signing secret',
+			'description' => 'The new secret is returned once, here, and the old one stops verifying at once: deliveries are signed when they are sent, so anything still queued goes out under the new secret as well.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -452,6 +1419,7 @@ function api_schema() {
 			'handler' => 'api_customers_create',
 			'dry_run' => true,
 			'returns' => 'Customer',
+			'status'  => 201,
 			'summary' => 'Add a customer',
 			'description' => 'The plain fields of the address book record. Needs at least a name, a company or an e-mail address - a row with none of those is not a customer. Nothing is de-duplicated: two people at one address is a real thing and neither the table nor the panel refuses it, so an integration that wants an upsert looks first with GET /customers?email=. Membership, contact groups, the affiliate record and the ERP columns are not written here.',
 			'params'  => array(
@@ -534,6 +1502,55 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'reports.traffic',
+			'method'  => 'GET',
+			'path'    => '/reports/traffic',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_traffic',
+			'returns' => 'TrafficReport',
+			'summary' => 'Visits and page views by day or hour',
+			'description' => 'From the hourly counters the Welcome screen draws its traffic chart with, so any window costs the same. A visit is a visitor session started in that period; page views are the pages it opened. Every day (or hour) of the window is in periods, empty ones as zeros, by the site\'s own clock. Defaults to the last thirty days by day. A window is at most 400 days by day and 31 by hour. visitor_tracking false means the site is not counting visits, so the figures stay at zero.',
+			'params'  => array(
+				array('name' => 'from',     'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'interval', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'hour'), 'default' => 'day')
+			)
+		),
+
+		array(
+			'id'      => 'reports.top_content',
+			'method'  => 'GET',
+			'path'    => '/reports/top-content',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_top_content',
+			'returns' => array('list' => 'TopContent'),
+			'summary' => 'Most viewed pages and items',
+			'description' => 'The pages, products, product groups and form records opened most in the window, most views first, with the title and the address they are opened at. One page. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 10)
+			)
+		),
+
+		array(
+			'id'      => 'reports.visitors',
+			'method'  => 'GET',
+			'path'    => '/reports/visitors',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_visitors',
+			'returns' => 'VisitorBreakdown',
+			'summary' => 'Visits by source, campaign, landing page or place',
+			'description' => 'Visits started on the days of the window counted by one thing about them, largest first, with what they led to: page views, forms submitted, orders created, checked out and completed, and the completed order total in minor units - the figures the visitor report screen sums. by: referrer_host, search_engine, search_terms (what a search engine sent), channel (pay_per_click when the tracking code carries the pay-per-click flag of the SEO settings, organic when a search engine referred it, otherwise neither), landing_page, tracking_code, utm_source, utm_medium, utm_campaign, utm_term, utm_content, country, state, city, form (the custom form submitted), site_search_terms or device (desktop, mobile or tablet, from the browser). A null value is a visit without one: no referrer is a direct visit. totals covers every visit in the window, not only the rows returned. Only totals are given; a single visit is not. Defaults to the last thirty days; a window is at most 400 days. Days older than the visitor retention period are answered from the daily summary: summary_to is the last such day of the window (null when none), the totals of those days stay exact, and a value outside the top 100 of its day is counted in the totals but not listed in rows.',
+			'params'  => array(
+				array('name' => 'by',    'in' => 'query', 'type' => 'enum', 'values' => array('referrer_host', 'search_engine', 'search_terms', 'channel', 'landing_page', 'tracking_code', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'country', 'state', 'city', 'form', 'site_search_terms', 'device'), 'required' => true),
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
+			)
+		),
+
 		/* ----- SEO ---------------------------------------------------------- */
 
 		array(
@@ -606,6 +1623,40 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'forms.submission_get',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions/{submission_id}',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submission_get',
+			'returns' => 'FormSubmission',
+			'summary' => 'One submission',
+			'description' => 'With its values, whether it was sent or only saved. The form is part of the address: a submission made on another form is answered 404.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/forms/{id}/submissions/{submission_id}',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_update',
+			'dry_run' => true,
+			'returns' => 'FormSubmission',
+			'summary' => 'Mark a submission complete, or fill in its text answers',
+			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read, and only text box, text area and e-mail address fields can be written; a choice or an upload is refused. A field the visitor left empty gets its answer now.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'complete',      'in' => 'body', 'type' => 'bool'),
+				array('name' => 'values',        'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 50, 'description' => 'Objects of {name, value}: the field name and its new answer. Up to 10000 characters each; an empty value clears it.')
+			)
+		),
+
 		/* ----- Pages -------------------------------------------------------- */
 
 		array(
@@ -657,7 +1708,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Page',
 			'summary' => 'Change a page',
-			'description' => 'The title, the description, the site search settings and the indexing switches. Only what is sent is changed. A page closed to search engines cannot be in the site map at the same time and the request is refused rather than quietly corrected; nofollow only applies while noindex is on. The meta half of the score is recalculated here, the structure half stays with the nightly job. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached. Use POST.',
+			'description' => 'The title, the description, the keywords, the site search settings, the indexing switches, the comment switches and the folder. Only what is sent is changed. A page closed to search engines cannot be in the site map at the same time and the request is refused rather than quietly corrected; nofollow only applies while noindex is on. A move to another folder may keep the page as open as it is or close it further, never open it up: a move that would serve the page to more people answers 409 access_widening_refused. The home page, the pages the storefront and the account area run on, drafts and pages in the recycle bin are not moved from here. The meta half of the score is recalculated here, the structure half stays with the nightly job. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached. Use POST.',
 			'params'  => array(
 				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'title',            'in' => 'body', 'type' => 'string', 'max_length' => 255),
@@ -666,7 +1717,13 @@ function api_schema() {
 				array('name' => 'search_keywords',  'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Words that promote the page in the site search. A list of words; send an empty list to clear it.'),
 				array('name' => 'sitemap',          'in' => 'body', 'type' => 'bool', 'description' => 'Whether the page is listed in the site map.'),
 				array('name' => 'noindex',          'in' => 'body', 'type' => 'bool', 'description' => 'Closes the page to search engines: a noindex robots tag, blocked in robots.txt and left out of the site map.'),
-				array('name' => 'nofollow',         'in' => 'body', 'type' => 'bool', 'description' => 'Qualifies noindex. Only accepted while noindex is on.')
+				array('name' => 'nofollow',         'in' => 'body', 'type' => 'bool', 'description' => 'Qualifies noindex. Only accepted while noindex is on.'),
+				array('name' => 'meta_keywords',    'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'The keywords meta tag, as one comma separated string.'),
+				array('name' => 'comments',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether the page shows comments at all.'),
+				array('name' => 'comments_open',    'in' => 'body', 'type' => 'bool', 'description' => 'Whether visitors may add new comments.'),
+				array('name' => 'comments_publish', 'in' => 'body', 'type' => 'bool', 'description' => 'Publish a new comment at once instead of holding it for moderation.'),
+				array('name' => 'comments_login',   'in' => 'body', 'type' => 'bool', 'description' => 'Only signed-in visitors may comment.'),
+				array('name' => 'folder_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Move the page into this folder (GET /folders). Refused when the folder would serve it to more people than its current one.')
 			)
 		),
 
@@ -699,6 +1756,470 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
+			)
+		),
+
+		/* ----- Folders ------------------------------------------------------ */
+
+		array(
+			'id'      => 'folders.list',
+			'method'  => 'GET',
+			'path'    => '/folders',
+			'scope'   => 'pages:read',
+			'handler' => 'api_folders_list',
+			'returns' => array('list' => 'Folder'),
+			'summary' => 'List folders',
+			'description' => 'The tree pages and files are filed in. access is the rule the folder is served under - public, guest, registration, membership or private - whether written on it or inherited from above (access_inherited). system names the drafts folder and the recycle bin, which belong to their own screens; whatever is inside the bin is left out. folders, pages and files count what sits directly in each folder. Cursor paged by id.',
+			'params'  => array(
+				array('name' => 'parent_id',     'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the folders directly inside this one; 0 for the top folder.'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the folder name.'),
+				array('name' => 'archived',      'in' => 'query', 'type' => 'bool', 'description' => 'Limit to archived folders, or to the rest.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'folders.get',
+			'method'  => 'GET',
+			'path'    => '/folders/{id}',
+			'scope'   => 'pages:read',
+			'handler' => 'api_folders_get',
+			'returns' => 'Folder',
+			'summary' => 'One folder',
+			'description' => 'A folder inside the recycle bin is answered too, with recycled true.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'folders.create',
+			'method'  => 'POST',
+			'path'    => '/folders',
+			'scope'   => 'pages:write',
+			'handler' => 'api_folders_create',
+			'dry_run' => true,
+			'returns' => 'Folder',
+			'status'  => 201,
+			'summary' => 'Create a folder',
+			'description' => 'A new, empty folder. Left without access it inherits the rule of its parent. A private folder admits the people given access to it on the folder screen; until then only staff open what is in it. Nothing is created inside the drafts folder or the recycle bin.',
+			'params'  => array(
+				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The folder it goes in. The top folder when left out.'),
+				array('name' => 'access',    'in' => 'body', 'type' => 'enum', 'values' => array('inherit', 'public', 'guest', 'registration', 'membership', 'private'), 'default' => 'inherit'),
+				array('name' => 'order',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 99999, 'description' => 'Where it sorts among its siblings.'),
+				array('name' => 'archived',  'in' => 'body', 'type' => 'bool', 'description' => 'Archived folders are struck out of the everyday views.')
+			)
+		),
+
+		array(
+			'id'      => 'folders.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/folders/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_folders_update',
+			'dry_run' => true,
+			'returns' => 'Folder',
+			'summary' => 'Change a folder',
+			'description' => 'Rename it, sort it, archive it, move it under another parent, or give it a stricter access rule. Only what is sent is changed. A change that would serve the folder to more people than today - a looser access type, or a move out from under a stricter parent - answers 409 access_widening_refused: opening part of the site up is done on the folder screen. The top folder is not moved, and the drafts folder and the recycle bin are not changed here. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Move it into this folder. Not into itself or a folder inside it.'),
+				array('name' => 'access',    'in' => 'body', 'type' => 'enum', 'values' => array('inherit', 'public', 'guest', 'registration', 'membership', 'private')),
+				array('name' => 'order',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 99999),
+				array('name' => 'archived',  'in' => 'body', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'folders.delete',
+			'method'  => 'DELETE',
+			'path'    => '/folders/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_folders_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an empty folder',
+			'description' => 'Only a folder with nothing in it - no folder, page or file - is deleted, as on the folder screen; otherwise 409 folder_not_empty. Move or delete what is inside first through its own endpoint. The top folder, the drafts folder and the recycle bin are refused. A default IIS install answers DELETE itself before PHP is reached: POST /folders/{id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'folders.delete_post',
+			'method'  => 'POST',
+			'path'    => '/folders/{id}/delete',
+			'scope'   => 'pages:write',
+			'handler' => 'api_folders_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an empty folder, addressed as a POST',
+			'description' => 'The same deletion as DELETE /folders/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Menus -------------------------------------------------------- */
+
+		array(
+			'id'      => 'menus.list',
+			'method'  => 'GET',
+			'path'    => '/menus',
+			'scope'   => 'pages:read',
+			'handler' => 'api_menus_list',
+			'returns' => array('list' => 'Menu'),
+			'summary' => 'Menus',
+			'description' => 'The site\'s menus without their items (GET /menus/{id} has them). A design places a menu by its name. Cursor paged.',
+			'params'  => array(
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the menu name.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'menus.get',
+			'method'  => 'GET',
+			'path'    => '/menus/{id}',
+			'scope'   => 'pages:read',
+			'handler' => 'api_menus_get',
+			'returns' => 'Menu',
+			'summary' => 'A menu and its items',
+			'description' => 'items in the order the site draws them: each item followed by the items under it (parent_id, level), siblings by order. url is where the item leads: the linked page\'s address, or link_url. security hides the item from visitors who may not open its page.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'menus.create',
+			'method'  => 'POST',
+			'path'    => '/menus',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menus_create',
+			'dry_run' => true,
+			'returns' => 'Menu',
+			'status'  => 201,
+			'summary' => 'Add a menu',
+			'description' => 'An empty menu, shown nowhere until a designer places it in a design. Only for an application whose owner is an administrator or a designer (403 otherwise), as on the menus screen. The name is how designs place the menu: letters, numbers and dashes, unique (409 name_taken), and it is not changed through the API afterwards. Menus are not removed through the API either: the menus screen shows where a menu is used.',
+			'params'  => array(
+				array('name' => 'name',                        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'effect',                      'in' => 'body', 'type' => 'enum', 'values' => array('none', 'popup', 'accordion'), 'description' => 'How the items under an item open.'),
+				array('name' => 'first_level_popup_position',  'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'second_level_popup_position', 'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'class',                       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'CSS class of the menu.'),
+				array('name' => 'active_item_class',           'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'CSS class of the item of the page being shown.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/menus/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menus_update',
+			'dry_run' => true,
+			'returns' => 'Menu',
+			'summary' => 'Change how a menu is drawn',
+			'description' => 'The effect, the pop-up positions and the classes. Only for an application whose owner is an administrator or a designer (403 otherwise). The name stays: designs place the menu by it. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',                          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'effect',                      'in' => 'body', 'type' => 'enum', 'values' => array('none', 'popup', 'accordion')),
+				array('name' => 'first_level_popup_position',  'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'second_level_popup_position', 'in' => 'body', 'type' => 'enum', 'values' => array('top', 'bottom', 'left', 'right')),
+				array('name' => 'class',                       'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'active_item_class',           'in' => 'body', 'type' => 'string', 'max_length' => 255)
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.create',
+			'method'  => 'POST',
+			'path'    => '/menus/{id}/items',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_create',
+			'dry_run' => true,
+			'returns' => 'MenuItem',
+			'status'  => 201,
+			'summary' => 'Add a menu item',
+			'description' => 'It links to a page (page_id) or to an address (url), or to nothing (a heading for the items under it). A page in the Recycle Bin or kept off the site as a draft is refused; an address must be http, https, mailto or tel, or a path on this site. It goes last among its siblings, or after the one named in after (0: first).',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The text of the item.'),
+				array('name' => 'parent_id',  'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The item it goes under; 0 or left out for the top level.'),
+				array('name' => 'page_id',    'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The page it leads to.'),
+				array('name' => 'url',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address it leads to, when it does not lead to a page.'),
+				array('name' => 'new_window', 'in' => 'body', 'type' => 'bool', 'description' => 'Open the link in a new window.'),
+				array('name' => 'security',   'in' => 'body', 'type' => 'bool', 'description' => 'Show the item only to visitors who may open its page.'),
+				array('name' => 'class',      'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'after',      'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The sibling it goes after; 0 puts it first.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/menus/{id}/items/{item_id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_update',
+			'dry_run' => true,
+			'returns' => 'MenuItem',
+			'summary' => 'Change a menu item',
+			'description' => 'Only what is sent is changed. A page_id clears the address and a url clears the page; page_id 0 removes the page link and url "" the address. A new parent_id moves the item with everything under it, last among its new siblings unless after says where; it cannot go under itself or an item under it. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id',    'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'parent_id',  'in' => 'body', 'type' => 'int', 'min' => 0),
+				array('name' => 'page_id',    'in' => 'body', 'type' => 'int', 'min' => 0),
+				array('name' => 'url',        'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'new_window', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'security',   'in' => 'body', 'type' => 'bool'),
+				array('name' => 'class',      'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'after',      'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The sibling it goes after; 0 puts it first.')
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.delete',
+			'method'  => 'DELETE',
+			'path'    => '/menus/{id}/items/{item_id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'removed' => 'integer'),
+			'summary' => 'Remove a menu item',
+			'description' => 'The item and every item under it, as on the menu item screen; removed counts them. Try it with X-Dry-Run first to see the count.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'menus.items.delete_post',
+			'method'  => 'POST',
+			'path'    => '/menus/{id}/items/{item_id}/delete',
+			'scope'   => 'pages:write',
+			'handler' => 'api_menu_items_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'removed' => 'integer'),
+			'summary' => 'Remove a menu item, addressed as a POST',
+			'description' => 'The same removal as DELETE /menus/{id}/items/{item_id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'item_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Comments ----------------------------------------------------- */
+
+		array(
+			'id'      => 'comments.list',
+			'method'  => 'GET',
+			'path'    => '/comments',
+			'scope'   => 'comments:read',
+			'handler' => 'api_comments_list',
+			'returns' => array('list' => 'Comment'),
+			'summary' => 'Comments',
+			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. Cursor paged.',
+			'params'  => array(
+				array('name' => 'page_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'item_type',     'in' => 'query', 'type' => 'enum', 'values' => array('page', 'submitted_form', 'calendar_event', 'product_group', 'product'), 'description' => 'page: comments about the page itself.'),
+				array('name' => 'item_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('all', 'published', 'pending', 'scheduled'), 'default' => 'all'),
+				array('name' => 'featured',      'in' => 'query', 'type' => 'bool'),
+				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the message.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'comments.get',
+			'method'  => 'GET',
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:read',
+			'handler' => 'api_comments_get',
+			'returns' => 'Comment',
+			'summary' => 'A comment',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'comments.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_update',
+			'dry_run' => true,
+			'returns' => 'Comment',
+			'summary' => 'Moderate a comment',
+			'description' => 'Publish it or hold it (published), feature it or not (featured). Either value of published ends a schedule. Publishing a comment that was not published sends what the comments screen sends: the e-mail to the people watching the page and, on a form record, to the person who submitted it; the dry run says whether it would (emails). The visitor\'s words are not changed here. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'published', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'featured',  'in' => 'body', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'comments.delete',
+			'method'  => 'DELETE',
+			'path'    => '/comments/{id}',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a comment',
+			'description' => 'For good, with its attached file unless another comment shares it (file_deleted in the dry run), as on the comments screen.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'comments.delete_post',
+			'method'  => 'POST',
+			'path'    => '/comments/{id}/delete',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a comment, addressed as a POST',
+			'description' => 'The same removal as DELETE /comments/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Short links -------------------------------------------------- */
+
+		array(
+			'id'      => 'short_links.list',
+			'method'  => 'GET',
+			'path'    => '/short-links',
+			'scope'   => 'pages:read',
+			'handler' => 'api_short_links_list',
+			'returns' => array('list' => 'ShortLink'),
+			'summary' => 'Short links',
+			'description' => 'Newest first, cursor paged. mode: permanent (opens for good under its name), timed (under its name until expires_at) or once (a generated address, spent by the first visit). status: open, used or expired. address is the link a visitor opens; a one-time link\'s address is not kept and only token_hint shows how it starts. target is where it leads. recycled=true lists the ones in the recycle bin instead.',
+			'params'  => array(
+				array('name' => 'destination_type', 'in' => 'query', 'type' => 'enum', 'values' => array('page', 'product_group', 'product', 'url', 'file')),
+				array('name' => 'page_id',          'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'mode',             'in' => 'query', 'type' => 'enum', 'values' => array('permanent', 'timed', 'once')),
+				array('name' => 'q',                'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name, the address it leads to or the tracking code.'),
+				array('name' => 'recycled',         'in' => 'query', 'type' => 'bool'),
+				array('name' => 'limit',            'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',           'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'short_links.get',
+			'method'  => 'GET',
+			'path'    => '/short-links/{id}',
+			'scope'   => 'pages:read',
+			'handler' => 'api_short_links_get',
+			'returns' => 'ShortLink',
+			'summary' => 'One short link',
+			'description' => 'With how often it was opened (use_count and last_used_at count the visits of timed and one-time links).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'short_links.create',
+			'method'  => 'POST',
+			'path'    => '/short-links',
+			'scope'   => 'pages:write',
+			'handler' => 'api_short_links_create',
+			'dry_run' => true,
+			'returns' => 'ShortLink',
+			'status'  => 201,
+			'summary' => 'Add a short link',
+			'description' => 'A name a visitor types (letters, numbers, . _ - / [ ]; spaces become _) that leads to a page, a product group or product on a catalog page, a file or another address. The name is refused with 409 name_taken when a page, file, folder or other short link already answers at it. mode=timed needs duration, one of 3600, 86400, 259200, 604800, 2592000 or 7776000 seconds. mode=once takes no name: the answer carries token_url, the generated address, which is shown this once and kept nowhere.',
+			'params'  => array(
+				array('name' => 'name',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Required unless mode is once.'),
+				array('name' => 'mode',             'in' => 'body', 'type' => 'enum', 'values' => array('permanent', 'timed', 'once'), 'default' => 'permanent'),
+				array('name' => 'duration',         'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'For timed: how long it opens, in seconds, counted from now.'),
+				array('name' => 'destination_type', 'in' => 'body', 'type' => 'enum', 'values' => array('page', 'product_group', 'product', 'url', 'file'), 'required' => true),
+				array('name' => 'page_id',          'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The page it opens: the page itself, or the catalog (or catalog detail) page a product group or product is shown on.'),
+				array('name' => 'product_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'product_id',       'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'url',              'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'For url: a web address (http or https) or a path on this site.'),
+				array('name' => 'file_id',          'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'tracking_code',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Added as ?t= when the link opens a page, unless the visitor already brings one.'),
+			)
+		),
+
+		array(
+			'id'      => 'short_links.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/short-links/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_short_links_update',
+			'dry_run' => true,
+			'returns' => 'ShortLink',
+			'summary' => 'Change a short link',
+			'description' => 'Only what is sent is changed. A new name is the new address and the old one stops answering; a one-time link has no name to change. Any destination field sent re-reads the destination with the stored values for what is not sent, and empties the columns the type does not use. renew gives a timed link a new time, counted from now. A link in the recycle bin is restored in the file manager first (409 already_recycled). PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',             'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'renew',            'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'For a timed link: a new duration in seconds, as for duration on create.'),
+				array('name' => 'destination_type', 'in' => 'body', 'type' => 'enum', 'values' => array('page', 'product_group', 'product', 'url', 'file')),
+				array('name' => 'page_id',          'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The page it opens: the page itself, or the catalog (or catalog detail) page a product group or product is shown on.'),
+				array('name' => 'product_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'product_id',       'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'url',              'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'For url: a web address (http or https) or a path on this site.'),
+				array('name' => 'file_id',          'in' => 'body', 'type' => 'int', 'min' => 1),
+				array('name' => 'tracking_code',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Added as ?t= when the link opens a page, unless the visitor already brings one.'),
+			)
+		),
+
+		array(
+			'id'      => 'short_links.delete',
+			'method'  => 'DELETE',
+			'path'    => '/short-links/{id}',
+			'scope'   => 'pages:write',
+			'handler' => 'api_short_links_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a short link',
+			'description' => 'Moves it to the recycle bin, where an operator can put it back; its address stops answering at once. Send permanent=true to delete it outright, which cannot be undone.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
+			)
+		),
+
+		array(
+			'id'      => 'short_links.delete_post',
+			'method'  => 'POST',
+			'path'    => '/short-links/{id}/delete',
+			'scope'   => 'pages:write',
+			'handler' => 'api_short_links_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
+			'summary' => 'Delete a short link, addressed as a POST',
+			'description' => 'The same delete as DELETE /short-links/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'permanent', 'in' => 'body',  'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
 			)
 		),
 
@@ -745,6 +2266,7 @@ function api_schema() {
 			'handler' => 'api_files_create',
 			'dry_run' => true,
 			'returns' => 'File',
+			'status'  => 201,
 			'summary' => 'Upload a file',
 			'description' => 'Images and PDFs only, and the bytes have to be what the name claims - the file is opened and checked rather than trusted. SVG is not accepted: it is markup, it can carry script, and the site serves it inline. The folder is the one the operator chose for applications and cannot be named in the request. Send the bytes as content_base64, or a source_url for this site to fetch - that fetch resolves the name once, pins the address it checked and refuses anything on this network.',
 			'params'  => array(
@@ -753,6 +2275,23 @@ function api_schema() {
 				array('name' => 'source_url',     'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'An address for this site to fetch the file from. Send this or content_base64.'),
 				array('name' => 'description',    'in' => 'body', 'type' => 'string', 'max_length' => 500),
 				array('name' => 'image_profile',  'in' => 'body', 'type' => 'enum', 'values' => array('product'), 'description' => 'product scales the image to the shop\'s own dimension and quality, the same as an upload from the product screen. Left out, the file is stored byte for byte.')
+			)
+		),
+
+		array(
+			'id'      => 'files.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/files/{id}',
+			'scope'   => 'files:write',
+			'handler' => 'api_files_update',
+			'dry_run' => true,
+			'returns' => 'File',
+			'summary' => 'Change a file\'s description',
+			'description' => 'The description is what the site uses as an image\'s alternative text and what the file manager shows beside the name. Only that is writable: the name is the file\'s address, which pages refer to, and the folder is the operator\'s filing. Only files the read endpoints show can be changed.',
+			'params'  => array(
+				array('name' => 'id',          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 500)
 			)
 		),
 
@@ -796,7 +2335,7 @@ function api_schema() {
 			'handler' => 'api_offers_list',
 			'returns' => array('list' => 'Offer'),
 			'summary' => 'List offers',
-			'description' => 'An offer is a campaign rule applied to the cart at checkout - a discount, a gift product, free shipping - and not a sales quote; this resource is read only. offer_status is what the offer is doing today, derived from the enabled switch and the date range; incomplete marks a saved offer that cannot do anything at checkout yet. The conditions and the results are on the single-offer endpoint. Cursor paged.',
+			'description' => 'An offer is a campaign rule applied to the cart at checkout - a discount, a gift product, free shipping - and not a sales quote. offer_status is what the offer is doing today, derived from the enabled switch and the date range; incomplete marks a saved offer that cannot do anything at checkout yet. The conditions and the results are on the single-offer endpoint. Cursor paged.',
 			'params'  => array(
 				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'scheduled', 'expired', 'disabled'), 'description' => 'Offers in one derived status: running today, not started yet, past their end date, or switched off.'),
 				array('name' => 'code',          'in' => 'query', 'type' => 'string', 'max_length' => 50, 'description' => 'Exact match on the offer code.'),
@@ -818,6 +2357,26 @@ function api_schema() {
 			'description' => 'Adds the conditions the cart has to meet and what the offer then does, each flattened into readable objects: products and groups are named, amounts are minor units, percentages are 0-100, and an open-ended offer reports end_date null.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'offers.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/offers/{id}',
+			'scope'   => 'offers:write',
+			'handler' => 'api_offers_update',
+			'dry_run' => true,
+			'returns' => 'Offer',
+			'summary' => 'Switch an offer on or off, reword it or move its dates',
+			'description' => 'The offer\'s own row, the way the offer editor writes it: dates are YYYY-MM-DD, an empty end_date is an offer that runs until it is switched off, and the end may not come before the start. The conditions and the results are not writable here; an offer the editor marks incomplete stays incomplete, and switching it on does not make it do anything at checkout.',
+			'params'  => array(
+				array('name' => 'id',          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'enabled',     'in' => 'body', 'type' => 'bool'),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The message the offer shows.'),
+				array('name' => 'start_date',  'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD.'),
+				array('name' => 'end_date',    'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'YYYY-MM-DD, or empty or null for an offer with no end.')
 			)
 		),
 
@@ -853,7 +2412,155 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Key codes ---------------------------------------------------- */
+
+		array(
+			'id'      => 'key_codes.list',
+			'method'  => 'GET',
+			'path'    => '/key-codes',
+			'scope'   => 'key_codes:read',
+			'handler' => 'api_key_codes_list',
+			'returns' => array('list' => 'KeyCode'),
+			'summary' => 'Key codes',
+			'description' => 'Codes a shopper types instead of an offer\'s own code, one per customer, card or mailing, so orders an offer brought in can be told apart. Newest first, cursor paged. offer_code is the offer it stands for (GET /offers?code=). status is what it does at checkout today: active, disabled (switched off; a single-use code is switched off by the order that uses it), expired (past expires_on) or offer_inactive (no offer with its offer code runs today). report says what an order records: the key code itself, or the offer code. The code is redeemable: whoever holds it gets the offer.',
+			'params'  => array(
+				array('name' => 'offer_code', 'in' => 'query', 'type' => 'string', 'max_length' => 50, 'description' => 'Only the codes that stand for this offer code.'),
+				array('name' => 'status',     'in' => 'query', 'type' => 'enum', 'values' => array('active', 'disabled', 'expired', 'offer_inactive')),
+				array('name' => 'single_use', 'in' => 'query', 'type' => 'bool'),
+				array('name' => 'q',          'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the code or the notes.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.get',
+			'method'  => 'GET',
+			'path'    => '/key-codes/{id}',
+			'scope'   => 'key_codes:read',
+			'handler' => 'api_key_codes_get',
+			'returns' => 'KeyCode',
+			'summary' => 'One key code',
+			'description' => 'The same fields as the list, for one code.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.create',
+			'method'  => 'POST',
+			'path'    => '/key-codes',
+			'scope'   => 'key_codes:write',
+			'handler' => 'api_key_codes_create',
+			'dry_run' => true,
+			'returns' => array('data' => 'KeyCode[]'),
+			'status'  => 201,
+			'summary' => 'Create key codes',
+			'description' => 'One code of your own choosing, or quantity new ten-character codes, for an existing offer code, as the key code screen makes them. The answer lists what was made under data, even when that is one code; nothing is mailed to anyone. A code already in use, or one that is an offer\'s own code (checkout would apply that offer and never read the key code), is refused. Single-use codes are what an offer hands out one per customer.',
+			'params'  => array(
+				array('name' => 'offer_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code of the offer it stands for. The offer has to exist.'),
+				array('name' => 'code',       'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'A code of your own, for one key code. Left out, codes are made.'),
+				array('name' => 'quantity',   'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 1, 'description' => 'How many codes to make.'),
+				array('name' => 'enabled',    'in' => 'body', 'type' => 'bool', 'description' => 'On unless false is sent.'),
+				array('name' => 'single_use', 'in' => 'body', 'type' => 'bool', 'description' => 'Switched off by the first order that uses it. Off unless true is sent.'),
+				array('name' => 'report',     'in' => 'body', 'type' => 'enum', 'values' => array('key_code', 'offer_code'), 'description' => 'What an order records: this code (the default) or the offer code.'),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'description' => 'The last day it can be used. Left out, it never expires.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'For the staff only, such as who it was given to.')
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/key-codes/{id}',
+			'scope'   => 'key_codes:write',
+			'handler' => 'api_key_codes_update',
+			'dry_run' => true,
+			'returns' => 'KeyCode',
+			'summary' => 'Change a key code',
+			'description' => 'Only what is sent is changed, as on the key code screen; enabled=true switches a used single-use code back on. A new code goes through the same checks as on creation. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'code',       'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'offer_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The offer has to exist.'),
+				array('name' => 'enabled',    'in' => 'body', 'type' => 'bool'),
+				array('name' => 'single_use', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'report',     'in' => 'body', 'type' => 'enum', 'values' => array('key_code', 'offer_code')),
+				array('name' => 'expires_on', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'An empty string removes the expiry.'),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000)
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.delete',
+			'method'  => 'DELETE',
+			'path'    => '/key-codes/{id}',
+			'scope'   => 'key_codes:write',
+			'handler' => 'api_key_codes_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a key code',
+			'description' => 'Removes the code, as the key code screen does; it stops working at once and it cannot be undone. Orders that used it keep what they recorded. POST /key-codes/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'key_codes.delete_post',
+			'method'  => 'POST',
+			'path'    => '/key-codes/{id}/delete',
+			'scope'   => 'key_codes:write',
+			'handler' => 'api_key_codes_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a key code, addressed as a POST',
+			'description' => 'The same deletion as DELETE /key-codes/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Page design (Visual Page Editor pages) --------------------- */
+
+		array(
+			'id'      => 'design.designs.list',
+			'method'  => 'GET',
+			'path'    => '/design/designs',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_designs_list',
+			'returns' => array('list' => 'Design'),
+			'summary' => 'Designs of the Visual Page Editor',
+			'description' => 'The designs a page can be added to (POST /design/pages). pages and drafts count the design\'s pages outside the Recycle Bin and those of them kept off the site; home says whether the home page is one of them. state: empty (no pages), live (no drafts), draft (every page that can be a draft is one) or mixed. template is the design template the design started from. Cursor paged.',
+			'params'  => array(
+				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the design name.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'design.pages.create',
+			'method'  => 'POST',
+			'path'    => '/design/pages',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_pages_create',
+			'dry_run' => true,
+			'returns' => 'DesignPage',
+			'status'  => 201,
+			'summary' => 'Add a page to a design, as a draft',
+			'description' => 'A new page of the design, always kept off the site in the drafts folder: it opens in the Visual Page Editor with the design\'s other pages, and a person publishes it there. It starts as an empty canvas, or with the layout of another page of the same design (copy_from; its title, description and settings are not copied). Fill it with proposals (POST /design/pages/{id}/proposals). folder_id is the folder the page is published to (GET /folders), the top folder when left out. name is the page\'s address: spaces and & become _, and 409 name_taken when a page, file, short link or folder already answers at it. 409 page_has_form when the page to copy has a form of its own (the editor duplicates those).',
+			'params'  => array(
+				array('name' => 'design_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The design (GET /design/designs).'),
+				array('name' => 'name',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The page name, which is its address.'),
+				array('name' => 'title',            'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'meta_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'folder_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The folder the page is published to.'),
+				array('name' => 'copy_from',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A page of the same design whose layout the new page starts with.')
+			)
+		),
 
 		array(
 			'id'      => 'design.pages.list',
@@ -899,6 +2606,7 @@ function api_schema() {
 			'handler' => 'api_design_proposals_create',
 			'dry_run' => true,
 			'returns' => 'DesignProposal',
+			'status'  => 201,
 			'summary' => 'Propose a change of a page',
 			'description' => 'Nothing on the page changes here. The operations are checked against the page - each must find what it names, and the page they make must be valid - and kept as a proposal that a designer previews and applies, in the Visual Page Editor or under the workspace answer it was made for. A failing operation is refused with 422 and its index in field (ops[2]). Operations, in order: update {node, text, classes, add_classes, remove_classes, style, attrs, name}; set_props {node, props} for a <pg-keep> part; replace {node, html}; insert {parent + index, or before / after, html}; remove {node}; move {node, parent + index, or before / after}; page {html} for the whole page; css {css} for the page\'s own CSS block ("" removes it). In html, an element that keeps its data-pg stays that element, with its settings, notes and data; one without is new; a <pg-keep> left out is removed. Script, event handlers, frames, forms and <style> are removed from html, and CSS loses @import, script and outside url() - dropped says what went. removed names the parts the page runs that the change takes away. With request_id (Claude\'s application only) the proposal answers that workspace request: it is shown in the editor that asked, or under the answer in the channel.',
 			'params'  => array(
@@ -948,6 +2656,7 @@ function api_schema() {
 			'public'  => true,
 			'handler' => 'api_auth_login',
 			'returns' => 'AuthSession',
+			'status'  => 201,
 			'summary' => 'Sign a person in on a device',
 			'description' => 'For an app a staff member signs in to with their own panel account, not for an integration: an integration uses its application key and secret. Needs a Team devices application switched on in API settings; client_key names one, and without it the site\'s first active one is used, so a general app only needs the site address. The sign-in screen\'s own limits apply in the same counters - after a few failures the answer is 429 until the wait is over or the person signs in on the website once. Only an account with panel rights can sign in. An account that uses two-step verification also sends the current code from its authenticator app, or one of its recovery codes, in otp; without it the answer is 401 mfa_required, and a wrong code is 401 unauthorized. An account whose role the site requires two-step verification for, and which has not set it up yet, is refused with 403 mfa_setup_required until the person sets it up on the website. The answer holds an access token for the Authorization: Bearer header (one hour) and a refresh token for POST /auth/refresh (thirty days, replaced every time it is used). Every call made with the access token acts as this person, capped by the application\'s permissions.',
 			'params'  => array(
@@ -1129,6 +2838,7 @@ function api_schema() {
 			'handler' => 'api_push_subscribe',
 			'dry_run' => true,
 			'returns' => array('subscribed' => 'boolean'),
+			'status'  => 201,
 			'summary' => 'Register this device for push',
 			'description' => 'Web push, the same the installed panel uses. Send the subscription\'s endpoint and its two keys. The push carries no text: it wakes the device, which then asks GET /notifications?unread=true what to show, so nothing a notification says passes through the push service. A registration made with a device token ends when the device is signed out.',
 			'params'  => array(
@@ -1196,7 +2906,7 @@ function api_error_catalogue() {
 		'invalid_cursor'           => array(400, 'The cursor was not one this API issued. Start the listing again without it.'),
 		'invalid_idempotency_key'  => array(400, 'Idempotency-Key must be 8 to 255 characters.'),
 		'invalid_dry_run'          => array(400, 'X-Dry-Run must be true or false.'),
-		'dry_run_unsupported'      => array(400, 'This endpoint cannot rehearse a call. Send it without X-Dry-Run.'),
+		'dry_run_unsupported'      => array(400, 'This endpoint cannot rehearse a call. Send it without X-Dry-Run or dry_run.'),
 
 		'credentials_missing'      => array(401, 'No key and secret were sent. Authentication is HTTP Basic.'),
 		'unauthorized'             => array(401, 'The key is unknown or the secret is wrong. The two are not told apart on purpose.'),
@@ -1225,6 +2935,8 @@ function api_error_catalogue() {
 		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
+		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
+		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 
 		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),
 

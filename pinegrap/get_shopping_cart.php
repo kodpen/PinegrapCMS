@@ -64,9 +64,9 @@ function get_shopping_cart($properties) {
     
     // If a reference code was passed in the query string, then retrieve order.
 
-    if (!empty($_GET['r']) || !empty($_GET['reference_code'])) {
+    require_once(dirname(__FILE__) . '/retrieve_order.php');
 
-        require_once(dirname(__FILE__) . '/retrieve_order.php');
+    if (retrieve_order_reference_code() != '') {
 
         $response = retrieve_order(array('order_label' => mb_strtolower($shopping_cart_label)));
 
@@ -217,7 +217,7 @@ function get_shopping_cart($properties) {
                         $recipient_options[lang('myself')] = lang('myself');
 
                         // if there is at least one recipient stored in session
-                        if ($_SESSION['ecommerce']['recipients']) {
+                        if (!empty($_SESSION['ecommerce']['recipients'])) {
                             // loop through all recipients to build recipient options
                             foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                                 $recipient_options[$recipient] = $recipient;
@@ -367,6 +367,11 @@ function get_shopping_cart($properties) {
                 $quick_add_amount_row_style = 'display: none';
                 $quick_add_ship_to_row_style = 'display: none';
                 $quick_add_add_name_row_style = 'display: none';
+
+                // A row is left out when no product in the group needs it.
+                $output_ship_to_and_add_name_rows = '';
+                $output_quantity_row = '';
+                $output_amount_row = '';
                 
                 $quick_add_product_id_options = array();
                 $quick_add_product_id_options[''] = '';
@@ -500,7 +505,7 @@ function get_shopping_cart($properties) {
                     $quick_add_ship_to_options[lang('myself')] = lang('myself');
 
                     // if there is at least one recipient stored in session
-                    if ($_SESSION['ecommerce']['recipients']) {
+                    if (!empty($_SESSION['ecommerce']['recipients'])) {
                         // loop through all recipients to build recipient options
                         foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                             $quick_add_ship_to_options[$recipient] = $recipient;
@@ -628,7 +633,8 @@ function get_shopping_cart($properties) {
                     FROM ship_tos
                     WHERE id = '$ship_to_id'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
+                // Items that are not shipped sit under ship to 0, which has no row.
+                $row = mysqli_fetch_assoc($result) ?: array_fill_keys(array_column(mysqli_fetch_fields($result), 'name'), null);
                 $ship_to_name = $row['ship_to_name'];
                 $ship_to_offer_id = $row['offer_id'];
 
@@ -1812,7 +1818,7 @@ function get_shopping_cart($properties) {
                             $recipient_options[lang('myself')] = lang('myself');
 
                             // if there is at least one recipient stored in session
-                            if ($_SESSION['ecommerce']['recipients']) {
+                            if (!empty($_SESSION['ecommerce']['recipients'])) {
                                 // loop through all recipients to build recipient options
                                 foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                                     $recipient_options[$recipient] = $recipient;
@@ -1866,8 +1872,9 @@ function get_shopping_cart($properties) {
             $upsell_offers[$key] = $offer;
         }
 
+        // Stays empty unless the quick add product group is enabled and has
+        // products: layouts draw the quick add form only when it is filled.
         $quick_add = array();
-        $quick_add['system'] = '';
 
         // If there is a quick add product group and it is enabled,
         // then prepare quick add.
@@ -2013,7 +2020,7 @@ function get_shopping_cart($properties) {
                     $quick_add['ship_to_options'][lang('myself')] = lang('myself');
 
                     // if there is at least one recipient stored in session
-                    if ($_SESSION['ecommerce']['recipients']) {
+                    if (!empty($_SESSION['ecommerce']['recipients'])) {
                         // loop through all recipients to build recipient options
                         foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                             $quick_add['ship_to_options'][$recipient] = $recipient;
@@ -2031,7 +2038,7 @@ function get_shopping_cart($properties) {
                     $form->set('quick_add_quantity', 'maxlength', 9);
                 }
 
-                $quick_add['system'] .=
+                $quick_add['system'] =
                     get_token_field() . '
                     <input type="hidden" name="page_id" value="' . h($page_id) . '">
                     <input type="hidden" name="quick_add" value="true">
@@ -2650,6 +2657,14 @@ function get_shopping_cart($properties) {
                             foreach ($item['fields'] as $field_key => $field) {
 
                                 $html_name = 'order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_form_field_' . $field['id'];
+
+                                // Layouts read the submitted form title of every field and
+                                // quantity; it is filled below only for a reference code field.
+                                $item['fields'][$field_key]['titles'][$quantity_number] = array('title' => '', 'title_label' => '');
+
+                                // The recurring area of the layouts reads one title per field,
+                                // which is never filled.
+                                $item['fields'][$field_key] += array('title' => '', 'title_label' => '');
 
                                 // If the value for this field has not been set yet,
                                 // (e.g. the form has not been submitted by the customer),

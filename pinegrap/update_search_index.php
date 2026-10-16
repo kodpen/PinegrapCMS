@@ -33,13 +33,22 @@ include('init.php');
 
 require_once(dirname(__FILE__) . '/get_page_content.php');
 
+// init.php only defines this when there is an HTTP host. Run from the command
+// line it is missing, and a custom form page reads it for its send_to field:
+// in PHP 8 that is a thrown Error, so the first form page in the index ended
+// the whole run. The field is a hidden input, which never reaches the indexed
+// text. Same fallback as seo_analyze_job.php.
+if (!defined('REQUEST_URL')) {
+    define('REQUEST_URL', defined('PATH') ? PATH : '/');
+}
+
 // If this script is being run from a web browser (i.e. not a cron job),
 // then record login info from session for authentication later, and then unset session,
 // so that the rest of the script does not run as this user, so that content for pages and etc.
 // that will be stored in search index is generic and not specific to this user.
 // Also, verify that user has access to run this.
 if (isset($_SERVER['HTTP_HOST']) == true) {
-    $username = $_SESSION['sessionusername'];
+    $username = $_SESSION['sessionusername'] ?? '';
     $userid = $_SESSION['sessionuserid'] ?? '';
 
     // This command allows us to purely unset the session variables,
@@ -59,6 +68,16 @@ if (isset($_SERVER['HTTP_HOST']) == true) {
         log_activity(lang('access denied to update search index'), $username);
         output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
+}
+
+// The general job files whatever a script it dispatched printed in the site
+// log, as "printed a message while running with the general job", because
+// that is how a job reports its own missing settings. This progress page is
+// not a message, and it was filed every day. It is discarded at the end of a
+// dispatched run instead; an error screen printed on the way still ends the
+// run inside this buffer and reaches the site log as before.
+if (defined('PG_CRON_DISPATCH')) {
+    ob_start();
 }
 
 echo
@@ -538,7 +557,8 @@ foreach ($pages as $page) {
                         AND (rss_field = 'description')");
 
                 // If there is a description field, then select it.
-                if ($description_field['id'] != '') {
+                // db_item() returns null when the form has none.
+                if (($description_field['id'] ?? '') != '') {
                     $sql_select_description = "(SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . $description_field['id'] . "') LIMIT 1) AS description,";
                 }
 
@@ -813,7 +833,8 @@ foreach ($pages as $page) {
 
                             // Prepare the description.  We only use one description field, unlike title.
 
-                            $description = trim($submitted_form['description']);
+                            // Not selected at all when the form has no description field.
+                            $description = trim($submitted_form['description'] ?? '');
 
                             // If there is a description, then prepare description for storage.
                             if ($description != '') {
@@ -1081,6 +1102,10 @@ echo '
         </button>
     </div>
 </main>' . output_footer_secure();
+
+if (defined('PG_CRON_DISPATCH')) {
+    ob_end_clean();
+}
 
 // Create a function that will check content for linked item names,
 // so we can determine if files should be included in search results.

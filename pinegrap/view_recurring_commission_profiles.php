@@ -23,16 +23,6 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_recurring_commission_profiles');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_recurring_commission_profiles'][$key] = trim($value);
-    }
-}
-
 // get total number of results for all screens
 $query =
     "SELECT COUNT(recurring_commission_profiles.id) as number_of_results
@@ -55,21 +45,47 @@ $max = 100;
 // get number of screens
 $number_of_screens = ceil($number_of_results / $max);
 
-// If a screen was passed and it is a positive integer, then use it.
-// These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-if (
-    isset($_REQUEST['screen'])
-    and $_REQUEST['screen']
-    and is_numeric($_REQUEST['screen'])
-    and $_REQUEST['screen'] > 0
-    and $_REQUEST['screen'] == round($_REQUEST['screen'])
-) {
-    $screen = (int) $_REQUEST['screen'];
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'affiliate_name' => lang('Affiliate Name'),
+    'affiliate_code' => lang('Affiliate Code'),
+    'enabled'        => lang('Enabled'),
+    'amount'         => lang('Amount'),
+    'start_date'     => lang('Start Date'),
+    'frequency'      => lang('Frequency'),
+    'commissions'    => lang('Commissions'),
+    'order_number'   => lang('Order'),
+    'product'        => lang('Product'),
+    'created'        => lang('Created'),
+    'last_modified'  => lang('Last Modified'),
+);
 
-// Otherwise, use the default, which is the first screen.
-} else {
-    $screen = 1;
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+$list_state = pg_list_state('view_recurring_commission_profiles', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'affiliate_name' => 'contacts.affiliate_name',
+    'affiliate_code' => 'recurring_commission_profiles.affiliate_code',
+    'enabled'        => 'recurring_commission_profiles.enabled',
+    'amount'         => 'recurring_commission_profiles.amount',
+    'start_date'     => 'recurring_commission_profiles.start_date',
+    'frequency'      => 'recurring_commission_profiles.period',
+    'commissions'    => 'recurring_commission_profiles.number_of_commissions',
+    'order_number'   => 'orders.order_number',
+    'product'        => 'recurring_commission_profiles.product_name',
+    'created'        => 'recurring_commission_profiles.created_timestamp',
+    'last_modified'  => 'recurring_commission_profiles.last_modified_timestamp',
+));
+
+// pg_list_state() hands back the page as a positive whole number (1 when the
+// address has none or a bogus one), so it can go straight into LIMIT below.
+$screen = $list_state['screen'];
 
 $output_screen_links = '';
 
@@ -90,7 +106,7 @@ if ($number_of_screens > 1) {
     for ($i = 1; $i <= $number_of_screens; $i++) { 
         // if this number is the current screen, then select option
         if ($i == $screen) {
-            $active = 'active"';
+            $active = 'active';
         // else this number is not the current screen, so do not select option
         } else {
             $active = '';
@@ -106,65 +122,6 @@ if ($number_of_screens > 1) {
         $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
     }
     $output_screen_links .= '</ul></nav>';
-}
-
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] = '';
-}
-
-switch (($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? '')) {
-    case lang('Affiliate Name'):
-        $sort_column = 'contacts.affiliate_name';
-        break;
-        
-    case lang('Affiliate Code'):
-        $sort_column = 'recurring_commission_profiles.affiliate_code';
-        break;
-        
-    case lang('Enabled'):
-        $sort_column = 'recurring_commission_profiles.enabled';
-        break;
-    
-    case lang('Amount'):
-        $sort_column = 'recurring_commission_profiles.amount';
-        break;
-        
-    case lang('Start Date'):
-        $sort_column = 'recurring_commission_profiles.start_date';
-        break;
-        
-    case lang('Frequency'):
-        $sort_column = 'recurring_commission_profiles.period';
-        break;
-        
-    case lang('Commissions'):
-        $sort_column = 'recurring_commission_profiles.number_of_commissions';
-        break;
-        
-    case lang('Product'):
-        $sort_column = 'recurring_commission_profiles.product_name';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'recurring_commission_profiles.created_timestamp';
-        break;
-        
-    case lang('Last Modified'):
-        $sort_column = 'recurring_commission_profiles.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'recurring_commission_profiles.last_modified_timestamp';
-        $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) == FALSE) {
-    $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] = 'asc';
 }
 
 // get results for just this screen
@@ -190,7 +147,8 @@ $query =
     LEFT JOIN orders ON recurring_commission_profiles.order_id = orders.id
     LEFT JOIN user as created_user ON recurring_commission_profiles.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON recurring_commission_profiles.last_modified_user_id = last_modified_user.user_id
-    ORDER BY " . $sort_column . " " . escape(($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . " ";
+    ORDER BY $order_by
+    LIMIT " . (($screen - 1) * $max) . ", " . $max;
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $recurring_commission_profiles = array();
@@ -238,8 +196,8 @@ foreach ($recurring_commission_profiles as $recurring_commission_profile) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start col-reorder-none">
-                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_recurring_commission_profile.php?id=' . $recurring_commission_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_recurring_commission_profile.php?id=' . $recurring_commission_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label">' . h($recurring_commission_profile['affiliate_name']) . '</td>
             <td class="align-middle">' . h($recurring_commission_profile['affiliate_code']) . '</td>
@@ -270,30 +228,39 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
            
-            
+            <div class="row mb-2  flex-wrap">
+                <div class="col-12 text-center text-md-start">
+                    
+                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_recurring_commission_profiles.php', $sort_columns, $sort_levels, $sort_default) . '
+                    </nav>
+                </div>
+            </div>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Affiliate Name'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Affiliate Code'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Enabled'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th class="text-end">' . get_column_heading(lang('Amount'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Start Date'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Frequency'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Commissions'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Order'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Product'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Affiliate Name'), $sort_levels, '', '', 'affiliate_name') . '</th>
+                                <th>' . get_column_heading(lang('Affiliate Code'), $sort_levels, '', '', 'affiliate_code') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled') . '</th>
+                                <th class="text-end">' . get_column_heading(lang('Amount'), $sort_levels, '', '', 'amount') . '</th>
+                                <th>' . get_column_heading(lang('Start Date'), $sort_levels, '', '', 'start_date') . '</th>
+                                <th>' . get_column_heading(lang('Frequency'), $sort_levels, '', '', 'frequency') . '</th>
+                                <th>' . get_column_heading(lang('Commissions'), $sort_levels, '', '', 'commissions') . '</th>
+                                <th>' . get_column_heading(lang('Order'), $sort_levels, '', '', 'order_number') . '</th>
+                                <th>' . get_column_heading(lang('Product'), $sort_levels, '', '', 'product') . '</th>
+                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>
                     </table>
                 </div>
             </div>
+            ' . $output_screen_links . '
         </div>
     </div>
 </main>

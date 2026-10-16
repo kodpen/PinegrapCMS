@@ -25,7 +25,7 @@ if (!defined('PG_INIT_LOADED')) {
                 <div class="col-12 text-center text-md-start">
                     <h2 class="d-inline-block " data-bs-content="<?=lang('All key codes assigned to specific offers.')?>" title="<?=lang('All Key Codes')?>"><?=lang('All Key Codes')?></h2>
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                    	<a class="btn btn-sm btn-primary m-1 " href="add_key_code.php" data-loading-content="<?=lang(array('string'=>'Loading') )?>"><span class="bi bi-plus-circle me-2"></span><?=lang('Create')?></a>
+                    	<a class="btn btn-sm btn-primary m-1 " href="add_key_code.php"><span class="bi bi-plus-circle me-2"></span><?=lang('Create')?></a>
 						<form  class="disable_shortcut d-inline-block" method="get">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 m-1" href="import_key_codes.php"><span class="bi bi-box-arrow-in-right me-1"></span><?=lang(array('string'=>'Import') )?></a>
@@ -35,34 +35,36 @@ if (!defined('PG_INIT_LOADED')) {
 								<a href="delete_key_codes.php" class="btn btn-link link-danger py-0 m-1"><span class="material-icons me-2">delete_forever</span><?=lang(array('string'=>'Delete All Key Codes') )?></a>
 							</div>
                         </form>
+                        <div class="pg-toolbar-grow"></div>
+                        <?=pg_list_sort_menu('view_key_codes.php', $sort_columns, $sort_levels, $sort_default)?>
                     </nav>
                 </div>
             </div>
             <div class="card my-4">
                 <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
                 <div class="card-body p-0 position-relative disable_shortcut">
-					<table class="chart table-hover table " style="width:100%;display:none">
+					<table class="chart table-hover table " style="width:100%;display:none"<?=pg_list_edit_table('view_key_codes.php', $quick_edit)?>>
                         <thead>
                             <tr>
                                 <th class="noVis"><?=lang('Action')?></th>
-								<th><?=get_column_heading(lang('Key Code'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Offer Code'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Offer Message'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th class="text-center"><?=get_column_heading(lang('Enabled'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Expiration Date'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Notes'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th class="text-center"><?=get_column_heading(lang('Single-Use'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Report'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
-								<th><?=get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Key Code'), $sort_levels, '', '', 'code')?></th>
+								<th><?=get_column_heading(lang('Offer Code'), $sort_levels, '', '', 'offer_code')?></th>
+								<th><?=get_column_heading(lang('Offer Message'), $sort_levels, '', '', 'offer_message')?></th>
+								<th class="text-center"><?=get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled')?></th>
+								<th><?=get_column_heading(lang('Expiration Date'), $sort_levels, '', '', 'expiration_date')?></th>
+								<th><?=get_column_heading(lang('Notes'), $sort_levels, '', '', 'notes')?></th>
+								<th class="text-center"><?=get_column_heading(lang('Single-Use'), $sort_levels, '', '', 'single_use')?></th>
+								<th><?=get_column_heading(lang('Report'), $sort_levels, '', '', 'report')?></th>
+								<th><?=get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified')?></th>
                             </tr>
                         </thead>
                         <tbody>
 							<?php foreach($key_codes as $key_code): ?>
 								<tr>
 									<td class="align-middle text-start">
-                					    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_key_code.php?id=<?=$key_code['id']?>'"><i class="bi bi-pencil"></i></button>
+                					    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_key_code.php?id=<?=$key_code['id']?>'"><i class="bi bi-pencil"></i></button>
                 					</td>
-									<td class="chart_label align-middle <?php if ($key_code['status_enabled']): ?>status_enabled text-success<?php else: ?>status_disabled text-danger<?php endif ?>">
+									<td class="<?=$key_code['cells']['code']['class']?>" data-pg-cell="code">
 										<?=h($key_code['code'])?>
 									</td>
 									<td class="align-middle">
@@ -77,11 +79,7 @@ if (!defined('PG_INIT_LOADED')) {
 									<td class="align-middle">
 										<?=h($key_code['offer_description'])?>
 									</td>
-									<td  class="align-middle text-center">
-										<?php if ($key_code['enabled']): ?>
-											<span class="material-icons">task_alt</span>
-										<?php endif ?>
-									</td>
+									<td class="<?=$key_code['cells']['enabled']['class']?>"<?=pg_list_edit_cell($quick_edit, 'enabled', $key_code['id'], !empty($key_code['enabled']) ? '1' : '0')?>><?=$key_code['cells']['enabled']['html']?></td>
 									<td class="align-middle">
 										<?php if ($key_code['expiration_date'] != '0000-00-00'): ?>
 										<?=get_absolute_time(array(
@@ -107,12 +105,7 @@ if (!defined('PG_INIT_LOADED')) {
 											<?php endif ?>
 										</span>
 									</td>
-									<td class="align-middle">
-										<?=get_relative_time(array('timestamp' => $key_code['last_modified_timestamp']))?>
-										<?php if ($key_code['last_modified_username'] != ''): ?>
-											<?=lang(array('string'=>'by {var:1}','vars'=>array( h($key_code['last_modified_username']) ) ) )?>
-										<?php endif ?>
-									</td>
+									<td class="<?=$key_code['cells']['last_modified']['class']?>" data-pg-cell="last_modified"><?=$key_code['cells']['last_modified']['html']?></td>
 								</tr>
 							<?php endforeach ?>
 						</tbody>

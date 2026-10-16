@@ -53,6 +53,17 @@ if (!isset($_POST['submit'])) {
 
     $liveform->add_fields_to_session();
 
+    // Every control on this form posts a single value.
+    pg_liveform_single_values($liveform, array(
+        'current_page_id', 'next_page_id', 'first_name', 'last_name', 'address_1', 'address_2',
+        'city', 'state', 'zip_code', 'country', 'phone_number', 'fax_number', 'email_address',
+        'affiliate_name', 'affiliate_website', 'affiliate_code', 'terms_and_conditions'));
+
+    // The pages the form names to come back to and to go on to. Either can be
+    // left out, and only a string can name one.
+    $current_page_id = (isset($_POST['current_page_id']) && is_string($_POST['current_page_id'])) ? $_POST['current_page_id'] : '';
+    $next_page_id = (isset($_POST['next_page_id']) && is_string($_POST['next_page_id'])) ? $_POST['next_page_id'] : '';
+
     $liveform->validate_required_field('first_name', lang('First Name is required.'));
     $liveform->validate_required_field('last_name', lang('Last Name is required.'));
     $liveform->validate_required_field('address_1', lang(array('string'=>'{var:1} is required.','vars'=>lang('Address') )) );
@@ -95,7 +106,8 @@ if (!isset($_POST['submit'])) {
         WHERE affiliate_sign_up_form_pages.page_id = '" . escape($liveform->get_field_value('current_page_id')) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $terms_page_name = $row['page_name'];
+    // No row for the legacy screen (current page 0) or a page that is not an affiliate form.
+    $terms_page_name = $row ? $row['page_name'] : '';
 
     // if a terms page name was found, then require terms check box to be checked
     if ($terms_page_name != '') {
@@ -327,9 +339,9 @@ if (!isset($_POST['submit'])) {
         $_SESSION['software']['affiliate_sign_up_confirmation']['affiliate_website'] = $liveform->get_field_value('affiliate_website');
         
         // prepare body for affiliate sign up confirmation e-mail
-        if ($_POST['next_page_id']) {
+        if ($next_page_id) {
             require_once(dirname(__FILE__) . '/get_page_content.php');
-            $body = get_page_content($_POST['next_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true);
+            $body = get_page_content($next_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true);
         } else {
             $body = get_affiliate_sign_up_confirmation_screen();
         }
@@ -400,8 +412,8 @@ if (!isset($_POST['submit'])) {
         $liveform->remove_form('affiliate_sign_up_form');
         
         // if a next page was supplied, forward user to specific page that was supplied
-        if ($_POST['next_page_id']) {
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_POST['next_page_id']));
+        if ($next_page_id) {
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($next_page_id));
             
         // else a next page was not supplied, so forward user to general screen
         } else {
@@ -411,8 +423,8 @@ if (!isset($_POST['submit'])) {
     // else an error does exist
     } else {
         // if a current page was supplied, forward user to specific page
-        if ($_POST['current_page_id']) {
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_POST['current_page_id']));
+        if ($current_page_id) {
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($current_page_id));
             
         // else a current page was not supplied, so forward user to general screen
         } else {

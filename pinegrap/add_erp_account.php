@@ -47,8 +47,10 @@ if (!$_POST) {
         // Opened from a contact's screen: the form comes filled in from the
         // card, the way the order bridge would fill it, for the operator to
         // check before it is saved. A contact that already has an account is
-        // sent to that account instead of getting a second one.
-        $from_contact = (int) ($_GET['contact_id'] ?? 0);
+        // sent to that account instead of getting a second one. One value
+        // only: an array (?contact_id[]=x) cast to 1 and filled in the first
+        // contact.
+        $from_contact = is_scalar($_GET['contact_id'] ?? null) ? (int) $_GET['contact_id'] : 0;
 
         if ($from_contact > 0) {
             $existing_id = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $from_contact . "' ORDER BY id ASC LIMIT 1");
@@ -101,7 +103,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -117,6 +119,10 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
+
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (string) wrote "Array" onto the card with a notice.
+    pg_request_single_values(erp_account_form_single_fields());
 
     $liveform->add_fields_to_session();
 

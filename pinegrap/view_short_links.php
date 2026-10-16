@@ -23,62 +23,40 @@ validate_area_access($user, 'manager');
 include_once('liveform.class.php');
 $liveform = new liveform('view_short_links');
 
-// Ensure session arrays exist before usage
-if (!isset($_SESSION['software']['view_short_links'])) {
-    $_SESSION['software']['view_short_links'] = [];
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'             => lang('Name'),
+    'destination_type' => lang('Destination Type'),
+    'created'          => lang('Created'),
+    'last_modified'    => lang('Last Modified'),
+);
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value)) {
-        $_SESSION['software']['view_short_links'][$key] = trim($value);
-    }
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
-if (isset($_SESSION['software']['view_short_links']['order'])) {
-    $_SESSION['software']['view_short_links']['order'] = sql_order_direction($_SESSION['software']['view_short_links']['order'], '');
-}
+$list_state = pg_list_state('view_short_links', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-// avoid undefined index warning
-$sort = isset($_SESSION['software']['view_short_links']['sort']) ? ($_SESSION['software']['view_short_links']['sort'] ?? '') : null;
-
-switch ($sort) {
-    case lang('Name'):
-        $sort_column = 'short_links.name';
-        break;
-
-    case lang('Destination Type'):
-        $sort_column = 'short_links.destination_type';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'short_links.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'short_links.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'short_links.last_modified_timestamp';
-        $_SESSION['software']['view_short_links']['sort'] = lang('Last Modified');
-        $_SESSION['software']['view_short_links']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (!isset($_SESSION['software']['view_short_links']['order'])) {
-    $_SESSION['software']['view_short_links']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'             => 'short_links.name',
+    'destination_type' => 'short_links.destination_type',
+    'created'          => 'short_links.created_timestamp',
+    'last_modified'    => 'short_links.last_modified_timestamp',
+));
 
 $all_short_links = 0;
 
+// Links in the Recycle Bin are left out: they are restored or deleted for good
+// in the File Manager, and the edit screen does not open them.
+require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+$sql_live = (pg_short_link_live_filter() != '') ? ' AND ' . pg_short_link_live_filter() : '';
+
 // get the total number of short links
-$query = "SELECT COUNT(*) FROM short_links WHERE destination_type <> 'workspace_guest'";
+$query = "SELECT COUNT(*) FROM short_links WHERE destination_type <> 'workspace_guest'" . $sql_live;
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $all_short_links = $row[0];
@@ -108,8 +86,8 @@ $query =
     LEFT JOIN products ON short_links.product_id = products.id
     LEFT JOIN user AS created_user ON short_links.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON short_links.last_modified_user_id = last_modified_user.user_id
-    WHERE short_links.destination_type <> 'workspace_guest'
-    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['view_short_links']['order'] ?? '');
+    WHERE short_links.destination_type <> 'workspace_guest'" . $sql_live . "
+    ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $short_links = mysqli_fetch_items($result);
 
@@ -193,8 +171,8 @@ if ($short_links) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    ' . ($short_link_token ? '' : '<a href="' . OUTPUT_PATH . h($short_link['name']) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " data-loading-content=" " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                    ' . ($short_link_token ? '' : '<a href="' . OUTPUT_PATH . h($short_link['name']) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
                 </td>
                 <td class="align-middle chart_label">' . $output_name . '</td>
                 <td class="align-middle">' . $output_destination_type . '</td>
@@ -228,7 +206,9 @@ pg_page_shell(
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_short_link.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_short_link.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -238,11 +218,11 @@ pg_page_shell(
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['view_short_links']['sort'] ?? ''), ($_SESSION['software']['view_short_links']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Destination Type'), ($_SESSION['software']['view_short_links']['sort'] ?? ''), ($_SESSION['software']['view_short_links']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th>' . get_column_heading(lang('Destination Type'), $sort_levels, '', '', 'destination_type') . '</th>
                                 <th>' . lang('Destination') . '</th>
-                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['view_short_links']['sort'] ?? ''), ($_SESSION['software']['view_short_links']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_short_links']['sort'] ?? ''), ($_SESSION['software']['view_short_links']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>

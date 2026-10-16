@@ -21,6 +21,9 @@
  * (ws_sync) brings back while the tab is open; when the stamp moves, the
  * board is read again. Every text comes from the #ws-config block.
  *
+ * Served minified as assets/js/workspace_board_channel.min.js (pg_js_bundles(),
+ * includes/fn/output.php); after editing run `php tools/build_js.php`.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen

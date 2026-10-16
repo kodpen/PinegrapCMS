@@ -25,7 +25,7 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_quote');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_quotes.php';
-$quote_id = (int) ($_REQUEST['id'] ?? 0);
+$quote_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $quote = erp_quote($quote_id);
 
 if ($quote === null) {
@@ -38,6 +38,13 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if ($_POST) {
     validate_token_field();
+
+    // Every field of the forms but the lines is one value. One posted as an
+    // array counts as not given: (int) read an array account as account 1,
+    // (string) the others as "Array" with a notice, into the signer's name
+    // and the e-mail too.
+    pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('erp_action', 'signer_name', 'signature', 'mail_to', 'mail_subject',
+        'mail_message')));
 
     $action = (string) ($_POST['erp_action'] ?? 'save');
 
@@ -172,7 +179,7 @@ $money = function ($kurus) use ($quote) {
 $action_button = function ($action, $label, $icon, $class, $confirm = '') use ($quote_id) {
     return '<form method="post" action="edit_erp_quote.php" class="d-inline">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $quote_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
-        . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . ' data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
+        . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
 };
 
 $output_actions = '';
@@ -232,7 +239,7 @@ if ($editable) {
                 ' . erp_invoice_form_cards($liveform, array('quote' => true, 'valid_days' => ERP_QUOTE_VALID_DAYS, 'lines' => erp_invoice_form_lines($liveform, erp_quote_editor_rows($quote)))) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                        <button type="submit" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                     </div>
                 </nav>
             </form>
@@ -329,7 +336,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . lang('The quote PDF is attached.') . '</div>
                 </div>
                 <div class="col-12">
-                    <button type="submit" class="btn btn-sm btn-primary" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-envelope me-2" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-envelope me-2" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
                 </div>
             </form>';
     }
@@ -411,7 +418,7 @@ if ($signature !== null) {
                             ' . erp_signature_pad_markup('signature', array('id' => 'erp_quote_signature')) . '
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-sm btn-primary" data-confirm-content="' . h(lang('Keep this signature with the quote and mark it accepted? A signature cannot be removed.')) . '" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-pen me-1" aria-hidden="true"></i>' . lang('Sign and accept') . '</button>
+                            <button type="submit" class="btn btn-sm btn-primary" data-confirm-content="' . h(lang('Keep this signature with the quote and mark it accepted? A signature cannot be removed.')) . '"><i class="bi bi-pen me-1" aria-hidden="true"></i>' . lang('Sign and accept') . '</button>
                         </div>
                     </form>
                 </div>
@@ -420,7 +427,7 @@ if ($signature !== null) {
 
 // A copy is always a new open quote, whatever became of this one.
 $output_copy_button = (!$readonly && erp_quotes_ready())
-    ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?copy=' . $quote_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
+    ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?copy=' . $quote_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
     : '';
 
 // The same gate as the audit trail screen: the ERP settings managers and the accountant.

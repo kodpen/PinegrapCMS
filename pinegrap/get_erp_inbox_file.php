@@ -20,8 +20,9 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-$id = (int) ($_GET['id'] ?? 0);
-$format = ((string) ($_GET['format'] ?? 'pdf') === 'ubl') ? 'ubl' : 'pdf';
+// One number: an array (?id[]=x) cast to 1 and opened the first document.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+$format = (($_GET['format'] ?? 'pdf') === 'ubl') ? 'ubl' : 'pdf';
 $row = erp_edoc_inbox_row($id);
 
 if ($row === null) {
@@ -49,7 +50,7 @@ $download = !empty($_GET['download']) || ($format === 'ubl');
 header('Content-Type: ' . (string) $result['mime']);
 header('Content-Length: ' . strlen((string) $result['content']));
 header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
-header('X-Content-Type-Options: nosniff');
+pg_send_nosniff();
 header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');
 

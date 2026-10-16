@@ -18,85 +18,73 @@
 
 include('init.php');
 
+// A rate changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen; the write is the one the shipping method's screen makes
+// (pg_shipping_method_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_shipping_method_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_shipping_method_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 // only ever appended to further below, so it has to start out empty
 $output_rows = '';
 $user = validate_user();
 validate_ecommerce_access($user);
 
-switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
+// The rates an operator can change on the list without opening the method.
+$quick_edit = pg_shipping_method_edit_columns();
 
-    case lang('Name'):
-        $sort_column = 'name';
-        break;
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'                  => lang('Name'),
+    'message'               => lang('Message'),
+    'code'                  => lang('Code'),
+    'service'               => lang('Service'),
+    'realtime_rate'         => lang('Real-Time Rate'),
+    'base_rate'             => lang('Base Rate'),
+    'primary_weight_rate'   => lang('Primary W. Rate'),
+    'secondary_weight_rate' => lang('Secondary W. Rate'),
+    'item_rate'             => lang('Item Rate'),
+    'handling'              => lang('Handling'),
+    'transit'               => lang('Transit'),
+    'street'                => lang('Street'),
+    'po_box'                => lang('PO Box'),
+    'protected'             => lang('Protected'),
+    'last_modified'         => lang('Last Modified'),
+);
 
-    case lang('Message'):
-        $sort_column = 'description';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Code'):
-        $sort_column = 'code';
-        break;
+$list_state = pg_list_state('view_shipping_methods', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Service'):
-        $sort_column = 'service';
-        break;
-
-    case lang('Real-Time Rate'):
-        $sort_column = 'realtime_rate';
-        break;
-
-    case lang('Base Rate'):
-        $sort_column = 'base_rate';
-        break;
-
-    case lang('Primary W. Rate'):
-        $sort_column = 'primary_weight_rate';
-        break;
-
-    case lang('Secondary W. Rate'):
-        $sort_column = 'secondary_weight_rate';
-        break;
-
-    case lang('Item Rate'):
-        $sort_column = 'item_rate';
-        break;
-
-    case lang('Handling'):
-        $sort_column = 'handle_days';
-        break;
-
-    case lang('Transit'):
-        $sort_column = 'base_transit_days';
-        break;
-
-    case lang('Street'):
-        $sort_column = 'street_address';
-        break;
-
-    case lang('PO Box'):
-        $sort_column = 'po_box';
-        break;
-
-    case lang('Protected'):
-        $sort_column = 'protected';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'timestamp';
-        break;
-    default:
-        $sort_column = 'timestamp';
-}
-
-if (isset($_GET['sort']) && $_GET['sort']) {
-    $asc_desc = sql_order_direction(isset($_GET['order']) ? $_GET['order'] : '');
-} else {
-    $asc_desc = 'asc';
-}
-
-if (($sort_column == 'timestamp') && (empty($_GET['order']))) {
-    $asc_desc = 'desc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'                  => 'shipping_methods.name',
+    'message'               => 'shipping_methods.description',
+    'code'                  => 'shipping_methods.code',
+    'service'               => 'shipping_methods.service',
+    'realtime_rate'         => 'shipping_methods.realtime_rate',
+    'base_rate'             => 'shipping_methods.base_rate',
+    'primary_weight_rate'   => 'shipping_methods.primary_weight_rate',
+    'secondary_weight_rate' => 'shipping_methods.secondary_weight_rate',
+    'item_rate'             => 'shipping_methods.item_rate',
+    'handling'              => 'shipping_methods.handle_days',
+    'transit'               => 'shipping_methods.base_transit_days',
+    'street'                => 'shipping_methods.street_address',
+    'po_box'                => 'shipping_methods.po_box',
+    'protected'             => 'shipping_methods.protected',
+    'last_modified'         => 'shipping_methods.timestamp',
+));
 
 $query = "SELECT
             shipping_methods.id,
@@ -128,7 +116,7 @@ $query = "SELECT
             shipping_methods.timestamp
         FROM shipping_methods
         LEFT JOIN user ON shipping_methods.user = user.user_id
-        ORDER BY $sort_column $asc_desc";
+        ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -143,21 +131,10 @@ while ($row = mysqli_fetch_array($result)) {
     $start_time = $row['start_time'];
     $end_time = $row['end_time'];
     $service = $row['service'];
-    $base_rate = $row['base_rate'];
-    $variable_base_rate = $row['variable_base_rate'];
-    $base_rate_2 = $row['base_rate_2'];
-    $base_rate_2_subtotal = $row['base_rate_2_subtotal'];
-    $base_rate_3 = $row['base_rate_3'];
-    $base_rate_3_subtotal = $row['base_rate_3_subtotal'];
-    $base_rate_4 = $row['base_rate_4'];
-    $base_rate_4_subtotal = $row['base_rate_4_subtotal'];
     $primary_weight_rate = sprintf("%01.2lf", $row['primary_weight_rate'] / 100);
     $secondary_weight_rate = sprintf("%01.2lf", $row['secondary_weight_rate'] / 100);
-    $item_rate = sprintf("%01.2lf", $row['item_rate'] / 100);
     $handle_days = $row['handle_days'];
     $base_transit_days = $row['base_transit_days'];
-    $username = $row['user'];
-    $timestamp = $row['timestamp'];
     
     $current_time = date('Y-m-d H:i:s');
     
@@ -176,28 +153,10 @@ while ($row = mysqli_fetch_array($result)) {
         $realtime_rate = '<span class="material-icons">task_alt</span>';
     }
 
-    $output_base_rate = '';
-
-    // If variable base rate is enabled, then show all base rates.
-    if ($variable_base_rate) {
-        $output_base_rate .= pg_format_money($base_rate / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money(0, BASE_CURRENCY_SYMBOL) . ')';
-
-        if ($base_rate_2_subtotal) {
-            $output_base_rate .= '<br>' . pg_format_money($base_rate_2 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_2_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
-        }
-
-        if ($base_rate_3_subtotal) {
-            $output_base_rate .= '<br>' . pg_format_money($base_rate_3 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_3_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
-        }
-
-        if ($base_rate_4_subtotal) {
-            $output_base_rate .= '<br>' . pg_format_money($base_rate_4 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_4_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
-        }
-
-    // Otherwise variable base rate is disabled, so just show the base rate.
-    } else {
-        $output_base_rate = pg_format_money($base_rate / 100, BASE_CURRENCY_SYMBOL);
-    }
+    // The cells a quick edit can change, drawn by the same function that
+    // draws them again in the answer to an edit: the base rate (each step of
+    // a variable one), the item rate and the last change.
+    $list_cells = pg_shipping_method_list_cells($row);
 
     // For handle days, show blank instead of zero.
     if (!$handle_days) {
@@ -244,37 +203,29 @@ while ($row = mysqli_fetch_array($result)) {
     $output_link_url ='edit_shipping_method.php?id=' . $id;
     
     $number_of_results++;
-    
-            
-    $last_modified_username = '';
-            
-    if ($row['user']) {
-        $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user']) ) ) );
-    }
-
 
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td style="max-width:100px" class="text-nowrap text-truncate align-middle chart_label ' . $status_color_class . '">' . h($name) . '</td>
             <td style="max-width:200px" class="text-nowrap text-truncate align-middle">' . h($description) . '</td>
             <td class="align-middle"><span class="badge text-dark fw-light">' . h($code) . '</span></td>
             <td class="align-middle">' . h(get_shipping_service_name($service)) . '</td>
             <td class="align-middle text-center">' . $realtime_rate . '</td>
-            <td class="align-middle text-end">' . $output_base_rate . '</td>
+            <td class="' . $list_cells['base_rate']['class'] . '"' . ($row['variable_base_rate'] ? '' : pg_list_edit_cell($quick_edit, 'base_rate', $id, pg_format_input_amount($row['base_rate'] / 100))) . '>' . $list_cells['base_rate']['html'] . '</td>
             <td class="align-middle text-end">' . pg_format_money($primary_weight_rate, BASE_CURRENCY_SYMBOL) . '</td>
             <td class="align-middle text-end">' . pg_format_money($secondary_weight_rate, BASE_CURRENCY_SYMBOL) . '</td>
-            <td class="align-middle text-end">' . pg_format_money($item_rate, BASE_CURRENCY_SYMBOL) . '</td>
+            <td class="' . $list_cells['item_rate']['class'] . '"' . pg_list_edit_cell($quick_edit, 'item_rate', $id, pg_format_input_amount($row['item_rate'] / 100)) . '>' . $list_cells['item_rate']['html'] . '</td>
             <td class="align-middle text-end">' . h($handle_days) . '</td>
             <td class="align-middle text-center">' . $base_transit_days . '</td>
             <td class="align-middle text-center">' . $street_address . '</td>
             <td class="align-middle text-center">' . $po_box . '</td>
             <td class="align-middle">' . $output_zones . '</td>
             <td class="align-middle text-center">' . $protected . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . $last_modified_username . '</td>
+            <td class="' . $list_cells['last_modified']['class'] . '" data-pg-cell="last_modified">' . $list_cells['last_modified']['html'] . '</td>
         </tr>';
 }
 
@@ -293,32 +244,34 @@ pg_page_shell([
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_shipping_method.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_shipping_method.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_shipping_methods.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none;">
+                    <table class="chart table-hover table " style="width:100%;display:none;"' . pg_list_edit_table('view_shipping_methods.php', $quick_edit) . '>
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . asc_or_desc(lang('Name'),'view_shipping_methods') . '</th>
-                                <th>' . asc_or_desc(lang('Message'),'view_shipping_methods') . '</th>
-                                <th>' . asc_or_desc(lang('Code'),'view_shipping_methods') . '</th>
-                                <th>' . asc_or_desc(lang('Service'),'view_shipping_methods') . '</th>
-                                <th class="text-center">' . asc_or_desc(lang('Real-Time Rate'),'view_shipping_methods') . '</th>
-                                <th class="text-end">' . asc_or_desc(lang('Base Rate'),'view_shipping_methods') . '</th>
-                                <th class="text-end">' . asc_or_desc(lang('Primary W. Rate'),'view_shipping_methods') . '</th>
-                                <th class="text-end">' . asc_or_desc(lang('Secondary W. Rate'),'view_shipping_methods') . '</th>
-                                <th class="text-end">' . asc_or_desc(lang('Item Rate'),'view_shipping_methods') . '</th>
-                                <th class="text-end">' . asc_or_desc(lang('Handling'),'view_shipping_methods') . '</th>
-                                <th class="text-center">' . asc_or_desc(lang('Transit'),'view_shipping_methods') . '</th>
-                                <th class="text-center">' . asc_or_desc(lang('Street'),'view_shipping_methods') . '</th>
-                                <th class="text-center">' . asc_or_desc(lang('PO Box'),'view_shipping_methods') . '</th>
+                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th>' . get_column_heading(lang('Message'), $sort_levels, '', '', 'message') . '</th>
+                                <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
+                                <th>' . get_column_heading(lang('Service'), $sort_levels, '', '', 'service') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Real-Time Rate'), $sort_levels, '', '', 'realtime_rate') . '</th>
+                                <th class="text-end">' . get_column_heading(lang('Base Rate'), $sort_levels, '', '', 'base_rate') . '</th>
+                                <th class="text-end">' . get_column_heading(lang('Primary W. Rate'), $sort_levels, '', '', 'primary_weight_rate') . '</th>
+                                <th class="text-end">' . get_column_heading(lang('Secondary W. Rate'), $sort_levels, '', '', 'secondary_weight_rate') . '</th>
+                                <th class="text-end">' . get_column_heading(lang('Item Rate'), $sort_levels, '', '', 'item_rate') . '</th>
+                                <th class="text-end">' . get_column_heading(lang('Handling'), $sort_levels, '', '', 'handling') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Transit'), $sort_levels, '', '', 'transit') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Street'), $sort_levels, '', '', 'street') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('PO Box'), $sort_levels, '', '', 'po_box') . '</th>
                                 <th>' . lang('Shipping Zone') . '</th>
-                                <th class="text-center">' . asc_or_desc(lang('Protected'),'view_shipping_methods') . '</th>
-                                <th>' . asc_or_desc(lang('Last Modified'),'view_shipping_methods') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Protected'), $sort_levels, '', '', 'protected') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

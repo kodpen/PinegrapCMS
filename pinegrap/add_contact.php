@@ -395,7 +395,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -443,6 +443,7 @@ if (!$_POST) {
     $query =
         "SELECT
            id,
+           name,
            email_subscription
         FROM contact_groups";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -606,6 +607,8 @@ if (!$_POST) {
                     '" . $contact_id . "',
                     '" . $contact_group['id'] . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            pg_announce_contact_group_members($contact_group['id'], array($contact_id), array(), $contact_group['name']);
             
             // if contact group has email subscription turned on, add opt-in selection
             if ($contact_group['email_subscription'] == 1) {

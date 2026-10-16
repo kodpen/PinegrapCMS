@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Database Engine: what the database holds and how it is doing. The findings
- * worth acting on, the tables still on MyISAM with a button to move each of
- * them to InnoDB, the result of the table health check, every table with its
- * size and free space and an OPTIMIZE button, and the facts of the database
- * server.
+ * worth acting on, the visitor records with their retention period and a
+ * cleanup to start by hand, the tables still on MyISAM with a button to move
+ * each of them to InnoDB, the result of the table health check, every table
+ * with its size and free space and an OPTIMIZE button, and the facts of the
+ * database server.
  *
  * The 2026.4.8 upgrade converts every table it can within its limits; a table
  * over them, or one an earlier attempt did not finish, is left here. Moving a
@@ -63,12 +64,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             go($database_engine_url);
         }
 
-    } elseif ($engine_action !== 'check_all') {
+    } elseif (!in_array($engine_action, array('check_all', 'visitor_cleanup', 'visitor_move', 'visitor_shrink'), true)) {
 
         $liveform->add_error(lang('Unknown action.'));
         go($database_engine_url);
 
     }
+
+    // The visitor cleanup is driven from the screen a step at a time: each
+    // request answers with JSON and the page asks for the next step until no
+    // old rows are left.
+    $engine_ajax = (isset($_POST['ajax']) && ($_POST['ajax'] === '1'));
 
     // The work can take minutes. The session file stays locked for as long
     // as this request holds it, which would freeze every other tab of the
@@ -167,6 +173,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $engine_text = $engine_common_text('REPAIR TABLE', $engine_result);
             }
+            break;
+
+        case 'visitor_cleanup':
+            $visitor_run = pg_visitor_cleanup_run(20);
+            $engine_ok = in_array($visitor_run['state'], array('done', 'more'), true);
+            $engine_text = pg_visitor_cleanup_result_text($visitor_run);
+
+            if ($engine_ajax) {
+
+                if (function_exists('session_status') && (session_status() === PHP_SESSION_NONE)) {
+                    @session_start();
+                }
+
+                if (($visitor_run['deleted'] > 0) || ($visitor_run['summarized'] > 0)) {
+                    log_activity(lang(array('string' => 'Database Engine: {var:1}', 'vars' => array($engine_text))), $_SESSION['sessionusername']);
+                }
+
+                // The figures of the earlier steps come back from the page,
+                // only to be added up in the sentence it shows.
+                $visitor_deleted = $visitor_run['deleted'] + (isset($_POST['deleted_so_far']) ? max(0, (int) $_POST['deleted_so_far']) : 0);
+                $visitor_summarized = $visitor_run['summarized'] + (isset($_POST['summarized_so_far']) ? max(0, (int) $_POST['summarized_so_far']) : 0);
+
+                $visitor_progress = lang(array(
+                    'string' => 'So far {var:1} visitor record(s) removed and {var:2} day(s) added to the daily summary.',
+                    'vars' => array(pg_format_number($visitor_deleted, 0), pg_format_number($visitor_summarized, 0)),
+                ));
+
+                // The last step leaves its sentence for the page that loads
+                // next.
+                if ($visitor_run['state'] !== 'more') {
+                    if ($engine_ok) {
+                        $liveform->add_notice($visitor_progress . ' ' . lang('No older records are left.'));
+                    } else {
+                        $liveform->add_error($engine_text);
+                    }
+                }
+
+                header('Content-Type: application/json; charset=utf-8');
+                header('Cache-Control: no-store');
+
+                echo json_encode(array(
+                    'ok' => $engine_ok,
+                    'state' => $visitor_run['state'],
+                    'deleted' => $visitor_run['deleted'],
+                    'summarized' => $visitor_run['summarized'],
+                    'text' => ($visitor_run['state'] === 'more') ? $visitor_progress : $engine_text,
+                ));
+
+                exit;
+            }
+            break;
+
+        case 'visitor_move':
+            // Asked for here, the move starts without the checks the general
+            // job waits for on its own (the period, free disk it can read);
+            // the request is in the marker, so the general job carries it on
+            // after this step, or starts it when this step finds the lock
+            // taken.
+            $visitor_move_last = pg_visitor_move_last();
+            $visitor_move_last['requested'] = true;
+            pg_visitor_move_save($visitor_move_last);
+
+            $visitor_move = pg_visitor_move_run(20);
+            $visitor_move_kind = pg_visitor_move_last()['kind'];
+            $engine_ok = !in_array($visitor_move['state'], array('waiting', 'failed'), true);
+
+            if ($visitor_move['text'] !== '') {
+                $engine_text = $visitor_move['text'];
+            } elseif ($visitor_move['state'] === 'waiting') {
+                $engine_text = pg_visitor_move_reason_text(pg_visitor_move_last());
+            } elseif ($visitor_move['state'] === 'none') {
+                $engine_text = lang('The visitors table is on InnoDB and split into months already, or this database server cannot split it; there is nothing to move.');
+            } elseif ($visitor_move_kind === 'split') {
+                $engine_text = lang('The visitors table is being split into one partition per month. The general job carries it on a few thousand records at a time; the Visitor records card shows how far it has come.');
+            } else {
+                $engine_text = lang('The visitors table is being moved to InnoDB. The general job carries the move on a few thousand records at a time; the Visitor records card shows how far it has come.');
+            }
+            break;
+
+        case 'visitor_shrink':
+            // Asked for here, the rebuild runs now, without the size, the
+            // hour and the free disk the general job waits for on its own.
+            $visitor_shrink = pg_visitor_shrink_run(true);
+            $engine_ok = ($visitor_shrink['state'] === 'done');
+            $engine_text = ($visitor_shrink['text'] !== '') ? $visitor_shrink['text'] : lang('The visitors table was left as it is.');
             break;
 
         case 'check_all':
@@ -393,6 +484,337 @@ if (count($engine_findings) == 0) {
     $findings_list = '
                     <ul class="list-group list-group-flush">' . $findings_rows . '
                     </ul>';
+}
+
+// -- Visitor records ----------------------------------------------------------
+
+// The visitors table grows by a row per visit and was never trimmed before
+// the retention period: on a busy site it is the largest table of the
+// database by far. Its figures, what the period would remove now, and the
+// button that removes it.
+$visitor_catalog = isset($engine_catalog['visitors']) ? $engine_catalog['visitors'] : null;
+$visitor_settings = pg_visitor_retention_settings();
+
+if (($visitor_settings === false) || ($visitor_catalog === null)) {
+
+    $visitor_card = '
+                    <div class="alert alert-secondary d-flex gap-2 align-items-start mb-0">
+                        <i class="bi bi-hourglass" aria-hidden="true"></i>
+                        <div>' . h(lang('The period for keeping visitor records arrives with the upgrade steps of this version. Run them again to see the cleanup here.')) . '</div>
+                    </div>';
+
+} else {
+
+    // Counted and read from the file where that can be done from here; the
+    // statistics of the catalog row are a guess on InnoDB.
+    $visitor_figures = pg_visitor_table_figures($visitor_catalog);
+    $visitor_rows_text = pg_visitor_figure_text(pg_format_number($visitor_figures['rows'], 0), $visitor_figures['rows_source']);
+    $visitor_file_text = pg_visitor_figure_text(pg_innodb_size_label($visitor_figures['file']), $visitor_figures['file_source']);
+    $visitor_innodb = ($visitor_catalog['engine'] === 'innodb');
+
+    $visitor_preview = pg_visitor_cleanup_preview(array('rows' => $visitor_figures['rows']) + $visitor_catalog);
+    $visitor_last = pg_visitor_cleanup_last();
+    $visitor_through = $visitor_settings['summary'] ? pg_visitor_summary_through() : '';
+    $visitor_settings_link = '<a href="settings_seo.php#pgset-analytics">' . h(lang('Change')) . '</a>';
+
+    $visitor_alert = '';
+
+    if (pg_visitor_table_is_large($visitor_figures)) {
+
+        $visitor_size = lang(array(
+            'string' => 'The visitors table holds {var:1} records and its file takes {var:2}.',
+            'vars' => array($visitor_rows_text, $visitor_file_text),
+        ));
+
+        if ($visitor_settings['days'] <= 0) {
+            $visitor_advice = lang('Visitor records are kept without a limit. Set a period under Settings › SEO › Visitor Tracking and the general job removes the older ones a little at a time.');
+        } elseif ($visitor_preview['rows'] > 0) {
+            $visitor_advice = lang(array(
+                'string' => '{var:1} of them are older than {var:2} days. The general job removes them a little at a time; the button below starts on them now.',
+                'vars' => array(pg_format_number($visitor_preview['rows'], 0), $visitor_settings['days']),
+            ));
+        } elseif ($visitor_innodb && pg_visitor_shrink_worth($visitor_catalog)) {
+            $visitor_advice = lang('Much of the file is free space left by removed records; it goes back to the disk when the table is rebuilt (see below).');
+        } else {
+            $visitor_advice = lang(array(
+                'string' => 'All of them are from the last {var:1} days; a shorter period makes the table smaller.',
+                'vars' => array($visitor_settings['days']),
+            ));
+        }
+
+        $visitor_alert = '
+                    <div class="alert alert-warning d-flex gap-2 align-items-start">
+                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                        <div>' . h($visitor_size . ' ' . $visitor_advice) . '</div>
+                    </div>';
+    }
+
+    // On MyISAM every write to the table waits for the statement in front of
+    // it, a cleanup step included. The general job moves it to InnoDB once
+    // the cleanup is through (pg_visitor_move_run()), which also gives the
+    // room of the removed rows back to the disk; this says where that stands.
+    $visitor_move = pg_visitor_move_last();
+    $visitor_moving = in_array($visitor_move['state'], array('copying', 'swapped'), true);
+    $visitor_move_text = '';
+    $visitor_move_level = 'info';
+
+    // One partition per month (includes/fn/visitor_partitions.php): an InnoDB
+    // table that is not split yet is split by the same copy as the move.
+    $visitor_layout = pg_visitor_partition_read('visitors');
+    $visitor_split_support = pg_visitor_partition_support();
+    $visitor_move_kind = pg_visitor_move_kind($visitor_catalog['engine'], $visitor_layout['state'], $visitor_split_support['ok']);
+
+    if ($visitor_catalog['engine'] === 'myisam') {
+
+        if ($visitor_moving) {
+            $visitor_move_text = lang(array(
+                'string' => 'The general job is moving this table to InnoDB a few thousand records at a time while the site keeps running: {var:1} of about {var:2} records copied so far. At the end the copy takes the place of the old table in a moment, and the old table is removed.',
+                'vars' => array(pg_format_number($visitor_move['copied'], 0), pg_format_number($visitor_catalog['rows'], 0)),
+            ));
+        } elseif ($visitor_move['state'] === 'failed') {
+            $visitor_move_level = 'warning';
+            $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang('The general job tries again in a week; Move to InnoDB now tries now.');
+        } else {
+            $visitor_move_reason = pg_visitor_move_reason_text($visitor_move);
+            $visitor_move_text = lang('This table is on MyISAM, which locks the whole table for each statement: the cleanup works in small steps so visits wait only briefly.') . ' '
+                . (($visitor_move_reason !== '') ? $visitor_move_reason : pg_visitor_move_reason_text(array('reason' => 'backlog') + $visitor_move));
+        }
+
+    } elseif (isset($engine_catalog[PG_VISITOR_MOVE_OLD]) && ($visitor_move['state'] === 'failed')) {
+
+        $visitor_move_level = 'warning';
+        $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang(array(
+            'string' => 'The old table is kept as {var:1}; once you have looked at it, it can be dropped.',
+            'vars' => array(PG_VISITOR_MOVE_OLD),
+        ));
+
+    } elseif ($visitor_move_kind === 'split') {
+
+        if ($visitor_moving) {
+            $visitor_move_text = lang(array(
+                'string' => 'The general job is splitting this table into one partition per month, a few thousand records at a time while the site keeps running: {var:1} of about {var:2} records copied so far. At the end the copy takes the place of the old table in a moment, and the old table is removed.',
+                'vars' => array(pg_format_number($visitor_move['copied'], 0), pg_format_number($visitor_catalog['rows'], 0)),
+            ));
+        } elseif (($visitor_move['state'] === 'failed') && ($visitor_move['kind'] === 'split')) {
+            $visitor_move_level = 'warning';
+            $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang('The general job tries again in a week; Split into months now tries now.');
+        } else {
+            $visitor_move_reason = ($visitor_move['kind'] === 'split') ? pg_visitor_move_reason_text($visitor_move) : '';
+            $visitor_move_text = lang('This table is not split into months yet, so old records are removed a chunk at a time and their room stays in the file until it is rebuilt.') . ' '
+                . (($visitor_move_reason !== '') ? $visitor_move_reason : pg_visitor_move_reason_text(array('kind' => 'split', 'reason' => 'backlog') + $visitor_move));
+        }
+
+    } elseif (($visitor_move['state'] === 'done') && ($visitor_move['finished_at'] > (time() - 30 * 86400)) && ($visitor_move['kind'] === 'split')) {
+
+        $visitor_move_level = 'success';
+        $visitor_move_text = lang(array(
+            'string' => 'The visitors table was split into one partition per month on {var:1}: {var:2} before, {var:3} now.',
+            'vars' => array(
+                get_absolute_time(array('timestamp' => $visitor_move['finished_at'], 'type' => 'date', 'format' => 'plain_text')),
+                pg_innodb_size_label($visitor_move['bytes_before']),
+                pg_visitor_figure_text(pg_innodb_size_label($visitor_move['bytes_after']), $visitor_move['bytes_source']),
+            ),
+        ));
+
+    } elseif (($visitor_move['state'] === 'done') && ($visitor_move['finished_at'] > (time() - 30 * 86400))) {
+
+        $visitor_move_level = 'success';
+        $visitor_move_text = lang(array(
+            'string' => 'The visitors table was moved to InnoDB on {var:1}: {var:2} before, {var:3} now.',
+            'vars' => array(
+                get_absolute_time(array('timestamp' => $visitor_move['finished_at'], 'type' => 'date', 'format' => 'plain_text')),
+                pg_innodb_size_label($visitor_move['bytes_before']),
+                pg_visitor_figure_text(pg_innodb_size_label($visitor_move['bytes_after']), $visitor_move['bytes_source']),
+            ),
+        ));
+    }
+
+    if ($visitor_move_text !== '') {
+        $visitor_alert .= '
+                    <div class="alert alert-' . $visitor_move_level . ' d-flex gap-2 align-items-start">
+                        <i class="bi ' . (($visitor_move_level === 'success') ? 'bi-check-circle-fill' : (($visitor_move_level === 'warning') ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill')) . '" aria-hidden="true"></i>
+                        <div>' . h($visitor_move_text) . '</div>
+                    </div>';
+    }
+
+    // Removed rows leave their room inside the table file, which keeps its
+    // size on disk. On InnoDB the general job rebuilds the table online once
+    // that room is a large share of the file (pg_visitor_shrink_run()); this
+    // says how the last rebuild ended, and when the next one comes or what it
+    // waits for.
+    $visitor_shrink_reason = '';
+
+    if ($visitor_innodb) {
+
+        $visitor_shrink = pg_visitor_shrink_last();
+        $visitor_shrink_facts = pg_visitor_shrink_facts($visitor_catalog, $visitor_shrink, false);
+        $visitor_shrink['needed'] = $visitor_shrink_facts['needed'];
+        $visitor_shrink['quiet_hour'] = $visitor_shrink_facts['quiet_hour'];
+        $visitor_shrink_reason = pg_visitor_shrink_hold_reason($visitor_shrink_facts);
+
+        if ($visitor_shrink['state'] === 'failed') {
+
+            $visitor_alert .= '
+                    <div class="alert alert-warning d-flex gap-2 align-items-start">
+                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                        <div>' . h(pg_visitor_shrink_reason_text('failed', $visitor_shrink)) . '</div>
+                    </div>';
+
+        } elseif (($visitor_shrink['state'] === 'done') && ($visitor_shrink['finished_at'] > (time() - 30 * 86400))) {
+
+            $visitor_alert .= '
+                    <div class="alert alert-success d-flex gap-2 align-items-start">
+                        <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                        <div>' . h(lang(array(
+                            'string' => 'The visitors table was rebuilt on {var:1} and its file made smaller: {var:2} before, {var:3} now.',
+                            'vars' => array(
+                                get_absolute_time(array('timestamp' => $visitor_shrink['finished_at'], 'type' => 'date', 'format' => 'plain_text')),
+                                pg_visitor_figure_text(pg_innodb_size_label($visitor_shrink['file_before']), $visitor_shrink['file_source']),
+                                pg_visitor_figure_text(pg_innodb_size_label($visitor_shrink['file_after']), $visitor_shrink['file_source']),
+                            ),
+                        ))) . '</div>
+                    </div>';
+        }
+
+        if ($visitor_shrink_facts['worth'] && ($visitor_shrink['state'] !== 'failed')) {
+
+            $visitor_shrink_text = pg_visitor_shrink_reason_text($visitor_shrink_reason, $visitor_shrink);
+
+            $visitor_alert .= '
+                    <div class="alert alert-info d-flex gap-2 align-items-start">
+                        <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                        <div>' . h(lang(array(
+                            'string' => '{var:1} inside the table file is free space, left by removed records. New visits reuse it.',
+                            'vars' => array(pg_innodb_size_label($visitor_catalog['free'])),
+                        )) . (($visitor_shrink_text !== '') ? ' ' . $visitor_shrink_text : '')) . '</div>
+                    </div>';
+        }
+    }
+
+    if ($visitor_settings['days'] > 0) {
+        $visitor_kept = lang(array('string' => '{var:1} days', 'vars' => array($visitor_settings['days'])));
+    } else {
+        $visitor_kept = lang('Without a limit');
+    }
+
+    if (!$visitor_settings['summary']) {
+        $visitor_summary = lang('Off');
+    } elseif ($visitor_through !== '') {
+        $visitor_summary = lang(array('string' => 'On, through {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => strtotime($visitor_through . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')))));
+    } else {
+        $visitor_summary = lang('On, nothing added up yet');
+    }
+
+    if ($visitor_last['checked_at'] > 0) {
+        $visitor_last_text = lang(array(
+            'string' => '{var:1}: {var:2} removed',
+            'vars' => array(
+                get_relative_time(array('timestamp' => $visitor_last['checked_at'], 'format' => 'plain_text')),
+                pg_format_number($visitor_last['deleted'], 0),
+            ),
+        ));
+        if ($visitor_last['backlog']) {
+            $visitor_last_text .= '; ' . lang('older records still left, the general job carries on');
+        }
+    } else {
+        $visitor_last_text = lang('Not run yet');
+    }
+
+    // The referring addresses and browsers newer visits name by number
+    // (includes/fn/visitor_texts.php); before the 2026.4.10 step, or where it
+    // could not add the columns yet, every record carries its own.
+    $visitor_texts = pg_visitor_texts_count();
+
+    $visitor_facts = array(
+        lang('Records') => $visitor_rows_text,
+        lang('File size') => $visitor_file_text,
+        lang('Free space') => pg_innodb_size_label($visitor_figures['free']),
+        lang('Monthly partitions') => pg_visitor_partition_text($visitor_layout, $visitor_catalog['engine'], $visitor_split_support),
+        lang('Addresses and browsers') => ($visitor_texts === null)
+            ? lang('Kept in each record')
+            : lang(array('string' => '{var:1} different values, each kept once', 'vars' => array(pg_format_number($visitor_texts, 0)))),
+        lang('Oldest record') => ($visitor_preview['oldest'] > 0) ? get_absolute_time(array('timestamp' => $visitor_preview['oldest'], 'type' => 'date', 'format' => 'plain_text')) : '—',
+        lang('Kept for') => $visitor_kept,
+        lang('IP addresses') => ($visitor_settings['ip_days'] > 0)
+            ? lang(array('string' => 'Taken out after {var:1} days', 'vars' => array($visitor_settings['ip_days'])))
+            : lang('Kept as long as the record'),
+        lang('Daily summary') => $visitor_summary,
+        lang('Last cleanup') => $visitor_last_text,
+    );
+
+    // Where each size and count came from, beside it.
+    $visitor_sources = array(
+        lang('Records') => pg_visitor_figure_source_text($visitor_figures['rows_source']),
+        lang('File size') => pg_visitor_figure_source_text($visitor_figures['file_source']),
+        lang('Free space') => pg_visitor_figure_source_text('server'),
+    );
+
+    $visitor_fact_list = '';
+
+    foreach ($visitor_facts as $visitor_label => $visitor_value) {
+        $visitor_fact_list .= '
+                            <dt class="col-5 col-md-4 fw-normal text-body-secondary">' . h($visitor_label) . '</dt>
+                            <dd class="col-7 col-md-8 mb-1">' . h($visitor_value)
+                                . (isset($visitor_sources[$visitor_label]) ? ' <span class="text-body-secondary">· ' . h($visitor_sources[$visitor_label]) . '</span>' : '')
+                                . (in_array($visitor_label, array(lang('Kept for'), lang('IP addresses')), true) ? ' · ' . $visitor_settings_link : '') . '</dd>';
+    }
+
+    // What the button would remove, counted now.
+    if ($visitor_settings['days'] <= 0) {
+        $visitor_will = lang('Nothing is removed while records are kept without a limit.');
+    } elseif ($visitor_preview['rows'] > 0) {
+        $visitor_will = lang(array(
+            'string' => 'Older than {var:1}: {var:2} records, about {var:3}.',
+            'vars' => array(
+                get_absolute_time(array('timestamp' => $visitor_preview['cutoff'], 'type' => 'date', 'format' => 'plain_text')),
+                pg_format_number($visitor_preview['rows'], 0),
+                pg_innodb_size_label($visitor_preview['bytes']),
+            ),
+        ));
+    } else {
+        $visitor_will = lang(array('string' => 'No record is older than {var:1} days.', 'vars' => array($visitor_settings['days'])));
+    }
+
+    $visitor_confirm = lang(array(
+        'string' => 'Remove {var:1} visitor records older than {var:2} days now? They cannot be brought back. The work goes in small steps while this page stays open; the site keeps running meanwhile.',
+        'vars' => array(pg_format_number($visitor_preview['rows'], 0), $visitor_settings['days']),
+    ));
+
+    if ($visitor_settings['summary']) {
+        $visitor_confirm .= ' ' . lang('Each day is added to the daily summary first.');
+    } else {
+        $visitor_confirm .= ' ' . lang('The daily summary is off: those days will be gone from the visitor report.');
+    }
+
+    $visitor_enabled = ($engine_tools && ($visitor_settings['days'] > 0) && ($visitor_preview['rows'] > 0));
+
+    $visitor_card = $visitor_alert . '
+                    <dl class="row small mb-3">' . $visitor_fact_list . '
+                    </dl>
+                    <p class="mb-2">' . h($visitor_will) . '</p>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <button type="button" id="pg_visitor_cleanup" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="' . h($visitor_confirm) . '"' . ($visitor_enabled ? '' : ' disabled') . '><i class="bi bi-trash3 me-1" aria-hidden="true"></i>' . h(lang('Clean up visitor records now')) . '</button>
+                        ' . ($visitor_innodb
+                            ? $engine_button('visitor_shrink', 'visitors', lang('Shrink now'), 'bi-arrows-collapse', $visitor_shrink_facts['worth'] ? 'btn-outline-warning' : 'btn-outline-secondary', lang(array(
+                                'string' => 'Rebuild the visitors table now to make its file smaller? The site keeps running meanwhile; the database server needs about {var:1} of free disk until the rebuild ends, which takes minutes on a large table.',
+                                'vars' => array(pg_innodb_size_label($visitor_shrink_facts['needed'])),
+                            )), ($engine_tools && ($visitor_shrink_reason !== 'shared_tablespace') && !$visitor_moving))
+                            : $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline-warning' : 'btn-outline-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== '') && !$visitor_moving))) . (($visitor_catalog['engine'] === 'myisam') && !$visitor_moving ? '
+                        ' . $engine_button('visitor_move', 'visitors', lang('Move to InnoDB now'), 'bi-database-gear', 'btn-outline-warning', lang(array(
+                            'string' => 'Move the visitors table to InnoDB now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the move on.',
+                            'vars' => array(pg_innodb_size_label(pg_visitor_move_disk_needed($visitor_catalog))),
+                        )), ($engine_tools && $engine_capability['ok'])) : '') . ((($visitor_move_kind === 'split') && !$visitor_moving) ? '
+                        ' . $engine_button('visitor_move', 'visitors', lang('Split into months now'), 'bi-calendar3', 'btn-outline-secondary', lang(array(
+                            'string' => 'Split the visitors table into one partition per month now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the split on.',
+                            'vars' => array(pg_innodb_size_label(pg_visitor_move_disk_needed($visitor_catalog))),
+                        )), $engine_tools) : '') . '
+                    </div>
+                    <div id="pg_visitor_cleanup_progress" class="small mt-2" role="status" aria-live="polite"></div>
+                    <div class="small text-body-secondary mt-2">' . h(($visitor_layout['state'] === 'monthly')
+                        ? lang('Records are kept in one partition per month. Once all of a month is older than the period, the general job drops it in a moment and its file goes back to the disk; the records of the month the period ends in are removed a chunk at a time. Shrink now rebuilds the table at once.')
+                        : ($visitor_innodb
+                        ? lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Once much of the file is free, the general job rebuilds the table at the quietest hour of the day while the site keeps running, which gives the room back to the disk; Shrink now does it at once.')
+                        : lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Optimize table gives it back to the disk; that is a separate, optional step.'))) . '</div>';
 }
 
 // -- Tables on MyISAM ---------------------------------------------------------
@@ -690,6 +1112,14 @@ echo '
                         <div class="card-body">' . $findings_list . '
                         </div>
                     </div>
+                    <div class="card mb-5" id="visitor-records">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Visitor records')) . '</span>
+                            <code class="small">visitors</code>
+                        </div>
+                        <div class="card-body">' . $visitor_card . '
+                        </div>
+                    </div>
                     <div class="card mb-5">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Tables on MyISAM')) . '</span>
@@ -795,6 +1225,67 @@ echo '
         }
         form.submit();
     });
+
+    // The visitor cleanup: one step per request, as many as it takes, with
+    // the running count in the card. The last step leaves its notice for the
+    // page that loads afterwards.
+    (function () {
+        var button = document.getElementById("pg_visitor_cleanup");
+        if (!button) {
+            return;
+        }
+        var progress = document.getElementById("pg_visitor_cleanup_progress");
+        var failed = ' . json_encode(lang('The cleanup stopped:'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+        var starting = ' . json_encode(lang('Cleaning up; keep this page open…'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+        button.addEventListener("click", function () {
+            if (button.disabled || !window.confirm(button.getAttribute("data-confirm") || "")) {
+                return;
+            }
+            var form = document.getElementById("pg_engine_form");
+            var buttons = document.querySelectorAll(".pg-engine-action, #pg_visitor_cleanup");
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = true;
+            }
+            form.elements["action"].value = "visitor_cleanup";
+            form.elements["table"].value = "visitors";
+            if (!window.fetch || !window.FormData) {
+                form.submit();
+                return;
+            }
+            var deleted = 0;
+            var summarized = 0;
+            var step = function () {
+                var data = new FormData(form);
+                data.append("ajax", "1");
+                data.append("deleted_so_far", String(deleted));
+                data.append("summarized_so_far", String(summarized));
+                window.fetch(form.getAttribute("action"), {method: "POST", body: data, credentials: "same-origin", headers: {"X-Requested-With": "XMLHttpRequest"}})
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error("HTTP " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(function (answer) {
+                        deleted += answer.deleted;
+                        summarized += answer.summarized;
+                        progress.textContent = answer.text;
+                        if (answer.state === "more") {
+                            step();
+                        } else {
+                            window.location.reload();
+                        }
+                    })
+                    .catch(function (error) {
+                        progress.textContent = failed + " " + error.message;
+                        progress.className = "small mt-2 text-danger";
+                        button.disabled = false;
+                    });
+            };
+            progress.textContent = starting;
+            step();
+        });
+    })();
 </script>' . output_footer();
 
 $liveform->remove_form();

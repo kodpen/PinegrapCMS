@@ -269,7 +269,7 @@ function api_meta_schema() {
 		'ecommerce' => array(
 			'enabled'          => 'boolean',
 			'taxable'          => 'boolean',
-			'default_tax_rate' => 'number',
+			'default_tax_rate' => 'number?',
 			'currency' => array(
 				'code'         => 'string',
 				'symbol'       => 'string',

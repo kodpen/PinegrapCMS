@@ -26,6 +26,11 @@ include_once('liveform.class.php');
 $liveform = new liveform('catalog_detail');
 $liveform->add_fields_to_session();
 
+// Every field of the add to cart form holds one value (the product's options only pick the
+// product_id the form posts). One posted as an array (quantity[]=) counts as not given:
+// no product, an invalid quantity or the default recipient, as for an empty field.
+pg_liveform_single_values($liveform, array('product_id', 'quantity', 'ship_to', 'add_name', 'page_id', 'current_url', 'next_url', 'next_page_id'));
+
 // get information about product
 $query =
     "SELECT
@@ -235,7 +240,7 @@ if ($next_page_id <= 0) {
     $query = "SELECT next_page_id FROM catalog_detail_pages WHERE page_id = '" . escape($liveform->get_field_value('page_id')) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $next_page_id = $row['next_page_id'];
+    $next_page_id = is_array($row) ? $row['next_page_id'] : 0;
 }
 
 // send user to next page

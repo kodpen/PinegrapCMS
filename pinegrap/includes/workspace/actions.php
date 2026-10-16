@@ -81,6 +81,30 @@ function ws_action_channel($viewer, $request, $need = 'read')
 }
 
 /**
+ * The deadline of an approval request as the forms send it: a day and a
+ * time (18:00 when the time is left out).
+ *
+ * @param array $request closes_date, closes_time
+ * @return int|false the moment, 0 for none, false for a day that cannot be read
+ */
+function ws_action_approval_deadline($request)
+{
+    $day = ws_date_or_null((string) ($request['closes_date'] ?? ''));
+
+    if ($day === false) {
+        return false;
+    }
+
+    if ($day === null) {
+        return 0;
+    }
+
+    $time = preg_match('/^[0-9]{1,2}:[0-9]{2}$/', (string) ($request['closes_time'] ?? '')) ? $request['closes_time'] : '18:00';
+
+    return (int) strtotime($day . ' ' . $time . ':00');
+}
+
+/**
  * May this person override a clash with somebody's leave on this task?
  *
  * @param array $viewer
@@ -145,8 +169,9 @@ function ws_handle_action($action, $request)
         return ws_action_error(lang('Access denied.'));
     }
 
-    // The session lock is only needed by the actions that write to it.
-    if (!in_array($action, array('ws_channel_audit'), true)) {
+    // The session lock is only needed by the actions that write to it
+    // (connecting an MCP account keeps its pending state there).
+    if (!in_array($action, array('ws_channel_audit', 'ws_mcp_connect'), true)) {
         session_write_close();
     }
 
@@ -164,7 +189,7 @@ function ws_handle_action($action, $request)
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
             $poll = db_item("SELECT message_id FROM ws_polls WHERE id = '" . (int) ($request['poll_id'] ?? 0) . "'");
             $touched = is_array($poll) ? ws_message((int) $poll['message_id']) : null;
-        } elseif (in_array($action, array('ws_approval_decide', 'ws_approval_close'), true)) {
+        } elseif (in_array($action, array('ws_approval_decide', 'ws_approval_close', 'ws_approval_guest_resend'), true)) {
             $approval = function_exists('ws_approval') ? ws_approval((int) ($request['approval_id'] ?? 0)) : null;
             $touched = $approval ? ws_message((int) $approval['message_id']) : null;
         }
@@ -200,9 +225,14 @@ function ws_handle_action($action, $request)
                 ws_scheduled_run();
             }
 
-            // Task reminders whose time has come (reminders.php).
+            // Task reminders whose time has come, and the tasks that went
+            // overdue since the last look (reminders.php).
             if (function_exists('ws_task_reminders_run')) {
                 ws_task_reminders_run();
+            }
+
+            if (function_exists('ws_task_overdue_run')) {
+                ws_task_overdue_run();
             }
 
             // Concluded discussions whose time is up (threads.php).
@@ -264,6 +294,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error($result['error'], $result['field']);
             }
 
+            // A new one opened from a draft Pinegrap AI made in a channel:
+            // the draft's card says it was saved (scheduled_draft.php).
+            if (((int) ($request['id'] ?? 0) === 0) && ((int) ($request['draft_change_id'] ?? 0) > 0) && function_exists('ws_scheduled_draft_saved')) {
+                ws_scheduled_draft_saved($viewer, (int) $request['draft_change_id'], (int) $result['id'], (int) $result['message_id']);
+            }
+
             return ws_action_ok(array('id' => $result['id'], 'message_id' => $result['message_id'], 'item' => ws_scheduled_present($viewer, ws_scheduled($result['id']), true)));
 
         // What the form would save, in words, as it is filled in.
@@ -286,6 +322,17 @@ function ws_handle_action($action, $request)
             unset($result['ok'], $result['error'], $result['field']);
 
             return ws_action_ok($result);
+
+        // The form filled in by Pinegrap AI from a sentence: nothing is
+        // saved, the form opens again with the draft (scheduled_draft.php).
+        case 'ws_scheduled_draft':
+            $result = ws_scheduled_draft($viewer, (string) ($request['text'] ?? ''), (int) ($request['channel_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('draft' => $result['data'], 'notes' => $result['notes']));
 
         case 'ws_scheduled_status':
             $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
@@ -766,6 +813,7 @@ function ws_handle_action($action, $request)
                 'reactions'   => ws_reaction_quick(),
                 'claude'      => function_exists('ws_claude_boot') ? ws_claude_boot() : null,
                 'ai'          => function_exists('ws_ai_boot') ? ws_ai_boot() : null,
+                'mcp'         => function_exists('ws_mcp_boot') ? ws_mcp_boot() : array(),
                 'now'         => time(),
             ));
 
@@ -862,24 +910,50 @@ function ws_handle_action($action, $request)
                 'now'      => time(),
             ));
 
+        // Pinegrap AI's few sentences on what the reader missed, asked from
+        // the channel's greeting. Opening the channel marked everything
+        // read, so the greeting hands back the message the visit began
+        // after (briefing.php).
+        case 'ws_brief_recap':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (is_string($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(WS_AI_CALL_TIMEOUT + 30);
+            }
+
+            $recap = ws_recap_ai($viewer, $channel, max(0, (int) ($request['since_id'] ?? 0)));
+
+            if (!$recap['ok']) {
+                return ws_action_error($recap['error']);
+            }
+
+            return ws_action_ok(array('text' => $recap['text']));
+
         case 'ws_sync':
             $out = array('messages' => array(), 'tasks' => array(), 'now' => time());
             $channel_id = (int) ($request['channel_id'] ?? 0);
 
             // The screen is in front of this person (see ws_notify()), and
             // banners whose wait is over go out.
-            ws_touch_seen($viewer['id']);
-            ws_push_due_run();
+            ws_sync_seen($viewer['id']);
 
             if ($channel_id > 0) {
                 $channel = ws_channel($channel_id);
 
                 if ($channel && ws_can_read_channel($viewer, $channel)) {
-                    ws_polls_autoclose($channel_id);
-                    ws_approvals_autoclose($channel_id);
-
-                    // An earlier version open on the screen takes nothing new.
-                    $rows = ((int) ($request['era_id'] ?? 0) > 0) ? array() : ws_messages_since($channel_id, (int) ($request['since_id'] ?? 0));
+                    // An earlier version open on the screen takes nothing
+                    // new. Messages the reader already has that changed since
+                    // the last look come as well: an edit, a reaction, a tick,
+                    // a vote, and one they deleted for themselves elsewhere.
+                    $news = ws_channel_news($channel_id, (int) ($request['since_id'] ?? 0), (int) ($request['since_ts'] ?? 0), array(
+                        'new'     => ((int) ($request['era_id'] ?? 0) <= 0),
+                        'user_id' => (int) $viewer['id'],
+                    ));
+                    $rows = $news['new'];
 
                     // The pinned message, as somebody may have changed it.
                     $out['pin'] = ws_channel_pin_present($viewer, $channel, ws_channel_membership($channel_id, $viewer['id']));
@@ -908,10 +982,7 @@ function ws_handle_action($action, $request)
                         $out['shares'] = ws_channel_shares_state($viewer, $channel);
                     }
                     $out['messages'] = ws_message_payloads($viewer, $rows);
-
-                    // Messages the reader already has that changed since the
-                    // last look: an edit, a reaction, a tick, a vote.
-                    $out['changed'] = ws_message_payloads($viewer, ws_messages_touched($channel_id, (int) ($request['since_ts'] ?? 0), (int) ($request['since_id'] ?? 0)));
+                    $out['changed'] = ws_message_payloads($viewer, $news['changed'], array('hidden_as_deleted' => true));
 
                     if (!empty($rows) && !empty($request['read']) && ws_channel_membership($channel_id, $viewer['id'])) {
                         ws_channel_mark_read($channel_id, $viewer['id'], (int) $rows[count($rows) - 1]['id']);
@@ -956,7 +1027,8 @@ function ws_handle_action($action, $request)
             // A scheduled action is due: the screen starts a run (ws_tick)
             // rather than this answer waiting for an e-mail to go out.
             $out['scheduled_due'] = (function_exists('ws_scheduled_due') && ws_scheduled_due())
-                || (function_exists('ws_task_reminders_due') && ws_task_reminders_due());
+                || (function_exists('ws_task_reminders_due') && ws_task_reminders_due())
+                || (function_exists('ws_task_overdue_due') && ws_task_overdue_due());
 
             return ws_action_ok($out);
 
@@ -1024,29 +1096,17 @@ function ws_handle_action($action, $request)
                 'quote_ids' => is_array($request['quote_ids'] ?? null) ? $request['quote_ids'] : array(),
             ));
 
-            // A request to Claude is queued here and started by the screen's
-            // next call (ws_claude_kick), so the message is on the screen
-            // without waiting for claude.ai.
-            $claude = false;
-
-            if ($result['ok'] && function_exists('ws_claude_after_send')) {
-                $claude = ws_claude_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
             }
 
-            // The same for Pinegrap AI (ai.php): queued here, carried on by
-            // the screen's next call (ws_ai_kick).
-            $ai = false;
+            // Requests to Claude, an MCP agent or Pinegrap AI are queued here
+            // and carried on by the screen's next call (ws_claude_kick,
+            // ws_mcp_agent_kick, ws_ai_kick), so the message is on the screen
+            // without waiting for an answer.
+            $asked = ws_message_ask_assistants($viewer, $channel, $result['message_id'], $body);
 
-            if ($result['ok'] && function_exists('ws_ai_after_send')) {
-                $ai = ws_ai_after_send($viewer, $channel, $result['message_id'], ws_tokens_normalise(trim($body)));
-            }
-
-            // Asked in a discussion: its channel's message says so.
-            if (($claude || $ai) && ws_channel_is_thread($channel)) {
-                ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
-            }
-
-            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $claude, 'ai' => $ai)) : ws_action_error($result['error']);
+            return ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $asked['claude'], 'ai' => $asked['ai'], 'agent' => $asked['agent']));
 
         case 'ws_edit':
             $message = ws_message((int) ($request['message_id'] ?? 0));
@@ -1232,6 +1292,14 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // Status updates and check-ins (includes/workspace/status.php).
+        case 'ws_status_facts':
+        case 'ws_status_ai':
+        case 'ws_status_post':
+        case 'ws_checkin_start':
+        case 'ws_checkin_answer':
+            return ws_status_action($viewer, $action, $request);
+
         // Approval requests (includes/workspace/approvals.php).
         case 'ws_approval_create':
             $channel = ws_action_channel($viewer, $request, 'post');
@@ -1241,22 +1309,17 @@ function ws_handle_action($action, $request)
             }
 
             // The deadline comes as a day and a time, as the form asks.
-            $closes_at = 0;
-            $closes_day = ws_date_or_null((string) ($request['closes_date'] ?? ''));
+            $closes_at = ws_action_approval_deadline($request);
 
-            if ($closes_day === false) {
+            if ($closes_at === false) {
                 return ws_action_error(lang('Write the date as day.month.year.'), 'closes_date');
-            }
-
-            if ($closes_day !== null) {
-                $closes_time = preg_match('/^[0-9]{1,2}:[0-9]{2}$/', (string) ($request['closes_time'] ?? '')) ? $request['closes_time'] : '18:00';
-                $closes_at = (int) strtotime($closes_day . ' ' . $closes_time . ':00');
             }
 
             $result = ws_approval_create($viewer, $channel, array(
                 'title'     => (string) ($request['title'] ?? ''),
                 'text'      => (string) ($request['text'] ?? ''),
                 'approvers' => (array) ($request['approvers'] ?? array()),
+                'guests'    => (array) ($request['guests'] ?? array()),
                 'rule'      => (string) ($request['rule'] ?? 'any'),
                 'closes_at' => $closes_at,
             ));
@@ -1264,6 +1327,56 @@ function ws_handle_action($action, $request)
             return $result['ok']
                 ? ws_action_ok(array('message_id' => $result['message_id'], 'approval_id' => $result['approval_id']))
                 : ws_action_error($result['error'], $result['field']);
+
+        // A customer asked from a task's drawer, and a new link for somebody
+        // outside the team who has not answered (approval_guests.php).
+        case 'ws_task_approval_create':
+            $task = ws_task((int) ($request['task_id'] ?? 0));
+
+            if (!$task || !ws_can_see_task($viewer, $task)) {
+                return ws_action_error(lang('That task could not be found.'));
+            }
+
+            $closes_at = ws_action_approval_deadline($request);
+
+            if ($closes_at === false) {
+                return ws_action_error(lang('Write the date as day.month.year.'), 'closes_date');
+            }
+
+            $result = ws_task_approval_create($viewer, $task, array(
+                'title'     => (string) ($request['title'] ?? ''),
+                'text'      => (string) ($request['text'] ?? ''),
+                'guests'    => array(array('name' => (string) ($request['guest_name'] ?? ''), 'email' => (string) ($request['guest_email'] ?? ''))),
+                'closes_at' => $closes_at,
+            ));
+
+            return $result['ok']
+                ? ws_action_ok(array('approvals' => ws_task_approvals_detail($viewer, ws_task($task['id']))))
+                : ws_action_error($result['error'], $result['field']);
+
+        case 'ws_approval_guest_resend':
+            $approval = ws_approval((int) ($request['approval_id'] ?? 0));
+
+            if (!$approval || !ws_can_read_channel($viewer, ws_channel($approval['channel_id']))) {
+                return ws_action_error(lang('That approval request could not be found.'));
+            }
+
+            $result = ws_approval_guest_resend($viewer, $approval, (int) ($request['guest_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            // Asked from a task's drawer: the drawer's list comes back.
+            $task = ((int) ($request['task_id'] ?? 0) > 0) ? ws_task((int) $request['task_id']) : null;
+
+            if ($task && ws_can_see_task($viewer, $task)) {
+                return ws_action_ok(array('approvals' => ws_task_approvals_detail($viewer, $task)));
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($approval['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
 
         case 'ws_approval_decide':
         case 'ws_approval_close':
@@ -1320,16 +1433,9 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            $stored = ws_store_upload($viewer, $channel, (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''));
-
-            if (!$stored['ok']) {
-                return ws_action_error($stored['error']);
-            }
-
-            $result = ws_message_send($viewer, $channel, (string) ($request['body'] ?? ''), array(
-                'file_id'   => $stored['file_id'],
-                'file_name' => $stored['name'],
-            ));
+            // A message that could not be written (too many too fast, too
+            // long) keeps no file, as the external API does.
+            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''));
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
@@ -1390,21 +1496,7 @@ function ws_handle_action($action, $request)
             } elseif ($action === 'ws_thread_rename') {
                 $result = ws_thread_rename($viewer, $channel, (string) ($request['title'] ?? ''));
             } else {
-                $result = ws_channel_leave($viewer, $channel);
-                $thread = ws_thread($channel['id']);
-
-                // Nobody left in it: concluded, as if the last one had.
-                if ($result['ok'] && $thread && ((int) $thread['closed_at'] === 0)
-                    && ((int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'") === 0)) {
-                    db("UPDATE ws_threads SET closed_at = '" . time() . "', closed_by = '" . (int) $viewer['id'] . "',
-                            purge_at = '" . strtotime('+' . WS_THREAD_KEEP_DAYS . ' days') . "'
-                        WHERE channel_id = '" . (int) $channel['id'] . "'");
-                    db("UPDATE ws_channels SET archived_at = '" . time() . "' WHERE id = '" . (int) $channel['id'] . "'");
-                }
-
-                if ($result['ok'] && $thread) {
-                    ws_message_touch((int) $thread['message_id']);
-                }
+                $result = ws_thread_leave($viewer, $channel);
             }
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
@@ -1929,6 +2021,37 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
+        // A person's own account on an MCP server (mcp.php): connecting one
+        // sends them to the service and back to the channel they were in, or
+        // to the task whose drawer offered it.
+        case 'ws_mcp_connect':
+        case 'ws_mcp_disconnect_me':
+            $server = ws_mcp_ready() ? ws_mcp_server((int) ($request['server_id'] ?? 0)) : null;
+
+            if (!$server || ($server['auth_kind'] !== 'oauth')) {
+                return ws_action_error(lang('That MCP server could not be found.'));
+            }
+
+            if ($action === 'ws_mcp_disconnect_me') {
+                ws_mcp_person_disconnect($viewer, $server);
+
+                return ws_action_ok();
+            }
+
+            $task = ((int) ($request['task_id'] ?? 0) > 0) ? ws_task((int) $request['task_id']) : null;
+
+            if ($task && ws_can_see_task($viewer, $task)) {
+                $return = 'workspace_tasks.php?task=' . (int) $task['id'] . '&mcp_connected=' . (int) $server['id'];
+            } else {
+                $channel = ws_channel((int) ($request['channel_id'] ?? 0));
+                $channel_id = ($channel && ws_can_read_channel($viewer, $channel)) ? (int) $channel['id'] : 0;
+                $return = 'workspace.php?' . (($channel_id > 0) ? 'channel=' . $channel_id . '&' : '') . 'mcp_connected=' . (int) $server['id'];
+            }
+
+            $start = ws_mcp_person_connect_start($viewer, $server, $return);
+
+            return $start['ok'] ? ws_action_ok(array('url' => $start['url'])) : ws_action_error($start['error']);
+
         // A page change an answer proposes: written to the saved page by the
         // person who asked, taken back by whoever applied it, or set aside.
         case 'ws_ai_design_apply':
@@ -1957,6 +2080,21 @@ function ws_handle_action($action, $request)
             $kick = function_exists('ws_ai_kick') ? ws_ai_kick() : array('status' => 'idle');
 
             return ws_action_ok(array('status' => (string) $kick['status']));
+
+        // Sends the oldest request waiting for an MCP agent and posts its
+        // answer (mcp_agent.php). Another screen's call takes the next one.
+        case 'ws_mcp_agent_kick':
+            $kick = function_exists('ws_mcp_agent_kick') ? ws_mcp_agent_kick() : array('status' => 'idle');
+
+            return ws_action_ok(array('status' => (string) $kick['status']));
+
+        // Stops a request to an MCP agent that waits or runs, and the task
+        // its agent works on (mcp_agent.php): the one who asked, or an
+        // administrator.
+        case 'ws_mcp_agent_cancel':
+            $error = function_exists('ws_mcp_agent_cancel') ? ws_mcp_agent_cancel($viewer, (int) ($request['request_id'] ?? 0)) : lang('That request could not be found.');
+
+            return ($error === '') ? ws_action_ok() : ws_action_error($error);
 
         // Whether Pinegrap AI may be asked in a channel.
         case 'ws_channel_ai':
@@ -2083,6 +2221,9 @@ function ws_handle_action($action, $request)
             if (!$task || !ws_can_see_task($viewer, $task)) {
                 return ws_action_error(lang('That task could not be found.'));
             }
+
+            // Open in front of the person: what the inbox said about it is read.
+            ws_inbox_mark_task_read($viewer['id'], $task['id']);
 
             return ws_action_ok(array('task' => ws_task_detail($viewer, $task)));
 
@@ -2257,7 +2398,43 @@ function ws_handle_action($action, $request)
 
             $result = ws_task_note_add($viewer, $task, (string) ($request['body'] ?? ''));
 
-            return $result['ok'] ? ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id'])))) : ws_action_error($result['error'], 'body');
+            // notice: the assistant the note called could not be asked.
+            return $result['ok']
+                ? ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id'])), 'notice' => (string) ($result['notice'] ?? '')))
+                : ws_action_error($result['error'], 'body');
+
+        // A task handed to an assistant or written to again, its part of the
+        // drawer read while a run is under way, a run stopped and the task
+        // taken back (includes/workspace/delegation.php).
+        case 'ws_task_delegate':
+        case 'ws_task_delegation':
+        case 'ws_task_delegation_stop':
+            $task = ws_task((int) ($request['task_id'] ?? 0));
+
+            if (!$task || !ws_can_see_task($viewer, $task) || !function_exists('ws_delegation_ready') || !ws_delegation_ready()) {
+                return ws_action_error(lang('That task could not be found.'));
+            }
+
+            if ($action === 'ws_task_delegation') {
+                return ws_action_ok(array('delegation' => ws_task_delegation_detail($viewer, $task)));
+            }
+
+            if ($action === 'ws_task_delegation_stop') {
+                $result = ws_task_delegation_stop($viewer, $task, !empty($request['undelegate']));
+
+                return $result['ok'] ? ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id'])))) : ws_action_error($result['error']);
+            }
+
+            $agent = (string) ($request['agent'] ?? '');
+            $result = ws_task_delegate($viewer, $task, $agent, (string) ($request['text'] ?? ''));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], 'text');
+            }
+
+            ws_task_delegation_start($agent);
+
+            return ws_action_ok(array('task' => ws_task_detail($viewer, ws_task($task['id'])), 'request_id' => (int) $result['request_id']));
 
         case 'ws_task_note_edit':
         case 'ws_task_note_delete':
@@ -2549,6 +2726,36 @@ function ws_handle_action($action, $request)
             $result = ws_event_delete($viewer, (int) ($request['event_id'] ?? 0));
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
+
+        // A plan item's meeting note, found or written from the template
+        // (meetings.php).
+        case 'ws_meeting_note':
+            $result = ws_meeting_note_open($viewer, (int) ($request['event_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('note_id' => $result['note_id'], 'created' => $result['created'])) : ws_action_error($result['error']);
+
+        // A meeting note's decisions and action items: shown first, brought
+        // into the channel on confirmation (meetings.php).
+        case 'ws_meeting_transfer':
+            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'edit');
+
+            if (!$note) {
+                return ws_action_error(lang('That note could not be found.'));
+            }
+
+            $channel = ((int) ($request['channel_id'] ?? 0) > 0) ? ws_action_channel($viewer, $request, 'post') : null;
+
+            if (is_string($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if (empty($request['confirm']) || ($channel === null)) {
+                return ws_action_ok(ws_meeting_note_preview(ws_meeting_note_read($viewer, $note, $channel)));
+            }
+
+            $result = ws_meeting_note_transfer($viewer, $note, $channel, (array) ($request['decisions'] ?? array()), (array) ($request['actions'] ?? array()));
+
+            return $result['ok'] ? ws_action_ok($result) : ws_action_error($result['error']);
 
         case 'ws_inbox':
             return ws_action_ok(array('items' => ws_inbox_list($viewer), 'unread' => ws_inbox_unread_count($viewer['id'])));

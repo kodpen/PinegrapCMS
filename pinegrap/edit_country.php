@@ -23,7 +23,7 @@ validate_ecommerce_access($user);
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM countries WHERE id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -104,8 +104,8 @@ if (!$_POST) {
                         <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang('Saving') . '"><span class="material-icons me-2">save</span><span class="btn-text">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-loading-content="' . lang('Deleting') . '" data-confirm-content="' . lang('WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.') . '"><span class="material-icons me-2">delete</span><span class="btn-text">' . lang('Delete') . '</span></button>
+                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang('Save') . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang('WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.') . '"><span class="material-icons me-2">delete</span><span class="btn-text">' . lang('Delete') . '</span></button>
                                 </div>
                             </div>
                         </nav>

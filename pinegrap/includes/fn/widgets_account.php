@@ -11,7 +11,8 @@
 // A module of functions.php: the account system widgets - logout, change
 // password, set password, profile, email preferences, address book and
 // account security - the designed pages that stand in for the legacy page
-// types, and the login region a site header carries.
+// types, the member's invoices from the ERP, and the login region a site
+// header carries.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
@@ -84,12 +85,16 @@ function pg_sw_page_type_widget_url($page_type)
 // ($designed_first): its visitor is on the designed site, and the sample
 // content every installation starts with carries the legacy pages. A site
 // with no designed sign-in page gets the legacy screen too. $fallback is the
-// legacy screen's own address.
-function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designed_first = false)
+// legacy screen's own address. $page_id is the page asked for: a site with
+// two designs has a sign-in page in each, and the one of that page's design
+// is the one that looks like it and links to its own sign-up and account
+// pages.
+function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designed_first = false, $page_id = 0)
 {
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return $fallback;
     if (!$designed_first && (int)db_value("SELECT COUNT(*) FROM page WHERE page_type = '" . e($legacy_type) . "'") > 0) return $fallback;
-    $name = _pg_sw_open_widget_page_name('login_form');
+    $style_id = ((int)$page_id > 0) ? (int)db_value("SELECT page_style FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1") : 0;
+    $name = _pg_sw_open_widget_page_name('login_form', $style_id);
     if ($name === '') return $fallback;
     $url = (defined('PATH') ? PATH : '/') . encode_url_path($name);
     return ((string)$send_to === '') ? $url : $url . '?send_to=' . urlencode((string)$send_to);
@@ -98,15 +103,17 @@ function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designe
 // Name of the first designed page carrying a widget of $type that the
 // visitor may open, or ''. A page in a folder that itself asks for a sign-in
 // does not count: sending a signed-out visitor there to sign in would send
-// them round in a circle.
-function _pg_sw_open_widget_page_name($type)
+// them round in a circle. With $style_id, a page of that design comes first.
+function _pg_sw_open_widget_page_name($type, $style_id = 0)
 {
+    $first = '';
     foreach (pg_sw_widget_pages($type) as $p) {
-        $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
-        if ($folder === null || $folder === '' || !check_view_access($folder)) continue;
-        return (string)$p['page_name'];
+        $row = db_item("SELECT page_folder, page_style FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
+        if (!is_array($row) || (string)$row['page_folder'] === '' || !check_view_access($row['page_folder'])) continue;
+        if ((int)$style_id <= 0 || (int)$row['page_style'] === (int)$style_id) return (string)$p['page_name'];
+        if ($first === '') $first = (string)$p['page_name'];
     }
-    return '';
+    return $first;
 }
 
 // Where a screen of the software directory sends its visitor on a site that
@@ -720,9 +727,10 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
 //
 // Controls by name: email_address, opt_in. loop_area: one row per mailing
 // list the contact may see (open lists, and closed ones the contact is on);
-// the row's checkbox is named contact_group_^^__group_id^^ and is checked by
-// the server. Row tokens: ^^__group_id^^, ^^__group_name^^,
-// ^^__group_description^^.
+// the row's checkbox, named contact_group, becomes contact_group_<list id>
+// and is checked by the server. Trees saved before that carry the name
+// contact_group_^^__group_id^^, read the same way. Row tokens:
+// ^^__group_id^^, ^^__group_name^^, ^^__group_description^^.
 //
 // Visibility flags: show_form (whose preferences is known), is_signed_in,
 // is_signed_out, has_contact_groups, no_contact_groups. Tokens:
@@ -820,10 +828,11 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
             $gid = (int)$g['id'];
             $checked = $submitted ? (bool)$lf->get_field_value('contact_group_' . $gid) : $g['on'];
             $t = $row_tree;
-            _pg_member_fill_control($t, 'contact_group_^^__group_id^^', '1', $checked);
+            _pg_email_preferences_name_box($t, 'contact_group_' . $gid);
+            _pg_member_fill_control($t, 'contact_group_' . $gid, '1', $checked);
             if (!$has_box) {
                 foreach (_pg_member_controls($t) as $c) {
-                    if ($c['name'] === 'contact_group_^^__group_id^^') { $has_box = true; break; }
+                    if ($c['name'] === 'contact_group_' . $gid) { $has_box = true; break; }
                 }
             }
             $html = '';
@@ -851,6 +860,21 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
         '__email_address'  => h($email),
         '__my_account_url' => h($account_url),
     ));
+}
+
+// Give a mailing list row's checkbox the list's own name: `contact_group`,
+// or the older contact_group_^^__group_id^^, becomes $name.
+function _pg_email_preferences_name_box(&$tree, $name)
+{
+    if (!is_array($tree)) return;
+    $own = _pg_member_control_name($tree);
+    if ($own === 'contact_group' || $own === 'contact_group_^^__group_id^^') {
+        _pg_member_set_attr($tree, 'name', $name);
+    }
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as &$c) _pg_email_preferences_name_box($c, $name);
+        unset($c);
+    }
 }
 
 // ============================================================================
@@ -1007,7 +1031,7 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
 // values account_security.php reads.
 function pg_sw_account_security_actions()
 {
-    return array('logout_all', 'unlink_google', 'revoke_device', 'mfa_begin', 'mfa_confirm',
+    return array('logout_all', 'unlink_google', 'unlink_microsoft', 'unlink_apple', 'revoke_device', 'mfa_begin', 'mfa_confirm',
         'mfa_cancel_setup', 'mfa_codes_seen', 'mfa_recovery_regenerate', 'mfa_disable');
 }
 
@@ -1089,13 +1113,18 @@ function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
 // device_can_sign_out.
 //
 // Visibility flags: is_signed_in, is_signed_out, is_impersonated, has_google,
+// has_microsoft, microsoft_removable, microsoft_only, has_apple,
+// apple_removable, apple_only (removable: another way in remains),
+// signin_connectable (a provider that is on can still be connected),
 // has_password, password_not_set, has_devices, no_devices, mfa_ready,
 // mfa_off, mfa_no_key, mfa_pending, mfa_codes, mfa_on, mfa_key_unreadable,
 // mfa_can_regenerate, mfa_required. Tokens: ^^__site_name^^,
 // ^^__device_count^^, ^^__mfa_status_text^^, ^^__mfa_enabled_since^^,
 // ^^__mfa_recovery_remaining^^, ^^__mfa_key^^, ^^__mfa_key_uri^^,
 // ^^__mfa_qr^^ (inline SVG), ^^__recovery_codes^^,
-// ^^__recovery_codes_download_url^^, ^^__login_url^^, ^^__not_logged_in^^.
+// ^^__recovery_codes_download_url^^, ^^__signin_connect_buttons^^ (the
+// "Connect ..." buttons, HTML; pg_signin_connect_buttons()), ^^__login_url^^,
+// ^^__not_logged_in^^.
 // Errors: liveform 'my_account_profile', where account_security.php puts the
 // two-step ones.
 // cfg: login_page_id, not_logged_in_message.
@@ -1112,6 +1141,9 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         $sec_no_state = array(
             'is_signed_in' => false, 'is_signed_out' => true, 'is_impersonated' => false,
             'has_google' => false, 'has_password' => false, 'password_not_set' => false,
+            'has_microsoft' => false, 'microsoft_removable' => false, 'microsoft_only' => false,
+            'has_apple' => false, 'apple_removable' => false, 'apple_only' => false,
+            'signin_connectable' => false,
             'has_devices' => false, 'no_devices' => false, 'mfa_ready' => false,
         );
         return _pg_acct_render_signed_out($tree, $cfg, $sec_no_state, array(), 'my_account_profile');
@@ -1119,10 +1151,18 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
 
     $self         = function_exists('get_request_uri') ? (string)get_request_uri() : '';
     $impersonated = !empty($_SESSION['software']['logged_in_as_different_user']);
-    $user         = db_item("SELECT user_username, user_email, user_google_id, user_password_algo FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
-    if (!is_array($user)) $user = array('user_username' => '', 'user_email' => '', 'user_google_id' => '', 'user_password_algo' => 0);
+    $user         = db_item("SELECT user_username, user_email, user_password_algo FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
+    if (!is_array($user)) $user = array('user_username' => '', 'user_email' => '', 'user_password_algo' => 0);
     $algo       = (int)$user['user_password_algo'];
-    $has_google = (string)$user['user_google_id'] !== '';
+    $identities = pg_signin_identities($user_id);
+    $has_google = isset($identities['google']);
+    $has_microsoft       = isset($identities['microsoft']);
+    $microsoft_removable = $has_microsoft && pg_signin_can_remove($user_id, 'microsoft');
+    $has_apple           = isset($identities['apple']);
+    $apple_removable     = $has_apple && pg_signin_can_remove($user_id, 'apple');
+    // Providers that are on and not connected yet, connected from here
+    // whatever their e-mail address (signin.php, &connect=).
+    $connect_buttons     = pg_signin_connect_buttons($user_id, $self);
 
     // This browser's own token, to mark "this device".
     $current_selector = '';
@@ -1190,23 +1230,30 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
 
     $split = _split_widget_tree($tree);
     _eo_apply_visibility_bindings($split['static_tree'], array(
-        'is_signed_in'       => true,
-        'is_signed_out'      => false,
-        'is_impersonated'    => $impersonated,
-        'has_google'         => $has_google,
-        'has_password'       => $algo !== 3,
-        'password_not_set'   => $algo === 3,
-        'has_devices'        => count($devices) > 0,
-        'no_devices'         => count($devices) === 0,
-        'mfa_ready'          => $mfa_ready,
-        'mfa_off'            => $live && !$show_codes && !$enabled && $available && !$pending,
-        'mfa_no_key'         => $live && !$show_codes && !$enabled && !$available,
-        'mfa_pending'        => $pending,
-        'mfa_codes'          => $show_codes,
-        'mfa_on'             => $mfa_on,
-        'mfa_key_unreadable' => $mfa_on && !$available,
-        'mfa_can_regenerate' => $mfa_on && $available,
-        'mfa_required'       => $mfa_on && pg_mfa_required_for_user($user_id),
+        'is_signed_in'        => true,
+        'is_signed_out'       => false,
+        'is_impersonated'     => $impersonated,
+        'has_google'          => $has_google,
+        'has_microsoft'       => $has_microsoft,
+        'microsoft_removable' => $microsoft_removable,
+        'microsoft_only'      => $has_microsoft && !$microsoft_removable,
+        'has_apple'           => $has_apple,
+        'apple_removable'     => $apple_removable,
+        'apple_only'          => $has_apple && !$apple_removable,
+        'signin_connectable'  => $connect_buttons !== '',
+        'has_password'        => $algo !== 3,
+        'password_not_set'    => $algo === 3,
+        'has_devices'         => count($devices) > 0,
+        'no_devices'          => count($devices) === 0,
+        'mfa_ready'           => $mfa_ready,
+        'mfa_off'             => $live && !$show_codes && !$enabled && $available && !$pending,
+        'mfa_no_key'          => $live && !$show_codes && !$enabled && !$available,
+        'mfa_pending'         => $pending,
+        'mfa_codes'           => $show_codes,
+        'mfa_on'              => $mfa_on,
+        'mfa_key_unreadable'  => $mfa_on && !$available,
+        'mfa_can_regenerate'  => $mfa_on && $available,
+        'mfa_required'        => $mfa_on && pg_mfa_required_for_user($user_id),
     ));
 
     $rows = '';
@@ -1257,7 +1304,122 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         '__mfa_qr'                      => $qr,
         '__recovery_codes'              => $codes_text,
         '__recovery_codes_download_url' => $codes_download,
-    ), array('__mfa_qr')));
+        '__signin_connect_buttons'      => $connect_buttons,
+    ), array('__mfa_qr', '__signin_connect_buttons')));
+}
+
+// ============================================================================
+// account_invoices
+// ============================================================================
+
+// Render an 'account_invoices' system widget ("My Invoices"): the signed-in
+// member's issued sales invoices and returns from the ERP, what is still owed
+// on each, the account's balance and the statement to download. Drawn only
+// while the ERP is on and the member's contact has an ERP account; for anyone
+// else it prints nothing at all, so the widget can sit on the my account page
+// of a site that does not use the ERP. The documents open through
+// get_account_document.php, which asks the same question again.
+//
+// loop_area: one row per document, newest first. Row tokens:
+// ^^__invoice_number^^, ^^__invoice_kind^^, ^^__invoice_date^^,
+// ^^__invoice_due_date^^, ^^__invoice_total^^, ^^__invoice_open^^,
+// ^^__invoice_status^^, ^^__invoice_overdue_days^^,
+// ^^__invoice_order_number^^, ^^__invoice_pdf_url^^. Row flags:
+// invoice_is_invoice, invoice_is_return; the state, one of invoice_is_paid,
+// invoice_is_unpaid (nothing paid, not yet due), invoice_is_partial (part
+// paid, not yet due), invoice_is_overdue; invoice_is_open (anything still
+// owed), invoice_has_order.
+//
+// Visibility flags: has_documents, no_documents, has_balance (the member
+// owes), has_credit (the store owes the member), no_balance, has_overdue.
+// Tokens: ^^__account_title^^, ^^__balance^^, ^^__overdue_total^^,
+// ^^__document_count^^, ^^__statement_url^^.
+// Errors: none - nothing posts from this widget; its Messages node is named
+// for it so it leaves the page's other alerts alone.
+// cfg: max_results (default 50, at most 500).
+function _render_system_widget_account_invoices($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
+{
+    $widget_id = (int)$widget_id;
+    if ($tree_json === '' || $tree_json === null) return '';
+    if (!is_array($cfg)) $cfg = array();
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+
+    $account = function_exists('pg_erp_member_account') ? pg_erp_member_account() : null;
+    if ($account === null) return '';
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+    $limit     = (isset($cfg['max_results']) && (int)$cfg['max_results'] > 0) ? min(500, (int)$cfg['max_results']) : 50;
+    $documents = erp_storefront_documents($account['id'], $limit);
+    $figures   = erp_storefront_account_figures($account['id']);
+    $title     = (string)db_value("SELECT title FROM erp_accounts WHERE id = '" . (int)$account['id'] . "' LIMIT 1");
+    $endpoint  = _pg_acct_software_path() . '/get_account_document.php';
+
+    _pg_inject_messages_node($tree, 'account_invoices');
+
+    $split = _split_widget_tree($tree);
+    _eo_apply_visibility_bindings($split['static_tree'], array(
+        'has_documents' => count($documents) > 0,
+        'no_documents'  => count($documents) === 0,
+        'has_balance'   => $figures['balance'] > 0,
+        'has_credit'    => $figures['balance'] < 0,
+        'no_balance'    => $figures['balance'] === 0,
+        'has_overdue'   => $figures['overdue_count'] > 0,
+    ));
+
+    $status_text = array(
+        'return'  => lang('Return'),
+        'paid'    => lang('Paid'),
+        'partial' => lang('Partially paid'),
+        'open'    => lang('Open'),
+    );
+
+    $rows = '';
+    if ($split['loop_children'] !== null) {
+        $row_tree = array('type' => 'root', 'props' => array(), 'children' => $split['loop_children']);
+        foreach ($documents as $d) {
+            $state     = (string)$d['state'];
+            $is_return = ($state === 'return');
+            $t = $row_tree;
+            _eo_apply_visibility_bindings($t, array(
+                'invoice_is_invoice' => !$is_return,
+                'invoice_is_return'  => $is_return,
+                'invoice_is_paid'    => $state === 'paid',
+                'invoice_is_unpaid'  => $state === 'open',
+                'invoice_is_partial' => $state === 'partial',
+                'invoice_is_overdue' => $state === 'overdue',
+                'invoice_is_open'    => (int)$d['open'] > 0,
+                'invoice_has_order'  => (int)$d['order_id'] > 0 && (string)$d['order_number'] !== '',
+            ));
+            $html = '';
+            foreach ($t['children'] as $child) $html .= _render_tree_node($child, 0, 0);
+            $html = _pg_sw_fill_tokens($html, pg_sw_escape_token_values(array(
+                '__invoice_number'       => (string)$d['full_number'],
+                '__invoice_kind'         => $is_return ? lang('Return') : lang('Invoice'),
+                '__invoice_date'         => erp_document_date((string)$d['issue_date']),
+                '__invoice_due_date'     => $is_return ? '' : erp_document_date((string)$d['effective_due']),
+                '__invoice_total'        => erp_money_out_currency((int)$d['grand_total'], (string)$d['currency']),
+                '__invoice_open'         => ((int)$d['open'] > 0) ? erp_money_out_currency((int)$d['open'], (string)$d['currency']) : '',
+                '__invoice_status'       => ($state === 'overdue')
+                    ? lang(array('string' => '{var:1} days overdue', 'vars' => array((int)$d['days'])))
+                    : $status_text[$state],
+                '__invoice_overdue_days' => ($state === 'overdue') ? (string)(int)$d['days'] : '',
+                '__invoice_order_number' => ((int)$d['order_id'] > 0) ? (string)$d['order_number'] : '',
+                '__invoice_pdf_url'      => $endpoint . '?id=' . (int)$d['id'],
+            )));
+            $rows .= pg_sw_uniquify_row_ids(pg_sw_sweep_tokens($html), $widget_id, (int)$d['id']);
+        }
+    }
+    $rendered = str_replace('<!--pg-loop-slot-->', $rows, trim(_render_tree_node($split['static_tree'], 0, 0)));
+
+    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values(array(
+        '__account_title'  => $title,
+        '__balance'        => erp_money_out_currency(abs($figures['balance']), $figures['currency']),
+        '__overdue_total'  => ($figures['overdue'] > 0) ? erp_money_out($figures['overdue']) : '',
+        '__document_count' => (string)count($documents),
+        '__statement_url'  => $endpoint . '?statement=1&download=1',
+    )));
 }
 
 // The address of the staff page a widget setting names, for a signed-in

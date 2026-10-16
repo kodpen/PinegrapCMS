@@ -26,68 +26,33 @@ validate_area_access($user, 'designer');
 
 $liveform = new liveform('view_themes');
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_themes']['sort'] = $_REQUEST['sort'];
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'              => lang('File Name'),
+    'description'       => lang('Description'),
+    'folder'            => lang('Folder'),
+    'activated_desktop' => lang('Activated for Desktop'),
+    'activated_mobile'  => lang('Activated for Mobile'),
+    'last_modified'     => lang('Last Modified'),
+);
 
-    // clear order
-    $_SESSION['software']['design']['view_themes']['order'] = '';
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_themes']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
+$list_state = pg_list_state('view_themes', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['design']['view_themes']['sort']) == false) {
-    $_SESSION['software']['design']['view_themes']['sort'] = '';
-}
-
-switch (($_SESSION['software']['design']['view_themes']['sort'] ?? '')) {
-    case lang('File Name'):
-        $sort_column = 'name';
-        break;
-
-    case lang('Description'):
-        $sort_column = 'description';
-        break;
-
-    case lang('Folder'):
-        $sort_column = 'folder_name';
-        break;
-
-    case lang('Activated for Desktop'):
-        $sort_column = 'activated_desktop_theme';
-        break;
-
-    case lang('Activated for Mobile'):
-        $sort_column = 'activated_mobile_theme';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'timestamp';
-        break;
-
-    default:
-        $sort_column = 'timestamp';
-        $_SESSION['software']['design']['view_themes']['sort'] = lang('Last Modified');
-        break;
-}
-
-if (!empty($_SESSION['software']['design']['view_themes']['order'])) {
-    $asc_desc = sql_order_direction($_SESSION['software']['design']['view_themes']['order'] ?? '');
-} elseif ($sort_column == 'timestamp') {
-    $asc_desc = 'desc';
-    $_SESSION['software']['design']['view_themes']['order'] = 'desc';
-} else {
-    $asc_desc = 'asc';
-    $_SESSION['software']['design']['view_themes']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'              => 'name',
+    'description'       => 'description',
+    'folder'            => 'folder_name',
+    'activated_desktop' => 'activated_desktop_theme',
+    'activated_mobile'  => 'activated_mobile_theme',
+    'last_modified'     => 'timestamp',
+));
 
 // count all stylesheet files
 $query =
@@ -139,7 +104,7 @@ $query =
         AND (design = '1')
         AND (theme = '1')
         $where
-    ORDER BY $sort_column $asc_desc";
+    ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $files = array();
@@ -184,8 +149,8 @@ if ($files) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="align-middle chart_label">' . h($file['name']) . '</td>
                 <td class="align-middle">' . nl2br(h($file['description'])) . '</td>
@@ -215,7 +180,9 @@ pg_page_shell([
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_theme_file.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_theme_file.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_themes.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -225,12 +192,12 @@ pg_page_shell([
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('File Name'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Activated for Desktop'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Activated for Mobile'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('File Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>
+                                <th>' . get_column_heading(lang('Folder'), $sort_levels, '', '', 'folder') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Activated for Desktop'), $sort_levels, '', '', 'activated_desktop') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Activated for Mobile'), $sort_levels, '', '', 'activated_mobile') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

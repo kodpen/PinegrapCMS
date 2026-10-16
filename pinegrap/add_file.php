@@ -68,7 +68,7 @@ if(isset($_GET['folder_id']) && $_GET['folder_id'] != ''){
     $folder_id = $_GET['folder_id'];
 }
 
-$output_breadcrumb_link = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php">' . lang('All My Files') . '</a></li>';
+$output_breadcrumb_link = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php">' . lang('All My Files') . '</a></li>';
 
 if (!$_POST) {
     $output_design_rows = '';
@@ -217,7 +217,6 @@ if (!$_POST) {
                 this.on("sendingmultiple", function() {
                     $("#submit").prop("disabled", true);
                     $("#submit").addClass("disabled");
-                    $("#submit").html("<span class=\'spinner-border spinner-border-sm\'></span> ' . lang('Uploading') . '...");
                 });
 
                 this.on("successmultiple", function(files, response) {
@@ -231,6 +230,8 @@ if (!$_POST) {
                     
                 });
                 this.on("errormultiple", function(files, response) {
+                    $("#submit").prop("disabled", false);
+                    $("#submit").removeClass("disabled");
                     console.log("' . lang('Sorry, the files could not be uploaded.  Please refresh and try again.') . '");
                 });
             }

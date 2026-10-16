@@ -599,6 +599,47 @@ function get_page_name($page_id)
     return db("SELECT page_name FROM page WHERE page_id = '" . e($page_id) . "'");
 }
 
+/**
+ * Whether $page_id names a page that a checkout step of $page_type ('express
+ * order', 'order preview', 'billing information') is posted from: a page of
+ * that type or, for an express order, a page that carries the designer's
+ * express order widget (the widget gives its page an express_order_pages row).
+ * The step reads that page's settings by this id: required custom fields and
+ * forms, terms, the order receipt e-mail and the next page. For any other id
+ * it would carry on without them. Only a string of digits can name a page, so
+ * an array, an empty value or 0 is turned away before any query runs.
+ *
+ * @param mixed  $page_id
+ * @param string $page_type
+ * @return bool
+ */
+function pg_order_page_known($page_id, $page_type)
+{
+    if (is_int($page_id)) {
+        $page_id = (string) $page_id;
+    }
+
+    if (!is_string($page_id) || !ctype_digit($page_id) || ((int) $page_id <= 0)) {
+        return false;
+    }
+
+    if ($page_type === 'express order') {
+        return (bool) db(
+            "SELECT page.page_id
+            FROM page
+            LEFT JOIN express_order_pages ON express_order_pages.page_id = page.page_id
+            WHERE
+                (page.page_id = '" . e($page_id) . "')
+                AND ((page.page_type = 'express order') OR (express_order_pages.page_id IS NOT NULL))
+            LIMIT 1");
+    }
+
+    return (bool) db(
+        "SELECT page_id FROM page
+        WHERE (page_id = '" . e($page_id) . "') AND (page_type = '" . e($page_type) . "')
+        LIMIT 1");
+}
+
 
 // Marks a card number that was encrypted with the OpenSSL implementation below.
 // Values without this prefix are legacy mcrypt (Rijndael-256) blobs, which can
@@ -788,6 +829,150 @@ function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
     );
 
     return true;
+}
+
+/**
+ * The order list's column that changes in place (pg_list_edit_table()): the
+ * status, between complete and exported. Those two are the moves that are
+ * only a status write; the export makes the same one. Cancelling is not:
+ * process_order_cancellation() asks for a reason, refunds and mails the
+ * customer, so it stays on the row's Cancel button with its confirmation.
+ * Bringing a cancelled order back stays on the order screen's Restore, and
+ * an incomplete order is a cart nobody has checked out.
+ *
+ * @return array field => definition
+ */
+function pg_order_quick_edit_columns()
+{
+    return array(
+        'status' => array('type' => 'select', 'label' => lang('Status'), 'options' => array('complete' => lang('Complete'), 'exported' => lang('Exported'))),
+    );
+}
+
+/**
+ * The order list's status cell, drawn the one way the list and the answer to
+ * a quick edit both use: the status badge, "Awaiting Payment" for a bank
+ * transfer whose money has not arrived, and the Parasut mark.
+ *
+ * @param array $order      status, payment_method, paid_at, parasut_exported
+ *                          and parasut_invoice_id of an order
+ * @param bool  $paid_known whether orders.paid_at exists (the 2026.4.4
+ *                          upgrade); without it nothing is known to be unpaid
+ * @return string
+ */
+function pg_order_list_status_html($order, $paid_known)
+{
+    $status = (string) ($order['status'] ?? '');
+    $html = '';
+
+    if ($status == 'incomplete') {
+        $html = '<span class="badge bg-warning text-dark bg-gradient fw-light">' . lang('Incomplete') . '</span>';
+    } elseif ($status == 'complete') {
+        $html = '<span class="badge bg-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
+    } elseif ($status == 'exported') {
+        $html = '<span class="badge bg-success bg-gradient fw-light">' . lang('Exported') . '</span>';
+    } elseif (($status == 'canceled') || ($status == 'cancelled')) {
+        $html = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
+    }
+
+    // A bank transfer order whose money has not arrived is complete but not
+    // paid; a second badge says so without changing the status itself.
+    if ($paid_known && pg_order_awaiting_payment($order)) {
+        $html .= '<span class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
+    }
+
+    // parasut_exported is set by two different things: the spreadsheet export
+    // and an invoice raised through the API. Only parasut_invoice_id tells
+    // them apart, so the tooltip is chosen from that rather than claiming an
+    // invoice exists for an order that was only exported to a file.
+    $parasut_invoice_id = trim((string) ($order['parasut_invoice_id'] ?? ''));
+
+    if (((int) ($order['parasut_exported'] ?? 0) != 0) || ($parasut_invoice_id !== '')) {
+        $title = ($parasut_invoice_id !== '')
+            ? lang('An invoice was created for this order in Parasut')
+            : lang('This order has been exported for upload to parasut.com');
+        $html .= '<span title="' . h($title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
+    }
+
+    return $html;
+}
+
+/**
+ * Write one quick edit from the order list: the status moved between the
+ * ones pg_order_quick_edit_columns() offers, the way the API and the
+ * Workspace move it. The order is marked modified, the Site Log gets the old
+ * and the new status and order.status_changed is announced (the Workspace
+ * and the webhooks). The customer is not mailed: no screen mails on this
+ * move.
+ *
+ * The write only lands while the order still has the status it was read
+ * with, so a cancellation that arrives in between is not overwritten.
+ *
+ * @param int    $order_id
+ * @param string $field  a key of pg_order_quick_edit_columns()
+ * @param string $value  as pg_list_edit_parse() read it
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_order_quick_update($order_id, $field, $value)
+{
+    $order_id = (int) $order_id;
+    $columns = pg_order_quick_edit_columns();
+
+    if (!isset($columns[$field]['options'][(string) $value])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $read = function () use ($order_id) {
+        return db_item("SELECT * FROM orders WHERE id = '" . $order_id . "'");
+    };
+
+    $order = $read();
+
+    if (!$order) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Order not found.'));
+    }
+
+    $previous = (string) $order['status'];
+
+    if (!isset($columns['status']['options'][$previous])) {
+        return array('ok' => false, 'code' => 'status', 'message' => lang('Only a complete or exported order changes status here. Cancel an order with its Cancel Order button; bring a cancelled order back with Restore Order on the order screen.'));
+    }
+
+    // The same status again writes nothing and logs nothing; the cell is
+    // still redrawn from what is stored.
+    if ($previous !== (string) $value) {
+        db("UPDATE orders
+            SET status = '" . e($value) . "', last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $order_id . "' AND status = '" . e($previous) . "'");
+
+        $written = (mysqli_affected_rows(db::$con) > 0);
+        $order = $read();
+
+        if (!$written || !$order || ((string) $order['status'] !== (string) $value)) {
+            return array('ok' => false, 'code' => 'changed', 'message' => lang('The order changed in the meantime. Reload the list and try again.'));
+        }
+
+        log_activity(
+            lang(array(
+                'string' => 'order ({var:1}) was changed on the order list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array((string) $order['order_number'], $columns['status']['label'], $columns['status']['options'][$previous], $columns['status']['options'][(string) $value]),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+
+        pg_announce('order.status_changed', array(
+            'id'           => $order_id,
+            'order_number' => $order['order_number'],
+            'status'       => (string) $value,
+            'previous'     => $previous,
+        ));
+    }
+
+    return array(
+        'ok'    => true,
+        'value' => (string) $order['status'],
+        'html'  => pg_order_list_status_html($order, array_key_exists('paid_at', $order)),
+        'class' => 'align-middle',
+    );
 }
 
 /**
@@ -1117,6 +1302,9 @@ function update_order_item_prices()
     while ($row = mysqli_fetch_assoc($result)) {
         $order_items[] = $row;
     }
+    // The signed-in member's agreed prices (pg_erp_member_prices()): an item
+    // no offer has touched costs that member their price, not the list price.
+    $member_prices = pg_erp_member_prices();
     // loop through all order items
     foreach ($order_items as $key => $value) {
         // If a product was found for the order item and the product is enabled,
@@ -1124,9 +1312,12 @@ function update_order_item_prices()
         if (($order_items[$key]['product_id']) && ($order_items[$key]['product_enabled'] == 1)) {
             // if order item was not modified by a special offer and order item is not a donation, update order item price
             if (($order_items[$key]['offer_id'] == 0) && ($order_items[$key]['product_selection_type'] != 'donation')) {
+                $price = isset($member_prices[(int) $order_items[$key]['product_id']])
+                    ? $member_prices[(int) $order_items[$key]['product_id']]['price']
+                    : $order_items[$key]['product_price'];
                 $query = "UPDATE order_items
 
-                         SET price = '" . $order_items[$key]['product_price'] . "'
+                         SET price = '" . $price . "'
 
                          WHERE id = '" . $order_items[$key]['id'] . "'";
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -1187,6 +1378,293 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
     require_once($connectors);
 
     return mp_enqueue($product_id, 'stock_price', $priority);
+}
+
+
+/**
+ * The statements that put a catalogue row in the Recycle Bin.
+ *
+ * The catalogue's bin is a flag, not a move: the row is switched off and marked
+ * recycled, what 'enabled' was is kept in recycled_enabled so that restoring
+ * puts it back as it was, and recycle_bin holds the record the bin lists, the
+ * countdown reads and the daily purge works from. Nothing else is touched -
+ * images, groups, attributes, prices, barcodes, form fields and short links
+ * stay where they are - so restoring is the flag going back and nothing has to
+ * be rebuilt.
+ *
+ * Built apart from the queries that run them so that every screen and the API
+ * write the same three, and so the unit tests can read them.
+ *
+ * "AND recycled = '0'" keeps a row that is already in the bin from being binned
+ * again: the second pass would copy 'enabled', which binning forced to 0, over
+ * the kept value, and the row would come back out of the bin unpublished. The
+ * record is replaced rather than added to, so one row never has two.
+ *
+ * @param string $item_type 'product' or 'product_group'
+ * @param int    $item_id   the row the bin record is for
+ * @param array  $row_ids   the rows flagged with it: the product itself, or a group and the groups under it
+ * @param int    $parent_id recycle_bin.original_parent_id
+ * @param int    $user_id
+ * @return array the statements in the order they run; empty when there is nothing to bin
+ */
+function pg_catalog_bin_statements($item_type, $item_id, $row_ids, $parent_id, $user_id)
+{
+    $item_type = ($item_type === 'product_group') ? 'product_group' : 'product';
+    $table = ($item_type === 'product_group') ? 'product_groups' : 'products';
+    $item_id = (int) $item_id;
+
+    $ids = array();
+
+    foreach ((array) $row_ids as $row_id) {
+        $row_id = (int) $row_id;
+
+        if ($row_id > 0) {
+            $ids[$row_id] = $row_id;
+        }
+    }
+
+    if (($item_id <= 0) || (count($ids) == 0)) {
+        return array();
+    }
+
+    return array(
+        "UPDATE " . $table . "
+        SET recycled = '1', recycled_enabled = enabled, enabled = '0'
+        WHERE (id IN (" . implode(',', $ids) . ")) AND (recycled = '0')",
+
+        "DELETE FROM recycle_bin WHERE (item_type = '" . $item_type . "') AND (item_id = '" . $item_id . "')",
+
+        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+        VALUES ('" . $item_type . "', '" . $item_id . "', '" . (int) $parent_id . "', UNIX_TIMESTAMP(), '" . (int) $user_id . "')");
+}
+
+/**
+ * Whether deleting a product or a product group sends it to the Recycle Bin.
+ *
+ * The catalogue's bin columns arrive with an upgrade; before it a deleted
+ * product is simply gone, and the screens fall back to the permanent delete
+ * rather than pretend otherwise. The Catalog Manager decides it, so the answer
+ * is asked of the Catalog Manager.
+ *
+ * @return bool
+ */
+function pg_catalog_bin_ready()
+{
+    if (!function_exists('pg_catalog_recycle_ready')) {
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    }
+
+    return (pg_catalog_recycle_ready() == true);
+}
+
+/**
+ * The WHERE fragment that leaves catalogue rows in the Recycle Bin out of a
+ * picker, a search or a count.
+ *
+ * A row in the bin is one the operator deleted; offering it again next to the
+ * live ones, marked only as switched off, lets it be chosen for an order line,
+ * an offer or a group as if nothing had happened. The Catalog Manager's own
+ * filter, so every screen reads the bin the same way; empty before the upgrade
+ * that adds the bin, so the same queries run either way.
+ *
+ * $keep_id is the row a form already points at, or the rows of a multiple
+ * select. It stays in the list even from the bin: a <select> that no longer
+ * has the stored value falls back to its first option, and the next save would
+ * quietly point the setting somewhere else, or nowhere, while the row waits to
+ * be restored.
+ *
+ * @param string    $table   'products' or 'product_groups', or the alias the query gives it
+ * @param int|array $keep_id the row (or rows) to keep whatever their state, or 0
+ * @return string " AND (<table>.recycled = '0')", or ''
+ */
+function pg_catalog_bin_live_sql($table, $keep_id = 0)
+{
+    if (pg_catalog_bin_ready() == false) {
+        return '';
+    }
+
+    $keep_ids = pg_catalog_keep_ids($keep_id);
+
+    if (count($keep_ids) > 0) {
+        return " AND ((" . $table . ".recycled = '0') OR (" . $table . ".id IN (" . implode(',', $keep_ids) . ")))";
+    }
+
+    return pg_catalog_live_filter($table);
+}
+
+/**
+ * The whole, positive ids in what a form says it points at.
+ *
+ * A stored setting is a number or a string of one, a multiple select posts a
+ * list, and a hand-made request can post anything, a nested list included;
+ * only what reads as an id is kept, once.
+ *
+ * @param mixed $value
+ * @return int[]
+ */
+function pg_catalog_keep_ids($value)
+{
+    $ids = array();
+
+    foreach ((array) $value as $id) {
+        if (is_scalar($id) && ((int) $id > 0)) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    return array_values($ids);
+}
+
+/**
+ * Hangs every group of a picker on the nearest group the picker lists.
+ *
+ * get_product_group_options() walks the tree from the top, so a group whose
+ * parent is not on its list is never reached. With the bin left out that is
+ * the binned group a setting already points at (kept so the setting is not
+ * lost) when the group above it went to the bin with it, and a group restored
+ * on its own while the one above it is still in the bin. Each is moved up past
+ * the binned groups over it, to where it would sit if they were simply not
+ * there. Only binned groups are skipped: a group left off for another reason
+ * (switched off, on a list of live groups only) still hides what is under it.
+ *
+ * @param array $rows   the picker's groups, each with 'id' and 'parent_id'
+ * @param array $binned the groups in the bin, keyed by id, each with 'parent_id'
+ * @return array $rows, with parent_id moved up where it pointed into the bin
+ */
+function pg_catalog_group_rows_past_bin($rows, $binned)
+{
+    $listed = array();
+
+    foreach ($rows as $row) {
+        $listed[(int) $row['id']] = true;
+    }
+
+    foreach ($rows as $key => $row) {
+        $parent_id = (int) $row['parent_id'];
+
+        // Guarded against a parent_id loop, which a hand-edited database can
+        // produce; the row is then left where it was.
+        $guard = count($binned);
+
+        while (($parent_id > 0) && (isset($listed[$parent_id]) == false) && isset($binned[$parent_id]) && ($guard-- > 0)) {
+            $parent_id = (int) $binned[$parent_id]['parent_id'];
+        }
+
+        if (($guard >= 0) && ($parent_id !== (int) $row['parent_id'])) {
+            $rows[$key]['parent_id'] = $parent_id;
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * Whether a product is in the Recycle Bin.
+ *
+ * @param int $product_id
+ * @return bool
+ */
+function pg_catalog_product_binned($product_id)
+{
+    if (pg_catalog_bin_ready() == false) {
+        return false;
+    }
+
+    return ((int) db_value("SELECT recycled FROM products WHERE id = '" . (int) $product_id . "'") === 1);
+}
+
+/**
+ * Whether a product group is in the Recycle Bin, deleted itself or with a
+ * group above it.
+ *
+ * @param int $group_id
+ * @return bool
+ */
+function pg_catalog_group_binned($group_id)
+{
+    if (pg_catalog_bin_ready() == false) {
+        return false;
+    }
+
+    return ((int) db_value("SELECT recycled FROM product_groups WHERE id = '" . (int) $group_id . "'") === 1);
+}
+
+/**
+ * Move one product to the Recycle Bin, the way the Catalog Manager's Delete does.
+ *
+ * product.deleted goes out with recycled: true, as it does when the API bins a
+ * product: the product leaves every listing, and an integration that only
+ * learned of it through a listing would otherwise never hear that it went. The
+ * marketplace queue is told for the same reason - the product is switched off.
+ *
+ * The caller has asked pg_catalog_bin_ready() first and writes its own activity
+ * line, because every screen words it its own way.
+ *
+ * @param int $product_id
+ * @param int $user_id
+ * @param int $parent_id the variant set the product went into the bin with, or 0
+ * @return string|false the product's name, or false when there was nothing to bin
+ */
+function pg_catalog_bin_product($product_id, $user_id, $parent_id = 0)
+{
+    $product_id = (int) $product_id;
+
+    $product = db_item("SELECT id, name, recycled FROM products WHERE id = '" . $product_id . "'");
+
+    // Already in the bin: binning it again would only restart its countdown.
+    if ((is_array($product) == false) || ((int) $product['recycled'] === 1)) {
+        return false;
+    }
+
+    foreach (pg_catalog_bin_statements('product', $product_id, array($product_id), $parent_id, $user_id) as $statement) {
+        db($statement);
+    }
+
+    pg_announce('product.deleted', array(
+        'id'       => $product_id,
+        'name'     => (string) $product['name'],
+        'recycled' => true));
+
+    pg_marketplace_product_changed($product_id);
+
+    return (string) $product['name'];
+}
+
+/**
+ * Move a product group, and every group under it, to the Recycle Bin.
+ *
+ * The same move the Catalog Manager makes: the whole subtree is flagged, the
+ * way a folder goes with everything inside it, and one record is written for
+ * the group that was deleted - restoring it brings the subtree back. The
+ * products in it are not binned; they stay on sale in whatever other groups
+ * list them, and keep their link to this one for when it comes back.
+ *
+ * @param int $group_id
+ * @param int $user_id
+ * @return string|false the group's name, or false when there was nothing to bin
+ *                      (no such group, the root, or already in the bin)
+ */
+function pg_catalog_bin_group($group_id, $user_id)
+{
+    $group_id = (int) $group_id;
+
+    if (pg_catalog_bin_ready() == false) {
+        return false;
+    }
+
+    $group = db_item("SELECT id, name, parent_id, recycled FROM product_groups WHERE id = '" . $group_id . "'");
+
+    // The root is the catalogue itself; edit_product_group.php and the
+    // Catalog Manager refuse to delete it too.
+    if ((is_array($group) == false) || ((int) $group['parent_id'] === 0) || ((int) $group['recycled'] === 1)) {
+        return false;
+    }
+
+    foreach (pg_catalog_bin_statements('product_group', $group_id, pg_catalog_subtree_ids($group_id), $group['parent_id'], $user_id) as $statement) {
+        db($statement);
+    }
+
+    return (string) $group['name'];
 }
 
 
@@ -2081,6 +2559,10 @@ function apply_offers_to_cart()
     while ($row = mysqli_fetch_assoc($result)) {
         $order_items[] = $row;
     }
+    // The signed-in member's agreed prices (pg_erp_member_prices()): an item
+    // stripped of its offer goes back to that member's price, and an offer
+    // below only takes an item it makes cheaper still.
+    $member_prices = pg_erp_member_prices();
     // loop through the order items that are discounted by offers in order to remove discount
     foreach ($order_items as $order_item) {
         // if a product was found for this order item, then remove discount
@@ -2089,7 +2571,7 @@ function apply_offers_to_cart()
 
                 SET
 
-                    price = '" . $order_item['product_price'] . "',
+                    price = '" . (isset($member_prices[(int) $order_item['product_id']]) ? $member_prices[(int) $order_item['product_id']]['price'] : $order_item['product_price']) . "',
 
                     offer_id = '0',
 
@@ -2378,6 +2860,17 @@ function apply_offers_to_cart()
                                     if ($discounted_price < 0) {
                                         $discounted_price = 0;
                                     }
+                                    // The price the item stands at without an offer: the list
+                                    // price, or the member's agreed price, which an offer has to
+                                    // beat to take the item (erp_storefront_price()).
+                                    $line_price = $order_item['product_price'];
+                                    if (isset($member_prices[(int) $order_item['product_id']])) {
+                                        $member = $member_prices[(int) $order_item['product_id']];
+                                        if (erp_storefront_price($member['list'], $member['terms'], $discounted_price)['source'] !== 'offer') {
+                                            continue;
+                                        }
+                                        $line_price = $member['price'];
+                                    }
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -2391,7 +2884,7 @@ function apply_offers_to_cart()
                                         // add previous discount for this order item (if one exists) back to subtotal
                                         $subtotal = $subtotal + ($discounted_order_items[$order_item['id']]['discount'] ?? 0);
                                         // set new discount for this order item
-                                        $discounted_order_items[$order_item['id']]['discount'] = ($order_item['product_price'] - $discounted_price) * $order_item['quantity'];
+                                        $discounted_order_items[$order_item['id']]['discount'] = ($line_price - $discounted_price) * $order_item['quantity'];
                                         // reduce subtotal by new discount for this order item
                                         // we do this so when we validate other offers, we will be validating with the most recent subtotal that we know about
                                         $subtotal = $subtotal - $discounted_order_items[$order_item['id']]['discount'];
@@ -3087,6 +3580,9 @@ function get_best_offer_id($offer_code, $scope = '')
             $offer_actions[] = $row;
         }
         $discounted_order_items = array();
+        // The member's agreed prices count as in apply_offers_to_cart(): an
+        // offer is worth only what it takes off below them.
+        $member_prices = pg_erp_member_prices();
         // get subtotal
         // we need the subtotal because we need to keep track of how the subtotal is changed as order items are discounted
         // in order for us to determine if offers are valid
@@ -3130,6 +3626,17 @@ function get_best_offer_id($offer_code, $scope = '')
                                     if ($discounted_price < 0) {
                                         $discounted_price = 0;
                                     }
+                                    // The price the item stands at without an offer: the list
+                                    // price, or the member's agreed price, which an offer has to
+                                    // beat to take the item (erp_storefront_price()).
+                                    $line_price = $order_item['product_price'];
+                                    if (isset($member_prices[(int) $order_item['product_id']])) {
+                                        $member = $member_prices[(int) $order_item['product_id']];
+                                        if (erp_storefront_price($member['list'], $member['terms'], $discounted_price)['source'] !== 'offer') {
+                                            continue;
+                                        }
+                                        $line_price = $member['price'];
+                                    }
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -3140,7 +3647,7 @@ function get_best_offer_id($offer_code, $scope = '')
                                         // add previous discount for this order item (if one exists) back to subtotal
                                         $subtotal = $subtotal + ($discounted_order_items[$order_item['id']]['discount'] ?? 0);
                                         // set new discount for this order item
-                                        $discounted_order_items[$order_item['id']]['discount'] = ($order_item['product_price'] - $discounted_price) * $order_item['quantity'];
+                                        $discounted_order_items[$order_item['id']]['discount'] = ($line_price - $discounted_price) * $order_item['quantity'];
                                         // reduce subtotal by new discount for this order item
                                         // we do this so when we validate other offers, we will be validating with the most recent subtotal that we know about
                                         $subtotal = $subtotal - $discounted_order_items[$order_item['id']]['discount'];
@@ -3613,8 +4120,11 @@ function add_pending_offers($liveform)
                     // if shipping is on, recipient mode is multi-recipient, and the offer is adding a product that is shippable
                     // make sure that a recipient was selected or entered
                     if ((ECOMMERCE_SHIPPING == true) && (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') && ($offer_action['add_product_shippable'] == 1)) {
+                        // One value each; one posted as an array counts as not given.
                         $ship_to = $_POST['pending_offer_' . $offer_action['offer_id'] . '_' . $offer_action['id'] . '_ship_to'] ?? '';
                         $add_name = $_POST['pending_offer_' . $offer_action['offer_id'] . '_' . $offer_action['id'] . '_add_name'] ?? '';
+                        $ship_to = is_string($ship_to) ? $ship_to : '';
+                        $add_name = is_string($add_name) ? $add_name : '';
                         if ($add_name == lang('or add name')) {
                             $add_name = '';
                         }
@@ -4008,7 +4518,8 @@ function initialize_order()
         // store order id in session
         $_SESSION['ecommerce']['order_id'] = mysqli_insert_id(db::$con);
         // if visitor tracking is on, update visitor record with order information, if visitor has not already created a previous order
-        if (VISITOR_TRACKING == true) {
+        // (a bot, or staff ringing up a counter sale, may have no visitor record)
+        if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
             $query = "UPDATE visitors
 
                      SET
@@ -4314,31 +4825,41 @@ function send_givex_request($type, $gift_card_code, $amount = 0)
             return $result;
         }
     }
-    // get all response values
-    preg_match_all('/<string>(.*?)<\/string>/s', $response_data, $matches);
-    // put response values in an array
+    return pg_givex_parse_response($type, $response_data);
+}
+// Reads a Givex reply: a list of strings, the transaction code, the result (0 for success),
+// then the balance of a balance check, or the authorization number and the new balance of a
+// redemption; a failure has the error text third, a non-standard reply first. The result has
+// either error_message or the values. A reply that is none of these (empty, an HTML error page,
+// a cut-off body, a balance that is not a number) is an error_message too: callers read and
+// multiply the balance. A redemption with result 0 went through at Givex whatever follows it,
+// so it stays a success; a new balance that cannot be read is left out (null).
+function pg_givex_parse_response($type, $response_data)
+{
+    $unreadable = lang('The gift card service sent a reply that could not be read');
+
+    preg_match_all('/<string>(.*?)<\/string>/s', (string) $response_data, $matches);
     $response = $matches[1];
-    // if there is an error, then return error
-    if ((isset($response[1]) == false) || ($response[1] != 0)) {
-        // if there is not a standard error, then get error message from first value
-        if (isset($response[1]) == false) {
-            $result['error_message'] = $response[0];
-            // else there is a standard error, so get error message from third value
-        } else {
-            $result['error_message'] = $response[2];
-        }
-        return $result;
+
+    if (!isset($response[1])) {
+        return array('error_message' => (isset($response[0]) && ($response[0] !== '')) ? $response[0] : $unreadable);
     }
-    // if the request is a balance check, then prepare result in a certain way
-    if ($type == 'balance') {
-        $result['balance'] = $response[2];
-        return $result;
-        // else if the request is a redemption, so prepare result in a different way
-    } elseif ($type == 'redemption') {
-        $result['authorization_number'] = $response[2];
-        $result['balance'] = $response[3];
-        return $result;
+
+    if ($response[1] != 0) {
+        return array('error_message' => (isset($response[2]) && ($response[2] !== '')) ? $response[2] : $unreadable);
     }
+
+    if ($type == 'redemption') {
+        return array(
+            'authorization_number' => $response[2] ?? '',
+            'balance' => (isset($response[3]) && is_numeric($response[3])) ? $response[3] : null);
+    }
+
+    if (!isset($response[2]) || !is_numeric($response[2]) || ($response[2] < 0)) {
+        return array('error_message' => $unreadable);
+    }
+
+    return array('balance' => $response[2]);
 }
 function protect_gift_card_code($gift_card_code)
 {
@@ -4350,7 +4871,9 @@ function protect_givex_gift_card_code($gift_card_code)
     return mb_substr($gift_card_code, 0, 6) . '*****' . mb_substr($gift_card_code, 11, -1) . '*';
 }
 // create function that will be used to get discounted product prices based on products that are discounted by offers
-function get_discounted_product_prices()
+// $for_member: also the signed-in member's agreed prices (pg_erp_member_prices()); false
+// for what is published to everyone, such as the product feeds.
+function get_discounted_product_prices($for_member = true)
 {
     $discounted_product_prices = array();
     $special_offer_code = '';
@@ -4514,6 +5037,17 @@ function get_discounted_product_prices()
                         $discounted_product_prices[$product_id] = $discounted_price;
                     }
                 }
+            }
+        }
+    }
+    // The signed-in member's agreed prices (pg_erp_member_prices()) where
+    // they are lower than the campaign's; the two never stack. Feeds pass
+    // false: what they publish is the store's price, not one customer's.
+    if ($for_member) {
+        foreach (pg_erp_member_prices() as $product_id => $member) {
+            $pick = erp_storefront_price($member['list'], $member['terms'], isset($discounted_product_prices[$product_id]) ? $discounted_product_prices[$product_id] : null);
+            if ($pick['source'] === 'account') {
+                $discounted_product_prices[$product_id] = $pick['price'];
             }
         }
     }
@@ -6594,7 +7128,7 @@ function get_shipping_service_name($service)
             return 'USPS Priority Mail';
             break;
         case 'usps_ground':
-            return 'USPS Retail Ground';
+            return 'USPS Ground Advantage';
             break;
         case 'ups_next_day_air':
             return 'UPS Next Day Air';
@@ -6642,6 +7176,430 @@ function get_shipping_service_name($service)
             return '';
             break;
     }
+}
+
+/**
+ * The shipping method list's columns that change in place
+ * (pg_list_edit_table()): the base rate and the item rate, the two that move
+ * with the carrier's prices. An empty box is no charge, the way the method's
+ * own screen saves it.
+ *
+ * @return array field => definition
+ */
+function pg_shipping_method_edit_columns()
+{
+    return array(
+        'base_rate' => array('type' => 'money', 'label' => lang('Base Rate'), 'empty' => true),
+        'item_rate' => array('type' => 'money', 'label' => lang('Item Rate'), 'empty' => true),
+    );
+}
+
+/**
+ * The shipping method list's cells a quick edit changes, drawn the one way
+ * the list and the answer to an edit both use. A variable base rate shows
+ * every step with the subtotal it starts at.
+ *
+ * @param array $method a shipping_methods row with base_rate,
+ *                      variable_base_rate, base_rate_2..4 and their
+ *                      _subtotal, item_rate, timestamp and user (the
+ *                      username of the last change, or empty)
+ * @return array 'base_rate', 'item_rate' and 'last_modified' => array('html', 'class')
+ */
+function pg_shipping_method_list_cells($method)
+{
+    $money = function ($cents) {
+        return pg_format_money(((int) $cents) / 100, BASE_CURRENCY_SYMBOL);
+    };
+
+    if (!empty($method['variable_base_rate'])) {
+        $base_rate = $money($method['base_rate']) . ' (@' . $money(0) . ')';
+
+        for ($number = 2; $number <= 4; $number++) {
+            if (!empty($method['base_rate_' . $number . '_subtotal'])) {
+                $base_rate .= '<br>' . $money($method['base_rate_' . $number]) . ' (@' . $money($method['base_rate_' . $number . '_subtotal']) . ')';
+            }
+        }
+    } else {
+        $base_rate = $money($method['base_rate']);
+    }
+
+    return array(
+        'base_rate'     => array('html' => $base_rate, 'class' => 'align-middle text-end'),
+        'item_rate'     => array('html' => $money($method['item_rate']), 'class' => 'align-middle text-end'),
+        'last_modified' => array(
+            'html'  => get_relative_time(array('timestamp' => $method['timestamp']))
+                . (((string) ($method['user'] ?? '') !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h((string) $method['user'])))) : ''),
+            'class' => 'align-middle',
+        ),
+    );
+}
+
+/**
+ * Write one quick edit from the shipping method list the way the method's
+ * screen (edit_shipping_method.php) writes the same box: the amount read by
+ * pg_normalize_amount() and kept in cents, the last change stamped with who
+ * made it, a line in the Site Log.
+ *
+ * A variable base rate has a step for each order subtotal; the list does not
+ * offer it, and a request for it is refused, since one box cannot say which
+ * step it means.
+ *
+ * @param int    $method_id
+ * @param string $field   a key of pg_shipping_method_edit_columns()
+ * @param string $value   as pg_list_edit_parse() read it, '' for no charge
+ * @param int    $user_id
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_shipping_method_quick_update($method_id, $field, $value, $user_id)
+{
+    $method_id = (int) $method_id;
+    $columns = pg_shipping_method_edit_columns();
+
+    if (!isset($columns[$field])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $read = function () use ($method_id) {
+        return db_item(
+            "SELECT
+                shipping_methods.id,
+                shipping_methods.name,
+                shipping_methods.base_rate,
+                shipping_methods.variable_base_rate,
+                shipping_methods.base_rate_2,
+                shipping_methods.base_rate_2_subtotal,
+                shipping_methods.base_rate_3,
+                shipping_methods.base_rate_3_subtotal,
+                shipping_methods.base_rate_4,
+                shipping_methods.base_rate_4_subtotal,
+                shipping_methods.item_rate,
+                shipping_methods.timestamp,
+                user.user_username AS user
+            FROM shipping_methods
+            LEFT JOIN user ON shipping_methods.user = user.user_id
+            WHERE shipping_methods.id = '" . $method_id . "'");
+    };
+
+    $current = $read();
+
+    if (!$current) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('The shipping method could not be found.'));
+    }
+
+    if (($field === 'base_rate') && !empty($current['variable_base_rate'])) {
+        return array('ok' => false, 'code' => 'variable', 'message' => lang('This shipping method has a base rate for each order subtotal. Change it in the shipping method.'));
+    }
+
+    $cents = (trim((string) $value) === '') ? 0 : round(((float) pg_normalize_amount($value)) * 100);
+
+    // The rate columns are INT UNSIGNED.
+    if ($cents > 4294967295) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns[$field]['label']))));
+    }
+
+    $cents = (int) $cents;
+
+    // The same amount again writes nothing and logs nothing; the list is
+    // still redrawn from what is stored.
+    if ((int) $current[$field] !== $cents) {
+        db("UPDATE shipping_methods
+            SET " . (($field === 'item_rate') ? 'item_rate' : 'base_rate') . " = '" . $cents . "',
+                user = '" . (int) $user_id . "',
+                timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $method_id . "'");
+
+        log_activity(
+            lang(array(
+                'string' => 'shipping method ({var:1}) was changed on the shipping method list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array((string) $current['name'], $columns[$field]['label'], pg_format_number(((int) $current[$field]) / 100, 2), pg_format_number($cents / 100, 2)),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+    }
+
+    $method = $read();
+    $cells = pg_shipping_method_list_cells($method);
+
+    return array('ok' => true, 'value' => pg_format_input_amount(((int) $method[$field]) / 100))
+        + $cells[$field]
+        + array('cells' => array('last_modified' => $cells['last_modified']));
+}
+
+/**
+ * The key code list's columns that change in place (pg_list_edit_table()):
+ * whether the code is enabled, the switch an operator turns most often
+ * without the rest of the key code's screen.
+ *
+ * @return array field => definition
+ */
+function pg_key_code_edit_columns()
+{
+    return array(
+        'enabled' => array('type' => 'select', 'label' => lang('Enabled'), 'options' => array('1' => lang('Enabled'), '0' => lang('Disabled'))),
+    );
+}
+
+/**
+ * Whether a key code works at checkout on the given day: enabled, not
+ * expired, and the offer it names enabled and running. The list colours the
+ * code by it.
+ *
+ * @param array  $key_code a key_codes row with enabled and expiration_date,
+ *                         and offer_status, offer_start_date and
+ *                         offer_end_date from the offer it names (null when
+ *                         no offer has that code)
+ * @param string $today    Y-m-d
+ * @return bool
+ */
+function pg_key_code_active($key_code, $today)
+{
+    $expires = (string) $key_code['expiration_date'];
+
+    return !empty($key_code['enabled'])
+        && (($expires === '0000-00-00') || ($expires >= $today))
+        && ((string) $key_code['offer_status'] === 'enabled')
+        && ((string) $key_code['offer_start_date'] <= $today)
+        && ((string) $key_code['offer_end_date'] >= $today);
+}
+
+/**
+ * The key code list's cells a quick edit changes, drawn the one way the list
+ * and the answer to an edit both use: the code coloured by whether it works
+ * today, the enabled mark and the last change.
+ *
+ * @param array  $key_code a row as pg_key_code_active() reads it, with
+ *                         last_modified_timestamp and last_modified_username
+ *                         (empty when nobody is recorded)
+ * @param string $today    Y-m-d
+ * @return array 'code' => array('class'), 'enabled' and 'last_modified' => array('html', 'class')
+ */
+function pg_key_code_list_cells($key_code, $today)
+{
+    $username = (string) ($key_code['last_modified_username'] ?? '');
+
+    return array(
+        'code'          => array('class' => 'chart_label align-middle ' . (pg_key_code_active($key_code, $today) ? 'status_enabled text-success' : 'status_disabled text-danger')),
+        'enabled'       => array('html' => !empty($key_code['enabled']) ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
+        'last_modified' => array(
+            'html'  => get_relative_time(array('timestamp' => $key_code['last_modified_timestamp']))
+                . (($username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : ''),
+            'class' => 'align-middle',
+        ),
+    );
+}
+
+/**
+ * Write one quick edit from the key code list the way the key code's screen
+ * (edit_key_code.php) writes the same field: the flag, the last change
+ * stamped with who made it, a line in the Site Log.
+ *
+ * @param int    $key_code_id
+ * @param string $field       a key of pg_key_code_edit_columns()
+ * @param string $value       as pg_list_edit_parse() read it
+ * @param int    $user_id
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_key_code_quick_update($key_code_id, $field, $value, $user_id)
+{
+    $key_code_id = (int) $key_code_id;
+    $columns = pg_key_code_edit_columns();
+
+    if (!isset($columns[$field]['options'][(string) $value])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    // Two offers can share a code; the list joins them the same way and
+    // colours the row by the first.
+    $read = function () use ($key_code_id) {
+        return db_item(
+            "SELECT
+                key_codes.id,
+                key_codes.code,
+                key_codes.enabled,
+                key_codes.expiration_date,
+                key_codes.timestamp AS last_modified_timestamp,
+                last_modified_user.user_username AS last_modified_username,
+                offers.status AS offer_status,
+                offers.start_date AS offer_start_date,
+                offers.end_date AS offer_end_date
+            FROM key_codes
+            LEFT JOIN offers ON key_codes.offer_code = offers.code
+            LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
+            WHERE key_codes.id = '" . $key_code_id . "'
+            LIMIT 1");
+    };
+
+    $current = $read();
+
+    if (!$current) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
+    }
+
+    $previous = !empty($current['enabled']) ? '1' : '0';
+    $enabled = ((string) $value === '1') ? '1' : '0';
+
+    // The same value again writes nothing and logs nothing; the row is still
+    // redrawn from what is stored.
+    if ($previous !== $enabled) {
+        db("UPDATE key_codes
+            SET enabled = '" . $enabled . "',
+                user = '" . (int) $user_id . "',
+                timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $key_code_id . "'");
+
+        log_activity(
+            lang(array(
+                'string' => 'key code ({var:1}) was changed on the key code list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array((string) $current['code'], $columns[$field]['label'], $columns[$field]['options'][$previous], $columns[$field]['options'][$enabled]),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+    }
+
+    $key_code = $read();
+
+    if (!$key_code) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
+    }
+
+    $cells = pg_key_code_list_cells($key_code, date('Y-m-d'));
+
+    return array('ok' => true, 'value' => !empty($key_code['enabled']) ? '1' : '0')
+        + $cells['enabled']
+        + array('cells' => array('code' => $cells['code'], 'last_modified' => $cells['last_modified']));
+}
+
+/**
+ * The gift card list's columns that change in place (pg_list_edit_table()):
+ * the notes, which an operator keeps about a card without touching its
+ * money. The balance and the expiration date stay on the gift card's screen.
+ *
+ * @return array field => definition
+ */
+function pg_gift_card_edit_columns()
+{
+    return array(
+        'notes' => array('type' => 'text', 'label' => lang('Notes')),
+    );
+}
+
+/**
+ * Whether a gift card's notes can change on the list. The list's box holds
+ * one line and reads a line break as a space, so notes written on more lines
+ * (on the gift card's screen, or the line a cancelled order adds) change only
+ * on the gift card's screen, where the lines are kept.
+ *
+ * @param string $notes
+ * @return bool
+ */
+function pg_gift_card_notes_fit_list($notes)
+{
+    return strpbrk((string) $notes, "\r\n") === false;
+}
+
+/**
+ * The gift card list's cells a quick edit changes, drawn the one way the list
+ * and the answer to an edit both use.
+ *
+ * @param array $gift_card a gift_cards row with notes,
+ *                         last_modified_timestamp and last_modified_username
+ *                         (empty when nobody is recorded)
+ * @return array 'notes' and 'last_modified' => array('html', 'class')
+ */
+function pg_gift_card_list_cells($gift_card)
+{
+    $username = (string) ($gift_card['last_modified_username'] ?? '');
+
+    return array(
+        'notes'         => array('html' => nl2br(h((string) $gift_card['notes'])), 'class' => 'align-middle'),
+        'last_modified' => array(
+            'html'  => get_relative_time(array('timestamp' => $gift_card['last_modified_timestamp']))
+                . (($username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : ''),
+            'class' => 'align-middle',
+        ),
+    );
+}
+
+/**
+ * Write one quick edit from the gift card list the way the gift card's
+ * screen (edit_gift_card.php) writes the notes: the last change stamped with
+ * who made it, a line in the Site Log.
+ *
+ * Notes on more than one line are refused (pg_gift_card_notes_fit_list()),
+ * and the write only lands on the notes that were read: cancelling the order
+ * that bought a card adds a line to its notes, and a change typed over the
+ * old notes must not wipe that line out.
+ *
+ * @param int    $gift_card_id
+ * @param string $field        a key of pg_gift_card_edit_columns()
+ * @param string $value        as pg_list_edit_parse() read it, '' for no notes
+ * @param int    $user_id
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_gift_card_quick_update($gift_card_id, $field, $value, $user_id)
+{
+    $gift_card_id = (int) $gift_card_id;
+    $columns = pg_gift_card_edit_columns();
+
+    if (!isset($columns[$field])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $read = function () use ($gift_card_id) {
+        return db_item(
+            "SELECT
+                gift_cards.id,
+                gift_cards.code,
+                gift_cards.notes,
+                gift_cards.last_modified_timestamp,
+                last_modified_user.user_username AS last_modified_username
+            FROM gift_cards
+            LEFT JOIN user AS last_modified_user ON gift_cards.last_modified_user_id = last_modified_user.user_id
+            WHERE gift_cards.id = '" . $gift_card_id . "'");
+    };
+
+    $current = $read();
+
+    if (!$current) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
+    }
+
+    if (!pg_gift_card_notes_fit_list($current['notes'])) {
+        return array('ok' => false, 'code' => 'lines', 'message' => lang('These notes take more than one line. Change them in the gift card.'));
+    }
+
+    $notes = (string) $value;
+
+    // The same notes again write nothing and log nothing; the cell is still
+    // redrawn from what is stored.
+    if ((string) $current['notes'] !== $notes) {
+        db("UPDATE gift_cards
+            SET notes = '" . e($notes) . "',
+                last_modified_user_id = '" . (int) $user_id . "',
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $gift_card_id . "' AND notes = '" . e((string) $current['notes']) . "'");
+
+        if (mysqli_affected_rows(db::$con) < 1) {
+            return array('ok' => false, 'code' => 'changed', 'message' => lang('The gift card changed in the meantime. Reload the list and try again.'));
+        }
+
+        log_activity(
+            lang(array(
+                'string' => 'gift card ({var:1}) was changed on the gift card list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array(output_gift_card_code($current['code']), $columns[$field]['label'], (string) $current['notes'], $notes),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+    }
+
+    $gift_card = $read();
+
+    if (!$gift_card) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
+    }
+
+    $cells = pg_gift_card_list_cells($gift_card);
+
+    return array('ok' => true, 'value' => (string) $gift_card['notes'])
+        + $cells['notes']
+        + array('cells' => array('last_modified' => $cells['last_modified']));
 }
 // Gets flat array of product groups for menu on catalog and catalog detail pages.
 function get_product_groups($properties)
@@ -7201,6 +8159,233 @@ function pg_erp_store_country()
 }
 
 /**
+ * The ERP account of the member signed in on the storefront: the account
+ * linked to the member's contact (erp_accounts.contact_id, the side of the
+ * link that is the truth). Read once per request and without loading the
+ * ERP, since the storefront asks on pages the ERP has no other business on.
+ *
+ * @return array|null  id, kind, status; null when the ERP is off, nobody is
+ *                     signed in, or the member's contact has no account
+ */
+function pg_erp_member_account()
+{
+    static $account = false;
+
+    if ($account !== false) {
+        return $account;
+    }
+
+    $account = null;
+    $contact_id = defined('USER_CONTACT_ID') ? (int) USER_CONTACT_ID : 0;
+
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED || !defined('USER_LOGGED_IN') || (USER_LOGGED_IN !== true) || ($contact_id <= 0)) {
+        return $account;
+    }
+
+    $row = db_item("SELECT id, kind, status FROM erp_accounts WHERE contact_id = '" . $contact_id . "' ORDER BY id ASC LIMIT 1");
+
+    if (is_array($row)) {
+        $account = array('id' => (int) $row['id'], 'kind' => (string) $row['kind'], 'status' => (string) $row['status']);
+    }
+
+    return $account;
+}
+
+/**
+ * The prices the signed-in member's ERP account has agreed, as the store
+ * charges them (config.erp_storefront_account_prices, off by default): a
+ * product's own price on the account, or the account's discount on the list
+ * price (erp_account_price_terms()). Only the products the terms make cheaper
+ * than the list price are listed, never a gift card or a donation;
+ * get_discounted_product_prices(), update_order_item_prices() and
+ * apply_offers_to_cart() weigh them against the campaign with
+ * erp_storefront_price(), the lower of the two winning.
+ *
+ * Empty with the setting off, for anyone not signed in, for a member whose
+ * contact has no active customer account, and while staff place an order for
+ * someone else (a ghost session: the order is not theirs). Read once per
+ * request; the ERP is loaded only for a member who has terms to read.
+ *
+ * @return array  product_id => ['price' => int, 'list' => int, 'terms' => array]
+ */
+function pg_erp_member_prices()
+{
+    static $prices = null;
+
+    if ($prices !== null) {
+        return $prices;
+    }
+
+    $prices = array();
+
+    if (!defined('ERP_STOREFRONT_ACCOUNT_PRICES') || !ERP_STOREFRONT_ACCOUNT_PRICES || !empty($_SESSION['software']['ghost'])) {
+        return $prices;
+    }
+
+    $account = pg_erp_member_account();
+
+    if (($account === null) || ($account['status'] !== 'active') || !in_array($account['kind'], array('customer', 'both'), true)) {
+        return $prices;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+    if (!erp_price_lists_ready()) {
+        return $prices;
+    }
+
+    // An account-wide discount reaches every product; without one only the
+    // products the account has a row for.
+    $listed = array();
+    foreach ((array) db_items("SELECT product_id FROM erp_account_prices WHERE account_id = '" . (int) $account['id'] . "'") as $row) {
+        $listed[] = (int) $row['product_id'];
+    }
+
+    $account_wide = ((float) db_value("SELECT discount_rate FROM erp_accounts WHERE id = '" . (int) $account['id'] . "' LIMIT 1") > 0);
+
+    if (!$account_wide && !$listed) {
+        return $prices;
+    }
+
+    // A gift card is money rather than goods: it sells at its face value to
+    // everyone. A donation names its own amount.
+    $products = (array) db_items("SELECT id, price FROM products
+        WHERE enabled = 1 AND price > 0 AND selection_type != 'donation' AND gift_card = 0"
+        . ($account_wide ? '' : " AND id IN ('" . implode("', '", $listed) . "')"));
+
+    foreach ($products as $product) {
+        $terms = erp_account_price_terms((int) $account['id'], (int) $product['id']);
+        $pick = erp_storefront_price((int) $product['price'], $terms);
+
+        if ($pick['source'] === 'account') {
+            $prices[(int) $product['id']] = array('price' => (int) $pick['price'], 'list' => (int) $product['price'], 'terms' => $terms);
+        }
+    }
+
+    return $prices;
+}
+
+/**
+ * The ERP account the signed-in member may put an order on at checkout
+ * (config.erp_open_account_payment, off by default), and where it stands
+ * against its credit limit: the member's account (pg_erp_member_account())
+ * when it is active, a customer's and has a limit. pending is what the
+ * account's orders on account that have no invoice yet come to; the ledger
+ * holds an order only once it is invoiced, so the balance alone would let a
+ * customer place one order after another, each inside the limit.
+ *
+ * Null with the setting off, for anyone not signed in, for a member without
+ * such an account, and while staff place an order for someone else (a ghost
+ * session: the order is not theirs). Read once per request; the ERP is loaded
+ * only for a member who has such an account.
+ *
+ * Checkout posts the choice as payment_method 'On Account'; submit_order.php
+ * stores it as an offline payment with orders.erp_on_account = 1.
+ *
+ * @return array|null  id, limit, balance, pending, available (kurus, base
+ *                     currency; available as erp_storefront_on_account() has it)
+ */
+function pg_erp_open_account()
+{
+    static $open = false;
+
+    if ($open !== false) {
+        return $open;
+    }
+
+    $open = null;
+
+    if (!defined('ERP_OPEN_ACCOUNT_PAYMENT') || !ERP_OPEN_ACCOUNT_PAYMENT || !empty($_SESSION['software']['ghost'])) {
+        return $open;
+    }
+
+    $account = pg_erp_member_account();
+
+    if (($account === null) || ($account['status'] !== 'active') || !in_array($account['kind'], array('customer', 'both'), true)) {
+        return $open;
+    }
+
+    if (!function_exists('waf_table_has_column') || !waf_table_has_column('orders', 'erp_on_account') || !waf_table_has_column('erp_accounts', 'credit_limit')) {
+        return $open;
+    }
+
+    $row = db_item("SELECT credit_limit, balance FROM erp_accounts WHERE id = '" . (int) $account['id'] . "' LIMIT 1");
+
+    if (!is_array($row) || ((int) $row['credit_limit'] <= 0)) {
+        return $open;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+    $pending = (int) db_value("SELECT COALESCE(SUM(total), 0) FROM orders
+        WHERE erp_on_account = 1
+          AND erp_account_id = '" . (int) $account['id'] . "'
+          AND erp_invoice_id = 0
+          AND status IN ('complete', 'exported')");
+
+    $standing = erp_storefront_on_account((int) $row['credit_limit'], (int) $row['balance'], $pending, 0);
+
+    $open = array(
+        'id' => (int) $account['id'],
+        'limit' => (int) $row['credit_limit'],
+        'balance' => (int) $row['balance'],
+        'pending' => $pending,
+        'available' => $standing['available'],
+    );
+
+    return $open;
+}
+
+/**
+ * Why an order of this total cannot go on the member's account, or '' when
+ * it can (pg_erp_open_account(), erp_storefront_on_account()).
+ *
+ * @param int $total  The order's total (kurus)
+ * @return string
+ */
+function pg_erp_open_account_refusal($total)
+{
+    $open = pg_erp_open_account();
+
+    if ($open === null) {
+        return lang('The selected payment method is not available.');
+    }
+
+    $check = erp_storefront_on_account($open['limit'], $open['balance'], $open['pending'], (int) $total);
+
+    if ($check['allowed']) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'This order would take your account past its credit limit; {var:1} of it is available. Please choose another payment method.',
+        'vars' => erp_money_out($check['available']),
+    ));
+}
+
+/**
+ * The "Put it on my account" choice as checkout shows it, or null when the
+ * member has no account to put an order on (pg_erp_open_account()).
+ *
+ * @return array|null  value (what the radio posts), label, note (the credit
+ *                     left on the account)
+ */
+function pg_erp_open_account_option()
+{
+    $open = pg_erp_open_account();
+
+    if ($open === null) {
+        return null;
+    }
+
+    return array(
+        'value' => 'On Account',
+        'label' => lang('Put it on my account'),
+        'note' => lang(array('string' => 'Available credit: {var:1}', 'vars' => erp_money_out($open['available']))),
+    );
+}
+
+/**
  * The name of the ERP's tax report as the menu shows it on every panel page,
  * the ERP loaded or not: "VAT report", or the report of the tax name set in
  * the ERP settings. Inside the ERP it is erp_tax_label('report').
@@ -7724,4 +8909,114 @@ function pg_variant_price_rules_store($group_id, $rules, $base_cents)
         "UPDATE product_groups
         SET variant_price_rules = '" . e(encode_json($rules)) . "'
         WHERE id = '$group_id'");
+}
+
+
+/**
+ * The image cell of a product row in a panel list.
+ *
+ * The thumbnail opens the product's pictures full size in the panel's image
+ * viewer (assets/js/pg_lightbox.js, loaded by _pg_lightbox_assets_once()), so
+ * an operator can tell similar products apart without opening each one. The
+ * viewer builds a gallery from every element that shares a gallery id: the
+ * thumbnail is the cover, and the further pictures sit in the same cell as
+ * empty hidden elements, in the order the product screen lists them.
+ *
+ * The thumbnail is a button rather than a clickable picture so that it can be
+ * reached with the keyboard. "no-submit" keeps the panel's button handler in
+ * backend.js, which swaps a button's label for a loading text, away from it.
+ *
+ * @param string $key               unique on the screen, e.g. 'product-12'
+ * @param string $image_name        the cover (products.image_name), as stored
+ * @param string $name              with the short description below, the
+ * @param string $short_description caption under the picture in the viewer
+ * @param array  $more_images       further file names, see pg_product_more_images()
+ * @return string a <td>
+ */
+function pg_product_image_cell($key, $image_name, $name, $short_description = '', $more_images = array())
+{
+    $image_name = trim((string) $image_name);
+
+    $caption = trim((string) $name);
+    $short_description = trim((string) $short_description);
+
+    if ($short_description !== '') {
+        $caption .= (($caption !== '') ? ' - ' : '') . $short_description;
+    }
+
+    if ($image_name === '') {
+        return '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string' => 'No Image')) . '</text></svg></td>';
+    }
+
+    $gallery = 'pg-thumb-' . $key;
+
+    $output =
+        '<td class="align-middle text-start">'
+        . '<button type="button" class="btn p-0 border-0 no-submit" style="cursor: zoom-in;"'
+        . ' data-pg-lb-gallery="' . h($gallery) . '" data-pg-lb-index="0"'
+        . ' data-pg-lb-src="' . h(PATH . encode_url_path($image_name)) . '"'
+        . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"'
+        . ' aria-label="' . h(lang('View images')) . '">'
+        . '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($image_name)) . '" />'
+        . '</button>';
+
+    $index = 1;
+
+    foreach ((array) $more_images as $more_image) {
+        $more_image = trim((string) $more_image);
+
+        if (($more_image === '') || ($more_image === $image_name)) {
+            continue;
+        }
+
+        $output .=
+            '<span hidden data-pg-lb-gallery="' . h($gallery) . '" data-pg-lb-index="' . $index . '"'
+            . ' data-pg-lb-src="' . h(PATH . encode_url_path($more_image)) . '"'
+            . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"></span>';
+
+        $index++;
+    }
+
+    return $output . '</td>';
+}
+
+
+/**
+ * The pictures of the given products beyond the cover, for
+ * pg_product_image_cell().
+ *
+ * One query for a whole list. Unordered, the same as the product screen reads
+ * them: products_images_xref has no order column, and rows come back in the
+ * order they were written.
+ *
+ * @param array $product_ids
+ * @return array product id => list of file names
+ */
+function pg_product_more_images($product_ids)
+{
+    $ids = array();
+
+    foreach ((array) $product_ids as $product_id) {
+        $product_id = (int) $product_id;
+
+        if ($product_id > 0) {
+            $ids[$product_id] = $product_id;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $images = array();
+
+    foreach (db_items(
+        "SELECT product, file_name
+        FROM products_images_xref
+        WHERE product IN (" . implode(',', $ids) . ") AND file_name != ''") as $row) {
+
+        $images[(int) $row['product']][] = $row['file_name'];
+    }
+
+    return $images;
 }

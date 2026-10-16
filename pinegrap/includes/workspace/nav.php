@@ -41,6 +41,7 @@ function ws_nav_groups($viewer)
             array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php'),
             array('key' => 'board', 'label' => lang('Planning Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php'),
             array('key' => 'calendar', 'label' => lang('Work Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php'),
+            array('key' => 'calendar_feed', 'label' => lang('Calendar subscription'), 'icon' => 'bi-calendar-plus', 'url' => $base . 'workspace_calendar_feed.php', 'rail' => false),
         ),
         'records' => array(
             array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php'),
@@ -59,6 +60,12 @@ function ws_nav_groups($viewer)
         $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     } elseif (function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer)) {
         $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+    }
+
+    // Each person's own accounts on the MCP servers and their tool forms,
+    // while a server is on (mcp_form.php).
+    if (function_exists('ws_mcp_active_servers') && ws_mcp_active_servers()) {
+        $groups['work'][] = array('key' => 'mcp', 'label' => lang('My MCP connections'), 'icon' => 'bi-plug', 'url' => $base . 'workspace_mcp.php', 'rail' => false);
     }
 
     if ($viewer['settings']) {
@@ -85,7 +92,7 @@ function ws_nav_group_titles()
  * The rail and its drawer, for the left edge of a workspace screen.
  *
  * @param array  $viewer
- * @param string $current the key of the screen shown (tasks, notes, board, calendar, timeline, settings)
+ * @param string $current the key of the screen shown (tasks, notes, board, calendar, timeline, mcp, settings)
  * @return string
  */
 function ws_screen_rail($viewer, $current)

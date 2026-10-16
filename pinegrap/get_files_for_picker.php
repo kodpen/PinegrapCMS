@@ -16,7 +16,8 @@ $user = validate_user();
 
 header('Content-Type: application/json; charset=utf-8');
 
-$filter = isset($_GET['filter']) ? strtolower(trim($_GET['filter'])) : '';
+// A filter sent as an array (?filter[]=x) counts as not given.
+$filter = (isset($_GET['filter']) && is_string($_GET['filter'])) ? strtolower(trim($_GET['filter'])) : '';
 
 if ($filter === 'css') {
     $where_types = "'css'";

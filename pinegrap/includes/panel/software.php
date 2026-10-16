@@ -19,9 +19,6 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// The backup step builds its dump with IMysqldump\Mysqldump.
-use Ifsnop\Mysqldump as IMysqldump;
-
 if (!defined('PG_PANEL_ACTIONS')) {
     exit;
 }
@@ -93,13 +90,11 @@ function pg_panel_software_backup($request, $action)
             break;
 
         case 'create_mysql_dumb':
-            include_once(PG_FUNCTIONS_DIR . '/mysqldump.php');
-
             //Create mysql dump file named slq.sql and save it in backup directory
             // first backup Mysql because, if there is timeout when file copy mysql important for us. so even timeout to copy files or layouts we have mysql dump anyway.
+            // The same dump the automatic backup writes: pg_backup_dump_database().
             try {
-                $dump = new IMysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE . '', '' . DB_USERNAME . '', '' . DB_PASSWORD . '');
-                $dump->start($backup_location . $backup_folder_name . '/sql.sql');
+                pg_backup_dump_database($backup_location . $backup_folder_name . '/sql.sql');
             } catch (\Exception $e) {
                 $backups_error_message = $e->getMessage();
 

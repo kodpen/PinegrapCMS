@@ -802,7 +802,14 @@ function select_page_type($page_type, $user)
     }
     return $output;
 }
-function get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = true, $format = 'text', $include_blank_option = false, $include_disabled = true)
+// $include_recycled false leaves out the groups in the Recycle Bin, except the
+// one already selected ($product_group_id) and $keep_ids (the ones a multiple
+// select or a form field already points at), which stay on the list marked as
+// in the bin: a <select> that no longer has the stored value falls back to its
+// first option, and the next save would quietly drop the setting or the link
+// while the group waits to be restored (see pg_catalog_bin_live_sql()). True
+// lists the bin as switched-off groups, as before it existed.
+function get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = true, $format = 'text', $include_blank_option = false, $include_disabled = true, $include_recycled = true, $keep_ids = array())
 {
     global $user;
     // If the format is text, then prepare output variable for that.
@@ -815,11 +822,15 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
     // If this is the first time this function has run, then get all product groups and put them in an array,
     // and determine if a blank option should be added.
     if (count($product_groups) == 0) {
-        $sql_where = "";
+        $sql_where = "WHERE 1 = 1";
         // If disabled product groups should not be included, then add SQL where
         // filter.
         if (!$include_disabled) {
-            $sql_where = "WHERE enabled = '1'";
+            $sql_where .= " AND enabled = '1'";
+        }
+        $leave_bin_out = (!$include_recycled) && pg_catalog_bin_ready();
+        if ($leave_bin_out) {
+            $sql_where .= pg_catalog_bin_live_sql('product_groups', array_merge(pg_catalog_keep_ids($product_group_id), pg_catalog_keep_ids($keep_ids)));
         }
         // get all product groups
         $query = "SELECT
@@ -832,7 +843,9 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
 
                 parent_id,
 
-                display_type
+                display_type" . ($leave_bin_out ? ",
+
+                recycled" : "") . "
 
             FROM product_groups
 
@@ -843,6 +856,11 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
         // add each product group to an array
         while ($row = mysqli_fetch_assoc($result)) {
             $product_groups[] = $row;
+        }
+        // A kept group whose parent is in the bin, and a group restored on its
+        // own under one, would not be reached by the walk below.
+        if ($leave_bin_out) {
+            $product_groups = pg_catalog_group_rows_past_bin($product_groups, pg_catalog_group_map(true));
         }
         // If a blank option should be included, then include it.
         if ($include_blank_option == true) {
@@ -879,9 +897,12 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
             }
             $next_level = $level + 1;
             $disabled = '';
-            // If this product group is disabled, then output "[DISABLED]" on the
-            // end of the label.
-            if (!$child_product_group['enabled']) {
+            // A group in the Recycle Bin is only here because it is already
+            // selected; say where it is. Otherwise, if this product group is
+            // disabled, then output "[DISABLED]" on the end of the label.
+            if (!empty($child_product_group['recycled'])) {
+                $disabled = ' [' . lang('IN RECYCLE BIN') . ']';
+            } elseif (!$child_product_group['enabled']) {
                 $disabled = ' [' . lang('DISABLED') . ']';
             }
             // If the format is text, then prepare output for that format.
@@ -995,8 +1016,15 @@ function get_state_options()
 }
 
 
-function get_file_options($design = FALSE)
+// Files in the Recycle Bin are left out: the bin folder and the folders that
+// went in with a folder sent there. $keep_id is the file the short link being
+// edited already points at: while it is in the bin it stays, marked, under the
+// name it had before the bin parked it, so saving the link does not drop it.
+function get_file_options($design = FALSE, $keep_id = 0)
 {
+    // A posted value can be anything; only a whole id is kept.
+    $keep_id = is_scalar($keep_id) ? (int) $keep_id : 0;
+    $bin_folders = array_flip(pg_recycle_bin_folder_ids());
     $folders_that_user_has_access_to = array();
     global $user;
 
@@ -1031,9 +1059,18 @@ function get_file_options($design = FALSE)
 
     // loop through each image and create an <option> tag
     while ($row = mysqli_fetch_assoc($result)) {
+        $file_name = $row['name'];
+        if (isset($bin_folders[(int) $row['folder']])) {
+            if ((int) $row['id'] !== $keep_id) {
+                continue;
+            }
+            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+            $original = pg_recycle_parked_original($file_name, $row['id']);
+            $file_name = (($original !== '') ? $original : $file_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+        }
         // if the user has access to this folder
         if (check_folder_access_in_array($row['folder'], $folders_that_user_has_access_to) == true) {
-            $file_options[h($row['name'])] = $row['id'];
+            $file_options[h($file_name)] = $row['id'];
         }
     }
     return $file_options;
@@ -1386,8 +1423,34 @@ function get_error_screen($content)
     $output = output_header_secure() . $content . output_footer_secure();
     return $output;
 }
+// Whether the sign-in screens of the software directory keep this visitor on
+// their built-in forms instead of the site's sign-in pages: the country
+// restriction refuses the site's pages to them but leaves the control panel
+// open, so a page of the site would turn them away. See
+// waf_country_keeps_to_panel().
+function pg_sign_in_kept_to_panel()
+{
+    return function_exists('waf_country_keeps_to_panel') && waf_country_keeps_to_panel();
+}
+// The address of a sign-in screen for this visitor: the site's page of
+// $page_type ('forgot password', 'set password'), or the software
+// directory's own $script for a visitor kept to the panel. False when the
+// site has no such page, as get_page_type_url() answers.
+function pg_sign_in_screen_url($page_type, $script)
+{
+    if (pg_sign_in_kept_to_panel()) {
+        return PATH . SOFTWARE_DIRECTORY . '/' . $script;
+    }
+    return get_page_type_url($page_type);
+}
 function get_forgot_password_screen()
 {
+    // The site's forgot password page is a page of the site; a visitor the
+    // country restriction keeps to the panel gets the panel's own form.
+    if (pg_sign_in_kept_to_panel()) {
+        require_once(PG_FUNCTIONS_DIR . '/get_forgot_password.php');
+        return output_header_secure() . get_forgot_password() . output_footer_secure();
+    }
     // find if there is a forgot password page
     $query = "SELECT page_id FROM page WHERE page_type = 'forgot password'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
@@ -1413,6 +1476,13 @@ function get_forgot_password_screen()
 }
 function get_login_screen()
 {
+    // The site's login page, legacy or designed, is a page of the site; a
+    // visitor the country restriction keeps to the panel gets the panel's own
+    // form, which posts to index.php like the others.
+    if (pg_sign_in_kept_to_panel()) {
+        require_once(PG_FUNCTIONS_DIR . '/get_login.php');
+        return output_header_secure(array('title' => lang('Login'))) . get_login() . output_footer_secure();
+    }
     // find if there is a login page
     $query = "SELECT page_id FROM page WHERE page_type = 'login'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
@@ -1637,6 +1707,28 @@ function validate_time($time)
         return true;
     }
 }
+// A form processor's single-value fields, after liveform::add_fields_to_session().
+// A text box, a hidden field or a radio button posts one string, but a hand-made
+// request can post any of them as an array (name[]=x), and the escaping, string
+// and validation functions the processors hand the value to stop the request on
+// an array. Such a value counts as not given: the field is emptied, so a
+// required field is reported missing and the form comes back as it would for an
+// empty field. Fields whose control legitimately posts an array (a check box
+// group, a multi-select) must not be listed. $empty is what the array is
+// replaced with: null for a field that is read as a number, where '' would stop
+// the arithmetic as the array did, and null reads as a field not posted at all.
+function pg_liveform_single_values($liveform, $fields, $empty = '')
+{
+    foreach ($fields as $field) {
+        // The value as stored: get_field_value() decrypts a card number first,
+        // which an array cannot go through.
+        $stored = $liveform->get_field($field);
+
+        if (isset($stored['value']) && is_array($stored['value'])) {
+            $liveform->assign_field_value($field, $empty);
+        }
+    }
+}
 function prepare_page_for_email($html)
 {
     // find if there is a base tag in the HTML
@@ -1659,8 +1751,14 @@ function prepare_page_for_email($html)
     return $html;
 }
 // outputs the form's <select> product list for selecting a product
+//
+// A product in the Recycle Bin is not offered, except the one already chosen
+// (see pg_catalog_bin_live_sql()), which is marked so.
 function select_product($selected_value = '', $value_type = 'id')
 {
+    $keep_id = (($value_type === 'id') && is_scalar($selected_value)) ? (int) $selected_value : 0;
+    $keep_binned = ($keep_id > 0) && pg_catalog_product_binned($keep_id);
+
     $query = "SELECT
             id,
             name,
@@ -1668,6 +1766,7 @@ function select_product($selected_value = '', $value_type = 'id')
             short_description,
             price
         FROM products
+        WHERE 1 = 1" . pg_catalog_bin_live_sql('products', $keep_id) . "
         ORDER BY name";
 
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -1686,7 +1785,9 @@ function select_product($selected_value = '', $value_type = 'id')
 
         $output_disabled_label = '';
         // Append a label when the product is disabled.
-        if ($row['enabled'] == 0) {
+        if ($keep_binned && ((int) $row['id'] === $keep_id)) {
+            $output_disabled_label = ' [' . lang('IN RECYCLE BIN') . ']';
+        } elseif ($row['enabled'] == 0) {
             $output_disabled_label = ' [' . lang('DISABLED') . ']';
         }
 
@@ -1703,12 +1804,18 @@ function select_product($selected_value = '', $value_type = 'id')
 
 
 // get an array of products for pick lists
-function get_product_options($include_blank_option = true)
+//
+// Products in the Recycle Bin are left out, except $keep_id: the product the
+// record being edited already points at (see pg_catalog_bin_live_sql()).
+function get_product_options($include_blank_option = true, $keep_id = 0)
 {
     $product_options = array();
     if ($include_blank_option) {
         $product_options['-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('product')))) . '-'] = '';
     }
+    // A posted value can be anything; only a whole id is kept.
+    $keep_id = is_scalar($keep_id) ? (int) $keep_id : 0;
+    $keep_binned = ($keep_id > 0) && pg_catalog_product_binned($keep_id);
     // get all products
     $query = "SELECT
             id,
@@ -1717,13 +1824,16 @@ function get_product_options($include_blank_option = true)
             short_description,
             price
         FROM products
+        WHERE 1 = 1" . pg_catalog_bin_live_sql('products', $keep_id) . "
         ORDER BY name ASC";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     // loop through each product in order to add it to array
     while ($row = mysqli_fetch_assoc($result)) {
         $output_disabled_label = '';
         // If this product is disabled, then output "disabled" next to the name and short description.
-        if ($row['enabled'] == 0) {
+        if ($keep_binned && ((int) $row['id'] === $keep_id)) {
+            $output_disabled_label = ' [' . lang('IN RECYCLE BIN') . ']';
+        } elseif ($row['enabled'] == 0) {
             $output_disabled_label = ' [' . lang('DISABLED') . ']';
         }
         $label = h($row['name']) . ' - ' . h($row['short_description']) . ' (' . prepare_amount($row['price'] / 100) . ')' . $output_disabled_label;
@@ -2972,6 +3082,8 @@ function get_suffix_options()
 }
 function get_tax_rate_for_address($country_code, $state_code)
 {
+    // stays empty when the state is known but lies in none of the country's tax zones
+    $valid_tax_zone_id = '';
     // declare tax zones for country array that we will use to store all valid tax zones for country
     $tax_zones_for_country = array();
     // get all tax zones that contain country
@@ -3123,6 +3235,84 @@ function get_request_uri()
 }
 
 
+// The value a form list's advanced search field searches for. A field that
+// holds one value counts as not given when its value arrives as an array
+// (?<id>_<field>[]=x): the search SQL and the date and time conversion refused
+// it with an error page. A field that takes several values (a multi-selection
+// pick list or a check box group) keeps its plain values; values that are
+// arrays themselves (?<id>_<field>[0][]=x) are dropped.
+function pg_form_list_search_value($value, $multiple)
+{
+    if (is_array($value) == FALSE) {
+        return $value;
+    }
+
+    if ($multiple) {
+        $values = array_filter($value, 'is_string');
+
+        if ($values) {
+            return $values;
+        }
+    }
+
+    return '';
+}
+
+// The properties of one field tag in a form list's advanced search layout,
+// the text between the outer braces of {{...}}. The field tags the panel lists
+// are written in JavaScript object form ({name: 'subject', dynamic: true}),
+// which json_decode() refuses, so besides strict JSON this reads unquoted
+// keys, single-quoted strings and trailing commas. Strict JSON is decoded
+// as is. Returns null when the text cannot be read either way.
+function pg_form_list_advanced_field_properties($text)
+{
+    $properties = json_decode($text, true);
+
+    if (is_array($properties)) {
+        return $properties;
+    }
+
+    // One pass from left to right, so a key or a comma inside a string is
+    // never touched: a double-quoted string is kept, a single-quoted one is
+    // requoted, a key is quoted and a comma before a closing bracket dropped.
+    // Anything else is left for json_decode() to accept or refuse.
+    $json = preg_replace_callback(
+        '/"(?:[^"\\\\]|\\\\.)*"|\'((?:[^\'\\\\]|\\\\.)*)\'|([\p{L}_$][\p{L}\p{N}_$]*)(?=\s*:)|,(?=\s*[}\]])/su',
+        function ($match) {
+            if ($match[0][0] == '"') {
+                return $match[0];
+            }
+
+            if ($match[0][0] == '\'') {
+                return '"' . preg_replace_callback(
+                    '/\\\\(.)|"/su',
+                    function ($character) {
+                        if ($character[0] == '"') {
+                            return '\\"';
+                        }
+
+                        return ($character[1] == '\'') ? '\'' : $character[0];
+                    },
+                    $match[1]) . '"';
+            }
+
+            if (isset($match[2]) && ($match[2] !== '')) {
+                return '"' . $match[2] . '"';
+            }
+
+            return '';
+        },
+        $text);
+
+    // Text that is not valid UTF-8 leaves the pattern unmatched (null).
+    if (!is_string($json)) {
+        return null;
+    }
+
+    $properties = json_decode($json, true);
+
+    return is_array($properties) ? $properties : null;
+}
 function prepare_form_data_for_input($data, $type)
 {
     if ($data) {
@@ -3152,10 +3342,12 @@ function prepare_form_data_for_input($data, $type)
                 return $year . '-' . $month . '-' . $day;
                 break;
             case 'date and time':
-                $date_and_time_parts = explode(' ', $data, 2);
+                // Parts missing from a value that is not in a date and time
+                // format (e.g. a search term) count as empty.
+                $date_and_time_parts = explode(' ', $data, 2) + array('', '');
                 $date = $date_and_time_parts[0];
                 $time = $date_and_time_parts[1];
-                $date_parts = preg_split('/[-,\/]/', $date);
+                $date_parts = preg_split('/[-,\/]/', $date) + array('', '', '');
                 $year = $date_parts[2];
                 if (DATE_FORMAT == 'month_day') {
                     $month = $date_parts[0];
@@ -3168,6 +3360,7 @@ function prepare_form_data_for_input($data, $type)
                 $month = str_pad($month, 2, '0', STR_PAD_LEFT);
                 $day = str_pad($day, 2, '0', STR_PAD_LEFT);
                 preg_match('/(\d+):(\d+) (AM|PM)/i', $time, $time_parts);
+                $time_parts += array('', '', '', '');
                 $hour = $time_parts[1];
                 $minute = $time_parts[2];
                 $am_pm = mb_strtoupper($time_parts[3]);
@@ -3184,7 +3377,10 @@ function prepare_form_data_for_input($data, $type)
                 return $year . '-' . $month . '-' . $day . ' ' . $hour . ':' . $minute;
                 break;
             case 'time':
+                // A value that is not in a time format (e.g. a search term)
+                // has no parts; they count as empty.
                 preg_match('/(\d+):(\d+) (AM|PM)/i', $data, $time_parts);
+                $time_parts += array('', '', '', '');
                 $hour = $time_parts[1];
                 $minute = $time_parts[2];
                 $am_pm = mb_strtoupper($time_parts[3]);

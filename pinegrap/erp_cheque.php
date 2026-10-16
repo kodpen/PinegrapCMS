@@ -22,7 +22,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_cheque');
 
-$cheque_id = (int) ($_REQUEST['id'] ?? 0);
+$cheque_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $cheque = erp_cheque($cheque_id);
 
 if ($cheque === null) {
@@ -35,6 +35,11 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if ($_POST) {
     validate_token_field();
+
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array bank or account as record 1 and moved
+    // the cheque there, (string) read the step and the reason as "Array".
+    pg_request_single_values(array('step', 'date', 'bank_till_id', 'account_id', 'reason'));
 
     $step = (string) ($_POST['step'] ?? '');
     $typed = trim((string) ($_POST['date'] ?? ''));
@@ -86,7 +91,7 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
             <div class="card-body row g-2 align-items-end">
                 <div class="col-12 fw-semibold">' . $title . '</div>
                 ' . $fields . '
-                <div class="col-12 col-md-3"><button type="submit" class="btn btn-sm ' . $class . ' w-100" data-loading-content="' . lang(array('string' => 'Please Wait')) . '">' . $button . '</button></div>
+                <div class="col-12 col-md-3"><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
                 ' . (($note !== '') ? '<div class="col-12 form-text">' . $note . '</div>' : '') . '
             </div>
         </form>';

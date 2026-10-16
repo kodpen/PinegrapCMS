@@ -186,12 +186,16 @@ $(document).ready(function () {
     });
 
 
+    // Buttons are never relabelled or held while a request runs. A label
+    // swapped to "Saving" and a button kept disabled for a fixed time made
+    // screens that save over Ajax wait long after the answer had come back.
+    // Double submits are stopped on the form instead (see below), and a
+    // screen that sends its own request disables its button for exactly as
+    // long as that request runs.
     $('a:not(.no-submit),button[type=submit]:not(.no-submit),button[type=button]:not(.no-submit)').on('click', function () {
         var el = $(this);
-        var loading_content = el.attr("data-loading-content");
         var confirm_content = el.attr("data-confirm-content");
         var confirm_action = el.attr("data-confirm-action");
-        var default_content = el.html();
         var value = el.attr("value");
         var result;
         var autoconfirm = false;
@@ -234,65 +238,118 @@ $(document).ready(function () {
                 confirmation = true;
             }
         }
-        if (loading_content || confirm_content || autoconfirm == true) {
-            if (confirm_content || autoconfirm == true) {
-                if (confirmation == true) {
-                    // if this is parasut export button, than output page refresh for user to see the changed order results.
-                    if (value == 'Export Orders For Parasut') {
-                        $('#xlsl_setup_modal').modal('hide');
-                        //reload this page to show user exported orders.
-                        $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: #e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
-                        $('body').attr('style', 'overflow:hidden');
-                        setTimeout(function () {
-                            window.location.reload();
-                        }, 4000);//4sec wait
-                    }
-
-                    if (loading_content) {
-                        loading_triggered();
-
-                        //if form need to be send also send it.
-                        if (result == true) {
-                            document.form.submit();
-                        }
-                        if (confirm_action && confirm_action == 'history-back') {
-                            javascript: history.go(-1);
-                        }
-                    } else {
-                        //if no loading needed pass it.
-                        //if form need to be send also send it.
-                        if (result == true) {
-                            document.form.submit();
-                        }
-                        if (confirm_action && confirm_action == 'history-back') {
-                            javascript: history.go(-1);
-                        }
-                        return true;
-                    }
-                } else {
-                    //user selected NO
-                    return false;
+        if (confirm_content || autoconfirm == true) {
+            if (confirmation == true) {
+                // if this is parasut export button, than output page refresh for user to see the changed order results.
+                if (value == 'Export Orders For Parasut') {
+                    $('#xlsl_setup_modal').modal('hide');
+                    //reload this page to show user exported orders.
+                    $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: #e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
+                    $('body').attr('style', 'overflow:hidden');
+                    setTimeout(function () {
+                        window.location.reload();
+                    }, 4000);//4sec wait
                 }
+
+                //if form need to be send also send it.
+                if (result == true) {
+                    document.form.submit();
+                }
+                if (confirm_action && confirm_action == 'history-back') {
+                    history.go(-1);
+                }
+                return true;
             } else {
-                if (loading_content) {
-                    loading_triggered();
-                }
+                //user selected NO
+                return false;
             }
         }
-
-        function loading_triggered() {
-            el.addClass('disabled');
-            setTimeout(function () {
-                el.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + loading_content);
-            }, 0);
-            setTimeout(function () {
-                el.html(default_content);
-                el.removeClass('disabled');
-            }, 10000);
-            return true;
-        }
-
     });
+
+    // A double click, or Enter pressed twice, must not send the same form or
+    // open the same link twice: some of them do something (create, delete,
+    // duplicate) rather than only show a page. The guard lives on the form
+    // or link, not on the button: nothing on screen changes, and the
+    // submitting button keeps its name and value in the request (a disabled
+    // button would drop them). It only lasts a moment, because a request
+    // whose answer is a download leaves the page where it is and has to be
+    // repeatable straight away.
+    //
+    // Installed once per window: a second copy would find the form just
+    // marked by the first and cancel the submit.
+    if (!window.pgSubmitGuard) {
+        window.pgSubmitGuard = true;
+
+        var pg_sent = new WeakMap();
+
+        var pg_just_sent = function (el) {
+            var now = Date.now();
+
+            if ((now - (pg_sent.get(el) || 0)) < 3000) {
+                return true;
+            }
+
+            pg_sent.set(el, now);
+
+            return false;
+        };
+
+        // An answer that opens in another tab or frame leaves this page as
+        // it is; sending again from here is a new request.
+        var pg_opens_here = function (target) {
+            return !target || (target.toLowerCase() === '_self');
+        };
+
+        // Both listeners are on window, so they run after every handler on
+        // the element and on document: a screen that sends the form over
+        // Ajax, or handles the link itself, has cancelled the event by then
+        // and is left alone.
+        window.addEventListener('submit', function (e) {
+            var form = e.target;
+
+            if (e.defaultPrevented || !form || (form.nodeName !== 'FORM')) {
+                return;
+            }
+
+            if (!pg_opens_here((e.submitter && e.submitter.getAttribute('formtarget')) || form.getAttribute('target'))) {
+                return;
+            }
+
+            if (pg_just_sent(form)) {
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('click', function (e) {
+            if (e.defaultPrevented || (e.button !== 0) || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+                return;
+            }
+
+            var link = (e.target && e.target.closest) ? e.target.closest('a[href]') : null;
+
+            if (!link || link.hasAttribute('download') || !pg_opens_here(link.getAttribute('target'))) {
+                return;
+            }
+
+            var href = link.getAttribute('href');
+
+            if (!href || (href.charAt(0) === '#') || /^\s*javascript:/i.test(href)) {
+                return;
+            }
+
+            if (pg_just_sent(link)) {
+                e.preventDefault();
+            }
+        });
+
+        // Back to this page from the history: everything on it can be sent
+        // again.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) {
+                pg_sent = new WeakMap();
+            }
+        });
+    }
 
 
 
@@ -1173,6 +1230,8 @@ $(document).ready(function () {
     pg_push_open_requested();
 
     pg_push_init();
+
+    pg_quick_note_init();
 
     check_unread_notifications('onload_check');
     setInterval(function () {
@@ -2085,6 +2144,113 @@ function pg_push_open_requested() {
             clearInterval(timer);
         }
     }, 250);
+}
+
+// The quick note in the header (ws_notes_quick_markup(), includes/workspace/
+// notes.php): what is written in the box becomes one of the person's
+// workspace notes through the same action the notes screen saves with. The
+// texts and addresses come with the form, so a screen without the workspace
+// carries none of this.
+function pg_quick_note_init() {
+
+    var form = document.querySelector('[data-pg-quick-note]');
+
+    if (!form) {
+        return;
+    }
+
+    var text = form.elements.body;
+    var button = form.querySelector('button[type=submit]');
+    var status = form.querySelector('[data-pg-quick-note-status]');
+    var toggle = document.getElementById('pg_quick_note_toggle');
+    var saving = false;
+
+    // Bootstrap fires its dropdown events at the toggle.
+    if (toggle) {
+        toggle.addEventListener('shown.bs.dropdown', function () {
+            text.focus();
+        });
+    }
+
+    function say(message, note_id) {
+
+        status.textContent = '';
+        status.className = 'small ms-auto ' + (note_id ? 'text-success' : 'text-danger');
+        status.appendChild(document.createTextNode(message));
+
+        if (note_id) {
+            var link = document.createElement('a');
+
+            link.href = form.getAttribute('data-note-url') + encodeURIComponent(note_id);
+            link.className = 'ms-1';
+            link.textContent = form.getAttribute('data-open');
+
+            if (window.self !== window.top) {
+                link.target = '_parent';
+            }
+
+            status.appendChild(link);
+        }
+    }
+
+    function save() {
+
+        var body = text.value.replace(/\s+$/, '');
+
+        if (saving) {
+            return;
+        }
+
+        if (body.trim() === '') {
+            text.focus();
+            return;
+        }
+
+        saving = true;
+        button.disabled = true;
+        status.textContent = '';
+
+        fetch(form.getAttribute('data-api'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ws_note_save', token: software_token, title: '', body: body })
+        }).then(function (response) {
+            return response.json();
+        }).then(function (json) {
+            var note = (json && json.status === 'success' && json.data) ? json.data.note : null;
+
+            if (note && note.id) {
+                text.value = '';
+                say(form.getAttribute('data-saved'), note.id);
+            } else {
+                say((json && json.message) ? json.message : form.getAttribute('data-failed'), 0);
+            }
+        }).catch(function () {
+            say(form.getAttribute('data-failed'), 0);
+        }).then(function () {
+            saving = false;
+            button.disabled = false;
+        });
+    }
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        save();
+    });
+
+    text.addEventListener('keydown', function (event) {
+        if ((event.ctrlKey || event.metaKey) && (event.key === 'Enter')) {
+            event.preventDefault();
+            save();
+        }
+    });
+
+    text.addEventListener('input', function () {
+        if (status.textContent !== '') {
+            status.textContent = '';
+        }
+    });
 }
 
 function pg_push_hint($text) {
@@ -6246,7 +6412,7 @@ function editBarcodeTemplate(opts) {
         // Save button
         $('#pg-bc-save-btn').off('click').on('click', function () {
             var $btn = $(this);
-            $btn.prop('disabled', true).text(_L('Saving...'));
+            $btn.prop('disabled', true);
             var templateJson = JSON.stringify(editor.getTemplate());
 
             var apiUrl = pg_api_url();
@@ -6266,20 +6432,19 @@ function editBarcodeTemplate(opts) {
                         bsModal.hide();
                     } else {
                         alert(res.message || _L('Error saving template.'));
-                        $btn.prop('disabled', false).text(_L('Save Template'));
+                        $btn.prop('disabled', false);
                     }
                 })
                 .catch(function () {
                     alert(_L('Network error.'));
-                    $btn.prop('disabled', false).text(_L('Save Template'));
+                    $btn.prop('disabled', false);
                 });
         });
     });
 
-    // Reset save-btn text each time the modal opens
+    // Re-enable the save button each time the modal opens
     $modal.one('show.bs.modal', function () {
-        var _L2 = (typeof pgLang !== 'undefined') ? pgLang : function (k) { return k; };
-        $('#pg-bc-save-btn').prop('disabled', false).text(_L2('Save Template'));
+        $('#pg-bc-save-btn').prop('disabled', false);
     });
 
     bsModal.show();
@@ -10123,6 +10288,13 @@ var pgSettingsModal = (function () {
         // one is allowed to paint -- otherwise the pane can end up showing a
         // category the sidebar is no longer pointing at.
         var mine = ++seq;
+        var later = false;
+
+        var settle = function () {
+            $(form).removeClass('is-loading');
+            $(shell()).removeClass('is-busy');
+            setDirty(false);
+        };
 
         busy++;
         touched = false;
@@ -10151,7 +10323,21 @@ var pgSettingsModal = (function () {
                 return;
             }
 
-            paint(key, response);
+            // A pane with a code field, on a screen that left CodeMirror out
+            // of its head, is painted once the editor has loaded; the dialog
+            // stays busy until then.
+            later = window.pgCodeEditorReady(String(response.html || '') + String(response.modals || '') + String(response.scripts || ''), function () {
+
+                if (mine !== seq) {
+                    return;
+                }
+
+                paint(key, response);
+
+                if (later) {
+                    settle();
+                }
+            });
 
         }).fail(function (xhr) {
 
@@ -10166,13 +10352,11 @@ var pgSettingsModal = (function () {
 
             busy--;
 
-            if (mine !== seq) {
+            if ((mine !== seq) || later) {
                 return;
             }
 
-            $(form).removeClass('is-loading');
-            $(shell()).removeClass('is-busy');
-            setDirty(false);
+            settle();
         });
     }
 
@@ -10218,6 +10402,90 @@ window.pgReleaseEditors = function (scope) {
         try { editor.setOption('autoRefresh', false); } catch (e) {}
     }
 };
+
+// Makes sure CodeMirror is on the page before markup that starts an editor is
+// put into it, then calls done.
+//
+// A screen with no code field of its own (the workspace's) leaves CodeMirror
+// and its linters out of its head and parks the tags in
+// <template id="pg-code-editor-assets"> (output_control_panel_header_includes()).
+// Markup that arrives later and mentions CodeMirror -- a pane of the settings
+// dialog, whose inline scripts call CodeMirror.fromTextArea as .html() runs
+// them -- waits here until the files are in, one script after the other in the
+// order the head would have run them. Anywhere else CodeMirror is already
+// there and done runs at once, before this returns.
+//
+// Returns true when done will run later. A file that fails to load still ends
+// in done: the textarea stays a plain field, which is what a missing editor
+// looked like before.
+window.pgCodeEditorReady = (function () {
+
+    var waiting = null;     // callbacks while the files load; null otherwise
+
+    return function (markup, done) {
+
+        var template = document.getElementById('pg-code-editor-assets');
+
+        if (window.CodeMirror || !template || !template.content || (String(markup || '').indexOf('CodeMirror') === -1)) {
+            done();
+            return false;
+        }
+
+        if (waiting) {
+            waiting.push(done);
+            return true;
+        }
+
+        waiting = [done];
+
+        var nodes = Array.prototype.slice.call(template.content.childNodes);
+
+        var finish = function () {
+            var callbacks = waiting;
+
+            waiting = null;
+            callbacks.forEach(function (callback) { callback(); });
+        };
+
+        var next = function (index) {
+
+            while ((index < nodes.length) && (nodes[index].nodeType !== 1)) {
+                index++;
+            }
+
+            if (index >= nodes.length) {
+                finish();
+                return;
+            }
+
+            var node = nodes[index];
+
+            if (node.tagName === 'LINK') {
+                var sheet = document.createElement('link');
+                sheet.rel = 'stylesheet';
+                sheet.href = node.getAttribute('href');
+                document.head.appendChild(sheet);
+                next(index + 1);
+                return;
+            }
+
+            if ((node.tagName !== 'SCRIPT') || !node.getAttribute('src')) {
+                next(index + 1);
+                return;
+            }
+
+            var script = document.createElement('script');
+            script.src = node.getAttribute('src');
+            script.onload = function () { next(index + 1); };
+            script.onerror = function () { next(index + 1); };
+            document.head.appendChild(script);
+        };
+
+        next(0);
+
+        return true;
+    };
+})();
     function paint(key, response) {
 
         pane = key;
@@ -10756,6 +11024,12 @@ $(function () {
  * third puts the rows back in the order the server sent them. DataTables
  * tables (table.chart) sort themselves and are not touched here.
  *
+ * Shift+click sorts by more than one column: it adds the column as the next
+ * level, ascending, and on a column already sorted by turns ascending into
+ * descending and descending into gone, leaving the other levels as they
+ * are. Each level orders the rows the one before it leaves equal, and once
+ * there is more than one, every sorted heading shows its number.
+ *
  * A cell sorts by its data-sort value when it has one (a date as Ymd, an
  * amount in minor units), else by data-order, else by its text. A column whose
  * values are all numbers sorts as numbers, anything else as text in the page's
@@ -10764,8 +11038,13 @@ $(function () {
  *
  * A row marked data-pg-sort-fixed ("nothing here yet", a subtotal) stays at
  * the end - at the top with data-pg-sort-fixed="top", for an opening balance
- * - and a row marked data-pg-sort-with-prev moves with the row above it. The last choice is remembered per page and table for this viewer when
- * the browser lets the page keep it.
+ * - and a row marked data-pg-sort-with-prev moves with the row above it. The
+ * last choice is remembered per page and table for this viewer when the
+ * browser lets the page keep it.
+ *
+ * Lists the server sorts (pg_list_sort_heading()) take Shift+click the same
+ * way; their headings are links, and the one Shift+click follows is in
+ * data-pg-sort-add.
  * ------------------------------------------------------------------------- */
 (function () {
     'use strict';
@@ -10790,8 +11069,9 @@ $(function () {
             + 'gap:.3em;cursor:pointer;white-space:nowrap}'
             + '.pg-sort-btn:focus-visible{outline:2px solid var(--bs-primary);outline-offset:2px;border-radius:2px}'
             + '.pg-sort-btn .pg-sort-icon{opacity:.35;font-size:.8em}'
-            + 'th[aria-sort] .pg-sort-btn .pg-sort-icon{opacity:1}'
-            + '@media print{.pg-sort-btn .pg-sort-icon{display:none}}';
+            + '.pg-sort-btn .pg-sort-rank{font-size:.8em}'
+            + 'th[data-pg-sort-level] .pg-sort-btn .pg-sort-icon{opacity:1}'
+            + '@media print{.pg-sort-btn .pg-sort-icon,.pg-sort-btn .pg-sort-rank{display:none}}';
         document.head.appendChild(style);
     }
 
@@ -10802,10 +11082,45 @@ $(function () {
         return 'pgSort:' + window.location.pathname + ':' + (table.id || ('t' + position));
     }
 
-    function remember(table, column, direction) {
+    // Levels as text, "3:desc,1:asc": what the table carries in
+    // data-pg-sort-state and what is remembered. A single "3:asc" kept
+    // before there were levels reads as one level.
+    function serialize(levels) {
+        return levels.map(function (level) {
+            return level.column + ':' + level.direction;
+        }).join(',');
+    }
+
+    function parse(text) {
+        var levels = [];
+        var seen = {};
+
+        String(text || '').split(',').forEach(function (pair) {
+            var parts = pair.split(':');
+
+            if ((parts.length === 2) && /^\d+$/.test(parts[0]) && ((parts[1] === 'asc') || (parts[1] === 'desc')) && !seen[parts[0]]) {
+                seen[parts[0]] = true;
+                levels.push({ column: parseInt(parts[0], 10), direction: parts[1] });
+            }
+        });
+
+        return levels;
+    }
+
+    function rankOf(levels, column) {
+        for (var i = 0; i < levels.length; i++) {
+            if (levels[i].column === column) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function remember(table, levels) {
         try {
-            if (direction) {
-                window.localStorage.setItem(storageKey(table), column + ':' + direction);
+            if (levels.length) {
+                window.localStorage.setItem(storageKey(table), serialize(levels));
             } else {
                 window.localStorage.removeItem(storageKey(table));
             }
@@ -10817,17 +11132,12 @@ $(function () {
 
     function recalled(table) {
         try {
-            var kept = window.localStorage.getItem(storageKey(table));
-            var parts = kept ? kept.split(':') : [];
-
-            if ((parts.length === 2) && /^\d+$/.test(parts[0]) && ((parts[1] === 'asc') || (parts[1] === 'desc'))) {
-                return { column: parseInt(parts[0], 10), direction: parts[1] };
-            }
+            return parse(window.localStorage.getItem(storageKey(table)));
         } catch (error) {
             // Nothing kept, or nothing can be.
         }
 
-        return null;
+        return [];
     }
 
     // The cell under a column, counting the columns a wider cell spans.
@@ -10885,43 +11195,57 @@ $(function () {
         return { groups: groups, fixed: fixed, top: top };
     }
 
-    function sortBody(body, column, direction) {
+    // No levels puts the rows back in the order the server sent them.
+    function sortBody(body, levels) {
         var split = groupsOf(body);
-        var numeric = true;
-
-        split.groups.forEach(function (group) {
-            group.value = rawValue(cellAt(group.lead, column));
-            group.order = parseInt(group.lead.getAttribute('data-pg-sort-index') || '0', 10);
-
-            if ((group.value !== '') && !isFinite(Number(group.value))) {
-                numeric = false;
-            }
+        var numeric = levels.map(function () {
+            return true;
         });
 
-        split.groups.sort(function (a, b) {
-            if (!direction) {
-                return a.order - b.order;
-            }
+        split.groups.forEach(function (group) {
+            group.order = parseInt(group.lead.getAttribute('data-pg-sort-index') || '0', 10);
+            group.values = levels.map(function (level, index) {
+                var value = rawValue(cellAt(group.lead, level.column));
 
-            if ((a.value === '') !== (b.value === '')) {
-                return (a.value === '') ? 1 : -1;
+                if ((value !== '') && !isFinite(Number(value))) {
+                    numeric[index] = false;
+                }
+
+                return value;
+            });
+        });
+
+        function compare(a, b, index) {
+            var x = a.values[index];
+            var y = b.values[index];
+
+            if ((x === '') !== (y === '')) {
+                return (x === '') ? 1 : -1;
             }
 
             var result;
 
-            if (numeric) {
-                result = Number(a.value) - Number(b.value);
+            if (numeric[index]) {
+                result = Number(x) - Number(y);
             } else if (collator) {
-                result = collator.compare(a.value, b.value);
+                result = collator.compare(x, y);
             } else {
-                result = (a.value < b.value) ? -1 : ((a.value > b.value) ? 1 : 0);
+                result = (x < y) ? -1 : ((x > y) ? 1 : 0);
             }
 
-            if (result === 0) {
-                return a.order - b.order;
+            return (levels[index].direction === 'desc') ? -result : result;
+        }
+
+        split.groups.sort(function (a, b) {
+            for (var i = 0; i < levels.length; i++) {
+                var result = compare(a, b, i);
+
+                if (result !== 0) {
+                    return result;
+                }
             }
 
-            return (direction === 'desc') ? -result : result;
+            return a.order - b.order;
         });
 
         var fragment = document.createDocumentFragment();
@@ -10941,35 +11265,48 @@ $(function () {
         body.appendChild(fragment);
     }
 
-    function show(table, column, direction) {
+    function show(table, levels) {
         Array.prototype.forEach.call(table.querySelectorAll('th[data-pg-sort-column]'), function (heading) {
-            var mine = (parseInt(heading.getAttribute('data-pg-sort-column'), 10) === column) && direction;
+            var rank = rankOf(levels, parseInt(heading.getAttribute('data-pg-sort-column'), 10));
+            var direction = (rank >= 0) ? levels[rank].direction : '';
             var icon = heading.querySelector('.pg-sort-icon');
+            var number = heading.querySelector('.pg-sort-rank');
             var button = heading.querySelector('.pg-sort-btn');
 
-            if (mine) {
+            // aria-sort goes on one heading at a time: the leading level's.
+            if (rank === 0) {
                 heading.setAttribute('aria-sort', (direction === 'asc') ? 'ascending' : 'descending');
             } else {
                 heading.removeAttribute('aria-sort');
             }
 
+            if (direction) {
+                heading.setAttribute('data-pg-sort-level', String(rank + 1));
+            } else {
+                heading.removeAttribute('data-pg-sort-level');
+            }
+
             if (icon) {
-                icon.className = 'pg-sort-icon bi ' + (mine ? ((direction === 'asc') ? 'bi-caret-up-fill' : 'bi-caret-down-fill') : 'bi-arrow-down-up');
+                icon.className = 'pg-sort-icon bi ' + (direction ? ((direction === 'asc') ? 'bi-caret-up-fill' : 'bi-caret-down-fill') : 'bi-arrow-down-up');
+            }
+
+            if (number) {
+                number.className = 'pg-sort-rank bi ' + (((levels.length > 1) && (rank >= 0) && (rank < 9)) ? ('bi-' + (rank + 1) + '-circle-fill') : 'd-none');
             }
 
             if (button) {
-                button.title = mine ? say((direction === 'asc') ? 'Ascending' : 'Descending') : say('Sort');
+                button.title = direction ? say((direction === 'asc') ? 'Ascending' : 'Descending') : say('Sort (Shift+click adds a level)');
             }
         });
     }
 
-    function apply(table, column, direction) {
+    function apply(table, levels) {
         Array.prototype.forEach.call(table.tBodies, function (body) {
-            sortBody(body, column, direction);
+            sortBody(body, levels);
         });
 
-        table.setAttribute('data-pg-sort-state', direction ? (column + ':' + direction) : '');
-        show(table, column, direction);
+        table.setAttribute('data-pg-sort-state', serialize(levels));
+        show(table, levels);
     }
 
     function prepare(table) {
@@ -11009,10 +11346,11 @@ $(function () {
 
             var button = document.createElement('button');
             var icon = document.createElement('i');
+            var number = document.createElement('i');
 
             button.type = 'button';
             button.className = 'pg-sort-btn';
-            button.title = say('Sort');
+            button.title = say('Sort (Shift+click adds a level)');
 
             while (heading.firstChild) {
                 button.appendChild(heading.firstChild);
@@ -11020,26 +11358,64 @@ $(function () {
 
             icon.className = 'pg-sort-icon bi bi-arrow-down-up';
             icon.setAttribute('aria-hidden', 'true');
+            number.className = 'pg-sort-rank bi d-none';
+            number.setAttribute('aria-hidden', 'true');
             button.appendChild(icon);
+            button.appendChild(number);
             heading.appendChild(button);
             heading.setAttribute('data-pg-sort-column', String(column));
 
-            button.addEventListener('click', function () {
-                var state = (table.getAttribute('data-pg-sort-state') || '').split(':');
-                var current = (parseInt(state[0], 10) === column) ? state[1] : '';
-                var next = (current === 'asc') ? 'desc' : ((current === 'desc') ? '' : 'asc');
+            button.addEventListener('click', function (event) {
+                var levels = parse(table.getAttribute('data-pg-sort-state'));
+                var rank = rankOf(levels, column);
 
-                apply(table, column, next);
-                remember(table, column, next);
+                if (event.shiftKey) {
+                    if (rank < 0) {
+                        levels.push({ column: column, direction: 'asc' });
+                    } else if (levels[rank].direction === 'asc') {
+                        levels[rank].direction = 'desc';
+                    } else {
+                        levels.splice(rank, 1);
+                    }
+                } else {
+                    var current = (rank === 0) ? levels[0].direction : '';
+                    var next = (current === 'asc') ? 'desc' : ((current === 'desc') ? '' : 'asc');
+
+                    levels = next ? [{ column: column, direction: next }] : [];
+                }
+
+                apply(table, levels);
+                remember(table, levels);
             });
         });
 
-        var kept = recalled(table);
+        var kept = recalled(table).filter(function (level) {
+            return table.querySelector('th[data-pg-sort-column="' + level.column + '"]');
+        });
 
-        if (kept && table.querySelector('th[data-pg-sort-column="' + kept.column + '"]')) {
-            apply(table, kept.column, kept.direction);
+        if (kept.length) {
+            apply(table, kept);
         }
     }
+
+    // Shift+click on a heading of a list the server sorts follows the
+    // address that keeps the other levels. DataTables' fixed header copies
+    // the headings, so this listens on the document, not on each link.
+    document.addEventListener('click', function (event) {
+        var link = (event.shiftKey && event.target.closest) ? event.target.closest('a[data-pg-sort-add]') : null;
+
+        if (link) {
+            event.preventDefault();
+            window.location.href = link.getAttribute('data-pg-sort-add');
+        }
+    });
+
+    // Shift+mousedown would otherwise select the heading's text.
+    document.addEventListener('mousedown', function (event) {
+        if (event.shiftKey && event.target.closest && event.target.closest('a[data-pg-sort-add], .pg-sort-btn')) {
+            event.preventDefault();
+        }
+    });
 
     window.pgSortTables = function (root) {
         Array.prototype.forEach.call((root || document).querySelectorAll('table[data-pg-sort]'), prepare);
@@ -11051,5 +11427,401 @@ $(function () {
         });
     } else {
         window.pgSortTables(document);
+    }
+})();
+
+/* -------------------------------------------------------------------------
+ * Quick edit on list tables: a cell changed in place, without leaving the
+ * list (pg_list_edit_table() and pg_list_edit_cell() in
+ * includes/fn/output.php).
+ *
+ * A cell marked data-pg-edit opens an input on a click, a tap, Enter or F2.
+ * Enter or leaving the input saves, Escape puts the cell back as it was, Tab
+ * saves and opens the same column on the next row (Shift+Tab: the row
+ * before). A choice list saves as soon as something is picked. The value
+ * goes to the table's data-pg-edit-url with the session token; the answer
+ * redraws the cell from what was stored, and the other cells of the row it
+ * names. A refusal, or a request that never got an answer, puts the cell back
+ * and says why.
+ *
+ * Ctrl, Cmd or Shift with the click belongs to the row selection
+ * (multiselectCheckbox) and opens nothing, and so does a click that ends a
+ * text selection. The input has no name, so it never travels with the form
+ * the table sits in, and its keys stay with it: Enter does not submit that
+ * form and Ctrl+S saves the cell rather than the page's form.
+ * ------------------------------------------------------------------------- */
+(function () {
+    'use strict';
+
+    function say(key) {
+        return (typeof window.pgLang === 'function') ? window.pgLang(key) : key;
+    }
+
+    function addStyle() {
+        if (document.getElementById('pg_list_edit_style')) {
+            return;
+        }
+
+        var style = document.createElement('style');
+        style.id = 'pg_list_edit_style';
+        style.textContent = 'td[data-pg-edit]{cursor:pointer}'
+            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--bs-primary);outline-offset:-2px}'
+            + 'td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
+            + 'font-style:normal;font-weight:400;font-size:.75rem;line-height:1;margin-inline-start:.35em;vertical-align:.05em;'
+            + 'color:var(--bs-secondary-color);opacity:0}'
+            + 'td[data-pg-edit]:hover::after,td[data-pg-edit]:focus::after{opacity:.9}'
+            + '@media (hover:none){td[data-pg-edit]:not([data-pg-editing])::after{opacity:.55}}'
+            + 'td[data-pg-editing]{cursor:auto}'
+            + 'td[data-pg-editing] .form-control,td[data-pg-editing] .form-select{min-width:7rem}'
+            + 'td.pg-edit-saved{animation:pgEditSaved 1.2s ease-out}'
+            + 'td.pg-edit-failed{animation:pgEditFailed 1.6s ease-out}'
+            + '@keyframes pgEditSaved{from{background-color:rgba(var(--bs-success-rgb),.3)}to{background-color:transparent}}'
+            + '@keyframes pgEditFailed{from{background-color:rgba(var(--bs-danger-rgb),.3)}to{background-color:transparent}}'
+            + '@media (prefers-reduced-motion:reduce){td.pg-edit-saved,td.pg-edit-failed{animation:none}}'
+            + '@media print{td[data-pg-edit]::after{display:none}}';
+        document.head.appendChild(style);
+    }
+
+    function quote(name) {
+        return (window.CSS && window.CSS.escape) ? window.CSS.escape(name) : String(name).replace(/[^\w-]/g, '');
+    }
+
+    function columnsOf(table) {
+        if (!table.pgEditColumns) {
+            try {
+                table.pgEditColumns = JSON.parse(table.getAttribute('data-pg-edit-columns') || '{}') || {};
+            } catch (error) {
+                table.pgEditColumns = {};
+            }
+        }
+
+        return table.pgEditColumns;
+    }
+
+    function tokenFor(table) {
+        if (typeof window.software_token === 'string' && window.software_token !== '') {
+            return window.software_token;
+        }
+
+        var form = table.closest('form');
+        var field = (form || document).querySelector('input[name="token"]');
+
+        return field ? field.value : '';
+    }
+
+    // The new look of a cell from the answer: content, classes, tip and the
+    // value a table sorted in the browser orders it by. An editable cell
+    // keeps its hint when the answer has no tip of its own.
+    function paint(cell, view) {
+        if (typeof view.html === 'string') {
+            cell.innerHTML = view.html;
+        }
+
+        if (typeof view['class'] === 'string') {
+            cell.className = view['class'];
+        }
+
+        if (typeof view.title === 'string') {
+            if (view.title !== '') {
+                cell.setAttribute('title', view.title);
+            } else if (!cell.hasAttribute('data-pg-edit')) {
+                cell.removeAttribute('title');
+            }
+        }
+
+        if ((view.sort !== undefined) && (view.sort !== null)) {
+            cell.setAttribute('data-sort', String(view.sort));
+        }
+    }
+
+    function flash(cell, name) {
+        cell.classList.remove('pg-edit-saved', 'pg-edit-failed');
+        void cell.offsetWidth;
+        cell.classList.add(name);
+
+        window.setTimeout(function () {
+            cell.classList.remove(name);
+        }, 1700);
+    }
+
+    // DataTables keeps its own copy of each cell for its search box.
+    function refreshSearch(table, row) {
+        var $ = window.jQuery;
+
+        if ($ && $.fn && $.fn.dataTable && $.fn.dataTable.isDataTable(table)) {
+            try {
+                $(table).DataTable().row(row).invalidate('dom');
+            } catch (error) {
+                // The search sees the old value until the page is reloaded.
+            }
+        }
+    }
+
+    // The same column on the next row (or the one before) that can change.
+    function step(cell, direction) {
+        var field = cell.getAttribute('data-pg-edit');
+        var row = cell.closest('tr');
+
+        while (row) {
+            row = (direction > 0) ? row.nextElementSibling : row.previousElementSibling;
+
+            var next = row ? row.querySelector('td[data-pg-edit="' + quote(field) + '"]') : null;
+
+            if (next && !next.hasAttribute('data-pg-edit-busy')) {
+                open(next);
+                return;
+            }
+        }
+    }
+
+    function close(state) {
+        state.cell.removeAttribute('data-pg-editing');
+        state.cell.removeAttribute('data-pg-edit-busy');
+        state.cell.removeAttribute('aria-busy');
+    }
+
+    function failed(state, message) {
+        close(state);
+        state.cell.innerHTML = state.html;
+        flash(state.cell, 'pg-edit-failed');
+
+        message = message || say('The change could not be saved. Check the connection and try again.');
+
+        if (typeof window.pgToast === 'function') {
+            window.pgToast({ message: message, variant: 'danger', delay: 6000 });
+        } else {
+            window.alert(message);
+        }
+    }
+
+    function saved(state, data) {
+        var cell = state.cell;
+        var row = cell.closest('tr');
+
+        close(state);
+        paint(cell, data);
+
+        if ((data.value !== undefined) && (data.value !== null)) {
+            cell.setAttribute('data-pg-edit-value', String(data.value));
+        }
+
+        if (row && data.cells && (typeof data.cells === 'object')) {
+            Object.keys(data.cells).forEach(function (name) {
+                var other = row.querySelector('[data-pg-cell="' + quote(name) + '"], td[data-pg-edit="' + quote(name) + '"]');
+
+                if (other && (other !== cell)) {
+                    paint(other, data.cells[name]);
+                }
+            });
+        }
+
+        flash(cell, 'pg-edit-saved');
+
+        if (row) {
+            refreshSearch(state.table, row);
+        }
+    }
+
+    function send(state, value, shown) {
+        var cell = state.cell;
+        var body = new FormData();
+        var spinner = document.createElement('span');
+
+        // What was typed stays on screen, with a spinner, until the answer.
+        cell.removeAttribute('data-pg-editing');
+        cell.setAttribute('data-pg-edit-busy', '');
+        cell.setAttribute('aria-busy', 'true');
+        cell.textContent = shown;
+        spinner.className = 'spinner-border spinner-border-sm ms-2';
+        spinner.setAttribute('aria-hidden', 'true');
+        cell.appendChild(spinner);
+
+        body.append('pg_list_edit', '1');
+        body.append('token', tokenFor(state.table));
+        body.append('field', cell.getAttribute('data-pg-edit'));
+        body.append('id', cell.getAttribute('data-pg-edit-id') || '');
+        body.append('value', value);
+
+        window.fetch(state.table.getAttribute('data-pg-edit-url'), {
+            method: 'POST',
+            body: body,
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' }
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                return data;
+            }, function () {
+                return null;
+            });
+        }).then(function (data) {
+            if (data && data.ok) {
+                saved(state, data);
+            } else {
+                failed(state, (data && data.message) ? String(data.message) : '');
+            }
+        }, function () {
+            failed(state, '');
+        });
+    }
+
+    // direction: 1 or -1 opens the same column on the next or the previous
+    // row; refocus puts the keyboard back on the cell (Enter, Ctrl+S), which
+    // a click elsewhere must not do.
+    function commit(state, direction, refocus) {
+        if (state.done) {
+            return;
+        }
+
+        state.done = true;
+
+        var control = state.control;
+        var value = (control.tagName === 'SELECT') ? control.value : control.value.trim();
+
+        if (value === state.value) {
+            close(state);
+            state.cell.innerHTML = state.html;
+        } else {
+            send(state, value, (control.tagName === 'SELECT') ? control.options[control.selectedIndex].text : value);
+        }
+
+        if (direction) {
+            step(state.cell, direction);
+        } else if (refocus) {
+            state.cell.focus();
+        }
+    }
+
+    function cancel(state) {
+        if (state.done) {
+            return;
+        }
+
+        state.done = true;
+        close(state);
+        state.cell.innerHTML = state.html;
+        state.cell.focus();
+    }
+
+    function open(cell) {
+        var table = cell.closest('table[data-pg-edit-url]');
+        var column = table ? columnsOf(table)[cell.getAttribute('data-pg-edit')] : null;
+
+        if (!column || cell.hasAttribute('data-pg-editing') || cell.hasAttribute('data-pg-edit-busy')) {
+            return;
+        }
+
+        var value = cell.getAttribute('data-pg-edit-value') || '';
+        var control;
+
+        if (column.type === 'select') {
+            control = document.createElement('select');
+            control.className = 'form-select form-select-sm';
+
+            (column.options || []).forEach(function (pair) {
+                var option = document.createElement('option');
+
+                option.value = String(pair[0]);
+                option.textContent = String(pair[1]);
+                option.selected = (option.value === value);
+                control.appendChild(option);
+            });
+        } else {
+            control = document.createElement('input');
+            control.type = 'text';
+            control.className = 'form-control form-control-sm' + ((column.type === 'text') ? '' : ' text-end');
+            control.value = value;
+            control.autocomplete = 'off';
+            control.setAttribute('enterkeyhint', 'done');
+
+            if (column.type === 'integer') {
+                control.inputMode = 'numeric';
+            } else if (column.type === 'money') {
+                control.inputMode = 'decimal';
+            } else if (column.max) {
+                control.maxLength = column.max;
+            }
+        }
+
+        control.setAttribute('aria-label', String(column.label || ''));
+
+        var state = { cell: cell, table: table, control: control, value: value, html: cell.innerHTML, done: false };
+
+        cell.setAttribute('data-pg-editing', '');
+        cell.innerHTML = '';
+        cell.appendChild(control);
+        control.focus();
+
+        if (control.tagName === 'INPUT') {
+            control.select();
+        } else if (typeof control.showPicker === 'function') {
+            try {
+                control.showPicker();
+            } catch (error) {
+                // Not allowed here; the list opens on the next click.
+            }
+        }
+
+        control.addEventListener('keydown', function (event) {
+            // The panel's own shortcuts listen on the document; what is typed
+            // here is for this input.
+            event.stopPropagation();
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                commit(state, 0, true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                cancel(state);
+            } else if (event.key === 'Tab') {
+                event.preventDefault();
+                commit(state, event.shiftKey ? -1 : 1);
+            } else if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S'))) {
+                event.preventDefault();
+                commit(state, 0, true);
+            }
+        });
+
+        control.addEventListener('blur', function () {
+            commit(state);
+        });
+
+        if (control.tagName === 'SELECT') {
+            control.addEventListener('change', function () {
+                commit(state);
+            });
+        }
+    }
+
+    document.addEventListener('click', function (event) {
+        if ((event.button !== 0) || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || !event.target.closest) {
+            return;
+        }
+
+        var cell = event.target.closest('td[data-pg-edit]');
+
+        if (!cell || event.target.closest('a, button, input, select, textarea, label')) {
+            return;
+        }
+
+        if (window.getSelection && (String(window.getSelection()) !== '')) {
+            return;
+        }
+
+        open(cell);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        var cell = event.target;
+
+        if (cell && cell.matches && cell.matches('td[data-pg-edit]') && ((event.key === 'Enter') || (event.key === 'F2'))) {
+            event.preventDefault();
+            open(cell);
+        }
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', addStyle);
+    } else {
+        addStyle();
     }
 })();

@@ -661,6 +661,32 @@ function pg_tr_text($text, $format = 'text', $kind = 'content')
  */
 function pg_tr_finalize($content)
 {
+    // A page in the site's own language says which one it is. The stored
+    // body carries the fixed lang="en" of generate_style_code_from_tree(),
+    // and the browser changes case by the page's language: "müşteri" in
+    // capitals is "MÜŞTERİ" in Turkish and "MÜŞTERI" in English. A language
+    // other than "en" written into a style by hand is left as it is; with
+    // languages set up, the language pass below sets every page's.
+    if (!pg_tr_active()) {
+        $source = pg_tr_source_language();
+
+        if ($source !== '' && $source !== 'en') {
+            $content = preg_replace_callback('~<html\b([^>]*)>~i', function ($match) use ($source) {
+                $attrs = $match[1];
+
+                if (!preg_match('~\slang=("|\')([^"\']*)\1~i', $attrs, $lang)) {
+                    return '<html' . $attrs . ' lang="' . h($source) . '">';
+                }
+
+                if (strtolower(trim($lang[2])) !== 'en') {
+                    return $match[0];
+                }
+
+                return '<html' . preg_replace('~\slang=("|\')[^"\']*\1~i', ' lang="' . h($source) . '"', $attrs, 1) . '>';
+            }, $content, 1);
+        }
+    }
+
     if (pg_tr_ready() && pg_tr_languages()) {
         pg_tr_load();
         $content = pg_tr_render_finalize($content);

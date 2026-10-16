@@ -35,6 +35,7 @@ require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 require_once(dirname(__FILE__) . '/includes/api/devices.php');
+require_once(dirname(__FILE__) . '/includes/oauth/server.php');
 
 $liveform = new liveform('api_settings');
 
@@ -47,6 +48,23 @@ $screen_url = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/api_
 if ($_POST) {
 
 	validate_token_field();
+
+	// Every field here holds one value, except the permission rows
+	// (scope[resource]). One posted as a list (name[]=x) stopped the request
+	// in escape() or trim(), and app_id[]=x was read as application 1, which
+	// the update and delete then changed. Nothing is written, so every
+	// application stays as it was.
+	$api_settings_lists = pg_request_unexpected_lists($_POST, array('scope' => 1));
+
+	if ($api_settings_lists) {
+
+		$liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $api_settings_lists)))));
+
+		header('Location: ' . $screen_url);
+
+		exit();
+
+	}
 
 	// liveform reads field values from the session, not from $_POST, so the
 	// post has to be handed to it before anything is validated or read back.
@@ -95,11 +113,13 @@ if ($_POST) {
 			// A team devices application is where staff sign in from their own
 			// phones (includes/api/devices.php). It is given no secret at all:
 			// the app it is typed into cannot keep one, and without a secret
-			// the key cannot be used as HTTP Basic credentials either.
-			$kind = (isset($_POST['kind']) && ($_POST['kind'] === 'device')) ? 'device' : 'server';
+			// the key cannot be used as HTTP Basic credentials either. An OAuth
+			// application (includes/oauth/) is the same kind of switch for
+			// outside applications a person connects, and has none either.
+			$kind = (isset($_POST['kind']) && in_array($_POST['kind'], array('device', 'oauth'), true)) ? $_POST['kind'] : 'server';
 
 			$key    = api_generate_key();
-			$secret = ($kind === 'device') ? '' : api_generate_secret();
+			$secret = ($kind === 'server') ? api_generate_secret() : '';
 
 			db("INSERT INTO api_apps
 				(name, description, api_key, api_secret_hash, api_secret_hint, owner_user_id,
@@ -350,6 +370,68 @@ if ($_POST) {
 
 		exit();
 
+	} elseif (in_array($action, array('oauth_client_status', 'oauth_client_delete'), true) && pg_oauth_ready()) {
+
+		// An application that connects with OAuth, as opposed to the operator's
+		// OAuth application above it: turned off, it can neither start a
+		// connection nor use the ones it has; removed, its connections go with
+		// it.
+		$client_row_id = isset($_POST['oauth_client_row']) ? (int)$_POST['oauth_client_row'] : 0;
+
+		$client = db_item("SELECT id, name, status FROM oauth_clients WHERE id = '" . $client_row_id . "' LIMIT 1");
+
+		if ($client) {
+
+			$client_name = ((string)$client['name'] !== '') ? (string)$client['name'] : lang('Unnamed application');
+
+			if ($action === 'oauth_client_delete') {
+
+				pg_oauth_client_delete((int)$client['id']);
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was removed, and its connections were ended.', 'vars' => $client_name)));
+
+				log_activity(lang(array(
+					'string' => 'OAuth application ({var:1}) was removed.',
+					'vars'   => $client_name
+				)), $_SESSION['sessionusername']);
+
+			} else {
+
+				$turn_on = ($client['status'] !== 'active');
+
+				pg_oauth_client_set_status((int)$client['id'], $turn_on);
+
+				if ($turn_on) {
+
+					$liveform->add_notice(lang(array('string' => '{var:1} was turned on again.', 'vars' => $client_name)));
+
+					log_activity(lang(array(
+						'string' => 'OAuth application ({var:1}) was turned on.',
+						'vars'   => $client_name
+					)), $_SESSION['sessionusername']);
+
+				} else {
+
+					$liveform->add_notice(lang(array(
+						'string' => '{var:1} was turned off. It cannot connect, and its connections are refused until it is turned on again.',
+						'vars'   => $client_name
+					)));
+
+					log_activity(lang(array(
+						'string' => 'OAuth application ({var:1}) was turned off.',
+						'vars'   => $client_name
+					)), $_SESSION['sessionusername']);
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '#oauth_clients');
+
+		exit();
+
 	} elseif ($action === 'delete' && $app_id > 0) {
 
 		$existing = db_item("SELECT id, name FROM api_apps WHERE id = '" . $app_id . "' LIMIT 1");
@@ -482,19 +564,28 @@ if (is_array($recent)) {
 function api_settings_group_text($key, $group = array()) {
 
 	$text = array(
-		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing name, price and description'), 'bi-box-seam'),
+		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing products, product groups and product attributes, and deleting them'), 'bi-box-seam'),
 		'inventory' => array(lang('Inventory'),  lang('Setting a quantity and adjusting it - reading is under Products'), 'bi-grid-3x3-gap'),
-		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines; writing status and notes'), 'bi-cart3'),
-		'customers' => array(lang('Customers'),  lang('The people who buy (address book records)'), 'bi-person-lines-fill'),
-		'pages'     => array(lang('Pages'),      lang('Page title and meta fields'), 'bi-file-earmark'),
-		'design'    => array(lang('Page design'), lang('The layout of the Visual Page Editor\'s pages; writing means proposing a change a designer applies'), 'bi-palette'),
-		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means removing one, not creating it'), 'bi-file-earmark-text'),
-		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder'), 'bi-folder'),
-		'forms'     => array(lang('Forms'),      lang('Which forms the site has, and what visitors filled in on them'), 'bi-ui-checks'),
+		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines, and the shipping methods, zones, taxes, countries and currencies they are computed with; writing status and notes'), 'bi-cart3'),
+		'customers' => array(lang('Customers'),  lang('The people who buy (address book records); writing includes deleting one'), 'bi-person-lines-fill'),
+		'pages'     => array(lang('Pages'),      lang('Page details, comment settings, folders, menus and short links'), 'bi-file-earmark'),
+		'design'    => array(lang('Page design'), lang('The layout of the Visual Page Editor\'s pages; writing means proposing a change a designer applies, or adding a page as a draft'), 'bi-palette'),
+		'comments'  => array(lang('Comments'),   lang('What visitors wrote under pages, records, products and events; writing means publishing, holding, featuring or removing one'), 'bi-chat-left-text'),
+		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means switching one on or off, moving its dates or removing it, not creating it'), 'bi-file-earmark-text'),
+		'key_codes' => array(lang('Key Codes'),  lang('The codes shoppers type instead of an offer\'s own code; writing makes codes for an existing offer, changes or removes one'), 'bi-key'),
+		'gift_cards' => array(lang('Gift Cards'), lang('The cards, their codes, balances and where they were spent; writing issues a card, changes its balance or expiry, or removes it'), 'bi-gift'),
+		'commissions' => array(lang('Commissions'), lang('What the affiliate program owes each affiliate, with its status and the order it came from - read only'), 'bi-cash-coin'),
+		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder and describing them'), 'bi-folder'),
+		'forms'     => array(lang('Forms'),      lang('Which forms the site has and what visitors filled in; writing marks a submission complete and fills in its text answers'), 'bi-ui-checks'),
+		'calendars' => array(lang('Calendars'),  lang('The calendars and the events on them; writing adds, changes, publishes or removes an event, not its repeats or reservations'), 'bi-calendar-event'),
 		'seo'       => array(lang('SEO'),        lang('What the analysis found across the site, as a list to work through'), 'bi-graph-up-arrow'),
-		'webhooks'  => array(lang('Webhooks'),   lang('Registering an address for event notifications'), 'bi-megaphone'),
+		'webhooks'  => array(lang('Webhooks'),   lang('Registering, changing and testing an address for event notifications'), 'bi-megaphone'),
 		'meta'      => array(lang('Site info'),  lang('Currency, tax and order statuses - read only'), 'bi-info-circle'),
 		'system'    => array(lang('System'),     lang('The health score and the checks behind it, for your own monitoring'), 'bi-activity'),
+		'visitors'  => array(lang('Visitors'),   lang('Visits and page views, the most viewed content and where visits came from, as totals - never a single visit'), 'bi-bar-chart'),
+		'site_log'  => array(lang('Site Log'),   lang('Who did what on the site and from which address - read only'), 'bi-journal-text'),
+		'campaigns' => array(lang('Campaigns'),  lang('E-mail campaigns, how far sending has got and who they go to; writing holds, releases, cancels, corrects or removes one, not putting one together'), 'bi-envelope'),
+		'contact_groups' => array(lang('Contact Groups'), lang('The lists campaigns go to and who is on them; writing makes, renames and removes empty groups, puts contacts in or takes them out and records their e-mail choice'), 'bi-people'),
 		'account'   => array(lang('Own account'), lang('Notifications, signed-in devices and push registration of the account the calls act for'), 'bi-person-badge')
 	);
 
@@ -613,7 +704,8 @@ $webhook_rows = array();
 // one read, so they cannot disagree.
 $webhook_all = array();
 
-$hooks = db_items("SELECT id, app_id, url, events, status, last_success, last_failure
+$hooks = db_items("SELECT id, app_id, url, events, status, last_success, last_failure"
+	. (api_webhook_channel_groups_ready() ? ", channel_group_id" : "") . "
 	FROM api_webhooks
 	ORDER BY app_id ASC, id ASC");
 
@@ -695,7 +787,8 @@ if (is_array($hooks) && !empty($hooks)) {
 			'last_failure' => ((int)$hook['last_failure'] > 0) ? api_settings_ago($hook['last_failure']) : '',
 			'waiting'      => $state['waiting'],
 			'given_up'     => $state['given_up'],
-			'error'        => $state['error']
+			'error'        => $state['error'],
+			'channel_group_id' => isset($hook['channel_group_id']) ? (int)$hook['channel_group_id'] : 0
 		);
 
 		$webhook_rows[$key][] = $row;
@@ -790,17 +883,23 @@ foreach ($apps as $app) {
 
 	$stats = isset($traffic[(int)$app['id']]) ? $traffic[(int)$app['id']] : array('requests' => 0, 'failures' => 0);
 
+	$is_oauth = (isset($app['kind']) && ($app['kind'] === 'oauth'));
+
 	$is_device = (isset($app['kind']) && ($app['kind'] === 'device'));
+
+	$signed_in_count = pg_format_number(isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0, 0);
 
 	$app_rows .= '
 	<div class="api-row" data-app="' . (int)$app['id'] . '" role="button" tabindex="0">
 		<div class="api-name">
-			<i class="bi ' . ($is_device ? 'bi-phone' : 'bi-key') . '"></i>
+			<i class="bi ' . ($is_oauth ? 'bi-plug' : ($is_device ? 'bi-phone' : 'bi-key')) . '"></i>
 			<div>
 				<b>' . h($app['name']) . '</b>
-				' . ($is_device
-					? '<code>' . lang('Team devices') . ' &middot; ' . pg_format_number(isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0, 0) . ' ' . lang('devices') . '</code>'
-					: '<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>') . '
+				' . ($is_oauth
+					? '<code>' . lang('Connected apps (OAuth)') . ' &middot; ' . $signed_in_count . ' ' . lang('connections') . '</code>'
+					: ($is_device
+					? '<code>' . lang('Team devices') . ' &middot; ' . $signed_in_count . ' ' . lang('devices') . '</code>'
+					: '<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>')) . '
 			</div>
 		</div>
 		<div class="api-chips">' . $chips . '</div>
@@ -837,7 +936,7 @@ foreach ($apps as $app) {
 		'rate'        => (int)$app['rate_limit_per_min'],
 		'scopes'      => $scope_choices,
 		'has_secret'  => ($app['api_secret_hash'] !== ''),
-		'kind'        => $is_device ? 'device' : 'server',
+		'kind'        => $is_oauth ? 'oauth' : ($is_device ? 'device' : 'server'),
 		'devices'     => isset($device_rows[(int)$app['id']]) ? $device_rows[(int)$app['id']] : array(),
 		'log'         => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']] : array(),
 		'webhooks'    => isset($webhook_rows[(int)$app['id']]) ? $webhook_rows[(int)$app['id']] : array()
@@ -903,6 +1002,141 @@ function api_settings_permission_rows($prefix, $id_prefix = '') {
 
 }
 
+/* ---------------------------------------------------------------------------
+   The OAuth connection guide, drawn in the drawer and in the sheet shown once
+   the application is made
+   --------------------------------------------------------------------------- */
+
+function api_settings_oauth_guide($id_prefix, $button_class) {
+
+	// The MCP server answers at two addresses: the file in the software
+	// directory, reachable on any server, and the site's own address, which
+	// only works where the site's URL rewriting hands unknown paths to the
+	// router. The file comes first because it is the one that never fails.
+	$addresses = pg_oauth_resource_addresses();
+
+	$mcp_file = $addresses['mcp'][1];
+
+	$mcp_short = $addresses['mcp'][0];
+
+	$metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
+
+	$box = function ($id, $value) use ($button_class) {
+		return '<div class="api-secret-box mb-1"><code id="' . $id . '">' . h($value) . '</code>
+			<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" data-copy="#' . $id . '">' . lang('Copy') . '</button></div>';
+	};
+
+	// Each application is set up its own way: a menu, a command or a
+	// configuration file. The steps and the text to paste, with this site's
+	// address already in it, one folded entry per application. Product names
+	// are names and are not translated; the configuration keys are what each
+	// application reads and are written exactly.
+	$json_address = json_encode($mcp_file, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+	$clients = array(
+		'claude' => array(
+			'name'    => lang('Claude (web, desktop and mobile)'),
+			'steps'   => lang('Settings > Connectors > Add custom connector. Paste the address, then press Connect.'),
+			'snippet' => ''
+		),
+		'claude_code' => array(
+			'name'    => 'Claude Code',
+			'steps'   => lang('Run this in a terminal, then type /mcp in Claude Code and choose the server to sign in.'),
+			'snippet' => 'claude mcp add --transport http pinegrap ' . $mcp_file
+		),
+		'chatgpt' => array(
+			'name'    => 'ChatGPT',
+			'steps'   => lang('Settings > Apps & Connectors > Advanced settings: switch developer mode on. Then press Create, paste the address as the MCP server URL and choose OAuth as the authentication.'),
+			'snippet' => ''
+		),
+		'vscode' => array(
+			'name'    => 'VS Code (GitHub Copilot)',
+			'steps'   => lang('Command Palette > MCP: Add Server > HTTP, then paste the address; or put this in .vscode/mcp.json. VS Code asks you to sign in the first time the server starts.'),
+			'snippet' => "{\n  \"servers\": {\n    \"pinegrap\": {\n      \"type\": \"http\",\n      \"url\": " . $json_address . "\n    }\n  }\n}"
+		),
+		'cursor' => array(
+			'name'    => 'Cursor',
+			'steps'   => lang('Add a new MCP server in Cursor\'s settings, or put this in ~/.cursor/mcp.json. Then press Connect next to the server.'),
+			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"url\": " . $json_address . "\n    }\n  }\n}"
+		),
+		'windsurf' => array(
+			'name'    => 'Windsurf',
+			'steps'   => lang('Put this in ~/.codeium/windsurf/mcp_config.json, refresh the MCP servers and sign in when asked.'),
+			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"serverUrl\": " . $json_address . "\n    }\n  }\n}"
+		),
+		'gemini' => array(
+			'name'    => 'Gemini CLI',
+			'steps'   => lang('Put this in ~/.gemini/settings.json, then run /mcp auth pinegrap in Gemini CLI.'),
+			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"httpUrl\": " . $json_address . "\n    }\n  }\n}"
+		),
+		'codex' => array(
+			'name'    => 'Codex',
+			'steps'   => lang('Run these in a terminal. The second opens the sign-in in your browser.'),
+			'snippet' => 'codex mcp add pinegrap --url ' . $mcp_file . "\n" . 'codex mcp login pinegrap'
+		),
+		'other' => array(
+			'name'    => lang('Other applications'),
+			'steps'   => lang('An application that asks for a server address works with the address above. One that can only start a program on the computer reaches the server through the mcp-remote bridge, which needs Node.js and opens the sign-in in the browser: give it this as the command.'),
+			'snippet' => 'npx -y mcp-remote ' . $mcp_file
+		)
+	);
+
+	$client_rows = '';
+
+	foreach ($clients as $key => $client) {
+
+		$client_rows .= '
+			<details class="api-client">
+				<summary>' . h($client['name']) . '</summary>
+				<p class="mb-1">' . h($client['steps']) . '</p>'
+				. (($client['snippet'] !== '')
+					? '<div class="api-secret-box api-snippet mb-1"><code id="' . $id_prefix . '_c_' . $key . '">' . h($client['snippet']) . '</code>
+						<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" data-copy="#' . $id_prefix . '_c_' . $key . '">' . lang('Copy') . '</button></div>'
+					: '') . '
+			</details>';
+
+	}
+
+	return '
+	<label class="form-label small">' . lang('MCP server address') . '</label>
+	' . $box($id_prefix . '_mcp', $mcp_file) . '
+	<div class="form-text mb-3">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
+
+	<label class="form-label small">' . lang('Short address') . '</label>
+	' . $box($id_prefix . '_mcp_short', $mcp_short) . '
+	<div class="form-text mb-3">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
+
+	<label class="form-label small">' . lang('Discovery address') . '</label>
+	' . $box($id_prefix . '_meta', $metadata_url) . '
+	<div class="form-text mb-3">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
+
+	<div class="api-guide">
+		<div class="api-guide-title"><i class="bi bi-signpost-2 me-1"></i>' . lang('How to connect') . '</div>
+		<ol class="mb-0">
+			<li>' . lang('Add the MCP server address in the application, exactly as shown: the steps for each application are below. The application compares it with the address the site names in its answers, so another spelling of the host, with or without www, does not connect.') . '</li>
+			<li>' . lang('The application opens this site\'s sign-in page. The person signs in with their own panel account; the application never sees the password.') . '</li>
+			<li>' . lang('The site lists what the application asks for, and the person agrees or refuses.') . '</li>
+			<li>' . lang('The tools appear in the application, and the connection is listed on this application\'s Connections tab, where it can be ended.') . '</li>
+		</ol>
+	</div>
+
+	<div class="api-guide">
+		<div class="api-guide-title"><i class="bi bi-window-stack me-1"></i>' . lang('Steps for each application') . '</div>
+		' . $client_rows . '
+	</div>
+
+	<div class="api-guide">
+		<div class="api-guide-title"><i class="bi bi-tools me-1"></i>' . lang('What the application can do') . '</div>
+		<ul class="mb-0">
+			<li>' . lang('Every permission area becomes a set of tools. Read gives the list and view tools; Write also gives the tools that create, change and delete.') . '</li>
+			<li>' . lang('A person gets at most what their own panel account may do, and never more than the permissions chosen here.') . '</li>
+			<li>' . lang('Narrowing the permissions takes effect at once. After widening them, connect again in the application so the person can agree to the new ones.') . '</li>
+			<li>' . lang('Some applications use only a limited number of tools at a time, VS Code and Cursor among them. If one warns about too many tools, untick the areas you do not need on the consent screen, or switch tools off in the application.') . '</li>
+		</ul>
+	</div>';
+
+}
+
 
 $api_base_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/integration.php';
 
@@ -924,6 +1158,31 @@ $permission_rows = api_settings_permission_rows('scope', 'd_scope');
 // feature with nothing in it yet; it is a feature that site is not using, and
 // an empty box would be one more thing to read past on every visit.
 $webhook_card = '';
+
+// The names of the channel groups the subscriptions are narrowed to.
+$webhook_group_names = array();
+
+$webhook_group_ids = array();
+
+foreach ($webhook_all as $hook) {
+
+	if ($hook['channel_group_id'] > 0) {
+
+		$webhook_group_ids[$hook['channel_group_id']] = $hook['channel_group_id'];
+
+	}
+
+}
+
+if (!empty($webhook_group_ids) && pg_schema_has('ws_channel_groups')) {
+
+	foreach ((array)db_items("SELECT id, name FROM ws_channel_groups WHERE id IN (" . implode(',', $webhook_group_ids) . ")") as $group_row) {
+
+		$webhook_group_names[(int)$group_row['id']] = (string)$group_row['name'];
+
+	}
+
+}
 
 if (!empty($webhook_all)) {
 
@@ -1007,6 +1266,19 @@ if (!empty($webhook_all)) {
 
 		$chips = '';
 
+		// A subscription narrowed to a group of workspace channels hears only
+		// those channels; the chip says which group, or that it was removed
+		// (which switched the subscription off).
+		if ($hook['channel_group_id'] > 0) {
+
+			$group_name = isset($webhook_group_names[$hook['channel_group_id']])
+				? $webhook_group_names[$hook['channel_group_id']]
+				: lang('a group that was removed');
+
+			$chips .= '<span class="api-chip"><i class="bi bi-collection me-1"></i>' . h(lang('Channel group') . ': ' . $group_name) . '</span>';
+
+		}
+
 		foreach ($hook['events'] as $event_name) {
 
 			$chips .= '<span class="api-chip">' . h($event_name) . '</span>';
@@ -1068,6 +1340,128 @@ if (!empty($webhook_all)) {
 				. lang('Every address this site is telling, whoever registered it.') . '</span>
 		</div>
 		<div class="card-body px-3 py-2">' . $hook_blocks . '
+		</div>
+	</div>';
+
+}
+
+// The applications that connect through OAuth: the clients that registered
+// themselves or named themselves with a metadata document. Drawn on the
+// screen like the event card, because they belong to the site's OAuth server
+// rather than to one application row, and drawn only once OAuth is in use - an
+// OAuth application exists, or a client is still on record from when one did.
+$oauth_clients_card = '';
+
+$oauth_in_use = false;
+
+foreach ($apps as $listed_app) {
+
+	if (isset($listed_app['kind']) && ($listed_app['kind'] === 'oauth')) {
+
+		$oauth_in_use = true;
+
+	}
+
+}
+
+$oauth_clients = pg_oauth_clients_overview();
+
+if ($oauth_in_use || !empty($oauth_clients)) {
+
+	// A loopback address is a program on the person's own computer whatever
+	// port it names; an app scheme and a web address read for themselves.
+	$on_this_computer = lang('A program on this computer');
+
+	$client_blocks = '';
+
+	foreach ($oauth_clients as $client) {
+
+		$client_on = ($client['status'] === 'active');
+
+		$identity = pg_oauth_client_identity_host($client);
+
+		if ($identity !== '') {
+
+			$origin = lang('Identified by') . ' <code>' . h($identity) . '</code>';
+
+		} elseif ($client['registered_by'] === 'dynamic') {
+
+			$origin = h(lang('Registered itself'));
+
+		} else {
+
+			$origin = h(lang('Added by the site'));
+
+		}
+
+		// Where its answers go, each place once: a client registers several
+		// addresses of the same kind (VS Code lists four).
+		$places = array();
+
+		foreach (pg_oauth_client_redirect_uris($client) as $uri) {
+
+			$destination = pg_oauth_redirect_destination($uri);
+
+			$place = ($destination['kind'] === 'device') ? $on_this_computer : $destination['text'];
+
+			$places[$place] = '<span class="api-chip">' . h($place) . '</span>';
+
+		}
+
+		$meta = array(
+			pg_format_number((int)$client['connections'], 0) . ' ' . lang('connections'),
+			lang('Last used') . ' ' . api_settings_ago($client['last_used_timestamp']),
+			lang(array('string' => 'Registered on {var:1}', 'vars' => date('d.m.Y', (int)$client['created_timestamp'])))
+		);
+
+		if ((string)$client['software_version'] !== '') {
+
+			$meta[] = (string)$client['software_version'];
+
+		}
+
+		$client_blocks .= '
+			<div class="api-hook">
+				<div class="api-hook-top">
+					<span class="api-hook-url"><b>' . h(pg_oauth_client_name($client)) . '</b>
+						<span class="small opacity-75 ms-1">' . $origin . '</span></span>
+					<span class="api-status ' . ($client_on ? 'on' : 'off') . '">'
+						. h($client_on ? lang('Active') : lang('Turned off')) . '</span>
+				</div>
+				' . (!empty($places) ? '<div class="api-hook-events">' . implode('', $places) . '</div>' : '') . '
+				<div class="api-hook-meta">' . h(implode(' · ', $meta)) . '</div>
+				<form method="post" action="api_settings.php" class="api-hook-acts disable_shortcut">
+					' . get_token_field() . '
+					<input type="hidden" name="oauth_client_row" value="' . (int)$client['id'] . '">
+					<button type="submit" name="api_action" value="oauth_client_status"
+						class="btn btn-sm btn-outline-secondary">' . h($client_on ? lang('Turn off') : lang('Turn on')) . '</button>
+					<button type="submit" name="api_action" value="oauth_client_delete"
+						class="btn btn-sm btn-outline-danger api-confirm"
+						data-confirm="' . h(lang('The application will be removed and every connection it has will be ended. If it registered itself, it can register again.')) . '">'
+						. h(lang('Remove')) . '</button>
+				</form>
+			</div>';
+
+	}
+
+	if ($client_blocks === '') {
+
+		$client_blocks = '<p class="small opacity-50 py-3 mb-0">' . h(lang('No application has connected yet.')) . '</p>';
+
+	}
+
+	$oauth_clients_card = '
+	<div class="card mt-3" id="oauth_clients">
+		<div class="card-header d-flex align-items-center">
+			<i class="bi bi-plug me-2"></i><b>' . lang('Connected applications') . '</b>
+			<span class="ms-auto small opacity-75 d-none d-lg-inline">'
+				. lang('Applications people connected with OAuth, and where each sends its answers.') . '</span>
+		</div>
+		<div class="card-body px-3 py-2">' . $client_blocks . '
+			<div class="alert alert-primary py-2 px-3 small mt-2 mb-1">
+				<i class="bi bi-info-circle me-1"></i>'
+				. lang('Turning an application off stops it at once and keeps its connections for when it is turned on again. Removing it ends its connections. An application that registered itself can register again, and each person is then asked again on the consent screen.') . '
+			</div>
 		</div>
 	</div>';
 
@@ -1176,6 +1570,15 @@ echo pg_page_shell(array(
 .api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--bs-tertiary-bg);
 	border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 9px 11px; }
 .api-secret-box code { flex: 1; font-size: 12px; word-break: break-all; }
+.api-guide { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: 8px;
+	padding: 10px 12px; margin-bottom: 10px; font-size: 12.5px; }
+.api-guide-title { font-weight: 600; margin-bottom: 6px; }
+.api-guide ol, .api-guide ul { padding-left: 18px; }
+.api-guide li + li { margin-top: 4px; }
+.api-client + .api-client { margin-top: 4px; }
+.api-client summary { cursor: pointer; font-weight: 500; }
+.api-client[open] summary { margin-bottom: 4px; }
+.api-snippet code { white-space: pre; overflow-x: auto; word-break: normal; }
 .api-danger-zone { border-top: 1px solid var(--bs-border-color); margin-top: 18px; padding-top: 14px; }
 /* The site chat launcher is fixed at z-index 1080, an offcanvas is 1045, so the
    bubble sits on top of whatever the drawer puts in its bottom right corner -
@@ -1222,6 +1625,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		</div>
 	</div>
 
+	' . $oauth_clients_card . '
+
 	' . $webhook_card . '
 
 	<p class="small opacity-50 mt-3">
@@ -1252,7 +1657,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#d_general" type="button">' . lang('General') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_perms" type="button">' . lang('Permissions') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_security" type="button">' . lang('Security') . '</button></li>
-			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button">' . lang('Devices') . '</button></li>
+			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label"
+				data-device="' . h(lang('Devices')) . '" data-oauth="' . h(lang('Connections')) . '">' . lang('Devices') . '</button></li>
 			<li class="nav-item" id="d_hooks_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button">' . lang('Events') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_log" type="button">' . lang('Log') . '</button></li>
 		</ul>
@@ -1288,6 +1694,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_login">' . lang('Copy') . '</button></div>
 					<div class="form-text">'
 						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
+				</div>
+				<div class="mb-3" id="d_oauth_block">
+					' . api_settings_oauth_guide('d_oauth', 'btn-outline-secondary') . '
 				</div>
 				<div class="mb-3" id="d_auth_block">
 					<label class="form-label small">' . lang('Authentication') . '</label>
@@ -1427,6 +1836,11 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<label class="form-check-label small" for="n_kind_device"><b>' . lang('Team devices') . '</b><br>
 							<span class="opacity-75">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</span></label>
 					</div>
+					<div class="form-check mt-2">
+						<input class="form-check-input" type="radio" name="kind" value="oauth" id="n_kind_oauth">
+						<label class="form-check-label small" for="n_kind_oauth"><b>' . lang('Connected apps (OAuth)') . '</b><br>
+							<span class="opacity-75">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</span></label>
+					</div>
 				</div>
 				<label class="form-label small">' . lang('Permissions') . '</label>
 				' . api_settings_permission_rows('scope', 'n_scope') . '
@@ -1439,6 +1853,38 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		</form>
 	</div>
 </div>';
+
+/* An OAuth application has nothing to reveal either. What the operator needs is
+   the address an outside application is pointed at. */
+if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'oauth')) {
+
+	echo '
+<div class="modal fade show" id="api_secret_sheet" tabindex="-1" style="display:block; background:rgba(0,0,0,.6)">
+	<div class="modal-dialog modal-lg modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header border-0 pb-0">
+				<h5 class="modal-title"><i class="bi bi-plug me-2 text-primary"></i>' . lang('Connecting applications with OAuth is switched on') . '</h5>
+			</div>
+			<div class="modal-body">
+				<p class="mb-3">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
+
+				' . api_settings_oauth_guide('nc', 'btn-outline-primary') . '
+
+				<div class="alert alert-primary py-2 px-3 small mb-0">
+					<i class="bi bi-info-circle me-1"></i>'
+					. lang('Applications register themselves the first time they connect. Each connection appears on this application\'s Connections tab, where it can be ended; a new password, or signing out everywhere, ends a person\'s connections too.') . '
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-sm btn-success" id="nc_close">' . lang('Close') . '</button>
+			</div>
+		</div>
+	</div>
+</div>';
+
+	$new_credentials = null;
+
+}
 
 /* A team devices application has nothing to reveal once: its key is not a
    secret and stays readable in the drawer. What the operator needs on the way
@@ -1712,12 +2158,20 @@ echo '
 		// A team devices application has no secret to rotate and no curl line
 		// to hand over, and a phone never registers event subscriptions; what it
 		// has instead is the sign-in address and the list of devices.
+		//
+		// An OAuth application is the same, with the discovery address in place
+		// of the sign-in one and its connections in place of devices.
 		var device = (app.kind === "device");
-		document.getElementById("d_secret_block").classList.toggle("d-none", device);
-		document.getElementById("d_auth_block").classList.toggle("d-none", device);
+		var oauth = (app.kind === "oauth");
+		var keyless = device || oauth;
+		document.getElementById("d_secret_block").classList.toggle("d-none", keyless);
+		document.getElementById("d_auth_block").classList.toggle("d-none", keyless);
 		document.getElementById("d_device_block").classList.toggle("d-none", !device);
-		document.getElementById("d_devices_tab").classList.toggle("d-none", !device);
-		document.getElementById("d_hooks_tab").classList.toggle("d-none", device);
+		document.getElementById("d_oauth_block").classList.toggle("d-none", !oauth);
+		document.getElementById("d_devices_tab").classList.toggle("d-none", !keyless);
+		document.getElementById("d_hooks_tab").classList.toggle("d-none", keyless);
+		var devicesLabel = document.getElementById("d_devices_label");
+		devicesLabel.textContent = oauth ? devicesLabel.dataset.oauth : devicesLabel.dataset.device;
 		renderDevices(app.devices || []);
 		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_general\']");
 		if (firstTab) { bootstrap.Tab.getOrCreateInstance(firstTab).show(); }
@@ -1787,7 +2241,7 @@ echo '
 	document.querySelectorAll("#api_new input[name=\'kind\']").forEach(function (radio) {
 		radio.addEventListener("change", function () {
 			var submit = document.getElementById("n_submit");
-			submit.textContent = (this.value === "device") ? submit.dataset.device : submit.dataset.server;
+			submit.textContent = (this.value === "server") ? submit.dataset.server : submit.dataset.device;
 		});
 	});
 

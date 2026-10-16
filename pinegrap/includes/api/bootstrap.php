@@ -31,6 +31,7 @@ require_once($pg_api_directory . '/keys.php');
 require_once($pg_api_directory . '/scopes.php');
 require_once($pg_api_directory . '/auth.php');
 require_once($pg_api_directory . '/devices.php');
+require_once(dirname($pg_api_directory) . '/oauth/server.php');
 require_once($pg_api_directory . '/ratelimit.php');
 require_once($pg_api_directory . '/idempotency.php');
 require_once($pg_api_directory . '/dry_run.php');
@@ -51,8 +52,22 @@ require_once($pg_api_directory . '/resources/product_groups.php');
 require_once($pg_api_directory . '/resources/orders.php');
 require_once($pg_api_directory . '/resources/customers.php');
 require_once($pg_api_directory . '/resources/pages.php');
+require_once($pg_api_directory . '/resources/folders.php');
+require_once($pg_api_directory . '/resources/menus.php');
+require_once($pg_api_directory . '/resources/comments.php');
+require_once($pg_api_directory . '/resources/short_links.php');
+require_once($pg_api_directory . '/resources/store.php');
+require_once($pg_api_directory . '/resources/gift_cards.php');
+require_once($pg_api_directory . '/resources/commissions.php');
+require_once($pg_api_directory . '/resources/visitors.php');
+require_once($pg_api_directory . '/resources/site_log.php');
+require_once($pg_api_directory . '/resources/campaigns.php');
+require_once($pg_api_directory . '/resources/contact_groups.php');
+require_once($pg_api_directory . '/resources/key_codes.php');
+require_once($pg_api_directory . '/resources/product_attributes.php');
 require_once($pg_api_directory . '/resources/files.php');
 require_once($pg_api_directory . '/resources/offers.php');
+require_once($pg_api_directory . '/resources/calendars.php');
 require_once($pg_api_directory . '/resources/webhooks.php');
 require_once($pg_api_directory . '/resources/design.php');
 require_once($pg_api_directory . '/resources/account.php');
@@ -254,7 +269,7 @@ function api_run() {
 	if (in_array($method, array('POST', 'PUT', 'PATCH', 'DELETE'), true)
 		&& api_dry_run_requested() && empty($route['dry_run'])) {
 
-		api_fail(400, 'dry_run_unsupported', lang('This endpoint cannot rehearse a call. Send it without X-Dry-Run.'));
+		api_fail(400, 'dry_run_unsupported', lang('This endpoint cannot rehearse a call. Send it without X-Dry-Run or dry_run.'));
 
 	}
 
@@ -276,7 +291,7 @@ function api_run() {
 
 		if ($key !== '') {
 
-			$hash = api_idempotency_hash($params);
+			$hash = api_idempotency_hash(api_idempotency_input($route, $params));
 
 			api_idempotency_context((int)$app['id'], $key, $hash);
 

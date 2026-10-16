@@ -68,7 +68,12 @@ function pg_settings_keywords($terms)
  * English and translated as a whole through lang(); pg_settings_keywords()
  * turns the translated list back into an array.
  *
- * @return array key => array(label, icon, description, sections, keywords)
+ * A category whose cards draw a field as a list names it under 'lists', with
+ * how many levels of keys it carries; every other field holds one value and a
+ * save that posts it as a list is refused (pg_settings_refuse_lists()). A
+ * card that moves takes its list fields with it.
+ *
+ * @return array key => array(label, icon, description, sections, keywords, lists)
  */
 function pg_settings_categories()
 {
@@ -93,6 +98,9 @@ function pg_settings_categories()
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
                 'pgset-cron'     => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'   => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
+            ),
+            'lists' => array(
+                'job_dispatch_job' => 1,
             ),
         ),
 
@@ -148,11 +156,16 @@ function pg_settings_categories()
             'description' => lang('The language the pages are written in, the languages they are served in, and the engines that translate them.'),
             'sections' => array(
                 'pgset-languages' => lang('Site Languages'),
+                'pgset-language-redirect' => lang('Automatic Language Redirect'),
                 'pgset-translation-engines' => lang('Translation Engines'),
             ),
             'keywords' => array(
                 'pgset-languages' => pg_settings_keywords(lang('language, languages, translation, translate, multilingual, prefix, hreflang, locale, source language')),
+                'pgset-language-redirect' => pg_settings_keywords(lang('redirect, automatic, browser language, accept-language, location, country, geolocation, geo ip, visitor language')),
                 'pgset-translation-engines' => pg_settings_keywords(lang('google translate, google cloud, api key, chrome, translator, engine, machine translation, attribution, style note')),
+            ),
+            'lists' => array(
+                'languages' => 2,
             ),
         ),
 
@@ -175,19 +188,21 @@ function pg_settings_categories()
         'security' => array(
             'label' => lang('Security'),
             'icon'  => 'bi-shield-lock',
-            'description' => lang('Passwords, devices, Google sign-in, registration and membership.'),
+            'description' => lang('Passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership.'),
             'sections' => array(
                 'pgset-session'    => lang('Session & Password'),
                 'pgset-device'     => lang('Device'),
                 'pgset-mfa'        => lang('Two-Step Verification'),
-                'pgset-signin'     => lang('Sign in with Google'),
+                'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
             'keywords' => array(
                 'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
-                'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')),
+                'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')
+                    . ', ' . lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')
+                    . ', ' . lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
                 'pgset-membership' => pg_settings_keywords(lang('membership, registration, sign up, signup, approval, verification, member number')),
             ),
         ),
@@ -200,12 +215,14 @@ function pg_settings_categories()
                 'pgset-waf'     => lang('Firewall'),
                 'pgset-bots'    => lang('Bot Filtering'),
                 'pgset-iplists' => lang('IP Lists'),
+                'pgset-countries' => lang('Country Restriction'),
                 'pgset-headers' => lang('HTTPS and Security Headers'),
             ),
             'keywords' => array(
                 'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, rate limit, ban')),
                 'pgset-bots'    => pg_settings_keywords(lang('bot, crawler, googlebot, ai, gptbot, claudebot')),
                 'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, blocked email, banned')),
+                'pgset-countries' => pg_settings_keywords(lang('country, countries, geo, geoblocking, location, region, tor, block country, allow country')),
                 'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer')),
             ),
         ),
@@ -231,6 +248,9 @@ function pg_settings_categories()
                 'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
+            ),
+            'lists' => array(
+                'erp_fx_currencies' => 1,
             ),
         ),
 
@@ -273,6 +293,42 @@ function pg_settings_category($key)
     $categories = pg_settings_categories();
 
     return isset($categories[$key]) ? $categories[$key] : null;
+}
+
+
+/**
+ * Refuse a save that posts a list in a field the cards draw as one value.
+ *
+ * The save modules read every other field as one value. A list stopped the
+ * save with a TypeError in escape() or trim(), stored "Array" where (string)
+ * read it (the host name, the firewall lists, Mailchimp's key) and counted as
+ * ticked in a checkbox. "Not given" is no answer here either: a module writes
+ * an empty value for a field it does not find. So the save is refused the way
+ * a module refuses a field it marks -- every field is marked, nothing of the
+ * category is written and every stored setting stays as it was. Only a
+ * hand-made request gets here; the cards never post a list where they draw
+ * none.
+ *
+ * Runs before the category's module, in the dialog's endpoint and in the
+ * page path alike.
+ *
+ * @param string $key
+ * @param object $liveform
+ * @return bool true when the save was refused
+ */
+function pg_settings_refuse_lists($key, $liveform)
+{
+    $category = pg_settings_category($key);
+
+    // The page path's decoy field (includes/settings/screen.php) is posted by
+    // every category.
+    $lists = array('fake_user' => 1) + ((($category !== null) && isset($category['lists'])) ? $category['lists'] : array());
+
+    foreach (pg_request_unexpected_lists($_POST, $lists) as $name) {
+        $liveform->mark_error($name, lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h($name))));
+    }
+
+    return $liveform->check_form_errors();
 }
 
 
@@ -366,6 +422,7 @@ function pg_settings_tool_groups($user)
     $connections = array(
         array('label' => lang('SMTP Settings'),      'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
         array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
+        array('label' => lang('Connected accounts'), 'icon' => 'bi-link-45deg',  'url' => 'connections.php'),
     );
 
     if ($ecommerce) {

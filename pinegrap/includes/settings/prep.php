@@ -71,6 +71,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if (($row['oauth_google_client_secret'] ?? '') !== '') {
         $oauth_google_client_secret_value = (string) decode_ssl_keys($row['oauth_google_client_secret'], ($row['oauth_google_secret_iv'] ?? ''));
     }
+    // Sign in with Microsoft and Apple (10.74): which buttons are on, and the
+    // applications they use (connect_apps; Microsoft's is set up on Connected
+    // accounts, Apple's on its card here). Empty until the upgrade has run.
+    $signin_ready = function_exists('pg_signin_schema_ready') && pg_signin_schema_ready() && array_key_exists('signin_providers', $row);
+    $signin_on = $signin_ready ? pg_connect_scope_list(str_replace(',', ' ', (string) $row['signin_providers'])) : array();
+    $signin_microsoft_checked = in_array('microsoft', $signin_on, true) ? ' checked="checked"' : '';
+    $signin_apple_checked = in_array('apple', $signin_on, true) ? ' checked="checked"' : '';
+    $signin_microsoft_app = $signin_ready ? pg_connect_app('microsoft') : null;
+    $signin_apple_app = $signin_ready ? pg_connect_app('apple') : null;
     $proxy_address = $row['proxy_address'];
     $badge_label = $row['badge_label'];
     $timezone = $row['timezone'];
@@ -100,6 +109,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $mailchimp_checked = ($mailchimp == 1) ? ' checked="checked"' : '';
     $mailchimp_automation_checked = ($mailchimp_automation == 1) ? ' checked="checked"' : '';
     $visitor_tracking = $row['visitor_tracking'];
+    // Visitor record retention (2026.4.10, 10.3). Read with isset so the
+    // screen opens on an installation that has not run the upgrade, where
+    // the two fields are not shown.
+    $visitor_retention_available = isset($row['visitor_retention_days']) && isset($row['visitor_summary']);
+    $visitor_retention_days = $visitor_retention_available ? (int) $row['visitor_retention_days'] : 0;
+    $visitor_summary = $visitor_retention_available ? (int) $row['visitor_summary'] : 1;
+    // The days after which a visit's IP address goes (2026.4.10, 10.8).
+    $visitor_ip_available = $visitor_retention_available && isset($row['visitor_ip_days']);
+    $visitor_ip_days = $visitor_ip_available ? (int) $row['visitor_ip_days'] : 0;
     $allowed_bots = isset($row['allowed_bots']) ? $row['allowed_bots'] : '';
     $block_unknown_bots = isset($row['block_unknown_bots']) ? (int)$row['block_unknown_bots'] : 1;
 
@@ -235,19 +253,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_tax_exempt_label = $row['ecommerce_tax_exempt_label'];
     $ecommerce_shipping = $row['ecommerce_shipping'];
     $ecommerce_recipient_mode = $row['ecommerce_recipient_mode'];
-    $usps_user_id = $row['usps_user_id'];
+    // The Web Tools user ID USPS retired, kept on file but no longer used:
+    // the Shipping card says why rates stopped.
+    $usps_legacy_set = ($row['usps_user_id'] != '');
     $ecommerce_address_verification = $row['ecommerce_address_verification'];
     $ecommerce_address_verification_enforcement_type = $row['ecommerce_address_verification_enforcement_type'];
     $ups = $row['ups'];
-    $ups_key = $row['ups_key'];
-    $ups_user_id = $row['ups_user_id'];
-    $ups_password = $row['ups_password'];
+    // The sign-in of the XML interface UPS retired, kept on file but no
+    // longer used: the Shipping card says why rates stopped.
+    $ups_legacy_set = (($row['ups_key'] != '') || ($row['ups_user_id'] != '') || ($row['ups_password'] != ''));
     $ups_account = $row['ups_account'];
     $fedex = $row['fedex'];
-    $fedex_key = $row['fedex_key'];
-    $fedex_password = $row['fedex_password'];
+    // The sign-in of the SOAP web services FedEx retired, kept on file but
+    // no longer used: the Shipping card says why delivery dates stopped.
+    $fedex_legacy_set = (($row['fedex_key'] != '') || ($row['fedex_password'] != '') || ($row['fedex_meter'] != ''));
     $fedex_account = $row['fedex_account'];
-    $fedex_meter = $row['fedex_meter'];
     $ecommerce_product_restriction_message = $row['ecommerce_product_restriction_message'];
     $ecommerce_no_shipping_methods_message = $row['ecommerce_no_shipping_methods_message'];
     $ecommerce_end_of_day_time = $row['ecommerce_end_of_day_time'];
@@ -525,6 +545,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_invoice_mail_message = (string) ($row['erp_invoice_mail_message'] ?? '');
     // What a sale past a credit limit does (4.98).
     $erp_credit_ready = array_key_exists('erp_credit_limit_mode', $row);
+    // The prices agreed with an account, in the store (10.59).
+    $erp_storefront_prices_ready = array_key_exists('erp_storefront_account_prices', $row);
+    $erp_storefront_account_prices_checked = ((int) ($row['erp_storefront_account_prices'] ?? 0) === 1) ? ' checked' : '';
+    // Putting an order on the account at checkout (10.60).
+    $erp_open_account_ready = array_key_exists('erp_open_account_payment', $row);
+    $erp_open_account_payment_checked = ((int) ($row['erp_open_account_payment'] ?? 0) === 1) ? ' checked' : '';
 
     // ERP notices on the bell and the devices (4.91); the amount is kept in
     // kurus and shown in whole units of the base currency.
@@ -2118,6 +2144,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $backup_remote_type = '';
     $backup_remote_ftp = pg_backup_remote_normalize('ftp', array());
     $backup_remote_s3 = pg_backup_remote_normalize('s3', array());
+    $backup_remote_cloud = array();
+
+    foreach (array_keys(pg_backup_cloud_types()) as $backup_cloud_type) {
+        $backup_remote_cloud[$backup_cloud_type] = pg_backup_remote_normalize($backup_cloud_type, array());
+    }
+
     $backup_remote_error = '';
     $backup_remote_sent_at = 0;
 
@@ -2127,6 +2159,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $backup_remote_stored = pg_backup_remote_decode($row['backup_remote_settings']);
         $backup_remote_ftp = $backup_remote_stored['ftp'];
         $backup_remote_s3 = $backup_remote_stored['s3'];
+
+        foreach (array_keys($backup_remote_cloud) as $backup_cloud_type) {
+            $backup_remote_cloud[$backup_cloud_type] = $backup_remote_stored[$backup_cloud_type];
+        }
+
         $backup_remote_error = (string) $row['backup_remote_error'];
         $backup_remote_sent_at = (int) $row['backup_remote_sent_at'];
         unset($backup_remote_stored);
@@ -2159,3 +2196,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $translation_attribution = isset($row['translation_attribution']) ? (int) $row['translation_attribution'] : 1;
     // The key itself is never drawn back; the screen only says whether one is stored.
     $translation_google_key_stored = ((string) ($row['translation_google_key'] ?? '') !== '');
+
+    // Automatic language redirect (2026.4.10, 10.1). Off, and the step's
+    // defaults, until the columns are there.
+    $language_redirect_ready = array_key_exists('language_redirect', $row);
+    $language_redirect = !empty($row['language_redirect']) ? 1 : 0;
+    $language_redirect_mode = in_array(($row['language_redirect_mode'] ?? ''), array('language', 'country', 'both'), true) ? (string) $row['language_redirect_mode'] : 'both';
+    $language_redirect_scope = (($row['language_redirect_scope'] ?? '') === 'all') ? 'all' : 'home';
+    $language_redirect_fallback = (string) ($row['language_redirect_fallback'] ?? '');
+
+    // Firewall country restriction (2026.4.10, 10.2). Off, and the step's
+    // defaults, until the columns are there.
+    $waf_country_ready = array_key_exists('waf_country_mode', $row);
+    $waf_country_mode = in_array(($row['waf_country_mode'] ?? ''), array('allow', 'block'), true) ? (string) $row['waf_country_mode'] : 'off';
+    $waf_country_list = function_exists('waf_country_codes') ? waf_country_codes((string) ($row['waf_country_list'] ?? '')) : array();
+    $waf_country_unknown = !empty($row['waf_country_unknown']) ? 1 : 0;
+    $waf_country_exempt_panel = isset($row['waf_country_exempt_panel']) ? (int) $row['waf_country_exempt_panel'] : 1;
+    $waf_country_exempt_api = isset($row['waf_country_exempt_api']) ? (int) $row['waf_country_exempt_api'] : 1;
+    $waf_country_exempt_bots = isset($row['waf_country_exempt_bots']) ? (int) $row['waf_country_exempt_bots'] : 1;

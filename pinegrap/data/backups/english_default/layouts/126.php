@@ -33,6 +33,9 @@
                         <p>
                      </div>
                      <?php endif ?>    
+                     <!-- Sign in with Google, Microsoft or Apple: one button per provider turned on (empty when none is) -->
+                     <div class="clearfix"></div>
+                     <?=$google_signin ?? ''?>
                   </div>
                </div>
             </li>

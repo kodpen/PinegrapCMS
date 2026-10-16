@@ -15,7 +15,8 @@
  * list. A full list does not close the task; the screens offer to.
  *
  * Notes are dated lines on a task: what was tried, what the customer said.
- * Tags work in them; a person mentioned in one is told.
+ * Tags work in them; a person mentioned in one is told, and so are the people
+ * on the task and the one who made it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -584,6 +585,44 @@ function ws_task_note_notify($viewer, $task, $tokens)
 }
 
 /**
+ * Tells the people on a task, and the one who made it, that somebody else
+ * wrote a note on it. The ones the note mentions already have their own line
+ * (ws_task_note_notify()); a line not read yet takes the next notes too.
+ *
+ * @param array $viewer
+ * @param array $task
+ * @param array $tokens
+ */
+function ws_task_note_tell($viewer, $task, $tokens)
+{
+    $people = array();
+
+    foreach (ws_task_assignee_ids($task['id']) as $user_id) {
+        $people[(int) $user_id] = true;
+    }
+
+    $people[(int) $task['creator_id']] = true;
+
+    unset($people[0], $people[(int) $viewer['id']]);
+
+    foreach ($tokens as $token) {
+        if ($token['type'] === 'user') {
+            unset($people[(int) $token['id']]);
+        } elseif ($token['type'] === 'dept') {
+            foreach (ws_department_member_ids($token['id']) as $user_id) {
+                unset($people[(int) $user_id]);
+            }
+        }
+    }
+
+    foreach (array_keys($people) as $user_id) {
+        if (ws_is_team_member($user_id) && ws_can_see_task(ws_rights_for_id($user_id), $task)) {
+            ws_notify($user_id, 'task_note', array('task_id' => $task['id'], 'actor_id' => $viewer['id']));
+        }
+    }
+}
+
+/**
  * Checks the text of a note.
  *
  * @param string $body
@@ -672,25 +711,42 @@ function ws_task_item_add($viewer, $task, $text)
 }
 
 /**
+ * Whether the person may add this note to a task: the checks of
+ * ws_task_note_add(), made on their own so that the API's dry run meets the
+ * same refusals.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $body
+ * @return array ok, error, body (the text as it would be stored)
+ */
+function ws_task_note_add_check($viewer, $task, $body)
+{
+    if (!ws_task_work_ready()) {
+        return array('ok' => false, 'error' => lang('Invalid request.'));
+    }
+
+    if (!ws_can_see_task($viewer, $task)) {
+        return array('ok' => false, 'error' => lang('That task could not be found.'));
+    }
+
+    return ws_task_note_clean($body);
+}
+
+/**
  * Adds a note to a task. Whoever can see the task may.
  *
  * @param array  $viewer
  * @param array  $task
  * @param string $body
  * @param int    $app_id an application writing for its owner (0 = the person)
+ * @param bool   $ask    false: the note never calls an assistant, whatever it
+ *                       says (a note that quotes somebody outside the team)
  * @return array ok, error, note_id
  */
-function ws_task_note_add($viewer, $task, $body, $app_id = 0)
+function ws_task_note_add($viewer, $task, $body, $app_id = 0, $ask = true)
 {
-    if (!ws_task_work_ready()) {
-        return array('ok' => false, 'error' => lang('Invalid request.'), 'note_id' => 0);
-    }
-
-    if (!ws_can_see_task($viewer, $task)) {
-        return array('ok' => false, 'error' => lang('That task could not be found.'), 'note_id' => 0);
-    }
-
-    $clean = ws_task_note_clean($body);
+    $clean = ws_task_note_add_check($viewer, $task, $body);
 
     if (!$clean['ok']) {
         return $clean + array('note_id' => 0);
@@ -706,6 +762,7 @@ function ws_task_note_add($viewer, $task, $body, $app_id = 0)
     ws_task_notes_recount($task['id']);
     ws_task_refs_add($task, $tokens);
     ws_task_note_notify($viewer, $task, $tokens);
+    ws_task_note_tell($viewer, $task, $tokens);
 
     // The words go along only where a message's would: for a task of a
     // private channel the receiver learns that a note came, not what it says.
@@ -723,7 +780,11 @@ function ws_task_note_add($viewer, $task, $body, $app_id = 0)
         ));
     }
 
-    return array('ok' => true, 'error' => '', 'note_id' => $note_id);
+    // A person's note that calls an assistant by name asks it about the task
+    // (delegation.php); an application's note never does.
+    $notice = ($ask && ($app_id <= 0) && function_exists('ws_task_delegation_from_note')) ? ws_task_delegation_from_note($viewer, $task, $clean['body']) : '';
+
+    return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'notice' => $notice);
 }
 
 /**

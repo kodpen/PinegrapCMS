@@ -1031,6 +1031,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 'email_preferences' => '_render_system_widget_email_preferences',
                 'address_book'      => '_render_system_widget_address_book',
                 'account_security'  => '_render_system_widget_account_security',
+                'account_invoices'  => '_render_system_widget_account_invoices',
                 'cart_link'         => '_render_system_widget_cart_link',
             );
             if (isset($account_renderers[$region_type])) {
@@ -1087,36 +1088,71 @@ function pg_expand_nested_components($html, $mode = 'preview', $email = false)
 //   'static_tree'    => deep-cloned tree with loop_area replaced by marker (or original
 //                       tree if no loop_area was found),
 //   'loop_children'  => the loop_area's children array (per-record template), or null
-//                       if no loop_area exists.
+//                       if no loop_area exists,
+//   'loop_parent'    => the element the records print into: its tag in lower
+//                       case ('ul', 'tbody', 'div'), 'row' for a grid row,
+//                       '' when the loop_area sits at the top of the widget.
 // )
-function _split_widget_tree($tree)
+// With $outside_markers, an element that may not hold anything but its rows
+// (a list, a table, a definition list) also gets `<!--pg-loop-before-->` and
+// `<!--pg-loop-after-->` beside it, where a search box or a pagination can
+// go without breaking the markup.
+function _split_widget_tree($tree, $outside_markers = false)
 {
-    if (!is_array($tree)) return array('static_tree' => $tree, 'loop_children' => null);
+    if (!is_array($tree)) return array('static_tree' => $tree, 'loop_children' => null, 'loop_parent' => '');
     // Deep-clone via JSON round-trip — the tree is small (a single widget), so this is fine.
     $clone = json_decode(json_encode($tree), true);
-    $loop_children = null;
 
-    $marker_node = array(
-        'type'     => 'content',
-        'props'    => array('contentType' => 'custom_html', 'html' => '<!--pg-loop-slot-->'),
-        'children' => array(),
-    );
-
-    $walk = function (&$node) use (&$walk, &$loop_children, $marker_node) {
-        if (!is_array($node) || empty($node['children']) || $loop_children !== null) return;
+    // The path of child indexes from the root to the first loop_area.
+    $find = function ($node, $path) use (&$find) {
+        if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return null;
         foreach ($node['children'] as $i => $child) {
-            if ($loop_children !== null) return;
-            if (isset($child['type']) && $child['type'] === 'loop_area') {
-                $loop_children = isset($child['children']) ? $child['children'] : array();
-                $node['children'][$i] = $marker_node;
-                return;
-            }
-            $walk($node['children'][$i]);
+            if (isset($child['type']) && $child['type'] === 'loop_area') return array_merge($path, array($i));
+            $found = $find($child, array_merge($path, array($i)));
+            if ($found !== null) return $found;
         }
+        return null;
     };
-    $walk($clone);
+    $path = $find($clone, array());
+    if ($path === null) return array('static_tree' => $clone, 'loop_children' => null, 'loop_parent' => '');
 
-    return array('static_tree' => $clone, 'loop_children' => $loop_children);
+    $marker = function ($html) {
+        return array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => $html), 'children' => array());
+    };
+
+    // The loop_area's parent, and the parent's parent.
+    $parent = &$clone;
+    $grand  = null;
+    foreach (array_slice($path, 0, -1) as $i) {
+        $grand  = &$parent;
+        $parent = &$parent['children'][$i];
+    }
+    $index = end($path);
+    $loop  = $parent['children'][$index];
+    $parent['children'][$index] = $marker('<!--pg-loop-slot-->');
+
+    $type = isset($parent['type']) ? $parent['type'] : '';
+    if ($type === 'root' || $type === 'loop_area') {
+        $tag = '';
+    } elseif ($type === 'row') {
+        $tag = 'row';
+    } elseif ($type === 'semantic') {
+        $tag = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', isset($parent['props']['tag']) ? (string)$parent['props']['tag'] : '')) ?: 'div';
+    } else {
+        $tag = 'div';
+    }
+
+    if ($outside_markers && $grand !== null && pg_sw_loop_parent_is_closed($tag)) {
+        $at = $path[count($path) - 2];
+        array_splice($grand['children'], $at, 1, array($marker('<!--pg-loop-before-->'), $grand['children'][$at], $marker('<!--pg-loop-after-->')));
+    }
+    unset($parent, $grand);
+
+    return array(
+        'static_tree'   => $clone,
+        'loop_children' => isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(),
+        'loop_parent'   => $tag,
+    );
 }
 
 // Helper: build a URL query string with one or more keys removed.
@@ -1634,6 +1670,23 @@ function pg_recycle_bin_folder_ids()
     return $ids;
 }
 
+/**
+ * Whether a page is in the Recycle Bin: sent there itself, or carried in with
+ * a folder that was.
+ */
+function pg_recycle_page_binned($page_id)
+{
+    $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$page_id . "'");
+    return ($folder !== null) && in_array((int)$folder, pg_recycle_bin_folder_ids(), true);
+}
+
+/** Whether a file is in the Recycle Bin, the same way. */
+function pg_recycle_file_binned($file_id)
+{
+    $folder = db_value("SELECT folder FROM files WHERE id = '" . (int)$file_id . "'");
+    return ($folder !== null) && in_array((int)$folder, pg_recycle_bin_folder_ids(), true);
+}
+
 /* ---------------------------------------------------------------------------
    Drafts: a visual page taken off the site
    ---------------------------------------------------------------------------
@@ -2080,11 +2133,15 @@ function pg_page_edit_url_by_id($page_id)
  * list (api.php design_delete).
  *
  * The design's live pages go to the recycle bin; pages already there stay
- * there (each carries its own tree, so a restored page joins another design
- * through "Select Page"). Pages that only use it as their mobile style and
- * folders that use it as their default (desktop or mobile) are cleared to 0
- * rather than blocking the delete: get_style() then looks in the parent
- * folder (the root folder is left with none).
+ * there. Pages that only use it as their mobile style and folders that use
+ * it as their default (desktop or mobile) are cleared to 0 rather than
+ * blocking the delete: get_style() then looks in the parent folder (the root
+ * folder is left with none).
+ *
+ * The design itself goes to the bin with its pages once the bin can hold
+ * styles (pg_recycle_style()); restoring it there brings its pages and those
+ * settings back with it. Before that upgrade it is deleted outright, and a
+ * restored page joins another design through "Select Page".
  *
  * $collab_key is the caller's own editor tab (the toolbar posts it), so the
  * tab that asks is not counted as somebody else having the design open. Any
@@ -2092,12 +2149,13 @@ function pg_page_edit_url_by_id($page_id)
  * design that no longer exists.
  *
  * @return array ok, error, binned (pages sent to the bin), home (how many of
- *               them were the home page), folders (folders cleared), name
+ *               them were the home page), folders (folders cleared), name,
+ *               recycled (the design itself is in the bin)
  */
 function pg_designer_delete_design($style_id, $user, $collab_key = '')
 {
     $style_id = (int)$style_id;
-    $out = array('ok' => false, 'error' => '', 'binned' => 0, 'home' => 0, 'folders' => 0, 'name' => '');
+    $out = array('ok' => false, 'error' => '', 'binned' => 0, 'home' => 0, 'folders' => 0, 'name' => '', 'recycled' => false);
 
     $style = $style_id > 0 ? db_item("SELECT style_id, style_name FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
     if (!$style) {
@@ -2140,7 +2198,24 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
         $uid    = (int)$user['id'];
         $bin_id = (int)pg_recycle_folder_id(true);
         $live   = db_items("SELECT page_id, page_folder, page_home FROM page WHERE page_style = '$style_id'" . pg_designer_not_binned_sql('page_folder'));
-        foreach ((is_array($live) ? $live : array()) as $lp) {
+        $live   = is_array($live) ? $live : array();
+
+        // The design goes to the bin with its pages (pg_recycle_style()), so
+        // it can come back with them. Its record is written first, naming the
+        // pages about to follow it: if it cannot be written, nothing has moved.
+        if (pg_recycle_style_ready()) {
+            $live_ids = array();
+            foreach ($live as $lp) $live_ids[] = (int)$lp['page_id'];
+            $rs = pg_recycle_style($style_id, $user, $live_ids);
+            if ($rs['status'] !== 'binned') {
+                $out['error'] = $rs['message'];
+                return $out;
+            }
+            $out['recycled'] = true;
+            $out['folders']  = (int)$rs['folders'];
+        }
+
+        foreach ($live as $lp) {
             $pid = (int)$lp['page_id'];
             db("UPDATE page SET page_folder = '$bin_id', page_timestamp = UNIX_TIMESTAMP(), page_user = '$uid' WHERE page_id = '$pid'");
             pg_recycle_park_name('page', $pid, $user);
@@ -2150,6 +2225,12 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
             $out['binned']++;
             if ((string)$lp['page_home'] === 'yes') $out['home']++;
         }
+    }
+
+    // In the bin already, with what pointed at it written down and cleared.
+    if ($out['recycled']) {
+        $out['ok'] = true;
+        return $out;
     }
 
     db("UPDATE page SET mobile_style_id = 0 WHERE mobile_style_id = '$style_id'");
@@ -2168,6 +2249,32 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
 
     $out['ok'] = true;
     return $out;
+}
+
+/**
+ * What the operator is told after pg_designer_delete_design(): the toolbar
+ * and the design list say the same thing.
+ */
+function pg_designer_delete_design_message($dd)
+{
+    if (!empty($dd['recycled'])) {
+        $message = $dd['binned'] > 0
+            ? lang(array('string' => 'The design and its {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $dd['binned']))
+            : lang('The design was moved to the Recycle Bin.');
+    } else {
+        $message = $dd['binned'] > 0
+            ? lang(array('string' => 'The design was deleted; {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $dd['binned']))
+            : lang('The style has been deleted.');
+    }
+    if ($dd['home'] > 0) {
+        $message .= ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.');
+    }
+    if ($dd['folders'] > 0) {
+        $message .= ' ' . (!empty($dd['recycled'])
+            ? lang(array('string' => '{var:1} folder(s) used it as their default design; that setting was cleared, and restoring the design puts it back.', 'vars' => $dd['folders']))
+            : lang(array('string' => '{var:1} folder(s) used it as their default design; that setting was cleared.', 'vars' => $dd['folders'])));
+    }
+    return $message;
 }
 
 function pg_designer_load_pages($style_id, $style_name = '')
@@ -2495,6 +2602,48 @@ function pg_designer_target_modal()
 }
 
 /**
+ * Is a page name taken by something other than a page: a file, a short
+ * link, a file or folder in the site root, or an address the site answers
+ * itself (sitemap.xml, robots.txt)? Each of them is served at that address
+ * in place of the page.
+ *
+ * check_name_availability() asks the same for the classic screens, but it
+ * reads the site root as '../' from the working directory, which is the
+ * software directory only there; a designer page is also saved through the
+ * API and the MCP server. The root is taken from the software directory's
+ * location instead.
+ *
+ * @param string $name page name
+ * @return bool
+ */
+function pg_designer_page_name_taken_elsewhere($name)
+{
+    $name  = trim((string)$name);
+    $lower = mb_strtolower($name, 'UTF-8');
+    if ($lower === '') {
+        return false;
+    }
+    if ($lower === 'sitemap.xml' || $lower === 'robots.txt') {
+        return true;
+    }
+    if ((int)db_value("SELECT COUNT(*) FROM files WHERE name = '" . e($name) . "'") > 0) {
+        return true;
+    }
+    if ((int)db_value("SELECT COUNT(*) FROM short_links WHERE name = '" . e($name) . "'") > 0) {
+        return true;
+    }
+    // Compared without case: Windows serves a folder whatever the case of
+    // the address, and a page should not depend on the host's file system.
+    $entries = @scandir(dirname(PG_FUNCTIONS_DIR));
+    foreach (is_array($entries) ? $entries : array() as $entry) {
+        if ($entry !== '.' && $entry !== '..' && mb_strtolower($entry, 'UTF-8') === $lower) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Validate and persist ONE page of a visual design.
  *
  * Everything that used to be inline in edit_system_style.php's POST branch —
@@ -2554,7 +2703,11 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
              WHERE page_name = '" . e($name) . "'"
              . ($page_id > 0 ? " AND page_id <> '$page_id'" : '') . "
              LIMIT 1");
-        if ($dup > 0) {
+        // A file, short link or root folder of that name only matters for
+        // a name being given now: a page that already has it keeps saving.
+        $renamed = ($page_id <= 0)
+            || ((string)db_value("SELECT page_name FROM page WHERE page_id = '$page_id' LIMIT 1") !== $name);
+        if ($dup > 0 || ($renamed && pg_designer_page_name_taken_elsewhere($name))) {
             $errors[] = lang(array('string' => 'The page name "{var:1}" is already in use.', 'vars' => $name));
         }
         // A language directory (/en/...) would shadow a page of the same name.
@@ -2748,9 +2901,49 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         : '';
 
     if ($page_id > 0) {
-        $prev = db_item("SELECT page_search, page_search_keywords FROM page WHERE page_id = '$page_id' LIMIT 1");
+        // The page's own columns, as this save writes them.
+        $own = array(
+            'page_name'                   => $name,
+            'page_style'                  => $style_id,
+            'page_folder'                 => $folder,
+            'page_title'                  => $title,
+            'page_meta_description'       => $meta_desc,
+            'page_search'                 => $search,
+            'page_search_keywords'        => $keywords,
+            'sitemap'                     => $sitemap,
+            'comments'                    => $c_on,
+            'comments_label'              => $c_label,
+            'comments_allow_new_comments' => $c_allow,
+            'comments_rating'             => $c_rating,
+        );
+        if ($multi_ready) $own['page_tree_json'] = $tree_json;
+        if (pg_page_noindex_ready()) {
+            $own['noindex']  = $noindex;
+            $own['nofollow'] = $nofollow;
+        }
+        if ($can_set_home) $own['page_home'] = $home_str;
+        $prev = db_item("SELECT " . implode(', ', array_merge(array_keys($own), array_keys($c_extra))) . " FROM page WHERE page_id = '$page_id' LIMIT 1");
         $home_set = $can_set_home ? "page_home = '" . e($home_str) . "'," : '';
+        // A page the editor sends only because a shared component it shows
+        // changed (a header edit reaches every page that has the header) was
+        // not edited itself: its tree and settings come back as stored. It
+        // keeps its modified time and author, and no "page modified" line is
+        // logged for it, so the site map's lastmod and the activity feed name
+        // the pages somebody actually changed. Decided from the stored row,
+        // not from anything the request says. The $c_extra values are
+        // already escaped for SQL, so the stored value is escaped to match.
+        $carried = is_array($prev);
+        foreach ($own as $col => $val) {
+            if (!$carried) break;
+            if (!array_key_exists($col, $prev) || (string)$prev[$col] !== (string)$val) $carried = false;
+        }
+        foreach ($c_extra as $col => $val) {
+            if (!$carried) break;
+            if (!array_key_exists($col, $prev) || e((string)$prev[$col]) !== (string)$val) $carried = false;
+        }
+        $touch_set = $carried ? '' : "page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "',";
         db("UPDATE page SET
+                $touch_set
                 page_name                   = '" . e($name) . "',
                 page_style                  = '$style_id',
                 page_folder                 = '$folder',
@@ -2762,19 +2955,19 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 $sql_noindex_set
                 $home_set
                 $sql_tree_set
+                $sql_c_extra_set
                 comments                    = '$c_on',
                 comments_label              = '" . e($c_label) . "',
                 comments_allow_new_comments = '$c_allow',
-                comments_rating             = '$c_rating',
-                $sql_c_extra_set
-                page_timestamp              = UNIX_TIMESTAMP(),
-                page_user                   = '" . (int)$user['id'] . "'
+                comments_rating             = '$c_rating'
             WHERE page_id = '$page_id'");
         update_tag_cloud_keywords_for_page(
             $page_id, $search, $keywords,
             is_array($prev) ? $prev['page_search'] : 0,
             is_array($prev) ? $prev['page_search_keywords'] : '');
-        log_activity(lang(array('string' => 'page ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
+        if (!$carried) {
+            log_activity(lang(array('string' => 'page ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
+        }
     } else {
         $sql_noindex_cols = pg_page_noindex_ready() ? 'noindex, nofollow,' : '';
         $sql_noindex_vals = pg_page_noindex_ready() ? "'$noindex', '$nofollow'," : '';
@@ -2952,27 +3145,101 @@ function _build_node_sizing_attrs($props)
     );
 }
 
-// Returns true when `$children` (the node's direct children array) contains
-// an anchor element with `stretched-link` in its cssClass. Used by
-// _render_tree_node to auto-promote a node to position-relative so Bootstrap's
-// stretched-link mechanic works without manual designer fixes.
-function _has_stretched_link_child($children)
+// Bootstrap's `.stretched-link` covers its nearest *positioned* ancestor;
+// with none it covers the whole page. The renderer lends `position-relative`
+// to one element when nothing around the link is positioned, and never when
+// something already is: a .card, a list-group-item, an element marked
+// position-relative. Lending it to the link's own parent whatever stood
+// around it made the heading the link sits in the clickable box, not the
+// card the design positions for it.
+//
+// The element that takes it is the nearest box the link can reach through
+// text (a heading, a paragraph, inline formatting) and bare wrappers (a
+// <div> with no class): the card body, the column, the list row - not the
+// <h2> around the link, and not a classless <div> inside a box the design's
+// own stylesheet positions. Only with no such box (the link's heading is
+// the widget's first element) does the text element take it.
+// position-static on an element is an explicit "not this one".
+
+// Is $node an anchor marked to stretch?
+function _pg_is_stretched_link($node)
+{
+    if (!is_array($node) || empty($node['type'])) return false;
+    $cls = isset($node['props']['cssClass']) ? (string)$node['props']['cssClass'] : '';
+    if ($cls === '' || !in_array('stretched-link', preg_split('/\s+/', $cls), true)) return false;
+    return ($node['type'] === 'content' && isset($node['props']['contentType']) && $node['props']['contentType'] === 'link')
+        || ($node['type'] === 'semantic' && isset($node['props']['tag']) && strtolower((string)$node['props']['tag']) === 'a');
+}
+
+// A heading, a paragraph or inline formatting: a line of text, never the box
+// a stretched link is meant to cover.
+function _pg_stretch_is_text($node)
+{
+    static $text_tags = array('h1' => 1, 'h2' => 1, 'h3' => 1, 'h4' => 1, 'h5' => 1, 'h6' => 1, 'p' => 1,
+        'span' => 1, 'strong' => 1, 'em' => 1, 'b' => 1, 'i' => 1, 'small' => 1, 'label' => 1, 'mark' => 1,
+        'u' => 1, 's' => 1, 'q' => 1, 'cite' => 1, 'abbr' => 1, 'time' => 1, 'code' => 1, 'sub' => 1, 'sup' => 1);
+    return is_array($node) && isset($node['type']) && $node['type'] === 'semantic'
+        && isset($text_tags[strtolower(isset($node['props']['tag']) ? (string)$node['props']['tag'] : '')]);
+}
+
+// A wrapper that styles nothing: a semantic element with no class and no id.
+function _pg_stretch_is_bare($node)
+{
+    if (!is_array($node) || !isset($node['type']) || $node['type'] !== 'semantic') return false;
+    $props = isset($node['props']) && is_array($node['props']) ? $node['props'] : array();
+    return trim(isset($props['cssClass']) ? (string)$props['cssClass'] : '') === '' && empty($props['id']);
+}
+
+// Does a stretched link in $children reach the box of their parent: as a
+// child, or inside text elements and bare wrappers?
+function _pg_stretched_link_within($children)
 {
     if (!is_array($children)) return false;
     foreach ($children as $c) {
-        if (!is_array($c) || empty($c['type'])) continue;
-        $cls = (isset($c['props']) && isset($c['props']['cssClass'])) ? (string)$c['props']['cssClass'] : '';
-        if ($cls === '' || strpos($cls, 'stretched-link') === false) continue;
-        // Word-boundary check — guard against e.g. "non-stretched-link" matches.
-        $words = preg_split('/\s+/', $cls);
-        if (!in_array('stretched-link', $words, true)) continue;
-        // Anchor-ness: content/link OR semantic/<a>
-        $is_anchor =
-            ($c['type'] === 'content' && isset($c['props']['contentType']) && $c['props']['contentType'] === 'link')
-            || ($c['type'] === 'semantic' && isset($c['props']['tag']) && strtolower((string)$c['props']['tag']) === 'a');
-        if ($is_anchor) return true;
+        if (_pg_is_stretched_link($c)) return true;
+        if ((_pg_stretch_is_text($c) || _pg_stretch_is_bare($c))
+            && !_props_has_position_class(isset($c['props']) ? $c['props'] : array())
+            && _pg_stretched_link_within(isset($c['children']) ? $c['children'] : array())) {
+            return true;
+        }
     }
     return false;
+}
+
+// Does this element position its own box: a position utility, a Bootstrap
+// component its stylesheet positions, or a position written in its style?
+function _pg_node_is_positioned($type, $props)
+{
+    static $positioned = array('card' => 1, 'list-group-item' => 1, 'btn-group' => 1, 'btn-group-vertical' => 1,
+        'input-group' => 1, 'form-floating' => 1, 'dropdown' => 1, 'dropup' => 1, 'dropend' => 1, 'dropstart' => 1,
+        'dropdown-center' => 1, 'dropup-center' => 1, 'carousel' => 1, 'carousel-inner' => 1, 'carousel-item' => 1,
+        'modal-content' => 1, 'toast-container' => 1, 'offcanvas' => 1, 'navbar' => 1, 'accordion-button' => 1,
+        'ratio' => 1, 'page-link' => 1, 'sticky-top' => 1, 'sticky-bottom' => 1, 'fixed-top' => 1, 'fixed-bottom' => 1);
+    if (!is_array($props) || in_array($type, array('root', 'loop_area', 'recipient_loop_area', 'shared_ref', 'region'), true)) return false;
+    foreach (preg_split('/\s+/', trim(isset($props['cssClass']) ? (string)$props['cssClass'] : '')) as $word) {
+        if (isset($positioned[$word])) return true;
+        if (preg_match('/^position-(?:(?:sm|md|lg|xl|xxl)-)?(?:relative|absolute|fixed|sticky)$/', $word)) return true;
+    }
+    $style = (isset($props['inlineStyle']) ? (string)$props['inlineStyle'] : '') . ';' . _user_attr_value($props, 'style');
+    return (bool)preg_match('/(?:^|;)\s*position\s*:\s*(?:relative|absolute|fixed|sticky)\b/i', $style);
+}
+
+// Should this element take position-relative for a stretched link? Asked
+// only while nothing above it is positioned (see _render_tree_node).
+function _pg_stretch_claims($node)
+{
+    if (!is_array($node) || empty($node['type'])) return false;
+    if (in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area', 'shared_ref', 'region'), true)) return false;
+    if (_props_has_position_class(isset($node['props']) ? $node['props'] : array())) return false;
+    return _pg_stretched_link_within(isset($node['children']) ? $node['children'] : array());
+}
+
+// One entry per element being drawn: whether it, or anything above it, is
+// positioned. Read and written by _render_tree_node().
+function &_pg_stretch_stack()
+{
+    static $stack = array();
+    return $stack;
 }
 
 // Returns true when the node's cssClass already includes any Bootstrap
@@ -3301,19 +3568,16 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
         $props = pg_tr_props($props, $type);
     }
 
-    // Bootstrap's `.stretched-link` only stretches to the nearest *positioned*
-    // ancestor — without `position: relative` on a parent it expands to <body>
-    // and silently breaks. Detect a stretched-link `<a>` in the current node's
-    // direct children and auto-promote this node to `position-relative` (only
-    // when it doesn't already carry an explicit position-* class). Designer
-    // can still override by adding their own `position-static` etc. manually.
-    if (_has_stretched_link_child($children) && !_props_has_position_class($props)) {
-        if (!isset($props['cssClass']) || $props['cssClass'] === '') {
-            $props['cssClass'] = 'position-relative';
-        } else {
-            $props['cssClass'] = trim($props['cssClass'] . ' position-relative');
-        }
+    // A stretched link covers the nearest positioned element around it; when
+    // nothing above is positioned, the box the link reaches takes
+    // position-relative (see _pg_stretch_claims()).
+    $_stretch = &_pg_stretch_stack();
+    $_positioned = ($_stretch && end($_stretch)) || _pg_node_is_positioned($type, $props);
+    if (!$_positioned && _pg_stretch_claims(array('type' => $type, 'props' => $props, 'children' => $children))) {
+        $props['cssClass'] = trim((isset($props['cssClass']) ? (string)$props['cssClass'] : '') . ' position-relative');
+        $_positioned = true;
     }
+    $_stretch[] = $_positioned;
 
     $_sz = _build_node_sizing_attrs($props);  // {style, class} — applied per-case below
 
@@ -3482,9 +3746,27 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 $html .= $pad . '<' . $tag . $attrs . '>' . $ws_inner . '</' . $tag . '>' . "\n";
             } else {
                 $inner_text = isset($props['text']) && $props['text'] !== '' ? h($props['text']) : '';
-                $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . "\n";
-                foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
-                $html .= $pad . '</' . $tag . '>' . "\n";
+                if (!$children) {
+                    // Closed on the same line: an element whose bound value
+                    // came out empty is then truly empty, and :empty matches it.
+                    $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . '</' . $tag . '>' . "\n";
+                } elseif ($inner_text !== '' && ($tag_lc === 'a' || $tag_lc === 'button')
+                    && (!isset($props['textPosition']) || $props['textPosition'] !== 'start')) {
+                    // A link or button places its label beside what was
+                    // dropped into it (an icon, a span): after the children
+                    // by default ('end'), before them with textPosition
+                    // 'start'. The canvas and the editor's exporter do the
+                    // same; written first here, a span put in front of the
+                    // label on the canvas came out behind it on the page.
+                    $html .= $pad . '<' . $tag . $attrs . '>' . "\n";
+                    foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
+                    $html .= $pad . '    ' . $inner_text . "\n";
+                    $html .= $pad . '</' . $tag . '>' . "\n";
+                } else {
+                    $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . "\n";
+                    foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
+                    $html .= $pad . '</' . $tag . '>' . "\n";
+                }
             }
             break;
 
@@ -3522,6 +3804,7 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             break;
     }
 
+    array_pop($_stretch);
     return $html;
 }
 
@@ -3930,7 +4213,7 @@ function _render_component_html($props, $pad, $kids = '')
 // group, finds every bound element, and live-updates the bound prop with
 // the new product's value (no full page reload). Rendering still substitutes
 // the ^^token^^ on the SSR pass so the page works without JS.
-function _apply_bindings($props)
+function _apply_bindings($props, $rich_text = false)
 {
     if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
     // Only these binding props produce render output that the variant
@@ -3957,7 +4240,13 @@ function _apply_bindings($props)
             if ($format !== '') $suffix = '%%' . $format . '%%';
         }
 
-        $props[$prop_name] = '^^' . $safe . '^^' . $suffix;
+        $token = '^^' . $safe . '^^' . $suffix;
+        // Rich text (a heading, a paragraph, a link label) may wrap its words
+        // in markup - a link, a <strong>. The value takes the place of the
+        // words, not of the markup around them.
+        $props[$prop_name] = ($rich_text && $prop_name === 'text' && isset($props['text']))
+            ? pg_binding_text_slot($props['text'], $token)
+            : $token;
         // Skip non-renderable bindings (action, section) — these are wiring
         // markers handled by per-widget binding pre-processes, not values
         // the variant chooser JS should swap into the DOM.
@@ -3977,6 +4266,38 @@ function _apply_bindings($props)
         $props['_attrs'][] = array('name' => 'data-pg-bind', 'value' => implode(';', $bind_pairs));
     }
     return $props;
+}
+
+/**
+ * The text a bound rich-text element prints: $token in place of the one run
+ * of words its markup wraps, so <a href="/post">Title</a> bound to a field
+ * prints <a href="/post">^^field^^</a> and keeps its link. Text without
+ * markup, markup around no words, and markup around several runs (which of
+ * them is the value?) give the token alone - the whole text, as before. The
+ * run keeps the spaces around it. The editor's canvas mirrors this in
+ * _sdBindTextSlot().
+ */
+function pg_binding_text_slot($text, $token)
+{
+    $text = (string)$text;
+    if (!preg_match('/<[a-z\/!]/i', $text)) return $token;
+
+    // Even indexes hold text, odd ones the tags between them.
+    $parts = preg_split('/(<[^>]*>)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $slot  = -1;
+    foreach ($parts as $i => $part) {
+        if ($i % 2 === 1 || $part === '') continue;
+        // A run of spaces or &nbsp; is layout, not a value.
+        $words = str_replace("\xC2\xA0", ' ', html_entity_decode($part, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if (trim($words) === '') continue;
+        if ($slot !== -1) return $token;
+        $slot = $i;
+    }
+    if ($slot === -1) return $token;
+
+    preg_match('/^(\s*).*?(\s*)$/s', $parts[$slot], $m);
+    $parts[$slot] = $m[1] . $token . $m[2];
+    return implode('', $parts);
 }
 
 /**
@@ -4014,9 +4335,10 @@ function pg_designer_svg_markup($raw)
 // Render a content node as HTML
 function _render_content_html($props, $pad, $kids = '')
 {
-    // Apply data bindings first — system widget feed tokens override literal values
-    $props = _apply_bindings($props);
+    // Apply data bindings first — system widget feed tokens override literal values.
+    // These five print their text as written, markup included.
     $ct = isset($props['contentType']) ? $props['contentType'] : '';
+    $props = _apply_bindings($props, in_array($ct, array('heading', 'link', 'paragraph', 'span', 'text'), true));
     $html = '';
 
     switch ($ct) {
@@ -5522,6 +5844,86 @@ function pg_design_framework($key)
     return array('key' => $key) + $all[$key];
 }
 
+// The Bootstrap Icons stylesheet a visual design loads: on the site, on the
+// canvas and in the previews. The editor's icon picker lists the icons of the
+// copy under assets/fonts/bootstrap-icons/, so this is the same version; an
+// older one draws the newer icons the picker offers as empty boxes.
+function pg_design_icons_url()
+{
+    return 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css';
+}
+
+// Whether a stylesheet address is a Bootstrap Icons sheet. A design that
+// links its own (an import keeps the project's) is not given the stock one
+// on top of it: the same classes twice and two copies of the font.
+function pg_design_is_icons_url($url)
+{
+    return (bool) preg_match('~bootstrap-icons~i', (string) $url);
+}
+
+// Whether a design asset row (style_custom_css / style_custom_js) loads on a
+// page. `pages` lists the pages the row is limited to, as page ids, or as
+// `tab:<key>` for a page the editor had not saved yet (the save turns it into
+// the id). No list, or an empty one, means every page of the design.
+function pg_design_asset_on_page($entry, $page_id)
+{
+    if (!is_array($entry) || empty($entry['pages']) || !is_array($entry['pages'])) return true;
+    foreach ($entry['pages'] as $ref) {
+        if (is_scalar($ref) && (string) $ref === (string) (int) $page_id) return true;
+    }
+    return false;
+}
+
+// The design's asset list (style_custom_css / style_custom_js JSON) with its
+// page references moved to new pages: `$prefix<key>` becomes the page id
+// $ids[<key>]. The editor's save turns `tab:<key>` into the ids it has just
+// handed out, a design made from a template turns `key:<template page key>`
+// into its own, a duplicated design maps the original's ids ($prefix '') to
+// the copies'. A reference with no match stays as it is (a tab that was
+// closed matches no page). Returns the JSON untouched when nothing moved.
+function pg_designer_resolve_asset_page_refs($json, $prefix, $ids)
+{
+    $list = json_decode((string) $json, true);
+    if (!is_array($list) || !$ids) return $json;
+    $prefix = (string) $prefix;
+    $changed = false;
+    foreach ($list as $i => $entry) {
+        if (!is_array($entry) || empty($entry['pages']) || !is_array($entry['pages'])) continue;
+        $refs = array();
+        foreach ($entry['pages'] as $ref) {
+            $ref = is_scalar($ref) ? (string) $ref : '';
+            $key = ($prefix === '' || strncmp($ref, $prefix, strlen($prefix)) === 0) ? substr($ref, strlen($prefix)) : null;
+            if ($key !== null && $key !== false && isset($ids[$key])) {
+                $ref = (string) (int) $ids[$key];
+                $changed = true;
+            }
+            if ($ref !== '' && !in_array($ref, $refs, true)) $refs[] = $ref;
+        }
+        $list[$i]['pages'] = $refs;
+    }
+    return $changed ? json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $json;
+}
+
+// The design's asset list as one of its pages loads it, for a page that
+// leaves to become a design of its own: the files limited to other pages go,
+// and the ones limited to this page load everywhere (the new design has no
+// other page). Returns the JSON untouched when nothing is limited.
+function pg_design_assets_for_page($json, $page_id)
+{
+    $list = json_decode((string) $json, true);
+    if (!is_array($list)) return $json;
+    $out = array();
+    $changed = false;
+    foreach ($list as $entry) {
+        if (!is_array($entry) || !isset($entry['pages'])) { $out[] = $entry; continue; }
+        $changed = true;
+        if (!pg_design_asset_on_page($entry, $page_id)) continue;
+        unset($entry['pages']);
+        $out[] = $entry;
+    }
+    return $changed ? json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $json;
+}
+
 // The framework columns (style_framework, style_template,
 // style_template_version) exist - 2026.4.5.
 function pg_style_framework_ready($recheck = false)
@@ -5578,7 +5980,7 @@ function pg_design_templates()
     foreach ($files ? $files : array() as $file) {
         $id = basename($file, '.php');
         if (!preg_match('/^[a-z0-9-]{1,64}$/', $id)) continue;
-        $tpl = include $file;
+        $tpl = _pg_tpl_include($file);
         if (!is_array($tpl) || empty($tpl['pages']) || !is_array($tpl['pages'])) continue;
         // A template made for a feature the site does not use (a store
         // without the shop) is not offered at all.
@@ -5598,6 +6000,13 @@ function pg_design_templates()
         return (isset($a['order']) ? (int)$a['order'] : 100) - (isset($b['order']) ? (int)$b['order'] : 100);
     });
     return $templates;
+}
+
+// Runs a template file in a scope of its own: the variables it sets while
+// building its pages (an $id in a loop) cannot overwrite the list above.
+function _pg_tpl_include($file)
+{
+    return include $file;
 }
 
 // One template, or null.
@@ -6770,6 +7179,15 @@ function pg_design_template_install($template_id, $user, $opts = array())
     $tab_id_map = array();
     foreach ($tab_ids as $tab_key => $tab_page_id) $tab_id_map[] = array('key' => (string)$tab_key, 'page_id' => (int)$tab_page_id);
     pg_designer_resolve_page_tab_refs($pages, $tab_id_map, $tab_ids);
+    // A file the design limited to some of its pages names them by their
+    // template keys (pg_dtc_asset_page_keys()); now they are pages.
+    $asset_css = pg_designer_resolve_asset_page_refs($style_data['style_custom_css'], 'key:', $id_map);
+    $asset_js  = pg_designer_resolve_asset_page_refs($style_data['style_custom_js'], 'key:', $id_map);
+    if ($asset_css !== $style_data['style_custom_css'] || $asset_js !== $style_data['style_custom_js']) {
+        db("UPDATE style
+            SET style_custom_css = '" . escape($asset_css) . "', style_custom_js = '" . escape($asset_js) . "'
+            WHERE style_id = '" . (int)$style_id . "'");
+    }
     if (function_exists('pg_cf_reconcile_page_form')) {
         foreach ($pages as $p) {
             $settings = pg_designer_resolve_tab_values($p['form_settings'], $tab_ids);
@@ -6982,7 +7400,7 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
     $fw = pg_design_framework($tpl['framework']);
     $head = '';
     if ($fw['css'] !== '') $head .= '<link rel="stylesheet" href="' . h($fw['css']) . '">';
-    if (!empty($fw['bootstrap'])) $head .= '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">';
+    if (!empty($fw['bootstrap'])) $head .= '<link rel="stylesheet" href="' . h(pg_design_icons_url()) . '">';
     if (function_exists('pg_design_theme_links')) $head .= pg_design_theme_links($look, $palette, $tpl['framework']);
     // A preview is looked at, not used: nothing on it is submitted.
     $head .= '<style>form{pointer-events:none}</style>';

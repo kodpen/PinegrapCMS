@@ -23,7 +23,7 @@ validate_area_access($user, 'manager');
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM short_links WHERE id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -55,6 +55,16 @@ $short_link = mysqli_fetch_assoc($result);
 // If the short link does not exist, then output error.
 if ($short_link === null) {
     output_error(lang('Invalid request.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
+// The Recycle Bin and the short link helpers live with the File Manager.
+require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+// A link in the Recycle Bin is restored or deleted for good there, not changed
+// here: the External API answers the same. The list no longer shows it, so
+// this is an old tab or a typed address.
+if (pg_short_link_recycle_ready() && ((int) db_value("SELECT recycled FROM short_links WHERE id = '" . $id . "'") === 1)) {
+    output_error(lang('This short link is in the recycle bin. Restore it in the file manager before changing it.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 409);
 }
 
 // A link with a token for its address has no name for this screen to edit:
@@ -273,12 +283,12 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 col-md-6 col-lg-4 my-2" id="page_id_row"' . $output_page_id_row_style . '>
                                                     <label for="page_id" class="form-label">' . lang('Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-select', 'options'=>get_page_options())) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-select', 'options'=>get_page_options('', '', 'edit', FALSE, $short_link['page_id']))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-5 my-2" id="catalog_page_id_row"' . $output_catalog_page_id_row_style . '>
                                                     <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog'), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog', 'edit', FALSE, $short_link['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-lg-2 my-2 text-lg-center" id="or_row"' . $output_or_row_style . '>
@@ -286,17 +296,17 @@ if (!$_POST) {
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-5 my-2" id="catalog_detail_page_id_row"' . $output_catalog_detail_page_id_row_style . '>
                                                     <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog detail'), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE, $short_link['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-5 my-2" id="product_group_id_row"' . $output_product_group_id_row_style . '>
                                                     <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-select', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-select', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE, TRUE, FALSE, $liveform->get_field_value('product_group_id')))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-7 my-2" id="product_id_row"' . $output_product_id_row_style . '>
                                                     <label for="product_id" class="form-label">' . lang('Product') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-select', 'options'=>get_product_options())) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-select', 'options'=>get_product_options(true, $liveform->get_field_value('product_id')))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-8 col-lg-6 my-2" id="url_row"' . $output_url_row_style . '>
@@ -310,7 +320,7 @@ if (!$_POST) {
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-4 my-2" id="file_row"' . $output_file_row_style . '>
                                                      <label for="file" class="form-label">' . lang('File') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-select', 'options'=>get_file_options($design=true))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-select', 'options'=>get_file_options($design=true, $short_link['file_id']))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                             </div>
@@ -323,8 +333,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . (pg_short_link_recycle_ready() ? lang('This short link will be moved to the Recycle Bin.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link'))))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -343,6 +353,10 @@ if (!$_POST) {
     
     $liveform->add_fields_to_session();
 
+    // A field posted as a list (product_id[]=x) counts as not given: the
+    // escaping and the checks below stopped the request on it with a 500.
+    pg_liveform_single_values($liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code'));
+
     $handle = @fopen(HTACCESS_FILE_PATH, 'a');
 
     // If the rewrite file does not exist or can not be written to, then add error and send user back to previous screen.
@@ -358,15 +372,27 @@ if (!$_POST) {
 
     // If the user selected to delete this short link, then delete it.
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
-        $query = "DELETE FROM short_links WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        log_activity( lang(array('string'=>'short link ({var:1}) was deleted','vars'=>$short_link['name'])), $_SESSION['sessionusername']);
+        // With the bin installed the link goes there, the way the File
+        // Manager deletes it; before the upgrade it is deleted outright.
+        if (pg_short_link_recycle_ready()) {
+            pg_short_link_to_bin($short_link['id'], $user);
+
+            log_activity(lang(array('string' => 'The short link, {var:1}, was moved to the Recycle Bin.', 'vars' => h($short_link['name']))), $_SESSION['sessionusername']);
+
+            $delete_notice = lang('The short link was moved to the Recycle Bin.');
+        } else {
+            $query = "DELETE FROM short_links WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
+            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            log_activity( lang(array('string'=>'short link ({var:1}) was deleted','vars'=>$short_link['name'])), $_SESSION['sessionusername']);
+
+            $delete_notice = lang('The short link has been deleted.');
+        }
         
         $liveform->remove_form();
 
         $liveform_view_short_links = new liveform('view_short_links');
-        $liveform_view_short_links->add_notice(lang('The short link has been deleted.'));
+        $liveform_view_short_links->add_notice($delete_notice);
         
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_short_links.php');
 
@@ -455,6 +481,17 @@ if (!$_POST) {
                             $liveform->mark_error('product_group_id', lang('The product group does not exist.'));
                         }
                     }
+
+                    // The group the link already points at may stay while it is in the
+                    // Recycle Bin (the list keeps it, marked); a form drawn before
+                    // another group was deleted can still post that one.
+                    if (
+                        ($liveform->check_field_error('product_group_id') == FALSE)
+                        && ((int) $liveform->get_field_value('product_group_id') !== (int) $short_link['product_group_id'])
+                        && pg_catalog_group_binned($liveform->get_field_value('product_group_id'))
+                    ) {
+                        $liveform->mark_error('product_group_id', lang('The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.'));
+                    }
                 
                     break;
                 
@@ -472,6 +509,15 @@ if (!$_POST) {
                         if ($row[0] == 0) {
                             $liveform->mark_error('product_id', lang('The product does not exist.'));
                         }
+                    }
+
+                    // Same for the product.
+                    if (
+                        ($liveform->check_field_error('product_id') == FALSE)
+                        && ((int) $liveform->get_field_value('product_id') !== (int) $short_link['product_id'])
+                        && pg_catalog_product_binned($liveform->get_field_value('product_id'))
+                    ) {
+                        $liveform->mark_error('product_id', lang('The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.'));
                     }
 
                     break;
@@ -494,6 +540,18 @@ if (!$_POST) {
 
                 case 'file':
                     $liveform->validate_required_field('file', lang('Destination URL is required.'));
+
+                    // The file the link already points at may stay while it is in
+                    // the Recycle Bin (the list keeps it, marked); a form drawn
+                    // before another file was deleted can still post that one.
+                    if (
+                        ($liveform->check_field_error('file') == FALSE)
+                        && ((int) $liveform->get_field_value('file') !== (int) $short_link['file_id'])
+                        && pg_recycle_file_binned($liveform->get_field_value('file'))
+                    ) {
+                        $liveform->mark_error('file', lang('The file is in the Recycle Bin. Restore it in the File Manager or choose another file.'));
+                    }
+
                     break;
             }
         }
@@ -543,6 +601,16 @@ if (!$_POST) {
                 if ($row[0] == 0) {
                     $liveform->mark_error($page_field_name, lang('The page does not exist.'));
                 }
+            }
+
+            // The page the link already points at may stay while it is in the
+            // Recycle Bin, as the file does above.
+            if (
+                ($liveform->check_form_errors() == FALSE)
+                && ((int) $page_id !== (int) $short_link['page_id'])
+                && pg_recycle_page_binned($page_id)
+            ) {
+                $liveform->mark_error($page_field_name, lang('The page is in the Recycle Bin. Restore it in the File Manager or choose another page.'));
             }
         }
         

@@ -387,6 +387,24 @@ function erp_payment_method_code($order_payment_method)
 }
 
 /**
+ * The e-archive payment method of an order. An order the customer put on
+ * their account (orders.erp_on_account, 10.60) is stored as an offline
+ * payment, but no transfer is made for it: it is a sale on account, which
+ * the vocabulary knows only as DIGER.
+ *
+ * @param array $order  The orders row
+ * @return string  Code, or '' when the method is unknown
+ */
+function erp_order_payment_method_code($order)
+{
+    if (!empty($order['erp_on_account'])) {
+        return 'DIGER';
+    }
+
+    return erp_payment_method_code($order['payment_method'] ?? '');
+}
+
+/**
  * Display labels for the e-archive payment method codes.
  *
  * @return array  code => label
@@ -624,7 +642,7 @@ function erp_invoice_from_order($order_id, $options = array())
             grand_total_base = '" . (int) $totals['grand_total'] . "',
             status = 'issued',
             is_internet_sale = '" . $is_internet_sale . "',
-            payment_method = '" . escape(erp_payment_method_code($order['payment_method'] ?? '')) . "',
+            payment_method = '" . escape(erp_order_payment_method_code($order)) . "',
             payment_date = '" . escape(erp_order_payment_date($order)) . "',
             shipment_date = '" . escape($shipment['shipment_date']) . "',
             carrier_title = '" . escape($shipment['carrier_title']) . "',

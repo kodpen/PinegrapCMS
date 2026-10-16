@@ -28,6 +28,18 @@
  *
  * A taken row is kept for WS_EVENTS_KEEP seconds and then swept.
  *
+ * The workspace's own events start scheduled actions the same way: a task
+ * completed, moved to another status or gone overdue, an approval request
+ * settled, a guest writing in their room (ws_events_own()). They are kept by
+ * ws_event(), called where each happens (tasks.php, reminders.php,
+ * approvals.php, guests.php), and only while an active action waits for
+ * that event, so a site that automates none of them writes nothing more. A
+ * rule may be narrowed to one channel; an action is started only by what
+ * its creator may read - the task, the channel of the request, the guest's
+ * room - and an event caused by a scheduled action's own run carries that
+ * run's chain depth, so two actions that cause each other's events stop at
+ * WS_SCHEDULED_CHAIN_DEPTH. None of them is written into a watching channel.
+ *
  * A submitted form tagged in a message (<#form:N>) is drawn with a small card
  * under the message: the first fields of the submission and a link to it,
  * for a reader who may open the submission.
@@ -103,9 +115,12 @@ function ws_watch_ready()
  * The events a scheduled action can start on: what it is called, how the
  * rule says it, what kind of record it is about, the right the creator needs
  * to see that record, and the one filter it takes (page: which form; status:
- * which order status). The shop's events only where the shop is on.
+ * which order status; task_status: the status a task moves to; outcome: how
+ * an approval request ended). The workspace's own events may also be
+ * narrowed to one channel (channel). The shop's events only where the shop
+ * is on.
  *
- * @return array event => label, when, record, right, filter
+ * @return array event => label, when, record, right, filter, channel
  */
 function ws_events_catalog()
 {
@@ -134,13 +149,223 @@ function ws_events_catalog()
         'form.submitted'   => array('label' => lang('A form is submitted'), 'when' => lang('When a form is submitted'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
     );
 
+    // The workspace's own: every member of the staff may wait for them, and
+    // each event is checked against what its creator may read when it comes.
+    $catalog += array(
+        'workspace.task.completed'      => array('label' => lang('A task is completed'), 'when' => lang('When a task is completed'), 'record' => 'task', 'right' => 'member', 'filter' => '', 'channel' => true),
+        'workspace.task.status_changed' => array('label' => lang('A task changes status'), 'when' => lang('When a task changes status'), 'record' => 'task', 'right' => 'member', 'filter' => 'task_status', 'channel' => true),
+        'workspace.task.overdue'        => array('label' => lang('A task becomes overdue'), 'when' => lang('When a task becomes overdue'), 'record' => 'task', 'right' => 'member', 'filter' => '', 'channel' => true),
+    );
+
+    if (function_exists('ws_approvals_ready') && ws_approvals_ready()) {
+        $catalog['workspace.approval.decided'] = array('label' => lang('An approval request is settled'), 'when' => lang('When an approval request is settled'), 'record' => 'approval', 'right' => 'member', 'filter' => 'outcome', 'channel' => true);
+    }
+
+    if (function_exists('ws_guests_ready') && ws_guests_ready()) {
+        $catalog['workspace.guest.message'] = array('label' => lang('A guest writes'), 'when' => lang('When a guest writes'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
+    }
+
     return $catalog;
+}
+
+/**
+ * The workspace's own events a scheduled action can start on, the ones
+ * ws_event() keeps.
+ *
+ * @return string[]
+ */
+function ws_events_own()
+{
+    return array(
+        'workspace.task.completed',
+        'workspace.task.status_changed',
+        'workspace.task.overdue',
+        'workspace.approval.decided',
+        'workspace.guest.message',
+    );
+}
+
+/**
+ * Is this one of the workspace's own events?
+ *
+ * @param string $event
+ * @return bool
+ */
+function ws_events_is_own($event)
+{
+    return in_array((string) $event, ws_events_own(), true);
+}
+
+/**
+ * How an approval request can end, for the filter of its rule and for
+ * {{record_status}}.
+ *
+ * @return array outcome => label
+ */
+function ws_events_approval_outcomes()
+{
+    return array(
+        'approved'  => lang('Approved'),
+        'rejected'  => lang('Rejected'),
+        'expired'   => lang('Expired'),
+        'withdrawn' => lang('Closed without a decision'),
+    );
+}
+
+/**
+ * The chain depth an event caused right now stands at. A scheduled action's
+ * run says its own depth as it starts (ws_scheduled_execute()) and -1 as it
+ * ends; what it does in between - a task it closes, a request it settles -
+ * starts the actions waiting for that event one step further down the same
+ * chain. Outside a run it is 0, the head of a chain.
+ *
+ * @param int|null $run_depth the depth of the run starting, -1 when it ends, null to read
+ * @return int
+ */
+function ws_event_depth($run_depth = null)
+{
+    static $depth = 0;
+
+    if ($run_depth !== null) {
+        $depth = ((int) $run_depth < 0) ? 0 : (int) $run_depth + 1;
+    }
+
+    return $depth;
+}
+
+/**
+ * The workspace's own events some active scheduled action waits for. Read
+ * once a request, with one look at the actions' rules.
+ *
+ * @return string[]
+ */
+function ws_events_awaited()
+{
+    static $awaited = null;
+
+    if ($awaited !== null) {
+        return $awaited;
+    }
+
+    $awaited = array();
+
+    if (!function_exists('ws_scheduled_join_ready') || !ws_scheduled_join_ready()) {
+        return $awaited;
+    }
+
+    foreach ((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%workspace.%'") as $row) {
+        foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
+            if (is_array($rule) && (($rule['type'] ?? '') === 'event') && ws_events_is_own($rule['event'] ?? '')) {
+                $awaited[] = (string) $rule['event'];
+            }
+        }
+    }
+
+    return $awaited = array_values(array_unique($awaited));
+}
+
+/**
+ * Something that happened in the workspace, kept for the scheduled actions
+ * that wait for it: one row in ws_events_in, worked off by the next run like
+ * the site's events. Nothing is kept when no active action waits for this
+ * event, or when the event is not one of the workspace's own (ws_events_own()).
+ * The webhooks hear about the workspace through pg_announce(), on their own
+ * terms; this is for the site's own scheduled actions only.
+ *
+ * @param string $event
+ * @param array  $payload channel_id, and the id of the task, the request or the message
+ * @return bool whether it was kept
+ */
+function ws_event($event, $payload = array())
+{
+    $event = (string) $event;
+
+    if (!ws_events_is_own($event) || !ws_events_ready() || !in_array($event, ws_events_awaited(), true)) {
+        return false;
+    }
+
+    $payload = (array) $payload;
+    $depth = ws_event_depth();
+
+    if ($depth > 0) {
+        $payload['_depth'] = $depth;
+    }
+
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+    db("INSERT INTO ws_events_in (event, payload, created_at, taken_at)
+        VALUES ('" . e($event) . "', '" . e(($json === false) ? '{}' : $json) . "', UNIX_TIMESTAMP(), 0)");
+
+    return true;
+}
+
+/**
+ * May the creator of a scheduled action read what one of the workspace's
+ * own events is about: the task, or the channel of the request or of the
+ * guest's message? Asked before the event starts their action.
+ *
+ * @param int    $user_id
+ * @param string $event
+ * @param array  $payload
+ * @return bool
+ */
+function ws_events_creator_sees($user_id, $event, $payload)
+{
+    static $viewers = array();
+
+    $user_id = (int) $user_id;
+
+    if (!array_key_exists($user_id, $viewers)) {
+        $viewers[$user_id] = function_exists('ws_change_viewer_for_id') ? ws_change_viewer_for_id($user_id) : null;
+    }
+
+    $viewer = $viewers[$user_id];
+
+    if (!is_array($viewer) || empty($viewer['member'])) {
+        return false;
+    }
+
+    if (strpos((string) $event, 'workspace.task.') === 0) {
+        $task = ws_task((int) ($payload['id'] ?? 0));
+
+        return $task && ws_can_see_task($viewer, $task);
+    }
+
+    $channel = ws_channel((int) ($payload['channel_id'] ?? 0));
+
+    return $channel && ws_can_read_channel($viewer, $channel);
+}
+
+/**
+ * The channels a rule of the workspace's own events may be narrowed to, for
+ * this person: the public ones, and the private channels and guests' rooms
+ * they are in. Never a discussion.
+ *
+ * @param array $viewer
+ * @return array[] [id, name as the list shows it]
+ */
+function ws_events_channels($viewer)
+{
+    $out = array();
+
+    foreach ((array) db_items("SELECT c.id, c.name, c.kind
+        FROM ws_channels c
+        LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
+        WHERE c.archived_at = 0 AND c.kind IN ('public', 'private', 'guest') AND (c.kind = 'public' OR m.user_id IS NOT NULL)
+        ORDER BY c.name
+        LIMIT 300") as $row) {
+        $out[] = array((int) $row['id'], (((string) $row['kind'] === 'public') ? '#' : '🔒 ') . $row['name']);
+    }
+
+    return $out;
 }
 
 /**
  * The record an event is about, as a tag names it: the kind and the id.
  * Each event carries the id under its own key (an order's id, a stock
- * warning's product_id, a submission's id).
+ * warning's product_id, a submission's id). A task's events are about the
+ * task; a settled approval request about the task it asked about, otherwise
+ * its channel; a guest's message about the guest's room.
  *
  * @param string $event
  * @param array  $payload
@@ -153,6 +378,20 @@ function ws_events_record_of($event, $payload)
 
     if (strpos($event, 'order.') === 0) {
         return array('order', (int) ($payload['id'] ?? 0));
+    }
+
+    if (strpos($event, 'workspace.task.') === 0) {
+        return array('task', (int) ($payload['id'] ?? 0));
+    }
+
+    if ($event === 'workspace.approval.decided') {
+        return (((string) ($payload['record_type'] ?? '') === 'task') && ((int) ($payload['record_id'] ?? 0) > 0))
+            ? array('task', (int) $payload['record_id'])
+            : array('channel', (int) ($payload['channel_id'] ?? 0));
+    }
+
+    if ($event === 'workspace.guest.message') {
+        return array('channel', (int) ($payload['channel_id'] ?? 0));
     }
 
     switch ($event) {
@@ -189,10 +428,11 @@ function ws_events_watched($event)
 
 /**
  * Does an event rule of a scheduled action match this event? The event
- * itself, and its filter when it has one: the form (the page the form is on)
- * or the status the order moved to.
+ * itself, and its filters when it has them: the form (the page the form is
+ * on), the status the order or the task moved to or how the approval request
+ * ended (status), and the channel the workspace's event happened in.
  *
- * @param array  $rule    type event: event, page_id, status
+ * @param array  $rule    type event: event, page_id, status, channel_id
  * @param string $event
  * @param array  $payload
  * @return bool
@@ -210,6 +450,10 @@ function ws_events_rule_matches($rule, $event, $payload)
     }
 
     if (((int) ($rule['page_id'] ?? 0) > 0) && ((int) ($payload['form_id'] ?? 0) !== (int) $rule['page_id'])) {
+        return false;
+    }
+
+    if (((int) ($rule['channel_id'] ?? 0) > 0) && ((int) ($payload['channel_id'] ?? 0) !== (int) $rule['channel_id'])) {
         return false;
     }
 
@@ -311,8 +555,11 @@ function ws_events_process($limit = WS_EVENTS_BATCH)
  * Queues the scheduled actions an event starts: one start for each action
  * whose event rule matches, the event carried with it. Like a start from a
  * chain, an action is not started more than WS_SCHEDULED_CHAIN_HOURLY times
- * an hour; the starts stand at the head of a chain (depth 0, no source
- * action).
+ * an hour; the starts stand at the head of a chain (no source action), at
+ * depth 0 - or, for a workspace event a scheduled action's run caused, one
+ * step below that run, and not at all past WS_SCHEDULED_CHAIN_DEPTH. A
+ * workspace event starts an action only when its creator may read what it
+ * is about.
  *
  * @param int    $event_id
  * @param string $event
@@ -330,21 +577,34 @@ function ws_events_start($event_id, $event, $payload)
     if ($waiting === null) {
         $waiting = array();
 
-        foreach ((array) db_items("SELECT id, rules FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
+        foreach ((array) db_items("SELECT id, rules, created_by FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
                 if (is_array($rule) && (($rule['type'] ?? '') === 'event')) {
-                    $waiting[(int) $row['id']] = $rule;
+                    $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by']);
                 }
             }
         }
     }
 
+    $payload = (array) $payload;
+    $depth = max(0, (int) ($payload['_depth'] ?? 0));
+    unset($payload['_depth']);
+
+    if ($depth >= WS_SCHEDULED_CHAIN_DEPTH) {
+        return 0;
+    }
+
+    $own = ws_events_is_own($event);
     $now = time();
     $queued = 0;
-    $context = json_encode(array('event' => (string) $event, 'payload' => (array) $payload, 'event_id' => (int) $event_id), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    $context = json_encode(array('event' => (string) $event, 'payload' => $payload, 'event_id' => (int) $event_id), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
-    foreach ($waiting as $action_id => $rule) {
-        if (!ws_events_rule_matches($rule, $event, $payload)) {
+    foreach ($waiting as $action_id => $item) {
+        if (!ws_events_rule_matches($item['rule'], $event, $payload)) {
+            continue;
+        }
+
+        if ($own && !ws_events_creator_sees($item['created_by'], $event, $payload)) {
             continue;
         }
 
@@ -355,7 +615,7 @@ function ws_events_start($event_id, $event, $payload)
         }
 
         db("INSERT INTO ws_scheduled_queue (action_id, due_at, source_action_id, source_run_id, depth, status, created_at, taken_at, context)
-            VALUES ('" . (int) $action_id . "', '" . $now . "', 0, 0, 0, 'waiting', '" . $now . "', 0, '" . e((string) $context) . "')");
+            VALUES ('" . (int) $action_id . "', '" . $now . "', 0, 0, '" . $depth . "', 'waiting', '" . $now . "', 0, '" . e((string) $context) . "')");
         $queued++;
     }
 
@@ -387,6 +647,8 @@ function ws_events_fill_values($viewer, $event, $payload)
         '{{customer}}'      => '',
         '{{amount}}'        => '',
         '{{record_status}}' => '',
+        '{{actor}}'         => '',
+        '{{message}}'       => '',
     );
 
     if (($type === '') || ($id <= 0)) {
@@ -398,17 +660,16 @@ function ws_events_fill_values($viewer, $event, $payload)
     $refs = ws_refs_resolve($viewer, array(array('sigil' => '#', 'type' => $type, 'id' => $id)));
     $ref = $refs[$type . ':' . $id] ?? null;
 
+    if (ws_events_is_own($event)) {
+        return ws_events_own_values($viewer, $event, (array) $payload, $values, $ref);
+    }
+
     if (!$ref || !$ref['known']) {
         return $values;
     }
 
     $values['{{record_title}}'] = (string) $ref['label'];
-
-    if ((string) $ref['url'] !== '') {
-        $values['{{record_link}}'] = ((substr((string) $ref['url'], 0, 1) === '/') && defined('URL_SCHEME') && defined('HOSTNAME_SETTING'))
-            ? URL_SCHEME . HOSTNAME_SETTING . $ref['url']
-            : (string) $ref['url'];
-    }
+    $values['{{record_link}}'] = ws_events_absolute_url($ref['url']);
 
     switch ($type) {
         case 'order':
@@ -439,6 +700,84 @@ function ws_events_fill_values($viewer, $event, $payload)
 
             break;
     }
+
+    return $values;
+}
+
+/**
+ * A panel address as a whole one, for an e-mail or a webhook: the site's
+ * scheme and host before a path that starts at the root.
+ *
+ * @param string $url
+ * @return string
+ */
+function ws_events_absolute_url($url)
+{
+    $url = (string) $url;
+
+    return (($url !== '') && (substr($url, 0, 1) === '/') && defined('URL_SCHEME') && defined('HOSTNAME_SETTING'))
+        ? URL_SCHEME . HOSTNAME_SETTING . $url
+        : $url;
+}
+
+/**
+ * What the placeholders become for one of the workspace's own events, for
+ * the action's creator: the task or the channel tagged, its name and link,
+ * the status the task moved to or how the request ended, who did it, and a
+ * guest's name and words. The name and the link only where the creator may
+ * read the record or the channel; the tag is drawn for each reader by their
+ * own rights.
+ *
+ * @param array      $viewer  the creator
+ * @param string     $event
+ * @param array      $payload
+ * @param array      $values  what ws_events_fill_values() has so far
+ * @param array|null $ref     the record, resolved for the creator
+ * @return array placeholder => value
+ */
+function ws_events_own_values($viewer, $event, $payload, $values, $ref)
+{
+    $known = $ref && $ref['known'];
+
+    if ($known) {
+        $values['{{record_title}}'] = (string) $ref['label'];
+        $values['{{record_link}}'] = ws_events_absolute_url($ref['url']);
+    }
+
+    if ((int) ($payload['actor_id'] ?? 0) > 0) {
+        $values['{{actor}}'] = '<@user:' . (int) $payload['actor_id'] . '>';
+    }
+
+    if (strpos($event, 'workspace.task.') === 0) {
+        $values['{{record_status}}'] = $known ? ws_task_status_label((string) ($payload['status'] ?? '')) : '';
+
+        return $values;
+    }
+
+    // A request or a guest's message: what it says only to a creator who
+    // reads its channel still; the link opens the message itself.
+    $channel = ws_channel((int) ($payload['channel_id'] ?? 0));
+
+    if (!$channel || !is_array($viewer) || empty($viewer['member']) || !ws_can_read_channel($viewer, $channel)) {
+        return $values;
+    }
+
+    $message_id = (int) ($payload['message_id'] ?? 0);
+    $link = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY'))
+        ? ws_events_absolute_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'] . (($message_id > 0) ? '&message=' . $message_id : ''))
+        : '';
+
+    if ($event === 'workspace.approval.decided') {
+        $values['{{record_title}}'] = (string) ($payload['title'] ?? '');
+        $values['{{record_link}}'] = $link;
+        $values['{{record_status}}'] = (string) (ws_events_approval_outcomes()[(string) ($payload['status'] ?? '')] ?? '');
+
+        return $values;
+    }
+
+    $values['{{record_link}}'] = $link;
+    $values['{{customer}}'] = (string) ($payload['guest'] ?? '');
+    $values['{{message}}'] = (string) ($payload['text'] ?? '');
 
     return $values;
 }
@@ -766,7 +1105,9 @@ function ws_watch_channel_state($channel)
 /**
  * What the scheduled actions' form needs to offer an event rule, for this
  * person: the events whose records they may see, the forms, the statuses of
- * an order. Null where the database is older.
+ * an order, and for the workspace's own events the values of their filter
+ * and the channels they may be narrowed to. Null where the database is
+ * older.
  *
  * @param array $viewer
  * @return array|null
@@ -777,11 +1118,39 @@ function ws_events_js_config($viewer)
         return null;
     }
 
+    $pairs = function ($map) {
+        $out = array();
+
+        foreach ($map as $value => $label) {
+            $out[] = array($value, $label);
+        }
+
+        return $out;
+    };
+
+    // The values of a workspace event's filter, with what the list calls them.
+    $own_filters = array(
+        'task_status' => array('filter_label' => lang('Status it moves to'), 'any' => lang('Any status'), 'options' => $pairs(ws_task_statuses())),
+        'outcome'     => array('filter_label' => lang('How it ended'), 'any' => lang('However it ended'), 'options' => $pairs(ws_events_approval_outcomes())),
+    );
+
     $list = array();
+    $channels = false;
 
     foreach (ws_events_catalog() as $key => $info) {
-        if (!empty($viewer[$info['right']])) {
-            $list[$key] = array('label' => $info['label'], 'filter' => $info['filter']);
+        if (empty($viewer[$info['right']])) {
+            continue;
+        }
+
+        $list[$key] = array('label' => $info['label'], 'filter' => $info['filter']);
+
+        if (isset($own_filters[$info['filter']])) {
+            $list[$key] += $own_filters[$info['filter']];
+        }
+
+        if (!empty($info['channel'])) {
+            $list[$key]['channel'] = true;
+            $channels = true;
         }
     }
 
@@ -797,13 +1166,12 @@ function ws_events_js_config($viewer)
         }
     }
 
-    $statuses = array();
-
-    foreach (ws_events_order_statuses() as $status => $label) {
-        $statuses[] = array($status, $label);
-    }
-
-    return array('list' => $list, 'forms' => $forms, 'statuses' => $statuses);
+    return array(
+        'list'     => $list,
+        'forms'    => $forms,
+        'statuses' => $pairs(ws_events_order_statuses()),
+        'channels' => $channels ? ws_events_channels($viewer) : array(),
+    );
 }
 
 /**
@@ -822,6 +1190,9 @@ function ws_events_js_strings()
         'sa_event_any_form'    => lang('Any form'),
         'sa_event_status'      => lang('Status it moves to'),
         'sa_event_any_status'  => lang('Any status'),
+        'sa_event_channel'     => lang('In channel'),
+        'sa_event_any_channel' => lang('Any channel I can read'),
+        'sa_event_channel_help' => lang('It starts only for what you may read: the task, the channel of the request or the guest\'s room.'),
         'sa_tpl_order_event'   => lang('New order to the channel'),
         'sa_tpl_order_event_help' => lang('Every new order is written in the channel as it comes in.'),
         'sa_tpl_order_event_text' => lang('New order {{record}}'),
@@ -830,6 +1201,12 @@ function ws_events_js_strings()
         'sa_tpl_stock_event'   => lang('Task when stock runs low'),
         'sa_tpl_stock_event_help' => lang('A product that falls to the site\'s low-stock threshold becomes a task to restock it.'),
         'sa_tpl_stock_event_task' => lang('Restock {{record_title}}'),
+        'sa_tpl_overdue_event' => lang('Overdue tasks to the channel'),
+        'sa_tpl_overdue_event_help' => lang('A line in the channel for each of its tasks that goes past its due date.'),
+        'sa_tpl_overdue_event_text' => lang('Overdue: {{record}}'),
+        'sa_tpl_approval_event' => lang('Next task when approved'),
+        'sa_tpl_approval_event_help' => lang('When an approval request of the channel is approved, a task for the next step is opened for you.'),
+        'sa_tpl_approval_event_task' => lang('Next step: {{record_title}}'),
         'watch_label'          => lang('Write the events of the records tied to it in the channel'),
         'watch_help'           => lang('The orders of the channel\'s customer and the orders, products and contacts tagged here: a line when one is placed, shipped, cancelled or changed. Only the tag and what happened are written; amounts and addresses are not.'),
     );

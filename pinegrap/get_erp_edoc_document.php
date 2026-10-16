@@ -21,8 +21,10 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-$invoice_id = (int) ($_GET['id'] ?? 0);
-$format = ((string) ($_GET['format'] ?? 'pdf') === 'xml') ? 'xml' : 'pdf';
+// One number: an array (?id[]=x) cast to 1 and fetched the first
+// invoice's e-document.
+$invoice_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+$format = (($_GET['format'] ?? 'pdf') === 'xml') ? 'xml' : 'pdf';
 
 // The provider's copy of an accepted document does not change any more; the
 // one kept locally is served without asking the provider again.

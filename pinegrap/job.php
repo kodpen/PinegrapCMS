@@ -268,6 +268,13 @@ if (
 
     $cancel_before_timestamp = time() - ($cancel_days * 86400);
 
+    // An order put on the customer's account (ERP, 10.60) is an offline
+    // payment too, but no transfer is coming: it is paid by the account's
+    // due date, once it is invoiced. It is never cancelled here.
+    $sql_not_on_account = db_item("SHOW COLUMNS FROM orders LIKE 'erp_on_account'")
+        ? 'AND (erp_on_account = 0)'
+        : '';
+
     $unpaid_orders = db_items(
         "SELECT id, order_number
         FROM orders
@@ -277,6 +284,7 @@ if (
             AND (status = 'complete')
             AND (order_date < '" . $cancel_before_timestamp . "')
             AND (COALESCE(erp_invoice_id, 0) = 0)
+            " . $sql_not_on_account . "
         ORDER BY order_date ASC
         LIMIT 50");
 
@@ -385,6 +393,68 @@ if (MAILCHIMP and ECOMMERCE) {
 require_once(dirname(__FILE__) . '/includes/api/maintenance.php');
 api_maintenance_purge();
 
+// Visitor records past the retention period of the SEO settings
+// (includes/fn/visitor_retention.php): each day added up into the daily
+// summary, then its rows removed a chunk at a time, then the IP address
+// taken out of the visits older than its own, shorter period
+// (includes/fn/visitor_ip.php). Once an hour when the table is down to its
+// period, every tick while rows are still waiting; a look that finds nothing
+// to do is one config read and one file read.
+//
+// The budget keeps a table of millions from holding up the rest of this tick:
+// the backlog of a large site goes over the next ticks, a few hundred
+// thousand rows each.
+if (pg_visitor_cleanup_due()) {
+
+    $visitor_cleanup = pg_visitor_cleanup_run(15);
+
+    if ($visitor_cleanup['deleted'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} visitor record(s) older than {var:2} days',
+            'vars'   => array(pg_format_number($visitor_cleanup['deleted'], 0), $visitor_cleanup['days']),
+        )), 'UNKNOWN');
+    }
+
+    if ($visitor_cleanup['ip_cleared'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job took the IP address out of {var:1} visitor record(s) older than {var:2} days',
+            'vars'   => array(pg_format_number($visitor_cleanup['ip_cleared'], 0), $visitor_cleanup['ip_days']),
+        )), 'UNKNOWN');
+    }
+
+}
+
+// A visitors table still on MyISAM is moved to InnoDB once the cleanup has
+// brought it down to its period: an InnoDB copy built next to it a chunk at a
+// time, put in its place with one RENAME (pg_visitor_move_run()). Not in a
+// tick whose cleanup still has rows waiting, which keeps the tick short. A
+// tick with nothing under way reads one file; the look itself, a handful of
+// small reads, comes once an hour (once a day when the table is not on
+// MyISAM).
+if (pg_visitor_move_due() && (!isset($visitor_cleanup) || ($visitor_cleanup['state'] !== 'more'))) {
+
+    $visitor_move = pg_visitor_move_run(15);
+
+    if ($visitor_move['text'] !== '') {
+        log_activity($visitor_move['text'], 'UNKNOWN');
+    }
+
+}
+
+// A visitors table split into months gets the coming months ahead of time
+// (pg_visitor_partition_open_run()), so the visits of a new month never land
+// in the partition for later visits. Once a day; a look is one read of the
+// table's partitions, and opening a month a moment.
+if (pg_visitor_partition_due()) {
+
+    $visitor_months = pg_visitor_partition_open_run();
+
+    if ($visitor_months['text'] !== '') {
+        log_activity($visitor_months['text'], 'UNKNOWN');
+    }
+
+}
+
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
 pg_cron_ran('job');
 
@@ -440,16 +510,23 @@ if (pg_mail_queue_ready()) {
 
 }
 
-// Workspace task reminders by e-mail (includes/workspace/reminders.php). The
-// look is one indexed read; the workspace is loaded only when one is due, so
-// the general job stays as light as it was on every other tick.
+// Workspace task reminders, and the notice that a task went overdue
+// (includes/workspace/reminders.php). Each look is one read; the workspace is
+// loaded only when one of them is due, so the general job stays as light as
+// it was on every other tick.
 if (is_file(dirname(__FILE__) . '/includes/workspace/reminders.php')) {
 
     require_once(dirname(__FILE__) . '/includes/workspace/reminders.php');
 
-    if (ws_task_reminders_waiting()) {
+    $workspace_overdue_due = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ws_task_overdue_due();
+
+    if (ws_task_reminders_waiting() || $workspace_overdue_due) {
         require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
         ws_task_reminders_run();
+
+        if ($workspace_overdue_due) {
+            ws_task_overdue_run();
+        }
     }
 
 }
@@ -476,6 +553,33 @@ if (
 
     if (ws_enabled() && function_exists('ws_scheduled_due') && ws_scheduled_due()) {
         ws_scheduled_run();
+    }
+
+}
+
+// The visitor location database (includes/fn/geo.php): this month's list,
+// fetched while a setting reads the visitor's location. The look is a file
+// read; the fetch happens about once a month, and a failed one is tried again
+// twelve hours later, not on every tick.
+if (function_exists('pg_geo_db_due') && pg_geo_db_due()) {
+
+    pg_geo_db_refresh();
+
+}
+
+// The file of an InnoDB visitors table keeps the room of the rows the cleanup
+// removed. Once a large share of it is free, the table is rebuilt online in
+// the quietest hour of the day, which writes a file holding only the rows that
+// are left (pg_visitor_shrink_run()). Here, after the passes that deliver mail
+// and webhooks, because the rebuild is one statement that can take minutes on
+// a large table. A tick reads one file; the look itself comes once an hour and
+// is one small read outside the quietest hour.
+if (pg_visitor_shrink_due()) {
+
+    $visitor_shrink = pg_visitor_shrink_run(false);
+
+    if ($visitor_shrink['text'] !== '') {
+        log_activity($visitor_shrink['text'], 'UNKNOWN');
     }
 
 }

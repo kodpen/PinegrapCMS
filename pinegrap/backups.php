@@ -47,6 +47,21 @@ if (!extension_loaded('pdo_mysql') ) {
 	$disabled_fieldset_attribute = 'disabled="disabled"';
 }
 
+// A restore started on the installation screen that has not put its tables in
+// place yet (includes/fn/backup_restore.php).
+$output_restore_notice = '';
+$unfinished_restore = pg_restore_unfinished();
+if ($unfinished_restore !== null) {
+	$output_restore_notice = '
+	<div class="alert alert-warning d-flex gap-2 align-items-start">
+		<i class="bi bi-hourglass-split"></i>
+		<div>
+			' . h(lang(array('string' => 'A restore of the backup {var:1} is unfinished ({var:2}, last step {var:3}). The site runs on its own tables until it is finished.', 'vars' => array($unfinished_restore['folder'], pg_restore_progress_text($unfinished_restore), date('d.m.Y H:i', (int) $unfinished_restore['updated']))))) . '
+			<a href="' . h(PATH . SOFTWARE_DIRECTORY . '/install/') . '">' . lang('Continue it or discard it on the installation screen.') . '</a>
+		</div>
+	</div>';
+}
+
 $directory = backup_list(getcwd()); 
 $output_rows =  '';
 if($directory){
@@ -55,8 +70,8 @@ if($directory){
 		$output_rows .= '
 		<tr>
 			<td class="align-middle text-start actions-buttons">
-        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
-        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
+        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
+        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
         	</td>
 			<td>
 				'.h($backup_folder).'
@@ -94,6 +109,7 @@ if (!$_POST) {
 	                ' . $liveform->output_errors() . '
 	                ' . $liveform->get_warnings() . '
 	                ' . $liveform->output_notices() . '
+	                ' . $output_restore_notice . '
 
 	                <div class="row mb-2 flex-wrap">
 	                    <div class="col-12 col-sm-12 text-center text-md-start">
@@ -135,6 +151,7 @@ if (!$_POST) {
 	                            <div class="row">
 	                                <div class="col-12 my-1">
 	                                    ' . $output_warnings_for_backup . '
+	                                    <div class="form-text mt-0">' . lang('Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.') . '</div>
 	                                </div>
 	                                <div class="col-12 my-1">
 	                                    <div class="progress d-none">

@@ -33,19 +33,25 @@ header('Cache-Control: private, no-store');
 $flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE;
 
 // The account the document is for: a product without a rate of its own is
-// offered at the tax zone of that account's address.
-$account_id = max(0, (int) ($_GET['account_id'] ?? 0));
+// offered at the tax zone of that account's address. One value only: an
+// array (?account_id[]=x) cast to 1 and priced for the first account.
+$account_id = max(0, is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0);
 
 if (isset($_GET['zone_rate'])) {
     echo json_encode(array('rate' => ($account_id > 0) ? erp_account_zone_rate($account_id) : erp_default_tax_rate()), $flags);
     exit();
 }
 
-if (isset($_GET['barcode'])) {
-    $row = erp_product_by_barcode((string) $_GET['barcode']);
+if (isset($_GET['barcode']) && is_string($_GET['barcode'])) {
+    $row = erp_product_by_barcode($_GET['barcode']);
+
+    // A product in the Recycle Bin is not put on a document, as in the search.
+    if (is_array($row) && pg_catalog_product_binned($row['id'])) {
+        $row = null;
+    }
 
     echo json_encode(array('product' => is_array($row) ? erp_product_for_line($row, $account_id) : null), $flags);
     exit();
 }
 
-echo json_encode(array('results' => erp_product_search((string) ($_GET['q'] ?? ''), 20, $account_id)), $flags);
+echo json_encode(array('results' => erp_product_search(is_string($_GET['q'] ?? null) ? $_GET['q'] : '', 20, $account_id)), $flags);

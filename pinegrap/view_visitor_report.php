@@ -39,6 +39,16 @@ if (defined('BASE_CURRENCY_SYMBOL') == false) {
 // blank and the heading falls back to "[new visitor report]".
 $output_visitor_report_name = '';
 
+// An id sent as an array (?id[]=x) counts as not given: the screen opens a
+// new report instead of an error page.
+if (isset($_GET['id']) && !is_scalar($_GET['id'])) {
+    unset($_GET['id']);
+}
+
+if (isset($_POST['id']) && !is_scalar($_POST['id'])) {
+    unset($_POST['id']);
+}
+
 // if an id was passed in the query string, then set id
 if (isset($_GET['id']) == true) {
     $id = (int) $_GET['id'];
@@ -46,6 +56,13 @@ if (isset($_GET['id']) == true) {
 // else if an id was passed in post, then set id
 } elseif (isset($_POST['id']) == true) {
     $id = (int) $_POST['id'];
+}
+
+// Stop early when the screen is opened for a report that does not exist (stale
+// link, hand-typed URL, report deleted meanwhile): a "not found" screen instead
+// of PHP notices from the unchecked row below.
+if (isset($id) && (((int) $id < 1) || ((int) db_value("SELECT COUNT(*) FROM visitor_reports WHERE id = '" . (int) $id . "'") < 1))) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 // prepare query string with id if necessary
@@ -152,6 +169,12 @@ if (!$_POST) {
     // if multi currency is enabled, prepare currency option
     if (ECOMMERCE_MULTICURRENCY == true) {
         $summarize_by_options[lang('Currency')] = 'currency_code';
+    }
+
+    // The saved report keeps the choice in an ENUM the same upgrade step
+    // widened.
+    if (pg_visitor_retention_ready()) {
+        $summarize_by_options[lang('Device')] = 'device';
     }
     
     $summarize_by_options[''] = '</optgroup>';
@@ -494,7 +517,7 @@ if (!$_POST) {
     
     // if user is editing an existing visitor report, then prepare to output delete button
     if (isset($_GET['id']) == true) {
-        $output_delete_button = '<button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('visitor report')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('visitor report')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
     // if there are no date filters, then prepare to output date changer
@@ -517,10 +540,12 @@ if (!$_POST) {
             // string can carry anything. The year math and mktime() calls below
             // reject strings on PHP 8, and a value that reached the session would
             // break the report on every later request, so only a real calendar
-            // range is stored; anything else keeps the previous range.
+            // range is stored; anything else keeps the previous range. A part
+            // sent as an array (?start_year[]=x) counts as not given: (int) made
+            // it 1, a valid year, so the range jumped to the year 0001 and stayed.
             $requested_range = array();
             foreach (array('start_month', 'start_day', 'start_year', 'stop_month', 'stop_day', 'stop_year') as $date_part) {
-                $requested_range[$date_part] = (int) ($_GET[$date_part] ?? 0);
+                $requested_range[$date_part] = is_scalar($_GET[$date_part] ?? null) ? (int) $_GET[$date_part] : 0;
             }
             if (checkdate($requested_range['start_month'], $requested_range['start_day'], $requested_range['start_year'])
                 && checkdate($requested_range['stop_month'], $requested_range['stop_day'], $requested_range['stop_year'])) {
@@ -710,7 +735,7 @@ if (!$_POST) {
             case 'date': $operand_1 = 'FROM_UNIXTIME(visitors.start_timestamp, \'%Y-%m-%d\')'; $field_type = 'date'; break;
             case 'site_search_terms': $operand_1 = 'visitors.site_search_terms'; break;
             case 'currency_code': $operand_1 = 'visitors.currency_code'; break;
-            case 'http_referer': $operand_1 = 'visitors.http_referer'; break;
+            case 'http_referer': $operand_1 = pg_visitor_text_sql('http_referer'); break;
             case 'referring_host_name': $operand_1 = 'visitors.referring_host_name'; break;
             case 'referring_search_engine': $operand_1 = 'visitors.referring_search_engine'; break;
             case 'referring_search_terms': $operand_1 = 'visitors.referring_search_terms'; break;
@@ -737,7 +762,10 @@ if (!$_POST) {
             case 'state': $operand_1 = 'visitors.state'; break;
             case 'zip_code': $operand_1 = 'visitors.zip_code'; break;
             case 'country': $operand_1 = 'visitors.country'; break;
-            case 'ip_address': $operand_1 = 'INET_NTOA(visitors.ip_address)'; break;
+            // 0 once the general job took the address out after its period
+            // (includes/fn/visitor_ip.php), or for an IPv6 visit: empty, as
+            // on the order report, rather than 0.0.0.0.
+            case 'ip_address': $operand_1 = 'CASE WHEN (visitors.ip_address = 0) THEN "" ELSE INET_NTOA(visitors.ip_address) END'; break;
         }
         
         // if a basic value was entered, use that value
@@ -776,6 +804,57 @@ if (!$_POST) {
         $where .= "(visitors.start_timestamp >= $start_timestamp) AND (visitors.start_timestamp <= $stop_timestamp)";
     }
     
+    // ── The daily summary ────────────────────────────────────────────────
+    //
+    // Visitor rows older than the retention period are removed by the
+    // general job, and with the summary on each day is added up into
+    // visitor_stats_daily first. For the days before the first raw day the
+    // report reads the summary and from that day on the rows, so a window
+    // that reaches back past the period still has its totals. The summary
+    // answers the date changer's window with year / month / day and at most
+    // one other grouping; a filter, or a grouping the summary does not hold,
+    // reads the rows alone and says the older days are missing.
+    $summary_groupings = array();
+
+    for ($i = 1; $i <= 3; $i++) {
+        if ($liveform->get_field_value('summarize_by_' . $i) == '') {
+            break;
+        }
+        $summary_groupings[] = $liveform->get_field_value('summarize_by_' . $i);
+    }
+
+    $summary_rows = array();
+    $summary_notice = '';
+    $summary_raw_from = pg_visitor_summary_raw_from();
+
+    if (($summary_raw_from > 0) && ($date_filter_exists == false) && ($start_timestamp < $summary_raw_from)) {
+
+        $summary_answer = (count($filters) == 0) ? pg_visitor_summary_report_rows($start_timestamp, $stop_timestamp, $summary_groupings) : false;
+
+        if ($summary_answer === false) {
+
+            $summary_notice = lang(array(
+                'string' => 'Visits before {var:1} are kept only in the daily summary, which cannot answer this report (it holds no filters, and one grouping besides year, month and day). Those days are left out.',
+                'vars' => array(get_absolute_time(array('timestamp' => $summary_raw_from, 'type' => 'date', 'format' => 'plain_text'))),
+            ));
+
+        } else {
+
+            $summary_rows = $summary_answer;
+
+            // The summary counted these days whole; a raw row of one of them
+            // that the cleanup has not reached yet must not count twice.
+            $where .= (($where == '') ? "WHERE " : " AND ") . "(visitors.start_timestamp >= " . (int) $summary_raw_from . ")";
+
+            if (count($summary_rows) > 0) {
+                $summary_notice = lang(array(
+                    'string' => 'Visits before {var:1} come from the daily summary: the totals are exact, values outside a day\'s top {var:2} are grouped as "(other values)", and the visitors themselves are no longer listed.',
+                    'vars' => array(get_absolute_time(array('timestamp' => $summary_raw_from, 'type' => 'date', 'format' => 'plain_text')), PG_VISITOR_SUMMARY_TOP),
+                ));
+            }
+        }
+    }
+
     if ($liveform->get_field_value('summarize_by_1') != '') {
         $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1')) . ',';
         $number_of_summarize_bys = 1;
@@ -820,7 +899,7 @@ if (!$_POST) {
     // millions of table rows anyway. The full set is available through the
     // CSV export, which streams instead of buffering.
     $detail_page_size = 500;
-    $detail_page      = isset($_GET['detail_page']) ? max(1, (int) $_GET['detail_page']) : 1;
+    $detail_page      = is_scalar($_GET['detail_page'] ?? null) ? max(1, (int) $_GET['detail_page']) : 1;
     $detail_offset    = ($detail_page - 1) * $detail_page_size;
     $detail_total     = 0;
 
@@ -849,6 +928,11 @@ if (!$_POST) {
          COALESCE(SUM(visitors.order_completed), 0) AS order_completed,
          COALESCE(SUM(visitors.order_total), 0) AS order_total";
 
+    // The referring address and the user agent of newer visits are in the
+    // list of visitor texts; the joins come only when a grouping or a filter
+    // reads one of them.
+    $sql_text_joins = pg_visitor_text_joins($sql_group_select . ' ' . $where);
+
     $sql_group_by = '';
     $sql_order_by = '';
     if (!empty($group_expressions)) {
@@ -863,10 +947,35 @@ if (!$_POST) {
             $sql_group_select
             $sql_totals
         FROM visitors
+        $sql_text_joins
         $where
         $sql_group_by
         $sql_order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+    $group_rows = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $group_rows[] = $row;
+    }
+
+    // The summarized days join the raw groups in the order the query would
+    // have given them.
+    if (count($summary_rows) > 0) {
+        $group_rows = array_merge($summary_rows, $group_rows);
+
+        if ($number_of_summarize_bys > 0) {
+            usort($group_rows, function ($a, $b) use ($number_of_summarize_bys) {
+                for ($i = 1; $i <= $number_of_summarize_bys; $i++) {
+                    $order = strcmp(mb_strtolower(trim((string) $a['sb' . $i])), mb_strtolower(trim((string) $b['sb' . $i])));
+                    if ($order != 0) {
+                        return $order;
+                    }
+                }
+                return 0;
+            });
+        }
+    }
 
     $results = array();
 
@@ -885,7 +994,7 @@ if (!$_POST) {
     // rows fetched below can be filed under the right heading.
     $group_index = array();
 
-    while ($row = mysqli_fetch_assoc($result)) {
+    foreach ($group_rows as $row) {
 
         $totals = array(
             'count'                 => (int) $row['row_count'],
@@ -1012,6 +1121,7 @@ if (!$_POST) {
                 visitors.order_completed,
                 visitors.order_total
             FROM visitors
+            $sql_text_joins
             $where
             ORDER BY " . (!empty($group_expressions) ? implode(', ', $group_expressions) . ', ' : '') . "visitors.id";
 
@@ -1063,7 +1173,7 @@ if (!$_POST) {
 
     if ($detail_on) {
 
-        $detail_total = (int) db_value("SELECT COUNT(*) FROM visitors $where");
+        $detail_total = (int) db_value("SELECT COUNT(*) FROM visitors $sql_text_joins $where");
 
         $query =
             "SELECT
@@ -1078,6 +1188,7 @@ if (!$_POST) {
                 visitors.order_completed,
                 visitors.order_total
             FROM visitors
+            $sql_text_joins
             $where
             ORDER BY " . (!empty($group_expressions) ? implode(', ', $group_expressions) . ', ' : '') . "visitors.id
             LIMIT $detail_page_size OFFSET $detail_offset";
@@ -1270,7 +1381,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save & Run') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save & Run') ) . '</span></button>
                                 ' . $output_cancel_button . $output_delete_button . '
                             </div>
                         </div>
@@ -1286,6 +1397,7 @@ if (!$_POST) {
                         </div>
                     </div>
                 </div>
+                ' . (($summary_notice !== '') ? '<div class="alert alert-info small d-flex gap-2 align-items-start mt-3 mb-0"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><div>' . h($summary_notice) . '</div></div>' : '') . '
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative table-responsive">
                         <table class="table table-striped table-hover">
@@ -1707,6 +1819,12 @@ if (!$_POST) {
 } else {
     validate_token_field();
     
+    // Every field of this form is one value. A field sent as an array
+    // (name[]=x, filter_1_field[]=x, last_filter_number[]=x) counts as not
+    // given: it reached escape() and ended in an error page, and an array
+    // filter count kept the filter loop running until the time limit.
+    pg_request_single_values(array_keys($_GET + $_POST));
+
     $liveform->add_fields_to_session();
     
     // if the user selected to delete this visitor report, then delete it
@@ -1902,7 +2020,8 @@ function get_summarize_by_column($summarize_by)
         case 'day': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%d\')';
         case 'site_search_terms': return 'visitors.site_search_terms';
         case 'currency_code': return 'visitors.currency_code';
-        case 'http_referer': return 'visitors.http_referer';
+        case 'device': return pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql(pg_visitor_text_sql('user_agent')) : "''";
+        case 'http_referer': return pg_visitor_text_sql('http_referer');
         case 'referring_host_name': return 'visitors.referring_host_name';
         case 'referring_search_engine': return 'visitors.referring_search_engine';
         case 'referring_search_terms': return 'visitors.referring_search_terms';
@@ -1934,6 +2053,14 @@ function get_summarize_by_column($summarize_by)
 
 function update_summarize_by_name($summarize_by_name, $summarize_by) {
     switch ($summarize_by) {
+        case 'device':
+            $devices = array('desktop' => lang('Desktop'), 'mobile' => lang('Mobile'), 'tablet' => lang('Tablet'));
+            if (isset($devices[$summarize_by_name])) {
+                $summarize_by_name = $devices[$summarize_by_name];
+            }
+            break;
+
+
         case 'month':
             $summarize_by_name = get_month_name_from_number($summarize_by_name);
             break;

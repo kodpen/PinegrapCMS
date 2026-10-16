@@ -21,6 +21,23 @@ include_once('liveform.class.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page. The screen renames, deletes and exports the file, so the
+// record must also be a design file stored under a plain .css name in the
+// files folder: an image, a font or any other file is not found either.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+$theme_file_name = ($id > 0) ? (string) db_value("SELECT name FROM files WHERE (id = '" . $id . "') AND (design = '1')") : '';
+if (
+    ($theme_file_name === '')
+    || ($theme_file_name !== basename($theme_file_name))
+    || (strpos($theme_file_name, '..') !== false)
+    || (mb_strtolower(pathinfo($theme_file_name, PATHINFO_EXTENSION)) !== 'css')
+) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $liveform = new liveform('edit_theme_file');
 
 if (!$_POST) {
@@ -113,7 +130,15 @@ if (!$_POST) {
             $output_export_button = '';
             $output_download_file_button = '<button type="button" class="btn my-1 btn-outline-secondary" onclick="window.open(\'' . h(escape_javascript(PATH . encode_url_path($file_name))) . '\')">' . lang('Download File') . '</button>';
         }
-        
+
+        // A theme recorded here but missing from the disk says so before it is
+        // saved, with the note the file editors show for the same case.
+        $output_file_missing = '';
+
+        if (!is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+            $output_file_missing = '<div class="alert alert-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+        }
+
         print
             pg_page_shell([
                 'title'=> lang('Edit Theme'),
@@ -130,7 +155,7 @@ if (!$_POST) {
                             <div class="row">
                     <div class="col-12">
                         ' . $liveform->output_errors() . '
-                        ' . $liveform->output_notices() . '
+                        ' . $liveform->output_notices() . $output_file_missing . '
                         <div class="row mb-2 flex-wrap">
                             <div class="col-12 text-center text-md-start">
                                 <h2 class="d-inline-block text-break"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a></h2>
@@ -178,12 +203,12 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                         <div class="container">
                             <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang('Saving') . '"><span class="material-icons me-2">save</span><span class="btn-text">' . lang('Save') . '</span></button>
+                                <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang('Save') . '</span></button>
                                 <button type="button" class="btn my-1 btn-outline-secondary" onclick="window.location=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'">' . lang('Cancel') . '</button>
                                 ' . $output_edit_theme_button . '
                                 ' . $output_export_button . '
                                 ' . $output_download_file_button . '
-                                <button type="submit" name="delete" value="Delete" class="btn my-1 btn-danger" data-loading-content="' . lang('Deleting') . '" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text">' . lang('Delete') . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text">' . lang('Delete') . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -406,8 +431,16 @@ if (!$_POST) {
         
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
-        // rename file's name
-        rename(FILE_DIRECTORY_PATH . '/' . $original_name, FILE_DIRECTORY_PATH . '/' . $name);
+        // Rename the file when its name changed and it is on the disk. A theme
+        // recorded here but missing from the disk has nothing to rename (that
+        // rename() wrote a PHP warning on every save); the record is still
+        // saved and the themes list says the file is missing.
+        $theme_file_missing = !is_file(FILE_DIRECTORY_PATH . '/' . $original_name);
+
+        if (($name !== $original_name) && !$theme_file_missing) {
+            rename(FILE_DIRECTORY_PATH . '/' . $original_name, FILE_DIRECTORY_PATH . '/' . $name);
+        }
+
         log_activity("theme file ($name) was modified", $_SESSION['sessionusername']);
 
         // If this theme was activated as a desktop or mobile theme,
@@ -534,8 +567,13 @@ if (!$_POST) {
         }
         
         $notice = lang('The theme file was edited successfully.');
-        
+
         $liveform_view_themes->add_notice($notice);
+
+        if ($theme_file_missing) {
+            $liveform_view_themes->add_warning(lang('The file is recorded here but is not on the disk.'));
+        }
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_themes.php');
     }
     

@@ -20,7 +20,8 @@ include('init.php');
 
 validate_token_field();
 
-$order_id = (int) ($_GET['id'] ?? 0);
+// An id sent as an array counts as not given (it would read as order 1).
+$order_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 
 // get order information
 $query =
@@ -29,11 +30,11 @@ $query =
         status
     FROM orders
     WHERE id = '" . escape($order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
 // if the order was not found, output error
 if (mysqli_num_rows($result) == 0) {
-    output_error('The order could not be found. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('The order could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $row = mysqli_fetch_assoc($result);
@@ -42,18 +43,18 @@ $status = $row['status'];
 
 // get user id for user
 $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
 $user_id = $row['user_id'];
 
 // if order user id is different than user id, output error
 if ($order_user_id != $user_id) {
-    output_error('You do not have access to this order. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('You do not have access to this order.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 // if the order is complete, output error
 if ($status != 'incomplete') {
-    output_error('The order is complete. You may only delete incomplete orders. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('The order is complete. You may only delete incomplete orders.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $order['id'] = $order_id;
@@ -69,6 +70,6 @@ if ($response['status'] == 'error') {
 // prepare confirmation notice for my account screen
 include_once('liveform.class.php');
 $my_account = new liveform('my_account');
-$my_account->add_notice('The order has been deleted.');
+$my_account->add_notice(lang('The order has been deleted.'));
 
 go(get_page_type_url('my account'));

@@ -23,4 +23,10 @@ include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// An id sent as an array (?id[]=x) is no record: (int) would read it as 1
+// and copy offer 1.
+if (isset($_GET['id']) && !is_scalar($_GET['id'])) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 go(PATH . SOFTWARE_DIRECTORY . '/edit_offer.php?duplicate=' . (isset($_GET['id']) ? (int) $_GET['id'] : 0));

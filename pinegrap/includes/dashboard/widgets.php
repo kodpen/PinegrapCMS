@@ -77,6 +77,54 @@ function pg_dashboard_widget_run($request, $user)
     return $handler($request, $user);
 }
 
+/**
+ * Several widgets in one request: the batch behind api.php's get_widgets_data.
+ *
+ * The dashboard used to ask for every card on its own, so a screen of twenty
+ * cards cost twenty requests, and each of them paid for the whole bootstrap --
+ * init.php, the firewall, the session, the database connection -- before it
+ * ran a single query of its own. On a server with a handful of PHP workers the
+ * requests also queued behind each other, which is most of what a slow
+ * dashboard was. One request pays the bootstrap once.
+ *
+ * Every id goes through pg_dashboard_widget_run() exactly as a single request
+ * would, so each widget keeps its own access check and its own answer. Ids
+ * are taken as they come, duplicates dropped, and capped so a request cannot
+ * ask for an unbounded amount of work.
+ *
+ * @param array $request the decoded API request; 'widget_ids' is the list
+ * @param array $user
+ * @return array 'status', 'message' and 'widgets' (id => widget response)
+ */
+function pg_dashboard_widgets_run_many($request, $user)
+{
+    $ids = (isset($request['widget_ids']) && is_array($request['widget_ids'])) ? $request['widget_ids'] : array();
+    $answers = array();
+
+    foreach ($ids as $widget_id) {
+
+        if (is_int($widget_id)) {
+            $widget_id = (string) $widget_id;
+        }
+
+        if (!is_string($widget_id) || isset($answers[$widget_id])) {
+            continue;
+        }
+
+        if (count($answers) >= 40) {
+            break;
+        }
+
+        $answers[$widget_id] = pg_dashboard_widget_run(array('widget_id' => $widget_id) + $request, $user);
+    }
+
+    return array(
+        'status' => 'success',
+        'message' => 'Action Success',
+        'widgets' => $answers,
+    );
+}
+
 // Eight daily counts -- seven days ago through today -- for one timestamp
 // column, in ONE query.
 //
@@ -211,6 +259,10 @@ function pg_widget_headline($properties)
 //
 // A row with no 'href' renders as a div and drops the arrow, so a list that
 // leads nowhere does not advertise a click that will not happen.
+//
+// 'data' is a map of data-* attributes for the row's own element -- the kind
+// a filterable list sorts its rows by. Keys are letters, digits and dashes;
+// values are escaped here.
 function pg_widget_row($properties)
 {
     $href   = $properties['href']   ?? '';
@@ -246,16 +298,23 @@ function pg_widget_row($properties)
         : '';
     $output_target = ($target !== '') ? ' target="' . $target . '" rel="noopener"' : '';
 
+    $output_data = '';
+    foreach ((array) ($properties['data'] ?? array()) as $data_key => $data_value) {
+        if (preg_match('/^[a-z0-9-]+$/D', (string) $data_key)) {
+            $output_data .= ' data-' . $data_key . '="' . h((string) $data_value) . '"';
+        }
+    }
+
     // A real link rather than an onclick handler, so the row is reachable by
     // keyboard and opens in a new tab on middle click like any other link.
     $class = 'pg-row' . ($small ? ' pg-row-sm' : '') . ($muted ? ' opacity-50' : '')
         . ($extra !== '' ? ' ' . $extra : '');
 
     if ($href !== '') {
-        $open  = '<a href="' . $href . '" class="' . $class . '"' . $output_target . '>';
+        $open  = '<a href="' . $href . '" class="' . $class . '"' . $output_target . $output_data . '>';
         $close = '<i class="bi bi-arrow-right text-muted pg-row-go"></i></a>';
     } else {
-        $open  = '<div class="' . $class . '">';
+        $open  = '<div class="' . $class . '"' . $output_data . '>';
         $close = '</div>';
     }
 
@@ -317,4 +376,156 @@ function pg_widget_row_heading($label, $aside = '')
     return '<div class="pg-row-heading text-muted">' . $label
         . (($aside !== '') ? '<span class="pg-row-aside">' . $aside . '</span>' : '')
         . '</div>';
+}
+
+// Seven tiny bars for a week of daily counts, drawn in CSS rather than on a
+// canvas. A filter list carries one per entry, and seven Chart.js instances
+// for a few pixels each would cost more to build and tear down on every
+// refresh than the whole card costs to fetch.
+//
+// The tallest day fills the box and the rest are drawn against it; a week
+// with nothing in it draws seven stubs, so the shape is still there to read
+// as "quiet" rather than as missing.
+function pg_widget_bars($series)
+{
+    $series = array_slice(array_map('intval', (array) $series), -7);
+    $top = max(1, max(array_merge(array(0), $series)));
+    $out = '';
+
+    foreach ($series as $value) {
+        $out .= '<i style="height:' . max(8, (int) round(($value / $top) * 100)) . '%"'
+            . (($value > 0) ? '' : ' class="is-zero"') . '></i>';
+    }
+
+    return '<span class="pg-bars" aria-hidden="true">' . $out . '</span>';
+}
+
+// One entry of a filter list or a lane strip: the switch a card's rows are
+// sorted by. The card body marks itself data-pg-filterable and the page
+// script does the rest -- it shows the rows whose data-kind matches the
+// entry's data-pg-filter, remembers the choice per card, and puts it back
+// after every refresh, so a refresh never throws the reader back to "all".
+//
+// $properties: key, label, icon (Bootstrap class), color (CSS colour for the
+// icon tile), count (shown when not ''), count_class, sub (a second line,
+// already escaped), bars (a daily series for pg_widget_bars), title.
+function pg_widget_filter($properties)
+{
+    $key   = (string) ($properties['key'] ?? 'all');
+    $color = (string) ($properties['color'] ?? '');
+    $count = (string) ($properties['count'] ?? '');
+    $sub   = (string) ($properties['sub'] ?? '');
+
+    $output_color = ($color !== '')
+        ? ' style="--pg-k:' . h($color) . ';--pg-k-ink:' . pg_readable_ink($color) . '"'
+        : '';
+
+    // The colour rides the button rather than the tile, so the day bars and
+    // the count beside the label are drawn in the same colour as the tile.
+    return '<button type="button" class="pg-filter" data-pg-filter="' . h($key) . '" aria-pressed="false"'
+        . ((($properties['title'] ?? '') !== '') ? ' title="' . h($properties['title']) . '"' : '')
+        . $output_color . '>'
+        . '<span class="pg-filter-ico"><i class="bi ' . h((string) ($properties['icon'] ?? 'bi-dot')) . '"></i></span>'
+        . '<span class="pg-filter-text">'
+        . '<span class="pg-filter-label">' . h((string) ($properties['label'] ?? '')) . '</span>'
+        . (($sub !== '') ? '<span class="pg-filter-sub">' . $sub . '</span>' : '')
+        . '</span>'
+        . (isset($properties['bars']) ? pg_widget_bars($properties['bars']) : '')
+        . (($count !== '') ? '<span class="pg-filter-count ' . h((string) ($properties['count_class'] ?? '')) . '">' . h($count) . '</span>' : '')
+        . '</button>';
+}
+
+// A card of lanes, the way the Operations Desk lays out what the shop owes:
+// one .pg-filter tile per lane across the top with its count, and the pressed
+// lane's own list filling the rest of the card. Each lane brings a whole body,
+// so one item may sit in two lanes -- a task due today is in "Today" and in
+// "Open" -- which a filter over one list of rows could not do.
+//
+// $lanes: key => label, icon, color, count (int), sub (escaped), body (markup),
+// urgent (bool, the count in red). A lane with nothing in it shows a green
+// check in place of its icon. $default is the lane that opens; '' picks the
+// first urgent lane with something in it, then the first with anything.
+function pg_widget_lanes($name, $label, $lanes, $default = '')
+{
+    if ($default === '') {
+        foreach ($lanes as $key => $lane) {
+            if (!empty($lane['urgent']) && ((int) $lane['count'] > 0)) {
+                $default = (string) $key;
+                break;
+            }
+        }
+    }
+
+    if ($default === '') {
+        foreach ($lanes as $key => $lane) {
+            if ((int) $lane['count'] > 0) {
+                $default = (string) $key;
+                break;
+            }
+        }
+    }
+
+    if ($default === '') {
+        $default = (string) key($lanes);
+    }
+
+    $output_tiles = '';
+    $output_bodies = '';
+
+    foreach ($lanes as $key => $lane) {
+
+        $clear = ((int) $lane['count'] === 0);
+
+        $output_tiles .= pg_widget_filter(array(
+            'key'         => (string) $key,
+            'label'       => $lane['label'],
+            'icon'        => $clear ? 'bi-check2-circle' : $lane['icon'],
+            'color'       => $clear ? '#10b981' : $lane['color'],
+            'count'       => pg_format_number((int) $lane['count'], 0),
+            'count_class' => $clear ? 'is-clear' : (!empty($lane['urgent']) ? 'is-urgent' : ''),
+            'sub'         => (string) ($lane['sub'] ?? ''),
+        ));
+
+        $output_bodies .= '<div class="pg-ops-lane d-none" data-kind="' . h((string) $key) . '">' . $lane['body'] . '</div>';
+    }
+
+    return '
+    <div class="card-body p-0 pg-ops" data-pg-filterable="' . h($name) . '" data-pg-default="' . h($default) . '">
+        <div class="pg-lanes" role="group" aria-label="' . h($label) . '">' . $output_tiles . '</div>
+        <div class="pg-ops-body">' . $output_bodies . '</div>
+    </div>';
+}
+
+/**
+ * The reader's workspace rights when the dashboard may show workspace cards,
+ * or null when it may not.
+ *
+ * The same gate as the workspace strip under the greeting: the module is on,
+ * the account may use it (staff below role 3, or the workspace permission),
+ * and ws_rights() counts it as a member -- a profile can take an account out
+ * of the team, and only ws_rights() reads that. Loads the module when it
+ * answers yes, so a card can call into it straight away.
+ *
+ * @param array $user the row validate_user() returned
+ * @return array|null ws_rights()
+ */
+function pg_dashboard_workspace_rights($user)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return null;
+    }
+
+    if (!(((int) $user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    if (!ws_enabled()) {
+        return null;
+    }
+
+    $rights = ws_rights($user);
+
+    return !empty($rights['member']) ? $rights : null;
 }

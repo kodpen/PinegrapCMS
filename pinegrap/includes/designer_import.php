@@ -187,16 +187,19 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
         if ($html === null) { $res['warnings'][] = lang(array('string' => '{var:1} could not be read from the archive.', 'vars' => $path)); continue; }
         $page = pg_designer_import_html($html, $path, $ctx);
         $page['page_name'] = $ctx->page_names[$path];
-        foreach ($page['css'] as $a)   $res['css'][]   = $a;
-        foreach ($page['js'] as $a)    $res['js'][]    = $a;
+        // Each stylesheet and script remembers the pages that used it, so
+        // one page's script does not run on every page of the design
+        // (pg_di_scope_assets()).
+        foreach ($page['css'] as $a)   { $a['page_names'] = array($page['page_name']); $res['css'][] = $a; }
+        foreach ($page['js'] as $a)    { $a['page_names'] = array($page['page_name']); $res['js'][]  = $a; }
         foreach ($page['fonts'] as $f) $res['fonts'][] = $f;
         foreach ($page['warnings'] as $w) $res['warnings'][] = $w;
         unset($page['css'], $page['js'], $page['fonts'], $page['warnings']);
         $res['pages'][] = $page;
     }
     foreach ($ctx->warnings as $w) $res['warnings'][] = $w;
-    $res['css']   = pg_di_dedupe_assets($res['css']);
-    $res['js']    = pg_di_dedupe_assets($res['js']);
+    $res['css']   = pg_di_scope_assets(pg_di_dedupe_assets($res['css']), count($res['pages']));
+    $res['js']    = pg_di_scope_assets(pg_di_dedupe_assets($res['js']), count($res['pages']));
     $res['fonts'] = pg_di_dedupe_fonts($res['fonts']);
     $res['folder_id']    = $ctx->root_id;
     $res['folder_label'] = 'Import / ' . $project_name;
@@ -365,6 +368,7 @@ function pg_designer_create_design_from_import($res, $design_name, $user)
 
     $folder_id = isset($res['folder_id']) ? (int)$res['folder_id'] : 0;
     $seq = 0;
+    $saved_ids = array();
     foreach ($res['pages'] as $p) {
         $tree = isset($p['tree']) && is_array($p['tree']) ? $p['tree'] : array('type' => 'root', 'props' => array(), 'children' => array());
         pg_di_assign_ids($tree, $seq);
@@ -382,6 +386,7 @@ function pg_designer_create_design_from_import($res, $design_name, $user)
         ), $user);
         if (!empty($r['ok'])) {
             $out['page_ids'][] = (int)$r['page_id'];
+            $saved_ids[(string)$p['page_name']] = (int)$r['page_id'];
         } else {
             foreach ((isset($r['errors']) ? $r['errors'] : array()) as $e) {
                 $out['warnings'][] = $p['page_name'] . ': ' . $e;
@@ -393,6 +398,16 @@ function pg_designer_create_design_from_import($res, $design_name, $user)
         db("DELETE FROM style WHERE style_id = '$style_id'");
         $out['style_id'] = 0;
         $out['errors'][] = lang('None of the pages could be saved.');
+        return $out;
+    }
+    // The files only some pages used are limited to those pages, by the ids
+    // they were just saved under.
+    if (pg_multi_page_design_ready()) {
+        $css = json_encode(array_values(pg_di_asset_pages_by_id($res['css'], $saved_ids)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $js  = json_encode(array_values(pg_di_asset_pages_by_id($res['js'], $saved_ids)),  JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        db("UPDATE style
+            SET style_custom_css = '" . escape($css) . "', style_custom_js = '" . escape($js) . "'
+            WHERE style_id = '" . $style_id . "'");
     }
     return $out;
 }
@@ -1164,10 +1179,49 @@ function pg_di_dedupe_assets($list)
     $seen = array(); $out = array();
     foreach ($list as $a) {
         $k = $a['type'] . '|' . ($a['type'] === 'css' || $a['type'] === 'js' ? $a['name'] . '|' . md5($a['content']) : $a['content']);
-        if (isset($seen[$k])) continue;
-        $seen[$k] = true; $out[] = $a;
+        if (isset($seen[$k])) {
+            // The same file on another page: it now belongs to both.
+            if (isset($a['page_names'], $out[$seen[$k]]['page_names'])) {
+                $out[$seen[$k]]['page_names'] = array_values(array_unique(array_merge($out[$seen[$k]]['page_names'], $a['page_names'])));
+            }
+            continue;
+        }
+        $seen[$k] = count($out); $out[] = $a;
     }
     return $out;
+}
+
+// The pages an imported file loads on. A file every imported page used is
+// the project's own and loads everywhere (its page list is dropped); one only
+// some pages used keeps their names in `page_names`. The editor turns the
+// names into its tabs (_pgImportApplyPages()), a design created straight from
+// the import into page ids (pg_designer_create_design_from_import()), both as
+// the asset row's `pages` (pg_design_asset_on_page()).
+function pg_di_scope_assets($list, $page_count)
+{
+    foreach ($list as $i => $a) {
+        if (!isset($a['page_names'])) continue;
+        if (count($a['page_names']) >= (int)$page_count) unset($list[$i]['page_names']);
+    }
+    return array_values($list);
+}
+
+// An imported asset list with each `page_names` turned into the asset row's
+// `pages`, by the ids the pages were saved under ($ids: page name => page id).
+// A name with no saved page is left out; a file none of whose pages was saved
+// keeps an empty list, which loads it everywhere rather than nowhere.
+function pg_di_asset_pages_by_id($list, $ids)
+{
+    foreach ($list as $i => $a) {
+        if (!is_array($a) || !isset($a['page_names'])) continue;
+        $refs = array();
+        foreach ((array)$a['page_names'] as $name) {
+            if (isset($ids[(string)$name])) $refs[] = (string)(int)$ids[(string)$name];
+        }
+        unset($list[$i]['page_names']);
+        if ($refs) $list[$i]['pages'] = $refs;
+    }
+    return $list;
 }
 
 function pg_di_dedupe_fonts($list)

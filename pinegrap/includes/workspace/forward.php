@@ -391,6 +391,8 @@ function ws_forward_js_strings()
         'sel_reply'        => lang('Reply'),
         'sel_forward'      => lang('Forward'),
         'sel_to_note'      => lang('Into a note'),
+        'sel_copy'         => lang('Copy'),
+        'sel_copy_file'    => ws_js_template('File: {var:1}', 1),
         'sel_cancel'       => lang('Done choosing'),
         'sel_max'          => ws_js_template('At most {var:1} messages can be chosen together.', 1),
         'sel_help'         => lang('Tap the messages to choose them.'),

@@ -3,8 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Automatic backups: the weekly archive auto_backup.php writes, how many of
- * them are kept, and the copy sent to a remote store (FTP or an S3-compatible
- * bucket).
+ * them are kept, and the copy sent to a remote store (FTP, an S3-compatible
+ * bucket, or Google Drive, OneDrive or Dropbox through a connected account:
+ * includes/fn/backup_cloud.php). Also the database dump every backup writes,
+ * the hand-made and pre-upgrade ones included (pg_backup_dump_database()).
  *
  * Only names produced by pg_backup_auto_name() are ever deleted here. The
  * install dumps under data/backups (english_default, turkish_default), the
@@ -258,6 +260,229 @@ function pg_backup_delete_tree($path)
 
 
 // ----------------------------------------------------------------------------
+// Database dump
+// ----------------------------------------------------------------------------
+
+/**
+ * Tables every backup dumps without their rows.
+ *
+ * One row per visit, and the counters every page view and form item view
+ * adds to. On a busy site they are most of the dump and most of the time a
+ * restore takes, and nothing else in the database needs their rows: the
+ * structure is dumped, so a restored site opens them empty and counts on.
+ * visitor_texts is the list of referring addresses and browsers those visit
+ * rows name by number; without the rows its values name nothing.
+ * The readers' counter of a form item (submitted_form_info.number_of_views),
+ * the daily visitor summary (visitor_stats_daily) and the hourly visitor
+ * chart (visitor_stats_hourly) keep their rows.
+ *
+ * The same goes for the request logs the firewall, the performance monitor
+ * and the API write: each is only read for its own screen and dashboard
+ * figures, is pruned by its own retention setting, and fills again with the
+ * next request. The hourly performance summary (perf_stats) keeps its rows,
+ * and so do the logs that record what someone did (the site log, the ERP
+ * audit and e-document logs) and cron_runs, whose rows the scheduled jobs
+ * read back as their watermarks.
+ *
+ * The Search Console figures (seo_search_daily) are a copy of what Google
+ * keeps for sixteen months, a row per day for every address and every search,
+ * so they grow with the site's traffic. The next download after a restore
+ * finds the table empty and reads the whole window again (pg_gsc_resume_day()).
+ * The other SEO and search tables keep their rows: seo_issue and seo_link are
+ * the findings and the link graph behind the scores stored on every page and
+ * product, which would point at nothing until each one is checked again, and
+ * they grow with the content rather than the traffic. So does search_items,
+ * the index of the advanced site search, which only update_search_index.php
+ * rebuilds; search_results_pages is the settings of the search results pages.
+ *
+ * @return array table name => what its rows are, as the dump's note says it
+ */
+function pg_backup_rowless_tables()
+{
+    return array(
+        'visitors'                  => 'visit records',
+        'visitor_texts'             => 'referring addresses and browsers of the visit records',
+        'visitor_content_hourly'    => 'page views per hour',
+        'submitted_form_views'      => 'form item views, one row each',
+        'submitted_form_view_stats' => 'form item views per day',
+        'waf_log'                   => 'firewall events',
+        'perf_log'                  => 'slow requests',
+        'api_request_log'           => 'API requests, one row each',
+        'seo_search_daily'          => 'Search Console figures, downloaded again',
+    );
+}
+
+
+/**
+ * Tables every backup leaves out altogether.
+ *
+ * The two working copies the move of a MyISAM visitors table to InnoDB keeps
+ * while it runs (pg_visitor_move_run()). They only mean something next to that
+ * run's marker in data/temp, which no backup carries, and one of them is as
+ * large as visitors.
+ *
+ * @return array table names
+ */
+function pg_backup_skipped_tables()
+{
+    return array(PG_VISITOR_MOVE_COPY, PG_VISITOR_MOVE_OLD);
+}
+
+
+/**
+ * The settings Mysqldump is given for a backup.
+ *
+ * @return array
+ */
+function pg_backup_dump_settings()
+{
+    return array(
+        'no-data'        => array_keys(pg_backup_rowless_tables()),
+        'exclude-tables' => pg_backup_skipped_tables(),
+    );
+}
+
+
+/**
+ * How many bytes of the database a backup copies, from the sizes of its tables.
+ *
+ * The tables pg_backup_dump_settings() dumps without their rows or leaves out
+ * are not counted: what they add to sql.sql is a CREATE TABLE or nothing.
+ * Every other table counts at its data and index size, the figure the
+ * estimate before a backup has always used.
+ *
+ * @param array $table_bytes table name => data and index bytes
+ * @return float
+ */
+function pg_backup_estimate_bytes(array $table_bytes)
+{
+    $settings = pg_backup_dump_settings();
+    $left_out = array_merge($settings['no-data'], $settings['exclude-tables']);
+
+    $bytes = 0.0;
+
+    foreach ($table_bytes as $table => $size) {
+
+        if (in_array((string) $table, $left_out, true)) {
+            continue;
+        }
+
+        $bytes += (float) $size;
+    }
+
+    return $bytes;
+}
+
+
+/**
+ * The size of this database and the part of it a backup copies.
+ *
+ * information_schema's data and index lengths, the storage engine's own
+ * estimate. A host that hides information_schema gives zeros for both.
+ *
+ * @return array array('database' => float, 'backup' => float) in bytes
+ */
+function pg_backup_database_size()
+{
+    $table_bytes = array();
+
+    $rows = db_items("SELECT TABLE_NAME AS name, DATA_LENGTH + INDEX_LENGTH AS bytes FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()");
+
+    foreach ($rows as $row) {
+        $table_bytes[(string) $row['name']] = (float) $row['bytes'];
+    }
+
+    return array(
+        'database' => (float) array_sum($table_bytes),
+        'backup'   => pg_backup_estimate_bytes($table_bytes),
+    );
+}
+
+
+/**
+ * The lines a backup's sql.sql starts with.
+ *
+ * SQL comments, so every restore path skips them. English and fixed: the file
+ * may be restored on a site in another language.
+ *
+ * @return string
+ */
+function pg_backup_dump_note()
+{
+    $lines = array(
+        '-- Pinegrap database backup',
+        '--',
+        '-- These tables are dumped without their rows and are empty after a restore:',
+    );
+
+    foreach (pg_backup_rowless_tables() as $table => $rows) {
+        $lines[] = '--   ' . str_pad($table, 27) . $rows;
+    }
+
+    $lines[] = '-- The daily visitor summary (visitor_stats_daily) and the hourly visitor';
+    $lines[] = '-- chart (visitor_stats_hourly) are backed up with their rows.';
+    $lines[] = '--';
+
+    return implode(PHP_EOL, $lines) . PHP_EOL;
+}
+
+
+/**
+ * Dump the database into $file for a backup.
+ *
+ * Mysqldump opens its file with "wb" and has no way to put anything ahead of
+ * its own header, so the dump is written beside $file first and copied in
+ * behind the note. Without the rows of pg_backup_rowless_tables() that copy
+ * is small.
+ *
+ * @param string $file path of the dump to write
+ * @throws Exception when the dump or the copy fails; neither file is left behind
+ */
+function pg_backup_dump_database($file)
+{
+    include_once(PG_FUNCTIONS_DIR . '/mysqldump.php');
+
+    $part = $file . '.part';
+
+    try {
+        $dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD, pg_backup_dump_settings());
+        $dump->start($part);
+    } catch (\Exception $e) {
+        @unlink($part);
+        throw $e;
+    }
+
+    clearstatcache(true, $part);
+
+    $note = pg_backup_dump_note();
+    $size = @filesize($part);
+    $in = @fopen($part, 'rb');
+    $out = ($in !== false) ? @fopen($file, 'wb') : false;
+
+    // A short write is what a full disk gives, not false.
+    $written = ($size !== false)
+        && ($out !== false)
+        && (@fwrite($out, $note) === strlen($note))
+        && (@stream_copy_to_stream($in, $out) === $size);
+
+    if ($in !== false) {
+        fclose($in);
+    }
+
+    if ($out !== false) {
+        $written = @fclose($out) && $written;
+    }
+
+    @unlink($part);
+
+    if (!$written) {
+        @unlink($file);
+        throw new \Exception(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => array(basename($file)))));
+    }
+}
+
+
+// ----------------------------------------------------------------------------
 // Settings
 // ----------------------------------------------------------------------------
 
@@ -339,20 +564,34 @@ function pg_backup_settings($reload = false)
  * A remote type from the white list, or '' for none.
  *
  * @param mixed $type
- * @return string '', 'ftp' or 's3'
+ * @return string '', 'ftp', 's3', 'gdrive', 'onedrive' or 'dropbox'
  */
 function pg_backup_remote_type($type)
 {
-    $type = (string) $type;
+    $type = is_scalar($type) ? (string) $type : '';
 
-    return in_array($type, array('ftp', 's3'), true) ? $type : '';
+    return in_array($type, pg_backup_remote_types(), true) ? $type : '';
+}
+
+
+/**
+ * Every remote type, in the order the settings keep them.
+ *
+ * @return array
+ */
+function pg_backup_remote_types()
+{
+    return array('ftp', 's3', 'gdrive', 'onedrive', 'dropbox');
 }
 
 
 /**
  * One remote destination's settings with every key present and typed.
  *
- * @param string $type 'ftp' or 's3'
+ * A cloud destination keeps only which connected account it uses and the
+ * folder; the permission itself stays with the account.
+ *
+ * @param string $type a remote type
  * @param mixed $values
  * @return array
  */
@@ -363,6 +602,17 @@ function pg_backup_remote_normalize($type, $values)
     $text = function ($key) use ($values) {
         return isset($values[$key]) ? trim((string) $values[$key]) : '';
     };
+
+    if (pg_backup_cloud_is_type($type)) {
+
+        $connection_id = isset($values['connection_id']) && is_scalar($values['connection_id']) ? (int) $values['connection_id'] : 0;
+        $folder = isset($values['folder']) ? pg_backup_cloud_folder($values['folder']) : '';
+
+        return array(
+            'connection_id' => max(0, $connection_id),
+            'folder'        => ($folder === null) ? '' : $folder,
+        );
+    }
 
     if ($type === 'ftp') {
 
@@ -393,7 +643,7 @@ function pg_backup_remote_normalize($type, $values)
 /**
  * Encrypt the remote settings for config.backup_remote_settings.
  *
- * @param array $values array('ftp' => array(...), 's3' => array(...))
+ * @param array $values remote type => that destination's settings
  * @return string "<ciphertext>:<iv>"
  */
 function pg_backup_remote_encode(array $values)
@@ -407,11 +657,12 @@ function pg_backup_remote_encode(array $values)
 /**
  * Decrypt config.backup_remote_settings.
  *
- * Both destinations are kept, each under its own key, so switching between
- * them does not lose the other one's password.
+ * Every destination is kept, each under its own key, so switching between
+ * them does not lose the other one's password or account.
  *
  * @param string $stored "<ciphertext>:<iv>"
- * @return array array('ftp' => array(...), 's3' => array(...)), normalised
+ * @return array remote type => that destination's settings, normalised, in
+ *               the order of pg_backup_remote_types()
  */
 function pg_backup_remote_decode($stored)
 {
@@ -427,10 +678,13 @@ function pg_backup_remote_decode($stored)
         }
     }
 
-    return array(
-        'ftp' => pg_backup_remote_normalize('ftp', isset($values['ftp']) ? $values['ftp'] : array()),
-        's3'  => pg_backup_remote_normalize('s3', isset($values['s3']) ? $values['s3'] : array()),
-    );
+    $remote = array();
+
+    foreach (pg_backup_remote_types() as $type) {
+        $remote[$type] = pg_backup_remote_normalize($type, isset($values[$type]) ? $values[$type] : array());
+    }
+
+    return $remote;
 }
 
 
@@ -484,7 +738,25 @@ function pg_backup_run_auto()
     }
 
     if (($zip_path !== '') && ($settings['backup_remote_type'] !== '')) {
-        pg_backup_remote_record(pg_backup_remote_send($zip_path));
+
+        $sent = pg_backup_remote_send($zip_path);
+
+        pg_backup_remote_record($sent);
+
+        // The cloud folder keeps as many weeks as data/backups does.
+        if ($sent['ok'] && pg_backup_cloud_is_type($settings['backup_remote_type'])) {
+
+            list($type, $config) = pg_backup_remote_config();
+            $pruned = pg_backup_cloud_prune($type, $config, $settings['backup_keep']);
+
+            foreach ($pruned['deleted'] as $name) {
+                log_activity(lang(array('string' => 'Old automatic backup {var:1} was deleted from the remote copy.', 'vars' => array($name))), 'SYSTEM');
+            }
+
+            if (!$pruned['ok']) {
+                log_activity(lang(array('string' => 'Old automatic backups could not be deleted from the remote copy: {var:1}', 'vars' => array($pruned['error']))), 'SYSTEM');
+            }
+        }
     }
 
     return true;
@@ -524,13 +796,10 @@ function pg_backup_run_zip($name)
         return '';
     }
 
-    include_once(PG_FUNCTIONS_DIR . '/mysqldump.php');
-
     // The database first: if the run is cut short while the files are being
     // added, the dump is what matters most.
     try {
-        $dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD);
-        $dump->start($work . '/sql.sql');
+        pg_backup_dump_database($work . '/sql.sql');
     } catch (\Exception $e) {
         pg_backup_delete_tree($work);
         log_activity(lang(array('string' => 'Software Auto Backup error: {var:1}', 'vars' => array($e->getMessage()))), 'SYSTEM');
@@ -587,11 +856,8 @@ function pg_backup_run_folder($name)
         @mkdir($folder, 0777, true);
     }
 
-    include_once(PG_FUNCTIONS_DIR . '/mysqldump.php');
-
     try {
-        $dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD);
-        $dump->start($folder . '/sql.sql');
+        pg_backup_dump_database($folder . '/sql.sql');
     } catch (\Exception $e) {
         // An empty folder left by a failed dump is not a backup.
         if (is_dir($folder) && (count(glob($folder . '/*')) === 0)) {
@@ -709,7 +975,7 @@ function pg_backup_remote_config()
  * Send one file to the remote destination.
  *
  * @param string $file
- * @param string|null $type '' / 'ftp' / 's3'; null reads the saved settings
+ * @param string|null $type a remote type or ''; null reads the saved settings
  * @param array|null $config that destination's settings; null reads the saved ones
  * @return array array('ok' => bool, 'error' => string)
  */
@@ -731,6 +997,10 @@ function pg_backup_remote_send($file, $type = null, $config = null)
 
     if ($type === 's3') {
         return pg_backup_s3_put($file, pg_backup_remote_normalize('s3', $config));
+    }
+
+    if (pg_backup_cloud_is_type($type)) {
+        return pg_backup_cloud_put($file, $type, pg_backup_remote_normalize($type, $config));
     }
 
     return array('ok' => false, 'error' => lang('No remote backup destination is set.'));

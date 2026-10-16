@@ -18,6 +18,20 @@
 
 include('init.php');
 
+// A status changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON before anything below runs: the
+// request is not copied into the list's session filters, and the write is
+// the order module's own (pg_order_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_order_quick_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_order_quick_update($edit['id'], $edit['field'], $edit['value']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 // only ever appended to further below, so it has to start out empty
 $output_rows = '';
 $output = '';
@@ -36,12 +50,20 @@ $liveform = new liveform('view_orders');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// The column an operator can change on the list without opening the order:
+// the status, between complete and exported.
+$quick_edit = pg_order_quick_edit_columns();
+
 // If the reset parameter was sent in the query string,
 // then clear all session values for this screen.
 // The shipping report screen uses this feature in order to link to this screen
 // with a fresh view.
 if ((isset($_GET['reset'])) && ($_GET['reset'] == 'true')) {
     unset($_SESSION['software']['ecommerce']['view_orders']);
+
+    // The sort is kept apart by pg_list_state(); a fresh view starts from
+    // the default sort as well.
+    unset($_SESSION['software']['list_state']['view_orders']);
 }
 
 // store all values collected in request to session
@@ -73,14 +95,24 @@ if (isset($_SESSION['software']['ecommerce']['view_orders']['date_type']) == fal
     $_SESSION['software']['ecommerce']['view_orders']['date_type'] = 'order_date';
 }
 
-if (isset($_SESSION['software']['ecommerce']['view_orders']['start_month']) == false) {
-    $_SESSION['software']['ecommerce']['view_orders']['start_month'] = date('m', time() - 2678400);
-    $_SESSION['software']['ecommerce']['view_orders']['start_day'] = date('d', time() - 2678400);
-    $_SESSION['software']['ecommerce']['view_orders']['start_year'] = date('Y', time() - 2678400);
+// Default range: a month ago to today. Each date part is checked on its own:
+// the year math and mktime() below throw a TypeError for a missing or
+// non-numeric value, the year select loops forever on a non-numeric stop year,
+// and since the value is kept in the session, one bad address would otherwise
+// break the list for the rest of the session.
+$date_defaults = array(
+    'start_month' => date('m', time() - 2678400),
+    'start_day'   => date('d', time() - 2678400),
+    'start_year'  => date('Y', time() - 2678400),
+    'stop_month'  => date('m'),
+    'stop_day'    => date('d'),
+    'stop_year'   => date('Y'),
+);
 
-    $_SESSION['software']['ecommerce']['view_orders']['stop_month'] = date('m');
-    $_SESSION['software']['ecommerce']['view_orders']['stop_day'] = date('d');
-    $_SESSION['software']['ecommerce']['view_orders']['stop_year'] = date('Y');
+foreach ($date_defaults as $key => $value) {
+    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['ecommerce']['view_orders'][$key] ?? ''))) {
+        $_SESSION['software']['ecommerce']['view_orders'][$key] = $value;
+    }
 }
 
 if (isset($_SESSION['software']['ecommerce']['view_orders']['status']) == false) {
@@ -533,7 +565,7 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
                 <div class="modal-footer">
                 <p>' . lang('Do you approve to create 2 excel files suitable for using the selected orders in Paraşut application?') . '</p>
                     <button type="button" class="no-submit btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-success" data-loading-content="' . lang(array('string'=>'Generating') ) . '"><span class="material-icons me-2">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
+                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-success"><span class="material-icons me-2">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
                 </div>
             </div>
         </div>
@@ -2295,20 +2327,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $years[] = $i;
     }
 
-    // if sort was set, update session
-    if (isset($_REQUEST['sort'])) {
-        // store sort in session
-        $_SESSION['software']['ecommerce']['view_orders']['sort'] = $_REQUEST['sort'];
-
-        // clear order
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = '';
-    }
-
-    // if order was set, update session
-    if (isset($_REQUEST['order'])) {
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = sql_order_direction($_REQUEST['order'], '');
-    }
-
     // If a screen was passed and it is a positive integer, then use it.
     // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
     if (
@@ -2325,69 +2343,46 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $screen = 1;
     }
 
-    // if the sort is not set yet, then default it to empty so that the switch below falls
-    // through to its default case
-    if (isset($_SESSION['software']['ecommerce']['view_orders']['sort']) == false) {
-        $_SESSION['software']['ecommerce']['view_orders']['sort'] = '';
+    // The columns this list sorts by, in the order the table shows them.
+    // pg_list_state() keeps the choice in the session as a code, so it
+    // survives a language change, and falls back to the default for anything
+    // else. Affiliate Code is a column only while the affiliate program is on.
+    $sort_columns = array(
+        'first_name'    => lang('First Name'),
+        'last_name'     => lang('Last Name'),
+        'status'        => lang('Status'),
+        'order_number'  => lang('Order Number'),
+        'total'         => lang('Total'),
+        'user'          => lang('User'),
+        'tracking_code' => lang('Tracking Code'),
+        'member_id'     => MEMBER_ID_LABEL,
+    );
+
+    if (AFFILIATE_PROGRAM == true) {
+        $sort_columns['affiliate_code'] = lang('Affiliate Code');
     }
 
-    switch (($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? '')) {
-        case lang('First Name'):
-            $sort_column = 'orders.billing_first_name';
-            break;
+    $sort_columns['order_date'] = lang('Order Date');
 
-        case lang('Last Name'):
-            $sort_column = 'orders.billing_last_name';
-            break;
+    $sort_default = array('sort' => 'order_date', 'order' => 'desc');
 
-        case lang('Status'):
-            $sort_column = 'orders.status';
-            break;
+    $list_state = pg_list_state('view_orders', $sort_columns, $sort_default);
+    $sort_levels = $list_state['sorts'];
 
-        case lang('Order Number'):
-            $sort_column = 'orders.order_number';
-            break;
-
-        case lang('User'):
-            $sort_column = 'user.user_username';
-            break;
-
-        case lang('Tracking Code'):
-            $sort_column = 'orders.tracking_code';
-            break;
-
-        case MEMBER_ID_LABEL:
-            $sort_column = 'contacts.member_id';
-            break;
-
-        case lang('Affiliate Code'):
-            $sort_column = 'orders.affiliate_code';
-            break;
-
-        case lang('Total'):
-            $sort_column = 'orders.total';
-            break;
-
-        case lang('Order Date'):
-            $sort_column = 'orders.order_date';
-            break;
-
-        default:
-            $sort_column = 'orders.order_date';
-            $_SESSION['software']['ecommerce']['view_orders']['sort'] = 'Order Date';
-    }
-
-    if (!empty($_SESSION['software']['ecommerce']['view_orders']['order'])) {
-        $asc_desc = sql_order_direction($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '');
-    } elseif ($sort_column == 'orders.order_date') {
-        $asc_desc = 'desc';
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = 'desc';
-    } else {
-        $asc_desc = 'asc';
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = 'asc';
-    }
-
-    
+    // What each sort code orders by. Only codes pg_list_state() let through
+    // reach pg_list_order_by(), and it writes nothing but these.
+    $order_by = pg_list_order_by($sort_levels, array(
+        'first_name'     => 'orders.billing_first_name',
+        'last_name'      => 'orders.billing_last_name',
+        'status'         => 'orders.status',
+        'order_number'   => 'orders.order_number',
+        'total'          => 'orders.total',
+        'user'           => 'user.user_username',
+        'tracking_code'  => 'orders.tracking_code',
+        'member_id'      => 'contacts.member_id',
+        'affiliate_code' => 'orders.affiliate_code',
+        'order_date'     => 'orders.order_date',
+    ));
 
     // Get all orders
     $query = "SELECT count(distinct(orders.id)) as count
@@ -2417,7 +2412,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
   
     
     if (AFFILIATE_PROGRAM == true) {
-        $output_affiliate_heading = '<th>' . get_column_heading(lang('Affiliate Code'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>';
+        $output_affiliate_heading = '<th>' . get_column_heading(lang('Affiliate Code'), $sort_levels, '', '', 'affiliate_code') . '</th>';
     }
 
 
@@ -2454,7 +2449,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
              $sql_status
              $sql_type
              GROUP BY orders.id
-             ORDER BY $sort_column $asc_desc";
+             ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $filter_totals = 0;
@@ -2463,8 +2458,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $billing_first_name = $row['billing_first_name'];
         $billing_last_name = $row['billing_last_name'];
         $status = $row['status'];
-        $parasut_exported = $row['parasut_exported'];
-        $parasut_invoice_id = trim((string) $row['parasut_invoice_id']);
         $order_number = $row['order_number'];
         $username = $row['username'];
         $tracking_code = $row['tracking_code'];
@@ -2546,31 +2539,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
 
         
-        $output_status = '';
-        if($status == 'incomplete'){
-            $output_status = '<span class="badge bg-warning text-dark bg-gradient fw-light">' . lang(ucwords($status)) . '</span>';
-        }else if($status == 'complete'){
-            $output_status = '<span class="badge bg-primary bg-gradient fw-light">' . lang(ucwords($status)) . '</span>';
-        }else if($status == 'exported'){
-            $output_status = '<span class="badge bg-success bg-gradient fw-light">' . lang(ucwords($status)) . '</span>';
-        }else if($status == 'canceled' || $status == 'cancelled'){
-            $output_status = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
-        }
-        // A bank transfer order whose money has not arrived is complete but not
-        // paid; a second badge says so without changing the status itself.
-        if ($paid_at_column_exists && pg_order_awaiting_payment($row)) {
-            $output_status .= '<span class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
-        }
-        // parasut_exported is set by two different things: the spreadsheet export
-        // and an invoice raised through the API. Only parasut_invoice_id tells
-        // them apart, so the tooltip is chosen from that rather than claiming an
-        // invoice exists for an order that was only exported to a file.
-        if(($parasut_exported != 0) || ($parasut_invoice_id !== '')){
-            $parasut_badge_title = ($parasut_invoice_id !== '')
-                ? lang('An invoice was created for this order in Parasut')
-                : lang('This order has been exported for upload to parasut.com');
-            $output_status = $output_status . '<span title="' . h($parasut_badge_title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
-        }
+        // The status badge, "Awaiting Payment" and the Parasut mark, drawn by
+        // the same function that draws them again in the answer to a quick
+        // edit. Only a complete or exported order's status changes here.
+        $output_status = pg_order_list_status_html($row, $paid_at_column_exists);
+        $output_status_edit = isset($quick_edit['status']['options'][$status])
+            ? pg_list_edit_cell($quick_edit, 'status', $id, $status)
+            : '';
         
 
 
@@ -2602,13 +2577,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '<tr id="' . $id . '">
                 <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="orders[]" value="' . $id . '" class="checkbox" /></td>
                 <td class="align-middle text-start col-reorder-none action-buttons">
-                    <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_cancel_button . '
                     ' . $output_shipping_tracking_cell . '
                 </td>
                 <td class="align-middle">' . h($billing_first_name) . '</td>
                 <td class="align-middle">' . h($billing_last_name) . '</td>
-                <td class="align-middle">' . $output_status . '</td>
+                <td class="align-middle"' . $output_status_edit . '>' . $output_status . '</td>
                 <td class="align-middle">' . $output_order_type . '</td>
                 <td class="align-middle">' . $order_number . '</td>
                 <td class="align-middle text-end">' . prepare_amount($total) . '</td>
@@ -2953,7 +2928,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             </div>
                         </div>
                         <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" data-loading-content="' . lang('Updating') . '" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
                         </div>
                                 
                     </div>
@@ -3202,9 +3177,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         ' . $output_gateway_buttons . '
                     </form>
                     <div class="pg-toolbar-grow"></div>
+                    ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
-                    <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                    <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     ' . $output_period_navigator . '
                 </nav>
                 ' . $output_order_stats . '
@@ -3213,7 +3189,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         <form name="form"  action="edit_orders.php" method="post" class="view_orders"> 
                             ' . get_token_field() . ' 
                             <input type="hidden" name="action">
-                            <table class="chart table-hover table " style="width:100%;display:none">
+                            <table class="chart table-hover table " style="width:100%;display:none"' . pg_list_edit_table('view_orders.php', $quick_edit) . '>
                                 <thead>
                                     <tr>
                                         <th class="noVis">
@@ -3222,18 +3198,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang('Action') . '</th> 
-                                        <th>' . get_column_heading(lang('First Name'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Last Name'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('First Name'), $sort_levels, '', '', 'first_name') . '</th>
+                                        <th>' . get_column_heading(lang('Last Name'), $sort_levels, '', '', 'last_name') . '</th>
+                                        <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
                                         <th>' . lang('Type') . '</th>
-                                        <th>' . get_column_heading(lang('Order Number'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th class="text-end">' . get_column_heading(lang('Total'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('User'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Tracking Code'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(MEMBER_ID_LABEL, ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Order Number'), $sort_levels, '', '', 'order_number') . '</th>
+                                        <th class="text-end">' . get_column_heading(lang('Total'), $sort_levels, '', '', 'total') . '</th>
+                                        <th>' . get_column_heading(lang('User'), $sort_levels, '', '', 'user') . '</th>
+                                        <th>' . get_column_heading(lang('Tracking Code'), $sort_levels, '', '', 'tracking_code') . '</th>
+                                        <th>' . get_column_heading(MEMBER_ID_LABEL, $sort_levels, '', '', 'member_id') . '</th>
                                         ' . $output_affiliate_heading . '
                                         <th>' . lang('Card Data') . '</th>
-                                        <th>' . get_column_heading(lang('Order Date'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Order Date'), $sort_levels, '', '', 'order_date') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -3244,9 +3220,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_generate_xlsl_button . '
-                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-primary disabled" data-loading-content="' . lang(array('string'=>'Removing') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-2">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
-                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-warning disabled" data-loading-content="' . lang(array('string'=>'Cancelling') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-2"></i>' . lang('Cancel Selected') . '</button>
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-primary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-2">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
+                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-2"></i>' . lang('Cancel Selected') . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

@@ -25,44 +25,33 @@ validate_ecommerce_access($user);
 
 $number_of_results = 0;
 
-switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
-    case lang('Name'):
-        $sort_column = 'name';
-        break;
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'arrival_date'  => lang('Arrival Date'),
+    'status'        => lang('Status'),
+    'start_date'    => lang('Start Date'),
+    'end_date'      => lang('End Date'),
+    'last_modified' => lang('Last Modified'),
+);
 
-    case lang('Arrival Date'):
-        $sort_column = 'arrival_date';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Status'):
-        $sort_column = 'status';
-        break;
+$list_state = pg_list_state('view_arrival_dates', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Start Date'):
-        $sort_column = 'start_date';
-        break;
-
-    case lang('End Date'):
-        $sort_column = 'end_date';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'timestamp';
-        break;
-    default:
-        $sort_column = 'timestamp';
-        $asc_desc = 'DESC';
-}
-
-if (isset($_GET['sort']) && $_GET['sort']) {
-    $asc_desc = sql_order_direction(isset($_GET['order']) ? $_GET['order'] : '');
-} else {
-    $asc_desc = 'asc';
-}
-
-if (($sort_column == 'timestamp') && (empty($_GET['order']))) {
-    $asc_desc = 'desc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'arrival_dates.name',
+    'arrival_date'  => 'arrival_dates.arrival_date',
+    'status'        => 'arrival_dates.status',
+    'start_date'    => 'arrival_dates.start_date',
+    'end_date'      => 'arrival_dates.end_date',
+    'last_modified' => 'arrival_dates.timestamp',
+));
 
 // Get the current date so that later we can figure out if arrival dates are active.
 $current_date = date('Y-m-d');
@@ -78,7 +67,7 @@ $query = "SELECT
             arrival_dates.timestamp as timestamp
         FROM arrival_dates
         LEFT JOIN user ON arrival_dates.user = user.user_id
-        ORDER BY $sort_column $asc_desc";
+        ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 while ($row = mysqli_fetch_array($result)) {
@@ -122,8 +111,8 @@ while ($row = mysqli_fetch_array($result)) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="chart_label ' . $output_status_class . '" nowrap>' . h($name) . '</td>
             <td class="align-center" nowrap>' . $arrival_date . '</td>
@@ -146,10 +135,12 @@ pg_page_shell([
     <div class="row">
         <div class="col-12">
             <div class="row mb-2  flex-wrap">
-                <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+                <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_arrival_date.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_arrival_date.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_arrival_dates.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -159,12 +150,12 @@ pg_page_shell([
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th nowrap>' .asc_or_desc(lang('Name'),'view_arrival_dates'). '</td>
-                                <th nowrap>' .asc_or_desc(lang('Arrival Date'),'view_arrival_dates'). '</td>
-                                <th nowrap>' .asc_or_desc(lang('Status'),'view_arrival_dates'). '</td>
-                                <th nowrap>' .asc_or_desc(lang('Start Date'),'view_arrival_dates'). '</td>
-                                <th nowrap>' .asc_or_desc(lang('End Date'),'view_arrival_dates'). '</td>
-                                <th nowrap>' .asc_or_desc(lang('Last Modified'),'view_arrival_dates'). '</td>
+                                <th nowrap>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th nowrap>' . get_column_heading(lang('Arrival Date'), $sort_levels, '', '', 'arrival_date') . '</th>
+                                <th nowrap>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
+                                <th nowrap>' . get_column_heading(lang('Start Date'), $sort_levels, '', '', 'start_date') . '</th>
+                                <th nowrap>' . get_column_heading(lang('End Date'), $sort_levels, '', '', 'end_date') . '</th>
+                                <th nowrap>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

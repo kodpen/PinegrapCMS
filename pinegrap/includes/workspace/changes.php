@@ -7,7 +7,8 @@
  * Asked to change, add or delete a record - a product, its stock, an order, a
  * customer, an ERP account, a product group and the products in it, a
  * channel's summary, a person's role, a page's details, a file, an offer, a
- * calendar event - Claude does not write it: it answers with the change
+ * calendar event, a task, a note on a task, a note of the workspace - Claude
+ * (or Pinegrap AI, ai.php) does not write it: it answers with the change
  * spelled out (the fields, what they hold now and what they would hold), and
  * the change waits under the answer in ws_ai_changes. Only the person who
  * asked can apply it, and only with a right of their own to change that kind
@@ -30,6 +31,12 @@
  * values the proposal was made against are compared with what the record
  * holds when somebody applies it, and a difference sets the proposal aside as
  * out of date.
+ *
+ * An assistant working on a task handed to it (delegation.php) proposes the
+ * same way, with no message to answer under: its changes wait on the task
+ * (ws_ai_changes.task_id, channel 0), are shown under its answer in the
+ * task's drawer, and are applied there by the person who asked, with no
+ * decision in a channel; the card and the activity log keep what was done.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -421,6 +428,57 @@ function ws_change_types()
                 'calendar_ids' => array('ids', 'calendar', lang('Calendars'), ''),
             ),
         ),
+        // A task of the workspace (tasks.php): its words, its state and its
+        // dates. Who is on it and its channel stay on the task's own screen.
+        'task' => array(
+            'label'   => lang('Task'),
+            'right'   => '',
+            'tag'     => 'task',
+            'table'   => 'ws_tasks',
+            'actions' => array('update'),
+            'names'   => array('title'),
+            'fields'  => array(
+                'title'       => array('text', 255, lang('Title'), 'title'),
+                'description' => array('long', 8000, lang('Description'), 'description'),
+                'status'      => array('enum', array_keys(ws_task_statuses()), lang('Status'), 'status'),
+                'priority'    => array('enum', array_keys(ws_task_priorities()), lang('Priority'), 'priority'),
+                'start_date'  => array('date', 0, lang('Start date'), 'start_date'),
+                'due_date'    => array('date', 0, lang('Due date'), 'due_date'),
+            ),
+        ),
+        // A note on a task (task_work.php), written in the name of the
+        // assistant that proposed it once it is applied. On a task handed to
+        // an assistant (delegation.php) the task is that one unless named.
+        'task_note' => array(
+            'label'    => lang('Task note'),
+            'right'    => '',
+            'tag'      => 'task',
+            'table'    => 'ws_task_notes',
+            'actions'  => array('create'),
+            'required' => array('text'),
+            'names'    => array('body'),
+            'fields'   => array(
+                'text' => array('long', defined('WS_TASK_NOTE_MAX') ? WS_TASK_NOTE_MAX : 4000, lang('Note'), 'body'),
+            ),
+            'create'   => array(
+                'task_id' => array('ids', 'task', lang('Task'), ''),
+            ),
+        ),
+        // A note of the workspace (notes.php), kept for the person who
+        // applies it, private until they share it.
+        'note' => array(
+            'label'    => lang('Workspace note'),
+            'right'    => '',
+            'tag'      => '',
+            'table'    => 'ws_notes',
+            'actions'  => array('create'),
+            'required' => array('title', 'body'),
+            'names'    => array('title'),
+            'fields'   => array(
+                'title' => array('text', 200, lang('Title'), 'title'),
+                'body'  => array('long', defined('WS_NOTE_MAX') ? WS_NOTE_MAX : 60000, lang('Text'), 'body'),
+            ),
+        ),
     );
 
     // Kinds of record the site does not run are not offered.
@@ -440,6 +498,15 @@ function ws_change_types()
 
     if (!defined('ERP_ENABLED') || !ERP_ENABLED) {
         unset($types['erp_account']);
+    }
+
+    // Task notes and workspace notes where their tables were made.
+    if (!function_exists('ws_task_work_ready') || !ws_task_work_ready()) {
+        unset($types['task_note']);
+    }
+
+    if (!function_exists('ws_notes_ready') || !ws_notes_ready()) {
+        unset($types['note']);
     }
 
     // ERP account fields that came with later upgrades, where they were taken.
@@ -1062,6 +1129,18 @@ function ws_change_allowed($viewer, $type, $record_id = 0)
         return ($folder !== null) && ($folder !== false) && pg_folder_edit_access($folder, $viewer['id'], $viewer['role']);
     }
 
+    // A task: whoever may change it on its own screen. Tasks, their notes and
+    // notes are the workspace's own, for its members.
+    if (($type === 'task') && ($record_id > 0)) {
+        $task = ws_task($record_id);
+
+        return $task && ws_can_edit_task($viewer, $task);
+    }
+
+    if (in_array($type, array('task', 'task_note', 'note'), true)) {
+        return !empty($viewer['member']);
+    }
+
     // An event: in one of the person's calendars.
     if (($type === 'calendar_event') && ($record_id > 0) && ((int) $viewer['role'] >= 3)) {
         foreach ((array) db_values("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int) $record_id . "'") as $calendar_id) {
@@ -1266,6 +1345,26 @@ function ws_change_check($viewer, $type, $action, $record, $values)
             }
 
             return '';
+
+        case 'task':
+            if (!ws_can_edit_task($viewer, $record)) {
+                return lang('You cannot change this task.');
+            }
+
+            $check = ws_task_validate($viewer, $values, $record);
+
+            return $check['ok'] ? '' : $check['error'];
+
+        case 'task_note':
+            foreach ((array) ($values['task_id'] ?? array()) as $task_id) {
+                $task = ws_task($task_id);
+
+                if (!$task || !ws_can_see_task($viewer, $task)) {
+                    return lang('That task could not be found.');
+                }
+            }
+
+            return '';
     }
 
     return '';
@@ -1394,12 +1493,17 @@ function ws_change_delete_blocked($type, $record)
  * The changes an answer proposes, checked and laid against what the records
  * hold now.
  *
+ * On a task handed to an assistant (delegation.php) the changes wait on the
+ * task: a note proposed for it goes on that task unless it names another,
+ * and nothing is proposed for a channel or for many records at once.
+ *
  * @param mixed $changes    the answer's changes, as sent
  * @param int   $asker_id   the person who asked, who will apply them
  * @param int   $channel_id the channel the request came from
+ * @param int   $task_id    the task the request came from
  * @return array ok, error, rows (type, action, record_id, fields, reason, snapshot)
  */
-function ws_changes_input($changes, $asker_id, $channel_id = 0)
+function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0)
 {
     $out = array('ok' => true, 'error' => '', 'rows' => array());
 
@@ -1435,6 +1539,12 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0)
         }
 
         $action = (string) ($change['action'] ?? 'update');
+
+        if (((int) $task_id > 0) && (($action === 'bulk') || ($type === 'channel'))) {
+            return $refuse(($action === 'bulk')
+                ? lang('Many records at once are proposed in a channel, not on a task.')
+                : lang('A summary is proposed for the channel the request came from.'));
+        }
 
         // Many records at once, by a rule (bulk.php).
         if ($action === 'bulk') {
@@ -1492,6 +1602,11 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0)
         // A group's products come as product_ids, beside or inside fields.
         if ((($action === 'add') || ($action === 'remove')) && isset($change['product_ids'])) {
             $fields['product_ids'] = $change['product_ids'];
+        }
+
+        // A note proposed on a task goes on that task unless it names another.
+        if (($type === 'task_note') && ((int) $task_id > 0) && empty($fields['task_id'])) {
+            $fields['task_id'] = array((int) $task_id);
         }
 
         if ($action === 'delete') {
@@ -1687,11 +1802,16 @@ function ws_change_create_check($type, $list)
         return lang('parent_id is one product group.');
     }
 
+    if (($type === 'task_note') && (count((array) ($values['task_id'] ?? array())) !== 1)) {
+        return lang('task_id is one task.');
+    }
+
     return '';
 }
 
 /**
- * Keeps the checked changes under the answer they came with.
+ * Keeps the checked changes under the answer they came with, or on the task
+ * whose run proposed them (no message then).
  *
  * @param array $request the ws_ai_requests row
  * @param int   $message_id the answer
@@ -1700,15 +1820,18 @@ function ws_change_create_check($type, $list)
 function ws_changes_store($request, $message_id, $rows)
 {
     $now = time();
+    $task_id = (int) ($request['task_id'] ?? 0);
+    $on_task = function_exists('ws_delegation_ready') && ws_delegation_ready();
 
     foreach ($rows as $row) {
         $snapshot = ($row['snapshot'] !== null) ? json_encode($row['snapshot'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR) : null;
 
-        db("INSERT INTO ws_ai_changes (request_id, channel_id, message_id, requested_by, record_type, action, record_id, fields, reason, snapshot, created_at)
+        db("INSERT INTO ws_ai_changes (request_id, channel_id, message_id, " . ($on_task ? 'task_id, ' : '') . "requested_by, record_type, action, record_id, fields, reason, snapshot, created_at)
             VALUES (
                 '" . (int) $request['id'] . "',
                 '" . (int) $request['channel_id'] . "',
                 '" . (int) $message_id . "',
+                " . ($on_task ? "'" . $task_id . "'," : '') . "
                 '" . (int) $request['requested_by'] . "',
                 '" . e($row['type']) . "',
                 '" . e($row['action']) . "',
@@ -1764,6 +1887,10 @@ function ws_change_show($type, $name, $value, $limit = 300)
         case 'date':
             $parts = explode('-', (string) $value);
 
+            if ((string) $value === '') {
+                return lang('(empty)');
+            }
+
             return (count($parts) === 3) ? $parts[2] . '.' . $parts[1] . '.' . $parts[0] : (string) $value;
 
         case 'datetime':
@@ -1803,6 +1930,11 @@ function ws_change_show($type, $name, $value, $limit = 300)
                 'disabled'   => lang('Disabled'),
             );
 
+            // A task's state and priority as its screen names them.
+            if ($type === 'task') {
+                $labels = ws_task_statuses() + ws_task_priorities();
+            }
+
             return $labels[(string) $value] ?? (string) $value;
     }
 
@@ -1838,19 +1970,25 @@ function ws_change_ids_tokens($field, $ids)
  * this reader. The values are shown only to somebody who may see records of
  * that kind; the others learn that a change is waiting and for whom.
  *
- * @param array $viewer
- * @param int[] $message_ids
- * @return array message_id => change[]
+ * The changes a run on a task proposed have no message: they are read by
+ * their requests instead, and whoever may see the task may act on them as
+ * whoever may post in the channel may act on a channel's.
+ *
+ * @param array  $viewer
+ * @param int[]  $ids message ids, or request ids
+ * @param string $by  message_id | request_id
+ * @return array message_id (or request_id) => change[]
  */
-function ws_changes_map($viewer, $message_ids)
+function ws_changes_map($viewer, $ids, $by = 'message_id')
 {
-    $message_ids = array_values(array_filter(array_map('intval', (array) $message_ids)));
+    $by = ($by === 'request_id') ? 'request_id' : 'message_id';
+    $ids = array_values(array_filter(array_map('intval', (array) $ids)));
 
-    if (empty($message_ids) || !ws_changes_ready()) {
+    if (empty($ids) || !ws_changes_ready()) {
         return array();
     }
 
-    $rows = (array) db_items("SELECT * FROM ws_ai_changes WHERE message_id IN (" . implode(',', $message_ids) . ") ORDER BY id");
+    $rows = (array) db_items("SELECT * FROM ws_ai_changes WHERE " . $by . " IN (" . implode(',', $ids) . ") ORDER BY id");
 
     if (empty($rows)) {
         return array();
@@ -1868,7 +2006,7 @@ function ws_changes_map($viewer, $message_ids)
             continue;
         }
 
-        if ((int) $row['record_id'] > 0) {
+        if (((int) $row['record_id'] > 0) && ($types[$row['record_type']]['tag'] !== '')) {
             $tokens[] = array('type' => $types[$row['record_type']]['tag'], 'id' => (int) $row['record_id']);
         }
 
@@ -1894,15 +2032,36 @@ function ws_changes_map($viewer, $message_ids)
     foreach ($rows as $row) {
         $type = (string) $row['record_type'];
 
-        if (!isset($types[$type])) {
+        // A call of an MCP server's tool that writes (mcp_ask.php) is not a
+        // kind of record, but waits on the same card.
+        $mcp = ($type === 'mcp_call') && function_exists('ws_mcp_change_entry');
+
+        // Nor is a scheduled action Pinegrap AI drafted (scheduled_draft.php):
+        // it is opened in its form and saved there.
+        $scheduled = ($type === 'scheduled') && function_exists('ws_scheduled_draft_change_entry');
+
+        if (!isset($types[$type]) && !$mcp && !$scheduled) {
             continue;
         }
 
         $action = (string) ($row['action'] ?? 'update');
-        $channel_id = (int) $row['channel_id'];
+        $task_id = ((int) $row['channel_id'] === 0) ? (int) ($row['task_id'] ?? 0) : 0;
+        $place = ($task_id > 0) ? 't' . $task_id : 'c' . (int) $row['channel_id'];
 
-        if (!isset($can_post[$channel_id])) {
-            $can_post[$channel_id] = ws_can_post_channel($viewer, ws_channel($channel_id));
+        if (!isset($can_post[$place])) {
+            $can_post[$place] = ($task_id > 0)
+                ? ws_can_see_task($viewer, ws_task($task_id))
+                : ws_can_post_channel($viewer, ws_channel($row['channel_id']));
+        }
+
+        if ($mcp) {
+            $out[(int) $row[$by]][] = ws_mcp_change_entry($viewer, $row, $people, !empty($can_post[$place]));
+            continue;
+        }
+
+        if ($scheduled) {
+            $out[(int) $row[$by]][] = ws_scheduled_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]));
+            continue;
         }
 
         // Many records at once (bulk.php): the rule in words, how many it
@@ -1921,7 +2080,7 @@ function ws_changes_map($viewer, $message_ids)
                 $items[] = array('label' => (string) $sample['label'], 'from' => (string) $sample['from'], 'to' => (string) $sample['to'], 'html' => '');
             }
 
-            $out[(int) $row['message_id']][] = array(
+            $out[(int) $row[$by]][] = array(
                 'id'           => (int) $row['id'],
                 'type'         => $type,
                 'type_label'   => $types[$type]['label'],
@@ -1946,9 +2105,9 @@ function ws_changes_map($viewer, $message_ids)
                 'decided_by'   => (string) ($people[(int) $row['decided_by']]['name'] ?? ''),
                 'decided'      => ((int) $row['decided_at'] > 0) ? ws_time_label($row['decided_at']) : '',
                 'decision_id'  => (int) $row['decision_message_id'],
-                'can_apply'    => $pending && $may && !empty($can_post[$channel_id]),
+                'can_apply'    => $pending && $may && !empty($can_post[$place]),
                 'no_right'     => $pending && $asker && !$may,
-                'can_dismiss'  => $pending && !empty($can_post[$channel_id]) && ($asker || ((int) $viewer['role'] < 3)),
+                'can_dismiss'  => $pending && !empty($can_post[$place]) && ($asker || ((int) $viewer['role'] < 3)),
             );
 
             continue;
@@ -1966,6 +2125,7 @@ function ws_changes_map($viewer, $message_ids)
         $items = array();
         $names = array();
         $cancels = false;
+        $note_task = 0;
 
         foreach ($fields as $item) {
             $name = (string) ($item['name'] ?? '');
@@ -1986,6 +2146,12 @@ function ws_changes_map($viewer, $message_ids)
 
             // A deleted record's empty fields say nothing about it.
             if (!$sees || (($action === 'delete') && in_array($item['from'] ?? null, array('', null), true))) {
+                continue;
+            }
+
+            // The task a note goes on heads its card.
+            if (($type === 'task_note') && ($name === 'task_id')) {
+                $note_task = (int) (((array) ($item['to'] ?? array()))[0] ?? 0);
                 continue;
             }
 
@@ -2029,7 +2195,19 @@ function ws_changes_map($viewer, $message_ids)
         $record_html = '';
 
         if (((int) $row['record_id'] > 0) && !(($action === 'delete') && ($row['status'] === 'applied'))) {
-            $record_html = ws_render_inline('<#' . $types[$type]['tag'] . ':' . (int) $row['record_id'] . '>', $refs);
+            if ($types[$type]['tag'] !== '') {
+                $record_html = ws_render_inline('<#' . $types[$type]['tag'] . ':' . (int) $row['record_id'] . '>', $refs);
+            } elseif (($type === 'note') && $sees) {
+                // A note has no tag: the note made from it is linked by its title.
+                $record_html = '<a class="ws-change-link" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_notes.php?note=' . (int) $row['record_id']) . '">'
+                    . '<i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(($label !== '') ? $label : lang('Workspace note')) . '</a>';
+            }
+        }
+
+        // A note on a task is headed by its task, not by its own words.
+        if (($note_task > 0) && ($record_html === '')) {
+            $record_html = ws_render_inline('<#task:' . $note_task . '>', $refs);
+            $label = '';
         }
 
         $action_labels = array(
@@ -2040,7 +2218,7 @@ function ws_changes_map($viewer, $message_ids)
             'remove' => lang('Out of the group'),
         );
 
-        $out[(int) $row['message_id']][] = array(
+        $out[(int) $row[$by]][] = array(
             'id'           => (int) $row['id'],
             'type'         => $type,
             'type_label'   => $types[$type]['label'],
@@ -2059,9 +2237,9 @@ function ws_changes_map($viewer, $message_ids)
             'decided_by'   => (string) ($people[(int) $row['decided_by']]['name'] ?? ''),
             'decided'      => ((int) $row['decided_at'] > 0) ? ws_time_label($row['decided_at']) : '',
             'decision_id'  => (int) $row['decision_message_id'],
-            'can_apply'    => $pending && $may && !empty($can_post[$channel_id]),
+            'can_apply'    => $pending && $may && !empty($can_post[$place]),
             'no_right'     => $pending && $asker && !$may,
-            'can_dismiss'  => $pending && !empty($can_post[$channel_id]) && ($asker || ((int) $viewer['role'] < 3)),
+            'can_dismiss'  => $pending && !empty($can_post[$place]) && ($asker || ((int) $viewer['role'] < 3)),
         );
     }
 
@@ -2069,16 +2247,21 @@ function ws_changes_map($viewer, $message_ids)
 }
 
 /**
- * Applies a proposed change, in the name of the person who asked for it.
+ * Whether the person may apply a proposed change: the checks ws_change_apply()
+ * makes before it takes the proposal, made on their own so that the API's dry
+ * run meets the same refusals. What is checked against the record itself is
+ * ws_change_apply_record_check().
  *
  * @param array $viewer
  * @param int   $change_id
- * @return array ok, error, stale, decision_id
+ * @return array ok, error, stale, change (the row), mcp (a call of an MCP
+ *               server's tool), channel (where the decision is written, null
+ *               for a change proposed on a task)
  */
-function ws_change_apply($viewer, $change_id)
+function ws_change_apply_check($viewer, $change_id)
 {
-    $fail = function ($error, $stale = false) {
-        return array('ok' => false, 'error' => $error, 'stale' => $stale, 'decision_id' => 0);
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'stale' => false, 'change' => null, 'mcp' => false, 'channel' => null);
     };
 
     if (!ws_changes_ready()) {
@@ -2109,17 +2292,164 @@ function ws_change_apply($viewer, $change_id)
 
     $types = ws_change_types();
     $type = (string) $change['record_type'];
-    $action = (string) ($change['action'] ?? 'update');
 
-    if (!isset($types[$type]) || !ws_change_allowed($viewer, $type, (int) $change['record_id'])) {
+    // A scheduled action Pinegrap AI drafted (scheduled_draft.php) is saved
+    // from its form, where everything it does is checked again.
+    if ($type === 'scheduled') {
+        return $fail(lang('A drafted scheduled action is saved from its form: open it there and save it.'));
+    }
+
+    // A call of an MCP server's tool that writes (mcp_ask.php): it runs with
+    // the asker's own account, so what it needs is that account rather than
+    // a right to a kind of record. Checked before the proposal is taken, so
+    // it waits to be run once the account is connected.
+    $mcp = ($type === 'mcp_call') && function_exists('ws_mcp_call_run');
+
+    if ($mcp) {
+        $problem = ws_mcp_call_problem($viewer, $change);
+
+        if ($problem !== '') {
+            return $fail($problem);
+        }
+    } elseif (!isset($types[$type]) || !ws_change_allowed($viewer, $type, (int) $change['record_id'])) {
         return $fail(lang('You may not change a record of this kind.'));
     }
 
-    $channel = ws_channel($change['channel_id']);
+    // Proposed on a task (delegation.php): applied by whoever asked and may
+    // still see the task, with no decision in a channel; the card on the
+    // task and the activity log keep what was done.
+    $task_id = ((int) $change['channel_id'] === 0) ? (int) ($change['task_id'] ?? 0) : 0;
+    $channel = null;
 
-    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
-        return $fail(lang('You cannot post in that channel.'));
+    if ($task_id > 0) {
+        if (!ws_can_see_task($viewer, ws_task($task_id))) {
+            return $fail(lang('That task could not be found.'));
+        }
+    } else {
+        $channel = ws_channel($change['channel_id']);
+
+        if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+            return $fail(lang('You cannot post in that channel.'));
+        }
     }
+
+    return array('ok' => true, 'error' => '', 'stale' => false, 'change' => $change, 'mcp' => $mcp, 'channel' => $channel);
+}
+
+/**
+ * Whether a proposed change can still be laid on its record: the record is
+ * there, nobody changed it after the proposal, and the person's rights allow
+ * the change. The checks ws_change_apply() makes once it has taken the
+ * proposal, made on their own so that the API's dry run meets the same
+ * refusals. Not for a call of an MCP server's tool or a change to many
+ * records at once, which are checked as they run.
+ *
+ * @param array $viewer
+ * @param array $change the row
+ * @return array ok, error, stale, record (null for a new one), fields (as
+ *               proposed), values (name => new value)
+ */
+function ws_change_apply_record_check($viewer, $change)
+{
+    $fail = function ($error, $stale = false) {
+        return array('ok' => false, 'error' => $error, 'stale' => $stale, 'record' => null, 'fields' => array(), 'values' => array());
+    };
+
+    $by_ai = function_exists('ws_ai_proposed') && ws_ai_proposed($change);
+    $types = ws_change_types();
+    $type = (string) $change['record_type'];
+    $action = (string) ($change['action'] ?? 'update');
+    $record = null;
+
+    if ($action !== 'create') {
+        $record = ws_change_record($type, $change['record_id']);
+
+        if ($record === null) {
+            return $fail(lang('The record is gone.'));
+        }
+    }
+
+    $fields = json_decode((string) $change['fields'], true);
+    $fields = is_array($fields) ? $fields : array();
+    $values = array();
+
+    // Made against other values than the record holds now: somebody changed it
+    // meanwhile, and their change is not written over (nor deleted).
+    foreach ($fields as $item) {
+        $field = ws_change_field($types[$type], (string) $item['name']);
+
+        if ($field === null) {
+            return $fail(lang('Invalid request.'));
+        }
+
+        $moved = (($action === 'update') || ($action === 'delete')) && ($field[3] !== '')
+            && (ws_change_current_value($field, $record) !== $item['from']);
+
+        // A record the change names (a product for a group, a parent group)
+        // that is gone since.
+        if (($field[0] === 'ids') && (ws_change_value($field, $item['to']) === null)) {
+            $moved = true;
+        }
+
+        if ($moved) {
+            return $fail($by_ai
+                ? lang('The record changed after Pinegrap AI proposed this, so it was not applied. Ask Pinegrap AI again.')
+                : lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'), true);
+        }
+
+        $values[$item['name']] = $item['to'];
+    }
+
+    if ($action === 'create') {
+        $check = ws_change_create_check($type, $fields);
+
+        if ($check !== '') {
+            return $fail($check);
+        }
+    }
+
+    if ($action === 'delete') {
+        $blocked = ws_change_delete_blocked($type, $record);
+
+        if ($blocked !== '') {
+            return $fail($blocked);
+        }
+    }
+
+    $check = ws_change_check($viewer, $type, $action, $record, ($action === 'delete') ? array() : $values);
+
+    if ($check !== '') {
+        return $fail($check);
+    }
+
+    return array('ok' => true, 'error' => '', 'stale' => false, 'record' => $record, 'fields' => $fields, 'values' => $values);
+}
+
+/**
+ * Applies a proposed change, in the name of the person who asked for it.
+ *
+ * @param array $viewer
+ * @param int   $change_id
+ * @return array ok, error, stale, decision_id
+ */
+function ws_change_apply($viewer, $change_id)
+{
+    $fail = function ($error, $stale = false) {
+        return array('ok' => false, 'error' => $error, 'stale' => $stale, 'decision_id' => 0);
+    };
+
+    $check = ws_change_apply_check($viewer, $change_id);
+
+    if (!$check['ok']) {
+        return $fail($check['error']);
+    }
+
+    $change = $check['change'];
+    $mcp = $check['mcp'];
+    $channel = $check['channel'];
+    $types = ws_change_types();
+    $type = (string) $change['record_type'];
+    $action = (string) ($change['action'] ?? 'update');
 
     // Taken before anything is checked, so two clicks cannot both apply it.
     db("UPDATE ws_ai_changes SET status = 'applying' WHERE id = '" . (int) $change['id'] . "' AND status = 'pending'");
@@ -2135,6 +2465,10 @@ function ws_change_apply($viewer, $change_id)
         ws_message_touch($change['message_id']);
     };
 
+    if ($mcp) {
+        return ws_mcp_call_run($viewer, $change, $channel);
+    }
+
     // Many records at once (bulk.php): the work starts here and goes on a
     // slice at a time; the decision comes when it is done.
     if ($action === 'bulk') {
@@ -2149,80 +2483,21 @@ function ws_change_apply($viewer, $change_id)
         return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => 0);
     }
 
-    $record = null;
+    $laid = ws_change_apply_record_check($viewer, $change);
 
-    if ($action !== 'create') {
-        $record = ws_change_record($type, $change['record_id']);
-
-        if ($record === null) {
-            $release('failed', lang('The record is gone.'));
-
-            return $fail(lang('The record is gone.'));
-        }
-    }
-
-    $fields = json_decode((string) $change['fields'], true);
-    $fields = is_array($fields) ? $fields : array();
-    $values = array();
-
-    // Made against other values than the record holds now: somebody changed it
-    // meanwhile, and their change is not written over (nor deleted).
-    foreach ($fields as $item) {
-        $field = ws_change_field($types[$type], (string) $item['name']);
-
-        if ($field === null) {
-            $release('failed', lang('Invalid request.'));
-
-            return $fail(lang('Invalid request.'));
-        }
-
-        $moved = (($action === 'update') || ($action === 'delete')) && ($field[3] !== '')
-            && (ws_change_current_value($field, $record) !== $item['from']);
-
-        // A record the change names (a product for a group, a parent group)
-        // that is gone since.
-        if (($field[0] === 'ids') && (ws_change_value($field, $item['to']) === null)) {
-            $moved = true;
-        }
-
-        if ($moved) {
+    if (!$laid['ok']) {
+        if ($laid['stale']) {
             $release('stale');
-
-            return $fail($by_ai
-                ? lang('The record changed after Pinegrap AI proposed this, so it was not applied. Ask Pinegrap AI again.')
-                : lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'), true);
+        } else {
+            $release('failed', $laid['error']);
         }
 
-        $values[$item['name']] = $item['to'];
+        return $fail($laid['error'], $laid['stale']);
     }
 
-    if ($action === 'create') {
-        $check = ws_change_create_check($type, $fields);
-
-        if ($check !== '') {
-            $release('failed', $check);
-
-            return $fail($check);
-        }
-    }
-
-    if ($action === 'delete') {
-        $blocked = ws_change_delete_blocked($type, $record);
-
-        if ($blocked !== '') {
-            $release('failed', $blocked);
-
-            return $fail($blocked);
-        }
-    }
-
-    $check = ws_change_check($viewer, $type, $action, $record, ($action === 'delete') ? array() : $values);
-
-    if ($check !== '') {
-        $release('failed', $check);
-
-        return $fail($check);
-    }
+    $record = $laid['record'];
+    $fields = $laid['fields'];
+    $values = $laid['values'];
 
     $done = call_user_func('ws_change_write_' . $type, $viewer, $action, $record, $values);
 
@@ -2234,12 +2509,28 @@ function ws_change_apply($viewer, $change_id)
 
     $record_id = ($action === 'create') ? (int) $done['id'] : (int) $change['record_id'];
 
+    if ($channel === null) {
+        db("UPDATE ws_ai_changes SET status = 'applied', error = '', record_id = '" . $record_id . "',
+                decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
+            WHERE id = '" . (int) $change['id'] . "'");
+
+        return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => 0);
+    }
+
     // The decision: who changed what, on Claude's proposal, under the answer.
-    $tag = '<#' . $types[$type]['tag'] . ':' . $record_id . '>';
+    // A kind of record with no tag (a note) is named by its words.
+    $tag = ($types[$type]['tag'] !== '')
+        ? '<#' . $types[$type]['tag'] . ':' . $record_id . '>'
+        : '“' . ws_change_record_name($type, $values) . '” (' . $types[$type]['label'] . ')';
     $lines = array();
 
     foreach ($fields as $item) {
         $field = ws_change_field($types[$type], (string) $item['name']);
+
+        // A note on a task names its task in the sentence.
+        if (($type === 'task_note') && ($item['name'] === 'task_id')) {
+            continue;
+        }
 
         if ($field[0] === 'ids') {
             $lines[] = $field[2] . ': ' . ws_change_ids_tokens($field, $item['to']);
@@ -2258,7 +2549,9 @@ function ws_change_apply($viewer, $change_id)
 
     switch ($action) {
         case 'create':
-            $sentence = '{var:1} was added on Claude\'s proposal. {var:2}';
+            $sentence = ($type === 'task_note')
+                ? 'A note was added to {var:1} on Claude\'s proposal. {var:2}'
+                : '{var:1} was added on Claude\'s proposal. {var:2}';
             break;
 
         case 'delete':
@@ -2307,6 +2600,54 @@ function ws_change_apply($viewer, $change_id)
 }
 
 /**
+ * Whether the person may set a proposed change aside: the checks of
+ * ws_change_dismiss(), made on their own so that the API's dry run meets the
+ * same refusals.
+ *
+ * @param array $viewer
+ * @param int   $change_id
+ * @return array ok, error, change (the row)
+ */
+function ws_change_dismiss_check($viewer, $change_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'change' => null);
+    };
+
+    if (!ws_changes_ready()) {
+        return $fail(lang('Invalid request.'));
+    }
+
+    $change = db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change_id . "'");
+
+    if (!is_array($change)) {
+        return $fail(lang('That proposal could not be found.'));
+    }
+
+    if ($change['status'] !== 'pending') {
+        return $fail(lang('Somebody has already decided about this proposal.'));
+    }
+
+    if (((int) $change['requested_by'] !== (int) $viewer['id']) && ((int) $viewer['role'] >= 3)) {
+        return $fail((function_exists('ws_ai_proposed') && ws_ai_proposed($change))
+            ? lang('Only the person who asked Pinegrap AI can set this change aside.')
+            : lang('Only the person who asked Claude can set this change aside.'));
+    }
+
+    $task_id = ((int) $change['channel_id'] === 0) ? (int) ($change['task_id'] ?? 0) : 0;
+
+    if ($task_id > 0) {
+        if (!ws_can_see_task($viewer, ws_task($task_id))) {
+            return $fail(lang('That task could not be found.'));
+        }
+    } elseif (!ws_can_post_channel($viewer, ws_channel($change['channel_id']))) {
+        return $fail(lang('You cannot post in that channel.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'change' => $change);
+}
+
+/**
  * Sets a proposed change aside: the person who asked, or staff.
  *
  * @param array $viewer
@@ -2315,32 +2656,21 @@ function ws_change_apply($viewer, $change_id)
  */
 function ws_change_dismiss($viewer, $change_id)
 {
-    if (!ws_changes_ready()) {
-        return array('ok' => false, 'error' => lang('Invalid request.'));
+    $check = ws_change_dismiss_check($viewer, $change_id);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error']);
     }
 
-    $change = db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change_id . "'");
-
-    if (!is_array($change)) {
-        return array('ok' => false, 'error' => lang('That proposal could not be found.'));
-    }
-
-    if ($change['status'] !== 'pending') {
-        return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'));
-    }
-
-    if (((int) $change['requested_by'] !== (int) $viewer['id']) && ((int) $viewer['role'] >= 3)) {
-        return array('ok' => false, 'error' => (function_exists('ws_ai_proposed') && ws_ai_proposed($change))
-            ? lang('Only the person who asked Pinegrap AI can set this change aside.')
-            : lang('Only the person who asked Claude can set this change aside.'));
-    }
-
-    if (!ws_can_post_channel($viewer, ws_channel($change['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
-    }
+    $change = $check['change'];
 
     db("UPDATE ws_ai_changes SET status = 'dismissed', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
         WHERE id = '" . (int) $change['id'] . "' AND status = 'pending'");
+
+    // A call of an MCP server's tool is kept as set aside too.
+    if (($change['record_type'] === 'mcp_call') && (mysqli_affected_rows(db::$con) === 1) && function_exists('ws_mcp_call_dismissed')) {
+        ws_mcp_call_dismissed($change, $viewer);
+    }
 
     ws_message_touch($change['message_id']);
 
@@ -2363,7 +2693,15 @@ function ws_change_log($what)
         $what = ws_ai_voice($what);
     }
 
-    log_activity($what, (string) ($_SESSION['sessionusername'] ?? ''));
+    $user = (string) ($_SESSION['sessionusername'] ?? '');
+
+    // Applied through the API (POST /workspace/changes/{id}/apply): the
+    // person signed in on the device.
+    if (($user === '') && function_exists('api_current_app')) {
+        $user = (string) (api_current_app()['owner']['username'] ?? '');
+    }
+
+    log_activity($what, $user);
 }
 
 /**
@@ -2481,19 +2819,13 @@ function ws_change_write_product($viewer, $action, $record, $values)
 
         // To the Recycle Bin, as the file manager bins it: flagged and switched
         // off, with what it was kept so that restoring puts it back as it was.
+        // The same move every panel screen makes (pg_catalog_bin_product()),
+        // product.deleted with recycled: true and the marketplace queue
+        // included.
         if (ws_change_binned('product')) {
-            db("UPDATE products SET recycled = '1', recycled_enabled = enabled, enabled = '0' WHERE id = '" . $id . "' AND recycled = '0'");
-
-            db("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . $id . "')");
-
-            db("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                VALUES ('product', '" . $id . "', '0', UNIX_TIMESTAMP(), '" . (int) $viewer['id'] . "')");
+            pg_catalog_bin_product($id, (int) $viewer['id']);
 
             ws_change_log(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($record['name']))));
-
-            if (function_exists('pg_marketplace_product_changed')) {
-                pg_marketplace_product_changed($id);
-            }
 
             return array('ok' => true, 'error' => '', 'id' => $id, 'binned' => true);
         }
@@ -2938,12 +3270,9 @@ function ws_change_write_product_group($viewer, $action, $record, $values)
         // groups inside it is not proposed, so it goes alone; its products stay
         // where else they are listed.
         if (ws_change_binned('product_group')) {
-            db("UPDATE product_groups SET recycled = '1', recycled_enabled = enabled, enabled = '0' WHERE id = '" . $id . "' AND recycled = '0'");
-
-            db("DELETE FROM recycle_bin WHERE (item_type = 'product_group') AND (item_id = '" . $id . "')");
-
-            db("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                VALUES ('product_group', '" . $id . "', '" . (int) $record['parent_id'] . "', UNIX_TIMESTAMP(), '" . (int) $viewer['id'] . "')");
+            foreach (pg_catalog_bin_statements('product_group', $id, array($id), (int) $record['parent_id'], (int) $viewer['id']) as $statement) {
+                db($statement);
+            }
 
             ws_change_log(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($record['name']))));
 
@@ -3132,6 +3461,12 @@ function ws_change_write_form($viewer, $action, $record, $values)
     $set[] = "last_modified_timestamp = UNIX_TIMESTAMP()";
 
     db("UPDATE forms SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
+
+    // A form with pretty URLs on names its records after their Title field;
+    // a retyped title renames the record, as the submission screen does.
+    if (!empty($values['answers']) && check_if_pretty_urls_are_enabled((int) db_value("SELECT page_id FROM forms WHERE id = '" . $id . "' LIMIT 1"))) {
+        update_submitted_form_address_name($id);
+    }
 
     ws_change_log(lang(array('string' => 'The submitted form ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['reference_code'])));
 
@@ -3421,4 +3756,82 @@ function ws_change_write_calendar_event($viewer, $action, $record, $values)
     ws_change_log(lang(array('string' => 'Calendar event ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['name'])));
 
     return array('ok' => true, 'error' => '', 'id' => $id);
+}
+
+/**
+ * A task's words, state, priority or dates, as its own screen changes them:
+ * the people on it hear of it the same way.
+ *
+ * @return array ok, error, id
+ */
+function ws_change_write_task($viewer, $action, $record, $values)
+{
+    $task = ws_task($record['id']);
+
+    if (!$task) {
+        return array('ok' => false, 'error' => lang('That task could not be found.'), 'id' => 0);
+    }
+
+    $done = ws_task_update($viewer, $task, $values);
+
+    if (!$done['ok']) {
+        return array('ok' => false, 'error' => $done['error'], 'id' => (int) $task['id']);
+    }
+
+    ws_change_log(lang(array('string' => 'Task {var:1} was changed in the Workspace, on Claude\'s proposal.', 'vars' => ws_task_number($task['id']))));
+
+    return array('ok' => true, 'error' => '', 'id' => (int) $task['id']);
+}
+
+/**
+ * A note on a task, in the name of the assistant that proposed it (written
+ * through its application, as its own notes are); in the name of the person
+ * who applies it when that application is gone. The change then points at
+ * the task.
+ *
+ * @return array ok, error, id
+ */
+function ws_change_write_task_note($viewer, $action, $record, $values)
+{
+    $task = ws_task((int) (((array) ($values['task_id'] ?? array()))[0] ?? 0));
+
+    if (!$task) {
+        return array('ok' => false, 'error' => lang('That task could not be found.'), 'id' => 0);
+    }
+
+    $change = function_exists('ws_ai_voice_change') ? ws_ai_voice_change() : null;
+    $app_id = (function_exists('ws_ai_proposed') && ws_ai_proposed($change))
+        ? (int) ws_ai_config()['app_id']
+        : (function_exists('ws_claude_config') ? (int) ws_claude_config()['app_id'] : 0);
+
+    $done = ws_task_note_add($viewer, $task, ws_tokens_normalise((string) ($values['text'] ?? '')), $app_id);
+
+    if (!$done['ok']) {
+        return array('ok' => false, 'error' => $done['error'], 'id' => 0);
+    }
+
+    ws_change_log(lang(array('string' => 'A note was added to task {var:1} in the Workspace, on Claude\'s proposal.', 'vars' => ws_task_number($task['id']))));
+
+    return array('ok' => true, 'error' => '', 'id' => (int) $task['id']);
+}
+
+/**
+ * A note of the workspace, kept for the person who applies it.
+ *
+ * @return array ok, error, id
+ */
+function ws_change_write_note($viewer, $action, $record, $values)
+{
+    $saved = ws_note_save($viewer, array(
+        'title' => (string) ($values['title'] ?? ''),
+        'body'  => (string) ($values['body'] ?? ''),
+    ));
+
+    if (!$saved['ok']) {
+        return array('ok' => false, 'error' => $saved['error'], 'id' => 0);
+    }
+
+    ws_change_log(lang('A note was added in the Workspace, on Claude\'s proposal.'));
+
+    return array('ok' => true, 'error' => '', 'id' => (int) $saved['note_id']);
 }

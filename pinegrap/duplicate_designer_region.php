@@ -22,6 +22,14 @@ validate_area_access($user, 'designer');
 
 validate_token_field();
 
+// A copy needs an existing designer region. An id that is missing, unknown or
+// sent as an array (?id[]=x) stops on "not found": the copy was made from an
+// empty row, or escape() failed on the array with an error page.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM cregion WHERE cregion_id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $designer_region = db_item(
     "SELECT
         cregion_name AS name,
