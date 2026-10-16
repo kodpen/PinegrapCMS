@@ -115,7 +115,9 @@ if (!$_POST) {
     
 </main>' . output_footer();
 
-    $liveform->remove_form('edit_design_file');
+    // Clears this screen's own form (edit_javascript): remove_form() takes no
+    // argument and always acts on the form the object was made for.
+    $liveform->remove_form();
     
 // else process the file
 } else {

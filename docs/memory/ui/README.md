@@ -11,6 +11,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - codemirror-autorefresh-release.md: Call window.pgReleaseEditors(scope) before replacing or closing markup that may hold CodeMirror editors; autoRefresh polls hidden editors every 250 ms forever.
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
+- design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
 - liveform-notices-trap.md: Pitfall: get_warnings() and output_notices() read from session without clearing; screens must call remove_form() and output_notices().
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
