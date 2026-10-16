@@ -249,6 +249,14 @@ while ($row = mysqli_fetch_assoc($result)) {
     $order_items[] = $row;
 }
 
+// The cart form posts its quantities and donation amounts as lists keyed by item
+// (quantity[<item>]=); one posted as a single value (quantity=5) counts as not given.
+foreach (array('quantity', 'donations') as $pg_post_field) {
+    if (isset($_POST[$pg_post_field]) && !is_array($_POST[$pg_post_field])) {
+        unset($_POST[$pg_post_field]);
+    }
+}
+
 // loop through all order items in order
 foreach ($order_items as $order_item) {
     // assume that the new quantity is equal to the old quantity until we find out otherwise
@@ -284,8 +292,9 @@ foreach ($order_items as $order_item) {
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
     
-    // else this order item is not a donation
-    } elseif (!$pg_item_posted_as_list) {
+    // else this order item is not a donation; a form without its quantity box
+    // leaves the quantity as it is
+    } elseif (!$pg_item_posted_as_list && isset($_POST['quantity'][$order_item['id']])) {
         // Remove commas from quantity.
         $_POST['quantity'][$order_item['id']] = str_replace(',', '', $_POST['quantity'][$order_item['id']]);
 

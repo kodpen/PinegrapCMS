@@ -179,7 +179,24 @@ function test_order_form_array_scripts_single_values()
 
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/shopping_cart.php');
 	pg_assert_contains("if (!\$pg_item_posted_as_list && (isset(\$_POST['donations'][\$order_item['id']]) == true)) {", $source, 'shopping cart: donation as a list kept');
-	pg_assert_contains('} elseif (!$pg_item_posted_as_list) {', $source, 'shopping cart: quantity as a list kept');
+	pg_assert_contains("} elseif (!\$pg_item_posted_as_list && isset(\$_POST['quantity'][\$order_item['id']])) {", $source, 'shopping cart: quantity as a list kept');
+}
+
+// The cart and the express order post their quantities and donation amounts as
+// lists keyed by item (quantity[<item>]=). One posted as a single value
+// (quantity=5) counts as not given before any item reads it: the cart page
+// stopped with "Cannot assign an empty string to a string offset", and a long
+// one gave a donation one of its characters as the amount. A cart item whose
+// quantity is not posted keeps it without a warning, as on the express order.
+function test_order_form_array_cart_item_lists_single_value()
+{
+	foreach (array('shopping_cart', 'express_order') as $script) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $script . '.php');
+
+		$guard = strpos($source, "foreach (array('quantity', 'donations') as \$pg_post_field) {");
+		pg_assert_true(($guard !== false) && ($guard < strpos($source, "isset(\$_POST['donations'][\$order_item['id']]) && !is_string(")), $script . ': lists checked before an item reads them');
+		pg_assert_contains("if (isset(\$_POST[\$pg_post_field]) && !is_array(\$_POST[\$pg_post_field])) {", substr($source, $guard), $script . ': single value dropped');
+	}
 }
 
 // The add_to_cart API action reads a JSON body, where the quantity can arrive as
