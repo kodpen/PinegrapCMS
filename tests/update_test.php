@@ -25,7 +25,7 @@ function test_update_versions_from_real_source()
 
 	pg_assert_same('2017.2', $versions[0], 'first version');
 	pg_assert_contains('2026', $versions, 'the 2026 entry');
-	pg_assert_same('2026.4.10', $versions[count($versions) - 1], 'last version');
+	pg_assert_same('2026.11.0', $versions[count($versions) - 1], 'last version');
 	pg_assert_same(count($versions), count(array_unique($versions)), 'each version once');
 	pg_assert_same($versions, pg_upgrade_versions_list(), 'the list of this installation');
 }
@@ -72,10 +72,13 @@ function test_update_rerun_choices()
 }
 
 // version_compare() orders the numbers the way the repair needs, also where
-// a part has two digits.
+// a part has two digits and across the move to year.month.patch numbers.
 function test_update_version_compare_orders_release_numbers()
 {
 	pg_assert_true(version_compare('2026.4.10', '2026.4.9', '>'), '2026.4.10 > 2026.4.9');
+	pg_assert_true(version_compare('2026.11.0', '2026.4.10', '>'), '2026.11.0 > 2026.4.10');
+	pg_assert_true(version_compare('2026.11.1', '2026.11.0', '>'), '2026.11.1 > 2026.11.0');
+	pg_assert_true(version_compare('2027.1.0', '2026.12.9', '>'), '2027.1.0 > 2026.12.9');
 	pg_assert_true(version_compare('2026.4', '2026.4.1', '<'), '2026.4 < 2026.4.1');
 	pg_assert_true(version_compare('2026.4.8', '2026.4.8', '=='), 'equal');
 }
@@ -114,4 +117,13 @@ function test_update_repair_decision()
 	pg_assert_true($newer['ok'], 'newer');
 	pg_assert_true($newer['newer'], 'newer is newer');
 	pg_assert_contains('2026.4.10', $newer['message']);
+
+	// A string comparison would put 2026.4.10 after 2026.11.0.
+	$calver = pg_update_repair_decision('2026.11.0', '2026.4.10', true);
+
+	pg_assert_true($calver['newer'], '2026.11.0 is newer than 2026.4.10');
+
+	$behind = pg_update_repair_decision('2026.4.10', '2026.11.0', true);
+
+	pg_assert_false($behind['ok'], '2026.4.10 is older than 2026.11.0');
 }

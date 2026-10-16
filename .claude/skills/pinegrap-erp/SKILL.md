@@ -314,11 +314,11 @@ Faz -1 – 9 bitti. Kalanlar (e-belge sürücüleri, mali müşavir onayı, elle
 ## Teklif, tekrarlayan fatura, cari fiyatı, sayım, çek, ekstre (4.92–4.102)
 
 - Şema etiketleri: 2026.4.4 (son ERP adımı 4.103 muhasebe kuralları) ile
-  2026.4.5–2026.4.9 yayında ve kapalı. Yeni ERP adımları açık sürüm
-  **2026.4.10**'a girer (`2026.4.10.php`, `upgrade_2026_4_10_erp_<konu>()`),
-  etiketler **10.58–10.69**, dolunca 10.90'dan sonrası. Etiket yalnız addır,
-  çalışma sırası `2026.4.10.php`'deki çağrı listesidir (yeni adımı listenin
-  sonuna ekle).
+  2026.4.5–2026.4.10 yayında ve kapalı. Yeni ERP adımları açık sürüm
+  **2026.11.0**'a girer (`2026.11.0.php`, `upgrade_2026_11_0_erp_<konu>()`;
+  dosyayı ilk şema adımı açar), etiketler **11.0.58–11.0.69**, dolunca
+  11.0.90'dan sonrası. Etiket yalnız addır, çalışma sırası migration
+  dosyasındaki çağrı listesidir (yeni adımı listenin sonuna ekle).
 - Teklif (`includes/erp/quotes.php`, `erp_quotes`) `erp_invoices`'a yazılmaz:
   fatura sorgularının bir kısmı `doc_type`'a bakmıyor, teklif oraya girerse
   bakiyeye, KDV'ye ve raporlara sızar. Numara `erp_next_number($seri,

@@ -16,6 +16,10 @@
 // database has a file of its own next to this one (2026.2.5.php holds
 // upgrade_to_2026_2_5()); a version that only changed code has no file and is simply
 // recorded. Legacy versions (2017.2 - 2023.3.1) all live in legacy.php.
+//
+// From 2026.11.0 on a number reads year.month.patch (2026.11.0, 2026.11.1,
+// 2026.12.0): the month has no leading zero and the third part is always written,
+// so version_compare() and the dotted function names keep working.
 if (!defined('INSTALL_OR_UPDATE')) {
 	exit;
 }
@@ -197,4 +201,5 @@ return array(
 	'2026.4.8',
 	'2026.4.9',
 	'2026.4.10',
+	'2026.11.0',
 );

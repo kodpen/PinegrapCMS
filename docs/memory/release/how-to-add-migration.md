@@ -5,7 +5,7 @@ description: Step-by-step for a DB schema change: open-version sub-step vs new n
 
 ## How do I add a schema change?
 First check which version is open (docs/memory/release/release-status.md).
-- **Open (unreleased) version exists:** skip steps 1 and 2. Add the change as a new sub-step function and call it from `upgrade_to_<open version>()` with its label as a comment beside the call (`upgrade_2026_4_10_style_bin(); // 10.4`); make sure that version's changelog section has its [SCHEME] line.
+- **Open (unreleased) version exists:** skip step 1. If the open version has no file yet (it was opened code-only, as 2026.11.0 was), write it with step 2's template first. Add the change as a new sub-step function and call it from `upgrade_to_<open version>()` with its label as a comment beside the call (`upgrade_2026_11_0_style_bin(); // 11.0.4`, labels in docs/memory/release/version-numbering.md); make sure that version's changelog section has its [SCHEME] line.
 - **Only the last version is released:** open a new number with steps 1-5.
 
 1. Append the new number to the end of the `includes/migrations/versions.php` list: `'2026.4.5',`
