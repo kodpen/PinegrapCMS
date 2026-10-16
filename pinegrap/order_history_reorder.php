@@ -30,7 +30,7 @@ $query =
         status
     FROM orders
     WHERE id = '" . escape($old_order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
 // if the order was not found, output error
 if (mysqli_num_rows($result) == 0) {
@@ -48,7 +48,7 @@ $query =
         user_contact
     FROM user
     WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
 $user_id = $row['user_id'];
 $contact_id = $row['user_contact'];
@@ -107,7 +107,7 @@ $query =
         IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
         '" . escape(VISITOR_CURRENCY_CODE) . "',
         '" . $offline_payment_allowed . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 $new_order_id = mysqli_insert_id(db::$con);
 
 $order_switched = false;
@@ -132,7 +132,7 @@ $query =
         AND (order_items.ship_to_id = '0')
         AND (products.id IS NOT NULL)
         AND (order_items.added_by_offer = '0')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_row($result);
 
 // if there is at least one unshippable order item, add empty ship to to ship tos array
@@ -147,7 +147,7 @@ $query =
         ship_to_name
     FROM ship_tos
     WHERE order_id = '" . escape($old_order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
 while($row = mysqli_fetch_assoc($result)) {
     $ship_tos[] = $row;
@@ -173,7 +173,7 @@ foreach ($ship_tos as $ship_to) {
             AND (products.id IS NOT NULL)
             AND (products.enabled = '1')
             AND (order_items.added_by_offer = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     
     // add order items to array
     $order_items = array();
@@ -193,7 +193,7 @@ foreach ($ship_tos as $ship_to) {
                 VALUES (
                     '$new_order_id',
                     '" . escape($ship_to['ship_to_name']) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
             $new_ship_to_id = mysqli_insert_id(db::$con);
             
         // else this ship to is not a real ship to, so set ship to id to 0
@@ -227,7 +227,7 @@ foreach ($ship_tos as $ship_to) {
                     '" . $order_item['product_name'] . "',
                     '" . $order_item['quantity'] . "',
                     '" . $price . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         }
     }
 }
@@ -244,7 +244,7 @@ if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
         WHERE
             (id = '" . $_SESSION['software']['visitor_id'] . "')
             AND (order_created = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 }
 
 include_once('liveform.class.php');
@@ -253,7 +253,7 @@ include_once('liveform.class.php');
 if (ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) {
     // get page type for page, in order to determine which liveform to set
     $query = "SELECT page_type FROM page WHERE page_id = '" . escape(ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $page_type = $row['page_type'];
     
@@ -273,11 +273,11 @@ if (ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) {
         
         // if orders were switched then prepare to alert user to that fact
         if ($order_switched == true) {
-            $order_switched_notice = ' Your previous order has been saved and may be retrieved when needed.';
+            $order_switched_notice = ' ' . lang('Your previous order has been saved and may be retrieved when needed.');
         }
         
         // prepare confirmation notice for next screen
-        $liveform->add_notice('A new order has been created, and it appears below.' . $order_switched_notice);
+        $liveform->add_notice(lang('A new order has been created, and it appears below.') . $order_switched_notice);
     }
     
     // send user to next page
@@ -291,11 +291,11 @@ if (ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) {
     
     // if orders were switched then prepare to alert user to that fact
     if ($order_switched == true) {
-        $order_switched_notice = ' Your previous order has been saved and may be retrieved when needed.';
+        $order_switched_notice = ' ' . lang('Your previous order has been saved and may be retrieved when needed.');
     }
     
     // prepare confirmation notice for next screen
-    $liveform->add_notice('A new order has been created.' . $order_switched_notice);
+    $liveform->add_notice(lang('A new order has been created.') . $order_switched_notice);
 
     go(get_page_type_url('my account'));
 }

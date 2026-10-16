@@ -130,7 +130,15 @@ if (!$_POST) {
             $output_export_button = '';
             $output_download_file_button = '<button type="button" class="btn my-1 btn-outline-secondary" onclick="window.open(\'' . h(escape_javascript(PATH . encode_url_path($file_name))) . '\')">' . lang('Download File') . '</button>';
         }
-        
+
+        // A theme recorded here but missing from the disk says so before it is
+        // saved, with the note the file editors show for the same case.
+        $output_file_missing = '';
+
+        if (!is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+            $output_file_missing = '<div class="alert alert-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+        }
+
         print
             pg_page_shell([
                 'title'=> lang('Edit Theme'),
@@ -147,7 +155,7 @@ if (!$_POST) {
                             <div class="row">
                     <div class="col-12">
                         ' . $liveform->output_errors() . '
-                        ' . $liveform->output_notices() . '
+                        ' . $liveform->output_notices() . $output_file_missing . '
                         <div class="row mb-2 flex-wrap">
                             <div class="col-12 text-center text-md-start">
                                 <h2 class="d-inline-block text-break"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a></h2>
@@ -423,8 +431,16 @@ if (!$_POST) {
         
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
-        // rename file's name
-        rename(FILE_DIRECTORY_PATH . '/' . $original_name, FILE_DIRECTORY_PATH . '/' . $name);
+        // Rename the file when its name changed and it is on the disk. A theme
+        // recorded here but missing from the disk has nothing to rename (that
+        // rename() wrote a PHP warning on every save); the record is still
+        // saved and the themes list says the file is missing.
+        $theme_file_missing = !is_file(FILE_DIRECTORY_PATH . '/' . $original_name);
+
+        if (($name !== $original_name) && !$theme_file_missing) {
+            rename(FILE_DIRECTORY_PATH . '/' . $original_name, FILE_DIRECTORY_PATH . '/' . $name);
+        }
+
         log_activity("theme file ($name) was modified", $_SESSION['sessionusername']);
 
         // If this theme was activated as a desktop or mobile theme,
@@ -551,8 +567,13 @@ if (!$_POST) {
         }
         
         $notice = lang('The theme file was edited successfully.');
-        
+
         $liveform_view_themes->add_notice($notice);
+
+        if ($theme_file_missing) {
+            $liveform_view_themes->add_warning(lang('The file is recorded here but is not on the disk.'));
+        }
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_themes.php');
     }
     

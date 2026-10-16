@@ -30,7 +30,7 @@ $query =
         status
     FROM orders
     WHERE id = '" . escape($order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
 // if the order was not found, output error
 if (mysqli_num_rows($result) == 0) {
@@ -43,7 +43,7 @@ $status = $row['status'];
 
 // get user id for user
 $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
 $user_id = $row['user_id'];
 
@@ -70,6 +70,6 @@ if ($response['status'] == 'error') {
 // prepare confirmation notice for my account screen
 include_once('liveform.class.php');
 $my_account = new liveform('my_account');
-$my_account->add_notice('The order has been deleted.');
+$my_account->add_notice(lang('The order has been deleted.'));
 
 go(get_page_type_url('my account'));
