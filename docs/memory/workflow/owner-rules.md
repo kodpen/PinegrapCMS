@@ -10,13 +10,13 @@ description: Standing rules from the owner (Erdal) on docs, how changes are reco
 - Placeholders such as `^^__x^^` or `__tokenname`. Template pages start as drafts.
 
 ## How are plans kept?
-- As `docs/_plan_<name>.md` with frontmatter (they enter the memory index). A plan file gets no changelog line. `docs/_erp_devir_notu.md` is updated by the owner only.
+- As English memory files in `docs/memory/plans/` (owner rule 2026-10-14): remaining work, decisions made, open questions, where to start; not a full plan text. A finished plan is deleted after its lasting decisions move to the topic folder. The old Turkish plans are in git history (`git show 41aea113:docs/_plan_<name>.md`). A plan gets no changelog line. `docs/_erp_devir_notu.md` is updated by the owner only.
 
 ## Which language?
 - Talk to the owner in Turkish. Code comments in English. Memory files in English (fewer tokens).
 
 ## Is there a mobile app?
-- No (owner decision 2026-10-14). The API endpoints built for it stay; docs never say "mobile app"; do not re-ask the mobile questions. Restart point: `docs/_plan_mobil_api_claude_kanali.md`.
+- No (owner decision 2026-10-14). The API endpoints built for it stay; docs never say "mobile app"; do not re-ask the mobile questions. Restart point: docs/memory/plans/mobile-api-shelved.md
 
 ## How are changes recorded?
 - As memory, not in a change log (owner rule 2026-10-14; `docs/degisiklikler.md` and its archive were removed and are never recreated). A PR that changes behaviour adds or updates the matching `docs/memory/` topic file: what it does now, why, the symptom it fixed (searchable words), the PR number. No per-version or dated list; stale lines are corrected in place.

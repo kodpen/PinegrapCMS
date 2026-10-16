@@ -5,7 +5,7 @@ description: ERP roadmap candidates after phases -1 to 5: legislation, competito
 
 # ERP — sonradan eklenebilecek özellikler (yol haritası adayları)
 
-**Tarih:** 2026-09-20 · **Durum:** araştırma notu, karar değil · **Kapsam:** `docs/_plan_erp.md` Faz -1–5 bittikten sonrası
+**Tarih:** 2026-09-20 · **Durum:** araştırma notu, karar değil · **Kapsam:** ERP Faz -1–5 bittikten sonrası
 
 Plandaki bütün fazlar (Faz 3 hariç, Paraşüt anahtarı bekliyor) çalışma ağacında
 bitti. Bu not, ERP'nin bundan sonra nereye büyüyebileceğini üç kaynaktan
@@ -26,13 +26,13 @@ B1 (banka ekstresi; 2026.4.10'da xlsx, xls ve .ods), B6, B7, C1, C2, C3, C4 (kre
 E4, F2, G1, G2, G4 ve B5'in "Faturalarım" kısmı (ERP Faz 8a). Bunların satırları §2'den
 çıkarıldı; 2026-09-24 durum tablosu ve öneri sırasıyla tam metin:
 `git show d9fec3a:docs/_erp_yol_haritasi_adaylari.md`. Sonraki seçim 2026-10-13'te proje
-notu `notes/erp-secenekler.md` (29 madde) ve `docs/_plan_erp_ozellikler.md` ile yapıldı.
+notu `notes/erp-secenekler.md` (29 madde) ve ERP Faz 6–9 planıyla yapıldı.
 
 **Kalanlar:**
 
 | Aday | Durum |
 |---|---|
-| A1 e-Fatura / e-Arşiv gönderimi | İşbaşı zinciri test ortamında çalışıyor; Paraşüt sürücüsü ve canlı anahtar Erdal'ın yerel işi (`docs/_plan_erp.md` Kalanlar) |
+| A1 e-Fatura / e-Arşiv gönderimi | İşbaşı zinciri test ortamında çalışıyor; Paraşüt sürücüsü ve canlı anahtar Erdal'ın yerel işi (`docs/memory/plans/erp-edocument-leftovers.md`) |
 | A3 e-İrsaliye | başlanmadı; Erdal'ın yerel işi |
 | A5 kurumsal fatura alanları | kısmen: hızlı sipariş VKN ve vergi dairesini topluyor; "Kurumsal fatura istiyorum" anahtarı yok. Kural aşağıda |
 | B2 açık bankacılık | başlanmadı |

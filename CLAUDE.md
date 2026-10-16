@@ -6,8 +6,7 @@ Everything else is in memory files and skills, opened only when needed.
 ## Memory
 
 - Index: `docs/memory/README.md` — one line per file. Read it, then open only
-  the files the task needs. It also lists the plans (`docs/_plan_*.md`) and
-  other documents.
+  the files the task needs. It also lists the other documents under `docs/`.
 - Changes are kept as memory; there is no change log. When something must be
   remembered, or a PR changes behaviour (what it does now, why, the symptom it
   fixed, the PR number), add or update a file under
@@ -15,7 +14,9 @@ Everything else is in memory files and skills, opened only when needed.
   as questions (`## …?`) with short answers, starting with frontmatter:
   `---` / `name: <file name without .md>` / `description: <one line>` / `---`.
   Stale information is deleted or corrected, never kept beside a "now" note.
-- Plans are `docs/_plan_<name>.md` with the same frontmatter.
+- Plans are memory files in `docs/memory/plans/`: remaining work, decisions
+  made, open questions, where to start. When a plan is finished, its lasting
+  decisions move to the topic folder and the plan file is deleted.
 - The index is generated: run `php tools/memory_index.php` after adding,
   renaming or deleting a file and commit the result. Never edit or merge it
   by hand; CI runs `--check`.
@@ -61,8 +62,8 @@ Branches: work from `development`, PRs to `development`, never to `main`.
    session references, `Co-Authored-By: Claude`, `Claude-Session:`,
    "Generated with Claude Code" or claude.ai links. If a tool adds one, edit it
    out right away. Commit author `Erdal Güral <erdaltyy@gmail.com>`. Comments
-   say what the code does and the technical why; decision history goes to the
-   change log.
+   say what the code does and the technical why; decision history goes to
+   memory.
 3. **Every user-facing text is translated:** `lang('English text')` in PHP and
    the panel, `_sdT('English text')` in the designer (single-quoted literal).
    The English source is the key and must exist in `tr.json`.

@@ -11,26 +11,14 @@ Open the index of the folder the task needs, then only the files you need.
 - data/README.md: Table structures and SQL pitfalls (6)
 - designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (58)
 - erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports (36)
+- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (10)
 - platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (25)
 - release/README.md: Versions, migrations and upgrade steps, change log rules, release status (12)
 - ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (32)
-- visitors/README.md: Visitor statistics, page and article views, search engine index flags (11)
+- visitors/README.md: Visitor statistics, page and article views, search engine index flags (12)
 - waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers (22)
 - workflow/README.md: Project overview, owner rules, git and branches, sandbox and dev machine (4)
-
-## Plans (docs/)
-
-- _plan_api_mobil.md: External API for team devices: session, notifications/push, ETag done; remaining items moved to _plan_mobil_api_claude_kanali.md
-- _plan_calisma_alani.md: Workspace module plan (channels, tasks, plan board, calendar, notes): decisions, phases, ws_ tables
-- _plan_claude_kanal.md: Calling Claude into a Workspace channel via a Claude routine (Phase 1 done); scope decisions and leftovers
-- _plan_erp.md: ERP plan v3 (phases -1 to 5 done); remaining e-document (Phase 3) items, owned by Erdal locally
-- _plan_erp_ozellikler.md: ERP features plan, phases 6-9 (done); remaining manual checks on dev
-- _plan_gelen_kutusu.md: Incoming e-mail (IMAP) into Workspace: plan only, slices G1-G9, schema 10.85, owner questions in section 9
-- _plan_kargo.md: Shipping/carrier management plan (2026-10-08): carrier APIs, tracking, local verification steps
-- _plan_mobil_api_claude_kanali.md: SHELVED (no mobile app): remaining API gaps for a mobile client (M1-M6 done) and Claude as channel member (C1-C5); restart point
-- _plan_oauth.md: OAuth 2.1 authorization server for MCP (phases A-D, F done); remaining items
-- _plan_tersine_oauth.md: Reverse OAuth: Pinegrap connecting to outside accounts (Gmail/M365, Search Console, sign-in, backups to cloud, carriers); leftovers
-- _plan_ziyaretci_temizleme.md: Visitor records retention, daily rollup, chunked deletion, MyISAM to InnoDB; "Ertelenenler" (deferred) items
+- workspace/README.md: Workspace module: channels, tasks, plan board, rights, Claude in channels (2)
 
 ## Other documents (docs/)
 
