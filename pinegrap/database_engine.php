@@ -683,10 +683,18 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
         $visitor_last_text = lang('Not run yet');
     }
 
+    // The referring addresses and browsers newer visits name by number
+    // (includes/fn/visitor_texts.php); before the 2026.4.10 step, or where it
+    // could not add the columns yet, every record carries its own.
+    $visitor_texts = pg_visitor_texts_count();
+
     $visitor_facts = array(
         lang('Records') => $visitor_rows_text,
         lang('File size') => $visitor_file_text,
         lang('Free space') => pg_innodb_size_label($visitor_figures['free']),
+        lang('Addresses and browsers') => ($visitor_texts === null)
+            ? lang('Kept in each record')
+            : lang(array('string' => '{var:1} different values, each kept once', 'vars' => array(pg_format_number($visitor_texts, 0)))),
         lang('Oldest record') => ($visitor_preview['oldest'] > 0) ? get_absolute_time(array('timestamp' => $visitor_preview['oldest'], 'type' => 'date', 'format' => 'plain_text')) : '—',
         lang('Kept for') => $visitor_kept,
         lang('Daily summary') => $visitor_summary,

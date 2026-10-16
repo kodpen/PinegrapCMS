@@ -24,6 +24,7 @@ description: How the visitors table is kept small: retention days, daily summary
 - InnoDB file rebuilt online (`pg_visitor_shrink_*`, #453) when free space ≥ 128 MB and more than half of the remaining rows, in the quietest hour of the last two weeks, with 3 × (data + index) + 1 GB free; otherwise "Shrink now" with the missing condition.
 - Bots are not recorded even with the WAF off: `init_tracking()` asks `waf_classify_bot()`.
 - On InnoDB the `ip_address` and `idx_user_agent` indexes were dropped (~350 MB on the 3.8 M sample).
+- Referring address and user agent are kept once each in `visitor_texts`, the row holds their numbers (step 10.6, `visitor-texts-list`); the cleanup then prunes values no visit names.
 
 ## What do backups and restores do with it?
 - Every backup dumps the tables in `pg_backup_rowless_tables()` (visitors, form view tables, `waf_log`, `perf_log`, `api_request_log`, `seo_search_daily`) as structure only (#434, #438, #480; docs/memory/data/backup-rowless-tables.md); the move's working copies are never dumped; the size estimate skips them too.

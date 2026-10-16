@@ -3628,9 +3628,35 @@ function init_tracking()
 				$sql_user_agent_value = "'" . escape($visitor_user_agent) . "',";
 			}
 
+			// Since 2026.4.10 (10.6) the referring address and the user agent
+			// are kept once each in visitor_texts and the row names them by
+			// number (includes/fn/visitor_texts.php). Where the list cannot be
+			// written the texts go into the row as before.
+			$sql_text_columns = '';
+			$sql_text_values = '';
+			$sql_referer = $referer;
+
+			if (function_exists('pg_visitor_texts_ready') && pg_visitor_texts_ready()) {
+
+				$referer_text_id = pg_visitor_text_id(PG_VISITOR_TEXT_REFERER, $referer);
+				$agent_text_id = pg_visitor_text_id(PG_VISITOR_TEXT_AGENT, $visitor_user_agent);
+
+				if (($referer_text_id !== false) && ($agent_text_id !== false)) {
+					$sql_text_columns = 'http_referer_id, user_agent_id,';
+					$sql_text_values = (int) $referer_text_id . ', ' . (int) $agent_text_id . ',';
+					$sql_referer = '';
+
+					if ($sql_user_agent_column !== '') {
+						$sql_user_agent_value = "'',";
+					}
+				}
+			}
+
 			$query = "INSERT INTO visitors (
 
                         $sql_user_agent_column
+
+                        $sql_text_columns
 
                         ip_address,
 
@@ -3658,9 +3684,11 @@ function init_tracking()
 
                         $sql_user_agent_value
 
+                        $sql_text_values
+
                         IFNULL(INET_ATON('" . escape($visitor_ip_address) . "'), 0),
 
-                        '" . escape($referer) . "',
+                        '" . escape($sql_referer) . "',
 
                         '" . escape($referring_host_name) . "',
 

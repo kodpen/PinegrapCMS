@@ -48,12 +48,15 @@ if (!is_scalar($_GET['visitor_report_id'] ?? null)) {
     $pg_previous_screen_item = array('label' => lang('Visitor Report'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php?id=' . h($_GET['visitor_report_id']));
 }
 
-// get visitor information
+// get visitor information (a newer visit names its referring address in the
+// list of visitor texts)
+$sql_http_referer = pg_visitor_text_sql('http_referer');
+
 $query =
     "SELECT
-        id,
+        visitors.id,
         INET_NTOA(ip_address) as ip_address,
-        http_referer,
+        " . $sql_http_referer . " AS http_referer,
         referring_host_name,
         referring_search_engine,
         referring_search_terms,
@@ -82,8 +85,8 @@ $query =
         start_timestamp,
         stop_timestamp,
         site_search_terms
-    FROM visitors
-    WHERE id = '" . escape($_GET['id']) . "'";
+    FROM visitors" . pg_visitor_text_joins($sql_http_referer) . "
+    WHERE visitors.id = '" . $id . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 

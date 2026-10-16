@@ -462,6 +462,86 @@ function install_add_column($table, $column, $definition) {
 
 }
 
+// ALTER TABLE t ADD c1 d1, ADD c2 d2, ALGORITHM=INSTANT for the columns ($column =>
+// $definition) the table does not have yet. INSTANT changes the table's definition and not
+// its rows, so it takes a moment however large the table is: InnoDB on MySQL 8.0.12+ and
+// MariaDB 10.3.2+, columns added last. Elsewhere (MyISAM, MySQL 5.7, MariaDB 10.2) the server
+// refuses it rather than copy the table; then nothing has changed and the step decides
+// whether a copy is affordable (install_add_column()). The wait for the table's metadata
+// lock is bounded, so a long report on the table makes this return false instead of holding
+// every visit up behind the waiting ALTER. True when the columns are there afterwards.
+function install_add_columns_instant($table, $columns) {
+
+	$missing = array();
+
+	foreach ($columns as $column => $definition) {
+
+		if (install_column_exists($table, $column)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.' . $column)));
+
+		} else {
+
+			$missing[$column] = "ADD " . install_quote_name($column) . " " . $definition;
+
+		}
+
+	}
+
+	if (count($missing) == 0) {
+
+		return true;
+
+	}
+
+	if (!class_exists('db') || empty(db::$con)) {
+
+		return false;
+
+	}
+
+	$previous_wait = 0;
+
+	$previous = @mysqli_query(db::$con, "SELECT @@SESSION.lock_wait_timeout");
+
+	if ($previous && ($row = mysqli_fetch_row($previous))) {
+
+		$previous_wait = (int) $row[0];
+
+	}
+
+	@mysqli_query(db::$con, "SET SESSION lock_wait_timeout = 20");
+
+	$done = @mysqli_query(db::$con, "ALTER TABLE " . install_quote_name($table) . " " . implode(', ', $missing) . ", ALGORITHM=INSTANT");
+
+	$errno = $done ? 0 : (int) mysqli_errno(db::$con);
+
+	$error = $done ? '' : (string) mysqli_error(db::$con);
+
+	if ($previous_wait > 0) {
+
+		@mysqli_query(db::$con, "SET SESSION lock_wait_timeout = " . $previous_wait);
+
+	}
+
+	if (!$done) {
+
+		install_log($table . ': columns not added instantly, MySQL ' . $errno . ' ' . $error);
+
+		return false;
+
+	}
+
+	foreach (array_keys($missing) as $column) {
+
+		install_ran(lang(array('string' => '{var:1} added', 'vars' => $table . '.' . $column)));
+
+	}
+
+	return true;
+
+}
+
 // ALTER TABLE t ADD <definition>, where the definition names the index in full:
 // "INDEX idx_type (type)", "UNIQUE KEY uniq_entry (a, b)", "FULLTEXT ft (body)".
 function install_add_index($table, $index, $definition) {

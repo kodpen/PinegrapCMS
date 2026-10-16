@@ -40,9 +40,10 @@
 [NEW] Added the Clinic and Café design templates and new ready-made blocks to the visual page editor.
 [NEW] Admin lists can be sorted by several columns at once, and fields such as stock, price and status can be changed directly in the list.
 [NEW] UPS, FedEx and USPS rates, delivery dates and address checks now use the carriers' new REST APIs.
+[NEW] Added compact visitor records: each referring address and browser is stored once, so a new record takes about half the space.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.
-[SCHEME] New tables and columns are added for connected apps and accounts, sign-in, Workspace assistants, MCP servers, purchase orders, visitor summaries and webhook subscriptions.
+[SCHEME] New tables and columns are added for connected apps and accounts, sign-in, Workspace assistants, MCP servers, purchase orders, visitor summaries, visitor browsers and webhook subscriptions.
 ==========================================================
 2026.4.9
 [NEW] Links inside paragraphs and headings can be edited in the visual page editor.

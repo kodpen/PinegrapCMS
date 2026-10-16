@@ -2711,6 +2711,25 @@ function pg_short_link_live_filter($recycled = false)
     return "short_links.recycled = '" . ($recycled ? '1' : '0') . "'";
 }
 
+// Move one short link to the Recycle Bin: the row stays, flagged, and one
+// restore record remembers it. The File Manager's delete and the classic edit
+// screen's both come here; the caller has asked pg_short_link_recycle_ready()
+// first and writes its own activity line.
+function pg_short_link_to_bin($short_link_id, $user)
+{
+    $short_link_id = (int) $short_link_id;
+
+    db("UPDATE short_links SET recycled = '1' WHERE id = '" . e($short_link_id) . "'");
+
+    // Replaced rather than added to, so a link that reaches here twice does
+    // not leave two restore records behind.
+    db("DELETE FROM recycle_bin WHERE (item_type = 'short_link') AND (item_id = '" . e($short_link_id) . "')");
+
+    db(
+        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+        VALUES ('short_link', '" . e($short_link_id) . "', '0', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
+}
+
 // $where is the caller's own condition; the recycled state is added to it here
 // so no listing can forget it.
 function pg_short_link_rows($where = '', $recycled = false)
@@ -2928,10 +2947,11 @@ function pg_short_link_options_list($options)
 // field that is wrong.  Shared by create; the classic edit screen keeps its
 // own copy because it also has to deal with liveform's session round trip.
 //
-// $current is the stored link when one is being changed. The product or the
-// group it already points at may stay while it is in the Recycle Bin, the way
-// the classic edit screen keeps it selected; any other product or group in the
-// bin is refused, since a list drawn before it was deleted can still post it.
+// $current is the stored link when one is being changed. The product, the
+// group, the page or the file it already points at may stay while it is in the
+// Recycle Bin, the way the classic edit screen keeps it selected; anything else
+// in the bin is refused, since a list drawn before it was deleted can still
+// post it.
 function pg_short_link_read_request($request, $user, $current = null)
 {
     // A value posted as a list (product_id[]=x) counts as not given: cast, it
@@ -3049,6 +3069,10 @@ function pg_short_link_read_request($request, $user, $current = null)
                 return array('error' => 'file_id', 'message' => lang('Sorry, the file could not be found.'));
             }
 
+            if (($file_id !== (int) ($current['file_id'] ?? 0)) && pg_recycle_file_binned($file_id)) {
+                return array('error' => 'file_id', 'message' => lang('The file is in the Recycle Bin. Restore it in the File Manager or choose another file.'));
+            }
+
             $columns['file_id'] = $file_id;
 
             break;
@@ -3057,6 +3081,10 @@ function pg_short_link_read_request($request, $user, $current = null)
     // The page has to exist.
     if (($page_id > 0) && (db_value("SELECT page_folder FROM page WHERE page_id = '" . e($page_id) . "'") === null)) {
         return array('error' => $page_field, 'message' => lang('The page does not exist.'));
+    }
+
+    if (($page_id > 0) && ($page_id !== (int) ($current['page_id'] ?? 0)) && pg_recycle_page_binned($page_id)) {
+        return array('error' => $page_field, 'message' => lang('The page is in the Recycle Bin. Restore it in the File Manager or choose another page.'));
     }
 
     return array(
@@ -8251,9 +8279,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
         // ── What the wizard offers, built from the classic screen's lists ─
         //
-        // Products and groups in the Recycle Bin are left out, as on the
-        // classic screens. Asked with item_id, for a link being changed, the
-        // product or the group that link points at stays, marked as in the
+        // Products, groups, pages and files in the Recycle Bin are left
+        // out, as on the classic screens. Asked with item_id, for a link
+        // being changed, the one that link points at stays, marked as in the
         // bin: without it the window opened with nothing chosen and Save
         // asked for a product the link already had.
         case 'explorer_short_link_options':
@@ -8261,21 +8289,25 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             $short_link_row = array_key_exists('item_id', $request) ? pg_short_link_by_id($user, $request['item_id']) : null;
             $short_link_keep_product = $short_link_row ? (int) $short_link_row['product_id'] : 0;
             $short_link_keep_group = $short_link_row ? (int) $short_link_row['product_group_id'] : 0;
+            $short_link_keep_page = $short_link_row ? (int) $short_link_row['page_id'] : 0;
+            $short_link_keep_file = $short_link_row ? (int) $short_link_row['file_id'] : 0;
 
             respond(array(
                 'status' => 'success',
                 'request' => $type,
                 'options' => array(
-                    'page' => pg_short_link_options_list(get_page_options()),
-                    'catalog_page' => pg_short_link_options_list(get_page_options('', 'catalog')),
-                    'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail')),
+                    'page' => pg_short_link_options_list(get_page_options('', '', 'edit', false, $short_link_keep_page)),
+                    'catalog_page' => pg_short_link_options_list(get_page_options('', 'catalog', 'edit', false, $short_link_keep_page)),
+                    'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail', 'edit', false, $short_link_keep_page)),
                     'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $short_link_keep_group)),
                     'product' => pg_short_link_options_list(get_product_options(true, $short_link_keep_product)),
-                    'file' => pg_short_link_options_list(get_file_options(true))),
+                    'file' => pg_short_link_options_list(get_file_options(true, $short_link_keep_file))),
                 // The lists hold a binned entry kept for this one link, so the
                 // screen does not keep them for the next window.
                 'kept' => (($short_link_keep_product > 0) && pg_catalog_product_binned($short_link_keep_product))
-                    || (($short_link_keep_group > 0) && pg_catalog_group_binned($short_link_keep_group)),
+                    || (($short_link_keep_group > 0) && pg_catalog_group_binned($short_link_keep_group))
+                    || (($short_link_keep_page > 0) && pg_recycle_page_binned($short_link_keep_page))
+                    || (($short_link_keep_file > 0) && pg_recycle_file_binned($short_link_keep_file)),
                 // Once or until a time (2026.4.5, 5.112).
                 'modes' => pg_short_link_modes_ready(),
                 'durations' => array_map(function ($seconds, $label) {
@@ -8622,10 +8654,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
         // ── Delete ──────────────────────────────────────────────────────
         //
-        // Straight out, with no bin behind it.  The bin stores an item type
-        // it does not know short links in, and a short link holds nothing:
-        // making one again is the wizard and a name, which is less work than
-        // widening the schema would be.
+        // Into the Recycle Bin since 2026.4.4 (pg_short_link_to_bin()); the
+        // classic edit screen's Delete does the same.
         case 'explorer_short_link_delete':
 
             $short_link_deleted = 0;
@@ -8653,15 +8683,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
-                db("UPDATE short_links SET recycled = '1' WHERE id = '" . e($short_link_row['id']) . "'");
-
-                // Replaced rather than added to, so a link that reaches here
-                // twice does not leave two restore records behind.
-                db("DELETE FROM recycle_bin WHERE (item_type = 'short_link') AND (item_id = '" . e($short_link_row['id']) . "')");
-
-                db(
-                    "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                    VALUES ('short_link', '" . e($short_link_row['id']) . "', '0', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
+                pg_short_link_to_bin($short_link_row['id'], $user);
 
                 $short_link_deleted++;
 

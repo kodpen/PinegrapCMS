@@ -49,8 +49,14 @@ $order_by = pg_list_order_by($sort_levels, array(
 
 $all_short_links = 0;
 
+// Links in the Recycle Bin are left out: they are restored or deleted for good
+// in the File Manager, and the edit screen does not open them.
+require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+$sql_live = (pg_short_link_live_filter() != '') ? ' AND ' . pg_short_link_live_filter() : '';
+
 // get the total number of short links
-$query = "SELECT COUNT(*) FROM short_links WHERE destination_type <> 'workspace_guest'";
+$query = "SELECT COUNT(*) FROM short_links WHERE destination_type <> 'workspace_guest'" . $sql_live;
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $all_short_links = $row[0];
@@ -80,7 +86,7 @@ $query =
     LEFT JOIN products ON short_links.product_id = products.id
     LEFT JOIN user AS created_user ON short_links.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON short_links.last_modified_user_id = last_modified_user.user_id
-    WHERE short_links.destination_type <> 'workspace_guest'
+    WHERE short_links.destination_type <> 'workspace_guest'" . $sql_live . "
     ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $short_links = mysqli_fetch_items($result);

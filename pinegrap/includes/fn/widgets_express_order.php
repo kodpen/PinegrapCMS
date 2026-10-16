@@ -3084,7 +3084,7 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
 {
     if (!$lf || $order_id <= 0) return;
 
-    // Pull the order row (always exists — initialize_order created it).
+    // Pull the order row (the caller passes only an order in the session).
     $order = db_item(
         "SELECT billing_salutation, billing_first_name, billing_last_name,
                 billing_company, billing_address_1, billing_address_2,

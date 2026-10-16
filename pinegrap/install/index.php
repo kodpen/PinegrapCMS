@@ -9063,6 +9063,7 @@ function get_tables() {
 		'visitor_stats_hourly',
 		'visitor_content_hourly',
 		'visitor_stats_daily',
+		'visitor_texts',
 		'local_sale_history',
 		'local_sale_history_items',
 		'designer_presence',

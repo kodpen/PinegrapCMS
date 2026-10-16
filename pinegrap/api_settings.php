@@ -49,6 +49,23 @@ if ($_POST) {
 
 	validate_token_field();
 
+	// Every field here holds one value, except the permission rows
+	// (scope[resource]). One posted as a list (name[]=x) stopped the request
+	// in escape() or trim(), and app_id[]=x was read as application 1, which
+	// the update and delete then changed. Nothing is written, so every
+	// application stays as it was.
+	$api_settings_lists = pg_request_unexpected_lists($_POST, array('scope' => 1));
+
+	if ($api_settings_lists) {
+
+		$liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $api_settings_lists)))));
+
+		header('Location: ' . $screen_url);
+
+		exit();
+
+	}
+
 	// liveform reads field values from the session, not from $_POST, so the
 	// post has to be handed to it before anything is validated or read back.
 	$liveform->add_fields_to_session();
