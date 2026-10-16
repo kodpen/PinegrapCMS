@@ -2638,8 +2638,14 @@ function pg_short_link_types()
 // pg_short_link_free_name() hands out "new_short_link[4]", so a rule that
 // rejected them refused the very name the create had just given the row --
 // the operator was told the format was illegal by the screen that wrote it.
+//
+// A name posted as a list (name[]=x) counts as not given: it is no name.
 function pg_short_link_clean_name($name)
 {
+    if (!is_scalar($name)) {
+        return '';
+    }
+
     $name = str_replace(' ', '_', trim((string) $name));
 
     return (preg_match('/[^A-Za-z0-9._\-\/\[\]]/', $name) == 1) ? '' : $name;
@@ -2782,9 +2788,11 @@ function pg_short_link_visible_rows($user, $recycled = false)
     return $out;
 }
 
+// An id posted as a list (item_id[]=3) is no id: cast, it read as 1 and the
+// rename, the change, the copy and the delete all landed on link 1.
 function pg_short_link_by_id($user, $id, $recycled = false)
 {
-    $id = (int) $id;
+    $id = is_scalar($id) ? (int) $id : 0;
 
     if ($id <= 0) {
         return null;
@@ -2919,17 +2927,24 @@ function pg_short_link_options_list($options)
 // Checks a wizard submission and hands back either the columns to write or the
 // field that is wrong.  Shared by create; the classic edit screen keeps its
 // own copy because it also has to deal with liveform's session round trip.
-function pg_short_link_read_request($request, $user)
+//
+// $current is the stored link when one is being changed. The product or the
+// group it already points at may stay while it is in the Recycle Bin, the way
+// the classic edit screen keeps it selected; any other product or group in the
+// bin is refused, since a list drawn before it was deleted can still post it.
+function pg_short_link_read_request($request, $user, $current = null)
 {
-    $type = isset($request['destination_type']) ? (string) $request['destination_type'] : '';
+    // A value posted as a list (product_id[]=x) counts as not given: cast, it
+    // logged "Array to string conversion" and the link was saved as "Array".
+    $value = function ($key) use ($request) {
+        return (isset($request[$key]) && is_scalar($request[$key])) ? trim((string) $request[$key]) : '';
+    };
+
+    $type = (isset($request['destination_type']) && is_scalar($request['destination_type'])) ? (string) $request['destination_type'] : '';
 
     if (in_array($type, pg_short_link_types(), true) == false) {
         return array('error' => 'destination_type', 'message' => lang('The destination type is not valid.'));
     }
-
-    $value = function ($key) use ($request) {
-        return isset($request[$key]) ? trim((string) $request[$key]) : '';
-    };
 
     $page_id = 0;
     $page_field = '';
@@ -2972,6 +2987,10 @@ function pg_short_link_read_request($request, $user)
                 return array('error' => 'product_group_id', 'message' => lang('The product group does not exist.'));
             }
 
+            if (($group_id !== (int) ($current['product_group_id'] ?? 0)) && pg_catalog_group_binned($group_id)) {
+                return array('error' => 'product_group_id', 'message' => lang('The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.'));
+            }
+
             $columns['product_group_id'] = $group_id;
 
             break;
@@ -2992,6 +3011,10 @@ function pg_short_link_read_request($request, $user)
 
             if (db_value("SELECT COUNT(*) FROM products WHERE id = '" . e($product_id) . "'") == 0) {
                 return array('error' => 'product_id', 'message' => lang('The product does not exist.'));
+            }
+
+            if (($product_id !== (int) ($current['product_id'] ?? 0)) && pg_catalog_product_binned($product_id)) {
+                return array('error' => 'product_id', 'message' => lang('The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.'));
             }
 
             $columns['product_id'] = $product_id;
@@ -8227,7 +8250,17 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             break;
 
         // ── What the wizard offers, built from the classic screen's lists ─
+        //
+        // Products and groups in the Recycle Bin are left out, as on the
+        // classic screens. Asked with item_id, for a link being changed, the
+        // product or the group that link points at stays, marked as in the
+        // bin: without it the window opened with nothing chosen and Save
+        // asked for a product the link already had.
         case 'explorer_short_link_options':
+
+            $short_link_row = array_key_exists('item_id', $request) ? pg_short_link_by_id($user, $request['item_id']) : null;
+            $short_link_keep_product = $short_link_row ? (int) $short_link_row['product_id'] : 0;
+            $short_link_keep_group = $short_link_row ? (int) $short_link_row['product_group_id'] : 0;
 
             respond(array(
                 'status' => 'success',
@@ -8236,9 +8269,13 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     'page' => pg_short_link_options_list(get_page_options()),
                     'catalog_page' => pg_short_link_options_list(get_page_options('', 'catalog')),
                     'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail')),
-                    'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE)),
-                    'product' => pg_short_link_options_list(get_product_options()),
+                    'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $short_link_keep_group)),
+                    'product' => pg_short_link_options_list(get_product_options(true, $short_link_keep_product)),
                     'file' => pg_short_link_options_list(get_file_options(true))),
+                // The lists hold a binned entry kept for this one link, so the
+                // screen does not keep them for the next window.
+                'kept' => (($short_link_keep_product > 0) && pg_catalog_product_binned($short_link_keep_product))
+                    || (($short_link_keep_group > 0) && pg_catalog_group_binned($short_link_keep_group)),
                 // Once or until a time (2026.4.5, 5.112).
                 'modes' => pg_short_link_modes_ready(),
                 'durations' => array_map(function ($seconds, $label) {
@@ -8267,7 +8304,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             // How it may be opened: for good, once (a token for its address,
             // no name, spent by the first visit) or until a time chosen now.
-            $short_link_mode = pg_short_link_modes_ready() ? (string) ($request['link_mode'] ?? 'permanent') : 'permanent';
+            $short_link_mode = (pg_short_link_modes_ready() && is_scalar($request['link_mode'] ?? null)) ? (string) $request['link_mode'] : 'permanent';
 
             if (!in_array($short_link_mode, array('permanent', 'once', 'timed'), true)) {
                 $short_link_mode = 'permanent';
@@ -8428,7 +8465,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             $short_link_sql_name = '';
 
             // A link with a token for its address keeps it: it has no name.
-            if (array_key_exists('name', $request) && ((string) $short_link_row['name'] !== '')) {
+            // A name posted as a list is no name given, so the name stays.
+            if (array_key_exists('name', $request) && is_scalar($request['name']) && ((string) $short_link_row['name'] !== '')) {
 
                 $short_link_name = pg_short_link_clean_name($request['name']);
 
@@ -8456,7 +8494,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 }
             }
 
-            $short_link_read = pg_short_link_read_request($request, $user);
+            $short_link_read = pg_short_link_read_request($request, $user, $short_link_row);
 
             if (isset($short_link_read['error'])) {
                 respond(array(

@@ -23351,5 +23351,7 @@
     "estimate from the server statistics": "sunucu istatistiğinden tahmin",
     "File size": "Dosya boyutu",
     "The visitors table holds {var:1} records and its file takes {var:2}.": "Ziyaretçi tablosunda {var:1} kayıt var ve dosyası {var:2} yer kaplıyor.",
-    "Much of the file is free space left by removed records; it goes back to the disk when the table is rebuilt (see below).": "Dosyanın büyük kısmı silinen kayıtlardan kalan boş alan; tablo yeniden kurulunca diske geri verilir (aşağıya bakın)."
+    "Much of the file is free space left by removed records; it goes back to the disk when the table is rebuilt (see below).": "Dosyanın büyük kısmı silinen kayıtlardan kalan boş alan; tablo yeniden kurulunca diske geri verilir (aşağıya bakın).",
+    "The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.": "Ürün Geri Dönüşüm Kutusunda. Katalog Yöneticisi'nden geri yükleyin ya da başka bir ürün seçin.",
+    "The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.": "Ürün grubu Geri Dönüşüm Kutusunda. Katalog Yöneticisi'nden geri yükleyin ya da başka bir ürün grubu seçin."
 }
