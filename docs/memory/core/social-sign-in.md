@@ -10,7 +10,7 @@ description: Sign in with Google, Microsoft and Apple: the flow, how an account 
 ## How is an account matched?
 - By the identity (`user_identities`), else by the verified e-mail of an account that has no identity at that provider yet (it is tied then), else an account is opened where the screen allows it (`create` on registration, `membership` hands over to the membership form, `none` on every login screen).
 - An e-mail the provider does not vouch for never matches. An account whose address matches but is tied to another person at the provider is neither taken over nor opened a second time.
-- An administrator whose Google address differs from the account's address cannot sign in with Google: there is no "connect a provider while signed in" button yet. Fix today: change the account's e-mail to the Google address.
+- A provider account whose address differs from the account's is tied by connecting it while signed in ("Connect with ...", [[social-sign-in-connect]]); signing in with it before that is refused.
 
 ## What does a refused or failed sign-in show?
 - Its own screen, `pg_signin_fail()` (`output_header_secure()` + `pg_signin_failure_card()`): title, reason, "Geri Dön" (the button's page from the same-site Referer, `pg_signin_referer_path()`; else the entrance page) and "{provider} ile tekrar dene".

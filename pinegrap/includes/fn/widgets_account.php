@@ -1115,13 +1115,16 @@ function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
 // Visibility flags: is_signed_in, is_signed_out, is_impersonated, has_google,
 // has_microsoft, microsoft_removable, microsoft_only, has_apple,
 // apple_removable, apple_only (removable: another way in remains),
+// signin_connectable (a provider that is on can still be connected),
 // has_password, password_not_set, has_devices, no_devices, mfa_ready,
 // mfa_off, mfa_no_key, mfa_pending, mfa_codes, mfa_on, mfa_key_unreadable,
 // mfa_can_regenerate, mfa_required. Tokens: ^^__site_name^^,
 // ^^__device_count^^, ^^__mfa_status_text^^, ^^__mfa_enabled_since^^,
 // ^^__mfa_recovery_remaining^^, ^^__mfa_key^^, ^^__mfa_key_uri^^,
 // ^^__mfa_qr^^ (inline SVG), ^^__recovery_codes^^,
-// ^^__recovery_codes_download_url^^, ^^__login_url^^, ^^__not_logged_in^^.
+// ^^__recovery_codes_download_url^^, ^^__signin_connect_buttons^^ (the
+// "Connect ..." buttons, HTML; pg_signin_connect_buttons()), ^^__login_url^^,
+// ^^__not_logged_in^^.
 // Errors: liveform 'my_account_profile', where account_security.php puts the
 // two-step ones.
 // cfg: login_page_id, not_logged_in_message.
@@ -1140,6 +1143,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
             'has_google' => false, 'has_password' => false, 'password_not_set' => false,
             'has_microsoft' => false, 'microsoft_removable' => false, 'microsoft_only' => false,
             'has_apple' => false, 'apple_removable' => false, 'apple_only' => false,
+            'signin_connectable' => false,
             'has_devices' => false, 'no_devices' => false, 'mfa_ready' => false,
         );
         return _pg_acct_render_signed_out($tree, $cfg, $sec_no_state, array(), 'my_account_profile');
@@ -1156,6 +1160,9 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
     $microsoft_removable = $has_microsoft && pg_signin_can_remove($user_id, 'microsoft');
     $has_apple           = isset($identities['apple']);
     $apple_removable     = $has_apple && pg_signin_can_remove($user_id, 'apple');
+    // Providers that are on and not connected yet, connected from here
+    // whatever their e-mail address (signin.php, &connect=).
+    $connect_buttons     = pg_signin_connect_buttons($user_id, $self);
 
     // This browser's own token, to mark "this device".
     $current_selector = '';
@@ -1233,6 +1240,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         'has_apple'           => $has_apple,
         'apple_removable'     => $apple_removable,
         'apple_only'          => $has_apple && !$apple_removable,
+        'signin_connectable'  => $connect_buttons !== '',
         'has_password'        => $algo !== 3,
         'password_not_set'    => $algo === 3,
         'has_devices'         => count($devices) > 0,
@@ -1296,7 +1304,8 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         '__mfa_qr'                      => $qr,
         '__recovery_codes'              => $codes_text,
         '__recovery_codes_download_url' => $codes_download,
-    ), array('__mfa_qr')));
+        '__signin_connect_buttons'      => $connect_buttons,
+    ), array('__mfa_qr', '__signin_connect_buttons')));
 }
 
 // ============================================================================

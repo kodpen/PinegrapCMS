@@ -227,8 +227,10 @@ function get_my_account_profile($properties = array()) {
 
         $output = '';
 
+        // Messages, not only errors: a provider connected from the
+        // sign-in section below comes back with its notice.
         $output .=
-            $form->output_errors() . '
+            $form->get_messages() . '
             <form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/my_account_profile.php" method="post" class="software">
                 ' . get_token_field() . '
                 <table style="margin-bottom: 15px">

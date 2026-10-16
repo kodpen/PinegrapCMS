@@ -6,8 +6,9 @@
  * the provider definitions, Google's return address and request, what a
  * screen may do with an unknown identity, when an e-mail address counts as
  * verified, who the person is, the names for the address book, the pasted
- * Apple key and the client secret JWT signed with it, and the badges of the
- * user and session lists.
+ * Apple key and the client secret JWT signed with it, the badges of the
+ * user and session lists, and when a "Connect" button may start and what
+ * its answer does.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -374,4 +375,40 @@ function test_signin_button_html_is_one_markup_for_every_provider()
 		$style = pg_signin_button_style($key);
 		pg_assert_true(isset($style['border'], $style['background'], $style['color'], $style['font']), $key . ' has a complete style');
 	}
+}
+
+// The same button, aligned to the left of an account's list of sign-ins.
+function test_signin_button_html_left_for_an_account_list()
+{
+	pg_assert_contains('text-align:center', pg_signin_button_html('google', '/x', 'Sign in with Google'), 'centred under a sign-in form');
+	pg_assert_contains('text-align:left', pg_signin_button_html('google', '/x', 'Connect with Google', 'left'), 'left in an account list');
+	pg_assert_contains('text-align:center', pg_signin_button_html('google', '/x', 'Sign in with Google', 'right'), 'anything else is centred');
+}
+
+// A "Connect" button starts only for the account signed in now, with this
+// session's token, and never for an operator signed in as the person.
+function test_signin_connect_problem()
+{
+	pg_assert_same('', pg_signin_connect_problem(7, false, 'abc', 'abc', false), 'signed in, own token, not connected');
+	pg_assert_same('signed_out', pg_signin_connect_problem(0, false, 'abc', 'abc', false), 'nobody signed in');
+	pg_assert_same('impersonated', pg_signin_connect_problem(7, true, 'abc', 'abc', false), 'an operator signed in as the person');
+	pg_assert_same('token', pg_signin_connect_problem(7, false, 'abd', 'abc', false), 'another token');
+	pg_assert_same('token', pg_signin_connect_problem(7, false, '', '', false), 'no token in the session');
+	pg_assert_same('token', pg_signin_connect_problem(7, false, array('abc'), 'abc', false), 'a token sent as an array');
+	pg_assert_same('connected', pg_signin_connect_problem(7, false, 'abc', 'abc', true), 'already connected at the provider');
+}
+
+// What the answer of a "Connect" does: ties the identity to the account that
+// pressed the button, whatever its address, unless another account holds it.
+function test_signin_connect_outcome()
+{
+	pg_assert_same('connect', pg_signin_connect_outcome(7, 7, false, 0, false), 'a free identity is tied');
+	pg_assert_same('already', pg_signin_connect_outcome(7, 7, false, 7, true), 'already this account\'s');
+	pg_assert_same('other_account', pg_signin_connect_outcome(7, 7, false, 9, false), 'held by another account: refused');
+	pg_assert_same('other_account', pg_signin_connect_outcome(7, 7, false, 9, true), 'held by another account, whatever this one has');
+	pg_assert_same('has_other', pg_signin_connect_outcome(7, 7, false, 0, true), 'this account holds another person at the provider');
+	pg_assert_same('signed_out', pg_signin_connect_outcome(7, 0, false, 0, false), 'signed out meanwhile');
+	pg_assert_same('signed_out', pg_signin_connect_outcome(7, 8, false, 0, false), 'another account signed in meanwhile');
+	pg_assert_same('signed_out', pg_signin_connect_outcome(0, 0, false, 0, false), 'no account named');
+	pg_assert_same('impersonated', pg_signin_connect_outcome(7, 7, true, 0, false), 'an operator signed in as the person');
 }

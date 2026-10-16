@@ -934,7 +934,8 @@ function pg_user_agent_label($ua)
 
 // The "sign-in and devices" block on the my-account screen: the Google,
 // Microsoft and Apple link status (with a disconnect that is withheld when the
-// provider is the only way in), the active remember-me sessions, and a
+// provider is the only way in, and a "Connect" button for each provider that
+// is on and not connected yet), the active remember-me sessions, and a
 // sign-out-everywhere button. Returns '' when nobody is signed in. It only
 // renders; every change goes through account_security.php, which re-checks the
 // CSRF token and re-enforces the only-way-in guard server-side.
@@ -975,6 +976,21 @@ function pg_account_security_section()
                 . '<input type="hidden" name="pg_security_action" value="unlink_' . h($identity_provider) . '"/>'
                 . '<button type="submit" class="software_input_submit_secondary">' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $identity_label))) . '</button></form>';
         }
+    }
+
+    // Connecting one while signed in: the provider account is tied to this
+    // account whatever its e-mail address (signin.php, &connect=).
+    $connect_html = pg_signin_connect_buttons($user_id, get_request_uri());
+
+    if ($connect_html !== '') {
+        $identity_html .= '<p style="margin-bottom:0">' . h(lang('Connect another account to sign in with it too:')) . '</p>'
+            . $connect_html;
+    }
+
+    if ($identity_html !== '') {
+        $identity_html = '<div class="pg-account-signins" style="margin-bottom:1.5em">'
+            . '<p style="font-weight:bold;margin-bottom:.5em">' . h(lang('Connected sign-ins')) . '</p>'
+            . $identity_html . '</div>';
     }
 
     // Active remember-me sessions.
