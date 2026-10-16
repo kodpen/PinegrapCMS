@@ -4,7 +4,7 @@ description: Elements written inside a heading, paragraph, link or span text (sp
 ---
 
 ## Why could a span inside a paragraph not be edited?
-- A content `heading`, `paragraph`, `link`, `span` or `text` keeps its words as one piece of markup in `props.text` (`_SD_RICH_TEXT_CONTENT`; the HTML import writes `<p>Start <span class="hl">…</span></p>` this way, `pg_di_inner_html()`). The span is not a node, so a click on it selected the paragraph and nothing but its words could be changed. Seen on a Custom-framework design (PR #489).
+- A content `heading`, `paragraph`, `link`, `span` or `text` keeps its words as one piece of markup in `props.text` (`_SD_RICH_TEXT_CONTENT`; the HTML import writes `<p>Start <span class="hl">…</span></p>` this way, `pg_di_inner_html()`). The span is not a node, so a click on it selected the paragraph and nothing but its words could be changed. Seen on a Custom-framework design (PR #496).
 - Semantic elements (`pre` > `code`, `li`, `td`, `button`) hold real child nodes and were always selectable.
 
 ## How is an element inside a text picked and edited?
