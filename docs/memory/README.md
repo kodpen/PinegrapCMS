@@ -13,7 +13,7 @@ Open the index of the folder the task needs, then only the files you need.
 - erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports (36)
 - plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (11)
 - platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (25)
-- release/README.md: Versions, migrations and upgrade steps, change log rules, release status (12)
+- release/README.md: Versions, migrations and upgrade steps, change log rules, release status (13)
 - ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (32)
 - visitors/README.md: Visitor statistics, page and article views, search engine index flags (12)
 - waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers (22)

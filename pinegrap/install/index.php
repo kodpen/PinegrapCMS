@@ -5170,6 +5170,15 @@ else {
 					// so only NO_ENGINE_SUBSTITUTION is kept.
 					mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 
+					// A server too old for the schema is refused here, while the database is untouched.
+					$install_server_problem = install_server_problem();
+
+					if ($install_server_problem != '') {
+
+						$liveform->mark_error('db_host', h($install_server_problem));
+
+					}
+
 					// initialize variable
 					$software_installed = false;
 
@@ -7076,6 +7085,21 @@ function output_install_database_test() {
 	}
 
 	$server_version = @mysqli_get_server_info($connection);
+
+	// a server too old for the schema is said here, before the installation is started
+	$server_problem = install_server_problem((string) $server_version);
+
+	if ($server_problem != '') {
+
+		$response['message'] = h($server_problem);
+
+		@mysqli_close($connection);
+
+		print json_encode($response);
+
+		exit();
+
+	}
 
 	// see whether a site is already in there, because that is what the installation would replace
 	$site_found = false;

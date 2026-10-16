@@ -116,7 +116,7 @@ Pinegrap is **deliberately monolithic** — and that is a feature, not an apolog
 ## System Requirements
 
 * **PHP:** Version 7.1 up to 8.5 (7.1 is the minimum; the installer and the System Status card flag older versions)
-* **Database:** MySQL / MariaDB
+* **Database:** MySQL 5.7 or later, or MariaDB 10.2 or later
 * **Web Server:** Apache (with `mod_rewrite`), Nginx, or IIS
 * **Extensions:** `mysqli`, `gd`, `curl`, `mbstring` (recommended: `zip` and `openssl` for software updates)
 

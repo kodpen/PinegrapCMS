@@ -4,6 +4,7 @@
 
 Versions, migrations and upgrade steps, change log rules, release status.
 
+- database-server-compatibility.md: Which MySQL and MariaDB versions the install and the upgrade steps run on, why MySQL 5.6 and MariaDB 10.1 are refused, the 2022.2 DROP DEFAULT failure (issue #464) and how to test a server.
 - how-to-add-migration.md: Step-by-step for a DB schema change: open-version sub-step vs new number, versions.php, migration file template, get_tables() for new tables, changelog.
 - migration-step-helpers.md: How to write an upgrade step with the runner.php install_* helpers: check-then-act, exact-name probes, re-runnable data statements, enum-narrowing MODIFY.
 - migration-system-layout.md: Where DB schema changes live (includes/migrations files and roles) and how version entry functions and sub-steps are named. Direct SQL for schema is forbidden.

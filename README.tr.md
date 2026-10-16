@@ -116,7 +116,7 @@ Pinegrap **bilinçli olarak monolitiktir** — ve bu bir özür değil, bir öze
 ## Sistem Gereksinimleri
 
 * **PHP:** 7.1'den 8.5'e kadar (en düşük sürüm 7.1; kurulum ve Sistem Durumu kartı daha eskisini işaretler)
-* **Veritabanı:** MySQL / MariaDB
+* **Veritabanı:** MySQL 5.7 veya üstü ya da MariaDB 10.2 veya üstü
 * **Web Sunucusu:** Apache (`mod_rewrite` ile), Nginx veya IIS
 * **Eklentiler:** `mysqli`, `gd`, `curl`, `mbstring` (önerilen: yazılım güncellemeleri için `zip` ve `openssl`)
 

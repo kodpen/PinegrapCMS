@@ -256,6 +256,48 @@ function install_define_engine() {
 
 }
 
+// ─── Database server ─────────────────────────────────────────────────────────
+
+// Why the server cannot hold the schema, or '' when it can (see pg_db_server_supported():
+// MySQL 5.7 and MariaDB 10.2 are the oldest). Asked by the installation form, its connection
+// test and before the first version of an upgrade, so an older server is turned away before
+// a table is touched instead of stopping halfway with error 1071. $version_string is what the
+// server reports; without it the connection of db() is asked.
+function install_server_problem($version_string = null) {
+
+	if (!function_exists('pg_db_server_version')) {
+
+		return '';
+
+	}
+
+	if ($version_string === null) {
+
+		if ((!class_exists('db')) || empty(db::$con)) {
+
+			return '';
+
+		}
+
+		$version_string = (string) @mysqli_get_server_info(db::$con);
+
+	}
+
+	$server = pg_db_server_version($version_string);
+
+	if (pg_db_server_supported($server)) {
+
+		return '';
+
+	}
+
+	return lang(array(
+		'string' => 'The database server is {var:1}. Pinegrap needs MySQL 5.7 or later, or MariaDB 10.2 or later: on an older server the upgrade stops with error 1071, Specified key was too long. Ask the host for a newer database server, then start again.',
+		'vars' => $server['label']
+	));
+
+}
+
 // ─── Notes ───────────────────────────────────────────────────────────────────
 
 // A line about what a step did or did not do, kept per version and shown on the screen
@@ -521,6 +563,41 @@ function install_modify_column($table, $column, $definition, $required = true) {
 	db("ALTER TABLE " . install_quote_name($table) . " MODIFY " . install_quote_name($column) . " " . $definition);
 
 	return install_ran(lang(array('string' => '{var:1} changed', 'vars' => $table . '.' . $column)));
+
+}
+
+// ALTER TABLE t ALTER c DROP DEFAULT, only when the column has a default to drop. MySQL
+// before 8.0.13 and MariaDB before 10.2 refuse the statement on a BLOB or TEXT column with
+// error 1101 even though such a column can never have a default there, so the statement is
+// only sent when information_schema reports one. A default of NULL on a nullable column is
+// what the column does without a default, so it counts as none.
+function install_drop_column_default($table, $column) {
+
+	$row = db_item(
+		"SELECT COLUMN_DEFAULT AS column_default, IS_NULLABLE AS is_nullable
+		FROM information_schema.COLUMNS
+		WHERE
+			(TABLE_SCHEMA = DATABASE())
+			AND (TABLE_NAME = '" . e($table) . "')
+			AND (COLUMN_NAME = '" . e($column) . "')");
+
+	if ((!is_array($row)) || (count($row) == 0)) {
+
+		return install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => $table . '.' . $column)));
+
+	}
+
+	$default = $row['column_default'];
+
+	if (($default === null) || ((strtoupper((string) $default) === 'NULL') && ($row['is_nullable'] == 'YES'))) {
+
+		return install_skipped(lang(array('string' => '{var:1} has no default value', 'vars' => $table . '.' . $column)));
+
+	}
+
+	db("ALTER TABLE " . install_quote_name($table) . " ALTER " . install_quote_name($column) . " DROP DEFAULT");
+
+	return install_ran(lang(array('string' => 'the default value of {var:1} was dropped', 'vars' => $table . '.' . $column)));
 
 }
 
@@ -1219,6 +1296,25 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 
 	}
 
+	// A server the schema cannot be built on is turned away before the first version.
+	$server_problem = isset($versions[$from_key + 1]) ? install_server_problem() : '';
+
+	if ($server_problem != '') {
+
+		$number = $versions[$from_key + 1]['number'];
+
+		install_progress_failed($number, $server_problem);
+
+		$result['ok'] = false;
+
+		$result['failed'] = $number;
+
+		$result['error'] = $server_problem;
+
+		return $result;
+
+	}
+
 	// From here on a failed query is an exception, not a dead page.
 	install_run_begin();
 
@@ -1254,6 +1350,16 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 	}
 
 	install_register_shutdown_guard();
+
+	// The steps are written for a session without strict mode: the LiveSite-era ones give
+	// TEXT columns a DEFAULT '' and DATE columns a zero date, which the default sql_mode of
+	// MySQL 5.7 and later refuses (errors 1101 and 1067). Every caller sets this already;
+	// the runner does not rely on it.
+	if (class_exists('db') && (!empty(db::$con))) {
+
+		@mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
+
+	}
 
 	install_define_engine();
 
@@ -1847,7 +1953,9 @@ function install_preflight_checks($versions, $from_key) {
 
 	}
 
-	$checks[] = array('label' => lang('MySQL'), 'value' => (($server != '') ? $server : '-'), 'state' => 'ok', 'detail' => '');
+	$server_problem = install_server_problem();
+
+	$checks[] = array('label' => lang('MySQL'), 'value' => (($server != '') ? $server : '-'), 'state' => (($server_problem != '') ? 'error' : 'ok'), 'detail' => $server_problem);
 
 	// privileges
 	$grants = install_check_grants();
