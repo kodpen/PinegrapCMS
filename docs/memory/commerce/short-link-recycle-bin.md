@@ -30,14 +30,14 @@ pages and files by folder: the bin folder or a folder sent into it
   group, file twins): create always; change unless it is the stored one
   (`pg_short_link_read_request($request, $user, $current)`; classic edit
   compares with `$short_link`; the API passes its stored `$row`).
-- Symptom before (#482 for products/groups, #48x for pages/files): the
+- Symptom before (#482 for products/groups, #487 for pages/files): the
   wizard opened such a link with nothing chosen and Save asked for it; binned
   files (as `pgbin_<id>_name`) and pages in binned folders were offered as
   new targets.
 
 ## Where does a deleted short link go?
 To the bin (`recycled = 1` plus a `recycle_bin` row,
-`pg_short_link_to_bin()`) from the wizard, the API and, since #48x, the
+`pg_short_link_to_bin()`) from the wizard, the API and, since #487, the
 classic edit screen's Delete (before, it deleted the row outright). Restore or
 permanent delete happen in the File Manager's bin. `view_short_links.php`
 leaves binned links out; `edit_short_link.php` answers 409 "This short link
@@ -50,4 +50,4 @@ every field with `is_scalar()` (`item_id[]` no longer hits link 1, `name[]` no
 longer names a link "Array"); classic screens call
 `pg_liveform_single_values()` (15 former 500s).
 
-Tests: `tests/short_link_requests_test.php`. PRs: #482, #48x.
+Tests: `tests/short_link_requests_test.php`. PRs: #482, #487.
