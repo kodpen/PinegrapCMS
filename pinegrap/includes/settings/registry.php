@@ -68,7 +68,12 @@ function pg_settings_keywords($terms)
  * English and translated as a whole through lang(); pg_settings_keywords()
  * turns the translated list back into an array.
  *
- * @return array key => array(label, icon, description, sections, keywords)
+ * A category whose cards draw a field as a list names it under 'lists', with
+ * how many levels of keys it carries; every other field holds one value and a
+ * save that posts it as a list is refused (pg_settings_refuse_lists()). A
+ * card that moves takes its list fields with it.
+ *
+ * @return array key => array(label, icon, description, sections, keywords, lists)
  */
 function pg_settings_categories()
 {
@@ -93,6 +98,9 @@ function pg_settings_categories()
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
                 'pgset-cron'     => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'   => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
+            ),
+            'lists' => array(
+                'job_dispatch_job' => 1,
             ),
         ),
 
@@ -155,6 +163,9 @@ function pg_settings_categories()
                 'pgset-languages' => pg_settings_keywords(lang('language, languages, translation, translate, multilingual, prefix, hreflang, locale, source language')),
                 'pgset-language-redirect' => pg_settings_keywords(lang('redirect, automatic, browser language, accept-language, location, country, geolocation, geo ip, visitor language')),
                 'pgset-translation-engines' => pg_settings_keywords(lang('google translate, google cloud, api key, chrome, translator, engine, machine translation, attribution, style note')),
+            ),
+            'lists' => array(
+                'languages' => 2,
             ),
         ),
 
@@ -238,6 +249,9 @@ function pg_settings_categories()
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
             ),
+            'lists' => array(
+                'erp_fx_currencies' => 1,
+            ),
         ),
 
         'api' => array(
@@ -279,6 +293,42 @@ function pg_settings_category($key)
     $categories = pg_settings_categories();
 
     return isset($categories[$key]) ? $categories[$key] : null;
+}
+
+
+/**
+ * Refuse a save that posts a list in a field the cards draw as one value.
+ *
+ * The save modules read every other field as one value. A list stopped the
+ * save with a TypeError in escape() or trim(), stored "Array" where (string)
+ * read it (the host name, the firewall lists, Mailchimp's key) and counted as
+ * ticked in a checkbox. "Not given" is no answer here either: a module writes
+ * an empty value for a field it does not find. So the save is refused the way
+ * a module refuses a field it marks -- every field is marked, nothing of the
+ * category is written and every stored setting stays as it was. Only a
+ * hand-made request gets here; the cards never post a list where they draw
+ * none.
+ *
+ * Runs before the category's module, in the dialog's endpoint and in the
+ * page path alike.
+ *
+ * @param string $key
+ * @param object $liveform
+ * @return bool true when the save was refused
+ */
+function pg_settings_refuse_lists($key, $liveform)
+{
+    $category = pg_settings_category($key);
+
+    // The page path's decoy field (includes/settings/screen.php) is posted by
+    // every category.
+    $lists = array('fake_user' => 1) + ((($category !== null) && isset($category['lists'])) ? $category['lists'] : array());
+
+    foreach (pg_request_unexpected_lists($_POST, $lists) as $name) {
+        $liveform->mark_error($name, lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h($name))));
+    }
+
+    return $liveform->check_form_errors();
 }
 
 

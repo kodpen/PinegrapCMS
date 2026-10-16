@@ -265,8 +265,11 @@ if (!$_POST) {
     // Only this category's writes run. Nothing else on the site's settings can
     // be touched by a form that did not carry it -- which is what the single
     // form used to do, and what silently reset three affiliate fields and the
-    // barcode label size on every save.
-    include(PG_FUNCTIONS_DIR . '/includes/settings/' . $pg_settings_key . '.save.php');
+    // barcode label size on every save. A list where the cards draw one value
+    // refuses the save before the module reads anything.
+    if (!pg_settings_refuse_lists($pg_settings_key, $liveform)) {
+        include(PG_FUNCTIONS_DIR . '/includes/settings/' . $pg_settings_key . '.save.php');
+    }
 
     // A module that marked an error wrote nothing and returned early; neither
     // the log nor the confirmation may say otherwise. The errors stay in the

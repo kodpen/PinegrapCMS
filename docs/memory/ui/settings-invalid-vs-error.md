@@ -16,4 +16,11 @@ description: Settings save outcomes: rejected input returns status invalid (no r
 - `pg_settings_pane_words()` passes every notice and error through `strip_tags` + `html_entity_decode`. The notice box writes TEXT (`.text()`): the sentences come from save modules, tools that pass through here and services like Mailchimp through them; none must enter the page as markup.
 - Tags are dropped, not shown (a notice carrying `<textarea>` would embed the DNS record inside the tag). Entities are decoded because a message escaped for a screen arrives as `=&gt;` and there is no HTML left to escape for.
 
+## What if a field arrives as a list (`hostname[]=x`)?
+- The whole save is refused before the module runs: `pg_settings_refuse_lists()` (`includes/settings/registry.php`), called by `pg_settings_apply()` and by the page path in `screen.php`, marks each such field; the dialog gets `status: 'invalid'`, nothing of the category is written.
+- Not "not given": a module writes an empty value for a field it does not find, so the host name or a key would be blanked.
+- Fields the cards draw as lists are named under the category's `lists` in the registry with their depth (`job_dispatch_job` 1, `erp_fx_currencies` 1, `languages` 2); `fake_user` (page-path decoy) always. A new list field goes there too, or every save of its category is refused; `tests/request_unexpected_lists_test.php` checks it.
+- SMTP Settings and Private Label refuse the same way with `pg_request_unexpected_lists($_POST)` (error, redirect, config.php untouched).
+- Why (PR #NNN): 389 fields posted as lists: 190 answered 500, 15 stored "Array" (host name, subscription key, firewall lists, Mailchimp keys, ERP tax names), others ticked a box or removed a language. SMTP: every field 500. Private Label logged "Undefined array key" on every save with the box off.
+
 Related: docs/memory/ui/settings-card-own-button.md

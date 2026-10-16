@@ -164,6 +164,12 @@ function pg_settings_apply($key, $user, $liveform)
         output_error(lang('Page not found.'));
     }
 
+    // A list where the cards draw one value refuses the whole save before the
+    // module reads anything; the endpoint answers it as a marked save.
+    if (pg_settings_refuse_lists($key, $liveform)) {
+        return URL_SCHEME;
+    }
+
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $key . '.save.php');
 
     // A module that marked a field wrote nothing and returned early; the log

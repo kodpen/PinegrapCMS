@@ -361,6 +361,18 @@ if (!$_POST) {
     validate_token_field();
     $liveform_settings = new liveform('smtp_settings');
 
+    // Every field here holds one value. One posted as a list
+    // (system_smtp_hostname[]=x) stopped the request in trim(); reading it as
+    // not given would remove that setting from config.php. Nothing is written,
+    // so every setting stays as it was.
+    $smtp_lists = pg_request_unexpected_lists($_POST);
+
+    if ($smtp_lists) {
+        $liveform_settings->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $smtp_lists)))));
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php');
+        exit;
+    }
+
     // DKIM key generate
     if (isset($_POST['generate_dkim_key']) && $_POST['generate_dkim_key'] === 'true') {
         $selector = trim(isset($_POST['dkim_selector']) ? $_POST['dkim_selector'] : '');

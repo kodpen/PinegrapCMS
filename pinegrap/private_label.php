@@ -215,7 +215,20 @@ if (!$_POST) {
 // else the form has been submitted
 } else {
     validate_token_field();
-    
+
+    // Every field here holds one value. One posted as a list (logo_url[]=x)
+    // stopped the request in escape() or handed a list to the config.php
+    // writer; reading it as not given would switch the private label off or
+    // remove that setting. Nothing is written, so every setting stays as it
+    // was.
+    $private_label_lists = pg_request_unexpected_lists($_POST);
+
+    if ($private_label_lists) {
+        $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $private_label_lists)))));
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/private_label.php');
+        exit;
+    }
+
     // update the private label value in the config table
     $query = "UPDATE config SET private_label = '" . escape($_POST['private_label'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -237,20 +250,20 @@ if (!$_POST) {
     $config_file_original = $config_file_content;
 
     // if private label is enabled, then deal with private label fields
-    if ($_POST['private_label'] == 1) {
+    if (($_POST['private_label'] ?? '') == 1) {
         // Initialize variables and strip single quotes
-        $logo_url = str_replace("'", '', $_POST['logo_url']);
-        $control_panel_stylesheet_url = str_replace("'", '', $_POST['control_panel_stylesheet_url']);
-        $footer_link_1_label = str_replace("'", '', $_POST['footer_link_1_label']);
-        $footer_link_1_url = str_replace("'", '', $_POST['footer_link_1_url']);
-        $footer_link_2_label = str_replace("'", '', $_POST['footer_link_2_label']);
-        $footer_link_2_url = str_replace("'", '', $_POST['footer_link_2_url']);
-        $footer_link_3_label = str_replace("'", '', $_POST['footer_link_3_label']);
-        $footer_link_3_url = str_replace("'", '', $_POST['footer_link_3_url']);
-        $footer_link_4_label = str_replace("'", '', $_POST['footer_link_4_label']);
-        $footer_link_4_url = str_replace("'", '', $_POST['footer_link_4_url']);
-        $footer_link_5_label = str_replace("'", '', $_POST['footer_link_5_label']);
-        $footer_link_5_url = str_replace("'", '', $_POST['footer_link_5_url']);
+        $logo_url = str_replace("'", '', $_POST['logo_url'] ?? '');
+        $control_panel_stylesheet_url = str_replace("'", '', $_POST['control_panel_stylesheet_url'] ?? '');
+        $footer_link_1_label = str_replace("'", '', $_POST['footer_link_1_label'] ?? '');
+        $footer_link_1_url = str_replace("'", '', $_POST['footer_link_1_url'] ?? '');
+        $footer_link_2_label = str_replace("'", '', $_POST['footer_link_2_label'] ?? '');
+        $footer_link_2_url = str_replace("'", '', $_POST['footer_link_2_url'] ?? '');
+        $footer_link_3_label = str_replace("'", '', $_POST['footer_link_3_label'] ?? '');
+        $footer_link_3_url = str_replace("'", '', $_POST['footer_link_3_url'] ?? '');
+        $footer_link_4_label = str_replace("'", '', $_POST['footer_link_4_label'] ?? '');
+        $footer_link_4_url = str_replace("'", '', $_POST['footer_link_4_url'] ?? '');
+        $footer_link_5_label = str_replace("'", '', $_POST['footer_link_5_label'] ?? '');
+        $footer_link_5_url = str_replace("'", '', $_POST['footer_link_5_url'] ?? '');
         
         // If LOGO_URL is not equal to the post value for $logo_url
         if (LOGO_URL != $logo_url) {
