@@ -23382,5 +23382,9 @@
     "Only workspace events can be narrowed to a channel group: {var:1}": "Yalnız Çalışma Alanı olayları bir kanal grubuyla sınırlanabilir: {var:1}",
     "API event subscriptions narrowed to the workspace channel group ({var:1}) were switched off: {var:2}": "çalışma alanı kanal grubuyla ({var:1}) sınırlanmış API olay abonelikleri durduruldu: {var:2}",
     "Channel group": "Kanal grubu",
-    "a group that was removed": "kaldırılmış bir grup"
+    "a group that was removed": "kaldırılmış bir grup",
+    "The page is in the Recycle Bin. Restore it in the File Manager or choose another page.": "Sayfa Geri Dönüşüm Kutusunda. Dosya Yöneticisi'nden geri yükleyin ya da başka bir sayfa seçin.",
+    "The file is in the Recycle Bin. Restore it in the File Manager or choose another file.": "Dosya Geri Dönüşüm Kutusunda. Dosya Yöneticisi'nden geri yükleyin ya da başka bir dosya seçin.",
+    "This short link will be moved to the Recycle Bin.": "Bu kısa bağlantı Geri Dönüşüm Kutusuna taşınacak.",
+    "The short link was moved to the Recycle Bin.": "Kısa bağlantı Geri Dönüşüm Kutusuna taşındı."
 }

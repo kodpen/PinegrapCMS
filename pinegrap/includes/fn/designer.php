@@ -1670,6 +1670,23 @@ function pg_recycle_bin_folder_ids()
     return $ids;
 }
 
+/**
+ * Whether a page is in the Recycle Bin: sent there itself, or carried in with
+ * a folder that was.
+ */
+function pg_recycle_page_binned($page_id)
+{
+    $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$page_id . "'");
+    return ($folder !== null) && in_array((int)$folder, pg_recycle_bin_folder_ids(), true);
+}
+
+/** Whether a file is in the Recycle Bin, the same way. */
+function pg_recycle_file_binned($file_id)
+{
+    $folder = db_value("SELECT folder FROM files WHERE id = '" . (int)$file_id . "'");
+    return ($folder !== null) && in_array((int)$folder, pg_recycle_bin_folder_ids(), true);
+}
+
 /* ---------------------------------------------------------------------------
    Drafts: a visual page taken off the site
    ---------------------------------------------------------------------------

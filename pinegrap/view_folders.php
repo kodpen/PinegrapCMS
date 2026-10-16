@@ -9165,9 +9165,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         // The lists come from the server once and are kept for the session:
         // they are the same lists the classic add screen draws. They leave
-        // out the products and groups in the Recycle Bin, so a link that
-        // points at one is opened with lists asked for that link, which keep
-        // it, marked; those are not kept for the next window.
+        // out what is in the Recycle Bin, so a link that points at a binned
+        // product, group, page or file is opened with lists asked for that
+        // link, which keep it, marked; those are not kept for the next window.
         if (shortLinkOptions && !shortLinkTargetMissing(shortLinkEditing)) {
             shortLinkLists = shortLinkOptions;
             draw();
@@ -9191,26 +9191,35 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         });
     }
 
-    // Whether the kept lists lack the product or the group a link points at:
-    // it went to the Recycle Bin, or it is newer than the lists.
+    // Whether the kept lists lack the product, the group, the page or the
+    // file a link points at: it went to the Recycle Bin, or it is newer than
+    // the lists.
     function shortLinkTargetMissing(item) {
 
         if (!item) { return false; }
 
-        var list = null;
-        var id = 0;
-
-        if (item.destination_type === 'product') {
-            list = shortLinkOptions.product;
-            id = item.product_id;
-        } else if (item.destination_type === 'product_group') {
-            list = shortLinkOptions.product_group;
-            id = item.product_group_id;
-        } else {
-            return false;
+        function listed(list, id) {
+            return (list || []).some(function (option) { return String(option.v) === String(id); });
         }
 
-        return !(list || []).some(function (option) { return String(option.v) === String(id); });
+        switch (item.destination_type) {
+
+            case 'page':
+                return !listed(shortLinkOptions.page, item.page_id);
+
+            case 'product_group':
+                return !listed(shortLinkOptions.product_group, item.product_group_id)
+                    || !(listed(shortLinkOptions.catalog_page, item.page_id) || listed(shortLinkOptions.catalog_detail_page, item.page_id));
+
+            case 'product':
+                return !listed(shortLinkOptions.product, item.product_id)
+                    || !listed(shortLinkOptions.catalog_detail_page, item.page_id);
+
+            case 'file':
+                return !listed(shortLinkOptions.file, item.file_id);
+        }
+
+        return false;
     }
 
     function submitShortLinkWizard() {
