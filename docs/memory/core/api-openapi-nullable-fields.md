@@ -13,5 +13,5 @@ description: When an external API field is declared nullable (string? in the res
 - A missing `?` breaks generated clients on the first null; an extra one only makes them check. Do not remove an existing `?` without reading every create path.
 
 ## Which tests guard it?
-- `tests/api_openapi_status_test.php`: person fields (#401), other fields (#412), always-written columns and their create paths (#420), and for Workspace and ERP every presenter paired by its `// What X() returns.` comment: a null branch or an `api_time()` of another column needs `?` (PR #NNN; the rescan found none missing).
+- `tests/api_openapi_status_test.php`: person fields (#401), other fields (#412), always-written columns and their create paths (#420), and for Workspace and ERP every presenter paired by its `// What X() returns.` comment: a null branch or an `api_time()` of another column needs `?` (PR #477; the rescan found none missing).
 - A presenter and its schema should stay paired by that comment, or the Workspace/ERP check cannot read it.

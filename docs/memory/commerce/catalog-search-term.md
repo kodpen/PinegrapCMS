@@ -13,7 +13,7 @@ description: Which search term a legacy catalog page uses (Clear button, page qu
 - A value sent as a list (`?query[]=x`) counts as not given.
 
 ## Why one helper?
-- The RSS condition used to re-read `$_GET` on its own. After Clear (`?<id>_query=x&<id>_simple_clear=` / `&<id>_clear=`), with `?<id>_query=&query=x`, and with `?query=x` on a custom layout, the catalog showed the product group but the RSS link was missing. Same answer now (PR #NNN; blank and list queries were PR #419).
+- The RSS condition used to re-read `$_GET` on its own. After Clear (`?<id>_query=x&<id>_simple_clear=` / `&<id>_clear=`), with `?<id>_query=&query=x`, and with `?query=x` on a custom layout, the catalog showed the product group but the RSS link was missing. Same answer now (PR #477; blank and list queries were PR #419).
 - A new reader of the catalog term (title, canonical, structured data) should call the helper rather than read the request.
 
 ## Tests
