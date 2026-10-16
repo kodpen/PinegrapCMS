@@ -5,6 +5,7 @@
 Orders, cart, checkout, shipping, products and variants, express order.
 
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
+- cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), and why the designer cart and express order widgets create none on view.
 - cart-widget-payment-plan-and-gates.md: Who writes cart recurring payment plan columns, the Messages-node-before-loop liveform snapshot rule, and the double gate for staff-only offline payment checkbox.
 - cart-widget-rows-and-groups.md: Cart widget row types (donation, offer gift, normal), pending offers own-form rule, tax/shipping notice, and recipient/recurring group heading bands with their sorting.
 - cart-widget-stock-and-save-later.md: Cart widget low-stock warning (define, tokens, exact condition), cart query stock columns, out_of_stock_message, and the opt-in Save for Later feature.
