@@ -10,6 +10,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
+- refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
 - shipping-management.md: Not started shipping plan (2026-10-08): carrier recognition, shipment row status, single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields
 - visitor-records-deferred.md: Deferred visitor-table work: split long text columns into a dictionary, monthly partitions, early IP removal, more summary dimensions

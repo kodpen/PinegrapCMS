@@ -6,12 +6,12 @@ Open the index of the folder the task needs, then only the files you need.
 
 ## Memory folders (docs/memory/)
 
-- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (23)
-- core/README.md: Code rules, file layout, translation, roles and access, security, api.php, request parameters (26)
+- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (24)
+- core/README.md: Code rules, file layout, translation, roles and access, security, api.php, request parameters (27)
 - data/README.md: Table structures and SQL pitfalls (6)
 - designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (58)
 - erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports (36)
-- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (10)
+- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (11)
 - platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (25)
 - release/README.md: Versions, migrations and upgrade steps, change log rules, release status (12)
 - ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (32)
@@ -26,10 +26,6 @@ Open the index of the folder the task needs, then only the files you need.
 - _get_file_kopyalar.md: Function copies inside get_file.php: which have an original, how they diverged, which stay as copies (check_copies.php)
 - _innodb_envanter.md: InnoDB inventory (2026.4.8, steps 8.10-8.14): table list and groups behind pg_innodb_table_groups()
 - _isbasi_api_notlari.md: Logo İşbaşı API notes (environments, endpoints, unverified points); read before any İşbaşı driver work
-- _tespit_2026_10_08/2fa_kesif_raporu.md: Two-step sign-in (2FA) discovery report: where sessions open, where the gate goes, risks
-- _tespit_2026_10_08/kargo_yonetimi_kesif_raporu.md: Shipping management discovery report: current infrastructure and gaps (file:line evidence)
-- _tespit_2026_10_08/ozellik_ve_refactor_tespiti.md: Feature and refactor candidates summary (2026-10-08) linking the three discovery reports
-- _tespit_2026_10_08/refactor_altyapi_raporu.md: Refactor and infrastructure candidates with evidence (22 findings, 2026-10-08)
 - component-development-guide.md: Mandatory reading before writing a Style Designer palette component: node model, canvas, serialization, checklist
 - erp_malimusavir_sorulacaklar.md: Questions for the accountant about ERP behaviour; answers fill each item
 - workspace-devir-notu-2026-09-26.md: Workspace handover note (2026-09-26): rules, state at hand-over, open items list

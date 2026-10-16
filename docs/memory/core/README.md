@@ -30,3 +30,4 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - sdt-designer-js-text-rules.md: How visible text in assets/js/style_designer.js must use _sdT('English') keys: literal-key rule, server key scan and cache, escaping, PHP/JS default twins.
 - security-helpers-and-secret-storage.md: CSRF/escape helpers (get_token_field, validate_token_field, h) and how secret config fields are stored encrypted as one blob, never exposed as constants.
 - translation-rules.md: Rule that every user-visible string goes through lang() with a matching tr.json key (English source key, Turkish value), and the same rule for designer JS.
+- two-step-sign-in.md: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where the gate sits in every sign-in path, storage, API and ShipWorks behaviour, recovery, encryption key risk
