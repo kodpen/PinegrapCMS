@@ -20,6 +20,15 @@ include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM recurring_commission_profiles WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 include_once('liveform.class.php');
 $liveform = new liveform('edit_recurring_commission_profile');
 
@@ -92,7 +101,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

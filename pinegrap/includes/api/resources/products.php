@@ -80,6 +80,9 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 			'quantity'     => (int)$row['inventory_quantity'],
 			'out_of_stock' => ((int)$row['out_of_stock'] === 1)
 		),
+		// In the catalogue's Recycle Bin: off the shop and out of the listing,
+		// but still readable by id until the bin is emptied.
+		'recycled'        => (isset($row['recycled']) && ((int)$row['recycled'] === 1)),
 		'updated_at'      => api_time($row['timestamp']),
 		'updated_at_unix' => (int)$row['timestamp'],
 		// What the site already knows about how this product reads to a search
@@ -208,6 +211,7 @@ function api_product_select() {
 			products.shippable, products.free_shipping, products.weight,
 			products.inventory, products.inventory_quantity, products.out_of_stock,
 			products.tax_rate,
+			" . (api_catalog_bin_columns() ? "products.recycled," : "0 AS recycled,") . "
 			products.timestamp,
 			" . api_seo_columns('products.') . "
 			(SELECT barcode FROM product_barcodes
@@ -220,6 +224,15 @@ function api_product_select() {
 function api_products_list($params) {
 
 	$where = array();
+
+	// A product in the Recycle Bin is deleted as far as the shop is concerned.
+	// It stays readable by id, so a sync that still holds it can see why it
+	// went, but it is not listed as part of the catalogue.
+	if (api_catalog_bin_columns()) {
+
+		$where[] = "products.recycled = '0'";
+
+	}
 
 	// The incremental sync filter. Everything else on this endpoint is a
 	// convenience; this is the one an integration actually runs on a schedule.
@@ -523,12 +536,6 @@ function api_products_create($params) {
 
 	if (array_key_exists('price', $params)) {
 
-		if ((int)$params['price'] < 0) {
-
-			api_fail_validation(lang('price cannot be negative.'), 'price');
-
-		}
-
 		$product['price'] = (int)$params['price'];
 
 	}
@@ -565,9 +572,14 @@ function api_products_create($params) {
 
 	}
 
+	$images = api_products_images($params);
+
+	$barcode = api_products_barcode($params);
+
 	$relations = array(
 		'group_ids'   => api_products_create_group_ids($params),
 		'attributes'  => api_products_create_attributes($params),
+		'images'      => ($images === null) ? array() : $images,
 		// No form behind this request, so the builder is told not to look for
 		// one rather than left to read whatever $_POST happens to hold.
 		'submit_form' => array()
@@ -584,6 +596,14 @@ function api_products_create($params) {
 		api_fail_server(lang('The product could not be created.'));
 
 	}
+
+	if ($barcode !== null) {
+
+		pg_assign_product_barcode($id, $barcode);
+
+	}
+
+	api_products_rescore($id);
 
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was added through the API by the application {var:2} (key {var:3}).',
@@ -708,6 +728,151 @@ function api_products_create_attributes($params) {
 
 }
 
+// The images a product is given, as file names from the Files library.
+//
+// The product row and the gallery store file names, not addresses, because
+// files are served from the site root by name. An address is accepted as well,
+// as long as it is one of this site's own: the API hands images out as
+// addresses, and a client that reads a product and writes it back should not
+// have to know the difference. Answers null when the request did not mention
+// images, so an update leaves them alone.
+function api_products_images($params) {
+
+	if (!array_key_exists('images', $params)) {
+
+		return null;
+
+	}
+
+	$base = URL_SCHEME . HOSTNAME_SETTING . PATH;
+
+	$names = array();
+
+	foreach ($params['images'] as $raw) {
+
+		$name = trim((string)$raw);
+
+		if (strpos($name, $base) === 0) {
+
+			$name = rawurldecode(substr($name, strlen($base)));
+
+		}
+
+		if (($name === '') || in_array($name, $names, true)) {
+
+			continue;
+
+		}
+
+		$file = api_row("SELECT id, type FROM files WHERE name = '" . escape($name) . "' LIMIT 1");
+
+		if ($file === null) {
+
+			api_fail_validation(lang(array(
+				'string' => 'There is no file named {var:1} in the Files library.',
+				'vars'   => array($name)
+			)), 'images');
+
+		}
+
+		if (!in_array(strtolower((string)$file['type']), array('jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg'), true)) {
+
+			api_fail_validation(lang(array(
+				'string' => 'The file {var:1} is not an image.',
+				'vars'   => array($name)
+			)), 'images');
+
+		}
+
+		$names[] = $name;
+
+	}
+
+	return $names;
+
+}
+
+// The barcode a request gives a product, checked before anything is written.
+//
+// Answers null when there is nothing to write: the request did not mention a
+// barcode, or the product already carries the same one. A barcode is only ever
+// added, never swapped, which is what the product screen does too: a code that
+// is already on a printed label has to keep scanning as this product.
+function api_products_barcode($params, $product_id = 0) {
+
+	if (!array_key_exists('barcode', $params) || (trim((string)$params['barcode']) === '')) {
+
+		return null;
+
+	}
+
+	$barcode = trim((string)$params['barcode']);
+
+	if (!defined('BARCODE_ENABLED') || !BARCODE_ENABLED) {
+
+		api_fail_validation(lang('Barcodes are switched off on this site.'), 'barcode');
+
+	}
+
+	if ($product_id) {
+
+		$current = api_value("SELECT barcode FROM product_barcodes
+			WHERE product_id = '" . (int)$product_id . "' ORDER BY id ASC LIMIT 1");
+
+		if ($current !== null && $current !== false && (string)$current !== '') {
+
+			if ((string)$current === $barcode) {
+
+				return null;
+
+			}
+
+			api_fail_validation(lang(array(
+				'string' => 'This product already has the barcode {var:1}. A barcode is not replaced through the API, because labels may already carry it.',
+				'vars'   => array((string)$current)
+			)), 'barcode');
+
+		}
+
+	}
+
+	$type = defined('BARCODE_DEFAULT_TYPE') ? BARCODE_DEFAULT_TYPE : 'CODE128';
+
+	if (!pg_barcode_matches_format($barcode, $type)) {
+
+		api_fail_validation(lang(array(
+			'string' => 'The barcode does not match the site\'s barcode format ({var:1}).',
+			'vars'   => array($type)
+		)), 'barcode');
+
+	}
+
+	if (api_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($barcode) . "' LIMIT 1")) {
+
+		api_fail_validation(lang('Another product already carries this barcode.'), 'barcode');
+
+	}
+
+	return $barcode;
+
+}
+
+// Scores the product's meta half now rather than leaving it to the product
+// list or the nightly job: every column it reads may just have changed, and a
+// client that reads the product back in the next call should see the score its
+// own change produced.
+function api_products_rescore($product_id) {
+
+	api_seo_library();
+
+	if (pg_seo_schema_ready()) {
+
+		pg_seo_recalculate('product', array((int)$product_id));
+
+	}
+
+}
+
 function api_products_update($params) {
 
 	$id = (int)$params['id'];
@@ -800,17 +965,28 @@ function api_products_update($params) {
 
 	if (array_key_exists('price', $params)) {
 
-		if ((int)$params['price'] < 0) {
-
-			api_fail_validation(lang('price cannot be negative.'), 'price');
-
-		}
-
 		$set[] = "price = '" . (int)$params['price'] . "'";
 
 	}
 
-	if (empty($set)) {
+	$group_ids = array_key_exists('group_ids', $params) ? api_products_create_group_ids($params) : null;
+
+	$attributes = array_key_exists('attributes', $params) ? api_products_create_attributes($params) : null;
+
+	$images = api_products_images($params);
+
+	$barcode = api_products_barcode($params, $id);
+
+	// The main photo is a column on the row; the gallery is rewritten below.
+	if ($images !== null) {
+
+		$set[] = "image_name = '" . escape($images ? $images[0] : '') . "'";
+
+	}
+
+	// A barcode the product already carries is a field that was sent and
+	// needs no write, not an empty request.
+	if (empty($set) && ($group_ids === null) && ($attributes === null) && !array_key_exists('barcode', $params)) {
 
 		api_fail_validation(lang('No writable field was sent.'));
 
@@ -832,6 +1008,57 @@ function api_products_update($params) {
 			timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . $id . "'
 		LIMIT 1");
+
+	// The links are rewritten, not appended, as the product screen rewrites
+	// them: a list sent here is the whole answer, and an empty one clears it.
+	if ($images !== null) {
+
+		api_exec("DELETE FROM products_images_xref WHERE product = '" . $id . "'");
+
+		foreach (array_slice($images, 1) as $image) {
+
+			api_exec("INSERT INTO products_images_xref (product, file_name)
+				VALUES ('" . $id . "', '" . escape($image) . "')");
+
+		}
+
+	}
+
+	if ($group_ids !== null) {
+
+		api_exec("DELETE FROM products_groups_xref WHERE product = '" . $id . "'");
+
+		foreach ($group_ids as $group_id) {
+
+			api_exec("INSERT INTO products_groups_xref (product, product_group)
+				VALUES ('" . $id . "', '" . (int)$group_id . "')");
+
+		}
+
+	}
+
+	if ($attributes !== null) {
+
+		api_exec("DELETE FROM products_attributes_xref WHERE product_id = '" . $id . "'");
+
+		$sort_order = 0;
+
+		foreach ($attributes as $attribute) {
+
+			$sort_order++;
+
+			api_exec("INSERT INTO products_attributes_xref (product_id, attribute_id, option_id, sort_order)
+				VALUES ('" . $id . "', '" . (int)$attribute['attribute_id'] . "', '" . (int)$attribute['option_id'] . "', '" . $sort_order . "')");
+
+		}
+
+	}
+
+	if ($barcode !== null) {
+
+		pg_assign_product_barcode($id, $barcode);
+
+	}
 
 	// Site search keeps its own index of the promoted keywords. The panel syncs
 	// it on every save and the values are read back rather than taken from the
@@ -856,6 +1083,8 @@ function api_products_update($params) {
 
 	}
 
+	api_products_rescore($id);
+
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array($existing['name'], $app['name'], $app['api_key'])
@@ -872,6 +1101,135 @@ function api_products_update($params) {
 	}
 
 	api_ok(api_product_present($row, api_product_extras(array($id)), true));
+
+}
+
+// Whether the catalogue has its Recycle Bin columns. They arrive with the
+// 2026.4.9 upgrade; before it a deleted product is simply gone and nothing here
+// pretends otherwise. Asked once per request.
+function api_catalog_bin_columns() {
+
+	static $ready = null;
+
+	if ($ready === null) {
+
+		$ready = (api_row("SHOW COLUMNS FROM products LIKE 'recycled'") !== null)
+			&& (api_row("SHOW COLUMNS FROM product_groups LIKE 'recycled'") !== null);
+
+	}
+
+	return $ready;
+
+}
+
+// The catalogue's Recycle Bin, as the file manager decides it: the columns, and
+// the bin table that holds the restore records.
+function api_catalog_bin_ready() {
+
+	$directory = defined('PG_FUNCTIONS_DIR') ? PG_FUNCTIONS_DIR : dirname(dirname(dirname(__FILE__)));
+
+	require_once($directory . '/view_folder_and_files_f.php');
+
+	return (pg_catalog_recycle_ready() == true);
+
+}
+
+// Taking a product off the shop.
+//
+// The Recycle Bin is the default, the same move the catalogue's own Delete
+// makes: the product is switched off and flagged, what it was is kept so that
+// restoring puts it back as it was, and an operator can undo an application's
+// mistake. permanent=true deletes it outright with the whole cleanup the
+// product screen performs - images, group links, attributes, barcodes, form
+// fields, keywords and the stored findings - which cannot be undone.
+//
+// Either way the product.deleted event goes out, carrying recycled so a
+// receiver can tell the two apart: a binned product is no longer listed, and an
+// integration that only learned of it through the listing would never hear
+// that it went.
+function api_products_delete($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$permanent = !empty($params['permanent']);
+
+	$product = api_row("SELECT id, name, " . (api_catalog_bin_columns() ? "recycled" : "0 AS recycled") . "
+		FROM products WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($product === null) {
+
+		api_fail_not_found(lang('Product'));
+
+	}
+
+	if (!$permanent) {
+
+		if (!api_catalog_bin_ready()) {
+
+			api_fail(409, 'recycle_bin_unavailable', lang('This site has no catalogue Recycle Bin. Send permanent=true to delete the product outright.'));
+
+		}
+
+		if ((int)$product['recycled'] === 1) {
+
+			api_fail(409, 'already_recycled', lang('This product is already in the Recycle Bin.'));
+
+		}
+
+		api_dry_run_stop('recycled', 'product', array('id' => $id, 'name' => $product['name']));
+
+		// The statements every panel screen writes when it bins a product.
+		// "AND recycled = '0'" in them keeps a second request that raced this
+		// one from writing recycled_enabled from an enabled that is already
+		// forced to 0, which would bring the product back out of the bin
+		// unpublished.
+		foreach (pg_catalog_bin_statements('product', $id, array($id), 0, (int)$app['owner']['id']) as $statement) {
+
+			api_exec($statement);
+
+		}
+
+		log_activity(lang(array(
+			'string' => 'Product ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).',
+			'vars'   => array($product['name'], $app['name'], $app['api_key'])
+		)), $app['owner']['username']);
+
+		api_webhook_enqueue('product.deleted', array('id' => $id, 'name' => $product['name'], 'recycled' => true));
+
+		if (function_exists('pg_marketplace_product_changed')) {
+
+			pg_marketplace_product_changed($id);
+
+		}
+
+		api_ok(array('id' => $id, 'deleted' => false, 'recycled' => true));
+
+	}
+
+	api_dry_run_stop('deleted', 'product', array('id' => $id, 'name' => $product['name']));
+
+	if (!function_exists('pg_pb_delete_product')) {
+
+		$directory = defined('PG_FUNCTIONS_DIR') ? PG_FUNCTIONS_DIR : dirname(dirname(dirname(__FILE__)));
+
+		require_once($directory . '/product_builder.php');
+
+	}
+
+	// The product screen's own deletion. It queues product.deleted itself,
+	// because every path that removes a product ends on that function.
+	pg_pb_delete_product($id);
+
+	api_exec("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . $id . "')");
+
+	log_activity(lang(array(
+		'string' => 'Product ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($product['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(array('id' => $id, 'deleted' => true, 'recycled' => false));
 
 }
 
@@ -1057,12 +1415,15 @@ function api_product_schema() {
 	return array(
 		'id'                => 'integer',
 		'sku'               => 'string',
+		// A DEFAULT NULL column that every create path writes, so not nullable
+		// (api_openapi_type_spec() says when a field is).
 		'name'              => 'string',
 		'barcode'           => 'string?',
 		'enabled'           => 'boolean',
 		'price'             => 'integer',
 		'title'             => 'string',
-		'short_description' => 'string',
+		// A nullable column: an import whose sheet has no such column leaves it unset.
+		'short_description' => 'string?',
 		'brand'             => 'string',
 		'gtin'              => 'string',
 		'mpn'               => 'string',
@@ -1085,6 +1446,7 @@ function api_product_schema() {
 			'quantity'     => 'integer',
 			'out_of_stock' => 'boolean'
 		),
+		'recycled'        => 'boolean',
 		'updated_at'      => 'string?',
 		'updated_at_unix' => 'integer',
 		'seo'             => 'Seo'

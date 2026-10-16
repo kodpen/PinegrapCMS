@@ -189,7 +189,9 @@ $range_options = array(
     '30' => lang('Last 30 days'),
 );
 
-$range = (isset($_GET['range']) && isset($range_options[$_GET['range']])) ? $_GET['range'] : '7';
+// Each filter is one value; one sent as an array (?range[]=x) counts as not
+// given: it ended in an error page.
+$range = (isset($_GET['range']) && is_string($_GET['range']) && isset($range_options[$_GET['range']])) ? $_GET['range'] : '7';
 $start_timestamp = time() - ((int) $range * 86400);
 
 $category_options = array(
@@ -204,12 +206,13 @@ $category_options = array(
     'rate'     => lang('Rate Limit'),
     'login'    => lang('Sign-in Lockouts'),
     'iplist'   => lang('IP List'),
+    'country'  => lang('Country Restriction'),
     'ban'      => lang('Bans'),
 );
 
-$category = (isset($_GET['category']) && isset($category_options[$_GET['category']])) ? $_GET['category'] : '';
+$category = (isset($_GET['category']) && is_string($_GET['category']) && isset($category_options[$_GET['category']])) ? $_GET['category'] : '';
 
-$search = isset($_GET['search']) ? trim((string) $_GET['search']) : '';
+$search = (isset($_GET['search']) && is_string($_GET['search'])) ? trim($_GET['search']) : '';
 
 if (strlen($search) > 200) {
     $search = substr($search, 0, 200);

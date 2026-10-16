@@ -46,6 +46,11 @@ $draft_from = '';
 if ($_POST) {
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array id as 1 and saved over that template,
+    // (string) wrote "Array" into the text fields.
+    pg_request_single_values(array('id', 'name', 'description', 'icon', 'color', 'kind', 'department_id', 'summary', 'pinned', 'welcome', 'body'));
+
     $data = array(
         'id'            => (int) ($_POST['id'] ?? 0),
         'name'          => (string) ($_POST['name'] ?? ''),
@@ -78,14 +83,14 @@ if ($_POST) {
         'body' => '',
     )));
     $body_json = $data['body'];
-} elseif ((int) ($_GET['id'] ?? 0) > 0) {
+} elseif (is_string($_GET['id'] ?? null) && ((int) $_GET['id'] > 0)) {
     $template = ws_template((int) $_GET['id']);
 
     if (!$template) {
         output_error(lang('That template could not be found.') . ' <a href="' . h($settings_url) . '">' . lang('Back') . '</a>');
     }
-} elseif ((string) ($_GET['copy'] ?? '') !== '') {
-    $source = ws_template((string) $_GET['copy']);
+} elseif (is_string($_GET['copy'] ?? null) && ($_GET['copy'] !== '')) {
+    $source = ws_template($_GET['copy']);
 
     if (!$source) {
         output_error(lang('That template could not be found.') . ' <a href="' . h($settings_url) . '">' . lang('Back') . '</a>');
@@ -98,7 +103,7 @@ if ($_POST) {
         'uses'     => 0,
         'archived' => false,
     ));
-} elseif ((int) ($_GET['channel'] ?? 0) > 0) {
+} elseif (is_string($_GET['channel'] ?? null) && ((int) $_GET['channel'] > 0)) {
     $channel = ws_channel((int) $_GET['channel']);
 
     if (!$channel || !ws_can_read_channel($viewer, $channel)) {
@@ -179,6 +184,9 @@ echo
 pg_page_shell([
         'title' => $is_new ? lang('New channel template') : lang('Channel template'),
         'extra classes' => 'workspace workspace_template',
+        // No code field here: CodeMirror is loaded only if the settings
+        // dialog opens a pane that has one.
+        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => $is_new ? lang('New channel template') : lang('Channel template'),
         'heading_description' => lang('The tasks, notes and texts a channel is set up with.'),

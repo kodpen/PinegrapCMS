@@ -50,9 +50,23 @@ $output_email_address_column_header = '';
 $output_user_start_page_column_heading = '';
 $output_user_contact_column_header = '';
 $output_last_modified_column_header = '';
+$output_user_role_column_heading = '';
+$output_private_folder_access_column_heading = '';
+$output_member_user_column_heading = '';
+$output_manage_content_column_heading = '';
+$output_manage_calendars_column_heading = '';
+$output_manage_forms_column_header = '';
+$output_view_visitors_column_header = '';
+$output_manage_contacts_column_header = '';
+$output_manage_email_column_header = '';
+$output_manage_ecommerce_column_header = '';
+$output_manage_users_column_header = '';
+$output_edit_design_column_header = '';
 
 // If there is a filter set.
-if (isset($_GET['filter']) == true) {
+// (one sent as an array, ?filter[]=x, counts as not given: it ended in an
+// error page)
+if (isset($_GET['filter']) && is_string($_GET['filter'])) {
     // Send the filter to the search form.
     $filter = $_GET['filter'];
 } else {
@@ -89,43 +103,58 @@ if ($user['role'] < 2) {
     $filters_in_array['all_site_managers'] = lang('All Site Managers');
 }
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['view_users']['sort'] = $_REQUEST['sort'];
+// The columns this view sorts by, in the order the table shows them. The
+// default view shows the role and privilege columns, every other view the
+// e-mail, start page and last modified ones; pg_list_state() falls back to
+// the default for any column the view does not show. The default view has no
+// Last Modified column, but its rows are listed by it until another sort is
+// picked, so it stays in that view's list (last, as it has no heading) for
+// the sort menu to name it.
+$sort_columns = array('username' => lang('Username'));
 
-    // clear order
-    $_SESSION['software']['view_users']['order'] = '';
+if ($filter == 'default') {
+    $sort_columns['role'] = lang('Role');
+    $sort_columns['member_user'] = lang('Member User');
+    $sort_columns['site_manager'] = lang('Site Manager');
+    $sort_columns['site_designer'] = lang('Site Designer');
+    $sort_columns['last_online'] = lang('Last Online');
+    $sort_columns['last_modified'] = lang('Last Modified');
+} else {
+    $sort_columns['email'] = lang('E-mail Address');
+    $sort_columns['start_page'] = lang('Start Page');
+    $sort_columns['last_modified'] = lang('Last Modified');
+    $sort_columns['last_online'] = lang('Last Online');
 }
 
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    $_SESSION['software']['view_users']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+$list_state = pg_list_state('view_users', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these. Site Manager and
+// Site Designer follow the role, the way their check marks do.
+$sort_sql = array(
+    'username'      => 'user.user_username',
+    'email'         => 'user.user_email',
+    'role'          => 'user.user_role',
+    'member_user'   => 'contacts.member_id',
+    'site_manager'  => 'user.user_role',
+    'site_designer' => 'user.user_role',
+    'start_page'    => 'user.user_home',
+    'last_modified' => 'user.user_timestamp',
+    'last_online'   => 'user.user_online_timestamp',
+);
+
+$order_by = pg_list_order_by($sort_levels, $sort_sql);
 
 // If the filter is not default or all my users view.
 if ($filter == 'default') {
-    
-    // If sort value is one of the following set sort value to default.
-    // if the sort is not set yet, then default it to empty so that the switch below falls
-    // through to its default case
-    if (isset($_SESSION['software']['view_users']['sort']) == false) {
-        $_SESSION['software']['view_users']['sort'] = '';
-    }
 
-    switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
-        case 'E-mail Address':
-        case 'Start Page':
-        case 'Last Modified':
-            $_SESSION['software']['view_users']['sort'] = 'Last Modified';
-            $_SESSION['software']['view_users']['order'] = 'desc';
-            break;
-    }
-    
     // Output column headers.
-    $output_user_role_column_heading = '<th>' . get_column_heading(lang('Role'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_user_role_column_heading = '<th>' . get_column_heading(lang('Role'), $sort_levels, '', $output_filter_for_links, 'role') . '</th>';
     $output_private_folder_access_column_heading = '<th style="text-align: center">' . lang('Private User') . '</th>';
-    $output_member_user_column_heading = '<th style="text-align: center">' . get_column_heading(lang('Member User'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_member_user_column_heading = '<th style="text-align: center">' . get_column_heading(lang('Member User'), $sort_levels, '', $output_filter_for_links, 'member_user') . '</th>';
     $output_manage_content_column_heading = '<th style="text-align: center">' . lang('Content Manager') . '</th>';
     $output_manage_calendars_column_heading = '<th style="text-align: center">' . lang('Calendar Manager') . '</th>';
    
@@ -143,37 +172,20 @@ if ($filter == 'default') {
         $output_manage_ecommerce_column_header = '<th style="text-align: center">' . lang('Commerce Manager') . '</th>';
     }
     
-    $output_manage_users_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Manager'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
-    $output_edit_design_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Designer'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
-    
+    $output_manage_users_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Manager'), $sort_levels, '', $output_filter_for_links, 'site_manager') . '</th>';
+    $output_edit_design_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Designer'), $sort_levels, '', $output_filter_for_links, 'site_designer') . '</th>';
+
 // Else if the user is not on the all users view.
 } else {
-    
-    // If sort value is one of the following set sort value to default.
-    // if the sort is not set yet, then default it to empty so that the switch below falls
-    // through to its default case
-    if (isset($_SESSION['software']['view_users']['sort']) == false) {
-        $_SESSION['software']['view_users']['sort'] = '';
-    }
 
-    switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
-        case lang('Role'):
-        case lang('Member User'):
-        case lang('Site Manager'):
-        case lang('Site Designer'):
-            $_SESSION['software']['view_users']['sort'] = lang('Last Modified');
-            $_SESSION['software']['view_users']['order'] = 'desc';
-            break;
-    }
-    
     // Select table column
     $sql_select_column .= ',
         user.user_home';
-    
+
     // Output column headers
-    $output_email_address_column_header = '<th>' . get_column_heading(lang('E-mail Address'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
-    $output_user_start_page_column_heading = '<th>' . get_column_heading(lang('Start Page'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
-    $output_last_modified_column_header = '<th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_email_address_column_header = '<th>' . get_column_heading(lang('E-mail Address'), $sort_levels, '', $output_filter_for_links, 'email') . '</th>';
+    $output_user_start_page_column_heading = '<th>' . get_column_heading(lang('Start Page'), $sort_levels, '', $output_filter_for_links, 'start_page') . '</th>';
+    $output_last_modified_column_header = '<th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>';
 }
 
 // If the user is not viewing the my manager, administrators, designers or content managers
@@ -244,56 +256,6 @@ switch ($filter) {
         $output_manage_contacts_column_header = '<th>' . lang('Contact Groups') . '</th>';
         $output_manage_email_column_header = '<th class="text-center">' . lang('Send Campaigns Only') . '</th>';
         break;
-}
-
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['view_users']['sort']) == false) {
-    $_SESSION['software']['view_users']['sort'] = '';
-}
-
-switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
-    case lang('Username'):
-        $sort_column = 'user.user_username';
-        break;
-
-    case lang('E-mail Address'):
-        $sort_column = 'user.user_email';
-        break;
-
-    case lang('Role'):
-        $sort_column = 'user.user_role';
-        break;
-        
-    case lang('Member User'):
-        $sort_column = 'user_member_id';
-        break;
-        
-    case lang('Start Page'):
-        $sort_column = 'user.user_home';
-        break;
-        
-    case lang('Site Manager'):
-    case lang('Site Designer'):
-        $sort_column = 'user.user_role';
-        break;
-    case lang('Last Online'):
-        $sort_column = 'user.user_online_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'user.user_timestamp';
-        break;
-
-    default:
-        $sort_column = 'user.user_timestamp';
-        $_SESSION['software']['view_users']['sort'] = lang('Last Modified');
-        $_SESSION['software']['view_users']['order'] = 'desc';
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['view_users']['order']) == false) {
-    $_SESSION['software']['view_users']['order'] = 'asc';
 }
 
 // assume that the id does not need to be distinct, until we find out otherwise
@@ -659,7 +621,7 @@ $query =
         user.user_username as username,
         user.user_email as email,
         user.user_role as role,
-        user.user_google_id as user_google_id,
+        user.user_password_algo as password_algo,
         user.user_manage_contacts as manage_contacts,
         user.user_manage_visitors as manage_visitors,
         user.user_manage_ecommerce as manage_ecommerce,
@@ -676,14 +638,21 @@ $query =
     LEFT JOIN user as user_2 ON user.user_user = user_2.user_id
     $sql_join_contacts_table
     $where
-    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['view_users']['order'] ?? '') . " ";
+    ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$user_rows = array();
 while ($row = mysqli_fetch_assoc($result)) {
+    $user_rows[] = $row;
+}
+
+// The sign-in providers of the accounts on this screen, in one query.
+$user_identity_providers = pg_signin_identities_of(array_column($user_rows, 'id'));
+
+foreach ($user_rows as $row) {
     $id = $row['id'];
     $username = $row['username'];
     $email = $row['email'];
     $role = $row['role'];
-    $user_google_id_value = $row['user_google_id'];
     $manage_contacts = $row['manage_contacts'];
     $manage_visitors = $row['manage_visitors'];
     $manage_ecommerce = $row['manage_ecommerce'];
@@ -1220,14 +1189,12 @@ while ($row = mysqli_fetch_assoc($result)) {
                 'vars'   => $sign_in_lock_minutes))) . '">' . lang('Locked') . '</span>';
     }
 
-    // Google badge beside the name, next to the sign-in lock, so the admin
-    // can see at a glance which accounts can sign in with Google.
-    $output_google_badge = '';
-    if (!empty($user_google_id_value)) {
-        $output_google_badge =
-            ' <span class="badge bg-light text-dark border fw-light" title="'
-            . h(lang('This account can sign in with Google.')) . '">' . lang('Google') . '</span>';
-    }
+    // Google, Microsoft and Apple badges beside the name, next to the
+    // sign-in lock, so the admin can see at a glance which accounts can sign
+    // in with which provider, and which have no other way in.
+    $output_identity_badges = isset($user_identity_providers[(int) $id])
+        ? ' ' . pg_signin_identity_badges($user_identity_providers[(int) $id], $row['password_algo'])
+        : '';
 
     if($last_seen >= 1){
         $output_last_seen = '<td class="align-middle">' . get_relative_time(array('timestamp' => $last_seen)) . ' </td>';
@@ -1239,10 +1206,10 @@ while ($row = mysqli_fetch_assoc($result)) {
         '<tr class="' . $output_selectable_class . '">
             <td class="select-all align-middle text-start">' . $output_checkbox . '</td>
 			<td class="align-middle text-start action-buttons">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
-            <td class="align-middle">' . h($username) . $output_sign_in_lock . $output_google_badge . '</td>
+            <td class="align-middle">' . h($username) . $output_sign_in_lock . $output_identity_badges . '</td>
             ' . $output_email_address_column . '
             ' . $output_user_role_column . '
             ' . $output_user_start_page_column . '
@@ -1282,13 +1249,14 @@ echo
                 ' . $liveform->output_notices() . '
                
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="import_users.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                 </div>
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_users.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) . '
                             <form id="search_form" action="view_users.php" method="get" class="search_form">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm">
@@ -1311,7 +1279,7 @@ echo
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                        <th>' . get_column_heading(lang('Username'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Username'), $sort_levels, '', $output_filter_for_links, 'username') . '</th>
                                         ' . $output_email_address_column_header . '
                                         ' . $output_user_role_column_heading . '
                                         ' . $output_user_start_page_column_heading . '
@@ -1328,7 +1296,7 @@ echo
                                         ' . $output_edit_design_column_header . '
                                         ' . $output_user_contact_column_header . '
                                         ' . $output_last_modified_column_header . '
-                                        <th>' . get_column_heading(lang('Last Online'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Last Online'), $sort_levels, '', $output_filter_for_links, 'last_online') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_rows . '</tbody>
@@ -1336,7 +1304,7 @@ echo
                             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('users')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('users')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

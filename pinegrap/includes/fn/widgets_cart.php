@@ -502,7 +502,12 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
 
     // Make sure offers/prices/inventory checks have run for this cart so the
     // discount / shipping / tax computed below reflect the latest state.
-    if (function_exists('initialize_order'))         initialize_order();
+    // initialize_order() only runs for an order already in the session (it
+    // binds it to a visitor who signed in since): viewing the cart must not
+    // create one. Like the legacy cart, the first real write does
+    // (cart_action.php, add_to_cart.php); every signed-out open, bots
+    // included, used to leave an empty incomplete order behind.
+    if (function_exists('initialize_order') && !empty($_SESSION['ecommerce']['order_id'])) initialize_order();
     if (function_exists('check_inventory') && $_pg_cart_form_lf) {
         check_inventory($_pg_cart_form_lf);
     }
@@ -1986,12 +1991,16 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
 
     // ── Resolve our page id ──────────────────────────────────────────────────
     // Used as the form's hidden `page_id` so express_order.php can look up
-    // the express_order_pages config row (it gracefully degrades when the row
-    // is absent — labels become empty, no custom forms render).
+    // the express_order_pages config row. express_order.php turns away an id
+    // that names no express order page, so a page reached without its name
+    // (the home page at the site root) takes the id of the page being rendered.
     $_eo_page_id = 0;
     if (isset($_GET['page'])) {
         $_eo_page_id = (int)db_value("SELECT page_id FROM page WHERE page_name = '"
             . e((string)$_GET['page']) . "' LIMIT 1");
+    }
+    if ($_eo_page_id <= 0) {
+        $_eo_page_id = (int)pg_rendered_page();
     }
     if ($_eo_page_id > 0) {
         $_SESSION['ecommerce']['express_order_page_id'] = $_eo_page_id;
@@ -2092,7 +2101,10 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         _eo_restore_cart_from_reference_code();
     }
 
-    if (function_exists('initialize_order'))         initialize_order();
+    // Only an order already in the session is brought up to date; viewing
+    // the page creates none (see the shopping cart widget above). Without
+    // an order the cart is empty and the widget shows its empty message.
+    if (function_exists('initialize_order') && !empty($_SESSION['ecommerce']['order_id'])) initialize_order();
     if (function_exists('check_inventory') && $_eo_lf) check_inventory($_eo_lf);
     if (function_exists('update_order_item_prices')) update_order_item_prices();
     // Capture the offer-processing result so the upsell/applied bindings

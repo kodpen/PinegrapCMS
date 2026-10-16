@@ -25,6 +25,15 @@ if ((isset($_GET['id']) == false) || ($_GET['id'] == '')) {
     output_error(lang('Sorry, the page could not be found.'), 404);
 }
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM menus WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // get menu name
 $query = "SELECT name FROM menus WHERE id = '" . escape($_GET['id']) . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -206,7 +215,7 @@ foreach ($menu_items as $menu_item) {
     $output_rows .= 
         '<tr class="pointer" onclick="">
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="align-middle chart_label" style="padding-left: ' . $indentation_padding . 'px">' . h($menu_item['name']) . '</td>
             <td class="align-middle">' . h($link_to_value) . '</td>
@@ -228,10 +237,10 @@ $reorder_button = '';
 
 // If this user is an admin or designer, then show edit and duplicate buttons
 if ($user['role'] < 2) {
-    $edit_button = '<a class="btn btn-sm btn-primary m-1 " href="edit_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Menu Properties') ) . '</a>';
+    $edit_button = '<a class="btn btn-sm btn-primary m-1 " href="edit_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Menu Properties') ) . '</a>';
     $duplicate_button =
     '<div class=" btn-group btn-group-sm flex-wrap">
-        <a class="btn btn-link link-secondary py-0 m-1" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" data-loading-content="' . lang('Duplicating') . '" ><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+        <a class="btn btn-link link-secondary py-0 m-1" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" ><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
     </div>';
 }
 
@@ -253,7 +262,7 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
                     <h2 class="d-inline-block " data-bs-content="' . lang('Update, add, or remove menu items.') . '" title="' . lang('Edit Menu') . '">[' . h($menu_name) . ']</h2>
                     ' . $output_subheading . '
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_menu_item.php?menu_id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_menu_item.php?menu_id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . $edit_button . '
                         ' . $duplicate_button . '
                         ' . $reorder_button . '
@@ -347,8 +356,7 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
 
                 $(\'#save_sort_order\').on(\'click\', function() {
                     var btn = $(this);
-                    var originalHtml = btn.html();
-                    btn.prop(\'disabled\', true).html(\'<span class="spinner-border spinner-border-sm me-2"></span>' . lang('Saving') . '\');
+                    btn.prop(\'disabled\', true);
 
                     var groups = [];
                     $(\'#sortable_tree .sort-group\').each(function() {
@@ -372,12 +380,12 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
                                 window.location.reload();
                             } else {
                                 alert(response.message || \'' . lang('An error occurred.') . '\');
-                                btn.prop(\'disabled\', false).html(originalHtml);
+                                btn.prop(\'disabled\', false);
                             }
                         },
                         error: function() {
                             alert(\'' . lang('An error occurred.') . '\');
-                            btn.prop(\'disabled\', false).html(originalHtml);
+                            btn.prop(\'disabled\', false);
                         }
                     });
                 });

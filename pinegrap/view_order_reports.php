@@ -25,16 +25,6 @@ validate_ecommerce_report_access();
 include_once('liveform.class.php');
 $liveform = new liveform('view_order_reports');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_order_reports'][$key] = trim($value);
-    }
-}
-
 $keys_and_values = '';
 
 // If a screen was passed and it is a positive integer, then use it.
@@ -53,36 +43,27 @@ if (
     $screen = 1;
 }
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_order_reports']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_order_reports']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'created'       => lang('Created'),
+    'last_modified' => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['ecommerce']['view_order_reports']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'order_reports.name';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Created'):
-        $sort_column = 'order_reports.created_timestamp';
-        break;
+$list_state = pg_list_state('view_order_reports', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Last Modified'):
-        $sort_column = 'order_reports.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'order_reports.last_modified_timestamp';
-        $_SESSION['software']['ecommerce']['view_order_reports']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_order_reports']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_order_reports']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_order_reports']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'order_reports.name',
+    'created'       => 'order_reports.created_timestamp',
+    'last_modified' => 'order_reports.last_modified_timestamp',
+));
 
 $all_order_reports = 0;
 
@@ -108,7 +89,7 @@ $query =
     FROM order_reports
     LEFT JOIN user AS created_user ON order_reports.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON order_reports.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_order_reports']['order'] ?? ''));
+    ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -142,8 +123,8 @@ if ($order_reports) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>-->
                 </td>
                 <td class="chart_label align-middle">' . h($order_report['name']) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $order_report['created_timestamp'])) . ' ' . $created_username . '</td>
@@ -174,7 +155,9 @@ echo
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="view_order_report.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="view_order_report.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_order_reports.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -184,9 +167,9 @@ echo
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_order_reports']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_order_reports']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_order_reports']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_order_reports']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_order_reports']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_order_reports']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

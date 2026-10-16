@@ -47,8 +47,9 @@ function get_catalog_detail($properties) {
         $item = get_catalog_item_from_url();
     }
 
-    // If an item was not found, then output error.
-    if (!$item['id']) {
+    // If an item was not found, then output error. Without an address name in the
+    // page name (the catalog detail page opened on its own) no lookup was made.
+    if (empty($item['id'])) {
         return error(lang('Sorry, the item could not be found.'), 404);
     }
 
@@ -311,6 +312,10 @@ function get_catalog_detail($properties) {
             $product['discounted_price'] = $discounted_product_prices[$product['id']];
         } else {
             $product['discounted'] = false;
+
+            // Read for every product when its price is written out; null keeps the
+            // dollar conversion below treating it as "no discounted price".
+            $product['discounted_price'] = null;
         }
 
         // if this product is available then continue to take note of what type of product it is
@@ -897,8 +902,9 @@ function get_catalog_detail($properties) {
             
             $output_back_button = '';
             
-            // if there is a previous url set, then add back button
-            if ((isset($_GET['previous_url_id']) == true) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
+            // if there is a previous url set, then add back button.
+            // An id sent as an array (?previous_url_id[]=x) is ignored: it is not a valid array key.
+            if ((isset($_GET['previous_url_id']) == true) && is_string($_GET['previous_url_id']) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
                 $output_spacing = '';
                 
                 // if there is an add button, then output spacing
@@ -955,8 +961,9 @@ function get_catalog_detail($properties) {
         
         $output_back_button = '';
         
-        // if there is no form and there is a previous url set, then the back button will not be outputted in the form, so prepare to output back button
-        if (($output_form == '') && (isset($_GET['previous_url_id']) == true) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
+        // if there is no form and there is a previous url set, then the back button will not be outputted in the form, so prepare to output back button.
+        // An id sent as an array (?previous_url_id[]=x) is ignored: it is not a valid array key.
+        if (($output_form == '') && (isset($_GET['previous_url_id']) == true) && is_string($_GET['previous_url_id']) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
             // if back button label is blank, then set to "Back"
             if ($back_button_label == '') {
                 $back_button_label = lang('Back');
@@ -1381,8 +1388,9 @@ function get_catalog_detail($properties) {
 
         $back_button_url = '';
 
-        // if there is a previous url set, then add back button
-        if ((isset($_GET['previous_url_id']) == true) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
+        // if there is a previous url set, then add back button.
+        // An id sent as an array (?previous_url_id[]=x) is ignored: it is not a valid array key.
+        if ((isset($_GET['previous_url_id']) == true) && is_string($_GET['previous_url_id']) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
             $back_button_url = $_SESSION['software']['urls'][$_GET['previous_url_id']];
 
             // If a back button label was not entered for the page, then set default label.

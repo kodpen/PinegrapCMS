@@ -23,7 +23,7 @@ $package = null;
 
 if (defined('ERP_ENABLED') && ERP_ENABLED) {
     require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
-    $package = erp_accountant_package_by_token((string) ($_GET['t'] ?? ''));
+    $package = erp_accountant_package_by_token(is_string($_GET['t'] ?? null) ? $_GET['t'] : '');
 }
 
 if (is_array($package) && erp_accountant_stream($package)) {

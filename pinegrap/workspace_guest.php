@@ -100,6 +100,6 @@ echo '<!DOCTYPE html>
     </footer>
 </div>
 <script type="application/json" id="pg-guest-config">' . str_replace('</', '<\/', json_encode($config, JSON_UNESCAPED_UNICODE)) . '</script>
-<script src="' . $software . '/assets/js/workspace_guest.js?v=' . $version('/assets/js/workspace_guest.js') . '"></script>
+' . pg_js_bundle_tags('assets/js/workspace_guest.min.js', false) . '
 </body>
 </html>';

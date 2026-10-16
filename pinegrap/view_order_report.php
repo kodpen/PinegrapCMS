@@ -31,6 +31,16 @@ $liveform = new liveform('view_order_report');
 // blank and the heading falls back to "[new order report]".
 $output_order_report_name = '';
 
+// An id sent as an array (?id[]=x) counts as not given: the screen opens a
+// new report instead of an error page.
+if (isset($_GET['id']) && !is_scalar($_GET['id'])) {
+    unset($_GET['id']);
+}
+
+if (isset($_POST['id']) && !is_scalar($_POST['id'])) {
+    unset($_POST['id']);
+}
+
 // if an id was passed in the query string, then set id
 if (isset($_GET['id']) == true) {
     $id = $_GET['id'];
@@ -38,6 +48,13 @@ if (isset($_GET['id']) == true) {
 // else if an id was passed in post, then set id
 } elseif (isset($_POST['id']) == true) {
     $id = $_POST['id'];
+}
+
+// Stop early when the screen is opened for a report that does not exist (stale
+// link, hand-typed URL, report deleted meanwhile): a "not found" screen instead
+// of PHP notices from the unchecked row below.
+if (isset($id) && (((int) $id < 1) || ((int) db_value("SELECT COUNT(*) FROM order_reports WHERE id = '" . (int) $id . "'") < 1))) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 // prepare query string with id if necessary
@@ -449,9 +466,12 @@ if (!$_POST) {
     
     // if user is editing an existing order report, then prepare to output delete button
     if (isset($_GET['id']) == true) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order report')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order report')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
+    // The date changer is left out when the report filters on the order date.
+    $output_date_changer = '';
+
     // if there are no order date filters, then prepare to output date changer
     if ($order_date_filter_exists == false) {
         // if the date has not been set in the session yet (or an older session
@@ -472,10 +492,12 @@ if (!$_POST) {
             // string can carry anything. The year math and mktime() calls below
             // reject strings on PHP 8, and a value that reached the session would
             // break the report on every later request, so only a real calendar
-            // range is stored; anything else keeps the previous range.
+            // range is stored; anything else keeps the previous range. A part
+            // sent as an array (?start_year[]=x) counts as not given: (int) made
+            // it 1, a valid year, so the range jumped to the year 0001 and stayed.
             $requested_range = array();
             foreach (array('start_month', 'start_day', 'start_year', 'stop_month', 'stop_day', 'stop_year') as $date_part) {
-                $requested_range[$date_part] = (int) ($_GET[$date_part] ?? 0);
+                $requested_range[$date_part] = is_scalar($_GET[$date_part] ?? null) ? (int) $_GET[$date_part] : 0;
             }
             if (checkdate($requested_range['start_month'], $requested_range['start_day'], $requested_range['start_year'])
                 && checkdate($requested_range['stop_month'], $requested_range['stop_day'], $requested_range['stop_year'])) {
@@ -777,6 +799,11 @@ if (!$_POST) {
         $join_ship_tos = " LEFT JOIN ship_tos ON orders.id = ship_tos.order_id";
     }
     
+    // A level that is not summarized adds no column to the query.
+    $sql_summarize_by_1 = '';
+    $sql_summarize_by_2 = '';
+    $sql_summarize_by_3 = '';
+
     if ($liveform->get_field_value('summarize_by_1') != '') {
         $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1')) . ',';
         $number_of_summarize_bys = 1;
@@ -1357,7 +1384,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save & Run') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save & Run') ) . '</span></button>
                                 ' . $output_cancel_button . $output_delete_button . '
                             </div>
                         </div>
@@ -1679,6 +1706,12 @@ if (!$_POST) {
 // else the form has been submitted, so process form
 } else {
     validate_token_field();
+
+    // Every field of this form is one value. A field sent as an array
+    // (name[]=x, filter_1_field[]=x, last_filter_number[]=x) counts as not
+    // given: it reached escape() and ended in an error page, and an array
+    // filter count kept the filter loop running until the time limit.
+    pg_request_single_values(array_keys($_GET + $_POST));
 
     $liveform->add_fields_to_session();
     

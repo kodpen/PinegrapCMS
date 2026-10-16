@@ -100,8 +100,9 @@ function _eo_apply_section_bindings(&$tree, $sections_html)
 //     any, are discarded; UI should warn but legacy never did)
 function _eo_restore_cart_from_reference_code()
 {
-    if (empty($_GET['r'])) return;
-    $ref = trim((string)$_GET['r']);
+    // A list (?r[]=x) is not a reference code.
+    if (empty($_GET['r']) || !is_string($_GET['r'])) return;
+    $ref = trim($_GET['r']);
     // Legacy reference codes are 10-char alphanumeric (see generate_order_reference_code).
     // Cap at 50 defensively in case of format drift.
     if ($ref === '' || strlen($ref) > 50 || !preg_match('/^[A-Za-z0-9]+$/', $ref)) return;
@@ -1941,6 +1942,22 @@ function _eo_render_billing_address($lf, $totals, $cfg)
     return $html;
 }
 
+// The label of a payment method radio: the method's own name, or for "Put it
+// on my account" (pg_erp_open_account_option()) its label and the credit the
+// account has left.
+function _eo_payment_method_label_html($method)
+{
+    if ($method === 'On Account') {
+        $option = pg_erp_open_account_option();
+
+        if ($option !== null) {
+            return h($option['label']) . '<span class="d-block small text-muted">' . h($option['note']) . '</span>';
+        }
+    }
+
+    return h(lang($method));
+}
+
 // ── Helper: render conditional payment methods ───────────────────────────────
 // Mirrors the conditional logic in get_order_preview.php: each method only
 // shows when its enabling settings are on. payment_method radio values are
@@ -1966,6 +1983,7 @@ function _eo_render_payment_methods_only($lf)
     if (defined('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT') && ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == true) $methods[] = 'PayPal Express Checkout';
     if (defined('ECOMMERCE_PAY_WITH_IYZICO') && ECOMMERCE_PAY_WITH_IYZICO == true)               $methods[] = 'Pay With Iyzico';
     if (defined('ECOMMERCE_OFFLINE_PAYMENT') && ECOMMERCE_OFFLINE_PAYMENT == true)               $methods[] = 'Offline Payment';
+    if (pg_erp_open_account_option() !== null)                                                    $methods[] = 'On Account';
     if (empty($methods)) {
         return '<div class="alert alert-warning mb-0">' . h(lang('No payment methods are configured. Please contact the site administrator.')) . '</div>';
     }
@@ -1973,7 +1991,7 @@ function _eo_render_payment_methods_only($lf)
     if (!in_array($sel, $methods, true)) $sel = $methods[0];
     if (count($methods) === 1) {
         return '<input type="hidden" name="payment_method" value="' . h($methods[0]) . '">'
-             . '<div class="text-muted small">' . h(lang($methods[0])) . '</div>';
+             . '<div class="text-muted small">' . _eo_payment_method_label_html($methods[0]) . '</div>';
     }
     $html = '';
     foreach ($methods as $m) {
@@ -1982,7 +2000,7 @@ function _eo_render_payment_methods_only($lf)
               . '<input class="form-check-input" type="radio" name="payment_method"'
               .   ' id="' . h($id) . '" value="' . h($m) . '"'
               .   ($m === $sel ? ' checked' : '') . '>'
-              . '<label class="form-check-label" for="' . h($id) . '">' . h(lang($m)) . '</label>'
+              . '<label class="form-check-label" for="' . h($id) . '">' . _eo_payment_method_label_html($m) . '</label>'
               . '</div>';
     }
     // Idempotent CC-fields toggle JS — three responsibilities:
@@ -2710,6 +2728,11 @@ function _eo_render_payment_methods($lf, $cfg)
     if (defined('ECOMMERCE_OFFLINE_PAYMENT') && ECOMMERCE_OFFLINE_PAYMENT == true) {
         $methods[] = 'Offline Payment';
     }
+    // Put it on my account (ERP, 10.60): only for a member whose account has a
+    // credit limit; submit_order.php weighs the order against it.
+    if (pg_erp_open_account_option() !== null) {
+        $methods[] = 'On Account';
+    }
 
     if (empty($methods)) {
         return '<div class="alert alert-warning mb-0">'
@@ -2733,14 +2756,14 @@ function _eo_render_payment_methods($lf, $cfg)
                   . '<input class="form-check-input" type="radio" name="payment_method"'
                   .   ' id="' . h($id) . '" value="' . h($m) . '"'
                   .   ($m === $sel_method ? ' checked' : '') . '>'
-                  . '<label class="form-check-label" for="' . h($id) . '">' . h(lang($m)) . '</label>'
+                  . '<label class="form-check-label" for="' . h($id) . '">' . _eo_payment_method_label_html($m) . '</label>'
                   . '</div>';
         }
         $html .= '</div>';
     } else {
         // Single-method case — emit a hidden input so the value still POSTs.
         $html .= '<input type="hidden" name="payment_method" value="' . h($methods[0]) . '">';
-        $html .= '<div class="text-muted small mb-3">' . h(lang($methods[0])) . '</div>';
+        $html .= '<div class="text-muted small mb-3">' . _eo_payment_method_label_html($methods[0]) . '</div>';
     }
 
     // Card fields — visible whenever Credit/Debit Card is the active or only
@@ -3061,7 +3084,7 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
 {
     if (!$lf || $order_id <= 0) return;
 
-    // Pull the order row (always exists — initialize_order created it).
+    // Pull the order row (the caller passes only an order in the session).
     $order = db_item(
         "SELECT billing_salutation, billing_first_name, billing_last_name,
                 billing_company, billing_address_1, billing_address_2,

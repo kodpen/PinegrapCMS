@@ -21,7 +21,9 @@ $user = validate_user();
 
 $output = '';
 
-switch ($_GET['region_type']) {
+// Without a region type the answer stays empty, as before, without the PHP
+// notice.
+switch ($_GET['region_type'] ?? '') {
     // if type is pregion
     case 'pregion':
         // get region information

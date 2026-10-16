@@ -31,7 +31,8 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php';
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
-    $account_id = (int) ($_GET['id'] ?? 0);
+    // One number: an array (?id[]=x) cast to 1 and opened the first account.
+    $account_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
     $account = ($account_id > 0) ? erp_account($account_id) : null;
 
     if (!is_array($account)) {
@@ -90,7 +91,7 @@ if (!$_POST) {
     // form therefore needs the id the attribute names. It is only drawn when
     // a provider that can answer is on.
     $output_einvoice_check = (erp_edoc_installed() && erp_edoc_supports('check_taxpayer'))
-        ? '<button type="submit" form="erp_account_form" name="erp_action" value="einvoice_check" class="btn btn-sm btn-outline-secondary m-1" data-loading-content="' . lang(array('string' => 'Asking')) . '"><i class="bi bi-patch-question me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Ask GİB about the tax number') . '</span></button>'
+        ? '<button type="submit" form="erp_account_form" name="erp_action" value="einvoice_check" class="btn btn-sm btn-outline-secondary m-1"><i class="bi bi-patch-question me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Ask GİB about the tax number') . '</span></button>'
         : '';
 
     // The account's card at the e-document provider, when the provider hands
@@ -133,6 +134,10 @@ if (!$_POST) {
                 : lang(array('string' => 'Credit limit {var:1}, {var:2} left', 'vars' => array(erp_money_out($credit_state['limit']), erp_money_out($credit_state['available'])))))
             . '</span>';
     }
+
+    // What the account has run up in late payment fees this year, with the
+    // button that writes it on an invoice draft (includes/erp/late_fee.php).
+    $output_late_fee = function_exists('erp_late_fee_panel') ? erp_late_fee_panel($account) : '';
 
     // ------------------------------------------------------------ statement
     //
@@ -186,6 +191,9 @@ if (!$_POST) {
     // A sales quote is written to a customer, so a pure supplier gets no quote links.
     $show_quotes = function_exists('erp_quotes_ready') && erp_quotes_ready() && ((string) $account['kind'] !== 'supplier');
 
+    // A purchase order goes to a supplier, so a pure customer gets no order links.
+    $show_purchase_orders = function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready() && ((string) $account['kind'] !== 'customer');
+
     echo
     pg_page_shell([
         'title' => lang('Edit Account'),
@@ -213,6 +221,8 @@ if (!$_POST) {
                         ' . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?account_id=' . $account_id . (((string) $account['kind'] === 'supplier') ? '&amp;direction=purchase' : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New Invoice') . '</a>' : '') . '
                         ' . ($show_quotes ? '<a class="btn btn-sm btn-outline-secondary" href="erp_quotes.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('Quotes') . '</a>' : '') . '
                         ' . (($show_quotes && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
+                        ' . ($show_purchase_orders ? '<a class="btn btn-sm btn-outline-secondary" href="erp_purchase_orders.php?account_id=' . $account_id . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . lang('Purchase orders') . '</a>' : '') . '
+                        ' . (($show_purchase_orders && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
                         ' . $output_einvoice_check . '
                         ' . $output_card_sync . '
                         ' . $output_workspace_button . '
@@ -226,6 +236,7 @@ if (!$_POST) {
                     ' . $output_balance_fc . '
                     ' . $output_credit . '
                 </div>
+                ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
             </div>
 
             <form name="form" id="erp_account_form" action="edit_erp_account.php" method="post">
@@ -235,7 +246,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -277,6 +288,11 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
+
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array id as 1 and saved over that account,
+    // (string) wrote "Array" onto the card with a notice.
+    pg_request_single_values(array_merge(erp_account_form_single_fields(), array('id', 'erp_action')));
 
     $liveform->add_fields_to_session();
 

@@ -25,7 +25,7 @@ if (!defined('PG_INIT_LOADED')) {
                 <div class="col-12 col-sm-12 text-center text-md-start">
                     <nav class="navigation" aria-label="breadcrumb">
                         <ol class="breadcrumb justify-content-center justify-content-md-start "> 
-                            <li class="breadcrumb-item"><a class="link-secondary " data-loading-content="<?=lang('Loading')?>" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('All Key Codes')?></a></li>
+                            <li class="breadcrumb-item"><a class="link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('All Key Codes')?></a></li>
                             <li class="breadcrumb-item active" aria-current="page"><?php if ($screen == 'create'): ?><?=lang('Create Key Code')?><?php else: ?><?=lang('Edit Key Code')?><?php endif ?></li>
                         </ol> 
                     </nav>
@@ -197,9 +197,9 @@ if (!defined('PG_INIT_LOADED')) {
 				<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-success " data-loading-content="<?=lang(array('string'=>'Saving') )?>"><span class="material-icons me-2"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="btn-text" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
+                            <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-success "><span class="material-icons me-2"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="btn-text" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
                             <?php if ($screen == 'edit'): ?>
-								<button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="<?=lang(array('string'=>'Deleting') )?>" data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-2">delete</span><span class="btn-text" ><?=lang(array('string'=>'Delete') )?></span></button>
+								<button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-2">delete</span><span class="btn-text" ><?=lang(array('string'=>'Delete') )?></span></button>
 							<?php endif ?>
 						</div>
                     </div>

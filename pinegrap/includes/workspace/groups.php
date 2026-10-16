@@ -118,6 +118,42 @@ function ws_palette_place($value)
 }
 
 /**
+ * The colour codes of the palette, in its order.
+ *
+ * @return string[]
+ */
+function ws_palette_hexes()
+{
+    $out = array();
+
+    foreach (ws_palette() as $color) {
+        $out[] = $color[0];
+    }
+
+    return $out;
+}
+
+/**
+ * The place in the palette of a colour code: 0 for none, or for a code that
+ * is not one of the palette's.
+ *
+ * @param string $hex
+ * @return int
+ */
+function ws_palette_place_of($hex)
+{
+    $hex = strtolower(trim((string) $hex));
+
+    foreach (ws_palette() as $place => $color) {
+        if ($color[0] === $hex) {
+            return (int) $place;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * Has the database the channel colours (2026.4.5, 5.82)?
  *
  * @return bool
@@ -420,7 +456,8 @@ function ws_group_place_refused($group_id, $parent_id)
  *
  * @param array $viewer
  * @param array $data id (0 for a new one), name, color, parent_id
- * @return array ok, error, field, id
+ * @return array ok, error, field, id, synced (ws_group_sync_tree() channels,
+ *               when the group went inside another one)
  */
 function ws_group_save($viewer, $data)
 {
@@ -454,6 +491,8 @@ function ws_group_save($viewer, $data)
     }
 
     $now = time();
+    $synced = array();
+    $previous = $group ? ws_group_event_payload($group) : null;
 
     if ($group) {
         $moved = ((int) $group['parent_id'] !== $parent_id);
@@ -470,7 +509,7 @@ function ws_group_save($viewer, $data)
 
         // Inside another group now: the access given higher up follows.
         if ($moved) {
-            ws_group_sync_tree($viewer, $id);
+            $synced = ws_group_sync_tree($viewer, $id)['channels'];
         }
     } else {
         db("INSERT INTO ws_channel_groups (parent_id, name, color, sort, created_by, created_at, updated_at)
@@ -483,7 +522,13 @@ function ws_group_save($viewer, $data)
 
     log_activity(lang(array('string' => 'workspace channel group ({var:1}) was saved', 'vars' => $name)), (string) ($_SESSION['sessionusername'] ?? ''));
 
-    return array('ok' => true, 'error' => '', 'field' => '', 'id' => $id);
+    if ($group) {
+        ws_group_announce_update($previous, $id, $viewer);
+    } else {
+        ws_group_announce('workspace.channel_group.created', ws_group($id), array('created_by' => (int) $viewer['id']));
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'id' => $id, 'synced' => $synced);
 }
 
 /**
@@ -496,35 +541,72 @@ function ws_group_last_sort($parent_id)
 }
 
 /**
+ * Whether a group can go in front of before_id on the level it ends up on:
+ * before_id has to be another group of that level, or 0 for the end. A list
+ * drawn before someone else moved or removed that group sends one that is
+ * not, and putting the group last instead would leave it where nobody
+ * dropped it.
+ *
+ * @param int        $group_id
+ * @param int        $parent_id
+ * @param int        $before_id
+ * @param array|null $groups ws_groups_all() when null
+ * @return bool
+ */
+function ws_group_before_fits($group_id, $parent_id, $before_id, $groups = null)
+{
+    $before_id = (int) $before_id;
+
+    if ($before_id <= 0) {
+        return true;
+    }
+
+    if ($groups === null) {
+        $groups = ws_groups_all();
+    }
+
+    $before = $groups[$before_id] ?? null;
+
+    return $before && ($before_id !== (int) $group_id) && ((int) $before['parent_id'] === max(0, (int) $parent_id));
+}
+
+/**
  * Moves a group: inside another one (or to the top), before one of the
- * groups there (0: at the end).
+ * groups there (0: at the end). A before_id that is not one of them is
+ * refused rather than read as the end.
  *
  * @param array $viewer
  * @param int   $group_id
  * @param int   $parent_id
  * @param int   $before_id
- * @return array ok, error
+ * @return array ok, error, field (before_id when that is refused), synced
+ *               (ws_group_sync_tree() channels)
  */
 function ws_group_move($viewer, $group_id, $parent_id, $before_id = 0)
 {
     if (!ws_can_manage_groups($viewer)) {
-        return array('ok' => false, 'error' => lang('Only staff can arrange the groups of channels.'));
+        return array('ok' => false, 'error' => lang('Only staff can arrange the groups of channels.'), 'synced' => array());
     }
 
     $group = ws_group($group_id);
 
     if (!$group) {
-        return array('ok' => false, 'error' => lang('That group could not be found.'));
+        return array('ok' => false, 'error' => lang('That group could not be found.'), 'synced' => array());
     }
 
     $parent_id = max(0, (int) $parent_id);
     $refused = ws_group_place_refused($group['id'], $parent_id);
 
     if ($refused !== '') {
-        return array('ok' => false, 'error' => $refused);
+        return array('ok' => false, 'error' => $refused, 'synced' => array());
+    }
+
+    if (!ws_group_before_fits($group['id'], $parent_id, $before_id)) {
+        return array('ok' => false, 'error' => lang('The groups changed in the meantime and the list has been loaded again. Try the move once more.'), 'field' => 'before_id', 'synced' => array());
     }
 
     $moved = ((int) $group['parent_id'] !== $parent_id);
+    $previous = ws_group_event_payload($group);
 
     // The groups there in their order, with this one where it was dropped.
     $siblings = array();
@@ -551,11 +633,13 @@ function ws_group_move($viewer, $group_id, $parent_id, $before_id = 0)
 
     ws_groups_forget();
 
-    if ($moved) {
-        ws_group_sync_tree($viewer, $group['id']);
-    }
+    $synced = $moved ? ws_group_sync_tree($viewer, $group['id'])['channels'] : array();
 
-    return array('ok' => true, 'error' => '');
+    // Only a move into another group is news: the order among the groups of
+    // one level is not part of what a group is.
+    ws_group_announce_update($previous, $group['id'], $viewer);
+
+    return array('ok' => true, 'error' => '', 'synced' => $synced);
 }
 
 /**
@@ -565,24 +649,33 @@ function ws_group_move($viewer, $group_id, $parent_id, $before_id = 0)
  *
  * @param array $viewer
  * @param int   $group_id
- * @return array ok, error
+ * @return array ok, error, synced (channel id => added, removed)
  */
 function ws_group_remove($viewer, $group_id)
 {
     if (!ws_can_manage_groups($viewer)) {
-        return array('ok' => false, 'error' => lang('Only staff can arrange the groups of channels.'));
+        return array('ok' => false, 'error' => lang('Only staff can arrange the groups of channels.'), 'synced' => array());
     }
 
     $group = ws_group($group_id);
 
     if (!$group) {
-        return array('ok' => false, 'error' => lang('That group could not be found.'));
+        return array('ok' => false, 'error' => lang('That group could not be found.'), 'synced' => array());
     }
 
     $id = (int) $group['id'];
     $parent_id = (int) $group['parent_id'];
     $channel_ids = array_map('intval', (array) db_values("SELECT id FROM ws_channels WHERE group_id = '" . $id . "'"));
     $tree_channels = ws_group_channel_ids(ws_group_tree_ids($id));
+    $group_ids = array();
+
+    foreach (ws_groups_all() as $child_id => $row) {
+        if ((int) $row['parent_id'] === $id) {
+            $group_ids[] = (int) $child_id;
+        }
+    }
+
+    $holders = array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_group_access WHERE group_id = '" . $id . "' ORDER BY user_id"));
 
     db("UPDATE ws_channels SET group_id = '" . $parent_id . "' WHERE group_id = '" . $id . "'");
     db("UPDATE ws_channel_groups SET parent_id = '" . $parent_id . "' WHERE parent_id = '" . $id . "'");
@@ -591,17 +684,38 @@ function ws_group_remove($viewer, $group_id)
 
     ws_groups_forget();
 
+    $synced = array();
+
     foreach (array_unique(array_merge($channel_ids, $tree_channels)) as $channel_id) {
         $channel = ws_channel($channel_id);
 
         if ($channel) {
-            ws_group_sync_channel($viewer, $channel);
+            $result = ws_group_sync_channel($viewer, $channel);
+
+            if (!empty($result['added']) || !empty($result['removed'])) {
+                $synced[(int) $channel_id] = $result;
+            }
         }
     }
 
     log_activity(lang(array('string' => 'workspace channel group ({var:1}) was removed', 'vars' => $group['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
-    return array('ok' => true, 'error' => '');
+    $stopped = ws_webhook_group_removed($id);
+
+    if ($stopped > 0) {
+        log_activity(lang(array('string' => 'API event subscriptions narrowed to the workspace channel group ({var:1}) were switched off: {var:2}', 'vars' => array($group['name'], $stopped))), (string) ($_SESSION['sessionusername'] ?? ''));
+    }
+
+    // Announced once those subscriptions are off: they are no longer active,
+    // so the event is queued for the groups it was inside and the whole site.
+    ws_group_announce('workspace.channel_group.deleted', $group, array(
+        'channel_ids'  => $channel_ids,
+        'group_ids'    => $group_ids,
+        'access_ended' => $holders,
+        'deleted_by'   => (int) $viewer['id'],
+    ));
+
+    return array('ok' => true, 'error' => '', 'synced' => $synced);
 }
 
 /**
@@ -682,18 +796,35 @@ function ws_group_access_people($group_id)
 function ws_group_wanted($group_id)
 {
     $chain = ws_group_chain($group_id);
-    $wanted = array();
 
     if (empty($chain)) {
-        return $wanted;
+        return array();
     }
 
-    $team = array_flip(ws_team_ids());
     $rows = (array) db_items("SELECT group_id, user_id FROM ws_channel_group_access WHERE group_id IN (" . implode(',', $chain) . ")");
 
+    return ws_group_wanted_from($chain, $rows, ws_team_ids());
+}
+
+/**
+ * Who a chain of groups gives access to, each with the nearest group that
+ * does, out of these access rows. Only people in the team count.
+ *
+ * @param int[]   $chain groups, nearest first (ws_group_chain())
+ * @param array[] $rows  group_id, user_id
+ * @param int[]   $team  user ids
+ * @return int[] user_id => group_id
+ */
+function ws_group_wanted_from($chain, $rows, $team)
+{
+    $team = array_flip(array_map('intval', (array) $team));
+    $wanted = array();
+
     // Nearest first: the chain runs from the channel's own group upwards.
-    foreach ($chain as $id) {
-        foreach ($rows as $row) {
+    foreach ((array) $chain as $id) {
+        $id = (int) $id;
+
+        foreach ((array) $rows as $row) {
             $user_id = (int) $row['user_id'];
 
             if (((int) $row['group_id'] === $id) && isset($team[$user_id]) && !isset($wanted[$user_id])) {
@@ -703,6 +834,34 @@ function ws_group_wanted($group_id)
     }
 
     return $wanted;
+}
+
+/**
+ * Who bringing a channel in step comes in and who goes: in, the people the
+ * groups want who are not members; out, the members only a group had brought
+ * whom no group wants now. Somebody in the channel by themselves is never
+ * taken out, nor its owner.
+ *
+ * @param array[] $members user_id => row with role and via_group
+ * @param int[]   $wanted  user_id => group_id (ws_group_wanted())
+ * @return array in, out (user ids)
+ */
+function ws_group_sync_split($members, $wanted)
+{
+    $members = (array) $members;
+    $wanted = (array) $wanted;
+    $out = array();
+
+    foreach ($members as $user_id => $row) {
+        if (((int) $row['via_group'] > 0) && !isset($wanted[$user_id]) && ((string) $row['role'] !== 'owner')) {
+            $out[] = (int) $user_id;
+        }
+    }
+
+    return array(
+        'in'  => array_values(array_map('intval', array_diff(array_keys($wanted), array_keys($members)))),
+        'out' => $out,
+    );
 }
 
 /**
@@ -732,9 +891,11 @@ function ws_group_sync_channel($viewer, $channel, $group_id = null)
         $members[(int) $row['user_id']] = $row;
     }
 
+    $split = ws_group_sync_split($members, $wanted);
+
     // In: one line in the channel names them all, and each hears it as an
     // invitation.
-    $in = array_diff(array_keys($wanted), array_keys($members));
+    $in = $split['in'];
 
     if (!empty($in)) {
         $added = ws_channel_add_members($viewer, $channel, $in, false);
@@ -756,13 +917,7 @@ function ws_group_sync_channel($viewer, $channel, $group_id = null)
     }
 
     // Out: only those a group had brought, who no group brings now.
-    $gone = array();
-
-    foreach ($members as $user_id => $row) {
-        if (((int) $row['via_group'] > 0) && !isset($wanted[$user_id]) && ((string) $row['role'] !== 'owner')) {
-            $gone[] = (int) $user_id;
-        }
-    }
+    $gone = $split['out'];
 
     if (!empty($gone)) {
         db("DELETE FROM ws_channel_members
@@ -771,6 +926,7 @@ function ws_group_sync_channel($viewer, $channel, $group_id = null)
 
         ws_channel_membership_forget();
         ws_channel_folder_access($channel, $gone, false);
+        ws_inbox_reach_lost($channel, $gone);
         $out['removed'] = $gone;
     }
 
@@ -800,11 +956,12 @@ function ws_group_sync_channel($viewer, $channel, $group_id = null)
  *
  * @param array $viewer
  * @param int   $group_id
- * @return array added, removed (memberships)
+ * @return array added, removed (memberships), channels (channel id => added,
+ *               removed user ids, for the channels somebody came into or left)
  */
 function ws_group_sync_tree($viewer, $group_id)
 {
-    $out = array('added' => 0, 'removed' => 0);
+    $out = array('added' => 0, 'removed' => 0, 'channels' => array());
 
     foreach (ws_group_channel_ids(ws_group_tree_ids($group_id)) as $channel_id) {
         $channel = ws_channel($channel_id);
@@ -813,10 +970,191 @@ function ws_group_sync_tree($viewer, $group_id)
             $result = ws_group_sync_channel($viewer, $channel);
             $out['added'] += count($result['added']);
             $out['removed'] += count($result['removed']);
+
+            if (!empty($result['added']) || !empty($result['removed'])) {
+                $out['channels'][(int) $channel_id] = $result;
+            }
         }
     }
 
     return $out;
+}
+
+/**
+ * Every access row: few, one per person and group.
+ *
+ * @return array[] group_id, user_id
+ */
+function ws_group_access_rows()
+{
+    return ws_groups_ready() ? (array) db_items("SELECT group_id, user_id FROM ws_channel_group_access") : array();
+}
+
+/**
+ * A channel's chain of groups once a group on it goes inside another one: the
+ * part up to that group stays, the chain of the group it goes inside follows.
+ *
+ * @param int[] $chain        the channel's chain now, nearest first
+ * @param int   $group_id     the group that moves
+ * @param int[] $parent_chain where it goes (ws_group_chain()), [] for the top
+ * @return int[]
+ */
+function ws_group_chain_moved($chain, $group_id, $parent_chain)
+{
+    $chain = array_values(array_map('intval', (array) $chain));
+    $at = array_search((int) $group_id, $chain, true);
+
+    if ($at === false) {
+        return $chain;
+    }
+
+    return array_merge(array_slice($chain, 0, $at + 1), array_values(array_map('intval', (array) $parent_chain)));
+}
+
+/**
+ * A channel's chain of groups once a group on it is taken away: what was in
+ * it moves up to the group it was in.
+ *
+ * @param int[] $chain
+ * @param int   $group_id
+ * @return int[]
+ */
+function ws_group_chain_removed($chain, $group_id)
+{
+    $out = array();
+
+    foreach ((array) $chain as $id) {
+        if ((int) $id !== (int) $group_id) {
+            $out[] = (int) $id;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * What bringing these channels in step would do, without doing it: who would
+ * come into each and who would leave, were the groups and the access on them
+ * as $chain_of and $rows describe. The question before a change to the groups
+ * is answered from this, the way ws_channel_move_group() answers it for one
+ * channel; ws_group_sync_channel() does the same sums for real.
+ *
+ * @param int[]    $channel_ids
+ * @param callable $chain_of a channel's chain as it would be, from its chain now
+ * @param array[]  $rows     group_id, user_id: the access as it would be
+ * @return array[] channel id => added, removed (user ids), for the channels
+ *                 somebody would come into or leave
+ */
+function ws_group_sync_plan($channel_ids, $chain_of, $rows)
+{
+    $channel_ids = array_values(array_unique(array_filter(array_map('intval', (array) $channel_ids))));
+    $out = array();
+
+    if (empty($channel_ids) || !ws_groups_ready()) {
+        return $out;
+    }
+
+    $list = implode(',', $channel_ids);
+    $groups = array();
+    $members = array();
+
+    foreach ((array) db_items("SELECT id, group_id FROM ws_channels WHERE id IN (" . $list . ")") as $row) {
+        $groups[(int) $row['id']] = (int) $row['group_id'];
+    }
+
+    foreach ((array) db_items("SELECT channel_id, user_id, role, via_group FROM ws_channel_members WHERE channel_id IN (" . $list . ")") as $row) {
+        $members[(int) $row['channel_id']][(int) $row['user_id']] = $row;
+    }
+
+    $team = ws_team_ids();
+
+    foreach ($channel_ids as $channel_id) {
+        if (!isset($groups[$channel_id])) {
+            continue;
+        }
+
+        $wanted = ws_group_wanted_from(call_user_func($chain_of, ws_group_chain($groups[$channel_id])), $rows, $team);
+        $split = ws_group_sync_split($members[$channel_id] ?? array(), $wanted);
+
+        if (!empty($split['in']) || !empty($split['out'])) {
+            $out[$channel_id] = array('added' => $split['in'], 'removed' => $split['out']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Whom moving the group inside another one (0: to the top) would bring into
+ * the channels in it and in the groups inside it, and take out of them.
+ *
+ * @param int $group_id
+ * @param int $parent_id
+ * @return array[] ws_group_sync_plan()
+ */
+function ws_group_move_plan($group_id, $parent_id)
+{
+    $group_id = (int) $group_id;
+    $parent_chain = ((int) $parent_id > 0) ? ws_group_chain($parent_id) : array();
+
+    return ws_group_sync_plan(ws_group_channel_ids(ws_group_tree_ids($group_id)), function ($chain) use ($group_id, $parent_chain) {
+        return ws_group_chain_moved($chain, $group_id, $parent_chain);
+    }, ws_group_access_rows());
+}
+
+/**
+ * Whom taking the group away would take out of the channels in it and in the
+ * groups inside it (ws_group_remove()).
+ *
+ * @param int $group_id
+ * @return array[] ws_group_sync_plan()
+ */
+function ws_group_remove_plan($group_id)
+{
+    $group_id = (int) $group_id;
+    $rows = array();
+
+    foreach (ws_group_access_rows() as $row) {
+        if ((int) $row['group_id'] !== $group_id) {
+            $rows[] = $row;
+        }
+    }
+
+    return ws_group_sync_plan(ws_group_channel_ids(ws_group_tree_ids($group_id)), function ($chain) use ($group_id) {
+        return ws_group_chain_removed($chain, $group_id);
+    }, $rows);
+}
+
+/**
+ * Whom giving these people access on the group, or taking it back from those,
+ * would bring into its channels and take out of them
+ * (ws_group_access_grant(), ws_group_access_revoke()).
+ *
+ * @param int   $group_id
+ * @param int[] $grant
+ * @param int[] $revoke
+ * @return array[] ws_group_sync_plan()
+ */
+function ws_group_access_plan($group_id, $grant, $revoke)
+{
+    $group_id = (int) $group_id;
+    $grant = array_values(array_intersect(array_map('intval', (array) $grant), ws_team_ids()));
+    $revoke = array_map('intval', (array) $revoke);
+    $rows = array();
+
+    foreach (ws_group_access_rows() as $row) {
+        if (((int) $row['group_id'] !== $group_id) || !in_array((int) $row['user_id'], $revoke, true)) {
+            $rows[] = $row;
+        }
+    }
+
+    foreach ($grant as $user_id) {
+        $rows[] = array('group_id' => $group_id, 'user_id' => $user_id);
+    }
+
+    return ws_group_sync_plan(ws_group_channel_ids(ws_group_tree_ids($group_id)), function ($chain) {
+        return $chain;
+    }, $rows);
 }
 
 /**
@@ -849,27 +1187,30 @@ function ws_group_access_preview($group_id, $user_ids)
  * @param array $viewer
  * @param int   $group_id
  * @param int[] $user_ids
- * @return array ok, error, added (memberships)
+ * @return array ok, error, added (memberships), synced (ws_group_sync_tree() channels)
  */
 function ws_group_access_grant($viewer, $group_id, $user_ids)
 {
     if (!ws_can_manage_groups($viewer)) {
-        return array('ok' => false, 'error' => lang('Only staff can give access on a group.'), 'added' => 0);
+        return array('ok' => false, 'error' => lang('Only staff can give access on a group.'), 'added' => 0, 'synced' => array());
     }
 
     $group = ws_group($group_id);
 
     if (!$group) {
-        return array('ok' => false, 'error' => lang('That group could not be found.'), 'added' => 0);
+        return array('ok' => false, 'error' => lang('That group could not be found.'), 'added' => 0, 'synced' => array());
     }
 
     $user_ids = array_values(array_intersect(array_unique(array_map('intval', (array) $user_ids)), ws_team_ids()));
 
     if (empty($user_ids)) {
-        return array('ok' => false, 'error' => lang('Choose who gets the access.'), 'added' => 0);
+        return array('ok' => false, 'error' => lang('Choose who gets the access.'), 'added' => 0, 'synced' => array());
     }
 
     $now = time();
+
+    // Whoever held it already is not news.
+    $added = array_values(array_diff($user_ids, array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_group_access WHERE group_id = '" . (int) $group['id'] . "'"))));
 
     foreach ($user_ids as $user_id) {
         db("INSERT IGNORE INTO ws_channel_group_access (group_id, user_id, granted_by, granted_at)
@@ -880,7 +1221,11 @@ function ws_group_access_grant($viewer, $group_id, $user_ids)
 
     log_activity(lang(array('string' => 'access on the workspace channel group ({var:1}) was given to {var:2}', 'vars' => array($group['name'], implode(', ', array_map('ws_person_name', $user_ids))))), (string) ($_SESSION['sessionusername'] ?? ''));
 
-    return array('ok' => true, 'error' => '', 'added' => $result['added']);
+    if (!empty($added)) {
+        ws_group_announce('workspace.channel_group.access_changed', $group, array('added' => $added, 'removed' => array(), 'changed_by' => (int) $viewer['id']));
+    }
+
+    return array('ok' => true, 'error' => '', 'added' => $result['added'], 'synced' => $result['channels']);
 }
 
 /**
@@ -890,25 +1235,29 @@ function ws_group_access_grant($viewer, $group_id, $user_ids)
  * @param array $viewer
  * @param int   $group_id
  * @param int[] $user_ids
- * @return array ok, error, removed (memberships)
+ * @return array ok, error, removed (memberships), synced (ws_group_sync_tree() channels)
  */
 function ws_group_access_revoke($viewer, $group_id, $user_ids)
 {
     if (!ws_can_manage_groups($viewer)) {
-        return array('ok' => false, 'error' => lang('Only staff can give access on a group.'), 'removed' => 0);
+        return array('ok' => false, 'error' => lang('Only staff can give access on a group.'), 'removed' => 0, 'synced' => array());
     }
 
     $group = ws_group($group_id);
 
     if (!$group) {
-        return array('ok' => false, 'error' => lang('That group could not be found.'), 'removed' => 0);
+        return array('ok' => false, 'error' => lang('That group could not be found.'), 'removed' => 0, 'synced' => array());
     }
 
     $user_ids = array_values(array_filter(array_unique(array_map('intval', (array) $user_ids))));
 
     if (empty($user_ids)) {
-        return array('ok' => true, 'error' => '', 'removed' => 0);
+        return array('ok' => true, 'error' => '', 'removed' => 0, 'synced' => array());
     }
+
+    // Only the people who held it lose anything.
+    $removed = array_values(array_intersect($user_ids, array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_group_access
+        WHERE group_id = '" . (int) $group['id'] . "' AND user_id IN (" . implode(',', $user_ids) . ")"))));
 
     db("DELETE FROM ws_channel_group_access WHERE group_id = '" . (int) $group['id'] . "' AND user_id IN (" . implode(',', $user_ids) . ")");
 
@@ -916,7 +1265,11 @@ function ws_group_access_revoke($viewer, $group_id, $user_ids)
 
     log_activity(lang(array('string' => 'access on the workspace channel group ({var:1}) was taken from {var:2}', 'vars' => array($group['name'], implode(', ', array_map('ws_person_name', $user_ids))))), (string) ($_SESSION['sessionusername'] ?? ''));
 
-    return array('ok' => true, 'error' => '', 'removed' => $result['removed']);
+    if (!empty($removed)) {
+        ws_group_announce('workspace.channel_group.access_changed', $group, array('added' => array(), 'removed' => $removed, 'changed_by' => (int) $viewer['id']));
+    }
+
+    return array('ok' => true, 'error' => '', 'removed' => $result['removed'], 'synced' => $result['channels']);
 }
 
 /**
@@ -938,18 +1291,18 @@ function ws_can_move_channel_group($viewer, $channel)
 /**
  * Moves a channel into a group (0: out of every group). Asked with $preview,
  * it only says who would come in and who would go, for the question before
- * the move.
+ * the move; after the move it says who came in and who went.
  *
  * @param array $viewer
  * @param array $channel
  * @param int   $group_id
  * @param bool  $preview
- * @return array ok, error, joining, leaving (names), path
+ * @return array ok, error, joining, leaving (names), joining_ids, leaving_ids, path
  */
 function ws_channel_move_group($viewer, $channel, $group_id, $preview = false)
 {
     $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'joining' => array(), 'leaving' => array(), 'path' => '');
+        return array('ok' => false, 'error' => $error, 'joining' => array(), 'leaving' => array(), 'joining_ids' => array(), 'leaving_ids' => array(), 'path' => '');
     };
 
     if (!ws_can_move_channel_group($viewer, $channel)) {
@@ -971,28 +1324,316 @@ function ws_channel_move_group($viewer, $channel, $group_id, $preview = false)
         $members[(int) $row['user_id']] = $row;
     }
 
-    $joining = array_values(array_diff(array_keys($wanted), array_keys($members)));
-    $leaving = array();
+    $split = ws_group_sync_split($members, $wanted);
+    $joining = $split['in'];
+    $leaving = $split['out'];
 
-    foreach ($members as $user_id => $row) {
-        if (((int) $row['via_group'] > 0) && !isset($wanted[$user_id]) && ((string) $row['role'] !== 'owner')) {
-            $leaving[] = (int) $user_id;
-        }
-    }
+    $answer = function ($joining, $leaving) use ($group_id) {
+        $joining = array_values(array_map('intval', (array) $joining));
+        $leaving = array_values(array_map('intval', (array) $leaving));
 
-    $names = function ($ids) {
-        return array_values(array_map('ws_person_name', $ids));
+        return array(
+            'ok'          => true,
+            'error'       => '',
+            'joining'     => array_values(array_map('ws_person_name', $joining)),
+            'leaving'     => array_values(array_map('ws_person_name', $leaving)),
+            'joining_ids' => $joining,
+            'leaving_ids' => $leaving,
+            'path'        => ($group_id > 0) ? ws_group_path($group_id) : '',
+        );
     };
 
     if ($preview) {
-        return array('ok' => true, 'error' => '', 'joining' => $names($joining), 'leaving' => $names($leaving), 'path' => ($group_id > 0) ? ws_group_path($group_id) : '');
+        return $answer($joining, $leaving);
     }
 
     db("UPDATE ws_channels SET group_id = '" . $group_id . "' WHERE id = '" . (int) $channel['id'] . "'");
 
-    ws_group_sync_channel($viewer, $channel, $group_id);
+    // What the sync really did: somebody the question named may have been
+    // let in or taken out by another change in between.
+    $synced = ws_group_sync_channel($viewer, $channel, $group_id);
 
-    return array('ok' => true, 'error' => '', 'joining' => $names($joining), 'leaving' => $names($leaving), 'path' => ($group_id > 0) ? ws_group_path($group_id) : '');
+    return $answer($synced['added'], $synced['removed']);
+}
+
+// ── Event subscriptions narrowed to a group ────────────────────────────
+//
+// An application's webhook subscription (api_webhooks, 2026.4.10, 10.76) can
+// name a group in channel_group_id: it then hears the workspace events of
+// the channels in that group and in the groups inside it, and the events
+// about those groups themselves, and nothing else.
+// The channel's group is read when the event happens, so a channel moved
+// into the group is heard from that moment and one moved out stops being
+// heard. What an event carries is not changed: a private channel's message
+// is still never announced.
+
+/**
+ * The channel a workspace event happened in: channel_id, or for a note the
+ * task's channel. 0 when it happened in none (a task of no channel).
+ *
+ * @param array $payload
+ * @return int
+ */
+function ws_webhook_event_channel_id($payload)
+{
+    $payload = (array) $payload;
+
+    if (array_key_exists('channel_id', $payload)) {
+        return max(0, (int) $payload['channel_id']);
+    }
+
+    if (isset($payload['task']) && is_array($payload['task'])) {
+        return max(0, (int) ($payload['task']['channel_id'] ?? 0));
+    }
+
+    return 0;
+}
+
+/**
+ * The groups an event's channel is in, nearest first: the ids a subscription
+ * narrowed to a group is matched against. An event about a group itself is
+ * matched against that group and the ones it is in
+ * (ws_webhook_group_event_groups()). Empty for an event of no channel, for a
+ * channel in no group and for anything but a workspace event.
+ *
+ * @param string $event
+ * @param array  $payload
+ * @return int[]
+ */
+function ws_webhook_event_groups($event, $payload)
+{
+    if ((strpos((string) $event, 'workspace.') !== 0) || !ws_groups_ready()) {
+        return array();
+    }
+
+    if (strpos((string) $event, 'workspace.channel_group.') === 0) {
+        return ws_webhook_group_event_groups($payload);
+    }
+
+    $channel_id = ws_webhook_event_channel_id($payload);
+
+    if ($channel_id <= 0) {
+        return array();
+    }
+
+    $group_id = (int) db_value("SELECT group_id FROM ws_channels WHERE id = '" . $channel_id . "' LIMIT 1");
+
+    return ($group_id > 0) ? ws_group_chain($group_id) : array();
+}
+
+/**
+ * Why a subscription cannot be narrowed to this group, or null when it can.
+ * The group must be one the application's owner sees in the channel list (a
+ * group they cannot see is answered like one that is not there), and every
+ * event must be a workspace event: an order or a product happens in no
+ * channel, so a narrowed subscription would never hear it.
+ *
+ * @param array    $owner    the application owner's user row
+ * @param int      $group_id
+ * @param string[] $events
+ * @return array|null error, field
+ */
+function ws_webhook_group_refused($owner, $group_id, $events)
+{
+    $viewer = ws_viewer((array) $owner);
+    $seen = false;
+
+    foreach (ws_groups_for($viewer) as $group) {
+        if ((int) $group['id'] === (int) $group_id) {
+            $seen = true;
+            break;
+        }
+    }
+
+    if (!$seen) {
+        return array('error' => lang('That group could not be found.'), 'field' => 'channel_group_id');
+    }
+
+    $workspace = function_exists('ws_webhook_events') ? ws_webhook_events() : array();
+
+    foreach ((array) $events as $event) {
+        if (!isset($workspace[(string) $event])) {
+            return array(
+                'error' => lang(array('string' => 'Only workspace events can be narrowed to a channel group: {var:1}', 'vars' => (string) $event)),
+                'field' => 'events',
+            );
+        }
+    }
+
+    return null;
+}
+
+/**
+ * A group taken away: the subscriptions narrowed to it are switched off
+ * (disabled) rather than left to hear the channels where they went. Those
+ * moved up to the group above, or to the top, and a subscription that heard
+ * one department would otherwise start hearing the whole company. The
+ * application sees the subscription stopped and narrows it anew.
+ *
+ * @param int $group_id
+ * @return int how many were switched off
+ */
+function ws_webhook_group_removed($group_id)
+{
+    $group_id = (int) $group_id;
+
+    if (($group_id <= 0) || !function_exists('pg_schema_has') || !pg_schema_has('api_webhooks', 'channel_group_id')) {
+        return 0;
+    }
+
+    $ids = array_map('intval', (array) db_values("SELECT id FROM api_webhooks
+        WHERE channel_group_id = '" . $group_id . "' AND status <> 'disabled'"));
+
+    if (empty($ids)) {
+        return 0;
+    }
+
+    db("UPDATE api_webhooks SET status = 'disabled' WHERE id IN (" . implode(',', $ids) . ")");
+
+    return count($ids);
+}
+
+// ── Events about the groups themselves ─────────────────────────────────
+//
+// workspace.channel_group.created, .updated, .access_changed and .deleted,
+// announced by the functions the channel list and the API both call, so a
+// group arranged on either is announced once. A whole-site subscription
+// hears them all; one narrowed to a group hears its own group and the
+// groups inside it.
+
+/**
+ * A group as its events carry it: the fields GET /workspace/channel-groups
+ * answers with. The path is built from the group above, so a group already
+ * taken away still has the one it had.
+ *
+ * @param array       $group ws_group() row
+ * @param string|null $above the path of the group above; read when null
+ * @return array id, name, parent_id (null at the top), path, color (hex or null)
+ */
+function ws_group_event_payload($group, $above = null)
+{
+    $parent_id = (int) ($group['parent_id'] ?? 0);
+
+    if ($above === null) {
+        $above = ($parent_id > 0) ? ws_group_path($parent_id) : '';
+    }
+    $hex = ws_palette_hex($group['color'] ?? 0);
+
+    return array(
+        'id'        => (int) $group['id'],
+        'name'      => (string) $group['name'],
+        'parent_id' => ($parent_id > 0) ? $parent_id : null,
+        'path'      => (($above !== '') ? $above . ' › ' : '') . (string) $group['name'],
+        'color'     => ($hex !== '') ? $hex : null,
+    );
+}
+
+/**
+ * Announces an event about a group: the group, then what the event adds.
+ *
+ * @param string     $event
+ * @param array|null $group ws_group() row; nothing is announced without one
+ * @param array      $extra
+ */
+function ws_group_announce($event, $group, $extra = array())
+{
+    if (empty($group) || !function_exists('pg_announce')) {
+        return;
+    }
+
+    pg_announce($event, ws_group_event_payload($group) + (array) $extra);
+}
+
+/**
+ * Announces workspace.channel_group.updated when the name, the colour or the
+ * group it is inside changed: changed lists which, previous holds the group
+ * as it was. Saving the form unchanged, or putting the group in another
+ * place among the groups of the same level, announces nothing.
+ *
+ * @param array|null $previous ws_group_event_payload() before the change
+ * @param int        $group_id
+ * @param array      $viewer
+ */
+function ws_group_announce_update($previous, $group_id, $viewer)
+{
+    $group = ws_group($group_id);
+
+    if (!$group || empty($previous)) {
+        return;
+    }
+
+    $changed = ws_group_event_changes($previous, ws_group_event_payload($group));
+
+    if (empty($changed)) {
+        return;
+    }
+
+    unset($previous['id']);
+
+    ws_group_announce('workspace.channel_group.updated', $group, array(
+        'changed'    => $changed,
+        'previous'   => $previous,
+        'updated_by' => (int) $viewer['id'],
+    ));
+}
+
+/**
+ * Which of what an event says of a group differ between two
+ * ws_group_event_payload() answers. The path is left out: it changes with a
+ * group above, which is that group's own event.
+ *
+ * @param array $previous
+ * @param array $now
+ * @return string[] name, parent_id, color, in that order
+ */
+function ws_group_event_changes($previous, $now)
+{
+    $changed = array();
+
+    foreach (array('name', 'parent_id', 'color') as $key) {
+        if (($now[$key] ?? null) !== ($previous[$key] ?? null)) {
+            $changed[] = $key;
+        }
+    }
+
+    return $changed;
+}
+
+/**
+ * The groups an event about a group is heard in: the group itself and the
+ * groups it is inside. A group moved into another one is heard on both
+ * sides, by the groups it left (previous.parent_id) too, so a subscription
+ * for those learns it is gone; a group taken away by the groups that moved
+ * up out of it (group_ids) as well. The groups are read from the event's own
+ * parent ids, which a group taken away still has.
+ *
+ * @param array $payload ws_group_event_payload() and what the event adds
+ * @return int[]
+ */
+function ws_webhook_group_event_groups($payload)
+{
+    $payload = (array) $payload;
+    $id = max(0, (int) ($payload['id'] ?? 0));
+
+    if ($id <= 0) {
+        return array();
+    }
+
+    $previous = (isset($payload['previous']) && is_array($payload['previous'])) ? $payload['previous'] : array();
+
+    $ids = array($id);
+
+    if (isset($payload['group_ids']) && is_array($payload['group_ids'])) {
+        $ids = array_merge($ids, array_filter(array_map('intval', $payload['group_ids'])));
+    }
+
+    foreach (array($payload['parent_id'] ?? 0, $previous['parent_id'] ?? 0) as $parent_id) {
+        if ((int) $parent_id > 0) {
+            $ids = array_merge($ids, ws_group_chain((int) $parent_id));
+        }
+    }
+
+    return array_values(array_unique(array_map('intval', $ids)));
 }
 
 /**

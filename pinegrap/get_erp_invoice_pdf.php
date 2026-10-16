@@ -24,8 +24,12 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-$invoice_id = (int) ($_REQUEST['id'] ?? 0);
+$invoice_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $preview_template = null;
+
+// The draft template is one value. One posted as an array counts as not given:
+// (string) previewed it as "Array" with a notice.
+pg_request_single_values(array('template'));
 
 // A draft template is a settings matter, and it is only ever posted from the
 // settings form, so it takes the settings gate and the form token.

@@ -26,7 +26,9 @@ $liveform = new liveform('add_erp_return');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 
-$invoice_id = (int) ($_REQUEST['invoice_id'] ?? 0);
+// One value only: an array (?invoice_id[]=x) cast to 1 and opened the
+// first invoice.
+$invoice_id = is_scalar($_REQUEST['invoice_id'] ?? null) ? (int) $_REQUEST['invoice_id'] : 0;
 
 $invoice = ($invoice_id > 0)
     ? db_item("SELECT i.*, a.title AS account_title
@@ -45,6 +47,9 @@ $invoice_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
+    // The order the screen was opened from, carried to the form: one value
+    // only, an array (?back_order[]=x) cast to 1.
+    $back_order_id = is_scalar($_GET['back_order'] ?? null) ? (int) $_GET['back_order'] : 0;
     $lines = erp_returnable_lines($invoice_id);
 
     $anything_left = false;
@@ -71,8 +76,11 @@ if (!$_POST) {
         $preset_qty = (isset($_GET['qty']) && is_array($_GET['qty'])) ? $_GET['qty'] : null;
 
         foreach ($lines as $line) {
+            // Each quantity is one number: an array (?qty[5][]=x) cast to 1
+            // and put one back; it counts as none refunded on that line.
+            $preset = $preset_qty[(int) $line['id']] ?? 0;
             $quantity = ($preset_qty !== null)
-                ? min((float) $line['remaining_qty'], max(0, (float) ($preset_qty[(int) $line['id']] ?? 0)))
+                ? min((float) $line['remaining_qty'], max(0, is_scalar($preset) ? (float) $preset : 0))
                 : (float) $line['remaining_qty'];
             $liveform->assign_field_value('qty_' . (int) $line['id'],
                 ($quantity > 0) ? rtrim(rtrim(number_format($quantity, 4, '.', ''), '0'), '.') : '');
@@ -129,7 +137,7 @@ if (!$_POST) {
 
             <form name="form" action="add_erp_return.php" method="post">
                 ' . get_token_field() . '
-                ' . (((int) ($_GET['back_order'] ?? 0) > 0) ? '<input type="hidden" name="back_order" value="' . (int) $_GET['back_order'] . '" />' : '') . '
+                ' . (($back_order_id > 0) ? '<input type="hidden" name="back_order" value="' . $back_order_id . '" />' : '') . '
                 <input type="hidden" name="invoice_id" value="' . $invoice_id . '" />
 
                 <div class="card my-4">
@@ -186,7 +194,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create the Return')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create the Return')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -203,6 +211,16 @@ if (!$_POST) {
 
     validate_token_field();
 
+    $returnable = erp_returnable_lines($invoice_id);
+
+    // Every field of the form is one value, a quantity per line included. One
+    // posted as an array counts as not given: (string) read an array date or
+    // quantity as "Array" with a notice, (int) an array order to go back to
+    // as order 1.
+    pg_request_single_values(array_merge(array('issue_date', 'back_order'), array_map(function ($line) {
+        return 'qty_' . (int) $line['id'];
+    }, $returnable)));
+
     $liveform->add_fields_to_session();
 
     $back = PATH . SOFTWARE_DIRECTORY . '/add_erp_return.php?invoice_id=' . $invoice_id;
@@ -216,8 +234,8 @@ if (!$_POST) {
 
     $quantities = array();
 
-    foreach (erp_returnable_lines($invoice_id) as $line) {
-        $raw = str_replace(',', '.', trim((string) $liveform->get_field_value('qty_' . (int) $line['id'])));
+    foreach ($returnable as $line) {
+        $raw =str_replace(',', '.', trim((string) $liveform->get_field_value('qty_' . (int) $line['id'])));
         $quantities[(int) $line['id']] = ($raw === '') ? 0 : (float) $raw;
     }
 

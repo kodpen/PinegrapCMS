@@ -69,6 +69,7 @@ function pg_sw_type_labels()
         'email_preferences'   => lang('Email Preferences'),
         'address_book'        => lang('Address Book'),
         'account_security'    => lang('Account Security'),
+        'account_invoices'    => lang('My Invoices'),
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
         'language_switcher'   => lang('Language Switcher'),
@@ -418,29 +419,158 @@ function pg_sw_default_date_format($type)
     return '';
 }
 
-// A "label: value" row marked pg-hide-if-empty (the form starters mark each
-// field row so) is dropped when its pg-field-value element came out empty,
-// so a record that left the field blank does not show a bare label. An image,
-// a video or a link inside the value counts as content. The designer keeps a
-// row by taking the class off.
+// An element marked pg-hide-if-empty is dropped when it came out empty, so
+// a record that left a field blank shows no bare label and no empty box. A
+// "label: value" row (the form starters mark each field row so) is judged by
+// its pg-field-value element; an element without one by everything inside
+// it. Text counts as content, and so do a picture with an address, a video,
+// a frame, a link and a form control. Marked elements inside marked elements
+// go first, so a box whose rows all left goes with them. Any element can
+// carry the class; the designer keeps one by taking the class off.
 function pg_sw_hide_empty_fields($html)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
-    return preg_replace_callback(
-        '#<(p|div|li|tr)\b([^>]*\bclass="[^"]*\bpg-hide-if-empty\b[^"]*"[^>]*)>(.*?)</\1>#s',
-        function ($m) {
-            if (!preg_match('#<(span|p|div|dd|td)\b[^>]*\bclass="[^"]*\bpg-field-value\b[^"]*"[^>]*>(.*?)</\1>#s', $m[3], $v)) {
-                return $m[0];
-            }
-            $text = trim(html_entity_decode(strip_tags($v[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-            // An image counts once it has an address: a file field left empty
-            // comes out as <img src="">.
-            $media = preg_match('#<(video|iframe|a)\b#i', $v[2]) || preg_match('#<img\b[^>]*\bsrc="[^"]+"#i', $v[2]);
-            if ($text === '' && !$media) return '';
-            return $m[0];
-        },
-        $html
-    );
+    if (!preg_match_all('#<([a-z][a-z0-9]*)\b[^>]*\bclass="[^"]*\bpg-hide-if-empty\b[^"]*"[^>]*>#i', $html, $opens, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        return $html;
+    }
+
+    // Last first: an element inside another one is met before it, and
+    // cutting it leaves the offsets of the elements before it as they were.
+    for ($i = count($opens) - 1; $i >= 0; $i--) {
+        $open  = $opens[$i][0][0];
+        $start = $opens[$i][0][1];
+        $tag   = strtolower($opens[$i][1][0]);
+
+        if (pg_sw_is_void_tag($tag)) {
+            if (!pg_sw_has_content($open)) $html = substr($html, 0, $start) . substr($html, $start + strlen($open));
+            continue;
+        }
+
+        $close = pg_sw_closing_tag($html, $tag, $start + strlen($open));
+        if ($close === null) continue;
+        $inner = substr($html, $start + strlen($open), $close[0] - $start - strlen($open));
+        if (pg_sw_has_content(pg_sw_field_value($inner))) continue;
+        $html = substr($html, 0, $start) . substr($html, $close[1]);
+    }
+
+    return $html;
+}
+
+// The elements that have no closing tag.
+function pg_sw_is_void_tag($tag)
+{
+    return in_array(strtolower((string)$tag), array('area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'), true);
+}
+
+// Where the element whose content starts at $from closes: array(offset of
+// its closing tag, offset just past it), counting the same tag nested inside
+// it. null when it never closes.
+function pg_sw_closing_tag($html, $tag, $from)
+{
+    $depth = 1;
+    $re    = '#<(/?)' . preg_quote($tag, '#') . '\b[^>]*>#i';
+    while (preg_match($re, $html, $m, PREG_OFFSET_CAPTURE, $from)) {
+        $at   = $m[0][1];
+        $from = $at + strlen($m[0][0]);
+        if ($m[1][0] === '/') {
+            if (--$depth === 0) return array($at, $from);
+        } elseif (substr($m[0][0], -2) !== '/>') {
+            $depth++;
+        }
+    }
+    return null;
+}
+
+// What a marked element's value is: the inside of its pg-field-value
+// element (the element itself when it has no closing tag, a picture), or
+// the whole of $inner when it has none.
+function pg_sw_field_value($inner)
+{
+    if (!preg_match('#<([a-z][a-z0-9]*)\b[^>]*\bclass="[^"]*\bpg-field-value\b[^"]*"[^>]*>#i', $inner, $m, PREG_OFFSET_CAPTURE)) {
+        return $inner;
+    }
+    if (pg_sw_is_void_tag($m[1][0])) return $m[0][0];
+    $from  = $m[0][1] + strlen($m[0][0]);
+    $close = pg_sw_closing_tag($inner, strtolower($m[1][0]), $from);
+    return ($close === null) ? substr($inner, $from) : substr($inner, $from, $close[0] - $from);
+}
+
+// Does this markup show anything: words (spaces and &nbsp; are not), a
+// picture with an address (a file field left empty comes out as
+// <img src="">), a video, a frame, a drawing, a link or a form control?
+function pg_sw_has_content($html)
+{
+    $text = str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    if (trim($text) !== '') return true;
+    if (preg_match('#<(video|audio|iframe|object|embed|svg|canvas|a|input|select|textarea|button)\b#i', (string)$html)) return true;
+    return (bool)preg_match('#<img\b[^>]*\bsrc="[^"]+"#i', (string)$html);
+}
+
+// Can the element a widget prints its records into hold nothing but its
+// rows? A list holds list items and a table rows: a message, a search box
+// or a pagination written into one is broken markup (a <div> in a <ul>).
+function pg_sw_loop_parent_is_closed($tag)
+{
+    return in_array((string)$tag, array('ul', 'ol', 'menu', 'dl', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'select', 'datalist', 'optgroup'), true);
+}
+
+// How many cells a row of a table template has, so a message row can span
+// them all. 1 when the template is no table row.
+function pg_sw_row_cells($html)
+{
+    $html = (string)$html;
+    if (preg_match('#<tr\b.*?</tr>#is', $html, $m)) $html = $m[0];
+    return max(1, (int)preg_match_all('#<t[dh]\b#i', $html));
+}
+
+// A state message (no records, no record to show) printed where the records
+// would be, as an element that may stand there: an item in a list, a row
+// spanning a table, a column in a grid row, a line in text, a block anywhere
+// else. $class names the state (pg-sw-empty, pg-sw-not-found) for the
+// design's own stylesheet; the rest are Bootstrap 5.3 / 6 utilities.
+function pg_sw_state_message_html($message, $parent_tag, $class, $cells = 1)
+{
+    $text  = h((string)$message);
+    $class = h(trim($class));
+    $look  = 'text-body-secondary py-3';
+    switch ((string)$parent_tag) {
+        case 'ul':
+        case 'ol':
+        case 'menu':
+            return '<li class="' . $class . ' ' . $look . '">' . $text . '</li>';
+        case 'table':
+        case 'thead':
+        case 'tbody':
+        case 'tfoot':
+            return '<tr class="' . $class . '"><td colspan="' . max(1, (int)$cells) . '" class="' . $look . '">' . $text . '</td></tr>';
+        case 'tr':
+            return '<td colspan="' . max(1, (int)$cells) . '" class="' . $class . ' ' . $look . '">' . $text . '</td>';
+        case 'dl':
+            return '<dd class="' . $class . ' ' . $look . '">' . $text . '</dd>';
+        case 'select':
+        case 'datalist':
+        case 'optgroup':
+            return '<option value="" disabled>' . $text . '</option>';
+        case 'row':
+            return '<div class="col-12 ' . $class . ' ' . $look . '">' . $text . '</div>';
+        case 'p':
+        case 'span':
+        case 'a':
+        case 'button':
+        case 'label':
+        case 'strong':
+        case 'em':
+        case 'small':
+        case 'h1':
+        case 'h2':
+        case 'h3':
+        case 'h4':
+        case 'h5':
+        case 'h6':
+            return '<span class="' . $class . ' text-body-secondary">' . $text . '</span>';
+        default:
+            return '<div class="' . $class . ' ' . $look . '">' . $text . '</div>';
+    }
 }
 
 function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
@@ -874,7 +1004,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // deleted from its item view leaves its notice there). An unnamed node
     // would print and use up every form's messages on the page.
     _pg_inject_messages_node($tree_decoded, 'form_list_view');
-    $split = _split_widget_tree($tree_decoded);
+    pg_sw_record_href_bindings($tree_decoded);
+    $split = _split_widget_tree($tree_decoded, true);
 
     // Render the loop template (per-record). If no loop_area was found, fall back to
     // rendering the whole tree as the template (legacy widgets without a loop_area).
@@ -1095,15 +1226,35 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             '</form>';
     }
 
-    // Empty-state HTML used when no records match (with or without search active)
-    $empty_html = '<div class="pg-sw-empty text-muted py-3">' . h($empty_message) . '</div>';
+    // Empty-state HTML used when no records match (with or without search
+    // active), as an element the records' parent may hold.
+    $empty_html = pg_sw_state_message_html($empty_message, $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
+
+    // The records go where the loop_area was. The search box and the
+    // pagination go there too, except into a list or a table: those may
+    // hold only their rows, so the two stand before and after it.
+    // The surround renders once, outside any record, so no record's values
+    // are applied to it — but an identifier left standing there is one the
+    // visitor would read, and form_item_view and my_account both sweep theirs.
+    $stitch = function ($rows, $pagination) use ($static_html, $search_html) {
+        if ($static_html === '') return $search_html . $rows . $pagination;
+        $html = pg_sw_sweep_tokens($static_html);
+        if (strpos($html, '<!--pg-loop-before-->') !== false) {
+            return str_replace(
+                array('<!--pg-loop-before-->', '<!--pg-loop-slot-->', '<!--pg-loop-after-->'),
+                array($search_html, $rows, $pagination),
+                $html
+            );
+        }
+        return str_replace('<!--pg-loop-slot-->', $search_html . $rows . $pagination, $html);
+    };
 
     // If the loop template is empty, we still want to honor empty/search/pagination
     // on the static surround. But absent a per-record visual there's nothing to repeat,
     // so just return the static HTML with search/empty injected at the slot.
     if ($loop_template === '') {
         if ($static_html === '') return '';
-        return str_replace('<!--pg-loop-slot-->', $search_html . $empty_html, pg_sw_sweep_tokens($static_html));
+        return $stitch($empty_html, '');
     }
 
     // ── Count total matching rows (for pagination) ────────────────────────
@@ -1117,11 +1268,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            $sql_viewer_filter"
     );
 
-    if ($total_records === 0) {
-        $body = $search_html . $empty_html;
-        if ($static_html === '') return $body;
-        return str_replace('<!--pg-loop-slot-->', $body, pg_sw_sweep_tokens($static_html));
-    }
+    if ($total_records === 0) return $stitch($empty_html, '');
 
     // Apply the outer dataset cap BEFORE pagination math so the user only ever
     // pages through the first $max_results rows. Final page's LIMIT may be
@@ -1139,9 +1286,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         if ($remaining < $page_limit) $page_limit = max(0, $remaining);
     }
 
-    // Resolve the detail page (if configured) into a URL prefix once. Each row
-    // appends its own reference_code, matching the legacy form_list_view pattern:
+    // Resolve the detail page (if configured) once. Each row then links to
+    // its own record there, matching the legacy form_list_view pattern:
     //   PATH . encode_url_path(page_name) . '?r=' . forms.reference_code
+    // or, when the form has pretty URLs on and the record has a name,
+    //   PATH . encode_url_path(page_name) . '/' . forms.address_name
+    // which get_page.php resolves for the detail page's widget
+    // (pg_sw_route_record_address()).
     //
     // This URL is INTENTIONALLY independent of `_pg_sw_build_query`. The detail
     // link points at a *different* page (the form_item_view), so it must NOT
@@ -1150,57 +1301,28 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // state in the query string (and on installs without URL rewriting, the
     // `page=<slug>` slug param could even point at the wrong page entirely).
     //
-    // The page_type guard in the JS dropdown already restricts selections to
-    // `form item view` pages; the SQL here looks up the page_name without
-    // re-asserting the type so a page that was retyped after selection still
-    // resolves rather than silently producing an empty href.
-    $detail_page_id    = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
-    $detail_url_prefix = '';
-    if ($detail_page_id > 0) {
-        // JOIN form_item_view_pages so we resolve the page_name AND verify the
-        // detail page is bound to the SAME custom form the widget is listing.
-        // Without this guard, picking a detail page tied to a different custom
-        // form would generate `?r=ABC` links that the detail screen rejects:
-        // get_form_item_view.php's WHERE clause asserts
-        //   forms.page_id = $custom_form_page_id AND forms.reference_code = ?
-        // — the page_id mismatch silently 404s every link. We fall back to ''
-        // (which becomes '#' per record) when the config is stale.
-        $detail_page_name = db_value(
-            "SELECT page.page_name
-             FROM page
-             INNER JOIN form_item_view_pages
-                     ON form_item_view_pages.page_id = page.page_id
-                    AND form_item_view_pages.collection = 'a'
-                    AND form_item_view_pages.custom_form_page_id = '" . (int)$custom_form_page_id . "'
-             WHERE page.page_id = '" . (int)$detail_page_id . "'
-             LIMIT 1"
-        );
-        // A page built in the visual editor shows the record through a
-        // form_item_view widget; the same guard applies — it must be bound
-        // to the form this list shows.
-        if (!$detail_page_name && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($custom_form_page_id) {
-            return (int)(isset($c['custom_form_page_id']) ? $c['custom_form_page_id'] : 0) === (int)$custom_form_page_id;
-        })) {
-            $detail_page_name = db_value("SELECT page_name FROM page WHERE page_id = '" . (int)$detail_page_id . "' LIMIT 1");
-        }
-        if ($detail_page_name) {
-            $base_path = defined('PATH') ? PATH : '/';
-            $detail_url_prefix = $base_path . encode_url_path($detail_page_name) . '?r=';
-        }
-    }
+    // The detail page must show the SAME custom form the widget is listing:
+    // the detail screen's WHERE clause asserts
+    //   forms.page_id = $custom_form_page_id AND forms.reference_code = ?
+    // so a page bound to another form would 404 every link. A stale config
+    // gives no address ('#' per record). pg_sw_list_detail_target() applies
+    // that guard to a classic form item view page and to a designed page
+    // alike.
+    $detail_page_id = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
+    $detail_target  = pg_sw_list_detail_target($detail_page_id, $custom_form_page_id);
 
     // Which standard fields this design actually prints decides what the
     // listing query reads: a template that never mentions a commenter never
     // joins the comments table.
     $template_tokens = pg_sw_template_tokens($loop_template);
     // A filter on a standard field needs that field's table joined too.
-    $standard_sql    = pg_sw_standard_sql($template_tokens + $filter_sql['tokens'], $detail_page_id, array('reference_code'));
+    $standard_sql    = pg_sw_standard_sql($template_tokens + $filter_sql['tokens'], $detail_page_id, array('reference_code', 'address_name'));
 
     // 1. Pull submitted form rows (the `forms` table) for this custom form,
     //    applying ordering + search + pagination.
     //    Only `complete=1` rows are shown — incomplete sessions are drafts.
     $forms = db_items(
-        "SELECT forms.id, forms.page_id, forms.user_id, forms.reference_code
+        "SELECT forms.id, forms.page_id, forms.user_id, forms.reference_code, forms.address_name
                 {$standard_sql['select']}
          FROM forms
          $order_join
@@ -1213,11 +1335,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
          ORDER BY $order_by_sql
          LIMIT $page_limit OFFSET $offset"
     );
-    if (!$forms) {
-        $body = $search_html . $empty_html;
-        if ($static_html === '') return $body;
-        return str_replace('<!--pg-loop-slot-->', $body, pg_sw_sweep_tokens($static_html));
-    }
+    if (!$forms) return $stitch($empty_html, '');
 
     // 2. Bulk-fetch form_data rows for all those submissions in one query.
     //    Pull BOTH form_fields.name AND form_fields.label (plus form_data.name denormalized
@@ -1275,12 +1393,16 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // tripped users into thinking the URL builder was leaking those
         // params. `#` makes the inert state explicit.
         $extra = array(
-            'form_item_view'    => ($detail_url_prefix !== '' && !empty($f['reference_code']))
-                                       ? $detail_url_prefix . urlencode((string)$f['reference_code'])
+            'form_item_view'    => ($detail_target['page_name'] !== '' && !empty($f['reference_code']))
+                                       ? pg_sw_record_url($detail_target['page_name'], $f['reference_code'],
+                                                          isset($f['address_name']) ? $f['address_name'] : '', $detail_target['pretty'])
                                        : '#',
             'submitted_form_id' => (string)$fid,
             'submitter_user_id' => isset($f['user_id']) ? (string)$f['user_id'] : '',
         );
+        // The catalog's name for the same link. A link bound to it in a
+        // form list printed an empty address.
+        $extra['__detail_url'] = $extra['form_item_view'];
 
         $rendered = pg_sw_apply_tokens(
             $loop_template,
@@ -1307,20 +1429,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // 4. Pagination (Bootstrap 5 nav) — only when there is more than one page.
     $pagination_html = pg_sw_pagination_html($page_param, $current_page, $total_pages);
 
-    // 5. Stitch search + loop output + pagination into the static surround.
-    //    The static side (header, container, etc.) was rendered once with a
-    //    <!--pg-loop-slot--> marker where the loop_area used to be — that marker
-    //    is replaced with [search][loop][pagination].
-    $body = $search_html . $loop_output . $pagination_html;
-    if ($static_html === '') {
-        // Legacy (no loop_area) — output is purely the per-record loop with controls
-        return $body;
-    }
-    // The surround renders once, outside any record, so no record's values are
-    // applied to it — but an identifier left standing there is one the visitor
-    // would read, and form_item_view and my_account both sweep theirs.
-    $static_html = pg_sw_sweep_tokens($static_html);
-    return str_replace('<!--pg-loop-slot-->', $body, $static_html);
+    // 5. Stitch search + loop output + pagination into the static surround
+    //    (legacy widgets with no loop_area: the records with their controls).
+    return $stitch($loop_output, $pagination_html);
 }
 
 /**
@@ -1418,7 +1529,7 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
     $form = null;
     if ($custom_form_page_id > 0 && $where !== '') {
         $form = db_item(
-            "SELECT forms.id, forms.page_id, forms.reference_code, forms.user_id, forms.form_editor_user_id,
+            "SELECT forms.id, forms.page_id, forms.reference_code, forms.address_name, forms.user_id, forms.form_editor_user_id,
                     user.user_username AS form_editor_username, user.user_email AS form_editor_email_address
              FROM forms
              LEFT JOIN user ON forms.form_editor_user_id = user.user_id
@@ -1433,6 +1544,201 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
         'form'                => $form,
         'visible'             => ($form !== null) && pg_sw_submitted_form_visible($form, $access, $page_id),
     );
+}
+
+// ============================================================================
+// Pretty record addresses (the custom form's "Enable Pretty URLs")
+// ============================================================================
+// A form with pretty URLs on gives every record a name made from its Title
+// field (forms.address_name, written by custom_form.php and
+// update_submitted_form_address_name()). The classic screens reach such a
+// record through the list page (/blog/<name>, get_page.php). A page built in
+// the visual editor reaches it through the page that shows it, the page with
+// the Form Item View widget, the way a Catalog Detail page is reached
+// (/<page>/<product address>). The reference code (?r=) keeps answering
+// either way, so links written before the setting was turned on still work.
+
+// A link bound to a record's Address Name opens the record. The name alone
+// is not an address: printed as an href it resolves against the page it is
+// on (/blog/<name> on the list page), and that page shows the list again.
+// Such a link takes the record's own address (form_item_view: the detail
+// page with the name when the form has pretty URLs on, ?r= otherwise).
+// Text bound to the name keeps printing the name.
+function pg_sw_record_href_bindings(&$node)
+{
+    if (!is_array($node)) return;
+    if (isset($node['props']['_bindings']['href'])
+        && is_string($node['props']['_bindings']['href'])
+        && strtolower(trim($node['props']['_bindings']['href'])) === 'address_name') {
+        $node['props']['_bindings']['href'] = 'form_item_view';
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) pg_sw_record_href_bindings($child);
+        unset($child);
+    }
+}
+
+// The list widget types: form_list_view under its older names.
+function pg_sw_form_list_types()
+{
+    return array('form_list_view', 'submitted_forms_list', 'form_list', 'blog_list');
+}
+
+// Whether the form names its records in their addresses. Asked once per form
+// per request; $reset forgets the answers (a save that just changed it).
+function pg_sw_form_pretty_urls($form_page_id, $reset = false)
+{
+    static $cache = array();
+    if ($reset) $cache = array();
+    $form_page_id = (int)$form_page_id;
+    if ($form_page_id <= 0) return false;
+    if (!isset($cache[$form_page_id])) {
+        $cache[$form_page_id] = (check_if_pretty_urls_are_enabled($form_page_id) == true);
+    }
+    return $cache[$form_page_id];
+}
+
+// The address of one record on the page that shows it, from $base (PATH when
+// null): /<page>/<address name> when $pretty and the record has a name,
+// /<page>?r=<reference code> otherwise.
+function pg_sw_record_url($page_name, $reference_code, $address_name, $pretty, $base = null)
+{
+    if ($base === null) $base = defined('PATH') ? PATH : '/';
+    $url = $base . encode_url_path((string)$page_name);
+    $address_name = trim((string)$address_name);
+    if ($pretty && $address_name !== '') return $url . '/' . encode_url_path($address_name);
+    return $url . '?r=' . rawurlencode((string)$reference_code);
+}
+
+// The address segment a page was asked for: what follows the page name in
+// $_GET['page'] (/blog-post/<segment>), up to the next slash, decoded the
+// way the catalog widgets decode theirs. '' when there is none.
+function pg_sw_request_segment($page_parameter = null)
+{
+    $full = ($page_parameter === null) ? (isset($_GET['page']) ? (string)$_GET['page'] : '') : (string)$page_parameter;
+    $slash = mb_strpos($full, '/', 0, 'UTF-8');
+    if ($slash === false) return '';
+    $segment = mb_substr($full, $slash + 1, null, 'UTF-8');
+    $next = mb_strpos($segment, '/', 0, 'UTF-8');
+    if ($next !== false) $segment = mb_substr($segment, 0, $next, 'UTF-8');
+    $segment = trim(urldecode(trim($segment)));
+    return (strlen($segment) > 255) ? '' : $segment;
+}
+
+// The record of a form a pretty address names: array('id', 'reference_code',
+// 'address_name'), or null.
+function pg_sw_record_by_address($form_page_id, $address_name)
+{
+    $form_page_id = (int)$form_page_id;
+    $address_name = trim((string)$address_name);
+    if ($form_page_id <= 0 || $address_name === '') return null;
+    $row = db_item(
+        "SELECT id, reference_code, address_name FROM forms
+         WHERE page_id = '" . $form_page_id . "'
+           AND address_name = '" . e($address_name) . "'
+         ORDER BY id ASC
+         LIMIT 1");
+    return (is_array($row) && !empty($row['id'])) ? $row : null;
+}
+
+/**
+ * A pretty record address asked of a page built in the visual editor.
+ *
+ * Called by get_page.php before the page is drawn, with the page the address
+ * starts with and the segment after it.
+ *
+ *   /<page>/<name>, the page shows the record (a Form Item View widget of a
+ *   form with pretty URLs on): the record's reference code goes into
+ *   $_GET['r'], where the widget, its comments and the page's canonical
+ *   address read it. A name that matches no record leaves an empty reference
+ *   and the widget shows its not-found state.
+ *
+ *   /<list page>/<name>, the classic shape: a list widget whose detail page
+ *   shows the same form sends the visitor on to the record's own address.
+ *
+ * A page with a catalog widget keeps its segment (a product, a product
+ * group), and an explicit ?r= wins over the segment.
+ *
+ * @return string '' when nothing more is to be done, else the address (from
+ *                PATH) to send the visitor to
+ */
+function pg_sw_route_record_address($page_id, $segment)
+{
+    $page_id = (int)$page_id;
+    $segment = trim((string)$segment);
+    if ($page_id <= 0 || $segment === '') return '';
+    if (isset($_GET['r']) && is_scalar($_GET['r']) && trim((string)$_GET['r']) !== '') return '';
+
+    $item_view = null;
+    $lists = array();
+    foreach (pg_sw_page_widgets($page_id) as $w) {
+        $type = isset($w['cfg']['regionType']) ? (string)$w['cfg']['regionType'] : '';
+        if ($type === 'catalog_listing' || $type === 'catalog_item_view') return '';
+        if ($type === 'form_item_view' && $item_view === null) $item_view = $w;
+        if (in_array($type, pg_sw_form_list_types(), true)) $lists[] = $w;
+    }
+
+    if ($item_view !== null) {
+        $form_page_id = pg_sw_form_widget_form_page_id($item_view['cfg']);
+        if ($form_page_id > 0 && pg_sw_form_pretty_urls($form_page_id)) {
+            $record = pg_sw_record_by_address($form_page_id, $segment);
+            $_GET['r'] = $record ? (string)$record['reference_code'] : '';
+        }
+        return '';
+    }
+
+    foreach ($lists as $w) {
+        $form_page_id   = pg_sw_form_widget_form_page_id($w['cfg']);
+        $detail_page_id = isset($w['cfg']['detail_page_id']) ? (int)$w['cfg']['detail_page_id'] : 0;
+        if ($form_page_id <= 0 || $detail_page_id <= 0 || $detail_page_id === $page_id) continue;
+        if (!pg_sw_form_pretty_urls($form_page_id)) continue;
+        if (!pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($form_page_id) {
+            return pg_sw_form_widget_form_page_id($c) === $form_page_id;
+        })) continue;
+        $record = pg_sw_record_by_address($form_page_id, $segment);
+        if (!$record) continue;
+        $detail_page_name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+        if ($detail_page_name === '') continue;
+        return pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], true);
+    }
+    return '';
+}
+
+// The address a list links each record to: the detail page's, resolved once
+// per render. A detail page that shows another form gives no address (its
+// widget would not find the record). Returns array('page_name' => '' when
+// there is none, 'pretty' => bool).
+function pg_sw_list_detail_target($detail_page_id, $custom_form_page_id)
+{
+    $out = array('page_name' => '', 'pretty' => false);
+    $detail_page_id = (int)$detail_page_id;
+    $custom_form_page_id = (int)$custom_form_page_id;
+    if ($detail_page_id <= 0 || $custom_form_page_id <= 0) return $out;
+
+    // A classic form item view page bound to the same form.
+    $name = (string)db_value(
+        "SELECT page.page_name
+         FROM page
+         INNER JOIN form_item_view_pages
+                 ON form_item_view_pages.page_id = page.page_id
+                AND form_item_view_pages.collection = 'a'
+                AND form_item_view_pages.custom_form_page_id = '" . $custom_form_page_id . "'
+         WHERE page.page_id = '" . $detail_page_id . "'
+         LIMIT 1"
+    );
+    $classic = ($name !== '');
+    // A page built in the visual editor shows the record through a
+    // form_item_view widget; it must be bound to the same form.
+    if (!$classic && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($custom_form_page_id) {
+        return pg_sw_form_widget_form_page_id($c) === $custom_form_page_id;
+    })) {
+        $name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+    }
+    $out['page_name'] = $name;
+    // A classic detail page answers only ?r= under its own name; its pretty
+    // address is the classic list page's (get_page.php).
+    $out['pretty'] = ($name !== '' && !$classic && pg_sw_form_pretty_urls($custom_form_page_id));
+    return $out;
 }
 
 // ============================================================================
@@ -1463,7 +1769,9 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
 //   ^^submitter_user_id^^   — forms.user_id
 //   ^^not_found^^           — empty when the record is shown; the configured
 //                             message when ?r= is missing or the visitor may
-//                             not see it (wrap a hide/show region around it)
+//                             not see it (wrap a hide/show region around it);
+//                             ^^__not_found_message^^ is the same value under
+//                             the name the catalog and calendar widgets use
 //   ^^{form_field.name}^^   — value from form_data
 //   ^^{form_field.name}__label^^  — when show_field_labels is on, the field's
 //                                   label as a separate token
@@ -1471,11 +1779,17 @@ function pg_sw_record_comment_context($page_id, $form_id = 0)
 // Config:
 //   custom_form_page_id   — bound custom form (page.page_id of page_type=custom_form)
 //   not_found_message     — string shown via ^^not_found^^ token when miss
+//   hide_when_not_found   — bool, default on: with no record, the loop_area
+//                           keeps only what is meant for that state
+//                           (pg_sw_prune_record_layout())
 //   access_control        — 'public' | 'submitter_only' | 'logged_in'
 //   show_field_labels     — bool: emit {field}__label tokens beside the values
+//   title_field, title_suffix — the page's <title> (pg_sw_record_title())
 //
 // URL params:
-//   r — reference_code (matches Pinegrap's classic form item view convention)
+//   r — reference_code (matches Pinegrap's classic form item view convention);
+//       on /<page>/<address name> of a form with pretty URLs on, get_page.php
+//       fills it from the name (pg_sw_route_record_address())
 function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
 {
     $custom_form_page_id = (int)$custom_form_page_id;
@@ -1502,23 +1816,26 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // Messages: liveform 'form_item_view', as on the legacy page (a record
     // saved through send_to leaves its notice there).
     _pg_inject_messages_node($tree_decoded, 'form_item_view');
-    // Visibility flag has_new_account, known once the record is read.
-    _pg_sw_mark_visibility($tree_decoded);
-    // The in-browser summary's button and box.
-    _pg_sw_apply_ai_summary_bindings($tree_decoded);
-    $split = _split_widget_tree($tree_decoded);
-
-    if ($split['loop_children'] === null) {
-        $loop_template = trim(_render_tree_node($tree_decoded, 0, 0));
-        $static_html   = '';
-    } else {
+    pg_sw_record_href_bindings($tree_decoded);
+    // The tree as designed, for the no-record layout below.
+    $tree_designed = $tree_decoded;
+    // The record template (loop_area) and the surround, drawn from a tree.
+    $draw = function ($tree) {
+        // Visibility flag has_new_account, known once the record is read.
+        _pg_sw_mark_visibility($tree);
+        // The in-browser summary's button and box.
+        _pg_sw_apply_ai_summary_bindings($tree);
+        $split = _split_widget_tree($tree);
+        if ($split['loop_children'] === null) {
+            return array(trim(_render_tree_node($tree, 0, 0)), '', $split);
+        }
         $loop_template = '';
         foreach ($split['loop_children'] as $child) {
             $loop_template .= _render_tree_node($child, 0, 0);
         }
-        $loop_template = trim($loop_template);
-        $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
-    }
+        return array(trim($loop_template), trim(_render_tree_node($split['static_tree'], 0, 0)), $split);
+    };
+    list($loop_template, $static_html, $split) = $draw($tree_decoded);
 
     // ── Resolve the requested record ─────────────────────────────────────
     // Empty ?r= is treated as "no record" (not an error) — designer might
@@ -1582,6 +1899,37 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         || pg_sw_submitted_form_visible($form_row, $access_control, _pg_sw_current_page_id());
     $found_and_allowed = ($form_row && $allowed);
 
+    // The address asked for a record (?r=, or a name under the page when the
+    // form has pretty URLs on and no catalog widget on the page reads that
+    // segment instead) and there is none to show: a 404, not the page.
+    if (!$found_and_allowed && $email_record_id === 0) {
+        $asked = ($reference_code !== '');
+        if (!$asked && pg_sw_request_segment() !== '' && pg_sw_form_pretty_urls($custom_form_page_id)) {
+            $asked = true;
+            foreach (pg_sw_page_widgets(_pg_sw_current_page_id()) as $w) {
+                $type = isset($w['cfg']['regionType']) ? (string)$w['cfg']['regionType'] : '';
+                if ($type === 'catalog_listing' || $type === 'catalog_item_view') {
+                    $asked = false;
+                    break;
+                }
+            }
+        }
+        if ($asked) pg_sw_item_missing(true);
+    }
+
+    // No record to show: the record's layout would print as a column of
+    // empty fields. Unless the widget is set to keep it, the record template
+    // keeps only what is meant for this state, and a design that shows the
+    // not-found state nowhere gets the message where the record would be.
+    if (!$found_and_allowed && (!isset($cfg['hide_when_not_found']) || !empty($cfg['hide_when_not_found']))) {
+        $tree_missing  = $tree_designed;
+        $shows_message = pg_sw_prune_record_layout($tree_missing);
+        list($loop_template, $static_html, $split) = $draw($tree_missing);
+        if (!$shows_message) {
+            $loop_template .= pg_sw_state_message_html($not_found_message, $split['loop_parent'], 'pg-sw-not-found');
+        }
+    }
+
     // Helper: build current page URL with `?r=<code>` for the ^^form_item_view^^ token.
     // Mirrors form_list_view's detail-link convention so the same token name
     // works in both widget kinds (designer can paste the same link patterns).
@@ -1593,10 +1941,11 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             // Strip trailing /<group>/... segments — keep only the page slug itself
             $first_slash = mb_strpos($page_slug, '/');
             if ($first_slash !== false) $page_slug = mb_substr($page_slug, 0, $first_slash);
-            $self_url = PATH . encode_url_path($page_slug);
-            if ($found_and_allowed) {
-                $self_url .= '?r=' . urlencode((string)$form_row['reference_code']);
-            }
+            // The record's own address: its name when the form has pretty
+            // URLs on (pg_sw_route_record_address() answers it on this page).
+            $self_url = $found_and_allowed
+                ? pg_sw_record_url($page_slug, $form_row['reference_code'], $form_row['address_name'], pg_sw_form_pretty_urls($custom_form_page_id))
+                : PATH . encode_url_path($page_slug);
         }
     }
 
@@ -1612,6 +1961,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'submitted_form_id'      => '',
             'submitter_user_id'      => '',
             'not_found'              => $not_found_message,
+            '__not_found_message'    => $not_found_message,
             '__new_account_email'    => '',
             '__new_account_password' => '',
             '__edit_url'             => '',
@@ -1657,6 +2007,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'submitted_form_id'      => (string)$form_row['id'],
             'submitter_user_id'      => (string)$form_row['user_id'],
             'not_found'              => '',  // empty when found — the not_found region renders empty
+            '__not_found_message'    => '',
             '__new_account_email'    => h(isset($new_account['email_address']) ? (string)$new_account['email_address'] : ''),
             '__new_account_password' => h(isset($new_account['password']) ? (string)$new_account['password'] : ''),
             // The record's edit screen, for whoever may edit this form's
@@ -1709,6 +2060,96 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     }
     if ($static === '') return _pg_sw_resolve_visibility($rendered, $flags);
     return _pg_sw_resolve_visibility(str_replace('<!--pg-loop-slot-->', $rendered, $static), $flags);
+}
+
+// Does $node stand for the no-record state of a form_item_view widget:
+// shown only when there is no record, or carrying the not-found message?
+function _pg_sw_is_not_found_node($node)
+{
+    $b = (is_array($node) && isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    return (isset($b['eo_visible_if']) && $b['eo_visible_if'] === 'record_not_found')
+        || (isset($b['text']) && in_array($b['text'], array('not_found', '__not_found_message'), true));
+}
+
+// $nodes cut to what a page with no record to show keeps: the elements for
+// that state (whole), the message area, and the elements around them.
+// Anything shown only in another state goes: with no record, every other
+// flag a form_item_view widget knows is off.
+function _pg_sw_keep_for_not_found($nodes)
+{
+    $out = array();
+    foreach ((array)$nodes as $node) {
+        if (!is_array($node)) continue;
+        if (_pg_sw_is_not_found_node($node)
+            || (isset($node['type'], $node['props']['contentType']) && $node['type'] === 'content' && $node['props']['contentType'] === 'messages')) {
+            $out[] = $node;
+            continue;
+        }
+        if (!empty($node['props']['_bindings']['eo_visible_if'])) continue;
+        if (empty($node['children']) || !is_array($node['children'])) continue;
+        $kept = _pg_sw_keep_for_not_found($node['children']);
+        if (!$kept) continue;
+        $node['children'] = $kept;
+        $out[] = $node;
+    }
+    return $out;
+}
+
+// A form_item_view tree as it shows when there is no record: the record
+// template (the loop_area's children; the whole widget when it has no
+// loop_area) cut by _pg_sw_keep_for_not_found(), the surround as designed.
+// Returns whether the tree still shows the no-record state anywhere - a
+// not-found message, an element shown only then. When it does not, the
+// renderer writes the message itself.
+function pg_sw_prune_record_layout(&$tree)
+{
+    if (!is_array($tree)) return false;
+    $cut = function (&$node) use (&$cut) {
+        if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return false;
+        foreach ($node['children'] as $i => $child) {
+            if (isset($child['type']) && $child['type'] === 'loop_area') {
+                $node['children'][$i]['children'] = _pg_sw_keep_for_not_found(isset($child['children']) ? $child['children'] : array());
+                return true;
+            }
+            if ($cut($node['children'][$i])) return true;
+        }
+        return false;
+    };
+    if (!$cut($tree) && !empty($tree['children'])) {
+        $tree['children'] = _pg_sw_keep_for_not_found($tree['children']);
+    }
+
+    $shows = function ($node) use (&$shows) {
+        if (!is_array($node)) return false;
+        if (_pg_sw_is_not_found_node($node)) return true;
+        foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+            if ($shows($child)) return true;
+        }
+        return false;
+    };
+    return $shows($tree);
+}
+
+// The <title> of a page that shows a record through its form_item_view
+// widget, from the widget's settings: the value of the field it names
+// (title_field, a field of the form or a standard field such as the
+// reference code), else $rss_title (the form's RSS title fields), followed
+// by title_suffix ("| Inbox"). '' when there is no text, and the page keeps
+// its own title. $values: field name => the record's value, as plain text.
+function pg_sw_record_title($cfg, $values, $rss_title = '')
+{
+    $cfg   = is_array($cfg) ? $cfg : array();
+    $field = isset($cfg['title_field']) ? strtolower(trim((string)$cfg['title_field'])) : '';
+    $title = '';
+    if ($field !== '' && is_array($values) && isset($values[$field])) {
+        $title = trim(preg_replace('/\s+/u', ' ', (string)$values[$field]));
+    }
+    if ($title === '') $title = trim((string)$rss_title);
+    if ($title === '') return '';
+
+    $suffix = isset($cfg['title_suffix']) ? trim((string)$cfg['title_suffix']) : '';
+    if ($suffix !== '' && function_exists('pg_tr_text')) $suffix = trim((string)pg_tr_text($suffix, 'text', 'seo'));
+    return ($suffix !== '') ? $title . ' ' . $suffix : $title;
 }
 
 // The in-browser summary (assets/js/pg_ai_summary.js), bound rather than
@@ -2072,12 +2513,17 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // ── Loop_area present — build submission rows ─────────────────────────
     $loop_rendered = '';
     if ($show_submissions && $loop_template !== '') {
-        // Resolve the detail page URL base.
+        // Resolve the detail page URL base, and the form its record widget
+        // shows: only that form's records may take their pretty address
+        // there (pg_sw_route_record_address() resolves no other).
         $detail_page_name = '';
+        $detail_form_id   = 0;
         if ($detail_page_id > 0) {
             $detail_page_name = (string)db_value(
                 "SELECT page_name FROM page WHERE page_id = '" . e($detail_page_id) . "' LIMIT 1"
             );
+            $detail_widget = pg_sw_page_widget($detail_page_id, 'form_item_view');
+            if ($detail_widget) $detail_form_id = pg_sw_form_widget_form_page_id($detail_widget['cfg']);
         }
 
         // Optional single-form filter — validate that page_id exists and is a custom form.
@@ -2098,7 +2544,9 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         $submission_rows = db_items(
             "SELECT
                 forms.id,
+                forms.page_id,
                 forms.reference_code,
+                forms.address_name,
                 FROM_UNIXTIME(forms.submitted_timestamp) AS submitted_date_and_time,
                 page.page_title AS form_name
              FROM forms
@@ -2116,8 +2564,9 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
                 // widgets carry, so a row design moves between them.
                 $detail_url = '#';
                 if ($detail_page_name !== '') {
-                    $detail_url = $output_base . encode_url_path($detail_page_name)
-                                  . '?r=' . urlencode((string)$sr['reference_code']);
+                    $sr_pretty  = ($detail_form_id > 0) && ((int)$sr['page_id'] === $detail_form_id)
+                                  && pg_sw_form_pretty_urls($detail_form_id);
+                    $detail_url = pg_sw_record_url($detail_page_name, $sr['reference_code'], $sr['address_name'], $sr_pretty, $output_base);
                 }
 
                 // Per-row tokens extend the base account map. The row itself
@@ -2126,6 +2575,9 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
                 $row_extra = array_merge($values, array(
                     'form_name'         => h(isset($sr['form_name']) ? (string)$sr['form_name'] : ''),
                     'form_item_view'    => $detail_url,
+                    // The name the settings once gave it; designs written
+                    // with it keep their links.
+                    '__detail_url'      => $detail_url,
                     'submitted_form_id' => (string)$sr['id'],
                 ));
 
@@ -2522,7 +2974,8 @@ function pg_member_widget_register_opts($widget_id, $form, $type = 'registration
 // Posts to <software>/index.php, the same script the legacy login page and
 // the login region post to. Controls by name: email, password, remember_me.
 // Tokens: ^^__site_name^^, ^^__redirect_url^^, ^^__forgot_password_url^^,
-// ^^__register_url^^, ^^__google_signin_url^^. Sections: google_signin,
+// ^^__register_url^^, ^^__google_signin_url^^. Sections: google_signin
+// (every sign-in button that is on: Google, Microsoft, Apple),
 // forgot_password_link, register_link. Errors: liveform 'login', printed by
 // the Messages node.
 //
@@ -2606,10 +3059,10 @@ function _render_system_widget_login_form($tree_json, $widget_id, $cfg = array()
         if ($legacy !== false && $legacy !== '') $register_url = (string)$legacy;
     }
 
-    // Google: sign-in only from here (the staff login does the same); a
-    // Google identity nobody matches is refused, not registered.
+    // Google, Microsoft, Apple: sign-in only from here (the staff login does
+    // the same); an identity nobody matches is refused, not registered.
     $google_url  = function_exists('pg_google_signin_url') ? pg_google_signin_url($send_to, 'none') : '';
-    $google_html = function_exists('pg_google_signin_button') ? pg_google_signin_button($send_to, 'none') : '';
+    $google_html = function_exists('pg_signin_buttons') ? pg_signin_buttons($send_to, 'none') : '';
 
     $sections = array(
         'google_signin'        => $google_html,
@@ -2953,28 +3406,16 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
 
     // Where an item links: the record page is its own detail page; a list
     // links to its detail page when that page is bound to the same form.
+    // A record of a form with pretty URLs on links by its name.
     $detail_page_name = '';
+    $detail_pretty    = false;
     if ($feed['type'] === 'form_item_view') {
         $detail_page_name = $page_name;
+        $detail_pretty    = pg_sw_form_pretty_urls($form_page_id);
     } else {
-        $detail_page_id = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
-        if ($detail_page_id > 0) {
-            $detail_page_name = (string)db_value(
-                "SELECT page.page_name
-                 FROM page
-                 INNER JOIN form_item_view_pages
-                         ON form_item_view_pages.page_id = page.page_id
-                        AND form_item_view_pages.collection = 'a'
-                        AND form_item_view_pages.custom_form_page_id = '" . $form_page_id . "'
-                 WHERE page.page_id = '" . $detail_page_id . "'
-                 LIMIT 1"
-            );
-            if ($detail_page_name === '' && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($form_page_id) {
-                return pg_sw_form_widget_form_page_id($c) === $form_page_id;
-            })) {
-                $detail_page_name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
-            }
-        }
+        $detail_target    = pg_sw_list_detail_target(isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, $form_page_id);
+        $detail_page_name = $detail_target['page_name'];
+        $detail_pretty    = $detail_target['pretty'];
     }
 
     // The records, under the filters the designer set on the list.
@@ -2989,7 +3430,7 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         }
     }
     $records = db_items(
-        "SELECT forms.id, forms.reference_code, forms.submitted_timestamp
+        "SELECT forms.id, forms.reference_code, forms.address_name, forms.submitted_timestamp
          FROM forms
          $filter_join
          WHERE forms.page_id = '" . $form_page_id . "'
@@ -3009,7 +3450,7 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         $form_id = (int)$record['id'];
         $text    = pg_sw_submitted_form_rss_text($form_id);
         $link    = ($detail_page_name !== '')
-            ? $site . $base_path . encode_url_path($detail_page_name) . '?r=' . rawurlencode((string)$record['reference_code'])
+            ? $site . pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], $detail_pretty, $base_path)
             : $site . $base_path . encode_url_path($page_name);
 
         $categories = '';
@@ -3163,11 +3604,14 @@ function _pg_sw_render_message_only($tree, $form_name, $message_html, $kind = 'n
     return trim(_render_tree_node($tree, 0, 0));
 }
 
+// Keeps or cuts each span _pg_sw_mark_visibility() marked. Spans nest (a
+// record's part holds the button only its editors see), so a span that is
+// kept has the spans inside it resolved in turn.
 function _pg_sw_resolve_visibility($html, $flags)
 {
     if (!is_string($html) || strpos($html, '<!--pg-vis:') === false) return $html;
     return preg_replace_callback('/<!--pg-vis:([a-z0-9_]+):(\d+)-->(.*?)<!--\/pg-vis:\2-->/s', function ($m) use ($flags) {
-        return !empty($flags[$m[1]]) ? $m[3] : '';
+        return !empty($flags[$m[1]]) ? _pg_sw_resolve_visibility($m[3], $flags) : '';
     }, $html);
 }
 
@@ -4013,8 +4457,9 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 //
 // Tokens: ^^__site_name^^, ^^__login_url^^, ^^__google_signup_url^^,
 // ^^__password_rules^^, ^^__opt_in_label^^. Sections: captcha,
-// password_rules, google_signup, login_link. Errors and the "you are
-// registered" notice: liveform 'register', printed by the Messages node.
+// password_rules, google_signup (every sign-in button that is on),
+// login_link. Errors and the "you are registered" notice: liveform
+// 'register', printed by the Messages node.
 //
 // cfg: redirect_page_id (after sign-up), login_page_id (the "already a
 // member" link; the legacy login page type is the fallback), contact_group_id
@@ -4086,7 +4531,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
         ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '';
     $captcha     = (defined('CAPTCHA') && CAPTCHA && function_exists('get_captcha_fields')) ? (string)get_captcha_fields($lf) : '';
     $google_url  = function_exists('pg_google_signin_url') ? pg_google_signin_url($send_to, 'create') : '';
-    $google_html = function_exists('pg_google_signin_button') ? pg_google_signin_button($send_to, 'create') : '';
+    $google_html = function_exists('pg_signin_buttons') ? pg_signin_buttons($send_to, 'create') : '';
     $opt_label   = defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '';
 
     pg_cf_apply_section_bindings($tree, array(
@@ -4147,6 +4592,42 @@ function pg_sw_render_context($set = null)
         return $old;
     }
     return $ctx;
+}
+
+/**
+ * The page's address names a record, product or product group that is not
+ * there, or a record the visitor may not see: the widget draws its not-found
+ * state, and the response says so. The status is 404 with an X-Robots-Tag
+ * noindex header, and get_page_content() writes a robots noindex tag and no
+ * canonical link, so search engines drop the address instead of indexing the
+ * not-found screen under it.
+ *
+ * Pass true to mark (a widget that found nothing for the address), false to
+ * clear (get_page_content() before its widget pass), nothing to read. An
+ * e-mail body and the SEO pass (which renders pages inside another request)
+ * are never marked: the status there belongs to another response.
+ *
+ * @param bool|null $mark
+ * @return bool
+ */
+function pg_sw_item_missing($mark = null)
+{
+    static $missing = false;
+    if ($mark === null) return $missing;
+    if (!$mark) {
+        $missing = false;
+        return false;
+    }
+    $sw_ctx = pg_sw_render_context();
+    if (!empty($sw_ctx['email']) || (function_exists('pg_seo_rendering') && pg_seo_rendering())) {
+        return false;
+    }
+    $missing = true;
+    if (!headers_sent()) {
+        set_response_code(404);
+        header('X-Robots-Tag: noindex');
+    }
+    return true;
 }
 
 /**
@@ -4698,6 +5179,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     if (isset($pm_pretty_map[$payment_method_raw])) {
         $payment_method_pretty = $pm_pretty_map[$payment_method_raw];
     }
+    // An order put on the customer's account (ERP, 10.60) is stored as an
+    // offline payment and says what it was.
+    if (($payment_method_raw === 'Offline Payment')
+        && function_exists('waf_table_has_column') && waf_table_has_column('orders', 'erp_on_account')
+        && ((int)db_value("SELECT erp_on_account FROM orders WHERE id = '$oid_esc' LIMIT 1") === 1)) {
+        $payment_method_pretty = lang('Put on account');
+    }
 
     // Masked card number — shown under the payment method so the customer can
     // tell WHICH card they paid with when they hold several. Resolution rules
@@ -5246,9 +5734,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 //
 // Tokens: ^^__site_name^^, ^^__member_id_label^^, ^^__login_url^^,
 // ^^__google_signup_url^^, ^^__password_rules^^, ^^__opt_in_label^^.
-// Sections: password_rules, google_signup, login_link. Errors and the
-// "membership active" notice: liveform 'membership_entrance', printed by
-// the Messages node.
+// Sections: password_rules, google_signup (every sign-in button that is
+// on), login_link. Errors and the "membership active" notice: liveform
+// 'membership_entrance', printed by the Messages node.
 //
 // cfg: redirect_page_id, login_page_id, contact_group_id (the site setting
 // when empty), show_remember_me (default on).
@@ -5317,7 +5805,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
         _pg_member_fill_from_form($tree, $lf, array('password', 'password_verify'));
     }
     if ($google_signup) {
-        $lf->add_notice(lang('Your Google account is verified. Enter your membership details to finish - a password is optional, because you can keep signing in with Google.'));
+        $lf->add_notice(pg_signin_membership_notice($google_pending));
         foreach (array('password', 'password_verify') as $n) {
             _pg_member_edit_control($tree, $n, function (&$node) { _pg_member_set_attr($node, 'required', null); });
         }
@@ -5336,7 +5824,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
     $rules_html  = (defined('STRONG_PASSWORD') && STRONG_PASSWORD && function_exists('get_strong_password_requirements'))
         ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '';
     $google_url  = (!$google_signup && function_exists('pg_google_signin_url')) ? pg_google_signin_url($send_to, 'membership') : '';
-    $google_html = (!$google_signup && function_exists('pg_google_signin_button')) ? pg_google_signin_button($send_to, 'membership') : '';
+    $google_html = (!$google_signup && function_exists('pg_signin_buttons')) ? pg_signin_buttons($send_to, 'membership') : '';
     $opt_label   = defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '';
 
     pg_cf_apply_section_bindings($tree, array(

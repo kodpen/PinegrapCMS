@@ -25,35 +25,29 @@ validate_ecommerce_access($user);
 
 $number_of_results = 0;
 
-switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
-    case lang('Name'):
-        $sort_column = 'name';
-        break;
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'code'          => lang('Code'),
+    'country'       => lang('Country'),
+    'last_modified' => lang('Last Modified'),
+);
 
-    case  lang('Code'):
-        $sort_column = 'code';
-        break;
+$sort_default = array('sort' => 'name', 'order' => 'asc');
 
-    case  lang('Country'):
-        $sort_column = 'country_name';
-        break;
+$list_state = pg_list_state('view_states', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case  lang('Last Modified'):
-        $sort_column = 'timestamp';
-        break;
-    default:
-        $sort_column = 'name';
-}
-
-if (isset($_GET['sort']) && $_GET['sort']) {
-    $asc_desc = sql_order_direction(isset($_GET['order']) ? $_GET['order'] : '');
-} else {
-    $asc_desc = 'asc';
-}
-
-if (($sort_column == 'name') && (empty($_GET['order']))) {
-    $asc_desc = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'states.name',
+    'code'          => 'states.code',
+    'country'       => 'countries.name',
+    'last_modified' => 'states.timestamp',
+));
 
 $query = "SELECT
             states.id,
@@ -65,7 +59,7 @@ $query = "SELECT
         FROM states
         LEFT JOIN countries ON states.country_id = countries.id
         LEFT JOIN user ON states.user = user.user_id
-        ORDER BY $sort_column $asc_desc";
+        ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 while ($row = mysqli_fetch_array($result)) {
@@ -92,12 +86,12 @@ while ($row = mysqli_fetch_array($result)) {
     $output_rows .= '
         <tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label">' . $name . '</td>
             <td class="align-middle">' . $code . '</td>
-            <td class="align-middle">' . $country_name . '</td>
+            <td class="align-middle">' . h($country_name) . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . h($last_modified_username) . '</td>
         </tr>';
 }
@@ -117,7 +111,9 @@ pg_page_shell([
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_state.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_state.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_states.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -127,10 +123,10 @@ pg_page_shell([
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' .asc_or_desc(lang('Name'),'view_states'). '</th>
-                                    <th>' .asc_or_desc(lang('Code'),'view_states'). '</th>
-                                    <th>' .asc_or_desc(lang('Country'),'view_states'). '</th>
-                                    <th>' .asc_or_desc(lang('Last Modified'),'view_states'). '</th>
+                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                    <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
+                                    <th>' . get_column_heading(lang('Country'), $sort_levels, '', '', 'country') . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

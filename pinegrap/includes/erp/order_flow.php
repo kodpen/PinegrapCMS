@@ -807,7 +807,7 @@ function erp_order_flow_card($order_id, $state = null)
         if ($label !== '') {
             $words[0] = $label;
         }
-        return '<button type="submit" form="' . $form_id . '" name="erp_step" value="' . h($action) . '" class="btn btn-sm ' . ($primary ? 'btn-primary rounded-pill px-3' : 'btn-outline-secondary') . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button>';
+        return '<button type="submit" form="' . $form_id . '" name="erp_step" value="' . h($action) . '" class="btn btn-sm ' . ($primary ? 'btn-primary rounded-pill px-3' : 'btn-outline-secondary') . '"><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button>';
     };
 
     $output_steps = '';

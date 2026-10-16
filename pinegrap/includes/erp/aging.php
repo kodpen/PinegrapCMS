@@ -78,7 +78,8 @@ function erp_aging_due_sql($alias = 'i')
  */
 function erp_aging_as_of($value)
 {
-    $value = trim((string) $value);
+    // An array (?as_of[]=x) is no date: it wrote "Array to string conversion".
+    $value = is_scalar($value) ? trim((string) $value) : '';
 
     if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $parts) === 1
         && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) {

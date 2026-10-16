@@ -43,10 +43,14 @@ function get_form_item_view($properties) {
 
     $layout_type = get_layout_type($page_id);
 
+    // The reference code of the submitted form to show. A link can leave it out, and
+    // anything but a string (an array from r[]=) cannot be a reference code.
+    $reference_code = (isset($_GET['r']) && is_string($_GET['r'])) ? $_GET['r'] : '';
+
     // If we don't know which submitted form to show and user has edit access to page, then show
     // notice.
     if (
-        !$form_id and empty($_GET['r'])
+        !$form_id and empty($reference_code)
         and check_edit_access(db_value("SELECT page_folder FROM page WHERE page_id = '" . e($page_id) . "'"))
     ) {
 
@@ -81,7 +85,7 @@ function get_form_item_view($properties) {
         
         // else get the submitted form by using the reference code
         } else {
-            $where = "forms.reference_code = '" . e($_GET['r']) . "'";
+            $where = "forms.reference_code = '" . e($reference_code) . "'";
         }
         
         // get submitted form
@@ -121,7 +125,7 @@ function get_form_item_view($properties) {
 
             // Otherwise this page is being called through an ugly URL, so output error for that.
             } else {
-                if ($_GET['r']) {
+                if ($reference_code) {
                     output_error(lang('The submitted form could not be found. The reference code might be invalid or the submitted form might have been deleted.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
                 } else {
                     output_error(lang('There was no reference code passed to this page, so a submitted form could not be found. You may browse to a submitted form from a form list view page.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);

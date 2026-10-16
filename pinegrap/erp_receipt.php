@@ -30,7 +30,7 @@ $liveform = new liveform('erp_receipt');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php';
 
-$cash_id = (int) ($_REQUEST['id'] ?? 0);
+$cash_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $receipt = ($cash_id > 0) ? erp_receipt($cash_id) : null;
 
 if ($receipt === null) {
@@ -46,6 +46,12 @@ $is_cancelled = ((int) $receipt['reversal_id'] > 0);
 if ($_POST) {
 
     validate_token_field();
+
+    // Every field of the forms but the amounts to allocate is one value. One
+    // posted as an array counts as not given: (int) read an array allocation
+    // as allocation 1 and took that one off, (string) wrote "Array" into
+    // the reason.
+    pg_request_single_values(array('erp_action', 'reason', 'settlement_id'));
 
     $action = (string) ($_POST['erp_action'] ?? '');
 
@@ -86,7 +92,9 @@ if ($_POST) {
         // already holds on that invoice: the pair is unique, so the total is
         // what gets written.
         foreach ($amounts as $invoice_id => $text) {
-            $amount = erp_kurus((string) $text);
+            // An amount is one figure; one posted as an array
+            // (allocate[5][]=x) is nothing allocated to that invoice.
+            $amount = is_scalar($text) ? erp_kurus((string) $text) : 0;
 
             if ($amount <= 0) {
                 continue;
@@ -304,7 +312,7 @@ if (!$is_cancelled && ($unallocated > 0)) {
                             </table>
                         </div>
                         <div class="text-end mt-3">
-                            <button type="submit" name="submit_allocate" value="Allocate" class="btn btn-primary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save the allocations') . '</span></button>
+                            <button type="submit" name="submit_allocate" value="Allocate" class="btn btn-primary"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save the allocations') . '</span></button>
                         </div>
                     </div>
                 </div>
@@ -348,7 +356,7 @@ if (!$is_cancelled) {
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                                <button type="submit" name="submit_cancel" value="Cancel" class="btn btn-outline-warning" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Confirm the cancellation') . '</span></button>
+                                <button type="submit" name="submit_cancel" value="Cancel" class="btn btn-outline-warning"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Confirm the cancellation') . '</span></button>
                             </div>
                         </div>
                     </form>

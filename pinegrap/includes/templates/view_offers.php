@@ -23,7 +23,7 @@ if (!defined('PG_INIT_LOADED')) {
     <?=$liveform->get_warnings()?>
     <?=$liveform->output_notices()?>
     <div class="pg-toolbar mb-3" id="pg-offers-toolbar">
-        <a class="btn btn-sm btn-primary rounded-pill px-3" href="edit_offer.php" data-loading-content="<?=lang('Loading')?>"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('New Offer')?></a>
+        <a class="btn btn-sm btn-primary rounded-pill px-3" href="edit_offer.php"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('New Offer')?></a>
         <?php
         // One chip per filter; the count rides in a badge so the active chip
         // stays readable when it fills in. A filter with nothing to show is
@@ -75,8 +75,8 @@ if (!defined('PG_INIT_LOADED')) {
                     <?php foreach ($offers as $offer): ?>
                     <tr data-id="<?=$offer['id']?>" data-status="<?=$offer['status']?>" data-how="<?=$offer['require_code'] ? 'code' : 'auto'?>" data-incomplete="<?=$offer['incomplete'] ? '1' : '0'?>">
                         <td class="align-middle text-start text-nowrap">
-                            <a class="m-1 btn-data-control btn btn-outline-primary border-2" href="edit_offer.php?id=<?=$offer['id']?>" title="<?=lang('Edit')?>" data-loading-content=" "><i class="bi bi-pencil"></i></a>
-                            <a class="m-1 btn-data-control btn btn-outline-secondary border-2" href="edit_offer.php?duplicate=<?=$offer['id']?>" title="<?=lang('Duplicate')?>" data-loading-content=" "><i class="bi bi-copy"></i></a>
+                            <a class="m-1 btn-data-control btn btn-outline-primary border-2" href="edit_offer.php?id=<?=$offer['id']?>" title="<?=lang('Edit')?>"><i class="bi bi-pencil"></i></a>
+                            <a class="m-1 btn-data-control btn btn-outline-secondary border-2" href="edit_offer.php?duplicate=<?=$offer['id']?>" title="<?=lang('Duplicate')?>"><i class="bi bi-copy"></i></a>
                             <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 pg-offer-toggle" data-id="<?=$offer['id']?>" title="<?=$offer['enabled'] ? lang('Disable offer') : lang('Enable offer')?>"><i class="bi bi-power"></i></button>
                         </td>
                         <td class="align-middle">

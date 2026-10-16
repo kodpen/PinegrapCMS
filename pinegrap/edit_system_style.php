@@ -28,6 +28,15 @@ if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE) {
     validate_area_access($user, 'designer');
 }
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM style WHERE style_id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 include_once('liveform.class.php');
 include_once('includes/designer_screen.php');
 
@@ -114,10 +123,18 @@ if (!$_POST) {
     $delete_button = '';
     if (pg_designer_is_full($user)) {
         $del_folders = (int)db_value("SELECT COUNT(folder_id) FROM folder WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id'");
-        $del_message = str_replace('{name}', $style['name'], lang('The design "{name}" will be deleted.')) . ' '
-            . (count($pages) > 0
-                ? str_replace('{n}', count($pages), lang('Its {n} page(s) will be moved to the Recycle Bin.'))
-                : lang('It has no pages.'));
+        // Once the bin holds styles the design goes there with its pages.
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+        if (pg_recycle_style_ready()) {
+            $del_message = count($pages) > 0
+                ? str_replace(array('{name}', '{n}'), array($style['name'], count($pages)), lang('The design "{name}" and its {n} page(s) will be moved to the Recycle Bin.'))
+                : str_replace('{name}', $style['name'], lang('The design "{name}" will be moved to the Recycle Bin.'));
+        } else {
+            $del_message = str_replace('{name}', $style['name'], lang('The design "{name}" will be deleted.')) . ' '
+                . (count($pages) > 0
+                    ? str_replace('{n}', count($pages), lang('Its {n} page(s) will be moved to the Recycle Bin.'))
+                    : lang('It has no pages.'));
+        }
         if ($del_folders > 0) {
             $del_message .= ' ' . lang(array('string' => '{var:1} folder(s) use it as their default design; that setting will be cleared.', 'vars' => $del_folders));
         }
@@ -156,15 +173,7 @@ if (!$_POST) {
         if (!$dd['ok']) {
             output_error(h($dd['error']));
         }
-        $dd_message = $dd['binned'] > 0
-            ? lang(array('string' => 'The design was deleted; {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $dd['binned']))
-            : lang('The style has been deleted.');
-        if ($dd['home'] > 0) {
-            $dd_message .= ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.');
-        }
-        if ($dd['folders'] > 0) {
-            $dd_message .= ' ' . lang(array('string' => '{var:1} folder(s) used it as their default design; that setting was cleared.', 'vars' => $dd['folders']));
-        }
+        $dd_message = pg_designer_delete_design_message($dd);
         $liveform->remove_form();
         $lf_view = new liveform('view_system_styles');
         $lf_view->add_notice($dd_message);

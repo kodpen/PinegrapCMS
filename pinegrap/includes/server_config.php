@@ -350,10 +350,19 @@ function pg_server_config_blocks($server = '')
         </staticContent>',
             ),
 
+            // No Referrer-Policy is added here: PHP sends it on every page
+            // (waf_send_security_headers) and the pages that must not leak
+            // their address replace it with no-referrer. IIS appends a
+            // <customHeaders> value to whatever PHP sent, and a browser takes
+            // the last valid policy, so a server copy turned those pages back
+            // to strict-origin-when-cross-origin. The <remove> keeps a policy
+            // inherited from the server level from doing the same. A static
+            // file without the header gets the browser default, which is the
+            // same policy.
             array(
                 'key'    => 'headers',
                 'label'  => 'Security headers',
-                'why'    => 'Without X-Content-Type-Options a browser may run an uploaded file as script because of what is inside it rather than what it is served as; without a referrer policy the full address of a private page travels to every site linked from it.',
+                'why'    => 'Without X-Content-Type-Options a browser may run an uploaded file as script because of what is inside it rather than what it is served as.',
                 'level'  => 'recommended',
                 'detect' => '/X-Content-Type-Options/i',
                 'anchor' => 'web-server',
@@ -363,7 +372,6 @@ function pg_server_config_blocks($server = '')
                 <remove name="X-Content-Type-Options" />
                 <add name="X-Content-Type-Options" value="nosniff" />
                 <remove name="Referrer-Policy" />
-                <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
                 <remove name="X-Powered-By" />
             </customHeaders>
         </httpProtocol>',
@@ -476,17 +484,19 @@ RewriteRule (^|/)\\.(git|svn|hg|env)(/|$) - [F,L]',
 'AddCharset UTF-8 .css .js .json .svg',
         ),
 
+        // No Referrer-Policy, for the reason given on the IIS block: PHP
+        // sends it, and a server rule would override the no-referrer of the
+        // pages that ask for it.
         array(
             'key'    => 'headers',
             'label'  => 'Security headers',
-            'why'    => 'Without X-Content-Type-Options a browser may run an uploaded file as script because of what is inside it rather than what it is served as; without a referrer policy the full address of a private page travels to every site linked from it.',
+            'why'    => 'Without X-Content-Type-Options a browser may run an uploaded file as script because of what is inside it rather than what it is served as.',
             'level'  => 'recommended',
             'detect' => '/X-Content-Type-Options/i',
             'anchor' => 'top',
             'snippet' =>
 '<IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
-    Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always unset X-Powered-By
 </IfModule>',
         ),
@@ -541,8 +551,10 @@ location ' . $path . ' {
     try_files $uri $uri/ ' . $path . $dir . '/router.php;
 }
 
+# Referrer-Policy comes from the software, which narrows it to no-referrer
+# on the pages that must not pass their address on. add_header would be
+# appended after it and win.
 add_header X-Content-Type-Options "nosniff" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 ';
     }
 

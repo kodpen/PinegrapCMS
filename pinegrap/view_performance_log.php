@@ -62,7 +62,9 @@ $range_options = array(
     '7'  => lang('Last 7 days'),
     '30' => lang('Last 30 days'),
 );
-$range = isset($_GET['range']) && isset($range_options[$_GET['range']]) ? $_GET['range'] : '7';
+// Each filter is one value; one sent as an array (?range[]=x) counts as not
+// given: it ended in an error page.
+$range = isset($_GET['range']) && is_string($_GET['range']) && isset($range_options[$_GET['range']]) ? $_GET['range'] : '7';
 $range_seconds = (int) $range * 86400;
 $start_timestamp = time() - $range_seconds;
 
@@ -71,11 +73,11 @@ $area_options = array(
     'backend'  => lang('Backend'),
     'frontend' => lang('Frontend'),
 );
-$area = isset($_GET['area']) && isset($area_options[$_GET['area']]) ? $_GET['area'] : '';
+$area = isset($_GET['area']) && is_string($_GET['area']) && isset($area_options[$_GET['area']]) ? $_GET['area'] : '';
 
 // Free-text search across request_url + script_name. Trim to drop accidental whitespace,
 // cap length to keep query plans sane on a heavily indexed table.
-$search = isset($_GET['search']) ? trim((string) $_GET['search']) : '';
+$search = (isset($_GET['search']) && is_string($_GET['search'])) ? trim($_GET['search']) : '';
 if (strlen($search) > 200) {
     $search = substr($search, 0, 200);
 }
@@ -111,11 +113,11 @@ $mem_sort_columns = array(
     'avg_ms' => 'avg_ms',
 );
 
-$slow_sort = (isset($_GET['slow_sort']) && isset($slow_sort_columns[$_GET['slow_sort']])) ? $_GET['slow_sort'] : 'avg_ms';
-$slow_dir  = (isset($_GET['slow_dir']) && strtolower($_GET['slow_dir']) === 'asc') ? 'asc' : 'desc';
+$slow_sort = (isset($_GET['slow_sort']) && is_string($_GET['slow_sort']) && isset($slow_sort_columns[$_GET['slow_sort']])) ? $_GET['slow_sort'] : 'avg_ms';
+$slow_dir  = (isset($_GET['slow_dir']) && is_string($_GET['slow_dir']) && strtolower($_GET['slow_dir']) === 'asc') ? 'asc' : 'desc';
 
-$mem_sort = (isset($_GET['mem_sort']) && isset($mem_sort_columns[$_GET['mem_sort']])) ? $_GET['mem_sort'] : 'max_kb';
-$mem_dir  = (isset($_GET['mem_dir']) && strtolower($_GET['mem_dir']) === 'asc') ? 'asc' : 'desc';
+$mem_sort = (isset($_GET['mem_sort']) && is_string($_GET['mem_sort']) && isset($mem_sort_columns[$_GET['mem_sort']])) ? $_GET['mem_sort'] : 'max_kb';
+$mem_dir  = (isset($_GET['mem_dir']) && is_string($_GET['mem_dir']) && strtolower($_GET['mem_dir']) === 'asc') ? 'asc' : 'desc';
 
 // ---- Detect missing table (migration not yet run) --------------------------
 

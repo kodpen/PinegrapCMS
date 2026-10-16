@@ -2695,6 +2695,21 @@ table.chart thead th {
   max-width: calc(100% - 57px);
 }
 
+/* Quick note beside the bell (ws_notes_quick_markup()): placed like the
+   notifications, under the header's right edge. */
+#pg_quick_note {
+  width: 350px;
+  right: 2px !important;
+  left: auto;
+  top: calc(var(--pg-navbar-h) + 2px) !important;
+  max-width: calc(100% - 4px);
+}
+
+#pg_quick_note textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
 #notifications .list-group-item .notification-description {
   line-height: 15px;
   font-size: 13px;
@@ -5106,21 +5121,9 @@ button.pg-job-open {
   background: var(--pg-tint-soft);
 }
 
-/* Pending shipments widget (widget-id 9) keeps a headline block above its
-   list: the package count, the value beside it, and a twelve-slot meter. Its
-   rows are plain .pg-row, except that the tile colour comes from the carrier
-   rather than the card, so two carriers stay tellable apart at a glance. */
-.pg-ship-head {
-  padding: 0.5rem 1rem 0;
-}
-.pg-ship-count {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1;
-}
-.pg-ship-summary {
-  font-size: 12px;
-}
+/* Twelve-slot meter under the Operations Desk shipping lane (widget-id 9): one
+   dot per parcel waiting, lit amber, so a glance tells a quiet day from a
+   backlog before the rows are read. */
 .pg-ship-meter {
   display: flex;
   align-items: center;
@@ -5138,10 +5141,6 @@ button.pg-job-open {
 .pg-ship-meter span.is-on {
   background: #f59e0b;
   opacity: 1;
-}
-.pg-ship-more {
-  padding: 0.25rem 0 0.5rem;
-  text-align: center;
 }
 
 /* ── Widget empty state ───────────────────────────────────────────────────
@@ -5461,6 +5460,29 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 .widget[widget-id="26"] { --bs-card-border-color: rgba(236,72,153,.30);  background: #fdf2f8; --pg-accent: #ec4899; --pg-accent-ink: #18181b; }
 .widget[widget-id="26"] .card-header i { color: #ec4899; }
 
+/* The workspace cards: My Tasks, Waiting on Me, My Week, Team Pulse. */
+.widget[widget-id="27"] { --bs-card-border-color: rgba(99,102,241,.30);  background: #eef2ff; --pg-accent: #6366f1; --pg-accent-ink: #fff; }
+.widget[widget-id="27"] .card-header i { color: #6366f1; }
+.widget[widget-id="28"] { --bs-card-border-color: rgba(225,29,72,.30);   background: #fff1f2; --pg-accent: #e11d48; --pg-accent-ink: #fff; }
+.widget[widget-id="28"] .card-header i { color: #e11d48; }
+.widget[widget-id="29"] { --bs-card-border-color: rgba(2,132,199,.30);   background: #f0f9ff; --pg-accent: #0284c7; --pg-accent-ink: #fff; }
+.widget[widget-id="29"] .card-header i { color: #0284c7; }
+.widget[widget-id="30"] { --bs-card-border-color: rgba(101,163,13,.30);  background: #f7fee7; --pg-accent: #65a30d; --pg-accent-ink: #fff; }
+.widget[widget-id="30"] .card-header i { color: #65a30d; }
+
+/* Waiting on Me: a mention or reply not read yet carries a dot after the
+   sender's name; read ones stay in the list without it. */
+.pg-row.is-unread .pg-row-name::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 0.35rem;
+  border-radius: 50%;
+  background: var(--pg-accent);
+  vertical-align: 0.15em;
+}
+
 /* ── Dark theme ──────────────────────────────────────────────────── */
 
 html[data-bs-theme="dark"] .widget[widget-id="1"]  { --bs-card-border-color: rgba(13,148,136,.28); background: #0a1413; --pg-accent: #14b8a6; }
@@ -5512,6 +5534,14 @@ html[data-bs-theme="dark"] .widget[widget-id="25"] { --bs-card-border-color: rgb
 html[data-bs-theme="dark"] .widget[widget-id="25"] .card-header i { color: #38bdf8; }
 html[data-bs-theme="dark"] .widget[widget-id="26"] { --bs-card-border-color: rgba(236,72,153,.28); background: #170d13; }
 html[data-bs-theme="dark"] .widget[widget-id="26"] .card-header i { color: #f472b6; }
+html[data-bs-theme="dark"] .widget[widget-id="27"] { --bs-card-border-color: rgba(99,102,241,.28); background: #0e1020; --pg-accent: #818cf8; --pg-accent-ink: #18181b; }
+html[data-bs-theme="dark"] .widget[widget-id="27"] .card-header i { color: #818cf8; }
+html[data-bs-theme="dark"] .widget[widget-id="28"] { --bs-card-border-color: rgba(225,29,72,.28);  background: #160c10; --pg-accent: #fb7185; --pg-accent-ink: #18181b; }
+html[data-bs-theme="dark"] .widget[widget-id="28"] .card-header i { color: #fb7185; }
+html[data-bs-theme="dark"] .widget[widget-id="29"] { --bs-card-border-color: rgba(2,132,199,.28);  background: #0d141c; --pg-accent: #38bdf8; --pg-accent-ink: #18181b; }
+html[data-bs-theme="dark"] .widget[widget-id="29"] .card-header i { color: #38bdf8; }
+html[data-bs-theme="dark"] .widget[widget-id="30"] { --bs-card-border-color: rgba(101,163,13,.28); background: #11150b; --pg-accent: #a3e635; --pg-accent-ink: #18181b; }
+html[data-bs-theme="dark"] .widget[widget-id="30"] .card-header i { color: #a3e635; }
 
 
 
@@ -5650,9 +5680,15 @@ html[data-bs-theme="dark"] [data-widget-theme="aurora"] {
 }
 
 /* ── Glass ────────────────────────────────────────────────────────────────
-   Translucent card over a blurred backdrop. It is the one theme that needs
+   Translucent card over the panel backdrop. It is the one theme that needs
    something behind it to be worth anything, which is why choosing it also
    turns the panel backdrop on -- see the auto mapping in welcome.php.
+
+   No backdrop-filter. What is behind a card is the wash: a few radial
+   gradients so soft that blurring them changes nothing you can see. The blur
+   still had to be redone for every card on every frame of a scroll, and again
+   under any dialog or menu laid over the dashboard -- twenty-odd filtered
+   surfaces paying for a difference nobody could point at.
 
    The tint runs down the card rather than across it, and it is finished by 58%
    -- roughly where the header ends and the first row begins. The card is still
@@ -5670,8 +5706,6 @@ html[data-bs-theme="dark"] [data-widget-theme="aurora"] {
       color-mix(in srgb, var(--pg-accent, #64748b) var(--pg-fx-top), transparent) 0%,
       transparent 58%),
     rgba(255, 255, 255, 0.58);
-  -webkit-backdrop-filter: blur(16px) saturate(130%);
-  backdrop-filter: blur(16px) saturate(130%);
   border-color: color-mix(in srgb, var(--pg-accent, #64748b) var(--pg-fx-edge), transparent);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.40),
@@ -5778,15 +5812,351 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
     radial-gradient(54% 46% at 0% 82%, rgba(251, 113, 133, 0.11), transparent 64%);
 }
 
+/* ══ Card filters ══════════════════════════════════════════════════════════
+   A card body marked data-pg-filterable carries a column of .pg-filter
+   buttons and rows tagged data-kind; the page script shows the rows of the
+   pressed button's kind (welcome.php). Each button names its kind, says how
+   many came in today and, where there is a daily series, draws the week as
+   seven bars. Its colour arrives inline as --pg-k (tile) and --pg-k-ink
+   (glyph), so one card can carry eight kinds without eight rules here. */
+.pg-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+  border: 0;
+  border-radius: var(--bs-border-radius-lg);
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+.pg-filter:hover,
+.pg-filter:focus-visible {
+  background: var(--pg-tint);
+}
+/* The pressed kind: a tint of its own colour and a short bar on the edge
+   facing the list, so it reads as the thing the list is showing. */
+.pg-filter[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--pg-k, var(--pg-accent)) 14%, transparent);
+  box-shadow: inset -3px 0 0 var(--pg-k, var(--pg-accent));
+}
+.pg-filter-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--bs-border-radius);
+  background: var(--pg-k, var(--pg-accent, #64748b));
+  color: var(--pg-k-ink, var(--pg-accent-ink, #fff));
+  font-size: 14px;
+}
+.pg-filter-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-filter-label {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-filter-sub {
+  overflow: hidden;
+  color: var(--bs-secondary-color);
+  font-size: 0.6875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-filter-count {
+  flex: 0 0 auto;
+  min-width: 1.5rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pg-k, var(--pg-accent)) 18%, transparent);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+.pg-filter-count.is-urgent {
+  background: var(--bs-danger);
+  color: #fff;
+}
+.pg-filter-count.is-clear {
+  background: color-mix(in srgb, #10b981 18%, transparent);
+}
+
+/* A week of daily counts in seven bars (pg_widget_bars). Plain boxes rather
+   than a canvas: a filter column holds up to eight of them and they are
+   redrawn with the card. */
+.pg-bars {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.pg-bars > i {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--pg-k, var(--pg-accent));
+  opacity: 0.8;
+}
+.pg-bars > i.is-zero {
+  opacity: 0.25;
+}
+
+/* The way to the full list of the kind that is showing, under its rows. */
+.pg-filter-more {
+  display: block;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.35rem;
+  border-radius: var(--bs-border-radius-lg);
+  color: var(--pg-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+.pg-filter-more:hover,
+.pg-filter-more:focus-visible {
+  background: var(--pg-tint);
+  color: var(--pg-accent);
+}
+.pg-filter-none .pg-widget-empty {
+  padding: 2rem 0.5rem;
+}
+
+/* Activity (widget 7): the kinds down the left, the feed on the right. Stacked
+   in a narrow card the kinds wrap into a row of chips above the feed, with the
+   bars and the second line left out -- a column of eight full-width buttons
+   would push the feed below the fold of a phone-width card. */
+.pg-act > .pg-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem;
+}
+.pg-act > .pg-filters .pg-filter {
+  width: auto;
+  padding: 0.2rem 0.45rem 0.2rem 0.2rem;
+  border: var(--bs-border-width) solid var(--pg-rule);
+  border-radius: 999px;
+}
+.pg-act > .pg-filters .pg-filter[aria-pressed="true"] {
+  box-shadow: none;
+  border-color: var(--pg-k, var(--pg-accent));
+}
+.pg-act > .pg-filters .pg-filter-ico {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+}
+.pg-act > .pg-filters .pg-bars,
+.pg-act > .pg-filters .pg-filter-sub {
+  display: none;
+}
+@container pgwidget (min-width: 30rem) {
+  .pg-split.pg-act > .pg-filters {
+    flex: 0 0 36%;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    max-width: 15rem;
+    padding: 0.25rem 0.35rem;
+  }
+  /* 24px tiles and tight padding: eight kinds fit the height of a card
+     without the column scrolling. */
+  .pg-act > .pg-filters .pg-filter {
+    width: 100%;
+    padding: 0.25rem 0.45rem;
+    border: 0;
+    border-radius: var(--bs-border-radius-lg);
+  }
+  .pg-act > .pg-filters .pg-filter[aria-pressed="true"] {
+    box-shadow: inset -3px 0 0 var(--pg-k, var(--pg-accent));
+  }
+  .pg-act > .pg-filters .pg-filter-ico {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--bs-border-radius);
+    font-size: 12px;
+  }
+  .pg-act > .pg-filters .pg-bars {
+    display: inline-flex;
+  }
+  .pg-act > .pg-filters .pg-filter-sub {
+    display: block;
+  }
+}
+
+/* Operations Desk (widget 9): what the shop owes, as three lanes -- to ship,
+   to refund, out of stock. The lanes are .pg-filter buttons laid out as
+   tiles across the top, each with its count large enough to read from the
+   other side of the desk; the pressed lane's list fills the rest of the
+   card. In a one-track card the tiles keep their row and drop the second
+   line, so the list still starts within the first third of the card. */
+.pg-ops {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pg-lanes {
+  flex: 0 0 auto;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.5rem 0.35rem;
+}
+.pg-lanes .pg-filter {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "ico text count";
+  align-items: center;
+  column-gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border: var(--bs-border-width) solid var(--pg-rule);
+  background: var(--pg-tint);
+}
+.pg-lanes .pg-filter[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--pg-k, var(--pg-accent)) 50%, transparent);
+  background: color-mix(in srgb, var(--pg-k, var(--pg-accent)) 12%, transparent);
+  box-shadow: inset 0 -3px 0 var(--pg-k, var(--pg-accent));
+}
+.pg-lanes .pg-filter-ico {
+  grid-area: ico;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+.pg-lanes .pg-filter-text {
+  grid-area: text;
+}
+.pg-lanes .pg-filter-count {
+  grid-area: count;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.pg-lanes .pg-filter-count.is-urgent {
+  background: none;
+  color: var(--bs-danger);
+}
+.pg-lanes .pg-filter-count.is-clear {
+  background: none;
+  color: #10b981;
+}
+@container pgwidget (max-width: 30rem) {
+  .pg-lanes .pg-filter {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "ico count" "text text";
+    row-gap: 0.25rem;
+    padding: 0.4rem;
+  }
+  .pg-lanes .pg-filter-ico {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  .pg-lanes .pg-filter-count {
+    justify-self: end;
+    font-size: 1.15rem;
+  }
+  .pg-lanes .pg-filter-sub {
+    display: none;
+  }
+}
+.pg-ops-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.pg-ops-meter {
+  padding: 0.15rem 1rem 0.1rem;
+}
+
+/* Best sellers in the Ecommerce Summary (widget 3): units sold as a quiet
+   pill, then what they took. A product without a photo carries its rank on
+   the tile instead. */
+.pg-ec-qty {
+  background: color-mix(in srgb, var(--pg-accent) 16%, transparent);
+  color: var(--bs-body-color);
+  font-size: 10px;
+  font-weight: 600;
+}
+.pg-rank {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Top pages in Visitor Summaries (widget 5): the list takes the chart's
+   place from the strip's last cell, at the same size, so the card does not
+   move when it opens. */
+.pg-vs-pages {
+  flex: 1 1 auto;
+  min-height: 4rem;
+  margin: 2px -8px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.pg-vs-pages .pg-list {
+  padding-top: 0;
+}
+.pg-vs-top .pg-vs-cell-label .bi {
+  margin-left: 0.15rem;
+  opacity: 0.8;
+}
+
 /* ══ Dashboard clock ═══════════════════════════════════════════════════════
    Was a centred display-3 stack that ate a fifth of the fold before the first
    widget appeared. Left aligned with the grid and set on one baseline, the same
-   three facts cost roughly a third of the height. */
+   three facts cost roughly a third of the height.
+
+   On a wide screen the brief and the clock share one row -- the sentence on
+   the left where reading starts, the clock right-aligned at the far end with
+   the next meeting under it -- so the whole bar is about as tall as the brief
+   alone. Narrower, they stack, brief first. */
 .pg-clockbar {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.5rem;
   padding: 0.25rem 0 1.25rem;
+}
+@media (min-width: 992px) {
+  .pg-clockbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+  .pg-clockbar > .pg-brief {
+    align-self: center;
+  }
+  /* Parent-qualified: the base rules for these two come further down. */
+  .pg-clockbar > .pg-clockbar-now {
+    flex: 0 0 auto;
+    align-items: flex-end;
+    max-width: 40%;
+    text-align: right;
+  }
+  .pg-clockbar .pg-clockbar-when {
+    flex-direction: column;
+    align-items: flex-end;
+  }
 }
 /* The briefing.
    A mark and a short paragraph, laid out the way a remark is laid out rather
@@ -5802,7 +6172,9 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 
    A quiet card rather than bare text: a translucent surface over the panel
    backdrop, so the line reads as one object sitting on the page instead of a
-   caption floating above the widgets. */
+   caption floating above the widgets. Translucent without a blur, for the
+   reason the glass cards give: the wash behind it is too soft for a blur to
+   show, and the filter was redone on every frame of a scroll. */
 .pg-brief {
   position: relative;
   align-self: flex-start;
@@ -5817,12 +6189,6 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 }
 html[data-bs-theme="dark"] .pg-brief {
   background: color-mix(in srgb, var(--bs-body-bg) 55%, transparent);
-}
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .pg-brief {
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-  }
 }
 /* A thin stroke of the clock's gradient down the left edge, inset from the
    corners so it does not have to follow the radius. Positioned rather than
@@ -5843,6 +6209,44 @@ html[data-bs-theme="dark"] .pg-brief {
   flex-direction: column;
   gap: 0.4rem;
   min-width: 0;
+}
+
+/* "Say something else": a quiet round button at the end of the card, the
+   same size as the mark so the two ends of the card balance. It turns while
+   the new line is on its way. */
+.pg-brief-again {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0 -0.35rem 0 0.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bs-tertiary-color);
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.pg-brief-again:hover,
+.pg-brief-again:focus-visible {
+  color: var(--bs-body-color);
+  background: var(--bs-secondary-bg);
+}
+.pg-brief-again .bi {
+  display: inline-block;
+}
+.pg-brief-again .bi::before {
+  vertical-align: 0;
+}
+.pg-brief-again.is-busy .bi {
+  animation: pg-brief-spin 0.8s linear infinite;
+}
+@keyframes pg-brief-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* The speaker. It carries the hour's own glyph -- sunrise, sun, dusk, moon --
@@ -5920,12 +6324,29 @@ html[data-bs-theme="dark"] .pg-brief {
   .pg-brief-mark {
     animation: pg-brief-ring 0.9s ease-out 1;
   }
+  /* A new line asked for with the button arrives the same way. The second
+     set of keyframes is what restarts it: an element keeps a running
+     animation for as long as its name stays the same. */
+  .pg-brief.is-new .pg-brief-text {
+    animation: pg-brief-again 0.45s ease-out both;
+  }
+  .pg-brief.is-new .pg-brief-mark {
+    animation: pg-brief-ring-again 0.9s ease-out 1;
+  }
 }
 @keyframes pg-brief-in {
   from { opacity: 0; transform: translateY(2px); }
   to   { opacity: 1; transform: none; }
 }
 @keyframes pg-brief-ring {
+  from { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0 var(--clock-glow); }
+  to   { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0.55rem transparent; }
+}
+@keyframes pg-brief-again {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pg-brief-ring-again {
   from { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0 var(--clock-glow); }
   to   { box-shadow: 0 1px 6px var(--clock-glow), 0 0 0 0.55rem transparent; }
 }
@@ -5972,6 +6393,28 @@ html[data-bs-theme="dark"] .pg-brief {
 .pg-brief-ws-item.is-late .pg-brief-ws-label {
   color: var(--bs-danger);
 }
+/* A timer that is running: a green dot that breathes, so the one item that
+   goes on counting by itself looks alive. */
+.pg-brief-ws-item.is-live::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bs-success);
+}
+.pg-brief-ws-item.is-live .bi {
+  color: var(--bs-success);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-brief-ws-item.is-live::before {
+    animation: pg-live 1.6s ease-in-out infinite;
+  }
+}
+@keyframes pg-live {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
 .pg-brief-ws-label {
   font-weight: 600;
   color: var(--bs-secondary-color);
@@ -6011,6 +6454,13 @@ html[data-bs-theme="dark"] .pg-brief {
 }
 .pg-clockbar-now {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.pg-clockbar-when {
+  display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0 0.7rem;
@@ -6045,6 +6495,85 @@ html[data-bs-theme="dark"] .pg-brief {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--bs-tertiary-color);
+}
+
+/* The next meeting or visit, under the clock: when, what, and how long until
+   it starts. Every event left today is in the markup and only the first is
+   shown; the page script removes one when it ends. */
+.pg-clockbar-next {
+  display: flex;
+  max-width: 100%;
+}
+.pg-next + .pg-next {
+  display: none;
+}
+.pg-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  padding: 0.15rem 0.6rem 0.15rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bs-body-bg) 72%, transparent);
+  color: var(--bs-body-color);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+html[data-bs-theme="dark"] .pg-next {
+  background: color-mix(in srgb, var(--bs-body-bg) 55%, transparent);
+}
+.pg-next:hover,
+.pg-next:focus-visible {
+  color: var(--bs-body-color);
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  transform: translateY(-1px);
+}
+.pg-next .bi {
+  color: var(--bs-secondary-color);
+}
+.pg-next-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pg-next-title {
+  min-width: 0;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--bs-secondary-color);
+}
+.pg-next-until {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--clock-fallback-color);
+}
+.pg-next-until:empty {
+  display: none;
+}
+/* Under way: the countdown becomes "now" with the timer's breathing dot. */
+.pg-next.is-now .pg-next-until {
+  color: var(--bs-success);
+}
+.pg-next.is-now .pg-next-until::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.3rem;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 0.1em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-next.is-now .pg-next-until::before {
+    animation: pg-live 1.6s ease-in-out infinite;
+  }
 }
 @media (max-width: 575.98px) {
   .pg-clockbar-time {
@@ -7608,6 +8137,21 @@ body.pg-side-panel-open .pg-chat-launcher {
    same way and with the same filter values rather than a second recipe of its
    own. One look, one place to change it.
 
+   Only the section list is frosted, not the whole dialog. A backdrop filter is
+   run again on every frame in which anything inside or under the frosted box
+   changes, and the pane is a scroller: with the filter on the dialog, every
+   frame of scrolling a category re-blurred all 1180x860 pixels of it, and so
+   did every frame of any animation on the screen behind -- the dashboard has
+   several that never stop. Measured in headless Chromium over the dashboard
+   in dark, that held the dialog to about ten frames a second, scrolling or
+   idle; with the filter on the list alone it stays near sixty. The radius was
+   not the cost (24px and 100px measured the same), the area was, so the
+   values are unchanged.
+
+   The pane is drawn on the panel's own background, solid. Without a blur any
+   translucency there is a second layer of text under the settings -- at 90%
+   the dashboard's figures and headings could still be read through the form.
+
    The scrim behind it is lightened to match, and that is not decoration: a
    frosted sheet over an opaque black one is not frosted. What a dropdown has
    behind it is the screen, and having the screen back there is the whole point.
@@ -7616,13 +8160,24 @@ body.pg-side-panel-open .pg-chat-launcher {
    step of the pane it sits on -- measured rgb(16,17,19) on rgb(16,17,20) --
    so what draws a card is its border, not its colour, and leaving the fill in
    would have laid an opaque sheet over the glass for no gain. */
-.advanced-visuals:not(.toolbar) .pg-settings-modal .modal-content.pg-sm,
-.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
-  background-color: rgba(var(--bs-body-bg-rgb), 0.62);
-  -webkit-backdrop-filter: brightness(1) saturate(1.5) blur(20px); backdrop-filter: brightness(1) saturate(1.5) blur(20px);
+.advanced-visuals:not(.toolbar) .pg-settings-modal .modal-content.pg-sm {
+  background-color: transparent;
+}
+.advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-main {
+  background-color: var(--bs-body-bg);
 }
 
-[data-bs-theme="dark"] .advanced-visuals:not(.toolbar) .pg-settings-modal .modal-content.pg-sm,
+/* The dialogs a category opens over the settings are small and hold still,
+   so they keep the whole sheet frosted. */
+.advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-side,
+.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
+  -webkit-backdrop-filter: brightness(1) saturate(1.5) blur(20px); backdrop-filter: brightness(1) saturate(1.5) blur(20px);
+}
+.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
+  background-color: rgba(var(--bs-body-bg-rgb), 0.62);
+}
+
+[data-bs-theme="dark"] .advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-side,
 [data-bs-theme="dark"] .advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
   -webkit-backdrop-filter: brightness(0.7) saturate(1.7) blur(100px); backdrop-filter: brightness(0.7) saturate(1.7) blur(100px);
 }
@@ -9729,6 +10284,31 @@ button.ws-thread-bar:hover {
   flex: 1 1 auto;
   min-width: 0;
 }
+/* The way back to the channel list on a phone: a labelled back arrow, so it
+   is not taken for a second main menu button under the panel's own. */
+.ws-channels-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .1rem;
+  flex-shrink: 0;
+  padding: .25rem .6rem .25rem .35rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(var(--ws-accent-rgb), .12);
+  color: var(--ws-accent);
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.ws-channels-toggle:hover,
+.ws-channels-toggle:focus-visible {
+  background: rgba(var(--ws-accent-rgb), .2);
+}
+@media (max-width: 359.98px) {
+  .ws-channels-toggle-label {
+    display: none;
+  }
+}
 .ws-head-title h2 {
   font-size: 1.1rem;
   letter-spacing: -.01em;
@@ -9965,6 +10545,165 @@ button.ws-thread-bar:hover {
 .ws-msg-note {
   border-left-color: var(--bs-info);
 }
+/* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
+.ws-msg-status {
+  border-left: 3px solid var(--bs-success);
+}
+.ws-msg-status-at_risk {
+  border-left-color: var(--bs-warning);
+}
+.ws-msg-status-off_track {
+  border-left-color: var(--bs-danger);
+}
+.ws-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  margin-right: .35rem;
+  padding: 0 .5rem;
+  border: 0;
+  border-radius: 1rem;
+  font-size: .72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+.ws-status-on_track {
+  background: rgba(var(--bs-success-rgb), .14);
+  color: var(--bs-success-text-emphasis);
+}
+.ws-status-at_risk {
+  background: rgba(var(--bs-warning-rgb), .2);
+  color: var(--bs-warning-text-emphasis);
+}
+.ws-status-off_track {
+  background: rgba(var(--bs-danger-rgb), .14);
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-status-facts {
+  margin-bottom: 1rem;
+  padding: .6rem .7rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .6rem;
+  background: var(--bs-tertiary-bg);
+}
+.ws-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+.ws-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: .1rem .5rem;
+  border-radius: 1rem;
+  font-size: .75rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+}
+.ws-status-chip-warn {
+  border-color: rgba(var(--bs-warning-rgb), .6);
+  color: var(--bs-warning-text-emphasis);
+}
+.ws-status-stale-task {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  width: 100%;
+  padding: .2rem 0;
+  border: 0;
+  background: transparent;
+  font-size: .8rem;
+  text-align: left;
+  color: var(--bs-body-color);
+}
+.ws-status-stale-task:hover .ws-grow {
+  text-decoration: underline;
+}
+.ws-status-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.ws-status-choice {
+  border: 1px solid transparent;
+  border-radius: 1rem;
+}
+.btn-check:checked + .ws-status-choice {
+  border-color: currentColor;
+  box-shadow: 0 0 0 1px currentColor;
+}
+.ws-checkin {
+  max-width: 34rem;
+  margin-top: .4rem;
+  padding: .55rem .65rem .5rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid rgb(var(--ws-accent-rgb));
+  border-radius: .6rem;
+  background: var(--bs-body-bg);
+}
+.ws-checkin-head {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .4rem;
+  font-size: .8rem;
+}
+.ws-checkin-head > .bi {
+  color: rgb(var(--ws-accent-rgb));
+}
+.ws-checkin-count {
+  margin-left: auto;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-checkin-answers {
+  margin: 0 0 .4rem;
+  padding: 0;
+  list-style: none;
+}
+.ws-checkin-answer {
+  display: flex;
+  gap: .5rem;
+  padding: .35rem 0;
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-checkin-answer:first-child {
+  border-top: 0;
+}
+.ws-checkin-face {
+  flex: 0 0 1.6rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+}
+.ws-checkin-text {
+  min-width: 0;
+  font-size: .85rem;
+}
+.ws-checkin-who {
+  display: flex;
+  gap: .4rem;
+  align-items: baseline;
+}
+.ws-checkin-time {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+}
+.ws-checkin-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ws-checkin-waiting {
+  margin-bottom: .4rem;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+.ws-checkin-form-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: .35rem;
+}
 .ws-msg-tools {
   position: absolute;
   top: -.6rem;
@@ -9997,6 +10736,13 @@ button.ws-thread-bar:hover {
   font-size: .95rem;
   line-height: 1;
   padding: 0;
+}
+/* A message's text to select and copy by hand. 16px keeps iOS from zooming
+   in on the field. */
+.ws-copy-area {
+  font-size: 16px;
+  resize: vertical;
+  max-height: 60vh;
 }
 
 /* Reactions under a message: who left one shows on hover. */
@@ -10858,6 +11604,30 @@ button.ws-thread-bar:hover {
 .ws-sa-outline.ws-sa-outline-error {
   background: rgba(var(--bs-danger-rgb), .08);
   color: var(--bs-danger-text-emphasis);
+}
+.ws-sa-sentence {
+  margin-bottom: .75rem;
+  padding: .6rem .75rem;
+  border: 1px dashed rgba(var(--ws-accent-rgb), .55);
+  border-radius: var(--ws-radius);
+  background: var(--ws-soft);
+}
+.ws-sa-sentence-row {
+  display: flex;
+  gap: .5rem;
+  align-items: flex-start;
+}
+.ws-sa-sentence-row textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-sa-sentence-row .btn {
+  flex: none;
+  white-space: nowrap;
+}
+.ws-sa-sentence-said {
+  margin-top: .35rem;
+  color: var(--bs-secondary-color);
 }
 .ws-sa-gallery-wrap {
   margin-bottom: .75rem;
@@ -12664,6 +13434,32 @@ a.ws-chip:hover {
   right: .6rem;
   font-size: .65rem;
 }
+.ws-brief-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: .4rem;
+}
+.ws-brief-buttons:empty,
+.ws-brief-recap:empty {
+  display: none;
+}
+/* Pinegrap AI's summary of what was missed. */
+.ws-brief-recap {
+  margin-top: .45rem;
+  padding-left: .65rem;
+  border-left: 2px solid rgba(var(--ws-accent-rgb), .45);
+}
+.ws-brief-recap-text {
+  font-size: .88rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  color: var(--bs-body-color);
+}
+.ws-brief-recap-by {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+  margin-top: .15rem;
+}
 
 /* Context menus: the panel's own look, placed at the pointer. */
 .ws-ctx.contextmenu.popover {
@@ -13197,6 +13993,11 @@ a.ws-chip:hover {
   max-height: 18rem;
   overflow-y: auto;
 }
+/* An MCP server's tools: a code host lists a hundred of them. */
+.ws-mcp-tools {
+  max-height: 28rem;
+  overflow-y: auto;
+}
 .ws-days .btn {
   padding: .1rem .35rem;
   font-size: .72rem;
@@ -13342,6 +14143,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-msg:hover .ws-msg-tools {
     display: none;
     position: static;
+    flex-wrap: wrap;
     justify-content: flex-end;
     border: 0;
     box-shadow: none;
@@ -15496,6 +16298,77 @@ a.ws-form-card-head:hover span {
     font-size: .75rem;
     color: var(--bs-warning-text-emphasis);
 }
+/* ── Workspace: a task handed to an assistant (workspace_task_delegate.js) ── */
+.ws-task-delegate {
+    margin: 1rem 0;
+    padding-top: .75rem;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-task-delegate-head {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-bottom: .5rem;
+    font-size: .9rem;
+}
+.ws-task-delegate-with {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem .65rem;
+    border: 1px solid var(--bs-border-color);
+    border-left: 3px solid rgb(var(--ws-accent-rgb));
+    border-radius: .6rem;
+    background: var(--bs-body-bg);
+    font-size: .85rem;
+}
+.ws-task-delegate-face {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.ws-task-delegate-ask {
+    font-size: .85rem;
+    white-space: pre-line;
+}
+.ws-task-delegate-answer {
+    margin-top: .3rem;
+    padding: .45rem .6rem;
+    border-radius: .5rem;
+    background: var(--bs-tertiary-bg);
+}
+.ws-task-delegate-form {
+    display: grid;
+    gap: .4rem;
+}
+.ws-task-delegate-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+.ws-task-delegate-tag {
+    font-size: .75rem;
+    color: rgb(var(--ws-accent-rgb));
+    white-space: nowrap;
+}
+.ws-task-delegate-tag-waiting {
+    color: var(--bs-warning-text-emphasis);
+}
+.ws-task-delegate-waiting {
+    margin-bottom: .5rem;
+    padding: .35rem .6rem;
+    border-radius: .5rem;
+    background: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
+    font-size: .8rem;
+}
+.ws-task-delegate-changes {
+    margin-top: .45rem;
+}
+.ws-change-link {
+    font-weight: 600;
+    text-decoration: none;
+}
 /* ── Workspace: approval requests (assets/js/workspace_approvals.js) ── */
 .ws-approval {
   max-width: 34rem;
@@ -15616,6 +16489,49 @@ a.ws-form-card-head:hover span {
   gap: .25rem;
   font-size: .78rem;
   color: var(--bs-secondary-color);
+}
+.ws-approval-guest {
+  font-size: .68rem;
+  font-weight: 500;
+}
+/* ── Workspace: the customer asked to approve a task (assets/js/workspace_task_approval.js) ── */
+.ws-task-approvals {
+  margin: 1rem 0;
+  padding-top: .75rem;
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
+.ws-task-approvals-item {
+  margin-top: .5rem;
+  padding: .5rem .6rem;
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: .5rem;
+}
+.ws-task-approvals-item-head {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .3rem;
+  font-size: .85rem;
+}
+.ws-task-approvals-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem;
+  margin-bottom: .2rem;
+  font-size: .82rem;
+}
+.ws-task-approvals-person.ws-approval-approved .ws-approval-state {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-task-approvals-person.ws-approval-rejected .ws-approval-state {
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-task-approvals-form {
+  margin-top: .5rem;
+  padding: .6rem;
+  border-radius: .5rem;
+  background: var(--bs-tertiary-bg);
 }
 /* ── Workspace: read receipts (assets/js/workspace_acks.js) ── */
 .ws-ack {

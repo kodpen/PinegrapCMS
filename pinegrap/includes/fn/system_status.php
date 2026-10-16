@@ -1577,6 +1577,7 @@ function get_system_status_checks()
         'Scheduled Tasks'          => 'Tasks',
         'Webhooks'                 => 'Webhook',
         'Storage Engine'           => 'Engine',
+        'Visitor Records'          => 'Visitors',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1606,6 +1607,7 @@ function get_system_status_checks()
         'Scheduled Tasks',
         'Webhooks',
         'Storage Engine',
+        'Visitor Records',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -2196,6 +2198,47 @@ function get_system_status_checks()
         }
     }
 
+    // 👣 Visitor records: the visitors table, which grows by a row per visit.
+    //
+    // Left alone it becomes the largest table of the database, millions of
+    // rows on a busy site. The general job keeps it to the retention period;
+    // this line says when it is large anyway, because the period is "no
+    // limit" or the job has not caught up yet. Reported and not scored, like
+    // Storage Engine.
+    if (function_exists('pg_visitor_retention_settings') && (($visitor_settings = pg_visitor_retention_settings()) !== false)) {
+        $visitor_catalog = pg_db_table_catalog();
+
+        if (isset($visitor_catalog['visitors'])) {
+            // The same figures as the Database Engine card: counted and read
+            // from the file where that can be done from here.
+            $visitor_row = pg_visitor_table_figures($visitor_catalog['visitors']);
+            $visitor_size = pg_visitor_figure_text(pg_innodb_size_label($visitor_row['file']), $visitor_row['file_source']);
+
+            $visitor_figures = lang(array(
+                'string' => 'The visitors table holds {var:1} records and its file takes {var:2}.',
+                'vars'   => array(pg_visitor_figure_text(pg_format_number($visitor_row['rows'], 0), $visitor_row['rows_source']), $visitor_size),
+            ));
+
+            if ($visitor_settings['days'] > 0) {
+                $visitor_kept = lang(array(
+                    'string' => 'Records older than {var:1} days are removed a little at a time by the general job.',
+                    'vars'   => array($visitor_settings['days']),
+                ));
+            } else {
+                $visitor_kept = lang('Visitor records are kept without a limit. Set a period under Settings › SEO › Visitor Tracking.');
+            }
+
+            $output .= $makeIcon(
+                'bi-person-lines-fill',
+                pg_visitor_table_is_large($visitor_row) ? 'text-warning' : 'text-success',
+                'Visitor Records',
+                $visitor_figures . ' ' . $visitor_kept,
+                $visitor_size,
+                'database_engine.php#visitor-records'
+            );
+        }
+    }
+
     // 📦 PHP extensions check with alias support for IIS and Apache
     // Some extensions report a different name depending on the build
     // (e.g. 'Zend OPcache' vs 'opcache'), hence the alias lists.
@@ -2613,10 +2656,11 @@ function get_system_status_checks()
         $backup_message = 'Automatic backup is turned off.';
     }
 
-    // The remote copy of the automatic backup (FTP / S3). A backup that exists
-    // only on the server it protects is lost with that server, so a failed
-    // copy is worth a warning even while the local backup is fresh. It costs
-    // half the weight, never more than the check is worth in total.
+    // The remote copy of the automatic backup (FTP, S3 or a cloud drive). A
+    // backup that exists only on the server it protects is lost with that
+    // server, so a failed copy is worth a warning even while the local backup
+    // is fresh. It costs half the weight, never more than the check is worth
+    // in total.
     $backup_detail = array();
 
     if (pg_backup_settings_ready()) {
@@ -3088,7 +3132,7 @@ function get_system_status_checks()
  * ------------------------------------------
  * Reads changelog.txt and returns it as versions, newest first, each with its
  * entries: array('version' => '2026.4.4', 'entries' => array(array('tags' =>
- * array('YENİ','ŞEMA'), 'text' => '…'), …)).
+ * array('NEW','SCHEME'), 'text' => '…'), …)).
  *
  * The install screen parses the same file for its "what is new" panel, but that
  * copy has to keep working with the software folder gone -- install/index.php
@@ -3100,6 +3144,11 @@ function get_system_status_checks()
  *
  * The banner and the tag legend at the top of the file are skipped: they sit
  * before the first version heading, and the badges say the same thing.
+ *
+ * A version heading is the version number alone on its line with a rule of
+ * equal signs directly above it (the current layout) or directly below it
+ * (the layout of older files). Several versions released together share one
+ * heading ("2026.2 / 2026.2.1"); the heading is kept as it is written.
  *
  * @return array
  */
@@ -3117,10 +3166,9 @@ function pg_changelog_sections($file_path = '')
     }
     $contents = str_replace("\r\n", "\n", $contents);
 
-    // A version heading is a version number alone on its line over a rule of
-    // equal signs. Same shape install/index.php looks for, so a file that reads
+    // Same heading shape install/index.php looks for, so a file that reads
     // correctly there reads correctly here.
-    if (!preg_match_all('/^[ \t]*([0-9][0-9.]*)[ \t]*\n[ \t]*={5,}[ \t]*$/m',
+    if (!preg_match_all(pg_changelog_heading_pattern(),
             $contents, $matches, PREG_OFFSET_CAPTURE)) {
         return array();
     }
@@ -3161,8 +3209,15 @@ function pg_changelog_sections($file_path = '')
                 continue;
             }
 
-            // the rule under a heading, and any other divider line
-            if (preg_match('/^[ \t]{0,4}-{5,}[ \t]*$/', $line)) {
+            // The rule under a topic heading, the rule that opens the next
+            // version and any other divider line. It also ends the entry above
+            // it, so the closing rule and the note under it at the end of the
+            // file never become part of the oldest entry.
+            if (preg_match('/^[ \t]{0,4}(?:-{5,}|={5,})[ \t]*$/', $line)) {
+                if ($current !== null) {
+                    $entries[] = $current;
+                    $current = null;
+                }
                 continue;
             }
 
@@ -3209,10 +3264,30 @@ function pg_changelog_sections($file_path = '')
             continue;
         }
 
-        $sections[] = array('version' => $matches[1][$index][0], 'entries' => $entries);
+        $sections[] = array(
+            'version' => preg_replace('/[ \t]*\/[ \t]*/', ' / ', $matches[1][$index][0]),
+            'entries' => $entries);
     }
 
     return $sections;
+}
+
+/**
+ * Function: pg_changelog_heading_pattern
+ * ------------------------------------------
+ * The pattern of a version heading in changelog.txt: one version number, or
+ * several separated by slashes, alone on its line, with a rule of at least five
+ * equal signs directly above it or directly below it. The branch reset keeps
+ * the version in group 1 for both shapes.
+ *
+ * @return string
+ */
+function pg_changelog_heading_pattern()
+{
+    $version = '[0-9][0-9.]*(?:[ \t]*\/[ \t]*[0-9][0-9.]*)*';
+
+    return '/^(?|[ \t]*={5,}[ \t]*\n[ \t]*(' . $version . ')[ \t]*'
+        . '|[ \t]*(' . $version . ')[ \t]*\n[ \t]*={5,}[ \t]*)$/m';
 }
 
 /**
@@ -3246,7 +3321,7 @@ function pg_changelog_preamble($file_path = '')
 
     // Stop at the first version heading; the sections belong to
     // pg_changelog_sections().
-    if (preg_match('/^[ \t]*[0-9][0-9.]*[ \t]*\n[ \t]*={5,}[ \t]*$/m',
+    if (preg_match(pg_changelog_heading_pattern(),
             $contents, $found, PREG_OFFSET_CAPTURE)) {
         $contents = substr($contents, 0, $found[0][1]);
     }
@@ -3294,7 +3369,7 @@ function pg_changelog_tag_class($tag)
     if ($tag == 'GÜVENLIK' || $tag == 'GÜVENLİK' || $tag == 'SECURITY') {
         return 'text-bg-danger';
     }
-    if ($tag == 'ŞEMA' || $tag == 'SEMA' || $tag == 'SCHEMA') {
+    if ($tag == 'ŞEMA' || $tag == 'SEMA' || $tag == 'SCHEMA' || $tag == 'SCHEME') {
         return 'text-bg-warning';
     }
     if ($tag == 'DÜZELTME' || $tag == 'FIX') {

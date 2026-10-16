@@ -23,6 +23,13 @@ validate_area_access($user, 'user');
 
 validate_token_field();
 
+// Stop on "not found" when the id is missing, unknown or sent as an array
+// (?id[]=x): escape() fails on an array with an error page.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $file = db_item(
     "SELECT
         id,

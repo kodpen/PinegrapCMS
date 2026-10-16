@@ -328,6 +328,9 @@ function ws_thread_join($viewer, $channel)
 
     ws_channel_membership_forget();
 
+    // Somebody who left it once has what their inbox said about it again.
+    ws_inbox_reach_regained($channel, array((int) $viewer['id']));
+
     ws_message_system($channel['id'], lang(array('string' => '{var:1} joined the discussion', 'vars' => '<@user:' . (int) $viewer['id'] . '>')));
 
     $thread = ws_thread($channel['id']);
@@ -337,6 +340,34 @@ function ws_thread_join($viewer, $channel)
     }
 
     return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Leaves a discussion. Once nobody is left in it, it is concluded, as if the
+ * last one had concluded it.
+ *
+ * @param array $viewer
+ * @param array $channel the discussion
+ * @return array ok, error
+ */
+function ws_thread_leave($viewer, $channel)
+{
+    $result = ws_channel_leave($viewer, $channel);
+    $thread = ws_thread($channel['id']);
+
+    if ($result['ok'] && $thread && ((int) $thread['closed_at'] === 0)
+        && ((int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'") === 0)) {
+        db("UPDATE ws_threads SET closed_at = '" . time() . "', closed_by = '" . (int) $viewer['id'] . "',
+                purge_at = '" . strtotime('+' . WS_THREAD_KEEP_DAYS . ' days') . "'
+            WHERE channel_id = '" . (int) $channel['id'] . "'");
+        db("UPDATE ws_channels SET archived_at = '" . time() . "' WHERE id = '" . (int) $channel['id'] . "'");
+    }
+
+    if ($result['ok'] && $thread) {
+        ws_message_touch((int) $thread['message_id']);
+    }
+
+    return $result;
 }
 
 /**
@@ -721,7 +752,9 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
             db("DELETE FROM ws_ack_requests WHERE message_id IN (" . $messages . ")");
         }
 
-        foreach (array('ws_polls', 'ws_refs', 'ws_blocks', 'ws_inbox', 'ws_note_shares', 'ws_channel_eras', 'ws_ai_drafts', 'ws_ai_changes', 'ws_ai_requests', 'design_proposals') as $table) {
+        ws_inbox_delete("channel_id = '" . $thread_id . "'");
+
+        foreach (array('ws_polls', 'ws_refs', 'ws_blocks', 'ws_note_shares', 'ws_channel_eras', 'ws_ai_drafts', 'ws_ai_changes', 'ws_ai_requests', 'design_proposals') as $table) {
             db("DELETE FROM " . $table . " WHERE channel_id = '" . $thread_id . "'");
         }
 

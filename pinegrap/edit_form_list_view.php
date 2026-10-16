@@ -20,6 +20,10 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// The page is one value; one sent as an array (?page_id[]=x) counts as not
+// given: it ended in an error page.
+pg_request_single_values(array('page_id'));
+
 // Get various properties for page that we will use in various places below.
 $page = db_item(
     "SELECT
@@ -967,7 +971,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

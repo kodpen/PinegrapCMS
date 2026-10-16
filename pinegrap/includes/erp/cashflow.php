@@ -63,8 +63,9 @@ function erp_cashflow_options($input)
     $input = (array) $input;
     $today = date('Y-m-d');
 
+    // An array (?from[]=x) is no date: it wrote "Array to string conversion".
     $valid = function ($value) {
-        $value = trim((string) $value);
+        $value = is_scalar($value) ? trim((string) $value) : '';
 
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
             return '';
@@ -92,14 +93,16 @@ function erp_cashflow_options($input)
         $days = ERP_CASHFLOW_MAX_DAYS;
     }
 
-    $group = (string) ($input['group'] ?? '');
+    $group = is_scalar($input['group'] ?? null) ? (string) $input['group'] : '';
     $group_chosen = isset(erp_cashflow_groups()[$group]);
 
     if (!$group_chosen) {
         $group = ($days <= 62) ? 'day' : (($days <= 400) ? 'week' : 'month');
     }
 
-    $till = (int) ($input['till'] ?? 0);
+    // One value only: an array (?till[]=x) cast to 1 and narrowed the
+    // report to the first till.
+    $till = is_scalar($input['till'] ?? null) ? (int) $input['till'] : 0;
     if (($till > 0) && ((int) db_value("SELECT COUNT(*) FROM erp_cash_accounts WHERE id = '" . $till . "'") === 0)) {
         $till = 0;
     }

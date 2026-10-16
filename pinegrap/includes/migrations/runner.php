@@ -256,6 +256,48 @@ function install_define_engine() {
 
 }
 
+// ─── Database server ─────────────────────────────────────────────────────────
+
+// Why the server cannot hold the schema, or '' when it can (see pg_db_server_supported():
+// MySQL 5.7 and MariaDB 10.2 are the oldest). Asked by the installation form, its connection
+// test and before the first version of an upgrade, so an older server is turned away before
+// a table is touched instead of stopping halfway with error 1071. $version_string is what the
+// server reports; without it the connection of db() is asked.
+function install_server_problem($version_string = null) {
+
+	if (!function_exists('pg_db_server_version')) {
+
+		return '';
+
+	}
+
+	if ($version_string === null) {
+
+		if ((!class_exists('db')) || empty(db::$con)) {
+
+			return '';
+
+		}
+
+		$version_string = (string) @mysqli_get_server_info(db::$con);
+
+	}
+
+	$server = pg_db_server_version($version_string);
+
+	if (pg_db_server_supported($server)) {
+
+		return '';
+
+	}
+
+	return lang(array(
+		'string' => 'The database server is {var:1}. Pinegrap needs MySQL 5.7 or later, or MariaDB 10.2 or later: on an older server the upgrade stops with error 1071, Specified key was too long. Ask the host for a newer database server, then start again.',
+		'vars' => $server['label']
+	));
+
+}
+
 // ─── Notes ───────────────────────────────────────────────────────────────────
 
 // A line about what a step did or did not do, kept per version and shown on the screen
@@ -420,6 +462,86 @@ function install_add_column($table, $column, $definition) {
 
 }
 
+// ALTER TABLE t ADD c1 d1, ADD c2 d2, ALGORITHM=INSTANT for the columns ($column =>
+// $definition) the table does not have yet. INSTANT changes the table's definition and not
+// its rows, so it takes a moment however large the table is: InnoDB on MySQL 8.0.12+ and
+// MariaDB 10.3.2+, columns added last. Elsewhere (MyISAM, MySQL 5.7, MariaDB 10.2) the server
+// refuses it rather than copy the table; then nothing has changed and the step decides
+// whether a copy is affordable (install_add_column()). The wait for the table's metadata
+// lock is bounded, so a long report on the table makes this return false instead of holding
+// every visit up behind the waiting ALTER. True when the columns are there afterwards.
+function install_add_columns_instant($table, $columns) {
+
+	$missing = array();
+
+	foreach ($columns as $column => $definition) {
+
+		if (install_column_exists($table, $column)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.' . $column)));
+
+		} else {
+
+			$missing[$column] = "ADD " . install_quote_name($column) . " " . $definition;
+
+		}
+
+	}
+
+	if (count($missing) == 0) {
+
+		return true;
+
+	}
+
+	if (!class_exists('db') || empty(db::$con)) {
+
+		return false;
+
+	}
+
+	$previous_wait = 0;
+
+	$previous = @mysqli_query(db::$con, "SELECT @@SESSION.lock_wait_timeout");
+
+	if ($previous && ($row = mysqli_fetch_row($previous))) {
+
+		$previous_wait = (int) $row[0];
+
+	}
+
+	@mysqli_query(db::$con, "SET SESSION lock_wait_timeout = 20");
+
+	$done = @mysqli_query(db::$con, "ALTER TABLE " . install_quote_name($table) . " " . implode(', ', $missing) . ", ALGORITHM=INSTANT");
+
+	$errno = $done ? 0 : (int) mysqli_errno(db::$con);
+
+	$error = $done ? '' : (string) mysqli_error(db::$con);
+
+	if ($previous_wait > 0) {
+
+		@mysqli_query(db::$con, "SET SESSION lock_wait_timeout = " . $previous_wait);
+
+	}
+
+	if (!$done) {
+
+		install_log($table . ': columns not added instantly, MySQL ' . $errno . ' ' . $error);
+
+		return false;
+
+	}
+
+	foreach (array_keys($missing) as $column) {
+
+		install_ran(lang(array('string' => '{var:1} added', 'vars' => $table . '.' . $column)));
+
+	}
+
+	return true;
+
+}
+
 // ALTER TABLE t ADD <definition>, where the definition names the index in full:
 // "INDEX idx_type (type)", "UNIQUE KEY uniq_entry (a, b)", "FULLTEXT ft (body)".
 function install_add_index($table, $index, $definition) {
@@ -521,6 +643,41 @@ function install_modify_column($table, $column, $definition, $required = true) {
 	db("ALTER TABLE " . install_quote_name($table) . " MODIFY " . install_quote_name($column) . " " . $definition);
 
 	return install_ran(lang(array('string' => '{var:1} changed', 'vars' => $table . '.' . $column)));
+
+}
+
+// ALTER TABLE t ALTER c DROP DEFAULT, only when the column has a default to drop. MySQL
+// before 8.0.13 and MariaDB before 10.2 refuse the statement on a BLOB or TEXT column with
+// error 1101 even though such a column can never have a default there, so the statement is
+// only sent when information_schema reports one. A default of NULL on a nullable column is
+// what the column does without a default, so it counts as none.
+function install_drop_column_default($table, $column) {
+
+	$row = db_item(
+		"SELECT COLUMN_DEFAULT AS column_default, IS_NULLABLE AS is_nullable
+		FROM information_schema.COLUMNS
+		WHERE
+			(TABLE_SCHEMA = DATABASE())
+			AND (TABLE_NAME = '" . e($table) . "')
+			AND (COLUMN_NAME = '" . e($column) . "')");
+
+	if ((!is_array($row)) || (count($row) == 0)) {
+
+		return install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => $table . '.' . $column)));
+
+	}
+
+	$default = $row['column_default'];
+
+	if (($default === null) || ((strtoupper((string) $default) === 'NULL') && ($row['is_nullable'] == 'YES'))) {
+
+		return install_skipped(lang(array('string' => '{var:1} has no default value', 'vars' => $table . '.' . $column)));
+
+	}
+
+	db("ALTER TABLE " . install_quote_name($table) . " ALTER " . install_quote_name($column) . " DROP DEFAULT");
+
+	return install_ran(lang(array('string' => 'the default value of {var:1} was dropped', 'vars' => $table . '.' . $column)));
 
 }
 
@@ -1219,6 +1376,25 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 
 	}
 
+	// A server the schema cannot be built on is turned away before the first version.
+	$server_problem = isset($versions[$from_key + 1]) ? install_server_problem() : '';
+
+	if ($server_problem != '') {
+
+		$number = $versions[$from_key + 1]['number'];
+
+		install_progress_failed($number, $server_problem);
+
+		$result['ok'] = false;
+
+		$result['failed'] = $number;
+
+		$result['error'] = $server_problem;
+
+		return $result;
+
+	}
+
 	// From here on a failed query is an exception, not a dead page.
 	install_run_begin();
 
@@ -1254,6 +1430,16 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 	}
 
 	install_register_shutdown_guard();
+
+	// The steps are written for a session without strict mode: the LiveSite-era ones give
+	// TEXT columns a DEFAULT '' and DATE columns a zero date, which the default sql_mode of
+	// MySQL 5.7 and later refuses (errors 1101 and 1067). Every caller sets this already;
+	// the runner does not rely on it.
+	if (class_exists('db') && (!empty(db::$con))) {
+
+		@mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
+
+	}
 
 	install_define_engine();
 
@@ -1746,7 +1932,8 @@ function install_table_size($table) {
 //   'locked'           => bool    another run holds the lock right now
 //   'last'             => array   what the previous run left behind at a pending version, or null
 //   'backup_available' => bool    a database backup can be written from this screen
-//   'database_bytes'   => float   the size of the database, for the backup
+//   'database_bytes'   => float   the size of the database
+//   'backup_bytes'     => float   the part of it a backup copies (pg_backup_database_size())
 // )
 function install_preflight($versions, $from_key) {
 
@@ -1778,7 +1965,8 @@ function install_preflight($versions, $from_key) {
 			'locked' => false,
 			'last' => null,
 			'backup_available' => false,
-			'database_bytes' => 0
+			'database_bytes' => 0,
+			'backup_bytes' => 0
 		);
 
 	} finally {
@@ -1795,7 +1983,7 @@ function install_preflight_checks($versions, $from_key) {
 
 	$checks = array();
 
-	$result = array('checks' => array(), 'locked' => false, 'last' => null, 'backup_available' => false, 'database_bytes' => 0);
+	$result = array('checks' => array(), 'locked' => false, 'last' => null, 'backup_available' => false, 'database_bytes' => 0, 'backup_bytes' => 0);
 
 	// the pending versions, and the tables they rewrite
 	$pending = array();
@@ -1845,7 +2033,9 @@ function install_preflight_checks($versions, $from_key) {
 
 	}
 
-	$checks[] = array('label' => lang('MySQL'), 'value' => (($server != '') ? $server : '-'), 'state' => 'ok', 'detail' => '');
+	$server_problem = install_server_problem();
+
+	$checks[] = array('label' => lang('MySQL'), 'value' => (($server != '') ? $server : '-'), 'state' => (($server_problem != '') ? 'error' : 'ok'), 'detail' => $server_problem);
 
 	// privileges
 	$grants = install_check_grants();
@@ -1993,20 +2183,30 @@ function install_preflight_checks($versions, $from_key) {
 
 	}
 
-	// backup
+	// backup: the tables a backup dumps without their rows are not part of it
 	$database_bytes = 0;
+
+	$backup_bytes = 0;
 
 	try {
 
-		$database_bytes = (float) db_value("SELECT SUM(DATA_LENGTH + INDEX_LENGTH) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()");
+		$database_size = pg_backup_database_size();
+
+		$database_bytes = $database_size['database'];
+
+		$backup_bytes = $database_size['backup'];
 
 	} catch (Throwable $e) {
 
 		$database_bytes = 0;
 
+		$backup_bytes = 0;
+
 	}
 
 	$result['database_bytes'] = $database_bytes;
+
+	$result['backup_bytes'] = $backup_bytes;
 
 	$backups_path = dirname(__FILE__) . '/../../data/backups';
 
@@ -2020,11 +2220,21 @@ function install_preflight_checks($versions, $from_key) {
 
 	}
 
-	$backup_value = install_size_label($database_bytes);
+	$backup_value = install_size_label($backup_bytes);
 
 	if ($free !== false) {
 
 		$backup_value .= ' · ' . lang(array('string' => '{var:1} free', 'vars' => install_size_label($free)));
+
+	}
+
+	// says why the figure is below the database size other screens show, once
+	// the left-out rows are worth mentioning
+	$backup_note = '';
+
+	if (($database_bytes - $backup_bytes) >= 1048576) {
+
+		$backup_note = lang(array('string' => 'Without the rows of visit, view and request records, which backups leave out. The whole database is {var:1}.', 'vars' => install_size_label($database_bytes)));
 
 	}
 
@@ -2037,7 +2247,7 @@ function install_preflight_checks($versions, $from_key) {
 			'detail' => lang('The pdo_mysql extension is not loaded, so a backup cannot be written from this screen. Take one from the Backups area of the File Manager before you start.')
 		);
 
-	} elseif (($free !== false) && ($free < ($database_bytes * 2))) {
+	} elseif (($free !== false) && ($free < ($backup_bytes * 2))) {
 
 		$result['backup_available'] = true;
 
@@ -2045,14 +2255,14 @@ function install_preflight_checks($versions, $from_key) {
 			'label' => lang('Database backup'),
 			'value' => $backup_value,
 			'state' => 'warning',
-			'detail' => lang('There may not be enough free space for a copy of the database. Make room first, or take the backup somewhere else.')
+			'detail' => trim(lang('There may not be enough free space for a copy of the database. Make room first, or take the backup somewhere else.') . ' ' . $backup_note)
 		);
 
 	} else {
 
 		$result['backup_available'] = true;
 
-		$checks[] = array('label' => lang('Database backup'), 'value' => $backup_value, 'state' => 'ok', 'detail' => '');
+		$checks[] = array('label' => lang('Database backup'), 'value' => $backup_value, 'state' => 'ok', 'detail' => $backup_note);
 
 	}
 
@@ -2114,9 +2324,8 @@ function install_backup_database($database_version) {
 
 	try {
 
-		$dump = new \Ifsnop\Mysqldump\Mysqldump('mysql:host=' . DB_HOST . ';dbname=' . DB_DATABASE, DB_USERNAME, DB_PASSWORD);
-
-		$dump->start($path . '/sql.sql');
+		// The dump the Backups area writes, visit and view rows left out.
+		pg_backup_dump_database($path . '/sql.sql');
 
 	} catch (\Throwable $e) {
 

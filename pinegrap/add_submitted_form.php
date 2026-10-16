@@ -32,6 +32,10 @@ validate_forms_access($user);
 
 include_once('liveform.class.php');
 
+// The custom form's page is one value; one sent as an array (page_id[]=x)
+// counts as not given: it ended in an error page.
+pg_request_single_values(array('page_id'));
+
 // Get the custom form's page id from the post (saving) or the query string (screen).
 $page_id = '';
 
@@ -182,7 +186,7 @@ if (!$_POST) {
                         <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="continue_button" name="continue_button" value="Continue" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Loading') ) . '" ><span class="material-icons me-2">arrow_forward</span><span class="btn-text" >' . lang(array('string'=>'Continue') ) . '</span></button>
+                                    <button type="submit" id="continue_button" name="continue_button" value="Continue" class="btn my-1  btn-success " ><span class="material-icons me-2">arrow_forward</span><span class="btn-text" >' . lang(array('string'=>'Continue') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>
@@ -616,8 +620,8 @@ if (!$_POST) {
                             <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group flex-wrap justify-content-center">
-                                        <button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-secondary " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save_as</span><span class="btn-text" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
-                                        <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-success" data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save and Complete') ) . '</span></button>
+                                        <button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-secondary "><span class="material-icons me-2">save_as</span><span class="btn-text" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
+                                        <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save and Complete') ) . '</span></button>
                                     </div>
                                 </div>
                             </nav>

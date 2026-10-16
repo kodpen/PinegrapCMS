@@ -19,6 +19,20 @@
 // Used by shopping cart and express order pages to retrieve order for customer if there is a
 // reference code in the URL.
 
+// The reference code in the URL: ?r= or the older ?reference_code=, r first. Each is one value,
+// so an empty one or a list (?r[]=x) counts as not given and the other one is used. Returns ''
+// when neither is there; the cart and express order pages only call retrieve_order() otherwise.
+function retrieve_order_reference_code() {
+
+    foreach (array('r', 'reference_code') as $name) {
+        if (!empty($_GET[$name]) && is_string($_GET[$name])) {
+            return $_GET[$name];
+        }
+    }
+
+    return '';
+}
+
 function retrieve_order($request) {
 
     $order_label = $request['order_label'];
@@ -27,18 +41,14 @@ function retrieve_order($request) {
         $order_label = 'cart';
     }
 
-    if (!$_GET['r'] and !$_GET['reference_code']) {
+    $reference_code = retrieve_order_reference_code();
+
+    if ($reference_code == '') {
         $message = 'The ' . $order_label . ' could not be retrieved, because there is no reference code in the URL.';
         log_activity($message);
         return error_response($message);
     }
 
-    if ($_GET['r']) {
-        $reference_code = $_GET['r'];
-    } else {
-        $reference_code = $_GET['reference_code'];
-    }
-    
     $order = db_item("
         SELECT id, status FROM orders WHERE reference_code = '" . e($reference_code) . "'");
 
@@ -76,7 +86,7 @@ function retrieve_order($request) {
 
     $sql_utm = "";
 
-    if ($_SESSION['software']['utm_source']) {
+    if (!empty($_SESSION['software']['utm_source'])) {
         $sql_utm =
             "utm_source = '" . e($_SESSION['software']['utm_source']) . "',
             utm_medium = '" . e($_SESSION['software']['utm_medium']) . "',
@@ -114,9 +124,10 @@ function retrieve_order($request) {
         WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
 
     // If visitor tracking is on, update visitor record with order information, if visitor has not
-    // already created order or retrieved an order.
+    // already created order or retrieved an order. A bot, or a request without a page view
+    // first, has no visitor record.
 
-    if (VISITOR_TRACKING) {
+    if (VISITOR_TRACKING && !empty($_SESSION['software']['visitor_id'])) {
 
         db("
             UPDATE visitors SET

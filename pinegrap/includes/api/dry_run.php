@@ -24,19 +24,26 @@
 // is what only the write itself would reveal, a unique key another request took
 // in the meantime.
 //
-// Deliberately a header and not a parameter: it is true of every write, and a
-// body field would have to be added to every route, kept out of every INSERT,
-// and remembered by whoever writes the next endpoint.
+// A header, or ?dry_run=true in the query string, and never a body field: it is
+// true of every write, and a body field would have to be added to every route,
+// kept out of every INSERT, and remembered by whoever writes the next endpoint.
+// The query string is read here, once, for every route alike, and it is there
+// for the callers that cannot set a header - a webhook tester, a no-code tool,
+// a link pasted into a terminal. Ignoring it, as an unknown query value is
+// ignored, would hand exactly those callers the write they asked not to make.
 
 if (!defined('PG_API_ENTRY')) {
 	exit;
 }
 
-// Whether this request asked for a dry run.
+// Whether this request asked for a dry run, in the header or in the query
+// string.
 //
 // Read once. The strictness is on purpose: 'X-Dry-Run: maybe' is far more
 // likely a mistake in the caller than a request to write, and the caller would
-// only learn otherwise from the row that appeared.
+// only learn otherwise from the row that appeared. Either one asking is
+// enough: a caller who sent both and meant them differently learns it from an
+// answer that says dry_run, not from a write it did not want.
 function api_dry_run_requested() {
 
 	static $requested = null;
@@ -47,35 +54,69 @@ function api_dry_run_requested() {
 
 	}
 
-	$raw = trim((string)api_header('X-Dry-Run'));
+	$header = api_dry_run_value(api_header('X-Dry-Run'));
 
-	if ($raw === '') {
+	if ($header === null) {
 
-		$requested = false;
-
-		return $requested;
+		api_fail(400, 'invalid_dry_run', lang('X-Dry-Run must be true or false.'));
 
 	}
 
-	$value = strtolower($raw);
+	$query = api_dry_run_value(api_dry_run_query());
+
+	if ($query === null) {
+
+		api_fail(400, 'invalid_dry_run', lang('dry_run must be true or false.'), 'dry_run');
+
+	}
+
+	$requested = $header || $query;
+
+	return $requested;
+
+}
+
+// What one way of asking says: true, false - also when it was not sent at
+// all - or null for a value that is neither.
+function api_dry_run_value($raw) {
+
+	$value = strtolower(trim((string)$raw));
 
 	if (in_array($value, array('1', 'true', 'yes', 'on'), true)) {
 
-		$requested = true;
-
-		return $requested;
+		return true;
 
 	}
 
-	if (in_array($value, array('0', 'false', 'no', 'off'), true)) {
+	if (in_array($value, array('', '0', 'false', 'no', 'off'), true)) {
 
-		$requested = false;
-
-		return $requested;
+		return false;
 
 	}
 
-	api_fail(400, 'invalid_dry_run', lang('X-Dry-Run must be true or false.'));
+	return null;
+
+}
+
+// dry_run as the query string carried it, '' when it did not.
+//
+// Taken from the request's input rather than from $_GET, so a call the MCP
+// server runs in-process reads what that call was given (it hands dry_run over
+// as the header) and not the query string of the request to mcp.php. A body
+// field of that name is not this: the endpoint refuses it as a field it does
+// not know, before anything is written.
+function api_dry_run_query() {
+
+	$input = api_request_input();
+
+	if (!array_key_exists('dry_run', $input) || in_array('dry_run', api_request_body_keys(), true)) {
+
+		return '';
+
+	}
+
+	// ?dry_run[]=true is neither true nor false.
+	return is_scalar($input['dry_run']) ? (string)$input['dry_run'] : 'invalid';
 
 }
 

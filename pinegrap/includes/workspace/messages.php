@@ -106,15 +106,29 @@ function ws_messages_since($channel_id, $since_id)
  *
  * @param array   $viewer
  * @param array[] $rows
+ * @param array   $options hidden_as_deleted: the rows are changes of messages
+ *                         the screen already shows, so one the person hid
+ *                         comes as deleted rather than not at all
  * @return array[]
  */
-function ws_message_payloads($viewer, $rows)
+function ws_message_payloads($viewer, $rows, $options = array())
 {
     // The messages the person deleted for themselves stay out of their view.
-    $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, (array) $rows));
+    // Among the changes to messages a screen already shows, one they hid
+    // since, on another screen or device, comes as deleted: the screen takes
+    // it away as it does a message deleted for everyone.
+    $rows = (array) $rows;
+    $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, $rows));
 
-    if (!empty($hidden)) {
-        $rows = array_values(array_filter((array) $rows, function ($row) use ($hidden) {
+    if (!empty($hidden) && !empty($options['hidden_as_deleted'])) {
+        foreach ($rows as $i => $row) {
+            if (isset($hidden[(int) $row['id']]) && ((int) $row['deleted_at'] === 0)) {
+                $rows[$i]['deleted_at'] = time();
+                $rows[$i]['body'] = '';
+            }
+        }
+    } elseif (!empty($hidden)) {
+        $rows = array_values(array_filter($rows, function ($row) use ($hidden) {
             return !isset($hidden[(int) $row['id']]);
         }));
     }
@@ -172,6 +186,8 @@ function ws_message_payloads($viewer, $rows)
         // Approval requests and read receipts (approvals.php, acks.php).
         'approvals'  => function_exists('ws_approvals_map') ? ws_approvals_map($ids, $viewer) : array(),
         'acks'       => function_exists('ws_acks_map') ? ws_acks_map($rows, $viewer) : array(),
+        // Status updates and check-ins (status.php).
+        'status'     => function_exists('ws_status_cards_map') ? ws_status_cards_map($viewer, $ids) : array(),
         'list_tasks' => ws_checklist_tasks_map($viewer, $ids),
         'can_post'   => $can_post,
         // Requests to Claude, and the tasks and record changes its answers
@@ -198,6 +214,9 @@ function ws_message_payloads($viewer, $rows)
         // in one (threads.php).
         'threads'    => ws_threads_map($viewer, $ids),
         'copies'     => ws_thread_copies_map($ids),
+        // The answers MCP agents gave, kept in their askers' names
+        // (mcp_agent.php).
+        'agents'     => function_exists('ws_mcp_agent_answers_map') ? ws_mcp_agent_answers_map($ids) : array(),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -247,6 +266,18 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         $sender = ws_guest_sender((int) $row['sender_id']);
     }
 
+    // An MCP agent's answer is kept in the name of the person who asked
+    // (mcp_agent.php) and drawn under the agent's own: to them too it is an
+    // answer that came, not a message of theirs.
+    $agent = (($row['sender_kind'] === 'user') && isset($extra['agents'][$id]) && function_exists('ws_mcp_agent_answer_view'))
+        ? ws_mcp_agent_answer_view($extra['agents'][$id], (string) $row['body'])
+        : null;
+
+    if ($agent) {
+        $sender = $agent['sender'];
+        $mine = false;
+    }
+
     $labels = array();
 
     foreach (ws_tokens($row['body']) as $token) {
@@ -262,14 +293,14 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'channel_id'  => (int) $row['channel_id'],
         'parent_id'   => (int) $row['parent_id'],
         'kind'        => (string) $row['kind'],
-        'sender_kind' => (string) $row['sender_kind'],
+        'sender_kind' => $agent ? 'app' : (string) $row['sender_kind'],
         'sender'      => $sender,
         'mine'        => $mine,
         // What a guest wrote is drawn with the few marks a guest may use
         // (guests.php), here as on their own page: a guest adds no table.
         'html'        => $deleted ? '' : ((($row['sender_kind'] === 'guest') && function_exists('ws_guest_render'))
             ? ws_guest_render($row['body'])
-            : ws_render_body($row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready())),
+            : ws_render_body($agent ? $agent['text'] : $row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready())),
         'raw'         => ($mine && !$deleted) ? (string) $row['body'] : '',
         'labels'      => ($mine && !$deleted) ? $labels : array(),
         'deleted'     => $deleted,
@@ -302,6 +333,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'reactions'   => $deleted ? array() : ($extra['reactions'][$id] ?? array()),
         'poll'        => $deleted ? null : ($extra['polls'][$id] ?? null),
         'approval'    => $deleted ? null : ($extra['approvals'][$id] ?? null),
+        'status_card' => $deleted ? null : ($extra['status'][$id] ?? null),
         // A read receipt asked for, and whether the reader may ask for one.
         'ack'         => $deleted ? null : ($extra['acks'][$id] ?? null),
         // The same test as ws_ack_can_request(), from what is known already.
@@ -458,6 +490,41 @@ function ws_rate_limited($user_id)
 }
 
 /**
+ * Whether this message may be written: the checks of ws_message_send(), made
+ * on their own so that the API's dry run meets the same refusals.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $body
+ * @param array  $options as for ws_message_send()
+ * @return array ok, error, body (the text as it would be stored)
+ */
+function ws_message_send_check($viewer, $channel, $body, $options = array())
+{
+    if (!ws_can_post_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+    }
+
+    $body = ws_tokens_normalise(trim((string) $body));
+    $file_id = (int) ($options['file_id'] ?? 0);
+
+    // A forward may carry the messages alone, without words of its own.
+    if (($body === '') && ($file_id <= 0) && ((int) ($options['task_id'] ?? 0) <= 0) && ((int) ($options['forwards'] ?? 0) <= 0)) {
+        return array('ok' => false, 'error' => lang('The message is empty.'));
+    }
+
+    if (mb_strlen($body) > WS_MESSAGE_MAX) {
+        return array('ok' => false, 'error' => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)));
+    }
+
+    if (((int) ($options['app_id'] ?? 0) === 0) && ws_rate_limited($viewer['id'])) {
+        return array('ok' => false, 'error' => lang('You are sending messages too quickly. Please wait a moment.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'body' => $body);
+}
+
+/**
  * Writes a message into a channel and tells the people it mentions.
  *
  * @param array  $viewer
@@ -470,28 +537,15 @@ function ws_rate_limited($user_id)
  */
 function ws_message_send($viewer, $channel, $body, $options = array())
 {
-    if (!ws_can_post_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'message_id' => 0);
+    $checked = ws_message_send_check($viewer, $channel, $body, $options);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'message_id' => 0);
     }
 
-    $body = ws_tokens_normalise(trim((string) $body));
+    $body = $checked['body'];
     $file_id = (int) ($options['file_id'] ?? 0);
-
-    // A forward may carry the messages alone, without words of its own.
-    if (($body === '') && ($file_id <= 0) && ((int) ($options['task_id'] ?? 0) <= 0) && ((int) ($options['forwards'] ?? 0) <= 0)) {
-        return array('ok' => false, 'error' => lang('The message is empty.'), 'message_id' => 0);
-    }
-
-    if (mb_strlen($body) > WS_MESSAGE_MAX) {
-        return array('ok' => false, 'error' => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)), 'message_id' => 0);
-    }
-
     $app_id = (int) ($options['app_id'] ?? 0);
-
-    if (($app_id === 0) && ws_rate_limited($viewer['id'])) {
-        return array('ok' => false, 'error' => lang('You are sending messages too quickly. Please wait a moment.'), 'message_id' => 0);
-    }
-
     $kind = (string) ($options['kind'] ?? 'message');
 
     if (!in_array($kind, array('message', 'note', 'decision', 'task'), true)) {
@@ -596,6 +650,37 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     }
 
     return array('ok' => true, 'error' => '', 'message_id' => $message_id);
+}
+
+/**
+ * After a person's message was written: the assistants it asks get the
+ * request queued - Claude (claude.php), an MCP server that answers its alias
+ * on its own (mcp_agent.php), otherwise Pinegrap AI (ai.php), which also
+ * answers an alias with that server's tools. Each one checks whether it may
+ * be asked in the channel and leaves a line saying why not when it may not.
+ * Nothing is started here; the caller carries the queue on.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param int    $message_id
+ * @param string $body as written
+ * @return array claude, agent, ai: whether a request was queued for each
+ */
+function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
+{
+    $body = ws_tokens_normalise(trim((string) $body));
+    $claude = function_exists('ws_claude_after_send') && ws_claude_after_send($viewer, $channel, $message_id, $body);
+    $agent = function_exists('ws_mcp_agent_after_send') ? ws_mcp_agent_after_send($viewer, $channel, $message_id, $body) : null;
+
+    // A message written to an agent's alias is the agent's alone.
+    $ai = ($agent === null) && function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body);
+
+    // Asked in a discussion: its channel's message says so.
+    if (($claude || $ai) && ws_channel_is_thread($channel)) {
+        ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
+    }
+
+    return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai);
 }
 
 /**
@@ -752,34 +837,116 @@ function ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $ap
 /**
  * The messages of a channel that changed after they were written - an edit,
  * a reaction, a tick, a vote - since a moment, up to the newest one the
- * reader already has.
+ * reader already has. With a reader, also the ones that reader deleted for
+ * themselves since then: the message stays as it is for everybody else, so
+ * hiding it does not stamp touched_at (the others' screens would draw it
+ * again for nothing), and only the reader's own row in ws_message_hides says
+ * when it went. Their other screens and devices learn it here.
  *
  * @param int $channel_id
- * @param int $since   timestamp
- * @param int $upto_id the newest message the reader holds
+ * @param int $since    timestamp
+ * @param int $upto_id  the newest message the reader holds
+ * @param int $after_id only messages after this one (the API pages with it)
+ * @param int $limit
+ * @param int $user_id  the reader, 0 for none
  * @return array[]
  */
-function ws_messages_touched($channel_id, $since, $upto_id)
+function ws_messages_touched($channel_id, $since, $upto_id, $after_id = 0, $limit = 50, $user_id = 0)
 {
     if (!ws_interact_ready() || ((int) $since <= 0) || ((int) $upto_id <= 0)) {
         return array();
     }
 
+    $limit = max(1, min(200, (int) $limit));
+    $hidden = ws_message_hidden_since($user_id, $channel_id, $since, $upto_id, $after_id, $limit);
+
     return (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND touched_at >= '" . (int) $since . "' AND id <= '" . (int) $upto_id . "'
+        WHERE " . ws_messages_touched_where($channel_id, $since, $upto_id, $after_id, $hidden) . "
         ORDER BY id
-        LIMIT 50");
+        LIMIT " . $limit);
 }
 
 /**
- * Changes the text of one's own message.
+ * The condition ws_messages_touched() reads with: the channel's messages
+ * stamped at or after the moment, and the ones given besides (those the
+ * reader hid since then), up to the newest one held and after the one given.
+ * With none given it is the touched_at range alone, which idx_touched
+ * answers.
+ *
+ * @param int   $channel_id
+ * @param int   $since
+ * @param int   $upto_id
+ * @param int   $after_id
+ * @param int[] $also_ids
+ * @return string
+ */
+function ws_messages_touched_where($channel_id, $since, $upto_id, $after_id = 0, $also_ids = array())
+{
+    $also_ids = array_values(array_unique(array_filter(array_map('intval', (array) $also_ids), function ($id) {
+        return $id > 0;
+    })));
+
+    $changed = "touched_at >= '" . (int) $since . "'";
+
+    if (!empty($also_ids)) {
+        $changed = "(" . $changed . " OR id IN (" . implode(',', $also_ids) . "))";
+    }
+
+    return "channel_id = '" . (int) $channel_id . "' AND " . $changed . " AND id <= '" . (int) $upto_id . "'"
+        . (((int) $after_id > 0) ? " AND id > '" . (int) $after_id . "'" : '');
+}
+
+/**
+ * What a screen open on a channel asks for on each look, the panel's
+ * (ws_sync) and an app's (GET /workspace/sync) alike: the polls and approval
+ * requests whose time ran out are closed first, so they are read closed;
+ * then the messages after the newest one the reader holds, and the ones they
+ * hold that changed since their previous look.
+ *
+ * @param int   $channel_id
+ * @param int   $held_id the newest message the reader holds, 0 for none
+ * @param int   $since   the moment of the previous look, 0 for none
+ * @param array $options new: false reads no new messages (an earlier version
+ *                       of the conversation is on the screen); first_page:
+ *                       with nothing held, the newest this many rather than
+ *                       the conversation from its start; after_id, limit,
+ *                       user_id (the reader, whose own hidden messages count
+ *                       as changed): as ws_messages_touched() takes them
+ * @return array new, changed (ws_messages rows, oldest first)
+ */
+function ws_channel_news($channel_id, $held_id, $since, $options = array())
+{
+    $channel_id = (int) $channel_id;
+    $held_id = (int) $held_id;
+
+    ws_polls_autoclose($channel_id);
+    ws_approvals_autoclose($channel_id);
+
+    $new = array();
+
+    if (!isset($options['new']) || $options['new']) {
+        $new = (($held_id <= 0) && !empty($options['first_page']))
+            ? ws_messages_page($channel_id, 0, (int) $options['first_page'])
+            : ws_messages_since($channel_id, $held_id);
+    }
+
+    return array(
+        'new'     => $new,
+        'changed' => ws_messages_touched($channel_id, $since, $held_id, (int) ($options['after_id'] ?? 0), (int) ($options['limit'] ?? 50), (int) ($options['user_id'] ?? 0)),
+    );
+}
+
+/**
+ * Whether a message may be changed to this text: the checks of
+ * ws_message_edit(), made on their own so that the API's dry run meets the
+ * same refusals.
  *
  * @param array  $viewer
  * @param array  $message
  * @param string $body
- * @return array ok, error
+ * @return array ok, error, body (the new text as it would be stored), channel
  */
-function ws_message_edit($viewer, $message, $body)
+function ws_message_edit_check($viewer, $message, $body)
 {
     if (($message['sender_kind'] !== 'user') || ((int) $message['sender_id'] !== (int) $viewer['id'])
         || ((int) $message['deleted_at'] > 0) || !in_array($message['kind'], array('message', 'note', 'decision'), true)) {
@@ -810,6 +977,27 @@ function ws_message_edit($viewer, $message, $body)
         return array('ok' => false, 'error' => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)));
     }
 
+    return array('ok' => true, 'error' => '', 'body' => $body, 'channel' => $channel);
+}
+
+/**
+ * Changes the text of one's own message.
+ *
+ * @param array  $viewer
+ * @param array  $message
+ * @param string $body
+ * @return array ok, error
+ */
+function ws_message_edit($viewer, $message, $body)
+{
+    $checked = ws_message_edit_check($viewer, $message, $body);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
+    }
+
+    $body = $checked['body'];
+    $channel = $checked['channel'];
     $before = array();
 
     foreach (ws_tokens($message['body']) as $token) {
@@ -848,6 +1036,34 @@ function ws_message_edit($viewer, $message, $body)
 }
 
 /**
+ * Whether the person may delete a message for everyone: the checks of
+ * ws_message_delete(), made on their own for the API's dry run.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @return array ok, error, mine
+ */
+function ws_message_delete_check($viewer, $message)
+{
+    $mine = ($message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id']);
+
+    // A guest's message is taken out by staff.
+    if (!in_array($message['sender_kind'], array('user', 'guest'), true) || (!$mine && ($viewer['role'] >= 3))) {
+        return array('ok' => false, 'error' => lang('You can only delete your own messages.'), 'mine' => $mine);
+    }
+
+    if (!empty($message['locked']) && ($viewer['role'] >= 3)) {
+        return array('ok' => false, 'error' => lang('This decision records a change to a record. People with the User role cannot delete it.'), 'mine' => $mine);
+    }
+
+    if (!ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        return array('ok' => false, 'error' => lang('Access denied.'), 'mine' => $mine);
+    }
+
+    return array('ok' => true, 'error' => '', 'mine' => $mine);
+}
+
+/**
  * Deletes a message: the author their own, staff anyone's. The row stays as
  * "message deleted" so the conversation around it still reads; its text,
  * file link and tags go.
@@ -858,20 +1074,13 @@ function ws_message_edit($viewer, $message, $body)
  */
 function ws_message_delete($viewer, $message)
 {
-    $mine = ($message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id']);
+    $checked = ws_message_delete_check($viewer, $message);
 
-    // A guest's message is taken out by staff.
-    if (!in_array($message['sender_kind'], array('user', 'guest'), true) || (!$mine && ($viewer['role'] >= 3))) {
-        return array('ok' => false, 'error' => lang('You can only delete your own messages.'));
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
     }
 
-    if (!empty($message['locked']) && ($viewer['role'] >= 3)) {
-        return array('ok' => false, 'error' => lang('This decision records a change to a record. People with the User role cannot delete it.'));
-    }
-
-    if (!ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
-        return array('ok' => false, 'error' => lang('Access denied.'));
-    }
+    $mine = $checked['mine'];
 
     // A checklist a task carries moves into the task before the text goes.
     ws_checklist_tasks_detach($message);
@@ -882,7 +1091,7 @@ function ws_message_delete($viewer, $message)
     if (function_exists('ws_blocks_index')) {
         ws_blocks_index('message', (int) $message['id'], '');
     }
-    db("DELETE FROM ws_inbox WHERE message_id = '" . (int) $message['id'] . "' AND kind = 'mention'");
+    ws_inbox_delete("message_id = '" . (int) $message['id'] . "' AND kind = 'mention'");
     ws_message_touch($message['id']);
 
     // A decision of a discussion takes its copy in the channel with it.
@@ -940,13 +1149,44 @@ function ws_message_hidden_ids($user_id, $message_ids)
 }
 
 /**
- * Deletes a message for the person alone: the others keep it as it is.
+ * The messages of a channel the person deleted for themselves at or after a
+ * moment, up to the newest one they hold and after the one given, lowest
+ * first: what ws_messages_touched() adds to the changes for them. A message
+ * past the first $limit of these could not make the first $limit of the
+ * changes either, so no more are read.
+ *
+ * @param int $user_id
+ * @param int $channel_id
+ * @param int $since    timestamp
+ * @param int $upto_id
+ * @param int $after_id
+ * @param int $limit
+ * @return int[]
+ */
+function ws_message_hidden_since($user_id, $channel_id, $since, $upto_id, $after_id = 0, $limit = 200)
+{
+    if (((int) $user_id <= 0) || ((int) $since <= 0) || ((int) $upto_id <= 0) || !ws_message_hides_ready()) {
+        return array();
+    }
+
+    return array_map('intval', (array) db_values("SELECT h.message_id FROM ws_message_hides h
+        INNER JOIN ws_messages m ON m.id = h.message_id
+        WHERE h.user_id = '" . (int) $user_id . "' AND h.hidden_at >= '" . (int) $since . "'
+            AND m.channel_id = '" . (int) $channel_id . "' AND m.id <= '" . (int) $upto_id . "'"
+            . (((int) $after_id > 0) ? " AND m.id > '" . (int) $after_id . "'" : '') . "
+        ORDER BY h.message_id
+        LIMIT " . max(1, min(200, (int) $limit))));
+}
+
+/**
+ * Whether the person may delete a message for themselves: the checks of
+ * ws_message_hide(), made on their own for the API's dry run.
  *
  * @param array $viewer
  * @param array $message
  * @return array ok, error
  */
-function ws_message_hide($viewer, $message)
+function ws_message_hide_check($viewer, $message)
 {
     if (!ws_message_hides_ready()) {
         return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'));
@@ -956,6 +1196,27 @@ function ws_message_hide($viewer, $message)
         return array('ok' => false, 'error' => lang('That message could not be found.'));
     }
 
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Deletes a message for the person alone: the others keep it as it is.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @return array ok, error
+ */
+function ws_message_hide($viewer, $message)
+{
+    $checked = ws_message_hide_check($viewer, $message);
+
+    if (!$checked['ok']) {
+        return $checked;
+    }
+
+    // touched_at is left alone: nothing changed for anybody else. hidden_at
+    // is what the person's other screens and devices look for
+    // (ws_messages_touched()).
     db("INSERT IGNORE INTO ws_message_hides (message_id, user_id, hidden_at)
         VALUES ('" . (int) $message['id'] . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
 

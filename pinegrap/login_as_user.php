@@ -24,6 +24,10 @@ validate_area_access($user, 'manager');
 
 validate_token_field();
 
+// An id sent as an array (?id[]=x) counts as not given ("User not found."):
+// (int) would read it as 1 and sign in as user 1.
+$login_as_user_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+
 // Get info for the user that the editor is trying to login as.
 $user = db_item(
     "SELECT
@@ -31,7 +35,7 @@ $user = db_item(
         user_username AS username,
         user_password AS password
     FROM user
-    WHERE user_id = '" . (int) ($_GET['id'] ?? 0) . "'");
+    WHERE user_id = '" . $login_as_user_id . "'");
 
 // Without this check an unknown id would pass the role checks below and the
 // editor would end up with a session bound to a user that does not exist.
@@ -52,7 +56,7 @@ if ((USER_ROLE > 0) && (USER_ROLE >= $user['role'])) {
 // however we just decided to prevent this because there is really no reason to allow it and
 // it might cause confusing log messages eventually (e.g. "example_username -> example_username").
 // It might also cause confusion for the user about what happens if they do that.
-if ((int) ($_GET['id'] ?? 0) == USER_ID) {
+if ($login_as_user_id == USER_ID) {
     output_error(lang('Access denied. You may not login as yourself.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
@@ -70,7 +74,7 @@ setcookie('software[affiliate_code]', '', time() - 1000, '/');
 session_start();
 
 // Update session so that editor will be logged in as different user.
-pg_session_sign_in((int) $_GET['id'], $user['username']);
+pg_session_sign_in($login_as_user_id, $user['username']);
 
 // Remember that user is logged in as a different user, so we don't remove remember me login cookies
 // when the user logs out from this different user account.

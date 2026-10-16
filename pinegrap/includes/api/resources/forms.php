@@ -22,11 +22,13 @@
 //                 submission keeps its meaning after the field is renamed or
 //                 deleted.
 //
-// Everything here is read-only. A form is a thing an operator draws in the page
-// designer, with its own validation, upload folders, quiz answers and contact
-// mapping; writing one through this API would mean reproducing that screen.
-// What an integration needs is the other half - what came in - and that is what
-// this offers.
+// The forms themselves are read-only. A form is a thing an operator draws in
+// the page designer, with its own validation, upload folders, quiz answers and
+// contact mapping; writing one through this API would mean reproducing that
+// screen. What an integration needs is the other half - what came in - and
+// that is what this offers, with the one write the submission screen makes
+// that a CRM or a help desk also needs: marking a submission complete, and
+// filling in its text answers, the office-use fields among them.
 //
 // Uploaded files are reported as an id and nothing else. The URL would hand a
 // file to an application that holds forms:read and not files:read, and the file
@@ -302,6 +304,50 @@ function api_forms_get($params) {
 
 }
 
+// The values of a set of submissions, keyed by submission id, in one read.
+function api_form_submission_values($ids) {
+
+	$ids = array_values(array_unique(array_map('intval', $ids)));
+
+	// The values for the whole page of submissions in one read. The label comes
+	// from the field when it is still there; form_data keeps the name it had, so
+	// a submission whose field was deleted still says what it was answering.
+	$values = array();
+
+	if (empty($ids)) {
+
+		return $values;
+
+	}
+
+	foreach (api_rows("SELECT form_data.form_id, form_data.form_field_id, form_data.name,
+			form_data.data, form_data.file_id,
+			form_fields.label, form_fields.type
+		FROM form_data
+		LEFT JOIN form_fields ON form_fields.id = form_data.form_field_id
+		WHERE form_data.form_id IN (" . implode(',', $ids) . ")
+		ORDER BY form_data.form_id ASC, form_fields.sort_order ASC, form_data.id ASC") as $value) {
+
+		$key = (int)$value['form_id'];
+
+		if (!isset($values[$key])) { $values[$key] = array(); }
+
+		$values[$key][] = array(
+			'field_id' => (int)$value['form_field_id'],
+			'name'     => (string)$value['name'],
+			'label'    => ($value['label'] === null) ? null : (string)$value['label'],
+			'type'     => ($value['type'] === null) ? null : (string)$value['type'],
+			'value'    => api_form_value_out($value['data']),
+			// The file itself is fetched from /files/{id} with files:read.
+			'file_id'  => ((int)$value['file_id'] > 0) ? (int)$value['file_id'] : null
+		);
+
+	}
+
+	return $values;
+
+}
+
 // What came in on one form.
 function api_form_submissions($params) {
 
@@ -363,9 +409,7 @@ function api_form_submissions($params) {
 
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 
-	$rows = api_rows("SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
-			forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp
-		FROM forms
+	$rows = api_rows(api_form_submission_select() . "
 		WHERE " . implode(' AND ', $where) . "
 		ORDER BY forms.id ASC
 		LIMIT " . ($limit + 1));
@@ -392,34 +436,7 @@ function api_form_submissions($params) {
 
 	}
 
-	// The values for the whole page of submissions in one read. The label comes
-	// from the field when it is still there; form_data keeps the name it had, so
-	// a submission whose field was deleted still says what it was answering.
-	$values = array();
-
-	foreach (api_rows("SELECT form_data.form_id, form_data.form_field_id, form_data.name,
-			form_data.data, form_data.file_id,
-			form_fields.label, form_fields.type
-		FROM form_data
-		LEFT JOIN form_fields ON form_fields.id = form_data.form_field_id
-		WHERE form_data.form_id IN (" . implode(',', $ids) . ")
-		ORDER BY form_data.form_id ASC, form_fields.sort_order ASC, form_data.id ASC") as $value) {
-
-		$key = (int)$value['form_id'];
-
-		if (!isset($values[$key])) { $values[$key] = array(); }
-
-		$values[$key][] = array(
-			'field_id' => (int)$value['form_field_id'],
-			'name'     => (string)$value['name'],
-			'label'    => ($value['label'] === null) ? null : (string)$value['label'],
-			'type'     => ($value['type'] === null) ? null : (string)$value['type'],
-			'value'    => api_form_value_out($value['data']),
-			// The file itself is fetched from /files/{id} with files:read.
-			'file_id'  => ((int)$value['file_id'] > 0) ? (int)$value['file_id'] : null
-		);
-
-	}
+	$values = api_form_submission_values($ids);
 
 	$out = array();
 
@@ -445,8 +462,195 @@ function api_form_submissions($params) {
 
 }
 
+// The submission columns every reader of one submission selects.
+function api_form_submission_select() {
+
+	return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
+			forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp
+		FROM forms";
+
+}
+
+// One submission of one form, or a 404. The form is part of the address so a
+// submission id cannot be read through a form it was not made on.
+function api_form_submission_owned($form_id, $submission_id) {
+
+	$row = api_row(api_form_submission_select() . "
+		WHERE forms.id = '" . (int)$submission_id . "' AND forms.page_id = '" . (int)$form_id . "'
+		LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Form submission'));
+
+	}
+
+	return $row;
+
+}
+
+function api_form_submission_get($params) {
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	$values = api_form_submission_values(array($row['id']));
+
+	api_ok(api_form_submission_present($row, isset($values[(int)$row['id']]) ? $values[(int)$row['id']] : array()));
+
+}
+
+// The field types whose answer is plain text, the ones the submission screen
+// lets staff retype. A choice is tied to the options the form offers and an
+// upload is a file; neither is something to overwrite with a string.
+function api_form_text_field_types() {
+
+	return array('text box', 'text area', 'email address');
+
+}
+
+// Marking a submission complete, or filling in its text answers.
+//
+// The write the submitted-form screen makes, for the system that handles the
+// enquiry outside the panel: a help desk closing it, a CRM writing the outcome
+// into the office-use fields the visitor never sees. Answers are addressed by
+// the field's name, as they are read, and only the plain-text kinds can be
+// written. A field the visitor left empty gets its row now; one that has a row
+// keeps it, so a submission never ends up with two answers to one field.
+function api_form_submission_update($params) {
+
+	$app = api_current_app();
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	$id = (int)$row['id'];
+
+	$writes = array();
+
+	if (array_key_exists('values', $params)) {
+
+		$fields = array();
+
+		foreach (api_rows("SELECT id, name, type FROM form_fields
+			WHERE page_id = '" . (int)$row['page_id'] . "' AND name <> ''
+			ORDER BY sort_order ASC, id ASC") as $field) {
+
+			if (!isset($fields[$field['name']])) {
+
+				$fields[$field['name']] = $field;
+
+			}
+
+		}
+
+		foreach ($params['values'] as $item) {
+
+			if (!is_array($item) || !isset($item['name']) || !is_scalar($item['name'])
+				|| (array_key_exists('value', $item) && !is_scalar($item['value']) && ($item['value'] !== null))) {
+
+				api_fail_validation(lang('Each value must be an object of {name, value}.'), 'values');
+
+			}
+
+			$name = trim((string)$item['name']);
+
+			if (!isset($fields[$name])) {
+
+				api_fail_validation(lang(array('string' => 'This form has no field called {var:1}.', 'vars' => mb_substr($name, 0, 60))), 'values');
+
+			}
+
+			if (!in_array($fields[$name]['type'], api_form_text_field_types(), true)) {
+
+				api_fail_validation(lang(array('string' => 'The field {var:1} is not a text field and cannot be written through the API.', 'vars' => $name)), 'values');
+
+			}
+
+			$value = trim(str_replace("\r\n", "\n", isset($item['value']) ? (string)$item['value'] : ''));
+
+			if (mb_strlen($value) > 10000) {
+
+				api_fail_validation(lang(array('string' => 'The answer to {var:1} is longer than the 10000 characters accepted.', 'vars' => $name)), 'values');
+
+			}
+
+			if (($fields[$name]['type'] === 'email address') && ($value !== '') && !validate_email_address($value)) {
+
+				api_fail_validation(lang(array('string' => 'The answer to {var:1} is not an e-mail address.', 'vars' => $name)), 'values');
+
+			}
+
+			$writes[(int)$fields[$name]['id']] = array('name' => $name, 'value' => $value);
+
+		}
+
+	}
+
+	if (empty($writes) && !array_key_exists('complete', $params)) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	api_dry_run_stop('updated', 'form_submission', array('id' => $id, 'values' => count($writes)));
+
+	foreach ($writes as $field_id => $write) {
+
+		$kept = (int)api_value("SELECT id FROM form_data
+			WHERE form_id = '" . $id . "' AND form_field_id = '" . $field_id . "'
+			ORDER BY id ASC LIMIT 1");
+
+		if ($kept > 0) {
+
+			api_exec("UPDATE form_data SET data = '" . escape($write['value']) . "' WHERE id = '" . $kept . "' LIMIT 1");
+
+		} else {
+
+			api_exec("INSERT INTO form_data (form_id, form_field_id, data, name, type)
+				VALUES ('" . $id . "', '" . $field_id . "', '" . escape($write['value']) . "', '" . escape($write['name']) . "', 'standard')");
+
+		}
+
+	}
+
+	$set = array();
+
+	if (array_key_exists('complete', $params)) {
+
+		$set[] = "complete = '" . ($params['complete'] ? '1' : '0') . "'";
+
+	}
+
+	$set[] = "last_modified_user_id = '" . (int)$app['owner']['id'] . "'";
+
+	$set[] = "last_modified_timestamp = UNIX_TIMESTAMP()";
+
+	api_exec("UPDATE forms SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
+
+	// A form with pretty URLs on names its records after their Title field;
+	// a retyped title renames the record, as the submission screen does.
+	if ($writes && check_if_pretty_urls_are_enabled($row['page_id'])) {
+
+		update_submitted_form_address_name($id);
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'The submitted form ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array((string)$row['reference_code'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	$row = api_form_submission_owned($params['id'], $id);
+
+	$values = api_form_submission_values(array($id));
+
+	api_ok(api_form_submission_present($row, isset($values[$id]) ? $values[$id] : array()));
+
+}
+
 // What api_form_present() returns, declared for the OpenAPI document. fields is
-// carried by the single-form endpoint only.
+// carried by the single-form endpoint only. name is the page's name, a DEFAULT
+// NULL column that every create path writes, so not nullable
+// (api_openapi_type_spec() says when a field is).
 function api_form_schema() {
 
 	return array(

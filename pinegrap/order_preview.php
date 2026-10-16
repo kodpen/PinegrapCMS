@@ -35,6 +35,18 @@ if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode']
     }
 }
 
+// The form names the order preview page it was posted from, and the order is
+// placed with that page's settings (terms, payment options, receipt e-mail,
+// next page). An id that names no such page (unknown, empty or posted as an
+// array) stops here, as on the shipping address and arrival step, instead of
+// placing the order without them. A gateway callback brings back the id its
+// submit was checked with.
+if (
+    !in_array(($_GET['mode'] ?? ''), array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'), true)
+    && !pg_order_page_known($_POST['page_id'] ?? '', 'order preview')
+) {
+    output_error(lang('An order preview page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
 
 initialize_order();
 
@@ -43,7 +55,10 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
     include_once('liveform.class.php');
     $liveform = new liveform('order_preview');
     
-    $liveform->assign_field_value('gift_card_code', $_POST['gift_card_code']);
+    // The code is one string; one not posted, or posted as an array, counts as empty.
+    pg_request_single_values(array('gift_card_code'));
+
+    $liveform->assign_field_value('gift_card_code', $_POST['gift_card_code'] ?? '');
     
     // if the gift card code field was not blank, then continue to check if the code is valid
     if ($liveform->get_field_value('gift_card_code') != '') {
@@ -85,11 +100,12 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                     balance,
                     expiration_date
                 FROM gift_cards
-                WHERE code = '" . escape($gift_card_code)  . "'");
+                WHERE code = '" . escape($gift_card_code)  . "'")
+                ?: array('id' => ''); // no card with this code
 
             // If a gift card could not be found in this system,
-            // and givex is disabled, then output error.
-            if (($gift_card['id'] == '') && (ECOMMERCE_GIVEX == false)) {
+            // and givex is disabled (or the code was only dashes and spaces), then output error.
+            if (($gift_card['id'] == '') && ((ECOMMERCE_GIVEX == false) || ($gift_card_code === ''))) {
                 $liveform->mark_error('gift_card_code', lang('Sorry, we could not find a gift card for that code. Please check that you entered the code correctly.'));
                 go(PATH . encode_url_path(get_page_name($_POST['page_id'])));
             }

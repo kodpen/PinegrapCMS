@@ -29,7 +29,8 @@ function submit_order($type) {
     }
     
    
-    $page_id = $_REQUEST['page_id'];
+    // Only a string can name the page; page_id[]= counts as empty.
+    $page_id = (isset($_REQUEST['page_id']) && is_string($_REQUEST['page_id'])) ? $_REQUEST['page_id'] : '';
     
 
     $liveform = new liveform($type_value);
@@ -293,7 +294,8 @@ function submit_order($type) {
                             balance,
                             expiration_date
                         FROM gift_cards
-                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'");
+                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'")
+                        ?: array('id' => ''); // the card was deleted after it was applied
 
                     // If a gift card no longer exists, then output error.
                     if ($gift_card['id'] == '') {
@@ -414,6 +416,12 @@ function submit_order($type) {
             $liveform->add_fields_to_session();
         }
 
+        // The billing and payment fields post one value each (express_order.php has done this
+        // for an express order already), and the totals the visitor saw are compared below as
+        // numbers, so an array there counts as a total not posted.
+        pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms'));
+        pg_liveform_single_values($liveform, array('total', 'total_with_surcharge'), null);
+
         // Clear stale field errors from a PREVIOUS submit before re-validating.
         // Without this, a payment_gateway error from a prior Iyzipay/PayPal
         // failure (e.g. expired SSL CA, mid-flow timeout) stays in session and
@@ -447,13 +455,14 @@ function submit_order($type) {
                 FROM express_order_pages
                 WHERE page_id = '" . escape($page_id) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
+            // No row when the id names no express order page: no custom fields then.
+            $row = mysqli_fetch_assoc($result) ?: array();
 
-            $custom_field_1_label = $row['custom_field_1_label'];
-            $custom_field_1_required = $row['custom_field_1_required'];
-            $custom_field_2_label = $row['custom_field_2_label'];
-            $custom_field_2_required = $row['custom_field_2_required'];
-            $form = $row['form'];
+            $custom_field_1_label = $row['custom_field_1_label'] ?? '';
+            $custom_field_1_required = $row['custom_field_1_required'] ?? '';
+            $custom_field_2_label = $row['custom_field_2_label'] ?? '';
+            $custom_field_2_required = $row['custom_field_2_required'] ?? '';
+            $form = $row['form'] ?? '';
 
             // if there is a custom field 1 label and custom field 1 is required, then validate required field
             if (($custom_field_1_label != '') && ($custom_field_1_required == 1)) {
@@ -956,20 +965,21 @@ function submit_order($type) {
         LEFT JOIN page ON " . $type_value . "_pages.terms_page_id = page.page_id
         WHERE " . $type_value . "_pages.page_id = '" . escape($page_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
+    // No row when the id names no page of this type: none of its settings then.
+    $row = mysqli_fetch_assoc($result) ?: array();
     
-    $terms_page_name = $row['page_name'];
-    $offline_payment_always_allowed = $row['offline_payment_always_allowed'];
-    $auto_registration = $row['auto_registration'];
-    $pre_save_hook_code = $row['pre_save_hook_code'];
-    $post_save_hook_code = $row['post_save_hook_code'];
-    $order_receipt_email = $row['order_receipt_email'];
-    $order_receipt_email_subject = $row['order_receipt_email_subject'];
-    $order_receipt_email_format = $row['order_receipt_email_format'];
-    $order_receipt_email_header = $row['order_receipt_email_header'];
-    $order_receipt_email_footer = $row['order_receipt_email_footer'];
-    $order_receipt_email_page_id = $row['order_receipt_email_page_id'];
-    $next_page_id = $row['next_page_id'];
+    $terms_page_name = $row['page_name'] ?? '';
+    $offline_payment_always_allowed = $row['offline_payment_always_allowed'] ?? '';
+    $auto_registration = $row['auto_registration'] ?? '';
+    $pre_save_hook_code = $row['pre_save_hook_code'] ?? '';
+    $post_save_hook_code = $row['post_save_hook_code'] ?? '';
+    $order_receipt_email = $row['order_receipt_email'] ?? '';
+    $order_receipt_email_subject = $row['order_receipt_email_subject'] ?? '';
+    $order_receipt_email_format = $row['order_receipt_email_format'] ?? '';
+    $order_receipt_email_header = $row['order_receipt_email_header'] ?? '';
+    $order_receipt_email_footer = $row['order_receipt_email_footer'] ?? '';
+    $order_receipt_email_page_id = $row['order_receipt_email_page_id'] ?? '';
+    $next_page_id = $row['next_page_id'] ?? '';
     
     // The order preview layouts shipped with the turkish_default install seed post the
     // translated label of the offline payment option as the field value instead of the
@@ -979,6 +989,18 @@ function submit_order($type) {
     // The compared string is the UTF-8 byte sequence of the Turkish label "Cevrimdisi Odeme"
     // (with the Turkish characters), written as escapes to keep this file ASCII-only.
     if ($liveform->get_field_value('payment_method') === "\xc3\x87evrimd\xc4\xb1\xc5\x9f\xc4\xb1 \xc3\x96deme") {
+        $liveform->assign_field_value('payment_method', 'Offline Payment');
+    }
+
+    // "Put it on my account" (ERP, config.erp_open_account_payment) posts
+    // 'On Account'. orders.payment_method has no value of its own for it, so
+    // from here on the order is an offline payment; whether it may go on the
+    // account is decided with the other payment checks below, which set
+    // $erp_on_account, and orders.erp_on_account records it.
+    $erp_on_account_requested = ($liveform->get_field_value('payment_method') === 'On Account');
+    $erp_on_account = false;
+
+    if ($erp_on_account_requested) {
         $liveform->assign_field_value('payment_method', 'Offline Payment');
     }
 
@@ -1046,7 +1068,23 @@ function submit_order($type) {
                     $allowed_payment_methods[] = 'Offline Payment';
                 }
 
-                if (in_array($liveform->get_field_value('payment_method'), $allowed_payment_methods, TRUE) == FALSE) {
+                // An order goes on the account only for a member who has one
+                // to put it on (pg_erp_open_account()) and only while the
+                // account's credit limit still covers it; the offline payment
+                // settings above are not asked. A subscription is charged
+                // again and again, so it never goes on account.
+                if ($erp_on_account_requested) {
+                    $erp_on_account_refusal = ($recurring_transaction == TRUE)
+                        ? lang('The selected payment method is not available.')
+                        : pg_erp_open_account_refusal($total);
+
+                    if ($erp_on_account_refusal === '') {
+                        $erp_on_account = true;
+                    } else {
+                        $liveform->mark_error('payment_method', $erp_on_account_refusal);
+                    }
+
+                } elseif (in_array($liveform->get_field_value('payment_method'), $allowed_payment_methods, TRUE) == FALSE) {
                     $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
                 }
             }
@@ -1471,6 +1509,11 @@ function submit_order($type) {
     
     // if an error or notice exists, then send user back to previous screen
     if (($liveform->check_form_errors() == TRUE) || ($liveform->check_form_notices() == TRUE)) {
+        // The checkout comes back with "Put it on my account" still chosen.
+        if ($erp_on_account_requested) {
+            $liveform->assign_field_value('payment_method', 'On Account');
+        }
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
         exit();
     }
@@ -3819,7 +3862,8 @@ function submit_order($type) {
                             id,
                             balance
                         FROM gift_cards
-                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'");
+                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'")
+                        ?: array('id' => ''); // the card was deleted after it was applied
 
                     // If a gift card could not be found or if there is not enough balance, then add error
                     // and remove applied gift card from order.
@@ -3892,11 +3936,14 @@ function submit_order($type) {
                         
                     // else the redemption was successful, so update applied gift card and update the current redemption amount
                     } else {
+                        // Givex took the amount; a new balance its reply did not give is what the card had left.
+                        $new_balance = isset($result['balance']) ? $result['balance'] * 100 : $applied_gift_card['old_balance'] - $amount;
+
                         $query =
                             "UPDATE applied_gift_cards
                             SET
                                 amount = '" . $amount . "',
-                                new_balance = '" . escape($result['balance'] * 100) . "',
+                                new_balance = '" . escape($new_balance) . "',
                                 authorization_number = '" . escape($result['authorization_number']) . "'
                             WHERE id = '" . $applied_gift_card['id'] . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -4052,6 +4099,10 @@ function submit_order($type) {
             if ($gift_card_discount != 0) {
                 $gift_card_discount_percentage = $gift_card_discount / ($total_without_surcharge + $gift_card_discount);
             }
+            
+            // The order record default above is '', and PHP 8 throws on '' + float
+            // and on round('').
+            $commission = 0;
             
             // loop through all nonrecurring products in order
             foreach ($nonrecurring_products as $product) {
@@ -4257,6 +4308,22 @@ function submit_order($type) {
     }
 
 
+    // An order put on the customer's account is billed to that account
+    // (erp_invoice_from_order() reads orders.erp_account_id, the due date
+    // comes from the account) and marked, so the job that cancels bank
+    // transfers that never arrived leaves it alone. The receipt names the
+    // choice the way checkout offered it.
+    $sql_erp_on_account = '';
+
+    if ($erp_on_account && (($erp_open_account = pg_erp_open_account()) !== null)) {
+        $sql_erp_on_account = "erp_on_account = '1', erp_account_id = '" . (int) $erp_open_account['id'] . "',";
+        $_SESSION['ecommerce']['offline_payment_label'] = lang('Put it on my account');
+
+    // A later bank transfer in the same visit is not called that.
+    } elseif (($_SESSION['ecommerce']['offline_payment_label'] ?? '') === lang('Put it on my account')) {
+        unset($_SESSION['ecommerce']['offline_payment_label']);
+    }
+
     // add data to orders table
     // We update the user id again below, in case we now have new user info
     // from the auto-registration feature that ran above.
@@ -4265,6 +4332,7 @@ function submit_order($type) {
     $query = "UPDATE orders
              SET
                 payment_method = '" . escape($liveform->get_field_value('payment_method')) . "',
+                $sql_erp_on_account
                 $sql_credit_debit_card_values
                 subtotal = '$subtotal',
                 discount = '$discount',
@@ -6216,8 +6284,9 @@ function submit_order($type) {
                     (aclfolder_user = '$user_id')
                     AND (aclfolder_folder = '$private_folder')");
 
-            $rights = $row['rights'];
-            $expiration_date = $row['expiration_date'];
+            // A first purchase finds no access row yet.
+            $rights = $row['rights'] ?? '';
+            $expiration_date = $row['expiration_date'] ?? '';
 
             // If the user does not have edit rights and does not have infinite private rights already,
             // then continue to give user private access or extend it.
@@ -7839,7 +7908,8 @@ function submit_order($type) {
             )");
     
     // if visitor tracking is on, update visitor record with order completed information
-    if (VISITOR_TRACKING == true) {
+    // (a bot, or a post without a page view first, has no visitor record)
+    if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
         $query = "UPDATE visitors
                  SET
                     order_completed = '1',

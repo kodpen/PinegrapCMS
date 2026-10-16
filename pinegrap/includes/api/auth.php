@@ -173,8 +173,9 @@ function api_read_bearer() {
 // Authenticate, or answer and exit. Returns the application row with its
 // effective scopes already worked out.
 //
-// A Bearer token is a person signed in on a device (includes/api/devices.php);
-// anything else is an application's key and secret. The two never mix: a
+// A Bearer token is a person's own team devices session or an OAuth connection
+// (includes/api/devices.php); anything else is an application's key and
+// secret. The two never mix: a
 // device application carries no secret, so its key cannot be used as HTTP
 // Basic credentials.
 function api_authenticate($input) {
@@ -190,6 +191,16 @@ function api_authenticate($input) {
 	$credentials = api_read_credentials($input);
 
 	if ($credentials['key'] === '' || $credentials['secret'] === '') {
+
+		// The MCP server is reached through OAuth: the AI application signs
+		// a person in and calls with the token it was given (the challenge
+		// on this 401 says where). Asking it for an API key would send its
+		// user looking for the wrong thing.
+		if (defined('PG_MCP_ENTRY')) {
+
+			api_fail(401, 'credentials_missing', lang('Sign-in required. Connect your application to this site so it can sign you in and receive an access token.'));
+
+		}
 
 		api_fail(401, 'credentials_missing', lang('An API key and secret are required.'));
 

@@ -23,6 +23,13 @@ validate_area_access($user, 'designer');
 
 validate_token_field();
 
+// Stop on "not found" when the id is missing, unknown or sent as an array
+// (?id[]=x): escape() fails on an array with an error page.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM menus WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 $menu = db_item(
     "SELECT
         name,
@@ -87,8 +94,9 @@ function duplicate_menu_items($properties) {
 
     $new_menu_id = $properties['new_menu_id'];
     $old_menu_id = $properties['old_menu_id'];
-    $new_parent_id = $properties['new_parent_id'];
-    $old_parent_id = $properties['old_parent_id'];
+    // The first call copies the top level, which has no parent.
+    $new_parent_id = $properties['new_parent_id'] ?? 0;
+    $old_parent_id = $properties['old_parent_id'] ?? 0;
 
     // Get the old menu items for this level of the menu
     $menu_items = db_items(

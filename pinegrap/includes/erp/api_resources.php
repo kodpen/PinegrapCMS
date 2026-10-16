@@ -459,7 +459,7 @@ function erp_api_accounts_create($params)
     );
 
     if (isset($params['credit_limit'])) {
-        $data['credit_limit'] = max(0, (int) $params['credit_limit']);
+        $data['credit_limit'] = (int) $params['credit_limit'];
     }
 
     if (isset($params['invoice_email']) && ($params['invoice_email'] !== '')) {
@@ -622,7 +622,7 @@ function erp_api_accounts_update($params)
         }
 
         if ($name === 'credit_limit') {
-            $value = max(0, (int) $value);
+            $value = (int) $value;
         }
 
         if (($name === 'invoice_email') && ($value !== '') && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
@@ -807,6 +807,8 @@ function erp_api_invoice_line_present($row)
         'withholding_amount' => api_money($row['withholding_amount'] ?? 0),
         'line_total' => api_money($row['line_total']),
         'returned_quantity' => (float) $row['returned_qty'],
+        // The key of the purchase order line this line delivers; '' for none.
+        'purchase_order_line' => (string) ($row['source_line'] ?? ''),
     );
 }
 
@@ -857,7 +859,8 @@ function erp_api_payment_method_code($code)
 
 function erp_api_invoice_present($row, $lines)
 {
-    $open = erp_invoice_open_amount($row);
+    // A draft is owed by nobody until it is issued.
+    $open = ((string) $row['status'] === 'draft') ? 0 : erp_invoice_open_amount($row);
 
     return array(
         'id' => (int) $row['id'],
@@ -874,6 +877,10 @@ function erp_api_invoice_present($row, $lines)
         'parent_invoice_id' => (int) $row['parent_invoice_id'],
         // The quote the invoice was made from (8.58); 0 for none.
         'quote_id' => (int) ($row['quote_id'] ?? 0),
+        // The purchase order a purchase invoice was made from (10.58); 0 for none.
+        'purchase_order_id' => (int) ($row['purchase_order_id'] ?? 0),
+        // On a late payment fee invoice, the last day it charges (10.61); null otherwise.
+        'late_fee_through' => erp_api_date($row['late_fee_through'] ?? ''),
         'supplier_invoice_no' => (string) $row['supplier_invoice_no'],
         'issue_date' => erp_api_date($row['issue_date']),
         'due_date' => erp_api_date($row['due_date']),
@@ -935,6 +942,8 @@ function erp_api_invoice_schema()
         'order_id' => 'integer',
         'parent_invoice_id' => 'integer',
         'quote_id' => 'integer',
+        'purchase_order_id' => 'integer',
+        'late_fee_through' => 'string?',
         'supplier_invoice_no' => 'string',
         'issue_date' => 'string?',
         'due_date' => 'string?',
@@ -996,6 +1005,7 @@ function erp_api_invoice_schema()
             'withholding_amount' => 'integer',
             'line_total' => 'integer',
             'returned_quantity' => 'number',
+            'purchase_order_line' => 'string',
         )),
         'created_at' => 'string?',
         'updated_at' => 'string?',
@@ -1005,8 +1015,9 @@ function erp_api_invoice_schema()
 function erp_api_invoices_list($params)
 {
     // A draft is not a document: it has no number and may still be thrown
-    // away. The wire carries what was issued.
-    $where = array("i.status <> 'draft'");
+    // away. The wire carries what was issued, and the drafts only to a
+    // caller who asks for them by name.
+    $where = (($params['status'] ?? '') === 'draft') ? array() : array("i.status <> 'draft'");
 
     if (isset($params['account_id'])) {
         $where[] = "i.account_id = '" . (int) $params['account_id'] . "'";
@@ -1014,6 +1025,10 @@ function erp_api_invoices_list($params)
 
     if (isset($params['order_id'])) {
         $where[] = "i.order_id = '" . (int) $params['order_id'] . "'";
+    }
+
+    if (isset($params['purchase_order_id'])) {
+        $where[] = erp_purchase_orders_ready() ? "i.purchase_order_id = '" . (int) $params['purchase_order_id'] . "'" : '1 = 0';
     }
 
     if (isset($params['number']) && ($params['number'] !== '')) {
@@ -1068,15 +1083,17 @@ function erp_api_invoices_list($params)
 }
 
 /**
- * One issued invoice row, or a 404. A draft answers 404 too: it is not on the
- * wire until it is a document.
+ * One invoice row, or a 404. A draft is found only where the caller takes
+ * drafts: it has no number and no printed document yet.
  *
- * @param int $invoice_id
+ * @param int  $invoice_id
+ * @param bool $drafts
  * @return array
  */
-function erp_api_invoice_row($invoice_id)
+function erp_api_invoice_row($invoice_id, $drafts = false)
 {
-    $row = db_item(erp_api_invoice_select() . " WHERE i.id = '" . (int) $invoice_id . "' AND i.status <> 'draft' LIMIT 1");
+    $row = db_item(erp_api_invoice_select() . " WHERE i.id = '" . (int) $invoice_id . "'"
+        . ($drafts ? '' : " AND i.status <> 'draft'") . " LIMIT 1");
 
     if (!is_array($row)) {
         api_fail_not_found(lang('Invoice'));
@@ -1087,7 +1104,7 @@ function erp_api_invoice_row($invoice_id)
 
 function erp_api_invoices_get($params)
 {
-    $row = erp_api_invoice_row((int) $params['id']);
+    $row = erp_api_invoice_row((int) $params['id'], true);
 
     $lines = erp_api_invoice_lines(array((int) $row['id']));
 
@@ -1332,10 +1349,6 @@ function erp_api_receipts_create($params)
 
     if ((int) $till['is_active'] !== 1) {
         api_fail_validation(lang('That till or bank account is not active.'), 'cash_account_id');
-    }
-
-    if ((int) $params['amount'] <= 0) {
-        api_fail_validation(lang('Enter an amount greater than zero.'), 'amount');
     }
 
     $direction = (string) ($params['direction'] ?? 'collection');
@@ -1667,7 +1680,19 @@ function erp_api_waybills_list($params)
 
 function erp_api_waybills_get($params)
 {
-    $row = db_item(erp_api_waybill_select() . " WHERE w.id = '" . (int) $params['id'] . "' AND w.status <> 'draft' LIMIT 1");
+    erp_api_waybill_answer((int) $params['id']);
+}
+
+/**
+ * Answer with one delivery note, or a 404.
+ *
+ * @param int $waybill_id
+ * @param int $status  200, or 201 for a note just written
+ * @return void
+ */
+function erp_api_waybill_answer($waybill_id, $status = 200)
+{
+    $row = db_item(erp_api_waybill_select() . " WHERE w.id = '" . (int) $waybill_id . "' AND w.status <> 'draft' LIMIT 1");
 
     if (!is_array($row)) {
         api_fail_not_found(lang('Delivery Note'));
@@ -1675,7 +1700,7 @@ function erp_api_waybills_get($params)
 
     $lines = erp_api_waybill_lines(array((int) $row['id']));
 
-    api_ok(erp_api_waybill_present($row, $lines[(int) $row['id']] ?? array()));
+    api_ok(erp_api_waybill_present($row, $lines[(int) $row['id']] ?? array()), $status);
 }
 
 function erp_api_waybills_document($params)
@@ -3169,7 +3194,19 @@ function erp_api_stock_counts_get($params)
 {
     erp_api_stock_counts_ready();
 
-    $count = erp_stock_count((int) $params['id']);
+    erp_api_stock_count_answer((int) $params['id']);
+}
+
+/**
+ * Answer with one stock count and its lines, or a 404.
+ *
+ * @param int $count_id
+ * @param int $status  200, or 201 for a count just started
+ * @return void
+ */
+function erp_api_stock_count_answer($count_id, $status = 200)
+{
+    $count = erp_stock_count((int) $count_id);
 
     if ($count === null) {
         api_fail_not_found(lang('Stock count'));
@@ -3182,7 +3219,7 @@ function erp_api_stock_counts_get($params)
         $items[] = erp_api_stock_count_item_present($row, $applied);
     }
 
-    api_ok(erp_api_stock_count_present($count, count($items), $items));
+    api_ok(erp_api_stock_count_present($count, count($items), $items), $status);
 }
 
 /* ---------------------------------------------------------------------------
@@ -3487,7 +3524,14 @@ function erp_api_vat_report_schema()
     );
 }
 
-function erp_api_reports_vat($params)
+/**
+ * The period a report names: a month, or from and to; the current month
+ * when neither is sent. Two years at most.
+ *
+ * @param array $params
+ * @return array ['from' => Y-m-d, 'to' => Y-m-d]
+ */
+function erp_api_report_period($params)
 {
     $month = trim((string) ($params['month'] ?? ''));
     $from = isset($params['from']) ? erp_api_day($params['from']) : '';
@@ -3519,6 +3563,13 @@ function erp_api_reports_vat($params)
     } else {
         $period = erp_profit_period(array('range' => 'month', 'month' => date('Y-m')));
     }
+
+    return array('from' => $period['from'], 'to' => $period['to']);
+}
+
+function erp_api_reports_vat($params)
+{
+    $period = erp_api_report_period($params);
 
     api_ok(erp_api_vat_report_present(erp_vat_report($period['from'], $period['to'])));
 }

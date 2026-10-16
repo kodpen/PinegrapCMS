@@ -75,7 +75,7 @@ switch ($action) {
     // could have downloaded from Google directly.
     case 'search':
 
-        $query   = isset($_REQUEST['q']) ? (string) $_REQUEST['q'] : '';
+        $query   = (isset($_REQUEST['q']) && is_string($_REQUEST['q'])) ? $_REQUEST['q'] : '';
         $matches = pg_pb_google_taxonomy_search($query, 30);
 
         $results = array();

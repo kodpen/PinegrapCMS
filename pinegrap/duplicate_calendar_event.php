@@ -22,6 +22,14 @@ validate_calendars_access($user);
 
 validate_token_field();
 
+// A copy needs an existing calendar event. An id that is missing, unknown or
+// sent as an array (?id[]=x) stops on "not found": the copy was made from an
+// empty row, or escape() failed on the array with an error page.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM calendar_events WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // if user does not have access to calendar event, then output error
 if (validate_calendar_event_access($_GET['id']) == false) {
     log_activity(lang('access denied to edit calendar event because user does not have access to calendar that the calendar event is in'), $_SESSION['sessionusername']);

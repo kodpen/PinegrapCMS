@@ -46,10 +46,12 @@ if (!$_POST) {
     // already there is one sent back with an error, and keeps what was typed.
     $fresh = !$liveform->field_in_session('issue_date');
 
-    erp_invoice_form_prefill($liveform, null, (string) ($_GET['direction'] ?? 'sales'));
+    erp_invoice_form_prefill($liveform, null, is_string($_GET['direction'] ?? null) ? $_GET['direction'] : 'sales');
 
     $card_options = array();
-    $copy_id = max(0, (int) ($_GET['copy'] ?? 0));
+    // The document to copy and the account card the screen was opened from
+    // are one value each: an array (?copy[]=x) cast to 1 and took the first.
+    $copy_id = max(0, is_scalar($_GET['copy'] ?? null) ? (int) $_GET['copy'] : 0);
 
     if ($copy_id > 0) {
         $source = db_item("SELECT * FROM erp_invoices WHERE id = '" . $copy_id . "' AND doc_type = 'invoice' AND order_id = 0 LIMIT 1");
@@ -58,12 +60,18 @@ if (!$_POST) {
             $liveform->mark_error('', lang('The invoice could not be found.'));
         } else {
             // The stored lines; a form sent back with an error keeps its own
-            // (erp_invoice_form_lines() prefers what was posted).
-            $card_options['lines'] = erp_invoice_form_lines($liveform, (array) db_items("SELECT l.*, COALESCE(NULLIF(p.short_description, ''), p.name) AS product_name
+            // (erp_invoice_form_lines() prefers what was posted). The copy is
+            // not made from a purchase order, so its lines name none.
+            $copied = array();
+            foreach ((array) db_items("SELECT l.*, COALESCE(NULLIF(p.short_description, ''), p.name) AS product_name
                 FROM erp_invoice_items l
                 LEFT JOIN products p ON l.product_id = p.id
                 WHERE l.invoice_id = '" . $copy_id . "'
-                ORDER BY l.line_no ASC, l.id ASC"));
+                ORDER BY l.line_no ASC, l.id ASC") as $copied_line) {
+                $copied_line['source_line'] = '';
+                $copied[] = $copied_line;
+            }
+            $card_options['lines'] = erp_invoice_form_lines($liveform, $copied);
 
             if ($fresh) {
                 $liveform->assign_field_value('direction', ((string) $source['direction'] === 'purchase') ? 'purchase' : 'sales');
@@ -76,8 +84,9 @@ if (!$_POST) {
     }
 
     // An invoice started from an account's card opens on that account.
-    if (((int) ($_GET['account_id'] ?? 0) > 0) && !$liveform->field_in_session('account_id')) {
-        $liveform->assign_field_value('account_id', (string) (int) $_GET['account_id']);
+    $card_account_id = is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0;
+    if (($card_account_id > 0) && !$liveform->field_in_session('account_id')) {
+        $liveform->assign_field_value('account_id', (string) $card_account_id);
     }
 
     echo
@@ -106,8 +115,8 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save Draft') . '</span></button>
-                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Invoice') . '</span></button>
+                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Invoice') . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -124,6 +133,11 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
+
+    // Every field of the form but the lines is one value. One posted as an
+    // array counts as not given: (int) read an array account as account 1,
+    // (string) wrote "Array" into the notes and trim() stopped the request.
+    pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('erp_action')));
 
     $liveform->add_fields_to_session();
 

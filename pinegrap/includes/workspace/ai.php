@@ -755,6 +755,32 @@ function ws_ai_channel_allowed($channel)
 }
 
 /**
+ * The channel a request reads: the one it was asked in or, for a run on a
+ * task (delegation.php), the task's channel where Pinegrap AI may be asked
+ * and the person who asked may read. A request from a note has none.
+ *
+ * @param array      $row
+ * @param array|null $asker
+ * @return array|null
+ */
+function ws_ai_request_channel($row, $asker = null)
+{
+    if ((int) ($row['note_id'] ?? 0) > 0) {
+        return null;
+    }
+
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        $task = ws_task((int) $row['task_id']);
+        $channel = ($task && ((int) $task['channel_id'] > 0)) ? ws_channel($task['channel_id']) : null;
+        $asker = $asker ?: ws_ai_viewer((int) $row['requested_by']);
+
+        return ($channel && $asker && ws_ai_channel_allowed($channel) && ws_can_read_channel($asker, $channel)) ? $channel : null;
+    }
+
+    return ws_channel($row['channel_id']);
+}
+
+/**
  * What the channel screen needs to know about Pinegrap AI in a channel.
  *
  * @param array $channel
@@ -908,12 +934,24 @@ function ws_ai_setup_hint()
  */
 function ws_ai_after_send($viewer, $channel, $message_id, $body)
 {
-    if (!ws_ai_schema_ready() || !(ws_ai_asked($body) || ws_ai_answers_ai($message_id))) {
+    // Written to an MCP server's alias, or a reply to an answer given with
+    // one: Pinegrap AI answers with that server's tools (mcp_ask.php).
+    $server = (ws_ai_schema_ready() && function_exists('ws_mcp_ask_server')) ? ws_mcp_ask_server($body, $message_id) : null;
+
+    // A server that is an agent itself answers its alias on its own
+    // (mcp_agent.php, ws_mcp_agent_after_send()).
+    if ($server && function_exists('ws_mcp_agent_mode') && ws_mcp_agent_ready() && ws_mcp_agent_mode($server)) {
         return false;
     }
 
+    if (!ws_ai_schema_ready() || !($server || ws_ai_asked($body) || ws_ai_answers_ai($message_id))) {
+        return false;
+    }
+
+    // An alias can still be served without Pinegrap AI: its tools that read
+    // run with a form (mcp_form.php).
     if (!ws_ai_ready()) {
-        ws_message_system($channel['id'], ws_ai_setup_hint());
+        ws_message_system($channel['id'], ws_ai_setup_hint() . (($server && function_exists('ws_mcp_form_hint')) ? ws_mcp_form_hint($server, (int) $channel['id']) : ''));
         return false;
     }
 
@@ -930,8 +968,18 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body)
         return false;
     }
 
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, agent, created_at)
-        VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', 'ai', '" . time() . "')");
+    // A server people sign in to answers only somebody with an account
+    // there: their own, or the site's.
+    $problem = $server ? ws_mcp_ask_problem($server, $viewer, (int) $channel['id']) : '';
+
+    if ($problem !== '') {
+        ws_message_system($channel['id'], $problem);
+        return false;
+    }
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, agent, created_at" . ($server ? ', mcp_server_id' : '') . ")
+        VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', 'ai', '" . time() . "'"
+            . ($server ? ", '" . (int) $server['id'] . "'" : '') . ")");
 
     ws_message_touch($message_id);
 
@@ -1269,6 +1317,17 @@ function ws_ai_step($row)
         return 'held';
     }
 
+    // A scheduled action the model asked for (propose_scheduled_action) is
+    // drafted in a call of its own (scheduled_draft.php) before the
+    // conversation goes on; with no turn left for it, it is left out.
+    if (!empty($state['scheduled_todo'])) {
+        if (($steps < WS_AI_MAX_STEPS - 1) && function_exists('ws_scheduled_draft_ai_step')) {
+            return ws_scheduled_draft_ai_step($row, $state, $steps);
+        }
+
+        unset($state['scheduled_todo']);
+    }
+
     // The last turn is an answer in words, with no tool to call.
     if ($steps >= WS_AI_MAX_STEPS - 1) {
         return ws_ai_final($row, $state, $model);
@@ -1418,6 +1477,13 @@ function ws_ai_step($row)
                 continue;
             }
 
+            // A scheduled action asked for in the same turn is drafted
+            // first: the answer would come before its draft.
+            if (!empty($state['scheduled_todo']) && ($steps < WS_AI_MAX_STEPS - 2)) {
+                $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => 'The scheduled action is drafted first. Call answer again once you are told how it came out.'));
+                continue;
+            }
+
             return ws_ai_finish_answer($row, $state, $said, $steps, '', $call['id']);
         }
 
@@ -1499,7 +1565,7 @@ function ws_ai_response_problem($response)
  */
 function ws_ai_final($row, $state, $model)
 {
-    $proposed = !empty($state['proposals']['tasks']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['pages']);
+    $proposed = !empty($state['proposals']['tasks']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['pages']) || !empty($state['proposals']['scheduled']);
     $messages = $state['messages'];
 
     $messages[] = array('role' => 'user', 'content' => 'Write your final answer to the request now, as plain text in the language of the request, without calling any tool.'
@@ -1527,8 +1593,8 @@ function ws_ai_final($row, $state, $model)
 
     $text = ws_ai_strip_text_calls(ws_ai_text_answer(ws_ai_clean((string) ($response['json']['choices'][0]['message']['content'] ?? ''))));
 
-    if (($text === '') && !empty($state['proposals']) && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']))) {
-        $text = lang('I propose it below. Nothing is changed until you press Apply under it.');
+    if (($text === '') && !empty($state['proposals']) && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['scheduled']))) {
+        $text = ws_ai_proposed_line($state);
     }
 
     if ($text === '') {
@@ -1576,8 +1642,8 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         $text = pg_design_ai_channel_words($text, !empty($state['proposals']['pages']));
     }
 
-    if (($text === '') && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']))) {
-        $text = lang('I propose it below. Nothing is changed until you press Apply under it.');
+    if (($text === '') && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['mcp_calls']) || !empty($state['proposals']['scheduled']))) {
+        $text = ws_ai_proposed_line($state);
     }
 
     $looks = (!empty($state['proposals']['pages']) && empty($state['css_nudged']) && ($steps < WS_AI_MAX_STEPS - 2) && ws_design_ai())
@@ -1585,7 +1651,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
 
     // A request that asks for a task, answered without proposing one: sent
     // back once, since a task written only in the words cannot be opened.
-    if (!empty($state['design']) && empty($state['proposals']['pages']) && empty($state['page_nudged']) && ($steps < WS_AI_MAX_STEPS - 2)) {
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        // Written to an MCP server's alias: the words are the answer, with the
+        // calls of its tools that write waiting under it (mcp_ask.php).
+        $result = ws_ai_deliver($row, $text, array('mcp_calls' => (array) ($state['proposals']['mcp_calls'] ?? array())));
+    } elseif (!empty($state['design']) && empty($state['proposals']['pages']) && empty($state['page_nudged']) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // Asked from the editor and answered without a proposal: the words
         // alone change nothing on the page.
         $result = array('ok' => false, 'error' => 'Nothing was proposed, so the page would not change. Change it with the page tools first (page_set, page_css, page_replace, page_insert, page_remove, page_rewrite), then call answer again. If the request cannot be done, call fail.');
@@ -1600,11 +1670,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         // utility class outweighs: the page would not look as proposed.
         $result = array('ok' => false, 'error' => 'The page would not look as you mean yet. ' . implode(' ', $looks) . ' Fix it with the page tools, then call answer again with new words on what the proposal now does.');
         $state['css_nudged'] = 1;
-    } elseif (empty($state['proposals']['tasks']) && empty($state['task_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['tasks']) && empty($state['proposals']['scheduled']) && empty($state['task_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_asks_for_task($state) && ($steps < WS_AI_MAX_STEPS - 2)) {
         $result = array('ok' => false, 'error' => 'The request asks for a task: call propose_task for it first, then call answer again.');
         $state['task_nudged'] = 1;
-    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_claims_done($text) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // An answer that says a record was changed, with no change
         // proposed: nothing was changed, and the words must not say so.
@@ -1640,17 +1710,48 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
  */
 function ws_ai_proposed_words($text, $state)
 {
-    $proposed = !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['pages']);
+    $proposed = !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['pages']) || !empty($state['proposals']['scheduled']);
 
     if (!$proposed || !ws_ai_claims_done($text)) {
         return $text;
     }
 
     if (mb_strlen(trim((string) $text)) <= 240) {
-        return lang('I propose it below. Nothing is changed until you press Apply under it.');
+        return ws_ai_proposed_line($state);
     }
 
-    return rtrim((string) $text) . "\n\n" . lang('Nothing is changed until you press Apply under the proposal.');
+    return rtrim((string) $text) . "\n\n" . (ws_ai_only_drafts($state)
+        ? lang('Nothing is scheduled until you open the draft in the form and save it.')
+        : lang('Nothing is changed until you press Apply under the proposal.'));
+}
+
+/**
+ * Is all an answer proposes a scheduled action drafted from the request
+ * (scheduled_draft.php)? That is saved from its form, not applied.
+ *
+ * @param array $state
+ * @return bool
+ */
+function ws_ai_only_drafts($state)
+{
+    $proposals = (array) ($state['proposals'] ?? array());
+
+    return !empty($proposals['scheduled'])
+        && empty($proposals['tasks']) && empty($proposals['changes']) && empty($proposals['pages']) && empty($proposals['mcp_calls']);
+}
+
+/**
+ * The words of an answer that only proposes: they stand in for an answer
+ * with none, and for one that says it did what it only proposed.
+ *
+ * @param array $state
+ * @return string
+ */
+function ws_ai_proposed_line($state)
+{
+    return ws_ai_only_drafts($state)
+        ? lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.')
+        : lang('I propose it below. Nothing is changed until you press Apply under it.');
 }
 
 /**
@@ -1686,7 +1787,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
 }
 
 /**
@@ -2037,6 +2138,16 @@ function ws_ai_finish_fail($row, $reason)
             answered_at = '" . time() . "', ai_state = NULL
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
+    // A run on a task: the person who asked is told it ended undone.
+    if (((int) ($row['task_id'] ?? 0) > 0) && (mysqli_affected_rows(db::$con) > 0) && function_exists('ws_task_delegation_told')) {
+        ws_task_delegation_told($row, 'failed');
+    }
+
+    // Calls of an MCP server's tools that waited for this answer wait no more.
+    if (function_exists('ws_mcp_ask_drop_pending')) {
+        ws_mcp_ask_drop_pending($row);
+    }
+
     ws_ai_react((int) $row['message_id'], '👀', false);
 }
 
@@ -2110,7 +2221,8 @@ function ws_ai_drafts_input($tasks)
  * @param array  $row
  * @param string $text
  * @param array  $proposals tasks (rows as the model sent them), changes
- *                          (ws_ai_propose_change() entries)
+ *                          (ws_ai_propose_change() entries), scheduled
+ *                          (drafts, ws_scheduled_draft_ai_step())
  * @return array ok, error (what the model is told to fix)
  */
 function ws_ai_deliver($row, $text, $proposals)
@@ -2133,9 +2245,14 @@ function ws_ai_deliver($row, $text, $proposals)
         return array('ok' => false, 'error' => 'text is empty: write the answer in text.');
     }
 
-    if (mb_strlen($text) > 3900) {
-        $text = rtrim(mb_substr($text, 0, 3890)) . '…';
+    // An answer given with an MCP server's tools says which ones it used.
+    $signature = (((int) ($row['mcp_server_id'] ?? 0) > 0) && function_exists('ws_mcp_ask_signature')) ? ws_mcp_ask_signature($row) : '';
+
+    if (mb_strlen($text) > 3900 - mb_strlen($signature)) {
+        $text = rtrim(mb_substr($text, 0, 3890 - mb_strlen($signature))) . '…';
     }
+
+    $text .= $signature;
 
     $now = time();
 
@@ -2165,6 +2282,31 @@ function ws_ai_deliver($row, $text, $proposals)
         }
 
         ws_ai_log(lang('Pinegrap AI answered a request written in a note'));
+
+        return array('ok' => true, 'error' => '');
+    }
+
+    // A run on a task (delegation.php): the answer is kept on the run and
+    // shown on the task, with the changes it proposes waiting under it for
+    // the person who asked, who is told.
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        $checked = ws_changes_input($changes, (int) $row['requested_by'], 0, (int) $row['task_id']);
+
+        if (!$checked['ok']) {
+            return array('ok' => false, 'error' => 'changes: ' . $checked['error']);
+        }
+
+        if (ws_task_delegation_answer($row, $text)) {
+            ws_changes_store($row, 0, $checked['rows']);
+
+            // A task handed to an MCP server's alias: the calls of its tools
+            // that write wait on the task the same way.
+            if (!empty($proposals['mcp_calls']) && function_exists('ws_mcp_calls_propose')) {
+                ws_mcp_calls_propose($row, 0, $proposals['mcp_calls']);
+            }
+
+            ws_ai_log(lang(array('string' => 'Pinegrap AI answered on task {var:1}', 'vars' => ws_task_number($row['task_id']))));
+        }
 
         return array('ok' => true, 'error' => '');
     }
@@ -2239,6 +2381,17 @@ function ws_ai_deliver($row, $text, $proposals)
     }
 
     ws_changes_store($row, (int) $sent['message_id'], $checked['rows']);
+
+    // Calls of an MCP server's tools that write, waiting for approval.
+    if (!empty($proposals['mcp_calls']) && function_exists('ws_mcp_calls_propose')) {
+        ws_mcp_calls_propose($row, (int) $sent['message_id'], $proposals['mcp_calls']);
+    }
+
+    // Scheduled actions drafted from the request, waiting to be opened in
+    // their form and saved (scheduled_draft.php).
+    if (!empty($proposals['scheduled']) && function_exists('ws_scheduled_draft_ai_store')) {
+        ws_scheduled_draft_ai_store($row, (int) $sent['message_id'], $proposals['scheduled']);
+    }
 
     if (!empty($pages) && ws_design_ai()) {
         pg_design_ai_store_proposals($row, $pages, 'ai', (int) ws_ai_config()['app_id'], (int) $channel['id'], (int) $sent['message_id']);
@@ -2403,7 +2556,7 @@ function ws_ai_propose_change($row, &$state, $args)
     // Checked the way the answer will be; a create is complete only once
     // every field it needs is there, so its missing fields are not held
     // against it yet.
-    $checked = ws_changes_input(array(ws_ai_change_out($change)), (int) $row['requested_by'], (int) $row['channel_id']);
+    $checked = ws_changes_input(array(ws_ai_change_out($change)), (int) $row['requested_by'], (int) $row['channel_id'], (int) ($row['task_id'] ?? 0));
 
     if (!$checked['ok'] && ($action !== 'create')) {
         return array('error' => preg_replace('/^changes\[0\]: /', '', $checked['error']));
@@ -2413,7 +2566,9 @@ function ws_ai_propose_change($row, &$state, $args)
 
     return array(
         'ok'   => true,
-        'note' => 'Proposed, not done: it is shown under your answer and the person who asked applies it. Before you answer: if the request also asks for a task, call propose_task for it now - a task only written in the answer cannot be opened. Then call answer, saying that you propose it.'
+        'note' => 'Proposed, not done: it is shown under your answer and the person who asked applies it. '
+            . (((int) ($row['task_id'] ?? 0) > 0) ? '' : 'Before you answer: if the request also asks for a task, call propose_task for it now - a task only written in the answer cannot be opened. ')
+            . 'Then call answer, saying that you propose it.'
             . ((!$checked['ok'] && ($action === 'create')) ? ' Still missing for the new record: ' . preg_replace('/^changes\[0\]: /', '', $checked['error']) : ''),
     );
 }
@@ -2860,6 +3015,7 @@ function ws_ai_changes_guide($asker, $channel_id)
 function ws_ai_system_prompt($row, $asker, $readable)
 {
     $note = ((int) ($row['note_id'] ?? 0) > 0);
+    $task = ((int) ($row['task_id'] ?? 0) > 0);
     $name = ws_person_name($asker['id']);
     $today = date('Y-m-d') . ' (' . date('l') . '), ' . date('H:i') . ' ' . date_default_timezone_get();
 
@@ -2871,7 +3027,9 @@ function ws_ai_system_prompt($row, $asker, $readable)
         'How to work:',
         $note
             ? '- The request was written in a note. The note is in the first message: read it, not a channel, as the context.'
-            : '- The channel\'s summary, decisions, latest messages and open tasks are in the first message. Read more only when the request needs it.',
+            : ($task
+                ? '- A task of the Workspace is in the first message: its details, its notes and, when it has one, its channel. Read more only when the task needs it.'
+                : '- The channel\'s summary, decisions, latest messages and open tasks are in the first message. Read more only when the request needs it.'),
         '- Records of these kinds can be looked up with search_records and read with read_record: '
             . (empty($readable) ? 'none' : implode(', ', array_keys($readable))) . '. Tasks are read with read_task.',
         '- Finish with one call of answer, or of fail when you cannot do the request.',
@@ -2882,6 +3040,12 @@ function ws_ai_system_prompt($row, $asker, $readable)
 
     if ($note) {
         $lines[] = '- Answer with text only. Your answer is written into the note under the line that asked, so write it as part of the note, without addressing anybody.';
+    } elseif ($task) {
+        $lines[] = '- The people on the task stay responsible for it. You do the part of the work that reading and writing can do: look things up, work figures out, draft texts, plans and replies.';
+        $lines[] = '- You cannot create, change or delete anything yourself. Never write that something was created, changed or deleted: write that you propose it.';
+        $lines[] = '- What should change - this task\'s status, priority, dates or description, a note on it, a note of the workspace, or another record - propose with propose_change, once for each field. It waits on the task until ' . $name . ' applies it with one click or sets it aside. A note on this task is type task_note with field text (the task is this one when task_id is left out); a note of the workspace is type note with title and body. Find any other record first with search_records or read_record; never guess an id. When propose_change answers with an error, fix the call and call it again.';
+        $lines[] = ws_ai_changes_guide($asker, 0);
+        $lines[] = '- Finish with answer: what you did and found, what you propose, and what you need from ' . $name . ' to go on. Your answer is shown on the task, to ' . $name . '; write to them.';
     } else {
         $lines[] = '- You cannot create, change or delete anything yourself. Never write that something was created, changed or deleted: write that you propose it.';
         $lines[] = '- When the request asks for tasks, call propose_task once for each task (at most 10; assignees are user ids from the list of people). A task written only in the text cannot be opened. Somebody in the channel opens a proposed task with one click.';
@@ -2893,6 +3057,10 @@ function ws_ai_system_prompt($row, $asker, $readable)
             $lines[] = ws_bulk_guide($asker);
         }
         $lines[] = '- Call add_task_note only when the request asks for a note on a task.';
+
+        if (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker)) {
+            $lines[] = '- When the request asks for something to be done later on its own, again and again, or whenever something happens ("every Monday at 9...", "when a task moves to Waiting...", "remind the team tomorrow at 10"), it is a scheduled action, not a task: call propose_scheduled_action with the request as one complete sentence, once for each action (at most ' . WS_SCHEDULED_DRAFT_PER_ANSWER . '). It is drafted for you and waits under your answer; ' . $name . ' opens it in its form and saves it. Never write that it is scheduled or set up.';
+        }
 
         if (ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
             $lines[] = '- A page of a visual design (a <#page:ID> tag) can be changed: read it with read_page, then change it with the page tools (read_page tells how). What you do is a proposal the person who asked previews and applies.';
@@ -2960,6 +3128,14 @@ function ws_ai_start($row)
         return pg_design_ai_start($row, $asker);
     }
 
+    // Written to an MCP server's alias: the request and what it answers,
+    // with that server's tools (mcp_ask.php).
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        return function_exists('ws_mcp_ask_start')
+            ? ws_mcp_ask_start($row, $asker)
+            : array('ok' => false, 'error' => lang('That MCP server could not be found.'), 'state' => null);
+    }
+
     $readable = ws_ai_readable_types($asker);
     $parts = array();
 
@@ -2977,6 +3153,62 @@ function ws_ai_start($row)
 
         $parts[] = 'The line of the note that asks you:';
         $parts[] = $request_text;
+    } elseif ((int) ($row['task_id'] ?? 0) > 0) {
+        // A run on a task (delegation.php): the task is the context, with its
+        // channel when it has one the assistant may be asked in.
+        $context = function_exists('ws_task_delegation_context') ? ws_task_delegation_context($asker, $row) : null;
+
+        if (!$context) {
+            return array('ok' => false, 'error' => lang('The task could not be found, or the person who asked may no longer see it.'), 'state' => null);
+        }
+
+        $task = $context['task'];
+        $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
+
+        if ($channel && !ws_ai_channel_allowed($channel)) {
+            return array('ok' => false, 'error' => lang('Pinegrap AI may not be asked in the channel of this task.'), 'state' => null);
+        }
+
+        $tries = (int) ($row['ai_attempts'] ?? 0);
+        $present = ws_ai_task_present($asker, $task);
+
+        $parts[] = $context['delegated']
+            ? 'The task, handed to you. The people on it stay responsible for it:'
+            : 'The task. A note on it asks you; it is not handed to you:';
+        $parts[] = (string) json_encode($present, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $parts[] = '';
+
+        // The channel's words go along only to somebody who reads the channel:
+        // a person on a task of a private channel may not be in it.
+        if ($channel && ws_can_read_channel($asker, $channel)) {
+            $parts[] = ws_ai_channel_context($asker, $channel, ($tries > 0) ? 10 : 20, ($tries > 0) ? 200 : 300, ($tries > 0) ? 800 : 2000);
+            $parts[] = '';
+        }
+
+        $parts[] = 'People in the workspace:';
+        $parts[] = ws_ai_team_text();
+        $parts[] = '';
+
+        if (!empty($context['earlier'])) {
+            $parts[] = 'What the assistants were asked on this task before, and what they answered:';
+
+            foreach ($context['earlier'] as $item) {
+                $parts[] = '- ' . $item['asked_by'] . ' asked ' . $item['agent'] . ': ' . (($item['instruction'] !== '') ? mb_substr($item['instruction'], 0, 600) : '(the task itself)')
+                    . (($item['answer'] !== '') ? "\n  Answer: " . mb_substr($item['answer'], 0, 1200) : "\n  Not done: " . $item['error']);
+            }
+
+            $parts[] = 'Carry the work on from there.';
+            $parts[] = '';
+        }
+
+        $request_text = ws_ai_text($asker, (string) $row['note_text'], null, 2000);
+
+        $parts[] = 'The instruction of ' . ws_person_name($asker['id']) . ':';
+        $parts[] = ($request_text !== '') ? $request_text : '(none: work on the task as its title, description and notes say)';
+
+        if ($request_text === '') {
+            $request_text = (string) $task['title'] . ' ' . (string) $task['description'];
+        }
     } else {
         $channel = ws_channel($row['channel_id']);
 
@@ -3051,8 +3283,9 @@ function ws_ai_start($row)
     ws_ai_seen_add($state, implode("\n", $parts));
 
     // A designer may have pages changed from a channel as well. A page the
-    // message names comes with the request, already read.
-    if (ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
+    // message names comes with the request, already read. A run on a task
+    // proposes no page changes.
+    if (((int) ($row['task_id'] ?? 0) === 0) && ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
         $state['design_tools'] = 1;
         $state['proposals']['pages'] = array();
 
@@ -3080,6 +3313,7 @@ function ws_ai_start($row)
 function ws_ai_tools($row)
 {
     $note = ((int) ($row['note_id'] ?? 0) > 0);
+    $task = ((int) ($row['task_id'] ?? 0) > 0);
     $asker = ws_ai_viewer((int) $row['requested_by']);
     $types = $asker ? array_keys(ws_ai_readable_types($asker)) : array();
 
@@ -3092,7 +3326,9 @@ function ws_ai_tools($row)
     };
 
     $tools = array(
-        $tool('answer', 'Write your answer under the request. Call it once, at the end, after proposing with propose_task and propose_change what the request asks for: tasks and changes written only in the answer cannot be applied.', array(
+        $tool('answer', $task
+            ? 'Write your answer on the task. Call it once, at the end, after proposing with propose_change what should change: changes written only in the answer cannot be applied.'
+            : 'Write your answer under the request. Call it once, at the end, after proposing with propose_task and propose_change what the request asks for: tasks and changes written only in the answer cannot be applied.', array(
             'text' => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12> or <#order:1045>.'),
         ), array('text')),
         $tool('fail', 'Give the request up when you cannot do it, saying why in the language of the request.', array(
@@ -3109,8 +3345,18 @@ function ws_ai_tools($row)
         return array_merge($tools, pg_design_ai_tools());
     }
 
-    if (!$note) {
-        $tools[] = $tool('read_channel', 'Read more of the channel the request came from: its summary, decisions, latest messages and open tasks.', array(
+    // Written to an MCP server's alias: that server's tools, and none of the
+    // site's (mcp_ask.php).
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        $tools[0] = $tool('answer', $task ? 'Write your answer on the task. Call it once, at the end.' : 'Write your answer under the request. Call it once, at the end.', array(
+            'text' => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown.'),
+        ), array('text'));
+
+        return array_merge($tools, function_exists('ws_mcp_ask_tools') ? ws_mcp_ask_tools($row) : array());
+    }
+
+    if (!$note && (!$task || ws_ai_request_channel($row, $asker))) {
+        $tools[] = $tool('read_channel', $task ? 'Read more of the task\'s channel: its summary, decisions, latest messages and open tasks.' : 'Read more of the channel the request came from: its summary, decisions, latest messages and open tasks.', array(
             'limit' => array('type' => 'integer', 'description' => 'How many of the latest messages, 1 to 100.'),
         ), array());
     }
@@ -3131,7 +3377,7 @@ function ws_ai_tools($row)
         ), array('type', 'id'));
     }
 
-    if (!$note) {
+    if (!$note && !$task) {
         $tools[] = $tool('propose_task', 'Propose one task, only when the request asks for tasks. It is shown under your answer; somebody in the channel opens it with one click.', array(
             'title'       => array('type' => 'string'),
             'description' => array('type' => 'string'),
@@ -3140,6 +3386,17 @@ function ws_ai_tools($row)
             'priority'    => array('type' => 'string', 'enum' => array('low', 'normal', 'high', 'urgent')),
         ), array('title'));
 
+        // A scheduled action, drafted from a sentence the way its form is
+        // (scheduled_draft.php), waits under the answer to be saved.
+        if (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker)) {
+            $tools[] = $tool('propose_scheduled_action', 'Draft a scheduled action, only when the request asks for something to be done later on its own, again and again, or whenever something happens. It is drafted from the sentence and waits under your answer; the person who asked opens it in its form and saves it.', array(
+                'sentence' => array('type' => 'string', 'description' => 'What the scheduled action does, as one complete sentence in the language of the request: when it runs (a time and how often, or what happens) and what it does, with the channel, the people and the e-mail addresses the request names.'),
+            ), array('sentence'));
+        }
+    }
+
+    // On a task as well: what it proposes waits on the task.
+    if (!$note) {
         $tools[] = $tool('propose_change', 'Propose a new value for one field of a record, only when the request asks to change, add or delete records. Call it once per field; calls for the same record make one change. The person who asked applies it with one click.', array(
             'type'   => array('type' => 'string', 'description' => 'The kind of record, from the list in the instructions.'),
             'action' => array('type' => 'string', 'enum' => array('update', 'create', 'delete', 'add', 'remove')),
@@ -3148,7 +3405,9 @@ function ws_ai_tools($row)
             'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items.'),
             'reason' => array('type' => 'string', 'description' => 'One line on why.'),
         ), array('type', 'action'));
+    }
 
+    if (!$note && !$task) {
         if (function_exists('ws_bulk_ready') && ws_bulk_ready()) {
             $tools[] = $tool('propose_bulk_change', 'Propose one change for many records at once (every product, the products of a group, the pages whose meta description is empty...). The person who asked sees how many records it reaches and applies it.', array(
                 'type'        => array('type' => 'string', 'enum' => ws_bulk_types()),
@@ -3198,16 +3457,21 @@ function ws_ai_tool_run($row, &$state, $name, $args)
         return array('error' => 'The person who asked is no longer a member of the workspace.');
     }
 
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        return function_exists('ws_mcp_ask_tool_run') ? ws_mcp_ask_tool_run($row, $state, $name, $args) : array('error' => 'The service cannot be reached.');
+    }
+
     if (($name === 'read_page') || (strpos($name, 'page_') === 0)) {
         return ws_design_ai() ? pg_design_ai_tool_run($row, $state, $name, $args, $asker) : array('error' => 'Pages cannot be changed on this site.');
     }
 
     $readable = ws_ai_readable_types($asker);
     $note = ((int) ($row['note_id'] ?? 0) > 0);
+    $task = ((int) ($row['task_id'] ?? 0) > 0);
 
     switch ($name) {
         case 'read_channel':
-            $channel = $note ? null : ws_channel($row['channel_id']);
+            $channel = ws_ai_request_channel($row, $asker);
 
             if (!$channel) {
                 return array('error' => 'This request did not come from a channel.');
@@ -3326,17 +3590,22 @@ function ws_ai_tool_run($row, &$state, $name, $args)
             return $present;
 
         case 'propose_task':
-            return $note ? array('error' => 'Not from a note.') : ws_ai_propose_task($state, $args);
+            return ($note || $task) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_task($state, $args);
 
         case 'propose_change':
             return $note ? array('error' => 'Not from a note.') : ws_ai_propose_change($row, $state, $args);
 
         case 'propose_bulk_change':
-            return ($note || !function_exists('ws_ai_propose_bulk')) ? array('error' => 'Not from a note.') : ws_ai_propose_bulk($row, $state, $args);
+            return ($note || $task || !function_exists('ws_ai_propose_bulk')) ? array('error' => 'Not from a note or a task.') : ws_ai_propose_bulk($row, $state, $args);
+
+        case 'propose_scheduled_action':
+            return (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker))
+                ? ws_scheduled_draft_ai_propose($row, $state, $args)
+                : array('error' => 'A scheduled action cannot be drafted for this request.');
 
         case 'add_task_note':
-            if ($note) {
-                return array('error' => 'Not from a note.');
+            if ($note || $task) {
+                return array('error' => 'Not from a note or a task.');
             }
 
             $task = ws_task((int) ($args['task_id'] ?? 0));
@@ -3870,9 +4139,13 @@ function ws_ai_settings_card($self_url, $viewer)
         WHERE r.agent = 'ai'
         ORDER BY r.id DESC LIMIT 10") as $row) {
         $line = ws_ai_request_state($viewer, $row);
-        $where = ((int) ($row['note_id'] ?? 0) > 0)
-            ? '<span>' . h(lang('A note')) . '</span>'
-            : '<a href="workspace.php?channel=' . (int) $row['channel_id'] . '">#' . h((string) $row['channel_name']) . '</a>';
+        if ((int) ($row['task_id'] ?? 0) > 0) {
+            $where = '<a href="workspace_tasks.php?task=' . (int) $row['task_id'] . '">' . h(ws_task_number($row['task_id'])) . '</a>';
+        } elseif ((int) ($row['note_id'] ?? 0) > 0) {
+            $where = '<span>' . h(lang('A note')) . '</span>';
+        } else {
+            $where = '<a href="workspace.php?channel=' . (int) $row['channel_id'] . '">#' . h((string) $row['channel_name']) . '</a>';
+        }
 
         $recent .= '
             <li class="ws-claude-recent-row">

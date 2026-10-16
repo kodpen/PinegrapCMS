@@ -29,7 +29,7 @@ include_once('liveform.class.php');
 $liveform = new liveform('erp_inbox_document');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_inbox.php';
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $row = erp_edoc_inbox_row($id);
 
 if ($row === null) {
@@ -42,6 +42,11 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_inbox_document.php?i
 if ($_POST) {
 
     validate_token_field();
+
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array invoice as invoice 1 and linked the
+    // document to it.
+    pg_request_single_values(array('erp_action', 'invoice_id'));
 
     $action = (string) ($_POST['erp_action'] ?? '');
 
@@ -161,7 +166,7 @@ if (empty($proposal['success'])) {
                     'string' => 'Purchase invoice {var:1} from this supplier already has the number {var:2}. If it is the same invoice, link the two instead of taking it in twice.',
                     'vars' => array('<a href="edit_erp_invoice.php?id=' . (int) $candidate['id'] . '">' . h(((string) $candidate['full_number'] !== '') ? $candidate['full_number'] : lang('Draft')) . '</a>', h($document['number'])),
                 )) . '</span>
-                ' . $form('link', '<button type="submit" class="btn btn-sm btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Link to that invoice') . '</button>',
+                ' . $form('link', '<button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Link to that invoice') . '</button>',
                     '<input type="hidden" name="invoice_id" value="' . (int) $candidate['id'] . '" />') . '
             </div>';
     }
@@ -322,20 +327,18 @@ if (empty($proposal['success'])) {
 }
 
 // What can be done from here, by the state the document is in.
-$wait = ' data-loading-content="' . lang(array('string' => 'Please Wait')) . '"';
-
 if ($state === 'new') {
     if (!empty($proposal['success']) && ($proposal['existing'] !== null)) {
-        $output_actions .= $form('link', '<button type="submit" class="btn my-1 btn-primary"' . $wait . '><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>' . lang('Mark as taken in') . '</button>',
+        $output_actions .= $form('link', '<button type="submit" class="btn my-1 btn-primary"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>' . lang('Mark as taken in') . '</button>',
             '<input type="hidden" name="invoice_id" value="' . (int) $proposal['existing']['id'] . '" />');
     } elseif (!empty($proposal['success']) && empty($proposal['refusals'])) {
-        $output_actions .= $form('import', '<button type="submit" class="btn my-1 btn-primary"' . $wait . '><i class="bi bi-box-arrow-in-down me-2" aria-hidden="true"></i>'
+        $output_actions .= $form('import', '<button type="submit" class="btn my-1 btn-primary"><i class="bi bi-box-arrow-in-down me-2" aria-hidden="true"></i>'
             . (($proposal['account'] === null) ? lang('Open the supplier and draft the purchase invoice') : lang('Draft the purchase invoice')) . '</button>');
     }
 
-    $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline-secondary"' . $wait . '><i class="bi bi-archive me-2" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
+    $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline-secondary"><i class="bi bi-archive me-2" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
 } elseif ($state === 'ignored') {
-    $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline-secondary"' . $wait . '><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
+    $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
 } elseif ($state === 'drafted') {
     $output_actions .= '<a class="btn my-1 btn-primary" href="edit_erp_invoice_draft.php?id=' . (int) $row['invoice_id'] . '"><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . lang('Open the draft') . '</a>';
 } elseif ($state === 'imported') {
@@ -399,7 +402,7 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 <a class="btn btn-sm btn-outline-secondary" href="get_erp_inbox_file.php?id=' . $id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
                 <a class="btn btn-sm btn-outline-secondary" href="get_erp_inbox_file.php?id=' . $id . '&amp;format=ubl"><i class="bi bi-filetype-xml me-1" aria-hidden="true"></i>' . lang('UBL') . '</a>
-                ' . $form('refresh', '<button type="submit" class="btn btn-sm btn-ghost"' . $wait . '><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Read the document again') . '</button>') . '
+                ' . $form('refresh', '<button type="submit" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Read the document again') . '</button>') . '
                 ' . $output_workspace_button . '
             </nav>
         </div>

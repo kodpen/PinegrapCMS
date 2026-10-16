@@ -21,6 +21,10 @@ include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// The recipient is one value; one sent as an array (?ship_to_id[]=x) counts
+// as not given: it ended in an error page.
+pg_request_single_values(array('ship_to_id'));
+
 // Get ship to info.
 $query =
     "SELECT
@@ -41,7 +45,7 @@ $query =
         shipping_methods.name AS shipping_method_name
     FROM ship_tos
     LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
-    WHERE ship_tos.id = '" . escape($_GET['ship_to_id']) . "'";
+    WHERE ship_tos.id = '" . escape($_GET['ship_to_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // If the ship to does not exist, then output error.
@@ -62,6 +66,15 @@ $query =
     WHERE orders.id = '" . $ship_to['order_id'] . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $order = mysqli_fetch_assoc($result);
+
+// The optional address lines below are only filled when there is something
+// to show; they start empty so a slip without them prints no notices.
+$output_organization_address_2 = '';
+$output_organization_country = '';
+$output_ship_to_salutation = '';
+$output_ship_to_company = '';
+$output_ship_to_address_2 = '';
+$output_ship_to_phone_number = '';
 
 // If there is an organization address 2, then output it.
 if (ORGANIZATION_ADDRESS_2 != '') {

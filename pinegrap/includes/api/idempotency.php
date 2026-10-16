@@ -177,6 +177,36 @@ function api_idempotency_store($app_id, $key, $body_hash, $status_code, $respons
 
 }
 
+// The input a write's fingerprint is taken over. A file sent as a form part
+// ('form_file' on the route) is not among the parsed fields, so without it two
+// uploads of different files under the same name and text read as one request
+// and the second is answered with the first one's message. The part's name,
+// size and a SHA-256 of its bytes stand in for it, the way content_base64 is
+// part of a JSON body. A route run by the MCP endpoint has no form of its own.
+function api_idempotency_input($route, $params) {
+
+	$field = isset($route['form_file']) ? (string)$route['form_file'] : '';
+
+	if (($field === '') || (api_send_hook() !== null) || !isset($_FILES[$field]) || !is_array($_FILES[$field])) {
+
+		return $params;
+
+	}
+
+	$part = $_FILES[$field];
+
+	$temporary = (isset($part['tmp_name']) && is_string($part['tmp_name'])) ? $part['tmp_name'] : '';
+
+	$params[$field] = array(
+		'name'   => (isset($part['name']) && is_string($part['name'])) ? $part['name'] : '',
+		'size'   => (isset($part['size']) && !is_array($part['size'])) ? (int)$part['size'] : 0,
+		'sha256' => (($temporary !== '') && is_uploaded_file($temporary)) ? (string)@hash_file('sha256', $temporary) : ''
+	);
+
+	return $params;
+
+}
+
 // The fingerprint a replay is compared against: the method, the path and the
 // parsed input, so the same key with a different payload is caught.
 function api_idempotency_hash($input) {

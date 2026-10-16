@@ -266,8 +266,11 @@ function pg_designer_screen_render($ctx)
             'password_hint'        => (bool)(defined('PASSWORD_HINT') && PASSWORD_HINT),
             'captcha'              => (bool)(defined('CAPTCHA') && CAPTCHA),
             'strong_password'      => (bool)(defined('STRONG_PASSWORD') && STRONG_PASSWORD),
-            'google'               => (bool)(defined('OAUTH_GOOGLE_ENABLED') && OAUTH_GOOGLE_ENABLED
-                                        && defined('OAUTH_GOOGLE_CLIENT_ID') && OAUTH_GOOGLE_CLIENT_ID !== ''),
+            'google'               => (bool)(function_exists('pg_signin_enabled') && pg_signin_enabled('google')),
+            'signin'               => (bool)(function_exists('pg_signin_any_enabled') && pg_signin_any_enabled()),
+            // The providers whose buttons the sign-in block prints now, for
+            // the hint on that block.
+            'signin_providers'     => function_exists('pg_signin_button_state') ? array_values(pg_signin_button_state()['shown']) : array(),
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the
@@ -307,6 +310,9 @@ function pg_designer_screen_render($ctx)
             'js'        => $sd_framework['js'],
             'bootstrap' => (bool)$sd_framework['bootstrap'],
         ),
+        // The Bootstrap Icons sheet the site loads (pg_design_icons_url()),
+        // for the canvas, the assets panel row and the preview.
+        'iconsUrl'      => pg_design_icons_url(),
         // Add mode from a template: the editor asks for its pages
         // (designer/template_prepare) behind the "preparing" curtain.
         'template'      => !empty($ctx['template']) ? $ctx['template'] : null,
@@ -428,6 +434,15 @@ function pg_designer_screen_render($ctx)
                             ' . ($mode === 'edit' ? $ctx['delete_button'] : '') . '
                         </div>
                         <div class="sd-tabs-scroll" id="sd-tabs-list" role="tablist"></div>
+                        <!-- Every page in one list, for when the strip cannot
+                             show them all. Shown only then (_pgTabsAllSync()). -->
+                        <div class="dropdown sd-tabs-all" id="sd-tabs-all" hidden>
+                            <button type="button" class="sd-icon-btn sd-tabs-all-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . h(lang('All pages')) . '" aria-label="' . h(lang('All pages')) . '"><span class="bi bi-list-ul" aria-hidden="true"></span><span class="sd-tabs-all-count" id="sd-tabs-all-count"></span></button>
+                            <div class="dropdown-menu dropdown-menu-dark dropdown-menu-end sd-tabs-all-menu">
+                                <div class="sd-tabs-all-find"><input type="search" class="form-control form-control-sm" id="sd-tabs-all-filter" placeholder="' . h(lang('Find a page…')) . '" autocomplete="off"></div>
+                                <div class="sd-tabs-all-list" id="sd-tabs-all-list"></div>
+                            </div>
+                        </div>
                         <div class="sd-toolbar-group sd-toolbar-actions">
                             <!-- Who else has this design open. Empty and
                                  invisible when nobody else does, so a single
@@ -758,6 +773,10 @@ function pg_designer_start_screen($ctx)
     // without the bulk-select column). A design is deleted from its row or
     // from the editor's toolbar, one at a time: its pages go to the recycle
     // bin and the folders using it are cleared (pg_designer_delete_design()).
+    // Once the bin holds styles the design goes there with them, and the
+    // confirmation says so.
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $style_bin = pg_recycle_style_ready();
     $output_rows = '';
     foreach ($designs as $d) {
         $count = (int)$d['page_count'];
@@ -765,7 +784,7 @@ function pg_designer_start_screen($ctx)
         $output_rows .= '
         <tr>
             <td class="align-middle text-start" nowrap>
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_system_style.php?id=' . (int)$d['style_id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_system_style.php?id=' . (int)$d['style_id'] . '\'"><i class="bi bi-pencil"></i></button>
                 ' . ($can_create ? '<button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2 sd-design-delete" title="' . lang('Delete') . '" data-style-id="' . (int)$d['style_id'] . '" data-name="' . h($d['style_name']) . '" data-pages="' . $count . '"><i class="bi bi-trash"></i></button>' : '') . '
             </td>
             <td class="align-middle chart_label" nowrap>' . h($d['style_name']) . ($count == 0 ? ' <span class="badge text-bg-secondary ms-1" title="' . lang('No pages — open it to add one, or delete it from the toolbar') . '">' . lang('Empty') . '</span>' : '') . '</td>
@@ -790,7 +809,7 @@ function pg_designer_start_screen($ctx)
             // Opens a choice first (framework, template); nothing loads yet.
             $tag_open = '<a href="#" role="button" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-bs-toggle="modal" data-bs-target="' . h($modal) . '"' . ($start !== '' ? ' data-sd-start="' . h($start) . '"' : '') . '>';
         } else {
-            $tag_open = '<a href="' . h($href) . '" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-loading-content="' . lang('Loading') . '">';
+            $tag_open = '<a href="' . h($href) . '" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '">';
         }
         $tag_close = $disabled ? '</div>' : '</a>';
         return
@@ -873,15 +892,18 @@ function pg_designer_start_screen($ctx)
         ' . $comp['panel'] . '
         ' . ($can_create ? pg_designer_new_design_modal($from_pages) . pg_designer_template_modal($templates, $from_pages) : '') . '
         <script>
-            // Delete a design from its row: the design goes, its pages go to
-            // the recycle bin. api.php reads a JSON body.
+            // Delete a design from its row: its pages go to the recycle bin,
+            // and the design with them once the bin holds styles. api.php
+            // reads a JSON body.
             document.addEventListener("click", function (e) {
                 var btn = e.target.closest(".sd-design-delete");
                 if (!btn) return;
                 e.preventDefault();
                 var id = parseInt(btn.dataset.styleId, 10), name = btn.dataset.name || "", pages = parseInt(btn.dataset.pages, 10) || 0;
-                var msg = ' . json_encode(lang('The design "{name}" will be deleted.')) . '.replace("{name}", name) + " " +
-                          (pages > 0 ? ' . json_encode(lang('Its {n} page(s) will be moved to the Recycle Bin.')) . '.replace("{n}", pages) : ' . json_encode(lang('It has no pages.')) . ');
+                var msg = ' . ($style_bin
+                    ? '(pages > 0 ? ' . json_encode(lang('The design "{name}" and its {n} page(s) will be moved to the Recycle Bin.')) . '.replace("{n}", pages) : ' . json_encode(lang('The design "{name}" will be moved to the Recycle Bin.')) . ').replace("{name}", name);'
+                    : json_encode(lang('The design "{name}" will be deleted.')) . '.replace("{name}", name) + " " +
+                          (pages > 0 ? ' . json_encode(lang('Its {n} page(s) will be moved to the Recycle Bin.')) . '.replace("{n}", pages) : ' . json_encode(lang('It has no pages.')) . ');') . '
                 var run = function () {
                     btn.disabled = true;
                     fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
@@ -1178,7 +1200,7 @@ function pg_designer_new_design_modal($from_pages)
     $option = function ($framework, $icon, $title, $text, $recommended, $import_text) use ($extra) {
         return
             '<div class="col-12 col-md-6">
-                <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card sd-fw-choice' . ($recommended ? ' border-primary' : '') . '" data-href="add_system_style.php?framework=' . h($framework) . h($extra) . '" data-loading-content="' . lang('Loading') . '">
+                <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card sd-fw-choice' . ($recommended ? ' border-primary' : '') . '" data-href="add_system_style.php?framework=' . h($framework) . h($extra) . '">
                     <div class="card-body d-flex flex-column align-items-start gap-2">
                         <div class="d-flex w-100 align-items-start">
                             <i class="bi ' . h($icon) . ' fs-2 ' . ($recommended ? 'text-primary' : 'text-body-secondary') . '" aria-hidden="true"></i>
@@ -1398,7 +1420,7 @@ function pg_designer_template_modal($templates, $from_pages)
                             <div class="d-flex align-items-center gap-2 ms-auto">
                                 ' . $theme_apply . '
                                 ' . $delete_btn . '
-                                <a href="' . h($use_href) . '" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '" data-loading-content="' . lang('Loading') . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
+                                <a href="' . h($use_href) . '" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
                         <span class="small text-muted text-truncate">' . h($s['description']) . '</span>
@@ -1947,6 +1969,11 @@ function pg_designer_resolve_tab_values($value, $tab_ids)
  * A widget can sit inside a shared component the page places (the login
  * region in an account bar) rather than on the page itself, so the trees of
  * the components found are read too, as deep as the renderer follows them.
+ *
+ * A page sent as unchanged carries no tree, yet its widgets may name a new
+ * tab: picking a page in a widget's settings writes the widget row at once
+ * and leaves the page's own tree and settings as they were. Such a page is
+ * read from its stored tree, and only when some widget still holds a key.
  */
 function pg_designer_resolve_tab_refs($pages, $tab_ids)
 {
@@ -1957,10 +1984,15 @@ function pg_designer_resolve_tab_refs($pages, $tab_ids)
             foreach ($mm[1] as $sid) { $sid = (int)$sid; if ($sid > 0) $into[$sid] = true; }
         }
     };
+    if (!(int)db_value("SELECT COUNT(*) FROM shared_components WHERE system_region_config LIKE '%\"tab:%'")) return;
     $sids = array();
     foreach ((array)$pages as $p) {
-        if (!is_array($p) || !isset($p['tree_json'])) continue;
-        $find_ids($p['tree_json'], $sids);
+        if (!is_array($p)) continue;
+        if (isset($p['tree_json'])) {
+            $find_ids($p['tree_json'], $sids);
+        } elseif (!empty($p['page_id']) && (int)$p['page_id'] > 0) {
+            $find_ids(pg_page_tree_json((int)$p['page_id']), $sids);
+        }
     }
     if (empty($sids)) return;
 
@@ -2315,9 +2347,29 @@ function pg_designer_screen_post($ctx)
     }
     pg_designer_resolve_tab_refs($pages, $tab_ids);
     pg_designer_resolve_page_tab_refs($pages, $id_map, $tab_ids, $locked_pages);
+    // A design file limited to some pages names a page saved for the first
+    // time by its tab, the same way (pg_design_asset_on_page()).
+    if ($can_write_design && $tab_ids && pg_multi_page_design_ready()) {
+        $asset_css = pg_designer_resolve_asset_page_refs($style_data['style_custom_css'], 'tab:', $tab_ids);
+        $asset_js  = pg_designer_resolve_asset_page_refs($style_data['style_custom_js'], 'tab:', $tab_ids);
+        if ($asset_css !== $style_data['style_custom_css'] || $asset_js !== $style_data['style_custom_js']) {
+            $style_data['style_custom_css'] = $asset_css;
+            $style_data['style_custom_js']  = $asset_js;
+            db("UPDATE style
+                SET style_custom_css = '" . escape($asset_css) . "', style_custom_js = '" . escape($asset_js) . "'
+                WHERE style_id = '" . (int)$style_id . "'");
+        }
+    }
     foreach ($cf_jobs as $cf_page_id => $cf_set) {
         $cf_set = pg_designer_resolve_tab_values($cf_set, $tab_ids);
         $cf_res = pg_cf_reconcile_page_form($cf_page_id, $user['id'], $cf_set);
+        if (!empty($cf_res['addresses'])) {
+            $warnings[] = lang(array(
+                'string' => '{var:1} record{suffix:1} of the form now open at their own address.',
+                'vars'   => array((int)$cf_res['addresses']),
+                'suffix' => array((int)$cf_res['addresses'] === 1 ? '' : 's'),
+            ));
+        }
         if (!empty($cf_res['deleted'])) {
             $warnings[] = lang(array(
                 'string' => '{var:1} form field{suffix:1} deleted, along with {var:2} submitted value{suffix:2}.',

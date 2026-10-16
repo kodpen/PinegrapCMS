@@ -139,7 +139,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create the Invoice')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create the Invoice')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -155,6 +155,10 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
+
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array order as order 1 and invoiced that one.
+    pg_request_single_values(array('order_id', 'from_order_screen'));
 
     $liveform->add_fields_to_session();
 

@@ -47,6 +47,36 @@ if (!defined('ERP_MANUAL_MAX_LINES')) {
 }
 
 /**
+ * The series an invoice is numbered in when it is issued.
+ *
+ * A sales invoice takes the invoice series (config.erp_default_series). A
+ * purchase invoice cannot share it: the number printed on a document is what
+ * identifies it, and on one series the year's first purchase bill and first
+ * sales invoice would both read PGF2026000000001. The site may name a series
+ * in config.php (ERP_PURCHASE_INVOICE_SERIES); otherwise it is the invoice
+ * series with an A after it, the way delivery notes take an S and returns an
+ * I. Bills already issued keep their numbers.
+ *
+ * @param string $direction  sales | purchase
+ * @return string
+ */
+function erp_invoice_series($direction = 'sales')
+{
+    $series = defined('ERP_DEFAULT_SERIES') ? trim((string) ERP_DEFAULT_SERIES) : 'PGF';
+
+    if ((string) $direction !== 'purchase') {
+        return $series;
+    }
+
+    if (defined('ERP_PURCHASE_INVOICE_SERIES') && (trim((string) ERP_PURCHASE_INVOICE_SERIES) !== '')) {
+        return trim((string) ERP_PURCHASE_INVOICE_SERIES);
+    }
+
+    // No invoice series is no purchase series either: issuing refuses both.
+    return ($series !== '') ? $series . 'A' : '';
+}
+
+/**
  * Work out the lines and the totals of a typed invoice.
  *
  * Pure: reads nothing and writes nothing, so a screen can show the result
@@ -82,7 +112,8 @@ if (!defined('ERP_MANUAL_MAX_LINES')) {
  * @param array $lines_in  Each: description, quantity, unit_price (kurus),
  *                         tax_rate, and optionally product_id, unit_code,
  *                         discount_rate, offer_id, offer_discount_rate,
- *                         withholding_code, withholding_rate, tax2_rate
+ *                         withholding_code, withholding_rate, tax2_rate,
+ *                         source_line
  * @return array ['lines' => array, 'totals' => array, 'error' => string, 'field' => string]
  */
 function erp_manual_lines_build($lines_in)
@@ -185,7 +216,7 @@ function erp_manual_lines_build($lines_in)
         // never withheld.
         $line_withholding = ($withholding_rate > 0) ? erp_apply_rate($line_tax, $withholding_rate) : 0;
 
-        $lines[] = array(
+        $built_line = array(
             'product_id' => max(0, $product_id),
             'description' => $description,
             'quantity' => $quantity,
@@ -205,6 +236,16 @@ function erp_manual_lines_build($lines_in)
             'withholding_amount' => $line_withholding,
             'line_total' => $line_total,
         );
+
+        // The purchase order line this line stands for, or an order line's
+        // own key (includes/erp/purchase_orders.php): carried as it came,
+        // never worked out, and left off a line that has none.
+        $source_line = erp_source_line_key($line['source_line'] ?? '');
+        if ($source_line !== '') {
+            $built_line['source_line'] = $source_line;
+        }
+
+        $lines[] = $built_line;
 
         $subtotal += $line_total;
         $discount_total += $discount_amount;
@@ -229,6 +270,21 @@ function erp_manual_lines_build($lines_in)
 }
 
 /**
+ * A purchase order line key as it is stored (erp_invoice_items.source_line,
+ * the order's line_data): letters and digits, at most 16 of them. Nothing
+ * but zeros is no key: the editor empties a cleared row's hidden fields to 0.
+ *
+ * @param mixed $value
+ * @return string  '' when there is no key
+ */
+function erp_source_line_key($value)
+{
+    $key = substr(preg_replace('/[^A-Za-z0-9]/', '', (string) $value), 0, 16);
+
+    return (trim($key, '0') === '') ? '' : $key;
+}
+
+/**
  * Whether the line table carries the campaign columns (4.58).
  *
  * @return bool
@@ -239,6 +295,22 @@ function erp_invoice_lines_have_offers()
 
     if ($has === null) {
         $has = function_exists('waf_table_has_column') && waf_table_has_column('erp_invoice_items', 'offer_discount_rate');
+    }
+
+    return $has;
+}
+
+/**
+ * Whether the line table carries the purchase order line key (10.58).
+ *
+ * @return bool
+ */
+function erp_invoice_lines_have_source()
+{
+    static $has = null;
+
+    if ($has === null) {
+        $has = function_exists('waf_table_has_column') && waf_table_has_column('erp_invoice_items', 'source_line');
     }
 
     return $has;
@@ -336,7 +408,8 @@ function erp_manual_header_build($data)
  *                           exchange_rate_source, issue_date, due_date,
  *                           supplier_invoice_no, supplier_invoice_date, notes,
  *                           series, lines (see erp_manual_lines_build()),
- *                           created_by
+ *                           created_by; quote_id, purchase_order_id and
+ *                           late_fee_through only when the caller names them
  * @param int   $invoice_id  0 to create, otherwise the draft to rewrite
  * @return array ['success' => bool, 'invoice_id' => int, 'error' => string]
  */
@@ -400,6 +473,21 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
     if (array_key_exists('quote_id', $data) && waf_table_has_column('erp_invoices', 'quote_id')) {
         $header_sql .= ",
             quote_id = '" . (int) $data['quote_id'] . "'";
+    }
+
+    // The purchase order the draft was made from (10.58), the same way: its
+    // lines name the order's lines in source_line.
+    if (array_key_exists('purchase_order_id', $data) && waf_table_has_column('erp_invoices', 'purchase_order_id')) {
+        $header_sql .= ",
+            purchase_order_id = '" . (int) $data['purchase_order_id'] . "'";
+    }
+
+    // The last day a late fee draft charges for (10.61,
+    // includes/erp/late_fee.php), the same way.
+    if (array_key_exists('late_fee_through', $data) && waf_table_has_column('erp_invoices', 'late_fee_through')) {
+        $through = (string) $data['late_fee_through'];
+        $header_sql .= ",
+            late_fee_through = " . ((preg_match('/^\d{4}-\d{2}-\d{2}$/', $through) === 1) ? "'" . escape($through) . "'" : "NULL");
     }
 
     // A withholding makes it a TEVKIFAT document; taking the last one off
@@ -488,7 +576,9 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
                 withholding_code = '" . escape($line['withholding_code']) . "',
                 withholding_rate = '" . escape(number_format($line['withholding_rate'], 3, '.', '')) . "',"
                 . (erp_invoice_lines_have_withholding() ? "
-                withholding_amount = '" . (int) $line['withholding_amount'] . "'," : "") . "
+                withholding_amount = '" . (int) $line['withholding_amount'] . "'," : "")
+                . (erp_invoice_lines_have_source() ? "
+                source_line = '" . escape((string) ($line['source_line'] ?? '')) . "'," : "") . "
                 line_total = '" . (int) $line['line_total'] . "'");
 
         if ($ok === false) {
@@ -607,7 +697,7 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
     $direction = ((string) $invoice['direction'] === 'purchase') ? 'purchase' : 'sales';
     $issue_date = (string) $invoice['issue_date'];
     $issue_year = (int) substr($issue_date, 0, 4);
-    $series = trim((string) (defined('ERP_DEFAULT_SERIES') ? ERP_DEFAULT_SERIES : 'PGF'));
+    $series = erp_invoice_series($direction);
 
     if (($refusal = erp_lock_refusal($issue_date)) !== '') {
         erp_tx_rollback();

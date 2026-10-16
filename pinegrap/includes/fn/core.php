@@ -622,11 +622,23 @@ function pg_schema_has($table, $column = null)
 
 function h($content)
 {
+    // A NULL column, an unset field value or a missing optional parameter
+    // prints as nothing. htmlspecialchars() returns '' for null as well, but
+    // PHP 8.1 deprecates passing it, so every such call logged a line.
+    if ($content === null) {
+        return '';
+    }
+
     return htmlspecialchars($content, ENT_QUOTES | ENT_HTML401, 'UTF-8');
 }
 
 function escape($string)
 {
+    // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
+    if ($string === null) {
+        return '';
+    }
+
     if (isset(db::$con) && db::$con) {
         return mysqli_real_escape_string(db::$con, $string);
     }
@@ -662,7 +674,12 @@ function escape_like($string)
 
 function escape_javascript($string)
 {
-    if (!is_scalar($string) && !is_null($string)) {
+    // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
+    if ($string === null) {
+        return '';
+    }
+
+    if (!is_scalar($string)) {
         return $string;
     }
     // escape backslashes
@@ -680,6 +697,11 @@ function escape_javascript($string)
 
 function escape_csv($string)
 {
+    // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
+    if ($string === null) {
+        return '';
+    }
+
     return str_replace('"', '""', $string);
 }
 
@@ -812,6 +834,114 @@ function pg_safe_redirect_path($url, $fallback = '')
     }
 
     return $url;
+}
+
+/**
+ * Request parameters that only ever carry one value, removed when they arrive
+ * as an array (?send_to[]=x), so that they count as not given.
+ *
+ * init.php calls it for send_to and from. The screens print them into hidden
+ * fields and links with h() and urlencode(), which stop the request on an
+ * array: twenty panel screens and the login pages answered ?send_to[]=x with
+ * an error page. The value is checked in $_GET, $_POST and $_REQUEST
+ * separately; a string is left exactly as it came.
+ *
+ * @param  array $names Parameter names
+ * @return void
+ */
+function pg_request_single_values($names)
+{
+    foreach ($names as $name) {
+        if (isset($_GET[$name]) && !is_string($_GET[$name])) {
+            unset($_GET[$name]);
+        }
+
+        if (isset($_POST[$name]) && !is_string($_POST[$name])) {
+            unset($_POST[$name]);
+        }
+
+        if (isset($_REQUEST[$name]) && !is_string($_REQUEST[$name])) {
+            unset($_REQUEST[$name]);
+        }
+    }
+}
+
+/**
+ * One row of a list a form posts (lines[n][field], categories[id][field]),
+ * with only the fields that hold one value.
+ *
+ * pg_request_single_values() cannot reach inside a list. A field of a row
+ * posted as an array (lines[0][description][]=x) is left out, so it counts
+ * as not given, the same as a form's own field: (string) wrote it as "Array"
+ * and logged "Array to string conversion". A row that is not a set of fields
+ * is an empty row. Numbers and booleans stay, so a stored row or a decoded
+ * JSON body reads the same as before.
+ *
+ * @param  mixed $row
+ * @return array
+ */
+function pg_request_row_values($row)
+{
+    return is_array($row) ? array_filter($row, 'is_scalar') : array();
+}
+
+/**
+ * The posted fields that carry a list where their form draws none, or a
+ * deeper list than it draws.
+ *
+ * For a screen that has to refuse such a request rather than read the field
+ * as not given: a settings save writes every field it reads, so "not given"
+ * would store an empty value over the setting. Only a hand-made request
+ * sends hostname[]=x or languages[en][label][]=x; escape() and trim() stopped
+ * it with a TypeError and (string) stored "Array".
+ *
+ * $lists names the fields the form draws as lists, with how many levels of
+ * keys they carry: job_dispatch_job[name] is one, languages[code][label] is
+ * two. A value that is not a list fits every field; the screens take it as
+ * one value.
+ *
+ * @param  mixed $values the request, usually $_POST
+ * @param  array $lists  name => levels of keys
+ * @return array the names that do not fit, in request order
+ */
+function pg_request_unexpected_lists($values, $lists = array())
+{
+    $names = array();
+
+    foreach ((is_array($values) ? $values : array()) as $name => $value) {
+        if (!pg_request_list_fits($value, isset($lists[$name]) ? (int) $lists[$name] : 0)) {
+            $names[] = (string) $name;
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * Whether a value is a list no deeper than the levels given, with one value
+ * at the end of every branch (see pg_request_unexpected_lists()).
+ *
+ * @param  mixed $value
+ * @param  int   $levels
+ * @return bool
+ */
+function pg_request_list_fits($value, $levels)
+{
+    if (!is_array($value)) {
+        return true;
+    }
+
+    if ($levels < 1) {
+        return false;
+    }
+
+    foreach ($value as $item) {
+        if (!pg_request_list_fits($item, $levels - 1)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function escape_url($url)
@@ -1644,7 +1774,18 @@ function build_url($properties)
         parse_str($url_parts['query'], $query_string_parameters);
         foreach ($query_string_parameters as $name => $value) {
             if (!is_array($parameters) || !array_key_exists($name, $parameters)) {
-                $url_query_string .= ($url_query_string == '' ? '?' : '&') . urlencode($name) . '=' . urlencode($value);
+                // A parameter that arrived as an array (?name[]=x) is carried over in the
+                // same bracket form: urlencode() refused the array with an error page.
+                if (is_array($value)) {
+                    $pair = http_build_query(array($name => $value));
+
+                    if ($pair != '') {
+                        $url_query_string .= ($url_query_string == '' ? '?' : '&') . $pair;
+                    }
+
+                } else {
+                    $url_query_string .= ($url_query_string == '' ? '?' : '&') . urlencode($name) . '=' . urlencode($value);
+                }
             }
         }
     }
@@ -1692,6 +1833,12 @@ function decode_json($content)
 // because Apache will return a 404 error.
 function encode_url_path($path)
 {
+    // A missing page or file name encodes to '' without the PHP 8.1
+    // deprecation that rawurlencode(null) logs.
+    if ($path === null) {
+        return '';
+    }
+
     return str_replace('%2F', '/', rawurlencode($path));
 }
 // Create a function that will strip out the beginning <?php tag before PHP code

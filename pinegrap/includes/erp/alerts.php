@@ -68,11 +68,48 @@ function erp_alert_settings()
 }
 
 /**
+ * Who caused a notice: the person signed in on the panel. A call through the
+ * external API or the MCP server loads no panel user, so there it is the
+ * application's owner - the person signed in on a device or through OAuth,
+ * the owner of an application key - the name the Workspace's bell rows carry
+ * (ws_bell_user()). A scheduled job has neither.
+ *
+ * @param int|string $user_id   USER_ID
+ * @param string     $username  USER_USERNAME
+ * @param array|null $app       api_current_app()
+ * @return array  id (0 for nobody), username ('' for nobody)
+ */
+function erp_alert_actor($user_id, $username, $app)
+{
+    if (((int) $user_id > 0) && ((string) $username !== '')) {
+        return array('id' => (int) $user_id, 'username' => (string) $username);
+    }
+
+    $owner = (is_array($app) && isset($app['owner']) && is_array($app['owner'])) ? $app['owner'] : array();
+
+    return array('id' => (int) ($owner['id'] ?? 0), 'username' => (string) ($owner['username'] ?? ''));
+}
+
+/**
+ * erp_alert_actor() for this request.
+ *
+ * @return array  id, username
+ */
+function erp_alert_current_actor()
+{
+    return erp_alert_actor(
+        defined('USER_ID') ? USER_ID : 0,
+        defined('USER_USERNAME') ? USER_USERNAME : '',
+        function_exists('api_current_app') ? api_current_app() : null
+    );
+}
+
+/**
  * Write the bell row and queue its device banners.
  *
  * @param array $properties  create_notification()'s
- * @param bool  $skip_actor  true when the person signed in caused it and is
- *                           not to be told
+ * @param bool  $skip_actor  true when the person who caused it
+ *                           (erp_alert_current_actor()) is not to be told
  * @return int  The notification's id, 0 when none was written
  */
 function erp_alert_create($properties, $skip_actor = true)
@@ -89,7 +126,7 @@ function erp_alert_create($properties, $skip_actor = true)
 
     // Read already for whoever caused it: their bell does not show it and
     // the push sender, which asks again at send time, skips their devices.
-    $actor = ($skip_actor && defined('USER_ID')) ? (int) USER_ID : 0;
+    $actor = $skip_actor ? erp_alert_current_actor()['id'] : 0;
 
     if ($actor > 0) {
         include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
@@ -133,6 +170,7 @@ function erp_alert_event($event, $payload)
     }
 
     $title = (string) db_value("SELECT title FROM erp_accounts WHERE id = '" . (int) ($payload['account_id'] ?? 0) . "' LIMIT 1");
+    $actor = erp_alert_current_actor()['username'];
 
     // The row carries what the bell says the way an order row does: title is
     // the account, form_id the receipt and order_total the amount as it was
@@ -143,7 +181,7 @@ function erp_alert_event($event, $payload)
         'title' => mb_substr(($title !== '') ? $title : lang('Walk-in sale'), 0, 200),
         'form_id' => (int) ($payload['id'] ?? 0),
         'order_total' => erp_money_out_currency((int) ($payload['amount'] ?? 0), (string) ($payload['currency'] ?? '')),
-        'user' => defined('USER_USERNAME') && (USER_USERNAME !== '') ? USER_USERNAME : 'system',
+        'user' => ($actor !== '') ? $actor : 'system',
     ));
 }
 

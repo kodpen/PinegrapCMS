@@ -26,18 +26,20 @@ $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $ready = erp_expenses_ready();
 
 // ------------------------------------------------------------------ filters
-// A month by default; a year, or two dates, when asked for.
-$period_choice = (string) ($_GET['period'] ?? date('Y-m'));
+// A month by default; a year, or two dates, when asked for. Each filter is
+// one value; one sent as an array (?period[]=x) counts as not given: it
+// wrote "Array to string conversion" into the log.
+$period_choice = is_string($_GET['period'] ?? null) ? $_GET['period'] : date('Y-m');
 $filters = array(
-    'category_id' => (int) ($_GET['category_id'] ?? 0),
-    'status' => (string) ($_GET['status'] ?? 'standing'),
-    'query' => trim(mb_substr((string) ($_GET['q'] ?? ''), 0, 100)),
+    'category_id' => is_scalar($_GET['category_id'] ?? null) ? (int) $_GET['category_id'] : 0,
+    'status' => is_string($_GET['status'] ?? null) ? $_GET['status'] : 'standing',
+    'query' => trim(mb_substr(is_string($_GET['q'] ?? null) ? $_GET['q'] : '', 0, 100)),
 );
 
 if (preg_match('/^year-(\d{4})$/', $period_choice, $parts)) {
     $period = erp_profit_period(array('range' => 'year', 'year' => $parts[1]));
 } elseif ($period_choice === 'dates') {
-    $period = erp_profit_period(array('range' => 'dates', 'from' => (string) ($_GET['from'] ?? ''), 'to' => (string) ($_GET['to'] ?? '')));
+    $period = erp_profit_period(array('range' => 'dates', 'from' => is_string($_GET['from'] ?? null) ? $_GET['from'] : '', 'to' => is_string($_GET['to'] ?? null) ? $_GET['to'] : ''));
 
     if ($period['error'] !== '') {
         $liveform->add_warning(h($period['error']));
@@ -55,7 +57,7 @@ $statuses = erp_expense_statuses();
 $base = erp_base_currency();
 
 // ------------------------------------------------------------------ export
-if ($ready && ((string) ($_GET['export'] ?? '') === 'xlsx')) {
+if ($ready && (($_GET['export'] ?? '') === 'xlsx')) {
     $rows = array();
 
     foreach (erp_expenses_list($filters + array('limit' => 5000)) as $expense) {
@@ -289,9 +291,9 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_expense.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
-                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_expense_categories.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Categories') . '</a>' : '') . '
-                <a class="btn btn-sm btn-outline-secondary" href="erp_profit.php?' . h(http_build_query(array('range' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-graph-up me-1" aria-hidden="true"></i>' . lang('Profit and loss') . '</a>
+                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
+                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_expense_categories.php"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Categories') . '</a>' : '') . '
+                <a class="btn btn-sm btn-outline-secondary" href="erp_profit.php?' . h(http_build_query(array('range' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '"><i class="bi bi-graph-up me-1" aria-hidden="true"></i>' . lang('Profit and loss') . '</a>
                 ' . ($ready ? '<a class="btn btn-sm btn-outline-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>' : '') . '
             </nav>
 

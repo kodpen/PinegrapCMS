@@ -188,6 +188,7 @@ function get_help_url($properties = array())
         'view_visitor_reports' => 'visitors#visitor-reports',
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',
+        'search_console'       => 'visitors#google-search-console',
 
         // Contacts
         'view_contacts' => array(
@@ -406,6 +407,9 @@ function get_help_url($properties = array())
         'erp_quotes'              => 'erp#quotes',
         'add_erp_quote'           => 'erp#create-edit-quote',
         'edit_erp_quote'          => 'erp#create-edit-quote',
+        'erp_purchase_orders'     => 'erp#purchase-orders',
+        'add_erp_purchase_order'  => 'erp#create-edit-purchase-order',
+        'edit_erp_purchase_order' => 'erp#create-edit-purchase-order',
         'erp_inbox'               => 'erp#incoming-e-invoices',
         'erp_inbox_document'      => 'erp#incoming-e-invoices',
         'erp_account_sync'        => 'erp#account-sync',
@@ -455,6 +459,8 @@ function get_help_url($properties = array())
         // API and integrations
         'api_settings'         => 'api#api-keys',
         'api_docs'             => 'api#api-reference',
+        'connected_apps'       => 'api#mcp',
+        'connections'          => 'api#connected-accounts',
         'marketplace_settings' => 'api#marketplaces',
 
         // System tools

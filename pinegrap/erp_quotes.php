@@ -22,9 +22,12 @@ include_once('liveform.class.php');
 $liveform = new liveform('erp_quotes');
 
 $statuses = erp_quote_statuses();
-$state = isset($statuses[(string) ($_GET['state'] ?? '')]) ? (string) $_GET['state'] : '';
-$search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
-$account_id = max(0, (int) ($_GET['account_id'] ?? 0));
+$state = is_string($_GET['state'] ?? null) ? $_GET['state'] : '';
+$state = isset($statuses[$state]) ? $state : '';
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
+// One value only: an array (?account_id[]=x) cast to 1 and narrowed the
+// list to the first account.
+$account_id = max(0, is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0);
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if (!erp_quotes_ready()) {
@@ -98,7 +101,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ((!$readonly && erp_quotes_ready()) ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_quote.php' . (($account_id > 0) ? '?account_id=' . $account_id : '') . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
+                ' . ((!$readonly && erp_quotes_ready()) ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_quote.php' . (($account_id > 0) ? '?account_id=' . $account_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 <form method="get" action="erp_quotes.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
                     ' . (($state !== '') ? '<input type="hidden" name="state" value="' . h($state) . '" />' : '') . '

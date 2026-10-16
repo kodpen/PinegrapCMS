@@ -2014,6 +2014,48 @@ function pg_pb_delete_variant_set($group_id, $delete_products = TRUE)
 }
 
 
+/**
+ * Move a variant set to the Recycle Bin: the group and the products in it.
+ *
+ * The bin's version of pg_pb_delete_variant_set(), and it takes the products
+ * for the same reason that one deletes them: a variant only exists as one form
+ * of its set. Each product is binned with the set's id as the place it came
+ * from, which is how restoring the set in the Catalog Manager knows to bring
+ * them back with it. Each one can still be restored on its own.
+ *
+ * @param int $group_id
+ * @param int $user_id
+ * @return array counts: group (0/1) and products, plus the set's name
+ */
+function pg_pb_bin_variant_set($group_id, $user_id)
+{
+    $group_id = (int) $group_id;
+
+    $result = array('group' => 0, 'products' => 0);
+
+    // Read before the group is flagged: the products are found through it,
+    // and the root refusal is the group helper's.
+    $products = pg_pb_group_products($group_id);
+
+    $name = pg_catalog_bin_group($group_id, $user_id);
+
+    if ($name === false) {
+        return $result;
+    }
+
+    foreach ($products as $product) {
+        if (pg_catalog_bin_product($product['id'], $user_id, $group_id) !== false) {
+            $result['products']++;
+        }
+    }
+
+    $result['group'] = 1;
+    $result['name']  = $name;
+
+    return $result;
+}
+
+
 /* ------------------------------------------------------------------ *
  * Shared markup
  * ------------------------------------------------------------------ */
@@ -3145,6 +3187,19 @@ function pg_pb_variant_sets_screen()
 
     $where = "product_groups.display_type = 'select'";
 
+    // A set in the Recycle Bin is not listed, and a variant in the bin is not
+    // counted in its set: deleting here sends them there, and the Catalog
+    // Manager's bin is where they are restored or deleted for good.
+    $live_sets_sql = '';
+    $live_variants_sql = '';
+
+    if (pg_catalog_bin_ready()) {
+        $live_sets_sql = " AND (product_groups.recycled = '0')";
+        $live_variants_sql = " AND (products.recycled = '0')";
+    }
+
+    $where .= $live_sets_sql;
+
     if ($filter_status === 'enabled') {
         $where .= " AND product_groups.enabled = '1'";
     } elseif ($filter_status === 'disabled') {
@@ -3183,7 +3238,7 @@ function pg_pb_variant_sets_screen()
         LEFT JOIN product_groups AS parent_group ON product_groups.parent_id = parent_group.id
         LEFT JOIN user ON product_groups.user = user.user_id
         LEFT JOIN products_groups_xref ON products_groups_xref.product_group = product_groups.id
-        LEFT JOIN products ON products_groups_xref.product = products.id
+        LEFT JOIN products ON (products_groups_xref.product = products.id)" . $live_variants_sql . "
         WHERE $where
         GROUP BY
             product_groups.id,
@@ -3226,7 +3281,7 @@ function pg_pb_variant_sets_screen()
             parent_group.name
         FROM product_groups
         INNER JOIN product_groups AS parent_group ON product_groups.parent_id = parent_group.id
-        WHERE product_groups.display_type = 'select'
+        WHERE (product_groups.display_type = 'select')" . $live_sets_sql . "
         ORDER BY parent_group.name");
 
 
@@ -3325,9 +3380,9 @@ function pg_pb_variant_sets_screen()
                     <input class="form-check-input" type="checkbox" name="group_ids[]" value="' . $set_id . '" />
                 </td>
                 <td class="align-middle text-start action-buttons text-nowrap">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" "
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2"
                         title="' . lang('Edit') . '" onclick="window.location.href=\'' . $edit_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2" data-loading-content=" "
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2"
                         title="' . lang('Duplicate') . '" onclick="window.location.href=\'duplicate_product_group.php?id=' . $set_id . '\'"><i class="bi bi-files"></i></button>
                 </td>
                 <td class="chart_label align-middle">
@@ -3394,7 +3449,7 @@ function pg_pb_variant_sets_screen()
                         <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                             <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-2"></i>' . lang('Enable This') . '</button>
                             <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-2"></i>' . lang('Disable This') . '</button>
-                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang('Deleting') . '" data-confirm-content="' . lang('Delete the selected variant sets and all of their products? This cannot be undone.') . '"><i class="bi bi-trash me-2"></i>' . lang('Delete') . '</button>
+                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang('Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.') : lang('Delete the selected variant sets and all of their products? This cannot be undone.')) . '"><i class="bi bi-trash me-2"></i>' . lang('Delete') . '</button>
                         </div>
                     </div>
                 </nav>
@@ -3483,8 +3538,8 @@ function pg_pb_variant_sets_screen()
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_product.php" data-loading-content="' . lang('Loading') . '"><i class="bi bi-plus-circle me-2"></i>' . lang('Create') . '</a>
-                            <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=products" data-loading-content="' . lang('Loading') . '"><i class="bi bi-list-ul me-2"></i>' . lang('All Products') . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="add_product.php"><i class="bi bi-plus-circle me-2"></i>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=products"><i class="bi bi-list-ul me-2"></i>' . lang('All Products') . '</a>
                         </nav>
                     </div>
 
@@ -3571,6 +3626,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     $pg_mode       = isset($context['mode']) ? $context['mode'] : 'create';
     $pg_product_id = isset($context['product_id']) ? (int) $context['product_id'] : 0;
+
+    // A product in the Recycle Bin is shown but cannot be saved or deleted
+    // here (edit_product.php refuses the write too); the way back is
+    // restoring it in the Catalog Manager, so that is what the screen offers.
+    $pg_recycled = ($pg_mode === 'edit') && !empty($context['recycled']);
+    $pg_bin_link = '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="btn-text">' . lang('Open the Recycle Bin') . '</span></a>';
 
     // What a new product starts as. Written as values rather than as markup
     // defaults so that the create screen and the edit screen read from the same
@@ -3897,6 +3958,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // Parent group (group mode) and catalog groups (single mode) are two different
     // questions, so they are two different controls — see the note in
     // pg_pb_save_new_product() about why a variant does not join browse categories.
+    //
+    // Neither offers a group in the Recycle Bin. A group this product is
+    // already in stays on its list, marked, even from the bin: the save
+    // rewrites the product's groups from what is posted, and an option missing
+    // from the list would take the product out of that group for good.
     $output_parent_group_field = '';
     $output_catalog_group_field = '';
 
@@ -3907,7 +3973,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 <label for="parent_group_id" class="form-label">' . lang('Parent Product Group') . '</label>
                 <select style="width:100%" class="select2 form-select" id="parent_group_id" name="parent_group_id" data-placeholder="' . lang('Select Parent Group') . '">
                     <option value="0">-' . lang('None') . '-</option>
-                    ' . get_product_group_options(0, 0, 0, 0, array(), FALSE) . '
+                    ' . get_product_group_options(0, 0, 0, 0, array(), FALSE, 'text', false, true, false) . '
                 </select>
                 <div class="form-text">' . lang('The new variant group is placed under this group in the catalog.') . '</div>
             </div>';
@@ -3916,7 +3982,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             '<div class="col-12 col-lg-8 my-2 pg-pb-single-only">
                 <label for="catalog_group_ids" class="form-label">' . lang('Include product in to selected groups') . '</label>
                 <select style="width:100%" class="select2 form-select" id="catalog_group_ids" name="catalog_group_ids[]" multiple="multiple" data-placeholder="' . lang('Include product in to selected groups') . '">
-                    ' . pg_pb_mark_selected(get_product_group_options(0, 0, 0, 0, array(), TRUE), $v('catalog_group_ids', array())) . '
+                    ' . pg_pb_mark_selected(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, $v('catalog_group_ids', array())), $v('catalog_group_ids', array())) . '
                 </select>
                 <div class="form-text">' . lang('A single product can sit in several groups.') . '</div>
             </div>';
@@ -4413,7 +4479,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             the group tree for each.
         */
         ? '<nav class="navigation mb-3" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-link link-secondary" data-loading-content="' . lang('Duplicating') . '" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1"></i>' . lang('Duplicate') . '</a>
+                <a class="btn btn-sm btn-link link-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1"></i>' . lang('Duplicate') . '</a>
                 ' . (($v('product_form') or $v('pg_pb_has_form_fields'))
                     ? '<a class="btn btn-sm btn-link link-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1"></i>' . lang('Product Form') . '</a>'
                     : '') . '
@@ -4425,6 +4491,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+            ' . ($pg_recycled
+                ? '<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
+                : '') . '
         </div>
     </div>
 
@@ -5309,12 +5378,13 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 <nav class="buttons navigation text-center mb-4" aria-label="' . lang('data edit buttons') . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="pg_pb_create" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . (($pg_mode === 'edit') ? lang(array('string' => 'Saving')) : lang(array('string' => 'Creating'))) . '">
+                            ' . ($pg_recycled ? $pg_bin_link : '
+                            <button type="submit" id="pg_pb_create" name="submit_create" value="Create" class="btn my-1 btn-success">
                                 <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-2"></span><span class="btn-text">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-loading-content="' . lang(array('string' => 'Deleting')) . '" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product')))) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
-                                : '') . '
+                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                : '')) . '
                         </div>
                     </div>
                 </nav>
@@ -5881,3 +5951,207 @@ function pg_pb_apply_stock_flag(&$product, $product_id = 0)
     }
 }
 
+
+
+/* ------------------------------------------------------------------ *
+ * Quick edit on the product list
+ * ------------------------------------------------------------------ */
+
+/**
+ * The product list's columns that change in place (pg_list_edit_table()):
+ * the ones an operator changes most often without needing the rest of the
+ * product screen. The short description is the column's own length.
+ *
+ * @return array field => definition
+ */
+function pg_pb_quick_edit_columns()
+{
+    return array(
+        'short_description'  => array('type' => 'text', 'label' => lang('Short Description'), 'max' => 100),
+        'enabled'            => array('type' => 'select', 'label' => lang('Enabled'), 'options' => array('1' => lang('Enabled'), '0' => lang('Disabled'))),
+        'price'              => array('type' => 'money', 'label' => lang('Price')),
+        'inventory_quantity' => array('type' => 'integer', 'label' => lang('Inventory Quantity'), 'min' => 0, 'max' => 9999999),
+    );
+}
+
+/**
+ * The product list's cells a quick edit changes, drawn the one way the list
+ * and the answer to an edit both use. Each is array('html' => content,
+ * 'class' => the cell's classes) and, for the stock, a 'title'. The name and
+ * the short description take their colour from the enabled flag.
+ *
+ * @param array $product a products row with at least short_description,
+ *                       enabled, price, inventory and inventory_quantity
+ * @return array cell => array('html', 'class'[, 'title'])
+ */
+function pg_pb_list_cells($product)
+{
+    $state = ((string) $product['enabled'] === '1') ? 'text-success' : 'text-danger';
+    $quantity = (int) $product['inventory_quantity'];
+
+    if ((string) $product['inventory'] !== '1') {
+        $stock = array(
+            'html'  => '-',
+            'class' => 'align-middle text-center text-success h5 fw-bolder',
+            'title' => lang('Inventory tracking is not active for this product/service'),
+        );
+    } else {
+        $stock = array(
+            'html'  => (string) $quantity,
+            'class' => 'align-middle text-center h5 fw-bolder ' . (($quantity <= 0) ? 'text-danger' : (($quantity < 10) ? 'text-warning' : 'text-success')),
+            'title' => '',
+        );
+    }
+
+    return array(
+        'name'               => array('class' => 'align-middle chart_label ' . $state),
+        'short_description'  => array('html' => h((string) $product['short_description']), 'class' => 'align-middle ' . $state),
+        'enabled'            => array('html' => ((string) $product['enabled'] === '1') ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
+        'price'              => array('html' => prepare_amount(((int) $product['price']) / 100), 'class' => 'align-middle text-end'),
+        'inventory_quantity' => $stock,
+    );
+}
+
+/**
+ * What a product list cell's input opens with: the stored value, the price
+ * in the site's decimal style without grouping, which pg_pb_price_to_cents()
+ * reads back either way.
+ *
+ * @param string $field
+ * @param array  $product
+ * @return string
+ */
+function pg_pb_quick_edit_value($field, $product)
+{
+    if ($field === 'price') {
+        return pg_format_input_amount(((int) $product['price']) / 100);
+    }
+
+    return (string) $product[$field];
+}
+
+/**
+ * Write one quick edit from the product list with what the product screen's
+ * save does for the same column: the price read by pg_pb_price_to_cents(),
+ * the out-of-stock flag recalculated by pg_pb_apply_stock_flag(), the tag
+ * cloud kept in step with the enabled flag, the marketplaces told about a
+ * price, stock or availability change, the SEO analysis marked stale when a
+ * column it reads changed, and the last change stamped with who made it.
+ *
+ * The stock only changes on a product that tracks it. The list does not
+ * offer it on one that does not: starting to track stock decides what the
+ * shop does at zero, and that belongs on the product screen.
+ *
+ * @param int    $product_id
+ * @param string $field a key of pg_pb_quick_edit_columns()
+ * @param mixed  $value as pg_list_edit_parse() read it
+ * @return array the answer for pg_list_edit_reply()
+ */
+function pg_pb_quick_update($product_id, $field, $value)
+{
+    $product_id = (int) $product_id;
+    $columns = pg_pb_quick_edit_columns();
+
+    // A product in the Recycle Bin is not on the list this is called from; a
+    // row left on a page opened before it went there is refused like a
+    // missing one, or switching it on would put it back on sale from the bin.
+    $current = db_item(
+        "SELECT id, name, short_description, enabled, price, inventory, inventory_quantity, keywords
+        FROM products
+        WHERE (id = '" . $product_id . "')" . pg_catalog_bin_live_sql('products'));
+
+    if (!$current) {
+        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Product not found.'));
+    }
+
+    $change = array();
+
+    switch ($field) {
+        case 'short_description':
+            $change['short_description'] = (string) $value;
+            break;
+
+        case 'enabled':
+            $change['enabled'] = ((string) $value === '1') ? '1' : '0';
+            break;
+
+        case 'price':
+            $change['price'] = pg_pb_price_to_cents($value);
+
+            // products.price is a signed INT of minor units.
+            if ($change['price'] > 2147483647) {
+                return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns['price']['label']))));
+            }
+
+            break;
+
+        case 'inventory_quantity':
+            if ((string) $current['inventory'] !== '1') {
+                return array('ok' => false, 'code' => 'not_tracked', 'message' => lang('This product does not track stock. Turn stock tracking on in the product first.'));
+            }
+
+            $change['inventory'] = '1';
+            $change['inventory_quantity'] = (int) $value;
+            pg_pb_apply_stock_flag($change, $product_id);
+            break;
+
+        default:
+            return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+    }
+
+    $product = array_merge($current, $change);
+    $changed = ((string) $current[$field] !== (string) $product[$field]);
+
+    // The same value again writes nothing and logs nothing; the list is still
+    // redrawn from what is stored.
+    if ($changed) {
+        $change['timestamp'] = time();
+        $change['user'] = defined('USER_ID') ? USER_ID : 0;
+
+        // The analysis reads the short description and the enabled flag
+        // (pg_seo_recalculate()); the price and the stock are not part of it.
+        if (($field === 'short_description') || ($field === 'enabled')) {
+            $change['seo_analysis_current'] = 0;
+        }
+
+        pg_pb_update_row('products', $change, 'id', $product_id);
+
+        if ($field === 'enabled') {
+            pg_pb_sync_tag_cloud_keywords($product_id, $current['keywords'], ($change['enabled'] === '1'));
+        }
+
+        if (($field !== 'short_description') && function_exists('pg_marketplace_product_changed')) {
+            pg_marketplace_product_changed($product_id);
+        }
+
+        $shown = function ($product) use ($field) {
+            switch ($field) {
+                case 'enabled':
+                    return ((string) $product['enabled'] === '1') ? lang('Enabled') : lang('Disabled');
+                case 'price':
+                    return pg_format_number(((int) $product['price']) / 100, 2);
+            }
+
+            return (string) $product[$field];
+        };
+
+        log_activity(
+            lang(array(
+                'string' => 'product ({var:1}) was changed on the product list: {var:2} from "{var:3}" to "{var:4}"',
+                'vars'   => array($current['name'], $columns[$field]['label'], $shown($current), $shown($product)),
+            )),
+            $_SESSION['sessionusername'] ?? '');
+    }
+
+    $cells = pg_pb_list_cells($product);
+    $reply = array('ok' => true, 'value' => pg_pb_quick_edit_value($field, $product)) + $cells[$field];
+
+    if ($field === 'enabled') {
+        $reply['cells'] = array(
+            'name'              => $cells['name'],
+            'short_description' => array('class' => $cells['short_description']['class']),
+        );
+    }
+
+    return $reply;
+}

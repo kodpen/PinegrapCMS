@@ -117,6 +117,54 @@ function pg_cf_contact_fields()
     return $out;
 }
 
+/**
+ * Whether a signed-in person's form submission is about somebody else: the
+ * e-mail address the form writes to the contact (a field wired to the
+ * contact's email_address) is none of the addresses that person has. Only
+ * then can the two be told apart - a form with no such field, or a person
+ * with no address on file, is about the person submitting it.
+ *
+ * @param string $typed the value of the form's contact e-mail field
+ * @param array  $known the signed-in person's addresses (account, contact)
+ * @return bool
+ */
+function pg_cf_email_is_someone_else($typed, $known)
+{
+    $typed = mb_strtolower(trim((string)$typed), 'UTF-8');
+    if ($typed === '') return false;
+
+    $mine = array();
+    foreach ((array)$known as $address) {
+        $address = mb_strtolower(trim((string)$address), 'UTF-8');
+        if ($address !== '') $mine[] = $address;
+    }
+
+    return !empty($mine) && !in_array($typed, $mine, true);
+}
+
+/**
+ * custom_form.php: whether the contact this submission fills in is not the
+ * signed-in person's own (pg_cf_email_is_someone_else()). False for a
+ * visitor who is not signed in, and for a submission that writes nothing to
+ * a contact.
+ *
+ * @param string     $typed       the form's contact e-mail value
+ * @param int|string $contact_id  the signed-in person's contact, or ''
+ * @param string     $sql_update  the contact columns the form writes
+ * @return bool
+ */
+function pg_cf_contact_is_someone_else($typed, $contact_id, $sql_update)
+{
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN || (string)$sql_update === '') return false;
+
+    $known = array(defined('USER_EMAIL_ADDRESS') ? USER_EMAIL_ADDRESS : '');
+    if ((int)$contact_id > 0) {
+        $known[] = (string)db_value("SELECT email_address FROM contacts WHERE id = '" . (int)$contact_id . "'");
+    }
+
+    return pg_cf_email_is_someone_else($typed, $known);
+}
+
 // A field name is written into an HTML attribute and, on form list views, into
 // a ^^name^^ token. add_field.php refuses the characters that break either;
 // the same set is refused here so a form drawn in the editor and one drawn on
@@ -362,6 +410,7 @@ function pg_cf_load_page_form_settings($page_id)
         'confirm_email' => 0, 'confirm_subject' => '', 'confirm_page_id' => 0,
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
+        'pretty_urls' => 0,
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
 
@@ -371,7 +420,7 @@ function pg_cf_load_page_form_settings($page_id)
                 administrator_email_format, administrator_email_page_id,
                 submitter_email, submitter_email_subject, submitter_email_format, submitter_email_page_id,
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
-                membership, membership_days
+                membership, membership_days, pretty_urls
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -402,6 +451,9 @@ function pg_cf_load_page_form_settings($page_id)
         'membership'           => (int)$row['membership'] === 1 ? 1 : 0,
         'membership_days'      => (int)$row['membership_days'],
         'auto_registration'    => (int)$row['auto_registration'] === 1 ? 1 : 0,
+        // Records addressed by their name (/<page>/<title>) rather than by
+        // their reference code; the name comes from the Title field.
+        'pretty_urls'          => (int)$row['pretty_urls'] === 1 ? 1 : 0,
     );
 }
 
@@ -622,6 +674,11 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     if (array_key_exists('auto_registration', $settings)) {
         $set['auto_registration'] = !empty($settings['auto_registration']) ? '1' : '0';
     }
+    // The records' names are written by pg_cf_sync_page_form() once the
+    // fields (the Title field among them) are in place.
+    if (array_key_exists('pretty_urls', $settings)) {
+        $set['pretty_urls'] = !empty($settings['pretty_urls']) ? '1' : '0';
+    }
     if (array_key_exists('confirmation_message', $settings)) {
         $msg = trim((string)$settings['confirmation_message']);
         if ($msg !== '') $set['confirmation_message'] = $msg;
@@ -707,12 +764,14 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     // insert and find what the operator removed.
     $existing = array();
     $old_list = array();
+    $old_title_id = 0;
     foreach ((array)db_items(
-        "SELECT id, name, label FROM form_fields
+        "SELECT id, name, label, rss_field FROM form_fields
          WHERE page_id = '$page_id' AND form_type = 'custom'
          ORDER BY sort_order ASC, id ASC") as $row) {
         $existing[(int)$row['id']] = $row;
         $old_list[] = array('name' => $row['name'], 'label' => $row['label']);
+        if ($old_title_id === 0 && (string)$row['rss_field'] === 'title') $old_title_id = (int)$row['id'];
     }
 
     $kept         = array();
@@ -831,9 +890,64 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
         db("DELETE FROM form_fields WHERE id = '" . (int)$id . "'");
     }
 
+    // The pretty URL state before the settings are written: turning it on,
+    // or moving the Title role to another field, renames the records.
+    $was_pretty   = check_if_pretty_urls_are_enabled($page_id) == true;
+    $title_before = $old_title_id;
+
     pg_cf_write_form_settings($page_id, $settings, $old_list, $written_list);
 
+    $result['addresses'] = pg_cf_refresh_address_names($page_id, $was_pretty, $title_before);
+
     return $result;
+}
+
+/**
+ * Give a form's records the names its pretty URLs need.
+ *
+ * The name comes from the record's Title field (update_submitted_form_address_name()),
+ * and custom_form.php writes it on every new submission while the setting is
+ * on. What was there before has none: turning the setting on, or moving the
+ * Title role to another field, renames every record, as the classic page and
+ * field screens do (edit_page.php, edit_field.php). While the setting stays
+ * on, a record that still has no name (written while it was off, or through
+ * the API) gets one. Returns how many records were given a name.
+ */
+function pg_cf_refresh_address_names($page_id, $was_pretty, $title_before)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || !pg_cf_page_form_ready()) return 0;
+    if (check_if_pretty_urls_are_enabled($page_id) != true) return 0;
+    if (function_exists('pg_sw_form_pretty_urls')) pg_sw_form_pretty_urls(0, true);
+
+    $title_now = (int)db_value(
+        "SELECT id FROM form_fields
+         WHERE page_id = '$page_id' AND rss_field = 'title'
+         ORDER BY sort_order ASC LIMIT 1");
+    if ($title_now <= 0) return 0;
+
+    // Every record when the names may all be stale; otherwise only the
+    // unnamed ones that have a title to be named after, so a save does not
+    // walk the records that never will.
+    if (!$was_pretty || (int)$title_before !== $title_now) {
+        $records = db_items(
+            "SELECT id FROM forms
+             WHERE page_id = '$page_id'
+             ORDER BY submitted_timestamp ASC, id ASC");
+    } else {
+        $records = db_items(
+            "SELECT DISTINCT forms.id, forms.submitted_timestamp
+             FROM forms
+             INNER JOIN form_data ON form_data.form_id = forms.id AND form_data.data != ''
+             INNER JOIN form_fields ON form_fields.id = form_data.form_field_id AND form_fields.rss_field = 'title'
+             WHERE forms.page_id = '$page_id' AND forms.address_name = ''
+             ORDER BY forms.submitted_timestamp ASC, forms.id ASC");
+    }
+    $named = 0;
+    foreach ((array)$records as $record) {
+        if (update_submitted_form_address_name($record['id']) !== '') $named++;
+    }
+    return $named;
 }
 
 /**
@@ -984,8 +1098,10 @@ function pg_cf_submitter_contact()
  */
 function pg_cf_connect_to_contact_off()
 {
+    // Only a string can be the switch; connect_to_contact[]= counts as not passed.
     return isset($_GET['connect_to_contact'])
-        && trim(mb_strtolower((string)$_GET['connect_to_contact'], 'UTF-8')) === 'false';
+        && is_string($_GET['connect_to_contact'])
+        && trim(mb_strtolower($_GET['connect_to_contact'], 'UTF-8')) === 'false';
 }
 
 /**
@@ -1006,8 +1122,9 @@ function pg_cf_field_initial_value($field, $lf, $folder_id = 0)
         $stored = $lf->get_field_value($id);
         if (is_array($stored) || ($stored !== '' && $stored !== null)) return $stored;
     }
-    if (isset($_GET['value_' . $id]) && trim((string)$_GET['value_' . $id]) !== '') {
-        return trim((string)$_GET['value_' . $id]);
+    // An array (value_<id>[]=) is not a value for one control, so it counts as not passed.
+    if (isset($_GET['value_' . $id]) && is_string($_GET['value_' . $id]) && trim($_GET['value_' . $id]) !== '') {
+        return trim($_GET['value_' . $id]);
     }
     if (!empty($field['contact_field'])) {
         $contact = pg_cf_submitter_contact();
@@ -1610,6 +1727,17 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                     if ($tag === 'textarea')      $default = isset($n['props']['text']) && is_string($n['props']['text']) ? $n['props']['text'] : '';
                     elseif ($tag === 'input' && !$check && $it !== 'file' && $it !== 'password') {
                         $default = isset($a['value']) ? (string)$a['value'] : '';
+                    } elseif ($tag === 'select' && !array_key_exists('multiple', $a) && !empty($n['children']) && is_array($n['children'])) {
+                        // A single pick list's default is the answer marked
+                        // selected: what an office-use-only list stores for
+                        // a visitor, who never sees it.
+                        foreach ($n['children'] as $o) {
+                            if ($tag_of($o) !== 'option') continue;
+                            $oa = _pg_cf_node_attrs($o);
+                            if (!array_key_exists('selected', $oa)) continue;
+                            $default = isset($oa['value']) ? (string)$oa['value'] : _pg_cf_node_text($o);
+                            break;
+                        }
                     }
 
                     $pattern = ($tag === 'input' && !$check
@@ -1881,8 +2009,9 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
  * field name => value (a file field takes the address of a picture). They
  * are written newest first, dated over the last weeks, so the template's
  * blog opens the same on every site - a site installed from a template has
- * no sample data of its own to copy. At most twelve; a name the form has no
- * field for is skipped.
+ * no sample data of its own to copy. At most twenty-four (a café's menu);
+ * a name the form has no field for is skipped, and a list of values fills a
+ * field that holds several (a check box group, a multiple pick list).
  *
  * 'blog': the posts of the sample blog (the form the sample data names
  * BLOG) become posts of this form - title, a short summary, the body as
@@ -2011,15 +2140,8 @@ function _pg_cf_seed_given_records($page_id, $records, $user_id)
     $pretty = (bool)db_value("SELECT pretty_urls FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     $now = time();
     $copied = 0;
-    foreach (array_slice(array_values($records), 0, 12) as $i => $record) {
-        if (!is_array($record)) continue;
-        $values = array();
-        foreach ($record as $name => $value) {
-            $key = mb_strtolower((string)$name, 'UTF-8');
-            if (!isset($fields[$key]) || !is_scalar($value)) continue;
-            $value = trim((string)$value);
-            if ($value !== '') $values[$key] = $value;
-        }
+    foreach (array_slice(array_values($records), 0, 24) as $i => $record) {
+        $values = _pg_cf_seed_record_values($record, $fields);
         if (!$values) continue;
 
         $when = $now - ($i * 4 + 1) * 86400;
@@ -2027,14 +2149,40 @@ function _pg_cf_seed_given_records($page_id, $records, $user_id)
             VALUES ('$page_id', '1', '" . (int)$user_id . "', '" . e(generate_form_reference_code()) . "', '$when', '" . (int)$user_id . "', '$when')");
         $form_id = (int)mysqli_insert_id(db::$con);
         if ($form_id <= 0) continue;
-        foreach ($values as $key => $value) {
-            db("INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
-                VALUES ('$form_id', '" . (int)$fields[$key]['id'] . "', '0', '" . e($value) . "', '" . e($fields[$key]['name']) . "', 'standard')");
+        // One row per value: a check box group keeps each ticked answer in
+        // a row of its own, which is what its filters and the edit screen read.
+        foreach ($values as $key => $list) {
+            foreach ($list as $value) {
+                db("INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
+                    VALUES ('$form_id', '" . (int)$fields[$key]['id'] . "', '0', '" . e($value) . "', '" . e($fields[$key]['name']) . "', 'standard')");
+            }
         }
         if ($pretty && function_exists('update_submitted_form_address_name')) update_submitted_form_address_name($form_id);
         $copied++;
     }
     return $copied;
+}
+
+// The values of one sample record that its form can hold, by the field's
+// lowercased name: a list of one value, or of several for a list of values
+// (a check box group, a multiple pick list). Names the form has no field
+// for, empty values and anything that is not a scalar are left out.
+function _pg_cf_seed_record_values($record, $fields)
+{
+    $out = array();
+    if (!is_array($record) || !is_array($fields)) return $out;
+    foreach ($record as $name => $value) {
+        $key = mb_strtolower((string)$name, 'UTF-8');
+        if (!isset($fields[$key])) continue;
+        $list = array();
+        foreach ((is_array($value) ? array_values($value) : array($value)) as $v) {
+            if (!is_scalar($v)) continue;
+            $v = trim((string)$v);
+            if ($v !== '' && !in_array($v, $list, true)) $list[] = $v;
+        }
+        if ($list) $out[$key] = $list;
+    }
+    return $out;
 }
 // Prepares custom shipping & billing form fields for custom layouts on express order, shipping
 // address, and billing info pages.  It prefills data, sets attributes for fields, and returns
@@ -2048,7 +2196,8 @@ function prepare_custom_form($properties)
     // Form type is used by express order to specify whether custom shipping or billing fields
     // should be dealt with
     $form_type = $properties['form_type'];
-    $ship_to_id = $properties['ship_to_id'];
+    // Only the shipping form has a recipient; the billing form passes none.
+    $ship_to_id = $properties['ship_to_id'] ?? '';
     // Prefix is used on express order for custom shipping fields in order to make the field names
     // unique for each recipient, because fields might appear multiple times for multiple recipients
     // Only the express order screen passes a prefix.
@@ -2057,7 +2206,8 @@ function prepare_custom_form($properties)
     $folder_id = $properties['folder_id'];
     // Is edit mode on or off.
     $edit = $properties['edit'];
-    $form_name = $properties['form_name'];
+    // Added to the edit-mode title when a caller names the form.
+    $form_name = $properties['form_name'] ?? '';
     $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
     // If the necessary ids were passed, then get values that visitor has submitted in the past,
     // that are stored in the db, and prefill.
@@ -2182,7 +2332,8 @@ function prepare_custom_form($properties)
         // (e.g. the form has not been submitted by the customer),
         // then set default value.
         if (!$form->field_in_session($html_name)) {
-            $value_from_query_string = trim(isset($_GET['value_' . $field['id']]) ? $_GET['value_' . $field['id']] : '');
+            // An array (value_<id>[]=) is not a value for one field, so it counts as not passed.
+            $value_from_query_string = trim((isset($_GET['value_' . $field['id']]) && is_string($_GET['value_' . $field['id']])) ? $_GET['value_' . $field['id']] : '');
             // If a default value was passed in the query string, then use that.
             if ($value_from_query_string != '') {
                 $form->set($html_name, $value_from_query_string);
@@ -2307,6 +2458,29 @@ function prepare_custom_form($properties)
         'edit_end' => $edit_end
     );
 }
+// What a custom shipping, billing or product form field keeps of the value a visitor posted,
+// for submit_custom_form() and the product forms of the shopping cart and the express order.
+// A check box group and a multi-select keep their list of strings, any other field one
+// string; a list where one value belongs (name[]=x from a hand-made request) counts as not
+// given, as it does in a form list's advanced search. The validators and the escaping that
+// follow then only ever see strings.
+function pg_cf_posted_value($value, $field)
+{
+    return pg_form_list_search_value($value, ($field['type'] == 'check box') || (($field['type'] == 'pick list') && !empty($field['multiple'])));
+}
+// Replaces the value a liveform holds for a custom shipping, billing or product form field
+// with what pg_cf_posted_value() keeps of it, before the field is validated and stored. A
+// value that is kept as posted is left untouched. The field needs its type and multiple
+// columns.
+function pg_cf_keep_posted_value($liveform, $html_field_name, $field)
+{
+    $posted_value = $liveform->get_field_value($html_field_name);
+    $kept_value = pg_cf_posted_value($posted_value, $field);
+
+    if ($kept_value !== $posted_value) {
+        $liveform->assign_field_value($html_field_name, $kept_value);
+    }
+}
 // This function is used by custom shipping and billing forms to process the custom form that was
 // submitted by the visitor.  This function is not used by custom form pages or product forms,
 // because those areas require different code.
@@ -2317,7 +2491,8 @@ function submit_custom_form($properties)
     $page_id = $properties['page_id'];
     $page_type = $properties['page_type'];
     $form_type = $properties['form_type'];
-    $ship_to_id = $properties['ship_to_id'];
+    // Only the shipping form has a recipient; the billing form passes none.
+    $ship_to_id = $properties['ship_to_id'] ?? '';
     // Prefix is used on express order for custom shipping fields in order to make the field names
     // unique for each recipient, because fields might appear multiple times for multiple recipients
     // Only the express order screen passes a prefix.
@@ -2378,7 +2553,9 @@ function submit_custom_form($properties)
 
             required,
 
-            wysiwyg
+            wysiwyg,
+
+            multiple
 
         FROM form_fields
 
@@ -2394,6 +2571,7 @@ function submit_custom_form($properties)
     // Loop through all form fields, so that we can save form data.
     foreach ($fields as $field) {
         $html_field_name = $prefix . 'field_' . $field['id'];
+        pg_cf_keep_posted_value($form, $html_field_name, $field);
         // If validation for required fields should be completed and field is required, then validate field.
         if (($require == true) && ($field['required'] == 1)) {
             $error_message = '';

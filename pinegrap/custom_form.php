@@ -26,6 +26,8 @@ check_banned_ip_addresses('submit custom form');
 /* begin: check that user has access to submit this form */
 
 // get page properties
+// Only a string can name the page: page_id[]= finds no page, as a missing id
+// does, and the script stops below, so every later read of page_id is a string.
 $query =
     "SELECT
         page.page_folder,
@@ -69,7 +71,7 @@ $query =
         custom_form_pages.confirmation_alternative_page_id
     FROM page
     LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-    WHERE page.page_id = '" . escape($_POST['page_id'] ?? '') . "'";
+    WHERE page.page_id = '" . escape((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 if (mysqli_num_rows($result) == 0) {
@@ -196,7 +198,8 @@ if ($save and $liveform->field_in_session('save_button')) {
 $connect_to_contact = '';
 
 // if there is a connect to contact passed in the URL string then prepare and save it. This will be used later on.
-if (isset($_POST['connect_to_contact']) == TRUE) {
+// (only a string can be one; an array from connect_to_contact[]= counts as not passed)
+if ((isset($_POST['connect_to_contact']) == TRUE) && is_string($_POST['connect_to_contact'])) {
     $connect_to_contact = trim(mb_strtolower($_POST['connect_to_contact']));
 }
 
@@ -235,6 +238,30 @@ while ($row = mysqli_fetch_assoc($result)) {
     $fields[] = $row;
 }
 
+// The hidden fields the form carries, the CAPTCHA answer, and every field but a
+// check box group or a multi-select post a single value. The CAPTCHA honeypot
+// (body) is left out: anything in it, an array too, marks the submitter a bot.
+$single_value_fields = array('folder_id', 'send_to', 'add_watcher', 'add_watcher_page_id', 'captcha_submitted_answer', 'captcha_validation');
+
+foreach ($fields as $field) {
+    // A file control sends one file. One sent as name[] arrives with every key an
+    // array, which the name checks and the copy below cannot take, so it counts
+    // as no file chosen, the way an empty file control arrives.
+    if ($field['type'] == 'file upload') {
+        if (isset($_FILES[$field['id']]['name']) && is_array($_FILES[$field['id']]['name'])) {
+            $_FILES[$field['id']] = array('name' => '', 'type' => '', 'tmp_name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'size' => 0);
+        }
+
+    } else if (
+        ($field['type'] != 'check box')
+        && (($field['type'] != 'pick list') || ($field['multiple'] == 0))
+    ) {
+        $single_value_fields[] = $field['id'];
+    }
+}
+
+pg_liveform_single_values($liveform, $single_value_fields);
+
 // assume that we should not deal with office use only fields, until we find out otherwise
 $office_use_only = FALSE;
 
@@ -262,7 +289,7 @@ foreach ($fields as $field) {
         if ($field['required'] and ($action == 'submit')) {
             // if field is a file upload type
             if ($field['type'] == 'file upload') {
-                if (!$_FILES[$field['id']]['name']) {
+                if (empty($_FILES[$field['id']]['name'])) {
                     $error_message = '';
                     
                     if ($field['label']) {
@@ -537,7 +564,7 @@ if ($liveform->check_form_errors() == false) {
         // else this field does not have multiple values
         } else {
             // if field has file upload type and file was uploaded for field, prepare uploaded file
-            if (($field['type'] == 'file upload') && ($_FILES[$field['id']]['name'])) {
+            if (($field['type'] == 'file upload') && !empty($_FILES[$field['id']]['name'])) {
                 $file_name = prepare_file_name($_FILES[$field['id']]['name']);
 
                 // Check if file name is already in use and change it if necessary.
@@ -783,6 +810,19 @@ if ($liveform->check_form_errors() == false) {
         foreach ($files as $file) {
             db("UPDATE files SET folder = '$upload_folder_id' WHERE id = '" . $file['id'] . "'");
         }
+    }
+
+    // A signed-in person may fill a form in for somebody else - staff booking
+    // an appointment for a patient on the phone. When the e-mail the form
+    // writes to the contact is not theirs, the values belong to that other
+    // person: the submission gets a contact of its own, as an anonymous one
+    // does, and the signed-in person's contact is left as it was. A form with
+    // no contact e-mail field cannot tell the two apart and keeps updating
+    // the signed-in person's contact.
+    $contact_for_someone_else = pg_cf_contact_is_someone_else($connect_to_contact_email_address, $contact_id, $sql_update_contact);
+
+    if ($contact_for_someone_else) {
+        $contact_id = '';
     }
 
     // If the visitor clicked save-for-later button, then send visitor back to
@@ -1043,8 +1083,10 @@ if ($liveform->check_form_errors() == false) {
             // if the user was found via auto-registation,
             // because this visitor did not login as that user,
             // so we don't want the visitor to be allowed to destroy
-            // and existing connection to some other contact.
-            if (($user_id) && ($auto_registration_existing_user_found == false)) {
+            // and existing connection to some other contact. A form filled
+            // in for somebody else is not connected to the signed-in user
+            // either: the contact is that other person's.
+            if (($user_id) && ($auto_registration_existing_user_found == false) && !$contact_for_someone_else) {
                 $query = "UPDATE user SET user_contact = '$contact_id' WHERE user_id = '$user_id'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
@@ -1580,7 +1622,8 @@ if ($liveform->check_form_errors() == false) {
     $liveform->remove_form();
     
     // if visitor tracking is on, update visitor record with custom form information, if visitor has not already submitted a custom form
-    if (VISITOR_TRACKING == true) {
+    // (a bot, or a post without a page view first, has no visitor record)
+    if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
         $query = "UPDATE visitors
                  SET
                     custom_form_submitted = '1',

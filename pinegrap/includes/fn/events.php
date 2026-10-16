@@ -82,11 +82,64 @@ function pg_announce_contact_created($contact_id, $email = null)
     ));
 }
 
+// What contact_group.members_changed carries: the group, and the contacts put
+// into it and taken out of it as two lists of ids. null when nobody moved, so a
+// save that ticked what was already ticked announces nothing.
+function pg_contact_group_members_event($contact_group_id, $name, $added, $removed)
+{
+    $lists = array('added' => array(), 'removed' => array());
+
+    foreach (array('added' => $added, 'removed' => $removed) as $key => $ids) {
+        foreach ((array) $ids as $id) {
+            $id = (int) $id;
+
+            if (($id > 0) && !in_array($id, $lists[$key], true)) {
+                $lists[$key][] = $id;
+            }
+        }
+    }
+
+    if (((int) $contact_group_id <= 0) || (empty($lists['added']) && empty($lists['removed']))) {
+        return null;
+    }
+
+    return array(
+        'id'      => (int) $contact_group_id,
+        'name'    => (string) $name,
+        'added'   => $lists['added'],
+        'removed' => $lists['removed'],
+    );
+}
+
+// Contacts put into or taken out of one contact group: one event for the
+// change, not one per contact, so ticking a group for two hundred selected
+// contacts queues one row per subscriber. The group's name is read back when
+// the caller does not have it; a group that is not there is not announced.
+function pg_announce_contact_group_members($contact_group_id, $added = array(), $removed = array(), $name = null)
+{
+    $contact_group_id = (int) $contact_group_id;
+
+    if (!pg_contact_group_members_event($contact_group_id, '', $added, $removed)) {
+        return;
+    }
+
+    if ($name === null) {
+        $name = db_value("SELECT name FROM contact_groups WHERE id = '" . $contact_group_id . "' LIMIT 1");
+
+        if ($name === null) {
+            return;
+        }
+    }
+
+    pg_announce('contact_group.members_changed', pg_contact_group_members_event($contact_group_id, $name, $added, $removed));
+}
+
 // The events the workspace listens to (includes/workspace/watch.php): what
 // starts a scheduled action with an event rule, and what is written into the
-// channels that watch a record. Only these are kept: the workspace's own
-// events (workspace.*) and the ERP's (erp.*) have nobody here to read them,
-// and a public channel announces every message.
+// channels that watch a record. Only these are kept from pg_announce(): the
+// ERP's (erp.*) have nobody here to read them, and the workspace keeps its
+// own (workspace.*) through ws_event(), only while a scheduled action waits
+// for one - a public channel announces every message.
 function pg_event_workspace_events()
 {
     return array(

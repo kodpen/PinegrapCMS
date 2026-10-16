@@ -20,14 +20,25 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// The menu is one value; one sent as an array (?menu_id[]=x) counts as not
+// given: it ended in an error page.
+pg_request_single_values(array('menu_id'));
+
 // get menu id and name that we will add the menu item to, to use for later
 $query =
     "SELECT
         name
     FROM menus
-    WHERE id = '" . escape($_REQUEST['menu_id']) . "'";
+    WHERE id = '" . escape($_REQUEST['menu_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// Opened without a menu, or for one that no longer exists (stale link,
+// hand-typed URL): a "not found" screen instead of PHP notices from the
+// missing menu below.
+if (!$row) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
 
 $menu_id = (int)($_REQUEST['menu_id'] ?? 0);
 $menu_name = $row['name'];
@@ -163,7 +174,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

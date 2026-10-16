@@ -88,16 +88,20 @@ function ws_reaction_valid($emoji)
 }
 
 /**
- * Leaves an emoji on a message, or takes it back.
+ * Whether this emoji may be left on a message or taken back: the checks of
+ * ws_reaction_set(), made on their own so that the API's dry run meets the
+ * same refusals.
  *
- * @param array    $viewer
- * @param array    $message
- * @param string   $emoji
- * @param int      $app_id an application reacting for its owner (0 = the person)
- * @param bool|null $on    true to leave, false to take back, null to toggle
- * @return array ok, error
+ * @param array     $viewer
+ * @param array     $message
+ * @param string    $emoji
+ * @param int       $app_id an application reacting for its owner (0 = the person)
+ * @param bool|null $on     true to leave, false to take back, null to toggle
+ * @return array ok, error, emoji (trimmed), on (what the call does), changes
+ *               (false when the emoji already is, or is not, there), and
+ *               kind, sender and where: the reaction's row
  */
-function ws_reaction_set($viewer, $message, $emoji, $app_id = 0, $on = null)
+function ws_reaction_check($viewer, $message, $emoji, $app_id = 0, $on = null)
 {
     if (!ws_interact_ready()) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
@@ -128,16 +132,38 @@ function ws_reaction_set($viewer, $message, $emoji, $app_id = 0, $on = null)
         $on = !$has;
     }
 
-    if ($on && !$has) {
-        // A message is not a place for a hundred different emoji.
-        if ((int) db_value("SELECT COUNT(DISTINCT emoji) FROM ws_reactions WHERE message_id = '" . (int) $message['id'] . "'") >= 20) {
-            return array('ok' => false, 'error' => lang('This message already carries as many different reactions as it can.'));
-        }
+    // A message is not a place for a hundred different emoji.
+    if ($on && !$has && ((int) db_value("SELECT COUNT(DISTINCT emoji) FROM ws_reactions WHERE message_id = '" . (int) $message['id'] . "'") >= 20)) {
+        return array('ok' => false, 'error' => lang('This message already carries as many different reactions as it can.'));
+    }
 
+    return array('ok' => true, 'error' => '', 'emoji' => $emoji, 'on' => (bool) $on, 'changes' => ((bool) $on !== $has),
+        'kind' => $kind, 'sender' => $sender, 'where' => $where);
+}
+
+/**
+ * Leaves an emoji on a message, or takes it back.
+ *
+ * @param array    $viewer
+ * @param array    $message
+ * @param string   $emoji
+ * @param int      $app_id an application reacting for its owner (0 = the person)
+ * @param bool|null $on    true to leave, false to take back, null to toggle
+ * @return array ok, error
+ */
+function ws_reaction_set($viewer, $message, $emoji, $app_id = 0, $on = null)
+{
+    $checked = ws_reaction_check($viewer, $message, $emoji, $app_id, $on);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
+    }
+
+    if ($checked['on'] && $checked['changes']) {
         db("INSERT IGNORE INTO ws_reactions (message_id, sender_kind, sender_id, emoji, created_at)
-            VALUES ('" . (int) $message['id'] . "', '" . $kind . "', '" . $sender . "', '" . e($emoji) . "', '" . time() . "')");
-    } elseif (!$on && $has) {
-        db("DELETE FROM ws_reactions WHERE " . $where);
+            VALUES ('" . (int) $message['id'] . "', '" . $checked['kind'] . "', '" . $checked['sender'] . "', '" . e($checked['emoji']) . "', '" . time() . "')");
+    } elseif (!$checked['on'] && $checked['changes']) {
+        db("DELETE FROM ws_reactions WHERE " . $checked['where']);
     }
 
     ws_message_touch($message['id']);
@@ -404,29 +430,27 @@ function ws_poll($poll_id)
 }
 
 /**
- * Asks the channel a question with options to choose from. The question is
- * the message; the options, the settings and the votes are the poll's.
+ * The checks ws_poll_create() makes, without writing, so that a dry run meets
+ * the same refusals: a question that fits in a message, two to ten different
+ * options, and a closing moment later than now.
  *
- * @param array $viewer
- * @param array $channel
- * @param array $data question, options (texts), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
- * @param int   $app_id
- * @return array ok, error, field, message_id, poll_id
+ * @param array $data question, options (texts), closes_at (timestamp, 0 = open until closed)
+ * @return array ok, error, field, question, options, closes_at
  */
-function ws_poll_create($viewer, $channel, $data, $app_id = 0)
+function ws_poll_input($data)
 {
     $fail = function ($error, $field = '') {
-        return array('ok' => false, 'error' => $error, 'field' => $field, 'message_id' => 0, 'poll_id' => 0);
+        return array('ok' => false, 'error' => $error, 'field' => $field);
     };
 
-    if (!ws_interact_ready()) {
-        return $fail(lang('Invalid request.'));
-    }
-
-    $question = trim((string) ($data['question'] ?? ''));
+    $question = ws_tokens_normalise(trim((string) ($data['question'] ?? '')));
 
     if ($question === '') {
         return $fail(lang('A poll needs a question.'), 'question');
+    }
+
+    if (mb_strlen($question) > WS_MESSAGE_MAX) {
+        return $fail(lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)), 'question');
     }
 
     $options = array();
@@ -453,7 +477,39 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
         return $fail(lang('The poll has to close later than now.'), 'closes_at');
     }
 
-    $sent = ws_message_send($viewer, $channel, $question, array('app_id' => $app_id));
+    return array('ok' => true, 'error' => '', 'field' => '', 'question' => $question, 'options' => $options, 'closes_at' => max(0, $closes_at));
+}
+
+/**
+ * Asks the channel a question with options to choose from. The question is
+ * the message; the options, the settings and the votes are the poll's.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $data question, options (texts), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
+ * @param int   $app_id
+ * @return array ok, error, field, message_id, poll_id
+ */
+function ws_poll_create($viewer, $channel, $data, $app_id = 0)
+{
+    $fail = function ($error, $field = '') {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'message_id' => 0, 'poll_id' => 0);
+    };
+
+    if (!ws_interact_ready()) {
+        return $fail(lang('Invalid request.'));
+    }
+
+    $checked = ws_poll_input($data);
+
+    if (!$checked['ok']) {
+        return $fail($checked['error'], $checked['field']);
+    }
+
+    $options = $checked['options'];
+    $closes_at = $checked['closes_at'];
+
+    $sent = ws_message_send($viewer, $channel, $checked['question'], array('app_id' => $app_id));
 
     if (!$sent['ok']) {
         return $fail($sent['error'], 'question');
@@ -461,7 +517,7 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
 
     db("INSERT INTO ws_polls (message_id, channel_id, multiple, anonymous, closes_at, created_by, created_at)
         VALUES ('" . (int) $sent['message_id'] . "', '" . (int) $channel['id'] . "', '" . (empty($data['multiple']) ? 0 : 1) . "',
-            '" . (empty($data['anonymous']) ? 0 : 1) . "', '" . max(0, $closes_at) . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
+            '" . (empty($data['anonymous']) ? 0 : 1) . "', '" . $closes_at . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
 
     $poll_id = (int) mysqli_insert_id(db::$con);
 
@@ -486,6 +542,65 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
  * @return array ok, error, field
  */
 function ws_poll_edit($viewer, $poll, $data)
+{
+    $checked = ws_poll_edit_check($viewer, $poll, $data);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'field' => $checked['field']);
+    }
+
+    $message = $checked['message'];
+    $question = $checked['question'];
+    $options = $checked['options'];
+    $multiple = $checked['multiple'];
+    $anonymous = $checked['anonymous'];
+    $closes_at = $checked['closes_at'];
+
+    // The question is the message: its edit keeps tags, mentions and
+    // checklists right and tells whoever it newly mentions.
+    if ($question !== trim((string) $message['body'])) {
+        $edited = ws_message_edit($viewer, $message, $question);
+
+        if (!$edited['ok']) {
+            return array('ok' => false, 'error' => $edited['error'], 'field' => 'question');
+        }
+    } else {
+        db("UPDATE ws_messages SET edited_at = '" . time() . "' WHERE id = '" . (int) $message['id'] . "'");
+        ws_message_touch($message['id']);
+    }
+
+    $keep = array();
+
+    foreach ($options as $sort => $option) {
+        if ($option['id'] > 0) {
+            db("UPDATE ws_poll_options SET sort = '" . (int) $sort . "', label = '" . e($option['label']) . "'
+                WHERE id = '" . (int) $option['id'] . "' AND poll_id = '" . (int) $poll['id'] . "'");
+            $keep[] = (int) $option['id'];
+        } else {
+            db("INSERT INTO ws_poll_options (poll_id, sort, label) VALUES ('" . (int) $poll['id'] . "', '" . (int) $sort . "', '" . e($option['label']) . "')");
+            $keep[] = (int) mysqli_insert_id(db::$con);
+        }
+    }
+
+    // Left out: only options nobody voted for can be, as checked above.
+    db("DELETE FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "' AND id NOT IN (" . implode(',', $keep) . ")");
+
+    db("UPDATE ws_polls SET multiple = '" . ($multiple ? 1 : 0) . "', anonymous = '" . ($anonymous ? 1 : 0) . "', closes_at = '" . $closes_at . "'
+        WHERE id = '" . (int) $poll['id'] . "'");
+
+    return array('ok' => true, 'error' => '', 'field' => '');
+}
+
+/**
+ * The checks ws_poll_edit() makes, without writing, so that a dry run meets
+ * the same refusals. What comes back is the poll as it is about to be saved.
+ *
+ * @param array $viewer
+ * @param array $poll
+ * @param array $data as ws_poll_edit() takes it
+ * @return array ok, error, field, message, question, options (list of {id, label}), multiple, anonymous, closes_at
+ */
+function ws_poll_edit_check($viewer, $poll, $data)
 {
     $fail = function ($error, $field = '') {
         return array('ok' => false, 'error' => $error, 'field' => $field);
@@ -591,39 +706,17 @@ function ws_poll_edit($viewer, $poll, $data)
         return $fail(lang('The poll has to close later than now.'), 'closes_at');
     }
 
-    // The question is the message: its edit keeps tags, mentions and
-    // checklists right and tells whoever it newly mentions.
+    // A new wording of the question is held to the rules of a message edit.
     if ($question !== trim((string) $message['body'])) {
-        $edited = ws_message_edit($viewer, $message, $question);
+        $editable = ws_message_edit_check($viewer, $message, $question);
 
-        if (!$edited['ok']) {
-            return $fail($edited['error'], 'question');
-        }
-    } else {
-        db("UPDATE ws_messages SET edited_at = '" . time() . "' WHERE id = '" . (int) $message['id'] . "'");
-        ws_message_touch($message['id']);
-    }
-
-    $keep = array();
-
-    foreach ($options as $sort => $option) {
-        if ($option['id'] > 0) {
-            db("UPDATE ws_poll_options SET sort = '" . (int) $sort . "', label = '" . e($option['label']) . "'
-                WHERE id = '" . (int) $option['id'] . "' AND poll_id = '" . (int) $poll['id'] . "'");
-            $keep[] = (int) $option['id'];
-        } else {
-            db("INSERT INTO ws_poll_options (poll_id, sort, label) VALUES ('" . (int) $poll['id'] . "', '" . (int) $sort . "', '" . e($option['label']) . "')");
-            $keep[] = (int) mysqli_insert_id(db::$con);
+        if (!$editable['ok']) {
+            return $fail($editable['error'], 'question');
         }
     }
 
-    // Left out: only options nobody voted for can be, as checked above.
-    db("DELETE FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "' AND id NOT IN (" . implode(',', $keep) . ")");
-
-    db("UPDATE ws_polls SET multiple = '" . ($multiple ? 1 : 0) . "', anonymous = '" . ($anonymous ? 1 : 0) . "', closes_at = '" . $closes_at . "'
-        WHERE id = '" . (int) $poll['id'] . "'");
-
-    return array('ok' => true, 'error' => '', 'field' => '');
+    return array('ok' => true, 'error' => '', 'field' => '', 'message' => $message, 'question' => $question, 'options' => $options,
+        'multiple' => $multiple, 'anonymous' => $anonymous, 'closes_at' => $closes_at);
 }
 
 /**
@@ -765,6 +858,33 @@ function ws_can_close_poll($viewer, $poll, $channel)
 }
 
 /**
+ * May this person vote in the poll now? The checks ws_poll_vote() makes,
+ * without writing, so that a dry run meets the same refusals. A poll whose
+ * time ran out is refused as closed and said to be expired: the vote then
+ * closes it.
+ *
+ * @param array $viewer
+ * @param array $poll
+ * @return array ok, error, expired
+ */
+function ws_poll_vote_check($viewer, $poll)
+{
+    if ((int) $poll['closed_at'] > 0) {
+        return array('ok' => false, 'error' => lang('The poll is closed.'), 'expired' => false);
+    }
+
+    if (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time())) {
+        return array('ok' => false, 'error' => lang('The poll is closed.'), 'expired' => true);
+    }
+
+    if (!ws_can_post_channel($viewer, ws_channel($poll['channel_id']))) {
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'expired' => false);
+    }
+
+    return array('ok' => true, 'error' => '', 'expired' => false);
+}
+
+/**
  * Casts this person's vote, replacing the one they cast before. An empty
  * choice takes the vote back.
  *
@@ -775,18 +895,14 @@ function ws_can_close_poll($viewer, $poll, $channel)
  */
 function ws_poll_vote($viewer, $poll, $option_ids)
 {
-    if ((int) $poll['closed_at'] > 0) {
-        return array('ok' => false, 'error' => lang('The poll is closed.'));
-    }
+    $checked = ws_poll_vote_check($viewer, $poll);
 
-    if (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time())) {
-        ws_poll_close(null, $poll);
+    if (!$checked['ok']) {
+        if ($checked['expired']) {
+            ws_poll_close(null, $poll);
+        }
 
-        return array('ok' => false, 'error' => lang('The poll is closed.'));
-    }
-
-    if (!ws_can_post_channel($viewer, ws_channel($poll['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+        return array('ok' => false, 'error' => $checked['error']);
     }
 
     $valid = array_map('intval', (array) db_values("SELECT id FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "'"));

@@ -19,6 +19,15 @@
 include('init.php');
 $user = validate_user();
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM forms WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // Get info about submitted form.
 $query =
     "SELECT 
@@ -702,14 +711,14 @@ if (!$_POST) {
     // If the form is incomplete then show certain buttons.
     if (!$complete) {
         $output_buttons =
-            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save_as</span><span class="btn-text" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
-            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-secondary" data-loading-content="' . lang(array('string'=>'Converting Complete') ) . '"><span class="material-icons me-2">radio_button_unchecked</span><span class="btn-text">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
+            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-success "><span class="material-icons me-2">save_as</span><span class="btn-text" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
+            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-secondary"><span class="material-icons me-2">radio_button_unchecked</span><span class="btn-text">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
 
     // Otherwise the form is complete, so show different buttons.
     } else {
         $output_buttons =
-            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-warning " data-loading-content="' . lang(array('string'=>'Converting Incomplete') ) . '"><span class="material-icons me-2">radio_button_checked</span><span class="btn-text">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
+            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-warning "><span class="material-icons me-2">radio_button_checked</span><span class="btn-text">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
     }
     
     // Where it was talked about in the workspace, and the tasks about it.
@@ -720,6 +729,12 @@ if (!$_POST) {
         $output_workspace_button = ws_record_button($user, 'form', (int) $_GET['id'], trim($form_name . ' ' . $reference_code));
     }
 
+    // The page a site's Edit button opened this screen from
+    // (pg_sw_backend_edit_url()): saving or cancelling goes back there.
+    // Only a path on this site.
+    $send_to = pg_safe_redirect_path(pg_send_to_url(''), '/__none__');
+    if ($send_to === '/__none__') $send_to = '';
+
     echo
     pg_page_shell(
         array(
@@ -728,7 +743,7 @@ if (!$_POST) {
             'icon'=>'form',
             'heading'=>lang('Edit Submitted Form'),
             'heading_description' => lang('View or update this submitted form. Office use only fields are also visible.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
+            'cancel'=>array('enable'=>'true','url'=>($send_to !== '') ? $send_to : 'view_submitted_forms.php'),
             'breadcrumb' => array(
                 array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
                 array('label' => lang('Edit Submitted Form')),
@@ -757,6 +772,7 @@ if (!$_POST) {
                     <form' . $output_enctype . ' name="form" action="edit_submitted_form.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
+                        ' . (($send_to !== '') ? '<input type="hidden" name="send_to" value="' . h($send_to) . '" />' : '') . '
                         <div class="row">
                             <div class="col-12">
                                 <div class="card my-4 ">
@@ -833,7 +849,7 @@ if (!$_POST) {
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
                                     ' . $output_buttons . '
-                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>
@@ -1469,13 +1485,17 @@ if (!$_POST) {
             
         // else an error does exist, so forward user back to edit submitted form
         } else {
-            // if there is a send to, then forward user to send
-            if ((isset($_POST['send_to']) == TRUE) && ($_POST['send_to'] != '')) {
+            // The page's own edit form (form_item_view_page_id) shows the
+            // errors where it was posted from; this screen shows them itself
+            // and keeps the page to go back to.
+            if (!empty($_POST['form_item_view_page_id']) && (isset($_POST['send_to']) == TRUE) && ($_POST['send_to'] != '')) {
                 header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
                 
             // else forward user to edit submitted form in backend
             } else {
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $_POST['id']);
+                $send_to = pg_safe_redirect_path(pg_send_to_url(''), '/__none__');
+                if ($send_to === '/__none__') $send_to = '';
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . (int) $_POST['id'] . (($send_to !== '') ? '&send_to=' . urlencode($send_to) : ''));
             }
         }
     }

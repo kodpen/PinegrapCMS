@@ -19,7 +19,8 @@ if (!defined('PG_INIT_LOADED')) {
 ?>
 <select id="service" name="service" class="form-select">
 	<option value=""></option>
-	<?php if (USPS_USER_ID): ?>
+	<?php // A method set up with the retired Web Tools user ID keeps its service. ?>
+	<?php if (USPS_USER_ID || pg_carrier_api_ready('usps')): ?>
 	<optgroup label="USPS">
 		<option value="usps_express"><?=h(get_shipping_service_name('usps_express'))?></option>
 		<option value="usps_priority"><?=h(get_shipping_service_name('usps_priority'))?></option>

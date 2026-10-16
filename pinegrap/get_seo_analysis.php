@@ -29,7 +29,8 @@ validate_area_access($user, 'user');
 validate_token_field();
 
 $type = $_GET['type'] ?? '';
-$id = (int) ($_GET['id'] ?? 0);
+// An id sent as an array counts as not given (it would read as record 1).
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 
 if (!in_array($type, array('page', 'product', 'product_group')) || !$id) {
     exit(lang('Sorry, we could not find that record.'));

@@ -23,6 +23,10 @@ $user = validate_user();
 
 $liveform = new liveform('add_field');
 
+// The form's page, product group and product are single values; one sent as an
+// array (?page_id[]=x) counts as not given: it ended in an error page.
+pg_request_single_values(array('page_id', 'product_group_id', 'product_id'));
+
 // if there is a page_id supplied in the query string, then this is a page form
 if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     validate_area_access($user, 'user');
@@ -141,7 +145,7 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     if (!$form_name) {
         $form_name = $page_name;
     }
-    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
+    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
     $pg_breadcrumb_parent = array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php');
     $output_form_designer_content_heading = lang(array('string'=>'Create {var:1} Field','vars'=>array(ucwords($form_type_name)) ));
     $output_form_designer_content_subheading = lang(array('string'=>'Create a new field on this {var:1}.','vars'=>$form_type_name ) );
@@ -153,6 +157,9 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
 
     $form_type = 'product_group';
     $form_type_name = lang('product form');
+
+    // Not a page form: no page type for the position list and layout checks below.
+    $page_type = '';
     $form_type_identifier_id = 'product_group_id';
 
     // form_type is pinned as well as the id: copies generated for each product
@@ -199,6 +206,9 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
 
     $form_type = 'product';
     $form_type_name = lang('product form');
+
+    // Not a page form: no page type for the position list and layout checks below.
+    $page_type = '';
     $form_type_identifier_id = 'product_id';
     $form_type_filter =
         "form_fields." . $form_type_identifier_id . " = '" . e($_REQUEST[$form_type_identifier_id]) . "'";
@@ -230,10 +240,16 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     }
     
 
-    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
+    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
     $pg_breadcrumb_parent = array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php');
     $output_form_designer_content_heading = lang('Create Product Form Field');
     $output_form_designer_content_subheading = lang('Create a new field on this product form.');
+
+// Opened without a page, product group or product (stale link, hand-typed
+// URL): there is no form to add the field to, so a "not found" screen instead
+// of PHP notices from the form details below that were never set.
+} else {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 // The breadcrumb ends with this screen; the product group branch has two parents.
@@ -548,7 +564,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

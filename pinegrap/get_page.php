@@ -18,6 +18,18 @@
 
 include ('init.php');
 
+// The page name and the visitor's tracking, affiliate, offer and campaign
+// codes are single values. One sent as an array (?utm_source[]=x, ?a[]=x)
+// counts as not given: trim() and mb_strpos() refused it with an error page
+// on every page of the site.
+foreach (array('page', 'a', 'o', 't', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content') as $single_value_parameter)
+{
+	if (isset($_GET[$single_value_parameter]) && !is_string($_GET[$single_value_parameter]))
+	{
+		unset($_GET[$single_value_parameter]);
+	}
+}
+
 // ── Bot detection ────────────────────────────────────────────────────────────
 // Moved into waf.php, which init.php has already run by this point. It defines
 // IS_BOT, so init_tracking() below still skips crawlers exactly as before.
@@ -81,7 +93,24 @@ if (isset($_GET['page']) && $_GET['page'])
 		// path segment is parsed here unconditionally so embedded system widgets
 		// can read their own context (product slug, drill-down group, etc.)
 		// without the page being forced into a legacy page_type.
-		if ($layout_type == 'system') {
+		//
+		// 'system' is also the default layout of a classic page, so a
+		// classic form list view is left to its own case below: it reads
+		// the record's address name from the segment (/blog/<name>), and
+		// cutting the segment off here made every such address miss.
+		if ($layout_type == 'system' && $page_type !== 'form list view') {
+			// A record of a form with pretty URLs on, named after the page
+			// that shows it (/blog-post/<name>) or, the classic shape, after
+			// a list of it (/blog/<name>, sent on to the record's address).
+			if (function_exists('pg_sw_route_record_address')) {
+				$pg_record_address = pg_sw_route_record_address($page_id, pg_sw_request_segment($page_name));
+				if ($pg_record_address !== '') {
+					$pg_record_query = $_GET;
+					unset($pg_record_query['page']);
+					header('Location: ' . URL_SCHEME . HOSTNAME . $pg_record_address . ($pg_record_query ? '?' . http_build_query($pg_record_query) : ''), true, 301);
+					exit();
+				}
+			}
 			$page_name = $page_name_before_slash;
 		}
 		switch ($page_type)
@@ -246,6 +275,14 @@ if (($folder_archived == '1') && ($edit_access == false))
 	log_activity(lang(array('string'=>'access denied to archived page ({var:1})','vars'=>$page_name)), $_SESSION['sessionusername']);
 	output_error(lang('The page that you requested is no longer available because it has been archived.'), 410);
 }
+// Automatic language redirect (includes/fn/language_redirect.php): the first
+// page of a visit, in the source language, is sent on to the visitor's
+// language; a move between languages is remembered. Before the page types
+// below, which may answer with a redirect of their own.
+if (function_exists('pg_lang_redirect_page'))
+{
+	pg_lang_redirect_page($page_id, !(isset($_GET['page']) && $_GET['page']));
+}
 // do different things depending on page type
 switch ($page_type)
 {
@@ -355,7 +392,7 @@ case 'private':
 	// designed sign-in page when it has one, see pg_sw_sign_in_url())
 	if (USER_LOGGED_IN == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(REQUEST_URL), 'login', pg_sw_page_is_visual($page_id)));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(REQUEST_URL), 'login', pg_sw_page_is_visual($page_id), $page_id));
 		exit();
 		// else user is logged in
 	}
@@ -391,7 +428,7 @@ case 'registration':
 	// (the site's designed sign-in page, which links to sign-up, when it has one)
 	if (pg_session_signed_in() == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL), 'registration entrance', pg_sw_page_is_visual($page_id)));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL), 'registration entrance', pg_sw_page_is_visual($page_id), $page_id));
 		exit();
 	}
 	break;
@@ -2174,7 +2211,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 				// get all products in the current product group
 				$products = get_products_in_product_group($product_group['id'], $multilevel);
 				// Get prices for products that have been discounted by offers, so we can include sale price in RSS.
-				$discounted_product_prices = get_discounted_product_prices();
+				$discounted_product_prices = get_discounted_product_prices(false);
 				// loop through all products in order to prepare RSS
 				foreach ($products as $product)
 				{
@@ -2495,8 +2532,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 }
 elseif (isset($_GET['icalendar']) && $_GET['icalendar'] == 'true')
 {
-	// get calendar event data
-	$calendar_event = get_calendar_event($_GET['id'], 0);
+	// get calendar event data (an id sent as an array is no event)
+	$calendar_event = is_scalar($_GET['id'] ?? null) ? get_calendar_event($_GET['id'], 0) : false;
 	// if calendar event could not be found, then output error
 	if ($calendar_event == false)
 	{
@@ -3251,6 +3288,18 @@ function init_tracking()
 		return;
 	}
 
+	// The firewall marks bots only when it runs: with it switched off, on an
+	// allow-listed address or on an excluded path it never classifies the
+	// request, and every crawler page was written as a visit. The same user
+	// agent classes it skips are skipped here; nothing is blocked or logged.
+	if (!defined('IS_BOT') && function_exists('waf_classify_bot')) {
+		$tracking_bot = waf_classify_bot(isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '');
+
+		if ($tracking_bot['class'] !== 'human') {
+			return;
+		}
+	}
+
 	// Skip other Pinegrap installations calling in — licence checks, update
 	// checks, and anything else server-to-server.
 	//
@@ -3306,12 +3355,13 @@ function init_tracking()
 	// if there is an http referer and the http referer has not already been tracked
 	if (isset($_SERVER['HTTP_REFERER']) && $_SERVER['HTTP_REFERER'] && !isset($_SESSION['software']['http_referer']))
 	{
-		// parse the http referer url in order to get host
-		$http_referer_parsed_url = parse_url($_SERVER['HTTP_REFERER']);
-		// remove www. from http referer host
-		$http_referer_host = str_replace('www.', '', $http_referer_parsed_url['host']);
-		// remove www. from http host
-		$http_host = str_replace('www.', '', $_SERVER['HTTP_HOST']);
+		// get the http referer host and remove www. from it. A referer
+		// without a host ("foo", "/path", "https:///") has an empty one.
+		$http_referer_host = str_replace('www.', '', (string) parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST));
+		// remove www. and the port from http host. The referer host above
+		// never carries the port, so a site served on one (127.0.0.1:8000)
+		// counted its own pages as a referring site.
+		$http_host = str_replace('www.', '', preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
 		// if the http referer is not from the same host as the http host, then store http referer in session
 		if ($http_referer_host != $http_host)
 		{
@@ -3415,137 +3465,148 @@ function init_tracking()
 			// if there is an http referer
 			if ($referer)
 			{
-				$referring_host_name = $http_referer_parsed_url['host'];
-				// check to see if http referer is a search engine and find search query delimiter
-				if (preg_match('/www\.google.*/i', $referer))
+				// Parse the stored referer rather than this request's. It is
+				// stored on the first page of the visit; if that page ended
+				// before the visitor record was created, this request may
+				// carry another referer or none.
+				$referer_parts = parse_url($referer);
+				if (!is_array($referer_parts))
+				{
+					$referer_parts = array();
+				}
+				$referring_host_name = $referer_parts['host'] ?? '';
+				// check to see if the referring host is a search engine and find search query delimiter.
+				// The host and not the whole address: flask.com, or another
+				// site's address that merely contains "www.google", is no search engine.
+				$delimiter = '';
+				if (preg_match('/www\.google.*/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Google';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/search\.msn.*/i', $referer))
+				elseif (preg_match('/search\.msn.*/i', $referring_host_name))
 				{
 					$referring_search_engine = 'MSN';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/search\.yahoo.*/i', $referer))
+				elseif (preg_match('/search\.yahoo.*/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Yahoo!';
 					$delimiter = 'p';
 				}
-				elseif (preg_match('/www\.bing\.com/i', $referer))
+				elseif (preg_match('/www\.bing\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Bing';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/(search\.aol\.com)|(aolsearch\.aol\.com)/i', $referer))
+				elseif (preg_match('/(search\.aol\.com)|(aolsearch\.aol\.com)/i', $referring_host_name))
 				{
 					$referring_search_engine = 'AOL';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/ask\.com/i', $referer))
+				elseif (preg_match('/(^|\.)ask\.com$/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Ask.com';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/www\.ask\.co\.uk/i', $referer))
+				elseif (preg_match('/www\.ask\.co\.uk/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Ask.com';
 					$delimiter = 'ask';
 				}
-				elseif (preg_match('/search\.earthlink\.net/i', $referer))
+				elseif (preg_match('/search\.earthlink\.net/i', $referring_host_name))
 				{
 					$referring_search_engine = 'EarthLink';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/www\.netscape\.com/i', $referer))
+				elseif (preg_match('/www\.netscape\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Netscape';
 					$delimiter = 's';
 				}
-				elseif (preg_match('/(search\.netscape\.com)|(searcht\.netscape\.com)/i', $referer))
+				elseif (preg_match('/(search\.netscape\.com)|(searcht\.netscape\.com)/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Netscape';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/www\.alltheweb\.com/i', $referer))
+				elseif (preg_match('/www\.alltheweb\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'AlltheWeb';
 					$delimiter = 'q';
 				}
-				elseif (preg_match('/msxml\.excite\.com/i', $referer))
+				elseif (preg_match('/msxml\.excite\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Excite';
 					$delimiter = 'qkw';
 				}
-				elseif (preg_match('/www\.metacrawler\.com/i', $referer))
+				elseif (preg_match('/www\.metacrawler\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'MetaCrawler';
 					$delimiter = 'qkw';
 				}
-				elseif (preg_match('/dpxml\.webcrawler\.com/i', $referer))
+				elseif (preg_match('/dpxml\.webcrawler\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'WebCrawler';
 					$delimiter = 'qkw';
 				}
-				elseif (preg_match('/search\.lycos\.com/i', $referer))
+				elseif (preg_match('/search\.lycos\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Lycos';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/www\.hotbot\.com/i', $referer))
+				elseif (preg_match('/www\.hotbot\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'HotBot';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/search\.mamma\.com/i', $referer))
+				elseif (preg_match('/search\.mamma\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Mamma.com';
 					$delimiter = 'query';
 				}
-				elseif (preg_match('/search\.cometsystems\.com/i', $referer))
+				elseif (preg_match('/search\.cometsystems\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Comet Web Search';
 					$delimiter = 'qry';
 				}
-				elseif (preg_match('/www\.overture\.com/i', $referer))
+				elseif (preg_match('/www\.overture\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Overture';
 					$delimiter = 'Keywords';
 				}
-				elseif (preg_match('/www\.looksmart\.com/i', $referer))
+				elseif (preg_match('/www\.looksmart\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'LookSmart';
 					$delimiter = 'key';
 				}
-				elseif (preg_match('/search\.looksmart\.com/i', $referer))
+				elseif (preg_match('/search\.looksmart\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'LookSmart';
 					$delimiter = 'qt';
 				}
-				elseif (preg_match('/search\.viewpoint\.com/i', $referer))
+				elseif (preg_match('/search\.viewpoint\.com/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Viewpoint';
 					$delimiter = 'k';
 				}
-				elseif (preg_match('/search\.dmoz\.org/i', $referer))
+				elseif (preg_match('/search\.dmoz\.org/i', $referring_host_name))
 				{
 					$referring_search_engine = 'Open Directory Project';
 					$delimiter = 'search';
 				}
-				// if a delimiter was found, get search terms
-				if ($delimiter)
+				// if a delimiter was found, get search terms. Search engines
+				// mostly send their bare address now (https://www.google.com/),
+				// so there is often no query string at all.
+				if ($delimiter && isset($referer_parts['query']))
 				{
 					// get query string items
-					parse_str($http_referer_parsed_url['query'], $query_string_items);
-					// get referring search terms from query string
-					$referring_search_terms = trim($query_string_items[$delimiter]);
-					// if magic quotes is on, then remove slashes from referring search terms
-					// PHP 7.4 depricated.
-					//if (get_magic_quotes_gpc())
-					//{
-					//	$referring_search_terms = stripslashes($referring_search_terms);
-					//}
-					$referring_search_terms = urldecode($referring_search_terms);
+					parse_str($referer_parts['query'], $query_string_items);
+					// get referring search terms from query string. parse_str()
+					// has already decoded them: decoding again turned "c%2B%2B"
+					// into "c  ". A repeated parameter (q[]=x) arrives as an
+					// array, which trim() refused with an error page.
+					$search_terms = $query_string_items[$delimiter] ?? '';
+					$referring_search_terms = is_string($search_terms) ? trim($search_terms) : '';
 				}
 			}
 			
@@ -3567,9 +3628,35 @@ function init_tracking()
 				$sql_user_agent_value = "'" . escape($visitor_user_agent) . "',";
 			}
 
+			// Since 2026.4.10 (10.6) the referring address and the user agent
+			// are kept once each in visitor_texts and the row names them by
+			// number (includes/fn/visitor_texts.php). Where the list cannot be
+			// written the texts go into the row as before.
+			$sql_text_columns = '';
+			$sql_text_values = '';
+			$sql_referer = $referer;
+
+			if (function_exists('pg_visitor_texts_ready') && pg_visitor_texts_ready()) {
+
+				$referer_text_id = pg_visitor_text_id(PG_VISITOR_TEXT_REFERER, $referer);
+				$agent_text_id = pg_visitor_text_id(PG_VISITOR_TEXT_AGENT, $visitor_user_agent);
+
+				if (($referer_text_id !== false) && ($agent_text_id !== false)) {
+					$sql_text_columns = 'http_referer_id, user_agent_id,';
+					$sql_text_values = (int) $referer_text_id . ', ' . (int) $agent_text_id . ',';
+					$sql_referer = '';
+
+					if ($sql_user_agent_column !== '') {
+						$sql_user_agent_value = "'',";
+					}
+				}
+			}
+
 			$query = "INSERT INTO visitors (
 
                         $sql_user_agent_column
+
+                        $sql_text_columns
 
                         ip_address,
 
@@ -3597,9 +3684,11 @@ function init_tracking()
 
                         $sql_user_agent_value
 
+                        $sql_text_values
+
                         IFNULL(INET_ATON('" . escape($visitor_ip_address) . "'), 0),
 
-                        '" . escape($referer) . "',
+                        '" . escape($sql_referer) . "',
 
                         '" . escape($referring_host_name) . "',
 
@@ -3630,13 +3719,15 @@ function init_tracking()
 	// Assume that we don't need to update visitor or order utm tags, until we find out otherwise.
 	$update_utm = false;
 	// If utm tags appear in the URL, then store them in session, cookie and visitor record.
+	// A link often carries utm_source alone; the tags it leaves out are stored
+	// empty, as before, without a warning for each.
 	if (isset($_GET['utm_source']) && $_GET['utm_source'])
 	{
 		$_SESSION['software']['utm_source'] = trim($_GET['utm_source']);
-		$_SESSION['software']['utm_medium'] = trim($_GET['utm_medium']);
-		$_SESSION['software']['utm_campaign'] = trim($_GET['utm_campaign']);
-		$_SESSION['software']['utm_term'] = trim($_GET['utm_term']);
-		$_SESSION['software']['utm_content'] = trim($_GET['utm_content']);
+		$_SESSION['software']['utm_medium'] = trim($_GET['utm_medium'] ?? '');
+		$_SESSION['software']['utm_campaign'] = trim($_GET['utm_campaign'] ?? '');
+		$_SESSION['software']['utm_term'] = trim($_GET['utm_term'] ?? '');
+		$_SESSION['software']['utm_content'] = trim($_GET['utm_content'] ?? '');
 		$cookie_id = 0;
 		if (!empty($_SESSION['software']['cookie_id']))
 		{

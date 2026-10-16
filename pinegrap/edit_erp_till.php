@@ -30,7 +30,8 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php';
 
 if (!$_POST) {
 
-    $till_id = (int) ($_GET['id'] ?? 0);
+    // One number: an array (?id[]=x) cast to 1 and opened the first till.
+    $till_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
     $till = ($till_id > 0) ? db_item("SELECT * FROM erp_cash_accounts WHERE id = '" . $till_id . "' LIMIT 1") : null;
 
     if (!is_array($till)) {
@@ -146,9 +147,9 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                             ' . (empty($movements)
-                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline-danger" data-loading-content="' . lang(array('string' => 'Deleting')) . '"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline-danger"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '') . '
                         </div>
                     </div>
@@ -185,9 +186,23 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (int) read an array id as 1, so Delete removed till 1 and
+    // Save wrote over it; (string) wrote "Array" into the name, bank or IBAN.
+    pg_request_single_values(array('id', 'name', 'kind', 'currency', 'is_active', 'bank_name', 'iban', 'opening_balance', 'submit_delete'));
+
     $liveform->add_fields_to_session();
 
     $till_id = (int) $liveform->get_field_value('id');
+
+    // This screen only changes the till it was opened for. Without one behind
+    // the id, Delete and Save would announce a change that never happened.
+    if (($till_id <= 0) || !db_value("SELECT id FROM erp_cash_accounts WHERE id = '" . $till_id . "' LIMIT 1")) {
+        $liveform->remove_form();
+        $liveform_list = new liveform('erp_cash');
+        $liveform_list->mark_error('_error', lang('The till could not be found.'));
+        go(PATH . SOFTWARE_DIRECTORY . '/erp_cash.php');
+    }
 
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
 

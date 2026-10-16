@@ -720,6 +720,65 @@ function pg_post_body_discarded()
 }
 
 /**
+ * The part of a file a Range header asks for (RFC 9110 14.2).
+ *
+ * A video player opens a file by asking for its first bytes and then for the
+ * part it is about to play, so a clip starts and can be wound forward without
+ * the whole file being fetched first. One range is served; a header asking
+ * for several, a unit other than bytes, or anything that does not parse is
+ * ignored and the whole file is sent, which the RFC allows and every client
+ * copes with.
+ *
+ * @param string $header the Range header as sent
+ * @param int    $size   the file's size in bytes
+ * @return array|null|false array(first, last) byte positions, both included;
+ *                          null to send the whole file; false when the range
+ *                          lies past the end of the file (416)
+ */
+function pg_http_byte_range($header, $size)
+{
+    $size = max(0, (int) $size);
+
+    if (!preg_match('/^\s*bytes\s*=\s*([^,]*?)\s*$/i', (string) $header, $match)) {
+        return null;
+    }
+
+    if (!preg_match('/^(\d*)\s*-\s*(\d*)$/', $match[1], $bounds) || (($bounds[1] === '') && ($bounds[2] === ''))) {
+        return null;
+    }
+
+    // A position longer than any file this software stores is past the end
+    // as a first byte and the end itself as a last one; reading it as an int
+    // would wrap.
+    $huge = 18;
+
+    if ($bounds[1] === '') {
+
+        // bytes=-500 is the last 500 bytes.
+        $suffix = (strlen(ltrim($bounds[2], '0')) > $huge) ? $size : (int) $bounds[2];
+
+        if (($suffix <= 0) || ($size === 0)) {
+            return false;
+        }
+
+        return array(max(0, $size - $suffix), $size - 1);
+    }
+
+    if ((strlen(ltrim($bounds[1], '0')) > $huge) || ((int) $bounds[1] >= $size)) {
+        return false;
+    }
+
+    $first = (int) $bounds[1];
+    $last = (($bounds[2] === '') || (strlen(ltrim($bounds[2], '0')) > $huge)) ? ($size - 1) : (int) $bounds[2];
+
+    if ($last < $first) {
+        return null;
+    }
+
+    return array($first, min($last, $size - 1));
+}
+
+/**
  * Whether any of these `files` rows is a document the ERP module keeps.
  *
  * Issued invoices, delivery notes, accepted e-documents and e-mailed

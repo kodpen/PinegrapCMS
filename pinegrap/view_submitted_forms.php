@@ -29,7 +29,9 @@ $output_rows = '';
 $sql_data_joins = '';
 
 // The filter is carried through the paging links and the advanced filters form.
-$filter = isset($_REQUEST['filter']) ? $_REQUEST['filter'] : '';
+// One sent as an array (?filter[]=x) counts as not given: it ended in an error
+// page.
+$filter = (isset($_REQUEST['filter']) && is_string($_REQUEST['filter'])) ? $_REQUEST['filter'] : '';
 
 // store all values collected in request to session
 foreach ($_REQUEST as $key => $value) {
@@ -47,11 +49,6 @@ foreach ($_REQUEST as $key => $value) {
 
         $_SESSION['software']['forms']['view_submitted_forms'][$key] = $value;
     }
-}
-
-// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['order'])) {
-    $_SESSION['software']['forms']['view_submitted_forms']['order'] = sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'], '');
 }
 
 // get all custom forms (the array will be used in multiple places in this script)
@@ -146,15 +143,24 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $oldest_timestamp = $row[0];
 
-// if date has not been set in the session yet, populate start and stop days with default, which is today
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['start_month']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['start_month'] = date('m', time() - 2678400);
-    $_SESSION['software']['forms']['view_submitted_forms']['start_day'] = date('d', time() - 2678400);
-    $_SESSION['software']['forms']['view_submitted_forms']['start_year'] = date('Y', time() - 2678400);
+// Default range: a month ago to today. Each date part is checked on its own:
+// the year math and mktime() below throw a TypeError for a missing or
+// non-numeric value, the year select loops forever on a non-numeric stop year,
+// and since the value is kept in the session, one bad address would otherwise
+// break the list for the rest of the session.
+$date_defaults = array(
+    'start_month' => date('m', time() - 2678400),
+    'start_day'   => date('d', time() - 2678400),
+    'start_year'  => date('Y', time() - 2678400),
+    'stop_month'  => date('m'),
+    'stop_day'    => date('d'),
+    'stop_year'   => date('Y'),
+);
 
-    $_SESSION['software']['forms']['view_submitted_forms']['stop_month'] = date('m');
-    $_SESSION['software']['forms']['view_submitted_forms']['stop_day'] = date('d');
-    $_SESSION['software']['forms']['view_submitted_forms']['stop_year'] = date('Y');
+foreach ($date_defaults as $key => $value) {
+    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['forms']['view_submitted_forms'][$key] ?? ''))) {
+        $_SESSION['software']['forms']['view_submitted_forms'][$key] = $value;
+    }
 }
 
 $decrease_year['start_month'] = '01';
@@ -329,7 +335,7 @@ if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] 
                 $field_id = $row['id'];
 
                 // if a filter value has been entered for this field, then we need to add a join and a where condition
-                if ($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id]) {
+                if ($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id] ?? '') {
                     $sql_data_joins .= "LEFT JOIN form_data AS form_data_" . $field_id . " ON ((forms.id = form_data_" . $field_id . ".form_id) AND (form_data_" . $field_id . ".form_field_id = '" . $field_id . "') AND (form_data_" . $field_id . ".data LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id]) . "%')) ";
 
                     // if data conditions have already been set for this form, add an AND
@@ -410,52 +416,49 @@ if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] 
     if (($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) {$where .= " AND (contacts.member_id LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) . "%')";}
 }
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['sort']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['sort'] = '';
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'custom_form'    => lang('Custom Form'),
+    'reference_code' => lang('Reference Code'),
+    'status'         => lang('Status'),
+    'contact'        => lang('Contact'),
+    'user'           => lang('User'),
+    'submitted'      => lang('Submitted'),
+    'last_modified'  => lang('Last Modified'),
+);
+
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+$list_state = pg_list_state('view_submitted_forms', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+// The contact is ordered by last name and then first name, both in the
+// level's direction, so it is handed to pg_list_order_by() as two levels.
+$order_levels = array();
+
+foreach ($sort_levels as $level) {
+    if ($level['sort'] === 'contact') {
+        $order_levels[] = array('sort' => 'contact_last_name', 'order' => $level['order']);
+        $order_levels[] = array('sort' => 'contact_first_name', 'order' => $level['order']);
+    } else {
+        $order_levels[] = $level;
+    }
 }
 
-switch (($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? '')) {
-    case 'Custom Form':
-        $sort_column = 'custom_form_pages.form_name';
-        break;
-
-    case 'Status':
-        $sort_column = 'forms.complete';
-        break;
-
-    case 'Reference Code':
-        $sort_column = 'forms.reference_code';
-        break;
-
-    case 'Contact':
-        $sort_column = 'contacts.last_name ' . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '') . ', contacts.first_name';
-        break;
-
-    case 'User':
-        $sort_column = 'submitted_user.user_username';
-        break;
-
-    case 'Submitted':
-        $sort_column = 'forms.submitted_timestamp';
-        break;
-
-    case 'Last Modified':
-        $sort_column = 'forms.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'forms.last_modified_timestamp';
-        $_SESSION['software']['forms']['view_submitted_forms']['sort'] = 'Last Modified';
-        $_SESSION['software']['forms']['view_submitted_forms']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['order']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($order_levels, array(
+    'custom_form'        => 'custom_form_pages.form_name',
+    'reference_code'     => 'forms.reference_code',
+    'status'             => 'forms.complete',
+    'contact_last_name'  => 'contacts.last_name',
+    'contact_first_name' => 'contacts.first_name',
+    'user'               => 'submitted_user.user_username',
+    'submitted'          => 'forms.submitted_timestamp',
+    'last_modified'      => 'forms.last_modified_timestamp',
+));
 
 // if user requested to export forms, export forms
 if (($_GET['submit_data'] ?? '') == 'Export Forms') {
@@ -527,7 +530,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
         $sql_data_joins
         $where
-        ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '');
+        ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $forms = array();
@@ -842,7 +845,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
              LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
              $sql_data_joins
              $where
-             ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '');
+             ORDER BY $order_by";
 
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -875,7 +878,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $previous = $screen - 1;
         // if previous screen is greater than zero, output previous link
         if ($previous > 0) {
-            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $previous . $output_filter_for_links . '" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
+            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $previous . '" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
         }else{
             $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
         }
@@ -884,18 +887,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         for ($i = 1; $i <= $number_of_screens; $i++) {
             // if this number is the current screen, then select option
             if ($i == $screen) {
-                $active = 'active"';
+                $active = 'active';
             // else this number is not the current screen, so do not select option
             } else {
                 $active = '';
             }
-            $output_screen_links .= '<li class="page-item mt-1 mb-1 ' . $active . '"><a class="page-link " href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $i . $output_filter_for_links . '">' . $i . '</a></li>';
+            $output_screen_links .= '<li class="page-item mt-1 mb-1 ' . $active . '"><a class="page-link " href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $i . '">' . $i . '</a></li>';
         }
         // build Next button if necessary
         $next = $screen + 1;
         // if next screen is less than or equal to the total number of screens, output next link
         if ($next <= $number_of_screens) {
-            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $next . $output_filter_for_links . '" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
+            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $next . '" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
         }else{
             $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
         }
@@ -966,7 +969,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         '<tr>
             <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="forms[]" value="' . $id . '" class="checkbox" /></td>
             <td class="align-middle text-start action-buttons">
-                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="chart_label">' . h($form_name) . '</td>
             <td class="align-middle">' . h($reference_code) . '</td>
@@ -1006,6 +1009,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
 
         // Prepare selection for status field.
+        $status_any_selected = '';
+        $status_incomplete_selected = '';
+        $status_complete_selected = '';
+
         if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'any') {
             $status_any_selected = ' selected="selected"';
 
@@ -1152,7 +1159,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                             </div>
                         </div>
                         <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" data-loading-content="' . lang('Updating') . '" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
                         </div>
                     </div>
                 </form>
@@ -1194,7 +1201,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     if (MASS_DELETION == true) {
         $output_delete_forms_button = ' 
         <div class=" btn-group btn-group-sm flex-wrap">
-            <button type="submit" name="submit_data" value="Delete Forms" class="btn btn-link link-danger py-0 m-1" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang('WARNING: All forms that match the filters will be permanently deleted. This includes forms from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which forms will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Forms') ) . '</button>
+            <button type="submit" name="submit_data" value="Delete Forms" class="btn btn-link link-danger py-0 m-1" data-confirm-content="' . lang('WARNING: All forms that match the filters will be permanently deleted. This includes forms from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which forms will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Forms') ) . '</button>
         </div>';
     }
 
@@ -1250,7 +1257,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="' . $output_add_submitted_form_url . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="' . $output_add_submitted_form_url . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form action="view_submitted_forms.php" method="get" class="disable_shortcut d-inline-block">
                                 ' . get_token_field() . '
                                 <div class=" btn-group btn-group-sm flex-wrap">
@@ -1260,13 +1267,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 ' . $output_delete_forms_button . '
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_submitted_forms.php', $sort_columns, $sort_levels, $sort_default) . '
                             <form id="advanced_filters_form" action="view_submitted_forms.php" method="get" class="search_form disable_shortcut">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm w-auto">
                                     ' . $output_custom_form_selection . '
                                 </div>
                             </form>
-                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . pg_period_nav('view_submitted_forms.php', ($_SESSION['software']['forms']['view_submitted_forms'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
                                 'week'  => array($decrease_week, $current_week, $increase_week),
@@ -1287,13 +1295,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang('Action') . '</th> 
-                                        <th>' . get_column_heading(lang('Custom Form'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Reference Code'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Contact'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('User'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Submitted'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Custom Form'), $sort_levels, '', '', 'custom_form') . '</th>
+                                        <th>' . get_column_heading(lang('Reference Code'), $sort_levels, '', '', 'reference_code') . '</th>
+                                        <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
+                                        <th>' . get_column_heading(lang('Contact'), $sort_levels, '', '', 'contact') . '</th>
+                                        <th>' . get_column_heading(lang('User'), $sort_levels, '', '', 'user') . '</th>
+                                        <th>' . get_column_heading(lang('Submitted'), $sort_levels, '', '', 'submitted') . '</th>
+                                        <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1303,16 +1311,17 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>
                         </form>
                     </div>
                 </div>
+                ' . $output_screen_links . '
             </div>
         </div>
-    
+
 </main>' .
     output_footer();
     print $output;

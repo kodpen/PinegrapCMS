@@ -23,6 +23,9 @@ echo
 pg_page_shell([
         'title' => lang('My Tasks'),
         'extra classes' => 'workspace workspace_tasks',
+        // No code field here: CodeMirror is loaded only if the settings
+        // dialog opens a pane that has one.
+        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => lang('My Tasks'),
         'heading_description' => lang('The work handed to you and the work you handed out, with its due dates.'),
@@ -42,5 +45,8 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' . ws_screen_assets($viewer, 'tasks') .
+' . ws_screen_assets($viewer, 'tasks', array(
+    // Back from connecting an account to an MCP server from a task's drawer.
+    'mcp' => function_exists('ws_mcp_screen_config') ? ws_mcp_screen_config($viewer) : null,
+)) .
 output_footer();

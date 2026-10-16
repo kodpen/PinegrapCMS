@@ -23,43 +23,33 @@ $output_rows = '';
 $user = validate_user();
 validate_ecommerce_access($user);
 
-switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
-    case lang('Name'):
-        $sort_column = 'name';
-        break;
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'                  => lang('Name'),
+    'base_rate'             => lang('Base Rate'),
+    'primary_weight_rate'   => lang('Primary W. Rate'),
+    'secondary_weight_rate' => lang('Secondary W. Rate'),
+    'item_rate'             => lang('Item Rate'),
+    'last_modified'         => lang('Last Modified'),
+);
 
-    case lang('Base Rate'):
-        $sort_column = 'base_rate';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Primary W. Rate'):
-        $sort_column = 'primary_weight_rate';
-        break;
+$list_state = pg_list_state('view_zones', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Secondary W. Rate'):
-        $sort_column = 'secondary_weight_rate';
-        break;
-
-    case lang('Item Rate'):
-        $sort_column = 'item_rate';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'timestamp';
-        break;
-    default:
-        $sort_column = 'timestamp';
-}
-
-if (isset($_GET['sort']) && $_GET['sort']) {
-    $asc_desc = sql_order_direction(isset($_GET['order']) ? $_GET['order'] : '');
-} else {
-    $asc_desc = 'asc';
-}
-
-if (($sort_column == 'timestamp') && (empty($_GET['order']))) {
-    $asc_desc = 'desc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'                  => 'zones.name',
+    'base_rate'             => 'zones.base_rate',
+    'primary_weight_rate'   => 'zones.primary_weight_rate',
+    'secondary_weight_rate' => 'zones.secondary_weight_rate',
+    'item_rate'             => 'zones.item_rate',
+    'last_modified'         => 'zones.timestamp',
+));
 
 $query = "SELECT
             zones.id,
@@ -72,7 +62,7 @@ $query = "SELECT
             zones.timestamp
         FROM zones
         LEFT JOIN user ON zones.user = user.user_id
-        ORDER BY $sort_column $asc_desc";
+        ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -96,8 +86,8 @@ while ($row = mysqli_fetch_array($result)) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label">' . $name . '</td>
             <td class="align-middle text-end">' . prepare_amount($base_rate) . '</td>
@@ -123,7 +113,9 @@ pg_page_shell([
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_zone.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_zone.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_zones.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -133,12 +125,12 @@ pg_page_shell([
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' .asc_or_desc(lang('Name'),'view_zones'). '</td>
-                                <th style="text-align: right">' .asc_or_desc(lang('Base Rate'),'view_zones'). '</td>
-                                <th style="text-align: right">' .asc_or_desc(lang('Primary W. Rate'),'view_zones'). '</td>
-                                <th style="text-align: right">' .asc_or_desc(lang('Secondary W. Rate'),'view_zones'). '</td>
-                                <th style="text-align: right">' .asc_or_desc(lang('Item Rate'),'view_zones'). '</td>
-                                <th>' .asc_or_desc(lang('Last Modified'),'view_zones'). '</td>
+                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th style="text-align: right">' . get_column_heading(lang('Base Rate'), $sort_levels, '', '', 'base_rate') . '</th>
+                                <th style="text-align: right">' . get_column_heading(lang('Primary W. Rate'), $sort_levels, '', '', 'primary_weight_rate') . '</th>
+                                <th style="text-align: right">' . get_column_heading(lang('Secondary W. Rate'), $sort_levels, '', '', 'secondary_weight_rate') . '</th>
+                                <th style="text-align: right">' . get_column_heading(lang('Item Rate'), $sort_levels, '', '', 'item_rate') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

@@ -143,14 +143,15 @@ function ws_ack_request($viewer, $message, $on)
 }
 
 /**
- * The person says they read the message. Only the people counted for it,
- * once.
+ * Whether the person may say they read the message: the checks of
+ * ws_ack_set(), made on their own so that the API's dry run meets the same
+ * refusals.
  *
  * @param array $viewer
  * @param array $message
- * @return array ok, error
+ * @return array ok, error, changes (false when they already said so)
  */
-function ws_ack_set($viewer, $message)
+function ws_ack_set_check($viewer, $message)
 {
     if (!ws_acks_ready() || !is_array($message) || ((int) $message['deleted_at'] > 0)) {
         return array('ok' => false, 'error' => lang('That message could not be found.'));
@@ -163,6 +164,27 @@ function ws_ack_set($viewer, $message)
     if (!ws_can_read_channel($viewer, ws_channel($message['channel_id']))
         || !in_array((int) $viewer['id'], ws_ack_counted_ids($message['channel_id'], ws_ack_author($message)), true)) {
         return array('ok' => false, 'error' => lang('Only the people of the channel are asked to read it.'));
+    }
+
+    $given = (int) db_value("SELECT COUNT(*) FROM ws_acks WHERE message_id = '" . (int) $message['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
+
+    return array('ok' => true, 'error' => '', 'changes' => ($given === 0));
+}
+
+/**
+ * The person says they read the message. Only the people counted for it,
+ * once.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @return array ok, error
+ */
+function ws_ack_set($viewer, $message)
+{
+    $checked = ws_ack_set_check($viewer, $message);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
     }
 
     db("INSERT IGNORE INTO ws_acks (message_id, user_id, acked_at)

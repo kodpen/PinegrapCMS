@@ -26,6 +26,13 @@ if (pg_session_signed_in() == false) {
     exit();
 }
 
+// Stop on "not found" when the id is missing, unknown or sent as an array
+// (?id[]=x): escape() fails on an array with an error page.
+$id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM address_book WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // check to see if recipient exists
 $query = "SELECT id FROM address_book WHERE id = '" . escape($_GET['id']) . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

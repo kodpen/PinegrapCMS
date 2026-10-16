@@ -17,6 +17,12 @@
  * hash of its day, amount and words, so a statement taken in twice, or two
  * that overlap, add each line once.
  *
+ * The file is a CSV or the Excel workbook internet banking offers beside it
+ * (.xlsx, or the older .xls), or an OpenDocument sheet (.ods) for a statement
+ * saved again from LibreOffice; a workbook's first sheet becomes the same rows
+ * of cells a CSV does, so the columns, the hash and the matching never learn
+ * which one arrived.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -120,6 +126,301 @@ function erp_bank_read_csv($path)
 }
 
 /**
+ * Read an uploaded statement into rows of cells, by the name the operator's
+ * machine gave it: a workbook is read from its first sheet, anything else as
+ * CSV. The bank's title block above the transactions is dropped (see
+ * erp_bank_rows_from_heading()), so the column screen opens on the heading.
+ * A document that is neither (Numbers, PDF) is refused rather than read as
+ * text.
+ *
+ * @param string $path
+ * @param string $file_name
+ * @return array ['rows' => array, 'error' => string]
+ */
+function erp_bank_read_file($path, $file_name)
+{
+    $extension = strtolower((string) pathinfo((string) $file_name, PATHINFO_EXTENSION));
+
+    if (in_array($extension, array('numbers', 'pdf'), true)) {
+        return array('rows' => array(), 'error' => lang('Save the statement as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in again.'));
+    }
+
+    $read = in_array($extension, array('xlsx', 'xlsm', 'xls', 'ods'), true)
+        ? erp_bank_read_spreadsheet($path, $extension)
+        : erp_bank_read_csv($path);
+
+    if ($read['error'] === '') {
+        $read['rows'] = erp_bank_rows_from_heading($read['rows']);
+    }
+
+    return $read;
+}
+
+/**
+ * Read the first sheet of a workbook into rows of cells.
+ *
+ * A .xlsx is walked row by row from its zip with the product importer's
+ * helpers (import_products_f.php): no library holds the workbook. A number
+ * that is a date by its cell format comes out as Y-m-d, any other number in
+ * the machine form erp_bank_amount() reads without guessing (two decimals,
+ * a point). The older .xls and an .ods are read with PHPExcel.
+ *
+ * @param string $path
+ * @param string $extension  xlsx | xlsm | xls | ods
+ * @return array ['rows' => array, 'error' => string]
+ */
+function erp_bank_read_spreadsheet($path, $extension)
+{
+    require_once(PG_FUNCTIONS_DIR . '/import_products_f.php');
+
+    $unreadable = array('rows' => array(), 'error' => lang('The file could not be read.'));
+    $rows = array();
+
+    if (($extension === 'xlsx') || ($extension === 'xlsm')) {
+        if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+            return $unreadable;
+        }
+
+        $zip = new ZipArchive();
+
+        if ($zip->open($path) !== true) {
+            return $unreadable;
+        }
+
+        $part = pg_products_import_xlsx_sheet_part($zip);
+        $date_styles = pg_products_import_xlsx_date_styles($zip);
+        $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
+        $found = ($part !== '') && ($zip->locateName($part) !== false);
+        $zip->close();
+
+        if (!$found) {
+            return $unreadable;
+        }
+
+        $strings = pg_products_import_xlsx_strings($path, $strings_part);
+        $reader = new XMLReader();
+
+        if (!$reader->open('zip://' . $path . '#' . $part)) {
+            return $unreadable;
+        }
+
+        while ($reader->read() && (count($rows) < ERP_BANK_IMPORT_MAX_ROWS)) {
+            if (($reader->nodeType !== XMLReader::ELEMENT) || ($reader->name !== 'row')) {
+                continue;
+            }
+
+            $row_xml = @simplexml_load_string($reader->readOuterXml());
+
+            if ($row_xml === false) {
+                continue;
+            }
+
+            $cells = array();
+
+            foreach ($row_xml->c as $cell) {
+                $type = (string) $cell['t'];
+
+                if ($type === 's') {
+                    $value = (string) ($strings[(int) $cell->v] ?? '');
+                } elseif ($type === 'inlineStr') {
+                    // Styled text comes as runs: <r><t> rather than <t>.
+                    $value = isset($cell->is->t) ? (string) $cell->is->t : '';
+                    if (isset($cell->is->r)) {
+                        foreach ($cell->is->r as $run) {
+                            $value .= (string) $run->t;
+                        }
+                    }
+                } else {
+                    $value = erp_bank_sheet_value((string) $cell->v, ($type === 'b') ? 'b' : (isset($date_styles[(int) $cell['s']]) ? 'date' : 'n'));
+                }
+
+                $column = isset($cell['r']) ? pg_products_import_xlsx_column((string) $cell['r']) : count($cells);
+
+                while (count($cells) < $column) {
+                    $cells[] = '';
+                }
+
+                $cells[$column] = trim($value);
+            }
+
+            ksort($cells);
+
+            if (implode('', $cells) !== '') {
+                $rows[] = array_values($cells);
+            }
+        }
+
+        $reader->close();
+    } else {
+        // The older .xls is a binary record stream and an .ods a different
+        // zip; PHPExcel reads both, with the reader the product importer
+        // names for the extension. Read with formats, unlike the product
+        // importer, because a date cell is known by its format alone; a
+        // statement is small enough for it.
+        if ($extension === 'ods') {
+            // The OpenDocument reader takes any file for a zip and fails on
+            // the first missing part with warnings; a file that is not one is
+            // turned away here, as a broken .xlsx is above.
+            if (!class_exists('ZipArchive')) {
+                return $unreadable;
+            }
+
+            $zip = new ZipArchive();
+
+            if ($zip->open($path) !== true) {
+                return $unreadable;
+            }
+
+            $found = ($zip->locateName('content.xml') !== false) && ($zip->locateName('meta.xml') !== false);
+            $zip->close();
+
+            if (!$found) {
+                return $unreadable;
+            }
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php');
+
+        try {
+            $book = PHPExcel_IOFactory::createReader(pg_products_import_reader('statement.' . $extension))->load($path);
+            $sheet = $book->getSheet(0);
+            $last_row = $sheet->getHighestDataRow();
+            $last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
+
+            for ($row_number = 1; ($row_number <= $last_row) && (count($rows) < ERP_BANK_IMPORT_MAX_ROWS); $row_number++) {
+                $cells = array();
+
+                for ($column_number = 0; $column_number <= $last_column; $column_number++) {
+                    $cells[] = trim(erp_bank_xls_cell($sheet->getCellByColumnAndRow($column_number, $row_number, false)));
+                }
+
+                if (implode('', $cells) !== '') {
+                    $rows[] = $cells;
+                }
+            }
+
+            $book->disconnectWorksheets();
+        } catch (Throwable $e) {
+            return $unreadable;
+        }
+    }
+
+    if (empty($rows)) {
+        return array('rows' => array(), 'error' => lang('The file has no lines.'));
+    }
+
+    return array('rows' => $rows, 'error' => '');
+}
+
+/**
+ * One cell of an .xls or .ods as erp_bank_sheet_value() gives an .xlsx
+ * cell: a formula's answer (what is written when it cannot be worked out), a
+ * date by its format, a number in the machine form, text as it is.
+ *
+ * @param PHPExcel_Cell|null $cell
+ * @return string
+ */
+function erp_bank_xls_cell($cell)
+{
+    if ($cell === null) {
+        return '';
+    }
+
+    try {
+        $value = $cell->getCalculatedValue();
+    } catch (Throwable $e) {
+        $value = $cell->getValue();
+    }
+
+    if (is_bool($value)) {
+        return $value ? '1' : '0';
+    }
+
+    if (is_int($value) || is_float($value)) {
+        return erp_bank_sheet_value((string) $value, PHPExcel_Shared_Date::isDateTime($cell) ? 'date' : 'n');
+    }
+
+    return (string) $value;
+}
+
+/**
+ * A number cell of a workbook as the text a CSV would have carried.
+ *
+ * A date is a day count since 30 December 1899 and comes out as Y-m-d (with
+ * the time of day when it has one), counted in UTC so a server west of
+ * Greenwich does not move it a day back. Any other number keeps its digits
+ * when it is whole and is rounded to two decimals otherwise: the file holds
+ * the binary float, and 1234.5599999999999 is a price of 1234.56.
+ *
+ * @param string $value  The cell's <v>
+ * @param string $kind   n (number) | date | b (true/false)
+ * @return string
+ */
+function erp_bank_sheet_value($value, $kind = 'n')
+{
+    $value = trim((string) $value);
+
+    if ($kind === 'b') {
+        return ($value === '1') ? '1' : '0';
+    }
+
+    if (($value === '') || !is_numeric($value)) {
+        return $value;
+    }
+
+    if ($kind === 'date') {
+        $stamp = (int) round(((float) $value - 25569) * 86400);
+
+        return gmdate((((float) $value) == floor((float) $value)) ? 'Y-m-d' : 'Y-m-d H:i', $stamp);
+    }
+
+    if (preg_match('/^-?\d+$/', $value)) {
+        return $value;
+    }
+
+    return number_format(round((float) $value, 2), 2, '.', '');
+}
+
+/**
+ * Drop the bank's title block: the rows above the first transaction, except
+ * the one just over it, which is where the column headings stand.
+ *
+ * A transaction row has a date in one cell and an amount in another: digits
+ * with no more than a currency code around them, and not a date itself, so
+ * a period written as two dates is not one. Looked for in the first rows
+ * only; a file where none is found is left as it is, and the lines that are
+ * not dated amounts are skipped when the statement is built anyway.
+ *
+ * @param array $rows
+ * @return array
+ */
+function erp_bank_rows_from_heading($rows)
+{
+    $rows = array_values((array) $rows);
+
+    foreach (array_slice($rows, 0, 60) as $index => $cells) {
+        $dated = false;
+        $amount = false;
+
+        foreach ((array) $cells as $cell) {
+            $cell = (string) $cell;
+
+            if ((erp_bank_date($cell) !== '') || (erp_bank_date($cell, 'mdy') !== '')) {
+                $dated = true;
+            } elseif ((preg_match('/\d/', $cell) === 1) && (preg_match_all('/\pL/u', $cell) <= 3) && ((int) erp_bank_amount($cell) !== 0)) {
+                $amount = true;
+            }
+        }
+
+        if ($dated && $amount) {
+            return array_slice($rows, max(0, $index - 1));
+        }
+    }
+
+    return $rows;
+}
+
+/**
  * A date as a bank writes it: 23.09.2026, 23/09/2026, 2026-09-23, with or
  * without a time after it. A day-first date is read month-first when the
  * bank writes them that way (US banks).
@@ -206,7 +507,7 @@ function erp_bank_statement_upload($cash_account_id, $path, $file_name, $user_id
         return array('success' => false, 'id' => 0, 'error' => lang('Choose the bank account.'));
     }
 
-    $read = erp_bank_read_csv($path);
+    $read = erp_bank_read_file($path, $file_name);
 
     if ($read['error'] !== '') {
         return array('success' => false, 'id' => 0, 'error' => $read['error']);

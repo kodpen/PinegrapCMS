@@ -51,14 +51,13 @@ function pg_google_account_notice()
         return '';
     }
 
-    $row = db_item(
-        "SELECT user_google_id AS google_id, user_password_algo AS algo
-        FROM user
-        WHERE user_id = '" . $user_id . "'");
+    $identities = function_exists('pg_signin_identities') ? pg_signin_identities($user_id) : array();
 
-    if ((is_array($row) == false) || ((string) ($row['google_id'] ?? '') === '')) {
+    if (!isset($identities['google'])) {
         return '';
     }
+
+    $row = db_item("SELECT user_password_algo AS algo FROM user WHERE user_id = '" . $user_id . "'");
 
     $output =
         '<span class="pg-google-account" style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">'
@@ -257,9 +256,9 @@ function pg_user_created_stamp($user_id)
 }
 
 // Read the claims (payload) of a JWT without verifying its signature. This is
-// only safe on an id_token fetched directly from Google's TLS token endpoint,
-// authenticated with the client secret (google_auth.php) - never on a token
-// received from a browser. Returns the claims array, or null if the token is
+// only safe on an id_token fetched directly from a provider's TLS token
+// endpoint, authenticated with the client secret (includes/fn/signin.php) -
+// never on a token received from a browser. Returns the claims array, or null if the token is
 // malformed.
 function pg_google_jwt_payload($jwt)
 {
@@ -284,10 +283,8 @@ function pg_google_jwt_payload($jwt)
     return is_array($claims) ? $claims : null;
 }
 
-// The "Sign in with Google" button as a self-contained block, or '' when the
-// feature is off - so the login, membership and registration screens can each
-// drop it in with one call and stay identical. Inline styles (Google's own
-// button look) keep it working on any front-end theme, Bootstrap or not.
+// Whether a sign-in with Google, Microsoft or Apple may open an account here
+// at all (signin.php asks before honouring the screen's own flag).
 function pg_google_signup_allowed()
 {
     // Self-registration is not a setting in this product: a site expresses it
@@ -310,64 +307,23 @@ function pg_google_signup_allowed()
 // feature is off. Split from the button so a designed page can put its own
 // element on the same address (the visual designer binds a link's href to
 // it) without a second copy of the URL rules.
+//
+// $signup is what this screen may do with a Google identity nobody here
+// matches: 'create' opens a member account (registration), 'membership'
+// hands it to the membership form, 'none' signs in only (the staff login);
+// booleans keep working for older call sites. The flag travels in the URL,
+// so signin.php pairs it with pg_google_signup_allowed() rather than
+// trusting it on its own.
 function pg_google_signin_url($send_to = '', $signup = 'create')
 {
-    if (
-        !defined('OAUTH_GOOGLE_ENABLED') || !OAUTH_GOOGLE_ENABLED
-        || !defined('OAUTH_GOOGLE_CLIENT_ID') || OAUTH_GOOGLE_CLIENT_ID === ''
-    ) {
-        return '';
-    }
-
-    // What this screen may do with a Google identity nobody here matches:
-    //   'create'     - open a member account straight away (registration).
-    //   'membership' - hand it to the membership form, which still has to
-    //                  check a membership number against the member list.
-    //   'none'       - sign in only (the staff login).
-    // The flag travels in the URL, so google_auth.php pairs it with the
-    // server-side check above rather than trusting it on its own. Booleans
-    // keep working for older call sites.
-    if ($signup === true) {
-        $signup = 'create';
-    } elseif ($signup === false) {
-        $signup = 'none';
-    } elseif (($signup !== 'none') && ($signup !== 'membership')) {
-        $signup = 'create';
-    }
-
-    $query = array();
-    if ((string) $send_to !== '') {
-        $query['send_to'] = (string) $send_to;
-    }
-    if ($signup === 'none') {
-        $query['create'] = '0';
-    } elseif ($signup === 'membership') {
-        $query['create'] = 'membership';
-    }
-
-    $url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/google_auth.php';
-    if (count($query) > 0) {
-        $url .= '?' . http_build_query($query);
-    }
-    return $url;
+    return function_exists('pg_signin_url') ? pg_signin_url('google', $send_to, $signup) : '';
 }
 
+// The Google button alone, for custom layouts written before the other
+// providers: the same button pg_signin_buttons() prints among the others.
 function pg_google_signin_button($send_to = '', $signup = 'create')
 {
-    $url = pg_google_signin_url($send_to, $signup);
-    if ($url === '') {
-        return '';
-    }
-
-    $logo = pg_google_logo_svg(18);
-
-    return '<div style="margin-top:1em;text-align:center">'
-        . '<a href="' . h($url) . '" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:9px 18px;border:1px solid #dadce0;border-radius:4px;background:#fff !important;color:#3c4043 !important;font-weight:500;text-decoration:none !important;font-family:Roboto,Arial,sans-serif;font-size:14px !important;line-height:1.4">'
-        . $logo
-        // !important on the label too: a theme that paints links white (this
-        // is a sign-in screen over a photo, so several do) left the button
-        // showing the mark and no words at all.
-        . '<span style="color:#3c4043 !important;font-size:14px !important;white-space:nowrap">' . h(lang('Sign in with Google')) . '</span></a></div>';
+    return function_exists('pg_signin_button') ? pg_signin_button('google', $send_to, $signup) : '';
 }
 
 // Register a member from the 'register' liveform: the validation and the
@@ -792,16 +748,20 @@ function pg_member_activate($form, $opts = array())
         'password_hint' => $password_hint,
         'contact_id'    => $contact_id,
     );
-    // Bind the account to the Google identity that started this, and spend
+    // Bind the account to the identity that started this (Google, or a
+    // provider of signin.php, which names itself in the record), and spend
     // the pending record so it cannot be replayed.
+    $pending_provider = $google_signup ? (string) ($google_pending['provider'] ?? 'google') : '';
     if ($google_signup) {
-        $create['google_id'] = (string) ($google_pending['sub'] ?? '');
         unset($_SESSION['software']['google_membership_pending']);
     }
     if (!empty($_SESSION['software']['start_page_id'])) {
         $create['home'] = $_SESSION['software']['start_page_id'];
     }
     $new_user_id = (int) create_member_user($create);
+    if ($new_user_id && ($pending_provider !== '') && function_exists('pg_signin_identity_add')) {
+        pg_signin_identity_add($new_user_id, $pending_provider, (string) ($google_pending['sub'] ?? ''), $email);
+    }
 
     $remember = false;
     if (REMEMBER_ME == TRUE) {
@@ -863,24 +823,22 @@ function pg_user_role_name($role)
 }
 
 /**
- * How an account signs in, as a short badge: connected to Google and still has
- * a password of its own, connected and Google-only (removing the connection
- * would lock it out), or nothing connected. Shared by the sessions table and
- * the connected-accounts table so the two never drift apart.
+ * How an account signs in, as short badges: one per connected provider, a
+ * warning when one provider is the only way in (removing it would lock the
+ * account out), or nothing connected. Shared by the sessions table and the
+ * connected-accounts table so the two never drift apart.
+ *
+ * @param array|string $providers provider keys, or a comma-separated list
+ * @param int          $password_algo
+ * @return string
  */
-function pg_connected_account_label($google_id, $password_algo)
+function pg_connected_account_label($providers, $password_algo)
 {
-    if ((string) $google_id === '') {
-        return '<span class="text-muted">&mdash;</span>';
+    if (!is_array($providers)) {
+        $providers = ((string) $providers === '') ? array() : explode(',', (string) $providers);
     }
 
-    if (((int) $password_algo) === 3) {
-        return '<span class="badge bg-warning text-dark fw-light" title="'
-            . h(lang('This account has no password of its own - disconnecting Google would lock it out.')) . '">'
-            . h(lang('Google only')) . '</span>';
-    }
-
-    return '<span class="badge bg-light text-dark border fw-light">' . h(lang('Google')) . '</span>';
+    return pg_signin_identity_badges($providers, $password_algo);
 }
 
 function pg_user_agent_label($ua)
@@ -974,12 +932,13 @@ function pg_user_agent_label($ua)
     return implode(' · ', $parts);
 }
 
-// The "sign-in and devices" block on the my-account screen: the Google link
-// status (with a disconnect that is withheld when Google is the only way in),
-// the active remember-me sessions, and a sign-out-everywhere button. Returns ''
-// when nobody is signed in. It only renders; every change goes through
-// account_security.php, which re-checks the CSRF token and re-enforces the
-// Google-only guard server-side.
+// The "sign-in and devices" block on the my-account screen: the Google,
+// Microsoft and Apple link status (with a disconnect that is withheld when the
+// provider is the only way in, and a "Connect" button for each provider that
+// is on and not connected yet), the active remember-me sessions, and a
+// sign-out-everywhere button. Returns '' when nobody is signed in. It only
+// renders; every change goes through account_security.php, which re-checks the
+// CSRF token and re-enforces the only-way-in guard server-side.
 function pg_account_security_section()
 {
     $user_id = (int) ($_SESSION['sessionuserid'] ?? 0);
@@ -997,22 +956,41 @@ function pg_account_security_section()
         $current_selector = (string) $auth_parts[0];
     }
 
-    // Google connection.
-    $google_id = db_value("SELECT user_google_id FROM user WHERE user_id = '" . $user_id . "'");
     $algo = (int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'");
-    $google_html = '';
-    if ((string) $google_id !== '') {
-        if ($algo === 3) {
-            $google_html =
-                '<p>' . h(lang('This account signs in with Google.')) . ' '
-                . h(lang('To disconnect Google, set a password first with Forgot Password, otherwise you would lose access.')) . '</p>';
+
+    // Google, Microsoft, Apple and the other providers of signin.php: a
+    // disconnect only while another way in remains.
+    $identity_html = '';
+
+    foreach (pg_signin_identities($user_id) as $identity_provider => $identity) {
+        $identity_label = pg_signin_provider_label($identity_provider);
+
+        if (!pg_signin_can_remove($user_id, $identity_provider)) {
+            $identity_html .=
+                '<p>' . h(lang(array('string' => 'This account signs in with {var:1}.', 'vars' => $identity_label))) . ' '
+                . h(lang(array('string' => 'To disconnect {var:1}, set a password first with Forgot Password, otherwise you would lose access.', 'vars' => $identity_label))) . '</p>';
         } else {
-            $google_html =
-                '<p>' . h(lang('This account is connected to Google.')) . '</p>'
+            $identity_html .=
+                '<p>' . h(lang(array('string' => 'This account is connected to {var:1}.', 'vars' => $identity_label))) . '</p>'
                 . '<form method="post" action="' . h($action_url) . '" style="margin-bottom:1em">' . $token
-                . '<input type="hidden" name="pg_security_action" value="unlink_google"/>'
-                . '<button type="submit" class="software_input_submit_secondary">' . h(lang('Disconnect Google')) . '</button></form>';
+                . '<input type="hidden" name="pg_security_action" value="unlink_' . h($identity_provider) . '"/>'
+                . '<button type="submit" class="software_input_submit_secondary">' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $identity_label))) . '</button></form>';
         }
+    }
+
+    // Connecting one while signed in: the provider account is tied to this
+    // account whatever its e-mail address (signin.php, &connect=).
+    $connect_html = pg_signin_connect_buttons($user_id, get_request_uri());
+
+    if ($connect_html !== '') {
+        $identity_html .= '<p style="margin-bottom:0">' . h(lang('Connect another account to sign in with it too:')) . '</p>'
+            . $connect_html;
+    }
+
+    if ($identity_html !== '') {
+        $identity_html = '<div class="pg-account-signins" style="margin-bottom:1.5em">'
+            . '<p style="font-weight:bold;margin-bottom:.5em">' . h(lang('Connected sign-ins')) . '</p>'
+            . $identity_html . '</div>';
     }
 
     // Active remember-me sessions.
@@ -1083,7 +1061,7 @@ function pg_account_security_section()
     return
         '<div class="pg-account-security" style="margin-top:2em;max-width:640px">'
         . '<div class="heading" style="margin-bottom:10px">' . h(lang('Sign-in and devices')) . '</div>'
-        . $google_html . $devices_html . $mfa_html . '</div>';
+        . $identity_html . $devices_html . $mfa_html . '</div>';
 }
 
 // The configured cap on concurrent "remember me" devices per account (Settings).
@@ -2786,16 +2764,28 @@ function asc_or_desc($column, $type, $extras = '')
     }
 }
 // return content for column heading
-function get_column_heading($column, $sort, $order, $extras = '')
+// $key is the value the link sorts by and $sort is compared with; it defaults
+// to the heading, for screens that still keep the heading as their sort.
+// $sort may instead be the list of sort levels pg_list_state() returns, for a
+// screen that sorts by more than one column; pg_list_sort_heading() draws it.
+function get_column_heading($column, $sort, $order, $extras = '', $key = null)
 {
-    if ($column == $sort) {
+    if ($key === null) {
+        $key = $column;
+    }
+
+    if (is_array($sort)) {
+        return pg_list_sort_heading($column, $key, $sort, $extras);
+    }
+
+    if ($key == $sort) {
         if ($order == 'asc') {
-            return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($column)) . '&order=desc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '</a> <span class="material-icons">keyboard_arrow_up</span></a>');
+            return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($key)) . '&order=desc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '</a> <span class="material-icons">keyboard_arrow_up</span></a>');
         } else {
-            return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($column)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '</a> <span class="material-icons">keyboard_arrow_down</span></a>');
+            return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($key)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '</a> <span class="material-icons">keyboard_arrow_down</span></a>');
         }
     } else {
-        return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($column)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '<span class="material-icons">unfold_more</span></a>');
+        return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($key)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '<span class="material-icons">unfold_more</span></a>');
     }
 }
 function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $user_id = '')
@@ -3241,9 +3231,12 @@ function initialize_token()
 }
 // Create function in order to get hidden form field with a token in order to prevent CSRF attacks.
 // This is used in almost all post requests.
+// The session has no token once logout() has ended it, and the page that follows
+// (the "You are not logged in." notice for a visitor who was not signed in) still
+// prints forms, so the field is left empty then, as the query string field is.
 function get_token_field()
 {
-    return '<input type="hidden" name="token" value="' . $_SESSION['software']['token'] . '">';
+    return '<input type="hidden" name="token" value="' . ($_SESSION['software']['token'] ?? '') . '">';
 }
 // Create function in order to get query string field with a token in order to prevent CSRF attacks.
 // This is used in get requests that change things.

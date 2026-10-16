@@ -59,7 +59,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -74,6 +74,10 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
+
+    // Every field of the form is one value. One posted as an array counts as
+    // not given: (string) wrote "Array" into the name, bank or IBAN.
+    pg_request_single_values(array('name', 'kind', 'currency', 'is_active', 'bank_name', 'iban', 'opening_balance'));
 
     $liveform->add_fields_to_session();
 

@@ -26,63 +26,34 @@ validate_area_access($user, 'designer');
 
 $liveform = new liveform('view_styles');
 
-// if sort was set, update session
-if (isset($_REQUEST['sort'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_styles']['sort'] = $_REQUEST['sort'];
-
-    // clear order
-    $_SESSION['software']['design']['view_styles']['order'] = '';
-}
-
-// if order was set, update session
-if (isset($_REQUEST['order'])) {
-    // store sort in session
-    $_SESSION['software']['design']['view_styles']['order'] = sql_order_direction($_REQUEST['order'], '');
-}
-
 $number_of_results = 0;
 $output_clear_button = '';
 
-// if the sort is not set yet (first visit to this screen), then default it to empty so the
-// switch below falls through to its default case
-if (isset($_SESSION['software']['design']['view_styles']['sort']) == false) {
-    $_SESSION['software']['design']['view_styles']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'theme'         => lang('Theme'),
+    'collection'    => lang('Collection'),
+    'layout_type'   => lang('Layout Type'),
+    'last_modified' => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['design']['view_styles']['sort'] ?? ''))
-{
-    case lang('Name'):
-        $sort_column = 'style_name';
-        break;
-    case lang('Theme'):
-        $sort_column = 'theme_name';
-        break;
-    case lang('Collection'):
-        $sort_column = 'collection';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Layout Type'):
-        $sort_column = 'layout_type';
-        break;
+$list_state = pg_list_state('view_styles', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Last Modified'):
-        $sort_column = 'style_timestamp';
-        break;
-    default:
-        $sort_column = 'style_timestamp';
-        $_SESSION['software']['design']['view_styles']['sort'] = lang('Last Modified');
-}
-
-if (!empty($_SESSION['software']['design']['view_styles']['order'])) {
-    $asc_desc = sql_order_direction($_SESSION['software']['design']['view_styles']['order'] ?? '');
-} elseif ($sort_column == 'style_timestamp') {
-    $asc_desc = 'desc';
-    $_SESSION['software']['design']['view_styles']['order'] = 'desc';
-} else {
-    $asc_desc = 'asc';
-    $_SESSION['software']['design']['view_styles']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'style_name',
+    'theme'         => 'theme_name',
+    'collection'    => 'collection',
+    'layout_type'   => 'layout_type',
+    'last_modified' => 'style_timestamp',
+));
 
 // Designs made with the visual editor have their own screen
 // (view_system_styles.php); this list is the HTML-template styles.
@@ -109,7 +80,7 @@ $query =
     LEFT JOIN files ON style.theme_id = files.id
     LEFT JOIN user ON style.style_user = user.user_id
     WHERE style.style_layout <> 'visual_designer'
-    ORDER BY $sort_column $asc_desc";
+    ORDER BY $order_by";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $styles = array();
@@ -138,8 +109,8 @@ foreach ($styles as $style) {
         <tr>
             <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="styles[]" value="' . $style['id'] . '" class="checkbox" /></td>
 			<td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label"  nowrap>' . h($style['name']) . '</td>
             <td class="align-middle text-center">' . pg_format_number(isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_folders'] : 0, 0) . '</td>
@@ -150,6 +121,12 @@ foreach ($styles as $style) {
             <td class="align-middle " nowrap>' . get_relative_time(array('timestamp' => $style['last_modified_timestamp'])) . '  ' . h($last_modified_username) . '</td>
         </tr>';
 }
+
+// Once the bin holds styles, the ones deleted here go there (delete_styles.php).
+require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+$delete_confirmation = pg_recycle_style_ready()
+    ? lang('The selected page styles will be moved to the Recycle Bin. Those still used by a folder or page are kept.')
+    : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('page styles'))));
 
 print
 pg_page_shell([
@@ -169,8 +146,10 @@ pg_page_shell([
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_custom_style.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
-                        <a class="btn btn-sm btn-outline-secondary m-1 " href="view_system_styles.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-magic me-2"></span>' . lang('Visual Page Editor') . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_custom_style.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-outline-secondary m-1 " href="view_system_styles.php"><span class="bi bi-magic me-2"></span>' . lang('Visual Page Editor') . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_sort_menu('view_styles.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
@@ -187,13 +166,13 @@ pg_page_shell([
                                         </div>
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th nowrap>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
+                                    <th nowrap>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                     <th class="text-center">' . lang('Folders Using Style') . '</th>
                                     <th class="text-center">' . lang('Pages Using Style') . '</th>
-                                    <th>' . get_column_heading(lang('Theme'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Collection'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
-                                    <th>' . get_column_heading(lang('Layout Type'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
-                                    <th nowrap>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Theme'), $sort_levels, '', '', 'theme') . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Collection'), $sort_levels, '', '', 'collection') . '</th>
+                                    <th>' . get_column_heading(lang('Layout Type'), $sort_levels, '', '', 'layout_type') . '</th>
+                                    <th nowrap>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
@@ -201,7 +180,7 @@ pg_page_shell([
                         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('page styles')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                 </div>
                             </div>
                         </nav>

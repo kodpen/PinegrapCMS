@@ -31,7 +31,7 @@ $filter_names = array(
     'cancelled' => lang('Cancelled'),
 );
 
-$filter = (string) ($_GET['filter'] ?? '');
+$filter = is_string($_GET['filter'] ?? null) ? $_GET['filter'] : '';
 if (!isset($filter_names[$filter])) {
     $filter = '';
 }
@@ -113,7 +113,7 @@ foreach ($waybills as $waybill) {
     $output_rows .=
         '<tr' . erp_drawer_row_attributes($id) . ($is_cancelled ? ' class="text-body-secondary"' : '') . '>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_waybill.php?id=' . $id . '\'"><i class="bi bi-eye"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_waybill.php?id=' . $id . '\'"><i class="bi bi-eye"></i></button>
             </td>
             <td class="align-middle text-nowrap chart_label" data-order="' . h($waybill['full_number']) . '">' . h($waybill['full_number']) . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($waybill['issue_date']) . '">' . h(prepare_form_data_for_output($waybill['issue_date'], 'date')) . '</td>
@@ -145,7 +145,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_waybill.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-plus-lg me-1"></i>' . lang('New Delivery Note') . '</a>
+                <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_waybill.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Delivery Note') . '</a>
                 <form action="add_erp_waybill.php" method="get" class="d-flex align-items-center gap-1">
                     <select name="order_id" class="form-select form-select-sm" aria-label="' . lang('Order') . '" style="max-width:20rem">' . $output_order_options . '</select>
                     <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap"><i class="bi bi-cart me-1"></i>' . lang('Open') . '</button>

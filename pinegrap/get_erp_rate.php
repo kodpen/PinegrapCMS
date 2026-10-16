@@ -26,8 +26,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');
 
-$currency = strtoupper(trim((string) ($_GET['currency'] ?? '')));
-$date = trim((string) ($_GET['date'] ?? ''));
+$currency = strtoupper(trim(is_string($_GET['currency'] ?? null) ? $_GET['currency'] : ''));
+$date = trim(is_string($_GET['date'] ?? null) ? $_GET['date'] : '');
 
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     $date = date('Y-m-d');

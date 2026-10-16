@@ -640,6 +640,22 @@ function erp_account_form_country($liveform)
 }
 
 /**
+ * The fields of the account form, every one of which holds one value.
+ *
+ * The screens hand them to pg_request_single_values() before they read the
+ * post, so one sent as an array (title[]=x) counts as not given: (string)
+ * read it as the text "Array" and saved that onto the card.
+ *
+ * @return array
+ */
+function erp_account_form_single_fields()
+{
+    return array('title', 'kind', 'status', 'is_person', 'tax_number', 'tax_office', 'email', 'phone', 'address', 'district', 'city', 'state',
+        'postcode', 'country_code', 'currency', 'contact_id', 'notes', 'payment_days', 'overdue_notify_days', 'overdue_notify_customer',
+        'invoice_email', 'invoice_mail', 'credit_limit', 'opening_amount', 'opening_date');
+}
+
+/**
  * The format checks an account card is held to on save, marked on the
  * fields. An empty field is not judged here - the e-document readiness
  * check says what a document still needs.

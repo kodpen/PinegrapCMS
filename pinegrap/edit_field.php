@@ -21,6 +21,15 @@ include_once('product_builder.php');
 
 $user = validate_user();
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM form_fields WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 // get page_id and product_id for field, in order to validate user's access
 $query =
     "SELECT
@@ -166,7 +175,7 @@ if ($page_id != 0) {
     // setup form designer heading table, content heading and subheading.
     $output_form_designer_subnav_heading = h($field_name);
     $output_form_designer_subnav_subheading = ucwords($form_type_name) . ': ' . h($form_name);
-    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
+    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
     $pg_breadcrumb_parent = array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php');
     $output_form_designer_content_heading = lang(array('string'=>'Edit {var:1} Field','vars'=>array(ucwords($form_type_name)) ));
     $output_form_designer_content_subheading = lang(array('string'=>'View or update this {var:1} field.','vars'=>$form_type_name ) ); 
@@ -256,7 +265,7 @@ if ($page_id != 0) {
     // setup form designer heading table, content heading and subheading
     $output_form_designer_subnav_heading = h($short_description); 
     $output_form_designer_subnav_subheading = ' ' . lang('Product ID / SKU') . ': ' . h($product_name) . ' | ' . lang('Form Name') . ': ' . h($form_name);
-    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
+    $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
     $pg_breadcrumb_parent = array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php');
     $output_form_designer_content_heading = lang('Edit Product Form Field');
     $output_form_designer_content_subheading = lang('View or update this product form field.');
@@ -774,8 +783,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('field') . $delete_data_warning))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('field') . $delete_data_warning))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

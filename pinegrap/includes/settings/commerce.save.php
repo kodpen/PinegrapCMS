@@ -162,10 +162,17 @@ function pg_parasut_credentials_for_save()
     // The e-document provider (4.61): the picked provider becomes the
     // active one and only its credentials are written - a box left empty
     // keeps the stored secret, like the Paraşüt fields above.
-    if (waf_table_has_column('erp_edoc_providers', 'provider')) {
+    //
+    // Every value here is one string. The card always posts the provider
+    // radio and each provider's boxes, so one that is missing or posted as
+    // an array (edoc_provider[]=x) is not given: the provider stays as it is
+    // and the stored credential is kept. (string) read an array as "Array",
+    // which switched the provider off or stored "Array" as the key. A select
+    // keeps to its own options; another value leaves the stored one.
+    if (waf_table_has_column('erp_edoc_providers', 'provider') && is_string(post_value('edoc_provider'))) {
         require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-        $erp_edoc_picked = (string) post_value('edoc_provider');
+        $erp_edoc_picked = post_value('edoc_provider');
 
         if (($erp_edoc_picked !== '') && !array_key_exists($erp_edoc_picked, erp_edoc_drivers())) {
             $erp_edoc_picked = '';
@@ -175,7 +182,18 @@ function pg_parasut_credentials_for_save()
             $erp_edoc_posted = array();
 
             foreach (erp_edoc_fields($erp_edoc_picked) as $erp_edoc_field) {
-                $erp_edoc_posted[$erp_edoc_field['name']] = (string) post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name']);
+                $erp_edoc_value = post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name']);
+
+                if (!is_string($erp_edoc_value)) {
+                    continue;
+                }
+
+                if (($erp_edoc_field['type'] === 'select') && !empty($erp_edoc_field['options'])
+                    && !array_key_exists($erp_edoc_value, (array) $erp_edoc_field['options'])) {
+                    continue;
+                }
+
+                $erp_edoc_posted[$erp_edoc_field['name']] = $erp_edoc_value;
             }
 
             if (!empty($erp_edoc_posted)) {
@@ -244,6 +262,18 @@ function pg_parasut_credentials_for_save()
     if (waf_table_has_column('config', 'erp_credit_limit_mode')) {
         $sql_erp_due .= "
             erp_credit_limit_mode = '" . ((post_value('erp_credit_limit_mode') === 'block') ? 'block' : 'warn') . "',";
+    }
+
+    // The prices agreed with an account, in the store (10.59).
+    if (waf_table_has_column('config', 'erp_storefront_account_prices')) {
+        $sql_erp_due .= "
+            erp_storefront_account_prices = '" . ((post_value('erp_storefront_account_prices') == 1) ? 1 : 0) . "',";
+    }
+
+    // Putting an order on the account at checkout (10.60).
+    if (waf_table_has_column('config', 'erp_open_account_payment')) {
+        $sql_erp_due .= "
+            erp_open_account_payment = '" . ((post_value('erp_open_account_payment') == 1) ? 1 : 0) . "',";
     }
 
     // Notices on the bell and the devices (4.91); the amount arrives in whole
@@ -371,19 +401,12 @@ function pg_parasut_credentials_for_save()
             iyzipay_protected_currency_code = '" . escape(post_value('iyzipay_protected_currency_code')) . "',
             ecommerce_shipping = '" . escape(post_value('ecommerce_shipping')) . "',
             ecommerce_recipient_mode = '" . escape(post_value('ecommerce_recipient_mode')) . "',
-            usps_user_id = '" . e(trim(post_value('usps_user_id'))) . "',
             ecommerce_address_verification = '" . escape(post_value('ecommerce_address_verification')) . "',
             ecommerce_address_verification_enforcement_type = '" . escape(post_value('ecommerce_address_verification_enforcement_type')) . "',
             ups = '" . e(post_value('ups')) . "',
-            ups_key = '" . e(trim(post_value('ups_key'))) . "',
-            ups_user_id = '" . e(trim(post_value('ups_user_id'))) . "',
-            ups_password = '" . e(trim(post_value('ups_password'))) . "',
             ups_account = '" . e(trim(post_value('ups_account'))) . "',
             fedex = '" . e(post_value('fedex')) . "',
-            fedex_key = '" . e(trim(post_value('fedex_key'))) . "',
-            fedex_password = '" . e(trim(post_value('fedex_password'))) . "',
             fedex_account = '" . e(trim(post_value('fedex_account'))) . "',
-            fedex_meter = '" . e(trim(post_value('fedex_meter'))) . "',
             ecommerce_product_restriction_message = '" . escape(post_value('ecommerce_product_restriction_message')) . "',
             ecommerce_no_shipping_methods_message = '" . escape(post_value('ecommerce_no_shipping_methods_message')) . "',
             ecommerce_end_of_day_time = '" . e(prepare_form_data_for_input(post_value('ecommerce_end_of_day_time'), 'time')) . "',
@@ -476,7 +499,11 @@ function pg_parasut_credentials_for_save()
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
-    
+    // The carriers' API applications are kept with the connected accounts'
+    // applications, the secrets sealed (includes/fn/carrier_api.php).
+    pg_carrier_api_settings_save($_POST, USER_ID, $liveform);
+
+
     // if there was a next order number field, update next order number
     if (isset($_POST['ecommerce_next_order_number']) == true) {
         // if next order number that was submitted is blank, set order number to 1

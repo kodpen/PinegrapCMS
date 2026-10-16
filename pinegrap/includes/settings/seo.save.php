@@ -47,6 +47,44 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // Visitor record retention (2026.4.10, 10.3): 0, or a whole number of
+    // days within the bounds the module sets. Checked here, before anything
+    // on this screen is written. Only when the form carried the field: a
+    // missing one would read as 0 and quietly lift the limit.
+    $visitor_retention_ready = pg_visitor_retention_ready() && array_key_exists('visitor_retention_days', $_POST);
+    $visitor_retention_days_input = $visitor_retention_ready ? pg_visitor_retention_days_from_input(post_value('visitor_retention_days')) : 0;
+
+    if ($visitor_retention_ready && ($visitor_retention_days_input === null)) {
+        $liveform->mark_error('visitor_retention_days', lang(array('string' => 'Keep visitor records for 0 days (no limit), or for {var:1} to {var:2} days.', 'vars' => array(PG_VISITOR_RETENTION_MIN_DAYS, PG_VISITOR_RETENTION_MAX_DAYS))));
+        return;
+    }
+
+    // The days after which a visit's IP address goes (2026.4.10, 10.8), the
+    // same way: only when the form carried the field.
+    $visitor_ip_ready = $visitor_retention_ready && pg_visitor_ip_ready() && array_key_exists('visitor_ip_days', $_POST);
+    $visitor_ip_days_input = $visitor_ip_ready ? pg_visitor_ip_days_from_input(post_value('visitor_ip_days')) : 0;
+
+    if ($visitor_ip_ready && ($visitor_ip_days_input === null)) {
+        $liveform->mark_error('visitor_ip_days', lang(array('string' => 'Remove IP addresses after 0 days (keep them with the record), or after {var:1} to {var:2} days.', 'vars' => array(PG_VISITOR_IP_MIN_DAYS, PG_VISITOR_IP_MAX_DAYS))));
+        return;
+    }
+
+    // Structured data settings (2026.4.4). Only written where the columns
+    // exist, so this code also runs safely before the database upgrade.
+    $seo_jsonld_ready = waf_table_has_column('config', 'og_default_image');
+    $site_custom_jsonld_input = $seo_jsonld_ready ? trim((string) post_value('custom_jsonld')) : '';
+
+    // Invalid JSON is refused like any other field the operator has to
+    // correct: marked, before the IndexNow file or a column is written. An
+    // invalid block is silently dropped at render time, so saving it would
+    // hide the mistake exactly where the operator cannot see it. It used to
+    // stop the save with output_error, which the dialog got as a 500 after
+    // the IndexNow file had already been written.
+    if (($site_custom_jsonld_input !== '') && (json_decode($site_custom_jsonld_input) === null)) {
+        $liveform->mark_error('custom_jsonld', lang('The site-wide JSON-LD is not valid JSON, so the settings were not saved. Please correct it and try again.'));
+        return;
+    }
+
     // If old key exists and changed, delete old file and its DB record. A
     // stored key that does not fit the format is left alone rather than used
     // as a path.
@@ -149,8 +187,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         );
     }
 
-    // Structured data settings (2026.4.4). Only written where the columns
-    // exist, so this code also runs safely before the database upgrade.
     $sql_seo_jsonld_fields = "";
     $sql_app_icon_field = "";
 
@@ -158,16 +194,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $sql_app_icon_field = "app_icon = '" . escape(trim(post_value('app_icon'))) . "',";
     }
 
-    if (waf_table_has_column('config', 'og_default_image')) {
-        $site_custom_jsonld_input = trim(post_value('custom_jsonld'));
-
-        // Refuse invalid JSON outright. An invalid block is silently dropped
-        // at render time, so saving it would hide the mistake exactly where
-        // the operator cannot see it.
-        if (($site_custom_jsonld_input != '') && (json_decode($site_custom_jsonld_input) === null)) {
-            output_error(lang('The site-wide JSON-LD is not valid JSON, so the settings were not saved. Please correct it and try again.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
+    if ($seo_jsonld_ready) {
         // The country travels into markup as an ISO 3166-1 alpha-2 code;
         // anything else would be noise every reader ignores.
         $merchant_country_input = mb_strtoupper(trim(post_value('merchant_country')));
@@ -202,6 +229,31 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             merchant_return_fees = '" . ((post_value('merchant_return_fees') == '1') ? 1 : 0) . "',
             custom_jsonld = '" . escape($site_custom_jsonld_input) . "',";
     }
+    // A changed retention period or summary switch clears the general job's
+    // last look, so the change applies from its next tick.
+    $sql_visitor_retention_fields = '';
+
+    if ($visitor_retention_ready) {
+
+        $visitor_summary_input = (post_value('visitor_summary') == '1') ? 1 : 0;
+
+        $visitor_retention_current = pg_visitor_retention_settings();
+
+        if (!is_array($visitor_retention_current)
+            || ($visitor_retention_current['days'] !== $visitor_retention_days_input)
+            || ($visitor_retention_current['summary'] !== ($visitor_summary_input === 1))
+            || ($visitor_ip_ready && ($visitor_retention_current['ip_days'] !== $visitor_ip_days_input))
+        ) {
+            pg_visitor_cleanup_reset();
+        }
+
+        $sql_visitor_retention_fields =
+            "visitor_retention_days = '" . (int) $visitor_retention_days_input . "',
+            visitor_summary = '" . $visitor_summary_input . "',"
+            . ($visitor_ip_ready ? "
+            visitor_ip_days = '" . (int) $visitor_ip_days_input . "'," : "");
+    }
+
     $sql_cookie_consent_fields = '';
 
     if (waf_table_has_column('config', 'cookie_consent')) {
@@ -220,6 +272,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $sql_app_icon_field
             $sql_seo_jsonld_fields
             $sql_cookie_consent_fields
+            $sql_visitor_retention_fields
             strutured_data = '" . escape(post_value('strutured_data')) . "',
             indexnow_key = '" . escape(post_value('indexnow_key')) . "',
             visitor_tracking = '" . escape(post_value('visitor_tracking')) . "',

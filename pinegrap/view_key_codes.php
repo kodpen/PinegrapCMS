@@ -17,80 +17,75 @@
  */
 
 include('init.php');
+
+// A key code enabled or disabled in place on the list (pg_list_edit_request()
+// in includes/fn/output.php). Answered in JSON, before anything below draws
+// the screen; the write is the one the key code's screen makes
+// (pg_key_code_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_key_code_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_key_code_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 validate_ecommerce_access($user);
 
 $liveform = new liveform('view_key_codes');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_key_codes'][$key] = trim($value);
-    }
-}
+// What an operator can change on the list without opening the key code.
+$quick_edit = pg_key_code_edit_columns();
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_key_codes']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_key_codes']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'code'            => lang('Key Code'),
+    'offer_code'      => lang('Offer Code'),
+    'offer_message'   => lang('Offer Message'),
+    'enabled'         => lang('Enabled'),
+    'expiration_date' => lang('Expiration Date'),
+    'notes'           => lang('Notes'),
+    'single_use'      => lang('Single-Use'),
+    'report'          => lang('Report'),
+    'last_modified'   => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? '')) {
-    case lang('Key Code'):
-        $sort_column = 'key_codes.code';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Offer Code'):
-        $sort_column = 'key_codes.offer_code';
-        break;
+$list_state = pg_list_state('view_key_codes', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Offer Message'):
-        $sort_column = 'offers.description';
-        break;
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$sort_map = array(
+    'code'            => 'key_codes.code',
+    'offer_code'      => 'key_codes.offer_code',
+    'offer_message'   => 'offers.description',
+    'enabled'         => 'key_codes.enabled',
+    'expiration_date' => 'key_codes.expiration_date',
+    'notes'           => 'key_codes.notes',
+    'single_use'      => 'key_codes.single_use',
+    'report'          => 'key_codes.report',
+    'last_modified'   => 'key_codes.timestamp',
+);
 
-    case lang('Enabled'):
-        $sort_column = 'key_codes.enabled';
-        break;
-
-    case lang('Expiration Date'):
-        $sort_column = 'key_codes.expiration_date';
-        break;
-
-    case lang('Notes'):
-        $sort_column = 'key_codes.notes';
-        break;
-
-    case lang('Single-Use'):
-        $sort_column = 'key_codes.single_use';
-        break;
-
-    case lang('Report'):
-        $sort_column = 'key_codes.report';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'key_codes.timestamp';
-        break;
-
-    default:
-        $sort_column = 'key_codes.timestamp';
-        $_SESSION['software']['ecommerce']['view_key_codes']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_key_codes']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_key_codes']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_key_codes']['order'] = 'asc';
-}
+$order_by = pg_list_order_by($sort_levels, $sort_map);
 
 $all_key_codes = db_value("SELECT COUNT(*) FROM key_codes");
 
 // If user requested to export, then export them.
 if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
+
+    // The export does not join offers, so the offer message is looked up
+    // per row; one row per key code even when two offers share a code.
+    $export_order_by = pg_list_order_by($sort_levels, array_merge($sort_map, array(
+        'offer_message' => '(SELECT offers.description FROM offers WHERE offers.code = key_codes.offer_code LIMIT 1)',
+    )));
 
     header("Content-type: text/csv");
     header("Content-disposition: attachment; filename=key_codes.csv");
@@ -121,7 +116,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
             last_modified_user.user_username AS last_modified_username
         FROM key_codes
         LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
-        ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? '')));
+        ORDER BY $export_order_by");
 
     // If the date format is month and then day, then use that format.
     if (DATE_FORMAT == 'month_day') {
@@ -179,32 +174,17 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
         FROM key_codes
         LEFT JOIN offers ON key_codes.offer_code = offers.code
         LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
-        ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? '')) . "");
+        ORDER BY $order_by");
 
     // Get the current date so that later we can figure out if key codes have expired.
     $current_date = date('Y-m-d');
 
-    // Loop through the key codes in order to set the status for each one,
-    // based on enabled and expiration date fields.
+    // The cells a quick edit can change, drawn by the same function that
+    // draws them again in the answer to an edit: the code, green when it
+    // works at checkout today (enabled, not expired, its offer running), the
+    // enabled mark and the last change.
     foreach ($key_codes as $key => $key_code) {
-
-        // Default to not active, so that the template can always read this key.
-        $key_codes[$key]['status_enabled'] = false;
-
-        // If this key code is active, then store that, so a color can be used to indicate that.
-        if (
-            $key_code['enabled']
-            &&
-            (
-                ($key_code['expiration_date'] == '0000-00-00')
-                || ($key_code['expiration_date'] >= $current_date)
-            )
-            && ($key_code['offer_status'] == 'enabled')
-            && ($key_code['offer_start_date'] <= $current_date)
-            && ($key_code['offer_end_date'] >= $current_date)
-        ) {
-            $key_codes[$key]['status_enabled'] = true;
-        }
+        $key_codes[$key]['cells'] = pg_key_code_list_cells($key_code, $current_date);
     }
 
     echo pg_page_shell([

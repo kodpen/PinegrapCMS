@@ -20,6 +20,15 @@ include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
+// Stop early when the screen is opened without an existing record (stale
+// link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
+// "not found" screen instead of PHP notices from the unchecked row below or
+// an error page.
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM orders WHERE id = '" . $id . "'") < 1)) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 include_once('liveform.class.php');
 $liveform = new liveform('view_order');
 
@@ -144,8 +153,13 @@ if (!$_POST) {
     $order_cancelled_at        = isset($row['cancelled_at']) ? (int) $row['cancelled_at'] : 0;
     $order_cancellation_reason = isset($row['cancellation_reason']) ? trim((string) $row['cancellation_reason']) : '';
 
+    // An order put on the customer's account (ERP, 10.60) is an offline
+    // payment too, but no transfer is coming: the account pays it by its due
+    // date, once it is invoiced.
+    $order_on_account = !empty($row['erp_on_account']);
+
     $output_awaiting_badge = $order_awaiting_payment
-        ? ' <span class="badge bg-warning text-dark">' . lang('Awaiting bank transfer') . '</span>'
+        ? ' <span class="badge bg-warning text-dark">' . ($order_on_account ? lang('On account') : lang('Awaiting bank transfer')) . '</span>'
         : '';
 
     // The reason is typed when the order is cancelled and was stored without
@@ -555,7 +569,7 @@ if (!$_POST) {
                        <div class="card-body">
                            <div class="row" >
                                <span class="translateable col text-muted">' . lang('Payment Method') . ':</span>
-                               <span class="col translateable text-end">' . lang($payment_method) . '</span>
+                               <span class="col translateable text-end">' . ($order_on_account ? lang('Put on account') : lang($payment_method)) . '</span>
                            </div>
                            ' . $output_credit_debit_card_information . '
                            ' . $transaction_id_row . '
@@ -1577,7 +1591,7 @@ if (!$_POST) {
         
         // if the order is complete, then output save
         if ($status != 'incomplete') {
-            $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>';
+            $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>';
         }
 
         // if the order is cancelled, output a restore button to revert it to complete
@@ -2494,7 +2508,7 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 <input type="hidden" name="order_id" value="' . (int) $_GET['id'] . '" />
                 <input type="hidden" name="from_order_screen" value="1" />
-                <button type="submit" name="submit_create" value="Create" class="btn btn-link link-secondary py-0 mb-2" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
+                <button type="submit" name="submit_create" value="Create" class="btn btn-link link-secondary py-0 mb-2" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
             </form>' . $output_erp_waybill;
             } else {
                 $output_erp_buttons = '
@@ -2765,7 +2779,7 @@ if (!$_POST) {
                             <div class=" btn-group flex-wrap justify-content-center d-print-none">
                                 ' . $output_save_button . '
                                 ' . $output_restore_button . '
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

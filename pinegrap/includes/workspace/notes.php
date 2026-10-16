@@ -146,6 +146,54 @@ function ws_notes_menu_pin($viewer, $pinned)
 }
 
 /**
+ * The quick note in the panel's header: a button beside the bell that opens a
+ * box, and what is written there becomes one of the person's notes through
+ * the same save the notes screen uses (ws_note_save, the ws_note_save action).
+ * The box also leads to My Notes. Drawn by output_header() for the members of
+ * the team while the workspace is on; the script is backend.src.js's.
+ *
+ * @param array  $rights        ws_rights() of the person
+ * @param string $parent_target the target attribute the header's links carry
+ * @return string '' when the person keeps no notes here
+ */
+function ws_notes_quick_markup($rights, $parent_target = '')
+{
+    if (empty($rights['member']) || !ws_notes_ready()) {
+        return '';
+    }
+
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+
+    return '
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown no-arrow no-popover" title="' . h(lang('Quick note')) . '">
+                        <button type="button" id="pg_quick_note_toggle" class="nav-link nav-link-sm no-popover dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="' . h(lang('Quick note')) . '">
+                            <span class="bi bi-journal-plus" aria-hidden="true"></span>
+                        </button>
+                        <div id="pg_quick_note" class="dropdown-menu shadow p-3 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" aria-labelledby="pg_quick_note_toggle">
+                            <form data-pg-quick-note class="disable_shortcut" novalidate
+                                data-api="' . h($base . 'api.php') . '"
+                                data-note-url="' . h($base . 'workspace_notes.php?note=') . '"
+                                data-saved="' . h(lang('Saved to your notes.')) . '"
+                                data-open="' . h(lang('Open the note')) . '"
+                                data-failed="' . h(lang('The note could not be saved.')) . '">
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                    <label for="pg_quick_note_text" class="fw-semibold small mb-0"><i class="bi bi-journal-plus me-1" aria-hidden="true"></i>' . h(lang('Quick note')) . '</label>
+                                    <a class="small link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('My Notes')) . '</a>
+                                </div>
+                                <textarea id="pg_quick_note_text" name="body" class="form-control form-control-sm" rows="4" maxlength="' . WS_NOTE_MAX . '" placeholder="' . h(lang('Write a note. Its first line becomes its title.')) . '"></textarea>
+                                <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
+                                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">' . h(lang('Save')) . '</button>
+                                    <span class="small text-body-secondary d-none d-sm-inline">Ctrl+Enter</span>
+                                    <span class="small ms-auto" data-pg-quick-note-status role="status"></span>
+                                </div>
+                            </form>
+                        </div>
+                    </li>
+                </ul>';
+}
+
+/**
  * Can an inbox row point at a note (4.110)?
  *
  * @return bool
@@ -668,18 +716,19 @@ function ws_notes_list($viewer, $search = '')
 }
 
 /**
- * Writes a note: a new one of the person's own, or one they may change.
- * A change made against an older version than the note now holds, by
- * somebody else meanwhile, is refused as a conflict.
+ * Whether the person may write this note: the checks of ws_note_save(), made
+ * on their own so that the API's dry run meets the same refusals.
  *
  * @param array $viewer
- * @param array $data note_id (0 for a new one), title, body, pinned (the owner's), base (updated_at it was loaded at)
- * @return array ok, error, note_id, conflict
+ * @param array $data see ws_note_save()
+ * @return array ok, error, note_id, conflict, note (as it is now, null for a
+ *               new one), sets (the fields as they would be stored), pin (1 or
+ *               0, null when it is left as it is)
  */
-function ws_note_save($viewer, $data)
+function ws_note_save_check($viewer, $data)
 {
     $fail = function ($error, $note_id = 0, $conflict = false) {
-        return array('ok' => false, 'error' => $error, 'note_id' => $note_id, 'conflict' => $conflict);
+        return array('ok' => false, 'error' => $error, 'note_id' => $note_id, 'conflict' => $conflict, 'note' => null, 'sets' => array(), 'pin' => null);
     };
 
     if (!ws_notes_ready()) {
@@ -727,6 +776,30 @@ function ws_note_save($viewer, $data)
         $pin = !empty($data['pinned']) ? 1 : 0;
     }
 
+    return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false, 'note' => $note, 'sets' => $sets, 'pin' => $pin);
+}
+
+/**
+ * Writes a note: a new one of the person's own, or one they may change.
+ * A change made against an older version than the note now holds, by
+ * somebody else meanwhile, is refused as a conflict.
+ *
+ * @param array $viewer
+ * @param array $data note_id (0 for a new one), title, body, pinned (the owner's), base (updated_at it was loaded at)
+ * @return array ok, error, note_id, conflict
+ */
+function ws_note_save($viewer, $data)
+{
+    $check = ws_note_save_check($viewer, $data);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error'], 'note_id' => $check['note_id'], 'conflict' => $check['conflict']);
+    }
+
+    $note_id = (int) $check['note_id'];
+    $note = $check['note'];
+    $sets = $check['sets'];
+    $pin = $check['pin'];
     $now = time();
 
     if ($note === null) {
@@ -740,7 +813,9 @@ function ws_note_save($viewer, $data)
             ws_blocks_index('note', $note_id, $sets['body'], (int) $viewer['id']);
         }
 
-        return ($note_id > 0) ? array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false) : $fail(lang('The note could not be saved.'));
+        return ($note_id > 0)
+            ? array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false)
+            : array('ok' => false, 'error' => lang('The note could not be saved.'), 'note_id' => 0, 'conflict' => false);
     }
 
     // The state before this save, when it is worth keeping.
@@ -821,7 +896,7 @@ function ws_note_delete($viewer, $note)
     }
 
     if (ws_notes_inbox_ready()) {
-        db("DELETE FROM ws_inbox WHERE note_id = '" . $id . "'");
+        ws_inbox_delete("note_id = '" . $id . "'");
     }
 
     return array('ok' => true, 'error' => '');
@@ -1003,7 +1078,7 @@ function ws_note_unshare($viewer, $note, $share_id = 0)
     db("DELETE FROM ws_note_shares WHERE id = '" . (int) $share['id'] . "'");
 
     if (((int) $share['user_id'] > 0) && ws_notes_inbox_ready()) {
-        db("DELETE FROM ws_inbox WHERE user_id = '" . (int) $share['user_id'] . "' AND note_id = '" . (int) $note['id'] . "'");
+        ws_inbox_delete("user_id = '" . (int) $share['user_id'] . "' AND note_id = '" . (int) $note['id'] . "'");
     }
 
     if ((int) $share['message_id'] > 0) {
@@ -1680,8 +1755,10 @@ function ws_note_news_map($viewer, $note_ids)
  */
 function ws_notes_js_strings()
 {
+    // Merged into the screen's own strings, so a key must not repeat one of
+    // those: 'notes' there is the task drawer's "Notes" heading.
     return array(
-        'notes'                 => lang('My Notes'),
+        'my_notes'              => lang('My Notes'),
         'nav_notes'             => lang('My Notes'),
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),

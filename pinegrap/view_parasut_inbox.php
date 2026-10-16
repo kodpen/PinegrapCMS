@@ -417,7 +417,7 @@ if ($tab === 'vkn') {
                         ' . $liveform->output_field(['type' => 'text', 'id' => 'vkn', 'name' => 'vkn', 'class' => 'form-control', 'value' => $vkn_input_val, 'maxlength' => '11', 'inputmode' => 'numeric', 'placeholder' => '1234567890']) . '
                     </div>
                     <div class="col-auto">
-                        <button type="submit" class="btn btn-primary" data-loading-content="' . lang('Querying') . '">
+                        <button type="submit" class="btn btn-primary">
                             <i class="bi bi-search me-1"></i>' . lang('Query') . '
                         </button>
                     </div>

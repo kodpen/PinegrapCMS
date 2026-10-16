@@ -14,6 +14,26 @@
  */
 
 include('init.php');
+
+// A price or a discount changed in place on the list (pg_list_edit_request()
+// in includes/fn/output.php). Answered in JSON before validate_erp_access(),
+// which answers with a page; these are its conditions for a change, the
+// accountant's read-only right included. The account comes with the address
+// the table names.
+if (pg_list_edit_requested()) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+    $edit = pg_list_edit_request(erp_account_price_edit_columns(), function ($user) {
+        return defined('ERP_ENABLED') && ERP_ENABLED
+            && (((int) $user['role'] < 3) || !empty($user['manage_erp']))
+            && !(((int) $user['role'] >= 3) && !empty($user['manage_erp_readonly']));
+    });
+
+    $saved = erp_account_price_quick_save((is_scalar($_GET['account_id'] ?? null) ? (int) $_GET['account_id'] : 0), $edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 if (!validate_erp_access($user)) {
     exit();
@@ -23,7 +43,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_account_prices');
 
-$account_id = (int) ($_REQUEST['account_id'] ?? 0);
+// One value only: an array (?account_id[]=x) cast to 1 and opened the
+// first account.
+$account_id = is_scalar($_REQUEST['account_id'] ?? null) ? (int) $_REQUEST['account_id'] : 0;
 $account = erp_account($account_id);
 
 if (!is_array($account)) {
@@ -33,11 +55,16 @@ if (!is_array($account)) {
 
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $ready = erp_price_lists_ready();
-$search = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
 $self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_prices.php?account_id=' . $account_id;
 
 if ($_POST) {
     validate_token_field();
+
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array product as product 1 and put it on the
+    // list, (string) read the discount as "Array" with a notice.
+    pg_request_single_values(array('erp_action', 'product_id', 'account_discount'));
 
     $action = (string) ($_POST['erp_action'] ?? 'save');
 
@@ -49,8 +76,9 @@ if ($_POST) {
         go($self . '#erp_prices');
     }
 
-    $saved_discount = erp_account_discount_save($account_id, (string) ($_POST['account_discount'] ?? ''));
-    $saved = $saved_discount['success'] ? erp_account_prices_save($account_id, (array) ($_POST['terms'] ?? array()), (int) $user['id']) : $saved_discount;
+    // The form only carries the account's discount on everything else; the
+    // products' own terms change in place on the list.
+    $saved = erp_account_discount_save($account_id, (string) ($_POST['account_discount'] ?? ''));
 
     if (!$saved['success']) {
         $liveform->mark_error('_error', h($saved['error']));
@@ -58,7 +86,7 @@ if ($_POST) {
     }
 
     log_activity(lang(array('string' => 'erp price list of account ({var:1}) was changed', 'vars' => (string) $account['title'])), $_SESSION['sessionusername']);
-    $liveform->add_notice(h(lang('The account\'s prices were saved.')));
+    $liveform->add_notice(h(lang('The account\'s discount was saved.')));
     go($self);
 }
 
@@ -66,27 +94,21 @@ if (!$ready) {
     $liveform->mark_error('', lang('Account prices come with the software update; run the update to use them.'));
 }
 
-$price_out = function ($kurus) {
-    return number_format(((int) $kurus) / 100, 2, erp_decimal_comma() ? ',' : '.', '');
-};
-$rate_out = function ($rate) {
-    $mark = erp_decimal_comma() ? ',' : '.';
-
-    return rtrim(rtrim(number_format((float) $rate, 3, $mark, ''), '0'), $mark);
-};
+// The products' price and discount change in place, saved as soon as they
+// are typed.
+$quick_edit = (!$readonly && $ready) ? erp_account_price_edit_columns() : array();
 
 $output_rows = '';
 foreach (erp_account_price_rows($account_id) as $row) {
     $product_id = (int) $row['product_id'];
-    $name = (trim((string) $row['product_name']) !== '') ? (string) $row['product_name'] : (string) $row['product_sku'];
+    $cells = erp_account_price_cells($row);
 
     $output_rows .= '
         <tr>
-            <td>' . h($name) . ((trim((string) $row['product_sku']) !== '' && trim((string) $row['product_sku']) !== trim($name)) ? '<div class="small text-body-secondary font-monospace">' . h((string) $row['product_sku']) . '</div>' : '')
-                . (((string) $row['enabled'] !== '1') ? ' <span class="badge text-bg-secondary">' . lang('Not on sale') . '</span>' : '') . '</td>
+            <td data-pg-cell="product">' . $cells['product']['html'] . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['list_price'] . '">' . h(erp_money_out((int) $row['list_price'])) . '</td>
-            <td style="width:10rem"><input type="text" class="form-control form-control-sm text-end" name="terms[' . $product_id . '][price]" value="' . (((int) $row['price'] > 0) ? h($price_out($row['price'])) : '') . '" inputmode="decimal" placeholder="—" aria-label="' . h(lang('Account price')) . '"' . ($readonly ? ' disabled' : '') . ' /></td>
-            <td style="width:8rem"><input type="text" class="form-control form-control-sm text-end" name="terms[' . $product_id . '][discount]" value="' . (((float) $row['discount_rate'] > 0) ? h($rate_out($row['discount_rate'])) : '') . '" inputmode="decimal" placeholder="—" aria-label="' . h(lang('Discount %')) . '"' . ($readonly ? ' disabled' : '') . ' /></td>
+            <td class="' . $cells['price']['class'] . '" style="width:10rem" data-sort="' . $cells['price']['sort'] . '"' . pg_list_edit_cell($quick_edit, 'price', $product_id, erp_account_price_input($row['price'])) . '>' . $cells['price']['html'] . '</td>
+            <td class="' . $cells['discount']['class'] . '" style="width:8rem" data-sort="' . $cells['discount']['sort'] . '"' . pg_list_edit_cell($quick_edit, 'discount', $product_id, erp_account_rate_input($row['discount_rate'])) . '>' . $cells['discount']['html'] . '</td>
         </tr>';
 }
 
@@ -141,34 +163,33 @@ pg_page_shell([
                     <div class="card-body row g-2 align-items-end">
                         <div class="col-12 col-sm-6 col-md-4">
                             <label class="form-label" for="account_discount">' . lang('Discount on everything else (%)') . '</label>
-                            <input type="text" class="form-control text-end" id="account_discount" name="account_discount" value="' . (((float) ($account['discount_rate'] ?? 0) > 0) ? h($rate_out($account['discount_rate'])) : '') . '" inputmode="decimal" placeholder="—"' . (($readonly || !$ready) ? ' disabled' : '') . ' />
+                            <input type="text" class="form-control text-end" id="account_discount" name="account_discount" value="' . h(erp_account_rate_input($account['discount_rate'] ?? 0)) . '" inputmode="decimal" placeholder="—"' . (($readonly || !$ready) ? ' disabled' : '') . ' />
                         </div>
-                        <div class="col-12 col-md-8 form-text">' . lang('Applied on the list price of every product that has no line of its own below. Empty is none.') . '</div>
+                        ' . ((!$readonly && $ready) ? '<div class="col-12 col-sm-auto">
+                            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        </div>' : '') . '
+                        <div class="col-12 col-md form-text">' . lang('Applied on the list price of every product that has no line of its own below. Empty is none.') . '</div>
                     </div>
                 </div>
-
-                <div class="card my-4" id="erp_prices">
-                    <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover align-middle mb-0" data-pg-sort>
-                            <thead>
-                                <tr>
-                                    <th>' . lang('Product') . '</th>
-                                    <th class="text-end">' . lang('List price') . '</th>
-                                    <th>' . lang('Account price') . '</th>
-                                    <th>' . lang('Discount %') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                    <div class="form-text px-3 pb-3">' . lang('A price replaces the list price; with no price, the discount applies to the list price. Clear both to take the product off the list. Prices are in the catalogue\'s basis, the way the list price is.') . '</div>
-                </div>
-                ' . ((!$readonly && $ready) ? '<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
-                    <div class="container">
-                        <button type="submit" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
-                    </div>
-                </nav>' : '') . '
             </form>
+
+            <div class="card my-4" id="erp_prices">
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover align-middle mb-0" data-pg-sort' . pg_list_edit_table('erp_account_prices.php?account_id=' . $account_id, $quick_edit) . '>
+                        <thead>
+                            <tr>
+                                <th>' . lang('Product') . '</th>
+                                <th class="text-end">' . lang('List price') . '</th>
+                                <th class="text-end">' . lang('Account price') . '</th>
+                                <th class="text-end">' . lang('Discount %') . '</th>
+                            </tr>
+                        </thead>
+                        <tbody>' . $output_rows . '</tbody>
+                    </table>
+                </div>
+                <div class="form-text px-3 pb-3">' . lang('A price replaces the list price; with no price, the discount applies to the list price. Clear both to take the product off the list. Prices are in the catalogue\'s basis, the way the list price is.')
+                    . ($quick_edit ? ' ' . h(lang('Click a price or a discount to change it; it is saved as soon as you press Enter or leave the box.')) : '') . '</div>
+            </div>
 
             ' . ((!$readonly && $ready) ? '<div class="card my-4">
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Add a product') . '</div>

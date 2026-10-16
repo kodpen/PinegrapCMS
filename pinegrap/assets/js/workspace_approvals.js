@@ -11,9 +11,12 @@
  * the formatted text field), so the card looks like the rest of the screen.
  * Everything the card offers is decided by the server
  * (includes/workspace/approvals.php): approve and reject only for the people
- * asked, take back for the person who asked, close for staff; the server
- * checks each again when it is sent. Every text comes from the #ws-config
- * block.
+ * asked, take back for the person who asked, close for staff, a new link for
+ * a customer who has not answered (approval_guests.php); the server checks
+ * each again when it is sent. Every text comes from the #ws-config block.
+ *
+ * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
+ * includes/fn/output.php); after editing run `php tools/build_js.php`.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -73,11 +76,17 @@
 
         box.appendChild(head);
 
-        // The record it is about: its chip opens where else it came up.
+        // The record it is about: its chip opens where else it came up; a
+        // task opens in its drawer.
         if (approval.record) {
             var record = h.button('ws-approval-record', '', approval.record.icon || 'bi-link-45deg');
 
-            record.setAttribute('data-ws-record', approval.record.type + ':' + approval.record.id);
+            if ((approval.record.type === 'task') && h.openTask) {
+                record.addEventListener('click', function () { h.openTask(approval.record.id); });
+            } else {
+                record.setAttribute('data-ws-record', approval.record.type + ':' + approval.record.id);
+            }
+
             record.setAttribute('data-ws-label', approval.record.label);
             record.appendChild(el('span', 'ws-approval-record-label', approval.record.label));
 
@@ -99,10 +108,38 @@
             row.appendChild(face);
             row.appendChild(el('span', 'ws-approval-name', person.name));
 
+            // Somebody outside the team: asked by e-mail; staff see the
+            // address and the link it went through on hover.
+            if (person.guest) {
+                row.appendChild(el('span', 'badge rounded-pill text-bg-light ws-approval-guest', t('apv_guest_badge')));
+
+                var detail = [person.email, person.audit].filter(function (part) { return part; }).join(' · ');
+
+                if (detail) {
+                    row.title = detail;
+                }
+            }
+
             var badge = el('span', 'ws-approval-state');
             badge.appendChild(h.icon(state[0], 'me-1'));
             badge.appendChild(document.createTextNode(t(state[1]) + (person.time ? ' · ' + person.time : '')));
             row.appendChild(badge);
+
+            if (person.can_resend) {
+                var again = h.button('btn btn-sm btn-ghost py-0 px-1', '', 'bi-envelope', t('apv_guest_resend'));
+
+                again.addEventListener('click', function () {
+                    again.disabled = true;
+                    h.api('ws_approval_guest_resend', { approval_id: approval.id, guest_id: person.guest_id }).then(function (data) {
+                        h.toast(t('apv_guest_resent'));
+                        refreshed(view, data);
+                    }).catch(function (error) {
+                        again.disabled = false;
+                        h.fail(error);
+                    });
+                });
+                row.appendChild(again);
+            }
 
             if (person.note) {
                 row.appendChild(el('span', 'ws-approval-note', person.note));
@@ -231,6 +268,13 @@
         peopleRow.appendChild(el('div', 'form-text', t('apv_people_help')));
         body.appendChild(peopleRow);
 
+        // Customers outside the team, for staff: a name and an e-mail each.
+        var guests = guestRows(h, (h.cfg.approvals && h.cfg.approvals.guests) || 0);
+
+        if (guests) {
+            body.appendChild(guests.node);
+        }
+
         var ruleRow = el('div', 'mb-3');
         var group = h.nextId('ws-apv-rule-');
         var rule = 'any';
@@ -291,6 +335,7 @@
                 title: title.value,
                 text: rich ? rich.value() : area.value,
                 approvers: people.value(),
+                guests: guests ? guests.value() : [],
                 rule: rule,
                 closes_date: date.value,
                 closes_time: time.value || '18:00'
@@ -310,6 +355,83 @@
         if (!h.touchScreen()) {
             setTimeout(function () { title.focus(); }, 250);
         }
+    }
+
+    // The rows of the form that name customers outside the team, up to `max`;
+    // null when the reader may not ask them. value() is what the server reads.
+    function guestRows(h, max) {
+        if (!max) {
+            return null;
+        }
+
+        var t = h.t;
+        var el = h.el;
+        var box = el('div', 'mb-3 ws-approval-guests');
+        var list = el('div', 'ws-approval-guest-rows');
+        var rows = [];
+        var add = h.button('btn btn-sm btn-ghost px-1', t('apv_guest_add'), 'bi-plus-lg');
+
+        function row() {
+            var line = el('div', 'row g-1 mb-1 align-items-center');
+            var nameCell = el('div', 'col-5');
+            var mailCell = el('div', 'col-6');
+            var dropCell = el('div', 'col-1 text-end');
+            var name = el('input', 'form-control form-control-sm');
+            var mail = el('input', 'form-control form-control-sm');
+            var drop = h.button('btn btn-sm btn-ghost px-1', '', 'bi-x-lg', t('apv_guest_remove'));
+            var item = { name: name, mail: mail };
+
+            name.type = 'text';
+            name.maxLength = 60;
+            name.placeholder = t('apv_guest_name');
+            name.setAttribute('aria-label', name.placeholder);
+            mail.type = 'email';
+            mail.maxLength = 255;
+            mail.placeholder = t('apv_guest_email');
+            mail.setAttribute('aria-label', mail.placeholder);
+            mail.autocomplete = 'off';
+
+            drop.addEventListener('click', function () {
+                rows.splice(rows.indexOf(item), 1);
+                line.remove();
+
+                if (!rows.length) {
+                    row();
+                }
+
+                add.classList.toggle('d-none', rows.length >= max);
+            });
+
+            nameCell.appendChild(name);
+            mailCell.appendChild(mail);
+            dropCell.appendChild(drop);
+            line.appendChild(nameCell);
+            line.appendChild(mailCell);
+            line.appendChild(dropCell);
+            list.appendChild(line);
+            rows.push(item);
+            add.classList.toggle('d-none', rows.length >= max);
+        }
+
+        add.addEventListener('click', function () {
+            row();
+            rows[rows.length - 1].name.focus();
+        });
+
+        box.appendChild(el('div', 'form-label', t('apv_guests')));
+        box.appendChild(list);
+        box.appendChild(add);
+        box.appendChild(el('div', 'form-text', t('apv_guests_help')));
+        row();
+
+        return {
+            node: box,
+            value: function () {
+                return rows.map(function (item) {
+                    return { name: item.name.value, email: item.mail.value };
+                });
+            }
+        };
     }
 
     // The overview's list of requests waiting for the reader's answer;

@@ -24,6 +24,9 @@ echo
 pg_page_shell([
         'title' => lang('Work Calendar'),
         'extra classes' => 'workspace workspace_calendar',
+        // No code field here: CodeMirror is loaded only if the settings
+        // dialog opens a pane that has one.
+        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => lang('Work Calendar'),
         'heading_description' => lang('The month at a glance: work falling due, conversations and who carries what.'),
@@ -38,6 +41,9 @@ pg_page_shell([
                     <div id="ws-root">
                         <div class="ws-empty">' . h(lang('Loading…')) . '</div>
                     </div>
+                    <p class="small text-muted mt-3 mb-0">
+                        <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar_feed.php" class="link-secondary"><i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>' . h(lang('See your tasks and plan items in the calendar on your phone or computer')) . '</a>
+                    </p>
                 </div>
             </div>
         </div>

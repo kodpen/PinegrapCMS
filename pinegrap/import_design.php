@@ -51,6 +51,10 @@ if (pg_hosted()) {
 include_once('liveform.class.php');
 $liveform = new liveform('import_design');
 
+// The button is one value; one sent as an array (submit_button[]=x) counts as
+// not given: it ended in an error page.
+pg_request_single_values(array('submit_button'));
+
 $action = '';
 
 if ($command_line) {
@@ -92,7 +96,9 @@ if ($action and !$command_line) {
     $liveform->validate_required_field('url', lang('URL is required.'));
     $liveform->validate_required_field('max_link_level', lang('Follow Depth is required.'));
 
-    $url = $liveform->get_field_value('url');
+    // A request without the field (the required check above has marked it)
+    // reads as '' rather than null, which mb_substr() deprecates.
+    $url = (string) $liveform->get_field_value('url');
     $import_name = $liveform->get_field_value('import_name');
 
     // If the URL does not start with "http://" or "https://" then add
@@ -170,7 +176,7 @@ if ($action != 'import') {
                     </div>
                 </div>';
 
-            $output_buttons = '<button type="submit" name="submit_button" value="Scan" class="btn my-1  btn-primary" data-loading-content="' . lang(array('string'=>'Scanning') ) . '"><span class="material-icons me-2">search</span><span class="btn-text">' . lang(array('string'=>'Scan') ) . '</span></button>';
+            $output_buttons = '<button type="submit" name="submit_button" value="Scan" class="btn my-1  btn-primary"><span class="material-icons me-2">search</span><span class="btn-text">' . lang(array('string'=>'Scan') ) . '</span></button>';
 
             break;
 
@@ -265,7 +271,7 @@ if ($action != 'import') {
         if ($result === false) {
             echo '<div class="card-footer"><div class="alert alert-danger mb-0"><strong>' . lang('Sorry, the scan could not be completed at this time.') . '</strong> ' . lang('Please try again later.') . '</div></div>';
 
-            $output_buttons = '<button type="button" class="btn btn-primary" data-loading-content="' . lang(array('string'=>'Restarting') ) . '" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-2">refresh</span><span class="btn-text">' . lang(array('string'=>'Restart') ) . '</span></button>';
+            $output_buttons = '<button type="button" class="btn btn-primary" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-2">refresh</span><span class="btn-text">' . lang(array('string'=>'Restart') ) . '</span></button>';
         } else {
             $output_max_imported_items_warning = '';
 
@@ -276,8 +282,8 @@ if ($action != 'import') {
             echo '<div class="card-footer"><div class="alert alert-success mb-0"><strong>' . lang('Scan completed successfully.') . '</strong> ' . lang('Click Import to transfer items to your site, or Restart to adjust settings and scan again.') . $output_max_imported_items_warning . '</div></div>';
 
             $output_buttons = '
-            <button type="submit" name="submit_button" value="Import" class="btn btn-primary" data-loading-content="' . lang(array('string'=>'Importing') ) . '"><span class="material-icons me-2">download</span><span class="btn-text">' . lang(array('string'=>'Import') ) . '</span></button>
-            <button type="button" class="btn btn-warning" data-loading-content="' . lang(array('string'=>'Restarting') ) . '" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-2">refresh</span><span class="btn-text">' . lang(array('string'=>'Restart') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Import" class="btn btn-primary"><span class="material-icons me-2">download</span><span class="btn-text">' . lang(array('string'=>'Import') ) . '</span></button>
+            <button type="button" class="btn btn-warning" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-2">refresh</span><span class="btn-text">' . lang(array('string'=>'Restart') ) . '</span></button>';
         }        
 
 

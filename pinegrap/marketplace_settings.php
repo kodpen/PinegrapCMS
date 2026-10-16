@@ -46,6 +46,22 @@ if ($_POST) {
 
 	validate_token_field();
 
+	// Every field here holds one value, except the category attributes
+	// (attribute[id]). One posted as a list (provider[]=x) stopped the request
+	// in trim(), and account_id[]=x or group_id[]=x was read as record 1.
+	// Nothing is written, so every account and match stays as it was.
+	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1));
+
+	if ($mp_settings_lists) {
+
+		$liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $mp_settings_lists)))));
+
+		header('Location: ' . $screen_url . ((is_scalar($_POST['account_id'] ?? null) && ((int)$_POST['account_id'] > 0)) ? '?account=' . (int)$_POST['account_id'] : ''));
+
+		exit();
+
+	}
+
 	$action = isset($_POST['mp_action']) ? $_POST['mp_action'] : '';
 
 	$account_id = isset($_POST['account_id']) ? (int)$_POST['account_id'] : 0;
@@ -1559,10 +1575,11 @@ $unmatched = array();
 
 if ($selected) {
 
+	// Products in the Recycle Bin are not offered for matching.
 	$unmatched = (array) db_items("SELECT products.id, products.name, products.title
 		FROM products
 		WHERE products.id NOT IN (
-			SELECT product_id FROM marketplace_product_map WHERE account_id = '" . e($selected_id) . "')
+			SELECT product_id FROM marketplace_product_map WHERE account_id = '" . e($selected_id) . "')" . pg_catalog_bin_live_sql('products') . "
 		ORDER BY products.name ASC
 		LIMIT 2000");
 

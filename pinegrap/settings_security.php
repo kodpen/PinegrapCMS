@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - sessions and passwords, devices, Google sign-in, registration and membership.
+ * Site Settings - sessions and passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership.
  *
  * One of the nine category screens the settings were split into on
  * 2026-09-12. Everything the screen does lives in the shared flow and in the

@@ -27,7 +27,7 @@ $liveform = new liveform('erp_reconciliation');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php';
 
-$account_id = (int) ($_REQUEST['id'] ?? 0);
+$account_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $account = erp_account($account_id);
 
 if (!is_array($account)) {
@@ -38,7 +38,7 @@ if (!is_array($account)) {
 $options = erp_reconciliation_options(array(
     'as_of' => $_REQUEST['as_of'] ?? '',
     'from' => $_REQUEST['from'] ?? '',
-    'reply_days' => isset($_REQUEST['reply_days']) ? (int) $_REQUEST['reply_days'] : 7,
+    'reply_days' => is_scalar($_REQUEST['reply_days'] ?? null) ? (int) $_REQUEST['reply_days'] : 7,
 ));
 
 $query = 'id=' . $account_id . '&as_of=' . $options['as_of'] . '&from=' . $options['from'] . '&reply_days=' . $options['reply_days'];
@@ -48,6 +48,10 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_reconciliation.php?'
 if ($_POST) {
 
     validate_token_field();
+
+    // The action and the address are one value each. One posted as an array
+    // counts as not given: (string) read the address as "Array".
+    pg_request_single_values(array('erp_action', 'to'));
 
     if (($_POST['erp_action'] ?? '') === 'send') {
         $to = trim((string) ($_POST['to'] ?? ''));
@@ -81,6 +85,11 @@ if (erp_fx_enabled() && ($balance['currency'] !== '') && ($balance['currency'] !
 }
 
 $pdf_url = 'get_erp_reconciliation_pdf.php?' . h($query);
+
+// The late payment fee over the letter's period, beside the balance: on
+// screen only, the letter states what the books hold and a fee is not in
+// them until its invoice is issued.
+$output_late_fee = function_exists('erp_late_fee_panel') ? erp_late_fee_panel($account, $options['from'], $options['as_of'], 'reconciliation') : '';
 
 if (!$liveform->field_in_session('to')) {
     $liveform->assign_field_value('to', (string) $account['email']);
@@ -125,6 +134,7 @@ pg_page_shell([
                     ' . $output_balance_fc . '
                     <span class="text-body-secondary ms-auto small">' . h(lang(array('string' => '{var:1} movement(s) between {var:2} and {var:3}', 'vars' => array($movement_count, prepare_form_data_for_output($options['from'], 'date', false), prepare_form_data_for_output($options['as_of'], 'date', false))))) . '</span>
                 </div>
+                ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
             </div>
         </div>
     </div>
@@ -172,7 +182,7 @@ pg_page_shell([
                             ' . $liveform->output_field(array('type' => 'email', 'id' => 'to', 'name' => 'to', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                             <div class="form-text">' . h($output_send_note) . '</div>
                         </div>
-                        <button type="submit" name="submit_send" value="Send" class="btn btn-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '" data-loading-content="' . lang(array('string' => 'Sending')) . '"><i class="bi bi-envelope me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Send the letter') . '</span></button>
+                        <button type="submit" name="submit_send" value="Send" class="btn btn-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '"><i class="bi bi-envelope me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Send the letter') . '</span></button>
                     </form>
                 </div>
             </div>

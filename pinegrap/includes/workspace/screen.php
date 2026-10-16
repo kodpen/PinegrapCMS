@@ -76,6 +76,7 @@ function ws_js_strings()
         'channel_saved'          => lang('The channel was saved.'),
         'channel_topic'          => lang('What it is about'),
         'channels'               => lang('Channels'),
+        'channels_show'          => lang('Show the channel list'),
         'close'                  => lang('Close'),
         'closed_tasks'           => lang('Finished tasks'),
         'commands'               => lang('Slash commands'),
@@ -349,6 +350,10 @@ function ws_js_strings()
         'copy_link'              => lang('Copy the link'),
         'copy_number'            => lang('Copy the task number'),
         'copy_text'              => lang('Copy the text'),
+        'copy_all'               => lang('Copy all'),
+        'copy_refused'           => lang('The browser did not let the text be copied. Select it and copy it from here.'),
+        'copy_select_help'       => lang('Press and hold to select the part you need, then copy it.'),
+        'select_text'            => lang('Select the text'),
         'direct_message'         => lang('Send a direct message'),
         'direct_message_to'      => ws_js_template('Message {var:1}', 1),
         'documents'              => lang('Documents'),
@@ -433,6 +438,9 @@ function ws_js_strings()
         'view_image'             => lang('View the picture'),
         'who_carries'            => lang('Who carries the work'),
         'work_calendar'          => lang('Work Calendar'),
+        'brief_recap'            => lang('Sum up what I missed'),
+        'brief_recap_wait'       => lang('Pinegrap AI is reading…'),
+        'brief_recap_by'         => lang('Summed up by Pinegrap AI'),
     );
 }
 
@@ -592,6 +600,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_ai_js_strings());
     }
 
+    // Asking an MCP server by its alias (includes/workspace/mcp_ask.php).
+    if (function_exists('ws_mcp_js_strings')) {
+        $strings = array_merge($strings, ws_mcp_js_strings());
+    }
+
     // Page changes the assistants propose (includes/designer_ai.php).
     if (function_exists('ws_design_ai') && ws_design_ai()) {
         $strings = array_merge($strings, pg_design_ai_ws_strings());
@@ -635,7 +648,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // Scheduled actions (includes/workspace/scheduled.php) and the messages
     // scheduled from the writing box (scheduled_messages.php).
     if (function_exists('ws_scheduled_js_strings')) {
-        $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings());
+        $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings(), ws_scheduled_draft_js_strings());
     }
 
     // The event rule of a scheduled action and a channel's watch switch
@@ -660,8 +673,16 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
-    // Approval requests and read receipts (approvals.php, acks.php).
-    $strings = array_merge($strings, ws_approvals_js_strings(), ws_acks_js_strings());
+    // Approval requests, the people outside the team they ask, and read
+    // receipts (approvals.php, approval_guests.php, acks.php).
+    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings());
+    // Status updates and check-ins (status.php, assets/js/workspace_status.js).
+    $strings = array_merge($strings, ws_status_js_strings());
+    // A task handed to an assistant (delegation.php,
+    // assets/js/workspace_task_delegate.js).
+    $strings = array_merge($strings, ws_delegation_js_strings());
+    // Meetings on the plan: the call, the meeting note (meetings.php).
+    $strings = array_merge($strings, ws_meetings_js_strings());
 
     return array_merge(array(
         'mode'         => (string) $mode,
@@ -670,9 +691,12 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'me'           => (int) $viewer['id'],
         'me_role'      => (int) $viewer['role'],
         'locale'       => (string) lang(array('info' => '')),
+        // The site's own clock, which the time labels are written in.
+        'timezone'     => date_default_timezone_get(),
         'today'        => date('Y-m-d'),
         'board_from'   => ws_screen_board_from(),
         'event_kinds'  => ws_event_kinds(),
+        'meetings'     => ws_meetings_ready(),
         'poll'         => array('active' => 4),
         'open_channel' => 0,
         'urls'         => array(
@@ -697,14 +721,16 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),
         'pins'         => ws_pins_ready(),
-        'approvals'    => ws_approvals_ready() ? array('max' => WS_APPROVAL_MAX_PEOPLE) : null,
+        'approvals'    => ws_approvals_ready() ? array('max' => WS_APPROVAL_MAX_PEOPLE, 'guests' => ws_approval_can_ask_guests($viewer) ? WS_APPROVAL_MAX_GUESTS : 0) : null,
         'acks'         => ws_acks_ready(),
+        'status'       => ws_status_js_config(),
         'blocks'       => ws_blocks_ready(),
         'customer'     => ws_customer_ready(),
         'templates'    => ws_templates_js_config($viewer),
         'calc'         => function_exists('ws_calc_js_config') ? ws_calc_js_config() : array(),
         'task_time'    => ws_task_time_ready() ? array('ready' => true, 'manager' => ws_task_time_is_manager($viewer)) : array('ready' => false),
         'task_links'   => ws_task_links_ready(),
+        'delegation'   => ws_delegation_js_config(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
         'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
         'tour'         => (($mode === 'channels') && function_exists('ws_tour_js_config')) ? ws_tour_js_config($viewer) : null,
@@ -713,6 +739,14 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
 /**
  * The settings block and the script, once per page.
+ *
+ * The scripts come from pg_js_bundles() (includes/fn/output.php): one
+ * minified file for what every screen runs, plus the search box on the
+ * workspace's own screens and the channel board and tour on the channel
+ * screen. A record's drawer (ws_record_button()) loads nothing up front: the
+ * order, product and contact screens it sits on are opened far more often
+ * than the drawer is, so the script waits until the Workspace button is
+ * first clicked.
  *
  * @param array  $viewer
  * @param string $mode
@@ -729,7 +763,6 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 
     $printed = true;
 
-    $script = PG_FUNCTIONS_DIR . '/assets/js/workspace.js';
     $json = json_encode(ws_screen_config($viewer, $mode, $extra), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
     // The panel's picture viewer, for the pictures in a conversation.
@@ -743,23 +776,78 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 <template id="ws-image-editor-assets">' . get_image_editor_includes() . '</template>';
     }
 
-    return $lightbox . '
-<script type="application/json" id="ws-config">' . $json . '</script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_recurrence.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_recurrence.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_events.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_events.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_templates.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_templates.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_task_time.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_time.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_task_links.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_links.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_approvals.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_approvals.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_acks.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_acks.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace.js?v=' . @filemtime($script)) . '" defer></script>'
-        // The search box, on every workspace screen but a record's drawer.
-        . (($mode !== 'record') ? '
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_palette.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_palette.js')) . '" defer></script>' : '')
-        . (($mode === 'channels') ? '
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_board_channel.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js')) . '" defer></script>
-<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/workspace_tour.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js')) . '" defer></script>' : '');
+    $output = $lightbox . '
+<script type="application/json" id="ws-config">' . $json . '</script>';
+
+    if ($mode === 'record') {
+        return $output . ws_record_loader(pg_js_bundle_urls('assets/js/workspace.min.js'));
+    }
+
+    $output .= pg_js_bundle_tags('assets/js/workspace.min.js')
+        // The search box, on every workspace screen.
+        . pg_js_bundle_tags('assets/js/workspace_palette.min.js');
+
+    if ($mode === 'channels') {
+        $output .= pg_js_bundle_tags('assets/js/workspace_board_channel.min.js')
+            . pg_js_bundle_tags('assets/js/workspace_tour.min.js');
+    }
+
+    return $output;
+}
+
+/**
+ * What a record's screen carries in place of the workspace script: a click
+ * on a Workspace button (data-ws-record) is held, the script is fetched,
+ * file after file in order, and once it has started it opens the drawer of
+ * the button that was clicked (window.PGWsPendingRecord, read by
+ * assets/js/workspace.js). Clicks that come while the files are on their way
+ * replace the held one; once the script has taken over (PGWsRecordReady)
+ * its own listener answers and this one stands aside. A file that fails to
+ * load lets the next click try again.
+ *
+ * @param array $urls pg_js_bundle_urls() of the workspace script
+ * @return string
+ */
+function ws_record_loader($urls)
+{
+    $files = json_encode(array_values($urls), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    return '
+<script>
+(function () {
+    var files = ' . $files . ';
+    var loading = false;
+
+    document.addEventListener("click", function (event) {
+        var trigger = event.target.closest ? event.target.closest("[data-ws-record]") : null;
+
+        if (!trigger || window.PGWsRecordReady) {
+            return;
+        }
+
+        event.preventDefault();
+        window.PGWsPendingRecord = trigger;
+
+        if (loading) {
+            return;
+        }
+
+        loading = true;
+
+        (function next(index) {
+            if (index >= files.length) {
+                return;
+            }
+
+            var script = document.createElement("script");
+            script.src = files[index];
+            script.onload = function () { next(index + 1); };
+            script.onerror = function () { loading = false; };
+            document.head.appendChild(script);
+        })(0);
+    });
+})();
+</script>';
 }
 
 /**

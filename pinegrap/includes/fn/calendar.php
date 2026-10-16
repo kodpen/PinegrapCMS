@@ -21,6 +21,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $link, $number_of_upcoming_events = '', $return = 'html', $output_minimal_calendar = false)
 {
     $sql_join = '';
+    // The weekly view only appends to the calendar, and the back-end upcoming
+    // view prints a date selection it never builds: both start out empty.
+    $output_calendar = '';
+    $output_date_selection = '';
     // if at least one calendar was supplied, continue
     if ($calendars) {
         // assume that calendar id has not been verified until we find out otherwise
@@ -40,8 +44,13 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         // Anything else is dropped so the views fall back to the current date:
         // mktime() below rejects non-integer parts (a TypeError on PHP 8), and a
         // bad value that stuck in the session would break every later request.
+        // A date that is not text (an array kept by an older version) is
+        // dropped the same way.
+        if (!is_string($date)) {
+            $date = '';
+        }
         if ($date) {
-            $date_parts = explode('-', (string) $date);
+            $date_parts = explode('-', $date);
             if ((count($date_parts) != 3)
                 || !ctype_digit($date_parts[0]) || !ctype_digit($date_parts[1]) || !ctype_digit($date_parts[2])
                 || !checkdate((int) $date_parts[0], (int) $date_parts[1], (int) $date_parts[2])) {

@@ -1261,13 +1261,29 @@ function pg_recycle_item_types()
         $types[] = 'short_link';
     }
 
+    // Page styles joined it in 2026.4.10, on the same terms.
+    if (pg_recycle_style_ready()) {
+        $types[] = 'style';
+    }
+
     return $types;
 }
 
 // The same list as a SQL fragment: 'folder', 'page', 'file', 'short_link'.
-function pg_recycle_item_types_sql()
+//
+// With $user, only what that person is shown: page styles are listed to a
+// designer alone, so for anybody else they are neither counted in the badge
+// nor taken by "Empty Recycle Bin", which would only answer "Access denied"
+// about rows the person cannot see.
+function pg_recycle_item_types_sql($user = null)
 {
-    return "'" . implode("', '", pg_recycle_item_types()) . "'";
+    $types = pg_recycle_item_types();
+
+    if (is_array($user) && ((int) $user['role'] > 1)) {
+        $types = array_values(array_diff($types, array('style')));
+    }
+
+    return "'" . implode("', '", $types) . "'";
 }
 
 function pg_recycle_retention_days()
@@ -1607,6 +1623,24 @@ function pg_recycle_hard_delete_item($item_kind, $item_id, $user)
             db("DELETE FROM short_links WHERE id = '" . e($short_link['id']) . "'");
 
             log_activity(lang(array('string' => 'short link ({var:1}) was deleted', 'vars' => $short_link['name'])), $_SESSION['sessionusername']);
+            break;
+
+        // A binned style's rows were deleted on the way in; its restore record
+        // is all that is left of it, and the line below removes that. The pages
+        // that went in with it have records of their own and go on their own.
+        case 'style':
+
+            $kept_style = pg_recycle_style_record($item_id);
+
+            if ($kept_style === null) {
+                break;
+            }
+
+            if ((int) $user['role'] > 1) {
+                return array('status' => 'error', 'message' => lang('Access denied'));
+            }
+
+            log_activity(lang(array('string' => 'style ({var:1}) was deleted', 'vars' => array($kept_style['style']['style_name']))), $_SESSION['sessionusername']);
             break;
 
         case 'folder':
@@ -2011,6 +2045,490 @@ function pg_recycle_purge_if_due($user)
     }
 }
 
+// ── Pages and page styles deleted from the other screens ───────────────
+//
+// The explorer is not the only screen that deletes a page or a style: the
+// pages list, the page screen and the visual editor delete pages, and the
+// visual editor and the page styles list delete styles. They all come here,
+// so that one bin holds what was deleted wherever it was deleted.
+
+// Move one page into the bin the way the explorer's delete does: the row keeps
+// everything that hangs off it (regions, forms, comments, short links, the
+// language links) and only changes folder, its name is parked and one restore
+// record remembers where it came from.
+//
+// Returns array('status' => 'binned' | 'inside' | 'error', 'message', 'home').
+// 'inside' means the page is in the bin already, where a delete is the
+// permanent one; the caller takes that path itself.
+function pg_recycle_page($page_id, $user)
+{
+    $page = db_item("SELECT page_id, page_name, page_folder, page_home FROM page WHERE page_id = '" . e((int) $page_id) . "'");
+
+    if (!$page) {
+        return array('status' => 'error', 'message' => lang('Page not found.'), 'home' => false);
+    }
+
+    if (pg_recycle_is_inside($page['page_folder'])) {
+        return array('status' => 'inside', 'message' => '', 'home' => false);
+    }
+
+    if (check_edit_access($page['page_folder']) == false) {
+        return array('status' => 'error', 'message' => lang(array('string' => 'Access denied for {var:1}.', 'vars' => $page['page_name'])), 'home' => false);
+    }
+
+    if (($user['role'] == 3) && ($user['delete_pages'] == false)) {
+        return array('status' => 'error', 'message' => lang('You do not have access to delete pages.'), 'home' => false);
+    }
+
+    $bin_id = (int) pg_recycle_folder_id(true);
+
+    if ($bin_id <= 0) {
+        return array('status' => 'error', 'message' => lang('The Recycle Bin is not available yet. Please run the upgrade.'), 'home' => false);
+    }
+
+    db(
+        "UPDATE page SET
+            page_folder = '" . e($bin_id) . "',
+            page_timestamp = UNIX_TIMESTAMP(),
+            page_user = '" . e($user['id']) . "'
+        WHERE page_id = '" . e($page['page_id']) . "'");
+
+    pg_recycle_park_name('page', $page['page_id'], $user);
+
+    db("DELETE FROM recycle_bin WHERE (item_type = 'page') AND (item_id = '" . e($page['page_id']) . "')");
+
+    db(
+        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+        VALUES ('page', '" . e($page['page_id']) . "', '" . e((int) $page['page_folder']) . "', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
+
+    return array('status' => 'binned', 'message' => '', 'home' => ($page['page_home'] === 'yes'));
+}
+
+// Whether page styles can go to the bin: the bin itself, plus what 2026.4.10
+// gave it for styles -- 'style' among its item types and the item_data column
+// their rows are kept in. Before that upgrade a style is deleted the way it
+// always was.
+function pg_recycle_style_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+
+        $ready = false;
+
+        if (pg_recycle_ready()) {
+            $type = db_item("SHOW COLUMNS FROM recycle_bin WHERE Field = 'item_type'");
+            $data = db_item("SHOW COLUMNS FROM recycle_bin WHERE Field = 'item_data'");
+
+            $ready = (is_array($type) && is_array($data) && (strpos((string) $type['Type'], "'style'") !== false));
+        }
+    }
+
+    return $ready;
+}
+
+// A list of ids as positive integers, each once. What goes into a restore
+// record and what comes back out of one both pass through here.
+function pg_recycle_id_list($ids)
+{
+    $list = array();
+
+    foreach ((array) $ids as $id) {
+
+        $id = (int) $id;
+
+        if ($id > 0) {
+            $list[$id] = $id;
+        }
+    }
+
+    return array_values($list);
+}
+
+// The part of a kept row its table still has a column for. A style can sit in
+// the bin across an upgrade that drops a column, and an INSERT naming that
+// column would fail; a column added meanwhile simply takes its default.
+function pg_recycle_row_for_columns($row, $columns)
+{
+    $kept = array();
+
+    foreach ((array) $row as $column => $value) {
+        if (in_array((string) $column, $columns, true)) {
+            $kept[$column] = $value;
+        }
+    }
+
+    return $kept;
+}
+
+// One kept row written back into its table.
+function pg_recycle_insert_row($table, $row)
+{
+    $names = array();
+    $values = array();
+
+    foreach ($row as $column => $value) {
+        $names[] = '`' . str_replace('`', '', (string) $column) . '`';
+        $values[] = ($value === null) ? 'NULL' : "'" . e($value) . "'";
+    }
+
+    if (count($names) == 0) {
+        return false;
+    }
+
+    return db("INSERT INTO `" . $table . "` (" . implode(', ', $names) . ") VALUES (" . implode(', ', $values) . ")");
+}
+
+// Move a page style to the bin.
+//
+// A style is not a row in a folder, so it cannot be moved the way a page is.
+// What it is -- the style row, its cells, its theme preview rows -- is written
+// into its restore record, and only then are the rows deleted, which leaves
+// the tables exactly as a permanent delete did. Keeping the rows and hiding
+// them instead would mean teaching every screen and picker that lists styles
+// to skip them, and the one that forgot would offer a deleted style to a page.
+//
+// What pointed at it is written down too, so a restore can put it back: the
+// folders that had it as their default design (desktop or mobile), the pages
+// that had it as their mobile style, the pages built on it, and the pages the
+// caller is sending to the bin with it ($page_ids), which come back with it.
+//
+// The caller has made its own checks (designer access, a style in use); this
+// only refuses what it cannot do. Returns array('status' => 'binned' |
+// 'error', 'message', 'folders' => folders whose default was cleared).
+function pg_recycle_style($style_id, $user, $page_ids = array())
+{
+    $style_id = (int) $style_id;
+    $out = array('status' => 'error', 'message' => '', 'folders' => 0);
+
+    if (pg_recycle_style_ready() == false) {
+        $out['message'] = lang('The Recycle Bin is not available yet. Please run the upgrade.');
+        return $out;
+    }
+
+    $style = ($style_id > 0) ? db_item("SELECT * FROM style WHERE style_id = '" . e($style_id) . "'") : null;
+
+    if (is_array($style) == false) {
+        $out['message'] = lang('The style could not be found.');
+        return $out;
+    }
+
+    $kept = array(
+        'style' => $style,
+        'cells' => (array) db_items("SELECT * FROM system_style_cells WHERE style_id = '" . e($style_id) . "' ORDER BY id"),
+        'previews' => (array) db_items("SELECT * FROM preview_styles WHERE style_id = '" . e($style_id) . "'"),
+        'folder_style' => pg_recycle_id_list(db_values("SELECT folder_id FROM folder WHERE folder_style = '" . e($style_id) . "'")),
+        'folder_mobile' => pg_recycle_id_list(db_values("SELECT folder_id FROM folder WHERE mobile_style_id = '" . e($style_id) . "'")),
+        'page_mobile' => pg_recycle_id_list(db_values("SELECT page_id FROM page WHERE mobile_style_id = '" . e($style_id) . "'")),
+        'page_style' => pg_recycle_id_list(db_values("SELECT page_id FROM page WHERE page_style = '" . e($style_id) . "'")),
+        'pages' => pg_recycle_id_list($page_ids));
+
+    $json = json_encode($kept, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    // Nothing is deleted unless the record that brings it back can be
+    // written. A failed INSERT stops the request before the deletes below.
+    if (($json === false) || ($json === '')) {
+        $out['message'] = lang('Sorry, we could not accept your request.');
+        return $out;
+    }
+
+    db("DELETE FROM recycle_bin WHERE (item_type = 'style') AND (item_id = '" . e($style_id) . "')");
+
+    db(
+        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by, item_data)
+        VALUES ('style', '" . e($style_id) . "', '0', UNIX_TIMESTAMP(), '" . e((int) $user['id']) . "', '" . e($json) . "')");
+
+    db("UPDATE page SET mobile_style_id = 0 WHERE mobile_style_id = '" . e($style_id) . "'");
+
+    // One statement, so a folder that had it as both counts once.
+    db(
+        "UPDATE folder
+        SET folder_style    = IF(folder_style = '" . e($style_id) . "', 0, folder_style),
+            mobile_style_id = IF(mobile_style_id = '" . e($style_id) . "', 0, mobile_style_id)
+        WHERE (folder_style = '" . e($style_id) . "') OR (mobile_style_id = '" . e($style_id) . "')");
+
+    $out['folders'] = max(0, (int) mysqli_affected_rows(db::$con));
+
+    db("DELETE FROM style WHERE style_id = '" . e($style_id) . "'");
+    db("DELETE FROM system_style_cells WHERE style_id = '" . e($style_id) . "'");
+    db("DELETE FROM preview_styles WHERE style_id = '" . e($style_id) . "'");
+
+    log_activity(lang(array('string' => 'The page style, {var:1}, was moved to the Recycle Bin.', 'vars' => h($style['style_name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+    $out['status'] = 'binned';
+
+    return $out;
+}
+
+// What a style's restore record holds, or null when there is none.
+function pg_recycle_style_record($style_id)
+{
+    if (pg_recycle_style_ready() == false) {
+        return null;
+    }
+
+    $entry = db_item(
+        "SELECT id, item_data
+        FROM recycle_bin
+        WHERE (item_type = 'style') AND (item_id = '" . e((int) $style_id) . "')
+        ORDER BY id DESC
+        LIMIT 1");
+
+    if (is_array($entry) == false) {
+        return null;
+    }
+
+    $kept = json_decode((string) $entry['item_data'], true);
+
+    if ((is_array($kept) == false) || (isset($kept['style']) == false) || (is_array($kept['style']) == false)) {
+        return null;
+    }
+
+    $kept['entry_id'] = (int) $entry['id'];
+
+    return $kept;
+}
+
+// Bring a page style back from the bin.
+//
+// The rows go back as they were, under the id the style had while that is
+// still free -- it nearly always is: an id is not handed out again while a
+// higher one exists. When something has taken it, the style comes back under
+// a new id and the pages built on it are pointed at that one. A name taken
+// meanwhile gets the "[1]" form, as names coming out of the bin always do.
+//
+// The settings that used it come back only where nothing else was chosen
+// since: a folder given another default design while this one was away keeps
+// that one.
+//
+// The pages that went to the bin with it are not restored here: the explorer
+// adds them to the restore it is running, so they come back through the same
+// path as any other page and are counted with the rest.
+//
+// Returns array('status' => 'success' | 'error', 'message', 'id').
+function pg_recycle_restore_style($style_id, $user)
+{
+    $style_id = (int) $style_id;
+    $out = array('status' => 'error', 'message' => '', 'id' => 0);
+
+    // A style is the designer's, in the bin as out of it.
+    if ((int) $user['role'] > 1) {
+        $out['message'] = lang('Access denied');
+        return $out;
+    }
+
+    $kept = pg_recycle_style_record($style_id);
+
+    if ($kept === null) {
+        $out['message'] = lang('The style could not be found.');
+        return $out;
+    }
+
+    $row = pg_recycle_row_for_columns($kept['style'], (array) db_values("SHOW COLUMNS FROM style"));
+
+    $id_free = ((int) db_value("SELECT COUNT(*) FROM style WHERE style_id = '" . e($style_id) . "'") == 0);
+
+    if ($id_free) {
+        $row['style_id'] = $style_id;
+    } else {
+        unset($row['style_id']);
+    }
+
+    $name = isset($row['style_name']) ? (string) $row['style_name'] : '';
+    $free_name = get_unique_name(array('name' => $name, 'type' => 'style'));
+
+    if ($free_name !== $name) {
+
+        $row['style_name'] = $free_name;
+
+        // A system style carries its name as a body class in its code, the
+        // way duplicate_style.php renames it.
+        if ((isset($row['style_type'])) && ($row['style_type'] == 'system') && (isset($row['style_code']))) {
+            $row['style_code'] = str_replace(get_class_name($name), get_class_name($free_name), (string) $row['style_code']);
+        }
+    }
+
+    pg_recycle_insert_row('style', $row);
+
+    $new_id = $id_free ? $style_id : (int) mysqli_insert_id(db::$con);
+
+    if ($new_id <= 0) {
+        $out['message'] = lang('Sorry, we could not accept your request.');
+        return $out;
+    }
+
+    $cell_columns = (array) db_values("SHOW COLUMNS FROM system_style_cells");
+
+    foreach ((isset($kept['cells']) ? (array) $kept['cells'] : array()) as $cell) {
+
+        $cell = pg_recycle_row_for_columns($cell, $cell_columns);
+
+        // The cell ids are nobody's reference; fresh ones keep a cell that
+        // was written meanwhile from clashing.
+        unset($cell['id']);
+        $cell['style_id'] = $new_id;
+
+        pg_recycle_insert_row('system_style_cells', $cell);
+    }
+
+    $preview_columns = (array) db_values("SHOW COLUMNS FROM preview_styles");
+
+    foreach ((isset($kept['previews']) ? (array) $kept['previews'] : array()) as $preview) {
+
+        $preview = pg_recycle_row_for_columns($preview, $preview_columns);
+        $preview['style_id'] = $new_id;
+
+        pg_recycle_insert_row('preview_styles', $preview);
+    }
+
+    $ids_sql = function ($key) use ($kept) {
+        $ids = pg_recycle_id_list(isset($kept[$key]) ? $kept[$key] : array());
+        return (count($ids) > 0) ? implode(',', $ids) : '';
+    };
+
+    // Under a new id, the pages built on the old one follow it -- in the bin
+    // or out of it.
+    if (($new_id != $style_id) && ($ids_sql('page_style') !== '')) {
+        db("UPDATE page SET page_style = '" . e($new_id) . "' WHERE (page_id IN (" . $ids_sql('page_style') . ")) AND (page_style = '" . e($style_id) . "')");
+    }
+
+    if ($ids_sql('folder_style') !== '') {
+        db("UPDATE folder SET folder_style = '" . e($new_id) . "' WHERE (folder_id IN (" . $ids_sql('folder_style') . ")) AND (folder_style = '0')");
+    }
+
+    if ($ids_sql('folder_mobile') !== '') {
+        db("UPDATE folder SET mobile_style_id = '" . e($new_id) . "' WHERE (folder_id IN (" . $ids_sql('folder_mobile') . ")) AND (mobile_style_id = '0')");
+    }
+
+    if ($ids_sql('page_mobile') !== '') {
+        db("UPDATE page SET mobile_style_id = '" . e($new_id) . "' WHERE (page_id IN (" . $ids_sql('page_mobile') . ")) AND (mobile_style_id = '0')");
+    }
+
+    db("DELETE FROM recycle_bin WHERE (item_type = 'style') AND (item_id = '" . e($style_id) . "')");
+
+    log_activity(lang(array('string' => 'The page style, {var:1}, was restored.', 'vars' => h($row['style_name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+    $out['status'] = 'success';
+    $out['id'] = $new_id;
+
+    return $out;
+}
+
+// The binned style a page was built on, or 0. Asked when a page comes out of
+// the bin on its own: a page whose design is still in the bin would come back
+// with nothing to draw it, so its style comes back with it. The record says
+// which pages were built on it, which is what is asked rather than the page's
+// page_style: that id may belong to another style by now.
+function pg_recycle_style_of_page($page_id)
+{
+    $page_id = (int) $page_id;
+
+    if (($page_id <= 0) || (pg_recycle_style_ready() == false)) {
+        return 0;
+    }
+
+    $style_id = (int) db_value("SELECT page_style FROM page WHERE page_id = '" . e($page_id) . "'");
+
+    if ($style_id <= 0) {
+        return 0;
+    }
+
+    $kept = pg_recycle_style_record($style_id);
+
+    if (($kept === null) || (in_array($page_id, pg_recycle_id_list(isset($kept['page_style']) ? $kept['page_style'] : array()), true) == false)) {
+        return 0;
+    }
+
+    return $style_id;
+}
+
+// The pages that went to the bin with a style and are still there.
+function pg_recycle_style_pages($style_id)
+{
+    $kept = pg_recycle_style_record($style_id);
+
+    if ($kept === null) {
+        return array();
+    }
+
+    $ids = pg_recycle_id_list(isset($kept['pages']) ? $kept['pages'] : array());
+
+    if (count($ids) == 0) {
+        return array();
+    }
+
+    return pg_recycle_id_list(db_values(
+        "SELECT item_id FROM recycle_bin
+        WHERE (item_type = 'page') AND (item_id IN (" . implode(',', $ids) . "))"));
+}
+
+// The bin's rows for page styles, drawn with everything else it holds. Only a
+// designer sees them: restoring a style and deleting it for good both refuse
+// anybody else, and a row nobody can act on is clutter.
+//
+// Shaped like a file row, so the grid, the list and the sorting draw it with
+// the code they have; kind 'style' is what keeps it from being taken for one.
+function pg_recycle_style_items($user)
+{
+    if (((int) $user['role'] > 1) || (pg_recycle_style_ready() == false)) {
+        return array();
+    }
+
+    $rows = db_items(
+        "SELECT
+            recycle_bin.item_id,
+            recycle_bin.item_data,
+            recycle_bin.deleted_at,
+            user.user_username
+        FROM recycle_bin
+        LEFT JOIN user ON recycle_bin.deleted_by = user.user_id
+        WHERE recycle_bin.item_type = 'style'
+        ORDER BY recycle_bin.deleted_at DESC");
+
+    $items = array();
+
+    foreach ((array) $rows as $row) {
+
+        $kept = json_decode((string) $row['item_data'], true);
+
+        if ((is_array($kept) == false) || (isset($kept['style']) == false) || (is_array($kept['style']) == false)) {
+            continue;
+        }
+
+        $pages = count(pg_recycle_id_list(isset($kept['pages']) ? $kept['pages'] : array()));
+        $timestamp = (int) $row['deleted_at'];
+
+        $items[] = array(
+            'kind' => 'style',
+            'id' => (int) $row['item_id'],
+            'name' => (string) $kept['style']['style_name'],
+            'folder_id' => 0,
+            'folder_name' => '',
+            'type' => 'style',
+            'is_image' => false,
+            'size' => 0,
+            // What went in with it, in the column a file shows its size in.
+            'size_label' => ($pages > 0) ? lang(array('string' => '{var:1} page(s)', 'vars' => $pages)) : '',
+            'design' => false,
+            'optimized' => false,
+            'image_width' => 0,
+            'image_height' => 0,
+            'description' => '',
+            'access_control_type' => 'private',
+            'access_icon' => pg_explorer_access_icon('private'),
+            'archived' => true,
+            'timestamp' => $timestamp,
+            'modified' => get_relative_time(array('timestamp' => $timestamp)),
+            'username' => (string) $row['user_username'],
+            'permissions' => '',
+            'url' => '',
+            'can_edit' => true,
+            'edit_url' => '');
+    }
+
+    return $items;
+}
+
 // Entry point. api.php routes every "explorer_*" sub-action here.
 // Work out how many bytes the base64 body of a data URL will decode to, without
 // decoding it. Four base64 characters carry three bytes, and each "=" on the end
@@ -2120,8 +2638,14 @@ function pg_short_link_types()
 // pg_short_link_free_name() hands out "new_short_link[4]", so a rule that
 // rejected them refused the very name the create had just given the row --
 // the operator was told the format was illegal by the screen that wrote it.
+//
+// A name posted as a list (name[]=x) counts as not given: it is no name.
 function pg_short_link_clean_name($name)
 {
+    if (!is_scalar($name)) {
+        return '';
+    }
+
     $name = str_replace(' ', '_', trim((string) $name));
 
     return (preg_match('/[^A-Za-z0-9._\-\/\[\]]/', $name) == 1) ? '' : $name;
@@ -2185,6 +2709,25 @@ function pg_short_link_live_filter($recycled = false)
     }
 
     return "short_links.recycled = '" . ($recycled ? '1' : '0') . "'";
+}
+
+// Move one short link to the Recycle Bin: the row stays, flagged, and one
+// restore record remembers it. The File Manager's delete and the classic edit
+// screen's both come here; the caller has asked pg_short_link_recycle_ready()
+// first and writes its own activity line.
+function pg_short_link_to_bin($short_link_id, $user)
+{
+    $short_link_id = (int) $short_link_id;
+
+    db("UPDATE short_links SET recycled = '1' WHERE id = '" . e($short_link_id) . "'");
+
+    // Replaced rather than added to, so a link that reaches here twice does
+    // not leave two restore records behind.
+    db("DELETE FROM recycle_bin WHERE (item_type = 'short_link') AND (item_id = '" . e($short_link_id) . "')");
+
+    db(
+        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+        VALUES ('short_link', '" . e($short_link_id) . "', '0', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
 }
 
 // $where is the caller's own condition; the recycled state is added to it here
@@ -2264,9 +2807,11 @@ function pg_short_link_visible_rows($user, $recycled = false)
     return $out;
 }
 
+// An id posted as a list (item_id[]=3) is no id: cast, it read as 1 and the
+// rename, the change, the copy and the delete all landed on link 1.
 function pg_short_link_by_id($user, $id, $recycled = false)
 {
-    $id = (int) $id;
+    $id = is_scalar($id) ? (int) $id : 0;
 
     if ($id <= 0) {
         return null;
@@ -2401,17 +2946,25 @@ function pg_short_link_options_list($options)
 // Checks a wizard submission and hands back either the columns to write or the
 // field that is wrong.  Shared by create; the classic edit screen keeps its
 // own copy because it also has to deal with liveform's session round trip.
-function pg_short_link_read_request($request, $user)
+//
+// $current is the stored link when one is being changed. The product, the
+// group, the page or the file it already points at may stay while it is in the
+// Recycle Bin, the way the classic edit screen keeps it selected; anything else
+// in the bin is refused, since a list drawn before it was deleted can still
+// post it.
+function pg_short_link_read_request($request, $user, $current = null)
 {
-    $type = isset($request['destination_type']) ? (string) $request['destination_type'] : '';
+    // A value posted as a list (product_id[]=x) counts as not given: cast, it
+    // logged "Array to string conversion" and the link was saved as "Array".
+    $value = function ($key) use ($request) {
+        return (isset($request[$key]) && is_scalar($request[$key])) ? trim((string) $request[$key]) : '';
+    };
+
+    $type = (isset($request['destination_type']) && is_scalar($request['destination_type'])) ? (string) $request['destination_type'] : '';
 
     if (in_array($type, pg_short_link_types(), true) == false) {
         return array('error' => 'destination_type', 'message' => lang('The destination type is not valid.'));
     }
-
-    $value = function ($key) use ($request) {
-        return isset($request[$key]) ? trim((string) $request[$key]) : '';
-    };
 
     $page_id = 0;
     $page_field = '';
@@ -2454,6 +3007,10 @@ function pg_short_link_read_request($request, $user)
                 return array('error' => 'product_group_id', 'message' => lang('The product group does not exist.'));
             }
 
+            if (($group_id !== (int) ($current['product_group_id'] ?? 0)) && pg_catalog_group_binned($group_id)) {
+                return array('error' => 'product_group_id', 'message' => lang('The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.'));
+            }
+
             $columns['product_group_id'] = $group_id;
 
             break;
@@ -2474,6 +3031,10 @@ function pg_short_link_read_request($request, $user)
 
             if (db_value("SELECT COUNT(*) FROM products WHERE id = '" . e($product_id) . "'") == 0) {
                 return array('error' => 'product_id', 'message' => lang('The product does not exist.'));
+            }
+
+            if (($product_id !== (int) ($current['product_id'] ?? 0)) && pg_catalog_product_binned($product_id)) {
+                return array('error' => 'product_id', 'message' => lang('The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.'));
             }
 
             $columns['product_id'] = $product_id;
@@ -2508,6 +3069,10 @@ function pg_short_link_read_request($request, $user)
                 return array('error' => 'file_id', 'message' => lang('Sorry, the file could not be found.'));
             }
 
+            if (($file_id !== (int) ($current['file_id'] ?? 0)) && pg_recycle_file_binned($file_id)) {
+                return array('error' => 'file_id', 'message' => lang('The file is in the Recycle Bin. Restore it in the File Manager or choose another file.'));
+            }
+
             $columns['file_id'] = $file_id;
 
             break;
@@ -2516,6 +3081,10 @@ function pg_short_link_read_request($request, $user)
     // The page has to exist.
     if (($page_id > 0) && (db_value("SELECT page_folder FROM page WHERE page_id = '" . e($page_id) . "'") === null)) {
         return array('error' => $page_field, 'message' => lang('The page does not exist.'));
+    }
+
+    if (($page_id > 0) && ($page_id !== (int) ($current['page_id'] ?? 0)) && pg_recycle_page_binned($page_id)) {
+        return array('error' => $page_field, 'message' => lang('The page is in the Recycle Bin. Restore it in the File Manager or choose another page.'));
     }
 
     return array(
@@ -3704,7 +4273,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     'folder_id' => pg_recycle_folder_id(false),
                     'retention_days' => pg_recycle_ready() ? pg_recycle_retention_days() : 0,
                     'inside' => false,
-                    'count' => pg_recycle_ready() ? (int) db_value("SELECT COUNT(*) FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql() . ")") : 0);
+                    'count' => pg_recycle_ready() ? (int) db_value("SELECT COUNT(*) FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql($user) . ")") : 0);
 
                 // The upload travels inside a json request, so the form settings do not apply to it.
                 $upload_limits = pg_upload_limits();
@@ -3890,7 +4459,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 'count' => 0);
 
             if ($recycle['available']) {
-                $recycle['count'] = (int) db_value("SELECT COUNT(*) FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql() . ")");
+                $recycle['count'] = (int) db_value("SELECT COUNT(*) FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql($user) . ")");
                 $recycle['inside'] = (($folder_id > 0) && pg_recycle_is_inside($folder_id));
             }
 
@@ -3939,6 +4508,12 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 // expects everything they deleted to be in it.
                 foreach (pg_short_link_visible_rows($user, true) as $binned_short_link) {
                     $files[] = pg_short_link_item($binned_short_link);
+                }
+
+                // Page styles have no folder either; their rows wait in their
+                // restore records.
+                foreach (pg_recycle_style_items($user) as $binned_style) {
+                    $files[] = $binned_style;
                 }
             }
 
@@ -4606,23 +5181,16 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     // would write recycled_enabled = enabled with enabled
                     // already forced to 0, and the child would come back out of
                     // the bin unpublished no matter what it was.
-                    db(
-                        "UPDATE product_groups
-                        SET recycled = '1',
-                            recycled_enabled = enabled,
-                            enabled = '0'
-                        WHERE (id IN (" . implode(',', array_map('intval', $subtree)) . ")) AND (recycled = '0')");
-
+                    //
                     // One restore record, for the group that was actually
                     // deleted. The bin lists it alone and restoring it brings
                     // the whole subtree back with it. Replaced rather than added
                     // to, so a group that arrives here twice in one batch does
-                    // not leave two records behind.
-                    db("DELETE FROM recycle_bin WHERE (item_type = 'product_group') AND (item_id = '" . e($item_id) . "')");
-
-                    db(
-                        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                        VALUES ('product_group', '" . e($item_id) . "', '" . e((int) $map[$item_id]['parent_id']) . "', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
+                    // not leave two records behind. The same statements every
+                    // other delete of a group writes (pg_catalog_bin_statements()).
+                    foreach (pg_catalog_bin_statements('product_group', $item_id, $subtree, (int) $map[$item_id]['parent_id'], $user['id']) as $statement) {
+                        db($statement);
+                    }
 
                     log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($map[$item_id]['name']))), $_SESSION['sessionusername']);
 
@@ -4630,24 +5198,16 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 } elseif ($item_kind == 'product') {
 
-                    $product = db_item("SELECT id, name FROM products WHERE id = '" . e($item_id) . "'");
+                    // The same move every screen that deletes a product makes,
+                    // product.deleted with recycled: true included. False for a
+                    // product that is gone or already in the bin.
+                    $product_name = pg_catalog_bin_product($item_id, $user['id']);
 
-                    if (is_array($product) == false) {
+                    if ($product_name === false) {
                         continue;
                     }
 
-                    db(
-                        "UPDATE products
-                        SET recycled = '1',
-                            recycled_enabled = enabled,
-                            enabled = '0'
-                        WHERE id = '" . e($item_id) . "'");
-
-                    db(
-                        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                        VALUES ('product', '" . e($item_id) . "', '0', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
-
-                    log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($product['name']))), $_SESSION['sessionusername']);
+                    log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($product_name))), $_SESSION['sessionusername']);
 
                     $binned++;
                 }
@@ -4712,6 +5272,30 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     // it is out of the bin now either way, so the stale record
                     // goes with it.
                     db("DELETE FROM recycle_bin WHERE (item_type = 'product_group') AND (item_id IN (" . $sql_ids . "))");
+
+                    // A variant set deleted from the product list took its
+                    // variants with it, each recorded with the set as the place
+                    // it came from (pg_pb_bin_variant_set()). They come back
+                    // with the set, as they went. A product binned on its own
+                    // is recorded with 0 and is not touched here.
+                    $variant_ids = array();
+
+                    foreach ((array) db_items("SELECT item_id FROM recycle_bin WHERE (item_type = 'product') AND (original_parent_id IN (" . $sql_ids . "))") as $row) {
+                        $variant_ids[] = (int) $row['item_id'];
+                    }
+
+                    if (count($variant_ids) > 0) {
+
+                        $sql_variant_ids = implode(',', $variant_ids);
+
+                        db(
+                            "UPDATE products
+                            SET recycled = '0',
+                                enabled = recycled_enabled
+                            WHERE (id IN (" . $sql_variant_ids . ")) AND (recycled = '1')");
+
+                        db("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id IN (" . $sql_variant_ids . "))");
+                    }
 
                     $restored++;
 
@@ -7672,7 +8256,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 'inside' => false,
                 'retention_days' => pg_recycle_ready() ? pg_recycle_retention_days() : 0,
                 'count' => pg_recycle_ready()
-                    ? (int) db_value("SELECT COUNT(*) FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql() . ")")
+                    ? (int) db_value("SELECT COUNT(*) FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql($user) . ")")
                     : 0);
 
             respond(array(
@@ -7694,18 +8278,36 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             break;
 
         // ── What the wizard offers, built from the classic screen's lists ─
+        //
+        // Products, groups, pages and files in the Recycle Bin are left
+        // out, as on the classic screens. Asked with item_id, for a link
+        // being changed, the one that link points at stays, marked as in the
+        // bin: without it the window opened with nothing chosen and Save
+        // asked for a product the link already had.
         case 'explorer_short_link_options':
+
+            $short_link_row = array_key_exists('item_id', $request) ? pg_short_link_by_id($user, $request['item_id']) : null;
+            $short_link_keep_product = $short_link_row ? (int) $short_link_row['product_id'] : 0;
+            $short_link_keep_group = $short_link_row ? (int) $short_link_row['product_group_id'] : 0;
+            $short_link_keep_page = $short_link_row ? (int) $short_link_row['page_id'] : 0;
+            $short_link_keep_file = $short_link_row ? (int) $short_link_row['file_id'] : 0;
 
             respond(array(
                 'status' => 'success',
                 'request' => $type,
                 'options' => array(
-                    'page' => pg_short_link_options_list(get_page_options()),
-                    'catalog_page' => pg_short_link_options_list(get_page_options('', 'catalog')),
-                    'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail')),
-                    'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE)),
-                    'product' => pg_short_link_options_list(get_product_options()),
-                    'file' => pg_short_link_options_list(get_file_options(true))),
+                    'page' => pg_short_link_options_list(get_page_options('', '', 'edit', false, $short_link_keep_page)),
+                    'catalog_page' => pg_short_link_options_list(get_page_options('', 'catalog', 'edit', false, $short_link_keep_page)),
+                    'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail', 'edit', false, $short_link_keep_page)),
+                    'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $short_link_keep_group)),
+                    'product' => pg_short_link_options_list(get_product_options(true, $short_link_keep_product)),
+                    'file' => pg_short_link_options_list(get_file_options(true, $short_link_keep_file))),
+                // The lists hold a binned entry kept for this one link, so the
+                // screen does not keep them for the next window.
+                'kept' => (($short_link_keep_product > 0) && pg_catalog_product_binned($short_link_keep_product))
+                    || (($short_link_keep_group > 0) && pg_catalog_group_binned($short_link_keep_group))
+                    || (($short_link_keep_page > 0) && pg_recycle_page_binned($short_link_keep_page))
+                    || (($short_link_keep_file > 0) && pg_recycle_file_binned($short_link_keep_file)),
                 // Once or until a time (2026.4.5, 5.112).
                 'modes' => pg_short_link_modes_ready(),
                 'durations' => array_map(function ($seconds, $label) {
@@ -7734,7 +8336,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             // How it may be opened: for good, once (a token for its address,
             // no name, spent by the first visit) or until a time chosen now.
-            $short_link_mode = pg_short_link_modes_ready() ? (string) ($request['link_mode'] ?? 'permanent') : 'permanent';
+            $short_link_mode = (pg_short_link_modes_ready() && is_scalar($request['link_mode'] ?? null)) ? (string) $request['link_mode'] : 'permanent';
 
             if (!in_array($short_link_mode, array('permanent', 'once', 'timed'), true)) {
                 $short_link_mode = 'permanent';
@@ -7895,7 +8497,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             $short_link_sql_name = '';
 
             // A link with a token for its address keeps it: it has no name.
-            if (array_key_exists('name', $request) && ((string) $short_link_row['name'] !== '')) {
+            // A name posted as a list is no name given, so the name stays.
+            if (array_key_exists('name', $request) && is_scalar($request['name']) && ((string) $short_link_row['name'] !== '')) {
 
                 $short_link_name = pg_short_link_clean_name($request['name']);
 
@@ -7923,7 +8526,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 }
             }
 
-            $short_link_read = pg_short_link_read_request($request, $user);
+            $short_link_read = pg_short_link_read_request($request, $user, $short_link_row);
 
             if (isset($short_link_read['error'])) {
                 respond(array(
@@ -8051,10 +8654,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
         // ── Delete ──────────────────────────────────────────────────────
         //
-        // Straight out, with no bin behind it.  The bin stores an item type
-        // it does not know short links in, and a short link holds nothing:
-        // making one again is the wizard and a name, which is less work than
-        // widening the schema would be.
+        // Into the Recycle Bin since 2026.4.4 (pg_short_link_to_bin()); the
+        // classic edit screen's Delete does the same.
         case 'explorer_short_link_delete':
 
             $short_link_deleted = 0;
@@ -8082,15 +8683,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
-                db("UPDATE short_links SET recycled = '1' WHERE id = '" . e($short_link_row['id']) . "'");
-
-                // Replaced rather than added to, so a link that reaches here
-                // twice does not leave two restore records behind.
-                db("DELETE FROM recycle_bin WHERE (item_type = 'short_link') AND (item_id = '" . e($short_link_row['id']) . "')");
-
-                db(
-                    "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
-                    VALUES ('short_link', '" . e($short_link_row['id']) . "', '0', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
+                pg_short_link_to_bin($short_link_row['id'], $user);
 
                 $short_link_deleted++;
 
@@ -10006,12 +10599,49 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             $restored = 0;
             $errors = array();
 
+            // A page style comes back with the pages that went into the bin
+            // with it. They are added to this restore right behind it, so they
+            // travel the same path as any other page and are counted with the
+            // rest; one restored already, or selected as well, is simply not
+            // found a second time.
+            $restore_items = array();
+
             foreach ($items as $item) {
+
+                $restore_items[] = $item;
+
+                if ((is_array($item)) && (isset($item['kind'])) && ($item['kind'] === 'style') && ((int) $user['role'] <= 1)) {
+                    foreach (pg_recycle_style_pages(isset($item['id']) ? (int) $item['id'] : 0) as $style_page_id) {
+                        $restore_items[] = array('kind' => 'page', 'id' => $style_page_id);
+                    }
+                }
+            }
+
+            foreach ($restore_items as $item) {
 
                 $item_kind = isset($item['kind']) ? $item['kind'] : '';
                 $item_id = (int) (isset($item['id']) ? $item['id'] : 0);
 
                 if (($item_id <= 0) || (in_array($item_kind, pg_recycle_item_types(), true) == false)) {
+                    continue;
+                }
+
+                // A style has no folder to go back to: its rows are written
+                // back from its record.
+                if ($item_kind == 'style') {
+
+                    if (pg_recycle_style_record($item_id) === null) {
+                        continue;
+                    }
+
+                    $restored_style = pg_recycle_restore_style($item_id, $user);
+
+                    if ($restored_style['status'] != 'success') {
+                        $errors[] = $restored_style['message'];
+                        continue;
+                    }
+
+                    $restored++;
                     continue;
                 }
 
@@ -10099,6 +10729,16 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                     case 'page':
                         db("UPDATE page SET page_folder = '" . e($target_id) . "', page_timestamp = UNIX_TIMESTAMP(), page_user = '" . e($user['id']) . "' WHERE page_id = '" . e($item_id) . "'");
+
+                        // A page whose design is still in the bin would come
+                        // back with nothing to draw it; the design comes back
+                        // with it (without its other pages). Somebody who may
+                        // not restore a design gets the page alone.
+                        $page_style_in_bin = pg_recycle_style_of_page($item_id);
+
+                        if (($page_style_in_bin > 0) && ((int) $user['role'] <= 1)) {
+                            pg_recycle_restore_style($page_style_in_bin, $user);
+                        }
                         break;
 
                     case 'folder':
@@ -10141,7 +10781,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 $items = array();
                 // Only what this bin holds: the store's rows live in the
                 // same table and are emptied from its own screen.
-                $rows = db_items("SELECT item_type, item_id FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql() . ")");
+                $rows = db_items("SELECT item_type, item_id FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql($user) . ")");
 
                 if ($rows) {
                     foreach ($rows as $row) {

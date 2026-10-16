@@ -557,6 +557,12 @@ function get_available_starter_sites() {
 // The language of a starter site folder, or '' when the folder is not a starter site.
 function get_starter_site_language($folder) {
 
+	if (!is_string($folder)) {
+
+		return '';
+
+	}
+
 	$starter_sites = get_starter_site_folders();
 
 	return isset($starter_sites[$folder]) ? $starter_sites[$folder]['language'] : '';
@@ -640,7 +646,9 @@ function write_install_design_template_note($template_id, $language, $starters, 
 
 }
 
-// Returns the site backups that are on the server, without the starter sites.  Newest first.
+// Returns the site backups that are on the server, without the starter sites: the folders, and
+// the archives (.zip) the automatic backup writes or someone copied there.  Newest first.  A
+// backup that cannot be installed says why in 'problem'.
 function get_site_backups() {
 
 	$directory_path = dirname(__FILE__) . '/../data/backups/';
@@ -677,6 +685,27 @@ function get_site_backups() {
 
 		}
 
+		// An archive is read the way the restore reads it (includes/fn/backup_restore.php).
+		if ((is_file($directory_path . $entry)) && (pg_restore_is_archive($entry))) {
+
+			$archive = pg_restore_archive_read($directory_path . $entry);
+
+			$backups[] = array(
+
+				'folder' => $entry,
+
+				'modified' => @filemtime($directory_path . $entry),
+
+				'installable' => $archive['ok'],
+
+				'problem' => $archive['error']
+
+			);
+
+			continue;
+
+		}
+
 		if (!is_dir($directory_path . $entry)) {
 
 			continue;
@@ -690,7 +719,9 @@ function get_site_backups() {
 			'modified' => @filemtime($directory_path . $entry),
 
 			// A folder can only be installed when it holds a database dump.
-			'installable' => file_exists($directory_path . $entry . '/sql.sql')
+			'installable' => file_exists($directory_path . $entry . '/sql.sql'),
+
+			'problem' => lang('no database file')
 
 		);
 
@@ -700,6 +731,29 @@ function get_site_backups() {
 	usort($backups, 'compare_site_backups');
 
 	return $backups;
+
+}
+
+// The backup of that name as get_site_backups() lists it, or null when the list does not have it.
+function get_site_backup($folder) {
+
+	if (!is_string($folder)) {
+
+		return null;
+
+	}
+
+	foreach (get_site_backups() as $backup) {
+
+		if ($backup['folder'] === $folder) {
+
+			return $backup;
+
+		}
+
+	}
+
+	return null;
 
 }
 
@@ -1132,8 +1186,13 @@ function get_install_changelog_sections() {
 
 	$contents = str_replace("\r\n", "\n", $contents);
 
-	// version headings are a version number on its own line followed by a line of equal signs
-	$matched = preg_match_all('/^[ \t]*([0-9][0-9.]*)[ \t]*\n[ \t]*={5,}[ \t]*$/m', $contents, $matches, PREG_OFFSET_CAPTURE);
+	// A version heading is a version number on its own line with a rule of equal signs directly above
+	// it (the current layout) or directly below it (older files).  Versions released together share
+	// one heading ("2026.2 / 2026.2.1").  The branch reset keeps the version in group 1 for both
+	// shapes.  Same pattern as pg_changelog_heading_pattern(), which this screen cannot include.
+	$version_pattern = '[0-9][0-9.]*(?:[ \t]*\/[ \t]*[0-9][0-9.]*)*';
+
+	$matched = preg_match_all('/^(?|[ \t]*={5,}[ \t]*\n[ \t]*(' . $version_pattern . ')[ \t]*|[ \t]*(' . $version_pattern . ')[ \t]*\n[ \t]*={5,}[ \t]*)$/m', $contents, $matches, PREG_OFFSET_CAPTURE);
 
 	if (($matched == false) || (count($matches[0]) == 0)) {
 
@@ -1143,7 +1202,7 @@ function get_install_changelog_sections() {
 
 	foreach ($matches[0] as $index => $heading) {
 
-		$version = $matches[1][$index][0];
+		$version = preg_replace('/[ \t]*\/[ \t]*/', ' / ', $matches[1][$index][0]);
 
 		// preg gives us byte offsets, so we slice with the byte functions here
 		$section_start = $heading[1] + strlen($heading[0]);
@@ -1199,8 +1258,20 @@ function get_install_changelog_sections() {
 
 			}
 
-			// the rule under a heading
-			if (preg_match('/^[ \t]{0,4}-{5,}[ \t]*$/', $line)) {
+			// The rule under a heading, the rule that opens the next version and any other divider.
+			// It ends the entry above it, so the note under the closing rule at the end of the file
+			// never becomes part of the oldest entry.
+			if (preg_match('/^[ \t]{0,4}(?:-{5,}|={5,})[ \t]*$/', $line)) {
+
+				if ($entry_tag != '') {
+
+					$entries[] = array('tag' => $entry_tag, 'text' => trim(preg_replace('/\s+/', ' ', $entry_text)), 'group' => $entry_group);
+
+					$entry_tag = '';
+
+					$entry_text = '';
+
+				}
 
 				continue;
 
@@ -1292,7 +1363,7 @@ function get_install_schema_note($version_number) {
 
 		$tag = mb_strtoupper($entry['tag']);
 
-		if (($tag == 'ŞEMA') || ($tag == 'SEMA') || ($tag == 'SCHEMA')) {
+		if (($tag == 'ŞEMA') || ($tag == 'SEMA') || ($tag == 'SCHEMA') || ($tag == 'SCHEME')) {
 
 			return get_install_short_text($entry['text'], 150);
 
@@ -1329,7 +1400,7 @@ function get_install_changelog_tag_class($tag) {
 
 	}
 
-	if (($tag == 'ŞEMA') || ($tag == 'SCHEMA')) {
+	if (($tag == 'ŞEMA') || ($tag == 'SCHEMA') || ($tag == 'SCHEME')) {
 
 		return 'text-bg-warning';
 
@@ -1542,9 +1613,38 @@ function check_install_unlocked() {
 
 }
 
-function set_install_unlocked() {
+// Unlocks the screen for this session, or renews the unlock.  The name the administrator
+// unlocked with is kept for the site log, because unlocking signs nobody in.
+function set_install_unlocked($username = '') {
 
 	$_SESSION['software']['install']['unlocked_until'] = time() + INSTALL_UNLOCK_SECONDS;
+
+	if ($username !== '') {
+
+		$_SESSION['software']['install']['unlocked_by'] = $username;
+
+	}
+
+}
+
+// The name the site log records for what is done on this screen: the signed-in user's, or the
+// one this screen was unlocked with.  An empty string when neither is known, which is the case
+// before the unlock and on a new installation.
+function get_install_log_username() {
+
+	if ((isset($_SESSION['sessionusername'])) && (is_string($_SESSION['sessionusername'])) && ($_SESSION['sessionusername'] !== '')) {
+
+		return $_SESSION['sessionusername'];
+
+	}
+
+	if ((check_install_unlocked() == true) && (isset($_SESSION['software']['install']['unlocked_by'])) && (is_string($_SESSION['software']['install']['unlocked_by']))) {
+
+		return $_SESSION['software']['install']['unlocked_by'];
+
+	}
+
+	return '';
 
 }
 
@@ -1796,6 +1896,12 @@ if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'upgrade_s
 
 }
 
+if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'restore_discard') && ($automated_upgrade == false)) {
+
+	output_install_restore_discard();
+
+}
+
 if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'backup_database') && ($automated_upgrade == false)) {
 
 	output_install_database_backup($versions);
@@ -1851,7 +1957,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	$output_version_warning = '';
 	$output_submit_button_value = 'Install';
 	$output_submit_button_label = lang('Start the installation');
-	$output_submit_button_process_label = lang('Installing');
 	$output_submit_button_icon ='bi-play-fill';
 
 	$output_upgrade = '';
@@ -1957,7 +2062,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						$liveform->assign_field_value('install_type', 'upgrade');
 						$output_submit_button_value = 'Upgrade';
 						$output_submit_button_label = lang('Start the upgrade');
-						$output_submit_button_process_label = lang('Upgrading');
 						$output_submit_button_icon ='bi-arrow-up-circle';
 
 					}
@@ -2372,6 +2476,42 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	}
 
+	// A restore that was started and did not finish: the site still runs on its own tables, and
+	// the form opens on that backup with the id of the restore, so starting the installation
+	// continues where the last step stopped.
+	$install_unfinished_restore = pg_restore_unfinished();
+
+	$install_unfinished_restore_id = '';
+
+	$output_restore_unfinished = '';
+
+	if ($install_unfinished_restore !== null) {
+
+		$install_unfinished_restore_id = $install_unfinished_restore['id'];
+
+		if (($install_selected_folder == '') && (is_file(pg_restore_source_path($install_unfinished_restore['folder'])))) {
+
+			$install_selected_folder = $install_unfinished_restore['folder'];
+
+			$install_source_type = 'backup';
+
+			$liveform->assign_field_value('install_from_folder', $install_selected_folder);
+
+		}
+
+		$output_restore_unfinished = '
+		<div class="alert alert-warning d-flex gap-2 align-items-start">
+			<i class="bi bi-hourglass-split"></i>
+			<div class="flex-grow-1">
+				<b>' . lang('An unfinished restore') . '</b>
+				<div class="small">' . h(lang(array('string' => '{var:1} · {var:2} · last step {var:3}', 'vars' => array($install_unfinished_restore['folder'], pg_restore_progress_text($install_unfinished_restore), date('d.m.Y H:i', (int) $install_unfinished_restore['updated']))))) . '</div>
+				<div class="small mt-1">' . lang('The site still runs on its own tables. Choose the same backup and start the installation to continue where it stopped, or discard what was loaded.') . '</div>
+				<button type="submit" class="btn btn-sm btn-outline-danger mt-2" name="install_action" value="restore_discard" formnovalidate><i class="bi bi-trash me-1"></i>' . lang('Discard') . '</button>
+			</div>
+		</div>';
+
+	}
+
 	// The upload field is only offered when the screen was unlocked, which can only happen when a
 	// site exists in the database and an administrator authenticated on the lock screen.  On a
 	// server that has no site yet we never offer a public upload.
@@ -2427,7 +2567,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		if ($backup['installable'] == false) {
 
-			$output_backup_label .= ' · ' . lang('no database file');
+			$output_backup_label .= ' · ' . $backup['problem'];
 
 		}
 
@@ -2481,7 +2621,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			<div class="small text-body-secondary mb-2">' . lang(array('string' => 'Only .zip files, and the server accepts at most {var:1}.', 'vars' => get_install_size_label(get_install_upload_limit()))) . '</div>
 			<input type="file" name="backup_zip" id="backup_zip" accept=".zip,application/zip" class="form-control form-control-sm mb-2" data-limit="' . (int) get_install_upload_limit() . '">
 			<div class="alert alert-danger small text-start d-none mb-2" id="pg_zip_too_large"></div>
-			<button type="submit" class="btn btn-sm btn-outline-primary" name="submit_backup_zip" value="1" data-loading-content="' . lang('Please Wait') . '"><i class="bi bi-upload me-1"></i>' . lang('Upload and Extract') . '</button>
+			<button type="submit" class="btn btn-sm btn-outline-primary" name="submit_backup_zip" value="1"><i class="bi bi-upload me-1"></i>' . lang('Upload and Extract') . '</button>
 			<div class="alert alert-warning small text-start mt-3 mb-0 d-flex gap-2">
 				<i class="bi bi-shield-check"></i>
 				<div>' . lang('The archive has to contain a folder with sql.sql inside it, otherwise nothing is extracted. Paths in the archive are trimmed, so a prepared file cannot write outside of the backups folder.') . '</div>
@@ -2494,7 +2634,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		$output_upload_source = '
 		<div class="alert alert-secondary small d-flex gap-2 mt-3 mb-0">
 			<i class="bi bi-info-circle"></i>
-			<div>' . lang('To restore a backup that is not on this server yet, copy the backup folder into the backups folder with FTP, or place the backup archive next to the download assistant and run it again.') . '</div>
+			<div>' . lang('To restore a backup that is not on this server yet, copy the backup folder or its .zip archive into the backups folder with FTP, or place the backup archive next to the download assistant and run it again.') . '</div>
 		</div>';
 
 	}
@@ -2977,7 +3117,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	</style>
 	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
 	  	<ul class="navbar-nav me-auto">
-			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"  data-loading-content=" "   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 	  	</ul>
 	  	<ul class="navbar-nav ms-auto">
 			<li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
@@ -3014,6 +3154,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				<form method="post" enctype="multipart/form-data" id="install_form" style="margin: 0px">
     	  	  	  	' . get_token_field() . '
 					<input type="hidden" name="progress_id" id="progress_id" value="">
+					<input type="hidden" name="restore_id" id="restore_id" value="' . h($install_unfinished_restore_id) . '">
     	  	  	  	<div class="row">
     	  	  	  	  	' . $output_upgrade . '
     	  	  	  	  	' . $output_install_option . '
@@ -3064,7 +3205,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										'id' => 'install_from_folder',
 										'name' => 'install_from_folder'
 										)) . '
-										' . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
+										' . $output_restore_unfinished . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
 										<div class="text-end mt-3"><button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
 									</div>
 								</div>
@@ -3501,7 +3642,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					</div>
     	  	  	  	<div class="buttons navigation text-center" id="install_submit_nav" aria-label="data edit buttons ">
     	  	  	        	<div class=" btn-group flex-wrap justify-content-center">
-    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success " data-loading-content="' . $output_submit_button_process_label . '"><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="btn-text" >' . $output_submit_button_label . '</span></button>
+    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success "><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="btn-text" >' . $output_submit_button_label . '</span></button>
     	  	  	        	</div>
     	  	  	  	</div>
     	  	  	</form>
@@ -3557,6 +3698,17 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		var pg_install_seen_steps = {};
 
 		var pg_install_poll_timer = null;
+
+		// The id of the restore whose next step is posted as soon as the frame has loaded, and
+		// the flag that lets that post through without starting the screen over.
+		var pg_install_continue_id = "";
+
+		var pg_install_resuming = false;
+
+		function pg_install_stream_continue(id) {
+			pg_install_continue_id = id;
+			$("#restore_id").val(id);
+		}
 
 		function pg_install_stream_step(index, seconds, label, detail, state, percent) {
 			var console_element = document.getElementById("pg_run_console");
@@ -4383,6 +4535,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			// fatal error the runner caught on shutdown, is written there with its message, and
 			// that is far more useful than a pointer to the error log.
 			$("#pg_install_frame").on("load", function() {
+				if ((pg_install_continue_id !== "") && (pg_install_started === true) && (pg_install_finished === false)) {
+					pg_install_continue_id = "";
+					pg_install_resuming = true;
+					$("#submit").trigger("click");
+					return;
+				}
 				if ((pg_install_started === true) && (pg_install_finished === false)) {
 					pg_install_poll(function(answer) {
 						if ((pg_install_finished === false) && ((!answer) || (!answer.error))) {
@@ -4489,6 +4647,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			// page, so the output appears right here instead of on another screen.  The upgrade
 			// does not: the screen drives it one version per request (pg_upgrade_start).
 			$("#submit").on("click", function(event) {
+				// the next step of a restore: same form, same console, same progress file
+				if (pg_install_resuming === true) {
+					pg_install_resuming = false;
+					return true;
+				}
+
 				var upgrading = ($("#upgrade").length > 0) && ($("#upgrade").is(":checked"));
 
 				if ((upgrading) && (pg_upgrade_total > 0)) {
@@ -4632,7 +4796,7 @@ else {
 		// actually changes the site.
 		if (($automated_upgrade == false) && (check_if_administrator_is_logged_in() == false) && (check_install_unlocked() == false)) {
 
-			log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), $_SESSION['sessionusername']);
+			log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), get_install_log_username());
 
 			exit(lang('Please authenticate as an administrator of this site before you install or upgrade.'));
 
@@ -4650,7 +4814,7 @@ else {
 
 			if (($upgrade_session_token === '') || (!hash_equals($upgrade_session_token, $upgrade_posted_token))) {
 
-				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), $_SESSION['sessionusername']);
+				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), get_install_log_username());
 
 				exit(lang('Sorry, we could not accept your request because it appears that your session expired.'));
 
@@ -4793,7 +4957,7 @@ else {
 			get_header() . '
 			<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
 				  <ul class="navbar-nav me-auto">
-					<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"  data-loading-content=" "   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+					<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 				  </ul>
 				  <ul class="navbar-nav ms-auto">	
 					<li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
@@ -4866,7 +5030,7 @@ else {
 
 			($_POST['token'] != $_SESSION['software']['token']) && ($_GET['token'] != $_SESSION['software']['token']))) {
 
-				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), $_SESSION['sessionusername']);
+				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), get_install_log_username());
 
 				exit(lang('Sorry, we could not accept your request because it appears that your session expired.'));
 
@@ -4897,7 +5061,7 @@ else {
 			// again here, because this is the request that replaces the site.
 			if (($software_installed == true) && (check_if_administrator_is_logged_in() == false) && (check_install_unlocked() == false)) {
 
-				log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), $_SESSION['sessionusername']);
+				log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), get_install_log_username());
 
 				exit(lang('Please authenticate as an administrator of this site before you install or upgrade.'));
 
@@ -4928,6 +5092,25 @@ else {
 
 		if ($liveform->get_field_value('install_from_folder') != '') {
 			$install_directory_path = $liveform->get_field_value('install_from_folder');
+		}
+
+		// Only a starter site or a backup that the screen lists is installed: the name becomes a
+		// path under data/backups, and a backup that cannot be installed (a folder without a
+		// dump, an archive that cannot be read) stops here, before anything is touched.
+		if (($liveform->get_field_value('install_from_folder') != '') && ((!is_string($install_directory_path)) || (get_starter_site_language($install_directory_path) == ''))) {
+
+			$install_backup = get_site_backup($install_directory_path);
+
+			if ($install_backup === null) {
+
+				$liveform->mark_error('install_from_folder', lang('The backup could not be found in the backups folder.'));
+
+			} elseif ($install_backup['installable'] == false) {
+
+				$liveform->mark_error('install_from_folder', h($install_directory_path . ': ' . $install_backup['problem']));
+
+			}
+
 		}
 
 		// A design template replaces the pages and page styles of a starter site, so it is only
@@ -5015,6 +5198,15 @@ else {
 					// between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
 					// so only NO_ENGINE_SUBSTITUTION is kept.
 					mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
+
+					// A server too old for the schema is refused here, while the database is untouched.
+					$install_server_problem = install_server_problem();
+
+					if ($install_server_problem != '') {
+
+						$liveform->mark_error('db_host', h($install_server_problem));
+
+					}
 
 					// initialize variable
 					$software_installed = false;
@@ -5151,85 +5343,283 @@ else {
 		// from here on the page is sent to the browser step by step
 		start_install_stream();
 
-		add_install_step(lang('Connected to the database'), $liveform->get_field_value('db_database') . '@' . $liveform->get_field_value('db_host'));
+		// The dump is loaded next to the site, a step at a time, and the loaded tables replace
+		// the site's tables in one rename at the end (includes/fn/backup_restore.php).  A step
+		// that is not the last one ends this request and the screen posts the same form again
+		// with the id of the restore, which continues where the step stopped.
+		$install_restore_id = '';
 
-		// If the database has tables in it, then get all system tables and then drop
-		// them all before we install new fresh tables.
-		// Even though the sql.sql already contains "DROP TABLE IF EXISTS" commands, we
-		// do this anyway, because there are some situations where this is still necessary.  For
-		// example if an admin is working with a new version that has new tables that the starter
-		// template does not contain yet, and the admin tries to re-install, then we need to delete
-		// the new existing tables before we install, in order to avoid SQL errors.  This is
-		// necessary because this install script will run an update, if necessary, after the install
-		// and try to create new tables.
-		
+		if ((isset($_POST['restore_id'])) && (is_string($_POST['restore_id'])) && (preg_match('/^[a-f0-9]{16}$/', $_POST['restore_id']) == 1)) {
 
-		$current_tables = db_values("SHOW TABLES");
-
-		if ($current_tables) {
-
-			$system_tables = get_tables();
-
-			foreach ($system_tables as $table) {
-
-				db("DROP TABLE IF EXISTS `" . $table . "`");
-
-			}
-
-			add_install_step(lang('Removed the tables of the old site'), lang(array('string' => '{var:1} tables', 'vars' => count($system_tables))));
+			$install_restore_id = $_POST['restore_id'];
 
 		}
 
-		// Get the MySQL version so we know whether to use utf8mb4 or utf8.
-		$mysql_version = preg_replace('#[^0-9\.]#', '', mysqli_get_server_info(db::$con));
+		$install_restore = pg_restore_state_read();
 
-		if (version_compare($mysql_version, '5.5.3', '>=') == true) {
+		$install_restore_continues = pg_restore_matches($install_restore, $install_restore_id, $install_directory_path, $liveform->get_field_value('db_database'), $liveform->get_field_value('db_host'));
 
-			$character_set = 'utf8mb4';
+		// One restore per database at a time: a second window would drop the tables the first
+		// one is loading.  The lock goes with the connection when the request ends.
+		if (pg_restore_lock($liveform->get_field_value('db_database')) == false) {
 
-		}
-		else {
-
-			$character_set = 'utf8';
-
-		}
-
-		// Update the charset for the db so that when future tables are created,
-		// they will have the correct charset.
-		db(
-
-		"ALTER DATABASE `" . e($liveform->get_field_value('db_database')) . "`
-
-			CHARACTER SET = " . $character_set . "
-
-			COLLATE = " . $character_set . "_unicode_ci");
-
-		add_install_step(lang('Set the character set'), $character_set . '_unicode_ci');
-
-		// Prepare template sql file
-		$database_file = dirname(__FILE__) . '/../data/backups/' . $install_directory_path . '/sql.sql';
-
-		// run all queries from MySQL dump file for template
-		$dump_result = parse_mysql_dump($database_file);
-
-		if ($dump_result !== true) {
-
-			$liveform->mark_error('', lang('There was an error while the database was being initialized. Please contact the software provider and include the error that appears next. MySQL error') . ': ' . h($dump_result['error']) . ' — <code>' . h($dump_result['statement']) . '</code>');
+			$liveform->mark_error('', lang('Another window is restoring a backup into this database right now. Wait for it to finish, then try again.'));
 
 			return_to_form();
 
 		}
 
-		add_install_step(lang('Loaded the content of the database'), $install_directory_path . '/sql.sql · ' . lang(array('string' => '{var:1} tables', 'vars' => count(db_values("SHOW TABLES")))));
+		if ($install_restore_continues == true) {
+
+			// the steps of the earlier requests stay on the screen and keep their numbers
+			$install_log = (isset($install_restore['log'])) ? (array) $install_restore['log'] : array();
+
+			$install_started_at = microtime(true) - ((isset($install_restore['elapsed'])) ? (float) $install_restore['elapsed'] : 0);
+
+			$install_expected_steps = (isset($install_restore['expected'])) ? (int) $install_restore['expected'] : $install_expected_steps;
+
+			write_install_progress_file(false);
+
+			// A long restore must not run out of the unlock it started with.
+			if (check_install_unlocked() == true) {
+
+				set_install_unlocked();
+
+			}
+
+		}
+		else {
+
+			add_install_step(lang('Connected to the database'), $liveform->get_field_value('db_database') . '@' . $liveform->get_field_value('db_host'));
+
+			// Get the MySQL version so we know whether to use utf8mb4 or utf8.
+			$mysql_version = preg_replace('#[^0-9\.]#', '', mysqli_get_server_info(db::$con));
+
+			if (version_compare($mysql_version, '5.5.3', '>=') == true) {
+
+				$character_set = 'utf8mb4';
+
+			}
+			else {
+
+				$character_set = 'utf8';
+
+			}
+
+			// Update the charset for the db so that when future tables are created,
+			// they will have the correct charset.
+			db(
+
+			"ALTER DATABASE `" . e($liveform->get_field_value('db_database')) . "`
+
+				CHARACTER SET = " . $character_set . "
+
+				COLLATE = " . $character_set . "_unicode_ci");
+
+			add_install_step(lang('Set the character set'), $character_set . '_unicode_ci');
+
+			$install_restore = pg_restore_begin($install_directory_path, $liveform->get_field_value('db_database'), $liveform->get_field_value('db_host'));
+
+			if ($install_restore['dropped'] > 0) {
+
+				add_install_step(lang('Removed the tables of an unfinished restore'), lang(array('string' => '{var:1} tables', 'vars' => $install_restore['dropped'])));
+
+			}
+
+		}
+
+		// Remembers the screen's steps with the restore, so the next request shows them too.
+		$install_restore_save = function () use (&$install_restore) {
+
+			global $install_log, $install_started_at, $install_expected_steps;
+
+			$install_restore['log'] = $install_log;
+
+			$install_restore['elapsed'] = microtime(true) - $install_started_at;
+
+			$install_restore['expected'] = $install_expected_steps;
+
+			pg_restore_state_write($install_restore);
+
+		};
+
+		// The log table belongs to the site that is still in place, so a failure is recorded there.
+		$install_restore_failed = function ($message, $statement, $extracting = false) use (&$install_restore, $liveform) {
+
+			pg_restore_discard();
+
+			log_activity(lang(array('string' => 'The backup {var:1} could not be restored: {var:2} The site was not changed.', 'vars' => array($install_restore['folder'], $message))), get_install_log_username());
+
+			if ($extracting == true) {
+
+				$liveform->mark_error('', lang('The archive could not be extracted') . ': ' . h($message) . (($statement != '') ? ' — <code>' . h($statement) . '</code>' : '') . '<br>' . lang('The site was not changed: nothing was loaded from the archive, and what was extracted has been removed.'));
+
+			} else {
+
+				$liveform->mark_error('', lang('There was an error while the database was being initialized. Please contact the software provider and include the error that appears next. MySQL error') . ': ' . h($message) . (($statement != '') ? ' — <code>' . h($statement) . '</code>' : '') . '<br>' . lang('The site was not changed: the backup was loaded next to it, and the part that was loaded has been removed.'));
+
+			}
+
+			return_to_form();
+
+		};
+
+		// Ends this request and lets the screen post the next step of the restore.
+		$install_restore_continue = function () use (&$install_restore) {
+
+			print '
+			<div id="pg_stream_continue" data-restore-id="' . h($install_restore['id']) . '"></div>
+			<script>pg_install_stream_continue(' . json_encode($install_restore['id']) . ');</script>' . get_footer();
+
+			exit();
+
+		};
+
+		// An archive is extracted first, in steps of its own; the dump is loaded from the next
+		// request on.
+		if ($install_restore['phase'] == 'extract') {
+
+			$install_restore_beat = function ($state) {
+
+				global $install_progress_running;
+
+				$install_progress_running = lang(array('string' => 'Extracting the archive: {var:1}', 'vars' => pg_restore_progress_text($state)));
+
+				write_install_progress_file(false);
+
+			};
+
+			$install_restore_result = pg_restore_extract_step($install_restore, $install_restore_beat);
+
+			$install_progress_running = '';
+
+			if ($install_restore_result['recovered'] == true) {
+
+				add_install_step(lang('The server stopped the previous step, so the archive is extracted again from the last point it recorded'), lang(array('string' => '{var:1} seconds per step', 'vars' => $install_restore['step_seconds'])), 'warning');
+
+			}
+
+			if ($install_restore_result['status'] == 'error') {
+
+				$install_restore_failed($install_restore_result['error'], $install_restore_result['statement'], true);
+
+			}
+
+			$install_expected_steps++;
+
+			if ($install_restore_result['status'] == 'more') {
+
+				add_install_step(lang('Extracting the archive'), pg_restore_progress_text($install_restore));
+
+			} else {
+
+				add_install_step(lang('Extracted the archive'), $install_directory_path . ' · ' . lang(array('string' => '{var:1} files', 'vars' => $install_restore['extracted'])) . ' · ' . convert_bytes_to_string((float) $install_restore['size'], 1) . ' sql.sql');
+
+			}
+
+			$install_restore_save();
+
+			$install_restore_continue();
+
+		}
+
+		if ($install_restore['phase'] == 'load') {
+
+			$install_restore_beat = function ($state) {
+
+				global $install_progress_running;
+
+				$install_progress_running = lang(array('string' => 'Loading the database: {var:1}', 'vars' => pg_restore_progress_text($state)));
+
+				write_install_progress_file(false);
+
+			};
+
+			$install_restore_result = pg_restore_step($install_restore, $install_restore_beat);
+
+			$install_progress_running = '';
+
+			if ($install_restore_result['recovered'] !== null) {
+
+				add_install_step(lang('The server stopped the previous step, so the table it was loading is loaded again from its start'), $install_restore_result['recovered'] . ' · ' . lang(array('string' => '{var:1} seconds per step', 'vars' => $install_restore['step_seconds'])), 'warning');
+
+			}
+
+			if ($install_restore_result['status'] == 'error') {
+
+				$install_restore_failed($install_restore_result['error'], $install_restore_result['statement']);
+
+			}
+
+			if ($install_restore_result['status'] == 'more') {
+
+				// one line per step, and the bar keeps its room for the steps that come after
+				$install_expected_steps++;
+
+				add_install_step(lang('Loading the database'), pg_restore_progress_text($install_restore));
+
+				$install_restore_save();
+
+				$install_restore_continue();
+
+			}
+
+			add_install_step(lang('Loaded the content of the database'), $install_directory_path . '/sql.sql · ' . lang(array('string' => '{var:1} tables', 'vars' => count($install_restore['tables']))) . ' · ' . convert_bytes_to_string((float) $install_restore['size'], 1));
+
+			$install_restore_save();
+
+		}
+
+		$install_restore_swap = pg_restore_swap($install_restore, get_tables());
+
+		if ($install_restore_swap['ok'] == false) {
+
+			// Nothing was renamed, so the site is still the old one and the loaded tables stay
+			// where they are: trying again only repeats the rename.
+			if ($install_restore_swap['retry'] == true) {
+
+				$install_restore_save();
+
+				$liveform->mark_error('', h($install_restore_swap['error']) . '<br>' . lang('The site was not changed. The loaded backup is kept, so trying again only puts it in place.'));
+
+				return_to_form();
+
+			}
+
+			$install_restore_failed($install_restore_swap['error'], '');
+
+		}
+
+		add_install_step(lang('Put the loaded tables in place of the old ones'), lang(array('string' => '{var:1} tables', 'vars' => $install_restore_swap['tables'])) . ' · ' . lang(array('string' => '{var:1} old tables removed', 'vars' => $install_restore_swap['removed'])));
+
+		$install_restore_save();
 
 		// If the MySQL server supports utf8mb4, then convert all tables that were
 		// created above from utf8 to utf8mb4.  The sql.sql file has utf8 set by default
-		// so that is why this is necessary.
-		
+		// so that is why this is necessary.  A table that is already in the right character
+		// set is left alone: converting it changes nothing, and on MySQL it copies the whole
+		// table, which on a large table takes longer than a request may run.
+		$character_set = (version_compare(preg_replace('#[^0-9\.]#', '', mysqli_get_server_info(db::$con)), '5.5.3', '>=') == true) ? 'utf8mb4' : 'utf8';
 
 		if ($character_set == 'utf8mb4') {
 
-			$tables = db_values("SHOW TABLES");
+			$tables = db_values(
+				"SELECT t.TABLE_NAME
+				FROM information_schema.TABLES AS t
+				WHERE
+					(t.TABLE_SCHEMA = DATABASE())
+					AND (t.TABLE_TYPE = 'BASE TABLE')
+					AND (
+						(t.TABLE_COLLATION <> 'utf8mb4_unicode_ci')
+						OR (t.TABLE_COLLATION IS NULL)
+						OR EXISTS (
+							SELECT 1
+							FROM information_schema.COLUMNS AS c
+							WHERE
+								(c.TABLE_SCHEMA = t.TABLE_SCHEMA)
+								AND (c.TABLE_NAME = t.TABLE_NAME)
+								AND (c.COLLATION_NAME IS NOT NULL)
+								AND (c.COLLATION_NAME <> 'utf8mb4_unicode_ci')))");
 
 			foreach ($tables as $table) {
 
@@ -5342,51 +5732,98 @@ else {
 
 		db("UPDATE email_campaign_profiles SET bcc_email_address = '" . escape($settings_email_address) . "' WHERE bcc_email_address != ''");
 
-		// add administrator user
-		// We are setting the user's start page to the 294 page which is "staff-home".
-		$query =
+		// A backup keeps its own users.  When it already has the user the form names (the same
+		// e-mail address first, otherwise the same username), no second row is added: sign-in
+		// reads the first row it finds, so the new one could never be signed into.  That user
+		// stays as the backup has it, becomes an administrator if it is not one, and gets the
+		// password from the form, so the person who restores can sign in with what they typed.
+		$install_admin = db_item(
+			"SELECT user_id, user_username, user_email, user_role
+			FROM user
+			WHERE
+				(user_email = '" . escape($liveform->get_field_value('admin_email_address')) . "')
+				OR (user_username = '" . escape($liveform->get_field_value('admin_username')) . "')
+			ORDER BY (user_email = '" . escape($liveform->get_field_value('admin_email_address')) . "') DESC, user_id
+			LIMIT 1");
 
-		"INSERT INTO user (
+		$install_admin_message = '';
 
-				user_username,
+		if ((is_array($install_admin)) && (isset($install_admin['user_id']))) {
 
-				user_email,
+			$user_id = (int) $install_admin['user_id'];
 
-				user_password,
+			// The legacy MD5 is what the row below is written with too; the end of the installation
+			// stores the modern hash once the upgrades have added its column.
+			$install_admin_algo = '';
 
-				user_role,
+			$result = mysqli_query(db::$con, "SHOW COLUMNS FROM user LIKE 'user_password_algo'") or exit(mysqli_error(db::$con));
 
-				user_home,
+			if (mysqli_num_rows($result) != 0) {
 
-				user_timestamp)
+				$install_admin_algo = ", user_password_algo = 0";
 
-			VALUES (
+			}
 
-				'" . escape($liveform->get_field_value('admin_username')) . "',
+			db(
+				"UPDATE user
+				SET
+					user_password = '" . md5($liveform->get_field_value('admin_password')) . "'" . $install_admin_algo . ",
+					user_role = '0'
+				WHERE user_id = '" . $user_id . "'");
 
-				'" . escape($liveform->get_field_value('admin_email_address')) . "',
+			$install_admin_message = lang(array('string' => 'The backup already has the user {var:1} ({var:2}), so no administrator was added: that user is an administrator and signs in with the password you entered.', 'vars' => array($install_admin['user_username'], $install_admin['user_email'])));
 
-				'" . md5($liveform->get_field_value('admin_password')) . "',
+			add_install_step($install_admin_message, '', 'warning');
 
-				'0',
+		} else {
 
-				'294',
+			// add administrator user
+			// We are setting the user's start page to the 294 page which is "staff-home".
+			$query =
 
-				UNIX_TIMESTAMP())";
+			"INSERT INTO user (
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+					user_username,
 
-		$user_id = mysqli_insert_id(db::$con);
+					user_email,
 
-		add_install_step(lang('Created the administrator account'), $liveform->get_field_value('admin_username') . ' · ' . $liveform->get_field_value('admin_email_address'));
+					user_password,
 
-		// Check if appmenu_items exist in users
-		$query = "SHOW COLUMNS FROM user LIKE 'selected_appmenu_items_array'";		
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-		// If the column exists, then we can update user with 'default' selected_appmenu_items_array value
-		if (mysqli_num_rows($result) != 0) {
-			$query = "UPDATE user SET selected_appmenu_items_array = 'default' WHERE user_id = '" . escape($user_id) . "'";
-			$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+					user_role,
+
+					user_home,
+
+					user_timestamp)
+
+				VALUES (
+
+					'" . escape($liveform->get_field_value('admin_username')) . "',
+
+					'" . escape($liveform->get_field_value('admin_email_address')) . "',
+
+					'" . md5($liveform->get_field_value('admin_password')) . "',
+
+					'0',
+
+					'294',
+
+					UNIX_TIMESTAMP())";
+
+			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+
+			$user_id = mysqli_insert_id(db::$con);
+
+			add_install_step(lang('Created the administrator account'), $liveform->get_field_value('admin_username') . ' · ' . $liveform->get_field_value('admin_email_address'));
+
+			// Check if appmenu_items exist in users
+			$query = "SHOW COLUMNS FROM user LIKE 'selected_appmenu_items_array'";		
+			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+			// If the column exists, then we can update user with 'default' selected_appmenu_items_array value
+			if (mysqli_num_rows($result) != 0) {
+				$query = "UPDATE user SET selected_appmenu_items_array = 'default' WHERE user_id = '" . escape($user_id) . "'";
+				$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+			}
+
 		}
 
 		// Update last modified site settings info to contain info for this admin user, so that
@@ -5622,78 +6059,97 @@ else {
 
 		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
 
-		// delete all files from files directory
-		$handle = opendir(FILE_DIRECTORY_PATH . '/');
+		// The files and the design templates come from the backup folder, or from the folder an
+		// archive was extracted into.  A backup without one of the two folders leaves the site's
+		// own in place: deleting them first would leave the site with none.
+		$install_content_path = pg_restore_content_path($install_restore);
 
-		while (false !== ($file = readdir($handle))) {
+		if (is_dir($install_content_path . '/files')) {
 
-			if (($file != '.') && ($file != '..')) {
+			// delete all files from files directory
+			$handle = opendir(FILE_DIRECTORY_PATH . '/');
 
-				unlink(FILE_DIRECTORY_PATH . '/' . $file);
+			while (false !== ($file = readdir($handle))) {
 
-			}
+				if (($file != '.') && ($file != '..')) {
 
-		}
+					unlink(FILE_DIRECTORY_PATH . '/' . $file);
 
-		closedir($handle);
-
-		// prepare path to template files
-		$template_files_path = dirname(__FILE__) . '/../data/backups/' . $install_directory_path . '/files/';
-
-		$handle = opendir($template_files_path);
-
-		// copy template files to files directory
-		while (false !== ($file = readdir($handle))) {
-
-			if (($file != '.') && ($file != '..')) {
-
-				copy($template_files_path . $file, FILE_DIRECTORY_PATH . '/' . $file);
+				}
 
 			}
 
+			closedir($handle);
+
+			// prepare path to template files
+			$template_files_path = $install_content_path . '/files/';
+
+			$handle = opendir($template_files_path);
+
+			// copy template files to files directory
+			while (false !== ($file = readdir($handle))) {
+
+				if (($file != '.') && ($file != '..')) {
+
+					copy($template_files_path . $file, FILE_DIRECTORY_PATH . '/' . $file);
+
+				}
+
+			}
+
+			closedir($handle);
+
+			add_install_step(lang('Copied the files of the site'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(FILE_DIRECTORY_PATH), array('.', '..'))))));
+
+		} else {
+
+			add_install_step(lang('The backup has no files folder, so the files of the site were kept'), '', 'warning');
+
 		}
-
-		closedir($handle);
-
-		add_install_step(lang('Copied the files of the site'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(FILE_DIRECTORY_PATH), array('.', '..'))))));
 
 		// Deal with layouts now.
-		
+		if (is_dir($install_content_path . '/layouts')) {
 
-		// delete all files from layouts directory
-		$handle = opendir(LAYOUT_DIRECTORY_PATH . '/');
+			// delete all files from layouts directory
+			$handle = opendir(LAYOUT_DIRECTORY_PATH . '/');
 
-		while (false !== ($file = readdir($handle))) {
+			while (false !== ($file = readdir($handle))) {
 
-			if (($file != '.') && ($file != '..')) {
+				if (($file != '.') && ($file != '..')) {
 
-				unlink(LAYOUT_DIRECTORY_PATH . '/' . $file);
+					unlink(LAYOUT_DIRECTORY_PATH . '/' . $file);
 
-			}
-
-		}
-
-		closedir($handle);
-
-		// prepare path to template layouts
-		$template_layouts_path = dirname(__FILE__) . '/../data/backups/' . $install_directory_path . '/layouts/'; 
-
-		$handle = opendir($template_layouts_path);
-
-		// copy template layouts to layouts directory
-		while (false !== ($file = readdir($handle))) {
-
-			if (($file != '.') && ($file != '..')) {
-
-				copy($template_layouts_path . $file, LAYOUT_DIRECTORY_PATH . '/' . $file);
+				}
 
 			}
 
+			closedir($handle);
+
+			// prepare path to template layouts
+			$template_layouts_path = $install_content_path . '/layouts/';
+
+			$handle = opendir($template_layouts_path);
+
+			// copy template layouts to layouts directory
+			while (false !== ($file = readdir($handle))) {
+
+				if (($file != '.') && ($file != '..')) {
+
+					copy($template_layouts_path . $file, LAYOUT_DIRECTORY_PATH . '/' . $file);
+
+				}
+
+			}
+
+			closedir($handle);
+
+			add_install_step(lang('Copied the design templates'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(LAYOUT_DIRECTORY_PATH), array('.', '..'))))));
+
+		} else {
+
+			add_install_step(lang('The backup has no layouts folder, so the design templates of the site were kept'), '', 'warning');
+
 		}
-
-		closedir($handle);
-
-		add_install_step(lang('Copied the design templates'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(LAYOUT_DIRECTORY_PATH), array('.', '..'))))));
 
 		// create config.php file
 		
@@ -5977,6 +6433,15 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 
 		log_activity(lang('The software was installed'), $liveform->get_field_value('admin_username'));
 
+		// A backup (not a starter site) says in the restored site's own log what was restored.
+		if (get_starter_site_language($install_directory_path) == '') {
+
+			log_activity(lang(array('string' => 'The backup {var:1} was restored: {var:2} in {var:3} steps, {var:4} seconds.', 'vars' => array($install_directory_path, convert_bytes_to_string((float) $install_restore['size'], 1), (int) $install_restore['steps'], number_format(microtime(true) - $install_started_at, 0)))), $liveform->get_field_value('admin_username'));
+
+		}
+
+		pg_restore_state_clear();
+
 		// If no mail server was entered under the advanced options, then we do not try to send the
 		// confirmation, because there is nothing to send it with and the message would only be
 		// confusing.  The administrator can set this up later under the email settings.
@@ -6084,6 +6549,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 					<i class="bi bi-check-circle-fill"></i>
 					<div class="flex-grow-1">
 						<b>' . lang('The installation is complete') . '</b> <span class="text-body-secondary">' . h($install_result_details) . '</span>
+						' . (($install_admin_message != '') ? '<div class="small mt-1"><i class="bi bi-person-check me-1"></i>' . h($install_admin_message) . '</div>' : '') . '
 						<div class="d-flex gap-2 flex-wrap mt-2">
 							<a class="btn btn-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
 							<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
@@ -6121,7 +6587,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 			get_header() . '
 		<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
 			  <ul class="navbar-nav me-auto">
-				<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"  data-loading-content=" "   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+				<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 			  </ul>
 		</nav>';
 
@@ -6336,6 +6802,13 @@ function start_install_stream() {
 			document.getElementById("pg_stream_percent").textContent = "%" + percent;
 			document.getElementById("pg_stream_now").textContent = label;
 		}
+		// A restore is loaded a step per request: the host screen posts the form again with
+		// the id of the restore when this request ends.
+		function pg_install_stream_continue(id) {
+			var host = pg_install_host();
+			if ((host) && (host.pg_install_stream_continue)) { host.pg_install_stream_continue(id); return; }
+			document.getElementById("pg_stream_text").textContent = ' . json_encode(lang('The backup is loaded in steps and this step is done. Start the installation again from the installation screen to load the next one.')) . ';
+		}
 		function pg_install_stream_escape(value) {
 			var element = document.createElement("span");
 			element.textContent = value;
@@ -6471,6 +6944,52 @@ function finish_install_stream() {
 
 }
 
+// Drops what an unfinished restore loaded next to the site and forgets the restore.  Like the
+// other actions of this screen it is only answered after the lock.  On a server without a site
+// the database is the one in the form.  This function never returns.
+function output_install_restore_discard() {
+
+	global $liveform;
+
+	if ((!isset($_SESSION['software']['token'])) || ($_SESSION['software']['token'] == '') || (!isset($_POST['token'])) || ($_POST['token'] !== $_SESSION['software']['token'])) {
+
+		exit(lang('Sorry, we could not accept your request because it appears that your session expired.'));
+
+	}
+
+	$state = pg_restore_state_read();
+
+	if ($state !== null) {
+
+		if ((!db::$con) && (isset($_POST['db_host'], $_POST['db_username'], $_POST['db_password'], $_POST['db_database'])) && (is_string($_POST['db_host'])) && (is_string($_POST['db_username'])) && (is_string($_POST['db_password'])) && (is_string($_POST['db_database']))) {
+
+			db::$con = @mysqli_connect($_POST['db_host'], $_POST['db_username'], $_POST['db_password'], $_POST['db_database']);
+
+		}
+
+		if (db::$con) {
+
+			pg_restore_discard();
+
+			log_activity(lang(array('string' => 'The unfinished restore of the backup {var:1} was discarded.', 'vars' => array($state['folder']))), get_install_log_username());
+
+		} else {
+
+			// Without the database only the record goes; the next restore drops the tables.
+			pg_restore_state_clear();
+
+		}
+
+		$liveform->add_notice(lang(array('string' => 'The unfinished restore of the backup {var:1} was discarded.', 'vars' => array($state['folder']))));
+
+	}
+
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/install/');
+
+	exit();
+
+}
+
 // Answers the "test the connection" button on the install screen.  It only reports what the
 // installation itself would find, so nothing is written and nothing is remembered.  This function
 // prints a small json answer and never returns.
@@ -6595,6 +7114,21 @@ function output_install_database_test() {
 	}
 
 	$server_version = @mysqli_get_server_info($connection);
+
+	// a server too old for the schema is said here, before the installation is started
+	$server_problem = install_server_problem((string) $server_version);
+
+	if ($server_problem != '') {
+
+		$response['message'] = h($server_problem);
+
+		@mysqli_close($connection);
+
+		print json_encode($response);
+
+		exit();
+
+	}
 
 	// see whether a site is already in there, because that is what the installation would replace
 	$site_found = false;
@@ -6732,7 +7266,7 @@ function output_install_upgrade_step($versions) {
 
 	if ($result['done'] == true) {
 
-		log_activity(lang(array('string' => 'The software was upgraded from version {var:1} to {var:2}.', 'vars' => array($database_version, $version_now))), (isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : ''));
+		log_activity(lang(array('string' => 'The software was upgraded from version {var:1} to {var:2}.', 'vars' => array($database_version, $version_now))), get_install_log_username());
 
 	}
 
@@ -6776,7 +7310,7 @@ function output_install_database_backup($versions) {
 
 	if ($result['ok'] == true) {
 
-		log_activity(lang('A backup of the database was written before the upgrade') . ': ' . $result['folder'], (isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : ''));
+		log_activity(lang('A backup of the database was written before the upgrade') . ': ' . $result['folder'], get_install_log_username());
 
 	}
 
@@ -6966,15 +7500,63 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 	$destination_path = $backups_path . $folder_name;
 
-	if (!@mkdir($destination_path, 0755, true)) {
+	// The archive is extracted into a working folder in data/temp and moved into the backups
+	// folder only when every file came out whole, so an upload that is cut short never leaves a
+	// backup with half a database dump behind.  Every file is copied a megabyte at a time
+	// (pg_restore_archive_copy()), so a large dump does not have to fit in memory.
+	$temp_path = dirname(__FILE__) . '/../data/temp';
+
+	// An upload the server killed (time limit, restart) leaves its working folder behind.
+	$leftovers = is_dir($temp_path) ? @scandir($temp_path) : false;
+
+	if ($leftovers !== false) {
+
+		foreach ($leftovers as $leftover) {
+
+			if ((preg_match('/^upload_[0-9a-f]{16}$/', $leftover) == 1) && is_dir($temp_path . '/' . $leftover) && ((int) @filemtime($temp_path . '/' . $leftover) < (time() - 86400))) {
+
+				pg_backup_delete_tree($temp_path . '/' . $leftover);
+
+			}
+
+		}
+
+	}
+
+	$free_space = function_exists('disk_free_space') ? @disk_free_space(dirname(__FILE__) . '/../data') : false;
+
+	if (($free_space !== false) && ($free_space < ($total_size + 67108864))) {
 
 		$zip->close();
 
-		$liveform->mark_error('', lang('The backups folder is not writable, so the archive could not be extracted.'));
+		$liveform->mark_error('', lang(array('string' => 'There is not enough free disk space to extract the archive: {var:1} is needed, {var:2} is free.', 'vars' => array(convert_bytes_to_string($total_size + 67108864, 1), convert_bytes_to_string((float) $free_space, 1)))));
 
 		return;
 
 	}
+
+	$work_path = $temp_path . '/upload_' . bin2hex(random_bytes(8));
+
+	if (!@mkdir($work_path, 0755, true)) {
+
+		$zip->close();
+
+		$liveform->mark_error('', lang('The folder could not be created.') . ' data/temp/' . basename($work_path));
+
+		return;
+
+	}
+
+	// A request that dies half-way (memory, time limit) takes its working folder with it.
+	register_shutdown_function(function () use ($work_path) {
+
+		if (is_dir($work_path)) {
+
+			pg_backup_delete_tree($work_path);
+
+		}
+
+	});
 
 	$extracted_files = 0;
 
@@ -7016,7 +7598,10 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 		}
 
-		if (count($clean_parts) == 0) {
+		// A name with a character Windows cannot create (a colon opens a stream there) is left in
+		// the archive, the way the restore leaves it (pg_restore_archive_read()).  Any other file
+		// that cannot be written stops the upload.
+		if ((count($clean_parts) == 0) || (preg_match('/[\x00-\x1f:*?"<>|]/', implode('/', $clean_parts)) == 1)) {
 
 			continue;
 
@@ -7024,7 +7609,7 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 		$is_directory = (mb_substr($entry_name, -1) == '/');
 
-		$target_path = $destination_path . '/' . implode('/', $clean_parts);
+		$target_path = $work_path . '/' . implode('/', $clean_parts);
 
 		if ($is_directory == true) {
 
@@ -7046,31 +7631,45 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 		}
 
-		$contents = $zip->getFromIndex($index);
+		$copy_error = pg_restore_archive_copy($zip, $index, $target_path);
 
-		if ($contents === false) {
+		if ($copy_error != '') {
 
-			continue;
+			$zip->close();
+
+			pg_backup_delete_tree($work_path);
+
+			$liveform->mark_error('', $copy_error);
+
+			return;
 
 		}
 
-		if (@file_put_contents($target_path, $contents) !== false) {
-
-			$extracted_files++;
-
-		}
+		$extracted_files++;
 
 	}
 
 	$zip->close();
 
-	// The backups folder is already closed to the web, however we also close the new folder, so a
-	// server that ignores the parent rule still cannot serve anything from it.
-	@file_put_contents($destination_path . '/.htaccess', 'deny from all');
-
 	if ($extracted_files == 0) {
 
+		pg_backup_delete_tree($work_path);
+
 		$liveform->mark_error('', lang('The archive was empty, so nothing was extracted.'));
+
+		return;
+
+	}
+
+	// The backups folder is already closed to the web, however we also close the new folder, so a
+	// server that ignores the parent rule still cannot serve anything from it.
+	@file_put_contents($work_path . '/.htaccess', 'deny from all');
+
+	if (((!is_dir($backups_path)) && (!@mkdir($backups_path, 0755, true))) || (!@rename($work_path, $destination_path))) {
+
+		pg_backup_delete_tree($work_path);
+
+		$liveform->mark_error('', lang('The backups folder is not writable, so the archive could not be extracted.'));
 
 		return;
 
@@ -7079,7 +7678,7 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 	// select the folder that we just extracted
 	$liveform->assign_field_value('install_from_folder', $folder_name);
 
-	log_activity(lang(array('string' => 'uploaded a backup archive to the installation screen and extracted it to {var:1}', 'vars' => $folder_name)), $_SESSION['sessionusername']);
+	log_activity(lang(array('string' => 'uploaded a backup archive to the installation screen and extracted it to {var:1}', 'vars' => $folder_name)), get_install_log_username());
 
 	$liveform->add_notice(lang(array(
 		'string' => 'The archive was extracted to {var:1} and selected. {var:2} files were extracted.',
@@ -7226,7 +7825,7 @@ function output_install_lock_screen() {
 
 					clear_install_attempts();
 
-					set_install_unlocked();
+					set_install_unlocked($unlock_username);
 
 					log_activity(lang('unlocked the installation screen'), $unlock_username);
 
@@ -7561,86 +8160,6 @@ function install_bridge_open() {
 	}
 
 	return $open;
-
-}
-
-// Runs every statement of a MySQL dump.  The file is read line by line rather than with
-// file(), because a backup of a big site does not fit in memory_limit, and the statement
-// that fails is returned with the error, so the screen can say what went wrong instead of
-// "an error occurred".  Returns true, or array('statement' => ..., 'error' => ...).
-function parse_mysql_dump($url)
- {
-
-	global $install_progress_running;
-
-	$handle = @fopen($url, 'r');
-
-	if ($handle === false) {
-
-		return array('statement' => basename($url), 'error' => lang('The file could not be opened.'));
-
-	}
-
-	$query = '';
-
-	$count = 0;
-
-	while (($sql_line = fgets($handle)) !== false) {
-
-		$tsl = trim($sql_line);
-
-		if (($tsl == '') || (mb_substr($tsl, 0, 2) == '--') || (mb_substr($tsl, 0, 1) == '#')) {
-
-			continue;
-
-		}
-
-		$query .= $sql_line;
-
-		if (preg_match("/;\s*$/", $sql_line)) {
-
-			$result = mysqli_query(db::$con, trim($query));
-
-			if (!$result) {
-
-				$failed = preg_replace('/\s+/', ' ', trim(mb_substr($query, 0, 160)));
-
-				fclose($handle);
-
-				return array('statement' => $failed, 'error' => mysqli_error(db::$con));
-
-			}
-
-			$query = '';
-
-			$count++;
-
-			// a heartbeat for the screen, so a long dump does not look like a frozen page
-			if (($count % 500) == 0) {
-
-				$install_progress_running = lang(array('string' => 'sql.sql · {var:1} statements', 'vars' => number_format($count)));
-
-				write_install_progress_file(false);
-
-			}
-
-		}
-
-	}
-
-	fclose($handle);
-
-	// Dumps written by mysqldump.php (the starter sites under data/backups among them) wrap
-	// every table in SET autocommit=0 ... COMMIT and never switch autocommit back on, so the
-	// rest of this request would run inside an open transaction. On MyISAM that changes
-	// nothing; once the upgrade that follows has moved a table to InnoDB, every later write
-	// to it in this request (config.version, the administrator's password hash, the log
-	// entry) would be rolled back when the connection closes.
-	mysqli_query(db::$con, "SET autocommit = 1");
-
-	$install_progress_running = '';
-
-	return true;
 
 }
 
@@ -8289,6 +8808,8 @@ function get_tables() {
 		'comments',
 		'commissions',
 		'config',
+		'connect_accounts',
+		'connect_apps',
 		'contact_groups',
 		'contact_groups_email_campaigns_xref',
 		'contacts',
@@ -8298,6 +8819,7 @@ function get_tables() {
 		'countries',
 		'cregion',
 		'currencies',
+		'currency_rates',
 		'custom_form_confirmation_pages',
 		'custom_form_pages',
 		'dregion',
@@ -8331,6 +8853,7 @@ function get_tables() {
 		'erp_invoices',
 		'erp_parasut_log',
 		'erp_product_costs',
+		'erp_purchase_orders',
 		'erp_quotes',
 		'erp_reconciliation_log',
 		'erp_settlements',
@@ -8373,6 +8896,8 @@ function get_tables() {
 		'menus',
 		'messages',
 		'next_order_number',
+		'oauth_clients',
+		'oauth_codes',
 		'offer_actions',
 		'offer_actions_shipping_methods_xref',
 		'offer_conditions',
@@ -8439,6 +8964,7 @@ function get_tables() {
 		'talks',
 		'update_address_book_pages',
 		'user',
+		'user_identities',
 		'user_mfa',
 		'user_mfa_recovery',
 		'users_ad_regions_xref',
@@ -8482,6 +9008,7 @@ function get_tables() {
 		'ws_events',
 		'ws_event_people',
 		'ws_inbox',
+		'ws_inbox_deleted',
 		'ws_reactions',
 		'ws_checks',
 		'ws_polls',
@@ -8519,14 +9046,24 @@ function get_tables() {
 		'ws_task_links',
 		'ws_approvals',
 		'ws_approval_people',
+		'ws_approval_guests',
+		'ws_status_updates',
+		'ws_checkins',
+		'ws_checkin_answers',
 		'ws_ack_requests',
 		'ws_acks',
+		'ws_calendar_feeds',
+		'ws_mcp_servers',
+		'ws_mcp_calls',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',
 		'seo_link',
+		'seo_search_daily',
 		'visitor_stats_hourly',
 		'visitor_content_hourly',
+		'visitor_stats_daily',
+		'visitor_texts',
 		'local_sale_history',
 		'local_sale_history_items',
 		'designer_presence',

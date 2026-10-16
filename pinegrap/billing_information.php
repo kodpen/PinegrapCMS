@@ -20,6 +20,15 @@ include('init.php');
 
 validate_token_field();
 
+// The billing information is checked with the settings of the page it was
+// posted from (custom fields, custom billing form). An id that names no such
+// page (unknown, empty or posted as an array) stops here, as on the shipping
+// address and arrival step, instead of marking the billing information
+// complete without them.
+if (!pg_order_page_known($_POST['page_id'] ?? '', 'billing information')) {
+    output_error(lang('A billing information page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 initialize_order();
 
 $liveform = new liveform('billing_information');
@@ -27,6 +36,18 @@ $liveform = new liveform('billing_information');
 $ghost = $_SESSION['software']['ghost'] ?? false;
 
 $liveform->add_fields_to_session();
+
+// The billing fields post one value each (the custom billing form's fields are checked by
+// submit_custom_form()).
+pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact'));
+
+// The form names this page and the next one by id, each one string. One posted as an array
+// (page_id[]=) counts as empty, so every read of them below gets a string.
+foreach (array('page_id', 'next_page_id') as $pg_post_field) {
+    if (isset($_POST[$pg_post_field]) && !is_string($_POST[$pg_post_field])) {
+        $_POST[$pg_post_field] = '';
+    }
+}
 
 // Get page info.
 $query =
@@ -39,13 +60,14 @@ $query =
     FROM billing_information_pages
     WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_assoc($result);
+// No row when the id names no billing page: no custom fields and no custom form then.
+$row = mysqli_fetch_assoc($result) ?: array();
 
-$custom_field_1_label = $row['custom_field_1_label'];
-$custom_field_1_required = $row['custom_field_1_required'];
-$custom_field_2_label = $row['custom_field_2_label'];
-$custom_field_2_required = $row['custom_field_2_required'];
-$form = $row['form'];
+$custom_field_1_label = $row['custom_field_1_label'] ?? '';
+$custom_field_1_required = $row['custom_field_1_required'] ?? '';
+$custom_field_2_label = $row['custom_field_2_label'] ?? '';
+$custom_field_2_required = $row['custom_field_2_required'] ?? '';
+$form = $row['form'] ?? '';
 
 // if there is a custom field 1 label and custom field 1 is required, then validate required field
 if (($custom_field_1_label != '') && ($custom_field_1_required == 1)) {
@@ -343,7 +365,8 @@ if ($liveform->check_form_errors() == false) {
     }
 
     // if visitor tracking is on, update geographic data for visitor, using billing information
-    if (VISITOR_TRACKING == true) {
+    // (a bot, or a post without a page view first, has no visitor record)
+    if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
         $query = "UPDATE visitors
                  SET
                     city = '" . escape($liveform->get_field_value('billing_city')) . "',

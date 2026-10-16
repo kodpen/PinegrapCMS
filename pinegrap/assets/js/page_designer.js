@@ -413,9 +413,6 @@ function init_page_designer(properties) {
 
                         // When the save button is clicked then save the form.
                         $('.save').click(function () {
-                            $(this).html('<span class="statusicon spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' + labels['Saving']);
-
-
                             editor.focus();
                             var new_content = editor.getValue();
 
@@ -518,9 +515,7 @@ function init_page_designer(properties) {
                                     $('.cancel').unbind('click');
                                     $('.cancel').addClass('disabled');
 
-                                    setTimeout(function () {
-                                        $('.save').html('<span class="statusicon bi bi-check-lg me-2" role="status" aria-hidden="true"></span>' + labels['Saved']);
-                                    }, 500);
+                                    $('.save').html('<span class="statusicon bi bi-check-lg me-2" role="status" aria-hidden="true"></span>' + labels['Saved']);
                                     setTimeout(function () {
                                         $('.save').html('<span class="statusicon bi bi-floppy me-2" role="status" aria-hidden="true"></span>' + labels['Save']);
                                     }, 1500);
@@ -647,7 +642,7 @@ function init_page_designer(properties) {
                           </div>
                     </div>
                     <div class="modal-footer">
-                      <button type="button" id="saveCregionButton" name="submit_create" value="Create Designer Region" class="btn my-1 btn-success " data-loading-content="${labels["Creating"]}"><span class="btn-text">${labels["Create & Add"]}</span></button>
+                      <button type="button" id="saveCregionButton" name="submit_create" value="Create Designer Region" class="btn my-1 btn-success "><span class="btn-text">${labels["Create & Add"]}</span></button>
                     </div>
                   </div>
                 </div>
@@ -676,7 +671,7 @@ function init_page_designer(properties) {
                           </div>
                     </div>
                     <div class="modal-footer">
-                      <button type="button" id="saveDregionButton" name="submit_create" value="Create Dynamic Region" class="btn my-1 btn-success " data-loading-content="${labels["Creating"]}"><span class="btn-text">${labels["Create & Add"]}</span></button>
+                      <button type="button" id="saveDregionButton" name="submit_create" value="Create Dynamic Region" class="btn my-1 btn-success "><span class="btn-text">${labels["Create & Add"]}</span></button>
                     </div>
                   </div>
                 </div>

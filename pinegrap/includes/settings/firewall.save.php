@@ -65,6 +65,91 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // ── Country restriction (2026.4.10) ─────────────────────────────────
+    //
+    // Checked before anything is written: a list with a code that names no
+    // country, an allow list naming none, or settings that would refuse the
+    // operator saving them leave every setting on this screen as it was.
+    $waf_country_save = (function_exists('waf_table_has_column') && waf_table_has_column('config', 'waf_country_mode'));
+    $waf_country_post_mode = 'off';
+
+    if ($waf_country_save) {
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+        $waf_country_post_mode = in_array(post_value('waf_country_mode'), array('allow', 'block'), true) ? (string) post_value('waf_country_mode') : 'off';
+        $waf_country_post_list = array();
+        $waf_country_post_wrong = array();
+        $waf_country_known = pg_sales_map_iso_countries();
+
+        foreach (preg_split('/[\s,;]+/', strtoupper(trim((string) post_value('waf_country_list')))) as $waf_country_entry) {
+            if ($waf_country_entry === '') {
+                continue;
+            }
+
+            if (($waf_country_entry === 'T1') || isset($waf_country_known[$waf_country_entry])) {
+                $waf_country_post_list[$waf_country_entry] = $waf_country_entry;
+            } else {
+                $waf_country_post_wrong[$waf_country_entry] = $waf_country_entry;
+            }
+        }
+
+        $waf_country_post_list = array_values($waf_country_post_list);
+        $waf_country_post_unknown = post_value('waf_country_unknown') ? 1 : 0;
+        $waf_country_post_panel = post_value('waf_country_exempt_panel') ? 1 : 0;
+
+        if ($waf_country_post_wrong) {
+            $liveform->mark_error('waf_country_list', lang(array(
+                'string' => 'Nothing was saved: these are not country codes: {var:1}.',
+                'vars'   => array(implode(', ', $waf_country_post_wrong)))));
+
+            return;
+        }
+
+        if (($waf_country_post_mode === 'allow') && !$waf_country_post_list) {
+            $liveform->mark_error('waf_country_list', lang('Nothing was saved: name at least one country to let in.'));
+
+            return;
+        }
+
+        // The operator's own request, judged by the settings as submitted:
+        // with the panel restricted, settings that refuse it would lock them
+        // out of the screen that changes them. An address on the allow list
+        // being saved is let in whatever its country.
+        if (($waf_country_post_mode !== 'off') && !$waf_country_post_panel) {
+
+            $waf_country_own_ip = waf_client_ip();
+            $waf_country_own_allowed = false;
+
+            foreach (preg_split('/[\r\n,;]+/', (string) post_value('allowed_ip_addresses')) as $waf_country_own_entry) {
+                $waf_country_own_entry = trim($waf_country_own_entry);
+
+                if (($waf_country_own_entry !== '') && waf_valid_ip_pattern($waf_country_own_entry) && waf_ip_matches($waf_country_own_ip, $waf_country_own_entry)) {
+                    $waf_country_own_allowed = true;
+                    break;
+                }
+            }
+
+            $waf_country_own = pg_geo_country();
+
+            if (!$waf_country_own_allowed && waf_country_refused($waf_country_own['code'], $waf_country_post_mode, $waf_country_post_list, (bool) $waf_country_post_unknown)) {
+                $liveform->mark_error('waf_country_mode', lang(array(
+                    'string' => 'Nothing was saved: these settings would refuse you, because this request comes from {var:1}. Let your country in, keep the control panel open, or add your address to the allowed IP addresses.',
+                    'vars'   => array(($waf_country_own['code'] !== '') ? pg_geo_country_name($waf_country_own['code']) . ' (' . $waf_country_own['code'] . ')' : lang('an unknown country')))));
+
+                return;
+            }
+        }
+
+        db("UPDATE config SET
+            waf_country_mode = '" . escape($waf_country_post_mode) . "',
+            waf_country_list = '" . escape(implode(',', $waf_country_post_list)) . "',
+            waf_country_unknown = '" . $waf_country_post_unknown . "',
+            waf_country_exempt_panel = '" . $waf_country_post_panel . "',
+            waf_country_exempt_api = '" . (post_value('waf_country_exempt_api') ? 1 : 0) . "',
+            waf_country_exempt_bots = '" . (post_value('waf_country_exempt_bots') ? 1 : 0) . "'");
+    }
+
     if (function_exists('waf_table_has_column')
         && waf_table_has_column('config', 'waf_enabled')
     ) {
@@ -370,4 +455,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 }
             }
         }
+    }
+
+    // The location database, when the button asks for it or the country
+    // restriction is on and the site has none yet. Last, so a slow download
+    // comes after everything this screen saves.
+    if ($waf_country_save) {
+        pg_geo_db_refresh_for_screen($liveform, (bool) post_value('geo_db_refresh'), $waf_country_post_mode !== 'off');
     }

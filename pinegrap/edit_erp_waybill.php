@@ -27,7 +27,7 @@ $liveform = new liveform('edit_erp_waybill');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_waybills.php';
 
-$waybill_id = (int) ($_REQUEST['id'] ?? 0);
+$waybill_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $waybill = erp_waybill($waybill_id);
 
 if (!is_array($waybill)) {
@@ -40,6 +40,9 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_waybill.php?id=
 if ($_POST) {
 
     validate_token_field();
+
+    // The action is one value; one posted as an array is no action.
+    pg_request_single_values(array('erp_action'));
 
     if (($_POST['erp_action'] ?? '') === 'invoice') {
 
@@ -253,10 +256,10 @@ pg_page_shell([
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($can_invoice
-                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Invoice the Delivery Note') . '</span></button>'
+                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Invoice the Delivery Note') . '</span></button>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Cancel the Document') . '</span></button>'
+                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '"><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Cancel the Document') . '</span></button>'
                                 : '') . '
                         </div>
                     </div>

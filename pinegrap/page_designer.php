@@ -24,12 +24,12 @@ validate_area_access($user, 'designer');
 
 
 $starting_item_type = '';
-if(isset($_GET['type'])){
+if(isset($_GET['type']) && is_string($_GET['type'])){
     $starting_item_type = escape_javascript($_GET['type']);
 }
 
 $starting_item_id = '';
-if(isset($_GET['id'])){
+if(isset($_GET['id']) && is_string($_GET['id'])){
     $starting_item_id = escape_javascript($_GET['id']);
 }
 $page_designer_query = '';
@@ -119,7 +119,7 @@ echo pg_page_shell(
     ' . get_codemirror_includes() . '
     <script>
         init_page_designer({
-            url: "' . escape_javascript($_GET['url'] ?? '') . '",
+            url: "' . escape_javascript(is_string($_GET['url'] ?? null) ? $_GET['url'] : '') . '",
             starting_item_type: "' . $starting_item_type . '",
             starting_item_id: "' . $starting_item_id . '",
             query: "' . $page_designer_query . '",
@@ -145,7 +145,6 @@ echo pg_page_shell(
                 "Designer Region":"' . lang('Designer Region') . '",
                 "Dynamic Region":"' . lang('Dynamic Region') . '",
                 "Save":"' . lang('Save') . '",
-                "Saving":"' . lang('Saving') . '",
                 "Saved":"' . lang('Saved') . '",
                 "Undo Changes":"' . lang('Undo Changes') . '",
                 "read-only":"' . lang('read-only') . '",
@@ -167,7 +166,6 @@ echo pg_page_shell(
                 "Shared PHP Content to appear on associated Pages":"' . lang('Shared PHP Content to appear on associated Pages') . '",
                 "HTML Code Snippet":"' . lang('HTML Code Snippet') . '",
                 "PHP Code Snippet":"' . lang('PHP Code Snippet') . '",
-                "Creating":"' . lang('Creating') . '",
                 "Create & Add":"' . lang('Create & Add') . '",
                 "Please choose a region type to create":"' . lang('Please choose a region type to create') . '",
                 "Help about the system tags":"' . lang('Help about the system tags') . '",

@@ -1365,7 +1365,7 @@ $pages[] = $sign_page('logout', lang('logout'), lang('Logout'), 'logout');
 
 // My account: the customer's own pages, behind the registration folder.
 $pages[] = array_merge($sign_page('my_account', lang('my-account'), lang('My Account'), 'my_account', 'registration'),
-    array('tree' => $page(array($widget('my_account'), $widget('account_security')), false)));
+    array('tree' => $page(array($widget('my_account'), $widget('account_invoices'), $widget('account_security')), false)));
 $pages[] = $sign_page('profile', lang('my-profile'), lang('My Profile'), 'profile', 'registration');
 $pages[] = $sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password', 'registration');
 $pages[] = $sign_page('email_preferences', lang('email-preferences'), lang('Email Preferences'), 'email_preferences', 'registration');
@@ -2353,6 +2353,15 @@ $widgets = array(
         'config' => array('regionType' => 'email_preferences', 'my_account_page_id' => '{{tab:my_account}}'),
         'tree'   => 'starter',
     ),
+    // The customer's invoices and returns from the ERP, under the account
+    // overview on the same page; it draws nothing for a member without an
+    // ERP account, so a site that does not use the ERP never sees it.
+    'account_invoices' => array(
+        'page'   => 'my_account',
+        'slug'   => lang('invoices'),
+        'config' => array('regionType' => 'account_invoices', 'max_results' => 50),
+        'tree'   => 'starter',
+    ),
     // Google connection, remembered devices and two-step verification,
     // under the account overview on the same page.
     'account_security' => array(
@@ -2701,7 +2710,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.0.6',
+    'version'     => '1.0.7',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',

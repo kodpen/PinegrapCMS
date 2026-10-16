@@ -30,12 +30,21 @@ $with_deductible = erp_expense_categories_have_deductible();
 if ($_POST) {
     validate_token_field();
 
+    // The new category's fields are one value each; categories is the list
+    // of the others. One posted as an array counts as not given: (string)
+    // named the category "Array".
+    pg_request_single_values(array('new_name', 'new_code', 'new_tax_deductible'));
+
     $rows = array();
 
     foreach ((array) ($_POST['categories'] ?? array()) as $category_id => $row) {
         if (!is_array($row)) {
             continue;
         }
+
+        // A field of the row posted as an array (categories[3][name][]=x) is
+        // not given: the name is then missing, and the save says so.
+        $row = pg_request_row_values($row);
 
         $rows[(int) $category_id] = array(
             'name' => (string) ($row['name'] ?? ''),
@@ -170,7 +179,7 @@ pg_page_shell([
                 </div>
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-success"' . ($ready ? '' : ' disabled') . ' data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        <button type="submit" class="btn my-1 btn-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                     </div>
                 </nav>
             </form>

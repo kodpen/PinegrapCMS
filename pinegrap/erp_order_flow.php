@@ -21,6 +21,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_flow.php');
 include_once('liveform.class.php');
 
+// The order and the step are one value each. One posted as an array counts as
+// not given: (int) read an array order as order 1 and ran the step on it.
+pg_request_single_values(array('order_id', 'erp_step'));
+
 $order_id = (int) ($_POST['order_id'] ?? 0);
 $back = PATH . SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '#erp_order_documents';
 

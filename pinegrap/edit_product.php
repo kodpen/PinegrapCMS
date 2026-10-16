@@ -58,12 +58,25 @@ $product    = pg_pb_load_product($product_id);
 // save is a fresh request with no query string on it.
 $send_to = pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
 
+// Whether that is the product list. Only then is the save's notice queued for
+// it: a notice parked for a screen the save does not land on waits in the
+// session and turns up on some later visit, long after the save it was about.
+// A site page that opened this editor inline draws no panel notices at all.
+$send_to_list = (basename((string) parse_url($send_to, PHP_URL_PATH)) === 'view_products.php');
+
 if (!$product) {
     output_error(
         lang('Page not found.')
         . ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a>',
         404);
 }
+
+// A product in the Recycle Bin is no longer on any list, but its address
+// still opens it. It is shown so the operator can see what is in the bin, and
+// is not written: saving would switch it back on while it is in the bin (the
+// bin keeps it off), and deleting it again would only restart its countdown.
+// Restoring it in the Catalog Manager is the way back to editing it.
+$product_binned = pg_catalog_product_binned($product_id);
 
 
 /* ------------------------------------------------------------------ *
@@ -74,6 +87,10 @@ if ($_POST) {
 
     validate_token_field();
 
+    if ($product_binned) {
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
+    }
+
     // Delete first: the rest of this block writes the product, and doing that
     // on the way to deleting it is work nobody sees and one more chance to
     // fail halfway.
@@ -81,15 +98,28 @@ if ($_POST) {
 
         $deleted_name = $product['name'];
 
-        pg_pb_delete_product($product_id);
+        // To the Recycle Bin, as the Catalog Manager deletes: a product deleted
+        // by mistake has to be one restore away, not a database backup away.
+        // Emptying the bin is what runs the permanent delete below.
+        if (pg_catalog_bin_ready()) {
 
-        log_activity(
-            lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name))),
-            $_SESSION['sessionusername']);
+            pg_catalog_bin_product($product_id, $user['id']);
 
-        $liveform_target = new liveform('view_products');
-        $liveform_target->add_notice(
-            lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name))));
+            $deleted_message = lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($deleted_name)));
+
+        } else {
+
+            pg_pb_delete_product($product_id);
+
+            $deleted_message = lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name)));
+        }
+
+        log_activity($deleted_message, $_SESSION['sessionusername']);
+
+        if ($send_to_list) {
+            $liveform_target = new liveform('view_products');
+            $liveform_target->add_notice($deleted_message);
+        }
 
         go($send_to);
     }
@@ -111,14 +141,19 @@ if ($_POST) {
         lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name']))),
         $_SESSION['sessionusername']);
 
-    $liveform->add_notice(
-        lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name']))));
+    $notice = lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name'])));
 
     // Back to the list, the same place the create screen ends, unless the
     // operator asked to stay — editing a photo and a price in one sitting is
-    // two visits otherwise.
+    // two visits otherwise. The notice goes with the operator either way.
     if (!empty($_POST['submit_save_and_stay'])) {
+        $liveform->add_notice($notice);
         go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
+    }
+
+    if ($send_to_list) {
+        $liveform_target = new liveform('view_products');
+        $liveform_target->add_notice($notice);
     }
 
     go($send_to);
@@ -132,4 +167,5 @@ if ($_POST) {
 pg_pb_render_product_screen($product, array(
     'mode'       => 'edit',
     'product_id' => $product_id,
+    'recycled'   => $product_binned,
 ));

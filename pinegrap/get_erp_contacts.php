@@ -26,6 +26,6 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');
 
-$results = erp_contact_search((string) ($_GET['q'] ?? ''), 15);
+$results = erp_contact_search(is_string($_GET['q'] ?? null) ? $_GET['q'] : '', 15);
 
 echo json_encode(array('results' => $results), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);

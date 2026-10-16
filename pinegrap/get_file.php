@@ -1044,7 +1044,12 @@ if ($if_modified_since == $last_modified) {
         // an <img> tag or a CSS background keeps rendering exactly as before.
         if (in_array($extension, array('html', 'htm', 'xhtml', 'xht', 'svg', 'svgz', 'xml', 'xsl'), true)) {
             header('Content-Security-Policy: sandbox');
-            header('X-Content-Type-Options: nosniff');
+            // Once: IIS may add it from web.config (waf_send_nosniff()).
+            if (function_exists('waf_send_nosniff')) {
+                waf_send_nosniff();
+            } else {
+                header('X-Content-Type-Options: nosniff');
+            }
         }
 
     // else file cannot be displayed in browser, so force download dialog

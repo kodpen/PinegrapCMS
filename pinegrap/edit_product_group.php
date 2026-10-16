@@ -28,10 +28,18 @@ validate_ecommerce_access($user);
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM product_groups WHERE id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
+
+// A group in the Recycle Bin, deleted itself or with a group above it, is no
+// longer on any list, but its address still opens it. It is shown so the
+// operator can see what is in the bin, and is not written: saving would switch
+// it back on while it is in the bin (the bin keeps it off), and deleting it
+// again does nothing. Restoring it in the Catalog Manager is the way back to
+// editing it, as for a product (edit_product.php).
+$group_binned = pg_catalog_group_binned($id);
 
 include_once('liveform.class.php');
 
@@ -144,6 +152,12 @@ if (!$_POST) {
     $item_names = array();
     
     // get all product groups currently in this product group
+    //
+    // Groups and products in the Recycle Bin are not listed or counted here, as
+    // the Catalog Manager leaves them out: a sub-group in the bin is not one
+    // that has to be deleted before this group can be, and a binned product
+    // keeps its place in this group (the save below leaves its row alone) so
+    // that restoring it puts it back where it was.
     $query = 
         "SELECT
             id,
@@ -154,7 +168,7 @@ if (!$_POST) {
             sort_order
         FROM product_groups
         WHERE
-            parent_id = '" . e($_GET['id']) . "'";
+            parent_id = '" . e($_GET['id']) . "'" . pg_catalog_bin_live_sql('product_groups');
     
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     while ($row = mysqli_fetch_assoc($result)) {
@@ -185,7 +199,7 @@ if (!$_POST) {
         FROM products_groups_xref
         LEFT JOIN products on products.id = product
         WHERE
-            product_group = '" . e($_GET['id']) . "'";
+            product_group = '" . e($_GET['id']) . "'" . pg_catalog_bin_live_sql('products');
 
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     while ($row = mysqli_fetch_assoc($result)) {
@@ -201,6 +215,9 @@ if (!$_POST) {
 
     // sort the items by sort order and then by name
     array_multisort($item_sort_orders, $item_names, $items);
+
+    // The pictures behind each product's cover, for the image viewer.
+    $more_images = $show_image ? pg_product_more_images($selected_products) : array();
 
     foreach ($items as $item) {
         // if this is a product
@@ -230,19 +247,18 @@ if (!$_POST) {
         }
         $output_image_column = '';
         if ($show_image) {
-            if (!$item['image_name']) {
-                $output_image_column = '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image') ) . '</text></svg></td>';
-            } else {
-                $output_image_column = '<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . $item['image_name'] . '" /></td>';
-            }
+            $output_image_column = ($item['type'] == 'product')
+                ? pg_product_image_cell('product-' . (int) $item['id'], $item['image_name'], $item['name'], $item['short_description'],
+                    isset($more_images[(int) $item['id']]) ? $more_images[(int) $item['id']] : array())
+                : pg_product_image_cell('product-group-' . (int) $item['id'], $item['image_name'], $item['name'], $item['short_description']);
         }
        
         $output_rows .=
             '<tr id="' . $item['id'] . '" class="' . $output_product_group_class . '">
                 <td class="select-all align-middle text-start">' . $output_checkbox . '</td>
 			    <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 ' . $output_image_column . '
                 <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . '</td>
@@ -254,9 +270,9 @@ if (!$_POST) {
     }
     
     // Build the exclusion clause once (reused for count and initial batch).
-    $unselected_exclude_sql = $selected_products
-        ? " WHERE id NOT IN (" . implode(',', array_map('intval', $selected_products)) . ")"
-        : "";
+    $unselected_exclude_sql = " WHERE 1 = 1"
+        . ($selected_products ? " AND id NOT IN (" . implode(',', array_map('intval', $selected_products)) . ")" : "")
+        . pg_catalog_bin_live_sql('products');
 
     $total_unselected = (int) db_value("SELECT COUNT(*) FROM products" . $unselected_exclude_sql);
 
@@ -268,21 +284,20 @@ if (!$_POST) {
          LIMIT 20"
     );
 
+    $more_images = $show_image ? pg_product_more_images(array_column($initial_unselected, 'id')) : array();
+
     foreach ($initial_unselected as $urow) {
         $urow['price'] = $urow['price'] / 100;
         $ustatus_class = $urow['enabled'] == 1 ? 'text-success' : 'text-danger';
         $uoutput_image_column = '';
         if ($show_image) {
-            if (!$urow['image_name']) {
-                $uoutput_image_column = '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image')) . '</text></svg></td>';
-            } else {
-                $uoutput_image_column = '<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . $urow['image_name'] . '" /></td>';
-            }
+            $uoutput_image_column = pg_product_image_cell('product-' . (int) $urow['id'], $urow['image_name'], $urow['name'], $urow['short_description'],
+                isset($more_images[(int) $urow['id']]) ? $more_images[(int) $urow['id']] : array());
         }
         $output_rows .=
             '<tr id="' . $urow['id'] . '">' .
             '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
+            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $uoutput_image_column .
             '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
@@ -488,7 +503,13 @@ if (!$_POST) {
     }
     
     // Show parent selector only when there are selectable groups (excluding self and descendants).
-    $_parent_options_html = get_product_group_options($parent_id, 0, $_GET['id'], 0, array(), FALSE);
+    //
+    // Groups in the Recycle Bin are no place to move a group to. The one
+    // exception is a parent that is itself in the bin (a sub-group restored on
+    // its own): it stays on the list, marked, because left off it the select
+    // would fall to its first option and the next save would move this group
+    // there.
+    $_parent_options_html = get_product_group_options($parent_id, 0, $_GET['id'], 0, array(), FALSE, 'text', false, true, false);
     if ($_parent_options_html !== '') {
         $output_parent_product_group_row =
             '<div class="col-12 col-md-4 my-2">
@@ -499,15 +520,18 @@ if (!$_POST) {
         $output_parent_product_group_row = '';
     }
 
-    // Delete button: only allowed for non-root product groups.
-    if ($parent_id != 0) {
+    // Delete button: only allowed for non-root product groups, and not for a
+    // group in the Recycle Bin.
+    if ($group_binned) {
+        $output_delete_button = '';
+    } elseif ($parent_id != 0) {
         // if there is a child product group in this product group, then disable delete button
         if ($child_product_group_exists == true) {
             $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\')" ><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         // else there is not a child object in this product group, so allow delete
         } else {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';
@@ -539,12 +563,15 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
+                ' . ($group_binned
+                    ? '<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
+                    : '') . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
 
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                <a class="btn btn-link link-secondary py-0 mb-2 " href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                                 ' . $output_workspace_button . '
                             </div>
                         </nav>
@@ -802,7 +829,9 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                ' . ($group_binned
+                                    ? '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="btn-text">' . lang('Open the Recycle Bin') . '</span></a>'
+                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
                                 ' . $output_delete_button . '
                             </div>
                             <span class="enable-on-selected"> 
@@ -850,12 +879,21 @@ if (!$_POST) {
         </div>
     ' .
         pg_pb_render_image_picker_assets() .
+        ($show_image ? _pg_lightbox_assets_once() : '') .
         '</main>' . output_footer();
         
         $liveform->remove_form();
 
 } else {
     validate_token_field();
+
+    // Neither saved nor deleted while in the bin (see $group_binned above); a
+    // form opened before the group went there lands back on the screen that
+    // says so.
+    if ($group_binned) {
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $id
+            . ((is_scalar($_POST['send_to'] ?? null) && ((string) $_POST['send_to'] !== '')) ? '&send_to=' . urlencode((string) $_POST['send_to']) : ''));
+    }
     
 
     // If the max_input_vars_test hidden field is not in the post data then that means the post data was truncated,
@@ -877,11 +915,29 @@ if (!$_POST) {
     $row = mysqli_fetch_assoc($result);
     $parent_id = $row['parent_id'];
 
+    // Whether this Delete sends the group to the Recycle Bin, as the Catalog
+    // Manager deletes: decided before the image links below are cleared,
+    // because a binned group keeps them so that restoring it brings its
+    // pictures back. Emptying the bin is what runs the permanent delete.
+    $binning_group = ((($_POST['submit_button'] ?? '') == 'Delete') && ($parent_id != '0') && pg_catalog_bin_ready());
+
     // Delete product group images references (we do this for both delete and update).
-    db("DELETE FROM product_groups_images_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'");
+    if ($binning_group == false) {
+        db("DELETE FROM product_groups_images_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'");
+    }
+
+    // The group and every group under it go to the bin together, the way a
+    // folder does; the products in it stay where else they are listed.
+    if ($binning_group) {
+
+        $binned_name = pg_catalog_bin_group((int) ($_POST['id'] ?? 0), $user['id']);
+
+        if ($binned_name !== false) {
+            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($binned_name))), $_SESSION['sessionusername']);
+        }
 
     // if product group was selected for delete
-    if (($_POST['submit_button'] ?? '') == 'Delete') {
+    } elseif (($_POST['submit_button'] ?? '') == 'Delete') {
         // if the parent_id is not set to 0, allow user to delete the product group because it is not the root product group
         if ($parent_id != '0') {
             $new_product_ids = array();
@@ -976,7 +1032,7 @@ if (!$_POST) {
         
         // If parent_id is blank, require it when selectable groups exist
         if (!$_POST['parent_id']) {
-            $available_parent_options = get_product_group_options(0, 0, $_POST['id'], 0, array(), FALSE);
+            $available_parent_options = get_product_group_options(0, 0, $_POST['id'], 0, array(), FALSE, 'text', false, true, false);
             if ($available_parent_options !== '') {
                 $liveform->mark_error('parent_id', lang(array('string' => '{var:1} is required', 'vars' => array(lang('Parent Product Group')))) . '.');
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $_POST['id']);
@@ -1156,8 +1212,16 @@ if (!$_POST) {
             WHERE id = '" . e($_POST['id'] ?? '') . "'");
         
         // flush appropriate entries from products_groups_xref table
-        $query = "DELETE FROM products_groups_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'";
+        //
+        // Except those of products in the Recycle Bin: the screen does not
+        // list them, so they are never posted back, and dropping their rows
+        // here would take the product out of this group for good while it
+        // waits in the bin. What is left after this is exactly those rows.
+        $query = "DELETE FROM products_groups_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'"
+            . (pg_catalog_bin_ready() ? " AND product NOT IN (SELECT id FROM products WHERE recycled = '1')" : "");
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+
+        $kept_product_ids = array_map('intval', (array) db_values("SELECT product FROM products_groups_xref WHERE product_group = '" . e($_POST['id'] ?? '') . "'"));
 
         if($selected_count > 1){
             foreach ($selected_images as $value) {db("INSERT INTO product_groups_images_xref (product_group,file_name)VALUES ('" . escape($_POST['id'] ?? '') . "','" . escape($value) . "')");}
@@ -1169,6 +1233,12 @@ if (!$_POST) {
         if ($_POST['products']) {
             // foreach product that was selected
             foreach ($_POST['products'] as $product_id) {
+                // A form opened before the product went to the bin still
+                // posts it; its row is the one kept above.
+                if (in_array((int) $product_id, $kept_product_ids, true)) {
+                    continue;
+                }
+
                 $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . escape($product_id) . "', '" . escape($_POST['id'] ?? '') . "', '" . escape($_POST['sort_order_product_' . $product_id]) . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed');
             }

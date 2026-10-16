@@ -94,7 +94,9 @@ if ($user['role'] == 3) {
 }
 
 // If there is a filter in the query string, save it
-if (isset($_GET['filter']) == true) {
+// (one sent as an array, ?filter[]=x, counts as not given: it ended in an
+// error page)
+if (isset($_GET['filter']) && is_string($_GET['filter'])) {
     $filter = $_GET['filter'];
 
 // else set the filter to default
@@ -598,26 +600,33 @@ $increase_day = array();
 $output_date_range_time = '';
 $show_hide_date_range = '';
 
+// find the oldest timestamp (this will be used later in a couple of places)
+$query = "SELECT MIN(timestamp) FROM contacts";
+$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$row = mysqli_fetch_row($result);
+$oldest_timestamp = $row[0];
+
+// Default range: the oldest contact's date to today. Each date part is checked
+// on its own, for every filter: the year select further below loops forever on
+// a non-numeric stop year, and since the value is kept in the session, one bad
+// address would otherwise break the list for the rest of the session.
+$date_defaults = array(
+    'start_month' => date('m', $oldest_timestamp),
+    'start_day'   => date('d', $oldest_timestamp),
+    'start_year'  => date('Y', $oldest_timestamp),
+    'stop_month'  => date('m'),
+    'stop_day'    => date('d'),
+    'stop_year'   => date('Y'),
+);
+
+foreach ($date_defaults as $key => $value) {
+    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['view_contacts'][$key] ?? ''))) {
+        $_SESSION['software']['view_contacts'][$key] = $value;
+    }
+}
+
 // if the filter is not set to all duplicate contacts, then run logic to get date range
 if ($filter != 'all_duplicate_contacts') {
-    // find the oldest timestamp (this will be used later in a couple of places)
-    $query = "SELECT MIN(timestamp) FROM contacts";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_row($result);
-    $oldest_timestamp = $row[0];
-
-    // if date has not been set in the session yet, populate start and stop days with default,
-    // which is the oldest contact timestamp date to today's date
-    if (isset($_SESSION['software']['view_contacts']['start_month']) == false) {
-        $_SESSION['software']['view_contacts']['start_month'] = date('m', $oldest_timestamp);
-        $_SESSION['software']['view_contacts']['start_day'] = date('d', $oldest_timestamp);
-        $_SESSION['software']['view_contacts']['start_year'] = date('Y', $oldest_timestamp);
-
-        $_SESSION['software']['view_contacts']['stop_month'] = date('m');
-        $_SESSION['software']['view_contacts']['stop_day'] = date('d');
-        $_SESSION['software']['view_contacts']['stop_year'] = date('Y');
-    }
-
     $decrease_year['start_month'] = '01';
     $decrease_year['start_day'] = '01';
    $decrease_year['start_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') - 1;
@@ -1249,8 +1258,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $_SESSION['software']['view_contacts']['order'] = '';
     }
 
-    // if order was set, update session
-    if (isset($_REQUEST['order'])) {
+    // if order was set, update session (an order sent as an array counts as not given)
+    if (isset($_REQUEST['order']) && is_string($_REQUEST['order'])) {
         $_SESSION['software']['view_contacts']['order'] = sql_order_direction($_REQUEST['order'], '');
     }
 
@@ -1313,134 +1322,66 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_contact_group_options = '<option value="[' . lang('All') . ']"' . $selected . '>[' . lang('All') . ']</option>' . $output_contact_group_options;
     }
     
-    $sort_order = '';
-    
-    // if the filter is set to all duplicate contacts then hard set the sql statement to sort by the email addresses in alphabetical order,
-    if ($filter == 'all_duplicate_contacts') {
-        $sort_column = "email_address";
-        $sort_order = 'asc';
-        
-    // else sort the view based on what the user selected
+    // The columns this view sorts by, in the order the table shows them. The
+    // address filters show the address columns in place of the e-mail, user
+    // and opt-in ones; pg_list_state() falls back to the default for any
+    // column the view does not show.
+    if ($filter == 'my_contacts_by_business_address') {
+        $address_prefix = 'contacts.business_';
+    } elseif ($filter == 'my_contacts_by_home_address') {
+        $address_prefix = 'contacts.home_';
     } else {
-        // if the sort is not set yet, then default it to empty so that the switch below falls
-        // through to its default case
-        if (isset($_SESSION['software']['view_contacts']['sort']) == false) {
-            $_SESSION['software']['view_contacts']['sort'] = '';
-        }
-
-        switch (($_SESSION['software']['view_contacts']['sort'] ?? '')) {
-            case lang('First Name'):
-                $sort_column = 'first_name';
-                break;
-
-            case lang('Last Name'):
-                $sort_column = 'last_name';
-                break;
-
-            case lang('Company'):
-                $sort_column = 'company';
-                break;
-
-            case lang('Email'):
-                $sort_column = 'email_address';
-                break;
-
-            case lang('User'):
-                $sort_column = 'contact_user.user_username';
-                break;
-
-            case lang('Opt-In'):
-                $sort_column = 'opt_in';
-                break;
-                
-            case lang('City'):
-                // if the my contacts by business address filter is on, then set sort column to business city
-                if ($filter == 'my_contacts_by_business_address') {
-                    $sort_column = 'business_city';
-                    
-                // else if the filter is set to my contacts by home address, then set the sort column to home city
-                } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_city';
-                
-                // else set sort column to the default
-                } else {
-                    $sort_column = 'timestamp';
-                    $_SESSION['software']['view_contacts']['sort'] = 'Last Modified';
-                }
-                
-                break;
-                
-            case lang('State'):
-                // if the my contacts by business address filter is on, then set sort column to business state
-                if ($filter == 'my_contacts_by_business_address') {
-                    $sort_column = 'business_state';
-                    
-                // else if the filter is set to my contacts by home address, then set the sort column to home state
-                } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_state';
-                
-                // else set sort column to the default
-                } else {
-                    $sort_column = 'timestamp';
-                    $_SESSION['software']['view_contacts']['sort'] = 'Last Modified';
-                }
-                
-                break;
-                
-            case lang('Zip Code'):
-                // if the my contacts by business address filter is on, then set sort column to business zip code
-                if ($filter == 'my_contacts_by_business_address') {
-                    $sort_column = 'business_zip_code';
-                    
-                // else if the filter is set to my contacts by home address, then set the sort column to home zipe code
-                } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_zip_code';
-                
-                // else set sort column to the default
-                } else {
-                    $sort_column = 'timestamp';
-                    $_SESSION['software']['view_contacts']['sort'] = 'Last Modified';
-                }
-                
-                break;
-                
-            case lang('Country'):
-                // if the my contacts by business address filter is on, then set sort column to business country
-                if ($filter == 'my_contacts_by_business_address') {
-                    $sort_column = 'business_country';
-                    
-                // else if the filter is set to my contacts by home address, then set the sort column to home country
-                } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_country';
-                
-                // else set sort column to the default
-                } else {
-                    $sort_column = 'timestamp';
-                    $_SESSION['software']['view_contacts']['sort'] = 'Last Modified';
-                }
-                
-                break;
-
-            case lang('Last Modified'):
-                $sort_column = 'timestamp';
-                break;
-
-            default:
-                $sort_column = 'timestamp';
-                $_SESSION['software']['view_contacts']['sort'] = lang('Last Modified');
-                $_SESSION['software']['view_contacts']['order'] = 'desc';
-                break;
-        }
-
-        if (!($_SESSION['software']['view_contacts']['order'] ?? '')) {
-            $_SESSION['software']['view_contacts']['order'] = 'asc';
-        }
-        
-        // if the sort order is blank then set it to the order in the session
-        if ($sort_order == '') {
-            $sort_order = sql_order_direction($_SESSION['software']['view_contacts']['order'] ?? '');
-        }
+        $address_prefix = '';
     }
+
+    $sort_columns = array(
+        'first_name' => lang('First Name'),
+        'last_name'  => lang('Last Name'),
+        'company'    => lang('Company'),
+    );
+
+    // What each sort code orders by. Only codes pg_list_state() let through
+    // reach pg_list_order_by(), and it writes nothing but these.
+    $sort_sql = array(
+        'first_name'    => 'contacts.first_name',
+        'last_name'     => 'contacts.last_name',
+        'company'       => 'contacts.company',
+        'email'         => 'contacts.email_address',
+        'last_modified' => 'contacts.timestamp',
+    );
+
+    if ($address_prefix === '') {
+        $sort_columns['email'] = lang('Email');
+        $sort_columns['user'] = lang('User');
+        $sort_columns['opt_in'] = lang('Opt-In');
+
+        $sort_sql['user'] = 'contact_user.user_username';
+        $sort_sql['opt_in'] = 'contacts.opt_in';
+    } else {
+        $sort_columns['city'] = lang('City');
+        $sort_columns['state'] = lang('State');
+        $sort_columns['zip_code'] = lang('Zip Code');
+        $sort_columns['country'] = lang('Country');
+
+        $sort_sql['city'] = $address_prefix . 'city';
+        $sort_sql['state'] = $address_prefix . 'state';
+        $sort_sql['zip_code'] = $address_prefix . 'zip_code';
+        $sort_sql['country'] = $address_prefix . 'country';
+    }
+
+    $sort_columns['last_modified'] = lang('Last Modified');
+    $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+
+    // Duplicates are listed by e-mail address so that the copies of a contact
+    // sit together. The sort kept for the other views is left as it is.
+    if ($filter == 'all_duplicate_contacts') {
+        $sort_levels = array(array('sort' => 'email', 'order' => 'asc'));
+    } else {
+        $list_state = pg_list_state('view_contacts', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
+    }
+
+    $order_by = pg_list_order_by($sort_levels, $sort_sql);
     
 
 
@@ -1524,7 +1465,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $join_table
         $where
         GROUP BY contacts.id
-        ORDER BY $sort_column " . sql_order_direction($sort_order) . " ";
+        ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $contacts = array();
@@ -1575,6 +1516,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         }
     }
     
+    // The image heading is set for each row below; an empty list (no duplicates)
+    // leaves it empty.
+    $output_image_header = '';
+
     // loop through all contacts that need to be outputted, so they can be outputted
     foreach ($contacts as $contact) {
         // Set link url
@@ -1851,8 +1796,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 '<tr id="' . $contact['id'] . '">
                     <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="contacts[]" value="' . $contact['id'] . '" class="checkbox" /></td>
                     <td class="align-middle text-start col-reorder-none action-buttons">
-                        <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                        <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     ' . $output_image_column . '
                     ' . $output_email_address_row . '
@@ -1863,7 +1808,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     ' . $output_phone_row . '
                     ' . $output_user_row . '
                     <td class="align-middle">' . $output_contact_groups . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username']) . '</td>
+                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username'] ?? '') . '</td>
                 </tr>';
             
         // else output the standard table layout
@@ -1872,8 +1817,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 '<tr id="' . $contact['id'] . '">
                     <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="contacts[]" value="' . $contact['id'] . '" class="checkbox" /></td>
                     <td class="align-middle text-start col-reorder-none action-buttons">
-                        <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                        <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     ' . $output_image_column . '
                     <td class="align-middle">' . h($contact['first_name']) . '</td>
@@ -1885,7 +1830,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     ' . $output_opt_in_row . '
                     ' . $output_address_rows . '
                     <td class="align-middle">' . $output_contact_groups . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username']) . '</td>
+                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username'] ?? '') . '</td>
                 </tr>';
         }
     }
@@ -2230,7 +2175,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             </div>
                         </div>
                         <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" data-loading-content="' . lang('Updating') . '" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
                         </div>
                     </div>
                 </form>
@@ -2247,7 +2192,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     if (MASS_DELETION == true) {
         $output_delete_contacts_button = '
         <div class=" btn-group btn-group-sm flex-wrap">
-            <button type="submit" name="submit_data" value="Delete Contacts" class="btn btn-link link-danger py-0 m-1" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently deleted. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which contacts will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Contacts') ) . '</button>
+            <button type="submit" name="submit_data" value="Delete Contacts" class="btn btn-link link-danger py-0 m-1" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently deleted. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which contacts will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Contacts') ) . '</button>
         </div>';
     }
     
@@ -2259,23 +2204,23 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     
     // If the contacts by user filter, my_contacts by business address, and my contacts by home address is not on, then output the user label
     if (($filter != 'my_contacts_by_business_address') && ($filter != 'my_contacts_by_home_address')) {
-        $output_user_label = '<th>' . get_column_heading(lang('User'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_user_label = '<th>' . get_column_heading(lang('User'), $sort_levels, '', $output_filter_for_links, 'user') . '</th>';
 
     }
 
     // if the filter is not set to either my contacts by business address or my contacts by home address then output the op_in, phone and email address labels
     if (($filter != 'my_contacts_by_business_address') && ($filter != 'my_contacts_by_home_address')) {
-        $output_opt_in_label = '<th class="text-center">' . get_column_heading(lang('Opt-In'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_opt_in_label = '<th class="text-center">' . get_column_heading(lang('Opt-In'), $sort_levels, '', $output_filter_for_links, 'opt_in') . '</th>';
         $output_phone_label = '<th>' . lang('Phone') . '</th>';
-        $output_email_address_label = '<th>' . get_column_heading(lang('Email'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_email_address_label = '<th>' . get_column_heading(lang('Email'), $sort_levels, '', $output_filter_for_links, 'email') . '</th>';
     
     // else one of the above filters has been selected so output the address table headings
     } else {
         $output_address_labels = '<th>' . lang('Address') . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('City'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('State'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('Zip Code'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('Country'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('City'), $sort_levels, '', $output_filter_for_links, 'city') . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('State'), $sort_levels, '', $output_filter_for_links, 'state') . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('Zip Code'), $sort_levels, '', $output_filter_for_links, 'zip_code') . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('Country'), $sort_levels, '', $output_filter_for_links, 'country') . '</th>';
     }
     
     $output_table_headings = '';
@@ -2317,11 +2262,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         
         $output_merge_contacts_button = '
          <div class=" btn-group btn-group-sm flex-wrap">
-             <button type="submit" name="submit_data" value="Merge Contacts" class="btn btn-link link-warning py-0 m-1" data-loading-content="' . lang(array('string'=>'Merging') ) . '" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently merged together. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to merge. An update will allow you to see which contacts will be merged before you actually merge them. If you would like to continue with the merge, please click OK. Otherwise, please click Cancel.') . '"><span class="material-icons me-1">healing</span>' . lang(array('string'=>'Merge') ) . '</button>
+             <button type="submit" name="submit_data" value="Merge Contacts" class="btn btn-link link-warning py-0 m-1" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently merged together. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to merge. An update will allow you to see which contacts will be merged before you actually merge them. If you would like to continue with the merge, please click OK. Otherwise, please click Cancel.') . '"><span class="material-icons me-1">healing</span>' . lang(array('string'=>'Merge') ) . '</button>
          </div>';
         
         // output the merge selected button
-        $output_modify_selected_buttons = '<button type="button" value="Merge Selected" class="btn mb-1 mt-1 btn-warning disabled" data-loading-content="' . lang(array('string'=>'Merging') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: The selected duplicate {var:1} will be merged together.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">healing</span>' . lang(array('string'=>'Merge Selected') ) . '</button>';
+        $output_modify_selected_buttons = '<button type="button" value="Merge Selected" class="btn mb-1 mt-1 btn-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected duplicate {var:1} will be merged together.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">healing</span>' . lang(array('string'=>'Merge Selected') ) . '</button>';
     
     // else output the default table headings
     } else {
@@ -2333,21 +2278,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             </th>
             <th class="noVis">' . lang('Action') . '</th> 
             ' . $output_image_header . '
-            <th>' . get_column_heading(lang('First Name'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Last Name'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Company'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('First Name'), $sort_levels, '', $output_filter_for_links, 'first_name') . '</th>
+            <th>' . get_column_heading(lang('Last Name'), $sort_levels, '', $output_filter_for_links, 'last_name') . '</th>
+            <th>' . get_column_heading(lang('Company'), $sort_levels, '', $output_filter_for_links, 'company') . '</th>
             ' . $output_phone_label . '
             ' . $output_email_address_label . '
             ' . $output_user_label . '
             ' . $output_opt_in_label . '
             ' . $output_address_labels . '
             <th>' . $output_contact_groups_toggle . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>';
         
         // output the opt in and opt out buttons
         $output_modify_selected_buttons = '
-        <button type="button" value="Opt-In Selected" class="btn mb-1 mt-1 btn-secondary disabled" data-loading-content="' . lang(array('string'=>'Loading') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-in.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">radio_button_checked</span>' . lang(array('string'=>'Opt-In Selected') ) . '</button>
-        <button type="button" value="Opt-Out Selected" class="btn mb-1 mt-1 btn-secondary disabled" data-loading-content="' . lang(array('string'=>'Loading') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-out.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">radio_button_unchecked</span>' . lang(array('string'=>'Opt-Out Selected') ) . '</button>';
+        <button type="button" value="Opt-In Selected" class="btn mb-1 mt-1 btn-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-in.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">radio_button_checked</span>' . lang(array('string'=>'Opt-In Selected') ) . '</button>
+        <button type="button" value="Opt-Out Selected" class="btn mb-1 mt-1 btn-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-out.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">radio_button_unchecked</span>' . lang(array('string'=>'Opt-Out Selected') ) . '</button>';
     
     }
     
@@ -2372,7 +2317,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 ' . get_token_field() . '
-                                <a class="btn btn-sm btn-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                                <a class="btn btn-sm btn-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="import_contacts.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                     <button type="submit" name="submit_data" value="Export Contacts" class="btn btn-link link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
@@ -2380,6 +2325,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 ' . $output_merge_contacts_button . $output_delete_contacts_button . '
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            ' . (($filter != 'all_duplicate_contacts') ? pg_list_sort_menu('view_contacts.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) : '') . '
                             <form id="search_form" action="view_contacts.php" method="get" class="search_form disable_shortcut">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm w-auto">
@@ -2388,7 +2334,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 </div>
                                 ' . $output_contact_group_selection . '
                             </form>
-                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . (($show_hide_date_range === '') ? pg_period_nav('view_contacts.php', ($_SESSION['software']['view_contacts'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
                                 'week'  => array($decrease_week, $current_week, $increase_week),
@@ -2416,7 +2362,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_organize_selected_button . $output_modify_selected_buttons . '
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

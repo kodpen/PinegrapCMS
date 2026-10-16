@@ -19,6 +19,10 @@
 include('init.php');
 $user = validate_user();
 
+// The editor's callback is one value; one sent as an array
+// (?CKEditorFuncNum[]=x) counts as not given: it ended in an error page.
+pg_request_single_values(array('CKEditorFuncNum'));
+
 // store all values collected in request to session
 foreach ($_REQUEST as $key => $value) {
     // if the value is a string then add it to the session
@@ -81,10 +85,6 @@ $extras = '&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? '')));
 // Create an array that we will use to store all items.
 $items = array();
 
-// Create an array that will be used to store data for the column
-// that will be sorted.
-$items_for_sorting = array();
-
 $folders_that_user_has_access_to = array();
 
 if (USER_ROLE == 3) {
@@ -101,46 +101,34 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
     case 'page':
         $output_type_page_class = ' active';
 
-        // if the sort is not set yet, then default it to empty so that the switch below falls
-        // through to its default case
-        if (isset($_SESSION['software']['editor_select_page_or_file']['sort']) == false) {
-            $_SESSION['software']['editor_select_page_or_file']['sort'] = '';
-        }
+        // The columns this list sorts by, in the order the table shows them.
+        // pg_list_state() keeps the choice in the session as a code, so it survives
+        // a language change, and falls back to the default for anything else.
+        $sort_columns = array(
+            'url'           => lang('URL'),
+            'folder'        => lang('Folder'),
+            'page_type'     => lang('Page Type'),
+            'last_modified' => lang('Last Modified'),
+        );
 
-        switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
-            case lang('URL'):
-                $sort_column = 'url';
-                break;
+        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-            case lang('Folder'):
-                $sort_column = 'folder_name';
-                break;
-                
-            case lang('Page Type'):
-                $sort_column = 'page_type';
-                break;
+        $list_state = pg_list_state('editor_select_page_or_file_page', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
 
-            case lang('Last Modified'):
-                $sort_column = 'last_modified_timestamp';
-                break;
-
-            default:
-                $sort_column = 'last_modified_timestamp';
-                $_SESSION['software']['editor_select_page_or_file']['sort'] = lang('Last Modified');
-                $_SESSION['software']['editor_select_page_or_file']['order'] = 'desc';
-                break;
-        }
-
-        // If order is not set, set to ascending.
-        if (isset($_SESSION['software']['editor_select_page_or_file']['order']) == false) {
-            $_SESSION['software']['editor_select_page_or_file']['order'] = 'asc';
-        }
+        // The item value each sort code orders by.
+        $sort_keys = array(
+            'url'           => 'url',
+            'folder'        => 'folder_name',
+            'page_type'     => 'page_type',
+            'last_modified' => 'last_modified_timestamp',
+        );
 
         $output_heading_cells =
-            '<th>' . get_column_heading(lang('URL'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Page Type'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            '<th>' . get_column_heading(lang('URL'), $sort_levels, '', $extras, 'url') . '</th>
+            <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $extras, 'folder') . '</th>
+            <th>' . get_column_heading(lang('Page Type'), $sort_levels, '', $extras, 'page_type') . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $extras, 'last_modified') . '</th>
             <th class="noVis"></th>';
 
         $where = "";
@@ -149,6 +137,9 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
         if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
             $where .= "AND (LOWER(CONCAT_WS(',', page.page_name, page.page_type, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
         }
+
+        // Pages in the Recycle Bin are not offered: a link to one stops working.
+        $where .= function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('page.page_folder') : '';
 
         // Get all pages.
         $pages = db_items(
@@ -208,33 +199,18 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             if ($include == true) {
                 $url = PATH . $page['name'];
 
+                // url is what the list shows and sorts by; href, the encoded
+                // form, is what goes into the link (a name with a space, "#"
+                // or "?" would otherwise end the path early).
                 $items[] = array(
                     'url' => $url,
+                    'href' => PATH . encode_url_path($page['name']),
                     'folder_id' => $page['folder_id'],
                     'folder_name' => $page['folder_name'],
                     'page_type' => $page['type'],
                     'access_control_type' => ($page['access_control_type'] ?? ''),
                     'last_modified_timestamp' => $page['last_modified_timestamp'],
                     'last_modified_username' => $page['last_modified_username']);
-
-                // Store the appropriate value in the sort array.
-                switch ($sort_column) {
-                    case 'url':
-                        $items_for_sorting[] = $url;
-                        break;
-
-                    case 'folder_name':
-                        $items_for_sorting[] = $page['folder_name'];
-                        break;
-                        
-                    case 'page_type':
-                        $items_for_sorting[] = $page['type'];
-                        break;
-
-                    case 'last_modified_timestamp':
-                        $items_for_sorting[] = $page['last_modified_timestamp'];
-                        break;
-                }
             }
         }
 
@@ -243,47 +219,35 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
     case 'file':
         $output_type_file_class = ' active';
 
-        // if the sort is not set yet, then default it to empty so that the switch below falls
-        // through to its default case
-        if (isset($_SESSION['software']['editor_select_page_or_file']['sort']) == false) {
-            $_SESSION['software']['editor_select_page_or_file']['sort'] = '';
-        }
+        // The columns this list sorts by, in the order the table shows them.
+        // pg_list_state() keeps the choice in the session as a code, so it survives
+        // a language change, and falls back to the default for anything else.
+        $sort_columns = array(
+            'url'           => lang('URL'),
+            'folder'        => lang('Folder'),
+            'size'          => lang('Size'),
+            'last_modified' => lang('Last Modified'),
+        );
 
-        switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
-            case lang('URL'):
-                $sort_column = 'url';
-                break;
+        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-            case lang('Folder'):
-                $sort_column = 'folder_name';
-                break;
-                
-            case lang('Size'):
-                $sort_column = 'size';
-                break;
+        $list_state = pg_list_state('editor_select_page_or_file_file', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
 
-            case lang('Last Modified'):
-                $sort_column = 'last_modified_timestamp';
-                break;
-
-            default:
-                $sort_column = 'last_modified_timestamp';
-                $_SESSION['software']['editor_select_page_or_file']['sort'] = lang('Last Modified');
-                $_SESSION['software']['editor_select_page_or_file']['order'] = 'desc';
-                break;
-        }
-
-        // If order is not set, set to ascending.
-        if (isset($_SESSION['software']['editor_select_page_or_file']['order']) == false) {
-            $_SESSION['software']['editor_select_page_or_file']['order'] = 'asc';
-        }
+        // The item value each sort code orders by.
+        $sort_keys = array(
+            'url'           => 'url',
+            'folder'        => 'folder_name',
+            'size'          => 'size',
+            'last_modified' => 'last_modified_timestamp',
+        );
 
         $output_heading_cells =
             '<th>&nbsp;</th>
-            <th>' . get_column_heading(lang('URL'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Size'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('URL'), $sort_levels, '', $extras, 'url') . '</th>
+            <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $extras, 'folder') . '</th>
+            <th>' . get_column_heading(lang('Size'), $sort_levels, '', $extras, 'size') . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $extras, 'last_modified') . '</th>
             <th class="noVis"></th>';
 
         $where = "";
@@ -357,32 +321,14 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
                 $items[] = array(
                     'name' => $file['name'],
                     'url' => $url,
+                    'href' => PATH . encode_url_path($file['name']),
                     'folder_id' => $file['folder_id'],
                     'folder_name' => $file['folder_name'],
                     'size' => $file['size'],
                     'file_type' => mb_strtolower($file['type']),
-                    'access_control_type' => $file['access_control_type'],
+                    'access_control_type' => ($file['access_control_type'] ?? ''),
                     'last_modified_timestamp' => $file['last_modified_timestamp'],
                     'last_modified_username' => $file['last_modified_username']);
-
-                // Store the appropriate value in the sort array.
-                switch ($sort_column) {
-                    case 'url':
-                        $items_for_sorting[] = $url;
-                        break;
-
-                    case 'folder_name':
-                        $items_for_sorting[] = $file['folder_name'];
-                        break;
-
-                    case 'size':
-                        $items_for_sorting[] = $file['size'];
-                        break;
-
-                    case 'last_modified_timestamp':
-                        $items_for_sorting[] = $file['last_modified_timestamp'];
-                        break;
-                }
             }
         }
 
@@ -391,46 +337,34 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
     case 'short_link':
         $output_type_short_link_class = ' active';
 
-        // if the sort is not set yet, then default it to empty so that the switch below falls
-        // through to its default case
-        if (isset($_SESSION['software']['editor_select_page_or_file']['sort']) == false) {
-            $_SESSION['software']['editor_select_page_or_file']['sort'] = '';
-        }
+        // The columns this list sorts by, in the order the table shows them.
+        // pg_list_state() keeps the choice in the session as a code, so it survives
+        // a language change, and falls back to the default for anything else.
+        $sort_columns = array(
+            'url'             => lang('URL'),
+            'destination_url' => lang('Destination URL'),
+            'folder'          => lang('Folder'),
+            'last_modified'   => lang('Last Modified'),
+        );
 
-        switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
-            case lang('URL'):
-                $sort_column = 'url';
-                break;
+        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-            case lang('Destination URL'):
-                $sort_column = 'destination_url';
-                break;
+        $list_state = pg_list_state('editor_select_page_or_file_short_link', $sort_columns, $sort_default);
+        $sort_levels = $list_state['sorts'];
 
-            case lang('Folder'):
-                $sort_column = 'folder_name';
-                break;
-
-            case lang('Last Modified'):
-                $sort_column = 'last_modified_timestamp';
-                break;
-
-            default:
-                $sort_column = 'last_modified_timestamp';
-                $_SESSION['software']['editor_select_page_or_file']['sort'] = lang('Last Modified');
-                $_SESSION['software']['editor_select_page_or_file']['order'] = 'desc';
-                break;
-        }
-
-        // If order is not set, set to ascending.
-        if (isset($_SESSION['software']['editor_select_page_or_file']['order']) == false) {
-            $_SESSION['software']['editor_select_page_or_file']['order'] = 'asc';
-        }
+        // The item value each sort code orders by.
+        $sort_keys = array(
+            'url'             => 'url',
+            'destination_url' => 'destination_url',
+            'folder'          => 'folder_name',
+            'last_modified'   => 'last_modified_timestamp',
+        );
 
         $output_heading_cells =
-            '<th>' . get_column_heading(lang('URL'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Destination URL'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            '<th>' . get_column_heading(lang('URL'), $sort_levels, '', $extras, 'url') . '</th>
+            <th>' . get_column_heading(lang('Destination URL'), $sort_levels, '', $extras, 'destination_url') . '</th>
+            <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $extras, 'folder') . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $extras, 'last_modified') . '</th>
             <th class="noVis"></th>';
 
         $where = "";
@@ -554,32 +488,14 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
 
                 $items[] = array(
                     'url' => $url,
+                    'href' => PATH . encode_url_path($short_link['name']),
                     'destination_type' => $short_link['destination_type'],
                     'destination_url' => $destination_url,
                     'folder_id' => $folder_id,
                     'folder_name' => $folder_name,
-                    'access_control_type' => $short_link['access_control_type'],
+                    'access_control_type' => ($short_link['access_control_type'] ?? ''),
                     'last_modified_timestamp' => $short_link['last_modified_timestamp'],
                     'last_modified_username' => $short_link['last_modified_username']);
-
-                // Store the appropriate value in the sort array.
-                switch ($sort_column) {
-                    case 'url':
-                        $items_for_sorting[] = $url;
-                        break;
-
-                    case 'destination_url':
-                        $items_for_sorting[] = $destination_url;
-                        break;
-
-                    case 'folder_name':
-                        $items_for_sorting[] = $folder_name;
-                        break;
-
-                    case 'last_modified_timestamp':
-                        $items_for_sorting[] = $short_link['last_modified_timestamp'];
-                        break;
-                }
             }
         }
 
@@ -590,14 +506,19 @@ $output_rows = '';
 
 // if there is at least one result to display
 if ($items) {
-    // If the order is ascending, then sort like that.
-    if (($_SESSION['software']['editor_select_page_or_file']['order'] ?? '') == 'asc') {
-        array_multisort($items_for_sorting, SORT_ASC, $items);
+    // Sorted by each level in turn. Items that tie on every level are
+    // ordered by their other values, as array_multisort() compares them.
+    $sort_arguments = array();
+    $sort_values = array();
 
-    // Otherwise the order is descending, so sort like that.
-    } else {
-        array_multisort($items_for_sorting, SORT_DESC, $items);
+    foreach ($sort_levels as $index => $level) {
+        $sort_values[$index] = array_column($items, $sort_keys[$level['sort']]);
+        $sort_arguments[] = &$sort_values[$index];
+        $sort_arguments[] = ($level['order'] === 'desc') ? SORT_DESC : SORT_ASC;
     }
+
+    $sort_arguments[] = &$items;
+    call_user_func_array('array_multisort', $sort_arguments);
 
     foreach ($items as $item) {
         $output_last_modified_username = '';
@@ -616,7 +537,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
                         <td class="align-middle">' . h(get_page_type_name($item['page_type'])) . '</td>
@@ -668,7 +589,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
                         <td class="align-middle text-center" style="min-width:50px;height:50px;">' . $output_thumbnail . '</td>
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
@@ -693,7 +614,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer' . $output_access_control_type_class . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer' . $output_access_control_type_class . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['destination_url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
@@ -745,6 +666,8 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
                         ' . ((USER_ROLE < 3) ? '<a class="btn btn-outline-secondary my-2' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">link</span>' . lang('Short Links') . '</a>' : '') . '
                     </div>
                 </form>
+                <div class="pg-toolbar-grow"></div>
+                ' . pg_list_sort_menu('editor_select_page_or_file.php', $sort_columns, $sort_levels, $sort_default, array('CKEditorFuncNum' => ($_GET['CKEditorFuncNum'] ?? ''))) . '
             </nav>
         </div>
         <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">

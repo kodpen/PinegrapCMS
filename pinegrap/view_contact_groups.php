@@ -23,22 +23,9 @@ validate_contacts_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_contact_groups');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['view_contacts']['view_contact_groups'][$key] = trim($value);
-    }
-}
-
 // if user has access to manage contact groups, then prepare to output add contact group button
 if ($user['role'] < 3) {
-    $output_add_contact_group_button = '
-    <nav id="button_bar" class="navigation " aria-label="Button Bar">
-        <a class="btn btn-sm btn-primary m-1 " href="add_contact_group.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
-    </nav>';
+    $output_add_contact_group_button = '<a class="btn btn-sm btn-primary m-1 " href="add_contact_group.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
 
 // else user does not have access to manage contact groups, so prepare to not output buttons for contact groups
 } else {
@@ -50,12 +37,6 @@ $keys_and_values = '';
 // these are only ever incremented further below, so they have to start out at zero
 $all_contact_groups = 0;
 $my_contact_groups = 0;
-
-// if the sort is not set yet, then default it to empty so that the switch below falls through
-// to its default case
-if (isset($_SESSION['software']['view_contacts']['view_contact_groups']['sort']) == false) {
-    $_SESSION['software']['view_contacts']['view_contact_groups']['sort'] = '';
-}
 
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
@@ -73,48 +54,33 @@ if (
     $screen = 1;
 }
 
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['view_contacts']['view_contact_groups']['sort']) == false) {
-    $_SESSION['software']['view_contacts']['view_contact_groups']['sort'] = '';
-}
+// The columns this list sorts by, in the order the table shows them.
+// pg_list_state() keeps the choice in the session as a code, so it survives
+// a language change, and falls back to the default for anything else.
+$sort_columns = array(
+    'name'          => lang('Name'),
+    'subscription'  => lang('Subscription'),
+    'type'          => lang('Type'),
+    'description'   => lang('Description'),
+    'created'       => lang('Created'),
+    'last_modified' => lang('Last Modified'),
+);
 
-switch (($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? '')) {
-    case lang('Name'):
-        $sort_column = 'contact_groups.name';
-        break;
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    case lang('Description'):
-        $sort_column = 'contact_groups.description';
-        break;
+$list_state = pg_list_state('view_contact_groups', $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
 
-    case lang('Subscription'):
-        $sort_column = 'contact_groups.email_subscription';
-        break;
-
-    case lang('Type'):
-        $sort_column = 'contact_groups.email_subscription_type';
-        break;
-
-    case lang('Created'):
-        $sort_column = 'contact_groups.created_timestamp';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'contact_groups.last_modified_timestamp';
-        break;
-
-    default:
-        $sort_column = 'contact_groups.last_modified_timestamp';
-        $_SESSION['software']['view_contacts']['view_contact_groups']['sort'] = lang('Last Modified');
-        $_SESSION['software']['view_contacts']['view_contact_groups']['order'] = 'desc';
-        break;
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['view_contacts']['view_contact_groups']['order']) == false) {
-    $_SESSION['software']['view_contacts']['view_contact_groups']['order'] = 'asc';
-}
+// What each sort code orders by. Only codes pg_list_state() let through
+// reach pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, array(
+    'name'          => 'contact_groups.name',
+    'subscription'  => 'contact_groups.email_subscription',
+    'type'          => 'contact_groups.email_subscription_type',
+    'description'   => 'contact_groups.description',
+    'created'       => 'contact_groups.created_timestamp',
+    'last_modified' => 'contact_groups.last_modified_timestamp',
+));
 
 // get all contact groups
 $query =
@@ -131,7 +97,7 @@ $query =
     FROM contact_groups
     LEFT JOIN user AS created_user ON contact_groups.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON contact_groups.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? ''));
+    ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -192,8 +158,8 @@ if ($contact_groups) {
         $output_rows .=
             '<tr class="unselectable">
 			    <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="align-middle chart_label">' . h($contact_group['name']) . '</td>
                 <td class="align-middle text-center">' . $email_subscription . '</td>
@@ -226,7 +192,11 @@ print
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 text-center text-md-start">
                         
-                        ' . $output_add_contact_group_button . '
+                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                            ' . $output_add_contact_group_button . '
+                            <div class="pg-toolbar-grow"></div>
+                            ' . pg_list_sort_menu('view_contact_groups.php', $sort_columns, $sort_levels, $sort_default) . '
+                        </nav>
                     </div>
                 </div>
                 <div class="card my-4">
@@ -234,12 +204,12 @@ print
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Subscription'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Type'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Subscription'), $sort_levels, '', '', 'subscription') . '</th>
+                                <th>' . get_column_heading(lang('Type'), $sort_levels, '', '', 'type') . '</th>
+                                <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>
+                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

@@ -417,7 +417,8 @@ function erp_product_columns($alias = 'p')
  * (name) is what the shelf label says; a barcode is what the scanner reads.
  * All three are searched, exact barcode hits first. Disabled products are
  * offered too - a bill for a product no longer on sale is still a bill -
- * marked so the editor can say so.
+ * marked so the editor can say so. Products in the Recycle Bin are not: they
+ * were deleted, and are offered again once they are restored.
  *
  * @param string $query
  * @param int    $limit
@@ -442,6 +443,10 @@ function erp_product_search($query, $limit = 20, $account_id = 0)
     // the product, before any name that happens to contain the digits.
     $by_barcode = erp_product_by_barcode($query);
 
+    if (is_array($by_barcode) && pg_catalog_product_binned($by_barcode['id'])) {
+        $by_barcode = null;
+    }
+
     if (is_array($by_barcode)) {
         $results[] = erp_product_for_line($by_barcode, $account_id);
         $seen[(int) $by_barcode['id']] = true;
@@ -449,7 +454,7 @@ function erp_product_search($query, $limit = 20, $account_id = 0)
 
     $rows = (array) db_items("SELECT " . erp_product_columns('p') . "
         FROM products p
-        WHERE p.short_description LIKE '%" . $like . "%' OR p.name LIKE '%" . $like . "%'
+        WHERE (p.short_description LIKE '%" . $like . "%' OR p.name LIKE '%" . $like . "%')" . pg_catalog_bin_live_sql('p') . "
         ORDER BY p.enabled DESC, p.short_description ASC, p.name ASC, p.id ASC
         LIMIT " . $limit);
 

@@ -35,13 +35,18 @@ if (!$_POST) {
     // redirect: the client does not follow it and nobody reads it.
     if (($_POST['List-Unsubscribe'] ?? '') === 'One-Click') {
 
-        $one_click_address = str_rot13((string) base64_decode((string) ($_GET['id'] ?? '')));
+        // Only a string can be an id or a signature; an array (id[]=) is refused
+        // as a missing one is.
+        $one_click_id = (isset($_GET['id']) && is_string($_GET['id'])) ? $_GET['id'] : '';
+        $one_click_sig = (isset($_GET['sig']) && is_string($_GET['sig'])) ? $_GET['sig'] : '';
+
+        $one_click_address = str_rot13((string) base64_decode($one_click_id));
 
         header('Content-Type: text/plain; charset=utf-8');
 
         if (
             ($one_click_address === '')
-            || !pg_email_preferences_signature_valid($one_click_address, (string) ($_GET['sig'] ?? ''))
+            || !pg_email_preferences_signature_valid($one_click_address, $one_click_sig)
         ) {
             http_response_code(403);
             print 'Invalid signature';
@@ -67,6 +72,16 @@ if (!$_POST) {
     $liveform = new liveform('email_preferences');
 
     $liveform->add_fields_to_session();
+
+    // The address and the opt-in are single values, and so are the id and the
+    // signature the form carries; the list check boxes are handled once the
+    // lists are known, below.
+    pg_liveform_single_values($liveform, array('email_address', 'opt_in', 'id', 'sig'));
+
+    // The id and signature of the link the visitor came from, for the way back
+    // and for a visitor who is not signed in. Only a string can be either.
+    $posted_id = (isset($_POST['id']) && is_string($_POST['id'])) ? $_POST['id'] : '';
+    $posted_sig = (isset($_POST['sig']) && is_string($_POST['sig'])) ? $_POST['sig'] : '';
 
     $liveform->validate_required_field('email_address', lang('Email is required.'));
     
@@ -96,8 +111,8 @@ if (!$_POST) {
     }
 
     // if an id was submitted, set id (and its signature) for query string in case we need to forward user back to e-mail preferences screen
-    if (!empty($_POST['id'])) {
-        $url_id = '?id=' . urlencode($_POST['id']) . '&sig=' . urlencode((string) ($_POST['sig'] ?? ''));
+    if (!empty($posted_id)) {
+        $url_id = '?id=' . urlencode($posted_id) . '&sig=' . urlencode($posted_sig);
     } else {
         $url_id = '';
     }
@@ -224,11 +239,11 @@ if (!$_POST) {
     
     // else user is not logged in
     } else {
-        $current_email_address = str_rot13(base64_decode((string) ($_POST['id'] ?? '')));
+        $current_email_address = str_rot13(base64_decode($posted_id));
         
         // Only a link this site signed for the address may change the contact behind it;
         // the id alone is an obfuscated e-mail address anyone could produce.
-        if (pg_email_preferences_signature_valid($current_email_address, (string) ($_POST['sig'] ?? '')) == false) {
+        if (pg_email_preferences_signature_valid($current_email_address, $posted_sig) == false) {
             output_error(lang('The email preferences link is not valid.'));
         }
         
@@ -287,6 +302,11 @@ if (!$_POST) {
     while ($row = mysqli_fetch_assoc($result)) {
         $contact_groups[] = $row;
     }
+
+    // One check box per list, each a single value.
+    pg_liveform_single_values($liveform, array_map(function ($contact_group) {
+        return 'contact_group_' . $contact_group['id'];
+    }, $contact_groups));
     
     // loop through contact groups in order to determine which contact groups appeared on form
     foreach ($contact_groups as $key => $contact_group) {

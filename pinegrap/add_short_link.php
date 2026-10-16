@@ -195,12 +195,12 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 col-md-6 col-lg-4 my-2" id="page_id_row"' . $output_page_id_row_style . '>
                                                     <label for="page_id" class="form-label">' . lang('Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-select', 'options'=>get_page_options())) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-select', 'options'=>get_page_options('', '', 'edit', FALSE))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-5 my-2" id="catalog_page_id_row"' . $output_catalog_page_id_row_style . '>
                                                     <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog'), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog', 'edit', FALSE), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-lg-2 my-2 text-lg-center" id="or_row"' . $output_or_row_style . '>
@@ -208,12 +208,12 @@ if (!$_POST) {
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-5 my-2" id="catalog_detail_page_id_row"' . $output_catalog_detail_page_id_row_style . '>
                                                     <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog detail'), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-5 my-2" id="product_group_id_row"' . $output_product_group_id_row_style . '>
                                                     <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-select', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-select', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE, TRUE, FALSE))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg-7 my-2" id="product_id_row"' . $output_product_id_row_style . '>
@@ -245,7 +245,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -262,6 +262,10 @@ if (!$_POST) {
     validate_token_field();
     
     $liveform->add_fields_to_session();
+
+    // A field posted as a list (product_id[]=x) counts as not given: the
+    // escaping and the checks below stopped the request on it with a 500.
+    pg_liveform_single_values($liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code', 'link_mode', 'duration'));
 
     $handle = @fopen(HTACCESS_FILE_PATH, 'a');
 
@@ -382,6 +386,14 @@ if (!$_POST) {
                         $liveform->mark_error('product_group_id', lang('The product group does not exist.'));
                     }
                 }
+
+                // A form drawn before the group was deleted can still post it.
+                if (
+                    ($liveform->check_field_error('product_group_id') == FALSE)
+                    && pg_catalog_group_binned($liveform->get_field_value('product_group_id'))
+                ) {
+                    $liveform->mark_error('product_group_id', lang('The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.'));
+                }
             
                 break;
             
@@ -399,6 +411,14 @@ if (!$_POST) {
                     if ($row[0] == 0) {
                         $liveform->mark_error('product_id', lang('The product does not exist.'));
                     }
+                }
+
+                // Same for the product.
+                if (
+                    ($liveform->check_field_error('product_id') == FALSE)
+                    && pg_catalog_product_binned($liveform->get_field_value('product_id'))
+                ) {
+                    $liveform->mark_error('product_id', lang('The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.'));
                 }
 
                 break;
@@ -421,6 +441,15 @@ if (!$_POST) {
 
             case 'file':
                 $liveform->validate_required_field('file', lang('Destination URL is required.'));
+
+                // A form drawn before the file was deleted can still post it.
+                if (
+                    ($liveform->check_field_error('file') == FALSE)
+                    && pg_recycle_file_binned($liveform->get_field_value('file'))
+                ) {
+                    $liveform->mark_error('file', lang('The file is in the Recycle Bin. Restore it in the File Manager or choose another file.'));
+                }
+
                 break;
 
         }
@@ -471,6 +500,14 @@ if (!$_POST) {
             if ($row[0] == 0) {
                 $liveform->mark_error($page_field_name, lang('The page does not exist.'));
             }
+        }
+
+        // Same for the page as for the file above.
+        if (
+            ($liveform->check_form_errors() == FALSE)
+            && pg_recycle_page_binned($page_id)
+        ) {
+            $liveform->mark_error($page_field_name, lang('The page is in the Recycle Bin. Restore it in the File Manager or choose another page.'));
         }
     }
     

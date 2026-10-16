@@ -21,9 +21,19 @@ if (!defined('PG_API_ENTRY')) {
 	exit;
 }
 
-function api_request_method() {
+// The four readers below take a value as well as giving one: the MCP endpoint
+// (includes/mcp/) runs a route inside its own request, and sets the verb, the
+// path, the input and the headers that route would have arrived with before
+// anything reads them.
+function api_request_method($set = null) {
 
 	static $method = '';
+
+	if ($set !== null) {
+
+		$method = strtoupper((string)$set);
+
+	}
 
 	if ($method !== '') {
 
@@ -55,9 +65,15 @@ function api_request_method() {
 // The part after the entry point: /products/12 out of
 // .../integration.php/products/12. The query fallback is for the rare server
 // that will not populate PATH_INFO at all.
-function api_request_path() {
+function api_request_path($set = null) {
 
 	static $path = null;
+
+	if ($set !== null) {
+
+		$path = (string)$set;
+
+	}
 
 	if ($path !== null) {
 
@@ -107,7 +123,7 @@ function api_request_path() {
 // it. Authorization is the awkward one: several server configurations strip it
 // from the CGI environment and leave it only in apache_request_headers(), and an
 // API that reads it in one place only fails on those hosts with no clue why.
-function api_header($name) {
+function api_header($name, $set = null) {
 
 	static $headers = null;
 
@@ -151,6 +167,12 @@ function api_header($name) {
 	}
 
 	$name = strtolower($name);
+
+	if ($set !== null) {
+
+		$headers[$name] = (string)$set;
+
+	}
 
 	return isset($headers[$name]) ? trim((string)$headers[$name]) : '';
 
@@ -203,9 +225,15 @@ function api_request_body_keys($keys = null) {
 
 }
 
-function api_request_input() {
+function api_request_input($set = null) {
 
 	static $input = null;
+
+	if (is_array($set)) {
+
+		$input = $set;
+
+	}
 
 	if ($input !== null) {
 
@@ -242,6 +270,14 @@ function api_request_input() {
 			api_request_body_keys(array_keys($_POST));
 
 			$input = array_merge($input, $_POST);
+
+		} elseif (strpos($content_type, 'multipart/form-data') !== false) {
+
+			// A form PHP threw away for being over post_max_size: the raw body
+			// is still readable, but it is not url-encoded text, and reading
+			// it as such turns its boundary into a field nobody sent. The
+			// endpoint finds the form empty and says what it is missing.
+			api_request_body_keys(array());
 
 		} else {
 
@@ -535,6 +571,29 @@ function api_validate_input($route, $input) {
 
 }
 
+// The 'min' and 'max' a number parameter declares. int, decimal and money all
+// answer through here, so one field is refused in the same words whatever its
+// type, and a bound written in the schema is never left to the handler.
+function api_validate_bounds($param, $value) {
+
+	$name = $param['name'];
+
+	if (isset($param['min']) && $value < $param['min']) {
+
+		api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)), $name);
+
+	}
+
+	if (isset($param['max']) && $value > $param['max']) {
+
+		api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)), $name);
+
+	}
+
+	return $value;
+
+}
+
 function api_validate_value($param, $raw) {
 
 	$name = $param['name'];
@@ -551,21 +610,7 @@ function api_validate_value($param, $raw) {
 
 			}
 
-			$value = (int)$raw;
-
-			if (isset($param['min']) && $value < $param['min']) {
-
-				api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)), $name);
-
-			}
-
-			if (isset($param['max']) && $value > $param['max']) {
-
-				api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)), $name);
-
-			}
-
-			return $value;
+			return api_validate_bounds($param, (int)$raw);
 
 		case 'money':
 
@@ -581,7 +626,7 @@ function api_validate_value($param, $raw) {
 
 			}
 
-			return (int)$raw;
+			return api_validate_bounds($param, (int)$raw);
 
 		case 'decimal':
 
@@ -591,24 +636,10 @@ function api_validate_value($param, $raw) {
 
 			}
 
-			$value = (float)$raw;
-
 			// The bounds were declared in the schema and were being ignored
 			// here, so a tax rate of 150 reached the write and was silently
 			// clamped instead of refused.
-			if (isset($param['min']) && $value < $param['min']) {
-
-				api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)), $name);
-
-			}
-
-			if (isset($param['max']) && $value > $param['max']) {
-
-				api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)), $name);
-
-			}
-
-			return $value;
+			return api_validate_bounds($param, (float)$raw);
 
 		case 'bool':
 

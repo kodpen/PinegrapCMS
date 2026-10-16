@@ -7,7 +7,11 @@
  * (workspace_timeline.php) and the Workspace drawer on the order, contact
  * and product screens.
  *
- * Served as it is, without a minified twin, like the ERP's editor scripts.
+ * Served minified as part of assets/js/workspace.min.js, together with the
+ * workspace_*.js files it leans on (pg_js_bundles(), includes/fn/output.php).
+ * After editing any of them run `php tools/build_js.php`; CI fails while the
+ * .min.js no longer matches.
+ *
  * Every text comes from the #ws-config block (translated on the PHP side);
  * this file holds no visible literal. Anything the server renders as HTML
  * (message bodies, task cards, tag chips) was escaped there; everything
@@ -270,33 +274,139 @@
         }
     }
 
+    // The clipboard API needs a secure page; elsewhere, or when the browser
+    // refuses it, the text is copied from a selected field, and when even
+    // that is refused it opens in a box to be copied by hand.
     function copyText(text) {
         var done = function () { toast(t('copied'), 'success'); };
 
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(done).catch(function () { fallback(); });
+            navigator.clipboard.writeText(text).then(done).catch(fallback);
             return;
         }
 
         fallback();
 
         function fallback() {
-            var area = el('textarea');
-            area.value = text;
-            area.style.position = 'fixed';
-            area.style.left = '-9999px';
-            document.body.appendChild(area);
-            area.select();
-
-            try {
-                document.execCommand('copy');
+            if (copyFromField(text)) {
                 done();
-            } catch (error) {
-                fail(error);
+            } else {
+                textSheet(text, true);
             }
-
-            area.remove();
         }
+    }
+
+    // execCommand('copy') copies the selection, so the text goes into a field
+    // for a moment. iOS selects a field's text only with setSelectionRange
+    // and zooms in on one under 16px. An open modal or drawer takes the focus
+    // back from anything outside it, so the field goes inside that.
+    function copyFromField(text, host) {
+        var area = el('textarea');
+        var copied = false;
+
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.cssText = 'position:fixed;top:0;left:-9999px;font-size:16px;';
+        (host || document.querySelector('.modal.show .modal-content, .offcanvas.show') || document.body).appendChild(area);
+        area.select();
+        area.setSelectionRange(0, text.length);
+
+        try {
+            copied = document.execCommand('copy');
+        } catch (error) {
+            copied = false;
+        }
+
+        area.remove();
+
+        return copied;
+    }
+
+    // What a message says as it reads on the screen: its lines, list items and
+    // table rows each on a line of their own. innerText follows the layout,
+    // so the markup is laid out off screen for a moment.
+    function readableText(markup) {
+        var box = el('div');
+
+        box.innerHTML = markup || '';
+
+        // A form's card under the text is drawn from the submission; it is
+        // not part of what was written.
+        Array.prototype.forEach.call(box.querySelectorAll('.ws-form-card'), function (card) {
+            card.parentNode.removeChild(card);
+        });
+
+        box.style.cssText = 'position:fixed;top:0;left:-9999px;width:40rem;';
+        document.body.appendChild(box);
+
+        var text = box.innerText || box.textContent || '';
+
+        box.remove();
+
+        return text.replace(/[ \t\u00a0]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    var copyModal = null;
+
+    // A text in a box to select and copy by hand. On a phone the long press
+    // on a message opens its menu, so it cannot also select words there; and
+    // a browser that refuses to copy still lets the person copy from here.
+    function textSheet(text, refused) {
+        if (!copyModal) {
+            copyModal = el('div', 'modal fade ws-copy-modal');
+            copyModal.tabIndex = -1;
+            copyModal.innerHTML = '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">'
+                + '<div class="modal-header py-2"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
+                + '<div class="modal-body"><p class="small text-body-secondary mb-2" data-ws-copy-note></p><textarea class="form-control ws-copy-area" readonly></textarea></div>'
+                + '<div class="modal-footer py-2"><button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-ws-copy-all></button></div>'
+                + '</div></div>';
+            document.body.appendChild(copyModal);
+        }
+
+        var modal = bootstrap.Modal.getOrCreateInstance(copyModal);
+        var body = copyModal.querySelector('.modal-body');
+        var note = copyModal.querySelector('[data-ws-copy-note]');
+        var area = copyModal.querySelector('.ws-copy-area');
+        var all = clear(copyModal.querySelector('[data-ws-copy-all]'));
+
+        copyModal.querySelector('.modal-title').textContent = t('select_text');
+        copyModal.querySelector('.btn-close').setAttribute('aria-label', t('close'));
+        note.textContent = refused ? t('copy_refused') : t('copy_select_help');
+        area.value = text;
+        area.rows = Math.min(10, Math.max(3, text.split('\n').length + 1));
+        all.appendChild(icon('bi-copy', 'me-1'));
+        all.appendChild(document.createTextNode(t('copy_all')));
+
+        // Everything selected, for the person to copy with the system's own
+        // menu when the browser refuses the button too.
+        function byHand() {
+            note.textContent = t('copy_refused');
+            area.focus();
+            area.setSelectionRange(0, text.length);
+        }
+
+        function copied() {
+            modal.hide();
+            toast(t('copied'), 'success');
+        }
+
+        all.onclick = function () {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(copied, function () {
+                    if (copyFromField(text, body)) {
+                        copied();
+                    } else {
+                        byHand();
+                    }
+                });
+            } else if (copyFromField(text, body)) {
+                copied();
+            } else {
+                byHand();
+            }
+        };
+
+        modal.show();
     }
 
     function addDays(date, days) {
@@ -1395,6 +1505,22 @@
         return box;
     }
 
+    // The way back to the channel list on a phone, where the list and the
+    // channel take turns on the screen. A back arrow with its name, so it is
+    // not read as a second main menu button under the panel's own.
+    function channelsToggle(root) {
+        var toggle = el('button', 'ws-channels-toggle d-md-none');
+
+        toggle.type = 'button';
+        toggle.title = t('channels_show');
+        toggle.setAttribute('aria-label', toggle.title);
+        toggle.appendChild(icon('bi-chevron-left'));
+        toggle.appendChild(el('span', 'ws-channels-toggle-label', t('channels')));
+        toggle.addEventListener('click', function () { root.classList.add('ws-show-side'); });
+
+        return toggle;
+    }
+
     // Gives a node its menu: right click, and a long press on a phone. A part
     // inside it with a menu of its own (a tag, a reaction) answers for itself.
     function onContext(node, build) {
@@ -1751,6 +1877,23 @@
         });
 
         return out;
+    }
+
+    // A person's own account on an MCP server (includes/workspace/mcp.php):
+    // the service's sign-in, then back to the channel, or to the task whose
+    // drawer offered it.
+    function mcpConnect(serverId, channelId, done, taskId) {
+        api('ws_mcp_connect', { server_id: serverId, channel_id: channelId || 0, task_id: taskId || 0 }).then(function (data) {
+            if (data.url) {
+                window.location.href = data.url;
+            }
+        }).catch(function (error) {
+            fail(error);
+
+            if (done) {
+                done();
+            }
+        });
     }
 
     function offcanvas(id, title) {
@@ -2448,11 +2591,13 @@
     }
 
     // The helpers lent to the files that draw parts of the screens on their
-    // own (assets/js/workspace_task_time.js, workspace_task_links.js).
+    // own (assets/js/workspace_task_time.js, workspace_task_links.js,
+    // workspace_task_delegate.js).
     function partHelpers() {
         return {
             api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
             clear: clear, select: select, avatar: avatar, nextId: nextId, debounce: debounce,
+            mcpConnect: mcpConnect,
             boot: function () { return BOOT; },
             openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
         };
@@ -2765,6 +2910,15 @@
                 });
             }
 
+            // The assistant the task is handed to, its runs and answers
+            // (workspace_task_delegate.js): drawn again with the notes.
+            self.delegatePart = null;
+
+            if (task && task.delegation && window.PGWsTaskDelegate) {
+                self.delegatePart = window.PGWsTaskDelegate.drawer(task, partHelpers(), function () { self.changed(); });
+                body.appendChild(self.delegatePart.node);
+            }
+
             // The time spent and the tasks it waits for: their own rights,
             // their own requests (workspace_task_time.js, workspace_task_links.js).
             if (task && task.time && window.PGWsTaskTime) {
@@ -2773,6 +2927,11 @@
 
             if (task && task.links && window.PGWsTaskLinks) {
                 body.appendChild(window.PGWsTaskLinks.drawer(task, partHelpers(), function () { self.changed(); }));
+            }
+
+            // The customer asked to approve the task (workspace_task_approval.js).
+            if (task && task.approvals && window.PGWsTaskApproval) {
+                body.appendChild(window.PGWsTaskApproval.drawer(task, partHelpers()));
             }
 
             // Notes: anyone who can see the task may add one.
@@ -2940,6 +3099,11 @@
             var self = this;
 
             self.task = task;
+
+            // A note that called an assistant started a run.
+            if (self.delegatePart && task.delegation) {
+                self.delegatePart.update(task.delegation);
+            }
 
             if (self.workBox) {
                 var box = clear(self.workBox);
@@ -3257,6 +3421,10 @@
 
             var field = rich || tokenField(input, wrap);
 
+            // A new note can ask an assistant or an MCP server's alias about
+            // the task; a changed one asks nobody.
+            field.asksAssistants = !note;
+
             if (note && !rich) {
                 var value = note.raw || '';
 
@@ -3303,6 +3471,12 @@
                 api(note ? 'ws_task_note_edit' : 'ws_task_note_add', note ? { note_id: note.id, body: body } : { task_id: self.task.id, body: body }).then(function (data) {
                     self.drawWork(data.task);
                     self.changed();
+
+                    // The note was kept, but the assistant it called could
+                    // not be asked: why.
+                    if (data.notice) {
+                        toast(data.notice, 'warning');
+                    }
                 }).catch(function (error) {
                     save.disabled = false;
                     fail(error);
@@ -4136,6 +4310,20 @@
                     row.appendChild(el('small', '', item.body));
                 }
 
+                // A meeting about to start: its call, one tap away.
+                if (item.join) {
+                    var join = el('span', 'btn btn-sm btn-primary rounded-pill align-self-start mt-1', t('meeting_join'));
+                    join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
+                    join.setAttribute('role', 'button');
+                    join.addEventListener('click', function (clicked) {
+                        clicked.preventDefault();
+                        clicked.stopPropagation();
+                        api('ws_inbox_read', { ids: [item.id] }).catch(function () {});
+                        joinMeeting(item.join);
+                    });
+                    row.appendChild(join);
+                }
+
                 row.addEventListener('click', function () {
                     api('ws_inbox_read', { ids: [item.id] }).catch(function () {});
                 });
@@ -4178,7 +4366,8 @@
             offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
-            saLabelled: saLabelled, saText: saText, saChannelSelect: saChannelSelect, cfg: CFG
+            saLabelled: saLabelled, saText: saText, saChannelSelect: saChannelSelect, cfg: CFG,
+            openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); }
         };
     }
 
@@ -4250,6 +4439,20 @@
                 self.showScheduled(false);
             } else {
                 self.showHome(false);
+            }
+
+            // Back from connecting an account to an MCP server, or asked by a
+            // link in a message to offer it (mcp_ask.php).
+            if (CFG.mcp && CFG.mcp.flash) {
+                toast(CFG.mcp.flash.text, (CFG.mcp.flash.kind === 'error') ? 'danger' : 'success');
+            }
+
+            if (CFG.mcp && CFG.mcp.connect) {
+                ask(t('mcp_connect_ask', CFG.mcp.connect.alias), t('mcp_connect_me')).then(function (yes) {
+                    if (yes) {
+                        mcpConnect(CFG.mcp.connect.server_id, target);
+                    }
+                });
             }
 
             // What the rail of the other screens links to.
@@ -4996,6 +5199,11 @@
             forward.addEventListener('click', function () { self.forwardForm(self.selectedMessages()); });
             bar.appendChild(forward);
 
+            var copy = button('btn btn-sm btn-outline-secondary rounded-pill', t('sel_copy'), 'bi-copy');
+            copy.disabled = none;
+            copy.addEventListener('click', function () { self.copySelected(); });
+            bar.appendChild(copy);
+
             if (CFG.notes) {
                 var note = button('btn btn-sm btn-outline-secondary rounded-pill', t('sel_to_note'), 'bi-journal-plus');
                 note.disabled = none;
@@ -5029,6 +5237,42 @@
             if (this.input) {
                 this.input.focus();
             }
+        },
+
+        // The chosen messages as text to paste elsewhere, oldest first, each
+        // under its sender and its full date and time: the labels on the
+        // screen ("Yesterday 21:18") mean nothing once pasted.
+        copySelected: function () {
+            var chosen = this.selectedMessages();
+
+            if (!chosen.length) {
+                return;
+            }
+
+            var text = chosen.map(function (message) {
+                var date = new Date(message.timestamp * 1000);
+                var shape = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+                var when;
+
+                // In the site's time zone, like the labels on the screen; a
+                // zone the browser does not know falls back to its own.
+                try {
+                    when = date.toLocaleString(CFG.locale || undefined, Object.assign({ timeZone: CFG.timezone || undefined }, shape));
+                } catch (error) {
+                    when = date.toLocaleString(CFG.locale || undefined, shape);
+                }
+
+                var lines = [readableText(message.html)];
+
+                if (message.file) {
+                    lines.push(t('sel_copy_file', message.file.name));
+                }
+
+                return '[' + when + '] ' + (message.sender ? message.sender.name : '') + ':\n' + lines.filter(Boolean).join('\n');
+            }).join('\n\n');
+
+            copyText(text);
+            this.endSelect();
         },
 
         forwardForm: function (messages) {
@@ -5599,7 +5843,12 @@
                     BOOT.groups = data.groups;
                     BOOT.channels = data.channels;
                     self.drawSide();
-                }).catch(fail);
+                }).catch(function (error) {
+                    // A refused move is mostly a list someone else changed
+                    // meanwhile: draw it again as the server has it.
+                    fail(error);
+                    self.reloadChannels(0);
+                });
             };
 
             if (simple || parentId === group.parent_id) {
@@ -5994,9 +6243,7 @@
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
-            var toggle = button('btn btn-sm btn-ghost d-md-none', '', 'bi-list', t('channels'));
-            toggle.addEventListener('click', function () { self.root.classList.add('ws-show-side'); });
-            head.appendChild(toggle);
+            head.appendChild(channelsToggle(self.root));
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
@@ -6125,9 +6372,7 @@
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
-            var toggle = button('btn btn-sm btn-ghost d-md-none', '', 'bi-list', t('channels'));
-            toggle.addEventListener('click', function () { self.root.classList.add('ws-show-side'); });
-            head.appendChild(toggle);
+            head.appendChild(channelsToggle(self.root));
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
@@ -6849,9 +7094,7 @@
 
             // Header: name, topic, the customer, the people, the tools.
             var head = el('div', 'ws-head');
-            var toggle = button('btn btn-sm btn-ghost d-md-none', '', 'bi-list', t('channels'));
-            toggle.addEventListener('click', function () { self.root.classList.add('ws-show-side'); });
-            head.appendChild(toggle);
+            head.appendChild(channelsToggle(self.root));
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
@@ -6880,6 +7123,14 @@
             } else if (channel.contact) {
                 setHtml(topic, channel.contact.html);
                 topic.appendChild(document.createTextNode(' '));
+            }
+
+            // How the work stands, from the latest status update
+            // (workspace_status.js).
+            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
+
+            if (statusPill) {
+                topic.appendChild(statusPill);
             }
 
             if (channel.department) {
@@ -7485,6 +7736,14 @@
                 meta.appendChild(el('span', 'badge rounded-pill ws-guest-badge', t('guest_badge')));
             }
 
+            // An MCP agent's answer, under the agent's own name: who asked and
+            // through which tool are on its mark (mcp_agent.php).
+            if (message.sender && message.sender.mcp) {
+                var agentMark = el('span', 'badge rounded-pill bg-info-subtle text-info-emphasis', message.sender.title);
+                agentMark.title = message.sender.about || '';
+                meta.appendChild(agentMark);
+            }
+
             meta.appendChild(el('span', '', message.time));
 
             if (message.kind === 'decision' || message.kind === 'note') {
@@ -7618,6 +7877,16 @@
                 main.appendChild(window.PGWsApprovals.card(message, self, featureHelpers()));
             }
 
+            // A status update's colour, or a check-in's card
+            // (workspace_status.js).
+            if (message.status_card && window.PGWsStatus) {
+                var statusCard = window.PGWsStatus.card(message, self, featureHelpers(), node);
+
+                if (statusCard) {
+                    main.appendChild(statusCard);
+                }
+            }
+
             if (message.list_tasks && message.list_tasks.length) {
                 main.appendChild(self.listTasksNode(message));
             }
@@ -7704,7 +7973,7 @@
                         return;
                     }
 
-                    if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll, .ws-approval, .ws-ack')) {
+                    if (event.target.closest('a, button, input, label, .ws-task-card, .ws-poll, .ws-approval, .ws-ack, .ws-checkin')) {
                         return;
                     }
 
@@ -7721,7 +7990,7 @@
             return node;
         },
 
-        plain: function (markup, full) {
+        plain: function (markup) {
             var box = document.createElement('div');
             box.innerHTML = markup || '';
 
@@ -7732,7 +8001,7 @@
             });
 
             var text = (box.textContent || '').replace(/\s+/g, ' ').trim();
-            return (!full && text.length > 90) ? text.slice(0, 89) + '…' : text;
+            return (text.length > 90) ? text.slice(0, 89) + '…' : text;
         },
 
         findMessage: function (id) {
@@ -7788,6 +8057,22 @@
                         description: message.raw || ''
                     }), function () { self.sync(); });
                 } });
+            }
+
+            // The text as it reads, with its line breaks, to paste elsewhere.
+            // It is a tool so a phone shows it with a tap on the message; a
+            // phone can also open it in a box to select a part of it, since
+            // the long press there opens this menu instead of selecting.
+            if (message.html) {
+                items.push({ icon: 'bi-copy', label: t('copy_text'), tool: true, action: function () {
+                    copyText(readableText(message.html));
+                } });
+
+                if (touchScreen()) {
+                    items.push({ icon: 'bi-cursor-text', label: t('select_text'), action: function () {
+                        textSheet(readableText(message.html), false);
+                    } });
+                }
             }
 
             // A room of its own beside the channel to talk this message over.
@@ -7859,9 +8144,6 @@
             }
 
             items.push('-');
-            items.push({ icon: 'bi-clipboard', label: t('copy_text'), action: function () {
-                copyText(self.plain(message.html, true));
-            } });
             items.push({ icon: 'bi-link-45deg', label: t('copy_link'), action: function () {
                 copyText(absoluteUrl(CFG.urls.workspace + '?channel=' + self.channel.id + '&message=' + message.id));
             } });
@@ -8046,6 +8328,49 @@
                 text.appendChild(el('div', 'ws-brief-line', line));
             });
 
+            // Pinegrap AI's summary of what was missed, written once asked
+            // for and kept on the greeting while the channel stays open.
+            var buttons = el('div', 'ws-brief-buttons');
+
+            if (brief.recap) {
+                var recapBox = el('div', 'ws-brief-recap');
+                var showRecap = function () {
+                    clear(recapBox);
+                    recapBox.appendChild(el('div', 'ws-brief-recap-text', brief.recap.text));
+                    recapBox.appendChild(el('div', 'ws-brief-recap-by', t('brief_recap_by')));
+                };
+
+                text.appendChild(recapBox);
+
+                if (brief.recap.text) {
+                    showRecap();
+                } else {
+                    var channelId = self.channel.id;
+                    var ask = button('btn btn-sm ws-brief-action', t('brief_recap'), 'bi-stars');
+                    ask.addEventListener('click', function () {
+                        ask.disabled = true;
+                        clear(ask);
+                        ask.appendChild(el('span', 'spinner-border spinner-border-sm me-1'));
+                        ask.appendChild(document.createTextNode(t('brief_recap_wait')));
+
+                        api('ws_brief_recap', { channel_id: channelId, since_id: brief.recap.since_id }).then(function (data) {
+                            brief.recap.text = data.text || '';
+                            ask.remove();
+                            showRecap();
+                        }).catch(function (error) {
+                            ask.disabled = false;
+                            clear(ask);
+                            ask.appendChild(icon('bi-stars', 'me-1'));
+                            ask.appendChild(document.createTextNode(t('brief_recap')));
+                            fail(error);
+                        });
+                    });
+                    buttons.appendChild(ask);
+                }
+            }
+
+            text.appendChild(buttons);
+
             if (brief.advice && brief.advice.action !== 'none') {
                 var go = button('btn btn-sm ws-brief-action', brief.advice.label, brief.advice.icon);
                 go.addEventListener('click', function () {
@@ -8063,7 +8388,7 @@
                         }
                     }
                 });
-                text.appendChild(go);
+                buttons.appendChild(go);
             } else if (brief.advice) {
                 text.appendChild(el('div', 'ws-brief-hint', brief.advice.label));
             }
@@ -8712,11 +9037,35 @@
         // ── Claude ──
 
         claudeStateNode: function (message) {
+            var self = this;
             var state = message.claude;
             var line = el('div', 'ws-claude-state ws-claude-' + state.status);
 
             line.appendChild(icon(state.icon));
             line.appendChild(el('span', '', state.label));
+
+            // A request to an MCP agent can be stopped while it waits or
+            // runs, by the one who asked or an administrator (mcp_agent.php).
+            if (state.cancel) {
+                var stop = el('a', 'ms-1', t('mcp_agent_stop'));
+
+                stop.href = '#';
+                stop.addEventListener('click', function (event) {
+                    event.preventDefault();
+
+                    ask(t('mcp_agent_stop_ask'), t('mcp_agent_stop'), true).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        api('ws_mcp_agent_cancel', { request_id: state.id }).then(function () {
+                            self.sync();
+                        }).catch(fail);
+                    });
+                });
+
+                line.appendChild(stop);
+            }
 
             return line;
         },
@@ -8739,6 +9088,26 @@
                 self.sync();
             }).catch(function () {
                 self.aiKicking = false;
+            });
+        },
+
+        // An MCP server that is an agent itself answers a message at a time,
+        // sent by the screens waiting for it (includes/workspace/mcp_agent.php).
+        kickAgent: function (now) {
+            var self = this;
+
+            if (self.agentKicking || (!now && (Date.now() - (self.agentKickAt || 0)) < 4000)) {
+                return;
+            }
+
+            self.agentKicking = true;
+            self.agentKickAt = Date.now();
+
+            api('ws_mcp_agent_kick').then(function () {
+                self.agentKicking = false;
+                self.sync();
+            }).catch(function () {
+                self.agentKicking = false;
             });
         },
 
@@ -8771,12 +9140,20 @@
             var self = this;
             var box = el('div', 'ws-drafts ws-changes');
 
-            box.appendChild(el('div', 'ws-drafts-title', t((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')));
+            // A message to an MCP server's own agent whose tool writes waits
+            // under itself for its asker's approval (mcp_agent.php).
+            var agent = message.changes.every(function (change) { return change.agent; });
+
+            // Scheduled actions Pinegrap AI drafted (scheduled_draft.php) are
+            // opened in their form and saved there, not applied.
+            var drafts = message.changes.every(function (change) { return change.action === 'draft'; });
+
+            box.appendChild(el('div', 'ws-drafts-title', t(agent ? 'mcp_agent_changes' : (drafts ? 'ai_scheduled' : ((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')))));
 
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
                 var head = el('div', 'ws-draft-head');
-                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right', bulk: 'bi-collection' };
+                var icons = { create: 'bi-plus-square', 'delete': 'bi-trash3', add: 'bi-box-arrow-in-right', remove: 'bi-box-arrow-right', bulk: 'bi-collection', run: 'bi-play-circle', draft: 'bi-alarm' };
 
                 head.appendChild(icon(change.status === 'applied' ? 'bi-check2-circle' : (icons[change.action] || 'bi-pencil-square')));
 
@@ -8903,7 +9280,7 @@
                             }
 
                             api('ws_ai_change_apply', { change_id: change.id }).then(function () {
-                                toast(t('change_done'), 'success');
+                                toast(t(change.agent ? 'mcp_agent_sent' : 'change_done'), 'success');
                                 self.sync();
                             }).catch(function (error) {
                                 fail(error);
@@ -8913,6 +9290,24 @@
                     });
 
                     actions.appendChild(apply);
+                }
+
+                // A drafted scheduled action opens in its form, filled in, for
+                // the one who asked; saved there, the card says so.
+                if (change.draft) {
+                    var open = button('btn btn-sm btn-primary rounded-pill px-3', t('sa_draft_open'), 'bi-alarm');
+
+                    open.addEventListener('click', function () {
+                        scheduledForm({ channel_id: change.draft.channel_id }, null, function () { self.sync(); }, {
+                            key: 'sentence',
+                            sentence: change.draft.sentence,
+                            data: JSON.parse(JSON.stringify(change.draft.data)),
+                            notes: change.draft.notes || [],
+                            change_id: change.id
+                        });
+                    });
+
+                    actions.appendChild(open);
                 }
 
                 var dismiss = null;
@@ -8931,17 +9326,56 @@
                     actions.appendChild(dismiss);
                 }
 
+                // A call of an MCP server's tool (mcp_ask.php) runs with the
+                // asker's own account, connected from here.
+                if (change.connect) {
+                    var connect = button('btn btn-sm btn-outline-primary rounded-pill px-3', t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
+
+                    connect.addEventListener('click', function () {
+                        connect.disabled = true;
+                        mcpConnect(change.connect.server_id, self.channel ? self.channel.id : 0, function () {
+                            connect.disabled = false;
+                        });
+                    });
+
+                    actions.appendChild(connect);
+                }
+
                 if (actions.childNodes.length) {
                     card.appendChild(actions);
                 }
 
-                if (change.status === 'pending' && !change.can_apply) {
-                    card.appendChild(el('div', 'ws-draft-done', change.no_right ? t('change_no_right') : t('change_waiting', change.asker)));
+                if (change.status === 'pending' && change.draft) {
+                    // The one who asked has the form to open: nothing to wait for.
+                } else if (change.status === 'pending' && !change.can_apply) {
+                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : t(change.action === 'draft' ? 'sa_draft_waiting' : 'change_waiting', change.asker))));
+                } else if (change.status === 'pending' && change.account) {
+                    var account = el('div', 'ws-draft-done', t('mcp_account', change.account.alias) + ' ');
+                    var off = el('a', '', t('mcp_disconnect_me'));
+
+                    off.href = '#';
+                    off.addEventListener('click', function (event) {
+                        event.preventDefault();
+
+                        ask(t('mcp_disconnect_ask', change.account.alias), t('mcp_disconnect_me'), true).then(function (yes) {
+                            if (!yes) {
+                                return;
+                            }
+
+                            api('ws_mcp_disconnect_me', { server_id: change.account.server_id }).then(function () {
+                                toast(t('mcp_disconnected'), 'success');
+                                self.sync();
+                            }).catch(fail);
+                        });
+                    });
+
+                    account.appendChild(off);
+                    card.appendChild(account);
                 } else if (change.status === 'applied') {
-                    var done = el('div', 'ws-draft-done', t('change_applied', change.decided_by, change.decided) + ' ');
+                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? 'sa_draft_saved' : 'change_applied', change.decided_by, change.decided) + ' ');
 
                     if (change.decision_id) {
-                        var see = el('a', '', t('change_see_decision'));
+                        var see = el('a', '', t(change.action === 'draft' ? 'sa_draft_see' : 'change_see_decision'));
                         see.href = '#';
                         see.addEventListener('click', function (event) {
                             event.preventDefault();
@@ -10143,6 +10577,12 @@
                     (CFG.approvals && window.PGWsApprovals) ? { icon: 'bi-patch-question', label: t('apv_new'), action: function () {
                         window.PGWsApprovals.form(self, featureHelpers());
                     } } : null,
+                    (CFG.status && window.PGWsStatus && !self.isThread) ? { icon: 'bi-activity', label: t('st_new'), action: function () {
+                        window.PGWsStatus.form(self, featureHelpers());
+                    } } : null,
+                    (CFG.status && window.PGWsStatus && !self.isThread) ? { icon: 'bi-person-raised-hand', label: t('ci_new'), action: function () {
+                        window.PGWsStatus.checkinForm(self, featureHelpers());
+                    } } : null,
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
                     } } : null,
@@ -10532,6 +10972,8 @@
                 row.appendChild(el('span', 'text-body-secondary ms-1', t('claude_reply_hint')));
             } else if (!self.editing && self.reply.sender && self.reply.sender.ai && self.channel.ai && self.channel.ai.available) {
                 row.appendChild(el('span', 'text-body-secondary ms-1', t('ai_reply_hint')));
+            } else if (!self.editing && self.reply.sender && self.reply.sender.mcp) {
+                row.appendChild(el('span', 'text-body-secondary ms-1', t('mcp_reply_hint', self.reply.sender.mcp)));
             }
             var cancel = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('cancel'));
             cancel.addEventListener('click', function () { self.cancelCompose(); });
@@ -10724,6 +11166,10 @@
 
                 if (result.ai) {
                     self.kickAi(true);
+                }
+
+                if (result.agent) {
+                    self.kickAgent(true);
                 }
             }).catch(function (error) {
                 self.busy = false;
@@ -11159,8 +11605,10 @@
                 var needle = query.toLocaleLowerCase();
                 var items = [];
 
-                // In a note @ asks Claude; people are tagged with #.
-                if (self.notesMode) {
+                // Claude and Pinegrap AI as a note asks them: a tag once
+                // connected, before that the name as text, which answers with
+                // how to set it up.
+                var noteAssistants = function () {
                     if (BOOT.claude && (!needle || 'claude'.indexOf(needle) === 0)) {
                         items.push(BOOT.claude.token
                             ? { label: 'Claude', meta: t('claude_meta'), icon: 'bi-stars', token: BOOT.claude.token, shown: '@Claude' }
@@ -11172,9 +11620,32 @@
                             ? { label: BOOT.ai.name, meta: BOOT.ai.handle, icon: 'bi-cpu', token: BOOT.ai.token, shown: BOOT.ai.handle }
                             : { label: BOOT.ai.name, meta: t('ai_not_ready'), icon: 'bi-cpu', insert: BOOT.ai.handle + ' ' });
                     }
+                };
 
+                // Other services' MCP servers, by their alias: written as
+                // text, and Pinegrap AI answers with the server's tools, or
+                // the server's own agent answers.
+                var mcpAliases = function () {
+                    (BOOT.mcp || []).forEach(function (server) {
+                        if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
+                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t(server.agent ? 'mcp_meta_agent' : 'mcp_meta'), icon: 'bi-plug', insert: '@' + server.alias + ' ' });
+                        }
+                    });
+                };
+
+                // In a note @ asks Claude; people are tagged with #.
+                if (self.notesMode) {
+                    noteAssistants();
                     self.drawPicker(items);
                     return;
+                }
+
+                // A new note on a task asks an assistant about the task by
+                // its name (includes/workspace/delegation.php): the
+                // assistants and the aliases come before the people.
+                if (self.asksAssistants) {
+                    noteAssistants();
+                    mcpAliases();
                 }
 
                 // Claude: a tag where it may be asked; elsewhere, or before it
@@ -11195,6 +11666,10 @@
                     } else {
                         items.push({ label: BOOT.ai.name, meta: BOOT.ai.ready ? t('ai_closed_here') : t('ai_not_ready'), icon: 'bi-cpu', insert: BOOT.ai.handle + ' ' });
                     }
+                }
+
+                if (self.channel) {
+                    mcpAliases();
                 }
 
                 BOOT.people.forEach(function (member) {
@@ -11837,6 +12312,15 @@
                 return message.claude && message.claude.agent === 'ai' && /^(queued|sent|running)$/.test(message.claude.status);
             })) {
                 self.kickAi();
+            }
+
+            // So does an MCP agent: a message waits until a screen sends it,
+            // and an agent working in the background until a screen asks
+            // about its task.
+            if (waiting && (self.messages || []).some(function (message) {
+                return message.claude && message.claude.agent === 'mcp' && /^(queued|sent|running)$/.test(message.claude.status);
+            })) {
+                self.kickAgent();
             }
 
             self.timer = setTimeout(function () {
@@ -13040,7 +13524,8 @@
         var chains = !!config.chains;
         var groups = [
             [t('sa_group_team'), [['post', t('sa_do_post')], ['email', t('sa_do_email')]].concat(chains ? [['notify', t('sa_do_notify')], ['task', t('sa_do_task')], ['task_digest', t('sa_do_task_digest')]] : [])
-                .concat((config.approvals && window.PGWsApprovals) ? [['approval', t('sa_do_approval')]] : [])],
+                .concat((config.approvals && window.PGWsApprovals) ? [['approval', t('sa_do_approval')]] : [])
+                .concat((CFG.status && window.PGWsStatus) ? [['checkin', t('sa_do_checkin')]] : [])],
             [t('sa_group_records'), Object.keys(config.changes || {}).length ? [['change', t('sa_do_change')]] : []],
             [t('sa_group_web'), chains ? [['report', t('sa_do_report')], ['web_check', t('sa_do_web_check')], ['webhook', t('sa_do_webhook')]] : []],
             [t('sa_group_chain'), chains ? [['trigger', t('sa_do_trigger')]] : []]
@@ -13228,7 +13713,7 @@
 
         // Each person their tasks by e-mail, or one channel's tasks.
         function taskDigest() {
-            var data = given('task_digest', { mode: 'mine', channel_id: 0, user_ids: [], only: 'open', subject: '', intro: '' });
+            var data = given('task_digest', { mode: 'mine', channel_id: 0, user_ids: [], only: 'open', subject: '', intro: '', missed: 0, ai: 0 });
             var modes = el('div', 'btn-group btn-group-sm ws-sa-modes');
             var mode = data.mode || 'mine';
             var channel = saChannelSelect(data.channel_id || 0, t('sa_digest_all_channels'));
@@ -13267,6 +13752,38 @@
             detail.appendChild(peopleBox);
             detail.appendChild(saLabelled(t('sa_subject'), subject));
             detail.appendChild(saLabelled(t('sa_digest_intro'), intro, t('sa_digest_intro_help')));
+
+            // What each person missed, and Pinegrap AI's few sentences on it
+            // where it is set up.
+            function digestSwitch(label, help, checked) {
+                var wrap = el('div', 'form-check form-switch mb-2');
+                var input = el('input', 'form-check-input');
+                var caption = el('label', 'form-check-label small', label);
+
+                input.type = 'checkbox';
+                input.id = nextId('ws-sa-digest-');
+                input.setAttribute('role', 'switch');
+                input.checked = !!checked;
+                caption.htmlFor = input.id;
+                wrap.appendChild(input);
+                wrap.appendChild(caption);
+                wrap.appendChild(el('div', 'form-text mt-0', help));
+                detail.appendChild(wrap);
+
+                return input;
+            }
+
+            var missed = digestSwitch(t('sa_digest_missed'), t('sa_digest_missed_help'), data.missed);
+            var ai = config.recap_ai ? digestSwitch(t('sa_digest_ai'), t('sa_digest_ai_help'), data.ai) : null;
+
+            function showAi() {
+                if (ai) {
+                    ai.closest('.form-check').classList.toggle('d-none', !missed.checked);
+                }
+            }
+
+            missed.addEventListener('change', showAi);
+            showAi();
             showMode();
 
             reader = function () {
@@ -13277,7 +13794,10 @@
                     user_ids: people.value(),
                     only: only.value,
                     subject: subject.value,
-                    intro: intro.value
+                    intro: intro.value,
+                    missed: missed.checked ? 1 : 0,
+                    // Kept as it was where Pinegrap AI is not set up now.
+                    ai: (missed.checked && (ai ? ai.checked : !!data.ai)) ? 1 : 0
                 };
             };
         }
@@ -13563,7 +14083,12 @@
             reader = window.PGWsApprovals.scheduledEditor(detail, given('approval', null), featureHelpers());
         }
 
-        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change, approval: approval };
+        // A check-in in a channel (workspace_status.js).
+        function checkin() {
+            reader = window.PGWsStatus.scheduledEditor(detail, given('checkin', null), featureHelpers());
+        }
+
+        var editors = { post: post, email: email, notify: notify, task: task, task_digest: taskDigest, webhook: webhook, web_check: webCheck, report: report, trigger: trigger, change: change, approval: approval, checkin: checkin };
 
         function draw() {
             clear(detail);
@@ -13698,6 +14223,15 @@
             follow: []
         } });
 
+        // Every working morning, each person what they missed and the tasks
+        // due this week: to the one who sets it up, others can be added.
+        out.push({ key: 'morning', label: t('sa_tpl_morning'), icon: 'bi-sunrise', help: t('sa_tpl_morning_help'), data: {
+            name: t('sa_tpl_morning'),
+            rules: [{ type: 'at', date: tomorrow, time: '08:30', repeat: 'workdays' }],
+            action: { type: 'task_digest', mode: 'mine', channel_id: 0, user_ids: [me], only: 'week', subject: t('sa_tpl_morning_subject'), intro: '', missed: 1, ai: config.recap_ai ? 1 : 0 },
+            follow: []
+        } });
+
         out.push({ key: 'digest', label: t('sa_tpl_digest'), icon: 'bi-clipboard-data', data: {
             name: t('sa_tpl_digest'),
             rules: [{ type: 'at', date: tomorrow, time: '09:00', repeat: 'workdays' }],
@@ -13807,6 +14341,12 @@
         node.classList.add('ws-sa-offcanvas');
         node.querySelector('.offcanvas-title').textContent = item ? t('sa_edit') : t('sa_new_long');
         footer.classList.remove('d-none');
+
+        // ── in a sentence: Pinegrap AI fills the form in ──
+
+        if (!item && config.draft) {
+            body.appendChild(saSentenceBox(context, onDone, preset));
+        }
 
         // ── a ready one: cards to start from ──
 
@@ -14152,6 +14692,12 @@
                 note_id: (context && context.note_id) || 0
             };
 
+            // Opened from a draft of Pinegrap AI in a channel: saving it
+            // marks the draft's card.
+            if (!item && preset && preset.change_id) {
+                out.draft_change_id = preset.change_id;
+            }
+
             if (config.chains) {
                 out.follow = Array.prototype.map.call(follows.children, function (row) { return row.read(); }).filter(function (follow) { return follow.do; });
             } else {
@@ -14261,9 +14807,86 @@
 
         showOffcanvas(node);
 
+        // An empty form starts in the sentence box where there is one.
         if (!touchScreen() && !item && !preset) {
-            setTimeout(function () { name.focus(); }, 250);
+            setTimeout(function () { (body.querySelector('.ws-sa-sentence textarea') || name).focus(); }, 250);
         }
+    }
+
+    // What the action should do, in the person's words. Pinegrap AI turns it
+    // into the form's steps (includes/workspace/scheduled_draft.php) and the
+    // form opens again with them, the way a ready-made one does; nothing is
+    // saved until the person saves. A form filled in this way keeps the
+    // sentence and says what was left out or left open.
+    function saSentenceBox(context, onDone, preset) {
+        var drafted = !!(preset && preset.key === 'sentence');
+        var box = el('div', 'ws-sa-sentence');
+        var area = saArea(drafted ? preset.sentence : '', 2, t('sa_sentence_placeholder'));
+        var row = el('div', 'ws-sa-sentence-row');
+        var go = button('btn btn-sm btn-outline-primary', t('sa_sentence_fill'), 'bi-stars');
+        var said = el('div', 'ws-sa-sentence-said small');
+
+        area.maxLength = 500;
+        box.appendChild(el('label', 'form-label small mb-1', t('sa_sentence')));
+        row.appendChild(area);
+        row.appendChild(go);
+        box.appendChild(row);
+        box.appendChild(said);
+
+        function say(text, notes, error) {
+            clear(said);
+            said.classList.toggle('text-danger', !!error);
+
+            if (text) {
+                said.appendChild(el('div', '', text));
+            }
+
+            if ((notes || []).length) {
+                var list = el('ul', 'mb-0 ps-3');
+
+                notes.forEach(function (note) { list.appendChild(el('li', '', note)); });
+                said.appendChild(list);
+            }
+        }
+
+        say(drafted ? t('sa_sentence_done') : t('sa_sentence_help'), drafted ? preset.notes : []);
+
+        function fill() {
+            var text = area.value.trim();
+
+            if (!text) {
+                area.focus();
+                return;
+            }
+
+            go.disabled = true;
+            area.readOnly = true;
+            say(t('sa_sentence_working'));
+
+            api('ws_scheduled_draft', { text: text, channel_id: (context && context.channel_id) || 0 }).then(function (result) {
+                scheduledForm(context, null, onDone, { key: 'sentence', sentence: text, data: result.draft, notes: result.notes || [], change_id: (preset && preset.change_id) || 0 });
+            }).catch(function (error) {
+                go.disabled = false;
+                area.readOnly = false;
+                say(error.message, [], true);
+            });
+        }
+
+        go.addEventListener('click', fill);
+        area.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                fill();
+            }
+        });
+
+        // Typing here is not filling the form in: the summary beside the
+        // steps waits for the steps.
+        ['input', 'change'].forEach(function (name) {
+            box.addEventListener(name, function (event) { event.stopPropagation(); });
+        });
+
+        return box;
     }
 
     // The card of one scheduled action: in its channel, in its note and in
@@ -14677,6 +15300,10 @@
                 window.PGWsTaskLinks.rowTag(sub, task, partHelpers());
             }
 
+            if (window.PGWsTaskDelegate) {
+                window.PGWsTaskDelegate.rowTag(sub, task, partHelpers());
+            }
+
             main.appendChild(sub);
             row.appendChild(main);
 
@@ -14908,6 +15535,12 @@
             taskDrawer.open(0, {}, load);
         }
 
+        // Back from connecting an account to an MCP server from a task's
+        // drawer (includes/workspace/actions.php, ws_mcp_connect).
+        if (CFG.mcp && CFG.mcp.flash) {
+            toast(CFG.mcp.flash.text, (CFG.mcp.flash.kind === 'error') ? 'danger' : 'success');
+        }
+
         // Linked from the overview: the pressing ones straight away.
         if (query.urgent) {
             soon.click();
@@ -15080,6 +15713,11 @@
                     cell.events.forEach(function (event) {
                         var item = button('ws-board-item ' + ((event.kind === 'leave' || event.kind === 'holiday') ? 'ws-item-leave' : 'ws-item-event'), (event.time ? event.time + ' ' : '') + event.title);
                         item.title = event.title;
+
+                        if (event.meeting_url) {
+                            item.insertBefore(icon('bi-camera-video', 'me-1'), item.firstChild);
+                        }
+
                         var openEvent = function () {
                             api('ws_event_get', { event_id: event.id }).then(function (result) {
                                 eventForm(result.event, {}, load);
@@ -15090,6 +15728,7 @@
                         onContext(item, function () {
                             return [
                                 { header: event.title },
+                                event.meeting_url ? { icon: 'bi-camera-video', label: t('meeting_join'), action: function () { joinMeeting(event.meeting_url); } } : null,
                                 { icon: 'bi-pencil', label: t('edit'), action: openEvent },
                                 { icon: 'bi-trash', label: t('delete'), danger: true, action: function () {
                                     ask(t('delete_item_confirm'), t('delete'), true).then(function (yes) {
@@ -15098,7 +15737,7 @@
                                         }
                                     });
                                 } }
-                            ];
+                            ].filter(Boolean);
                         });
                         box.appendChild(item);
                     });
@@ -15645,6 +16284,11 @@
 
                             var item = el('div', 'ws-cal-event ws-kind-' + event.kind, (event.time ? event.time + ' ' : '') + event.title);
                             item.title = event.title + (event.people && event.people.length ? ' · ' + peopleNames(event.people) : '');
+
+                            if (event.meeting_url) {
+                                item.insertBefore(icon('bi-camera-video', 'me-1'), item.firstChild);
+                            }
+
                             cell.appendChild(item);
                             shown++;
                         });
@@ -15798,6 +16442,17 @@
                     main.appendChild(el('div', 'ws-row-title', (event.time ? event.time + ' · ' : '') + event.title));
                     main.appendChild(el('div', 'ws-row-sub', (CFG.event_kinds[event.kind] || '') + (event.people.length ? ' · ' + peopleNames(event.people) : '')));
                     row.appendChild(main);
+
+                    if (event.meeting_url) {
+                        var join = el('a', 'btn btn-sm btn-outline-primary rounded-pill text-nowrap', t('meeting_join'));
+                        join.href = event.meeting_url;
+                        join.target = '_blank';
+                        join.rel = 'noopener noreferrer';
+                        join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
+                        join.addEventListener('click', function (clicked) { clicked.stopPropagation(); });
+                        row.appendChild(join);
+                    }
+
                     row.addEventListener('click', function () {
                         api('ws_event_get', { event_id: event.id }).then(function (result) {
                             hideOffcanvas(node);
@@ -15979,6 +16634,41 @@
         }
 
         load();
+
+        // Opened from a meeting's notice (?event=): the item, with its Join.
+        if (parseInt(query.event || 0, 10) > 0) {
+            api('ws_event_get', { event_id: parseInt(query.event, 10) }).then(function (result) {
+                eventForm(result.event, {}, load);
+            }).catch(fail);
+        }
+    }
+
+    // A Jitsi room nobody can guess: a few letters of the title and a
+    // random tail. meet.jit.si opens it on first visit; nothing is set up.
+    function jitsiRoom(title) {
+        var map = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u', 'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U' };
+        var words = String(title || '').replace(/[çğıöşüÇĞİÖŞÜ]/g, function (letter) { return map[letter]; })
+            .replace(/[^A-Za-z0-9]+/g, ' ').trim().split(' ').filter(Boolean).slice(0, 4);
+        var alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
+        var tail = '';
+        var bytes = new Uint8Array(10);
+
+        (window.crypto || window.msCrypto).getRandomValues(bytes);
+
+        for (var i = 0; i < bytes.length; i++) {
+            tail += alphabet.charAt(bytes[i] % alphabet.length);
+        }
+
+        return 'https://meet.jit.si/' + (words.length ? words.join('-') : 'Meeting') + '-' + tail;
+    }
+
+    // Opens a plan item's video call in a new tab.
+    function joinMeeting(url) {
+        var opened = window.open(url, '_blank', 'noopener');
+
+        if (opened) {
+            opened.opener = null;
+        }
     }
 
     // The plan item form: a meeting, a visit, leave, a holiday.
@@ -16105,6 +16795,76 @@
         note.value = event ? event.note : '';
         body.appendChild(formRow(t('note'), note));
 
+        // The video call (includes/workspace/meetings.php): a Jitsi room made
+        // up here, or a link pasted in; Join opens it in a new tab.
+        var meeting = null;
+
+        if (CFG.meetings) {
+            var meetingRow = el('div');
+            var meetingGroup = el('div', 'input-group input-group-sm');
+            meeting = el('input', 'form-control');
+            meeting.type = 'url';
+            meeting.id = nextId('ws-ev-meeting-');
+            meeting.maxLength = 500;
+            meeting.placeholder = 'https://';
+            meeting.value = event ? (event.meeting_url || '') : '';
+            meetingGroup.appendChild(meeting);
+
+            var jitsi = button('btn btn-outline-secondary', '', 'bi-magic', t('meeting_jitsi'));
+            jitsi.addEventListener('click', function () {
+                meeting.value = jitsiRoom(title.value);
+                joinView();
+            });
+            meetingGroup.appendChild(jitsi);
+
+            var join = el('a', 'btn btn-primary', t('meeting_join'));
+            join.target = '_blank';
+            join.rel = 'noopener noreferrer';
+            join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
+            meetingGroup.appendChild(join);
+
+            var joinView = function () {
+                var url = meeting.value.trim();
+
+                join.classList.toggle('d-none', !/^https?:\/\/\S+$/i.test(url));
+                join.href = url || '#';
+            };
+
+            meeting.addEventListener('input', joinView);
+            joinView();
+
+            if (event && !event.can_edit) {
+                meeting.readOnly = true;
+                jitsi.classList.add('d-none');
+            }
+
+            meetingRow.appendChild(formRow(t('meeting_link'), meetingGroup, t('meeting_link_help')));
+            body.appendChild(meetingRow);
+
+            var meetingView = function () {
+                meetingRow.classList.toggle('d-none', (kind.value === 'leave' || kind.value === 'holiday') && !meeting.value);
+            };
+
+            kind.addEventListener('change', meetingView);
+            meetingView();
+
+            // The meeting note: found again, or written from the template.
+            if (event && CFG.notes) {
+                var noteButton = button('btn btn-sm btn-outline-secondary rounded-pill', t('meeting_note'), 'bi-journal-text');
+                noteButton.title = t('meeting_note_help');
+                noteButton.addEventListener('click', function () {
+                    noteButton.disabled = true;
+                    api('ws_meeting_note', { event_id: event.id }).then(function (data) {
+                        window.location.href = CFG.urls.notes + '?note=' + data.note_id;
+                    }).catch(function (error) {
+                        noteButton.disabled = false;
+                        fail(error);
+                    });
+                });
+                body.appendChild(noteButton);
+            }
+        }
+
         if (event && event.can_edit) {
             var remove = button('btn btn-sm btn-outline-warning me-auto', t('delete'), 'bi-trash');
             remove.addEventListener('click', function () {
@@ -16144,7 +16904,8 @@
                     all_day: allDay.checked ? 1 : 0,
                     start_time: startTime.value,
                     end_time: endTime.value,
-                    note: note.value
+                    note: note.value,
+                    meeting_url: meeting ? meeting.value.trim() : undefined
                 }).then(function () {
                     hideOffcanvas(node);
                     toast(t('plan_saved'), 'success');
@@ -17050,6 +17811,12 @@
             }
 
             items.push({ icon: 'bi-link-45deg', label: t('notes_copy_link'), action: function () { copyText(absoluteUrl(CFG.urls.notes + '?note=' + note.id)); } });
+
+            // A meeting note's decisions and action items (meetings.php).
+            if (CFG.meetings && (mine || note.access === 'edit')) {
+                items.push({ icon: 'bi-box-arrow-in-right', label: t('meeting_transfer'), action: function () { meetingTransfer(note); } });
+            }
+
             items.push('-');
 
             if (mine) {
@@ -17591,6 +18358,15 @@
                 });
                 headNode.appendChild(share);
                 headButtons.share = share;
+            }
+
+            // A meeting note (one that tags a plan item and has decisions or
+            // action items): its own button to bring them into a channel.
+            if (CFG.meetings && current.id && editable() && /<#plan:\d+>/.test(current.body || '')
+                && ((current.body || '').indexOf('::: ' + t('meeting_decisions')) !== -1 || (current.body || '').indexOf('::: ' + t('meeting_actions')) !== -1)) {
+                var transfer = button('btn btn-sm btn-ghost', t('meeting_transfer'), 'bi-box-arrow-in-right');
+                transfer.addEventListener('click', function () { meetingTransfer(current); });
+                headNode.appendChild(transfer);
             }
 
             // What the note held before: kept on the server, put back as a
@@ -18216,6 +18992,134 @@
             });
         }
 
+        // A meeting note's decisions and action items, brought into a
+        // channel (includes/workspace/meetings.php): read and shown first,
+        // each one chosen, written on confirmation.
+        function meetingTransfer(note) {
+            var channels = ((BOOT && BOOT.channels) || []).filter(function (channel) {
+                return !channel.archived && (channel.joined || channel.kind === 'public');
+            });
+            var node = offcanvas('ws-meeting-transfer', '');
+            var body = clear(node.querySelector('.offcanvas-body'));
+            var footer = clear(node.querySelector('.offcanvas-footer'));
+            var choice = select(channels.map(function (channel) {
+                return [channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name];
+            }), channels.length ? channels[0].id : 0);
+            var list = el('div');
+            var picked = [];
+
+            node.querySelector('.offcanvas-title').textContent = t('meeting_transfer_title');
+            choice.id = nextId('ws-mt-channel-');
+            body.appendChild(formRow(t('meeting_channel'), choice));
+            body.appendChild(el('div', 'form-text mb-3', t('meeting_transfer_help')));
+            body.appendChild(list);
+
+            footer.classList.remove('d-none');
+
+            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+            footer.appendChild(cancel);
+
+            var go = button('btn btn-sm btn-primary rounded-pill px-3', t('meeting_transfer_go'), 'bi-box-arrow-in-right');
+            footer.appendChild(go);
+
+            function row(group, item, text, sub, blocked) {
+                var line = el('div', 'form-check mb-2');
+                var box = el('input', 'form-check-input');
+                var label = el('label', 'form-check-label');
+
+                box.type = 'checkbox';
+                box.id = nextId('ws-mt-item-');
+                box.checked = !blocked;
+                box.disabled = !!blocked;
+                label.htmlFor = box.id;
+                label.appendChild(el('span', blocked ? 'text-body-secondary' : '', text));
+
+                if (sub) {
+                    label.appendChild(el('div', 'small ' + (item.error ? 'text-danger' : 'text-body-secondary'), sub));
+                }
+
+                line.appendChild(box);
+                line.appendChild(label);
+                picked.push({ group: group, index: item.index, box: box });
+
+                return line;
+            }
+
+            function load() {
+                go.disabled = true;
+                picked = [];
+                clear(list);
+                list.appendChild(el('div', 'small text-body-secondary', t('loading')));
+
+                api('ws_meeting_transfer', { note_id: note.id, channel_id: parseInt(choice.value, 10) || 0 }).then(function (data) {
+                    clear(list);
+
+                    if (!data.decisions.length && !data.actions.length) {
+                        list.appendChild(el('div', 'ws-empty', t('meeting_transfer_none')));
+                        return;
+                    }
+
+                    if (data.decisions.length) {
+                        list.appendChild(el('div', 'form-label mt-2', t('meeting_decisions')));
+                        data.decisions.forEach(function (item) {
+                            list.appendChild(row('decisions', item, item.text, item.done ? t('meeting_transfer_done') : '', item.done));
+                        });
+                    }
+
+                    if (data.actions.length) {
+                        list.appendChild(el('div', 'form-label mt-2', t('meeting_actions')));
+                        data.actions.forEach(function (item) {
+                            var sub = item.done ? t('meeting_transfer_task') : (item.error || [item.people.map(function (who) { return who.name; }).join(', '), item.due].filter(Boolean).join(' · '));
+                            list.appendChild(row('actions', item, item.title || '…', sub, item.done || !!item.error));
+                        });
+                    }
+
+                    go.disabled = !channels.length;
+                }).catch(fail);
+            }
+
+            choice.addEventListener('change', load);
+
+            go.addEventListener('click', function () {
+                var chosen = { decisions: [], actions: [] };
+                var channelId = parseInt(choice.value, 10) || 0;
+
+                picked.forEach(function (item) {
+                    if (item.box.checked && !item.box.disabled) {
+                        chosen[item.group].push(item.index);
+                    }
+                });
+
+                if (!chosen.decisions.length && !chosen.actions.length) {
+                    hideOffcanvas(node);
+                    return;
+                }
+
+                go.disabled = true;
+
+                api('ws_meeting_transfer', { note_id: note.id, channel_id: channelId, confirm: 1, decisions: chosen.decisions, actions: chosen.actions }).then(function (data) {
+                    hideOffcanvas(node);
+                    toast(t('meeting_transfer_result', data.decisions, data.tasks), 'success', { label: t('open_channel'), href: CFG.urls.workspace + '?channel=' + channelId });
+
+                    if (data.failed && data.failed.length) {
+                        toast(t('meeting_transfer_failed') + ' ' + data.failed.join(' · '), 'warning');
+                    }
+
+                    // The rows that became tasks carry their tags now.
+                    openNote(note.id, true);
+                }).catch(function (error) {
+                    go.disabled = false;
+                    fail(error);
+                });
+            });
+
+            save().then(function () {
+                showOffcanvas(node);
+                load();
+            });
+        }
+
         function toChannel(note) {
             save().then(function () {
                 channelForm(null, { name: note.name, note_id: note.id }, function (channelId) {
@@ -18443,6 +19347,11 @@
                 api('ws_tick').catch(function () {});
             }, 1500);
 
+            function recordTrigger(trigger) {
+                var parts = trigger.getAttribute('data-ws-record').split(':');
+                openRecord(parts[0], parseInt(parts[1], 10), trigger.getAttribute('data-ws-label') || '');
+            }
+
             document.addEventListener('click', function (event) {
                 var trigger = event.target.closest('[data-ws-record]');
 
@@ -18451,10 +19360,21 @@
                 }
 
                 event.preventDefault();
-
-                var parts = trigger.getAttribute('data-ws-record').split(':');
-                openRecord(parts[0], parseInt(parts[1], 10), trigger.getAttribute('data-ws-label') || '');
+                recordTrigger(trigger);
             });
+
+            // On a record's screen this script is fetched by the click on its
+            // Workspace button (ws_record_loader(), screen.php): from here on
+            // the listener above answers, and the click that brought the
+            // script in is answered now.
+            window.PGWsRecordReady = true;
+
+            if (window.PGWsPendingRecord) {
+                var pending = window.PGWsPendingRecord;
+
+                window.PGWsPendingRecord = null;
+                recordTrigger(pending);
+            }
         }).catch(function (error) {
             var root = document.getElementById('ws-root');
 

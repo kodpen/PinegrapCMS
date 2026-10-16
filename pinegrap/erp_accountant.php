@@ -35,8 +35,12 @@ $can_settings = defined('USER_MANAGE_ERP_SETTINGS') && USER_MANAGE_ERP_SETTINGS 
 $can_cash = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
 
 // ---------------------------------------------------------------- download
-if (isset($_GET['download'])) {
-    $package = erp_accountant_package((int) $_GET['download']);
+// One number: an array (?download[]=x) cast to 1 and sent the first pack;
+// it is not given, so the screen opens as usual.
+$download_id = is_scalar($_GET['download'] ?? null) ? (int) $_GET['download'] : null;
+
+if ($download_id !== null) {
+    $package = erp_accountant_package($download_id);
 
     if (!is_array($package) || !erp_accountant_stream($package)) {
         $liveform->mark_error('_error', lang('That pack is no longer there. Build it again.'));
@@ -50,6 +54,12 @@ if (isset($_GET['download'])) {
 // ------------------------------------------------------------------ actions
 if ($_POST) {
     validate_token_field();
+
+    // Every field of the forms is one value. One posted as an array counts as
+    // not given: (int) read an array pack as pack 1 and linked or e-mailed
+    // that one, (string) read the dates and the address as "Array".
+    pg_request_single_values(array('erp_action', 'range', 'month', 'from', 'to', 'pdfs', 'package_id', 'accountant_email', 'accountant_monthly',
+        'accountant_pdfs', 'lock_date'));
 
     $action = (string) ($_POST['erp_action'] ?? '');
 
@@ -313,7 +323,7 @@ foreach ($packages as $package) {
                     ' . get_token_field() . '
                     <input type="hidden" name="package_id" value="' . (int) $package['id'] . '" />
                     <input type="email" name="to" class="form-control form-control-sm" value="' . h($settings['email']) . '" placeholder="' . h(lang('Accountant\'s e-mail')) . '" aria-label="' . h(lang('Accountant\'s e-mail')) . '" required />
-                    <button type="submit" name="erp_action" value="send" class="btn btn-sm btn-outline-secondary text-nowrap" data-loading-content="' . lang(array('string' => 'Sending')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send link') . '</button>
+                    <button type="submit" name="erp_action" value="send" class="btn btn-sm btn-outline-secondary text-nowrap"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send link') . '</button>
                     <button type="submit" name="erp_action" value="link" formnovalidate class="btn btn-sm btn-outline-secondary" title="' . h(lang('Make a link to copy')) . '" aria-label="' . h(lang('Make a link to copy')) . '"><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
                 </form>';
     }
@@ -380,7 +390,7 @@ $output_settings_card = '
                             </div>
                         </div>
                         ' . ($can_settings
-                            ? '<button type="submit" class="btn btn-sm btn-success mt-3" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>'
+                            ? '<button type="submit" class="btn btn-sm btn-success mt-3"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>'
                             : '<div class="form-text mt-3">' . lang('Changing this needs the right to change ERP settings.') . '</div>') . '
                     </form>
                 </div>
@@ -453,7 +463,7 @@ pg_page_shell(array(
                                     <input class="form-check-input" type="checkbox" id="pdfs" name="pdfs" value="1" checked />
                                     <label class="form-check-label" for="pdfs">' . lang('With the documents') . '</label>
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"' . ($ready ? '' : ' disabled') . '><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang('Build the pack') . '</button>
+                                <button type="submit" class="btn btn-primary w-100"' . ($ready ? '' : ' disabled') . '><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang('Build the pack') . '</button>
                             </div>
                         </div>
                         <div class="form-text mt-3">' . lang('Amounts are in the base currency unless a column names the document\'s own; cancelled documents are listed and left out of the totals. A document that has no kept PDF yet is rendered and kept now.') . ($can_cash ? '' : ' ' . lang('The till sheets are left out: your account does not see the tills.')) . '</div>
