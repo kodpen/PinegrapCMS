@@ -679,6 +679,12 @@ function ws_group_remove($viewer, $group_id)
 
     log_activity(lang(array('string' => 'workspace channel group ({var:1}) was removed', 'vars' => $group['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
+    $stopped = ws_webhook_group_removed($id);
+
+    if ($stopped > 0) {
+        log_activity(lang(array('string' => 'API event subscriptions narrowed to the workspace channel group ({var:1}) were switched off: {var:2}', 'vars' => array($group['name'], $stopped))), (string) ($_SESSION['sessionusername'] ?? ''));
+    }
+
     return array('ok' => true, 'error' => '', 'synced' => $synced);
 }
 
@@ -1303,6 +1309,136 @@ function ws_channel_move_group($viewer, $channel, $group_id, $preview = false)
     $synced = ws_group_sync_channel($viewer, $channel, $group_id);
 
     return $answer($synced['added'], $synced['removed']);
+}
+
+// ── Event subscriptions narrowed to a group ────────────────────────────
+//
+// An application's webhook subscription (api_webhooks, 2026.4.10, 10.76) can
+// name a group in channel_group_id: it then hears the workspace events of
+// the channels in that group and in the groups inside it, and nothing else.
+// The channel's group is read when the event happens, so a channel moved
+// into the group is heard from that moment and one moved out stops being
+// heard. What an event carries is not changed: a private channel's message
+// is still never announced.
+
+/**
+ * The channel a workspace event happened in: channel_id, or for a note the
+ * task's channel. 0 when it happened in none (a task of no channel).
+ *
+ * @param array $payload
+ * @return int
+ */
+function ws_webhook_event_channel_id($payload)
+{
+    $payload = (array) $payload;
+
+    if (array_key_exists('channel_id', $payload)) {
+        return max(0, (int) $payload['channel_id']);
+    }
+
+    if (isset($payload['task']) && is_array($payload['task'])) {
+        return max(0, (int) ($payload['task']['channel_id'] ?? 0));
+    }
+
+    return 0;
+}
+
+/**
+ * The groups an event's channel is in, nearest first: the ids a subscription
+ * narrowed to a group is matched against. Empty for an event of no channel,
+ * for a channel in no group and for anything but a workspace event.
+ *
+ * @param string $event
+ * @param array  $payload
+ * @return int[]
+ */
+function ws_webhook_event_groups($event, $payload)
+{
+    if ((strpos((string) $event, 'workspace.') !== 0) || !ws_groups_ready()) {
+        return array();
+    }
+
+    $channel_id = ws_webhook_event_channel_id($payload);
+
+    if ($channel_id <= 0) {
+        return array();
+    }
+
+    $group_id = (int) db_value("SELECT group_id FROM ws_channels WHERE id = '" . $channel_id . "' LIMIT 1");
+
+    return ($group_id > 0) ? ws_group_chain($group_id) : array();
+}
+
+/**
+ * Why a subscription cannot be narrowed to this group, or null when it can.
+ * The group must be one the application's owner sees in the channel list (a
+ * group they cannot see is answered like one that is not there), and every
+ * event must be a workspace event: an order or a product happens in no
+ * channel, so a narrowed subscription would never hear it.
+ *
+ * @param array    $owner    the application owner's user row
+ * @param int      $group_id
+ * @param string[] $events
+ * @return array|null error, field
+ */
+function ws_webhook_group_refused($owner, $group_id, $events)
+{
+    $viewer = ws_viewer((array) $owner);
+    $seen = false;
+
+    foreach (ws_groups_for($viewer) as $group) {
+        if ((int) $group['id'] === (int) $group_id) {
+            $seen = true;
+            break;
+        }
+    }
+
+    if (!$seen) {
+        return array('error' => lang('That group could not be found.'), 'field' => 'channel_group_id');
+    }
+
+    $workspace = function_exists('ws_webhook_events') ? ws_webhook_events() : array();
+
+    foreach ((array) $events as $event) {
+        if (!isset($workspace[(string) $event])) {
+            return array(
+                'error' => lang(array('string' => 'Only workspace events can be narrowed to a channel group: {var:1}', 'vars' => (string) $event)),
+                'field' => 'events',
+            );
+        }
+    }
+
+    return null;
+}
+
+/**
+ * A group taken away: the subscriptions narrowed to it are switched off
+ * (disabled) rather than left to hear the channels where they went. Those
+ * moved up to the group above, or to the top, and a subscription that heard
+ * one department would otherwise start hearing the whole company. The
+ * application sees the subscription stopped and narrows it anew.
+ *
+ * @param int $group_id
+ * @return int how many were switched off
+ */
+function ws_webhook_group_removed($group_id)
+{
+    $group_id = (int) $group_id;
+
+    if (($group_id <= 0) || !function_exists('pg_schema_has') || !pg_schema_has('api_webhooks', 'channel_group_id')) {
+        return 0;
+    }
+
+    $ids = array_map('intval', (array) db_values("SELECT id FROM api_webhooks
+        WHERE channel_group_id = '" . $group_id . "' AND status <> 'disabled'"));
+
+    if (empty($ids)) {
+        return 0;
+    }
+
+    db("UPDATE api_webhooks SET status = 'disabled' WHERE id IN (" . implode(',', $ids) . ")");
+
+    return count($ids);
 }
 
 /**

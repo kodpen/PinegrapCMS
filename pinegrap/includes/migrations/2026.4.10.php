@@ -49,6 +49,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_workspace_inbox_deleted(); // 10.88
 	upgrade_2026_4_10_style_bin();              // 10.4
 	upgrade_2026_4_10_noise_theme_file();       // 10.5
+	upgrade_2026_4_10_webhook_channel_group();  // 10.76
 
 }
 
@@ -1114,5 +1115,22 @@ function upgrade_2026_4_10_noise_theme_file() {
 		}
 
 	}
+
+}
+
+// Event subscriptions narrowed to one group of workspace channels
+// (2026.4.10, 10.76; includes/api/resources/webhooks.php, the "Event
+// subscriptions narrowed to a group" part of includes/workspace/groups.php).
+//
+// 0 is what every subscription was until now: the whole site. A group's id
+// narrows it to the workspace events that happen in a channel of that group
+// or of a group inside it, so one address can hear a department's channels
+// and nothing else. The channel's group is read when the event happens, so a
+// channel moved into the group is heard from then on.
+function upgrade_2026_4_10_webhook_channel_group() {
+
+	install_add_column('api_webhooks', 'channel_group_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('External API: a webhook subscription can be narrowed to one group of workspace channels (channel_group_id); it then hears the workspace events of the channels in that group and in the groups inside it.');
 
 }

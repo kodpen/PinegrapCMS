@@ -59,8 +59,58 @@ function api_webhook_present($row) {
 		'pending'          => ($queue !== null) ? (int)$queue['pending'] : 0,
 		'last_status_code' => $attempted ? (int)$queue['last_status_code'] : null,
 		'last_error'       => $attempted ? (string)$queue['last_error'] : null,
+		'channel_group_id' => (isset($row['channel_group_id']) && (int)$row['channel_group_id'] > 0) ? (int)$row['channel_group_id'] : null,
 		'created_at'   => api_time($row['created_timestamp'])
 	);
+
+}
+
+// The columns a subscription is read with. channel_group_id only once the
+// 2026.4.10 upgrade has added it; before that every subscription is a
+// whole-site one and reports null.
+function api_webhook_columns() {
+
+	return "id, url, events, status, last_success, last_failure, created_timestamp"
+		. (api_webhook_channel_groups_ready() ? ", channel_group_id" : "");
+
+}
+
+// The group of workspace channels a subscription is narrowed to, checked
+// against the events it will listen to. 0 - sent as 0, null or an empty
+// value - is no group: the whole site, as every subscription was before.
+//
+// The workspace says whether the group is one the application's owner sees
+// and whether every event is one of its own (ws_webhook_group_refused()). A
+// site with the workspace switched off has no group to name.
+function api_webhook_clean_channel_group($group_id, $events) {
+
+	$group_id = (int)$group_id;
+
+	if ($group_id <= 0) {
+
+		return 0;
+
+	}
+
+	if (!api_webhook_channel_groups_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+	}
+
+	$app = api_current_app();
+
+	$refused = function_exists('ws_webhook_group_refused')
+		? ws_webhook_group_refused((array)($app['owner'] ?? array()), $group_id, $events)
+		: array('error' => lang('That group could not be found.'), 'field' => 'channel_group_id');
+
+	if ($refused !== null) {
+
+		api_fail_validation($refused['error'], $refused['field']);
+
+	}
+
+	return $group_id;
 
 }
 
@@ -68,7 +118,7 @@ function api_webhooks_list($params) {
 
 	$app = api_current_app();
 
-	$rows = api_rows("SELECT id, url, events, status, last_success, last_failure, created_timestamp
+	$rows = api_rows("SELECT " . api_webhook_columns() . "
 		FROM api_webhooks
 		WHERE app_id = '" . (int)$app['id'] . "'
 		ORDER BY id ASC");
@@ -102,32 +152,43 @@ function api_webhooks_create($params) {
 
 	$clean = api_webhook_clean_events($params['events']);
 
+	$group_id = api_webhook_clean_channel_group(isset($params['channel_group_id']) ? $params['channel_group_id'] : 0, $clean);
+
 	if ((int)api_value("SELECT COUNT(*) FROM api_webhooks WHERE app_id = '" . (int)$app['id'] . "'") >= 10) {
 
 		api_fail(409, 'too_many_webhooks', lang('An application may hold ten subscriptions.'));
 
 	}
 
-	// Above: the address answers, every event named exists, and the
-	// application is under its ten subscriptions. Below: the row, and the one
-	// and only time its secret is readable.
-	api_dry_run_stop('created', 'webhook', array('url' => $params['url'], 'events' => $clean));
+	// Above: the address answers, every event named exists, the group (if
+	// one is named) is there for those events, and the application is under
+	// its ten subscriptions. Below: the row, and the one and only time its
+	// secret is readable.
+	api_dry_run_stop('created', 'webhook', array(
+		'url'              => $params['url'],
+		'events'           => $clean,
+		'channel_group_id' => ($group_id > 0) ? $group_id : null
+	));
 
 	$secret = api_generate_secret();
 
-	api_exec("INSERT INTO api_webhooks (app_id, url, events, secret, status, created_timestamp)
+	$narrowed = ($group_id > 0);
+
+	api_exec("INSERT INTO api_webhooks (app_id, url, events, secret, status, created_timestamp"
+		. ($narrowed ? ", channel_group_id" : "") . ")
 		VALUES (
 			'" . (int)$app['id'] . "',
 			'" . escape($params['url']) . "',
 			'" . escape(json_encode($clean)) . "',
 			'" . escape($secret) . "',
 			'active',
-			UNIX_TIMESTAMP()
+			UNIX_TIMESTAMP()"
+			. ($narrowed ? ", '" . $group_id . "'" : "") . "
 		)");
 
 	$id = api_insert_id();
 
-	$row = api_row("SELECT id, url, events, status, last_success, last_failure, created_timestamp
+	$row = api_row("SELECT " . api_webhook_columns() . "
 		FROM api_webhooks WHERE id = '" . $id . "' LIMIT 1");
 
 	$out = api_webhook_present($row);
@@ -173,7 +234,7 @@ function api_webhook_owned($id) {
 
 	$app = api_current_app();
 
-	$row = api_row("SELECT id, url, events, status, last_success, last_failure, created_timestamp
+	$row = api_row("SELECT " . api_webhook_columns() . "
 		FROM api_webhooks
 		WHERE id = '" . (int)$id . "' AND app_id = '" . (int)$app['id'] . "'
 		LIMIT 1");
@@ -263,9 +324,42 @@ function api_webhooks_update($params) {
 
 	}
 
+	$events = null;
+
 	if (array_key_exists('events', $params)) {
 
-		$set[] = "events = '" . escape(json_encode(api_webhook_clean_events($params['events']))) . "'";
+		$events = api_webhook_clean_events($params['events']);
+
+		$set[] = "events = '" . escape(json_encode($events)) . "'";
+
+	}
+
+	// The group and the events are checked together, whichever of them
+	// changes: a narrowed subscription may listen only to workspace events.
+	// Switching one back on (active) asks again whether its group is still
+	// there - a group taken away switches its subscriptions off, and turning
+	// one on would otherwise leave it hearing nothing without a word.
+	$group_sent = array_key_exists('channel_group_id', $params);
+
+	$group_id = $group_sent ? (int)$params['channel_group_id'] : (isset($row['channel_group_id']) ? (int)$row['channel_group_id'] : 0);
+
+	if ($group_sent || ($group_id > 0 && ($events !== null || (array_key_exists('status', $params) && $params['status'] === 'active')))) {
+
+		$listened = ($events !== null) ? $events : json_decode((string)$row['events'], true);
+
+		$group_id = api_webhook_clean_channel_group($group_id, is_array($listened) ? $listened : array());
+
+	}
+
+	if ($group_sent) {
+
+		if (!api_webhook_channel_groups_ready()) {
+
+			api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+		}
+
+		$set[] = "channel_group_id = '" . $group_id . "'";
 
 	}
 
@@ -421,6 +515,7 @@ function api_webhook_schema() {
 		'pending'          => 'integer',
 		'last_status_code' => 'integer?',
 		'last_error'       => 'string?',
+		'channel_group_id' => 'integer?',
 		'created_at'       => 'string?',
 		'secret'           => 'string',
 		'signature_header' => 'string',

@@ -23378,5 +23378,9 @@
     "Connect with Google": "Google hesabını bağla",
     "Connect with Microsoft": "Microsoft hesabını bağla",
     "Connect Buttons": "Bağlama Düğmeleri",
-    "The gift card service sent a reply that could not be read": "Hediye kartı hizmetinden okunamayan bir yanıt geldi"
+    "The gift card service sent a reply that could not be read": "Hediye kartı hizmetinden okunamayan bir yanıt geldi",
+    "Only workspace events can be narrowed to a channel group: {var:1}": "Yalnız Çalışma Alanı olayları bir kanal grubuyla sınırlanabilir: {var:1}",
+    "API event subscriptions narrowed to the workspace channel group ({var:1}) were switched off: {var:2}": "çalışma alanı kanal grubuyla ({var:1}) sınırlanmış API olay abonelikleri durduruldu: {var:2}",
+    "Channel group": "Kanal grubu",
+    "a group that was removed": "kaldırılmış bir grup"
 }

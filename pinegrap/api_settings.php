@@ -687,7 +687,8 @@ $webhook_rows = array();
 // one read, so they cannot disagree.
 $webhook_all = array();
 
-$hooks = db_items("SELECT id, app_id, url, events, status, last_success, last_failure
+$hooks = db_items("SELECT id, app_id, url, events, status, last_success, last_failure"
+	. (api_webhook_channel_groups_ready() ? ", channel_group_id" : "") . "
 	FROM api_webhooks
 	ORDER BY app_id ASC, id ASC");
 
@@ -769,7 +770,8 @@ if (is_array($hooks) && !empty($hooks)) {
 			'last_failure' => ((int)$hook['last_failure'] > 0) ? api_settings_ago($hook['last_failure']) : '',
 			'waiting'      => $state['waiting'],
 			'given_up'     => $state['given_up'],
-			'error'        => $state['error']
+			'error'        => $state['error'],
+			'channel_group_id' => isset($hook['channel_group_id']) ? (int)$hook['channel_group_id'] : 0
 		);
 
 		$webhook_rows[$key][] = $row;
@@ -1140,6 +1142,31 @@ $permission_rows = api_settings_permission_rows('scope', 'd_scope');
 // an empty box would be one more thing to read past on every visit.
 $webhook_card = '';
 
+// The names of the channel groups the subscriptions are narrowed to.
+$webhook_group_names = array();
+
+$webhook_group_ids = array();
+
+foreach ($webhook_all as $hook) {
+
+	if ($hook['channel_group_id'] > 0) {
+
+		$webhook_group_ids[$hook['channel_group_id']] = $hook['channel_group_id'];
+
+	}
+
+}
+
+if (!empty($webhook_group_ids) && pg_schema_has('ws_channel_groups')) {
+
+	foreach ((array)db_items("SELECT id, name FROM ws_channel_groups WHERE id IN (" . implode(',', $webhook_group_ids) . ")") as $group_row) {
+
+		$webhook_group_names[(int)$group_row['id']] = (string)$group_row['name'];
+
+	}
+
+}
+
 if (!empty($webhook_all)) {
 
 	$hook_labels = array(
@@ -1221,6 +1248,19 @@ if (!empty($webhook_all)) {
 		}
 
 		$chips = '';
+
+		// A subscription narrowed to a group of workspace channels hears only
+		// those channels; the chip says which group, or that it was removed
+		// (which switched the subscription off).
+		if ($hook['channel_group_id'] > 0) {
+
+			$group_name = isset($webhook_group_names[$hook['channel_group_id']])
+				? $webhook_group_names[$hook['channel_group_id']]
+				: lang('a group that was removed');
+
+			$chips .= '<span class="api-chip"><i class="bi bi-collection me-1"></i>' . h(lang('Channel group') . ': ' . $group_name) . '</span>';
+
+		}
 
 		foreach ($hook['events'] as $event_name) {
 

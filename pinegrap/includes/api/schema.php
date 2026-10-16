@@ -1277,10 +1277,11 @@ function api_schema() {
 			'returns' => 'Webhook',
 			'status'  => 201,
 			'summary' => 'Subscribe to events',
-			'description' => 'The signing secret is returned once, here. Each delivery carries X-Pinegrap-Signature: t=<unix>,v1=HMAC-SHA256(t + "." + body) - check it, and refuse a timestamp older than a few minutes.',
+			'description' => 'The signing secret is returned once, here. Each delivery carries X-Pinegrap-Signature: t=<unix>,v1=HMAC-SHA256(t + "." + body) - check it, and refuse a timestamp older than a few minutes. With channel_group_id the subscription hears only the workspace events of the channels in that group of channels and in the groups inside it, with the same body, signature and retries as any other.',
 			'params'  => array(
 				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'required' => true, 'description' => 'https address to call. It is checked now, not at delivery time.'),
-				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'required' => true, 'description' => 'Event names. GET this endpoint to see the list.')
+				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'required' => true, 'description' => 'Event names. GET this endpoint to see the list.'),
+				array('name' => 'channel_group_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Workspace: narrow the subscription to one group of channels (GET /workspace/channel-groups, a group the owner of the application sees). Every event must then be a workspace event; the channel\'s group is read when the event happens. 0, null or left out: the whole site.')
 			)
 		),
 
@@ -1328,7 +1329,8 @@ function api_schema() {
 				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'https address to call. It is checked now, not at delivery time.'),
 				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'Event names; replaces the whole list. GET /webhooks lists them.'),
-				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('active', 'disabled'))
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('active', 'disabled')),
+				array('name' => 'channel_group_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Workspace: narrow the subscription to one group of channels, or take the narrowing off with 0 or null; left out, it stays as it is. A narrowed subscription listens to workspace events only. Removing the group switches its subscriptions off (disabled); switching one back on asks for a group that is there.')
 			)
 		),
 
@@ -1346,7 +1348,8 @@ function api_schema() {
 				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'https address to call. It is checked now, not at delivery time.'),
 				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'Event names; replaces the whole list. GET /webhooks lists them.'),
-				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('active', 'disabled'))
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('active', 'disabled')),
+				array('name' => 'channel_group_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Workspace: narrow the subscription to one group of channels, or take the narrowing off with 0 or null; left out, it stays as it is. A narrowed subscription listens to workspace events only. Removing the group switches its subscriptions off (disabled); switching one back on asks for a group that is there.')
 			)
 		),
 
