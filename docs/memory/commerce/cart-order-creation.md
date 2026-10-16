@@ -12,7 +12,7 @@ description: When the visitor's order row is created (first real cart write, nev
 - The saved-cart link (`?r=CODE`, `_eo_restore_cart_from_reference_code()`) runs first, so a restored cart is the order brought up to date.
 - Without an order both widgets show their empty cart (the cart's empty message, the express order's "Your cart is empty"); every order query in them is guarded by `$order_id > 0`. Pricing, offers and stock checks still run, as on the legacy cart.
 
-## What was the symptom before PR #489?
+## What was the symptom before PR #492?
 - Each render called `initialize_order()` unconditionally, so every open of a designer cart or checkout page (/sepet, /odeme) without a session order wrote an empty `incomplete` order: no items, no buyer. Bots and other cookieless clients get a new session per request, so each of their hits left one row (dev.pinegrap.com orders 430-437, 2026-10-16). Signed-in visitors with an empty cart got one too, with their `user_id`.
 - Rows already written stay; the fix deletes nothing.
 
