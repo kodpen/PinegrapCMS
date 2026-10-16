@@ -428,6 +428,78 @@ function pg_signin_group_identities($rows, $order)
 }
 
 /**
+ * The page of this site a referrer names, as a path with its query, so the
+ * failure screen can send the visitor back to the screen the button was on.
+ * '' for another site's address, a malformed one, or the sign-in's own
+ * scripts (a page that only redirects is nowhere to go back to).
+ *
+ * @param string $referer the Referer header
+ * @param string $host    the host this request was made to
+ * @return string
+ */
+function pg_signin_referer_path($referer, $host)
+{
+    $referer = is_string($referer) ? trim($referer) : '';
+    $host = strtolower(preg_replace('/:\d+$/', '', is_string($host) ? trim($host) : ''));
+
+    if (($referer === '') || ($host === '') || preg_match('/[\x00-\x1F\x7F]/', $referer)) {
+        return '';
+    }
+
+    $parts = parse_url($referer);
+
+    if (!is_array($parts) || empty($parts['host']) || (strtolower($parts['host']) !== $host)
+        || !isset($parts['scheme']) || !in_array(strtolower($parts['scheme']), array('http', 'https'), true)) {
+        return '';
+    }
+
+    $path = isset($parts['path']) ? $parts['path'] : '/';
+
+    if (($path === '') || ($path[0] !== '/') || (strpos($path, '//') === 0) || (strpos($path, '/\\') === 0)
+        || preg_match('~/(signin|google_auth)\.php$~i', $path)) {
+        return '';
+    }
+
+    return $path . (isset($parts['query']) ? '?' . $parts['query'] : '');
+}
+
+/**
+ * The card of the screen a sign-in that did not complete ends on: what
+ * happened and where to go from here. Its own screen rather than the site's
+ * error page: that page is designed for "page not found" on most sites, and a
+ * refused sign-in shown there reads as a broken link.
+ *
+ * @param string $title
+ * @param string $message plain text
+ * @param array  $links   each array('url' => ..., 'label' => ..., 'primary' => bool)
+ * @param bool   $cancelled the person stopped at the provider: a notice, not an error
+ * @return string
+ */
+function pg_signin_failure_card($title, $message, $links, $cancelled = false)
+{
+    $buttons = '';
+
+    foreach ((array) $links as $link) {
+        if (!is_array($link) || empty($link['url']) || !isset($link['label'])) {
+            continue;
+        }
+
+        $buttons .= '<a class="btn ' . (!empty($link['primary']) ? 'btn-primary' : 'btn-outline-secondary') . '" href="' . h($link['url']) . '" rel="nofollow">'
+            . h($link['label']) . '</a>';
+    }
+
+    return '<main class="container py-4 py-md-5">
+        <div class="card mx-auto shadow-sm pg-signin-result" style="max-width: 32rem;">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-3"><i class="bi ' . ($cancelled ? 'bi-info-circle' : 'bi-exclamation-triangle text-danger') . ' me-2" aria-hidden="true"></i>' . h($title) . '</h1>
+                <p class="mb-4" role="' . ($cancelled ? 'status' : 'alert') . '">' . h($message) . '</p>
+                ' . (($buttons !== '') ? '<div class="d-flex flex-wrap gap-2">' . $buttons . '</div>' : '') . '
+            </div>
+        </div>
+    </main>';
+}
+
+/**
  * How an account signs in, as badges for the user and session lists: one
  * per provider, and a warning when a single provider is the only way in.
  *
@@ -1057,9 +1129,10 @@ function pg_signin_provider_label($provider_key)
  * @param string $send_to a same-site address to land on
  * @param string $signup  'create', 'membership' or 'none'; downgraded to
  *                        'none' when the site publishes no entrance page
+ * @param string $back    the page the button was on (pg_signin_referer_path())
  * @return array ok, url, error
  */
-function pg_signin_start($key, $send_to, $signup)
+function pg_signin_start($key, $send_to, $signup, $back = '')
 {
     if (!pg_signin_enabled($key)) {
         return array('ok' => false, 'url' => '', 'error' => lang('This sign-in is not available.'));
@@ -1090,6 +1163,7 @@ function pg_signin_start($key, $send_to, $signup)
         // The URL flag alone is forgeable; the site's own rule decides too.
         'signup'   => pg_google_signup_allowed() ? pg_signin_signup_mode($signup) : 'none',
         'send_to'  => pg_safe_back_url($send_to, ''),
+        'back'     => pg_safe_back_url((string) $back, ''),
         'started'  => time(),
     );
 
@@ -1129,14 +1203,14 @@ function pg_signin_start($key, $send_to, $signup)
  *
  * @param array $params the callback's query (or, for form_post, its body)
  * @return array ok, cancelled, error, provider, label, subject, email,
- *               email_verified, first_name, last_name, signup, send_to
+ *               email_verified, first_name, last_name, signup, send_to, back
  */
 function pg_signin_finish($params)
 {
     $result = array(
         'ok' => false, 'cancelled' => false, 'error' => '', 'provider' => '', 'label' => '',
         'subject' => '', 'email' => '', 'email_verified' => false, 'first_name' => '', 'last_name' => '',
-        'signup' => 'none', 'send_to' => '',
+        'signup' => 'none', 'send_to' => '', 'back' => '',
     );
 
     $fail = function ($error) use (&$result) {
@@ -1153,13 +1227,19 @@ function pg_signin_finish($params)
         unset($_SESSION['software']['signin'][$state]);
     }
 
+    // No sign-in waiting under this state in this session: the browser came
+    // back without the session the sign-in began in, or with an answer that
+    // was already used.
     if (!is_array($pending)) {
-        return $fail(lang('Sorry, we could not complete the sign-in because the request could not be verified. Please try again.'));
+        log_activity(lang('sign-in refused: no sign-in started in this browser session was waiting for the answer'), '');
+
+        return $fail(lang('This sign-in could not be verified, because this browser did not come back with the session the sign-in started in. This happens when the browser blocks or clears this site\'s cookies, when the sign-in finished in another browser or app, or when the return address was opened again (from the history, a bookmark or a copied link: each one works once). Please start the sign-in again from this site.'));
     }
 
     $result['signup'] = (string) $pending['signup'];
     $result['send_to'] = (string) $pending['send_to'];
     $result['provider'] = (string) $pending['provider'];
+    $result['back'] = isset($pending['back']) ? (string) $pending['back'] : '';
 
     if ((int) $pending['started'] < (time() - 900)) {
         return $fail(lang('The sign-in took too long. Please try again.'));
@@ -1180,11 +1260,13 @@ function pg_signin_finish($params)
     if (isset($params['error'])) {
         $error = is_string($params['error']) ? $params['error'] : '';
 
-        // The person backed out: not an error worth a page of its own.
+        // The person backed out, or the provider would not ask them: said
+        // so on the failure screen, because a silent return to the sign-in
+        // page reads as a button that did nothing.
         if (in_array($error, array('access_denied', 'user_cancelled_authorize', 'consent_required', 'interaction_required'), true)) {
             $result['cancelled'] = true;
 
-            return $fail(lang('The sign-in was cancelled.'));
+            return $fail(lang(array('string' => 'The sign-in was cancelled at {var:1}, so you are not signed in.', 'vars' => $provider['label'])));
         }
 
         return $fail(lang(array('string' => 'Sorry, {var:1} did not sign you in: {var:2}', 'vars' => array(
@@ -1373,4 +1455,106 @@ function pg_signin_create_member($identity)
     }
 
     return $user_id;
+}
+
+/**
+ * The account that uses an e-mail address, or 0. Asked only after
+ * pg_signin_match_user() found nobody for a verified address: an account
+ * here is then already tied to another person at the provider, and is
+ * neither taken over nor opened a second time.
+ *
+ * @param string $email
+ * @return int
+ */
+function pg_signin_address_user($email)
+{
+    if ((string) $email === '') {
+        return 0;
+    }
+
+    return (int) db_value("SELECT user_id FROM user WHERE user_email = '" . e($email) . "' ORDER BY user_id LIMIT 1");
+}
+
+
+/* ---------------------------------------------------------------------------
+   The failure screen
+   --------------------------------------------------------------------------- */
+
+/**
+ * Where the failure screen sends the visitor back to: the page the button
+ * was on, else the screen of the kind that started the sign-in (sign in,
+ * registration, membership), else the home page.
+ *
+ * @param string $back
+ * @param string $signup
+ * @return string
+ */
+function pg_signin_back_url($back, $signup)
+{
+    $back = pg_safe_back_url((string) $back, '');
+
+    if ($back !== '') {
+        return $back;
+    }
+
+    $types = array('create' => 'registration entrance', 'membership' => 'membership entrance');
+    $type = isset($types[$signup]) ? $types[$signup] : 'login';
+    $url = get_page_type_url($type);
+
+    if ((($url === false) || ($url === '')) && ($type !== 'login')) {
+        $url = get_page_type_url('login');
+    }
+
+    return (($url !== false) && ($url !== '')) ? (string) $url : PATH;
+}
+
+/**
+ * Ends a sign-in that did not complete on its own screen: what happened, a
+ * way back to the page the button was on, and another try with the same
+ * provider while it is on. Does not return.
+ *
+ * @param string $message plain text
+ * @param array  $context provider, send_to, signup, back, cancelled (what
+ *                        pg_signin_finish() returned carries them all)
+ */
+function pg_signin_fail($message, $context = array())
+{
+    $context = is_array($context) ? $context : array();
+    $provider_key = isset($context['provider']) ? (string) $context['provider'] : '';
+
+    // google_auth.php names its provider even when the session holds nothing.
+    if (($provider_key === '') && defined('PG_SIGNIN_PROVIDER')) {
+        $provider_key = (string) PG_SIGNIN_PROVIDER;
+    }
+
+    $signup = isset($context['signup']) ? (string) $context['signup'] : 'none';
+    $send_to = isset($context['send_to']) ? (string) $context['send_to'] : '';
+    $cancelled = !empty($context['cancelled']);
+
+    $title = $cancelled ? lang('Sign-in cancelled') : lang('Sign-in did not complete');
+
+    $links = array(array(
+        'url'     => pg_signin_back_url(isset($context['back']) ? $context['back'] : '', $signup),
+        'label'   => lang('Go Back'),
+        'primary' => true,
+    ));
+
+    $again = ($provider_key !== '') ? pg_signin_url($provider_key, $send_to, $signup) : '';
+
+    if ($again !== '') {
+        $links[] = array(
+            'url'   => $again,
+            'label' => lang(array('string' => 'Try again with {var:1}', 'vars' => pg_signin_provider_label($provider_key))),
+        );
+    }
+
+    if (!headers_sent()) {
+        header('Cache-Control: no-store');
+        header('X-Robots-Tag: noindex, nofollow');
+    }
+
+    echo output_header_secure(array('title' => $title))
+        . pg_signin_failure_card($title, $message, $links, $cancelled)
+        . output_footer_secure();
+    exit();
 }
