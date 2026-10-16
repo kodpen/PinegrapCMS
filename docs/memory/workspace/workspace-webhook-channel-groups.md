@@ -4,7 +4,7 @@ description: A webhook subscription narrowed to one group of Workspace channels 
 ---
 
 ## What does a narrowed subscription do?
-- `POST /webhooks`, `PATCH /webhooks/{id}` and `POST /webhooks/{id}/update` take `channel_group_id` since PR #482. 0, null or left out is the whole site, as every subscription was before. A group's id narrows the subscription to the workspace events of the channels in that group and in the groups inside it (any depth).
+- `POST /webhooks`, `PATCH /webhooks/{id}` and `POST /webhooks/{id}/update` take `channel_group_id` since PR #486. 0, null or left out is the whole site, as every subscription was before. A group's id narrows the subscription to the workspace events of the channels in that group and in the groups inside it (any depth).
 - Body, signature (`X-Pinegrap-Signature`), queue, retries, test and secret rotation are the ordinary ones: the filter only decides which subscriptions an event is queued for. The answer (`Webhook`) carries `channel_group_id` (null when not narrowed).
 - The channel's group is read when the event happens (`ws_webhook_event_groups()`), so a channel moved into the group is heard from then on, one moved out is not.
 - Which channel: `channel_id` in the event, or `task.channel_id` for `workspace.task.note_added` (`ws_webhook_event_channel_id()`). A task with no channel is heard only by whole-site subscriptions.
