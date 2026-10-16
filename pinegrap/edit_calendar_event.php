@@ -28,6 +28,19 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM calendar_events WHERE id 
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+// The recurring instance being edited: the edit button on a calendar event
+// page adds ?recurrence_number=N and the form posts it back. Opened from the
+// calendars list it is not given, so it stays empty; an array counts as not
+// given. Any other value is read as a number, the same way the calendar
+// event page reads it.
+pg_request_single_values(array('recurrence_number'));
+
+$requested_recurrence_number = '';
+
+if (isset($_GET['recurrence_number']) && ($_GET['recurrence_number'] !== '')) {
+    $requested_recurrence_number = (string) max(0, (int) $_GET['recurrence_number']);
+}
+
 // if user does not have access to calendar event, then output error
 if (validate_calendar_event_access($_REQUEST['id']) == false) {
     log_activity(lang('access denied to edit calendar event because user does not have access to calendar that the calendar event is in'), $_SESSION['sessionusername']);
@@ -212,7 +225,7 @@ if (!$_POST) {
         
         // if reservations are separated for each recurring instance then prepare to look for remaining spots for this recurrence number
         if ($liveform->get_field_value('separate_reservations') == 1) {
-            $recurrence_number = $_GET['recurrence_number'];
+            $recurrence_number = $requested_recurrence_number;
             
         // else reservations are not separated for each recurring instance so look for remaining spots for the 0 recurrence number
         } else {
@@ -452,7 +465,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
-                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'recurrence_number', 'value'=>$_GET['recurrence_number'])) . '
+                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'recurrence_number', 'value'=>$requested_recurrence_number)) . '
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-4">
