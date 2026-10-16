@@ -27,7 +27,7 @@ Pinegrap, LiveSite'tan doğdu ve 2017'den beri Kodpen tarafından geliştirilmek
 
 ## Demoyu deneyin
 
-[demo.pinegrap.site](https://demo.pinegrap.site), kurmadan önce denemek isteyenler için hazırlanmış bir **demo kurulumudur**: siteyi gezin, yönetim panelini açın ve görsel editörle bir sayfa oluşturun. Orada yapılan değişiklikler belirli aralıklarla sıfırlanır ve demo e-posta göndermez; lütfen gerçek kişisel bilgi ya da ödeme bilgisi girmeyin.
+[demo.pinegrap.site](https://demo.pinegrap.site), kurmadan önce denemek isteyenler için hazırlanmış bir **demo kurulumudur**: siteyi gezin, yönetim panelini açın ve görsel editörle bir sayfa oluşturun. Lütfen orada gerçek kişisel bilgi ya da ödeme bilgisi girmeyin.
 
 ---
 
