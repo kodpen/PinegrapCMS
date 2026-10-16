@@ -294,7 +294,8 @@ function submit_order($type) {
                             balance,
                             expiration_date
                         FROM gift_cards
-                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'");
+                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'")
+                        ?: array('id' => ''); // the card was deleted after it was applied
 
                     // If a gift card no longer exists, then output error.
                     if ($gift_card['id'] == '') {
@@ -3861,7 +3862,8 @@ function submit_order($type) {
                             id,
                             balance
                         FROM gift_cards
-                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'");
+                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'")
+                        ?: array('id' => ''); // the card was deleted after it was applied
 
                     // If a gift card could not be found or if there is not enough balance, then add error
                     // and remove applied gift card from order.
