@@ -100,8 +100,9 @@ function _eo_apply_section_bindings(&$tree, $sections_html)
 //     any, are discarded; UI should warn but legacy never did)
 function _eo_restore_cart_from_reference_code()
 {
-    if (empty($_GET['r'])) return;
-    $ref = trim((string)$_GET['r']);
+    // A list (?r[]=x) is not a reference code.
+    if (empty($_GET['r']) || !is_string($_GET['r'])) return;
+    $ref = trim($_GET['r']);
     // Legacy reference codes are 10-char alphanumeric (see generate_order_reference_code).
     // Cap at 50 defensively in case of format drift.
     if ($ref === '' || strlen($ref) > 50 || !preg_match('/^[A-Za-z0-9]+$/', $ref)) return;
