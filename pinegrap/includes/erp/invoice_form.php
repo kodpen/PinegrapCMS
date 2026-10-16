@@ -66,7 +66,9 @@ function erp_invoice_form_unit_codes()
  */
 function erp_invoice_form_line($source, $stored = false)
 {
-    $source = (array) $source;
+    // A field that came back as an array (lines[0][description][]=x) is
+    // not given; the row is drawn with that box empty.
+    $source = pg_request_row_values($source);
 
     $trim_number = function ($value, $decimals) {
         $text = number_format((float) $value, $decimals, '.', '');
@@ -693,7 +695,9 @@ function erp_invoice_form_read($liveform, $user)
         }
 
         foreach (array_values($posted_lines) as $line) {
-            $line = (array) $line;
+            // One value per field: one posted as an array is not given,
+            // rather than a line described as "Array".
+            $line = pg_request_row_values($line);
             $lines[] = array(
                 'product_id' => (int) ($line['product_id'] ?? 0),
                 'description' => (string) ($line['description'] ?? ''),

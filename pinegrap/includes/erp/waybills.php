@@ -166,6 +166,10 @@ function erp_waybill_lines_build($lines_in)
     foreach ($lines_in as $line) {
         $row_no++;
 
+        // One value per field, from the form or the API alike: one sent as
+        // an array is not given, rather than a line described as "Array".
+        $line = pg_request_row_values($line);
+
         $description = mb_substr(trim((string) ($line['description'] ?? '')), 0, 255);
         $quantity_raw = trim((string) ($line['quantity'] ?? ''));
         // Digits and separators only; the separators are read the way the

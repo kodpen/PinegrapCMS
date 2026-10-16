@@ -87,9 +87,11 @@ if ($_POST) {
 
     if (($action === 'align') && ($mode === 'linked')) {
 
+        // A field's choice is one word; one posted as an array
+        // (choice[email][]=erp) is no choice for that field.
         $choices = array();
         foreach ((array) ($_POST['choice'] ?? array()) as $field => $direction) {
-            if (in_array((string) $direction, array('erp', 'provider', 'keep'), true)) {
+            if (is_scalar($direction) && in_array((string) $direction, array('erp', 'provider', 'keep'), true)) {
                 $choices[(string) $field] = (string) $direction;
             }
         }
