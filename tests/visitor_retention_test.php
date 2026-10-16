@@ -306,3 +306,76 @@ function test_visitor_shrink_hold_reason_on_request()
 	pg_assert_same('moving', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('moving' => true))));
 	pg_assert_same('shared_tablespace', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts($requested + array('per_table' => false))));
 }
+
+// Names as the server spells them in its data directory: '-' and '.' become
+// '@002d' and '@002e'; a name beyond ASCII is not guessed at.
+function test_visitor_db_file_name()
+{
+	pg_assert_same('pinegrap_site', pg_visitor_db_file_name('pinegrap_site'));
+	pg_assert_same('Pinegrap2026', pg_visitor_db_file_name('Pinegrap2026'), 'letters keep their case');
+	pg_assert_same('my@002dsite', pg_visitor_db_file_name('my-site'));
+	pg_assert_same('a@002eb@0020c@0024', pg_visitor_db_file_name('a.b c$'));
+	pg_assert_same(null, pg_visitor_db_file_name('şirket'), 'beyond ASCII');
+	pg_assert_same(null, pg_visitor_db_file_name(''), 'no name');
+}
+
+// InnoDB's .ibd, MyISAM's two files together, the database folder also in
+// lower case for lower_case_table_names = 1, whatever slash ends the path.
+function test_visitor_table_file_paths()
+{
+	pg_assert_same(
+		array(array('/var/lib/mysql/site/visitors.ibd')),
+		pg_visitor_table_file_paths('/var/lib/mysql/', 'site', 'visitors', 'innodb'));
+
+	pg_assert_same(
+		array(
+			array('C:\ProgramData\MySQL\MySQL Server 8.0\Data/My@002dSite/visitors.ibd'),
+			array('C:\ProgramData\MySQL\MySQL Server 8.0\Data/my@002dsite/visitors.ibd'),
+		),
+		pg_visitor_table_file_paths('C:\ProgramData\MySQL\MySQL Server 8.0\Data\\', 'My-Site', 'visitors', 'innodb'),
+		'Windows data directory, a name with capitals');
+
+	pg_assert_same(
+		array(array('/var/lib/mysql/site/visitors.MYD', '/var/lib/mysql/site/visitors.MYI')),
+		pg_visitor_table_file_paths('/var/lib/mysql', 'site', 'visitors', 'myisam'));
+
+	pg_assert_same(array(), pg_visitor_table_file_paths('/var/lib/mysql', 'site', 'visitors', 'aria'), 'another engine');
+	pg_assert_same(array(), pg_visitor_table_file_paths('', 'site', 'visitors', 'innodb'), 'no data directory');
+	pg_assert_same(array(), pg_visitor_table_file_paths('/var/lib/mysql', 'şirket', 'visitors', 'innodb'), 'a name that cannot be spelled');
+}
+
+// Without a connection only the statistics are there: MyISAM's are the sizes
+// of its files, InnoDB's an estimate that adds the free space on top.
+function test_visitor_table_file_size_from_statistics()
+{
+	$row = array('data' => 300.0, 'index' => 100.0, 'free' => 50.0);
+
+	pg_assert_same(array('bytes' => 400.0, 'source' => 'server'), pg_visitor_table_file_size(array('engine' => 'myisam') + $row));
+	pg_assert_same(array('bytes' => 450.0, 'source' => 'estimate'), pg_visitor_table_file_size(array('engine' => 'innodb') + $row));
+	pg_assert_same(array('bytes' => 450.0, 'source' => 'estimate'), pg_visitor_table_file_size(array('engine' => '') + $row), 'unreadable definition');
+	pg_assert_same(array('bytes' => 0.0, 'source' => 'estimate'), pg_visitor_table_file_size(null), 'no row');
+}
+
+// Either threshold is enough: the records, or the size of the file.
+function test_visitor_table_is_large()
+{
+	$limits = pg_visitor_health_thresholds();
+
+	pg_assert_false(pg_visitor_table_is_large(array('rows' => $limits['rows'] - 1, 'file' => $limits['bytes'] - 1)));
+	pg_assert_true(pg_visitor_table_is_large(array('rows' => $limits['rows'], 'file' => 0.0)), 'records');
+	pg_assert_true(pg_visitor_table_is_large(array('rows' => 10, 'file' => $limits['bytes'])), 'a file mostly free space counts as well');
+	pg_assert_false(pg_visitor_table_is_large(null), 'nothing known');
+}
+
+// "about" goes in front of estimates only.
+function test_visitor_figure_text()
+{
+	foreach (array('counted', 'file', 'server') as $source) {
+		pg_assert_same('620 MB', pg_visitor_figure_text('620 MB', $source), $source);
+	}
+
+	foreach (array('estimate', 'shared') as $source) {
+		$text = pg_visitor_figure_text('620 MB', $source);
+		pg_assert_true(($text !== '620 MB') && (strpos($text, '620 MB') !== false), $source);
+	}
+}

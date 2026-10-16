@@ -502,18 +502,25 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
 } else {
 
-    $visitor_preview = pg_visitor_cleanup_preview($visitor_catalog);
+    // Counted and read from the file where that can be done from here; the
+    // statistics of the catalog row are a guess on InnoDB.
+    $visitor_figures = pg_visitor_table_figures($visitor_catalog);
+    $visitor_rows_text = pg_visitor_figure_text(pg_format_number($visitor_figures['rows'], 0), $visitor_figures['rows_source']);
+    $visitor_file_text = pg_visitor_figure_text(pg_innodb_size_label($visitor_figures['file']), $visitor_figures['file_source']);
+    $visitor_innodb = ($visitor_catalog['engine'] === 'innodb');
+
+    $visitor_preview = pg_visitor_cleanup_preview(array('rows' => $visitor_figures['rows']) + $visitor_catalog);
     $visitor_last = pg_visitor_cleanup_last();
     $visitor_through = $visitor_settings['summary'] ? pg_visitor_summary_through() : '';
     $visitor_settings_link = '<a href="settings_seo.php#pgset-analytics">' . h(lang('Change')) . '</a>';
 
     $visitor_alert = '';
 
-    if (pg_visitor_table_is_large($visitor_catalog)) {
+    if (pg_visitor_table_is_large($visitor_figures)) {
 
         $visitor_size = lang(array(
-            'string' => 'The visitors table holds about {var:1} records and takes {var:2}.',
-            'vars' => array(pg_format_number($visitor_catalog['rows'], 0), pg_innodb_size_label($visitor_catalog['bytes'])),
+            'string' => 'The visitors table holds {var:1} records and its file takes {var:2}.',
+            'vars' => array($visitor_rows_text, $visitor_file_text),
         ));
 
         if ($visitor_settings['days'] <= 0) {
@@ -523,6 +530,8 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                 'string' => '{var:1} of them are older than {var:2} days. The general job removes them a little at a time; the button below starts on them now.',
                 'vars' => array(pg_format_number($visitor_preview['rows'], 0), $visitor_settings['days']),
             ));
+        } elseif ($visitor_innodb && pg_visitor_shrink_worth($visitor_catalog)) {
+            $visitor_advice = lang('Much of the file is free space left by removed records; it goes back to the disk when the table is rebuilt (see below).');
         } else {
             $visitor_advice = lang(array(
                 'string' => 'All of them are from the last {var:1} days; a shorter period makes the table smaller.',
@@ -578,7 +587,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
             'vars' => array(
                 get_absolute_time(array('timestamp' => $visitor_move['finished_at'], 'type' => 'date', 'format' => 'plain_text')),
                 pg_innodb_size_label($visitor_move['bytes_before']),
-                pg_innodb_size_label($visitor_move['bytes_after']),
+                pg_visitor_figure_text(pg_innodb_size_label($visitor_move['bytes_after']), $visitor_move['bytes_source']),
             ),
         ));
     }
@@ -596,7 +605,6 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     // that room is a large share of the file (pg_visitor_shrink_run()); this
     // says how the last rebuild ended, and when the next one comes or what it
     // waits for.
-    $visitor_innodb = ($visitor_catalog['engine'] === 'innodb');
     $visitor_shrink_reason = '';
 
     if ($visitor_innodb) {
@@ -624,8 +632,8 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                             'string' => 'The visitors table was rebuilt on {var:1} and its file made smaller: {var:2} before, {var:3} now.',
                             'vars' => array(
                                 get_absolute_time(array('timestamp' => $visitor_shrink['finished_at'], 'type' => 'date', 'format' => 'plain_text')),
-                                pg_innodb_size_label($visitor_shrink['file_before']),
-                                pg_innodb_size_label($visitor_shrink['file_after']),
+                                pg_visitor_figure_text(pg_innodb_size_label($visitor_shrink['file_before']), $visitor_shrink['file_source']),
+                                pg_visitor_figure_text(pg_innodb_size_label($visitor_shrink['file_after']), $visitor_shrink['file_source']),
                             ),
                         ))) . '</div>
                     </div>';
@@ -676,13 +684,20 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     }
 
     $visitor_facts = array(
-        lang('Records') => pg_format_number($visitor_catalog['rows'], 0),
-        lang('Size') => pg_innodb_size_label($visitor_catalog['bytes']),
-        lang('Free space') => pg_innodb_size_label($visitor_catalog['free']),
+        lang('Records') => $visitor_rows_text,
+        lang('File size') => $visitor_file_text,
+        lang('Free space') => pg_innodb_size_label($visitor_figures['free']),
         lang('Oldest record') => ($visitor_preview['oldest'] > 0) ? get_absolute_time(array('timestamp' => $visitor_preview['oldest'], 'type' => 'date', 'format' => 'plain_text')) : '—',
         lang('Kept for') => $visitor_kept,
         lang('Daily summary') => $visitor_summary,
         lang('Last cleanup') => $visitor_last_text,
+    );
+
+    // Where each size and count came from, beside it.
+    $visitor_sources = array(
+        lang('Records') => pg_visitor_figure_source_text($visitor_figures['rows_source']),
+        lang('File size') => pg_visitor_figure_source_text($visitor_figures['file_source']),
+        lang('Free space') => pg_visitor_figure_source_text('server'),
     );
 
     $visitor_fact_list = '';
@@ -690,7 +705,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     foreach ($visitor_facts as $visitor_label => $visitor_value) {
         $visitor_fact_list .= '
                             <dt class="col-5 col-md-4 fw-normal text-body-secondary">' . h($visitor_label) . '</dt>
-                            <dd class="col-7 col-md-8 mb-1">' . h($visitor_value) . (($visitor_label === lang('Kept for')) ? ' · ' . $visitor_settings_link : '') . '</dd>';
+                            <dd class="col-7 col-md-8 mb-1">' . h($visitor_value)
+                                . (isset($visitor_sources[$visitor_label]) ? ' <span class="text-body-secondary">· ' . h($visitor_sources[$visitor_label]) . '</span>' : '')
+                                . (($visitor_label === lang('Kept for')) ? ' · ' . $visitor_settings_link : '') . '</dd>';
     }
 
     // What the button would remove, counted now.

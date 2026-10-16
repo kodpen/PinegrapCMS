@@ -904,8 +904,8 @@ function pg_visitor_cleanup_preview($catalog_row = null)
 /**
  * When the visitors table is large enough to be worth a word in the panel.
  *
- * Rows from the server's statistics (an estimate on InnoDB), bytes data plus
- * indexes.
+ * Rows and bytes as pg_visitor_table_figures() gives them: the records
+ * counted where they are counted, the size of the table's file.
  *
  * @return array('rows' => int, 'bytes' => float)
  */
@@ -920,18 +920,300 @@ function pg_visitor_health_thresholds()
 /**
  * Whether the figures of the visitors table cross either threshold.
  *
- * @param array $catalog_row pg_db_table_catalog()['visitors']
+ * No database access.
+ *
+ * @param array $figures pg_visitor_table_figures()
  * @return bool
  */
-function pg_visitor_table_is_large($catalog_row)
+function pg_visitor_table_is_large($figures)
 {
-    if (!is_array($catalog_row)) {
+    if (!is_array($figures)) {
         return false;
     }
 
     $limits = pg_visitor_health_thresholds();
 
-    return ((int) $catalog_row['rows'] >= $limits['rows']) || ((float) $catalog_row['bytes'] >= $limits['bytes']);
+    $rows = isset($figures['rows']) ? (int) $figures['rows'] : 0;
+    $file = isset($figures['file']) ? (float) $figures['file'] : 0.0;
+
+    return ($rows >= $limits['rows']) || ($file >= $limits['bytes']);
+}
+
+// -- How large the table is ---------------------------------------------------
+//
+// information_schema.TABLES is a guess on InnoDB: TABLE_ROWS and the page
+// counts behind DATA_LENGTH and INDEX_LENGTH come from a sample of pages,
+// refreshed once a tenth of the rows has changed, so after a large cleanup or
+// a rebuild they can be far off for a while. The figures below are read from
+// where the truth is when it can be reached from here, and say where each one
+// came from; the statistics stand in for the rest.
+
+/**
+ * Above this many records by the server's estimate an InnoDB visitors table
+ * is not counted for the screen. COUNT(*) reads the smallest index from end to
+ * end, about a second for a million rows that are not in memory; at that size
+ * the estimate is near enough, and is marked as one.
+ */
+define('PG_VISITOR_COUNT_MAX_ROWS', 1000000);
+
+/**
+ * A database or table name as MySQL and MariaDB spell it in file names:
+ * letters, digits and the underscore as they are, every other ASCII
+ * character '@' and its code in four hex digits ('-' is '@002d'). Characters
+ * beyond ASCII have a table of their own, not repeated here: such a name
+ * gives null, and the size is read from elsewhere.
+ *
+ * No database access.
+ *
+ * @param string $name
+ * @return string|null
+ */
+function pg_visitor_db_file_name($name)
+{
+    $name = (string) $name;
+
+    if (($name === '') || (preg_match('/[^\x00-\x7f]/', $name) === 1)) {
+        return null;
+    }
+
+    return preg_replace_callback('/[^A-Za-z0-9_]/', function ($match) {
+        return sprintf('@%04x', ord($match[0]));
+    }, $name);
+}
+
+/**
+ * The files a table keeps under the database server's data directory, as
+ * sets to try one after the other: InnoDB's own .ibd file, MyISAM's .MYD and
+ * .MYI together. The database's folder is tried as it is spelled and in lower
+ * case, which is how a server with lower_case_table_names = 1 (the default on
+ * Windows) names it.
+ *
+ * No database access.
+ *
+ * @param string $datadir  @@datadir
+ * @param string $database DATABASE()
+ * @param string $table
+ * @param string $engine   lower case
+ * @return array of arrays of paths; empty when there is nothing to look for
+ */
+function pg_visitor_table_file_paths($datadir, $database, $table, $engine)
+{
+    $datadir = rtrim((string) $datadir, '/\\');
+    $folder = pg_visitor_db_file_name($database);
+    $file = pg_visitor_db_file_name($table);
+
+    if ($engine === 'innodb') {
+        $extensions = array('.ibd');
+    } elseif ($engine === 'myisam') {
+        $extensions = array('.MYD', '.MYI');
+    } else {
+        return array();
+    }
+
+    if (($datadir === '') || ($folder === null) || ($file === null)) {
+        return array();
+    }
+
+    $sets = array();
+
+    foreach (array_unique(array($folder, strtolower($folder))) as $spelling) {
+
+        $paths = array();
+
+        foreach ($extensions as $extension) {
+            $paths[] = $datadir . '/' . $spelling . '/' . $file . $extension;
+        }
+
+        $sets[] = $paths;
+    }
+
+    return $sets;
+}
+
+/**
+ * The size of the visitors table's file on disk, and where the figure came
+ * from:
+ *
+ * 'file'     read from the file itself, when the database server runs on
+ *            this machine and the web server may look into its data
+ *            directory (many servers keep that directory to themselves);
+ * 'server'   the file size the database server gives: on InnoDB from its
+ *            list of tablespaces (INNODB_TABLESPACES on MySQL 8,
+ *            INNODB_SYS_TABLESPACES on MySQL 5.7 and MariaDB, both behind
+ *            the PROCESS privilege), on MyISAM from the statistics, which
+ *            are the sizes of its two files;
+ * 'estimate' the rows, the indexes and the free space of InnoDB's statistics
+ *            added up;
+ * 'shared'   the same estimate, for a table kept in InnoDB's shared file
+ *            (innodb_file_per_table off), which has no file of its own.
+ *
+ * @param array|null $catalog_row pg_db_table_catalog()['visitors']
+ * @return array('bytes' => float, 'source' => string)
+ */
+function pg_visitor_table_file_size($catalog_row)
+{
+    $engine = isset($catalog_row['engine']) ? (string) $catalog_row['engine'] : '';
+    $data = isset($catalog_row['data']) ? (float) $catalog_row['data'] : 0.0;
+    $index = isset($catalog_row['index']) ? (float) $catalog_row['index'] : 0.0;
+    $free = isset($catalog_row['free']) ? (float) $catalog_row['free'] : 0.0;
+
+    // MyISAM counts the room of removed rows inside DATA_LENGTH; InnoDB
+    // reports the free extents of the file apart from it.
+    $statistics = ($engine === 'myisam')
+        ? array('bytes' => $data + $index, 'source' => 'server')
+        : array('bytes' => $data + $index + $free, 'source' => 'estimate');
+
+    if (!in_array($engine, array('innodb', 'myisam'), true) || !class_exists('db') || empty(db::$con)) {
+        return $statistics;
+    }
+
+    $result = pg_visitor_move_query("SELECT @@datadir, DATABASE(), @@innodb_file_per_table");
+    $server = $result ? mysqli_fetch_row($result) : null;
+
+    if (!is_array($server)) {
+        return $statistics;
+    }
+
+    // A data directory of a server on another machine is a path there, which
+    // may name a file of another database here.
+    if (defined('DB_HOST') && pg_visitor_move_db_is_local(DB_HOST)) {
+
+        foreach (pg_visitor_table_file_paths($server[0], $server[1], 'visitors', $engine) as $paths) {
+
+            $bytes = 0.0;
+
+            foreach ($paths as $path) {
+
+                // PHP keeps what it learned of a file for the rest of the
+                // request; the rebuild reads the size before and after.
+                clearstatcache(true, $path);
+
+                $size = @filesize($path);
+
+                if (($size === false) || ($size < 0)) {
+                    continue 2;
+                }
+
+                $bytes += (float) $size;
+            }
+
+            return array('bytes' => $bytes, 'source' => 'file');
+        }
+    }
+
+    if ($engine === 'myisam') {
+        return $statistics;
+    }
+
+    $folder = pg_visitor_db_file_name($server[1]);
+
+    if ($folder !== null) {
+
+        foreach (array('INNODB_TABLESPACES', 'INNODB_SYS_TABLESPACES') as $view) {
+
+            $result = pg_visitor_move_query(
+                "SELECT FILE_SIZE
+                FROM information_schema." . $view . "
+                WHERE NAME = '" . e($folder . '/visitors') . "'");
+
+            $row = $result ? mysqli_fetch_row($result) : null;
+
+            if (is_array($row) && ((float) $row[0] > 0)) {
+                return array('bytes' => (float) $row[0], 'source' => 'server');
+            }
+        }
+    }
+
+    if (($server[2] !== null) && in_array(strtoupper(trim((string) $server[2])), array('0', 'OFF'), true)) {
+        $statistics['source'] = 'shared';
+    }
+
+    return $statistics;
+}
+
+/**
+ * The figures of the visitors table the Database Engine card and the System
+ * Status line show, each with where it came from.
+ *
+ * rows: MyISAM keeps the exact count, which is what its statistics give; an
+ * InnoDB table is counted up to PG_VISITOR_COUNT_MAX_ROWS by the estimate,
+ * and above it the estimate stands ('estimate'). file:
+ * pg_visitor_table_file_size(). free: the free space inside the file as the
+ * server reports it (on InnoDB the wholly free extents, which a rebuild gives
+ * back to the disk).
+ *
+ * @param array $catalog_row pg_db_table_catalog()['visitors']
+ * @return array('rows' => int, 'rows_source' => 'counted'|'estimate',
+ *               'file' => float, 'file_source' => string, 'free' => float)
+ */
+function pg_visitor_table_figures($catalog_row)
+{
+    $engine = isset($catalog_row['engine']) ? (string) $catalog_row['engine'] : '';
+    $rows = isset($catalog_row['rows']) ? (int) $catalog_row['rows'] : 0;
+    $rows_source = ($engine === 'myisam') ? 'counted' : 'estimate';
+
+    if (($engine === 'innodb') && ($rows <= PG_VISITOR_COUNT_MAX_ROWS) && class_exists('db') && !empty(db::$con)) {
+
+        $result = pg_visitor_move_query("SELECT COUNT(*) FROM visitors");
+        $row = $result ? mysqli_fetch_row($result) : null;
+
+        if (is_array($row)) {
+            $rows = (int) $row[0];
+            $rows_source = 'counted';
+        }
+    }
+
+    $file = pg_visitor_table_file_size($catalog_row);
+
+    return array(
+        'rows' => $rows,
+        'rows_source' => $rows_source,
+        'file' => $file['bytes'],
+        'file_source' => $file['source'],
+        'free' => isset($catalog_row['free']) ? (float) $catalog_row['free'] : 0.0,
+    );
+}
+
+/**
+ * A figure for the screen, with "about" in front when it is an estimate.
+ *
+ * @param string $text   the number or the size, formatted
+ * @param string $source as pg_visitor_table_figures() gives it
+ * @return string
+ */
+function pg_visitor_figure_text($text, $source)
+{
+    if (in_array($source, array('estimate', 'shared'), true)) {
+        return lang(array('string' => 'about {var:1}', 'vars' => array($text)));
+    }
+
+    return (string) $text;
+}
+
+/**
+ * Where a figure came from, in a few words for the screen.
+ *
+ * @param string $source 'counted', 'file', 'server', 'estimate' or 'shared'
+ * @return string
+ */
+function pg_visitor_figure_source_text($source)
+{
+    switch ($source) {
+
+        case 'counted':
+            return lang('counted');
+
+        case 'file':
+            return lang('read from the file');
+
+        case 'server':
+            return lang('reported by the database server');
+
+        case 'shared':
+            return lang('estimate; the table is in the shared InnoDB file');
+    }
+
+    return lang('estimate from the server statistics');
 }
 
 /**
@@ -1040,6 +1322,7 @@ function pg_visitor_move_last()
         'rows_before' => isset($last['rows_before']) ? (int) $last['rows_before'] : 0,
         'bytes_before' => isset($last['bytes_before']) ? (float) $last['bytes_before'] : 0.0,
         'bytes_after' => isset($last['bytes_after']) ? (float) $last['bytes_after'] : 0.0,
+        'bytes_source' => isset($last['bytes_source']) ? (string) $last['bytes_source'] : '',
         'finished_at' => isset($last['finished_at']) ? (int) $last['finished_at'] : 0,
         'failed_at' => isset($last['failed_at']) ? (int) $last['failed_at'] : 0,
     );
@@ -1561,7 +1844,8 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
         $last['synced_at'] = 0;
         $last['copied'] = 0;
         $last['rows_before'] = isset($catalog_row['rows']) ? (int) $catalog_row['rows'] : 0;
-        $last['bytes_before'] = isset($catalog_row['bytes']) ? (float) $catalog_row['bytes'] : 0.0;
+        $file_before = pg_visitor_table_file_size($catalog_row);
+        $last['bytes_before'] = $file_before['bytes'];
         $last['finished_at'] = 0;
 
         // Written now: a run cut off from here on must find when it began.
@@ -1857,13 +2141,15 @@ function pg_visitor_move_finish(&$last, $result)
     pg_visitor_move_query("DROP TABLE `" . $old . "`");
 
     $catalog = pg_db_table_catalog();
+    $file_after = isset($catalog['visitors']) ? pg_visitor_table_file_size($catalog['visitors']) : array('bytes' => 0.0, 'source' => '');
 
     $last['state'] = 'done';
     $last['error'] = '';
     $last['reason'] = '';
     $last['requested'] = false;
     $last['finished_at'] = time();
-    $last['bytes_after'] = isset($catalog['visitors']) ? (float) $catalog['visitors']['bytes'] : 0.0;
+    $last['bytes_after'] = $file_after['bytes'];
+    $last['bytes_source'] = $file_after['source'];
 
     $result['state'] = 'done';
     $result['text'] = pg_visitor_move_result_text($last);
@@ -1909,7 +2195,7 @@ function pg_visitor_move_result_text($last)
     if ($last['state'] === 'done') {
         return lang(array(
             'string' => 'The visitors table was moved to InnoDB: {var:1} before, {var:2} now.',
-            'vars' => array(pg_innodb_size_label($last['bytes_before']), pg_innodb_size_label($last['bytes_after'])),
+            'vars' => array(pg_innodb_size_label($last['bytes_before']), pg_visitor_figure_text(pg_innodb_size_label($last['bytes_after']), $last['bytes_source'])),
         ));
     }
 
@@ -2022,6 +2308,7 @@ function pg_visitor_shrink_last()
         'seconds' => isset($last['seconds']) ? (float) $last['seconds'] : 0.0,
         'file_before' => isset($last['file_before']) ? (float) $last['file_before'] : 0.0,
         'file_after' => isset($last['file_after']) ? (float) $last['file_after'] : 0.0,
+        'file_source' => isset($last['file_source']) ? (string) $last['file_source'] : '',
         'needed' => isset($last['needed']) ? (float) $last['needed'] : 0.0,
         'quiet_hour' => isset($last['quiet_hour']) ? (int) $last['quiet_hour'] : 3,
     );
@@ -2277,22 +2564,6 @@ function pg_visitor_shrink_hold_reason($facts)
 }
 
 /**
- * The size of the table's file, from its catalog row: the rows, the indexes
- * and the free space inside it.
- *
- * @param array|null $catalog_row
- * @return float
- */
-function pg_visitor_shrink_file_size($catalog_row)
-{
-    if (!is_array($catalog_row)) {
-        return 0.0;
-    }
-
-    return (float) $catalog_row['bytes'] + (float) $catalog_row['free'];
-}
-
-/**
  * Rebuild the visitors table to make its file smaller, or look whether it
  * should be.
  *
@@ -2352,15 +2623,16 @@ function pg_visitor_shrink_run($requested = false)
     if ($last['state'] === 'running') {
 
         $catalog = pg_db_table_catalog();
-        $file_now = isset($catalog['visitors']) ? pg_visitor_shrink_file_size($catalog['visitors']) : 0.0;
+        $file_now = isset($catalog['visitors']) ? pg_visitor_table_file_size($catalog['visitors']) : array('bytes' => 0.0, 'source' => '');
 
         // How long it ran is not known.
         $last['seconds'] = 0.0;
 
-        if (($file_now > 0) && ($last['file_before'] > 0) && ($file_now < 0.9 * $last['file_before'])) {
+        if (($file_now['bytes'] > 0) && ($last['file_before'] > 0) && ($file_now['bytes'] < 0.9 * $last['file_before'])) {
             $last['state'] = 'done';
             $last['finished_at'] = time();
-            $last['file_after'] = $file_now;
+            $last['file_after'] = $file_now['bytes'];
+            $last['file_source'] = $file_now['source'];
             $last['error'] = '';
             $result['text'] = pg_visitor_shrink_result_text($last);
         } else {
@@ -2451,8 +2723,11 @@ function pg_visitor_shrink_run($requested = false)
     $last['reason'] = '';
     $last['error'] = '';
     $last['started'] = time();
-    $last['file_before'] = pg_visitor_shrink_file_size($catalog_row);
+    $file_before = pg_visitor_table_file_size($catalog_row);
+
+    $last['file_before'] = $file_before['bytes'];
     $last['file_after'] = 0.0;
+    $last['file_source'] = $file_before['source'];
 
     pg_visitor_shrink_save($last);
 
@@ -2471,10 +2746,12 @@ function pg_visitor_shrink_run($requested = false)
     if ($rebuild['state'] === 'ran') {
 
         $after = pg_db_table_catalog();
+        $file_after = isset($after['visitors']) ? pg_visitor_table_file_size($after['visitors']) : array('bytes' => 0.0, 'source' => '');
 
         $last['state'] = 'done';
         $last['finished_at'] = time();
-        $last['file_after'] = isset($after['visitors']) ? pg_visitor_shrink_file_size($after['visitors']) : 0.0;
+        $last['file_after'] = $file_after['bytes'];
+        $last['file_source'] = $file_after['source'];
 
         $result['state'] = 'done';
         $result['text'] = pg_visitor_shrink_result_text($last);
@@ -2551,7 +2828,10 @@ function pg_visitor_shrink_result_text($last)
     if (($last['state'] === 'done') && ($last['seconds'] <= 0)) {
         return lang(array(
             'string' => 'The visitors table was rebuilt and its file made smaller: {var:1} before, {var:2} now.',
-            'vars' => array(pg_innodb_size_label($last['file_before']), pg_innodb_size_label($last['file_after'])),
+            'vars' => array(
+                pg_visitor_figure_text(pg_innodb_size_label($last['file_before']), $last['file_source']),
+                pg_visitor_figure_text(pg_innodb_size_label($last['file_after']), $last['file_source']),
+            ),
         ));
     }
 
@@ -2560,8 +2840,8 @@ function pg_visitor_shrink_result_text($last)
             'string' => 'The visitors table was rebuilt in {var:1} s and its file made smaller: {var:2} before, {var:3} now.',
             'vars' => array(
                 pg_format_number($last['seconds'], 1),
-                pg_innodb_size_label($last['file_before']),
-                pg_innodb_size_label($last['file_after']),
+                pg_visitor_figure_text(pg_innodb_size_label($last['file_before']), $last['file_source']),
+                pg_visitor_figure_text(pg_innodb_size_label($last['file_after']), $last['file_source']),
             ),
         ));
     }
