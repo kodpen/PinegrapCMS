@@ -376,6 +376,14 @@ if (
 
 // if the order has not been submitted yet, then update order items
 if ($order_submitted == false) {
+    // The form posts its quantities and donation amounts as lists keyed by item
+    // (quantity[<item>]=); one posted as a single value (quantity=5) counts as not given.
+    foreach (array('quantity', 'donations') as $pg_post_field) {
+        if (isset($_POST[$pg_post_field]) && !is_array($_POST[$pg_post_field])) {
+            unset($_POST[$pg_post_field]);
+        }
+    }
+
     // loop through all order items in order
     foreach ($order_items as $key => $order_item) {
         // An item's donation amount and quantity are one string each; one posted as an
