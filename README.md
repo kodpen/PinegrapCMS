@@ -27,7 +27,7 @@ Pinegrap grew out of LiveSite and has been developed by Kodpen since 2017. It ru
 
 ## Try the demo
 
-[demo.pinegrap.site](https://demo.pinegrap.site) is a **demo installation** of Pinegrap for anyone who wants to try it before installing: look around the site, open the control panel and build a page with the visual editor. Changes made there are reset on a schedule and the demo sends no e-mail, so please do not enter real personal data or payment details.
+[demo.pinegrap.site](https://demo.pinegrap.site) is a **demo installation** of Pinegrap for anyone who wants to try it before installing: look around the site, open the control panel and build a page with the visual editor. Please do not enter real personal data or payment details there.
 
 ---
 
