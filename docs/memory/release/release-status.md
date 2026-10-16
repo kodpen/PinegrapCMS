@@ -20,5 +20,6 @@ description: Last released version (2026.4.9), the open version (2026.4.10), its
 
 ## What never ships in public notes?
 - Owner decision: hosting-platform features (pinegrap.site; `PG_HOSTED` hosted-site mode, `PG_DEMO` demo mode) never go into `changelog.txt`, README or GitHub release notes. Their files live in `dev/hosting/` (ignored). `pg_hosted()` / `pg_demo()` checks stay in the product; inert unless the constants are defined.
+- Exception (owner request 2026-10-16): both READMEs link demo.pinegrap.site as a demo installation people can try. Only the link and what a visitor sees there (reset on a schedule, no e-mail) are named; hosting features and the constants stay out.
 
 Related: docs/memory/workflow/git-branches-and-shared-files.md
