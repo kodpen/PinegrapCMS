@@ -356,3 +356,22 @@ function test_signin_failure_card()
 	pg_assert_contains('bi-info-circle', $cancelled, 'a notice mark');
 	pg_assert_false(strpos($cancelled, 'd-flex') !== false, 'no button row without links');
 }
+
+function test_signin_button_html_is_one_markup_for_every_provider()
+{
+	$google = pg_signin_button_html('google', '/pinegrap/google_auth.php?send_to=/a&b=1', 'Sign in with Google');
+	$apple = pg_signin_button_html('apple', '/pinegrap/signin.php?provider=apple', 'Sign in with <Apple>');
+
+	pg_assert_contains('class="pg-signin-button pg-signin-google"', $google, 'a shared class and the provider class');
+	pg_assert_contains('href="/pinegrap/google_auth.php?send_to=/a&amp;b=1"', $google, 'the address is escaped');
+	pg_assert_contains('min-width:240px', $google, 'a common width so a column lines up');
+	pg_assert_contains('#4285F4', strtoupper($google), 'Google keeps its own mark');
+	pg_assert_false(strpos($google, 'gap:') !== false, 'no flex gap, which older browsers ignore');
+	pg_assert_contains('background:#000 !important', $apple, 'Apple is black');
+	pg_assert_contains('Sign in with &lt;Apple&gt;', $apple, 'the label is escaped');
+
+	foreach (array('google', 'microsoft', 'apple', 'unknown') as $key) {
+		$style = pg_signin_button_style($key);
+		pg_assert_true(isset($style['border'], $style['background'], $style['color'], $style['font']), $key . ' has a complete style');
+	}
+}

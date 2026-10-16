@@ -741,7 +741,7 @@ function pg_signin_url($key, $send_to = '', $signup = 'create')
 }
 
 /**
- * A provider's mark as inline SVG.
+ * A provider's mark as inline SVG. Google's is the one copy in auth.php.
  *
  * @param string $key
  * @param int    $size
@@ -750,6 +750,10 @@ function pg_signin_url($key, $send_to = '', $signup = 'create')
 function pg_signin_logo_svg($key, $size = 18)
 {
     $size = max(1, (int) $size);
+
+    if ($key === 'google') {
+        return pg_google_logo_svg($size);
+    }
 
     if ($key === 'microsoft') {
         return '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 21 21" aria-hidden="true">'
@@ -770,9 +774,49 @@ function pg_signin_logo_svg($key, $size = 18)
 }
 
 /**
- * The "Sign in with ..." button of one provider, or '' when it is off. Inline
- * styles in the provider's own colours, like the Google button, so it looks
- * the same on any front-end theme.
+ * A provider's button colours and font, as its brand guidelines give them:
+ * border, background, text colour and font family.
+ *
+ * @param string $key
+ * @return array
+ */
+function pg_signin_button_style($key)
+{
+    $styles = array(
+        'google'    => array('border' => '#dadce0', 'background' => '#fff', 'color' => '#3c4043', 'font' => 'Roboto,Arial,sans-serif'),
+        'microsoft' => array('border' => '#8c8c8c', 'background' => '#fff', 'color' => '#5e5e5e', 'font' => "'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif"),
+        'apple'     => array('border' => '#000', 'background' => '#000', 'color' => '#fff', 'font' => "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif"),
+    );
+
+    return isset($styles[$key]) ? $styles[$key] : array(
+        'border' => '#dadce0', 'background' => '#fff', 'color' => '#3c4043', 'font' => "'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif");
+}
+
+/**
+ * One "Sign in with ..." button, the same markup for every provider. Inline
+ * styles, so it looks the same on any front-end theme; the buttons share a
+ * minimum width so a column of them lines up. The mark is spaced with a
+ * margin rather than flex gap, which older browsers ignore.
+ *
+ * @param string $key
+ * @param string $url
+ * @param string $label
+ * @return string
+ */
+function pg_signin_button_html($key, $url, $label)
+{
+    $style = pg_signin_button_style($key);
+
+    return '<div class="pg-signin-button pg-signin-' . h($key) . '" style="margin-top:1em;text-align:center">'
+        . '<a href="' . h($url) . '" rel="nofollow" style="display:inline-flex;align-items:center;justify-content:center;min-width:240px;max-width:100%;box-sizing:border-box;padding:9px 18px;border:1px solid ' . $style['border'] . ';border-radius:4px;background:' . $style['background'] . ' !important;color:' . $style['color'] . ' !important;font-weight:500;text-decoration:none !important;font-family:' . $style['font'] . ';font-size:14px !important;line-height:1.4">'
+        . '<span style="display:inline-flex;margin-right:10px">' . pg_signin_logo_svg($key, 18) . '</span>'
+        // !important on the label: a theme that paints links white would
+        // otherwise leave a button with a mark and no words.
+        . '<span style="color:' . $style['color'] . ' !important;font-size:14px !important;white-space:nowrap">' . h($label) . '</span></a></div>';
+}
+
+/**
+ * The "Sign in with ..." button of one provider, or '' when it is off.
  *
  * @param string $key
  * @param string $send_to
@@ -781,43 +825,31 @@ function pg_signin_logo_svg($key, $size = 18)
  */
 function pg_signin_button($key, $send_to = '', $signup = 'create')
 {
-    // Google's button keeps the look Google prescribes.
-    if ($key === 'google') {
-        return pg_google_signin_button($send_to, $signup);
-    }
-
     $url = pg_signin_url($key, $send_to, $signup);
 
     if ($url === '') {
         return '';
     }
 
-    if ($key === 'apple') {
-        $colors = 'border:1px solid #000;background:#000 !important;color:#fff !important';
+    if ($key === 'google') {
+        $label = lang('Sign in with Google');
+    } elseif ($key === 'apple') {
         $label = lang('Sign in with Apple');
     } elseif ($key === 'microsoft') {
-        $colors = 'border:1px solid #8c8c8c;background:#fff !important;color:#5e5e5e !important';
         $label = lang('Sign in with Microsoft');
     } else {
-        $providers = pg_signin_providers();
-        $colors = 'border:1px solid #dadce0;background:#fff !important;color:#3c4043 !important';
-        $label = lang(array('string' => 'Sign in with {var:1}', 'vars' => $providers[$key]['label']));
+        $label = lang(array('string' => 'Sign in with {var:1}', 'vars' => pg_signin_provider_label($key)));
     }
 
-    $text_color = ($key === 'apple') ? '#fff' : (($key === 'microsoft') ? '#5e5e5e' : '#3c4043');
-
-    return '<div class="pg-signin-' . h($key) . '" style="margin-top:1em;text-align:center">'
-        . '<a href="' . h($url) . '" rel="nofollow" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:9px 18px;border-radius:4px;' . $colors . ';font-weight:500;text-decoration:none !important;font-family:\'Segoe UI\',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;font-size:14px !important;line-height:1.4">'
-        . pg_signin_logo_svg($key, 18)
-        // !important on the label: a theme that paints links white would
-        // otherwise leave a button with a mark and no words.
-        . '<span style="color:' . $text_color . ' !important;font-size:14px !important;white-space:nowrap">' . h($label) . '</span></a></div>';
+    return pg_signin_button_html($key, $url, $label);
 }
 
 /**
- * Every sign-in button a screen shows, in button order, or '' when none is
- * on. The login, registration and membership screens and widgets print this
- * where they printed the Google button.
+ * Every sign-in button a screen shows, in button order, in one block; '' when
+ * none is on. This is the one place the buttons come from: the login,
+ * registration and membership screens, their widgets (the google_signin and
+ * google_signup sections) and custom layouts ($google_signin) all print it,
+ * so a provider turned on in the settings appears everywhere at once.
  *
  * @param string $send_to
  * @param mixed  $signup
@@ -831,7 +863,30 @@ function pg_signin_buttons($send_to = '', $signup = 'create')
         $html .= pg_signin_button($key, $send_to, $signup);
     }
 
-    return $html;
+    return ($html === '') ? '' : '<div class="pg-signin-buttons">' . $html . '</div>';
+}
+
+/**
+ * The providers whose buttons visitors see now, by label in button order; and
+ * the ones switched on whose button stays hidden, because their application
+ * is not complete or the upgrade has not run. For the settings card.
+ *
+ * @return array array('shown' => array(key => label), 'hidden' => array(key => label))
+ */
+function pg_signin_button_state()
+{
+    $state = array('shown' => array(), 'hidden' => array());
+    $switched_on = pg_signin_switched_on();
+
+    foreach (pg_signin_providers() as $key => $provider) {
+        if (pg_signin_enabled($key)) {
+            $state['shown'][$key] = (string) $provider['label'];
+        } elseif (in_array($key, $switched_on, true)) {
+            $state['hidden'][$key] = (string) $provider['label'];
+        }
+    }
+
+    return $state;
 }
 
 

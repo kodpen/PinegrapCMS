@@ -268,6 +268,9 @@ function pg_designer_screen_render($ctx)
             'strong_password'      => (bool)(defined('STRONG_PASSWORD') && STRONG_PASSWORD),
             'google'               => (bool)(function_exists('pg_signin_enabled') && pg_signin_enabled('google')),
             'signin'               => (bool)(function_exists('pg_signin_any_enabled') && pg_signin_any_enabled()),
+            // The providers whose buttons the sign-in block prints now, for
+            // the hint on that block.
+            'signin_providers'     => function_exists('pg_signin_button_state') ? array_values(pg_signin_button_state()['shown']) : array(),
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the

@@ -10667,12 +10667,12 @@ const StyleDesigner = (function () {
                     recipient_picker:  _sdT('Recipient Picker (filled by the backend)'),
                     // Member widgets: each block is drawn by the server and
                     // disappears with its site setting.
-                    google_signin:        _sdT('Sign in with Google button (filled by the backend — hidden when Google is off)'),
+                    google_signin:        _sdT('Sign-in buttons: Google, Microsoft and Apple (filled by the backend, only the ones turned on in the settings)'),
                     forgot_password_link: _sdT('Forgot password link (filled by the backend — depends on the site setting)'),
                     register_link:        _sdT('Sign-up link (filled by the backend — depends on the registration page setting)'),
                     password_hint:        _sdT('Password hint (filled by the backend — only on the hint screen)'),
                     password_rules:       _sdT('Strong password rules (filled by the backend — depends on the site setting)'),
-                    google_signup:        _sdT('Sign up with Google button (filled by the backend — hidden when Google is off)'),
+                    google_signup:        _sdT('Sign-up buttons: Google, Microsoft and Apple (filled by the backend, only the ones turned on in the settings)'),
                     login_link:           _sdT('Sign-in link (filled by the backend)'),
                     // Search results and calendar widgets.
                     pagination:           _sdT('Pagination (filled by the backend — hidden on a single page)'),
@@ -10718,6 +10718,14 @@ const StyleDesigner = (function () {
                                         + 'pointer-events:none;text-align:center;font-style:italic';
                     _hint.innerHTML = '<i class="bi bi-link-45deg" style="margin-right:4px"></i>'
                                     + (_sectionLabels[_sec] || (esc(_sdT('Section')) + ': ' + esc(_sec)));
+                    // The sign-in block prints one button per provider that is
+                    // on; say which ones a visitor gets today.
+                    if (_sec === 'google_signin' || _sec === 'google_signup') {
+                        var _on = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags && Array.isArray(sdDesign.siteFlags.signin_providers))
+                            ? sdDesign.siteFlags.signin_providers : [];
+                        _hint.innerHTML += '<br><span style="font-size:.7rem;font-style:normal">'
+                            + esc(_on.length ? _sdT('Turned on now: {var}', _on.join(', ')) : _sdT('No provider is turned on now.')) + '</span>';
+                    }
                 }
                 innerEl.appendChild(_hint);
             }
@@ -29417,7 +29425,7 @@ const StyleDesigner = (function () {
         { label: _sdT('Links (href)'), tokens: [
             ['__forgot_password_url', _sdT('Forgot password address (the link drops when the site setting is off)')],
             ['__register_url',        _sdT('Registration page address (the link drops when no page is chosen)')],
-            ['__google_signin_url',   _sdT('Sign in with Google address (the link drops when Google is off)')]
+            ['__google_signin_url',   _sdT('Sign in with Google address, Google only (the link drops when Google is off; the Sign-in buttons block shows every provider)')]
         ]}
     ];
 
@@ -29729,7 +29737,7 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Links'), tokens: [
             ['__login_url',         _sdT('Sign-in page address')],
-            ['__google_signup_url', _sdT('Sign up with Google address (empty when Google is off)')]
+            ['__google_signup_url', _sdT('Sign up with Google address, Google only (empty when Google is off; the Sign-up buttons block shows every provider)')]
         ]},
         { label: _sdT('Rules'), tokens: [
             ['__password_rules',    _sdT('Strong password rules (HTML; empty when the setting is off)')]
@@ -29973,7 +29981,7 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Links'), tokens: [
             ['__login_url',         _sdT('Sign-in page address')],
-            ['__google_signup_url', _sdT('Sign up with Google address (empty when Google is off)')]
+            ['__google_signup_url', _sdT('Sign up with Google address, Google only (empty when Google is off; the Sign-up buttons block shows every provider)')]
         ]},
         { label: _sdT('Rules'), tokens: [
             ['__password_rules',    _sdT('Strong password rules (HTML; empty when the setting is off)')]
@@ -32543,7 +32551,7 @@ const StyleDesigner = (function () {
             } else if (_semSwRegion === 'login_form') {
                 // Each block is the server's ready-made element and is
                 // absent - container included - when its feature is off.
-                _sectionOpts.push(['google_signin',        _sdT('Sign in with Google button (hidden when Google is off)')]);
+                _sectionOpts.push(['google_signin',        _sdT('Sign-in buttons: Google, Microsoft and Apple (only the ones turned on)')]);
                 _sectionOpts.push(['forgot_password_link', _sdT('Forgot password link (hidden when the site setting is off)')]);
                 _sectionOpts.push(['register_link',        _sdT('Sign-up link (hidden when no registration page is chosen)')]);
             } else if (_semSwRegion === 'forgot_password') {
@@ -32551,11 +32559,11 @@ const StyleDesigner = (function () {
             } else if (_semSwRegion === 'registration') {
                 _sectionOpts.push(['captcha',              _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
-                _sectionOpts.push(['google_signup',        _sdT('Sign up with Google button (hidden when Google is off)')]);
+                _sectionOpts.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
                 _sectionOpts.push(['login_link',           _sdT('Sign-in link')]);
             } else if (_semSwRegion === 'membership') {
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
-                _sectionOpts.push(['google_signup',        _sdT('Sign up with Google button (hidden when Google is off)')]);
+                _sectionOpts.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
                 _sectionOpts.push(['login_link',           _sdT('Sign-in link')]);
             } else if (_semSwRegion === 'search_results') {
                 _sectionOpts.push(['pagination',           _sdT('Pagination (hidden on a single page)')]);
@@ -43672,7 +43680,7 @@ const StyleDesigner = (function () {
                                             createNode('content', { contentType: 'link', text: _sdT('Create an account'), href: '#', cssClass: '',
                                                 _bindings: { href: '__register_url' } })
                                         ]),
-                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign in with Google'),
+                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign-in Buttons'),
                                             _bindings: { section: 'google_signin' } })
                                     ])
                                 ]),
@@ -43972,7 +43980,7 @@ const StyleDesigner = (function () {
                                             _bindings: { section: 'captcha' } }),
                                         createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary w-100', text: _sdT('Sign Up'),
                                             customName: _sdT('Registration Button'), _attrs: [{ name: 'type', value: 'submit' }] }),
-                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign Up with Google'),
+                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign-up Buttons'),
                                             _bindings: { section: 'google_signup' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, [
                                             createNode('content', { contentType: 'link', text: _sdT('Already have an account? Sign in'), href: '#', cssClass: '',
@@ -44727,7 +44735,7 @@ const StyleDesigner = (function () {
                                         ]),
                                         createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary w-100', text: _sdT('Activate the Membership'),
                                             customName: _sdT('Activate Button'), _attrs: [{ name: 'type', value: 'submit' }] }),
-                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign Up with Google'),
+                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign-up Buttons'),
                                             _bindings: { section: 'google_signup' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, [
                                             createNode('content', { contentType: 'link', text: _sdT('Already a member? Sign in'), href: '#', cssClass: '',

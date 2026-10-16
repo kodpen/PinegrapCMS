@@ -283,10 +283,8 @@ function pg_google_jwt_payload($jwt)
     return is_array($claims) ? $claims : null;
 }
 
-// The "Sign in with Google" button as a self-contained block, or '' when the
-// feature is off - so the login, membership and registration screens can each
-// drop it in with one call and stay identical. Inline styles (Google's own
-// button look) keep it working on any front-end theme, Bootstrap or not.
+// Whether a sign-in with Google, Microsoft or Apple may open an account here
+// at all (signin.php asks before honouring the screen's own flag).
 function pg_google_signup_allowed()
 {
     // Self-registration is not a setting in this product: a site expresses it
@@ -321,22 +319,11 @@ function pg_google_signin_url($send_to = '', $signup = 'create')
     return function_exists('pg_signin_url') ? pg_signin_url('google', $send_to, $signup) : '';
 }
 
+// The Google button alone, for custom layouts written before the other
+// providers: the same button pg_signin_buttons() prints among the others.
 function pg_google_signin_button($send_to = '', $signup = 'create')
 {
-    $url = pg_google_signin_url($send_to, $signup);
-    if ($url === '') {
-        return '';
-    }
-
-    $logo = pg_google_logo_svg(18);
-
-    return '<div style="margin-top:1em;text-align:center">'
-        . '<a href="' . h($url) . '" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:9px 18px;border:1px solid #dadce0;border-radius:4px;background:#fff !important;color:#3c4043 !important;font-weight:500;text-decoration:none !important;font-family:Roboto,Arial,sans-serif;font-size:14px !important;line-height:1.4">'
-        . $logo
-        // !important on the label too: a theme that paints links white (this
-        // is a sign-in screen over a photo, so several do) left the button
-        // showing the mark and no words at all.
-        . '<span style="color:#3c4043 !important;font-size:14px !important;white-space:nowrap">' . h(lang('Sign in with Google')) . '</span></a></div>';
+    return function_exists('pg_signin_button') ? pg_signin_button('google', $send_to, $signup) : '';
 }
 
 // Register a member from the 'register' liveform: the validation and the
