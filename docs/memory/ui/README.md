@@ -7,6 +7,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
 - admin-screen-toolbar.md: Panel UI basics (helpers, icons) and the single-toolbar design principle for every admin screen, with view_folders.php as reference: slot order and classes.
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404; use pg_ascii_file_name, any name that enters a URL must be ASCII.
+- calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
 - codemirror-autorefresh-release.md: Call window.pgReleaseEditors(scope) before replacing or closing markup that may hold CodeMirror editors; autoRefresh polls hidden editors every 250 ms forever.
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
