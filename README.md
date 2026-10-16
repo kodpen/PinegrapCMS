@@ -3,159 +3,102 @@
 **English** | [Türkçe](README.tr.md)
 
 ![PHP Version](https://img.shields.io/badge/PHP-7.1%20--%208.5-777BB4?style=flat-square&logo=php)
+![Database](https://img.shields.io/badge/MySQL%205.7%2B%20%7C%20MariaDB%2010.2%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active%20Development-success?style=flat-square)
 
-Pinegrap CMS is an open-source content management and enterprise web platform built upon the foundation of LiveSite, actively maintained and evolved since 2017 for performance, flexibility, and broad PHP compatibility.
+Pinegrap is an open-source, all-in-one website platform written in PHP. A website with its own design, an online store, accounting (ERP), a team workspace and an external API live in one codebase, and a new site can be up in minutes from a ready-made design template.
+
+Pinegrap grew out of LiveSite and has been developed by Kodpen since 2017. It runs wherever PHP runs, from a shared cPanel account to a dedicated IIS server, with no Composer step, no build pipeline and no outside service to set up.
 
 ---
 
-## Overview
+## Links
 
-Pinegrap CMS provides a powerful system designed to manage enterprise websites, e-commerce, user permissions, and custom dynamic content with high reliability across legacy and modern web environments — from a shared-hosting cPanel account to a dedicated IIS server. A built-in web application firewall and bot control protect every site from the first request, with no plugin or outside service to set up.
+| | |
+|---|---|
+| **Website** | [pinegrap.com](https://pinegrap.com) |
+| **Features** | [pinegrap.com/features](https://pinegrap.com/features) |
+| **Documentation** | [pinegrap.com/introduction](https://pinegrap.com/introduction) |
+| **Changelog** | [pinegrap.com/changelog](https://pinegrap.com/changelog) |
+| **Live demo** | [demo.pinegrap.site](https://demo.pinegrap.site) |
 
-### Proudly Monolithic
+---
 
-Pinegrap is **deliberately monolithic** — and that is a feature, not an apology.
+## Try the demo
 
-* **No Composer. No build pipeline. No `node_modules`.** Upload the files, run the installer, done.
-* **One codebase, one deploy.** Everything ships together and is upgraded together through a versioned, in-app upgrade system.
+[demo.pinegrap.site](https://demo.pinegrap.site) is a **demo installation** of Pinegrap for anyone who wants to try it before installing: look around the site, open the control panel and build a page with the visual editor. Changes made there are reset on a schedule and the demo sends no e-mail, so please do not enter real personal data or payment details.
+
+---
+
+## What's inside
+
+A short overview; the full list is on [pinegrap.com/features](https://pinegrap.com/features).
+
+* **Visual page editor and design templates:** drag-and-drop pages with Bootstrap 5 or custom CSS, looks and colour palettes, shared components, drafts, HTML / ZIP import, and ready-made templates (Say hello to Pinegrap, Online Store, Bookshop, Boutique, Café, Clinic, Playground) to choose from during setup.
+* **Content:** pages, blog, photo galleries, menus, comments, forms, calendars with reservations, site search, a file manager with image tools, and a Recycle Bin for deleted pages, page styles and files.
+* **Multilingual sites:** pages, the store, forms and e-mails served in other languages under a prefix such as `/en/`, a Translations screen with several translation engines, and automatic language redirection.
+* **E-commerce:** a catalog with variants, campaigns, coupons and gift cards, checkout with saved addresses, payment gateways such as Iyzipay, Stripe and PayPal, carrier rates and tracking, a point-of-sale screen and n11 marketplace sync.
+* **ERP:** customer and supplier accounts, invoices, quotes, waybills, purchase orders, stock, cash and bank, reports, and e-Invoice / e-Archive through Logo İşbaşı or Paraşüt.
+* **Workspace:** team channels, tasks, a plan board, a calendar, notes, guest rooms, approvals, time tracking and scheduled actions, with Pinegrap AI or Claude helping in channels and tasks.
+* **API and integrations:** an external API with scoped keys, an OpenAPI description and webhooks; an OAuth 2.1 authorization server and an MCP server, so AI apps such as Claude and ChatGPT can connect with a person's own permissions; connected Google and Microsoft accounts for e-mail and backups; MailChimp and Cloudflare.
+* **Sign-in and security:** Sign in with Google, Microsoft or Apple, two-step sign-in, roles, and a built-in web application firewall with bot control, rate limits, country restriction and security headers.
+* **Operations:** visitor statistics, an SEO score and a Google Search Console report, a performance monitor, System Status with one-click repairs, scheduled backups with remote copies, a mail queue and updates from the control panel.
+* **Control panel:** English and Turkish, installable as an app, with a "?" button on every screen that opens its documentation on pinegrap.com.
+
+### Proudly monolithic
+
+* **No Composer, no build pipeline, no `node_modules`.** Upload the files, run the installer, done.
+* **One codebase, one deploy.** Everything ships together and is upgraded together through versioned upgrade steps.
 * **Runs where PHP runs.** A codebase with a production lineage going back to 2001 that still deploys over plain FTP if it has to.
-* **Every line is inspectable.** No vendor directory with ten thousand files you have never read.
-
-### Key Features
-
-* **Broad Compatibility:** Runs seamlessly across PHP 7.1 to PHP 8.5.
-* **Server Support:** Compatible with Apache, Nginx, and Microsoft IIS (including automatic web routing and `.htaccess` / `web.config` rewrite handling).
-* **All in One:** Website, visual page editor, e-commerce, ERP, team workspace and an external API in a single codebase.
-* **Built-in Firewall & Bot Control:** Attack signatures, rate limits and automatic bans in front of every request; real search engines are verified, while fake crawlers, scrapers, AI training bots and attack tools are turned away.
-* **Multilingual Front End:** Pages built in the visual editor are served in other languages from a virtual language directory, without copying them.
 
 ---
 
-## Feature Highlights
+## System requirements
 
-**Visual Page Editor & Templates**
-
-* Drag-and-drop page editor for Bootstrap 5 or fully custom designs; each design wears a look (corners, shadows, type, buttons) and a colour palette, and shared components (navbar, footer, bands) are edited once for every page
-* Ready-made site templates — "Say hello to Pinegrap" and "Online Store" — installable straight from the setup wizard
-* System widgets driven by data bindings instead of magic CSS classes: catalog, product, cart, checkout, order view, account pages, login area, cart link, language switcher, error page, form list and form item views
-* HTML / ZIP import that turns an existing site into an editable design, offers repeated sections as shared components and keeps inline SVG
-* E-mail pages (form notifications and replies, order receipts) designed in the same editor; an assistant proposes page changes that you preview before applying
-
-**Content**
-
-* Dynamic page engine with page, common, designer, and dynamic regions — content is edited in place, on the page itself
-* Blog / article publishing, photo galleries, menus, comments with scheduled publishing, and site-wide search
-* Calendars with recurring events, locations, and reservation support
-* Desktop-style file manager (tree view, drag and drop, quick look, batch rename, image optimization, recycle bin) and a built-in image editor
-
-**Multilingual Sites**
-
-* Visual-editor pages served in other languages from a virtual directory (`/en/about-us`) with the same design; files, images and assets stay at one address
-* Translations screen with coverage, side-by-side editing, review marks, CSV import / export and a glossary; product, form and widget texts are translated too
-* Engines: Google Cloud Translation (your own key), the browser's built-in Translator API, Pinegrap AI, Claude, or manual translation; "translate on save" keeps pages current
-* hreflang alternates in the sitemap, search within a language, per-language number and date formats, and a language switcher widget
-
-**E-commerce**
-
-* Product catalog with nested product groups, variant sets with price rules, per-product tax rates, inline editing and spreadsheet import
-* Single-screen campaign builder, coupons, gift cards, cross-sell, and abandoned-cart auto campaigns
-* Checkout with saved addresses, ID / tax number fields and "billing address same as shipping"; bank transfer orders wait for payment and cancel automatically when it does not arrive
-* Full order lifecycle: cancellation flows, refunds (Iyzipay integration), cargo tracking links for Turkish carriers, printable invoices, order timelines, a fast POS screen and barcode-based inventory
-* n11 marketplace integration: category and attribute mapping, price and stock sync, order import
-
-**ERP (Accounting & Invoicing)**
-
-* Customer and supplier accounts, statements, cash, bank and POS accounts, reconciliation letters
-* Invoices and delivery notes from orders or by hand, drafts, returns and cancellations, PDF export
-* e-Invoice / e-Archive through Logo İşbaşı or Paraşüt, aging reports, payment reminders and multi-currency balances
-
-**Workspace (Team CRM)**
-
-* Channels about customers and work, with tasks, a plan board, a work calendar and notes
-* Guest rooms for customers or suppliers without an account, through one-time or time-limited links
-* Scheduled actions with conditions and chained steps; task reminders by e-mail
-* Assistants in channels and notes (Pinegrap AI with `@ai`, or a connected Claude) propose task and record changes that are applied with one click
-
-**Marketing & Communication**
-
-* Scheduled e-mail campaigns with mail-merge variables and opt-in management
-* MailChimp synchronization, contact management, affiliate & commission tracking
-* Short links (one-time and time-limited links included), a live chat module, and a PWA with web push notifications
-
-**External API**
-
-* `integration.php` with per-key scopes, secrets, IP allow-lists and rate limits; an OpenAPI description and a built-in console
-* Products, orders, contacts, forms, files, ERP, Workspace, design and translations resources; dry-run writes, ETag and `fields=`
-* Webhooks for real-time events and team device sessions for mobile apps
-
-**Security**
-
-* **Built-in Web Application Firewall:** signature scanning for SQL injection, XSS, path traversal, remote code execution and protocol abuse; global, sign-in / checkout and API rate limits, concurrent-request caps, automatic temporary bans, and allow / block lists that understand IPv6 (/64). It starts in monitor mode, so the log shows what would be stopped before you switch to blocking, and it fails open: a firewall error never takes the site down
-* **Bot control:** search-engine crawlers are confirmed by reverse and forward DNS, so a fake "Googlebot" is caught; AI assistants are checked against their published IP ranges, with separate switches for appearing in AI answers and AI search; aggressive crawlers, AI training crawlers, attack tools (sqlmap, Nikto, …) and scripted clients can be blocked
-* Security headers and a Content Security Policy with violation reports; the real visitor IP is resolved behind Cloudflare and trusted proxies
-* CSRF tokens, role-based access control (Administrator / Designer / Manager / User), developer PIN locks
-* TLS-verified update channel — update packages are never accepted without certificate verification — and file integrity checked against the release tag on GitHub
-
-**Performance & Operations**
-
-* Request-level performance monitor with percentile reporting
-* Visitor analytics with hourly rollup tables built for high-traffic sites
-* System Status card with a health score and one-click repairs (write permissions, CA bundle)
-* Image optimization, Cloudflare integration, automatic backups, and a versioned database upgrade system
-
-**Internationalization**
-
-* Full English and Turkish admin interface via the `lang()` translation system
-* Multilingual front end (see above), with forms, orders and visitor e-mails kept in the visitor's language
-* UTF-8-safe casing and ASCII-safe URL generation for Turkish characters (important on IIS)
-
----
-
-## System Requirements
-
-* **PHP:** Version 7.1 up to 8.5 (7.1 is the minimum; the installer and the System Status card flag older versions)
-* **Database:** MySQL 5.7 or later, or MariaDB 10.2 or later
-* **Web Server:** Apache (with `mod_rewrite`), Nginx, or IIS
-* **Extensions:** `mysqli`, `gd`, `curl`, `mbstring` (recommended: `zip` and `openssl` for software updates)
+| | |
+|---|---|
+| **PHP** | 7.1 to 8.5 |
+| **Database** | MySQL 5.7 or later, or MariaDB 10.2 or later (the installer refuses MySQL 5.6 and MariaDB 10.1) |
+| **Web server** | Apache or LiteSpeed with `mod_rewrite`, Microsoft IIS with URL Rewrite, or nginx |
+| **PHP extensions** | `mysqli`, `mbstring`, `openssl`, `curl`; GD or Imagick for images; `zip` for updates, backups and imports |
+| **Write access** | `pinegrap/data/` for the configuration, backups and temporary files; the whole `pinegrap/` folder for updates from the control panel |
 
 ---
 
 ## Installation
 
-1. **Clone the Repository**
+### 1. Get the files
 
-   ```bash
-   git clone https://github.com/kodpen/PinegrapCMS.git
-   ```
+**Download Assistant (quickest):** upload [`download_assistant.php`](download_assistant.php) to your web root, open `https://your-domain.com/download_assistant.php` and click **Install**. It downloads the latest stable package, unpacks it into `pinegrap/` and opens the installation wizard.
 
-2. **Upload to Your Web Server**
+**From GitHub:** download the latest release from [GitHub Releases](https://github.com/kodpen/PinegrapCMS/releases), or clone the repository, and upload the files to your document root (or a sub-folder). The `main` branch holds released versions; work in progress lands on `development`.
 
-   Place the files in your document root (or a subdirectory). On Apache the bundled `.htaccess`, on IIS the bundled `web.config` handles URL rewriting automatically.
+```bash
+git clone https://github.com/kodpen/PinegrapCMS.git
+```
 
-3. **Create a Database**
+### 2. Run the installation wizard
 
-   Create an empty MySQL / MariaDB database and a user with full privileges on it.
+1. Create an empty MySQL / MariaDB database and a user with full privileges on it.
+2. Open `https://your-domain.com/pinegrap/install/` and follow the six steps: source (the starter site, or a restore from a backup on the server or a zip file), control panel language, site design (the starter site or a design template), database, the first administrator, and installation.
+3. The installer creates the tables, writes `pinegrap/data/config.php` with a generated encryption key, and writes the web server rules: `.htaccess` on Apache, `web.config` on IIS, or `nginx.conf.sample` for you to copy into your nginx server block.
 
-4. **Run the Installer**
+### 3. Schedule the general job (recommended)
 
-   Open `https://your-domain.com/pinegrap/install/` in your browser and follow the wizard. The installer creates the schema and writes `data/config.php` (including an auto-generated encryption key) for you.
+```cron
+* * * * * php /path/to/pinegrap/job.php
+```
 
-5. **Set Up Cron Jobs** (recommended)
-
-   ```cron
-   * * * * * php /path/to/pinegrap/job.php
-   */5 * * * * php /path/to/pinegrap/email_campaign_job.php
-   ```
-
-   `job.php` handles scheduled publishing, abandoned-cart campaigns, webhook delivery, workspace scheduled actions, and general housekeeping; running it every minute is what lets webhooks and scheduled actions go out on time. `email_campaign_job.php` sends scheduled e-mail campaigns and is activated with the `EMAIL_CAMPAIGN_JOB` constant in `data/config.php`.
+One scheduled task is enough. In **Settings › General › Cron Jobs**, turn on **Run Cron Jobs Automatically** and select the jobs the general job should run for you, one per turn: e-mail campaigns, webhook delivery, the search index, SEO checks, backups and others. The same card lists the exact command for every job if you prefer separate schedules (on Windows, use Task Scheduler).
 
 ---
 
 ## Updating
 
-Updates are applied from the admin panel. Schema changes ship as versioned upgrade steps and run through the same `install/` interface — no manual SQL required. See `changelog.txt` for what changed in each release.
+Updates are installed from the control panel (**Software Update**), on the Stable or Beta channel. Database changes ship as versioned upgrade steps that run on their own, so no manual SQL is needed. If an update leaves files missing, **Repair Software** restores the release files and can re-run the database steps.
+
+What changed in each version: [pinegrap.com/changelog](https://pinegrap.com/changelog).
 
 ---
 
@@ -167,7 +110,7 @@ Pinegrap began life as **LiveSite**, developed by Camelback Web Architects since
 
 ## Contributing and security
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the definition of done and the issue conventions. Security issues are reported privately as described in [SECURITY.md](SECURITY.md); please do not open public issues for them.
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the definition of done and the issue conventions. Pull requests target the `development` branch. Security issues are reported privately as described in [SECURITY.md](SECURITY.md); please do not open public issues for them.
 
 ---
 
