@@ -6,7 +6,7 @@ description: Where the visitor card, the System Status line and the shrink/move 
 ## Why not just information_schema.TABLES?
 - On InnoDB `TABLE_ROWS`, `DATA_LENGTH` and `INDEX_LENGTH` come from a page sample refreshed after a tenth of the rows change. Sandbox: right after inserting 900k rows they said 320 KB for a 180 MB file; right after `ENGINE=InnoDB` 64 KB for 84 MB; after a big delete data + index + free said 593 MB for a 444 MB file. The card, the System Status warning and the "Shrink now" before/after text were all built on these (#453 left this open).
 
-## Where does each figure come from now? (PR #477)
+## Where does each figure come from now? (PR #479)
 - `pg_visitor_table_figures($catalog_row)` in `includes/fn/visitor_retention.php`, used by the Database Engine card and System Status.
 - Records: MyISAM's exact count; InnoDB `COUNT(*)` while the estimate is at most `PG_VISITOR_COUNT_MAX_ROWS` (1,000,000; ~0.1–0.2 s at 900k in the sandbox), above that the estimate, shown as "about N".
 - File size: `pg_visitor_table_file_size()` tries in order:
