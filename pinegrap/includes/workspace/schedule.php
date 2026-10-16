@@ -663,18 +663,24 @@ function ws_conflicts($viewer, $from, $to)
 }
 
 /**
- * Writes a plan item: a meeting, a visit, leave or a holiday.
+ * Whether the person may write this plan item: the checks of
+ * ws_event_save(), made on their own so that the API's dry run meets the
+ * same refusals.
  *
  * @param array $viewer
- * @param array $data id, kind, scope, department_id, people, title, note,
- *                    start (Y-m-d), end (Y-m-d), start_time, end_time, all_day,
- *                    meeting_url (left as it is when not sent)
- * @return array ok, error, field, event_id
+ * @param array $data see ws_event_save()
+ * @return array ok, error, field, event_id, item (the row as it would be
+ *               written: kind, scope, department_id, people, title,
+ *               starts_at, ends_at, all_day, meeting_url, current)
  */
-function ws_event_save($viewer, $data)
+function ws_event_save_check($viewer, $data)
 {
+    $fail = function ($error, $field) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'event_id' => 0, 'item' => array());
+    };
+
     if (!$viewer['member']) {
-        return array('ok' => false, 'error' => lang('Access denied.'), 'field' => '', 'event_id' => 0);
+        return $fail(lang('Access denied.'), '');
     }
 
     $kinds = array('meeting', 'visit', 'leave', 'holiday', 'other');
@@ -684,13 +690,13 @@ function ws_event_save($viewer, $data)
     // Holidays and company-wide items are the settings holder's to write; a
     // department's are its lead's too.
     if (($scope === 'company') && !$viewer['settings']) {
-        return array('ok' => false, 'error' => lang('Only somebody who manages the workspace settings can plan for the whole company.'), 'field' => 'scope', 'event_id' => 0);
+        return $fail(lang('Only somebody who manages the workspace settings can plan for the whole company.'), 'scope');
     }
 
     $department_id = (int) ($data['department_id'] ?? 0);
 
     if (($scope === 'department') && !$viewer['settings'] && !in_array($department_id, ws_lead_departments($viewer['id']), true)) {
-        return array('ok' => false, 'error' => lang('Only the department\'s lead can plan for the whole department.'), 'field' => 'scope', 'event_id' => 0);
+        return $fail(lang('Only the department\'s lead can plan for the whole department.'), 'scope');
     }
 
     $people = array();
@@ -707,7 +713,7 @@ function ws_event_save($viewer, $data)
         }
 
         if (!ws_can_assign_to($viewer, array_values($people))) {
-            return array('ok' => false, 'error' => lang('You may only plan for yourself or for the people in the departments you lead.'), 'field' => 'people', 'event_id' => 0);
+            return $fail(lang('You may only plan for yourself or for the people in the departments you lead.'), 'people');
         }
     }
 
@@ -722,7 +728,7 @@ function ws_event_save($viewer, $data)
     $end_day = ws_date_or_null(($data['end'] ?? '') !== '' ? $data['end'] : ($data['start'] ?? ''));
 
     if (!$start_day || !$end_day) {
-        return array('ok' => false, 'error' => lang('Write the date as day.month.year.'), 'field' => 'start', 'event_id' => 0);
+        return $fail(lang('Write the date as day.month.year.'), 'start');
     }
 
     $all_day = !empty($data['all_day']) || in_array($kind, array('leave', 'holiday'), true);
@@ -738,7 +744,7 @@ function ws_event_save($viewer, $data)
     }
 
     if (($starts_at === false) || ($ends_at === false) || ($ends_at <= $starts_at)) {
-        return array('ok' => false, 'error' => lang('The end has to come after the start.'), 'field' => 'end', 'event_id' => 0);
+        return $fail(lang('The end has to come after the start.'), 'end');
     }
 
     // The video call (2026.4.10, 10.86): checked before anything is written.
@@ -748,7 +754,7 @@ function ws_event_save($viewer, $data)
         $meeting_url = ws_meeting_url_clean($data['meeting_url']);
 
         if ($meeting_url === false) {
-            return array('ok' => false, 'error' => lang('The meeting link is not a web address.'), 'field' => 'meeting_url', 'event_id' => 0);
+            return $fail(lang('The meeting link is not a web address.'), 'meeting_url');
         }
     }
 
@@ -759,9 +765,54 @@ function ws_event_save($viewer, $data)
         $current = db_item("SELECT * FROM ws_events WHERE id = '" . $event_id . "'");
 
         if (!is_array($current) || !ws_can_edit_event($viewer, $current)) {
-            return array('ok' => false, 'error' => lang('You cannot change this item.'), 'field' => '', 'event_id' => 0);
+            return $fail(lang('You cannot change this item.'), '');
         }
+    }
 
+    return array('ok' => true, 'error' => '', 'field' => '', 'event_id' => $event_id, 'item' => array(
+        'kind'          => $kind,
+        'scope'         => $scope,
+        'department_id' => $department_id,
+        'people'        => $people,
+        'title'         => $title,
+        'starts_at'     => $starts_at,
+        'ends_at'       => $ends_at,
+        'all_day'       => $all_day,
+        'meeting_url'   => $meeting_url,
+        'current'       => $current,
+    ));
+}
+
+/**
+ * Writes a plan item: a meeting, a visit, leave or a holiday.
+ *
+ * @param array $viewer
+ * @param array $data id, kind, scope, department_id, people, title, note,
+ *                    start (Y-m-d), end (Y-m-d), start_time, end_time, all_day,
+ *                    meeting_url (left as it is when not sent)
+ * @return array ok, error, field, event_id
+ */
+function ws_event_save($viewer, $data)
+{
+    $check = ws_event_save_check($viewer, $data);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error'], 'field' => $check['field'], 'event_id' => 0);
+    }
+
+    $event_id = (int) $check['event_id'];
+    $kind = $check['item']['kind'];
+    $scope = $check['item']['scope'];
+    $department_id = $check['item']['department_id'];
+    $people = $check['item']['people'];
+    $title = $check['item']['title'];
+    $starts_at = $check['item']['starts_at'];
+    $ends_at = $check['item']['ends_at'];
+    $all_day = $check['item']['all_day'];
+    $meeting_url = $check['item']['meeting_url'];
+    $current = $check['item']['current'];
+
+    if ($current !== null) {
         db("UPDATE ws_events SET
                 kind = '" . $kind . "', scope = '" . $scope . "', department_id = '" . (($scope === 'department') ? $department_id : 0) . "',
                 title = '" . e($title) . "', note = '" . e(mb_substr((string) ($data['note'] ?? ''), 0, 500)) . "',

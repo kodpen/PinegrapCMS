@@ -742,6 +742,29 @@ function ws_recurrence_validate($data)
 }
 
 /**
+ * Whether the person may set this repeat on a task: the checks of
+ * ws_recurrence_save(), made on their own so that the API's dry run meets the
+ * same refusals.
+ *
+ * @param array $viewer
+ * @param array $task
+ * @param mixed $data see ws_recurrence_validate()
+ * @return array ok, error, field, rule
+ */
+function ws_recurrence_save_check($viewer, $task, $data)
+{
+    if (!ws_recurrence_ready()) {
+        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'), 'field' => '', 'rule' => array());
+    }
+
+    if (!ws_can_edit_task($viewer, $task)) {
+        return array('ok' => false, 'error' => lang('You cannot change this task.'), 'field' => '', 'rule' => array());
+    }
+
+    return ws_recurrence_validate($data);
+}
+
+/**
  * Sets, changes or switches off the repeat of a task.
  *
  * Setting it on a task that does not repeat starts a series with this task
@@ -763,15 +786,7 @@ function ws_recurrence_validate($data)
  */
 function ws_recurrence_save($viewer, $task, $data, $before = null)
 {
-    if (!ws_recurrence_ready()) {
-        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'), 'field' => '', 'changed' => false);
-    }
-
-    if (!ws_can_edit_task($viewer, $task)) {
-        return array('ok' => false, 'error' => lang('You cannot change this task.'), 'field' => '', 'changed' => false);
-    }
-
-    $check = ws_recurrence_validate($data);
+    $check = ws_recurrence_save_check($viewer, $task, $data);
 
     if (!$check['ok']) {
         return $check + array('changed' => false);
@@ -1002,6 +1017,39 @@ function ws_recurrence_close($series, $reason, $user_id)
 }
 
 /**
+ * Whether the person may end the repeat of a task this way: the checks of
+ * ws_recurrence_end(), made on their own so that the API's dry run meets the
+ * same refusals.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $mode complete | stop
+ * @return array ok, error, series
+ */
+function ws_recurrence_end_check($viewer, $task, $mode)
+{
+    $series = ws_recurrence($task['recurrence_id'] ?? 0);
+
+    if (!$series) {
+        return array('ok' => false, 'error' => lang('This task does not repeat.'), 'series' => null);
+    }
+
+    if (!ws_can_edit_task($viewer, $task)) {
+        return array('ok' => false, 'error' => lang('You cannot change this task.'), 'series' => null);
+    }
+
+    if (($mode === 'complete') && ws_task_is_open($task['status'])) {
+        $check = ws_task_set_status_check($viewer, $task, 'done');
+
+        if (!$check['ok']) {
+            return $check + array('series' => null);
+        }
+    }
+
+    return array('ok' => true, 'error' => '', 'series' => $series);
+}
+
+/**
  * Ends the repeat of a task by hand. 'complete' is completing the task for
  * good: the copy in hand is marked done as well, and no more are made.
  * 'stop' only stops the copies.
@@ -1013,15 +1061,13 @@ function ws_recurrence_close($series, $reason, $user_id)
  */
 function ws_recurrence_end($viewer, $task, $mode)
 {
-    $series = ws_recurrence($task['recurrence_id'] ?? 0);
+    $check = ws_recurrence_end_check($viewer, $task, $mode);
 
-    if (!$series) {
-        return array('ok' => false, 'error' => lang('This task does not repeat.'));
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error']);
     }
 
-    if (!ws_can_edit_task($viewer, $task)) {
-        return array('ok' => false, 'error' => lang('You cannot change this task.'));
-    }
+    $series = $check['series'];
 
     if ($mode === 'complete') {
         if (ws_task_is_open($task['status'])) {

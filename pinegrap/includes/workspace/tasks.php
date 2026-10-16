@@ -453,6 +453,42 @@ function ws_task_validate($viewer, $data, $current = null)
 }
 
 /**
+ * Whether the person may create this task: the checks of ws_task_create(),
+ * made on their own so that the API's dry run meets the same refusals.
+ *
+ * @param array $viewer
+ * @param array $data the fields ws_task_create() takes
+ * @return array ok, error, field, clean, list_message_id
+ */
+function ws_task_create_check($viewer, $data)
+{
+    $check = ws_task_validate($viewer, $data);
+
+    if (!$check['ok']) {
+        return $check + array('list_message_id' => 0);
+    }
+
+    // A checklist written in a channel that becomes this task.
+    $list_message_id = 0;
+
+    if (!empty($data['checklist_message_id']) && ws_task_work_ready()) {
+        $list = ws_checklist_message_for_task($viewer, (int) $data['checklist_message_id']);
+
+        if (!is_array($list)) {
+            return array('ok' => false, 'error' => $list, 'field' => '', 'clean' => array(), 'list_message_id' => 0);
+        }
+
+        $list_message_id = (int) $list['id'];
+    }
+
+    if (!ws_can_assign_to($viewer, $check['clean']['assignees'] ?? array())) {
+        return array('ok' => false, 'error' => lang('You may only give tasks to yourself or to the people in the departments you lead.'), 'field' => 'assignees', 'clean' => array(), 'list_message_id' => 0);
+    }
+
+    return $check + array('list_message_id' => $list_message_id);
+}
+
+/**
  * Creates a task.
  *
  * @param array $viewer
@@ -463,32 +499,15 @@ function ws_task_validate($viewer, $data, $current = null)
  */
 function ws_task_create($viewer, $data)
 {
-    $check = ws_task_validate($viewer, $data);
+    $check = ws_task_create_check($viewer, $data);
 
     if (!$check['ok']) {
-        return $check + array('task_id' => 0);
+        return array('ok' => false, 'error' => $check['error'], 'field' => $check['field'], 'task_id' => 0);
     }
 
-    // A checklist written in a channel that becomes this task.
-    $list_message_id = 0;
-
-    if (!empty($data['checklist_message_id']) && ws_task_work_ready()) {
-        $list = ws_checklist_message_for_task($viewer, (int) $data['checklist_message_id']);
-
-        if (!is_array($list)) {
-            return array('ok' => false, 'error' => $list, 'field' => '', 'task_id' => 0);
-        }
-
-        $list_message_id = (int) $list['id'];
-    }
-
+    $list_message_id = (int) $check['list_message_id'];
     $clean = $check['clean'];
     $assignees = $clean['assignees'] ?? array();
-
-    if (!ws_can_assign_to($viewer, $assignees)) {
-        return array('ok' => false, 'error' => lang('You may only give tasks to yourself or to the people in the departments you lead.'), 'field' => 'assignees', 'task_id' => 0);
-    }
-
     $now = time();
     $date = function ($value) {
         return ($value === null) ? 'NULL' : "'" . e($value) . "'";
@@ -613,6 +632,48 @@ function ws_task_set_assignees($viewer, $task_id, $user_ids, $is_new = false)
 }
 
 /**
+ * Whether the person may make this change to a task: the checks of
+ * ws_task_update(), made on their own so that the API's dry run meets the
+ * same refusals.
+ *
+ * @param array $viewer
+ * @param array $task
+ * @param array $data
+ * @return array ok, error, field, clean, assignees (the people on it now),
+ *               added (the people it would bring on)
+ */
+function ws_task_update_check($viewer, $task, $data)
+{
+    $fail = function ($error, $field) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'clean' => array(), 'assignees' => array(), 'added' => array());
+    };
+
+    $assignees = ws_task_assignee_ids($task['id']);
+
+    if (!ws_can_edit_task($viewer, $task, $assignees)) {
+        return $fail(lang('You cannot change this task.'), '');
+    }
+
+    $check = ws_task_validate($viewer, $data, $task);
+
+    if (!$check['ok']) {
+        return $fail($check['error'], $check['field']);
+    }
+
+    $added = array();
+
+    if (array_key_exists('assignees', $check['clean'])) {
+        $added = array_values(array_diff($check['clean']['assignees'], $assignees));
+
+        if (!ws_can_assign_to($viewer, $added)) {
+            return $fail(lang('You may only give tasks to yourself or to the people in the departments you lead.'), 'assignees');
+        }
+    }
+
+    return $check + array('assignees' => $assignees, 'added' => $added);
+}
+
+/**
  * Changes a task. Only the fields in $data are written.
  *
  * @param array $viewer
@@ -622,18 +683,13 @@ function ws_task_set_assignees($viewer, $task_id, $user_ids, $is_new = false)
  */
 function ws_task_update($viewer, $task, $data)
 {
-    $assignees = ws_task_assignee_ids($task['id']);
-
-    if (!ws_can_edit_task($viewer, $task, $assignees)) {
-        return array('ok' => false, 'error' => lang('You cannot change this task.'), 'field' => '', 'added' => array());
-    }
-
-    $check = ws_task_validate($viewer, $data, $task);
+    $check = ws_task_update_check($viewer, $task, $data);
 
     if (!$check['ok']) {
-        return $check + array('added' => array());
+        return array('ok' => false, 'error' => $check['error'], 'field' => $check['field'], 'added' => array());
     }
 
+    $assignees = $check['assignees'];
     $clean = $check['clean'];
     $set = array();
 
@@ -656,12 +712,6 @@ function ws_task_update($viewer, $task, $data)
     $added = array();
 
     if (array_key_exists('assignees', $clean)) {
-        $new_people = array_values(array_diff($clean['assignees'], $assignees));
-
-        if (!ws_can_assign_to($viewer, $new_people)) {
-            return array('ok' => false, 'error' => lang('You may only give tasks to yourself or to the people in the departments you lead.'), 'field' => 'assignees', 'added' => array());
-        }
-
         $added = ws_task_set_assignees($viewer, $task['id'], $clean['assignees']);
     }
 
@@ -707,6 +757,29 @@ function ws_task_update($viewer, $task, $data)
 }
 
 /**
+ * Whether the person may move a task to this status: the checks of
+ * ws_task_set_status(), made on their own so that the API's dry run meets
+ * the same refusals.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $status
+ * @return array ok, error
+ */
+function ws_task_set_status_check($viewer, $task, $status)
+{
+    if (!isset(ws_task_statuses()[$status])) {
+        return array('ok' => false, 'error' => lang('That is not a task status.'));
+    }
+
+    if (!ws_can_edit_task($viewer, $task)) {
+        return array('ok' => false, 'error' => lang('You cannot change this task.'));
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
  * Moves a task to another status and says so where it matters: the person
  * who created it hears that it is done, and the channel it came from gets a
  * line when it is finished.
@@ -718,12 +791,10 @@ function ws_task_update($viewer, $task, $data)
  */
 function ws_task_set_status($viewer, $task, $status)
 {
-    if (!isset(ws_task_statuses()[$status])) {
-        return array('ok' => false, 'error' => lang('That is not a task status.'));
-    }
+    $check = ws_task_set_status_check($viewer, $task, $status);
 
-    if (!ws_can_edit_task($viewer, $task)) {
-        return array('ok' => false, 'error' => lang('You cannot change this task.'));
+    if (!$check['ok']) {
+        return $check;
     }
 
     if ($status === $task['status']) {

@@ -55,6 +55,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/claim',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_claim',
+            'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
             'description' => 'Marks the request as being worked on and leaves an eye on it in the channel. 409 when another run has taken it or it is closed.',
@@ -69,6 +70,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/answer',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_answer',
+            'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Answer a request',
             'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. A request whose task block has an id is a run on a task: the words are kept on the task, it takes no tasks, and its changes wait on the task until the person who asked applies or sets them aside. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept.',
@@ -86,6 +88,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/fail',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_fail',
+            'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Give a request up',
             'description' => 'Closes the request as not done, writes the reason under it for the person who asked and takes the eye back.',
@@ -595,6 +598,8 @@ function ws_api_claude_claim($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    api_dry_run_stop('claimed', 'workspace_claude_request', array('id' => (int) $row['id']));
+
     // One run wins when two reach for the same request.
     db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent')");
@@ -690,6 +695,8 @@ function ws_api_claude_answer($params)
             api_fail_validation(lang('A request from the Visual Page Editor is answered with text only; the page change is proposed with POST /design/pages/{id}/proposals.'), empty($params['tasks']) ? 'changes' : 'tasks');
         }
 
+        api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => 'editor'));
+
         pg_design_ai_request_answer($row, ws_tokens_normalise(trim((string) $params['text'])));
 
         ws_api_log(lang('Claude answered a request from the Visual Page Editor'));
@@ -703,6 +710,8 @@ function ws_api_claude_answer($params)
         if (!empty($params['tasks']) || !empty($params['changes'])) {
             api_fail_validation(lang('A request from a note is answered with text only: no tasks, no changes.'), empty($params['tasks']) ? 'changes' : 'tasks');
         }
+
+        api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => 'note'));
 
         $now = time();
 
@@ -733,6 +742,8 @@ function ws_api_claude_answer($params)
             api_fail_validation($changes['error'], 'changes');
         }
 
+        api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => 'task', 'changes' => count($changes['rows'])));
+
         if (ws_task_delegation_answer($row, (string) $params['text'])) {
             ws_changes_store($row, 0, $changes['rows']);
             ws_api_log(lang(array('string' => 'Claude answered on task {var:1}', 'vars' => ws_task_number($row['task_id']))));
@@ -760,10 +771,28 @@ function ws_api_claude_answer($params)
         $text = $mention . ' ' . $text;
     }
 
-    $sent = ws_message_send($viewer, $channel, $text, array(
+    $options = array(
         'parent_id' => (int) $row['message_id'],
         'app_id'    => ws_api_app_id(),
+    );
+
+    // The checks ws_message_send() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_message_send_check($viewer, $channel, $text, $options);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'text');
+    }
+
+    api_dry_run_stop('answered', 'workspace_claude_request', array(
+        'id'         => (int) $row['id'],
+        'origin'     => 'channel',
+        'channel_id' => (int) $channel['id'],
+        'tasks'      => count($drafts),
+        'changes'    => count($changes['rows']),
     ));
+
+    $sent = ws_message_send($viewer, $channel, $text, $options);
 
     if (!$sent['ok']) {
         api_fail_validation($sent['error'], 'text');
@@ -816,10 +845,13 @@ function ws_api_claude_fail($params)
     $reason = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $params['reason']), 0, 250));
     $reply_id = 0;
     $channel = ((int) ($row['note_id'] ?? 0) > 0) ? null : ws_channel($row['channel_id']);
+    $told = $channel && ws_claude_channel_allowed($channel) && ws_can_post_channel($viewer, $channel);
+
+    api_dry_run_stop('failed', 'workspace_claude_request', array('id' => (int) $row['id'], 'told_in_channel' => (bool) $told));
 
     // The reason goes to the person who asked, where they asked. A channel
     // that closed to Claude meanwhile keeps only the state on the request.
-    if ($channel && ws_claude_channel_allowed($channel) && ws_can_post_channel($viewer, $channel)) {
+    if ($told) {
         $sent = ws_message_send($viewer, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
             'parent_id' => (int) $row['message_id'],
             'app_id'    => ws_api_app_id(),
