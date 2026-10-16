@@ -51,4 +51,4 @@ they link reach the index, and `includes/fn/mail.php` and
 `includes/fn/content.php` warn about the missing session user. The command
 line run indexes what a visitor sees. Not changed here.
 
-Test: `tests/cli_job_warnings_test.php`. PR #PRNUM.
+Test: `tests/cli_job_warnings_test.php`. PR #493.
