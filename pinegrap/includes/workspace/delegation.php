@@ -439,21 +439,19 @@ function ws_task_delegation_open_run($task_id)
 }
 
 /**
- * Starts a run of an assistant on a task: the request waits in the queue
- * until the assistant takes it. One run at a time on a task, and no more
- * waiting requests per person than the assistant takes from anybody. A run
- * for an MCP server's alias is Pinegrap AI's request with the server set.
+ * Whether the person may start a run of this assistant on a task: the checks
+ * of ws_task_delegation_run(), made on their own so that the API's dry run
+ * meets the same refusals.
  *
  * @param array  $viewer
  * @param array  $task
  * @param string $key
- * @param string $instruction
- * @return array ok, error, request_id
+ * @return array ok, error
  */
-function ws_task_delegation_run($viewer, $task, $key, $instruction)
+function ws_task_delegation_run_check($viewer, $task, $key)
 {
     $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'request_id' => 0);
+        return array('ok' => false, 'error' => $error);
     };
 
     if (!ws_delegation_ready() || !ws_can_see_task($viewer, $task)) {
@@ -471,8 +469,6 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
     }
 
     $agent = ws_assistant_agent($key);
-    $server_id = ws_assistant_mcp_id($key);
-
     $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
         WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_ai_agent_where($agent));
 
@@ -491,6 +487,32 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
         }
     }
 
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Starts a run of an assistant on a task: the request waits in the queue
+ * until the assistant takes it. One run at a time on a task, and no more
+ * waiting requests per person than the assistant takes from anybody. A run
+ * for an MCP server's alias is Pinegrap AI's request with the server set.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $key
+ * @param string $instruction
+ * @return array ok, error, request_id
+ */
+function ws_task_delegation_run($viewer, $task, $key, $instruction)
+{
+    $check = ws_task_delegation_run_check($viewer, $task, $key);
+
+    if (!$check['ok']) {
+        return $check + array('request_id' => 0);
+    }
+
+    $agent = ws_assistant_agent($key);
+    $server_id = ws_assistant_mcp_id($key);
+
     // Written with its assistant in one go: a request to Pinegrap AI must
     // never sit in the table as Claude's, where Claude's run would take it,
     // nor a request to an alias as Pinegrap AI's own, nor one to a server's
@@ -502,10 +524,47 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
     $request_id = (int) mysqli_insert_id(db::$con);
 
     if ($request_id <= 0) {
-        return $fail(lang('Invalid request.'));
+        return array('ok' => false, 'error' => lang('Invalid request.'), 'request_id' => 0);
     }
 
     return array('ok' => true, 'error' => '', 'request_id' => $request_id);
+}
+
+/**
+ * Whether the person may hand a task to this assistant: the checks of
+ * ws_task_delegate() and of the run it starts, made on their own so that the
+ * API's dry run meets the same refusals.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $key
+ * @return array ok, error
+ */
+function ws_task_delegate_check($viewer, $task, $key)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error);
+    };
+
+    if (!ws_delegation_ready()) {
+        return $fail(lang('Invalid request.'));
+    }
+
+    if (!ws_can_edit_task($viewer, $task)) {
+        return $fail(lang('You may not hand this task to an assistant.'));
+    }
+
+    if (!ws_task_is_open($task['status'])) {
+        return $fail(lang('Only an open task can be handed to an assistant.'));
+    }
+
+    $current = (string) ($task['delegate'] ?? '');
+
+    if (($current !== '') && ($current !== $key) && ws_task_delegation_open_run($task['id'])) {
+        return $fail(lang(array('string' => 'The task is with {var:1}, which is still working on it. Stop it first.', 'vars' => ws_assistant_name($current))));
+    }
+
+    return ws_task_delegation_run_check($viewer, $task, $key);
 }
 
 /**
@@ -522,30 +581,14 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
  */
 function ws_task_delegate($viewer, $task, $key, $instruction)
 {
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'request_id' => 0);
-    };
+    $check = ws_task_delegate_check($viewer, $task, $key);
 
-    if (!ws_delegation_ready()) {
-        return $fail(lang('Invalid request.'));
+    if (!$check['ok']) {
+        return $check + array('request_id' => 0);
     }
 
     $assignees = ws_task_assignee_ids($task['id']);
-
-    if (!ws_can_edit_task($viewer, $task, $assignees)) {
-        return $fail(lang('You may not hand this task to an assistant.'));
-    }
-
-    if (!ws_task_is_open($task['status'])) {
-        return $fail(lang('Only an open task can be handed to an assistant.'));
-    }
-
     $current = (string) ($task['delegate'] ?? '');
-
-    if (($current !== '') && ($current !== $key) && ws_task_delegation_open_run($task['id'])) {
-        return $fail(lang(array('string' => 'The task is with {var:1}, which is still working on it. Stop it first.', 'vars' => ws_assistant_name($current))));
-    }
-
     $run = ws_task_delegation_run($viewer, $task, $key, $instruction);
 
     if (!$run['ok']) {
@@ -574,6 +617,31 @@ function ws_task_delegate($viewer, $task, $key, $instruction)
 }
 
 /**
+ * Whether the person may stop the assistant's run on a task: the checks of
+ * ws_task_delegation_stop(), made on their own so that the API's dry run
+ * meets the same refusals.
+ *
+ * @param array $viewer
+ * @param array $task
+ * @return array ok, error, run (the run under way, null when there is none)
+ */
+function ws_task_delegation_stop_check($viewer, $task)
+{
+    if (!ws_delegation_ready()) {
+        return array('ok' => false, 'error' => lang('Invalid request.'), 'run' => null);
+    }
+
+    $run = ws_task_delegation_open_run($task['id']);
+    $mine = $run && ((int) $run['requested_by'] === (int) $viewer['id']);
+
+    if (!$mine && !ws_can_edit_task($viewer, $task)) {
+        return array('ok' => false, 'error' => lang('You may not change this task.'), 'run' => null);
+    }
+
+    return array('ok' => true, 'error' => '', 'run' => $run);
+}
+
+/**
  * Stops the assistant's run on a task, and with $undelegate takes the task
  * back from it. The person who asked for the run, or anybody who may change
  * the task.
@@ -585,16 +653,13 @@ function ws_task_delegate($viewer, $task, $key, $instruction)
  */
 function ws_task_delegation_stop($viewer, $task, $undelegate)
 {
-    if (!ws_delegation_ready()) {
-        return array('ok' => false, 'error' => lang('Invalid request.'));
+    $check = ws_task_delegation_stop_check($viewer, $task);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error']);
     }
 
-    $run = ws_task_delegation_open_run($task['id']);
-    $mine = $run && ((int) $run['requested_by'] === (int) $viewer['id']);
-
-    if (!$mine && !ws_can_edit_task($viewer, $task)) {
-        return array('ok' => false, 'error' => lang('You may not change this task.'));
-    }
+    $run = $check['run'];
 
     if ($run) {
         $reason = lang(array('string' => 'Stopped by {var:1}.', 'vars' => ws_person_name($viewer['id'])));

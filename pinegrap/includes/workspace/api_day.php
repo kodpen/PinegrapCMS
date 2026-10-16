@@ -181,15 +181,14 @@ function ws_api_plan_items_get($params)
 }
 
 /**
- * Writes a plan item: the whole item ws_event_save() takes, from the item as
- * it is (none for a new one) with the fields sent over it.
+ * The whole item ws_event_save() takes, from the item as it is (none for a
+ * new one) with the fields sent over it.
  *
- * @param array      $viewer
  * @param array      $params
  * @param array|null $current ws_api_plan_item_or_404()
- * @return int the item's id
+ * @return array
  */
-function ws_api_plan_item_write($viewer, $params, $current = null)
+function ws_api_plan_item_input($params, $current = null)
 {
     $data = array(
         'id' => 0, 'kind' => 'meeting', 'scope' => 'people', 'department_id' => 0, 'people' => array(),
@@ -268,29 +267,70 @@ function ws_api_plan_item_write($viewer, $params, $current = null)
         api_fail_validation(lang('That department could not be found.'), 'department_id');
     }
 
-    $result = ws_event_save($viewer, $data);
+    return $data;
+}
 
-    if (!$result['ok']) {
-        // Refused dates are the request's; anything else is a right the
-        // owner does not hold.
-        $fields = array('start' => 'start_date', 'end' => 'end_date');
+/**
+ * A plan item write that was refused, as the API answers it: refused dates
+ * are the request's; anything else is a right the owner does not hold.
+ *
+ * @param array $result ws_event_save() or ws_event_save_check()
+ */
+function ws_api_plan_item_refused($result)
+{
+    $fields = array('start' => 'start_date', 'end' => 'end_date');
 
-        if (isset($fields[$result['field']])) {
-            api_fail_validation($result['error'], $fields[$result['field']]);
-        }
-
-        api_fail(403, 'forbidden', $result['error']);
+    if (isset($fields[$result['field']])) {
+        api_fail_validation($result['error'], $fields[$result['field']]);
     }
 
-    return (int) $result['event_id'];
+    api_fail(403, 'forbidden', $result['error']);
+}
+
+/**
+ * What a rehearsed plan item write would write (ws_event_save_check()).
+ *
+ * @param array $checked
+ * @return array
+ */
+function ws_api_plan_item_would($checked)
+{
+    $item = $checked['item'];
+
+    return array(
+        'id'        => ((int) $checked['event_id'] > 0) ? (int) $checked['event_id'] : null,
+        'kind'      => (string) $item['kind'],
+        'scope'     => (string) $item['scope'],
+        'title'     => (string) $item['title'],
+        'starts_at' => api_time($item['starts_at']),
+        'ends_at'   => api_time($item['ends_at']),
+        'all_day'   => (bool) $item['all_day'],
+        'people'    => array_values(array_map('intval', $item['people'])),
+    );
 }
 
 function ws_api_plan_items_create($params)
 {
     $viewer = ws_api_viewer();
-    $id = ws_api_plan_item_write($viewer, $params);
+    $data = ws_api_plan_item_input($params);
 
-    api_ok(ws_api_plan_item_present($viewer, ws_api_plan_item_or_404($id)), 201);
+    // The checks ws_event_save() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_event_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        ws_api_plan_item_refused($checked);
+    }
+
+    api_dry_run_stop('created', 'workspace_plan_item', ws_api_plan_item_would($checked));
+
+    $result = ws_event_save($viewer, $data);
+
+    if (!$result['ok']) {
+        ws_api_plan_item_refused($result);
+    }
+
+    api_ok(ws_api_plan_item_present($viewer, ws_api_plan_item_or_404($result['event_id'])), 201);
 }
 
 function ws_api_plan_items_update($params)
@@ -302,7 +342,20 @@ function ws_api_plan_items_update($params)
         api_fail(403, 'forbidden', lang('You cannot change this item.'));
     }
 
-    ws_api_plan_item_write($viewer, $params, $event);
+    $data = ws_api_plan_item_input($params, $event);
+    $checked = ws_event_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        ws_api_plan_item_refused($checked);
+    }
+
+    api_dry_run_stop('updated', 'workspace_plan_item', ws_api_plan_item_would($checked));
+
+    $result = ws_event_save($viewer, $data);
+
+    if (!$result['ok']) {
+        ws_api_plan_item_refused($result);
+    }
 
     api_ok(ws_api_plan_item_present($viewer, ws_api_plan_item_or_404($event['id'])));
 }

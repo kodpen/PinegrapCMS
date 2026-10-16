@@ -716,18 +716,19 @@ function ws_notes_list($viewer, $search = '')
 }
 
 /**
- * Writes a note: a new one of the person's own, or one they may change.
- * A change made against an older version than the note now holds, by
- * somebody else meanwhile, is refused as a conflict.
+ * Whether the person may write this note: the checks of ws_note_save(), made
+ * on their own so that the API's dry run meets the same refusals.
  *
  * @param array $viewer
- * @param array $data note_id (0 for a new one), title, body, pinned (the owner's), base (updated_at it was loaded at)
- * @return array ok, error, note_id, conflict
+ * @param array $data see ws_note_save()
+ * @return array ok, error, note_id, conflict, note (as it is now, null for a
+ *               new one), sets (the fields as they would be stored), pin (1 or
+ *               0, null when it is left as it is)
  */
-function ws_note_save($viewer, $data)
+function ws_note_save_check($viewer, $data)
 {
     $fail = function ($error, $note_id = 0, $conflict = false) {
-        return array('ok' => false, 'error' => $error, 'note_id' => $note_id, 'conflict' => $conflict);
+        return array('ok' => false, 'error' => $error, 'note_id' => $note_id, 'conflict' => $conflict, 'note' => null, 'sets' => array(), 'pin' => null);
     };
 
     if (!ws_notes_ready()) {
@@ -775,6 +776,30 @@ function ws_note_save($viewer, $data)
         $pin = !empty($data['pinned']) ? 1 : 0;
     }
 
+    return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false, 'note' => $note, 'sets' => $sets, 'pin' => $pin);
+}
+
+/**
+ * Writes a note: a new one of the person's own, or one they may change.
+ * A change made against an older version than the note now holds, by
+ * somebody else meanwhile, is refused as a conflict.
+ *
+ * @param array $viewer
+ * @param array $data note_id (0 for a new one), title, body, pinned (the owner's), base (updated_at it was loaded at)
+ * @return array ok, error, note_id, conflict
+ */
+function ws_note_save($viewer, $data)
+{
+    $check = ws_note_save_check($viewer, $data);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error'], 'note_id' => $check['note_id'], 'conflict' => $check['conflict']);
+    }
+
+    $note_id = (int) $check['note_id'];
+    $note = $check['note'];
+    $sets = $check['sets'];
+    $pin = $check['pin'];
     $now = time();
 
     if ($note === null) {
@@ -788,7 +813,9 @@ function ws_note_save($viewer, $data)
             ws_blocks_index('note', $note_id, $sets['body'], (int) $viewer['id']);
         }
 
-        return ($note_id > 0) ? array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false) : $fail(lang('The note could not be saved.'));
+        return ($note_id > 0)
+            ? array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false)
+            : array('ok' => false, 'error' => lang('The note could not be saved.'), 'note_id' => 0, 'conflict' => false);
     }
 
     // The state before this save, when it is worth keeping.
