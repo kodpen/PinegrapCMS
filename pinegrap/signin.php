@@ -19,6 +19,12 @@
  * address with no query, google_auth.php's for Google
  * (pg_signin_redirect_uri(); the security settings show it).
  *
+ * A sign-in that does not complete, cancelled ones included, ends on its own
+ * screen (pg_signin_fail()) that says why, names the address the provider
+ * reported when that is the reason, and leads back to the page the button
+ * was on; never on the site's error page, which most sites design as their
+ * "page not found".
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -45,17 +51,30 @@ if (!isset($params['state']) && !isset($params['code']) && !isset($params['error
         $provider_key = (isset($_GET['provider']) && is_string($_GET['provider'])) ? $_GET['provider'] : '';
     }
 
+    $send_to = (isset($_GET['send_to']) && is_string($_GET['send_to'])) ? $_GET['send_to'] : '';
+    $create = (isset($_GET['create']) && is_string($_GET['create'])) ? $_GET['create'] : 'create';
+
+    // The page the button was on, for the way back from the failure screen.
+    $back = pg_signin_referer_path(
+        isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : '',
+        isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '');
+
+    // A button left on a cached page, or an old link to google_auth.php,
+    // after the provider was turned off.
     if (!pg_signin_enabled($provider_key)) {
-        go(PATH);
+        $known = pg_signin_providers();
+
+        pg_signin_fail(
+            isset($known[$provider_key])
+                ? lang(array('string' => 'Sign in with {var:1} is not turned on on this site. Please sign in with your account details.', 'vars' => pg_signin_provider_label($provider_key)))
+                : lang('This sign-in is not available.'),
+            array('signup' => pg_signin_signup_mode($create), 'back' => $back));
     }
 
-    $start = pg_signin_start(
-        $provider_key,
-        (isset($_GET['send_to']) && is_string($_GET['send_to'])) ? $_GET['send_to'] : '',
-        (isset($_GET['create']) && is_string($_GET['create'])) ? $_GET['create'] : 'create');
+    $start = pg_signin_start($provider_key, $send_to, $create, $back);
 
     if (!$start['ok']) {
-        output_error($start['error']);
+        pg_signin_fail($start['error'], array('provider' => $provider_key, 'send_to' => $send_to, 'signup' => pg_signin_signup_mode($create), 'back' => $back));
     }
 
     // A provider that posts its answer back (Apple's form_post) is a
@@ -78,19 +97,7 @@ if (!isset($params['state']) && !isset($params['code']) && !isset($params['error
 $identity = pg_signin_finish($params);
 
 if (!$identity['ok']) {
-
-    if ($identity['cancelled']) {
-        $back = pg_safe_back_url($identity['send_to'], '');
-
-        if ($back === '') {
-            $login = get_page_type_url('login');
-            $back = ($login !== false && $login !== '') ? (string) $login : PATH;
-        }
-
-        go($back);
-    }
-
-    output_error($identity['error']);
+    pg_signin_fail($identity['error'], $identity);
 }
 
 $label = $identity['label'];
@@ -104,7 +111,9 @@ if (($email !== '') && pg_email_blocked($email)) {
     log_activity(lang(array(
         'string' => '{var:1} sign-in refused because the email address is blocked ({var:2})',
         'vars'   => array($label, $email))), '');
-    output_error(lang('This email address cannot be used on this site.'));
+    pg_signin_fail(lang(array(
+        'string' => 'You signed in to {var:1} as {var:2}, but this e-mail address cannot be used on this site.',
+        'vars'   => array($label, $email))), $identity);
 }
 
 $user_id = pg_signin_match_user($identity);
@@ -113,20 +122,33 @@ if (!$user_id && !$identity['email_verified']) {
     log_activity(lang(array(
         'string' => '{var:1} sign-in refused for an unknown account without a verified e-mail address ({var:2})',
         'vars'   => array($label, ($email !== '') ? $email : $identity['subject']))), '');
-    output_error(lang(array(
+    pg_signin_fail(lang(array(
         'string' => 'Sorry, {var:1} did not confirm the e-mail address of this account, so it cannot be used to sign in here. Please sign in with your account details.',
-        'vars'   => $label)));
+        'vars'   => $label)), $identity);
+}
+
+// The verified address belongs to an account here that is tied to another
+// person at this provider: it is not taken over, and a second account with
+// the same address is not opened beside it.
+if (!$user_id && pg_signin_address_user($email)) {
+    log_activity(lang(array(
+        'string' => '{var:1} sign-in refused: the account with the address {var:2} is connected to another {var:1} account',
+        'vars'   => array($label, $email))), '');
+    pg_signin_fail(lang(array(
+        'string' => 'You signed in to {var:1} as {var:2}. The account on this site with that address is already connected to another {var:1} account, so this one cannot sign in to it. Please sign in with your password, or ask the site owner to disconnect the other {var:1} account from yours.',
+        'vars'   => array($label, $email))), $identity);
 }
 
 // Nobody matched and this screen may not open an account (the staff login,
-// or a site that publishes no entrance page).
+// or a site that publishes no entrance page). The address is named: an
+// account here with another address is the usual reason.
 if (!$user_id && ($signup_mode === 'none')) {
     log_activity(lang(array(
         'string' => '{var:1} sign-in refused for an unknown account ({var:2})',
         'vars'   => array($label, $email))), '');
-    output_error(lang(array(
-        'string' => 'There is no account here for that {var:1} address, and new accounts cannot be created from this screen. Please sign in with your account details, or ask the site owner for access.',
-        'vars'   => $label)));
+    pg_signin_fail(lang(array(
+        'string' => 'You signed in to {var:1} as {var:2}, but no account on this site uses that address, and accounts cannot be opened from this screen. If your account here has another e-mail address, sign in with your password, or ask the site owner to change the e-mail address of your account to {var:2}.',
+        'vars'   => array($label, $email))), $identity);
 }
 
 // Membership: the identity is handed to the membership form, which still
@@ -158,7 +180,7 @@ if (!$user_id) {
 }
 
 if (!$user_id) {
-    output_error(lang(array('string' => 'Sorry, we could not sign you in with {var:1}. Please try again.', 'vars' => $label)));
+    pg_signin_fail(lang(array('string' => 'Sorry, we could not sign you in with {var:1}. Please try again.', 'vars' => $label)), $identity);
 }
 
 $username = db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $user_id . "'");
