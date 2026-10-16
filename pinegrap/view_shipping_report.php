@@ -31,7 +31,21 @@ foreach ($_REQUEST as $key => $value) {
     // check because cookie arrays are sometimes included in the $_REQUEST array,
     // for certain php.ini settings.
     if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_shipping_report'][$key] = trim($value);
+        $value = trim($value);
+
+        // A date or status the screen cannot use (hand-typed address such as
+        // ?start_date=x or ?status=all) counts as not given. Stored, it stayed
+        // in the session: a bad date showed "The start date is invalid" on
+        // every later visit, and an unknown status left the quantity unset.
+        if ((($key == 'start_date') || ($key == 'end_date')) && ((preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) != 1) || (validate_date($value) == false))) {
+            continue;
+        }
+
+        if (($key == 'status') && (in_array($value, array('any', 'unshipped', 'shipped'), true) == false)) {
+            continue;
+        }
+
+        $_SESSION['software']['ecommerce']['view_shipping_report'][$key] = $value;
     }
 }
 
