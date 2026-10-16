@@ -288,9 +288,9 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
 
 ## Bağlı hesaplar: giden OAuth (2026.4.10, `includes/fn/connect.php`)
 
-Site bir OAuth istemcisi olarak Google/Microsoft hesabına bağlanır (plan
-`docs/_plan_tersine_oauth.md`, model A: her site sağlayıcının konsolunda
-kendi uygulamasını kaydeder). Ekran `connections.php` (Ayarlar ›
+Site bir OAuth istemcisi olarak Google/Microsoft hesabına bağlanır (model A:
+her site sağlayıcının konsolunda kendi uygulamasını kaydeder; kalan bağlantılar
+ve B modeli `docs/memory/plans/reverse-oauth-leftovers.md`). Ekran `connections.php` (Ayarlar ›
 Bağlantılar), geri dönüş adresi tek: `connect.php`
 (`pg_connect_redirect_uri()`).
 

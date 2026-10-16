@@ -42,6 +42,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - frontend-conventions-layers.md: Palette component vs system widget layers, what is production (legacy) vs development (system widget), and the five invariant principles for system widget work.
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, and why a canvas paste is not an import (no disk, style/script dropped, URLs kept).
 - image-editor-tool.md: Bindable image editor (Pintura): save endpoint contract, write rules, openImageEditor modal, designer-side contract, images save independently of the design.
+- link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
 - member-widgets-rendering.md: Membership widget render rules: closed feature = no output, canvas twin _sdMemberBindingOff, Messages node stamping, always render own tree, signed-in state.
 - member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box.

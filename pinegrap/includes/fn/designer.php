@@ -3733,6 +3733,18 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                     // Closed on the same line: an element whose bound value
                     // came out empty is then truly empty, and :empty matches it.
                     $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . '</' . $tag . '>' . "\n";
+                } elseif ($inner_text !== '' && ($tag_lc === 'a' || $tag_lc === 'button')
+                    && (!isset($props['textPosition']) || $props['textPosition'] !== 'start')) {
+                    // A link or button places its label beside what was
+                    // dropped into it (an icon, a span): after the children
+                    // by default ('end'), before them with textPosition
+                    // 'start'. The canvas and the editor's exporter do the
+                    // same; written first here, a span put in front of the
+                    // label on the canvas came out behind it on the page.
+                    $html .= $pad . '<' . $tag . $attrs . '>' . "\n";
+                    foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
+                    $html .= $pad . '    ' . $inner_text . "\n";
+                    $html .= $pad . '</' . $tag . '>' . "\n";
                 } else {
                     $html .= $pad . '<' . $tag . $attrs . '>' . $inner_text . "\n";
                     foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }

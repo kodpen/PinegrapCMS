@@ -10667,12 +10667,12 @@ const StyleDesigner = (function () {
                     recipient_picker:  _sdT('Recipient Picker (filled by the backend)'),
                     // Member widgets: each block is drawn by the server and
                     // disappears with its site setting.
-                    google_signin:        _sdT('Sign in with Google button (filled by the backend — hidden when Google is off)'),
+                    google_signin:        _sdT('Sign-in buttons: Google, Microsoft and Apple (filled by the backend, only the ones turned on in the settings)'),
                     forgot_password_link: _sdT('Forgot password link (filled by the backend — depends on the site setting)'),
                     register_link:        _sdT('Sign-up link (filled by the backend — depends on the registration page setting)'),
                     password_hint:        _sdT('Password hint (filled by the backend — only on the hint screen)'),
                     password_rules:       _sdT('Strong password rules (filled by the backend — depends on the site setting)'),
-                    google_signup:        _sdT('Sign up with Google button (filled by the backend — hidden when Google is off)'),
+                    google_signup:        _sdT('Sign-up buttons: Google, Microsoft and Apple (filled by the backend, only the ones turned on in the settings)'),
                     login_link:           _sdT('Sign-in link (filled by the backend)'),
                     // Search results and calendar widgets.
                     pagination:           _sdT('Pagination (filled by the backend — hidden on a single page)'),
@@ -10718,6 +10718,14 @@ const StyleDesigner = (function () {
                                         + 'pointer-events:none;text-align:center;font-style:italic';
                     _hint.innerHTML = '<i class="bi bi-link-45deg" style="margin-right:4px"></i>'
                                     + (_sectionLabels[_sec] || (esc(_sdT('Section')) + ': ' + esc(_sec)));
+                    // The sign-in block prints one button per provider that is
+                    // on; say which ones a visitor gets today.
+                    if (_sec === 'google_signin' || _sec === 'google_signup') {
+                        var _on = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags && Array.isArray(sdDesign.siteFlags.signin_providers))
+                            ? sdDesign.siteFlags.signin_providers : [];
+                        _hint.innerHTML += '<br><span style="font-size:.7rem;font-style:normal">'
+                            + esc(_on.length ? _sdT('Turned on now: {var}', _on.join(', ')) : _sdT('No provider is turned on now.')) + '</span>';
+                    }
                 }
                 innerEl.appendChild(_hint);
             }
@@ -12039,13 +12047,25 @@ const StyleDesigner = (function () {
     // Reading textContent as-is folded a child's toolbar label into the
     // text prop: clear the text of a link that holds an image and the
     // image's label ("Image") came back as the link text on every edit.
-    function _sdInlineEditValue(el, rich) {
+    //
+    // `markup`: a text that may carry elements of its own (a link, span or
+    // text node; _SD_RICH_TEXT_CONTENT). When the element holds any, they
+    // are kept: <a><span class="badge">2026.4.9</span><span>...</span></a>,
+    // as the HTML import writes a link with inline children, read as
+    // textContent came back as one run of words on every double-click,
+    // even when nothing was typed. A trailing <br> is what the browser
+    // leaves in an element emptied while editing, not content.
+    function _sdInlineEditValue(el, rich, markup) {
         var src = el;
         if (_sdInlineChrome(el).length) {
             src = el.cloneNode(true);
             _sdInlineChrome(src).forEach(function (n) { n.parentNode.removeChild(n); });
         }
-        return rich ? src.innerHTML : src.textContent.replace(/\u00a0/g, ' ').trim();
+        if (rich) return src.innerHTML;
+        if (markup && src.querySelector('*')) {
+            return src.innerHTML.replace(/(?:\s*<br\s*\/?>)+\s*$/i, '').trim();
+        }
+        return src.textContent.replace(/\u00a0/g, ' ').trim();
     }
 
     // The Bootstrap icon an element draws through its classes ("bi-alarm"),
@@ -12244,6 +12264,9 @@ const StyleDesigner = (function () {
 
         var isRichText = node.type === 'content' &&
             (node.props.contentType === 'heading' || node.props.contentType === 'paragraph');
+        // A link, span or text node: no formatting toolbar and Enter ends
+        // the edit, but whatever elements its text holds stay.
+        var keepsMarkup = !isRichText && node.type === 'content' && !!_SD_RICH_TEXT_CONTENT[node.props.contentType];
 
         editableTargets.forEach(function (item) {
             item.el.addEventListener('dblclick', function (e) {
@@ -12312,6 +12335,12 @@ const StyleDesigner = (function () {
                 // with no real change (compare against origText below) we
                 // pop the snapshot back off so the history stays clean.
                 var origText = (node.props[item.prop] || '');
+                // The same text as the canvas holds it, read the way the
+                // edit is read back. Stored markup and the browser's copy
+                // of it may be spelled apart (&middot; and ·, quotes), and a
+                // double-click with nothing typed must not swap one for the
+                // other.
+                var origShown = _sdInlineEditValue(item.el, isRichText, keepsMarkup);
                 saveState();
 
                 // Show rich text toolbar for heading/paragraph
@@ -12362,7 +12391,7 @@ const StyleDesigner = (function () {
                 var _MutObs = (_iframeWin && _iframeWin.MutationObserver) || MutationObserver;
                 var liveTextObs = new _MutObs(function() {
                     if (!item.el.isConnected) { liveTextObs.disconnect(); return; }
-                    node.props[item.prop] = _sdInlineEditValue(item.el, isRichText);
+                    node.props[item.prop] = _sdInlineEditValue(item.el, isRichText, keepsMarkup);
                     // Typing changes the tree without render() or saveState(),
                     // so the open preview window is told here (debounced).
                     _sdLivePreviewSchedule();
@@ -12383,14 +12412,15 @@ const StyleDesigner = (function () {
                     if (toolbar) toolbar.style.display = 'none';
                     _restoreChrome();
 
-                    // Rich text nodes save innerHTML; plain text nodes save trimmed textContent.
-                    var newText = _sdInlineEditValue(item.el, isRichText);
+                    // Rich text nodes save innerHTML; plain text nodes save
+                    // trimmed textContent, or their markup when they hold any.
+                    var newText = _sdInlineEditValue(item.el, isRichText, keepsMarkup);
                     // A child deleted from the DOM while typing is still in
                     // the tree — redraw so the canvas shows it again.
                     if (_chrome.some(function (n) { return !n.isConnected; })) {
                         setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
                     }
-                    if (newText !== origText) {
+                    if (newText !== origText && newText !== origShown) {
                         // liveTextObs already wrote `newText` into node.props
                         // during typing \u2014 the saveState() we took at the
                         // start of the session captured the BEFORE state, so
@@ -12402,6 +12432,10 @@ const StyleDesigner = (function () {
                     } else {
                         // No real change \u2192 drop the pre-emptive snapshot so
                         // an idle dblclick doesn't pollute the undo history.
+                        // The stored text stays as it was written, not the
+                        // browser's copy of it that liveTextObs may have put
+                        // there.
+                        node.props[item.prop] = origText;
                         if (undoStack.length) {
                             undoStack.pop();
                             updateUndoRedoState();
@@ -12436,7 +12470,7 @@ const StyleDesigner = (function () {
                             // out of the element; redraw it from the tree.
                             setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
                         }
-                        else if (isRichText) item.el.innerHTML = origText || '';
+                        else if (isRichText || keepsMarkup) item.el.innerHTML = origText || '';
                         else item.el.textContent = origText || '';
                         if (undoStack.length) {
                             undoStack.pop();
@@ -12903,15 +12937,28 @@ const StyleDesigner = (function () {
 
     // Is the dragged element safe as inline content (for button/heading/p targets)?
     // Allowed semantic tags: span em strong small b u s i img abbr cite code kbd mark q sub sup
-    // Allowed content types: text icon image
+    // Allowed content types: text span icon image, and a heading drawn as one
+    // of those tags (the blocks' "New!" badge is a heading printed as <span>)
+    // Allowed component: badge (a <span>)
+    // The palette's Span is a span content node: left out of this list, it
+    // could not go into a button or a link at all.
     function _isInlineOnlyDrag(data) {
+        var inlineTags = ['span','em','strong','small','b','u','s','i','img','abbr','cite','code','kbd','mark','q','sub','sup','time','var','wbr','br'];
         var semTag = _dragSemTag(data);
         if (semTag) {
-            var inlineTags = ['span','em','strong','small','b','u','s','i','img','abbr','cite','code','kbd','mark','q','sub','sup','time','var','wbr','br'];
             return inlineTags.indexOf(semTag) !== -1;
         }
         if (data.type === 'content') {
-            return ['text','icon','image'].indexOf(_dragContentType(data)) !== -1;
+            var ct = _dragContentType(data);
+            if (ct === 'heading') {
+                var hp = data.source === 'node' ? (data.node && data.node.props) : data.extra;
+                return inlineTags.indexOf(String(hp && hp.tag || '').toLowerCase()) !== -1;
+            }
+            return ['text','span','icon','image'].indexOf(ct) !== -1;
+        }
+        if (data.type === 'component') {
+            var comp = data.source === 'node' ? (data.node && data.node.props) : data.extra;
+            return !!comp && comp.componentType === 'badge';
         }
         return false;
     }
@@ -29378,7 +29425,7 @@ const StyleDesigner = (function () {
         { label: _sdT('Links (href)'), tokens: [
             ['__forgot_password_url', _sdT('Forgot password address (the link drops when the site setting is off)')],
             ['__register_url',        _sdT('Registration page address (the link drops when no page is chosen)')],
-            ['__google_signin_url',   _sdT('Sign in with Google address (the link drops when Google is off)')]
+            ['__google_signin_url',   _sdT('Sign in with Google address, Google only (the link drops when Google is off; the Sign-in buttons block shows every provider)')]
         ]}
     ];
 
@@ -29690,7 +29737,7 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Links'), tokens: [
             ['__login_url',         _sdT('Sign-in page address')],
-            ['__google_signup_url', _sdT('Sign up with Google address (empty when Google is off)')]
+            ['__google_signup_url', _sdT('Sign up with Google address, Google only (empty when Google is off; the Sign-up buttons block shows every provider)')]
         ]},
         { label: _sdT('Rules'), tokens: [
             ['__password_rules',    _sdT('Strong password rules (HTML; empty when the setting is off)')]
@@ -29934,7 +29981,7 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Links'), tokens: [
             ['__login_url',         _sdT('Sign-in page address')],
-            ['__google_signup_url', _sdT('Sign up with Google address (empty when Google is off)')]
+            ['__google_signup_url', _sdT('Sign up with Google address, Google only (empty when Google is off; the Sign-up buttons block shows every provider)')]
         ]},
         { label: _sdT('Rules'), tokens: [
             ['__password_rules',    _sdT('Strong password rules (HTML; empty when the setting is off)')]
@@ -32504,7 +32551,7 @@ const StyleDesigner = (function () {
             } else if (_semSwRegion === 'login_form') {
                 // Each block is the server's ready-made element and is
                 // absent - container included - when its feature is off.
-                _sectionOpts.push(['google_signin',        _sdT('Sign in with Google button (hidden when Google is off)')]);
+                _sectionOpts.push(['google_signin',        _sdT('Sign-in buttons: Google, Microsoft and Apple (only the ones turned on)')]);
                 _sectionOpts.push(['forgot_password_link', _sdT('Forgot password link (hidden when the site setting is off)')]);
                 _sectionOpts.push(['register_link',        _sdT('Sign-up link (hidden when no registration page is chosen)')]);
             } else if (_semSwRegion === 'forgot_password') {
@@ -32512,11 +32559,11 @@ const StyleDesigner = (function () {
             } else if (_semSwRegion === 'registration') {
                 _sectionOpts.push(['captcha',              _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
-                _sectionOpts.push(['google_signup',        _sdT('Sign up with Google button (hidden when Google is off)')]);
+                _sectionOpts.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
                 _sectionOpts.push(['login_link',           _sdT('Sign-in link')]);
             } else if (_semSwRegion === 'membership') {
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
-                _sectionOpts.push(['google_signup',        _sdT('Sign up with Google button (hidden when Google is off)')]);
+                _sectionOpts.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
                 _sectionOpts.push(['login_link',           _sdT('Sign-in link')]);
             } else if (_semSwRegion === 'search_results') {
                 _sectionOpts.push(['pagination',           _sdT('Pagination (hidden on a single page)')]);
@@ -43633,7 +43680,7 @@ const StyleDesigner = (function () {
                                             createNode('content', { contentType: 'link', text: _sdT('Create an account'), href: '#', cssClass: '',
                                                 _bindings: { href: '__register_url' } })
                                         ]),
-                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign in with Google'),
+                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign-in Buttons'),
                                             _bindings: { section: 'google_signin' } })
                                     ])
                                 ]),
@@ -43933,7 +43980,7 @@ const StyleDesigner = (function () {
                                             _bindings: { section: 'captcha' } }),
                                         createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary w-100', text: _sdT('Sign Up'),
                                             customName: _sdT('Registration Button'), _attrs: [{ name: 'type', value: 'submit' }] }),
-                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign Up with Google'),
+                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign-up Buttons'),
                                             _bindings: { section: 'google_signup' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, [
                                             createNode('content', { contentType: 'link', text: _sdT('Already have an account? Sign in'), href: '#', cssClass: '',
@@ -44688,7 +44735,7 @@ const StyleDesigner = (function () {
                                         ]),
                                         createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary w-100', text: _sdT('Activate the Membership'),
                                             customName: _sdT('Activate Button'), _attrs: [{ name: 'type', value: 'submit' }] }),
-                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign Up with Google'),
+                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign-up Buttons'),
                                             _bindings: { section: 'google_signup' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, [
                                             createNode('content', { contentType: 'link', text: _sdT('Already a member? Sign in'), href: '#', cssClass: '',

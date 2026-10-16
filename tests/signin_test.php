@@ -314,3 +314,64 @@ function test_signin_identity_badges()
 	pg_assert_same(pg_signin_identity_badges(array('google'), 2), pg_connected_account_label('google', 2), 'the sessions screen reads the same');
 	pg_assert_contains('&mdash;', pg_connected_account_label('', 2), 'sessions screen, nothing');
 }
+
+// The way back from the failure screen: a page of this site only, never
+// another site, a script-relative trick or the sign-in's own scripts.
+function test_signin_referer_path_keeps_this_site_only()
+{
+	pg_assert_same('/giris?send_to=%2Fhesabim', pg_signin_referer_path('https://www.example.com/giris?send_to=%2Fhesabim', 'www.example.com'), 'the login page');
+	pg_assert_same('/pinegrap/index.php', pg_signin_referer_path('https://Example.com/pinegrap/index.php', 'example.com:443'), 'host case and port');
+	pg_assert_same('/', pg_signin_referer_path('https://example.com', 'example.com'), 'no path');
+	pg_assert_same('', pg_signin_referer_path('https://evil.test/giris', 'example.com'), 'another site');
+	pg_assert_same('', pg_signin_referer_path('https://example.com.evil.test/giris', 'example.com'), 'a look-alike host');
+	pg_assert_same('', pg_signin_referer_path('https://accounts.google.com/o/oauth2/v2/auth', 'example.com'), 'the provider');
+	pg_assert_same('', pg_signin_referer_path('javascript://example.com/%0Aalert(1)', 'example.com'), 'not a web address');
+	pg_assert_same('', pg_signin_referer_path("https://example.com/a\r\nLocation: x", 'example.com'), 'header splitting');
+	pg_assert_same('', pg_signin_referer_path('https://example.com/pinegrap/signin.php?provider=google', 'example.com'), 'the start script');
+	pg_assert_same('', pg_signin_referer_path('https://example.com/pinegrap/google_auth.php', 'example.com'), 'the return script');
+	pg_assert_same('', pg_signin_referer_path('', 'example.com'), 'no referrer');
+	pg_assert_same('', pg_signin_referer_path(array('x'), 'example.com'), 'not a string');
+}
+
+// The failure screen says what happened in plain, escaped text and offers
+// the way back first.
+function test_signin_failure_card()
+{
+	$card = pg_signin_failure_card('Sign-in did not complete', 'You signed in to Google as <b>x@example.com</b>', array(
+		array('url' => '/giris?a=1&b=2', 'label' => 'Go Back', 'primary' => true),
+		array('url' => '/pinegrap/signin.php?provider=google', 'label' => 'Try again with Google'),
+		array('url' => '', 'label' => 'dropped'),
+	));
+
+	pg_assert_contains('&lt;b&gt;x@example.com&lt;/b&gt;', $card, 'the message is escaped');
+	pg_assert_contains('role="alert"', $card, 'an error is announced');
+	pg_assert_contains('bi-exclamation-triangle', $card, 'an error mark');
+	pg_assert_contains('class="btn btn-primary" href="/giris?a=1&amp;b=2"', $card, 'the way back comes first');
+	pg_assert_contains('class="btn btn-outline-secondary" href="/pinegrap/signin.php?provider=google"', $card, 'another try');
+	pg_assert_false(strpos($card, 'dropped') !== false, 'a link without an address drops');
+	pg_assert_true(strpos($card, 'Go Back') < strpos($card, 'Try again with Google'), 'back before again');
+
+	$cancelled = pg_signin_failure_card('Sign-in cancelled', 'The sign-in was cancelled at Google, so you are not signed in.', array(), true);
+	pg_assert_contains('role="status"', $cancelled, 'a cancel is a notice');
+	pg_assert_contains('bi-info-circle', $cancelled, 'a notice mark');
+	pg_assert_false(strpos($cancelled, 'd-flex') !== false, 'no button row without links');
+}
+
+function test_signin_button_html_is_one_markup_for_every_provider()
+{
+	$google = pg_signin_button_html('google', '/pinegrap/google_auth.php?send_to=/a&b=1', 'Sign in with Google');
+	$apple = pg_signin_button_html('apple', '/pinegrap/signin.php?provider=apple', 'Sign in with <Apple>');
+
+	pg_assert_contains('class="pg-signin-button pg-signin-google"', $google, 'a shared class and the provider class');
+	pg_assert_contains('href="/pinegrap/google_auth.php?send_to=/a&amp;b=1"', $google, 'the address is escaped');
+	pg_assert_contains('min-width:240px', $google, 'a common width so a column lines up');
+	pg_assert_contains('#4285F4', strtoupper($google), 'Google keeps its own mark');
+	pg_assert_false(strpos($google, 'gap:') !== false, 'no flex gap, which older browsers ignore');
+	pg_assert_contains('background:#000 !important', $apple, 'Apple is black');
+	pg_assert_contains('Sign in with &lt;Apple&gt;', $apple, 'the label is escaped');
+
+	foreach (array('google', 'microsoft', 'apple', 'unknown') as $key) {
+		$style = pg_signin_button_style($key);
+		pg_assert_true(isset($style['border'], $style['background'], $style['color'], $style['font']), $key . ' has a complete style');
+	}
+}

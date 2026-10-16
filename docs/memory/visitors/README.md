@@ -12,6 +12,7 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).
 - visitor-item-links-and-chart-labels.md: How visitor report rows build item URLs, why chart and tooltip numbers differ, and why the home page is stored under many names.
 - visitor-report-sql-pitfalls.md: How the visitor report page aggregates in SQL not PHP, ONLY_FULL_GROUP_BY traps in rollup queries, and why only the visitors table left MyISAM.
+- visitor-retention-and-cleanup.md: How the visitors table is kept small: retention days, daily summary, chunked deletion, move to InnoDB, automatic rebuild, bots not recorded, rowless backups, stepwise restore
 - visitor-rollup-backfill-runtime.md: Backfill runtime rules for visitor rollups: MySQL time zone sync, interruptible steps split across versions, ceiling read order, rollup_ready recheck.
 - visitor-rollup-consistency.md: Keeping the two visitor summary tables consistent: both must SUM(page_views), running-total race with backfill, and rebuilding derived data (2026.3.8).
 - visitor-rollup-tables.md: The hourly visitor summary tables (visitor_stats_hourly, visitor_content_hourly), bucket_key hashing, and how content items are identified (2026.3.4).
