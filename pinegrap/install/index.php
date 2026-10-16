@@ -1613,9 +1613,38 @@ function check_install_unlocked() {
 
 }
 
-function set_install_unlocked() {
+// Unlocks the screen for this session, or renews the unlock.  The name the administrator
+// unlocked with is kept for the site log, because unlocking signs nobody in.
+function set_install_unlocked($username = '') {
 
 	$_SESSION['software']['install']['unlocked_until'] = time() + INSTALL_UNLOCK_SECONDS;
+
+	if ($username !== '') {
+
+		$_SESSION['software']['install']['unlocked_by'] = $username;
+
+	}
+
+}
+
+// The name the site log records for what is done on this screen: the signed-in user's, or the
+// one this screen was unlocked with.  An empty string when neither is known, which is the case
+// before the unlock and on a new installation.
+function get_install_log_username() {
+
+	if ((isset($_SESSION['sessionusername'])) && (is_string($_SESSION['sessionusername'])) && ($_SESSION['sessionusername'] !== '')) {
+
+		return $_SESSION['sessionusername'];
+
+	}
+
+	if ((check_install_unlocked() == true) && (isset($_SESSION['software']['install']['unlocked_by'])) && (is_string($_SESSION['software']['install']['unlocked_by']))) {
+
+		return $_SESSION['software']['install']['unlocked_by'];
+
+	}
+
+	return '';
 
 }
 
@@ -4767,7 +4796,7 @@ else {
 		// actually changes the site.
 		if (($automated_upgrade == false) && (check_if_administrator_is_logged_in() == false) && (check_install_unlocked() == false)) {
 
-			log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), $_SESSION['sessionusername']);
+			log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), get_install_log_username());
 
 			exit(lang('Please authenticate as an administrator of this site before you install or upgrade.'));
 
@@ -4785,7 +4814,7 @@ else {
 
 			if (($upgrade_session_token === '') || (!hash_equals($upgrade_session_token, $upgrade_posted_token))) {
 
-				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), $_SESSION['sessionusername']);
+				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), get_install_log_username());
 
 				exit(lang('Sorry, we could not accept your request because it appears that your session expired.'));
 
@@ -5001,7 +5030,7 @@ else {
 
 			($_POST['token'] != $_SESSION['software']['token']) && ($_GET['token'] != $_SESSION['software']['token']))) {
 
-				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), $_SESSION['sessionusername']);
+				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), get_install_log_username());
 
 				exit(lang('Sorry, we could not accept your request because it appears that your session expired.'));
 
@@ -5032,7 +5061,7 @@ else {
 			// again here, because this is the request that replaces the site.
 			if (($software_installed == true) && (check_if_administrator_is_logged_in() == false) && (check_install_unlocked() == false)) {
 
-				log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), $_SESSION['sessionusername']);
+				log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), get_install_log_username());
 
 				exit(lang('Please authenticate as an administrator of this site before you install or upgrade.'));
 
@@ -5419,7 +5448,7 @@ else {
 
 			pg_restore_discard();
 
-			log_activity(lang(array('string' => 'The backup {var:1} could not be restored: {var:2} The site was not changed.', 'vars' => array($install_restore['folder'], $message))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+			log_activity(lang(array('string' => 'The backup {var:1} could not be restored: {var:2} The site was not changed.', 'vars' => array($install_restore['folder'], $message))), get_install_log_username());
 
 			if ($extracting == true) {
 
@@ -6942,7 +6971,7 @@ function output_install_restore_discard() {
 
 			pg_restore_discard();
 
-			log_activity(lang(array('string' => 'The unfinished restore of the backup {var:1} was discarded.', 'vars' => array($state['folder']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+			log_activity(lang(array('string' => 'The unfinished restore of the backup {var:1} was discarded.', 'vars' => array($state['folder']))), get_install_log_username());
 
 		} else {
 
@@ -7237,7 +7266,7 @@ function output_install_upgrade_step($versions) {
 
 	if ($result['done'] == true) {
 
-		log_activity(lang(array('string' => 'The software was upgraded from version {var:1} to {var:2}.', 'vars' => array($database_version, $version_now))), (isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : ''));
+		log_activity(lang(array('string' => 'The software was upgraded from version {var:1} to {var:2}.', 'vars' => array($database_version, $version_now))), get_install_log_username());
 
 	}
 
@@ -7281,7 +7310,7 @@ function output_install_database_backup($versions) {
 
 	if ($result['ok'] == true) {
 
-		log_activity(lang('A backup of the database was written before the upgrade') . ': ' . $result['folder'], (isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : ''));
+		log_activity(lang('A backup of the database was written before the upgrade') . ': ' . $result['folder'], get_install_log_username());
 
 	}
 
@@ -7649,7 +7678,7 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 	// select the folder that we just extracted
 	$liveform->assign_field_value('install_from_folder', $folder_name);
 
-	log_activity(lang(array('string' => 'uploaded a backup archive to the installation screen and extracted it to {var:1}', 'vars' => $folder_name)), $_SESSION['sessionusername']);
+	log_activity(lang(array('string' => 'uploaded a backup archive to the installation screen and extracted it to {var:1}', 'vars' => $folder_name)), get_install_log_username());
 
 	$liveform->add_notice(lang(array(
 		'string' => 'The archive was extracted to {var:1} and selected. {var:2} files were extracted.',
@@ -7796,7 +7825,7 @@ function output_install_lock_screen() {
 
 					clear_install_attempts();
 
-					set_install_unlocked();
+					set_install_unlocked($unlock_username);
 
 					log_activity(lang('unlocked the installation screen'), $unlock_username);
 

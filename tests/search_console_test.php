@@ -137,6 +137,16 @@ function test_gsc_sync_range_rereads_the_last_days()
 	pg_assert_same(array('from' => '2026-10-06', 'to' => '2026-10-12'), pg_gsc_sync_range('2026-10-13', '', 7), 'a shorter window');
 }
 
+// A backup carries the last day read but not the rows (the table is dumped
+// empty), so an empty table starts again from the whole window.
+function test_gsc_resume_day_starts_over_on_an_empty_table()
+{
+	pg_assert_same('2026-10-10', pg_gsc_resume_day('2026-10-10', true), 'rows: continue');
+	pg_assert_same('', pg_gsc_resume_day('2026-10-10', false), 'restored, no rows: the whole window');
+	pg_assert_same('', pg_gsc_resume_day('', false), 'never read');
+	pg_assert_same(array('from' => '2026-07-15', 'to' => '2026-10-12'), pg_gsc_sync_range('2026-10-13', pg_gsc_resume_day('2026-10-12', false)), 'the window after a restore');
+}
+
 function test_gsc_period_and_the_one_before()
 {
 	pg_assert_same(array(

@@ -282,6 +282,17 @@ function pg_backup_delete_tree($path)
  * audit and e-document logs) and cron_runs, whose rows the scheduled jobs
  * read back as their watermarks.
  *
+ * The Search Console figures (seo_search_daily) are a copy of what Google
+ * keeps for sixteen months, a row per day for every address and every search,
+ * so they grow with the site's traffic. The next download after a restore
+ * finds the table empty and reads the whole window again (pg_gsc_resume_day()).
+ * The other SEO and search tables keep their rows: seo_issue and seo_link are
+ * the findings and the link graph behind the scores stored on every page and
+ * product, which would point at nothing until each one is checked again, and
+ * they grow with the content rather than the traffic. So does search_items,
+ * the index of the advanced site search, which only update_search_index.php
+ * rebuilds; search_results_pages is the settings of the search results pages.
+ *
  * @return array table name => what its rows are, as the dump's note says it
  */
 function pg_backup_rowless_tables()
@@ -294,6 +305,7 @@ function pg_backup_rowless_tables()
         'waf_log'                   => 'firewall events',
         'perf_log'                  => 'slow requests',
         'api_request_log'           => 'API requests, one row each',
+        'seo_search_daily'          => 'Search Console figures, downloaded again',
     );
 }
 

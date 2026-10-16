@@ -401,7 +401,7 @@ $explorer_lang = array(
     'backups_note' => lang('Website backups on the server. They are stored outside the web site, so they can only be downloaded from here.'),
     'backups_empty' => lang('There are no backups yet.'),
     'backups_rowless' => lang('Visit, view and request records are not backed up'),
-    'backups_rowless_note' => lang('Database backups leave out the rows of visit records, page view counts, form item view counts and the firewall, performance and API request logs: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.'),
+    'backups_rowless_note' => lang('Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.'),
     // Short links: a name at the root of the site that stands for something
     // else. They sit under Pages because a page is what most of them point at.
     'short_links' => lang('Short Links'),

@@ -215,13 +215,14 @@ function test_backup_remote_normalize_defaults()
 	pg_assert_false($s3['path_style'], 'path style off');
 }
 
-// Visit records, the page and form item view counters and the request logs
-// go without rows; the summaries the dashboard and the visitor report read
-// keep theirs, and so does every log of what someone did.
+// Visit records, the page and form item view counters, the request logs and
+// the downloaded Search Console figures go without rows; the summaries the
+// dashboard and the visitor report read keep theirs, and so does every log of
+// what someone did and every SEO or search table built from the content.
 function test_backup_rowless_tables_scope()
 {
 	pg_assert_same(
-		array('visitors', 'visitor_content_hourly', 'submitted_form_views', 'submitted_form_view_stats', 'waf_log', 'perf_log', 'api_request_log'),
+		array('visitors', 'visitor_content_hourly', 'submitted_form_views', 'submitted_form_view_stats', 'waf_log', 'perf_log', 'api_request_log', 'seo_search_daily'),
 		array_keys(pg_backup_rowless_tables())
 	);
 
@@ -231,6 +232,7 @@ function test_backup_rowless_tables_scope()
 		'visitor_stats_daily', 'visitor_stats_hourly', 'submitted_form_info', 'visitor_reports', 'orders', 'config',
 		'forms', 'form_data', 'contacts', 'ws_messages', 'perf_stats', 'log', 'cron_runs',
 		'erp_audit_log', 'erp_edoc_log', 'mail_outbox', 'api_webhook_queue',
+		'seo_issue', 'seo_link', 'search_items', 'search_results_pages', 'short_links', 'connect_accounts',
 	);
 
 	foreach ($kept_tables as $kept) {
