@@ -20,6 +20,7 @@
 2026.4.10
 [NEW] Added an OAuth 2.1 authorization server and an MCP server: AI apps such as Claude and ChatGPT connect with a person's own permissions.
 [NEW] The external API and MCP tools now cover customers, product groups, menus, calendars, comments, campaigns, gift cards, visitor reports and ERP documents.
+[NEW] Added webhook subscriptions for a group of Workspace channels: one address hears the events of every channel in the group.
 [NEW] A Workspace task can be handed to Pinegrap AI or Claude, which works on it, replies in the task and suggests changes for approval.
 [NEW] Added remote MCP servers to the Workspace: connect other services, with OAuth sign-in, and call them in channels and tasks with an @alias.
 [NEW] Added customer approval: Workspace approval requests can be sent by email to people outside the team.
@@ -41,7 +42,7 @@
 [NEW] UPS, FedEx and USPS rates, delivery dates and address checks now use the carriers' new REST APIs.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.
-[SCHEME] New tables and columns are added for connected apps and accounts, sign-in, Workspace assistants, MCP servers, purchase orders and visitor summaries.
+[SCHEME] New tables and columns are added for connected apps and accounts, sign-in, Workspace assistants, MCP servers, purchase orders, visitor summaries and webhook subscriptions.
 ==========================================================
 2026.4.9
 [NEW] Links inside paragraphs and headings can be edited in the visual page editor.

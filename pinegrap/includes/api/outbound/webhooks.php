@@ -129,7 +129,14 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 	// shows subscriptions under their application - while this keeps delivering
 	// them, and switching an application off stops it asking without stopping the
 	// site from telling it.
-	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.events
+	//
+	// A subscription may be narrowed to one group of workspace channels
+	// (channel_group_id, 2026.4.10). Before the upgrade has added the column
+	// every subscription is a whole-site one, as it always was.
+	$narrowed = api_webhook_channel_groups_ready();
+
+	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.events"
+		. ($narrowed ? ", api_webhooks.channel_group_id" : "") . "
 		FROM api_webhooks
 		INNER JOIN api_apps ON api_apps.id = api_webhooks.app_id
 		WHERE api_webhooks.status = 'active' AND api_apps.status = 'active'");
@@ -148,6 +155,10 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 
 	$queued = 0;
 
+	// The groups the event's channel is in, read once for all the narrowed
+	// subscriptions and only when there is one.
+	$groups = null;
+
 	foreach ($hooks as $hook) {
 
 		$events = json_decode((string)$hook['events'], true);
@@ -155,6 +166,24 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 		if (!is_array($events) || !in_array($event, $events, true)) {
 
 			continue;
+
+		}
+
+		$group_id = isset($hook['channel_group_id']) ? (int)$hook['channel_group_id'] : 0;
+
+		if ($group_id > 0) {
+
+			if ($groups === null) {
+
+				$groups = api_webhook_event_channel_groups($event, $payload);
+
+			}
+
+			if (!in_array($group_id, $groups, true)) {
+
+				continue;
+
+			}
 
 		}
 
@@ -174,6 +203,31 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 	}
 
 	return $queued;
+
+}
+
+// Has the database the column that narrows a subscription to a group of
+// workspace channels (2026.4.10, 10.76)? Asked before any read names it.
+function api_webhook_channel_groups_ready() {
+
+	return function_exists('pg_schema_has') && pg_schema_has('api_webhooks', 'channel_group_id');
+
+}
+
+// The workspace channel groups an event happened in, nearest first: what a
+// narrowed subscription is matched against. The workspace answers it
+// (ws_webhook_event_groups()); with the workspace switched off, or for an
+// event that happened in no channel, it is empty and a narrowed subscription
+// hears nothing.
+function api_webhook_event_channel_groups($event, $payload) {
+
+	if (!function_exists('ws_webhook_event_groups')) {
+
+		return array();
+
+	}
+
+	return array_map('intval', (array)ws_webhook_event_groups($event, (array)$payload));
 
 }
 
