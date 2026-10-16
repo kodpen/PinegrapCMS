@@ -16,8 +16,12 @@ description: Installation screen backup upload: archive extracted a megabyte at 
 - A damaged file, a write error or an empty archive deletes the working folder and says why (nothing is extracted). A request that dies (time limit, memory) deletes it in a shutdown function; one the server killed outright is swept by the next upload after a day.
 - Free disk space for the whole uncompressed size plus 64 MB is checked before the first byte.
 
+## Who does the site log name?
+- `get_install_log_username()`: the signed-in user's name, else the name the screen was unlocked with (`set_install_unlocked($username)` keeps it in the session; unlocking signs nobody in), else ''. Every `log_activity()` on the installation screen uses it.
+- Symptom it fixed (#480): after an upload on an unlocked screen, PHP 8 warned "Undefined array key sessionusername" and the log line had no user.
+
 ## Rules
 - Never read an archive member with `getFromIndex()`/`getFromName()` when its size is not known to be small; use `pg_restore_archive_copy()` or the stream the way `pg_restore_extract_step()` does.
 - Paths inside the archive are rebuilt from clean parts (no `..`, empty or dot parts), so an entry cannot write outside the working folder; a name with a character Windows cannot create (`:` `*` `?` `"` `<` `>` `|`, control characters) is skipped, as the archive restore skips it.
 
-PR: #473
+PR: #473, #480

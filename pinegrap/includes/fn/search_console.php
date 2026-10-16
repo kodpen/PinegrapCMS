@@ -296,6 +296,23 @@ function pg_gsc_sync_range($today, $synced_to, $days = 90)
 }
 
 /**
+ * The last day read that a download continues from.
+ *
+ * The figures are backed up without their rows (pg_backup_rowless_tables()),
+ * while the day the download had reached travels in config.search_console.
+ * A restored site therefore holds an empty table that says it is up to date;
+ * it starts again from the whole window, as on the first run.
+ *
+ * @param string $synced_to the last day read, '' for none
+ * @param bool   $has_rows  whether seo_search_daily holds any row
+ * @return string Y-m-d, or '' to read the whole window
+ */
+function pg_gsc_resume_day($synced_to, $has_rows)
+{
+    return $has_rows ? (string) $synced_to : '';
+}
+
+/**
  * The reporting period ending on the last day with figures, and the one of
  * the same length before it.
  *
@@ -821,7 +838,9 @@ function pg_gsc_sync($budget = 120)
         return $answer;
     }
 
-    $range = pg_gsc_sync_range(date('Y-m-d'), $settings['synced_to']);
+    $has_rows = (bool) db_value("SELECT 1 FROM seo_search_daily LIMIT 1");
+
+    $range = pg_gsc_sync_range(date('Y-m-d'), pg_gsc_resume_day($settings['synced_to'], $has_rows));
     $filter = pg_gsc_page_filter($settings['property'], pg_gsc_site_url());
 
     $answer['from'] = $range['from'];
