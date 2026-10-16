@@ -58,22 +58,12 @@ function get_catalog($properties) {
 
     if ($layout_type == 'system') {
     
-        $search_query = '';
         $code = '';
 
-        // If the clear button was not clicked, then get search query value.
-        // A query sent as an array (?query[]=x) counts as no query:
-        // trim() refused it with an error page.
-        if (isset($_GET[$page_id . '_simple_clear']) == false) {
-            // if there is a specific query for this page, then use it
-            if ((isset($_GET[$page_id . '_query']) == TRUE) && is_string($_GET[$page_id . '_query'])) {
-                $search_query = trim($_GET[$page_id . '_query']);
-                
-            // else if there is a general query, then use it (this is for backwards compatibility)
-            } else if ((isset($_GET['query']) == TRUE) && is_string($_GET['query'])) {
-                $search_query = trim($_GET['query']);
-            }
-        }
+        // The clear button, this page's own query and the general query of
+        // older links are read in pg_catalog_search_term(), which the page's
+        // RSS link asks too.
+        $search_query = pg_catalog_search_term($page_id, 'system');
         
         // if there is not a search query, then set mode and prepare for mode
         if ($search_query == '') {
@@ -1413,7 +1403,8 @@ function get_catalog($properties) {
             $form->set($page_id . '_query', '');
         }
 
-        $query = $form->get($page_id . '_query');
+        // The same term the page's RSS link reads (pg_catalog_search_term()).
+        $query = pg_catalog_search_term($page_id, 'custom');
 
         // get current URL parts in order to deal with query string parameters
         $url_parts = parse_url(REQUEST_URL);
