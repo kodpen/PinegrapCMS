@@ -12039,13 +12039,25 @@ const StyleDesigner = (function () {
     // Reading textContent as-is folded a child's toolbar label into the
     // text prop: clear the text of a link that holds an image and the
     // image's label ("Image") came back as the link text on every edit.
-    function _sdInlineEditValue(el, rich) {
+    //
+    // `markup`: a text that may carry elements of its own (a link, span or
+    // text node; _SD_RICH_TEXT_CONTENT). When the element holds any, they
+    // are kept: <a><span class="badge">2026.4.9</span><span>...</span></a>,
+    // as the HTML import writes a link with inline children, read as
+    // textContent came back as one run of words on every double-click,
+    // even when nothing was typed. A trailing <br> is what the browser
+    // leaves in an element emptied while editing, not content.
+    function _sdInlineEditValue(el, rich, markup) {
         var src = el;
         if (_sdInlineChrome(el).length) {
             src = el.cloneNode(true);
             _sdInlineChrome(src).forEach(function (n) { n.parentNode.removeChild(n); });
         }
-        return rich ? src.innerHTML : src.textContent.replace(/\u00a0/g, ' ').trim();
+        if (rich) return src.innerHTML;
+        if (markup && src.querySelector('*')) {
+            return src.innerHTML.replace(/(?:\s*<br\s*\/?>)+\s*$/i, '').trim();
+        }
+        return src.textContent.replace(/\u00a0/g, ' ').trim();
     }
 
     // The Bootstrap icon an element draws through its classes ("bi-alarm"),
@@ -12244,6 +12256,9 @@ const StyleDesigner = (function () {
 
         var isRichText = node.type === 'content' &&
             (node.props.contentType === 'heading' || node.props.contentType === 'paragraph');
+        // A link, span or text node: no formatting toolbar and Enter ends
+        // the edit, but whatever elements its text holds stay.
+        var keepsMarkup = !isRichText && node.type === 'content' && !!_SD_RICH_TEXT_CONTENT[node.props.contentType];
 
         editableTargets.forEach(function (item) {
             item.el.addEventListener('dblclick', function (e) {
@@ -12312,6 +12327,12 @@ const StyleDesigner = (function () {
                 // with no real change (compare against origText below) we
                 // pop the snapshot back off so the history stays clean.
                 var origText = (node.props[item.prop] || '');
+                // The same text as the canvas holds it, read the way the
+                // edit is read back. Stored markup and the browser's copy
+                // of it may be spelled apart (&middot; and ·, quotes), and a
+                // double-click with nothing typed must not swap one for the
+                // other.
+                var origShown = _sdInlineEditValue(item.el, isRichText, keepsMarkup);
                 saveState();
 
                 // Show rich text toolbar for heading/paragraph
@@ -12362,7 +12383,7 @@ const StyleDesigner = (function () {
                 var _MutObs = (_iframeWin && _iframeWin.MutationObserver) || MutationObserver;
                 var liveTextObs = new _MutObs(function() {
                     if (!item.el.isConnected) { liveTextObs.disconnect(); return; }
-                    node.props[item.prop] = _sdInlineEditValue(item.el, isRichText);
+                    node.props[item.prop] = _sdInlineEditValue(item.el, isRichText, keepsMarkup);
                     // Typing changes the tree without render() or saveState(),
                     // so the open preview window is told here (debounced).
                     _sdLivePreviewSchedule();
@@ -12383,14 +12404,15 @@ const StyleDesigner = (function () {
                     if (toolbar) toolbar.style.display = 'none';
                     _restoreChrome();
 
-                    // Rich text nodes save innerHTML; plain text nodes save trimmed textContent.
-                    var newText = _sdInlineEditValue(item.el, isRichText);
+                    // Rich text nodes save innerHTML; plain text nodes save
+                    // trimmed textContent, or their markup when they hold any.
+                    var newText = _sdInlineEditValue(item.el, isRichText, keepsMarkup);
                     // A child deleted from the DOM while typing is still in
                     // the tree — redraw so the canvas shows it again.
                     if (_chrome.some(function (n) { return !n.isConnected; })) {
                         setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
                     }
-                    if (newText !== origText) {
+                    if (newText !== origText && newText !== origShown) {
                         // liveTextObs already wrote `newText` into node.props
                         // during typing \u2014 the saveState() we took at the
                         // start of the session captured the BEFORE state, so
@@ -12402,6 +12424,10 @@ const StyleDesigner = (function () {
                     } else {
                         // No real change \u2192 drop the pre-emptive snapshot so
                         // an idle dblclick doesn't pollute the undo history.
+                        // The stored text stays as it was written, not the
+                        // browser's copy of it that liveTextObs may have put
+                        // there.
+                        node.props[item.prop] = origText;
                         if (undoStack.length) {
                             undoStack.pop();
                             updateUndoRedoState();
@@ -12436,7 +12462,7 @@ const StyleDesigner = (function () {
                             // out of the element; redraw it from the tree.
                             setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
                         }
-                        else if (isRichText) item.el.innerHTML = origText || '';
+                        else if (isRichText || keepsMarkup) item.el.innerHTML = origText || '';
                         else item.el.textContent = origText || '';
                         if (undoStack.length) {
                             undoStack.pop();
@@ -12903,15 +12929,28 @@ const StyleDesigner = (function () {
 
     // Is the dragged element safe as inline content (for button/heading/p targets)?
     // Allowed semantic tags: span em strong small b u s i img abbr cite code kbd mark q sub sup
-    // Allowed content types: text icon image
+    // Allowed content types: text span icon image, and a heading drawn as one
+    // of those tags (the blocks' "New!" badge is a heading printed as <span>)
+    // Allowed component: badge (a <span>)
+    // The palette's Span is a span content node: left out of this list, it
+    // could not go into a button or a link at all.
     function _isInlineOnlyDrag(data) {
+        var inlineTags = ['span','em','strong','small','b','u','s','i','img','abbr','cite','code','kbd','mark','q','sub','sup','time','var','wbr','br'];
         var semTag = _dragSemTag(data);
         if (semTag) {
-            var inlineTags = ['span','em','strong','small','b','u','s','i','img','abbr','cite','code','kbd','mark','q','sub','sup','time','var','wbr','br'];
             return inlineTags.indexOf(semTag) !== -1;
         }
         if (data.type === 'content') {
-            return ['text','icon','image'].indexOf(_dragContentType(data)) !== -1;
+            var ct = _dragContentType(data);
+            if (ct === 'heading') {
+                var hp = data.source === 'node' ? (data.node && data.node.props) : data.extra;
+                return inlineTags.indexOf(String(hp && hp.tag || '').toLowerCase()) !== -1;
+            }
+            return ['text','span','icon','image'].indexOf(ct) !== -1;
+        }
+        if (data.type === 'component') {
+            var comp = data.source === 'node' ? (data.node && data.node.props) : data.extra;
+            return !!comp && comp.componentType === 'badge';
         }
         return false;
     }
