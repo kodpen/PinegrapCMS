@@ -12,7 +12,9 @@
  * first account, till or document, and ?download[]=x the first accountant's
  * pack. And for what a form posts: a screen that saves hands every one-value
  * field to pg_request_single_values() before it reads the post, so title[]=x
- * is not saved as "Array" and id[]=2 does not delete till 1.
+ * is not saved as "Array" and id[]=2 does not delete till 1. And for the
+ * entries of the lists a form posts (an invoice's lines, a category's
+ * fields, the counted figures): an entry sent as an array is not given.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -30,6 +32,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/reconciliation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/purchase_orders.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/account_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/waybills.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/waybill_form.php');
 
 // No ERP screen casts a value from the address without checking it is one
 // value.
@@ -307,4 +311,99 @@ function test_erp_request_values_dates_ignore_arrays()
 	$options = erp_reconciliation_options(array('as_of' => array('x'), 'from' => array('x')));
 	pg_assert_same($today, $options['as_of'], 'reconciliation as of');
 	pg_assert_same(substr($today, 0, 4) . '-01-01', $options['from'], 'reconciliation from');
+}
+
+// One row of a posted list keeps the fields that came as one value; a field
+// sent as an array (lines[0][description][]=x) is left out, a row that is not
+// a set of fields is empty, and numbers from a stored row or a JSON body stay.
+function test_erp_request_values_row_values()
+{
+	pg_assert_same(array('quantity' => '2', 'product_id' => 7, 'is_active' => true), pg_request_row_values(array('description' => array('x'), 'quantity' => '2', 'product_id' => 7, 'is_active' => true, 'note' => null)), 'row values');
+	pg_assert_same(array(), pg_request_row_values('x'), 'a row that is a string');
+	pg_assert_same(array(), pg_request_row_values(null), 'no row');
+}
+
+// An invoice line and a delivery note line with a field posted as an array
+// are drawn with that box empty rather than "Array", and the delivery note
+// asks for the description instead of writing "Array" into it.
+function test_erp_request_values_document_lines_skip_arrays()
+{
+	$line = erp_invoice_form_line(array('description' => array('x'), 'quantity' => array('2'), 'unit_price' => '10'), false);
+	pg_assert_same(array('', '', '10'), array($line['description'], $line['quantity'], $line['unit_price']), 'invoice line drawn back');
+
+	$line = erp_waybill_form_line(array('description' => array('x'), 'quantity' => '3'));
+	pg_assert_same(array('', '3'), array($line['description'], $line['quantity']), 'delivery note line drawn back');
+
+	$line = erp_waybill_form_line(array('description' => 'Kutu', 'quantity' => 2.5));
+	pg_assert_same('2.5', $line['quantity'], 'delivery note line from an order');
+
+	$built = erp_waybill_lines_build(array(array('description' => array('x'), 'quantity' => '1')));
+	pg_assert_same(array(), $built['lines'], 'delivery note line with an array description');
+	pg_assert_true($built['error'] !== '', 'delivery note line with an array description is refused');
+
+	$built = erp_waybill_lines_build(array(array('description' => 'Kutu', 'quantity' => 2)));
+	pg_assert_same(array(array('product_id' => 0, 'description' => 'Kutu', 'quantity' => 2.0, 'unit_code' => 'C62')), $built['lines'], 'delivery note line from the API');
+}
+
+// The entries of a list a screen takes from the post (a field's choice, a
+// column's mapping, an amount to allocate, a category's fields) are checked
+// to be one value before they are cast or read as a row.
+function test_erp_request_values_posted_list_entries_checked()
+{
+	$found = array();
+	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/erp_*.php'), glob(PG_FUNCTIONS_DIR . '/get_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/add_erp_*.php'), glob(PG_FUNCTIONS_DIR . '/edit_erp_*.php'));
+
+	foreach ($files as $file) {
+		$source = file_get_contents($file);
+		$entries = array();
+
+		// foreach ((array) ($_POST['x'] ?? array()) as $key => $entry)
+		preg_match_all('/foreach \(\(array\) \(\$_POST\[[^\]]+\] \?\? array\(\)\) as (?:\$\w+ => )?(\$\w+)\)/', $source, $matches);
+		$entries = array_merge($entries, $matches[1]);
+
+		// $list = isset($_POST['x']) && is_array($_POST['x']) ? $_POST['x'] : array();
+		preg_match_all('/(\$\w+) = isset\(\$_POST\[\'\w+\'\]\) && is_array\(\$_POST\[/', $source, $lists);
+
+		foreach ($lists[1] as $list) {
+			preg_match_all('/foreach \(' . preg_quote($list, '/') . ' as (?:\$\w+ => )?(\$\w+)\)/', $source, $matches);
+			$entries = array_merge($entries, $matches[1]);
+
+			if (preg_match('/\((?:string|int|float)\)\s*' . preg_quote($list, '/') . '\[/', $source) && (strpos($source, 'is_scalar(' . $list . '[') === false)) {
+				$found[] = basename($file) . ' ' . $list . '[…]';
+			}
+		}
+
+		foreach (array_unique($entries) as $entry) {
+			$cast = preg_match('/\((?:string|int|float)\)\s*\(?' . preg_quote($entry, '/') . '\b(?!\[)/', $source);
+			$row = preg_match('/' . preg_quote($entry, '/') . '\[\'/', $source);
+
+			if (($cast && (strpos($source, 'is_scalar(' . $entry . ')') === false))
+				|| ($row && (strpos($source, 'pg_request_row_values(' . $entry . ')') === false))) {
+				$found[] = basename($file) . ' ' . $entry;
+			}
+		}
+	}
+
+	pg_assert_same(array(), $found, 'screens reading an entry of a posted list without checking it is one value');
+
+	// The counted figures go to the count's own save, which skips an entry
+	// that is not one figure rather than reading it as "Array".
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/stock_counts.php');
+	$start = strpos($source, 'function erp_stock_count_save(');
+	$body = substr($source, $start, strpos($source, "\n}", $start) - $start);
+	pg_assert_true(strpos($body, 'if (!is_scalar($text))') !== false, 'stock count save checks each entry');
+}
+
+// The e-document card of the commerce settings: the provider and each box are
+// read only when they came as one string, so edoc_provider[]=x no longer
+// switches the provider off and edoc_<code>_<box>[]=x no longer stores
+// "Array" as the key; a select keeps to its options.
+function test_erp_request_values_edoc_settings_save()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.save.php');
+
+	pg_assert_same(0, preg_match('/\(string\)\s*post_value\(\'edoc_/', $source), 'e-document settings cast with (string)');
+	pg_assert_true(strpos($source, "is_string(post_value('edoc_provider'))") !== false, 'provider read as one string');
+	pg_assert_true(strpos($source, 'if (!is_string($erp_edoc_value))') !== false, 'each box read as one string');
+	pg_assert_true(strpos($source, "array_key_exists(\$erp_edoc_value, (array) \$erp_edoc_field['options'])") !== false, 'a select keeps to its options');
 }

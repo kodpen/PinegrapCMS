@@ -209,7 +209,8 @@ function erp_stock_count_add($count_id, $product, $quantity = 1, $set = false)
 
 /**
  * Corrections typed on the count's lines: a number sets the count, an empty
- * box takes the product off the count.
+ * box takes the product off the count, and an entry that is not one value
+ * leaves the line alone.
  *
  * @param int   $count_id
  * @param array $values  product_id => text
@@ -224,6 +225,12 @@ function erp_stock_count_save($count_id, $values)
     }
 
     foreach ((array) $values as $product_id => $text) {
+        // A count is one figure; one posted as an array (counted[5][]=x) is
+        // not given, and the line keeps what it had.
+        if (!is_scalar($text)) {
+            continue;
+        }
+
         $text = trim((string) $text);
 
         if ($text === '') {

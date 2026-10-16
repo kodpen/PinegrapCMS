@@ -866,6 +866,25 @@ function pg_request_single_values($names)
     }
 }
 
+/**
+ * One row of a list a form posts (lines[n][field], categories[id][field]),
+ * with only the fields that hold one value.
+ *
+ * pg_request_single_values() cannot reach inside a list. A field of a row
+ * posted as an array (lines[0][description][]=x) is left out, so it counts
+ * as not given, the same as a form's own field: (string) wrote it as "Array"
+ * and logged "Array to string conversion". A row that is not a set of fields
+ * is an empty row. Numbers and booleans stay, so a stored row or a decoded
+ * JSON body reads the same as before.
+ *
+ * @param  mixed $row
+ * @return array
+ */
+function pg_request_row_values($row)
+{
+    return is_array($row) ? array_filter($row, 'is_scalar') : array();
+}
+
 function escape_url($url)
 {
     if (!is_scalar($url) || $url === '') {

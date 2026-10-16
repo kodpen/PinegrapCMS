@@ -36,7 +36,9 @@ if (!defined('ERP_WAYBILL_FORM_BLANK_ROWS')) {
  */
 function erp_waybill_form_line($source)
 {
-    $source = (array) $source;
+    // A field that came back as an array (lines[0][description][]=x) is
+    // not given; the row is drawn with that box empty.
+    $source = pg_request_row_values($source);
 
     $quantity = $source['quantity'] ?? '';
     if (is_int($quantity) || is_float($quantity)) {

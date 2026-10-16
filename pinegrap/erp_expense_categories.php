@@ -42,6 +42,10 @@ if ($_POST) {
             continue;
         }
 
+        // A field of the row posted as an array (categories[3][name][]=x) is
+        // not given: the name is then missing, and the save says so.
+        $row = pg_request_row_values($row);
+
         $rows[(int) $category_id] = array(
             'name' => (string) ($row['name'] ?? ''),
             'code' => (string) ($row['code'] ?? ''),

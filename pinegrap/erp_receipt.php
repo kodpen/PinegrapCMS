@@ -92,7 +92,9 @@ if ($_POST) {
         // already holds on that invoice: the pair is unique, so the total is
         // what gets written.
         foreach ($amounts as $invoice_id => $text) {
-            $amount = erp_kurus((string) $text);
+            // An amount is one figure; one posted as an array
+            // (allocate[5][]=x) is nothing allocated to that invoice.
+            $amount = is_scalar($text) ? erp_kurus((string) $text) : 0;
 
             if ($amount <= 0) {
                 continue;

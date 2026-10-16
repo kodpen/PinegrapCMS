@@ -162,10 +162,17 @@ function pg_parasut_credentials_for_save()
     // The e-document provider (4.61): the picked provider becomes the
     // active one and only its credentials are written - a box left empty
     // keeps the stored secret, like the Paraşüt fields above.
-    if (waf_table_has_column('erp_edoc_providers', 'provider')) {
+    //
+    // Every value here is one string. The card always posts the provider
+    // radio and each provider's boxes, so one that is missing or posted as
+    // an array (edoc_provider[]=x) is not given: the provider stays as it is
+    // and the stored credential is kept. (string) read an array as "Array",
+    // which switched the provider off or stored "Array" as the key. A select
+    // keeps to its own options; another value leaves the stored one.
+    if (waf_table_has_column('erp_edoc_providers', 'provider') && is_string(post_value('edoc_provider'))) {
         require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-        $erp_edoc_picked = (string) post_value('edoc_provider');
+        $erp_edoc_picked = post_value('edoc_provider');
 
         if (($erp_edoc_picked !== '') && !array_key_exists($erp_edoc_picked, erp_edoc_drivers())) {
             $erp_edoc_picked = '';
@@ -175,7 +182,18 @@ function pg_parasut_credentials_for_save()
             $erp_edoc_posted = array();
 
             foreach (erp_edoc_fields($erp_edoc_picked) as $erp_edoc_field) {
-                $erp_edoc_posted[$erp_edoc_field['name']] = (string) post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name']);
+                $erp_edoc_value = post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name']);
+
+                if (!is_string($erp_edoc_value)) {
+                    continue;
+                }
+
+                if (($erp_edoc_field['type'] === 'select') && !empty($erp_edoc_field['options'])
+                    && !array_key_exists($erp_edoc_value, (array) $erp_edoc_field['options'])) {
+                    continue;
+                }
+
+                $erp_edoc_posted[$erp_edoc_field['name']] = $erp_edoc_value;
             }
 
             if (!empty($erp_edoc_posted)) {

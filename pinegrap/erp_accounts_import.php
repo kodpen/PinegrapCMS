@@ -586,7 +586,9 @@ if ($step === 'upload') {
     $posted = isset($_POST['map']) && is_array($_POST['map']) ? $_POST['map'] : array();
     $taken = array();
     foreach ($read['header'] as $index => $unused) {
-        $field = isset($posted[$index]) ? (string) $posted[$index] : '';
+        // A column's field is one name; one posted as an array (map[0][]=x)
+        // leaves the column unmapped.
+        $field = (isset($posted[$index]) && is_scalar($posted[$index])) ? (string) $posted[$index] : '';
         if (($field === '') || !isset($fields[$field]) || isset($taken[$field])) {
             $field = '';
         }
