@@ -1,6 +1,6 @@
 ---
 name: update-tls-verification
-description: TLS verification on licence/update/package cURL calls: pg_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS, exclusions.
+description: TLS verification on cURL calls (update channel, payment gateways, Givex, carriers): pg_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS.
 ---
 
 ## Why must the update channel verify TLS?
@@ -12,7 +12,7 @@ description: TLS verification on licence/update/package cURL calls: pg_curl_tls(
 - Opting out is an explicit decision in `config.php`: `CURL_CA_BUNDLE` (path of cacert.pem if the CA bundle is not at the default path) and `ALLOW_INSECURE_UPDATE_TLS` (last resort, default `false`).
 - `pg_curl_tls_hint()` turns cURL errors 60/77/35 into a sentence the operator can act on; otherwise the screen says "cURL error 60" and it is not clear the cause is their own CA bundle, not the other side.
 
-## What is deliberately excluded?
-- Payment gateways (`submit_order.php`, Givex) and shipping APIs (`shipping.php`). Some old gateways have genuinely broken certificates; the risk of breaking live payment far exceeds the gain.
+## Which other calls verify TLS?
+- Since 8694ed40 the payment gateways (`submit_order.php`, `recurring_payment_job.php`), Givex (`send_givex_request()`), the carrier APIs (`includes/fn/carrier_api.php`), the licence check and the site importer go through `pg_curl_tls()` as well, so `CURL_CA_BUNDLE` and `ALLOW_INSECURE_UPDATE_TLS` apply to them too. Nothing is excluded any more.
 
 Related: docs/memory/platform/ca-bundle-panel-update.md

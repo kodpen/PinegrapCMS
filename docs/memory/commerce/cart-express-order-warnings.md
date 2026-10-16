@@ -21,6 +21,10 @@ warning and the HTML is the same as before:
   0; `$output_special_offers` and `$output_card_verification_number_help`
   start `''`; `$contact_id` `''` and `$contact` every column `''` (a visitor or
   a user without a contact; a real contact row replaces it).
+- A quick add submit (`quick_add` posted) starts every quick add field it
+  did not post (product, quantity, amount, recipient, new recipient name) as
+  `''` in `shopping_cart.php` / `express_order.php`: a hand-made request or a
+  designed layout without that field gets the same messages, no warning.
 - Product form fields get `titles[<qty>]` and a field-level `title` /
   `title_label` of `''`: the recurring area of the starter layouts
   (`248.php`, `497.php`, `476.php`) reads `$field['title']`, which nothing
@@ -44,4 +48,5 @@ lines on the old code, 0 after; HTML equal except ids and cart codes.
 Tests: `tests/cart_layout_warnings_test.php`.
 
 PRs: #456 (custom layouts, quick add off), #475 (built-in layouts, express
-quick add, recurring field title, deleted gift card).
+quick add, recurring field title, deleted gift card), #485 (quick add fields
+not posted). Givex cards: see givex-gift-card.md.
