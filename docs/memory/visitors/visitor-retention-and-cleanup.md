@@ -11,7 +11,7 @@ description: How the visitors table is kept small: retention days, daily summary
 - `config.visitor_retention_days`: default 90, 0 = keep forever, allowed 7–3650 (invalid input is refused with a field error). The column was added with `DEFAULT 90`, so upgraded sites get 90; 0 only where someone chose it, and no step overwrites that choice.
 - `config.visitor_summary` (default on): before deleting, each day is summarised into `visitor_stats_daily` with the report's grouping keys; top 100 values per dimension plus one rest row (`is_rest`); the total row (`dimension = ''`) is written last and marks the day done. Only summarised days are deleted.
 - Reports and `GET /reports/visitors` read the summary before the first raw day and raw rows after it (year/month/day + at most one grouping, no filters), answer `summary_to`, and say which days a report cannot cover.
-- Warning when the table passes 2,000,000 rows or 512 MB (`pg_visitor_health_thresholds()`), on the card and in System status (no score effect).
+- Warning when the table passes 2,000,000 rows or a 512 MB file (`pg_visitor_health_thresholds()`), on the card and in System status (no score effect). Where the count and sizes come from: `visitor-table-size-figures`.
 
 ## How does deletion run?
 - In `job.php` (`pg_visitor_cleanup_run()`): every tick while there is a backlog, else hourly; 15 s per run, the summary takes at most ~60 %.

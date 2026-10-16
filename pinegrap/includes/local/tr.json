@@ -23342,5 +23342,14 @@
     "Turned on now: {var}": "Şu an açık olanlar: {var}",
     "No provider is turned on now.": "Şu an açık sağlayıcı yok.",
     "A new order has been created, and it appears below.": "Yeni bir sipariş oluşturuldu ve aşağıda görüntüleniyor.",
-    "A new order has been created.": "Yeni bir sipariş oluşturuldu."
+    "A new order has been created.": "Yeni bir sipariş oluşturuldu.",
+    "about {var:1}": "yaklaşık {var:1}",
+    "counted": "sayıldı",
+    "read from the file": "dosyadan okundu",
+    "reported by the database server": "veritabanı sunucusunun bildirdiği",
+    "estimate; the table is in the shared InnoDB file": "tahmin; tablo InnoDB'nin ortak dosyasında",
+    "estimate from the server statistics": "sunucu istatistiğinden tahmin",
+    "File size": "Dosya boyutu",
+    "The visitors table holds {var:1} records and its file takes {var:2}.": "Ziyaretçi tablosunda {var:1} kayıt var ve dosyası {var:2} yer kaplıyor.",
+    "Much of the file is free space left by removed records; it goes back to the disk when the table is rebuilt (see below).": "Dosyanın büyük kısmı silinen kayıtlardan kalan boş alan; tablo yeniden kurulunca diske geri verilir (aşağıya bakın)."
 }
