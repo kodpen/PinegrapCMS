@@ -367,6 +367,11 @@ function get_shopping_cart($properties) {
                 $quick_add_amount_row_style = 'display: none';
                 $quick_add_ship_to_row_style = 'display: none';
                 $quick_add_add_name_row_style = 'display: none';
+
+                // A row is left out when no product in the group needs it.
+                $output_ship_to_and_add_name_rows = '';
+                $output_quantity_row = '';
+                $output_amount_row = '';
                 
                 $quick_add_product_id_options = array();
                 $quick_add_product_id_options[''] = '';
@@ -628,7 +633,8 @@ function get_shopping_cart($properties) {
                     FROM ship_tos
                     WHERE id = '$ship_to_id'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
+                // Items that are not shipped sit under ship to 0, which has no row.
+                $row = mysqli_fetch_assoc($result) ?: array_fill_keys(array_column(mysqli_fetch_fields($result), 'name'), null);
                 $ship_to_name = $row['ship_to_name'];
                 $ship_to_offer_id = $row['offer_id'];
 
@@ -2655,6 +2661,10 @@ function get_shopping_cart($properties) {
                                 // Layouts read the submitted form title of every field and
                                 // quantity; it is filled below only for a reference code field.
                                 $item['fields'][$field_key]['titles'][$quantity_number] = array('title' => '', 'title_label' => '');
+
+                                // The recurring area of the layouts reads one title per field,
+                                // which is never filled.
+                                $item['fields'][$field_key] += array('title' => '', 'title_label' => '');
 
                                 // If the value for this field has not been set yet,
                                 // (e.g. the form has not been submitted by the customer),
