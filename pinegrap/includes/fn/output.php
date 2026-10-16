@@ -1885,6 +1885,7 @@ function output_header($properties = false)
     $output_private_label_list = '';
     $output_logo = '';
     $output_feedback_link = '';
+    $output_software_distributor_link = '';
     $output_help_link = '';
 
     // Plays the tour of the frame again.  It belongs beside Help rather than
