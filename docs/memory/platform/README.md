@@ -28,5 +28,5 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - system-status-check-rules.md: System Status panel rules - a check row and its action button must come from the same read (rules signature), per-check detail boxes, confirm tiles on buttons.
 - update-channel-stable-beta.md: Update channel (stable/beta): config key, the three channel functions all callers must use, download_assistant stays stable, switching, version format.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
-- update-tls-verification.md: TLS verification on licence/update/package cURL calls: pg_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS, exclusions.
+- update-tls-verification.md: TLS verification on cURL calls (update channel, payment gateways, Givex, carriers): pg_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS.
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.

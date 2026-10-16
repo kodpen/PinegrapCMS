@@ -109,6 +109,21 @@ function test_cart_layout_recurring_field_title_default()
 	pg_assert_same('Ticket #12', $field['title'], 'a title that is set is kept');
 }
 
+// A quick add field that a hand-made request leaves out counts as empty
+// before the product, recipient, quantity or amount is read.
+function test_cart_layout_quick_add_fields_not_posted()
+{
+	$default = "        \$_POST[\$pg_post_field] = \$_POST[\$pg_post_field] ?? '';";
+
+	foreach (array('shopping_cart.php', 'express_order.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		$position = strpos($source, $default);
+
+		pg_assert_true($position > strpos($source, "if (!empty(\$_POST['quick_add'])) {"), $file . ': inside the quick add branch');
+		pg_assert_true($position < strpos($source, "if (\$_POST['quick_add_product_id']) {"), $file . ': before the product is read');
+	}
+}
+
 // A gift card deleted after it was applied is dropped from the order with the
 // existing message, at the balance check and at redemption.
 function test_cart_layout_deleted_gift_card()

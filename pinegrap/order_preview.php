@@ -55,7 +55,10 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
     include_once('liveform.class.php');
     $liveform = new liveform('order_preview');
     
-    $liveform->assign_field_value('gift_card_code', $_POST['gift_card_code']);
+    // The code is one string; one not posted, or posted as an array, counts as empty.
+    pg_request_single_values(array('gift_card_code'));
+
+    $liveform->assign_field_value('gift_card_code', $_POST['gift_card_code'] ?? '');
     
     // if the gift card code field was not blank, then continue to check if the code is valid
     if ($liveform->get_field_value('gift_card_code') != '') {
@@ -101,8 +104,8 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                 ?: array('id' => ''); // no card with this code
 
             // If a gift card could not be found in this system,
-            // and givex is disabled, then output error.
-            if (($gift_card['id'] == '') && (ECOMMERCE_GIVEX == false)) {
+            // and givex is disabled (or the code was only dashes and spaces), then output error.
+            if (($gift_card['id'] == '') && ((ECOMMERCE_GIVEX == false) || ($gift_card_code === ''))) {
                 $liveform->mark_error('gift_card_code', lang('Sorry, we could not find a gift card for that code. Please check that you entered the code correctly.'));
                 go(PATH . encode_url_path(get_page_name($_POST['page_id'])));
             }

@@ -3936,11 +3936,14 @@ function submit_order($type) {
                         
                     // else the redemption was successful, so update applied gift card and update the current redemption amount
                     } else {
+                        // Givex took the amount; a new balance its reply did not give is what the card had left.
+                        $new_balance = isset($result['balance']) ? $result['balance'] * 100 : $applied_gift_card['old_balance'] - $amount;
+
                         $query =
                             "UPDATE applied_gift_cards
                             SET
                                 amount = '" . $amount . "',
-                                new_balance = '" . escape($result['balance'] * 100) . "',
+                                new_balance = '" . escape($new_balance) . "',
                                 authorization_number = '" . escape($result['authorization_number']) . "'
                             WHERE id = '" . $applied_gift_card['id'] . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

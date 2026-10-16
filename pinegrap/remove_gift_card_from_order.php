@@ -20,8 +20,11 @@ include('init.php');
 
 validate_token_field();
 
+// The id is one string; one not given, or given as an array, names no applied gift card.
+pg_request_single_values(array('applied_gift_card_id'));
+
 // delete applied gift card
-$query = "DELETE FROM applied_gift_cards WHERE (id = '" . escape($_GET['applied_gift_card_id']) . "') AND (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')";
+$query = "DELETE FROM applied_gift_cards WHERE (id = '" . escape($_GET['applied_gift_card_id'] ?? '') . "') AND (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // send user back to previous screen
