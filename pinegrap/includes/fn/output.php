@@ -1591,12 +1591,18 @@ function output_header_secure($properties = false)
         $output_fav_icon = $properties['icon'];
     }
 
+    // The update search index job prints this header from the command line
+    // too, where there is no Host header. HOSTNAME is the request's host on
+    // the web and the site's hostname setting otherwise (init.php); it is
+    // only missing for an error printed before init.php got that far.
+    $output_host = defined('HOSTNAME') ? HOSTNAME : ($_SERVER['HTTP_HOST'] ?? '');
+
     $output = '<!DOCTYPE html>
 <html lang="' . lang(array('info' => '')) . '">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,minimum-scale=1,user-scalable=no">
-    <title>' . $software_page_title . $software_title . h($_SERVER['HTTP_HOST']) . '</title>
+    <title>' . $software_page_title . $software_title . h($output_host) . '</title>
     <meta name="application-name" content="Pinegrap CMS">
     <meta name="color-scheme" content="light dark">
     <link rel="icon" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/ico/big/' . $output_fav_icon . '.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" type="image/x-icon">
