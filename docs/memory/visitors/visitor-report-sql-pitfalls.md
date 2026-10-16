@@ -19,4 +19,4 @@ description: How the visitor report page aggregates in SQL not PHP, ONLY_FULL_GR
 - Table-level locks. `update_visitor_page_data()` runs `UPDATE visitors` on EVERY page view; in MyISAM an UPDATE locks the table exclusively, so page views already queued behind each other. MyISAM concurrent insert does not help: it only works when the table has no holes, and a constantly updated table always has holes.
 - A 20-second report read lock on top makes every site visitor queue; that was why the site slowed while the panel was open.
 - Second reason: after an unclean shutdown a MyISAM table this size needs `REPAIR TABLE`, which can take hours with the table unwritable.
-- ONLY `visitors` was converted. `search_items` carries a FULLTEXT index (`get_search_results.php:486` `MATCH ... AGAINST`), and on old MySQL FULLTEXT exists only in MyISAM.
+- `visitors` went first (2026.3.6); 2026.4.8 moved the remaining tables, `search_items` (FULLTEXT) last in step 8.14.
