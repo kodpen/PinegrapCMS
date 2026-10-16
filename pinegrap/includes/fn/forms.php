@@ -1016,8 +1016,15 @@ function get_state_options()
 }
 
 
-function get_file_options($design = FALSE)
+// Files in the Recycle Bin are left out: the bin folder and the folders that
+// went in with a folder sent there. $keep_id is the file the short link being
+// edited already points at: while it is in the bin it stays, marked, under the
+// name it had before the bin parked it, so saving the link does not drop it.
+function get_file_options($design = FALSE, $keep_id = 0)
 {
+    // A posted value can be anything; only a whole id is kept.
+    $keep_id = is_scalar($keep_id) ? (int) $keep_id : 0;
+    $bin_folders = array_flip(pg_recycle_bin_folder_ids());
     $folders_that_user_has_access_to = array();
     global $user;
 
@@ -1052,9 +1059,18 @@ function get_file_options($design = FALSE)
 
     // loop through each image and create an <option> tag
     while ($row = mysqli_fetch_assoc($result)) {
+        $file_name = $row['name'];
+        if (isset($bin_folders[(int) $row['folder']])) {
+            if ((int) $row['id'] !== $keep_id) {
+                continue;
+            }
+            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+            $original = pg_recycle_parked_original($file_name, $row['id']);
+            $file_name = (($original !== '') ? $original : $file_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+        }
         // if the user has access to this folder
         if (check_folder_access_in_array($row['folder'], $folders_that_user_has_access_to) == true) {
-            $file_options[h($row['name'])] = $row['id'];
+            $file_options[h($file_name)] = $row['id'];
         }
     }
     return $file_options;
