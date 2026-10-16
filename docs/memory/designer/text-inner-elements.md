@@ -9,7 +9,7 @@ description: Elements written inside a heading, paragraph, link or span text (sp
 
 ## How is an element inside a text picked and edited?
 - A click on any element inside such a text picks that element (`_sdTextInnerClick()`); the text's own words pick the text. Hovering shows a dashed outline, the picked one a solid one (`.sd-inner-sel`, canvas only).
-- The overview lists the elements under the text, nested ones indented (`_sdTextInnerTreeRows()`); a row click picks the element. A link of a paragraph or heading keeps its take-out button (`_sdIlTakeOut()`).
+- The overview lists the elements under the text, nested ones indented (`_sdTextInnerTreeRows()`); a row click picks the element. The picked element's row is the one the overview brings into view (`_sdTreeRevealSelection()`), also for a pick inside the text already selected. A link of a paragraph or heading keeps its take-out button (`_sdIlTakeOut()`).
 - The Options panel is the element's own (`_sdTextInnerPanel()`): a breadcrumb back to the text, tag, text (HTML when it holds elements), link / target / rel for `a`, src / alt for `img`, id, classes, style, every other attribute, and "remove the element, keep the words", take out (link), delete. The Attributes panel lists its attributes read-only.
 - Delete removes the picked element only; Escape goes back to the text. Double-click still edits the whole text in place: the pick is dropped first, so its mark never reaches the stored markup (`_sdInlineEditValue()` also strips it).
 
@@ -22,4 +22,4 @@ description: Elements written inside a heading, paragraph, link or span text (sp
 - A canvas click is picked only when the tags along the path match the stored text (`_sdTextInnerTags()`): a preview that differs (token, translation) falls back to the text.
 - Every change parses `props.text`, changes the element, writes it back as one undo step (`_sdTextInnerApply()`). The text stays one piece: page output and in-place editing are those of any text. Markup is re-serialised by the browser on such an edit (`&middot;` becomes `·`), as for the links section.
 
-Related: docs/memory/designer/link-button-inline-children.md, docs/memory/designer/node-text-and-whitespace.md, docs/memory/designer/html-import-and-paste.md
+Related: docs/memory/designer/designer-overview-follows-selection.md, docs/memory/designer/link-button-inline-children.md, docs/memory/designer/node-text-and-whitespace.md, docs/memory/designer/html-import-and-paste.md

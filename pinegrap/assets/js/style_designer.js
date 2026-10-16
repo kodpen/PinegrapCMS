@@ -22878,7 +22878,10 @@ const StyleDesigner = (function () {
         var list = document.getElementById('sd-tree-list');
         var wrap = document.getElementById('sd-overview-tree-wrap');
         if (!list || !wrap) return;
-        var row = (n === tree) ? list.querySelector(':scope > .sd-tree-body-row') : _sdTreeRowOf(list, n);
+        // An element picked inside a text has a row of its own.
+        var inner = _sdInnerSel();
+        var row = (n === tree) ? list.querySelector(':scope > .sd-tree-body-row')
+            : ((inner && _sdTextInnerTreeRow(list, inner)) || _sdTreeRowOf(list, n));
         if (row && _sdTreeScrollRow(wrap, row)) _sdTreeShownFor = n;
     }
 
@@ -24569,16 +24572,6 @@ const StyleDesigner = (function () {
         expandAncestorsAnywhere(n);
     }
 
-    // Brings the overview row of the selection into view.
-    function _sdTextInnerRevealRow() {
-        setTimeout(function () {
-            var list = document.getElementById('sd-tree-list');
-            var s = _sdInnerSel();
-            var li = list ? (s ? _sdTextInnerTreeRow(list, s) : (selectedNode ? _sdTreeRowOf(list, selectedNode) : null)) : null;
-            if (li) li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 80);
-    }
-
     // A canvas click inside text node `node`: an element of its words is
     // picked, its own words go back to the text. True when it was handled.
     function _sdTextInnerClick(e, node, host, interactive) {
@@ -24599,7 +24592,7 @@ const StyleDesigner = (function () {
         _sdTextInnerSelect(node, path);
         if (interactive) renderSelectionOnly();
         else { e.stopPropagation(); _sdSelectRender(); }
-        _sdTextInnerRevealRow();
+        _sdTreeRevealSelection(true);
         return true;
     }
 
@@ -24895,7 +24888,7 @@ const StyleDesigner = (function () {
                 var p = go.getAttribute('data-sd-inner-go');
                 _sdTextInnerSelect(s.node, p === '' ? null : p.split('.').map(Number));
                 _sdSelectRender();
-                _sdTextInnerRevealRow();
+                _sdTreeRevealSelection(true);
                 return;
             }
             var btn = e.target.closest('[data-sd-inner-act]');
