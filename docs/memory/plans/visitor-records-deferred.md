@@ -1,15 +1,12 @@
 ---
 name: visitor-records-deferred
-description: Deferred visitor-table work: split long text columns into a dictionary, monthly partitions, early IP removal, more summary dimensions
+description: Deferred visitor-table work: monthly partitions, early IP removal, more summary dimensions
 ---
 
 ## What is already built?
 - Retention, daily summary, chunked deletion, move to InnoDB, bots not recorded, automatic rebuild, rowless log tables in backups and stepwise restore: docs/memory/visitors/visitor-retention-and-cleanup.md
+- Referring address and user agent kept once each in `visitor_texts` (step 10.6): docs/memory/visitors/visitor-texts-list.md. Left out on purpose: the other long columns (almost always empty), rewriting rows written before the step.
 - Each item below is a separate task; none is started.
-
-## 1. Split the long text columns?
-- `http_referer`, `user_agent`, `utm_term`, `utm_content`, `referring_search_terms` and `site_search_terms` are most of a row. Moving them to a dictionary table (id ↔ text) would more than halve the row.
-- Cost: a schema change that copies the big table. It must run in steps like the InnoDB move (`pg_visitor_move_run()`), never as one `ALTER` during an upgrade.
 
 ## 2. Monthly partitions?
 - Drop a whole old month with `DROP PARTITION`, instantly.

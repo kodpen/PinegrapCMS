@@ -222,7 +222,7 @@ function test_backup_remote_normalize_defaults()
 function test_backup_rowless_tables_scope()
 {
 	pg_assert_same(
-		array('visitors', 'visitor_content_hourly', 'submitted_form_views', 'submitted_form_view_stats', 'waf_log', 'perf_log', 'api_request_log', 'seo_search_daily'),
+		array('visitors', 'visitor_texts', 'visitor_content_hourly', 'submitted_form_views', 'submitted_form_view_stats', 'waf_log', 'perf_log', 'api_request_log', 'seo_search_daily'),
 		array_keys(pg_backup_rowless_tables())
 	);
 

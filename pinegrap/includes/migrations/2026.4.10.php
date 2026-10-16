@@ -50,6 +50,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_style_bin();              // 10.4
 	upgrade_2026_4_10_noise_theme_file();       // 10.5
 	upgrade_2026_4_10_webhook_channel_group();  // 10.76
+	upgrade_2026_4_10_visitor_texts();          // 10.6
 
 }
 
@@ -1132,5 +1133,68 @@ function upgrade_2026_4_10_webhook_channel_group() {
 	install_add_column('api_webhooks', 'channel_group_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('External API: a webhook subscription can be narrowed to one group of workspace channels (channel_group_id); it then hears the workspace events of the channels in that group and in the groups inside it.');
+
+}
+
+// The referring address and the browser of a visit kept once each (2026.4.10, 10.6;
+// includes/fn/visitor_texts.php, init_tracking() in get_page.php).
+//
+// visitors.http_referer and visitors.user_agent were up to 255 characters in every row and
+// most of its size, while a site sees the same browsers and the same few search engine
+// addresses over and over. visitor_texts keeps each value once: kind (1 the referring
+// address, 2 the user agent), the MD5 of the text (uk_text, a short key that tells "Mozilla"
+// from "mozilla", which the column's collation would not), the text, and last_used, which
+// the cleanup reads to remove the values no remaining visit names (idx_last_used). A visit
+// written from now on carries their numbers in http_referer_id and user_agent_id and leaves
+// the two text columns empty; the rows already there keep their texts and are read as
+// before, and the retention period removes them in time. No row is rewritten here.
+//
+// The two columns are added without copying the table where the server can do that
+// (install_add_columns_instant()). Where it cannot, a table of up to 250,000 visits is
+// copied, which takes seconds. A larger one is left as it is: copying it could run past
+// what the web server allows a request, and with every visit waiting on MyISAM. Visits are
+// then written with their texts as before, and running this version's steps again from
+// Software Repair, once the cleanup has made the table smaller, adds the columns.
+function upgrade_2026_4_10_visitor_texts() {
+
+	install_create_table('visitor_texts', "CREATE TABLE visitor_texts (
+		text_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		text_hash  BINARY(16) NOT NULL,
+		text_value VARCHAR(255) NOT NULL DEFAULT '',
+		last_used  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (text_id),
+		UNIQUE KEY uk_text (kind, text_hash),
+		KEY idx_last_used (last_used)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	$columns = array(
+		'http_referer_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'user_agent_id'   => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('visitors', $columns)) {
+
+		$rows = (int) db_value("SELECT COUNT(*) FROM (SELECT 1 FROM visitors LIMIT 250001) AS visitor_rows");
+
+		if ($rows <= 250000) {
+
+			foreach ($columns as $column => $definition) {
+
+				install_add_column('visitors', $column, $definition);
+
+			}
+
+		} else {
+
+			install_note('Visitor records: the visitors table holds more than 250,000 visits and this database server cannot add columns to it without copying it, so it was left as it is and visits keep their referring address and browser in their own row. Once the cleanup has made the table smaller, run the database steps of this version again from Software Repair.');
+
+			return;
+
+		}
+
+	}
+
+	install_note('Visitor records: the referring address and the browser of a visit are kept once each in a list and named by their number, which makes each new visitor record about half as large. Records written before keep theirs and are read as before.');
 
 }

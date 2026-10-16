@@ -17,3 +17,4 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-rollup-consistency.md: Keeping the two visitor summary tables consistent: both must SUM(page_views), running-total race with backfill, and rebuilding derived data (2026.3.8).
 - visitor-rollup-tables.md: The hourly visitor summary tables (visitor_stats_hourly, visitor_content_hourly), bucket_key hashing, and how content items are identified (2026.3.4).
 - visitor-table-size-figures.md: Where the visitor card, the System Status line and the shrink/move before-after sizes get their record count and file size, and how each figure says its source
+- visitor-texts-list.md: Referring address and user agent of a visit kept once each in visitor_texts and named by number in visitors (step 10.6): writer, readers, prune, old rows, upgrade limits

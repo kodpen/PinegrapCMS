@@ -735,7 +735,7 @@ if (!$_POST) {
             case 'date': $operand_1 = 'FROM_UNIXTIME(visitors.start_timestamp, \'%Y-%m-%d\')'; $field_type = 'date'; break;
             case 'site_search_terms': $operand_1 = 'visitors.site_search_terms'; break;
             case 'currency_code': $operand_1 = 'visitors.currency_code'; break;
-            case 'http_referer': $operand_1 = 'visitors.http_referer'; break;
+            case 'http_referer': $operand_1 = pg_visitor_text_sql('http_referer'); break;
             case 'referring_host_name': $operand_1 = 'visitors.referring_host_name'; break;
             case 'referring_search_engine': $operand_1 = 'visitors.referring_search_engine'; break;
             case 'referring_search_terms': $operand_1 = 'visitors.referring_search_terms'; break;
@@ -925,6 +925,11 @@ if (!$_POST) {
          COALESCE(SUM(visitors.order_completed), 0) AS order_completed,
          COALESCE(SUM(visitors.order_total), 0) AS order_total";
 
+    // The referring address and the user agent of newer visits are in the
+    // list of visitor texts; the joins come only when a grouping or a filter
+    // reads one of them.
+    $sql_text_joins = pg_visitor_text_joins($sql_group_select . ' ' . $where);
+
     $sql_group_by = '';
     $sql_order_by = '';
     if (!empty($group_expressions)) {
@@ -939,6 +944,7 @@ if (!$_POST) {
             $sql_group_select
             $sql_totals
         FROM visitors
+        $sql_text_joins
         $where
         $sql_group_by
         $sql_order_by";
@@ -1112,6 +1118,7 @@ if (!$_POST) {
                 visitors.order_completed,
                 visitors.order_total
             FROM visitors
+            $sql_text_joins
             $where
             ORDER BY " . (!empty($group_expressions) ? implode(', ', $group_expressions) . ', ' : '') . "visitors.id";
 
@@ -1163,7 +1170,7 @@ if (!$_POST) {
 
     if ($detail_on) {
 
-        $detail_total = (int) db_value("SELECT COUNT(*) FROM visitors $where");
+        $detail_total = (int) db_value("SELECT COUNT(*) FROM visitors $sql_text_joins $where");
 
         $query =
             "SELECT
@@ -1178,6 +1185,7 @@ if (!$_POST) {
                 visitors.order_completed,
                 visitors.order_total
             FROM visitors
+            $sql_text_joins
             $where
             ORDER BY " . (!empty($group_expressions) ? implode(', ', $group_expressions) . ', ' : '') . "visitors.id
             LIMIT $detail_page_size OFFSET $detail_offset";
@@ -2009,8 +2017,8 @@ function get_summarize_by_column($summarize_by)
         case 'day': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%d\')';
         case 'site_search_terms': return 'visitors.site_search_terms';
         case 'currency_code': return 'visitors.currency_code';
-        case 'device': return pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql('visitors.user_agent') : "''";
-        case 'http_referer': return 'visitors.http_referer';
+        case 'device': return pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql(pg_visitor_text_sql('user_agent')) : "''";
+        case 'http_referer': return pg_visitor_text_sql('http_referer');
         case 'referring_host_name': return 'visitors.referring_host_name';
         case 'referring_search_engine': return 'visitors.referring_search_engine';
         case 'referring_search_terms': return 'visitors.referring_search_terms';
