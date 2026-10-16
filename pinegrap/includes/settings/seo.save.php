@@ -59,6 +59,22 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // Structured data settings (2026.4.4). Only written where the columns
+    // exist, so this code also runs safely before the database upgrade.
+    $seo_jsonld_ready = waf_table_has_column('config', 'og_default_image');
+    $site_custom_jsonld_input = $seo_jsonld_ready ? trim((string) post_value('custom_jsonld')) : '';
+
+    // Invalid JSON is refused like any other field the operator has to
+    // correct: marked, before the IndexNow file or a column is written. An
+    // invalid block is silently dropped at render time, so saving it would
+    // hide the mistake exactly where the operator cannot see it. It used to
+    // stop the save with output_error, which the dialog got as a 500 after
+    // the IndexNow file had already been written.
+    if (($site_custom_jsonld_input !== '') && (json_decode($site_custom_jsonld_input) === null)) {
+        $liveform->mark_error('custom_jsonld', lang('The site-wide JSON-LD is not valid JSON, so the settings were not saved. Please correct it and try again.'));
+        return;
+    }
+
     // If old key exists and changed, delete old file and its DB record. A
     // stored key that does not fit the format is left alone rather than used
     // as a path.
@@ -161,8 +177,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         );
     }
 
-    // Structured data settings (2026.4.4). Only written where the columns
-    // exist, so this code also runs safely before the database upgrade.
     $sql_seo_jsonld_fields = "";
     $sql_app_icon_field = "";
 
@@ -170,16 +184,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $sql_app_icon_field = "app_icon = '" . escape(trim(post_value('app_icon'))) . "',";
     }
 
-    if (waf_table_has_column('config', 'og_default_image')) {
-        $site_custom_jsonld_input = trim(post_value('custom_jsonld'));
-
-        // Refuse invalid JSON outright. An invalid block is silently dropped
-        // at render time, so saving it would hide the mistake exactly where
-        // the operator cannot see it.
-        if (($site_custom_jsonld_input != '') && (json_decode($site_custom_jsonld_input) === null)) {
-            output_error(lang('The site-wide JSON-LD is not valid JSON, so the settings were not saved. Please correct it and try again.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
+    if ($seo_jsonld_ready) {
         // The country travels into markup as an ISO 3166-1 alpha-2 code;
         // anything else would be noise every reader ignores.
         $merchant_country_input = mb_strtoupper(trim(post_value('merchant_country')));

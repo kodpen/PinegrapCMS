@@ -128,6 +128,31 @@ if ($_POST) {
 
     validate_token_field();
 
+    // Every field the cards post holds one value, except the ones drawn as
+    // lists below; a person's row carries one value per field but its days.
+    // One posted as a list (name[]=x) saved a department called "Array", and
+    // department_id[]=x or template_id[]=x was read as record 1. Nothing is
+    // written, so every setting stays as it was.
+    $ws_settings_lists = pg_request_unexpected_lists($_POST, array(
+        'workdays' => 1,
+        'members'  => 1,
+        'leads'    => 1,
+        'primary'  => 1,
+        'people'   => 3,
+        'mcp_tool' => 1,
+    ));
+
+    foreach ((is_array($_POST['people'] ?? null) ? $_POST['people'] : array()) as $person_id => $row) {
+        foreach (pg_request_unexpected_lists($row, array('workdays' => 1)) as $name) {
+            $ws_settings_lists[] = 'people[' . $person_id . '][' . $name . ']';
+        }
+    }
+
+    if ($ws_settings_lists) {
+        $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $ws_settings_lists)))));
+        go($self_url);
+    }
+
     $action = (string) ($_POST['ws_action'] ?? '');
     $username = (string) ($_SESSION['sessionusername'] ?? '');
     $anchor = '';
