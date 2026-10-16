@@ -3,7 +3,7 @@ name: visitor-texts-list
 description: Referring address and user agent of a visit kept once each in visitor_texts and named by number in visitors (step 10.6): writer, readers, prune, old rows, upgrade limits
 ---
 
-## What changed and why? (PR #PRNUM)
+## What changed and why? (PR #489)
 - `visitors.http_referer` and `visitors.user_agent` (VARCHAR 255) were most of every row; a site sees the same few hundred browsers and the same origins again and again (browsers send only the origin across sites since 2020).
 - Since 2026.4.10 step 10.6 a new visit stores `http_referer_id` / `user_agent_id` and leaves both text columns `''`; the texts live once in `visitor_texts` (`text_id`, `kind` 1 referer / 2 user agent, `text_hash` = `UNHEX(MD5(text))` under `uk_text (kind, text_hash)`, `text_value`, `last_used`).
 - Sandbox, 300,000 rows, InnoDB: average row 261 → 114 bytes, data 73.6 → 32.6 MB; the list held 455 values (0.1 MB). With 10% of visits on unique full addresses the list held ~40,000 values and the table gain was ~35%.

@@ -4,7 +4,7 @@ description: Tables every backup dumps without rows, the SEO, search and log tab
 ---
 
 ## Which tables does a backup dump without rows?
-- `pg_backup_rowless_tables()` in `includes/fn/backup.php`: `visitors`, `visitor_texts` (its referer/user agent list, #PRNUM), `visitor_content_hourly`, `submitted_form_views`, `submitted_form_view_stats` (#434), `waf_log`, `perf_log`, `api_request_log` (#438), `seo_search_daily` (#480).
+- `pg_backup_rowless_tables()` in `includes/fn/backup.php`: `visitors`, `visitor_texts` (its referer/user agent list, #489), `visitor_content_hourly`, `submitted_form_views`, `submitted_form_view_stats` (#434), `waf_log`, `perf_log`, `api_request_log` (#438), `seo_search_daily` (#480).
 - Their CREATE TABLE is dumped, so a restored site has them empty and fills them again. The `sql.sql` note, the size estimate (`pg_backup_estimate_bytes()`) and the screen notes (Backup Manager, Settings › General › Backups, File Manager › Backups) all read or describe this list; change them together.
 
 ## Why is a table rowless?
