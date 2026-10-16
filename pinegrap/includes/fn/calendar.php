@@ -44,8 +44,13 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         // Anything else is dropped so the views fall back to the current date:
         // mktime() below rejects non-integer parts (a TypeError on PHP 8), and a
         // bad value that stuck in the session would break every later request.
+        // A date that is not text (an array kept by an older version) is
+        // dropped the same way.
+        if (!is_string($date)) {
+            $date = '';
+        }
         if ($date) {
-            $date_parts = explode('-', (string) $date);
+            $date_parts = explode('-', $date);
             if ((count($date_parts) != 3)
                 || !ctype_digit($date_parts[0]) || !ctype_digit($date_parts[1]) || !ctype_digit($date_parts[2])
                 || !checkdate((int) $date_parts[0], (int) $date_parts[1], (int) $date_parts[2])) {
