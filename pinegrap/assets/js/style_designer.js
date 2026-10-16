@@ -11444,6 +11444,19 @@ const StyleDesigner = (function () {
                    '<rect width="29" height="29" fill="#ffffff"/>' +
                    '<path transform="translate(4 4)" fill-rule="evenodd" fill="#000000" d="' + f(0, 0) + f(14, 0) + f(0, 14) + dots + '"/></svg>';
         },
+        // Mirrors pg_signin_connect_buttons(): one button per provider the
+        // account can still connect, in the sign-in buttons' markup.
+        '__signin_connect_buttons': function () {
+            var btn = function (border, bg, color, label) {
+                return '<div class="pg-signin-button" style="margin-top:1em;text-align:left">' +
+                       '<a href="#" rel="nofollow" style="display:inline-flex;align-items:center;justify-content:center;min-width:240px;max-width:100%;box-sizing:border-box;' +
+                       'padding:9px 18px;border:1px solid ' + border + ';border-radius:4px;background:' + bg + ';color:' + color + ';font-weight:500;text-decoration:none;font-size:14px;line-height:1.4">' +
+                       esc(label) + '</a></div>';
+            };
+            return '<div class="pg-signin-buttons pg-signin-connect">' +
+                   btn('#dadce0', '#fff', '#3c4043', _sdT('Connect with Google')) +
+                   btn('#8c8c8c', '#fff', '#5e5e5e', _sdT('Connect with Microsoft')) + '</div>';
+        },
         // Mirrors _pg_order_status_badge_class() — picks up the designer's own
         // class override so the canvas shows the colour they just chose.
         '__order_status_badge': function () {
@@ -29575,6 +29588,9 @@ const StyleDesigner = (function () {
             ['__recovery_codes',              _sdT('New recovery codes (one per line)')],
             ['__recovery_codes_download_url', _sdT('Download the recovery codes (href)')]
         ]},
+        { label: _sdT('Connected sign-ins'), tokens: [
+            ['__signin_connect_buttons',      _sdT('Connect buttons of the sign-ins not connected yet (HTML)')]
+        ]},
         { label: _sdT('Signed Out'), tokens: [
             ['__login_url',                   _sdT('Sign-in page address (signed-out view)')],
             ['__not_logged_in',               _sdT('Signed-out message')]
@@ -30535,6 +30551,7 @@ const StyleDesigner = (function () {
             ['has_apple',           _sdT('The account is connected to Apple')],
             ['apple_removable',     _sdT('Apple can be disconnected (another way to sign in remains)')],
             ['apple_only',          _sdT('Apple is the only way this account signs in')],
+            ['signin_connectable',  _sdT('A sign-in that is turned on can still be connected (its Connect button is shown)')],
             ['has_password',        _sdT('The account has a password')],
             ['password_not_set',    _sdT('The account has no password yet (signs in with Google)')],
             ['has_devices',         _sdT('There are remembered devices')],
@@ -45225,6 +45242,13 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mb-0',
                                 text: _sdT('This account signs in with Apple. To disconnect Apple, set a password first with Forgot Password, otherwise you would lose access.'),
                                 _bindings: { eo_visible_if: 'apple_only' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Connected sign-ins'),
+                            _bindings: { eo_visible_if: 'signin_connectable' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Connected sign-ins'), cssClass: 'mb-2' }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Connect another account to sign in with it too:'), cssClass: 'mb-0' }),
+                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Connect Buttons'),
+                                _bindings: { text: '__signin_connect_buttons' } })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Devices') }, [
                             createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Remembered devices'), cssClass: 'mb-2' }),

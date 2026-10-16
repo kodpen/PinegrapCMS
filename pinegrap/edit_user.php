@@ -931,6 +931,22 @@ if (!$_POST) {
             </div>';
     }
 
+    // One's own account: a provider that is on and not connected yet can be
+    // connected from here, whatever its e-mail address (signin.php,
+    // &connect=). Not for another person's account: the provider account
+    // would be the editor's.
+    if ((int) $id === (int) USER_ID) {
+        $output_connect_buttons = pg_signin_connect_buttons((int) $id, get_request_uri(), true);
+
+        if ($output_connect_buttons !== '') {
+            $output_identity_rows .= '<div class="pg-fact">
+                <span class="pg-fact-icon"><i class="bi bi-link-45deg"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang('Connect a sign-in')) . '</b><span>' . h(lang('Connect your own account at a provider to sign in with it too.')) . '</span>'
+                    . $output_connect_buttons . '</div>
+            </div>';
+        }
+    }
+
     $output_sessions_row = ($edit_user_sessions_count > 0)
         ? '<div class="pg-fact">
                 <span class="pg-fact-icon"><i class="bi bi-laptop"></i></span>

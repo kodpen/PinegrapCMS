@@ -535,6 +535,76 @@ function pg_signin_identity_badges($providers, $password_algo)
     return implode(' ', $html);
 }
 
+/**
+ * Why a "Connect" button may not start connecting a provider to the account
+ * signed in now; '' when it may. The token is the one of this session
+ * (pg_signin_connect_token()), so only a page drawn for this browser starts
+ * it. An operator signed in as the person may not: the provider account would
+ * be the operator's, a way into the person's account that outlives the visit.
+ *
+ * @param int    $user_id       the account signed in now, 0 when none
+ * @param bool   $impersonated  an operator is signed in as the person
+ * @param string $token         the token the button carried
+ * @param string $session_token the token of this session
+ * @param bool   $connected     the account already has an identity at the provider
+ * @return string '', 'signed_out', 'impersonated', 'token' or 'connected'
+ */
+function pg_signin_connect_problem($user_id, $impersonated, $token, $session_token, $connected)
+{
+    if ((int) $user_id <= 0) {
+        return 'signed_out';
+    }
+
+    if ($impersonated) {
+        return 'impersonated';
+    }
+
+    if (!is_string($token) || !is_string($session_token) || ($session_token === '') || !hash_equals($session_token, $token)) {
+        return 'token';
+    }
+
+    return $connected ? 'connected' : '';
+}
+
+/**
+ * What a finished "Connect" does with the identity the provider vouched for.
+ * The account is the one that pressed the button, and it has to be the one
+ * still signed in; the identity is tied to it whatever e-mail address either
+ * side has, unless another account here holds it already (never taken over)
+ * or the account holds another person at the same provider (disconnected
+ * first, by the person).
+ *
+ * @param int  $connect_user  the account the button was pressed for
+ * @param int  $session_user  the account signed in now, 0 when none
+ * @param bool $impersonated  an operator is signed in as the person
+ * @param int  $holder        the account holding the identity, 0 when none
+ * @param bool $has_provider  the account has an identity at this provider
+ * @return string 'signed_out', 'impersonated', 'already', 'other_account',
+ *                'has_other' or 'connect'
+ */
+function pg_signin_connect_outcome($connect_user, $session_user, $impersonated, $holder, $has_provider)
+{
+    $connect_user = (int) $connect_user;
+
+    if (($connect_user <= 0) || ((int) $session_user !== $connect_user)) {
+        return 'signed_out';
+    }
+
+    if ($impersonated) {
+        return 'impersonated';
+    }
+
+    if ((int) $holder === $connect_user) {
+        return 'already';
+    }
+
+    if ((int) $holder > 0) {
+        return 'other_account';
+    }
+
+    return $has_provider ? 'has_other' : 'connect';
+}
+
 
 /* ---------------------------------------------------------------------------
    Providers
@@ -801,13 +871,14 @@ function pg_signin_button_style($key)
  * @param string $key
  * @param string $url
  * @param string $label
+ * @param string $align 'center' under a sign-in form, 'left' in an account's list
  * @return string
  */
-function pg_signin_button_html($key, $url, $label)
+function pg_signin_button_html($key, $url, $label, $align = 'center')
 {
     $style = pg_signin_button_style($key);
 
-    return '<div class="pg-signin-button pg-signin-' . h($key) . '" style="margin-top:1em;text-align:center">'
+    return '<div class="pg-signin-button pg-signin-' . h($key) . '" style="margin-top:1em;text-align:' . (($align === 'left') ? 'left' : 'center') . '">'
         . '<a href="' . h($url) . '" rel="nofollow" style="display:inline-flex;align-items:center;justify-content:center;min-width:240px;max-width:100%;box-sizing:border-box;padding:9px 18px;border:1px solid ' . $style['border'] . ';border-radius:4px;background:' . $style['background'] . ' !important;color:' . $style['color'] . ' !important;font-weight:500;text-decoration:none !important;font-family:' . $style['font'] . ';font-size:14px !important;line-height:1.4">'
         . '<span style="display:inline-flex;margin-right:10px">' . pg_signin_logo_svg($key, 18) . '</span>'
         // !important on the label: a theme that paints links white would
@@ -1185,9 +1256,12 @@ function pg_signin_provider_label($provider_key)
  * @param string $signup  'create', 'membership' or 'none'; downgraded to
  *                        'none' when the site publishes no entrance page
  * @param string $back    the page the button was on (pg_signin_referer_path())
+ * @param int    $connect_user the account a "Connect" button was pressed for
+ *                        (pg_signin_connect_begin()); 0 for a sign-in
+ * @param bool   $panel   see pg_signin_connect_url()
  * @return array ok, url, error
  */
-function pg_signin_start($key, $send_to, $signup, $back = '')
+function pg_signin_start($key, $send_to, $signup, $back = '', $connect_user = 0, $panel = false)
 {
     if (!pg_signin_enabled($key)) {
         return array('ok' => false, 'url' => '', 'error' => lang('This sign-in is not available.'));
@@ -1216,10 +1290,12 @@ function pg_signin_start($key, $send_to, $signup, $back = '')
         'nonce'    => $nonce,
         'verifier' => $with_pkce ? $pkce['verifier'] : '',
         // The URL flag alone is forgeable; the site's own rule decides too.
-        'signup'   => pg_google_signup_allowed() ? pg_signin_signup_mode($signup) : 'none',
+        'signup'   => (pg_google_signup_allowed() && ((int) $connect_user <= 0)) ? pg_signin_signup_mode($signup) : 'none',
         'send_to'  => pg_safe_back_url($send_to, ''),
         'back'     => pg_safe_back_url((string) $back, ''),
         'started'  => time(),
+        'connect_user' => max(0, (int) $connect_user),
+        'panel'    => (bool) $panel,
     );
 
     $_SESSION['software']['signin'] = $pending;
@@ -1258,14 +1334,16 @@ function pg_signin_start($key, $send_to, $signup, $back = '')
  *
  * @param array $params the callback's query (or, for form_post, its body)
  * @return array ok, cancelled, error, provider, label, subject, email,
- *               email_verified, first_name, last_name, signup, send_to, back
+ *               email_verified, first_name, last_name, signup, send_to, back,
+ *               connect_user (the account a "Connect" was pressed for, 0 for
+ *               a sign-in), panel
  */
 function pg_signin_finish($params)
 {
     $result = array(
         'ok' => false, 'cancelled' => false, 'error' => '', 'provider' => '', 'label' => '',
         'subject' => '', 'email' => '', 'email_verified' => false, 'first_name' => '', 'last_name' => '',
-        'signup' => 'none', 'send_to' => '', 'back' => '',
+        'signup' => 'none', 'send_to' => '', 'back' => '', 'connect_user' => 0, 'panel' => false,
     );
 
     $fail = function ($error) use (&$result) {
@@ -1295,6 +1373,8 @@ function pg_signin_finish($params)
     $result['send_to'] = (string) $pending['send_to'];
     $result['provider'] = (string) $pending['provider'];
     $result['back'] = isset($pending['back']) ? (string) $pending['back'] : '';
+    $result['connect_user'] = isset($pending['connect_user']) ? (int) $pending['connect_user'] : 0;
+    $result['panel'] = !empty($pending['panel']);
 
     if ((int) $pending['started'] < (time() - 900)) {
         return $fail(lang('The sign-in took too long. Please try again.'));
@@ -1320,6 +1400,10 @@ function pg_signin_finish($params)
         // page reads as a button that did nothing.
         if (in_array($error, array('access_denied', 'user_cancelled_authorize', 'consent_required', 'interaction_required'), true)) {
             $result['cancelled'] = true;
+
+            if ($result['connect_user'] > 0) {
+                return $fail(lang(array('string' => 'Connecting was cancelled at {var:1}, so nothing changed on your account.', 'vars' => $provider['label'])));
+            }
 
             return $fail(lang(array('string' => 'The sign-in was cancelled at {var:1}, so you are not signed in.', 'vars' => $provider['label'])));
         }
@@ -1532,6 +1616,252 @@ function pg_signin_address_user($email)
 
 
 /* ---------------------------------------------------------------------------
+   Connecting a provider while signed in
+   --------------------------------------------------------------------------- */
+
+/**
+ * The token a "Connect" button carries: one per session, so a link planted
+ * elsewhere cannot start connecting a provider to whoever opens it.
+ *
+ * @return string
+ */
+function pg_signin_connect_token()
+{
+    if (empty($_SESSION['software']['signin_connect_token']) || !is_string($_SESSION['software']['signin_connect_token'])) {
+        $_SESSION['software']['signin_connect_token'] = bin2hex(random_bytes(16));
+    }
+
+    return $_SESSION['software']['signin_connect_token'];
+}
+
+/**
+ * Whether an account has an identity at a provider, Google's link still in
+ * user.user_google_id included.
+ *
+ * @param int        $user_id
+ * @param string     $provider_key
+ * @param array|null $identities pg_signin_identities() of the account, when
+ *                               already read
+ * @return bool
+ */
+function pg_signin_connected($user_id, $provider_key, $identities = null)
+{
+    if (!is_array($identities)) {
+        $identities = pg_signin_identities($user_id);
+    }
+
+    if (array_key_exists((string) $provider_key, $identities)) {
+        return true;
+    }
+
+    return ($provider_key === 'google') && pg_signin_google_legacy_column()
+        && ((string) db_value("SELECT user_google_id FROM user WHERE user_id = '" . (int) $user_id . "'") !== '');
+}
+
+/**
+ * The providers an account can still connect: switched on with a complete
+ * application, and not connected to it yet. None while an operator is signed
+ * in as the person (pg_signin_connect_problem()).
+ *
+ * @param int $user_id
+ * @return array provider keys in button order
+ */
+function pg_signin_connectable($user_id)
+{
+    if (((int) $user_id <= 0) || !empty($_SESSION['software']['logged_in_as_different_user'])) {
+        return array();
+    }
+
+    $identities = pg_signin_identities($user_id);
+    $list = array();
+
+    foreach (array_keys(pg_signin_providers()) as $key) {
+        if (pg_signin_enabled($key) && !pg_signin_connected($user_id, $key, $identities)) {
+            $list[] = $key;
+        }
+    }
+
+    return $list;
+}
+
+/**
+ * The address of a "Connect" button: signin.php with the provider and this
+ * session's token; '' when the provider is off.
+ *
+ * @param string $key
+ * @param string $send_to the page to come back to, a same-site address
+ * @param bool   $panel   pressed on the panel's user screen, which shows the
+ *                        connection itself; the account pages get a notice
+ * @return string
+ */
+function pg_signin_connect_url($key, $send_to = '', $panel = false)
+{
+    if (!pg_signin_enabled($key)) {
+        return '';
+    }
+
+    $query = array('provider' => $key, 'connect' => pg_signin_connect_token());
+
+    if ((string) $send_to !== '') {
+        $query['send_to'] = (string) $send_to;
+    }
+
+    if ($panel) {
+        $query['from'] = 'panel';
+    }
+
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/signin.php?' . http_build_query($query);
+}
+
+/**
+ * The "Connect ..." buttons of an account, one per provider it can still
+ * connect, in the markup of the sign-in buttons; '' when there is none.
+ *
+ * @param int    $user_id
+ * @param string $send_to
+ * @param bool   $panel see pg_signin_connect_url()
+ * @return string
+ */
+function pg_signin_connect_buttons($user_id, $send_to = '', $panel = false)
+{
+    $html = '';
+
+    foreach (pg_signin_connectable($user_id) as $key) {
+        $url = pg_signin_connect_url($key, $send_to, $panel);
+
+        if ($url !== '') {
+            $html .= pg_signin_button_html($key, $url,
+                lang(array('string' => 'Connect with {var:1}', 'vars' => pg_signin_provider_label($key))), 'left');
+        }
+    }
+
+    return ($html === '') ? '' : '<div class="pg-signin-buttons pg-signin-connect">' . $html . '</div>';
+}
+
+/**
+ * Checks a "Connect" request before it leaves for the provider: the account
+ * signed in now, which the identity will be tied to. Ends on the failure
+ * screen when it may not start.
+ *
+ * @param string $key
+ * @param string $token   the token the button carried
+ * @param string $send_to
+ * @param bool   $panel
+ * @return int the account
+ */
+function pg_signin_connect_begin($key, $token, $send_to, $panel)
+{
+    $user_id = pg_session_signed_in() ? (int) $_SESSION['sessionuserid'] : 0;
+    $label = pg_signin_provider_label($key);
+    $context = array('provider' => $key, 'send_to' => $send_to, 'connect' => true, 'panel' => $panel);
+
+    if (!pg_signin_enabled($key)) {
+        $context['provider'] = '';
+
+        pg_signin_fail(lang('This sign-in is not available.'), $context);
+    }
+
+    $problem = pg_signin_connect_problem($user_id, !empty($_SESSION['software']['logged_in_as_different_user']),
+        $token, isset($_SESSION['software']['signin_connect_token']) ? $_SESSION['software']['signin_connect_token'] : '',
+        ($user_id > 0) && pg_signin_connected($user_id, $key));
+
+    if ($problem === 'signed_out') {
+        pg_signin_fail(lang(array('string' => 'You are not signed in, so {var:1} cannot be connected to an account. Please sign in, then connect {var:1} from your account page.', 'vars' => $label)), $context);
+    }
+
+    if ($problem === 'impersonated') {
+        pg_signin_fail(lang(array('string' => '{var:1} cannot be connected while signed in as another user.', 'vars' => $label)), $context);
+    }
+
+    if ($problem === 'token') {
+        pg_signin_fail(lang(array('string' => 'This link to connect {var:1} is not from this browser session. Please open your account page and press the button there.', 'vars' => $label)), $context);
+    }
+
+    if ($problem === 'connected') {
+        pg_signin_fail(lang(array('string' => 'This account is already connected to {var:1}. To connect another {var:1} account, disconnect this one first.', 'vars' => $label)), $context);
+    }
+
+    return $user_id;
+}
+
+/**
+ * Finishes a "Connect": ties the identity the provider vouched for to the
+ * account that pressed the button, whatever e-mail address either side has,
+ * and goes back to the page the button was on. Nobody is signed in or
+ * opened. An identity held by another account here is refused on the
+ * failure screen, as a sign-in into that account would be. Does not return.
+ *
+ * @param array $identity what pg_signin_finish() returned
+ */
+function pg_signin_connect_finish($identity)
+{
+    $label = $identity['label'];
+    $email = $identity['email'];
+    $provider_key = $identity['provider'];
+    $user_id = (int) $identity['connect_user'];
+    $session_user = pg_session_signed_in() ? (int) $_SESSION['sessionuserid'] : 0;
+    $holder = pg_signin_identity_user($provider_key, $identity['subject']);
+    $reported = ($email !== '') ? $email : $identity['subject'];
+
+    $outcome = pg_signin_connect_outcome($user_id, $session_user, !empty($_SESSION['software']['logged_in_as_different_user']),
+        $holder, ($user_id > 0) && pg_signin_connected($user_id, $provider_key));
+
+    if ($outcome === 'connect') {
+        // Not tied when a request a moment earlier tied the same identity to
+        // another account: the same refusal as below.
+        $outcome = pg_signin_identity_add($user_id, $provider_key, $identity['subject'], $email) ? 'connected' : 'other_account';
+    }
+
+    if ($outcome === 'signed_out') {
+        pg_signin_fail(lang(array('string' => 'You are no longer signed in to the account that asked to connect {var:1}, so nothing was connected. Please sign in and connect {var:1} again from your account page.', 'vars' => $label)), $identity);
+    }
+
+    if ($outcome === 'impersonated') {
+        pg_signin_fail(lang(array('string' => '{var:1} cannot be connected while signed in as another user.', 'vars' => $label)), $identity);
+    }
+
+    $username = (string) db_value("SELECT user_username FROM user WHERE user_id = '" . $user_id . "'");
+
+    if ($outcome === 'other_account') {
+        log_activity(lang(array(
+            'string' => '{var:1} connection refused: the {var:1} account ({var:2}) is connected to another account',
+            'vars'   => array($label, $reported))), $username);
+        pg_signin_fail(lang(array(
+            'string' => 'You signed in to {var:1} as {var:2}. That {var:1} account is already connected to another account on this site, so it cannot be connected to yours. Sign in to the other account and disconnect {var:1} there, or ask the site owner to disconnect it.',
+            'vars'   => array($label, $reported))), $identity);
+    }
+
+    if ($outcome === 'has_other') {
+        pg_signin_fail(lang(array('string' => 'This account is already connected to another {var:1} account. To connect this one, disconnect the other first.', 'vars' => $label)), $identity);
+    }
+
+    if ($outcome === 'connected') {
+        log_activity(lang(array('string' => 'user connected {var:1} ({var:2})', 'vars' => array($label, $reported))), $username);
+        $notice = lang(array('string' => '{var:1} is connected. From now on you can sign in with {var:1} too.', 'vars' => $label));
+    } else {
+        pg_signin_identity_touch($provider_key, $identity['subject'], $identity['email_verified'] ? $email : '');
+        $notice = lang(array('string' => 'This {var:1} account was already connected to your account.', 'vars' => $label));
+    }
+
+    // The panel's user screen shows the connection in its list; the account
+    // pages say it in their messages.
+    if (empty($identity['panel'])) {
+        $messages = new liveform('my_account_profile');
+        $messages->add_notice($notice);
+    }
+
+    $landing = pg_safe_back_url($identity['send_to'], pg_safe_back_url($identity['back'], ''));
+
+    if ($landing === '') {
+        $landing = (string) get_page_type_url('my account');
+    }
+
+    go($landing);
+    exit();
+}
+
+
+/* ---------------------------------------------------------------------------
    The failure screen
    --------------------------------------------------------------------------- */
 
@@ -1570,7 +1900,11 @@ function pg_signin_back_url($back, $signup)
  *
  * @param string $message plain text
  * @param array  $context provider, send_to, signup, back, cancelled (what
- *                        pg_signin_finish() returned carries them all)
+ *                        pg_signin_finish() returned carries them all);
+ *                        connect (or connect_user) and panel for a
+ *                        "Connect", whose way
+ *                        back is the page the button was on (send_to) and
+ *                        whose other try is another "Connect"
  */
 function pg_signin_fail($message, $context = array())
 {
@@ -1586,15 +1920,32 @@ function pg_signin_fail($message, $context = array())
     $send_to = isset($context['send_to']) ? (string) $context['send_to'] : '';
     $cancelled = !empty($context['cancelled']);
 
-    $title = $cancelled ? lang('Sign-in cancelled') : lang('Sign-in did not complete');
+    $connecting = !empty($context['connect']) || !empty($context['connect_user']);
+    $back = isset($context['back']) ? (string) $context['back'] : '';
+
+    if ($connecting) {
+        $title = $cancelled ? lang('Connecting cancelled') : lang('Connecting did not complete');
+        $back = ($send_to !== '') ? $send_to : $back;
+    } else {
+        $title = $cancelled ? lang('Sign-in cancelled') : lang('Sign-in did not complete');
+    }
 
     $links = array(array(
-        'url'     => pg_signin_back_url(isset($context['back']) ? $context['back'] : '', $signup),
+        'url'     => pg_signin_back_url($back, $connecting ? 'none' : $signup),
         'label'   => lang('Go Back'),
         'primary' => true,
     ));
 
-    $again = ($provider_key !== '') ? pg_signin_url($provider_key, $send_to, $signup) : '';
+    if ($provider_key === '') {
+        $again = '';
+    } elseif ($connecting) {
+        // Another try only for the account still signed in.
+        $again = (pg_session_signed_in() && empty($_SESSION['software']['logged_in_as_different_user']))
+            ? pg_signin_connect_url($provider_key, $send_to, !empty($context['panel']))
+            : '';
+    } else {
+        $again = pg_signin_url($provider_key, $send_to, $signup);
+    }
 
     if ($again !== '') {
         $links[] = array(

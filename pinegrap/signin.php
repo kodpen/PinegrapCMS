@@ -8,7 +8,10 @@
  *
  * One file, two phases:
  *   ?provider=  START:    plant state, nonce and PKCE in the session, send the
- *                         visitor to the provider.
+ *                         visitor to the provider. With &connect= (a
+ *                         "Connect" button of a signed-in account) the
+ *                         identity is tied to that account on the way back
+ *                         instead of signing anyone in.
  *   state=      CALLBACK: trade the code for an id_token, find the account by
  *                         the identity, else tie one with the same verified
  *                         e-mail, else open one where the screen allows it,
@@ -59,6 +62,18 @@ if (!isset($params['state']) && !isset($params['code']) && !isset($params['error
         isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : '',
         isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '');
 
+    // A "Connect" button (the account page, the panel's own user screen):
+    // the provider is tied to the account signed in now instead of signing
+    // anyone in. Checked here, and again when the provider answers.
+    $connect_user = 0;
+    $connect_panel = false;
+
+    if (isset($_GET['connect']) && is_string($_GET['connect'])) {
+        $connect_panel = (isset($_GET['from']) && ($_GET['from'] === 'panel'));
+        $connect_user = pg_signin_connect_begin($provider_key, $_GET['connect'], $send_to, $connect_panel);
+        $create = '0';
+    }
+
     // A button left on a cached page, or an old link to google_auth.php,
     // after the provider was turned off.
     if (!pg_signin_enabled($provider_key)) {
@@ -71,10 +86,11 @@ if (!isset($params['state']) && !isset($params['code']) && !isset($params['error
             array('signup' => pg_signin_signup_mode($create), 'back' => $back));
     }
 
-    $start = pg_signin_start($provider_key, $send_to, $create, $back);
+    $start = pg_signin_start($provider_key, $send_to, $create, $back, $connect_user, $connect_panel);
 
     if (!$start['ok']) {
-        pg_signin_fail($start['error'], array('provider' => $provider_key, 'send_to' => $send_to, 'signup' => pg_signin_signup_mode($create), 'back' => $back));
+        pg_signin_fail($start['error'], array('provider' => $provider_key, 'send_to' => $send_to, 'signup' => pg_signin_signup_mode($create), 'back' => $back,
+            'connect_user' => $connect_user, 'panel' => $connect_panel));
     }
 
     // A provider that posts its answer back (Apple's form_post) is a
@@ -114,6 +130,12 @@ if (($email !== '') && pg_email_blocked($email)) {
     pg_signin_fail(lang(array(
         'string' => 'You signed in to {var:1} as {var:2}, but this e-mail address cannot be used on this site.',
         'vars'   => array($label, $email))), $identity);
+}
+
+// A "Connect": the identity is tied to the account that pressed the button;
+// nothing below (matching, opening an account, signing in) applies.
+if ($identity['connect_user'] > 0) {
+    pg_signin_connect_finish($identity);
 }
 
 $user_id = pg_signin_match_user($identity);
