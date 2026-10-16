@@ -23,9 +23,19 @@ function get_my_account_profile($properties = array()) {
     $layout_type = get_layout_type($page_id);
 
     // get user information to find contact
-    $query = "SELECT user_contact, timezone FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
+    //
+    // Nobody is signed in while the search index is updated, and a profile
+    // page shown in a system region can be reached without signing in. There
+    // is then no user and no contact, so every field starts blank, as it
+    // always did.
+    $query = "SELECT user_contact, timezone FROM user WHERE user_username = '" . escape($_SESSION['sessionusername'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
+
+    if (is_array($row) == false) {
+        $row = array('user_contact' => null, 'timezone' => null);
+    }
+
     $contact_id = $row['user_contact'];
     $timezone = $row['timezone'];
 

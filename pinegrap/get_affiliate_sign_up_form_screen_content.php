@@ -28,9 +28,18 @@ function get_affiliate_sign_up_form_screen_content($properties)
     $liveform = new liveform('affiliate_sign_up_form');
     
     // get user information to find contact
-    $query = "SELECT user_id, user_email, user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
+    //
+    // Nobody is signed in while the search index is updated, or when a visitor
+    // who has not signed in opens the page. There is then no user and no
+    // contact, so every field starts blank, as it always did.
+    $query = "SELECT user_id, user_email, user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    if (is_array($row) == false) {
+        $row = array('user_id' => null, 'user_contact' => null);
+    }
+
     $user_id = $row['user_id'];
     $contact_id = $row['user_contact'];
 
