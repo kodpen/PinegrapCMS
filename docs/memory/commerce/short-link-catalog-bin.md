@@ -45,4 +45,4 @@ Sandbox: wizard and classic screens on old and new code, a binned product
 and group with links to them; HTML of the screens unchanged apart from the
 wizard JS; no log lines. Tests: `tests/short_link_requests_test.php`.
 
-PR: #477.
+PR: #482.
