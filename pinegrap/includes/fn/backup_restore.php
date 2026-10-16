@@ -281,6 +281,79 @@ function pg_restore_archive_read($path)
 
 
 /**
+ * Copies one file of an open archive to disk a megabyte at a time, so a dump
+ * of any size is extracted within a few megabytes of memory, and checks it
+ * against its size and checksum in the archive. A file that does not come out
+ * whole is deleted again.
+ *
+ * @param ZipArchive $zip
+ * @param int        $index the file's index in the archive
+ * @param string     $path  where it is written
+ * @return string '' when the file is complete, otherwise what went wrong
+ */
+function pg_restore_archive_copy($zip, $index, $path)
+{
+    $stat = $zip->statIndex($index);
+    $name = ($stat === false) ? '#' . $index : str_replace('\\', '/', $stat['name']);
+    $damaged = lang(array('string' => 'The archive is damaged: {var:1} does not match its checksum.', 'vars' => array($name)));
+
+    if ($stat === false) {
+        return $damaged;
+    }
+
+    $stream = method_exists($zip, 'getStreamIndex') ? $zip->getStreamIndex($index) : $zip->getStream($zip->getNameIndex($index));
+
+    if ($stream === false) {
+        return $damaged;
+    }
+
+    $handle = @fopen($path, 'wb');
+
+    if ($handle === false) {
+        fclose($stream);
+        return lang('The file could not be written.');
+    }
+
+    $crc = hash_init('crc32b');
+    $written = 0;
+    $error = '';
+
+    while (true) {
+
+        $chunk = @stream_get_contents($stream, 1048576);
+
+        if (($chunk === false) || ($chunk === '')) {
+            break;
+        }
+
+        if (fwrite($handle, $chunk) !== strlen($chunk)) {
+            $error = lang('The file could not be written.');
+            break;
+        }
+
+        hash_update($crc, $chunk);
+        $written += strlen($chunk);
+    }
+
+    fclose($stream);
+
+    if (!fclose($handle) && ($error === '')) {
+        $error = lang('The file could not be written.');
+    }
+
+    if (($error === '') && (((float) $written !== (float) $stat['size']) || (hash_final($crc) !== sprintf('%08x', $stat['crc'] & 0xFFFFFFFF)))) {
+        $error = $damaged;
+    }
+
+    if ($error !== '') {
+        @unlink($path);
+    }
+
+    return $error;
+}
+
+
+/**
  * Splits off what a statement starts with: whitespace, plain comments and an
  * executable comment opener (/*!40101 or MariaDB's /*M!100100).
  *
