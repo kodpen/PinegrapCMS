@@ -885,6 +885,65 @@ function pg_request_row_values($row)
     return is_array($row) ? array_filter($row, 'is_scalar') : array();
 }
 
+/**
+ * The posted fields that carry a list where their form draws none, or a
+ * deeper list than it draws.
+ *
+ * For a screen that has to refuse such a request rather than read the field
+ * as not given: a settings save writes every field it reads, so "not given"
+ * would store an empty value over the setting. Only a hand-made request
+ * sends hostname[]=x or languages[en][label][]=x; escape() and trim() stopped
+ * it with a TypeError and (string) stored "Array".
+ *
+ * $lists names the fields the form draws as lists, with how many levels of
+ * keys they carry: job_dispatch_job[name] is one, languages[code][label] is
+ * two. A value that is not a list fits every field; the screens take it as
+ * one value.
+ *
+ * @param  mixed $values the request, usually $_POST
+ * @param  array $lists  name => levels of keys
+ * @return array the names that do not fit, in request order
+ */
+function pg_request_unexpected_lists($values, $lists = array())
+{
+    $names = array();
+
+    foreach ((is_array($values) ? $values : array()) as $name => $value) {
+        if (!pg_request_list_fits($value, isset($lists[$name]) ? (int) $lists[$name] : 0)) {
+            $names[] = (string) $name;
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * Whether a value is a list no deeper than the levels given, with one value
+ * at the end of every branch (see pg_request_unexpected_lists()).
+ *
+ * @param  mixed $value
+ * @param  int   $levels
+ * @return bool
+ */
+function pg_request_list_fits($value, $levels)
+{
+    if (!is_array($value)) {
+        return true;
+    }
+
+    if ($levels < 1) {
+        return false;
+    }
+
+    foreach ($value as $item) {
+        if (!pg_request_list_fits($item, $levels - 1)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function escape_url($url)
 {
     if (!is_scalar($url) || $url === '') {
