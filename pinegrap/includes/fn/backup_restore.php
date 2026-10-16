@@ -875,6 +875,31 @@ function pg_restore_begin($folder, $database, $host)
 
 
 /**
+ * A CREATE TABLE without its partitioning, or null when it has none.
+ *
+ * The visitors table is split into months where the server can partition it
+ * (includes/fn/visitor_partitions.php), and a backup carries that in the
+ * table's CREATE TABLE: MySQL inside an executable comment, MariaDB as plain
+ * text at the end. A server without partitioning refuses the statement; the
+ * table is then made unsplit, which the software reads all the same.
+ *
+ * No database access.
+ *
+ * @param string $sql one complete statement
+ * @return string|null
+ */
+function pg_restore_without_partitions($sql)
+{
+    $stripped = preg_replace('/\s*\/\*!50100\s+PARTITION\s+BY\b.*?\*\//is', '', (string) $sql, -1, $count);
+
+    if ($count === 0) {
+        $stripped = preg_replace('/(\bENGINE\s*=\s*\w+[^\n]*?)\s+PARTITION\s+BY\s.*?(;?)\s*$/is', '$1$2', (string) $sql, -1, $count);
+    }
+
+    return ($count > 0) ? $stripped : null;
+}
+
+/**
  * Runs one statement of the dump against the restore's tables.
  *
  * @param array  $state            updated: tables, current table, sets, lock
@@ -908,7 +933,17 @@ function pg_restore_run_statement(array &$state, $sql, $statement_offset)
     }
 
     if (!@mysqli_query(db::$con, $run)) {
-        return array('statement' => $short, 'error' => mysqli_error(db::$con));
+
+        $error = mysqli_error(db::$con);
+
+        // A table split into months, on a server that cannot partition it.
+        $unsplit = ($classified['verb'] === 'create') ? pg_restore_without_partitions($run) : null;
+
+        if (($unsplit === null) || !@mysqli_query(db::$con, $unsplit)) {
+            return array('statement' => $short, 'error' => $error);
+        }
+
+        $run = $unsplit;
     }
 
     if ($classified['verb'] === 'create') {

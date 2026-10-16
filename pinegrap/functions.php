@@ -83,3 +83,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/innodb.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/db_maintenance.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_retention.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_texts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_partitions.php');

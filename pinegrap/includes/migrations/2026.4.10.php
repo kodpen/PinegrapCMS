@@ -51,6 +51,7 @@ function upgrade_to_2026_4_10() {
 	upgrade_2026_4_10_noise_theme_file();       // 10.5
 	upgrade_2026_4_10_webhook_channel_group();  // 10.76
 	upgrade_2026_4_10_visitor_texts();          // 10.6
+	upgrade_2026_4_10_visitor_partitions();     // 10.7
 
 }
 
@@ -1196,5 +1197,86 @@ function upgrade_2026_4_10_visitor_texts() {
 	}
 
 	install_note('Visitor records: the referring address and the browser of a visit are kept once each in a list and named by their number, which makes each new visitor record about half as large. Records written before keep theirs and are read as before.');
+
+}
+
+// Visitor records kept in one partition per month (2026.4.10, 10.7;
+// includes/fn/visitor_partitions.php, pg_visitor_cleanup_run() and the move of
+// includes/fn/visitor_retention.php).
+//
+// The retention period removed the rows of old days a chunk at a time, and the
+// room they left stayed inside the table's file until the table was rebuilt.
+// Split by RANGE on start_timestamp into a partition per month of the site's
+// clock and a last one for everything later (pmax), a month that is wholly
+// older than the period goes with DROP PARTITION, in a moment, and its file
+// with it. The general job opens the coming months ahead of time.
+//
+// The primary key becomes (id, start_timestamp): a partitioned table needs the
+// partitioning column in every unique key, and id, still the first column,
+// keeps its AUTO_INCREMENT. Only an InnoDB table is split, and only where the
+// server has partitioning (MySQL 8; MySQL 5.7 and MariaDB with the partition
+// plugin active); elsewhere the table stays as it is and the chunks go on.
+//
+// The ALTER TABLE copies the table while every visit waits, so it runs here
+// only for a table of up to 250,000 visits, a few seconds. A larger table, or
+// one still on MyISAM, is left as it is here: the general job builds a split
+// copy next to it a chunk at a time while the site keeps running and puts it
+// in its place with one RENAME TABLE, the way it moves a MyISAM table to
+// InnoDB (and a MyISAM table comes out of that move split already).
+function upgrade_2026_4_10_visitor_partitions() {
+
+	if (!function_exists('pg_visitor_partition_convert')) {
+
+		install_skipped(lang(array('string' => '{var:1} was left as it is: {var:2}', 'vars' => array('visitors', 'includes/fn/visitor_partitions.php'))));
+
+		return;
+
+	}
+
+	$result = pg_visitor_partition_convert(PG_VISITOR_PARTITION_UPGRADE_MAX_ROWS);
+
+	switch ($result['state']) {
+
+		case 'done':
+			install_ran(lang(array('string' => '{var:1} split into {var:2} monthly partitions', 'vars' => array('visitors', $result['months']))));
+			install_note('Visitor records: the visitors table is kept in one partition per month, so a month that is older than the period is removed at once and gives its room back to the disk. The general job opens the coming months ahead of time.');
+			break;
+
+		case 'already':
+			install_skipped(lang(array('string' => '{var:1} is already split into monthly partitions', 'vars' => array('visitors'))));
+			break;
+
+		case 'missing':
+			install_skipped(lang(array('string' => 'table {var:1} does not exist, skipped', 'vars' => 'visitors')));
+			break;
+
+		case 'engine':
+			install_note('Visitor records: the visitors table is still on MyISAM. The general job moves it to InnoDB once the cleanup is through, and splits it into one partition per month on the way.');
+			break;
+
+		case 'large':
+			install_note('Visitor records: the visitors table holds more than 250,000 visits, too many to split it into monthly partitions here without holding up the visits while it is copied. The general job splits it a few thousand records at a time while the site keeps running, once the cleanup is through; the Database Engine screen shows how far it has come.');
+			break;
+
+		case 'unsupported':
+			install_note('Visitor records: this database server cannot partition tables (' . $result['error'] . '), so the visitors table stays as it is and old records are removed a chunk at a time, as before.');
+			break;
+
+		case 'other':
+			install_note('Visitor records: the visitors table is partitioned in another way already and was left as it is; old records are removed a chunk at a time.');
+			break;
+
+		case 'key':
+			install_note('Visitor records: the primary key of the visitors table is not (id), so it was left as it is; old records are removed a chunk at a time.');
+			break;
+
+		case 'busy':
+			install_note('Visitor records: the visitors table was in use, so it was not split into monthly partitions now. The general job splits it later while the site keeps running.');
+			break;
+
+		default:
+			install_log('2026.4.10 visitors not split into months: ' . $result['error']);
+			install_note('Visitor records: splitting the visitors table into monthly partitions stopped (' . $result['error'] . '). The table works as before; the general job tries the split again later.');
+	}
 
 }
