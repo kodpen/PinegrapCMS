@@ -62,5 +62,6 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - system-widget-functional-classes.md: Which pg-eo-* / pg-qty-stepper classes and data-* attributes in system widget trees are functional (keep) versus decorative (deletable).
 - system-widget-test-pages.md: System widget test URLs (/c /d /e /b/<slug>), the two dev.pinegrap.com backends, legacy page confusion, saved-cart link, stale-output causes.
 - system-widget-type-and-name.md: Designer system widget rules: SW_TYPES, auto names, empty widget, gated type change (fork/all/cancel), walking all page tabs, usage_all columns.
+- text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare names vs __ prefix), shared cart vocabulary, raw-HTML key escaping, row id uniquify, and tools/check_bindings.php.
 - wysiwyg-text-binding.md: Never give a WYSIWYG (block-wrapped) field to a text binding: nested p breaks the DOM; use _pg_rich_text_to_inline() in all three places; no extra .alert box.

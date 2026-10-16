@@ -3584,6 +3584,10 @@ const StyleDesigner = (function () {
                 return;
             }
 
+            // An element picked inside a text: Delete removes that element,
+            // not the whole text, and Escape goes back to the text.
+            if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey && _sdTextInnerKey(e)) return;
+
             // Delete / Backspace
             if ((e.key === 'Delete' || e.key === 'Backspace') && !isInput
                 && _sdIsContentLevel() && !_sdMayEdit(selectedNode)) {
@@ -4963,6 +4967,11 @@ const StyleDesigner = (function () {
         '.sd-wrap.sd-has-issue.sd-selected { box-shadow:inset 0 0 0 1px rgba(13,110,253,.7); }',
         '.sd-wrap.sd-selected:where(:not([data-sd-self])) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.7); background:rgba(13,110,253,.02); z-index:10; }',
         '.sd-wrap.sd-selected[data-sd-self] { outline:1px solid rgba(13,110,253,.7); outline-offset:-1px; }',
+        // An element inside the words of a text (a <span> in a paragraph) is
+        // picked by itself (_sdTextInnerClick()): outlined on hover, marked
+        // when picked. A child node of the text and a drawing's parts are not.
+        '[data-sd-inner-host]:not([contenteditable="true"]) :not(br, wbr, [data-sd-inner-host] .sd-wrap, [data-sd-inner-host] .sd-wrap *, [data-sd-inner-host] [data-sd-virtual], [data-sd-inner-host] [data-sd-virtual] *, svg *, math *):hover { outline:1px dashed rgba(13,110,253,.6); outline-offset:1px; cursor:pointer; }',
+        '.sd-inner-sel, .sd-inner-sel:hover { outline:2px solid rgba(13,110,253,.9) !important; outline-offset:1px; }',
         // Type-specific spacing
         // 100vh applies ONLY to the page's outer root (body's direct child).
         // Without the `body >` scope, a system widget's cached tree (which
@@ -8186,6 +8195,7 @@ const StyleDesigner = (function () {
                 if (wrap) { wrap.classList.add('sd-selected'); _sdTbFill(wrap); _sdRevealInDetails(wrap); }
             });
             _sdPlaceSelectedChrome();
+            _sdTextInnerMark();
         }
         renderProperties();
         renderStatusBar();
@@ -9245,6 +9255,7 @@ const StyleDesigner = (function () {
             canvasDoc.body.scrollTop = _scrollY;
         }
         updateBpLabel();
+        _sdTextInnerMark();
         // Compute the toolbar flip once the layout has settled
         requestAnimationFrame(function() { adjustCanvasToolbars(); updateIconResizeHandle(); });
     }
@@ -10480,6 +10491,7 @@ const StyleDesigner = (function () {
         // Content element inside wrapper
         var innerEl = _selfWrap ? wrapper : buildInnerElement(doc, node);
         if (innerEl) {
+            if (_sdTextInnerHost(node)) innerEl.setAttribute('data-sd-inner-host', '');
             if (node.props.id) { innerEl.id = node.props.id; }
             if (node.props.title) { innerEl.title = node.props.title; }
             // Merge inlineStyle + _attrs.style so both Styles panel and Attrs panel coexist
@@ -10851,6 +10863,10 @@ const StyleDesigner = (function () {
                 '.accordion-button, ' +
                 '.carousel-control-prev, .carousel-control-next, .carousel-indicators button'
             );
+
+            // A <span>, <strong> or link written inside the words of a text
+            // is picked by itself, and the text's own words pick the text.
+            if (_sdTextInnerClick(e, node, innerEl, isInteractive)) return;
 
             if (selectedNode !== node) {
                 selectedNode = node;
@@ -12073,6 +12089,12 @@ const StyleDesigner = (function () {
             src = el.cloneNode(true);
             _sdInlineChrome(src).forEach(function (n) { n.parentNode.removeChild(n); });
         }
+        // The mark of a picked element inside the text is the canvas's, not
+        // the text's.
+        if (src.querySelector('.sd-inner-sel')) {
+            if (src === el) src = el.cloneNode(true);
+            _sdTextInnerUnmark(src);
+        }
         if (rich) return src.innerHTML;
         if (markup && src.querySelector('*')) {
             return src.innerHTML.replace(/(?:\s*<br\s*\/?>)+\s*$/i, '').trim();
@@ -12331,6 +12353,11 @@ const StyleDesigner = (function () {
                 // double-click lands on the label itself. Restored in commit/escape.
                 var _labelFor = (item.el.tagName === 'LABEL' && item.el.getAttribute('for')) || null;
                 if (_labelFor) item.el.removeAttribute('for');
+
+                // An element picked inside the text gives way to the text:
+                // the edit is the whole text's, and the pick's mark must not
+                // end up in what is typed.
+                if (_sdInner) { _sdInner = null; renderSelectionOnly(); }
 
                 item.el.contentEditable = 'true';
                 item.el.style.boxShadow = 'inset 0 0 0 2px rgba(13,110,253,.7)';
@@ -20712,6 +20739,12 @@ const StyleDesigner = (function () {
             return;
         }
 
+        var _inner = _sdInnerSel();
+        if (_inner) {
+            _sdTextInnerAttrs(panel, _inner);
+            return;
+        }
+
         // Header badge: tag info for the selected element
         var badge = document.getElementById('sd-attrs-elem-badge');
         if (badge) {
@@ -22845,7 +22878,10 @@ const StyleDesigner = (function () {
         var list = document.getElementById('sd-tree-list');
         var wrap = document.getElementById('sd-overview-tree-wrap');
         if (!list || !wrap) return;
-        var row = (n === tree) ? list.querySelector(':scope > .sd-tree-body-row') : _sdTreeRowOf(list, n);
+        // An element picked inside a text has a row of its own.
+        var inner = _sdInnerSel();
+        var row = (n === tree) ? list.querySelector(':scope > .sd-tree-body-row')
+            : ((inner && _sdTextInnerTreeRow(list, inner)) || _sdTreeRowOf(list, n));
         if (row && _sdTreeScrollRow(wrap, row)) _sdTreeShownFor = n;
     }
 
@@ -23031,12 +23067,17 @@ const StyleDesigner = (function () {
             var chev = row.querySelector(':scope > .sd-tree-chev');
             if (chev && chev.classList.contains('sd-tree-chev-open') !== (n._expanded !== false)) return false;
         }
+        // An element picked inside a text: its row (drawn with the text's
+        // markup as it is now) takes the mark.
+        var inner = _sdInnerSel();
+        var innerRow = inner ? _sdTextInnerTreeRow(list, inner) : null;
+        if (inner && !innerRow) return false;
         list.querySelectorAll('li.active, li.sd-multi-selected').forEach(function (x) {
             x.classList.remove('active', 'sd-multi-selected');
         });
         var bodyRow = list.querySelector(':scope > .sd-tree-body-row');
         if (bodyRow) bodyRow.classList.toggle('sd-tree-selected', !!(selectedNode && selectedNode.type === 'root'));
-        var act = (selectedNode && selectedNode !== tree) ? _sdTreeRowOf(list, selectedNode) : null;
+        var act = innerRow || ((selectedNode && selectedNode !== tree) ? _sdTreeRowOf(list, selectedNode) : null);
         if (act) act.classList.add('active');
         marks.forEach(function (m) {
             var r = _sdTreeRowOf(list, m);
@@ -23072,9 +23113,9 @@ const StyleDesigner = (function () {
             ? (_sharedRefTree.children && _sharedRefTree.children.length > 0)
             : (node.children && node.children.length > 0);
         if (_sdTreeFolded(node)) hasChildren = false;
-        // Links written inside a paragraph or heading are listed under it.
-        var _ilLinks = _sdIlTreeLinks(node);
-        if (_ilLinks.length) hasChildren = true;
+        // Elements written inside the words of a text are listed under it.
+        var _innerItems = _sdTextInnerTreeItems(node);
+        if (_innerItems.length) hasChildren = true;
         var isExpanded = node._expanded !== false;
 
         var chevHtml = hasChildren
@@ -23205,7 +23246,9 @@ const StyleDesigner = (function () {
         // mystery-drop bug this guards against. Identity is strict enough
         // because both this loop and selectedNode/selectedNodes hold the
         // SAME object references; an id collision can't sneak in.
-        if (selectedNode === node) li.classList.add('active');
+        // With an element inside its text picked, that element's row is the
+        // active one.
+        if (selectedNode === node && !_sdInnerSel()) li.classList.add('active');
         if (selectedNodes.indexOf(node) !== -1) li.classList.add('sd-multi-selected');
         li.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -23235,6 +23278,7 @@ const StyleDesigner = (function () {
                 // Normal click — clear multi-select
                 selectedNodes = [];
                 document.querySelectorAll('#sd-tree-list li.sd-multi-selected').forEach(function(x) { x.classList.remove('sd-multi-selected'); });
+                _sdInner = null;
                 selectedNode = node;
                 _sdSelectRender();
                 scrollCanvasToNode(node);
@@ -23530,7 +23574,7 @@ const StyleDesigner = (function () {
             } finally {
                 if (_sharedRefTree) delete _sdSharedOpen[_sharedRefSid];
             }
-            if (_ilLinks.length) _sdIlTreeRows(childUl, node, _ilLinks, depth + 1);
+            if (_innerItems.length) _sdTextInnerTreeRows(childUl, node, _innerItems, depth + 1);
         }
     }
 
@@ -24381,60 +24425,528 @@ const StyleDesigner = (function () {
         });
     }
 
-    // The links of a text, as the overview lists them under it: their
-    // words, else their address. Only texts that hold a link are parsed.
-    function _sdIlTreeLinks(n) {
-        if (!_sdIlTextNode(n)) return [];
-        var txt = String(n.props.text || '');
-        if (!/<a[\s>]/i.test(txt)) return [];
+    // ── Elements inside a text ───────────────────────────────────────
+    // A heading, paragraph, link or span keeps its words as one piece of
+    // markup (props.text, _SD_RICH_TEXT_CONTENT): a <span>, <strong> or <a>
+    // written in it is no node of its own. Such an element is still picked
+    // by itself - a click on it on the canvas or on its overview row - and
+    // the Options panel edits its tag, words, link, id, classes, style and
+    // attributes. Every change goes through the text: parsed, changed,
+    // written back, one undo step. The text stays one piece, so writing in
+    // it (double-click, Enter, Backspace) and the page's markup are those of
+    // any text.
+    //
+    // Every element inside such a text is picked, except the ones listed
+    // here: line breaks and what never shows. A drawing (<svg>, <math>) is
+    // picked whole, its parts are not.
+    var _SD_TEXT_INNER_SKIP   = { br: 1, wbr: 1, script: 1, style: 1, template: 1 };
+    var _SD_TEXT_INNER_OPAQUE = { svg: 1, math: 1 };
+    // The tags the panel offers for a picked element.
+    var _SD_TEXT_INNER_TAGS = ['span', 'a', 'strong', 'b', 'em', 'i', 'u', 's', 'small', 'mark',
+        'code', 'kbd', 'sub', 'sup', 'abbr', 'cite', 'q', 'time', 'del', 'ins'];
+    // The designer's own elements a text holds on the canvas (child nodes,
+    // the button label, badges): one at a time, without :scope.
+    var _SD_INLINE_CHROME_ONE = _SD_INLINE_CHROME_SEL.replace(/:scope > /g, '');
+
+    // The picked element: { node, path } - `path` is the index of each
+    // element on the way down from the text (_sdTextInnerKids()).
+    var _sdInner = null;
+
+    function _sdTextInnerHost(n) {
+        return !!(n && n.type === 'content' && n.props && _SD_RICH_TEXT_CONTENT[n.props.contentType] &&
+            typeof n.props.text === 'string' && /<[a-z]/i.test(n.props.text) && !_sdTextIsBound(n));
+    }
+
+    // The elements of `el` that are picked, in order.
+    function _sdTextInnerKids(el) {
         var out = [];
-        Array.prototype.forEach.call(_sdIlParse(txt).querySelectorAll('a'), function (a, i) {
-            out.push(String(a.textContent || '').replace(/\s+/g, ' ').trim() || a.getAttribute('href') || String(i + 1));
-        });
+        for (var c = el.firstElementChild; c; c = c.nextElementSibling) {
+            if (_SD_TEXT_INNER_SKIP[c.tagName.toLowerCase()]) continue;
+            if (c.matches(_SD_INLINE_CHROME_ONE)) continue;
+            out.push(c);
+        }
         return out;
     }
 
-    // Overview rows for the links of a text. They are not nodes: a click
-    // selects the text and opens its link in the Options panel; the button
-    // takes the link out of the text.
-    function _sdIlTreeRows(ul, n, labels, depth) {
-        var canEdit = _sdCanEditNode(n) && !(n.props && n.props._locked) && !hasLockedAncestor(n);
-        labels.forEach(function (label, i) {
+    function _sdTextInnerAt(root, path) {
+        var el = root;
+        for (var i = 0; i < path.length; i++) {
+            el = _sdTextInnerKids(el)[path[i]];
+            if (!el) return null;
+        }
+        return el === root ? null : el;
+    }
+
+    // The tags on the way to `path` ("span>strong"), null when it leads
+    // nowhere: the canvas and the stored text are compared with it.
+    function _sdTextInnerTags(root, path) {
+        var el = root, out = [];
+        for (var i = 0; i < path.length; i++) {
+            el = _sdTextInnerKids(el)[path[i]];
+            if (!el) return null;
+            out.push(el.tagName.toLowerCase());
+        }
+        return out.join('>');
+    }
+
+    // The path of the element a click inside the text `host` landed on;
+    // null for the text's own words, a child node or the designer's chrome.
+    function _sdTextInnerPathOf(host, target) {
+        var el = (target && target.nodeType === 3) ? target.parentElement : target;
+        if (!el || el === host || !host.contains(el)) return null;
+        for (var up = el; up && up !== host; up = up.parentElement) {
+            if (_SD_TEXT_INNER_OPAQUE[up.tagName.toLowerCase()]) el = up;
+        }
+        var path = [];
+        while (el && el !== host) {
+            if (el.matches(_SD_INLINE_CHROME_ONE)) return null;
+            var parent = el.parentElement;
+            if (!parent) return null;
+            var idx = _sdTextInnerKids(parent).indexOf(el);
+            if (idx === -1) return null;
+            path.unshift(idx);
+            el = parent;
+        }
+        return (el === host && path.length) ? path : null;
+    }
+
+    // The picked element as it stands in the text, or null - the pick is
+    // dropped once another node is selected or the element is gone.
+    function _sdInnerSel() {
+        var s = _sdInner;
+        if (!s) return null;
+        if (selectedNode !== s.node || selectedNodes.length > 1 || !_sdTextInnerHost(s.node)) {
+            _sdInner = null;
+            return null;
+        }
+        var root = _sdIlParse(s.node.props.text);
+        var el = _sdTextInnerAt(root, s.path);
+        if (!el) { _sdInner = null; return null; }
+        return { node: s.node, path: s.path, root: root, el: el };
+    }
+
+    function _sdTextInnerUnmark(scope) {
+        Array.prototype.forEach.call(scope.querySelectorAll('.sd-inner-sel'), function (el) {
+            el.classList.remove('sd-inner-sel');
+            if (!el.getAttribute('class')) el.removeAttribute('class');
+        });
+    }
+
+    // The canvas element of the text node `n` that holds its words.
+    function _sdTextInnerHostEl(n) {
+        var wrap = _findCanvasEl(n);
+        if (!wrap) return null;
+        var host = wrap.hasAttribute('data-sd-inner-host') ? wrap : wrap.querySelector(':scope > [data-sd-inner-host]');
+        return host || null;
+    }
+
+    // Marks the picked element on the canvas (and clears an old mark).
+    function _sdTextInnerMark() {
+        if (!canvasDoc || !canvasDoc.body) return;
+        _sdTextInnerUnmark(canvasDoc.body);
+        var s = _sdInnerSel();
+        if (!s) return;
+        var host = _sdTextInnerHostEl(s.node);
+        if (!host || host.isContentEditable) return;
+        var el = _sdTextInnerAt(host, s.path);
+        if (el) el.classList.add('sd-inner-sel');
+    }
+
+    function _sdTextInnerEditable(n) {
+        return _sdCanEditNode(n) && !(n.props && n.props._locked) && !hasLockedAncestor(n);
+    }
+
+    // Picked at all: a content operator outside an editable area selects
+    // the text as a whole, as with every element there. A locked text or a
+    // view-only session still picks, with the panel read-only.
+    function _sdTextInnerPickable(n) {
+        return !(_sdIsContentLevel() && !_sdCanEditNode(n));
+    }
+
+    // Picks the element at `path` of text `n` (null: the text itself).
+    function _sdTextInnerSelect(n, path) {
+        _sdInner = path ? { node: n, path: path } : null;
+        selectedNodes = [];
+        selectedNode = n;
+        if (path) n._expanded = true;
+        expandAncestorsAnywhere(n);
+    }
+
+    // A canvas click inside text node `node`: an element of its words is
+    // picked, its own words go back to the text. True when it was handled.
+    function _sdTextInnerClick(e, node, host, interactive) {
+        var path = null;
+        if (host && host.hasAttribute('data-sd-inner-host') && !host.isContentEditable &&
+            _sdTextInnerHost(node) && _sdTextInnerPickable(node)) {
+            path = _sdTextInnerPathOf(host, e.target);
+            // The canvas draws the stored text; a preview that differs from
+            // it (a bound value, a token) is not picked into.
+            if (path && _sdTextInnerTags(host, path) !== _sdTextInnerTags(_sdIlParse(node.props.text), path)) path = null;
+        }
+        var cur = (_sdInner && _sdInner.node === node && selectedNode === node) ? _sdInner : null;
+        if (!path && !cur) return false;
+        if (path && cur && path.join('.') === cur.path.join('.')) {
+            if (!interactive) e.stopPropagation();
+            return true;
+        }
+        _sdTextInnerSelect(node, path);
+        if (interactive) renderSelectionOnly();
+        else { e.stopPropagation(); _sdSelectRender(); }
+        _sdTreeRevealSelection(true);
+        return true;
+    }
+
+    // Delete and Escape while an element inside a text is picked.
+    function _sdTextInnerKey(e) {
+        var s = _sdInnerSel();
+        if (!s) return false;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            _sdTextInnerSelect(s.node, null);
+            _sdSelectRender();
+            return true;
+        }
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.preventDefault();
+            if (_sdTextInnerEditable(s.node)) _sdTextInnerRemove(s, false);
+            return true;
+        }
+        return false;
+    }
+
+    // Every change goes through the text: `fn(el)` changes the parsed
+    // element and may hand back where the pick goes (null: to the text, a
+    // path: there; false: nothing changed). render() draws it all again.
+    function _sdTextInnerApply(s, fn) {
+        var node = s.node;
+        var root = _sdIlParse(node.props.text);
+        var el = _sdTextInnerAt(root, s.path);
+        if (!el) return;
+        var was = _sdIlHtml(root);
+        var next = fn(el, root);
+        if (next === false) return;
+        var now = _sdIlHtml(root);
+        if (now !== was) {
+            saveState();
+            node.props.text = now;
+            var owner = _sdAnyParent(node);
+            if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+        }
+        if (next === null) _sdInner = null;
+        else if (Array.isArray(next)) _sdInner = { node: node, path: next };
+        if (now === was && next === undefined) return;
+        render();
+    }
+
+    // Takes the element out of the text: with its words (`keepWords`: they
+    // stay where it was).
+    function _sdTextInnerRemove(s, keepWords) {
+        _sdTextInnerApply(s, function (el) {
+            if (keepWords) {
+                while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+            }
+            el.parentNode.removeChild(el);
+            return null;
+        });
+    }
+
+    function _sdTextInnerIcon(tag, el) {
+        if (/(?:^|\s)bi-[a-z0-9-]+/.test(el.getAttribute('class') || '')) return 'bi-star';
+        return {
+            a: 'bi-link-45deg', img: 'bi-image', svg: 'bi-vector-pen', math: 'bi-calculator',
+            strong: 'bi-type-bold', b: 'bi-type-bold', em: 'bi-type-italic', i: 'bi-type-italic',
+            u: 'bi-type-underline', s: 'bi-type-strikethrough', del: 'bi-type-strikethrough',
+            mark: 'bi-highlighter', code: 'bi-code', kbd: 'bi-keyboard', time: 'bi-clock',
+            q: 'bi-quote', cite: 'bi-quote'
+        }[tag] || 'bi-fonts';
+    }
+
+    // Its words for the overview, else what names it (alt, title, icon).
+    function _sdTextInnerWords(el) {
+        var w = String(el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!w) w = el.getAttribute('alt') || el.getAttribute('title') || el.getAttribute('aria-label') || '';
+        if (!w) {
+            var bi = /(?:^|\s)(bi-[a-z0-9-]+)/.exec(el.getAttribute('class') || '');
+            if (bi) w = bi[1];
+        }
+        return w.length > 32 ? w.slice(0, 31) + '…' : w;
+    }
+
+    // The elements of a text in the order of its words, nested ones after
+    // the one holding them. A link carries its number among the text's
+    // links, the one _sdIlTakeOut() takes.
+    function _sdTextInnerTreeItems(n) {
+        if (!_sdTextInnerHost(n)) return [];
+        var root = _sdIlParse(n.props.text);
+        var links = Array.prototype.slice.call(root.querySelectorAll('a'));
+        var out = [];
+        (function walk(el, path) {
+            _sdTextInnerKids(el).forEach(function (c, i) {
+                var p = path.concat(i);
+                out.push({ el: c, path: p, link: links.indexOf(c) });
+                if (!_SD_TEXT_INNER_OPAQUE[c.tagName.toLowerCase()]) walk(c, p);
+            });
+        })(root, []);
+        return out;
+    }
+
+    // Overview rows for the elements of a text. A click picks the element;
+    // a link of a paragraph or heading also has the button that takes it
+    // out of the text.
+    function _sdTextInnerTreeRows(ul, n, items, depth) {
+        var canOut = _sdTextInnerEditable(n) && _sdIlTextNode(n);
+        var s = _sdInnerSel();
+        var cur = (s && s.node === n) ? s.path.join('.') : null;
+        items.forEach(function (it) {
+            var tag = it.el.tagName.toLowerCase();
+            var words = _sdTextInnerWords(it.el);
+            var id = it.el.getAttribute('id') || '';
+            var linkIdx = canOut ? it.link : -1;
             var li = document.createElement('li');
-            li.className = 'sd-tree-il';
-            li.style.setProperty('--depth', depth);
-            li.title = _sdT('A link inside the text. Click to edit it in the options.');
-            li.innerHTML = '<span class="sd-tree-chev-placeholder"></span><span class="bi bi-link-45deg"></span> ' +
-                '<span class="sd-tree-lbl">' + esc(label) + '</span>' +
-                (canEdit ? '<button type="button" class="sd-tree-il-out bi bi-box-arrow-down-right" title="' +
+            li.className = 'sd-tree-il sd-tree-inner';
+            li.style.setProperty('--depth', depth + it.path.length - 1);
+            li.setAttribute('data-sd-inner-of', String(n._id || ''));
+            li.setAttribute('data-sd-inner', it.path.join('.'));
+            li._sdNode = n;
+            li.title = _sdT('An element inside the text. Click to select it.');
+            li.innerHTML = '<span class="sd-tree-chev-placeholder"></span><span class="bi ' + _sdTextInnerIcon(tag, it.el) + '"></span> ' +
+                '<span class="sd-tree-lbl">' + esc(capFirst(tag)) +
+                    (words ? ' <span class="sd-tree-inner-words">' + esc(words) + '</span>' : '') + '</span>' +
+                (id ? '<span class="sd-tree-id">#' + esc(id) + '</span>' : '') +
+                (linkIdx !== -1 ? '<button type="button" class="sd-tree-il-out bi bi-box-arrow-down-right" title="' +
                     esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '"></button>' : '');
+            if (cur === it.path.join('.')) li.classList.add('active');
             li.addEventListener('click', function (e) {
                 e.stopPropagation();
-                if (e.target.closest('.sd-tree-il-out')) { _sdIlTakeOut(n, i); return; }
-                selectedNodes = [];
-                selectedNode = n;
+                if (linkIdx !== -1 && e.target.closest('.sd-tree-il-out')) {
+                    _sdInner = null;
+                    _sdIlTakeOut(n, linkIdx);
+                    return;
+                }
+                _sdTextInnerSelect(n, _sdTextInnerPickable(n) ? it.path : null);
                 _sdSelectRender();
                 scrollCanvasToNode(n);
-                setTimeout(function () { _sdIlFocus(i); }, 0);
             });
             ul.appendChild(li);
         });
     }
 
-    // Bring link `idx` of the selected text into view in the Options panel.
-    function _sdIlFocus(idx) {
-        var item = document.querySelector('#sd-properties .sd-il [data-sd-il-idx="' + idx + '"]');
-        if (!item) return;
-        var body = item.closest('.sd-sect-body');
-        if (body && body.style.display === 'none') {
-            body.style.display = '';
-            var hdr = body.previousElementSibling;
-            if (hdr) hdr.classList.add('sd-sect-open');
+    // The overview row of the picked element.
+    function _sdTextInnerTreeRow(list, s) {
+        var rows = list.querySelectorAll('li.sd-tree-inner[data-sd-inner="' + s.path.join('.') + '"]');
+        for (var i = 0; i < rows.length; i++) if (rows[i]._sdNode === s.node) return rows[i];
+        return null;
+    }
+
+    // The Options panel of the picked element.
+    function _sdTextInnerPanel(s) {
+        var el = s.el;
+        var tag = el.tagName.toLowerCase();
+        var editable = _sdTextInnerEditable(s.node);
+        var dis = editable ? '' : ' disabled';
+
+        // Where it is: the text, then each element on the way down.
+        var crumbs = '<button type="button" class="sd-inner-crumb" data-sd-inner-go="">' + esc(getNodeLabel(s.node)) + '</button>';
+        var at = s.root;
+        s.path.forEach(function (idx, i) {
+            at = _sdTextInnerKids(at)[idx];
+            var t = at.tagName.toLowerCase();
+            crumbs += '<span class="bi bi-chevron-right" aria-hidden="true"></span>' + (i < s.path.length - 1
+                ? '<button type="button" class="sd-inner-crumb" data-sd-inner-go="' + s.path.slice(0, i + 1).join('.') + '">' + esc(t) + '</button>'
+                : '<strong>' + esc(t) + '</strong>');
+        });
+        var head = '<div class="sd-inner-crumbs">' + crumbs + '</div>' +
+            '<div class="sd-inner-note">' + esc(_sdT('An element inside the text. Double-click to write in the text.')) + '</div>';
+
+        var opaque = !!_SD_TEXT_INNER_OPAQUE[tag];
+        var isImg = tag === 'img';
+        var h = '';
+        if (!opaque && !isImg) {
+            var tags = _SD_TEXT_INNER_TAGS.slice();
+            if (tags.indexOf(tag) === -1) tags.unshift(tag);
+            h += row(esc(_sdT('Tag')), '<select class="form-select form-select-sm" data-sd-inner="tag"' + dis + '>' +
+                tags.map(function (t) { return '<option value="' + esc(t) + '"' + (t === tag ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') +
+                '</select>');
+            if (el.firstElementChild) {
+                h += row(esc(_sdT('Content')), '<textarea class="form-control form-control-sm font-monospace" rows="3" data-sd-inner="html" spellcheck="false"' + dis + '>' + esc(el.innerHTML) + '</textarea>');
+            } else {
+                h += row(esc(_sdT('Text')), '<textarea class="form-control form-control-sm" rows="2" data-sd-inner="text"' + dis + '>' + esc(el.textContent) + '</textarea>');
+            }
         }
-        item.scrollIntoView({ block: 'nearest' });
-        item.classList.remove('sd-il-flash');
-        void item.offsetWidth;
-        item.classList.add('sd-il-flash');
+        var attrIn = function (name, ph, id) {
+            return '<input type="text" class="form-control form-control-sm"' + (id ? ' id="' + id + '"' : '') +
+                ' data-sd-inner-attr="' + esc(name) + '" value="' + esc(el.getAttribute(name) || '') + '"' +
+                (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' spellcheck="false"' + dis + '>';
+        };
+        var own = ['id', 'class', 'style'];
+        if (tag === 'a') {
+            var target = el.getAttribute('target') || '';
+            var targets = [['', _sdT('Default/Self')], ['_blank', _sdT('New Window (_blank)')]];
+            if (target && target !== '_blank') targets.push([target, target]);
+            h += row(esc(_sdT('Link')), '<div class="sd-pick-group">' + attrIn('href', '', 'sd-inner-href') +
+                '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" data-sd-inner-act="pick"' + dis + '>' + esc(_sdT('Select')) + '</button></div>');
+            h += row(esc(_sdT('Target')), '<select class="form-select form-select-sm" data-sd-inner-attr="target"' + dis + '>' +
+                targets.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === target ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+                '</select>');
+            h += row('rel', attrIn('rel', 'noopener'));
+            own = own.concat(['href', 'target', 'rel']);
+        } else if (isImg) {
+            h += row(esc(_sdT('Image')), attrIn('src', ''));
+            h += row(esc(_sdT('Alt text')), attrIn('alt', ''));
+            own = own.concat(['src', 'alt']);
+        }
+        h += row('ID', attrIn('id', ''));
+        h += row(esc(_sdT('Classes')), attrIn('class', ''));
+        h += row(esc(_sdT('Style')), '<textarea class="form-control form-control-sm font-monospace" rows="2" data-sd-inner-attr="style" spellcheck="false" placeholder="color: …;"' + dis + '>' + esc(el.getAttribute('style') || '') + '</textarea>');
+
+        // Every other attribute, then a row to add one.
+        var a = '';
+        Array.prototype.forEach.call(el.attributes, function (at) {
+            if (own.indexOf(at.name) !== -1) return;
+            a += '<div class="sd-inner-attr">' +
+                '<input type="text" class="form-control form-control-sm" data-sd-inner-rename="' + esc(at.name) + '" value="' + esc(at.name) + '" spellcheck="false"' + dis + '>' +
+                '<input type="text" class="form-control form-control-sm" data-sd-inner-attr="' + esc(at.name) + '" value="' + esc(at.value) + '" spellcheck="false"' + dis + '>' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="del-attr" data-sd-inner-name="' + esc(at.name) + '" title="' + esc(_sdT('Delete')) + '"' + dis + '><span class="bi bi-x" aria-hidden="true"></span></button>' +
+            '</div>';
+        });
+        if (editable) {
+            a += '<div class="sd-inner-attr">' +
+                '<input type="text" class="form-control form-control-sm" data-sd-inner-new="name" placeholder="' + esc(_sdT('attribute')) + '" spellcheck="false">' +
+                '<input type="text" class="form-control form-control-sm" data-sd-inner-new="value" placeholder="' + esc(_sdT('value')) + '" spellcheck="false">' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="add-attr" title="' + esc(_sdT('Add an Attribute')) + '"><span class="bi bi-plus-lg" aria-hidden="true"></span></button>' +
+            '</div>';
+        }
+
+        var acts = '';
+        if (editable) {
+            acts = '<div class="sd-inner-acts">' +
+                (!opaque && !isImg ? '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="unwrap"><span class="bi bi-eraser me-1" aria-hidden="true"></span>' + esc(_sdT('Remove the element, keep the words')) + '</button>' : '') +
+                (tag === 'a' && _sdIlTextNode(s.node) ? '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="out"><span class="bi bi-box-arrow-down-right me-1" aria-hidden="true"></span>' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '</button>' : '') +
+                '<button type="button" class="btn btn-sm btn-outline-danger" data-sd-inner-act="delete"><span class="bi bi-trash me-1" aria-hidden="true"></span>' + esc(_sdT('Delete')) + '</button>' +
+            '</div>';
+        }
+
+        return '<div class="sd-inner">' + head +
+            sect(_sdTextInnerIcon(tag, el), esc(_sdT('Element in the text')) + ' &lt;' + esc(tag) + '&gt;', h + acts) +
+            sect('bi-braces', esc(_sdT('Attributes')), a || '<div class="sd-inner-note">' + esc(_sdT('No other attributes.')) + '</div>') +
+        '</div>';
+    }
+
+    function _sdTextInnerBind(s) {
+        var box = document.querySelector('#sd-properties .sd-inner');
+        if (!box) return;
+        box.querySelectorAll('.sd-sect-hdr').forEach(function (hdr) {
+            hdr.addEventListener('click', function () {
+                var body = hdr.nextElementSibling;
+                if (!body || !body.classList.contains('sd-sect-body')) return;
+                var isOpen = hdr.classList.toggle('sd-sect-open');
+                body.style.display = isOpen ? '' : 'none';
+                var sid = hdr.dataset.sid;
+                if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch (e2) {}
+            });
+        });
+        box.addEventListener('change', function (e) {
+            var t = e.target;
+            var what = t.getAttribute('data-sd-inner');
+            var attr = t.getAttribute('data-sd-inner-attr');
+            var ren  = t.getAttribute('data-sd-inner-rename');
+            if (!what && attr === null && ren === null) return;
+            var val = String(t.value || '');
+            _sdTextInnerApply(s, function (el) {
+                if (what === 'tag') {
+                    var nt = val.trim().toLowerCase();
+                    if (!/^[a-z][a-z0-9-]*$/.test(nt) || _SD_TEXT_INNER_SKIP[nt] || nt === el.tagName.toLowerCase()) return false;
+                    var ne = el.ownerDocument.createElement(nt);
+                    Array.prototype.forEach.call(el.attributes, function (at) { ne.setAttribute(at.name, at.value); });
+                    while (el.firstChild) ne.appendChild(el.firstChild);
+                    el.parentNode.replaceChild(ne, el);
+                    return;
+                }
+                if (what === 'text') { el.textContent = val; return; }
+                if (what === 'html') { el.innerHTML = val; return; }
+                if (attr !== null) {
+                    val = (attr === 'class') ? val.replace(/\s+/g, ' ').trim() : val.trim();
+                    if (val === '') el.removeAttribute(attr);
+                    else el.setAttribute(attr, val);
+                    return;
+                }
+                var nn = val.trim().toLowerCase();
+                if (nn === ren) return false;
+                var v = el.getAttribute(ren);
+                if (nn !== '' && !_sdTextInnerAttrName(nn)) {
+                    sdToast(esc(_sdT('Not a valid attribute name.')), 'warning');
+                    t.value = ren;
+                    return false;
+                }
+                el.removeAttribute(ren);
+                if (nn !== '') el.setAttribute(nn, v === null ? '' : v);
+            });
+        });
+        box.addEventListener('click', function (e) {
+            var go = e.target.closest('[data-sd-inner-go]');
+            if (go) {
+                var p = go.getAttribute('data-sd-inner-go');
+                _sdTextInnerSelect(s.node, p === '' ? null : p.split('.').map(Number));
+                _sdSelectRender();
+                _sdTreeRevealSelection(true);
+                return;
+            }
+            var btn = e.target.closest('[data-sd-inner-act]');
+            if (!btn || btn.disabled) return;
+            var act = btn.getAttribute('data-sd-inner-act');
+            if (act === 'pick') { window.sdOpenFilePicker('sd-inner-href', 'href'); return; }
+            if (act === 'unwrap') { _sdTextInnerRemove(s, true); return; }
+            if (act === 'delete') { _sdTextInnerRemove(s, false); return; }
+            if (act === 'out') {
+                var idx = Array.prototype.indexOf.call(s.root.querySelectorAll('a'), s.el);
+                if (idx === -1) return;
+                _sdInner = null;
+                _sdIlTakeOut(s.node, idx);
+                return;
+            }
+            if (act === 'del-attr') {
+                var name = btn.getAttribute('data-sd-inner-name');
+                _sdTextInnerApply(s, function (el) { el.removeAttribute(name); });
+                return;
+            }
+            if (act === 'add-attr') {
+                var nIn = box.querySelector('[data-sd-inner-new="name"]');
+                var vIn = box.querySelector('[data-sd-inner-new="value"]');
+                var an = String(nIn && nIn.value || '').trim().toLowerCase();
+                if (!_sdTextInnerAttrName(an)) {
+                    sdToast(esc(_sdT('Not a valid attribute name.')), 'warning');
+                    if (nIn) nIn.focus();
+                    return;
+                }
+                var av = String(vIn && vIn.value || '');
+                _sdTextInnerApply(s, function (el) { el.setAttribute(an, av); });
+            }
+        });
+    }
+
+    // A name setAttribute() takes, the ones an element of the text keeps
+    // rows of its own for aside.
+    function _sdTextInnerAttrName(name) {
+        return /^[a-z_:][a-z0-9_.:-]*$/.test(name);
+    }
+
+    // The Attributes panel while an element inside a text is picked: what
+    // it carries, edited in the Options panel.
+    function _sdTextInnerAttrs(panel, s) {
+        var tag = s.el.tagName.toLowerCase();
+        var badge = document.getElementById('sd-attrs-elem-badge');
+        if (badge) badge.textContent = ' <' + tag + '>';
+        var h = '';
+        Array.prototype.forEach.call(s.el.attributes, function (at) {
+            h += '<div class="sd-attr-row sd-attr-row-sys">' +
+                '<span class="sd-attr-name-lbl">' + esc(at.name) + '</span>' +
+                '<span class="sd-attr-sep">:</span>' +
+                '<span class="sd-attr-sys-val">' + esc(at.value) + '</span>' +
+                '<span class="sd-attr-del-ph"></span>' +
+            '</div>';
+        });
+        panel.innerHTML = h + '<div class="sd-attrs-empty"><span class="bi bi-sliders"></span> ' +
+            esc(_sdT('An element inside the text: edit it in the Options panel.')) + '</div>';
     }
 
     function renderProperties() {
@@ -24528,6 +25040,14 @@ const StyleDesigner = (function () {
                 return;
             }
             renderMultiProperties();
+            return;
+        }
+
+        // An element picked inside the words of a text has a panel of its own.
+        var _inner = _sdInnerSel();
+        if (_inner) {
+            panel.innerHTML = '<div class="sd-tab-content">' + _sdTextInnerPanel(_inner) + '</div>';
+            _sdTextInnerBind(_inner);
             return;
         }
 

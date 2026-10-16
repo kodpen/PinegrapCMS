@@ -23,6 +23,7 @@ description: The designer's Overview tree follows the selection from every panel
 - A hidden tree (Overview section closed, Notes tab open) is measured as zero height and left alone; opening the section (it calls `renderTree()`) or switching back to the Tree tab shows the row.
 - A tree replaced by undo, redo or the assistant has new node objects, so the selection counts as new and is shown again.
 - Clicking the selected element again on the canvas forces the reveal (`_sdTreeRevealSelection(true)`): the way back after scrolling the tree away.
+- An element picked inside a text (docs/memory/designer/text-inner-elements.md) shows its own row (`_sdTextInnerTreeRow()`); a canvas or breadcrumb pick inside the text already selected forces the reveal.
 - "Show in Overview" / "Select Parent" use `scrollTreeToNode()`, which goes through the same `_sdTreeScrollRow()`.
 
 Related: docs/memory/designer/designer-find-node-for-el.md, docs/memory/designer/designer-panel-element-identity.md
