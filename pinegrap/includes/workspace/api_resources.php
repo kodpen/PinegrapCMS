@@ -3483,6 +3483,21 @@ function ws_api_tasks_create($params)
         api_fail_validation($refused, 'blocked_by');
     }
 
+    // The checks ws_task_create() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_task_create_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], $checked['field'] ?: null);
+    }
+
+    api_dry_run_stop('created', 'workspace_task', array(
+        'title'      => $checked['clean']['title'],
+        'channel_id' => (int) ($checked['clean']['channel_id'] ?? 0),
+        'assignees'  => $checked['clean']['assignees'] ?? array(),
+        'warnings'   => $warnings,
+    ));
+
     $result = ws_task_create($viewer, $data);
 
     if (!$result['ok']) {
@@ -3525,14 +3540,25 @@ function ws_api_tasks_update($params)
         api_fail_validation($refused, 'blocked_by');
     }
 
+    // The checks ws_task_update() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_task_update_check($viewer, $task, $data);
+
+    if (!$checked['ok']) {
+        ws_api_task_refused($checked);
+    }
+
+    api_dry_run_stop('updated', 'workspace_task', array(
+        'id'       => (int) $task['id'],
+        'fields'   => array_merge(array_keys($data), ($blocked_by !== null) ? array('blocked_by') : array()),
+        'added'    => $checked['added'],
+        'warnings' => $warnings,
+    ));
+
     $result = ws_task_update($viewer, $task, $data);
 
     if (!$result['ok']) {
-        if ($result['error'] === lang('You cannot change this task.')) {
-            api_fail(403, 'forbidden', $result['error']);
-        }
-
-        api_fail_validation($result['error'], $result['field'] ?: null);
+        ws_api_task_refused($result);
     }
 
     if ($blocked_by !== null) {
@@ -3546,10 +3572,33 @@ function ws_api_tasks_update($params)
     api_ok(ws_api_task_present($viewer, ws_task($task['id']), $warnings));
 }
 
+/**
+ * A task write that was refused, as the API answers it: a task the owner may
+ * not change is 403, anything else names its field.
+ *
+ * @param array $result ws_task_update() or ws_task_update_check()
+ */
+function ws_api_task_refused($result)
+{
+    if ($result['error'] === lang('You cannot change this task.')) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    api_fail_validation($result['error'], $result['field'] ?: null);
+}
+
 function ws_api_tasks_complete($params)
 {
     $viewer = ws_api_viewer();
     $task = ws_api_task_or_404($viewer, $params['id']);
+
+    $checked = ws_task_set_status_check($viewer, $task, 'done');
+
+    if (!$checked['ok']) {
+        api_fail(403, 'forbidden', $checked['error']);
+    }
+
+    api_dry_run_stop('completed', 'workspace_task', array('id' => (int) $task['id'], 'changes' => ((string) $task['status'] !== 'done')));
 
     $result = ws_task_set_status($viewer, $task, 'done');
 
@@ -3702,20 +3751,34 @@ function ws_api_task_recurrence_set($params)
 {
     $viewer = ws_api_viewer();
     $task = ws_api_task_or_404($viewer, $params['id']);
-
-    $result = ws_recurrence_save($viewer, $task, array(
+    $rule = array(
         'frequency' => (string) ($params['frequency'] ?? 'none'),
         'interval'  => (int) ($params['interval'] ?? 1),
         'weekdays'  => array_map('intval', (array) ($params['weekdays'] ?? array())),
         'end_date'  => (string) ($params['end_date'] ?? ''),
+    );
+
+    // The checks ws_recurrence_save() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_recurrence_save_check($viewer, $task, $rule);
+
+    if (!$checked['ok']) {
+        ws_api_task_refused($checked);
+    }
+
+    $series = function_exists('ws_recurrence') ? ws_recurrence($task['recurrence_id'] ?? 0) : null;
+    $active = $series && ((string) $series['status'] === 'active');
+
+    api_dry_run_stop(($checked['rule']['frequency'] === 'none') ? 'stopped' : ($active ? 'updated' : 'created'), 'workspace_recurrence', array(
+        'task_id'   => (int) $task['id'],
+        'frequency' => (string) $checked['rule']['frequency'],
+        'repeating' => $active,
     ));
 
-    if (!$result['ok']) {
-        if ($result['error'] === lang('You cannot change this task.')) {
-            api_fail(403, 'forbidden', $result['error']);
-        }
+    $result = ws_recurrence_save($viewer, $task, $rule);
 
-        api_fail_validation($result['error'], $result['field'] ?: null);
+    if (!$result['ok']) {
+        ws_api_task_refused($result);
     }
 
     api_ok(ws_api_recurrence_present(ws_api_recurrence_or_404(ws_task($task['id']))));
@@ -3726,8 +3789,21 @@ function ws_api_task_recurrence_end($params)
     $viewer = ws_api_viewer();
     $task = ws_api_task_or_404($viewer, $params['id']);
     ws_api_recurrence_or_404($task);
+    $mode = ((string) ($params['mode'] ?? 'complete') === 'stop') ? 'stop' : 'complete';
 
-    $result = ws_recurrence_end($viewer, $task, ((string) ($params['mode'] ?? 'complete') === 'stop') ? 'stop' : 'complete');
+    $checked = ws_recurrence_end_check($viewer, $task, $mode);
+
+    if (!$checked['ok']) {
+        api_fail(403, 'forbidden', $checked['error']);
+    }
+
+    api_dry_run_stop('ended', 'workspace_recurrence', array(
+        'task_id'   => (int) $task['id'],
+        'mode'      => $mode,
+        'completes' => ($mode === 'complete') && ws_task_is_open($task['status']),
+    ));
+
+    $result = ws_recurrence_end($viewer, $task, $mode);
 
     if (!$result['ok']) {
         api_fail(403, 'forbidden', $result['error']);
@@ -4621,6 +4697,32 @@ function ws_api_changes_apply($params)
     // Applying is the person's own decision, as on the card.
     ws_api_person_only();
 
+    // The checks ws_change_apply() makes, made first so that a dry run meets
+    // the same refusals: a change to one record is laid against the record
+    // as it is now, a call of an MCP server's tool and a change to many
+    // records are checked as they run.
+    $checked = ws_change_apply_check($viewer, (int) $change['id']);
+
+    if (!$checked['ok']) {
+        ws_api_change_refused($checked);
+    }
+
+    $action = (string) ($checked['change']['action'] ?? 'update');
+
+    if (!$checked['mcp'] && ($action !== 'bulk')) {
+        $laid = ws_change_apply_record_check($viewer, $checked['change']);
+
+        if (!$laid['ok']) {
+            ws_api_change_refused($laid);
+        }
+    }
+
+    api_dry_run_stop('applied', 'workspace_change', array(
+        'id'          => (int) $change['id'],
+        'record_type' => (string) $checked['change']['record_type'],
+        'action'      => $action,
+    ));
+
     $result = ws_change_apply($viewer, (int) $change['id']);
 
     if (!$result['ok']) {
@@ -4636,6 +4738,14 @@ function ws_api_changes_dismiss($params)
     $change = ws_api_change_or_404($viewer, $params['id']);
 
     ws_api_person_only();
+
+    $checked = ws_change_dismiss_check($viewer, (int) $change['id']);
+
+    if (!$checked['ok']) {
+        ws_api_change_refused($checked);
+    }
+
+    api_dry_run_stop('dismissed', 'workspace_change', array('id' => (int) $change['id'], 'record_type' => (string) $checked['change']['record_type']));
 
     $result = ws_change_dismiss($viewer, (int) $change['id']);
 
@@ -4854,6 +4964,25 @@ function ws_api_is_assistant()
     return ws_api_is_claude();
 }
 
+/**
+ * A task handed to an assistant that was refused, as the API answers it.
+ *
+ * @param array $task
+ * @param array $result ws_task_delegate() or ws_task_delegate_check()
+ */
+function ws_api_delegate_refused($task, $result)
+{
+    if ($result['error'] === lang('You may not hand this task to an assistant.')) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    if (ws_task_delegation_open_run($task['id'])) {
+        api_fail(409, 'assistant_busy', $result['error']);
+    }
+
+    api_fail_validation($result['error']);
+}
+
 function ws_api_tasks_delegate($params)
 {
     $viewer = ws_api_viewer();
@@ -4873,18 +5002,24 @@ function ws_api_tasks_delegate($params)
         api_fail_validation(lang(array('string' => '{var:1} is not switched on on this site.', 'vars' => ws_assistant_name($key))), 'agent');
     }
 
+    // The checks ws_task_delegate() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_task_delegate_check($viewer, $task, $key);
+
+    if (!$checked['ok']) {
+        ws_api_delegate_refused($task, $checked);
+    }
+
+    api_dry_run_stop('delegated', 'workspace_assistant_request', array(
+        'task_id' => (int) $task['id'],
+        'agent'   => $key,
+        'hands'   => ((string) ($task['delegate'] ?? '') !== $key),
+    ));
+
     $result = ws_task_delegate($viewer, $task, $key, (string) ($params['instruction'] ?? ''));
 
     if (!$result['ok']) {
-        if ($result['error'] === lang('You may not hand this task to an assistant.')) {
-            api_fail(403, 'forbidden', $result['error']);
-        }
-
-        if (ws_task_delegation_open_run($task['id'])) {
-            api_fail(409, 'assistant_busy', $result['error']);
-        }
-
-        api_fail_validation($result['error']);
+        ws_api_delegate_refused($task, $result);
     }
 
     ws_task_delegation_start($key);
@@ -4906,6 +5041,18 @@ function ws_api_tasks_delegate_stop($params)
     if (!ws_delegation_ready()) {
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
+
+    $checked = ws_task_delegation_stop_check($viewer, $task);
+
+    if (!$checked['ok']) {
+        api_fail(403, 'forbidden', $checked['error']);
+    }
+
+    api_dry_run_stop('stopped', 'workspace_assistant_request', array(
+        'task_id'    => (int) $task['id'],
+        'request_id' => $checked['run'] ? (int) $checked['run']['id'] : null,
+        'take_back'  => !empty($params['take_back']) && ((string) ($task['delegate'] ?? '') !== ''),
+    ));
 
     $result = ws_task_delegation_stop($viewer, $task, !empty($params['take_back']));
 
@@ -5177,6 +5324,16 @@ function ws_api_notes_create($params)
         api_fail_validation(lang('The note is empty.'), 'body');
     }
 
+    // The checks ws_note_save() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_note_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error']);
+    }
+
+    api_dry_run_stop('created', 'workspace_note', array('title' => (string) $checked['sets']['title'], 'pinned' => ((int) $checked['pin'] === 1)));
+
     $result = ws_note_save($viewer, $data);
 
     if (!$result['ok']) {
@@ -5184,6 +5341,20 @@ function ws_api_notes_create($params)
     }
 
     api_ok(ws_api_note_present($viewer, ws_note_present($viewer, ws_note_for($viewer, $result['note_id'], 'view'))), 201);
+}
+
+/**
+ * A change to a note that was refused, as the API answers it.
+ *
+ * @param array $result ws_note_save() or ws_note_save_check()
+ */
+function ws_api_note_refused($result)
+{
+    if ($result['conflict']) {
+        api_fail(409, 'changed_meanwhile', $result['error'], 'base');
+    }
+
+    api_fail_validation($result['error'], 'body');
 }
 
 function ws_api_notes_update($params)
@@ -5214,14 +5385,23 @@ function ws_api_notes_update($params)
         $data['base'] = (int) $params['base'];
     }
 
+    // The checks ws_note_save() makes, made first so that a dry run meets
+    // the same refusals, the change made meanwhile among them.
+    $checked = ws_note_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        ws_api_note_refused($checked);
+    }
+
+    api_dry_run_stop('updated', 'workspace_note', array(
+        'id'     => (int) $note['id'],
+        'fields' => array_merge(array_keys($checked['sets']), ($checked['pin'] !== null) ? array('pinned') : array()),
+    ));
+
     $result = ws_note_save($viewer, $data);
 
     if (!$result['ok']) {
-        if ($result['conflict']) {
-            api_fail(409, 'changed_meanwhile', $result['error'], 'base');
-        }
-
-        api_fail_validation($result['error'], 'body');
+        ws_api_note_refused($result);
     }
 
     api_ok(ws_api_note_present($viewer, ws_note_present($viewer, ws_note_for($viewer, $note['id'], 'view'))));

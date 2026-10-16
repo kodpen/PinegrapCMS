@@ -2209,11 +2209,14 @@ function get_system_status_checks()
         $visitor_catalog = pg_db_table_catalog();
 
         if (isset($visitor_catalog['visitors'])) {
-            $visitor_row = $visitor_catalog['visitors'];
+            // The same figures as the Database Engine card: counted and read
+            // from the file where that can be done from here.
+            $visitor_row = pg_visitor_table_figures($visitor_catalog['visitors']);
+            $visitor_size = pg_visitor_figure_text(pg_innodb_size_label($visitor_row['file']), $visitor_row['file_source']);
 
             $visitor_figures = lang(array(
-                'string' => 'The visitors table holds about {var:1} records and takes {var:2}.',
-                'vars'   => array(pg_format_number($visitor_row['rows'], 0), pg_innodb_size_label($visitor_row['bytes'])),
+                'string' => 'The visitors table holds {var:1} records and its file takes {var:2}.',
+                'vars'   => array(pg_visitor_figure_text(pg_format_number($visitor_row['rows'], 0), $visitor_row['rows_source']), $visitor_size),
             ));
 
             if ($visitor_settings['days'] > 0) {
@@ -2230,7 +2233,7 @@ function get_system_status_checks()
                 pg_visitor_table_is_large($visitor_row) ? 'text-warning' : 'text-success',
                 'Visitor Records',
                 $visitor_figures . ' ' . $visitor_kept,
-                pg_innodb_size_label($visitor_row['bytes']),
+                $visitor_size,
                 'database_engine.php#visitor-records'
             );
         }

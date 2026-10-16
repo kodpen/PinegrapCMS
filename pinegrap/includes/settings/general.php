@@ -339,7 +339,7 @@ if ($backup_settings_ready) {
                     </div>
                     <div class="col-12">
                         <div class="form-text">' . lang('The automatic backup keeps one backup per week; every run in the same week replaces it. Older weeks beyond this number are deleted. 0 keeps all of them. Backups taken by hand and the install dumps are never deleted.') . '</div>
-                        <div class="form-text">' . lang('Database backups leave out the rows of visit records, page view counts, form item view counts and the firewall, performance and API request logs: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.') . '</div>
+                        <div class="form-text">' . lang('Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.') . '</div>
                     </div>' . (class_exists('ZipArchive') ? '' : '
                     <div class="col-12">
                         <div class="alert alert-warning mb-0 py-2 small">' . lang('The ZipArchive extension of PHP is not available: automatic backups stay folders and no remote copy is made.') . '</div>

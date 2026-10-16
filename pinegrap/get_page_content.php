@@ -2365,14 +2365,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         break;
                         
                     case 'catalog':
-                        // if there is not a search query then output RSS button.
-                        // A query that is blank or sent as an array (?query= or
-                        // ?query[]=x) is not a search query: the catalog shows
-                        // the product group without it.
-                        if (
-                            (trim(is_string($_GET[$system_region_properties['page_id'] . '_query'] ?? null) ? $_GET[$system_region_properties['page_id'] . '_query'] : '') == '')
-                            && (trim(is_string($_GET['query'] ?? null) ? $_GET['query'] : '') == '')
-                        ) {
+                        // If the catalog is not searching, then output RSS button.
+                        // It is asked the way the catalog reads its term: a blank
+                        // or list query, the Clear button and an empty page query
+                        // beside ?query=x all show the product group.
+                        if (pg_catalog_search_term($system_region_properties['page_id'], get_layout_type($system_region_properties['page_id'])) == '') {
                             // if an address name has been passed in the current URL, then prepare RSS button link with address name
                             if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                                 // get address name

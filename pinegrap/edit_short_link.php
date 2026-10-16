@@ -343,6 +343,10 @@ if (!$_POST) {
     
     $liveform->add_fields_to_session();
 
+    // A field posted as a list (product_id[]=x) counts as not given: the
+    // escaping and the checks below stopped the request on it with a 500.
+    pg_liveform_single_values($liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code'));
+
     $handle = @fopen(HTACCESS_FILE_PATH, 'a');
 
     // If the rewrite file does not exist or can not be written to, then add error and send user back to previous screen.
@@ -455,6 +459,17 @@ if (!$_POST) {
                             $liveform->mark_error('product_group_id', lang('The product group does not exist.'));
                         }
                     }
+
+                    // The group the link already points at may stay while it is in the
+                    // Recycle Bin (the list keeps it, marked); a form drawn before
+                    // another group was deleted can still post that one.
+                    if (
+                        ($liveform->check_field_error('product_group_id') == FALSE)
+                        && ((int) $liveform->get_field_value('product_group_id') !== (int) $short_link['product_group_id'])
+                        && pg_catalog_group_binned($liveform->get_field_value('product_group_id'))
+                    ) {
+                        $liveform->mark_error('product_group_id', lang('The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.'));
+                    }
                 
                     break;
                 
@@ -472,6 +487,15 @@ if (!$_POST) {
                         if ($row[0] == 0) {
                             $liveform->mark_error('product_id', lang('The product does not exist.'));
                         }
+                    }
+
+                    // Same for the product.
+                    if (
+                        ($liveform->check_field_error('product_id') == FALSE)
+                        && ((int) $liveform->get_field_value('product_id') !== (int) $short_link['product_id'])
+                        && pg_catalog_product_binned($liveform->get_field_value('product_id'))
+                    ) {
+                        $liveform->mark_error('product_id', lang('The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.'));
                     }
 
                     break;

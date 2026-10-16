@@ -151,7 +151,7 @@ if (!$_POST) {
 	                            <div class="row">
 	                                <div class="col-12 my-1">
 	                                    ' . $output_warnings_for_backup . '
-	                                    <div class="form-text mt-0">' . lang('Database backups leave out the rows of visit records, page view counts, form item view counts and the firewall, performance and API request logs: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.') . '</div>
+	                                    <div class="form-text mt-0">' . lang('Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.') . '</div>
 	                                </div>
 	                                <div class="col-12 my-1">
 	                                    <div class="progress d-none">

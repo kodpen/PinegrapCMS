@@ -23249,7 +23249,7 @@
     "An order preview page could not be found for the id that was passed.": "İletilen kimlik için bir sipariş önizleme sayfası bulunamadı.",
     "A billing information page could not be found for the id that was passed.": "İletilen kimlik için bir fatura bilgileri sayfası bulunamadı.",
     "Visit, view and request records are not backed up": "Ziyaret, görüntüleme ve istek kayıtları yedeğe girmez",
-    "Database backups leave out the rows of visit records, page view counts, form item view counts and the firewall, performance and API request logs: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.": "Veritabanı yedekleri ziyaret kayıtlarının, sayfa görüntüleme sayılarının, form öğesi görüntüleme sayılarının ve güvenlik duvarı, performans ve API istek kayıtlarının satırlarını almaz: bu tablolar boş olarak yedeklenir. Günlük ziyaretçi özeti ve saatlik ziyaretçi grafiği eksiksiz yedeklenir.",
+    "Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.": "Veritabanı yedekleri ziyaret kayıtlarının, sayfa görüntüleme sayılarının, form öğesi görüntüleme sayılarının, güvenlik duvarı, performans ve API istek kayıtlarının ve Search Console verilerinin satırlarını almaz: bu tablolar boş olarak yedeklenir. Günlük ziyaretçi özeti ve saatlik ziyaretçi grafiği eksiksiz yedeklenir; son 90 günün Search Console verileri geri yüklemeden sonra yeniden indirilir.",
     "This theme has no Theme Designer settings, so it opens in the CSS editor.": "Bu temanın Tema Tasarımcısı ayarları yok; bu yüzden CSS düzenleyicisinde açıldı.",
     "An unfinished restore": "Yarım kalmış geri yükleme",
     "{var:1} · {var:2} · last step {var:3}": "{var:1} · {var:2} · son adım {var:3}",
@@ -23342,5 +23342,16 @@
     "Turned on now: {var}": "Şu an açık olanlar: {var}",
     "No provider is turned on now.": "Şu an açık sağlayıcı yok.",
     "A new order has been created, and it appears below.": "Yeni bir sipariş oluşturuldu ve aşağıda görüntüleniyor.",
-    "A new order has been created.": "Yeni bir sipariş oluşturuldu."
+    "A new order has been created.": "Yeni bir sipariş oluşturuldu.",
+    "about {var:1}": "yaklaşık {var:1}",
+    "counted": "sayıldı",
+    "read from the file": "dosyadan okundu",
+    "reported by the database server": "veritabanı sunucusunun bildirdiği",
+    "estimate; the table is in the shared InnoDB file": "tahmin; tablo InnoDB'nin ortak dosyasında",
+    "estimate from the server statistics": "sunucu istatistiğinden tahmin",
+    "File size": "Dosya boyutu",
+    "The visitors table holds {var:1} records and its file takes {var:2}.": "Ziyaretçi tablosunda {var:1} kayıt var ve dosyası {var:2} yer kaplıyor.",
+    "Much of the file is free space left by removed records; it goes back to the disk when the table is rebuilt (see below).": "Dosyanın büyük kısmı silinen kayıtlardan kalan boş alan; tablo yeniden kurulunca diske geri verilir (aşağıya bakın).",
+    "The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.": "Ürün Geri Dönüşüm Kutusunda. Katalog Yöneticisi'nden geri yükleyin ya da başka bir ürün seçin.",
+    "The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.": "Ürün grubu Geri Dönüşüm Kutusunda. Katalog Yöneticisi'nden geri yükleyin ya da başka bir ürün grubu seçin."
 }

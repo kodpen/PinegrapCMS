@@ -11,7 +11,8 @@
  * they ask is carried on, how a channel's file is handed out
  * (includes/workspace/files.php), that a handler calls the panel's
  * functions that log in the signed-in person's name as the application's
- * owner, and whose name a bell row carries.
+ * owner, whose name a bell row carries, and that every write can be
+ * rehearsed and stops before it writes.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -1488,4 +1489,73 @@ function test_ws_message_send_file_checks_before_storing()
 
 	pg_assert_contains('ws_message_send_file(', $attach, 'the paperclip goes through it');
 	pg_assert_false(strpos($attach, 'ws_store_upload') !== false, 'the paperclip keeps no file of its own');
+}
+
+// Every write of the module can be rehearsed: X-Dry-Run is offered on the
+// route, and the tool an MCP client sees takes dry_run as an argument.
+function test_ws_api_every_write_rehearses()
+{
+	foreach (ws_api_routes() as $route) {
+		if ($route['method'] === 'GET') {
+			continue;
+		}
+
+		pg_assert_true(!empty($route['dry_run']), $route['id'] . ' rehearses');
+
+		if (pg_mcp_route_is_offered($route)) {
+			$properties = (array) pg_mcp_tool_from_route($route)['inputSchema']['properties'];
+
+			pg_assert_same('boolean', $properties['dry_run']['type'] ?? null, $route['id'] . ': the tool takes dry_run');
+		}
+	}
+}
+
+// A rehearsal meets the panel's own checks and stops before the panel's
+// write: the *_check() function first, then the stop, then the write.
+function test_ws_api_rehearsal_stops_before_the_write()
+{
+	$order = array(
+		'ws_api_tasks_create'         => array('ws_task_create_check(', 'api_dry_run_stop(', 'ws_task_create('),
+		'ws_api_tasks_update'         => array('ws_task_update_check(', 'api_dry_run_stop(', 'ws_task_update('),
+		'ws_api_tasks_complete'       => array('ws_task_set_status_check(', 'api_dry_run_stop(', 'ws_task_set_status('),
+		'ws_api_task_recurrence_set'  => array('ws_recurrence_save_check(', 'api_dry_run_stop(', 'ws_recurrence_save('),
+		'ws_api_task_recurrence_end'  => array('ws_recurrence_end_check(', 'api_dry_run_stop(', 'ws_recurrence_end('),
+		'ws_api_tasks_delegate'       => array('ws_task_delegate_check(', 'api_dry_run_stop(', 'ws_task_delegate('),
+		'ws_api_tasks_delegate_stop'  => array('ws_task_delegation_stop_check(', 'api_dry_run_stop(', 'ws_task_delegation_stop('),
+		'ws_api_notes_create'         => array('ws_note_save_check(', 'api_dry_run_stop(', 'ws_note_save('),
+		'ws_api_notes_update'         => array('ws_note_save_check(', 'api_dry_run_stop(', 'ws_note_save('),
+		'ws_api_plan_items_create'    => array('ws_event_save_check(', 'api_dry_run_stop(', 'ws_event_save('),
+		'ws_api_plan_items_update'    => array('ws_event_save_check(', 'api_dry_run_stop(', 'ws_event_save('),
+		'ws_api_changes_apply'        => array('ws_change_apply_check(', 'ws_change_apply_record_check(', 'api_dry_run_stop(', 'ws_change_apply('),
+		'ws_api_changes_dismiss'      => array('ws_change_dismiss_check(', 'api_dry_run_stop(', 'ws_change_dismiss('),
+		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
+		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
+	);
+
+	foreach ($order as $handler => $needles) {
+		// The calls, not the comments that name them.
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($handler));
+		$at = -1;
+
+		foreach ($needles as $needle) {
+			$found = strpos($source, $needle);
+
+			pg_assert_true(($found !== false) && ($found > $at), $handler . ': ' . $needle . ' comes after what is before it');
+			$at = ($found === false) ? $at : $found;
+		}
+	}
+
+	// An answer to Claude's request stops in each of its four places (the
+	// editor, a note, a task, a channel), before what that place writes.
+	$answer = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_claude_answer'));
+
+	pg_assert_same(4, substr_count($answer, 'api_dry_run_stop('), 'every kind of request rehearses');
+
+	foreach (array('pg_design_ai_request_answer(', "UPDATE ws_ai_requests", 'ws_task_delegation_answer(', 'ws_message_send($viewer') as $write) {
+		$before = substr($answer, 0, (int) strpos($answer, $write));
+
+		pg_assert_true(strrpos($before, 'api_dry_run_stop(') > (int) strrpos($before, 'api_fail_validation('), $write . ' follows its own stop');
+	}
+
+	pg_assert_true(strpos($answer, 'ws_message_send_check(') < strpos($answer, 'ws_message_send($viewer'), 'the answer in a channel is checked as a message first');
 }

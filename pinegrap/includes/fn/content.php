@@ -1939,6 +1939,42 @@ function generate_url_id()
         return count($_SESSION['software']['urls']) - 1;
     }
 }
+// The term a catalog page searches for on this request, '' when it shows its
+// product group. get_catalog() searches for it and the page's RSS link, which
+// a catalog only offers without a search, reads the same answer.
+// System layout: the simple search's Clear button (<id>_simple_clear) means no
+// term; otherwise <id>_query, and only when that is not given, the general
+// ?query= of older links. Custom layout: its form's Clear (<id>_clear) means no
+// term; otherwise <id>_query, read from the request as the layout's form reads
+// it. A value sent as a list (?query[]=x) counts as not given.
+function pg_catalog_search_term($page_id, $layout_type)
+{
+    if ($layout_type == 'system') {
+        if (isset($_GET[$page_id . '_simple_clear'])) {
+            return '';
+        }
+
+        if (isset($_GET[$page_id . '_query']) && is_string($_GET[$page_id . '_query'])) {
+            return trim($_GET[$page_id . '_query']);
+        }
+
+        if (isset($_GET['query']) && is_string($_GET['query'])) {
+            return trim($_GET['query']);
+        }
+
+        return '';
+    }
+
+    if (isset($_REQUEST[$page_id . '_clear'])) {
+        return '';
+    }
+
+    if (isset($_REQUEST[$page_id . '_query']) && is_string($_REQUEST[$page_id . '_query'])) {
+        return trim($_REQUEST[$page_id . '_query']);
+    }
+
+    return '';
+}
 // get product groups and products that should appear in search results for the site search and for the catalog search
 // the logic below might seem more complex than necessary, which is because we are trying to minimize the number of database queries,
 // in order to get good performance for sites with many product groups and products

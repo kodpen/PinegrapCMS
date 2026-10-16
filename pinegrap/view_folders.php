@@ -401,7 +401,7 @@ $explorer_lang = array(
     'backups_note' => lang('Website backups on the server. They are stored outside the web site, so they can only be downloaded from here.'),
     'backups_empty' => lang('There are no backups yet.'),
     'backups_rowless' => lang('Visit, view and request records are not backed up'),
-    'backups_rowless_note' => lang('Database backups leave out the rows of visit records, page view counts, form item view counts and the firewall, performance and API request logs: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full.'),
+    'backups_rowless_note' => lang('Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.'),
     // Short links: a name at the root of the site that stands for something
     // else. They sit under Pages because a page is what most of them point at.
     'short_links' => lang('Short Links'),
@@ -8719,6 +8719,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     var shortLinkOptions = null;
     var shortLinkSaving = false;
 
+    // The lists the open window draws from: shortLinkOptions, or for a link
+    // whose product or group is in the Recycle Bin, lists that keep that one.
+    var shortLinkLists = null;
+
     // The row the window is open on, when it was opened to change one rather
     // than to make one. Null means it is making a new link.
     var shortLinkEditing = null;
@@ -8917,7 +8921,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var type = document.getElementById('sl_type').value;
         var fields = document.getElementById('sl_fields');
-        var options = shortLinkOptions || {};
+        var options = shortLinkLists || {};
         var html = '';
 
         switch (type) {
@@ -8984,7 +8988,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // is found by looking for the id in each.
     function shortLinkPageField(pageId) {
 
-        var inCatalog = ((shortLinkOptions.catalog_page) || []).some(function (option) { return String(option.v) === String(pageId); });
+        var inCatalog = ((shortLinkLists.catalog_page) || []).some(function (option) { return String(option.v) === String(pageId); });
 
         return inCatalog ? 'sl_catalog_page' : 'sl_catalog_detail_page';
     }
@@ -9053,11 +9057,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // How it may be opened (2026.4.5, 5.112): chosen when it is
             // made; a timed one can be given a new time later.
             var modesHtml = '';
-            var durationOptions = (shortLinkOptions.durations || []).map(function (option) {
+            var durationOptions = (shortLinkLists.durations || []).map(function (option) {
                 return '<option value="' + esc(option.v) + '">' + esc(option.t) + '</option>';
             }).join('');
 
-            if (!shortLinkEditing && shortLinkOptions.modes) {
+            if (!shortLinkEditing && shortLinkLists.modes) {
                 modesHtml =
                     '<div class="mb-3">' +
                         '<label class="form-label" for="sl_mode">' + esc(L.link_mode) + '</label>' +
@@ -9160,20 +9164,53 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         // The lists come from the server once and are kept for the session:
-        // they are the same lists the classic add screen draws.
-        if (shortLinkOptions) { draw(); return; }
+        // they are the same lists the classic add screen draws. They leave
+        // out the products and groups in the Recycle Bin, so a link that
+        // points at one is opened with lists asked for that link, which keep
+        // it, marked; those are not kept for the next window.
+        if (shortLinkOptions && !shortLinkTargetMissing(shortLinkEditing)) {
+            shortLinkLists = shortLinkOptions;
+            draw();
+            return;
+        }
 
-        api({ type: 'explorer_short_link_options' }, function (response) {
+        api({ type: 'explorer_short_link_options', item_id: shortLinkEditing ? shortLinkEditing.id : 0 }, function (response) {
 
             if (response.status !== 'success') { toast(response.message || L.request_failed, false); return; }
 
-            shortLinkOptions = response.options || {};
+            var lists = response.options || {};
 
             // Once or until a time (2026.4.5, 5.112), when the site has them.
-            shortLinkOptions.modes = !!response.modes;
-            shortLinkOptions.durations = response.durations || [];
+            lists.modes = !!response.modes;
+            lists.durations = response.durations || [];
+
+            if (!response.kept) { shortLinkOptions = lists; }
+
+            shortLinkLists = lists;
             draw();
         });
+    }
+
+    // Whether the kept lists lack the product or the group a link points at:
+    // it went to the Recycle Bin, or it is newer than the lists.
+    function shortLinkTargetMissing(item) {
+
+        if (!item) { return false; }
+
+        var list = null;
+        var id = 0;
+
+        if (item.destination_type === 'product') {
+            list = shortLinkOptions.product;
+            id = item.product_id;
+        } else if (item.destination_type === 'product_group') {
+            list = shortLinkOptions.product_group;
+            id = item.product_group_id;
+        } else {
+            return false;
+        }
+
+        return !(list || []).some(function (option) { return String(option.v) === String(id); });
     }
 
     function submitShortLinkWizard() {

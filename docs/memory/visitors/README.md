@@ -16,3 +16,4 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-rollup-backfill-runtime.md: Backfill runtime rules for visitor rollups: MySQL time zone sync, interruptible steps split across versions, ceiling read order, rollup_ready recheck.
 - visitor-rollup-consistency.md: Keeping the two visitor summary tables consistent: both must SUM(page_views), running-total race with backfill, and rebuilding derived data (2026.3.8).
 - visitor-rollup-tables.md: The hourly visitor summary tables (visitor_stats_hourly, visitor_content_hourly), bucket_key hashing, and how content items are identified (2026.3.4).
+- visitor-table-size-figures.md: Where the visitor card, the System Status line and the shrink/move before-after sizes get their record count and file size, and how each figure says its source

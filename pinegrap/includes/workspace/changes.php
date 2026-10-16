@@ -2247,16 +2247,21 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
 }
 
 /**
- * Applies a proposed change, in the name of the person who asked for it.
+ * Whether the person may apply a proposed change: the checks ws_change_apply()
+ * makes before it takes the proposal, made on their own so that the API's dry
+ * run meets the same refusals. What is checked against the record itself is
+ * ws_change_apply_record_check().
  *
  * @param array $viewer
  * @param int   $change_id
- * @return array ok, error, stale, decision_id
+ * @return array ok, error, stale, change (the row), mcp (a call of an MCP
+ *               server's tool), channel (where the decision is written, null
+ *               for a change proposed on a task)
  */
-function ws_change_apply($viewer, $change_id)
+function ws_change_apply_check($viewer, $change_id)
 {
-    $fail = function ($error, $stale = false) {
-        return array('ok' => false, 'error' => $error, 'stale' => $stale, 'decision_id' => 0);
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'stale' => false, 'change' => null, 'mcp' => false, 'channel' => null);
     };
 
     if (!ws_changes_ready()) {
@@ -2287,7 +2292,6 @@ function ws_change_apply($viewer, $change_id)
 
     $types = ws_change_types();
     $type = (string) $change['record_type'];
-    $action = (string) ($change['action'] ?? 'update');
 
     // A scheduled action Pinegrap AI drafted (scheduled_draft.php) is saved
     // from its form, where everything it does is checked again.
@@ -2329,6 +2333,124 @@ function ws_change_apply($viewer, $change_id)
         }
     }
 
+    return array('ok' => true, 'error' => '', 'stale' => false, 'change' => $change, 'mcp' => $mcp, 'channel' => $channel);
+}
+
+/**
+ * Whether a proposed change can still be laid on its record: the record is
+ * there, nobody changed it after the proposal, and the person's rights allow
+ * the change. The checks ws_change_apply() makes once it has taken the
+ * proposal, made on their own so that the API's dry run meets the same
+ * refusals. Not for a call of an MCP server's tool or a change to many
+ * records at once, which are checked as they run.
+ *
+ * @param array $viewer
+ * @param array $change the row
+ * @return array ok, error, stale, record (null for a new one), fields (as
+ *               proposed), values (name => new value)
+ */
+function ws_change_apply_record_check($viewer, $change)
+{
+    $fail = function ($error, $stale = false) {
+        return array('ok' => false, 'error' => $error, 'stale' => $stale, 'record' => null, 'fields' => array(), 'values' => array());
+    };
+
+    $by_ai = function_exists('ws_ai_proposed') && ws_ai_proposed($change);
+    $types = ws_change_types();
+    $type = (string) $change['record_type'];
+    $action = (string) ($change['action'] ?? 'update');
+    $record = null;
+
+    if ($action !== 'create') {
+        $record = ws_change_record($type, $change['record_id']);
+
+        if ($record === null) {
+            return $fail(lang('The record is gone.'));
+        }
+    }
+
+    $fields = json_decode((string) $change['fields'], true);
+    $fields = is_array($fields) ? $fields : array();
+    $values = array();
+
+    // Made against other values than the record holds now: somebody changed it
+    // meanwhile, and their change is not written over (nor deleted).
+    foreach ($fields as $item) {
+        $field = ws_change_field($types[$type], (string) $item['name']);
+
+        if ($field === null) {
+            return $fail(lang('Invalid request.'));
+        }
+
+        $moved = (($action === 'update') || ($action === 'delete')) && ($field[3] !== '')
+            && (ws_change_current_value($field, $record) !== $item['from']);
+
+        // A record the change names (a product for a group, a parent group)
+        // that is gone since.
+        if (($field[0] === 'ids') && (ws_change_value($field, $item['to']) === null)) {
+            $moved = true;
+        }
+
+        if ($moved) {
+            return $fail($by_ai
+                ? lang('The record changed after Pinegrap AI proposed this, so it was not applied. Ask Pinegrap AI again.')
+                : lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'), true);
+        }
+
+        $values[$item['name']] = $item['to'];
+    }
+
+    if ($action === 'create') {
+        $check = ws_change_create_check($type, $fields);
+
+        if ($check !== '') {
+            return $fail($check);
+        }
+    }
+
+    if ($action === 'delete') {
+        $blocked = ws_change_delete_blocked($type, $record);
+
+        if ($blocked !== '') {
+            return $fail($blocked);
+        }
+    }
+
+    $check = ws_change_check($viewer, $type, $action, $record, ($action === 'delete') ? array() : $values);
+
+    if ($check !== '') {
+        return $fail($check);
+    }
+
+    return array('ok' => true, 'error' => '', 'stale' => false, 'record' => $record, 'fields' => $fields, 'values' => $values);
+}
+
+/**
+ * Applies a proposed change, in the name of the person who asked for it.
+ *
+ * @param array $viewer
+ * @param int   $change_id
+ * @return array ok, error, stale, decision_id
+ */
+function ws_change_apply($viewer, $change_id)
+{
+    $fail = function ($error, $stale = false) {
+        return array('ok' => false, 'error' => $error, 'stale' => $stale, 'decision_id' => 0);
+    };
+
+    $check = ws_change_apply_check($viewer, $change_id);
+
+    if (!$check['ok']) {
+        return $fail($check['error']);
+    }
+
+    $change = $check['change'];
+    $mcp = $check['mcp'];
+    $channel = $check['channel'];
+    $types = ws_change_types();
+    $type = (string) $change['record_type'];
+    $action = (string) ($change['action'] ?? 'update');
+
     // Taken before anything is checked, so two clicks cannot both apply it.
     db("UPDATE ws_ai_changes SET status = 'applying' WHERE id = '" . (int) $change['id'] . "' AND status = 'pending'");
 
@@ -2361,80 +2483,21 @@ function ws_change_apply($viewer, $change_id)
         return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => 0);
     }
 
-    $record = null;
+    $laid = ws_change_apply_record_check($viewer, $change);
 
-    if ($action !== 'create') {
-        $record = ws_change_record($type, $change['record_id']);
-
-        if ($record === null) {
-            $release('failed', lang('The record is gone.'));
-
-            return $fail(lang('The record is gone.'));
-        }
-    }
-
-    $fields = json_decode((string) $change['fields'], true);
-    $fields = is_array($fields) ? $fields : array();
-    $values = array();
-
-    // Made against other values than the record holds now: somebody changed it
-    // meanwhile, and their change is not written over (nor deleted).
-    foreach ($fields as $item) {
-        $field = ws_change_field($types[$type], (string) $item['name']);
-
-        if ($field === null) {
-            $release('failed', lang('Invalid request.'));
-
-            return $fail(lang('Invalid request.'));
-        }
-
-        $moved = (($action === 'update') || ($action === 'delete')) && ($field[3] !== '')
-            && (ws_change_current_value($field, $record) !== $item['from']);
-
-        // A record the change names (a product for a group, a parent group)
-        // that is gone since.
-        if (($field[0] === 'ids') && (ws_change_value($field, $item['to']) === null)) {
-            $moved = true;
-        }
-
-        if ($moved) {
+    if (!$laid['ok']) {
+        if ($laid['stale']) {
             $release('stale');
-
-            return $fail($by_ai
-                ? lang('The record changed after Pinegrap AI proposed this, so it was not applied. Ask Pinegrap AI again.')
-                : lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'), true);
+        } else {
+            $release('failed', $laid['error']);
         }
 
-        $values[$item['name']] = $item['to'];
+        return $fail($laid['error'], $laid['stale']);
     }
 
-    if ($action === 'create') {
-        $check = ws_change_create_check($type, $fields);
-
-        if ($check !== '') {
-            $release('failed', $check);
-
-            return $fail($check);
-        }
-    }
-
-    if ($action === 'delete') {
-        $blocked = ws_change_delete_blocked($type, $record);
-
-        if ($blocked !== '') {
-            $release('failed', $blocked);
-
-            return $fail($blocked);
-        }
-    }
-
-    $check = ws_change_check($viewer, $type, $action, $record, ($action === 'delete') ? array() : $values);
-
-    if ($check !== '') {
-        $release('failed', $check);
-
-        return $fail($check);
-    }
+    $record = $laid['record'];
+    $fields = $laid['fields'];
+    $values = $laid['values'];
 
     $done = call_user_func('ws_change_write_' . $type, $viewer, $action, $record, $values);
 
@@ -2537,30 +2600,36 @@ function ws_change_apply($viewer, $change_id)
 }
 
 /**
- * Sets a proposed change aside: the person who asked, or staff.
+ * Whether the person may set a proposed change aside: the checks of
+ * ws_change_dismiss(), made on their own so that the API's dry run meets the
+ * same refusals.
  *
  * @param array $viewer
  * @param int   $change_id
- * @return array ok, error
+ * @return array ok, error, change (the row)
  */
-function ws_change_dismiss($viewer, $change_id)
+function ws_change_dismiss_check($viewer, $change_id)
 {
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'change' => null);
+    };
+
     if (!ws_changes_ready()) {
-        return array('ok' => false, 'error' => lang('Invalid request.'));
+        return $fail(lang('Invalid request.'));
     }
 
     $change = db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change_id . "'");
 
     if (!is_array($change)) {
-        return array('ok' => false, 'error' => lang('That proposal could not be found.'));
+        return $fail(lang('That proposal could not be found.'));
     }
 
     if ($change['status'] !== 'pending') {
-        return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'));
+        return $fail(lang('Somebody has already decided about this proposal.'));
     }
 
     if (((int) $change['requested_by'] !== (int) $viewer['id']) && ((int) $viewer['role'] >= 3)) {
-        return array('ok' => false, 'error' => (function_exists('ws_ai_proposed') && ws_ai_proposed($change))
+        return $fail((function_exists('ws_ai_proposed') && ws_ai_proposed($change))
             ? lang('Only the person who asked Pinegrap AI can set this change aside.')
             : lang('Only the person who asked Claude can set this change aside.'));
     }
@@ -2569,11 +2638,31 @@ function ws_change_dismiss($viewer, $change_id)
 
     if ($task_id > 0) {
         if (!ws_can_see_task($viewer, ws_task($task_id))) {
-            return array('ok' => false, 'error' => lang('That task could not be found.'));
+            return $fail(lang('That task could not be found.'));
         }
     } elseif (!ws_can_post_channel($viewer, ws_channel($change['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+        return $fail(lang('You cannot post in that channel.'));
     }
+
+    return array('ok' => true, 'error' => '', 'change' => $change);
+}
+
+/**
+ * Sets a proposed change aside: the person who asked, or staff.
+ *
+ * @param array $viewer
+ * @param int   $change_id
+ * @return array ok, error
+ */
+function ws_change_dismiss($viewer, $change_id)
+{
+    $check = ws_change_dismiss_check($viewer, $change_id);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error']);
+    }
+
+    $change = $check['change'];
 
     db("UPDATE ws_ai_changes SET status = 'dismissed', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
         WHERE id = '" . (int) $change['id'] . "' AND status = 'pending'");

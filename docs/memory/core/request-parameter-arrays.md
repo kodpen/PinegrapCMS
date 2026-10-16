@@ -7,6 +7,7 @@ description: How screens must treat a request parameter that arrives as an array
 - It counts as "not given": the HTML is unchanged and nothing answers 500. Check with `is_string()` (GET) before use; never cast an array to string or int.
 - `send_to` and `from` are cleaned once, centrally, in `init.php` via `pg_request_single_values()` (`includes/fn/core.php`); do not re-check them per screen.
 - ERP: every POST form calls `pg_request_single_values()` for its single-value fields.
+- Short link screens (wizard, classic add/edit): see `commerce/short-link-catalog-bin.md`.
 - Settings saves refuse instead (not given would blank the setting): see docs/memory/ui/settings-invalid-vs-error.md.
 
 ## What about the entries of a list a form posts?

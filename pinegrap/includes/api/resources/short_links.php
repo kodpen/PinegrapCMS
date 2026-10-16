@@ -410,7 +410,9 @@ function api_short_link_destination_in($params, $row = null) {
 
 	}
 
-	$read = pg_short_link_read_request($request, null);
+	// A change may keep the product or group the link already points at while
+	// it is in the Recycle Bin; nothing else in the bin is taken.
+	$read = pg_short_link_read_request($request, null, $row);
 
 	if (isset($read['error'])) {
 
