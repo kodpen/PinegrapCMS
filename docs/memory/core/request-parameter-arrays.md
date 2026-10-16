@@ -7,6 +7,7 @@ description: How screens must treat a request parameter that arrives as an array
 - It counts as "not given": the HTML is unchanged and nothing answers 500. Check with `is_string()` (GET) before use; never cast an array to string or int.
 - `send_to` and `from` are cleaned once, centrally, in `init.php` via `pg_request_single_values()` (`includes/fn/core.php`); do not re-check them per screen.
 - ERP: every POST form calls `pg_request_single_values()` for its single-value fields.
+- Short link screens (wizard, classic add/edit): see `commerce/short-link-catalog-bin.md`.
 
 ## What about the entries of a list a form posts?
 - Same rule, one level down: an entry that is itself an array (`choice[email][]=x`, `allocate[5][]=x`, `counted[29][]=x`, `map[0][]=x`, `lines[0][description][]=x`) counts as not given. Check `is_scalar($entry)` before a cast; read a row of fields (`lines[n]`, `categories[id]`) through `pg_request_row_values($row)` (`includes/fn/core.php`), which drops non-scalar fields and keeps numbers from stored rows and JSON bodies.
