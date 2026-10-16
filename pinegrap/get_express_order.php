@@ -702,6 +702,8 @@ function get_express_order($properties) {
             $count++;
         }
 
+        $output_special_offers = '';
+
         if ($output_pending_offers || $output_upsell_offers) {
             $output_special_offers =
                 '<form class="special_offers" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/express_order.php" method="post" style="margin: 0px 0px 15px 0px">
@@ -768,6 +770,11 @@ function get_express_order($properties) {
                 $quick_add_amount_row_style = 'display: none';
                 $quick_add_ship_to_row_style = 'display: none';
                 $quick_add_add_name_row_style = 'display: none';
+
+                // A row is left out when no product in the group needs it.
+                $output_ship_to_and_add_name_rows = '';
+                $output_quantity_row = '';
+                $output_amount_row = '';
                 
                 $quick_add_product_id_options = array();
                 $quick_add_product_id_options[''] = '';
@@ -1033,6 +1040,10 @@ function get_express_order($properties) {
             }
             
             $applied_offers = array();
+
+            // Totals of the items charged now (recurring ones are added up per payment period).
+            $subtotal = 0;
+            $grand_tax = 0;
             
             // create array for storing inventory quantity for products,
             // so we can keep track of remaining inventory quantity as we loop through order items,
@@ -1070,7 +1081,8 @@ function get_express_order($properties) {
                     LEFT JOIN countries ON ship_tos.country = countries.code
                     WHERE ship_tos.id = $ship_to_id";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
+                // Items that are not shipped sit under ship to 0, which has no row.
+                $row = mysqli_fetch_assoc($result) ?: array_fill_keys(array_column(mysqli_fetch_fields($result), 'name'), null);
                 
                 $ship_to_name = $row['ship_to_name'];
                 $salutation = $row['salutation'];
@@ -2288,6 +2300,8 @@ function get_express_order($properties) {
             // start grand total off with just the subtotal (we will add tax and shipping later, if necessary)
             $grand_total = $subtotal;
             
+            $order_discount = 0;
+
             // if there is an order discount from an offer, prepare order discount
             if (!empty($_SESSION['ecommerce']['order_discount'])) {
                 $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
@@ -2592,6 +2606,10 @@ function get_express_order($properties) {
                 $output_update_button_label = lang('Update Cart');
             }
             
+            // A visitor, or a user without a contact, has no contact; its columns read as empty.
+            $contact_id = '';
+            $contact = array_fill_keys(array('salutation', 'first_name', 'last_name', 'company', 'business_address_1', 'business_address_2', 'business_city', 'business_state', 'business_zip_code', 'business_country', 'business_phone', 'business_fax', 'email_address', 'lead_source', 'opt_in'), '');
+
             // If user is logged in and not ghosting, then get contact for user (we will use this
             // contact id in a couple of places)
             if (USER_LOGGED_IN and !$ghost) {
@@ -3148,6 +3166,8 @@ function get_express_order($properties) {
                         $expiration_year_options[$i] = $i;
                     }
                     
+                    $output_card_verification_number_help = '';
+
                     // if there is a page that explains the card verification number field, prepare link to that page
                     if ($card_verification_number_page_id) {
 
@@ -4018,7 +4038,7 @@ function get_express_order($properties) {
                     $form->set('quick_add_quantity', 'maxlength', 9);
                 }
 
-                $quick_add['system'] .=
+                $quick_add['system'] =
                     get_token_field() . '
                     <input type="hidden" name="page_id" value="' . h($page_id) . '">
                     <input type="hidden" name="quick_add" value="true">
@@ -4771,6 +4791,10 @@ function get_express_order($properties) {
                                 // Layouts read the submitted form title of every field and
                                 // quantity; it is filled below only for a reference code field.
                                 $item['fields'][$field_key]['titles'][$quantity_number] = array('title' => '', 'title_label' => '');
+
+                                // The recurring area of the layouts reads one title per field,
+                                // which is never filled.
+                                $item['fields'][$field_key] += array('title' => '', 'title_label' => '');
 
                                 // If the value for this field has not been set yet,
                                 // (e.g. the form has not been submitted by the customer),
