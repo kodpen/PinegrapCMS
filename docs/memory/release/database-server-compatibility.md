@@ -10,7 +10,7 @@ description: Which MySQL and MariaDB versions the install and the upgrade steps 
 ## Why are MySQL 5.6 and MariaDB 10.1 refused?
 - From 2026.1.21 on the steps put UNIQUE keys and indexes on `VARCHAR(255)` utf8mb4 columns (1020 bytes). These servers allow 767 bytes per key unless `innodb_large_prefix` is on and every table is `ROW_FORMAT=DYNAMIC`; neither is their default and a shared host cannot change it. The upgrade stopped at 2026.1.21 with error 1071, so no site on them can be past that version.
 
-## What failed on MySQL 5.7 (issue #464)?
+## What failed on MySQL 5.7 (issue #464, PR #470)?
 - Installs and upgrades stopped at version 2022.2 with `MySQL error 1101: BLOB, TEXT, GEOMETRY or JSON column 'custom_css' can't have a default value — ALTER TABLE config ALTER custom_css DROP DEFAULT`. MySQL before 8.0.13 and MariaDB before 10.2 refuse `ALTER … DROP DEFAULT` on any TEXT column, even one without a default; MySQL 8.0.13+ and MariaDB 10.2+ accept it, which is why the owner's MySQL 8 never showed it.
 - `upgrade_to_2022_2()` now calls `install_drop_column_default()`, which reads `information_schema.COLUMNS` and sends `DROP DEFAULT` only when the column has a default (NULL on a nullable column counts as none). On MariaDB a literal TEXT default is still dropped. A site stuck at 2022.1.9 continues with "Try again" (or a fresh install starts over) once the files are updated.
 
