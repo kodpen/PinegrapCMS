@@ -10869,18 +10869,17 @@ const StyleDesigner = (function () {
                     e.stopPropagation();
                     _sdSelectRender();
                 }
-                // Scroll only the OVERVIEW tree to reveal the selected node.
-                // Do NOT call scrollCanvasToNode() here: the user just clicked something
+                // The overview row was brought into view by the drawing
+                // above (_sdTreeRevealSelection()). Do NOT call
+                // scrollCanvasToNode() here: the user just clicked something
                 // they could see — auto-scrolling the iframe re-frames the viewport and
                 // makes the canvas jump (especially noticeable when selecting an inner
                 // element of a system widget — the widget's drop area is taller than the
                 // selection target so the scroll appears to "jump to widget top").
-                setTimeout(function() {
-                    var _li = document.querySelector('#sd-tree-list li[data-nid="' + node._id + '"]');
-                    if (_li) _li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 80);
             } else {
                 // Same node re-clicked — just refresh ctx bar (e.g. trigger clicked)
+                // and find its row again if the overview was scrolled away.
+                _sdTreeRevealSelection(true);
                 if (isInteractive) {
                     // Re-read live attrs after Bootstrap toggles aria-expanded etc.
                     setTimeout(function() { renderAttrsPanel(); renderHtmlTree(); }, 60);
@@ -18243,6 +18242,7 @@ const StyleDesigner = (function () {
                 if (searchBox) searchBox.style.display = sub === 'tree' ? '' : 'none';
                 _setCollapseBtnVisibility(sub);
                 if (sub === 'notes') renderNotesPanel();
+                else _sdTreeRevealSelection();
             });
         }
 
@@ -21742,6 +21742,7 @@ const StyleDesigner = (function () {
     function renderTree() {
         var list = document.getElementById('sd-tree-list');
         if (!list) return;
+        _sdTreeOpenToSelection();
         list.innerHTML = '';
 
         // Refresh notes tab (count badge + list) whenever tree re-renders
@@ -21778,6 +21779,7 @@ const StyleDesigner = (function () {
         // What the rows were drawn from (_sdTreeSelectInPlace()).
         list._sdTreeOf = tree;
         list._sdTreeEpoch = _sdEditEpoch;
+        _sdTreeRevealSelection();
 
         // Attach palette-drop handlers ONCE on the list element.
         // Using a flag prevents duplicate handlers from accumulating on every render.
@@ -22798,15 +22800,70 @@ const StyleDesigner = (function () {
 
     // ── Scroll overview tree to reveal a node ─────────────────────────────────────
     function scrollTreeToNode(node) {
-        expandAncestors(node, tree);
+        // Anywhere: a node inside a widget is in the widget's own tree.
+        expandAncestorsAnywhere(node);
         renderTree();
-        setTimeout(function() {
-            var li = document.querySelector('#sd-tree-list li[data-nid="' + node._id + '"]');
-            if (!li) return;
-            li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            document.querySelectorAll('#sd-tree-list li.active').forEach(function(x) { x.classList.remove('active'); });
-            li.classList.add('active');
-        }, 50);
+        var list = document.getElementById('sd-tree-list');
+        var wrap = document.getElementById('sd-overview-tree-wrap');
+        var li = list ? _sdTreeRowOf(list, node) : null;
+        if (!li) return;
+        if (wrap) _sdTreeScrollRow(wrap, li);
+        document.querySelectorAll('#sd-tree-list li.active').forEach(function(x) { x.classList.remove('active'); });
+        li.classList.add('active');
+    }
+
+    // ── The overview follows the selection ──────────────────────────────────────
+    //
+    // Whatever picked the node (the canvas, the HTML panel, a form control's
+    // mousedown, the context menu, a paste), its row is opened and brought
+    // into view where the overview is drawn. Each panel used to do this
+    // itself, and only a plain canvas click did: 80 ms later, smoothly, to
+    // the edge of the panel, and by id, so on a page whose header widget has
+    // an sd_3 too the tree went to the header's row. A drawing for the same
+    // selection (an edit, a chevron) leaves the tree where the operator left
+    // it, so a branch closed over the selected node stays closed.
+    var _sdTreeOpenedFor = null;
+    var _sdTreeShownFor  = null;
+
+    // Open the branches over a node that has just been selected; before the
+    // rows are drawn, so its row is drawn too.
+    function _sdTreeOpenToSelection() {
+        var n = selectedNode;
+        if (!n || n === tree || n === _sdTreeOpenedFor) { _sdTreeOpenedFor = n || null; return; }
+        _sdTreeOpenedFor = n;
+        expandAncestorsAnywhere(n);
+    }
+
+    // Bring the selected node's row into view; `force` also for the
+    // selection already shown (the same element clicked again). A hidden
+    // tree (the section closed, the Notes tab open) is left for when it
+    // shows again.
+    function _sdTreeRevealSelection(force) {
+        var n = selectedNode;
+        if (!n) { _sdTreeShownFor = null; return; }
+        if (n === _sdTreeShownFor && !force) return;
+        var list = document.getElementById('sd-tree-list');
+        var wrap = document.getElementById('sd-overview-tree-wrap');
+        if (!list || !wrap) return;
+        var row = (n === tree) ? list.querySelector(':scope > .sd-tree-body-row') : _sdTreeRowOf(list, n);
+        if (row && _sdTreeScrollRow(wrap, row)) _sdTreeShownFor = n;
+    }
+
+    // Scroll the overview, and only it, so that `row` is in view. A row in
+    // view stays put; one cut by an edge moves just enough; one out of sight
+    // comes to the middle, with its parent above it and its children below.
+    // Set at once: a smooth scroll still running when the next row is
+    // clicked reads as a panel that does not follow.
+    function _sdTreeScrollRow(wrap, row) {
+        var h = wrap.clientHeight;
+        var rr = row.getBoundingClientRect();
+        if (!h || !rr.height) return false;
+        var top = rr.top - wrap.getBoundingClientRect().top - wrap.clientTop;
+        var bottom = top + rr.height;
+        if (top >= 0 && bottom <= h) return true;
+        if (bottom > 0 && top < h) wrap.scrollTop += (top < 0) ? top : bottom - h;
+        else wrap.scrollTop += top - (h - rr.height) / 2;
+        return true;
     }
 
     // ── Canvas Right-Click Context Menu ───────────────────────────────────────────
@@ -22962,6 +23019,7 @@ const StyleDesigner = (function () {
     // a thousand-row tree on every click cost some 200 ms.
     function _sdTreeSelectInPlace() {
         var list = document.getElementById('sd-tree-list');
+        _sdTreeOpenToSelection();
         if (!list || list._sdTreeOf !== tree || list._sdTreeEpoch !== _sdEditEpoch) return false;
         var marks = selectedNodes.length > 1 ? selectedNodes.slice() : [];
         var want = marks.concat(selectedNode ? [selectedNode] : []);
@@ -22985,6 +23043,7 @@ const StyleDesigner = (function () {
             if (r) r.classList.add('sd-multi-selected');
         });
         if (_refreshNotesPanel) _refreshNotesPanel();
+        _sdTreeRevealSelection();
         return true;
     }
 

@@ -9,7 +9,7 @@ Open the index of the folder the task needs, then only the files you need.
 - commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (29)
 - core/README.md: Code rules, file layout, translation, roles and access, security, api.php, request parameters (30)
 - data/README.md: Table structures and SQL pitfalls (7)
-- designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (59)
+- designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (60)
 - erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports (36)
 - plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (11)
 - platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (26)
