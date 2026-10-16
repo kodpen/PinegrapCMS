@@ -12,7 +12,7 @@ description: Edit calendar event screen (edit_calendar_event.php): which recurri
 - Once, at the top, into `$requested_recurrence_number`: `pg_request_single_values(array('recurrence_number'))` first (before liveform copies `$_REQUEST`), then missing or "" stays "", anything else is `(string) max(0, (int) value)`, the same reading as `get_calendar_event_view_screen_content.php`.
 - Do not read `$_GET['recurrence_number']` anywhere else on the screen; `tests/calendar_event_edit_test.php` checks it.
 
-## What did it do before (PR #490)?
+## What did it do before (PR #491)?
 - Every open without the parameter wrote two "Undefined array key" warnings (lines 215 and 455), printed on the page where PHP errors are shown (seen on dev 2026-10-16).
 - `?recurrence_number[]=x`, or a posted array with separated reservations, answered 500 (`escape()` on an array); a posted array with a form error redirected to `recurrence_number=Array`.
 - The page HTML and the saved remaining spots are unchanged for a real number or no number.
