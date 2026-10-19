@@ -359,3 +359,20 @@ function test_legal_documents_store_keeps_the_visitor_address()
 
 	pg_assert_true(($asked !== false) && ($stored !== false) && ($asked < $stored), 'waf_client_ip() is asked before the row is written');
 }
+
+// Acceptance times are printed on the site's clock: 24 hours unless Site
+// Settings ask for 12 (the runner has no settings, so 24 here). The legacy
+// form formatter printed AM/PM whatever the setting.
+function test_legal_documents_time_text()
+{
+	$accepted = mktime(13, 21, 0, 10, 19, 2026);
+
+	pg_assert_same('19/10/2026 13:21', pg_legal_document_time_text($accepted), 'day first, 24 hours');
+	pg_assert_same('5/1/2026 09:05', pg_legal_document_time_text(mktime(9, 5, 0, 1, 5, 2026)), 'no leading zeros in the date, two digits for the hour');
+	pg_assert_contains('19/10/2026 13:21', pg_legal_document_acceptance_note(array('accepted_at' => $accepted)), 'the note on the kept copy');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
+
+	pg_assert_false(strpos($source, "'date and time'"), 'no time is printed with the legacy formatter');
+	pg_assert_contains('pg_legal_document_time_text($accepted)', legal_documents_test_function_source($source, 'pg_legal_documents_panel_card'), 'the panel card prints it the same way');
+}
