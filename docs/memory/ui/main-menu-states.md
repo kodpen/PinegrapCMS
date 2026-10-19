@@ -19,4 +19,4 @@ description: Main menu on wide screens: expanded / mini / hidden chosen at its f
 - The grid column goes to 0 and the rail slides out (`translateX(-100%)`), its `visibility: hidden` delayed by the slide so its links leave the tab order; the pocket corner (`.software-sidebar::before/::after`) goes with it. Above lg the bar button's `li` is the rail's width, so its icon sits over the menu icons.
 
 ## What does the tour say?
-- The frame tour's menu step names both controls; `PG_TOUR_SHELL_KEY` went to `shell.4` so everybody sees the changed frame once.
+- The frame tour's menu step names both controls; `PG_TOUR_SHELL_KEY` went to `shell.4` so everybody sees the changed frame once (#598).
