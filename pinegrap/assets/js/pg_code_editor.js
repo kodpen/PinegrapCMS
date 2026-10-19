@@ -876,13 +876,29 @@
     // value current, so the form that submits the textarea sees every edit.
     // Each write raises an input event on the textarea, as typing into it
     // would, so a screen that watches its form for changes hears this one.
+    // Besides create()'s options: `height` and `width` size the host,
+    // `className` is added to it, `isolate` builds the editor in a shadow
+    // root (below). The instance carries `textarea` and `container`, the
+    // host element in the page.
     function attach(textarea, opts) {
         opts = opts || {};
         if (!textarea || textarea.tagName !== 'TEXTAREA') return Promise.reject(new Error('PgCodeEditor.attach() needs a textarea.'));
         var host = document.createElement('div');
         host.className = 'pg-code-editor' + (opts.className ? ' ' + opts.className : '');
         if (opts.height) host.style.height = opts.height;
+        if (opts.width) host.style.width = opts.width;
         textarea.parentNode.insertBefore(host, textarea.nextSibling);
+        // `isolate` builds the editor inside a shadow root of the host, out of
+        // reach of a stylesheet that resets every element of its container
+        // (CKEditor's dialogs: .cke_reset_all * flattens the editor's height,
+        // font and colours). The engine finds the shadow root by itself and
+        // puts its styles there.
+        var mount = host;
+        if (opts.isolate && host.attachShadow) {
+            mount = document.createElement('div');
+            mount.style.height = '100%';
+            host.attachShadow({ mode: 'open' }).appendChild(mount);
+        }
         var userChange = opts.onChange;
         var merged = {};
         for (var k in opts) if (Object.prototype.hasOwnProperty.call(opts, k)) merged[k] = opts[k];
@@ -897,10 +913,13 @@
         // textarea while it was on its way is kept.
         return load().then(function () {
             merged.value = textarea.value;
-            return pgCeCreate(host, merged);
+            return pgCeCreate(mount, merged);
         }).then(function (inst) {
             textarea.style.display = 'none';
             inst.textarea = inst.textarea || textarea;
+            // The element in the page, where the editor's events arrive
+            // (the host itself unless the editor is isolated).
+            inst.container = host;
             var destroy = inst.destroy;
             inst.destroy = function () {
                 destroy();
