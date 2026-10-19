@@ -262,7 +262,7 @@ function api_products_list($params) {
 
 	if (isset($params['search']) && $params['search'] !== '') {
 
-		$search = escape($params['search']);
+		$search = escape(escape_like($params['search']));
 
 		$where[] = "(products.name LIKE '%" . $search . "%' OR products.short_description LIKE '%" . $search . "%')";
 

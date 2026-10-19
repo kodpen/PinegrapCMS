@@ -1108,7 +1108,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         billing_state,
                         billing_country
                     FROM orders
-                    WHERE id = '" . $_SESSION['ecommerce']['completed_order_id'] . "'");
+                    WHERE id = '" . (int) $_SESSION['ecommerce']['completed_order_id'] . "'");
 
                 $output_ecommerce_tracking_data .=
                     "\n" .

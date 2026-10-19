@@ -665,6 +665,15 @@ function sql_order_direction($direction, $default = 'asc')
     return $default;
 }
 
+// Whitelists a device type that names a column (activated_<type>_theme).
+// The session value is written only by validated code, but a bare column
+// position cannot be escaped, so the sink only ever sees one of the two
+// literals; anything else reads as desktop.
+function sql_device_type($device_type)
+{
+    return ((string) $device_type === 'mobile') ? 'mobile' : 'desktop';
+}
+
 function escape_like($string)
 {
     $string = str_replace('%', '\%', $string);

@@ -39,16 +39,14 @@ $is_gateway_return = in_array(
     array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'),
     true);
 
-if (!$is_gateway_return) {
-    pg_session_cookie_allow_cross_site();
-}
-
 // CSRF token validation — skipped for ALL three gateway return modes
 // because the cross-site POST from iyzipay/paypal can\'t echo our
-// session-bound CSRF token. The cookie re-stamp above already ensures
-// the session itself is intact for those returns.
+// session-bound CSRF token. The cookie re-stamp below ensures the session
+// itself is intact for those returns; it comes after the token check, so a
+// request that fails the check never loosens the visitor's cookie.
 if (!$is_gateway_return) {
     validate_token_field();
+    pg_session_cookie_allow_cross_site();
 }
 
 require_cookies();
@@ -993,7 +991,7 @@ if ($order_submitted == false) {
                     user_id = '$user_id',
                     contact_id = '$contact_id',
                     billing_complete = '1'
-                 WHERE id = " . ($_SESSION['ecommerce']['order_id'] ?? '');
+                 WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // If the user is logged in and not ghosting and the user selected that he/she

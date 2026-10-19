@@ -19,4 +19,10 @@ description: CSRF/escape helpers (get_token_field, validate_token_field, h) and 
 - The settings screen does NOT render the value back; an empty box means "keep the saved value".
 - `api_settings.php` does not encrypt: it hashes with `hash_hmac`. That pattern cannot be used for a credential that must be read back.
 
+## What does the session cookie carry, and what changes at sign-in?
+- `init.php` sets `session.cookie_samesite = Lax` (PHP 7.3+) and `session.use_strict_mode = 1`: an id the browser was not given by this server starts a new session instead of being adopted. The checkout screens (`express_order.php`, `order_preview.php`) re-issue the cookie as `SameSite=None` for a payment gateway's return POST, after `validate_token_field()`, never before.
+- `pg_session_sign_in()` renews the form token (`initialize_token()`) with the identity; cart, order keys and a pending redirect carry over.
+- Links in e-mails are built from `HOSTNAME_SETTING`, never `HOSTNAME`/`HTTP_HOST` (`reset_password.php`, `import_users.php`, `affiliate_sign_up_form.php`, `add_comment.php`); `pg_signin_redirect_uri()` keeps `HOSTNAME` on purpose (the callback must land on the host the sign-in started on).
+- A column named from a device type goes through `sql_device_type()`; the install screen's unlock counts in `pg_login_throttle_guard()` / `pg_login_record_failure()` like the sign-in screen.
+
 Related: docs/memory/core/file-integrity-check.md

@@ -100,7 +100,7 @@ function get_preview_style($properties)
     // a preview style instead of the activated style.
     if ((isset($_SESSION['software']['preview_theme_id']) == true) && (((isset($_GET['edit_theme']) ? $_GET['edit_theme'] : '') != 'true') || ((isset($_GET['theme_id']) ? $_GET['theme_id'] : '') == $_SESSION['software']['preview_theme_id']))) {
         // If the selected theme is the activated theme, then get style in a certain way.
-        if (($_SESSION['software']['preview_theme_id']) && ($_SESSION['software']['preview_theme_id'] == db_value("SELECT id FROM files WHERE activated_" . $device_type . "_theme = '1'"))) {
+        if (($_SESSION['software']['preview_theme_id']) && ($_SESSION['software']['preview_theme_id'] == db_value("SELECT id FROM files WHERE activated_" . sql_device_type($device_type) . "_theme = '1'"))) {
             // If a style has been selected, then use that style.
             if (isset($_SESSION['software']['preview_style']['theme_' . $_SESSION['software']['preview_theme_id'] . '_page_' . $page_id . '_' . $device_type]) == true) {
                 // If the selected style is blank, then that means,
