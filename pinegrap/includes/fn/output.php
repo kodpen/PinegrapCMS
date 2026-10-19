@@ -1817,39 +1817,13 @@ function output_header($properties = false)
 
 
 
-    $output_start_page_link = '';
-    // if the user has a start page, then prepare to output start page link
-    if ($user['home'] != 0) {
-        // get start page name
-        $start_page_name = get_page_name($user['home']);
-        // if a start page name was found, then the page still exists, so prepare to output start page link
-        if ($start_page_name != '') {
-            $output_start_page_link = '<li><a class="my_start_page_link_url dropdown-item" href="' . OUTPUT_PATH . h($start_page_name) . '"' . $output_parent_target . '><i class="bi bi-bookmark-star"></i><span>' . lang('My Start Page') . '</span></a></li>';
-        }
-    }
-
-    // Connected applications (connected_apps.php), offered while the site has
-    // an OAuth application switched on: that is when a person can have one.
-    // Read without the db() helpers, which treat a failed query as fatal, so
-    // that a screen drawn before the upgrade has added the column still opens.
-    $output_connected_apps_link = '';
-    $oauth_on = @mysqli_query(db::$con, "SELECT 1 FROM api_apps WHERE kind = 'oauth' AND status = 'active' LIMIT 1");
-    if ($oauth_on && (mysqli_num_rows($oauth_on) > 0)) {
-        $output_connected_apps_link = '<li><a class="connected_apps_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connected_apps.php"' . $output_parent_target . '><i class="bi bi-plug"></i><span>' . lang('Connected applications') . '</span></a></li>';
-    }
-
-    // Calendar subscription (workspace_calendar_feed.php), offered to the
-    // members of the team while the workspace is on: a person's own address
-    // for the calendar on their phone or computer. The module is loaded the
-    // way the main menu loads it, and only then.
-    $output_calendar_feed_link = '';
+    // The workspace rights of the person signed in, for the quick note beside
+    // the bell and the calendar subscription in the account menu. The module
+    // is loaded the way the main menu loads it, and only then.
     $output_workspace_rights = null;
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && (($user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
         $output_workspace_rights = ws_ready() ? ws_rights($user) : null;
-        if ($output_workspace_rights && $output_workspace_rights['member']) {
-            $output_calendar_feed_link = '<li><a class="calendar_feed_link_url dropdown-item" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar_feed.php"' . $output_parent_target . '><i class="bi bi-calendar-plus"></i><span>' . lang('Calendar subscription') . '</span></a></li>';
-        }
     }
 
     // The quick note beside the bell (ws_notes_quick_markup()), for the same
@@ -1885,37 +1859,9 @@ function output_header($properties = false)
     }
 
     $output_software_metanames = '';
-    $output_private_label_list = '';
     $output_logo = '';
-    $output_feedback_link = '';
-    $output_software_distributor_link = '';
-    $output_help_link = '';
-
-    // Plays the tour of the frame again.  It belongs beside Help rather than
-    // on any one screen, because what it explains is the furniture every
-    // screen sits in.  A screen with a tour of its own offers that one from
-    // its own menu, which keeps the two apart: this entry always means the
-    // software, never whatever happens to be open.
-    $output_tour_link = '
-            <li id="tour_link">
-                <a class="dropdown-item" href="#" title="' . lang('Interface tour') . '">
-                    <i class="bi bi-compass"></i><span>' . lang('Interface tour') . '</span>
-                </a>
-            </li>';
-
-
-    //output feedback form url for different languages (English form for any other language)
-    $output_feedback_url = 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUMDE3UktZR01OQkg4V0JBNTc4U1RXWFExOC4u';
-    if (lang(array('info' => '')) === 'en') {
-        $output_feedback_url = 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUMDE3UktZR01OQkg4V0JBNTc4U1RXWFExOC4u';
-    } else if (lang(array('info' => '')) === 'tr') {
-        $output_feedback_url = 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUN05TSEo4UENETFJFMzhXQTVHTlhFVDVIOS4u';
-    }
-
 
     if (!defined('PRIVATE_LABEL') or PRIVATE_LABEL == false) {
-        $output_feedback_link = '<li><a id="feedback_link" class="dropdown-item " tabindex="-1" aria-disabled="false"  href="' . $output_feedback_url . '"  onclick="window.open(this.href, \'PinegrapFeedback\', \'resizable=yes,status=yes,location=no,toolbar=no,menubar=no,fullscreen=no,scrollbars=yes,dependent=no\'); return false;"><i class="bi bi-exclamation-triangle"></i><span>' . lang('Feedback') . '</span></a></li>';
-        $output_software_distributor_link = '<li><a class="software_distributor_url dropdown-item no-popover" title="https://www.kodpen.com/iletisim" href="https://kodpen.com/iletisim" target="_blank"><i class="bi bi-headset"></i><span>' . lang('Developer Customer Support') . '</span></a></li>';
         $output_software_metanames = '<link rel="manifest" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/manifest.php">';
         // Brand lockup: inline SVG (icon + wordmark) plus the version pill.
         // Inline rather than an <img>, so the gradient can read the theme's
@@ -1927,115 +1873,8 @@ function output_header($properties = false)
             . '</span>'
             . '<span class="pinegrap-version ms-1 border rounded-pill px-1 d-none d-md-inline-block">' . get_short_version() . '</span>'
             . '</span>';
-        // A plain link to the documentation of this screen, so a middle
-        // click, a copied address and a new tab all work like any other link.
-        if ($help_url !== '') {
-            $output_help_link = '
-            <li id="help_link">
-                <a class="dropdown-item no-popover" href="' . h($help_url) . '" target="_blank" rel="noopener" title="' . h(lang('Help for this screen')) . '">
-                    <i class="bi bi-question-circle"></i><span>' . lang('Help') . '</span>
-                </a>
-            </li>';
-        }
     } else {
         $output_logo = '<li class="nav-item"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' type="button" class="nav-link p-0 me-1 position-relative overflow-hidden" style="width:39.97px;;height:39.99px;border-radius:2px;"><img src="' . LOGO_URL . '" style="object-fit: scale-down;height: inherit;width: inherit;transform: rotate3d(0, 1, 0, 180deg);" border="0" alt="logo" title="" /></a></li>';
-        $output_private_label_link_1 = '';
-        // if the private label link 1 label is set, then prepare to output it
-        if ((defined('FOOTER_LINK_1_LABEL') == true) && (FOOTER_LINK_1_LABEL != '')) {
-            $output_link_start = '';
-            $output_link_end = '';
-            // if there is a private label link 1 url, then prepare to output it
-            if ((defined('FOOTER_LINK_1_URL') == true) && (FOOTER_LINK_1_URL != '')) {
-                $output_link_start = '<li><a class="dropdown-item" href="' . h(FOOTER_LINK_1_URL) . '" target="_blank"><i class="bi bi-link-45deg me-2"></i>';
-                $output_link_end = '</a></li>';
-            }
-            $output_private_label_link_1 = $output_link_start . h(FOOTER_LINK_1_LABEL) . $output_link_end;
-        }
-        $output_private_label_link_2 = '';
-        // if the private label link 2 label is set, then prepare to output it
-        if ((defined('FOOTER_LINK_2_LABEL') == true) && (FOOTER_LINK_2_LABEL != '')) {
-            $output_link_start = '';
-            $output_link_end = '';
-            // if there is a private label link 2 url, then prepare to output it
-            if ((defined('FOOTER_LINK_2_URL') == true) && (FOOTER_LINK_2_URL != '')) {
-                $output_link_start = '<li><a class="dropdown-item" href="' . h(FOOTER_LINK_2_URL) . '" target="_blank"><i class="bi bi-link-45deg me-2"></i>';
-                $output_link_end = '</a></li>';
-            }
-            $output_private_label_link_2 = $output_link_start . h(FOOTER_LINK_2_LABEL) . $output_link_end;
-        }
-        $output_private_label_link_3 = '';
-        // if the private label link 3 label is set, then prepare to output it
-        if ((defined('FOOTER_LINK_3_LABEL') == true) && (FOOTER_LINK_3_LABEL != '')) {
-            $output_link_start = '';
-            $output_link_end = '';
-            // if there is a private label link 3 url, then prepare to output it
-            if ((defined('FOOTER_LINK_3_URL') == true) && (FOOTER_LINK_3_URL != '')) {
-                $output_link_start = '<li><a class="dropdown-item" href="' . h(FOOTER_LINK_3_URL) . '" target="_blank"><i class="bi bi-link-45deg me-2"></i>';
-                $output_link_end = '</a></li>';
-            }
-            $output_private_label_link_3 = $output_link_start . h(FOOTER_LINK_3_LABEL) . $output_link_end;
-        }
-        $output_private_label_link_4 = '';
-        // if the private label link 4 label is set, then prepare to output it
-        if ((defined('FOOTER_LINK_4_LABEL') == true) && (FOOTER_LINK_4_LABEL != '')) {
-            $output_link_start = '';
-            $output_link_end = '';
-            // if there is a private label link 4 url, then prepare to output it
-            if ((defined('FOOTER_LINK_4_URL') == true) && (FOOTER_LINK_4_URL != '')) {
-                $output_link_start = '<li><a class="dropdown-item" href="' . h(FOOTER_LINK_4_URL) . '" target="_blank"><i class="bi bi-link-45deg me-2"></i>';
-                $output_link_end = '</a></li>';
-            }
-            $output_private_label_link_4 = $output_link_start . h(FOOTER_LINK_4_LABEL) . $output_link_end;
-        }
-        $output_private_label_link_5 = '';
-        // if the private label link 5 label is set, then prepare to output it
-        if ((defined('FOOTER_LINK_5_LABEL') == true) && (FOOTER_LINK_5_LABEL != '')) {
-            $output_link_start = '';
-            $output_link_end = '';
-            // if there is a private label link 5 url, then prepare to output it
-            if ((defined('FOOTER_LINK_5_URL') == true) && (FOOTER_LINK_5_URL != '')) {
-                $output_link_start = '<li><a class="dropdown-item" href="' . h(FOOTER_LINK_5_URL) . '" target="_blank"><i class="bi bi-link-45deg me-2"></i>';
-                $output_link_end = '</a></li>';
-            }
-            $output_private_label_link_5 = $output_link_start . h(FOOTER_LINK_5_LABEL) . $output_link_end;
-        }
-        $output_private_label_list = '<li class="border-top"></li>' .
-            $output_private_label_link_1 .
-            $output_private_label_link_2 .
-            $output_private_label_link_3 .
-            $output_private_label_link_4 .
-            $output_private_label_link_5;
-
-
-    }
-
-    $output_environment_information = '';
-
-    if (($user['role'] < 3)) {
-        //if this is development environment than show it in help menu.
-        if (defined('ENVIRONMENT') and ENVIRONMENT == 'development') {
-            $output_environment_information = '<span class="pg-um-metaitem design-color" title="' . lang('Environment') . '">' . lang('Development') . '</span>';
-        }
-    }
-    // Only an administrator may open a user record, so only they get a link.
-    $output_user_profile_url = '';
-    if ($user['role'] < 1) {
-        $output_user_profile_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_user.php?id=' . $user['id'];
-    }
-    $output_user_role_label = '';
-    switch ((string) $user['role']) {
-        case '0':
-            $output_user_role_label = lang('administrator');
-            break;
-        case '1':
-            $output_user_role_label = lang('designer');
-            break;
-        case '2':
-            $output_user_role_label = lang('manager');
-            break;
-        case '3':
-            $output_user_role_label = lang('user');
-            break;
     }
 
     // Carries its own list wrapper so the whole group disappears when there is
@@ -2087,202 +1926,6 @@ function output_header($properties = false)
         $menu_expanded_class = ' expanded';
         $menu_active_class = ' active';
     }
-
-    $output_user_image_url = 'assets/images/person1.png';
-    // Single JOIN to fetch contact file_id, contact image, and the file name in one round-trip.
-    // Previously this section issued 2-3 separate db() queries per page render.
-    $user_image_row = db_item(
-        "SELECT contacts.file_id AS contact_file_id,
-                contacts.image    AS contact_image,
-                contacts.first_name AS contact_first_name,
-                contacts.last_name  AS contact_last_name,
-                files.name        AS file_name
-            FROM user
-            LEFT JOIN contacts ON contacts.id = user.user_contact
-            LEFT JOIN files    ON files.id    = contacts.file_id
-            WHERE user.user_id = '" . e(USER_ID) . "'"
-    );
-    if (!empty($user_image_row['contact_file_id']) && !empty($user_image_row['file_name'])) {
-        $output_user_image_url = PATH . $user_image_row['file_name'];
-    } elseif (!empty($user_image_row['contact_image'])) {
-        $output_user_image_url = h($user_image_row['contact_image']);
-    }
-
-    // No picture: the letters of the name, or of the username in a grey
-    // square while there is no name in the address book
-    // (includes/fn/contacts.php). What is missing of the two - the name, the
-    // picture - is asked for at the top of the account menu.
-    $output_user_named = is_array($user_image_row)
-        && ((trim((string) ($user_image_row['contact_first_name'] ?? '')) !== '') || (trim((string) ($user_image_row['contact_last_name'] ?? '')) !== ''));
-    $output_user_has_photo = ($output_user_image_url !== 'assets/images/person1.png');
-
-    if (!$output_user_has_photo && function_exists('pg_initials_avatar_url')) {
-        $output_user_image_url = h(pg_initials_avatar_url(
-            pg_initials($user_image_row['contact_first_name'] ?? '', $user_image_row['contact_last_name'] ?? '', (string) ($_SESSION['sessionusername'] ?? '')),
-            $output_user_named ? 'contact' : 'user',
-            (string) USER_ID
-        ));
-    }
-
-    $output_contact_quick = '';
-
-    // The form is the first one on every screen while it shows. Ctrl+S
-    // (backend.js) submits the form around the focus, or the first form when
-    // the focus is in none, and hints the shortcut on that form's button: so
-    // it is kept out (disable_shortcut), or the shortcut would save the
-    // account menu instead of the screen.
-    if ((!$output_user_named || !$output_user_has_photo) && function_exists('pg_contact_quick_save') && (USER_ID > 0)) {
-        $output_quick_photo_only = $output_user_named;
-
-        $output_contact_quick = '
-                            <li class="px-3 py-2 border-bottom" id="pg_contact_quick"' . ($output_quick_photo_only ? ' data-photo-only' : '') . '>
-                                <form data-pg-contact-quick class="disable_shortcut" novalidate>
-                                    <div class="fw-semibold small mb-1"><i class="bi ' . ($output_quick_photo_only ? 'bi-person-bounding-box' : 'bi-person-exclamation') . ' me-1" aria-hidden="true"></i>' . ($output_quick_photo_only ? lang('Add a profile picture') : lang('Complete your address book details')) . '</div>
-                                    <div class="small text-body-secondary mb-2">' . ($output_quick_photo_only ? lang('Your colleagues then see your face next to your name instead of its initials.') : lang('Your colleagues then see you by your name and its initials instead of your username.')) . '</div>'
-                                    . ($output_quick_photo_only ? '' : '
-                                    <div class="d-flex gap-2 mb-2">
-                                        <input type="text" class="form-control form-control-sm" name="first_name" maxlength="50" autocomplete="given-name" placeholder="' . h(lang('First name')) . '" aria-label="' . h(lang('First name')) . '">
-                                        <input type="text" class="form-control form-control-sm" name="last_name" maxlength="50" autocomplete="family-name" placeholder="' . h(lang('Last name')) . '" aria-label="' . h(lang('Last name')) . '">
-                                    </div>
-                                    <input type="tel" class="form-control form-control-sm mb-2" name="mobile_phone" maxlength="50" autocomplete="tel" placeholder="' . h(lang('Mobile phone (optional)')) . '" aria-label="' . h(lang('Mobile phone (optional)')) . '">') . '
-                                    <div class="d-flex align-items-center gap-2 mb-2">
-                                        <img src="' . $output_user_image_url . '" alt="" width="40" height="40" class="rounded-circle object-fit-cover flex-shrink-0" data-pg-contact-preview style="width:40px;height:40px">
-                                        <label class="btn btn-sm btn-outline-secondary rounded-pill mb-0 text-nowrap">
-                                            <i class="bi bi-image me-1" aria-hidden="true"></i>' . ($output_user_has_photo ? lang('Change the picture') : lang('Choose a picture')) . '
-                                            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="visually-hidden">
-                                        </label>'
-                                        . ($output_quick_photo_only ? '' : '<span class="small text-body-secondary text-nowrap">' . lang('Optional') . '</span>') . '
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">' . lang('Save') . '</button>'
-                                        . ($output_quick_photo_only ? '<button type="button" class="btn btn-sm btn-link text-body-secondary px-1" data-pg-contact-later>' . lang('Not now') . '</button>' : '') . '
-                                        <span class="small text-danger" data-pg-contact-error role="alert"></span>
-                                    </div>
-                                </form>
-                                <script>
-                                (function () {
-                                    var item = document.getElementById("pg_contact_quick");
-                                    var form = item ? item.querySelector("[data-pg-contact-quick]") : null;
-                                    var LATER = "pg_contact_photo_later";
-
-                                    if (!form) { return; }
-
-                                    // "Not now" on the picture keeps it out of the menu for a month.
-                                    if (item.hasAttribute("data-photo-only")) {
-                                        try {
-                                            if ((parseInt(window.localStorage.getItem(LATER), 10) || 0) > Date.now()) {
-                                                item.hidden = true;
-                                                return;
-                                            }
-                                        } catch (error) {}
-                                    }
-
-                                    var later = form.querySelector("[data-pg-contact-later]");
-
-                                    if (later) {
-                                        later.addEventListener("click", function () {
-                                            try { window.localStorage.setItem(LATER, String(Date.now() + 30 * 86400000)); } catch (error) {}
-                                            item.hidden = true;
-                                        });
-                                    }
-
-                                    var photo = "";
-                                    var file = form.elements.photo;
-                                    var preview = form.querySelector("[data-pg-contact-preview]");
-                                    var error = form.querySelector("[data-pg-contact-error]");
-
-                                    // Cut square and made small in the browser: the upload stays
-                                    // light and carries nothing but the picture.
-                                    file.addEventListener("change", function () {
-                                        var chosen = file.files && file.files[0];
-
-                                        photo = "";
-                                        error.textContent = "";
-
-                                        if (!chosen) { return; }
-
-                                        var reader = new FileReader();
-
-                                        reader.onload = function () {
-                                            var image = new Image();
-
-                                            image.onload = function () {
-                                                var side = Math.min(image.naturalWidth, image.naturalHeight);
-                                                var size = Math.min(256, side);
-                                                var canvas = document.createElement("canvas");
-
-                                                canvas.width = size;
-                                                canvas.height = size;
-
-                                                var context = canvas.getContext("2d");
-                                                context.fillStyle = "#fff";
-                                                context.fillRect(0, 0, size, size);
-                                                context.drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side, 0, 0, size, size);
-
-                                                try {
-                                                    photo = canvas.toDataURL("image/jpeg", 0.88);
-                                                } catch (drawError) {
-                                                    photo = String(reader.result || "");
-                                                }
-
-                                                preview.src = photo;
-                                            };
-
-                                            image.onerror = function () {
-                                                error.textContent = ' . json_encode(lang('The picture has to be a JPEG, PNG or WebP image.')) . ';
-                                            };
-
-                                            image.src = String(reader.result || "");
-                                        };
-
-                                        reader.readAsDataURL(chosen);
-                                    });
-
-                                    form.addEventListener("submit", function (event) {
-                                        event.preventDefault();
-
-                                        var button = form.querySelector("button[type=submit]");
-                                        var body = {
-                                            action: "contact_quick_save",
-                                            token: ' . json_encode(isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '') . ',
-                                            photo: photo
-                                        };
-
-                                        ["first_name", "last_name", "mobile_phone"].forEach(function (name) {
-                                            if (form.elements[name]) { body[name] = form.elements[name].value; }
-                                        });
-
-                                        button.disabled = true;
-                                        error.textContent = "";
-
-                                        fetch(' . json_encode(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php') . ', {
-                                            method: "POST",
-                                            credentials: "same-origin",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify(body)
-                                        }).then(function (response) {
-                                            return response.json();
-                                        }).then(function (json) {
-                                            if (json && json.status === "success") {
-                                                window.location.reload();
-                                                return;
-                                            }
-
-                                            error.textContent = (json && json.message) ? json.message : ' . json_encode(lang('Your details could not be saved.')) . ';
-                                            button.disabled = false;
-                                        }).catch(function () {
-                                            error.textContent = ' . json_encode(lang('Your details could not be saved.')) . ';
-                                            button.disabled = false;
-                                        });
-                                    });
-                                })();
-                                </script>
-                            </li>';
-    }
-
-
-
-
 
     // Below the lg breakpoint the sidebar is an off-canvas drawer, so its own collapse
     // control slides off screen with it. This navbar button is the only way back in.
@@ -2336,40 +1979,6 @@ function output_header($properties = false)
                 </button>
             </li>
         </ul>';
-    }
-
-    // Identity header for the account menu. Same destination and same
-    // permission rule as the username row it replaces; it just carries the
-    // face and the role so the menu opens with an answer to "who am I signed
-    // in as" instead of a list item.
-    $output_user_identity_inner = '
-        <span class="pg-um-avatar"><img class="w-100 h-100 object-fit-cover" src="' . $output_user_image_url . '" alt="" /></span>
-        <span class="pg-um-idtext">
-            <span class="pg-um-name">' . htmlspecialchars($_SESSION['sessionusername'], ENT_QUOTES, 'UTF-8') . '</span>
-            <span class="pg-um-role">' . h($output_user_role_label) . '</span>
-        </span>';
-    if ($output_user_profile_url !== '') {
-        $output_user_identity = '<a class="pg-um-identity" href="' . h($output_user_profile_url) . '"' . $output_parent_target . '>'
-            . $output_user_identity_inner
-            . '<i class="bi bi-chevron-right pg-um-idgo"></i></a>';
-    } else {
-        $output_user_identity = '<span class="pg-um-identity pg-um-identity-static">' . $output_user_identity_inner . '</span>';
-    }
-
-    // State colour for the licence badge on the account avatar, or '' when no
-    // subscription key is configured. The full status lives at the top of the
-    // account menu.
-    //
-    // A gem in the upper corner rather than a plain dot in the lower one. The
-    // dot was the shape, the size and the position every other product uses for
-    // presence, so that is what it was read as -- and a licence that looks like
-    // an online light is worse than no badge at all. text-bg-* pairs the ink
-    // with the fill, which matters because warning is the one state a white
-    // glyph cannot sit on.
-    $output_license_badge = '';
-    $license_badge_color = license_check(array('output' => 'badge'));
-    if ($license_badge_color !== '') {
-        $output_license_badge = '<span class="pg-lic-badge no-popover text-bg-' . h($license_badge_color) . '" title="' . lang('Premium features access status') . '"><i class="bi bi-gem" aria-hidden="true"></i></span>';
     }
 
     // Section rail, for the long add/edit screens that ask for one.
@@ -2471,9 +2080,16 @@ function output_header($properties = false)
 
     // No tour of the frame here means no entry to play it with either: a menu
     // item that answers nothing is worse than one that is not there.
-    if ($output_tour_of_frame === '') {
-        $output_tour_link = '';
-    }
+    $output_account_menu = pg_account_menu($user, array(
+        'parent_target' => $output_parent_target,
+        'help_url' => $help_url,
+        'tour' => ($output_tour_of_frame !== ''),
+        'workspace' => $output_workspace_rights,
+    ));
+
+    // The sheet of keyboard shortcuts, opened with the ? key and from the
+    // search box rather than from a row of any menu.
+    $output_shortcuts_dialog = pg_shortcuts_dialog();
 
     $output = '<!DOCTYPE html>
     <html lang="' . lang(array('info' => '')) . '">
@@ -2563,146 +2179,7 @@ function output_header($properties = false)
                             )
                         ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . '</script>
                     </li>
-                    <li class="nav-item dropdown no-arrow no-popover" title="' . lang('My Menu') . '">
-                         <button type="button" class="btn btn-secondary pg-acctbtn dropdown-toggle" data-bs-auto-close="outside" data-bs-toggle="dropdown">
-                             <span class="pg-avwrap">
-                                 <span class="pg-avatar"><img class="w-100 h-100 object-fit-cover" src="' . $output_user_image_url . '" alt="' . htmlspecialchars($_SESSION['sessionusername'], ENT_QUOTES, 'UTF-8') . '" /></span>
-                                 ' . $output_license_badge . '
-                             </span>
-                             <span class="pg-acctname d-none d-lg-inline">' . htmlspecialchars($_SESSION['sessionusername'], ENT_QUOTES, 'UTF-8') . '</span>
-                             <span class="bi bi-chevron-down pg-chev"></span>
-                         </button>
-                         <ul id="user_menu" class="dropdown-menu shadow pt-0 dropdown-menu-end pb-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu pg-usermenu" aria-labelledby="user_menu-toggle"> 
-                            <li>' . $output_user_identity . '</li>
-                            ' . $output_contact_quick . '
-                            ' . license_check(array('output' => 'bar')) . '
-                            <li class="pg-um-theme">
-                                <span class="pg-um-section">' . lang('Appearance') . '</span>
-                                <div class="pg-um-themeswitch" role="group" aria-label="' . lang('Appearance') . '">
-                                    <button type="button" id="theme-light" class="pg-um-themebtn no-popover" data-bs-theme-value="light" title="' . lang('Light') . '" aria-label="' . lang('Light') . '"><i class="bi bi-sun-fill" aria-hidden="true"></i></button>
-                                    <button type="button" id="theme-dark"  class="pg-um-themebtn no-popover" data-bs-theme-value="dark"  title="' . lang('Dark') . '" aria-label="' . lang('Dark') . '"><i class="bi bi-moon-stars-fill" aria-hidden="true"></i></button>
-                                    <button type="button" id="theme-auto"  class="pg-um-themebtn no-popover" data-bs-theme-value="auto"  title="' . lang('Auto') . '" aria-label="' . lang('Auto') . '"><i class="bi bi-circle-half" aria-hidden="true"></i></button>
-                                </div>
-                            </li>
-                            <li class="pg-um-group">
-                                <a class="my_account_link_url dropdown-item" href="' . h(get_page_type_url('my account')) . '"' . $output_parent_target . '>
-                                    <i class="bi bi-person"></i><span>' . lang('My Account') . '</span>
-                                </a>
-                            </li>
-                            ' . $output_connected_apps_link . '
-                            ' . $output_calendar_feed_link . '
-                            ' . $output_start_page_link . '
-                            <li class="pg-um-section-row"><span class="pg-um-section">' . lang('Help & Support') . '</span></li>
-                            ' . $output_tour_link . '
-                            ' . $output_help_link . '
-                            ' . $output_software_distributor_link . '
-                            ' . $output_feedback_link . '
-                            <li class="accordion accordion-flush border-top" id="menu_accordion">
-                                <div class="accordion-item bg-transparent">
-                                    <div class="accordion-header" id="keyboard_shortcuts_accordion">
-                                        <button class="accordion-button collapsed py-2 bg-transparent" type="button" data-bs-toggle="collapse" data-bs-target="#keyboard_shortcuts" aria-expanded="false" aria-controls="keyboard_shortcuts">
-                                            <i class="bi bi-keyboard" aria-hidden="true"></i><span>' . lang('Keyboard Shortcuts') . '</span>
-                                        </button>
-                                    </div>
-                                    <div id="keyboard_shortcuts" class="accordion-collapse collapse" aria-labelledby="keyboard_shortcuts_accordion" data-bs-parent="#menu_accordion">
-                                        <div class="accordion-body">
-                                            <div class="row">
-                                                <div class="col-auto">
-                                                    <div class="row">
-                                                        <span class="col form-text ">' . lang('While on the Panel') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">ctrl</span>
-                                                            <span>+</span>
-                                                            <span class="badge bg-body-secondary text-body">D</span>
-                                                        </span>
-                                                        <span class="col form-text">' . lang('Toggle Menu') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">ctrl</span>
-                                                            <span>+</span>
-                                                            <span class="badge bg-body-secondary text-body">Q</span>
-                                                        </span>
-                                                        <span class="col form-text">' . lang('Toggle Notifications') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">ctrl</span>
-                                                            <span>+</span>
-                                                            <span class="badge bg-body-secondary text-body">S</span>
-                                                        </span>
-                                                        <span class="col form-text">' . lang('Submit Form/Save') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">ctrl</span>
-                                                            <span>+</span>
-                                                            <span class="badge bg-body-secondary text-body">K</span>
-                                                        </span>
-                                                        <span class="col form-text">' . lang('Show/Hide Search Box') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">F1</span>
-                                                        </span>
-                                                        <span class="col form-text">' . lang('Help for this screen') . '</span>
-                                                    </div>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <div class="row">
-                                                        <span class="col form-text">' . lang('While on the Pages') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">ctrl</span>
-                                                            <span>+</span>
-                                                            <span class="badge bg-body-secondary text-body">D</span>
-                                                            </span>
-                                                        <span class="col form-text">' . lang('Toggle Fullscreen Mode') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">ctrl</span>
-                                                            <span>+</span>
-                                                            <span class="badge bg-body-secondary text-body">E</span>
-                                                            </span>
-                                                        <span class="col form-text">' . lang('Toggle Edit Mode') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">ctrl</span>
-                                                            <span>+</span>
-                                                            <span class="badge bg-body-secondary text-body">G</span>
-                                                            </span>
-                                                        <span class="col form-text">' . lang('Toggle Page or Style Designer') . '</span>
-                                                    </div>
-                                                    <div class="row">
-                                                        <span class="col-auto form-text">
-                                                            <span class="badge bg-body-secondary text-body">ctrl</span>
-                                                            <span>+</span>
-                                                            <span class="badge bg-body-secondary text-body">I</span>
-                                                            </span>
-                                                        <span class="col form-text">' . lang('Toggle Page Panel') . '</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </li>
-                            ' . $output_private_label_list . '
-                            <li class="pg-um-logout">
-                                <a class="logout_link_url dropdown-item text-danger" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/logout.php?token=' . urlencode($_SESSION['software']['token'] ?? '') . '"' . $output_parent_target . '><i class="bi bi-box-arrow-right"></i><span>' . lang('Logout') . '</span></a>
-                            </li>
-                            <li class="pg-um-meta">
-                                <span class="pg-um-metaitem" title="' . lang('Version') . '">' . VERSION . '</span>
-                                <span class="pg-um-metaitem" title="' . lang('Edition') . '">' . EDITION . '</span>
-                                ' . $output_environment_information . '
-                            </li>
-                        </ul>
-                    </li>
+                    ' . $output_account_menu . '
                 </ul>
                 ' . $output_home_button . '
                 ' . $output_toolbar_toggle_button . '
@@ -2735,12 +2212,363 @@ function output_header($properties = false)
         </div>
 
 
+        ' . $output_shortcuts_dialog . '
+
         <div class="software-content' . ($output_section_nav_slot !== '' ? ' pg-awaiting-rail' : '') . '">
         ' . $output_section_nav_slot . '
         ' . $output_breadcrumb . '
         ';
 
     return $output;
+}
+
+/**
+ * The account menu at the right end of the header: the button (picture,
+ * name, licence gem) and the menu it opens, as one item of the header's
+ * navbar list.
+ *
+ * Where the menu opens is the stylesheet's business (backend.src.css,
+ * "Account menu"): a card under the right edge of the header, or on a phone
+ * a sheet over everything below the header. Both are fixed to the viewport
+ * rather than hung from the button, because Bootstrap leaves Popper out of
+ * dropdowns inside a .navbar and nothing else would keep the menu on the
+ * screen.
+ *
+ * $options:
+ *   parent_target  ' target="_parent"' when the header is drawn inside the
+ *                  toolbar frame, '' otherwise
+ *   help_url       the documentation of the screen on view, or ''
+ *   tour           true when the tour of the frame can be played here
+ *   workspace      ws_rights() of the signed-in user, or null
+ *
+ * @param array $user    the signed-in user (validate_user())
+ * @param array $options
+ * @return string
+ */
+function pg_account_menu($user, $options = array())
+{
+    $parent_target = isset($options['parent_target']) ? (string) $options['parent_target'] : '';
+    $help_url = isset($options['help_url']) ? (string) $options['help_url'] : '';
+    $workspace = isset($options['workspace']) ? $options['workspace'] : null;
+    $private_label = (defined('PRIVATE_LABEL') && PRIVATE_LABEL);
+    $software_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
+    $username = (string) ($_SESSION['sessionusername'] ?? '');
+
+    // The person behind the login, in one round trip: the name and the
+    // picture of the address book entry the user is linked to.
+    $person = db_item(
+        "SELECT contacts.file_id AS contact_file_id,
+                contacts.image AS contact_image,
+                contacts.first_name AS contact_first_name,
+                contacts.last_name AS contact_last_name,
+                files.name AS file_name
+            FROM user
+            LEFT JOIN contacts ON contacts.id = user.user_contact
+            LEFT JOIN files ON files.id = contacts.file_id
+            WHERE user.user_id = '" . e(USER_ID) . "'"
+    );
+
+    $first_name = trim((string) ($person['contact_first_name'] ?? ''));
+    $last_name = trim((string) ($person['contact_last_name'] ?? ''));
+    $named = (($first_name !== '') || ($last_name !== ''));
+    $display_name = $named ? trim($first_name . ' ' . $last_name) : $username;
+
+    $picture = '';
+
+    if (!empty($person['contact_file_id']) && !empty($person['file_name'])) {
+        $picture = PATH . $person['file_name'];
+    } elseif (!empty($person['contact_image'])) {
+        $picture = (string) $person['contact_image'];
+    }
+
+    $has_photo = ($picture !== '');
+
+    // No picture: the letters of the name, or of the username in a grey
+    // square while there is no name in the address book
+    // (includes/fn/contacts.php).
+    if (!$has_photo) {
+        $picture = function_exists('pg_initials_avatar_url')
+            ? pg_initials_avatar_url(pg_initials($first_name, $last_name, $username), $named ? 'contact' : 'user', (string) USER_ID)
+            : $software_url . '/assets/images/person1.png';
+    }
+
+    $roles = array(
+        '0' => lang('administrator'),
+        '1' => lang('designer'),
+        '2' => lang('manager'),
+        '3' => lang('user'));
+
+    $role = isset($roles[(string) $user['role']]) ? $roles[(string) $user['role']] : '';
+
+    // A row of the menu. $extra carries the attributes a row needs beyond the
+    // address (the parent target, a new tab); a row that leaves for another
+    // tab says so after its label.
+    $row = function ($href, $icon, $label, $extra = '', $external = false) {
+        return '
+                            <li><a class="dropdown-item" href="' . h($href) . '"' . $extra . '><i class="bi ' . $icon . '" aria-hidden="true"></i><span class="pg-um-text">' . $label . '</span>'
+            . ($external ? '<i class="bi bi-box-arrow-up-right pg-um-ext" aria-hidden="true"></i><span class="visually-hidden">' . lang('(opens in a new tab)') . '</span>' : '')
+            . '</a></li>';
+    };
+
+    $new_tab = ' target="_blank" rel="noopener"';
+
+    // ── Who is signed in ────────────────────────────────────────────────
+    // Only an administrator may open a user record, so only they get a link.
+    // The close button is for the phone sheet, which covers the screen.
+    $identity = '
+                                <span class="pg-um-avatar"><img src="' . h($picture) . '" alt="" width="44" height="44"></span>
+                                <span class="pg-um-idtext">
+                                    <span class="pg-um-name">' . h($display_name) . '</span>
+                                    <span class="pg-um-sub">' . ($named ? '<span class="pg-um-login">' . h($username) . '</span>' : '') . '<span class="pg-um-role">' . h($role) . '</span></span>
+                                </span>';
+
+    if ($user['role'] < 1) {
+        $identity = '<a class="pg-um-identity" href="' . h($software_url . '/edit_user.php?id=' . (int) $user['id']) . '"' . $parent_target . '>' . $identity . '<i class="bi bi-chevron-right pg-um-idgo" aria-hidden="true"></i></a>';
+    } else {
+        $identity = '<span class="pg-um-identity">' . $identity . '</span>';
+    }
+
+    $output = '
+                            <li class="pg-um-head">
+                                ' . $identity . '
+                                <button type="button" class="pg-um-close no-popover" data-pg-account-close aria-label="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                            </li>';
+
+    // ── What is missing of the name and the picture ─────────────────────
+    // The form is the first one on every screen while it shows. Ctrl+S
+    // (backend.src.js) submits the form around the focus, or the first form
+    // when the focus is in none, and hints the shortcut on that form's
+    // button: so it is kept out (disable_shortcut), or the shortcut would save
+    // the account menu instead of the screen. The script that sends it is
+    // pg_contact_quick_init() in backend.src.js.
+    if ((!$named || !$has_photo) && function_exists('pg_contact_quick_save') && (USER_ID > 0)) {
+        $photo_only = $named;
+
+        $output .= '
+                            <li class="pg-um-card" id="pg_contact_quick"' . ($photo_only ? ' data-photo-only' : '') . '>
+                                <form data-pg-contact-quick class="disable_shortcut" novalidate
+                                    data-api="' . h($software_url . '/api.php') . '"
+                                    data-error-type="' . h(lang('The picture has to be a JPEG, PNG or WebP image.')) . '"
+                                    data-error-save="' . h(lang('Your details could not be saved.')) . '">
+                                    <div class="pg-um-cardtitle"><i class="bi ' . ($photo_only ? 'bi-person-bounding-box' : 'bi-person-exclamation') . '" aria-hidden="true"></i>' . ($photo_only ? lang('Add a profile picture') : lang('Complete your address book details')) . '</div>
+                                    <div class="pg-um-cardtext">' . ($photo_only ? lang('Your colleagues then see your face next to your name instead of its initials.') : lang('Your colleagues then see you by your name and its initials instead of your username.')) . '</div>'
+            . ($photo_only ? '' : '
+                                    <div class="d-flex gap-2 mb-2">
+                                        <input type="text" class="form-control form-control-sm" name="first_name" maxlength="50" autocomplete="given-name" placeholder="' . h(lang('First name')) . '" aria-label="' . h(lang('First name')) . '">
+                                        <input type="text" class="form-control form-control-sm" name="last_name" maxlength="50" autocomplete="family-name" placeholder="' . h(lang('Last name')) . '" aria-label="' . h(lang('Last name')) . '">
+                                    </div>
+                                    <input type="tel" class="form-control form-control-sm mb-2" name="mobile_phone" maxlength="50" autocomplete="tel" placeholder="' . h(lang('Mobile phone (optional)')) . '" aria-label="' . h(lang('Mobile phone (optional)')) . '">') . '
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <img src="' . h($picture) . '" alt="" width="36" height="36" class="pg-um-cardpic" data-pg-contact-preview>
+                                        <label class="btn btn-sm btn-outline-secondary rounded-pill mb-0 text-nowrap">
+                                            <i class="bi bi-image me-1" aria-hidden="true"></i>' . ($has_photo ? lang('Change the picture') : lang('Choose a picture')) . '
+                                            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="visually-hidden">
+                                        </label>'
+            . ($photo_only ? '' : '<span class="small text-body-secondary text-nowrap">' . lang('Optional') . '</span>') . '
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">' . lang('Save') . '</button>'
+            . ($photo_only ? '<button type="button" class="btn btn-sm btn-link text-body-secondary px-1" data-pg-contact-later>' . lang('Not now') . '</button>' : '') . '
+                                        <span class="small text-danger" data-pg-contact-error role="alert"></span>
+                                    </div>
+                                </form>
+                            </li>';
+    }
+
+    // ── Licence and appearance ──────────────────────────────────────────
+    $output .= license_check(array('output' => 'bar')) . '
+                            <li class="pg-um-theme">
+                                <span class="pg-um-label" id="pg_um_theme_label">' . lang('Appearance') . '</span>
+                                <span class="pg-um-themeswitch" role="group" aria-labelledby="pg_um_theme_label">
+                                    <button type="button" id="theme-light" class="pg-um-themebtn no-popover" data-bs-theme-value="light" title="' . h(lang('Light')) . '" aria-label="' . h(lang('Light')) . '"><i class="bi bi-sun" aria-hidden="true"></i></button>
+                                    <button type="button" id="theme-dark" class="pg-um-themebtn no-popover" data-bs-theme-value="dark" title="' . h(lang('Dark')) . '" aria-label="' . h(lang('Dark')) . '"><i class="bi bi-moon-stars" aria-hidden="true"></i></button>
+                                    <button type="button" id="theme-auto" class="pg-um-themebtn no-popover" data-bs-theme-value="auto" title="' . h(lang('Auto')) . '" aria-label="' . h(lang('Auto')) . '"><i class="bi bi-circle-half" aria-hidden="true"></i></button>
+                                </span>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>';
+
+    // ── The account's own places ────────────────────────────────────────
+    $output .= $row(get_page_type_url('my account'), 'bi-person', lang('My Account'), $parent_target);
+
+    // Connected applications (connected_apps.php), offered while the site has
+    // an OAuth application switched on: that is when a person can have one.
+    // Read without the db() helpers, which treat a failed query as fatal, so
+    // that a screen drawn before the upgrade has added the column still opens.
+    $oauth_on = @mysqli_query(db::$con, "SELECT 1 FROM api_apps WHERE kind = 'oauth' AND status = 'active' LIMIT 1");
+
+    if ($oauth_on && (mysqli_num_rows($oauth_on) > 0)) {
+        $output .= $row($software_url . '/connected_apps.php', 'bi-plug', lang('Connected applications'), $parent_target);
+    }
+
+    // Calendar subscription (workspace_calendar_feed.php), offered to the
+    // members of the team while the workspace is on: a person's own address
+    // for the calendar on their phone or computer.
+    if ($workspace && !empty($workspace['member'])) {
+        $output .= $row($software_url . '/workspace_calendar_feed.php', 'bi-calendar-plus', lang('Calendar subscription'), $parent_target);
+    }
+
+    // The start page, while the page it names still exists.
+    if (!empty($user['home'])) {
+        $start_page_name = get_page_name($user['home']);
+
+        if ($start_page_name != '') {
+            $output .= $row(OUTPUT_PATH . $start_page_name, 'bi-bookmark-star', lang('My Start Page'), $parent_target);
+        }
+    }
+
+    // ── Help and support ────────────────────────────────────────────────
+    $help = '';
+
+    // Plays the tour of the frame again. It belongs beside Help rather than
+    // on any one screen, because what it explains is the furniture every
+    // screen sits in; includes/fn/tour.php answers the click on #tour_link.
+    if (!empty($options['tour'])) {
+        $help .= '
+                            <li id="tour_link"><a class="dropdown-item" href="#" role="button"><i class="bi bi-compass" aria-hidden="true"></i><span class="pg-um-text">' . lang('Interface tour') . '</span></a></li>';
+    }
+
+    if (!$private_label) {
+        // A plain link to the documentation of this screen, so a middle
+        // click, a copied address and a new tab all work like any other link.
+        // F1 follows it too (backend.src.js), which is why it keeps its id.
+        if ($help_url !== '') {
+            $help .= str_replace('<li>', '<li id="help_link">', $row($help_url, 'bi-question-circle', lang('Help'), $new_tab, true));
+        }
+
+        $help .= $row('https://kodpen.com/iletisim', 'bi-headset', lang('Developer Customer Support'), $new_tab, true);
+
+        // The feedback form, English for any language without one of its own.
+        $feedback_url = (lang(array('info' => '')) === 'tr')
+            ? 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUN05TSEo4UENETFJFMzhXQTVHTlhFVDVIOS4u'
+            : 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUMDE3UktZR01OQkg4V0JBNTc4U1RXWFExOC4u';
+
+        $help .= str_replace('<a ', '<a id="feedback_link" onclick="window.open(this.href, \'PinegrapFeedback\', \'resizable=yes,status=yes,location=no,toolbar=no,menubar=no,fullscreen=no,scrollbars=yes,dependent=no\'); return false;" ', $row($feedback_url, 'bi-chat-square-heart', lang('Feedback'), '', true));
+    } else {
+        // A private label brings its own links in place of the software's.
+        for ($i = 1; $i <= 5; $i++) {
+            $label = defined('FOOTER_LINK_' . $i . '_LABEL') ? (string) constant('FOOTER_LINK_' . $i . '_LABEL') : '';
+            $url = defined('FOOTER_LINK_' . $i . '_URL') ? (string) constant('FOOTER_LINK_' . $i . '_URL') : '';
+
+            if ($label === '') {
+                continue;
+            }
+
+            $help .= ($url !== '')
+                ? $row($url, 'bi-link-45deg', h($label), $new_tab, true)
+                : '
+                            <li><span class="dropdown-item-text pg-um-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span class="pg-um-text">' . h($label) . '</span></span></li>';
+        }
+    }
+
+    if ($help !== '') {
+        $output .= '
+                            <li><hr class="dropdown-divider"></li>
+                            <li class="pg-um-section">' . lang('Help & Support') . '</li>' . $help;
+    }
+
+    // ── The way out, and what is running ────────────────────────────────
+    // No colour on the row: menus carry none, the icon says what it does.
+    $environment = '';
+
+    if (($user['role'] < 3) && defined('ENVIRONMENT') && (ENVIRONMENT == 'development')) {
+        $environment = '<span class="pg-um-metaitem pg-um-env" title="' . h(lang('Environment')) . '">' . lang('Development') . '</span>';
+    }
+
+    $output .= '
+                            <li><hr class="dropdown-divider"></li>'
+        . $row($software_url . '/logout.php?token=' . urlencode($_SESSION['software']['token'] ?? ''), 'bi-box-arrow-right', lang('Logout'), $parent_target) . '
+                            <li class="pg-um-meta">
+                                <span class="pg-um-metaitem" title="' . h(lang('Version')) . '">' . h(VERSION) . '</span>
+                                <span class="pg-um-metaitem" title="' . h(lang('Edition')) . '">' . h(EDITION) . '</span>' . $environment . '
+                            </li>';
+
+    // ── The button ──────────────────────────────────────────────────────
+    // The licence state rides on the picture as a gem in the upper corner,
+    // where a presence dot never sits. text-bg-* pairs the ink with the fill,
+    // which matters because warning is the one state a white glyph cannot
+    // sit on. '' when no subscription key is configured.
+    $badge = '';
+    $badge_color = license_check(array('output' => 'badge'));
+
+    if ($badge_color !== '') {
+        $badge = '<span class="pg-lic-badge no-popover text-bg-' . h($badge_color) . '" title="' . h(lang('Premium features access status')) . '"><i class="bi bi-gem" aria-hidden="true"></i></span>';
+    }
+
+    return '
+                    <li class="nav-item dropdown no-arrow pg-account">
+                        <button type="button" id="user_menu_toggle" class="btn btn-secondary pg-acctbtn dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="user_menu" title="' . h(lang('My Menu')) . '">
+                            <span class="pg-avwrap">
+                                <span class="pg-avatar"><img src="' . h($picture) . '" alt="" width="28" height="28"></span>' . $badge . '
+                            </span>
+                            <span class="pg-acctname d-none d-lg-inline">' . h($display_name) . '</span>
+                            <i class="bi bi-chevron-down pg-chev" aria-hidden="true"></i>
+                        </button>
+                        <ul id="user_menu" class="dropdown-menu dropdown-menu-end pg-usermenu backdrop" aria-labelledby="user_menu_toggle">' . $output . '
+                        </ul>
+                    </li>';
+}
+
+/**
+ * The keyboard shortcuts, as a dialog of the header.
+ *
+ * Not a row of the account menu any more: nobody found them there. The ?
+ * key opens the dialog from anywhere outside a text field, and so does the
+ * chip the search box offers for "shortcut" (backend.src.js). A <kbd> marked
+ * data-pg-mod reads Ctrl and turns into the command key on an Apple device.
+ *
+ * @return string
+ */
+function pg_shortcuts_dialog()
+{
+    $groups = array(
+        lang('While on the Panel') => array(
+            array(array('Ctrl', 'K'), lang('Show/Hide Search Box')),
+            array(array('Ctrl', 'S'), lang('Submit Form/Save')),
+            array(array('Ctrl', 'Q'), lang('Toggle Notifications')),
+            array(array('Ctrl', 'D'), lang('Toggle Menu')),
+            array(array('F1'), lang('Help for this screen')),
+            array(array('?'), lang('Keyboard Shortcuts'))),
+        lang('While on the Pages') => array(
+            array(array('Ctrl', 'D'), lang('Toggle Fullscreen Mode')),
+            array(array('Ctrl', 'E'), lang('Toggle Edit Mode')),
+            array(array('Ctrl', 'G'), lang('Toggle Page or Style Designer')),
+            array(array('Ctrl', 'I'), lang('Toggle Page Panel'))));
+
+    $body = '';
+
+    foreach ($groups as $title => $shortcuts) {
+        $body .= '
+                    <h3 class="pg-keys-title">' . h($title) . '</h3>
+                    <dl class="pg-keys">';
+
+        foreach ($shortcuts as $shortcut) {
+            $keys = '';
+
+            foreach ($shortcut[0] as $key) {
+                $keys .= '<kbd' . (($key === 'Ctrl') ? ' data-pg-mod' : '') . '>' . h($key) . '</kbd>';
+            }
+
+            $body .= '
+                        <div class="pg-keys-row"><dt>' . $keys . '</dt><dd>' . h($shortcut[1]) . '</dd></div>';
+        }
+
+        $body .= '
+                    </dl>';
+    }
+
+    return '
+        <div class="modal fade pg-keys-modal" id="pg_shortcuts" tabindex="-1" aria-labelledby="pg_shortcuts_title" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="pg_shortcuts_title"><i class="bi bi-keyboard" aria-hidden="true"></i>' . h(lang('Keyboard Shortcuts')) . '</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="modal-body">' . $body . '
+                    </div>
+                </div>
+            </div>
+        </div>';
 }
 
 function output_footer($properties = false)
