@@ -1,6 +1,6 @@
 ---
 name: workspace-record-changes
-description: How site records are written from the Workspace: the changes.php pipeline and its callers, the Recycle Bin guard, the stock flag, money ceilings, and whose name the writers' sentences carry
+description: How the Workspace writes site records: changes.php pipeline and callers, Recycle Bin guard, stock flag, money ceilings, whose name the sentences carry, writes that die half way
 ---
 
 ## Where are records written from the Workspace?
@@ -21,5 +21,5 @@ description: How site records are written from the Workspace: the changes.php pi
 - Log lines go through `ws_change_log()`: silent under `$GLOBALS['ws_change_log_quiet']` (a scheduled action logs its own line), otherwise worded "on Claude's proposal" and switched to Pinegrap AI by `ws_ai_voice()`.
 - Two sentences stay on the record itself: an order's default cancellation reason (kept on the order, sent with the refund, read by the customer in the cancellation e-mail) and the note on a deleted offer. `ws_change_sentence($by_assistant, $by_scheduled, $var, $by_person)` names the scheduled action or the person when `ws_change_source()` says one is writing (set and cleared around the writer call in `ws_scheduled_change()` and `ws_quick_edit_save()`), the assistant otherwise. Before #516 a scheduled cancellation told the customer "on Claude's proposal".
 
-## What is still open?
-- A write that dies after the row is set to `applying` leaves it there (Apply and Dismiss need `pending`; only bulk rows are resumed): issue #512.
+## What happens to a write that dies after Apply took the row?
+- The lock stamps `decided_by`/`decided_at` (an MCP hand-back to `pending` clears them). `ws_change_sweep_stuck()`, run beside `ws_bulk_continue()`, fails a non-bulk row still `applying` 900 s later (`WS_CHANGE_APPLYING_TIMEOUT`; unstamped rows by `created_at`) and says part may be written: failed, not pending, so a half write is not repeated (owner's choice, issue #512). Test: `tests/workspace_change_stuck_test.php`.

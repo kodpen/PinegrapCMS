@@ -23638,5 +23638,6 @@
     "Write the new price after the product, like 149,90.": "Yeni fiyatı ürünün ardından yazın: 149,90 gibi.",
     "{var:1}: the value is out of range.": "{var:1}: değer izin verilen aralığın dışında.",
     "The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.": "Kayıt bu arada değişti, hiçbir şey yazılmadı. Şimdiki değerini görmek için komutu yeniden gönderin.",
-    "The change that will be written": "Yazılacak değişiklik"
+    "The change that will be written": "Yazılacak değişiklik",
+    "The change stopped before it was finished, so part of it may have been written. Check the record before asking again.": "Değişiklik bitmeden durdu; bir kısmı yazılmış olabilir. Yeniden sormadan önce kaydı kontrol edin."
 }
