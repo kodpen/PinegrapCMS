@@ -944,37 +944,36 @@ function pg_explorer_viewable_formats()
     return array_merge(pg_explorer_editable_formats(), array('key', 'pub'));
 }
 
-// The editor mode CodeMirror is told about, by extension.
-function pg_explorer_editor_mode($extension)
+// The language the file window's code editor (PgCodeEditor) opens a file
+// in, by extension: one of the four grammars the facade carries, or 'text'
+// for Markdown, YAML and the rest, which are shown with the HTML colours
+// and no lint rather than named after a grammar that is not there.
+function pg_explorer_editor_language($extension)
 {
     switch ($extension) {
         case 'css':
         case 'scss':
         case 'less':
-            return 'text/css';
+            return 'css';
         case 'js':
             return 'javascript';
         case 'json':
         case 'webmanifest':
-            return 'application/json';
+            return 'json';
         case 'svg':
         case 'xml':
-            return 'application/xml';
         case 'html':
         case 'htm':
-            return 'htmlmixed';
+            return 'html';
     }
 
-    // Markdown, YAML and the rest: the bundle carries no mode for them, so
-    // they are edited as plain text rather than named after a mode that
-    // would quietly fall back to it anyway.
-    return 'text/plain';
+    return 'text';
 }
 
 // The largest file the text editor is handed. Beyond it the window shows the
 // file's details and says why the text is not there: a log or a data dump the
 // size of a video is not something to edit in a browser text box, and loading
-// one into CodeMirror freezes the tab.
+// one into the code editor freezes the tab.
 function pg_explorer_editor_max_bytes()
 {
     return 2 * 1024 * 1024;
@@ -1041,12 +1040,26 @@ function pg_explorer_file_scope_label($scope)
     return lang('Files');
 }
 
+// The kind of a file as the screen works with it: its extension, lower-cased.
+//
+// files.type is four characters wide, so a longer extension is stored cut:
+// a .webmanifest as "webm" (which the file window then plays as a video) and
+// a .markdown as "mark" (which loses its icon and its editor). The name is
+// stored whole and the rename action writes both, so the extension of the
+// name is the one to go by; the column is only read for a name without one.
+function pg_explorer_file_type($file)
+{
+    $extension = mb_strtolower((string) pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+
+    return ($extension !== '') ? $extension : mb_strtolower((string) ($file['type'] ?? ''));
+}
+
 function pg_explorer_file_payload($file, $user)
 {
     $access_control_type = get_access_control_type($file['folder']);
     $map = pg_explorer_folder_map();
     $folder_id = (int) $file['folder'];
-    $type = mb_strtolower($file['type']);
+    $type = pg_explorer_file_type($file);
     $image_types = pg_explorer_image_types();
 
     // Design files stay visible but locked for anyone below designer, the
@@ -7903,7 +7916,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $payload['editable'] = in_array($extension, pg_explorer_editable_formats(), true);
             $payload['viewable'] = in_array($extension, pg_explorer_viewable_formats(), true);
-            $payload['editor_mode'] = pg_explorer_editor_mode($extension);
+            $payload['editor_language'] = pg_explorer_editor_language($extension);
             $payload['content'] = null;
             $payload['content_too_large'] = false;
             $payload['on_disk'] = is_file($path);

@@ -143,6 +143,8 @@
             if (!json || json.status !== 'success') {
                 var error = new Error((json && json.message) ? json.message : t('error_generic'));
                 error.field = json ? json.field : '';
+                error.code = (json && json.code) ? json.code : '';
+                error.stale = !!(json && json.stale);
                 throw error;
             }
 
@@ -1609,6 +1611,11 @@
                     items.push({ icon: 'bi-check2-square', label: t('open_task'), action: function () { taskDrawer.open(id, null, null); } });
                 } else if ((BOOT.ref_types[type] || {}).record) {
                     items.push({ icon: 'bi-clipboard2-check', label: t('record_workspace'), action: function () { openRecord(type, id, label); } });
+
+                    if ((BOOT.quick_edit || []).indexOf(type) !== -1) {
+                        items.push({ icon: 'bi-pencil-square', label: t('qe_edit'), action: function () { openRecord(type, id, label, { edit: true }); } });
+                    }
+
                     items.push({ icon: 'bi-check2-square', label: t('new_task_about'), action: function () {
                         taskDrawer.open(0, { refs: [{ type: type, id: id, label: label, icon: (BOOT.ref_types[type] || {}).icon, token: '<#' + type + ':' + id + '>' }], title: label }, null);
                     } });
@@ -13160,6 +13167,7 @@
     // A value of a field, by the kind of value the field holds.
     function saValueInput(meta, value) {
         var input;
+        var limit = meta && meta.limit ? meta.limit : null;
 
         meta = meta || { kind: 'text', values: [] };
 
@@ -13170,20 +13178,56 @@
             input = select(labels, value || (meta.values || [''])[0]);
         } else if (meta.kind === 'bool') {
             input = select([['1', t('sa_yes')], ['0', t('sa_no')]], (value === true || value === 1 || value === '1') ? '1' : '0');
-        } else if (meta.kind === 'long') {
+        } else if (meta.kind === 'lines') {
+            // One line each; the server also takes them separated by commas.
+            input = el('textarea', 'form-control form-control-sm');
+            input.rows = 3;
+            input.placeholder = t('qe_lines_help');
+            input.value = Array.isArray(value) ? value.join('\n') : (value || '');
+        } else if (meta.kind === 'long' && !(limit && limit.max_length && limit.max_length <= 255)) {
             input = el('textarea', 'form-control form-control-sm');
             input.rows = 3;
             input.value = value || '';
         } else {
             input = el('input', 'form-control form-control-sm');
-            input.type = (meta.kind === 'date') ? 'date' : ((meta.kind === 'int' || meta.kind === 'money') ? 'number' : 'text');
+            input.type = (meta.kind === 'date') ? 'date'
+                : ((meta.kind === 'datetime') ? 'datetime-local'
+                : ((meta.kind === 'int' || meta.kind === 'money' || meta.kind === 'decimal') ? 'number'
+                : ((meta.kind === 'email') ? 'email' : 'text')));
 
             if (meta.kind === 'money') {
                 input.step = '0.01';
                 input.placeholder = t('sa_money_help');
                 input.value = (value !== undefined && value !== null && value !== '') ? (parseInt(value, 10) / 100).toFixed(2) : '';
+            } else if (meta.kind === 'decimal') {
+                input.step = (limit && limit.decimals) ? String(Math.pow(10, -limit.decimals)) : 'any';
+                input.placeholder = t('qe_decimal_help');
+                input.value = (value === undefined || value === null) ? '' : String(value);
+            } else if (meta.kind === 'datetime') {
+                // "YYYY-MM-DD HH:MM:SS" as the record keeps it, "YYYY-MM-DDTHH:MM" as the field takes it.
+                input.value = value ? String(value).replace(' ', 'T').slice(0, 16) : '';
             } else {
                 input.value = (value === undefined || value === null) ? '' : String(value);
+            }
+
+            if (meta.kind === 'keywords') {
+                input.placeholder = t('qe_keywords_help');
+            }
+        }
+
+        // The limits the catalogue sets, so the browser says no before the server does.
+        if (limit) {
+            if (limit.max_length && input.tagName !== 'SELECT') {
+                input.maxLength = limit.max_length;
+            }
+
+            if (meta.kind === 'int' || meta.kind === 'decimal') {
+                if (limit.min !== undefined && limit.min !== null) { input.min = String(limit.min); }
+                if (limit.max !== undefined && limit.max !== null) { input.max = String(limit.max); }
+            }
+
+            if (meta.kind === 'money' && limit.max) {
+                input.max = (limit.max / 100).toFixed(2);
             }
         }
 
@@ -13199,6 +13243,10 @@
 
             if (meta.kind === 'int') {
                 return input.value === '' ? '' : parseInt(input.value, 10);
+            }
+
+            if (meta.kind === 'decimal') {
+                return String(input.value).replace(',', '.');
             }
 
             return input.value;
@@ -15654,7 +15702,7 @@
 
         [['ws-swatch-ok', t('legend_ok')], ['ws-swatch-full', t('legend_full')], ['ws-swatch-over', t('legend_over')], ['ws-swatch-away', t('legend_away')]].forEach(function (item) {
             var entry = el('span', 'd-inline-flex align-items-center gap-1');
-            entry.appendChild(el('span', 'ws-swatch ' + item[0]));
+            entry.appendChild(el('span', 'ws-legend-swatch ' + item[0]));
             entry.appendChild(document.createTextNode(item[1]));
             legend.appendChild(entry);
         });
@@ -16925,23 +16973,30 @@
     // The Workspace drawer on the order, contact and product screens
     // ═══════════════════════════════════════════════════════════════════
 
-    function openRecord(type, id, label) {
+    function openRecord(type, id, label, options) {
         var node = offcanvas('ws-record', t('workspace'));
         var body = clear(node.querySelector('.offcanvas-body'));
         var footer = clear(node.querySelector('.offcanvas-footer'));
         var token = '<#' + type + ':' + id + '>';
         var ref = { type: type, id: id, label: label || '', icon: (BOOT.ref_types[type] || {}).icon || 'bi-dot', token: token };
+        // The record's fields, edited right here (includes/workspace/quick_edit.php);
+        // drawn first, loaded beside the rest, opened out when asked to edit.
+        var fieldsBox = el('div');
+        var reopen = function () { openRecord(type, id, label, options); };
 
         node.classList.add('ws-record-drawer');
         node.querySelector('.offcanvas-title').textContent = t('workspace') + (label ? ' · ' + label : '');
         footer.classList.remove('d-none');
+        body.appendChild(fieldsBox);
         body.appendChild(el('div', 'small text-body-secondary', t('loading')));
         showOffcanvas(node);
+
+        quickEditLoad(fieldsBox, type, id, !!(options && options.edit), reopen);
 
         var newTask = button('btn btn-sm btn-primary rounded-pill px-3', t('new_task'), 'bi-check2-square');
         newTask.addEventListener('click', function () {
             hideOffcanvas(node);
-            taskDrawer.open(0, { refs: [ref], title: label || '' }, function () { openRecord(type, id, label); });
+            taskDrawer.open(0, { refs: [ref], title: label || '' }, reopen);
         });
         footer.appendChild(newTask);
 
@@ -16968,6 +17023,7 @@
 
         api('ws_record_refs', { type: type, id: id }).then(function (data) {
             clear(body);
+            body.appendChild(fieldsBox);
 
             if (data.channels && data.channels.length) {
                 var channels = el('div', 'ws-record-section');
@@ -16991,7 +17047,7 @@
             body.appendChild(tasks);
 
             if (data.tasks.length) {
-                taskRows(taskList, data.tasks, function () { openRecord(type, id, label); });
+                taskRows(taskList, data.tasks, reopen);
             } else {
                 taskList.appendChild(el('div', 'small text-body-secondary', t('no_tasks')));
             }
@@ -17035,13 +17091,256 @@
                 send.addEventListener('click', function () {
                     api('ws_send', { channel_id: parseInt(target.value, 10), body: (note.value.trim() ? note.value.trim() + ' ' : '') + token }).then(function () {
                         toast(t('shared'), 'success');
-                        openRecord(type, id, label);
+                        reopen();
                     }).catch(fail);
                 });
                 share.appendChild(send);
                 body.appendChild(share);
             }
         }).catch(fail);
+    }
+
+    // The fields of the record, edited in the drawer with no assistant in
+    // between. What the server lists is drawn as inputs; a save sends only
+    // what changed, with the values the drawer was given, so a record
+    // somebody else wrote meanwhile is not written over.
+    function quickEditLoad(box, type, id, open, reopen) {
+        api('ws_record_fields', { type: type, id: id }).then(function (data) {
+            clear(box);
+            box.appendChild(quickEditSection(type, id, data, open, reopen));
+        }).catch(function (error) {
+            clear(box);
+
+            // No right to the kind: nothing to show. A record that cannot
+            // be written (one in the Recycle Bin) says why.
+            if (error && error.code && error.code !== 'rights') {
+                var section = el('div', 'ws-record-section');
+                section.appendChild(el('div', 'ws-record-title', t('qe_title')));
+                section.appendChild(el('div', 'small text-body-secondary', error.message));
+                box.appendChild(section);
+            }
+        });
+    }
+
+    // Does what the input holds differ from what the record held?
+    function quickEditChanged(meta, original, value) {
+        var lines = function (text) {
+            return (Array.isArray(text) ? text : String(text === null || text === undefined ? '' : text).split(/[\r\n,]+/))
+                .map(function (line) { return line.trim(); }).filter(function (line) { return line !== ''; });
+        };
+
+        if (meta.kind === 'lines') {
+            return lines(original).join('\n') !== lines(value).join('\n');
+        }
+
+        if (meta.kind === 'keywords') {
+            return lines(original).map(function (word) { return word.toLocaleLowerCase(); }).join(',')
+                !== lines(value).map(function (word) { return word.toLocaleLowerCase(); }).join(',');
+        }
+
+        if (meta.kind === 'decimal') {
+            var a = String(original === null || original === undefined ? '' : original);
+            var b = String(value === null || value === undefined ? '' : value);
+            return (a === '' || b === '') ? (a !== b) : (parseFloat(a) !== parseFloat(b));
+        }
+
+        if (meta.kind === 'datetime') {
+            return String(original || '').replace(' ', 'T').slice(0, 16) !== String(value || '').replace(' ', 'T').slice(0, 16);
+        }
+
+        if (meta.kind === 'long' || meta.kind === 'text') {
+            return String(original === null || original === undefined ? '' : original).replace(/\r\n/g, '\n') !== String(value === null || value === undefined ? '' : value).replace(/\r\n/g, '\n');
+        }
+
+        return String(original === null || original === undefined ? '' : original) !== String(value === null || value === undefined ? '' : value);
+    }
+
+    function quickEditSection(type, id, data, open, reopen) {
+        var section = el('div', 'ws-record-section ws-qe');
+        var head = el('div', 'd-flex align-items-center justify-content-between');
+        var title = el('div', 'ws-record-title mb-0', t('qe_title'));
+        var toggle = button('btn btn-sm btn-ghost', open ? t('close') : t('qe_edit'), open ? 'bi-chevron-up' : 'bi-pencil-square');
+        var form = el('div', 'ws-qe-form mt-2' + (open ? '' : ' d-none'));
+        var fields = data.fields.slice();
+        var short = data.short || [];
+        var inputs = {};
+        var originals = {};
+        var metas = {};
+        var rows = {};
+
+        if (data.stock) {
+            fields.push(data.stock);
+        }
+
+        head.appendChild(title);
+        head.appendChild(toggle);
+        section.appendChild(head);
+
+        // A glance at the record while the form is closed: the first few
+        // values, as the card prints them.
+        var glance = el('div', 'ws-qe-glance small text-body-secondary' + (open ? ' d-none' : ''));
+        short.slice(0, 4).forEach(function (name) {
+            fields.forEach(function (meta) {
+                var empty = meta.value === '' || meta.value === null || meta.value === undefined || (Array.isArray(meta.value) && !meta.value.length);
+
+                if (meta.name === name && meta.column && !empty) {
+                    glance.appendChild(el('span', 'ws-qe-glance-item', meta.label + ': ' + meta.shown));
+                }
+            });
+        });
+        section.appendChild(glance);
+
+        toggle.addEventListener('click', function () {
+            var opening = form.classList.contains('d-none');
+            form.classList.toggle('d-none', !opening);
+            glance.classList.toggle('d-none', opening);
+            toggle.textContent = '';
+            toggle.appendChild(icon(opening ? 'bi-chevron-up' : 'bi-pencil-square', 'me-1'));
+            toggle.appendChild(document.createTextNode(opening ? t('close') : t('qe_edit')));
+        });
+
+        // The fields changed most often first, the rest behind a link.
+        var shortBox = el('div');
+        var moreBox = el('div', 'd-none');
+        var inShort = function (name) { return short.indexOf(name) !== -1; };
+        var ordered = fields.filter(function (meta) { return inShort(meta.name); }).sort(function (a, b) { return short.indexOf(a.name) - short.indexOf(b.name); })
+            .concat(fields.filter(function (meta) { return !inShort(meta.name); }));
+
+        ordered.forEach(function (meta) {
+            var input = saValueInput(meta, meta.value);
+            var help = '';
+
+            if (meta.name === 'quantity' && data.stock && !data.stock.tracked) {
+                help = t('qe_stock_off');
+            }
+
+            var row = saLabelled(meta.label, input, help);
+            row.classList.add('ws-qe-row');
+            inputs[meta.name] = input;
+            originals[meta.name] = meta.value;
+            metas[meta.name] = meta;
+            rows[meta.name] = row;
+            (inShort(meta.name) ? shortBox : moreBox).appendChild(row);
+        });
+
+        // A field that goes with another (the reason for cancelling an
+        // order) is shown only while the other asks for it.
+        var dependent = function () {
+            Object.keys(rows).forEach(function (name) {
+                if (!metas[name].column) {
+                    var status = inputs.status ? inputs.status.read() : '';
+                    rows[name].classList.toggle('d-none', status !== 'cancelled');
+                }
+            });
+        };
+
+        if (inputs.status) {
+            inputs.status.addEventListener('change', dependent);
+        }
+
+        dependent();
+        form.appendChild(shortBox);
+
+        if (moreBox.childNodes.length) {
+            var more = button('btn btn-sm btn-ghost mb-2', short.length ? t('qe_more') : t('qe_fewer'), 'bi-chevron-down');
+
+            if (!short.length) {
+                moreBox.classList.remove('d-none');
+            }
+
+            more.addEventListener('click', function () {
+                var showing = moreBox.classList.contains('d-none');
+                moreBox.classList.toggle('d-none', !showing);
+                more.textContent = '';
+                more.appendChild(icon(showing ? 'bi-chevron-up' : 'bi-chevron-down', 'me-1'));
+                more.appendChild(document.createTextNode(showing ? t('qe_fewer') : t('qe_more')));
+            });
+
+            form.appendChild(more);
+            form.appendChild(moreBox);
+        }
+
+        // Kept in the channel the drawer was opened from, as a decision.
+        var decision = null;
+        var channelId = (CFG.mode === 'channels' && app.channel && app.channel.id) ? app.channel.id : 0;
+
+        if (channelId) {
+            var tick = el('div', 'form-check form-check-sm mt-1 mb-2');
+            decision = el('input', 'form-check-input');
+            decision.type = 'checkbox';
+            decision.checked = true;
+            decision.id = nextId('ws-qe-decision-');
+            var tickLabel = el('label', 'form-check-label small', t('qe_decision'));
+            tickLabel.htmlFor = decision.id;
+            tick.appendChild(decision);
+            tick.appendChild(tickLabel);
+            form.appendChild(tick);
+        }
+
+        var bar = el('div', 'd-flex align-items-center gap-2 mt-1');
+        var save = button('btn btn-sm btn-primary rounded-pill px-3', t('qe_save'), 'bi-check2');
+        var status = el('span', 'small text-body-secondary');
+        bar.appendChild(save);
+        bar.appendChild(status);
+        form.appendChild(bar);
+
+        save.addEventListener('click', function () {
+            var changed = {};
+            var from = {};
+            var any = false;
+
+            Object.keys(inputs).forEach(function (name) {
+                if (rows[name].classList.contains('d-none')) {
+                    return;
+                }
+
+                var value = inputs[name].read();
+
+                // A field with no column is sent whenever it is shown.
+                if (!metas[name].column ? (String(value) !== '') : quickEditChanged(metas[name], originals[name], value)) {
+                    changed[name] = value;
+                    any = true;
+
+                    if (metas[name].column) {
+                        from[name] = originals[name];
+                    }
+                }
+            });
+
+            if (!any) {
+                status.textContent = t('qe_nothing');
+                return;
+            }
+
+            save.disabled = true;
+            status.textContent = '';
+
+            api('ws_record_fields_save', {
+                type: type, id: id, fields: changed, from: from,
+                channel_id: channelId, decision: !!(decision && decision.checked)
+            }).then(function () {
+                toast(t('qe_saved'), 'success');
+                reopen();
+            }).catch(function (error) {
+                save.disabled = false;
+
+                if (error && error.stale) {
+                    clear(status);
+                    status.appendChild(document.createTextNode(t('qe_stale') + ' '));
+                    var again = el('a', 'fw-semibold', t('qe_reload'));
+                    again.href = '#';
+                    again.addEventListener('click', function (event) { event.preventDefault(); reopen(); });
+                    status.appendChild(again);
+                    return;
+                }
+
+                status.textContent = (error && error.message) ? error.message : t('error_generic');
+            });
+        });
+
+        section.appendChild(form);
+
+        return section;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -17780,6 +18079,14 @@
         });
 
         bar.appendChild(menuPin);
+
+        // Every note as a zip that opens as a vault in Obsidian and the like.
+        if (CFG.urls.notes_export) {
+            var exportAll = button('btn btn-sm btn-ghost', t('notes_export_all'), 'bi-file-earmark-zip');
+            exportAll.addEventListener('click', function () { window.location.href = CFG.urls.notes_export + '?all=1'; });
+            bar.appendChild(exportAll);
+        }
+
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
         var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
@@ -17811,6 +18118,14 @@
             }
 
             items.push({ icon: 'bi-link-45deg', label: t('notes_copy_link'), action: function () { copyText(absoluteUrl(CFG.urls.notes + '?note=' + note.id)); } });
+
+            // The note as a file for another app, or as a page to print
+            // (workspace_notes_export.php).
+            if (CFG.urls.notes_export) {
+                items.push('-');
+                items.push({ icon: 'bi-filetype-md', label: t('notes_export_md'), action: function () { window.location.href = CFG.urls.notes_export + '?note=' + note.id; } });
+                items.push({ icon: 'bi-printer', label: t('notes_print'), action: function () { window.open(CFG.urls.notes_export + '?note=' + note.id + '&print=1', '_blank', 'noopener'); } });
+            }
 
             // A meeting note's decisions and action items (meetings.php).
             if (CFG.meetings && (mine || note.access === 'edit')) {

@@ -65,6 +65,9 @@ if (!$_POST) {
     
     print 
     pg_page_shell([
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Login Region'))),
         'extra classes'=>'page',
         'icon'=>'page',
@@ -86,7 +89,6 @@ if (!$_POST) {
                     </div>
                 </div>
                 <form name="form" action="edit_login_region.php" method="post">
-                    ' . get_codemirror_includes() . '
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <div class="row">
@@ -109,7 +111,7 @@ if (!$_POST) {
                                         <div class="col-12 my-2">
                                             <label for="name" class="form-label">' . lang('Header') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_header', 'id'=>'not_logged_in_header', 'style'=>'width: 600px; height: 200px')) . '
-                                            ' . get_codemirror_javascript(array('id' => 'not_logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'not_logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
                                         <div class="col-12 my-2">
                                             <div class="form-check form-switch">
@@ -120,18 +122,18 @@ if (!$_POST) {
                                         <div class="col-12 my-2">
                                             <label for="name" class="form-label">' . lang('Footer') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_footer', 'id'=>'not_logged_in_footer', 'style'=>'width: 600px; height: 200px')) . '
-                                            ' . get_codemirror_javascript(array('id' => 'not_logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'not_logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
                                         <h5 class="mt-5">' . lang('Logged In') . '</h5>
                                         <div class="col-12 my-2">
                                             <label for="name" class="form-label">' . lang('Header') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_header', 'id'=>'logged_in_header', 'style'=>'width: 600px; height: 200px')) . '
-                                            ' . get_codemirror_javascript(array('id' => 'logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
                                         <div class="col-12 my-2">
                                             <label for="name" class="form-label">' . lang('Footer') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_footer', 'id'=>'logged_in_footer', 'style'=>'width: 600px; height: 200px')) . '
-                                            ' . get_codemirror_javascript(array('id' => 'logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
                                     </div>
                                 </div>
