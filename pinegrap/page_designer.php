@@ -45,6 +45,9 @@ if (($user['role'] < 1) && ((defined('DYNAMIC_REGIONS') == true) && (DYNAMIC_REG
 echo pg_page_shell(
     array(
         'title'=> lang('Page Designer'),
+        // The code panel is the facade's editor; CodeMirror 5 waits in its
+        // template.
+        'code_editor' => false,
         'extra classes'=>'page_designer',
         'icon'=>'design',
         'replace_home_with'=>'close',
@@ -116,7 +119,12 @@ echo pg_page_shell(
     })();
     </script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/page_designer.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/page_designer.js') . '"></script>
-    ' . get_codemirror_includes() . '
+    ' . pg_code_editor_includes() . '
+    <!-- The code editor facade: init_page_designer() builds its dialogs\'
+         code boxes at once, so the facade is on the page; its engine comes
+         with the first editor. -->
+    <script src="' . h(pg_code_editor_urls()['facade']) . '"></script>
+    <script>PgCodeEditor.configure(window.pgCodeEditorConfig);</script>
     <script>
         init_page_designer({
             url: "' . escape_javascript(is_string($_GET['url'] ?? null) ? $_GET['url'] : '') . '",
@@ -170,6 +178,7 @@ echo pg_page_shell(
                 "Please choose a region type to create":"' . lang('Please choose a region type to create') . '",
                 "Help about the system tags":"' . lang('Help about the system tags') . '",
                 "Toggle Fullscreen":"' . lang('Toggle Fullscreen') . '",
+                "Syntax error":"' . escape_javascript(lang('Syntax error')) . '",
                 "Console":"' . lang('Console') . '",
                 "The System Tags":"' . lang('The System Tags') . '",
 
