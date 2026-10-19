@@ -1,6 +1,6 @@
 ---
 name: product-price-history-offers
-description: Offer rows of product_price_history (2026.11.0): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
+description: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
 ---
 
 ## What is an offer row?

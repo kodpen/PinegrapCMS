@@ -10,7 +10,7 @@ description: Plan (approved 2026-10-19, in progress: history, writers, API read,
 - History (2026.11.0, 11.0.2): `product_price_history`, `products.compare_at_price`, `initial` rows on upgrade, `pg_price_history_record()` in every `products.price` writer. docs/memory/commerce/product-price-history.md.
 - API read: `GET /products/{id}/price-history` (`since`, `channel`, cursor paging) on `pg_price_history_list_sql()`, with its MCP tool. docs/memory/commerce/product-price-history-api.md.
 - Step 3 (PR #658): `compare_at_price` on the product screen, the product list, import/export, the API and the copy paths; the storefront does not read it yet (step 2). docs/memory/commerce/product-compare-at-price.md.
-- Step 1: offer rows, the price the open offers give a visitor with no code or account, recorded hourly by the general job (source `offer`). docs/memory/commerce/product-price-history-offers.md.
+- Step 1 (PR #681): offer rows, the price the open offers give a visitor with no code or account, recorded hourly by the general job (source `offer`). docs/memory/commerce/product-price-history-offers.md.
 
 ## What is decided?
 - Reference price rule is a setting: `lowest_30d` (default for TR and EU), `lowest_10d`, or `manual`. The catalog widgets print `__reference_price` and `__reference_label` ("lowest price in the last 30 days" style text through `lang()`); the legacy catalog pages get the same value through `get_catalog.php` helpers without layout changes.
@@ -22,7 +22,7 @@ description: Plan (approved 2026-10-19, in progress: history, writers, API read,
 - Retention: 13 months, trimmed by the general job, always keeping the newest row of each product and channel (the window start needs it). Add a `changed_at` index in the same step if the trim needs it.
 
 ## What remains?
-1. Done: offer prices into the history (see above).
+1. Done (PR #681): offer prices into the history (see above).
 2. Pure function for the reference price of a window (+ tests), setting card in Settings › Ecommerce, widget tokens (`tools/check_bindings.php`), legacy catalog print (S).
 3. Done (PR #658): compare_at_price in the panel, files, API and copies (see above).
 4. Retention trim in the general job (S).
