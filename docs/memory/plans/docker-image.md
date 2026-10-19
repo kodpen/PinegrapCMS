@@ -1,6 +1,6 @@
 ---
 name: docker-image
-description: Plan (approved 2026-10-19, not started): docker/ folder in the release tree with a PHP-FPM + nginx + MariaDB compose stack, cron container, demo seed; README one-command trial
+description: Plan (approved 2026-10-19, step 1 in progress): docker/ folder in the release tree with a PHP-FPM + nginx + MariaDB compose stack, cron container, demo seed; README one-command trial
 ---
 
 ## What did the owner decide?
@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19, not started): docker/ folder in the rele
 - CI: a workflow job builds the image and runs the installer in CLI mode against the MariaDB service on the `development` branch; the image is published to GHCR on a release tag by the owner's release step (documented in `release-status.md`).
 
 ## What remains?
-1. Dockerfile + compose + nginx config + cron container (S).
+1. Dockerfile + compose + nginx config + cron container (S); in progress on `feature/docker-image-1` together with the CI build job of step 3.
 2. Unattended install helper reading env vars (S).
 3. CI build-and-install job (S).
 4. README section (EN/TR) "Try it with Docker" (S).
