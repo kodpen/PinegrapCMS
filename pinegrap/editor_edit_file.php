@@ -30,7 +30,7 @@ if (!$_POST) {
     // Detect file extension
     $extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
 
-    // Map extension to CodeMirror mode
+    // Map extension to the editor's language (pg_code_editor_language())
     switch ($extension) {
         case 'js':
             $code_type = 'javascript';
@@ -63,6 +63,9 @@ if (!$_POST) {
     print
     pg_page_shell(
         array(
+            // The code field is the facade's editor (pg_code_editor_attach());
+            // CodeMirror 5 waits in the template for a settings pane that draws one.
+            'code_editor' => false,
             'title'=> h($file_name) . ' | ' . lang( array('string'=>'Edit {var:1}','vars'=>strtoupper($extension)) ),
             'extra classes'=>'designer',
             'icon'=>'design',
@@ -106,8 +109,7 @@ if (!$_POST) {
                                             <label class="form-label">' . lang( array('string'=>'{var:1} file','vars'=>strtoupper($extension)) )  . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
-                                                ' . get_codemirror_includes() . '
-                                                ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => $code_type)) . '
+                                                ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => $code_type)) . '
                                             </div>
                                         </div>
                                     </div>
