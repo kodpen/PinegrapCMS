@@ -23533,5 +23533,15 @@
     "Table of ordered items": "Sipariş edilen ürünlerin tablosu",
     "Payment method": "Ödeme yöntemi",
     "Order number (empty before the order is placed)": "Sipariş numarası (sipariş verilmeden önce boş)",
-    "Date the document was produced": "Belgenin üretildiği tarih"
+    "Date the document was produced": "Belgenin üretildiği tarih",
+    "/price #mug 149,90": "/fiyat #kupa 149,90",
+    "Changes the price of a product. Shown to you, old and new, before it is written.": "Bir ürünün fiyatını değiştirir. Yazılmadan önce eskisi ve yenisi size gösterilir.",
+    "/stock #mug 12": "/stok #kupa 12",
+    "Sets the stock of a product, or moves it with +5 or -3. Shown to you, old and new, before it is written.": "Bir ürünün stoğunu belirler ya da +5, -3 ile artırıp azaltır. Yazılmadan önce eskisi ve yenisi size gösterilir.",
+    "Name the product with #.": "Ürünü # ile belirtin.",
+    "Write the new quantity after the product, like 12, +5 or -3.": "Yeni miktarı ürünün ardından yazın: 12, +5 ya da -3 gibi.",
+    "Write the new price after the product, like 149,90.": "Yeni fiyatı ürünün ardından yazın: 149,90 gibi.",
+    "{var:1}: the value is out of range.": "{var:1}: değer izin verilen aralığın dışında.",
+    "The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.": "Kayıt bu arada değişti, hiçbir şey yazılmadı. Şimdiki değerini görmek için komutu yeniden gönderin.",
+    "The change that will be written": "Yazılacak değişiklik"
 }

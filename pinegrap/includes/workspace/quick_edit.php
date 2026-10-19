@@ -163,6 +163,9 @@ function ws_quick_edit_js_strings()
         'qe_lines_help'  => lang('One per line'),
         'qe_keywords_help' => lang('Separated by commas'),
         'qe_decimal_help'  => lang('A number, like 0.5'),
+        // The card /price and /stock answer with (commands.php).
+        'qe_command_title' => lang('The change that will be written'),
+        'qe_record'        => lang('Record'),
     );
 }
 

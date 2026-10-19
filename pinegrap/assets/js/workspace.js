@@ -11181,6 +11181,14 @@
                     return;
                 }
 
+                // /price, /stock: the old value beside the new, written only
+                // from the card.
+                if (result.command && result.command.type === 'record_preview') {
+                    self.pending = { body: body };
+                    self.drawRecordPreview(result.command);
+                    return;
+                }
+
                 // /poll with only a question: the rest is asked in the form.
                 if (result.command && result.command.type === 'poll_form') {
                     self.pollForm({ question: result.command.question, options: result.command.options }, function () {
@@ -11201,6 +11209,10 @@
 
                 if (result.command && result.command.type === 'done' && result.command.task_id) {
                     toast(t('task_created'), 'success');
+                }
+
+                if (result.command && result.command.type === 'done' && result.command.saved) {
+                    toast(t('qe_saved'), 'success');
                 }
 
                 self.clearInput();
@@ -11290,6 +11302,56 @@
                 force.addEventListener('click', function () { self.send({ confirm: 1, force: 1, assignees: command.assignees }); });
                 actions.appendChild(force);
             }
+
+            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            cancel.addEventListener('click', function () {
+                self.pending = null;
+                clear(self.previewBox);
+            });
+            actions.appendChild(cancel);
+            card.appendChild(actions);
+            box.appendChild(card);
+        },
+
+        drawRecordPreview: function (command) {
+            var self = this;
+            var box = clear(self.previewBox);
+            var preview = command.preview;
+            var card = el('div', 'ws-preview');
+
+            card.appendChild(el('div', 'fw-semibold', t('qe_command_title')));
+
+            var list = el('dl');
+            list.appendChild(el('dt', '', t('qe_record')));
+            var record = el('dd');
+            setHtml(record, preview.record_html);
+            list.appendChild(record);
+            list.appendChild(el('dt', '', preview.label));
+            list.appendChild(el('dd', '', preview.from + ' \u2192 ' + preview.to));
+            card.appendChild(list);
+
+            if (preview.note) {
+                card.appendChild(el('div', 'small text-body-secondary mb-1', preview.note));
+            }
+
+            // Kept in this channel as a decision, as from the record drawer.
+            var tick = el('div', 'form-check form-check-sm mb-1');
+            var decision = el('input', 'form-check-input');
+            decision.type = 'checkbox';
+            decision.checked = true;
+            decision.id = nextId('ws-cmd-decision-');
+            var tickLabel = el('label', 'form-check-label small', t('qe_decision'));
+            tickLabel.htmlFor = decision.id;
+            tick.appendChild(decision);
+            tick.appendChild(tickLabel);
+            card.appendChild(tick);
+
+            var actions = el('div', 'd-flex flex-wrap gap-2 mt-2');
+            var save = button('btn btn-sm btn-primary rounded-pill px-3', t('qe_save'), 'bi-check2');
+            save.addEventListener('click', function () {
+                self.send({ confirm: 1, from: command.from, decision: decision.checked ? 1 : 0 });
+            });
+            actions.appendChild(save);
 
             var cancel = button('btn btn-sm btn-ghost', t('cancel'));
             cancel.addEventListener('click', function () {

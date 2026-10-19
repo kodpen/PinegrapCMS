@@ -11,12 +11,15 @@
  *   /decision The packaging will be kraft                    (also /karar)
  *   /note Accounts contact: Selin, ext. 204                  (also /not)
  *   /plan @ayse                                              the next working week
+ *   /price #product 149,90                                   (also /fiyat)
+ *   /stock #product 12, +5 or -3                             (also /stok)
  *   /help                                                    (also /yardim)
  *
  * A command is a shortcut, never the only way: each has a button somewhere on
  * the screen. Creating a task is always shown back first - "this is the task I
  * would create, with these warnings" - and only an explicit confirmation
- * writes it, so a misread date never becomes a task nobody asked for.
+ * writes it, so a misread date never becomes a task nobody asked for. A price
+ * or a stock is shown back the same way, old value beside the new one.
  *
  * The date words are a short fixed list (today, tomorrow, weekday names,
  * 26.09, 26.09.2026, +3d, +2w, next week) in Turkish and English. Anything
@@ -48,18 +51,39 @@ function ws_command_names()
         'not' => 'note', 'note' => 'note',
         'plan' => 'plan',
         'oylama' => 'poll', 'anket' => 'poll', 'sor' => 'poll', 'poll' => 'poll',
+        'fiyat' => 'price', 'price' => 'price',
+        'stok' => 'stock', 'stock' => 'stock',
         'yardim' => 'help', 'yardım' => 'help', 'help' => 'help',
     );
 }
 
 /**
+ * May this person use a command? /price and /stock write a product, so they
+ * are offered only to whoever may change products; the others are anybody's.
+ * Without a person every command is listed.
+ *
+ * @param array|null $viewer
+ * @param string     $command the command's own name (ws_command_names() value)
+ * @return bool
+ */
+function ws_command_offered($viewer, $command)
+{
+    if (!in_array($command, array('price', 'stock'), true) || !is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_change_allowed') && ws_change_allowed($viewer, ($command === 'stock') ? 'stock' : 'product', 0);
+}
+
+/**
  * The help text the /help command and the composer's hint show.
  *
+ * @param array|null $viewer leaves out the commands this person may not use
  * @return array[] command, example, description
  */
-function ws_command_help()
+function ws_command_help($viewer = null)
 {
-    return array(
+    $help = array(
         array('command' => '/task · /gorev', 'example' => lang('/task Logo revision @ayse friday ~2h !urgent'), 'description' => lang('Creates a task: people with @, a day, an estimate after ~, a priority after !. Shown to you before it is created.')),
         array('command' => '/assign · /ata', 'example' => lang('/assign T-42 @mehmet'), 'description' => lang('Adds people to a task.')),
         array('command' => '/done · /bitti', 'example' => lang('/done T-42'), 'description' => lang('Marks a task as done.')),
@@ -69,6 +93,16 @@ function ws_command_help()
         array('command' => '/plan', 'example' => lang('/plan @ayse'), 'description' => lang('Shows the next working week of a person, only to you.')),
         array('command' => '/poll · /oylama', 'example' => lang('/poll Which day for the launch? | Tuesday | Wednesday'), 'description' => lang('Asks the channel to choose; the options go after |. Without options it opens the poll form, where it can also be anonymous, multiple choice or closed at a set time.')),
     );
+
+    if (ws_command_offered($viewer, 'price')) {
+        $help[] = array('command' => '/price · /fiyat', 'example' => lang('/price #mug 149,90'), 'description' => lang('Changes the price of a product. Shown to you, old and new, before it is written.'));
+    }
+
+    if (ws_command_offered($viewer, 'stock')) {
+        $help[] = array('command' => '/stock · /stok', 'example' => lang('/stock #mug 12'), 'description' => lang('Sets the stock of a product, or moves it with +5 or -3. Shown to you, old and new, before it is written.'));
+    }
+
+    return $help;
 }
 
 /**
@@ -383,7 +417,9 @@ function ws_command_task_ref($text)
  * @param array  $channel
  * @param string $body
  * @param array  $options confirm (bool), force (bool), assignees (ids, replacing
- *                        the parsed ones - the "give it to somebody lighter" button)
+ *                        the parsed ones - the "give it to somebody lighter" button),
+ *                        from (the value a /price or /stock preview showed),
+ *                        decision (bool, keep that change in the channel)
  * @return array|null null when the text is not a command; otherwise type =
  *                    preview | done | ephemeral | error and what goes with it
  */
@@ -525,6 +561,10 @@ function ws_command_run($viewer, $channel, $body, $options = array())
         case 'plan':
             return ws_command_plan($viewer, $rest);
 
+        case 'price':
+        case 'stock':
+            return ws_command_record_change($viewer, $channel, $split['command'], $rest, $options);
+
         case 'poll':
             $parts = array_values(array_filter(array_map('trim', explode('|', $rest)), 'strlen'));
 
@@ -544,7 +584,7 @@ function ws_command_run($viewer, $channel, $body, $options = array())
         default:
             $html = '<div class="ws-ephemeral-title">' . h(lang('Slash commands')) . '</div><dl class="ws-help">';
 
-            foreach (ws_command_help() as $item) {
+            foreach (ws_command_help($viewer) as $item) {
                 $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description']) . '<br><span class="text-body-secondary">' . h($item['example']) . '</span></dd>';
             }
 
@@ -689,4 +729,204 @@ function ws_command_plan($viewer, $text)
     $html .= '</table>';
 
     return array('type' => 'ephemeral', 'html' => $html);
+}
+
+/**
+ * An amount as a person types it after /price, in minor units: 149,90 and
+ * 149.90 alike, thousands grouped either way (1.249,90 or 1,249.90), a
+ * currency sign or code beside it ignored. The last separator is the decimal
+ * point when one or two digits follow it; a separator followed by three
+ * digits groups thousands. The preview shows the amount back before anything
+ * is written, so a misread is seen.
+ *
+ * @param string $text
+ * @return int|null minor units, or null when the text is not an amount
+ */
+function ws_command_parse_amount($text)
+{
+    // A space inside the number would join two numbers into one.
+    $text = trim(preg_replace('/(?:₺|\$|€|£|\b(?:tl|try|usd|eur|gbp)\b)/iu', '', (string) $text));
+
+    if (!preg_match('/^[0-9][0-9.,]*$/', $text) || preg_match('/[.,][.,]|[.,]$/', $text)) {
+        return null;
+    }
+
+    $whole = $text;
+    $point = '';
+    $fraction = '';
+
+    if (preg_match('/^(.*)([.,])([0-9]{1,2})$/', $text, $match)) {
+        $whole = $match[1];
+        $point = $match[2];
+        $fraction = $match[3];
+    }
+
+    $marks = preg_replace('/[0-9]/', '', $whole);
+
+    // One thousands mark, used throughout, every group three digits wide.
+    if ($marks !== '') {
+        $mark = $marks[0];
+
+        if (($mark === $point) || (str_replace($mark, '', $marks) !== '')
+            || !preg_match('/^[0-9]{1,3}(?:' . preg_quote($mark, '/') . '[0-9]{3})+$/', $whole)) {
+            return null;
+        }
+    }
+
+    $digits = ltrim(str_replace(array('.', ','), '', $whole), '0');
+
+    // Larger than any price column holds; refused before the arithmetic.
+    if (strlen($digits) > 12) {
+        return null;
+    }
+
+    return ((int) $digits * 100) + (int) str_pad($fraction, 2, '0');
+}
+
+/**
+ * A quantity as a person types it after /stock: 12 sets the stock, +5 and
+ * -3 move it from what it is now.
+ *
+ * @param string $text
+ * @return array|null relative (bool), value (int, signed when relative)
+ */
+function ws_command_parse_quantity($text)
+{
+    if (!preg_match('/^([+-]?)\s*([0-9]{1,7})$/u', trim((string) $text), $match)) {
+        return null;
+    }
+
+    return array('relative' => ($match[1] !== ''), 'value' => (($match[1] === '-') ? -1 : 1) * (int) $match[2]);
+}
+
+/**
+ * The first record of a kind tagged in a command's text, and the text left
+ * without that tag.
+ *
+ * @param string $text
+ * @param string $tag the record's tag type (product)
+ * @return array [id or 0, the rest]
+ */
+function ws_command_record_ref($text, $tag)
+{
+    $id = 0;
+
+    $rest = preg_replace_callback('/<#' . preg_quote($tag, '/') . ':([0-9]{1,10})>/', function ($match) use (&$id) {
+        if ($id > 0) {
+            return $match[0];
+        }
+
+        $id = (int) $match[1];
+
+        return ' ';
+    }, (string) $text);
+
+    return array($id, trim(preg_replace('/\s+/u', ' ', $rest)));
+}
+
+/**
+ * /price and /stock: a product's price or quantity, shown back with what it
+ * holds now, written on confirmation through the drawer's save
+ * (ws_quick_edit_save()), so the rights, the Recycle Bin refusal, the check
+ * that nobody changed it meanwhile, the log line and the decision in the
+ * channel are those of an edit in the record drawer.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $command price | stock
+ * @param string $text    what follows the command
+ * @param array  $options confirm, from, decision
+ * @return array
+ */
+function ws_command_record_change($viewer, $channel, $command, $text, $options)
+{
+    $error = function ($text) {
+        return array('type' => 'error', 'error' => $text);
+    };
+
+    if (!function_exists('ws_quick_edit_check')) {
+        return $error(lang('Invalid request.'));
+    }
+
+    list($id, $value_text) = ws_command_record_ref($text, 'product');
+
+    if ($id <= 0) {
+        return $error(lang('Name the product with #.'));
+    }
+
+    $check = ws_quick_edit_check($viewer, 'product', $id);
+
+    if (!$check['ok']) {
+        return $error($check['error']);
+    }
+
+    $types = ws_change_types();
+    $record = $check['record'];
+
+    if ($command === 'stock') {
+        if (!isset($types['stock']) || !ws_change_allowed($viewer, 'stock', $id)) {
+            return $error(lang('You may not change this record.'));
+        }
+
+        $kind = 'stock';
+        $name = WS_QUICK_EDIT_STOCK_FIELD;
+        $field = $types['stock']['fields'][$name];
+        $current = ws_change_current_value($field, $record);
+        $parsed = ws_command_parse_quantity($value_text);
+
+        if ($parsed === null) {
+            return $error(lang('Write the new quantity after the product, like 12, +5 or -3.'));
+        }
+
+        $value = $parsed['relative'] ? ((int) $current + $parsed['value']) : $parsed['value'];
+    } else {
+        $kind = 'product';
+        $name = 'price';
+        $field = ws_change_field($types['product'], $name);
+        $current = ws_change_current_value($field, $record);
+        $value = ws_command_parse_amount($value_text);
+
+        if ($value === null) {
+            return $error(lang('Write the new price after the product, like 149,90.'));
+        }
+    }
+
+    if (ws_change_value($field, $value) === null) {
+        return $error(lang(array('string' => '{var:1}: the value is out of range.', 'vars' => (string) $field[2])));
+    }
+
+    if (ws_change_value($field, $value) === ws_change_value($field, $current)) {
+        return $error(lang('Nothing in it differs from what the record holds now.'));
+    }
+
+    if (empty($options['confirm'])) {
+        $chips = '';
+
+        foreach (ws_refs_resolve($viewer, ws_tokens('<#product:' . $id . '>')) as $ref) {
+            $chips .= ws_chip_html($ref);
+        }
+
+        return array(
+            'type'    => 'record_preview',
+            'preview' => array(
+                'record_html' => $chips,
+                'label'       => (string) $field[2],
+                'from'        => (string) ws_change_show($kind, $name, $current, 120),
+                'to'          => (string) ws_change_show($kind, $name, $value, 120),
+                'note'        => (($kind === 'stock') && ((int) ($record['inventory'] ?? 0) !== 1)) ? lang('Stock is not tracked for this product; saving a quantity turns tracking on.') : '',
+            ),
+            // Sent back with the confirmation: what the record held when the
+            // preview was drawn.
+            'from'    => $current,
+        );
+    }
+
+    $from = (isset($options['from']) && is_scalar($options['from'])) ? array($name => $options['from']) : array();
+    $saved = ws_quick_edit_save($viewer, 'product', $id, array($name => $value), $from, (int) $channel['id'], !empty($options['decision']));
+
+    if (!$saved['ok']) {
+        return $error($saved['stale'] ? lang('The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.') : $saved['error']);
+    }
+
+    return array('type' => 'done', 'saved' => true, 'lines' => $saved['lines'], 'message_id' => $saved['decision_id']);
 }

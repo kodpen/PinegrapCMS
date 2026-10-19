@@ -577,15 +577,16 @@ function ws_palette_people($viewer, $query, $channel_id, $limit)
  * The writing box's commands whose names start with what is typed, one line
  * per command, with the name to write.
  *
- * @param string $query
+ * @param string     $query
+ * @param array|null $viewer leaves out the commands this person may not use
  * @return array[]
  */
-function ws_palette_commands($query)
+function ws_palette_commands($query, $viewer = null)
 {
     $query = ws_lower((string) $query);
     $help = array();
 
-    foreach (ws_command_help() as $entry) {
+    foreach (ws_command_help($viewer) as $entry) {
         foreach (preg_split('/\s*·\s*/u', (string) $entry['command']) as $name) {
             $help[ltrim($name, '/')] = $entry;
         }
@@ -594,7 +595,7 @@ function ws_palette_commands($query)
     $out = array();
 
     foreach (ws_command_names() as $name => $command) {
-        if (isset($out[$command]) || (($query !== '') && (strpos($name, $query) !== 0))) {
+        if (isset($out[$command]) || (($query !== '') && (strpos($name, $query) !== 0)) || !ws_command_offered($viewer, $command)) {
             continue;
         }
 
@@ -647,7 +648,7 @@ function ws_palette_search($viewer, $q, $options = array())
     }
 
     if ($read['mode'] === 'commands') {
-        $out['groups'][] = array('key' => 'commands', 'title' => lang('Slash commands'), 'icon' => 'bi-slash-square', 'items' => ws_palette_commands($query));
+        $out['groups'][] = array('key' => 'commands', 'title' => lang('Slash commands'), 'icon' => 'bi-slash-square', 'items' => ws_palette_commands($query, $viewer));
 
         return $out;
     }
