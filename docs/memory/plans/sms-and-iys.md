@@ -1,6 +1,6 @@
 ---
 name: sms-and-iys
-description: Plan (approved 2026-10-19, not started): SMS provider layer (Netgsm first), order/shipping/OTP messages, İYS consent sync for e-mail and SMS marketing, 3-year consent log
+description: Plan (approved 2026-10-19, step 1 in progress): SMS provider layer (Netgsm first), order/shipping/OTP messages, İYS consent sync for e-mail and SMS marketing, 3-year consent log
 ---
 
 ## Why?
@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19, not started): SMS provider layer (Netgsm
 - Legacy behaviour is untouched: e-mail-only sites keep working with İYS off; the feature is a Settings switch per channel.
 
 ## What remains?
-1. Provider interface + Netgsm driver + settings card + test send (S).
+1. Provider interface + Netgsm driver + settings card + test send (S); in progress on `feature/sms-iys-1`.
 2. `sms_outbox` migration step, queue sending in `job.php`, Mail Queue tab (S–M).
 3. Order and shipping templates, hooks at `submit_order.php` (after the order exists), `pg_shipment_record()` once `shipping-management.md` lands, COD code check at checkout (M).
 4. `consent_log` migration, consent writers at sign-up, account page, checkout, unsubscribe (M).
