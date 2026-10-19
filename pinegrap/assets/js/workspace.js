@@ -15702,7 +15702,7 @@
 
         [['ws-swatch-ok', t('legend_ok')], ['ws-swatch-full', t('legend_full')], ['ws-swatch-over', t('legend_over')], ['ws-swatch-away', t('legend_away')]].forEach(function (item) {
             var entry = el('span', 'd-inline-flex align-items-center gap-1');
-            entry.appendChild(el('span', 'ws-swatch ' + item[0]));
+            entry.appendChild(el('span', 'ws-legend-swatch ' + item[0]));
             entry.appendChild(document.createTextNode(item[1]));
             legend.appendChild(entry);
         });

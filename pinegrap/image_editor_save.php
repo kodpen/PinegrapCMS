@@ -176,6 +176,15 @@ if ((!$image_editor_row) && ($image_editor_folder_id <= 0)) {
     image_editor_refuse(lang('Sorry, we could not find the file.'));
 }
 
+// A document the ERP module keeps (a receipt's picture, an expense's scan)
+// is read-only in the file manager, as edit_file.php and the explorer refuse
+// it: it sits with no folder, which check_edit_access() lets staff write to,
+// so writing over it or copying it beside itself -- where a file with no
+// folder and no "erp-" name is public -- is refused here too.
+if ($image_editor_row && pg_files_include_erp_document(array($image_editor_row['id']))) {
+    image_editor_refuse(lang('ERP documents are read-only in the file manager.'), 403);
+}
+
 $image_editor_target_folder = $image_editor_row ? (int) $image_editor_row['folder'] : $image_editor_folder_id;
 
 if (check_edit_access($image_editor_target_folder) == false) {

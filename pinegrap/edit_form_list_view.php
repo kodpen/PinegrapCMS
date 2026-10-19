@@ -431,6 +431,9 @@ if (!$_POST) {
 
     // Put the javascript into the head of the document.
     $output_header = preg_replace('/(<\/head>)/i', $output_javascript .'$1', pg_page_shell([
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'title'=> lang('Edit Form List View'),
         'extra classes'=>'design',
         'icon'=>'design',
@@ -666,9 +669,9 @@ if (!$_POST) {
         $output_show_results_by_default_checked = ' checked="checked"';
     }
 
-    // We had to set the id for the header field to "header_content",
-    // so CodeMirror would work, because there is already an id of "header"
-    // in the control panel header.
+    // The header field's id is "header_content", not "header": the control
+    // panel header already carries an id of "header", and the editor is
+    // attached by id.
 
     print $output_header . '
     
@@ -747,7 +750,6 @@ if (!$_POST) {
                     </div>
                 </div>
                 <form action="edit_form_list_view.php" method="post">
-                    ' . get_codemirror_includes() . '
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="page_id" value="' . h($_GET['page_id']) . '" />
@@ -764,7 +766,7 @@ if (!$_POST) {
                                         <div class="col-12 my-2">
                                             <div class="form-text text-start">' . lang(array('string'=>'Header (code that is outputted before the list of Submitted Forms){var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="header_content" name="header_content">' . h($header) . '</textarea>
-                                            ' . get_codemirror_javascript(array('id' => 'header_content', 'code_type' => 'mixed')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'header_content', 'code_type' => 'mixed')) . '
                                         </div>
                                         <div class="col-12 col-md-auto col-lg my-2 ">
                                             <p class="mb-0 text-primary ">' . lang('System Fields') . '</p>
@@ -784,12 +786,12 @@ if (!$_POST) {
                                         <div class="col mt-3">
                                             <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="layout" name="layout">' . h($layout) . '</textarea>
-                                            ' . get_codemirror_javascript(array('id' => 'layout', 'code_type' => 'mixed')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
                                         </div>
                                         <div class="col-12 my-2 mt-5">
                                             <div class="form-text text-start">' . lang(array('string'=>'Footer (code that is outputted after the list of Submitted Forms){var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="footer_content" name="footer_content">' . h($footer) . '</textarea>
-                                            ' . get_codemirror_javascript(array('id' => 'footer_content', 'code_type' => 'mixed')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'footer_content', 'code_type' => 'mixed')) . '
                                         </div>
                                     </div>
                                 </div>
@@ -920,7 +922,7 @@ if (!$_POST) {
                                                                         <div class="col mt-3">
                                                                             <div class="form-text text-start">' . lang(array('string'=>'Layout of fields in advanced search{var:1}','vars'=>$collection_field_marker)) . '</div>
                                                                             <textarea id="search_advanced_layout" name="search_advanced_layout">' . h($search_advanced_layout) . '</textarea>
-                                                                            ' . get_codemirror_javascript(array('id' => 'search_advanced_layout', 'code_type' => 'mixed')) . '
+                                                                            ' . pg_code_editor_attach(array('id' => 'search_advanced_layout', 'code_type' => 'mixed')) . '
                                                                         </div>
                                                                     </div>
                                                                 </div>

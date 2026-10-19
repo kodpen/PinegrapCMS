@@ -356,6 +356,10 @@ function pg_designer_screen_render($ctx)
             'extra classes'=> 'design',
             'icon'         => 'design',
             'heading'      => lang('Visual Page Editor'),
+            // The editor's code fields are the facade's (pg_code_editor.js);
+            // CodeMirror 5 stays in its template for a settings pane that
+            // still draws one.
+            'code_editor'  => false,
             'heading_description' => lang('The pages of the design are the tabs; drop blocks from the palette on the left, edit their options on the right.'),
             'hide_menu'    => true,
             // The shared curtain hides itself when the document is ready.
@@ -502,7 +506,6 @@ function pg_designer_screen_render($ctx)
             </form>
         </main>
         ' . ($access === PG_DESIGNER_ACCESS_FULL ? pg_designer_target_modal() : '') . '
-        ' . get_codemirror_includes() . '
         ' . get_image_editor_includes() . '
         <!-- The designer\'s data, and its translation map, are declared BEFORE
              the editor script. style_designer.js resolves _sdT() at module
@@ -524,15 +527,21 @@ function pg_designer_screen_render($ctx)
                 ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP)
                 : 'null') . ';
             window.PgCodeModalLabels = ' . encode_json(array(
-                'Code Editor' => lang('Code Editor'),
-                'Close'       => lang('Close'),
-                'Cancel'      => lang('Cancel'),
-                'Save'        => lang('Save'),
-                'Code'        => lang('Code'),
+                'Code Editor'  => lang('Code Editor'),
+                'Close'        => lang('Close'),
+                'Cancel'       => lang('Cancel'),
+                'Save'         => lang('Save'),
+                'Code'         => lang('Code'),
+                'Syntax error' => lang('Syntax error'),
             )) . ';
         </script>
         <script src="assets/js/codemirror_modal.js?v=' . pg_designer_asset_stamp('assets/js/codemirror_modal.js') . '"></script>
         <script src="assets/js/class_suggestions.js?v=' . pg_designer_asset_stamp('assets/js/class_suggestions.js') . '"></script>
+        <!-- The code editor facade is small; its engine (the CodeMirror 6
+             bundle) is fetched the first time a code view opens, so the
+             designer page does not carry it on every load. -->
+        <script src="assets/js/pg_code_editor.js?v=' . pg_designer_asset_stamp('assets/js/pg_code_editor.js') . '"></script>
+        <script>PgCodeEditor.configure({ bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
         <script>

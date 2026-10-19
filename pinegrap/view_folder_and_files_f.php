@@ -1041,12 +1041,26 @@ function pg_explorer_file_scope_label($scope)
     return lang('Files');
 }
 
+// The kind of a file as the screen works with it: its extension, lower-cased.
+//
+// files.type is four characters wide, so a longer extension is stored cut:
+// a .webmanifest as "webm" (which the file window then plays as a video) and
+// a .markdown as "mark" (which loses its icon and its editor). The name is
+// stored whole and the rename action writes both, so the extension of the
+// name is the one to go by; the column is only read for a name without one.
+function pg_explorer_file_type($file)
+{
+    $extension = mb_strtolower((string) pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+
+    return ($extension !== '') ? $extension : mb_strtolower((string) ($file['type'] ?? ''));
+}
+
 function pg_explorer_file_payload($file, $user)
 {
     $access_control_type = get_access_control_type($file['folder']);
     $map = pg_explorer_folder_map();
     $folder_id = (int) $file['folder'];
-    $type = mb_strtolower($file['type']);
+    $type = pg_explorer_file_type($file);
     $image_types = pg_explorer_image_types();
 
     // Design files stay visible but locked for anyone below designer, the

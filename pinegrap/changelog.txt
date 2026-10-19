@@ -18,6 +18,7 @@
 
 ==========================================================
 2026.11.0
+[NEW] Added a code editor to the visual designer: the page is edited as HTML beside the canvas, and the design's CSS and JS files open in the same editor, with find and replace.
 [NEW] Added editing of a record's fields (product, stock, order, contact, current account, product group, offer, event) from the Workspace record drawer, with the change kept in the channel as a decision.
 [FIX] Miscellaneous bug fixes and new features.
 ==========================================================
