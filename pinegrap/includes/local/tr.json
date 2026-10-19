@@ -23726,5 +23726,10 @@
     "Pre-Information Form approved (checkbox)": "Ön Bilgilendirme Formu onaylandı (onay kutusu)",
     "Distance Sales Contract accepted (checkbox)": "Mesafeli Satış Sözleşmesi kabul edildi (onay kutusu)",
     "Checkout documents are switched on": "Ödeme belgeleri açık",
-    "Product feeds": "Ürün akışları"
+    "Product feeds": "Ürün akışları",
+    "You do not have access to edit this shared component.": "Bu ortak bileşeni düzenleme yetkiniz yok.",
+    "Please run the software upgrade to open shared components to content editors.": "Ortak bileşenleri içerik düzenleyicilere açmak için lütfen yazılım yükseltmesini çalıştırın.",
+    "A system widget cannot be opened to content editors.": "Sistem widget'ı içerik düzenleyicilere açılamaz.",
+    "shared component ({var:1}) was opened to content editors": "ortak bileşen ({var:1}) içerik düzenleyicilere açıldı",
+    "shared component ({var:1}) was closed to content editors": "ortak bileşen ({var:1}) içerik düzenleyicilere kapatıldı"
 }

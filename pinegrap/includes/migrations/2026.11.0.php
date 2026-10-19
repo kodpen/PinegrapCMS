@@ -31,6 +31,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ops_alerts();             // 11.0.5
 	upgrade_2026_11_0_update_backup();          // 11.0.6
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
+	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 
 }
 
@@ -268,5 +269,26 @@ function upgrade_2026_11_0_product_feeds() {
 	install_add_column('config', 'product_feeds', "TEXT NULL");
 
 	install_note('Product feeds: the shop\'s products can be published as an OpenAI product feed (JSONL or CSV) and a Google Merchant Center file (TSV), rebuilt every day at a private address.');
+
+}
+
+// Shared components a content-level operator may edit, the visual designer's
+// counterpart of a common region. content_editable opens a component's text,
+// images and editable areas to managers and to the users granted it in
+// users_shared_components_xref (the users_common_regions_xref model); every
+// other component stays the designer's. A system widget never takes the flag.
+// Both start empty: nothing changes until a designer opens a component.
+function upgrade_2026_11_0_shared_component_content() {
+
+	install_add_column('shared_components', 'content_editable', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_create_table('users_shared_components_xref', "CREATE TABLE users_shared_components_xref (
+		user_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		shared_component_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, shared_component_id),
+		KEY idx_shared_component (shared_component_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Visual designer: a shared component can now be opened to content editors. Managers edit every opened component, users the ones granted to them; until a designer opens one, nothing changes.');
 
 }

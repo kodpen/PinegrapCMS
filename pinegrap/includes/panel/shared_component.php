@@ -46,11 +46,16 @@ function pg_panel_shared_component($request, $action)
     // carries a widget cannot be drawn without the widget's tree: closing
     // the read left a content-level operator looking at a two-line page
     // where the whole layout used to be.
+    //
+    // The one write below role 1 is `content_update`: a component a designer
+    // opened to content editors, saved by an operator it names, under the
+    // page's merge (includes/designer_access.php checks both).
     $sub = isset($request['sub_action']) ? $request['sub_action'] : '';
     $_sc_read_only = array('list', 'usage_all', 'prefetch', 'get',
                            'list_custom_forms', 'list_form_item_view_pages', 'list_product_groups',
                            'list_calendars', 'list_calendar_event_pages');
-    if (((int)$user['role'] > 1) && !in_array($sub, $_sc_read_only, true)) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+    if (((int)$user['role'] > 1) && !in_array($sub, $_sc_read_only, true) && ($sub !== 'content_update')) {
         respond(array('status' => 'error', 'message' => lang('Permission denied.')));
     }
 
@@ -78,7 +83,7 @@ function pg_panel_shared_component($request, $action)
                      FROM shared_components
                      ORDER BY name ASC"
             );
-            respond(array('status' => 'success', 'items' => $rows));
+            respond(array('status' => 'success', 'items' => _sc_content_flags($rows, $user)));
             break;
 
         // ── USAGE ALL ────────────────────────────────────────────────────
@@ -111,7 +116,7 @@ function pg_panel_shared_component($request, $action)
                      FROM shared_components
                      WHERE id IN ($sc_ids_str)"
             );
-            respond(array('status' => 'success', 'items' => $rows ? $rows : array()));
+            respond(array('status' => 'success', 'items' => _sc_content_flags($rows ? $rows : array(), $user)));
             break;
 
         // ── GET ──────────────────────────────────────────────────────────
@@ -128,6 +133,7 @@ function pg_panel_shared_component($request, $action)
             if (!$row) {
                 respond(array('status' => 'error', 'message' => lang('Not found.')));
             }
+            $row = _sc_content_flags($row, $user);
             respond(array('status' => 'success', 'item' => $row[0]));
             break;
 
@@ -197,6 +203,65 @@ function pg_panel_shared_component($request, $action)
             respond(array('status' => 'success'));
             break;
 
+        // ── CONTENT UPDATE (tree_json, content level) ────────────────────
+        // A component a designer opened to content editors, saved by one of
+        // them. The submitted tree is not written: the stored tree is walked
+        // and only text, an image's address and the inside of editable areas
+        // are taken (pg_designer_merge_restricted_tree(), the page's gate).
+        // Nested components and code nodes stay as stored. The merged tree is
+        // returned so the editor keeps what was actually written.
+        case 'content_update':
+            $sc_id   = isset($request['id'])        ? (int)$request['id']                 : 0;
+            $sc_tree = isset($request['tree_json']) ? json_decode((string)$request['tree_json'], true) : null;
+            if ($sc_id <= 0) {
+                respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
+            }
+            if (!is_array($sc_tree)) {
+                respond(array('status' => 'error', 'message' => lang('Invalid tree data.')));
+            }
+            $sc_may = pg_shared_component_content_editable_ids($user, array($sc_id));
+            if (empty($sc_may[$sc_id])) {
+                respond(array('status' => 'error', 'message' => lang('You do not have access to edit this shared component.')));
+            }
+            $sc_stored = json_decode((string)db_value("SELECT tree_json FROM shared_components WHERE id = '$sc_id' LIMIT 1"), true);
+            if (!is_array($sc_stored)) {
+                respond(array('status' => 'error', 'message' => lang('Not found.')));
+            }
+            $sc_merged = pg_designer_tree_encode(pg_designer_merge_restricted_tree($sc_stored, $sc_tree));
+            db("UPDATE shared_components
+                    SET tree_json = '" . e($sc_merged) . "', updated_at = " . time() . "
+                    WHERE id = '$sc_id' LIMIT 1");
+            respond(array('status' => 'success', 'tree_json' => $sc_merged));
+            break;
+
+        // ── SET CONTENT EDITABLE (designer) ──────────────────────────────
+        // Opens a component to content editors or closes it again. Closing
+        // keeps the users granted it, so opening it later needs no new grants.
+        case 'set_content_editable':
+            $sc_id = isset($request['id']) ? (int)$request['id'] : 0;
+            $sc_on = !empty($request['content_editable']) ? 1 : 0;
+            if ($sc_id <= 0) {
+                respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
+            }
+            if (!pg_shared_component_content_ready()) {
+                respond(array('status' => 'error', 'message' => lang('Please run the software upgrade to open shared components to content editors.')));
+            }
+            $sc_row = db_item("SELECT id, name, (system_region_config IS NOT NULL AND system_region_config != '') AS is_widget
+                                   FROM shared_components WHERE id = '$sc_id' LIMIT 1");
+            if (!is_array($sc_row)) {
+                respond(array('status' => 'error', 'message' => lang('Not found.')));
+            }
+            if ($sc_on && !empty($sc_row['is_widget'])) {
+                respond(array('status' => 'error', 'message' => lang('A system widget cannot be opened to content editors.')));
+            }
+            db("UPDATE shared_components SET content_editable = '$sc_on' WHERE id = '$sc_id' LIMIT 1");
+            log_activity($sc_on
+                ? lang(array('string' => 'shared component ({var:1}) was opened to content editors', 'vars' => (string)$sc_row['name']))
+                : lang(array('string' => 'shared component ({var:1}) was closed to content editors', 'vars' => (string)$sc_row['name'])),
+                isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+            respond(array('status' => 'success', 'content_editable' => $sc_on));
+            break;
+
         // ── UPDATE CONFIG (system_region_config only) ─────────────────────
         // Called by Visual Pinegrap Editor when compiled templates change but the
         // visual tree has not been edited (avoids a full tree re-save round-trip).
@@ -245,6 +310,7 @@ function pg_panel_shared_component($request, $action)
                 respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
             }
             db("DELETE FROM shared_components WHERE id = '$sc_id' LIMIT 1");
+            _sc_delete_grants(array($sc_id));
             respond(array('status' => 'success'));
             break;
 
@@ -283,6 +349,7 @@ function pg_panel_shared_component($request, $action)
             }
             if (!empty($sc_deleted)) {
                 db("DELETE FROM shared_components WHERE id IN (" . implode(',', $sc_deleted) . ")");
+                _sc_delete_grants($sc_deleted);
                 $sc_list = array();
                 foreach ($sc_deleted as $sc_one) $sc_list[] = $sc_names[$sc_one];
                 log_activity(lang(array(
@@ -713,4 +780,44 @@ function _sc_unique_name($desired)
         $i++;
     }
     return $name;
+}
+
+// What each component row says about the content level: its flag
+// (`content_editable`, 0/1) and whether the session user may edit it there
+// (`may_edit_content`). Both 0 before the schema step.
+function _sc_content_flags($rows, $user)
+{
+    if (!is_array($rows) || empty($rows)) return is_array($rows) ? $rows : array();
+
+    $ids = array();
+    foreach ($rows as $row) {
+        if (isset($row['id']) && (int)$row['id'] > 0) $ids[] = (int)$row['id'];
+    }
+
+    $open = array();
+    if ($ids && pg_shared_component_content_ready()) {
+        $open = array_flip(array_map('intval', (array)db_values(
+            "SELECT id FROM shared_components WHERE content_editable = 1 AND id IN (" . implode(',', $ids) . ")")));
+    }
+    $may = $open ? pg_shared_component_content_editable_ids($user, $ids) : array();
+
+    foreach ($rows as $i => $row) {
+        $id = isset($row['id']) ? (int)$row['id'] : 0;
+        $rows[$i]['content_editable'] = isset($open[$id]) ? 1 : 0;
+        $rows[$i]['may_edit_content'] = isset($may[$id]) ? 1 : 0;
+    }
+
+    return $rows;
+}
+
+// The grants of deleted components go with them.
+function _sc_delete_grants($ids)
+{
+    $list = array();
+    foreach ((array)$ids as $id) {
+        if ((int)$id > 0) $list[] = (int)$id;
+    }
+    if ($list && pg_schema_has('users_shared_components_xref')) {
+        db("DELETE FROM users_shared_components_xref WHERE shared_component_id IN (" . implode(',', $list) . ")");
+    }
 }

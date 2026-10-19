@@ -32,7 +32,8 @@ Hiyerarşide **Designer (1), Manager'ın (2) üstündedir.**
   `tests/panel_actions_test.php`'de sabit listeyle karşılaştırılır, ekleme
   iki yerde bilerek yapılır.
 - Okuma ve yazma uçlarını ayır (ör. `shared_component`'in `list/get/prefetch`
-  uçları içerik rolüne açık, yazan her şey rol ≤ 1).
+  uçları içerik rolüne açık, yazan her şey rol ≤ 1; tek istisna kendi
+  kapısını taşıyan `content_update`).
 - Yeni `explorer_*` alt eylemini iki yere yaz: `pg_explorer_handle()` switch'i
   **ve** `file_explorer` izin listesi (`includes/panel/explorer.php`); yoksa
   istek `pg_explorer_handle()`'a hiç ulaşmaz, `"Unknown type."` JSON hatası
@@ -56,9 +57,13 @@ Hiyerarşide **Designer (1), Manager'ın (2) üstündedir.**
 
 ## Tasarımcıda içerik rolleri (`includes/designer_access.php`)
 
-- Ortak bileşeni ya da sistem widget'ını `content` seviyesine **asla** açma
-  (işaretli alan içinde bile); `style_custom_*`, tema ve gövde sınıfları da
-  yazılmaz.
+- Ortak bileşeni ya da sistem widget'ını sayfa kaydından `content` seviyesine
+  **asla** açma (işaretli alan içinde bile); `style_custom_*`, tema ve gövde
+  sınıfları da yazılmaz. Tek istisna tasarımcının açtığı ortak bileşendir
+  (`content_editable`, 11.0.8): kendi `content_update` kaydıyla, aynı
+  birleştirmeyle, `pg_shared_component_content_editable_ids()`'in saydığı
+  kişilere (yönetici hepsi, kullanıcı `users_shared_components_xref`'tekiler).
+  Sistem widget'ı hiç açılmaz.
 - Asıl kapı `pg_designer_save_page()` içindeki
   `pg_designer_merge_restricted_tree()`'dir; `_sdMayEdit` yalnız nezakettir —
   düğmeyi gizlemek yetki kontrolü değildir.

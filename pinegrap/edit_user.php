@@ -1414,6 +1414,9 @@ if (!$_POST) {
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             db("DELETE FROM users_messages_xref WHERE user_id = '" . e($_POST['id'] ?? '') . "'");
+
+            // delete shared component xref records
+            if (pg_schema_has('users_shared_components_xref')) db("DELETE FROM users_shared_components_xref WHERE user_id = '" . e($_POST['id'] ?? '') . "'");
             
             log_activity(lang(array('string'=>'user ({var:1}) was deleted','vars'=>$_POST['username'])), $_SESSION['sessionusername']);
             
