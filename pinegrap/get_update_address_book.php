@@ -142,7 +142,7 @@ function get_update_address_book($properties = array()) {
                 </tr>';
         }
 
-        $output .=
+        $output =
             $form->output_errors() . '
             <form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/update_address_book.php" method="post" class="software">
                 ' . get_token_field() . '
