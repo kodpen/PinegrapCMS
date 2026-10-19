@@ -3,7 +3,7 @@ name: passkey-ceremonies
 description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php; what is not built yet
 ---
 
-## What is built? (PR #654, passkeys step 2)
+## What is built? (PR #672, passkeys step 2)
 - Table `user_passkeys` (2026.11.0, 11.0.13): one row per credential. Binary values are base64url in `ascii_bin` columns; the unique key is `credential_hash` (SHA-256 hex of the raw ID), since an ID of up to 1023 bytes is past the 767-byte index of old row formats. `user_handle` is 32 random bytes drawn at the account's first passkey and copied to the next ones (never derived from site keys).
 - Module `includes/fn/passkeys.php` around the verifier (`docs/memory/core/webauthn-verifier.md`): `pg_passkey_registration_begin()` / `pg_passkey_register()`, `pg_passkey_signin_begin($user_id)` / `pg_passkey_signin_check()`, `pg_passkeys_of_user()`, `pg_passkeys_forget()` (both account deletion paths call it). Tests: `tests/passkeys_test.php` (software authenticator with the W3C ES256 test key).
 - `passkey.php`: POST + session token, JSON only. `register_options` / `register` for the signed-in account (refused while logged in as another user); `signin_options` for a sign-in waiting in `mfa.php` verify mode.

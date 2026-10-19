@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19, in progress: verifier, table, endpoints 
 
 ## What is built?
 - Step 1 (PR #594): the verifier and its tests, docs/memory/core/webauthn-verifier.md.
-- Step 2 (PR #NNN): `user_passkeys` (11.0.13, with `alg`, `backup_eligible`, `backup_state`, `user_handle`), `includes/fn/passkeys.php`, `passkey.php` (registration, sign-in options), the passkey button and answer in `mfa.php` verify mode, `assets/js/pg_passkey.js`; docs/memory/core/passkey-ceremonies.md. Changed from the sketch: the sign-in answer is posted to the screen that owns the step (`mfa.php`), because completing a sign-in redirects.
+- Step 2 (PR #672): `user_passkeys` (11.0.13, with `alg`, `backup_eligible`, `backup_state`, `user_handle`), `includes/fn/passkeys.php`, `passkey.php` (registration, sign-in options), the passkey button and answer in `mfa.php` verify mode, `assets/js/pg_passkey.js`; docs/memory/core/passkey-ceremonies.md. Changed from the sketch: the sign-in answer is posted to the screen that owns the step (`mfa.php`), because completing a sign-in redirects.
 
 ## What remains?
 3. UI in Account Security widget and panel account (list, add with `PgPasskey.register()`, rename, remove), admin reset on `edit_user.php` (S). Rename and remove need endpoint actions. Adding asks for the current password first (as turning two-step off does): a stolen session must not plant a passkey, which becomes a first factor in step 4.
