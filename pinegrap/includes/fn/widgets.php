@@ -4722,9 +4722,9 @@ function pg_sw_item_summary($html, $max = 140)
 //     __tracking_link          first parcel's carrier page (empty when unknown)
 //     __tracking_company_name  first parcel's carrier ("Yurtiçi Kargo" etc.)
 //     visibility flags: has_tracking_code, has_tracking_link
-//     Carrier from ship_tos.shipping_method_code, or the number's own shape
-//     (pg_shipping_carrier); a shop whose codes say nothing can name one for
-//     the whole site with the ECOMMERCE_DEFAULT_TRACKING_PROVIDER define.
+//     Carrier from ship_tos.shipping_method_code, then the site's default
+//     (the ECOMMERCE_DEFAULT_TRACKING_PROVIDER define), then the number's own
+//     shape (pg_shipping_carrier); the keys are those of pg_shipping_carriers().
 //     Known: yurtici | surat | aras | mng | ptt | ups | fedex | usps
 //     NOT orders.tracking_code - that is the campaign code the visitor
 //     arrived with, and was shown here as a parcel number until 2026.4.4.
@@ -5229,10 +5229,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // campaign code as a parcel number, under a link to a courier that had
     // never heard of it.
     //
-    // The carrier comes from the shipping method the customer chose, and
-    // failing that from the number's own shape (pg_shipping_carrier). A shop
-    // whose method codes say nothing about the carrier can still name one for
-    // the whole site with ECOMMERCE_DEFAULT_TRACKING_PROVIDER.
+    // The carrier comes from the shipping method the customer chose, failing
+    // that from the carrier the site names for the whole shop
+    // (ECOMMERCE_DEFAULT_TRACKING_PROVIDER), and failing that from the number's
+    // own shape (pg_shipping_carrier). The helpers read the site's default
+    // themselves, as they do on every other order screen.
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
             ship_tos.shipping_method_code
         FROM shipping_tracking_numbers
@@ -5250,9 +5251,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     foreach ($tracking_rows as $tracking_row) {
         $parcel_number = trim((string)$tracking_row['number']);
         $parcel_method = trim((string)($tracking_row['shipping_method_code'] ?? ''));
-        if (($parcel_method === '') && defined('ECOMMERCE_DEFAULT_TRACKING_PROVIDER')) {
-            $parcel_method = (string)ECOMMERCE_DEFAULT_TRACKING_PROVIDER;
-        }
         $tracking_parcels[] = array(
             'number'  => $parcel_number,
             'url'     => get_shipping_tracking_url($parcel_number, $parcel_method),

@@ -284,7 +284,8 @@ define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 // A shop whose method codes say nothing about the courier - "Standart
 // Teslimat", "Ücretsiz Kargo" - can name one here for the whole site. It is
 // used only as a fallback: a parcel whose method code does name a carrier
-// keeps that one.
+// keeps that one. It is asked before the tracking number's own shape, so a
+// plain 11-digit number of a Turkish carrier is not taken for a UPS one.
 //
 // Accepted values, and nothing else:
 //

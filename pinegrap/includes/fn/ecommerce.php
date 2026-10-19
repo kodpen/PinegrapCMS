@@ -6156,21 +6156,29 @@ function pg_shipping_carrier_exists($carrier)
  * how a second, disagreeing list of carriers appeared. This is the single one.
  *
  * The method is ship_tos.shipping_method_code — what the customer chose at
- * checkout, in whatever spelling the shop set up, so it is read three ways in
+ * checkout, in whatever spelling the shop set up, so it is read four ways in
  * turn: the whole code against the carrier names, then the code a word at a
  * time (a shop's method is usually named for the service, "UPS-5GUN", not for
- * the courier alone), and finally, when the code says nothing at all, the
- * number's own shape — which is how orders imported without a method code kept
- * their links.
+ * the courier alone), then the site's default carrier when the code names
+ * none, and finally the number's own shape — which is how orders imported
+ * without a method code kept their links.
  *
- * @param  string $number tracking number
- * @param  string $method ship_tos.shipping_method_code, or a bare carrier key
+ * The default comes before the shape on purpose: the Turkish carriers issue
+ * plain digits that the UPS, FedEx and USPS patterns also match, so an 11-digit
+ * Yurtiçi number read by its shape alone is "UPS". A shop that names its
+ * courier for the whole site (ECOMMERCE_DEFAULT_TRACKING_PROVIDER) has said
+ * what its unnamed parcels are; a parcel sent another way says so in its
+ * method code.
+ *
+ * @param  string $number  tracking number
+ * @param  string $method  ship_tos.shipping_method_code, or a bare carrier key
+ * @param  string $default the site's default carrier key; one that is not a
+ *                         key of pg_shipping_carriers() is ignored
  * @return string carrier key from pg_shipping_carriers(), or ''
  */
-function pg_shipping_carrier($number, $method)
+function pg_shipping_carrier($number, $method, $default = '')
 {
     $number = trim((string) $number);
-    $method = trim((string) $method);
 
     if ($number === '') {
         return '';
@@ -6180,11 +6188,11 @@ function pg_shipping_carrier($number, $method)
 
     // What the shop typed, first. A method code that names the carrier beats
     // any guess made from the number.
-    $needle = mb_strtolower($method, 'UTF-8');
+    $needle = pg_shipping_carrier_text($method);
 
     if ($needle !== '') {
         foreach ($carriers as $carrier => $entry) {
-            if (($needle === $carrier) || (in_array($needle, $entry['aliases'], true))) {
+            if (in_array($needle, pg_shipping_carrier_names($carrier, $entry), true)) {
                 return $carrier;
             }
         }
@@ -6211,10 +6219,8 @@ function pg_shipping_carrier($number, $method)
 
             foreach ($carriers as $carrier => $entry) {
 
-                $names = array_merge(array($carrier), $entry['aliases']);
-
-                foreach ($names as $name) {
-                    if ((mb_strpos($name, ' ') === false) && (in_array($name, $words, true))) {
+                foreach (pg_shipping_carrier_names($carrier, $entry) as $name) {
+                    if ((strpos($name, ' ') === false) && (in_array($name, $words, true))) {
                         return $carrier;
                     }
                 }
@@ -6223,6 +6229,13 @@ function pg_shipping_carrier($number, $method)
 
         }
 
+    }
+
+    // The code names no carrier: the one the site names for every such parcel.
+    $default = pg_shipping_carrier_text($default);
+
+    if (($default !== '') && isset($carriers[$default])) {
+        return $default;
     }
 
     // No method code, or one this list does not know: the number's own shape.
@@ -6238,17 +6251,79 @@ function pg_shipping_carrier($number, $method)
 }
 
 /**
+ * A carrier name or method code in the one form they are compared in.
+ *
+ * Turkish capitals first: since PHP 7.3 mb_strtolower() turns "İ" into "i"
+ * plus a combining dot, so "YURTİÇİ KARGO" matched nothing, and the Turkish
+ * lower case of "I" is "ı". The letters are then folded to ASCII, so
+ * "yurtiçi", "yurtıcı" and "YURTICI" typed on an English keyboard all read
+ * "yurtici" and every spelling of a carrier name compares the same.
+ *
+ * @param  string $text
+ * @return string
+ */
+function pg_shipping_carrier_text($text)
+{
+    $text = str_replace(array('İ', 'I'), array('i', 'ı'), trim((string) $text));
+
+    return pg_transliterate_to_ascii(mb_strtolower($text, 'UTF-8'));
+}
+
+/**
+ * Every name a carrier answers to - its key and its aliases - in the form
+ * pg_shipping_carrier_text() gives a method code.
+ *
+ * @param  string $carrier key
+ * @param  array  $entry   its pg_shipping_carriers() entry
+ * @return array
+ */
+function pg_shipping_carrier_names($carrier, $entry)
+{
+    $names = array();
+
+    foreach (array_merge(array($carrier), $entry['aliases']) as $name) {
+        $name = pg_shipping_carrier_text($name);
+
+        if (($name !== '') && !in_array($name, $names, true)) {
+            $names[] = $name;
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * The carrier the site names for parcels whose method code names none
+ * (ECOMMERCE_DEFAULT_TRACKING_PROVIDER, data/config.php).
+ *
+ * @return string a carrier key, or '' when none is set or the value is not a
+ *                key (System Status reports such a value)
+ */
+function pg_shipping_default_carrier()
+{
+    if (!defined('ECOMMERCE_DEFAULT_TRACKING_PROVIDER')) {
+        return '';
+    }
+
+    $carrier = pg_shipping_carrier_text(ECOMMERCE_DEFAULT_TRACKING_PROVIDER);
+
+    return pg_shipping_carrier_exists($carrier) ? $carrier : '';
+}
+
+/**
  * Where the customer follows the parcel.
  *
- * @param  string $number tracking number (shipping_tracking_numbers.number)
- * @param  string $method ship_tos.shipping_method_code
+ * @param  string      $number  tracking number (shipping_tracking_numbers.number)
+ * @param  string      $method  ship_tos.shipping_method_code
+ * @param  string|null $default the default carrier; null reads the site's
+ *                              (pg_shipping_default_carrier())
  * @return string absolute URL, or '' when the carrier cannot be identified
  */
-function get_shipping_tracking_url($number, $method)
+function get_shipping_tracking_url($number, $method, $default = null)
 {
     $number = trim((string) $number);
 
-    $carrier = pg_shipping_carrier($number, $method);
+    $carrier = pg_shipping_carrier($number, $method, ($default === null) ? pg_shipping_default_carrier() : $default);
 
     if ($carrier === '') {
         return '';
@@ -6262,13 +6337,15 @@ function get_shipping_tracking_url($number, $method)
 /**
  * The carrier's name, for printing beside the number.
  *
- * @param  string $number tracking number
- * @param  string $method ship_tos.shipping_method_code
+ * @param  string      $number  tracking number
+ * @param  string      $method  ship_tos.shipping_method_code
+ * @param  string|null $default the default carrier; null reads the site's
+ *                              (pg_shipping_default_carrier())
  * @return string carrier name, or '' when it cannot be identified
  */
-function get_shipping_carrier_name($number, $method)
+function get_shipping_carrier_name($number, $method, $default = null)
 {
-    $carrier = pg_shipping_carrier($number, $method);
+    $carrier = pg_shipping_carrier($number, $method, ($default === null) ? pg_shipping_default_carrier() : $default);
 
     if ($carrier === '') {
         return '';
