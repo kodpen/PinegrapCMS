@@ -81,6 +81,9 @@ function test_api_money_bounds_match_what_the_records_take()
 		// products.price is a signed INT column.
 		'products.create.price'           => array(0, 2147483647),
 		'products.update.price'           => array(0, 2147483647),
+		// products.compare_at_price too; 0 is none, like null.
+		'products.create.compare_at_price' => array(0, 2147483647),
+		'products.update.compare_at_price' => array(0, 2147483647),
 		// gift_cards.amount and balance are INT UNSIGNED.
 		'gift_cards.create.amount'        => array(1, 4294967295),
 		'gift_cards.update.balance'       => array(0, 4294967295),

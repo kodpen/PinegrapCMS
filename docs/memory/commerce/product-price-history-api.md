@@ -15,7 +15,7 @@ description: GET /products/{id}/price-history (2026.11.0): a product's price his
 
 ## What do the rows not say yet?
 - An offer's reduced price: the history keeps what `products.price` was set to, and an offer changes what the visitor pays without changing that column. The route description says so, so a client does not read the lowest row of a window as the lawful "price before the discount" (plan: docs/memory/plans/price-history-reference-price.md, step 1).
-- `compare_at_price` is not on the product object yet (plan, step 3); no retention trims the rows yet (plan, step 5).
+- No retention trims the rows yet (plan, retention step). The merchant's `compare_at_price` is a field of the product object, not a history row (docs/memory/commerce/product-compare-at-price.md).
 
 ## How was it verified?
 - `php tools/check_api_schema.php` (presenter and declaration agree, the object is registered), `php tools/test.php price_history`; the paging, the `since` filter, the 404, the 422 and the 400 were walked with stubbed `api_rows()` / response helpers over an in-memory table. No running site was set up, so the route was not called over HTTP.

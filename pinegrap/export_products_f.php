@@ -130,6 +130,14 @@ function pg_products_export_columns()
         array('heading' => 'mpn', 'column' => 'mpn', 'kind' => 'text'),
     );
 
+    // The merchant's "was" price (2026.11.0), after the other fixed columns so
+    // none of them moves in a file exported before it; the importer reads the
+    // headings, not the positions. Only where the table has it: the export
+    // reads every column of this list by name.
+    if (pg_compare_at_price_ready()) {
+        $columns[] = array('heading' => 'compare_at_price', 'column' => 'compare_at_price', 'kind' => 'money_optional');
+    }
+
     $labels = array(
         1 => ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL,
         2 => ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL,
@@ -166,6 +174,12 @@ function pg_products_export_value($product, $column)
     // Prices are stored in the smallest unit and written as a decimal.
     if ($column['kind'] == 'money') {
         return sprintf('%01.2lf', $value / 100);
+    }
+
+    // A price that may be absent: none is an empty cell, which the importer
+    // leaves alone, rather than 0.00, which it would read as "take it off".
+    if ($column['kind'] == 'money_optional') {
+        return (($value === '') || ($value === null)) ? '' : sprintf('%01.2lf', $value / 100);
     }
 
     return (string) $value;
