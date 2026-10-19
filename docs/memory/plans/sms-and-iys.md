@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19, in progress: provider layer, Netgsm driv
 - Legacy behaviour is untouched: e-mail-only sites keep working with İYS off; the feature is a Settings switch per channel.
 
 ## What remains?
-1. ~~Provider interface + Netgsm driver + settings card + test send~~ (done, PR #591). Commercial kinds are refused by `pg_sms_send()` until step 5.
+1. ~~Provider interface + Netgsm driver + settings card + test send~~ (done, PR #600). Commercial kinds are refused by `pg_sms_send()` until step 5.
 2. `sms_outbox` migration step, queue sending in `job.php`, Mail Queue tab (S–M).
 3. Order and shipping templates, hooks at `submit_order.php` (after the order exists), `pg_shipment_record()` once `shipping-management.md` lands, COD code check at checkout (M). The changelog's `[NEW]` line comes with this step, when a message first goes out on its own.
 4. `consent_log` migration, consent writers at sign-up, account page, checkout, unsubscribe (M).

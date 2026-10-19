@@ -32,7 +32,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - scheduled-jobs-command-line-render.md: Why the search index and SEO structure jobs render pages from the command line (crontab or general job) without PHP warnings, and what a command line render lacks.
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
-- sms-provider-layer.md: SMS layer (PR #591): pg_sms_send() and kinds, Netgsm REST v2 driver, account in connect_apps sms_<key> (no schema), Communication › SMS card, save-time check, test message
+- sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() and kinds, Netgsm REST v2 driver, account in connect_apps sms_<key> (no schema), Communication › SMS card, save-time check, test message
 - structured-data-open-graph.md: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json_encode only, custom JSON-LD, merchant parts, OG image resolvers, SEO card key.
 - system-status-ca-bundle.md: The "CA Certificate Bundle" system status check (CURL_CA_BUNDLE age) - when it runs, how age is read from the mk-ca-bundle header, thresholds, weight and cache.
 - system-status-check-rules.md: System Status panel rules - a check row and its action button must come from the same read (rules signature), per-check detail boxes, confirm tiles on buttons.

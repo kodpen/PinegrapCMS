@@ -1,6 +1,6 @@
 ---
 name: sms-provider-layer
-description: SMS layer (PR #591): pg_sms_send() and kinds, Netgsm REST v2 driver, account in connect_apps sms_<key> (no schema), Communication › SMS card, save-time check, test message
+description: SMS layer (PR #600): pg_sms_send() and kinds, Netgsm REST v2 driver, account in connect_apps sms_<key> (no schema), Communication › SMS card, save-time check, test message
 ---
 
 ## What sends an SMS?
