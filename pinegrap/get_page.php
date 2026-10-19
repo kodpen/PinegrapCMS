@@ -18,6 +18,11 @@
 
 include ('init.php');
 
+// Maintenance mode (includes/fn/maintenance_mode.php): while it holds, a
+// visitor gets the maintenance screen with a 503 and Retry-After, before any
+// tracking or page lookup. Staff and the listed addresses see the site.
+pg_maintenance_gate();
+
 // The page name and the visitor's tracking, affiliate, offer and campaign
 // codes are single values. One sent as an array (?utm_source[]=x, ?a[]=x)
 // counts as not given: trim() and mb_strpos() refused it with an error page
@@ -560,7 +565,7 @@ if (isset($_GET['pdf']) && $_GET['pdf'] == 'true')
 		output_error(h(lang('The PDF could not be generated because of the following error: ') . $error));
 	}
 	header('Content-Type: application/pdf');
-	header('Content-disposition: filename=' . $page_name . '.pdf');
+	header('Content-disposition: filename="' . preg_replace('/["\\\\\r\n]/', '', $page_name) . '.pdf"');
 	// else if rss is being requested, first verify that RSS needs to be outputted, and then output RSS if all conditions are met
 	
 }

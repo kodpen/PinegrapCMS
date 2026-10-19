@@ -5182,7 +5182,7 @@ function pg_page_preview_tools($page_id, $style_id, $user, $send_to = null)
 
     $device_type = $_SESSION['software']['device_type'];
     $preview_theme_id = $_SESSION['software']['preview_theme_id'];
-    $activated_theme_id = db_value("SELECT id FROM files WHERE activated_" . $device_type . "_theme = '1'");
+    $activated_theme_id = db_value("SELECT id FROM files WHERE activated_" . sql_device_type($device_type) . "_theme = '1'");
     $activated_style_id_for_device_type = ($device_type == 'desktop') ? $row['page_style'] : $row['mobile_style_id'];
 
     // Which style the operator last picked for this page, in this theme, on
@@ -5279,7 +5279,7 @@ function pg_page_preview_tools($page_id, $style_id, $user, $send_to = null)
     // ---- themes ----------------------------------------------------------
 
     $themes = db_items(
-        "SELECT id, name, activated_" . $device_type . "_theme AS activated
+        "SELECT id, name, activated_" . sql_device_type($device_type) . "_theme AS activated
         FROM files
         WHERE (type = 'css') AND (design = '1') AND (theme = '1')
         ORDER BY name ASC");

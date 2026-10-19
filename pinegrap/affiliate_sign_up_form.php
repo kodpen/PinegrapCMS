@@ -403,7 +403,7 @@ if (!isset($_POST['submit'])) {
                     "\n" .
                     lang('If you approve, please click on the link below.  If you are not currently logged in, you will be asked to log in.') . "\n" .
                     "\n" .
-                    URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/approve_affiliate.php?id=' . $contact_id . "\n" .
+                    URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/approve_affiliate.php?id=' . (int) $contact_id . "\n" .
                     "\n"));
 
         }

@@ -52,6 +52,10 @@ WAF'ın kendisi ayrı: `pinegrap-waf`.
   (Yazılı istisna için `pinegrap-verilmis-kararlar`.)
 - Diyaloğa sahte parola alanı koyma; `pg_settings_stamp_autocomplete()` vendor
   opt-out'larını basar.
+- `dkim.key` (posta imza anahtarı) panelden hiç çıkmaz: dosyanın baytlarını
+  veren, onu arşive koyan, kopyalayan ya da yeniden adlandıran yeni bir dosya
+  kapısı önce `pg_file_withheld($name)` sorar (`get_file.php` de vermez).
+  `tests/file_withheld_test.php` kapıları sayar.
 
 ## Dosya bütünlüğü
 

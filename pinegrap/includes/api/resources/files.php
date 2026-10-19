@@ -144,7 +144,7 @@ function api_files_list($params) {
 
 	if (isset($params['q']) && $params['q'] !== '') {
 
-		$term = escape($params['q']);
+		$term = escape(escape_like($params['q']));
 
 		$where[] = "(files.name LIKE '%" . $term . "%' OR files.description LIKE '%" . $term . "%')";
 

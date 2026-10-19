@@ -1037,7 +1037,8 @@ if ($if_modified_since == $last_modified) {
     // if file can be displayed in browser, display file in browser
     if (isset($mimetype[$extension]) && ($mimetype[$extension] != 'application/octet-stream')) {
         header('Content-type: ' . $mimetype[$extension]);
-        header('Content-disposition: filename=' . $file['name']);
+        // Quoted, with the characters that would end the quote or the header removed.
+        header('Content-disposition: filename="' . preg_replace('/["\\\\\r\n]/', '', $file['name']) . '"');
 
         // HTML, XHTML, SVG and XML are documents the browser will execute
         // when they are opened by their own address: an inline <script> in
@@ -1062,7 +1063,7 @@ if ($if_modified_since == $last_modified) {
     // else file cannot be displayed in browser, so force download dialog
     } else {
         header('Content-type: application/octet-stream');
-        header('Content-disposition: attachment; filename=' . $file['name']);
+        header('Content-disposition: attachment; filename="' . preg_replace('/["\\\\\r\n]/', '', $file['name']) . '"');
     }
 }
 

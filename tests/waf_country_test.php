@@ -4,7 +4,8 @@
  *
  * Tests for the firewall's country restriction in waf.php: reading a list of
  * country codes, deciding whether a country is refused, the paths the
- * restriction always leaves alone, and when the panel's sign-in screens keep
+ * restriction always leaves alone (health.php among them), and when the
+ * panel's sign-in screens keep
  * a visitor to their built-in forms.
  *
  * @author      Erdal Güral (Kodpen)
@@ -68,6 +69,19 @@ function test_waf_country_exempts_always_served_paths()
 	} else {
 		$_SERVER['REQUEST_URI'] = $saved;
 	}
+}
+
+// health.php is known by the script that runs, never by a path that names it:
+// router.php serving /x/health.php/y must not carry the uptime check's
+// exemption from the bot policy and the country restriction.
+function test_waf_health_request_by_running_script()
+{
+	pg_assert_true(waf_is_health_request('health.php'), 'health.php');
+	pg_assert_false(waf_is_health_request('router.php'), 'router.php');
+	pg_assert_false(waf_is_health_request('get_page.php'), 'a page');
+	pg_assert_false(waf_is_health_request('health.php.bak'), 'another file');
+	pg_assert_false(waf_is_health_request(''), 'no script');
+	pg_assert_false(waf_is_health_request(), 'the test runner');
 }
 
 // No proof was recorded in this process, so no crawler is let past.

@@ -2204,6 +2204,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ops_alert_mail_failures = isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10;
     $ops_alert_cert_days = isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14;
 
+    // Maintenance mode card (2026.11.0, 11.0.22). The end time goes into a
+    // datetime-local box, which takes the site's own time zone.
+    $maintenance_ready = array_key_exists('maintenance_mode', $row);
+    $maintenance_mode = $maintenance_ready ? (int) $row['maintenance_mode'] : 0;
+    $maintenance_until = $maintenance_ready ? (int) $row['maintenance_until'] : 0;
+    $maintenance_until_value = ($maintenance_until > 0) ? date('Y-m-d\TH:i', $maintenance_until) : '';
+    $maintenance_allow_ips = (string) ($row['maintenance_allow_ips'] ?? '');
+    $maintenance_my_ip = function_exists('waf_client_ip') ? waf_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
     // The structure pass parses rendered markup with DOMDocument. Without the
     // extension the job records its run and exits, so the operator would see
     // a scheduled task that reports healthy and analyzes nothing.
