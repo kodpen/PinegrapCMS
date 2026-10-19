@@ -807,6 +807,10 @@ function ws_handle_action($action, $request)
                 'statuses'    => ws_task_statuses(),
                 'priorities'  => ws_task_priorities(),
                 'ref_types'   => ws_ref_types($viewer),
+                // The kinds of record this person edits from the drawer.
+                'quick_edit'  => array_values(array_filter(ws_quick_edit_types(), function ($type) use ($viewer) {
+                    return ws_change_allowed($viewer, $type, 0);
+                })),
                 'commands'    => ws_command_help(),
                 'upload'      => array('max' => ws_upload_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
@@ -2214,6 +2218,40 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok($refs);
+
+        // A record's fields, edited by the person from the drawer with no
+        // assistant in between (quick_edit.php).
+        case 'ws_record_fields':
+            $fields = ws_quick_edit_fields($viewer, (string) ($request['type'] ?? ''), (int) ($request['id'] ?? 0));
+
+            if (!$fields['ok']) {
+                $error = ws_action_error($fields['error']);
+                $error['code'] = $fields['code'];
+
+                return $error;
+            }
+
+            return ws_action_ok($fields);
+
+        case 'ws_record_fields_save':
+            $saved = ws_quick_edit_save(
+                $viewer,
+                (string) ($request['type'] ?? ''),
+                (int) ($request['id'] ?? 0),
+                is_array($request['fields'] ?? null) ? $request['fields'] : array(),
+                is_array($request['from'] ?? null) ? $request['from'] : array(),
+                (int) ($request['channel_id'] ?? 0),
+                !empty($request['decision'])
+            );
+
+            if (!$saved['ok']) {
+                $error = ws_action_error($saved['error']);
+                $error['stale'] = $saved['stale'];
+
+                return $error;
+            }
+
+            return ws_action_ok(array('lines' => $saved['lines'], 'decision_id' => $saved['decision_id']));
 
         case 'ws_task_get':
             $task = ws_task((int) ($request['task_id'] ?? 0));

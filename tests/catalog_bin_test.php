@@ -363,3 +363,25 @@ function test_catalog_bin_group_screen_does_not_write_a_binned_group()
 	pg_assert_contains("(\$group_binned\n                                    ? '<a class=\"btn my-1 btn-secondary\"", $source, 'the bin instead of Save');
 	pg_assert_contains("if (\$group_binned) {\n        \$output_delete_button = '';", $source, 'and no Delete');
 }
+
+// A change proposed in the Workspace (changes.php) or run by a scheduled
+// action goes through ws_change_check() when it is proposed, applied and run
+// in bulk: a product, its stock or a group that sits in the bin is refused
+// there, creating and deleting are left to their own checks.
+function test_catalog_bin_workspace_changes_do_not_write_a_binned_record()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
+
+	$viewer = array('id' => 3, 'role' => 2);
+	$binned = array('id' => 12, 'recycled' => '1');
+	$live = array('id' => 12, 'recycled' => '0');
+
+	pg_assert_true(ws_change_check($viewer, 'product', 'update', $binned, array('price' => 100)) !== '', 'a binned product is not changed');
+	pg_assert_true(ws_change_check($viewer, 'stock', 'update', $binned, array('quantity' => 5)) !== '', 'nor its stock');
+	pg_assert_true(ws_change_check($viewer, 'product_group', 'add', $binned, array('product_ids' => array(1))) !== '', 'nor a binned group');
+	pg_assert_same('', ws_change_check($viewer, 'product', 'update', $live, array('price' => 100)), 'a live product is');
+	pg_assert_same('', ws_change_check($viewer, 'product', 'update', array('id' => 12), array('price' => 100)), 'a database without the column is live');
+	pg_assert_same('', ws_change_check($viewer, 'product', 'create', null, array('name' => 'x')), 'creating has no record to be binned');
+	pg_assert_same('', ws_change_check($viewer, 'product', 'delete', $binned, array()), 'deleting again is ws_change_delete_blocked()\'s to refuse');
+	pg_assert_true(ws_change_delete_blocked('product', $binned) !== '', 'and it does');
+}

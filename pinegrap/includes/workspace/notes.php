@@ -1577,6 +1577,27 @@ function ws_note_claude_state($viewer, $note_id)
 }
 
 /**
+ * An assistant's answer as it fits under the note: whole when the note has
+ * room for it, shortened with an ellipsis to what is left otherwise, null
+ * when fewer than 20 characters are left. The note itself is never cut.
+ *
+ * @param string $body    the note as it stands
+ * @param string $heading the line the answer goes under
+ * @param string $answer
+ * @return string|null
+ */
+function ws_note_answer_fit($body, $heading, $answer)
+{
+    $room = WS_NOTE_MAX - mb_strlen($body) - mb_strlen($heading) - 3;
+
+    if ($room < 20) {
+        return null;
+    }
+
+    return (mb_strlen($answer) > $room) ? rtrim(mb_substr($answer, 0, $room - 1)) . '…' : $answer;
+}
+
+/**
  * Writes an answered request into the note, under the line that asked, once:
  * the first screen that gets here writes it, the others find it done. A
  * failed request is only set aside.
@@ -1607,8 +1628,24 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
     }
 
     $note = ws_note($note['id']);
-    $lines = explode("\n", (string) $note['body']);
-    $block = array_merge(array(((string) ($row['agent'] ?? 'claude') === 'ai') ? '**Pinegrap AI:**' : '**Claude:**'), explode("\n", $answer), array(''));
+    $before = (string) $note['body'];
+    $heading = ((string) ($row['agent'] ?? 'claude') === 'ai') ? '**Pinegrap AI:**' : '**Claude:**';
+
+    // The note is never cut to make room: an answer longer than what the
+    // note has left is shortened instead, and when nothing fits the request
+    // is set aside as failed, with the reason the screen shows, and the
+    // note stays as it is.
+    $answer = ws_note_answer_fit($before, $heading, $answer);
+
+    if ($answer === null) {
+        db("UPDATE ws_ai_requests SET status = 'failed', note_done = 0, error = '" . e(lang('The note is full, so the answer could not be written under the line that asked.')) . "'
+            WHERE id = '" . (int) $row['id'] . "'");
+
+        return false;
+    }
+
+    $lines = explode("\n", $before);
+    $block = array_merge(array($heading), explode("\n", $answer), array(''));
     $at = count($lines);
 
     foreach ($lines as $index => $line) {
@@ -1620,10 +1657,19 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
 
     array_splice($lines, $at, 0, $block);
 
-    $body = mb_substr(rtrim(implode("\n", $lines)), 0, WS_NOTE_MAX);
+    $body = rtrim(implode("\n", $lines));
+    $sets = array('body' => $body);
+
+    // The state before the answer, kept as a version like any other save,
+    // so what the assistant wrote under the line can be undone.
+    ws_note_version_keep($viewer, $note, $sets);
 
     db("UPDATE ws_notes SET body = '" . e($body) . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'
         WHERE id = '" . (int) $note['id'] . "'");
+
+    if (function_exists('ws_blocks_index')) {
+        ws_blocks_index('note', (int) $note['id'], $body, (int) $note['user_id']);
+    }
 
     ws_note_notify_change($viewer, $note, (int) $row['requested_by']);
 

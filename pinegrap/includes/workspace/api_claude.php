@@ -403,6 +403,9 @@ function ws_api_claude_change_fields_present($list)
             $limit = array('max_items' => (int) $field[1][0], 'max_length' => (int) $field[1][1]);
         } elseif ($field[0] === 'ids') {
             $values = array((string) $field[1]);
+        } elseif ($field[0] === 'money') {
+            // The column's ceiling in minor units, when the column has one.
+            $limit = ((int) $field[1] > 0) ? array('max' => (int) $field[1]) : null;
         } elseif (is_numeric($field[1]) && ((int) $field[1] > 0)) {
             $limit = array('max_length' => (int) $field[1]);
         }

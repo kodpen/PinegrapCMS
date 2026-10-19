@@ -108,6 +108,7 @@ php tools/check_api_schema.php  # external API fields against the schema
 php tools/test.php [filter]     # tests/*_test.php (pure functions)
 php tools/check_copies.php      # only the intended get_file.php copies
 php tools/build_js.php --check  # .min.js bundles match their sources
+php tools/build_code_editor.php --check  # code editor bundle matches tools/code_editor/
 php tools/memory_index.php --check  # memory index matches its files
 ```
 

@@ -21,7 +21,7 @@ description: "Pinegrap CMS'te JavaScript düzenlerken kullan: .src.js / .min.js 
 Çalışma Alanı betikleri (`workspace.js` ve `workspace_*.js`) adlarında
 `.src` olmadan da derlenir: `pg_js_bundles()` (`includes/fn/output.php`)
 hangi `.min.js`'in hangi kaynaklardan, hangi sırayla yapıldığını söyler.
-`workspace.min.js` dokuz kaynağı birleştirir; diğerleri bire bir ikizdir.
+`workspace.min.js` on iki kaynağı birleştirir; diğerleri bire bir ikizdir.
 
 - Kaynağı düzenledikten sonra `php tools/build_js.php` koş (Node + `npx`
   gerekir, terser sürümü araçta sabit). CI `--check` ile denetler; eski
@@ -33,6 +33,23 @@ hangi `.min.js`'in hangi kaynaklardan, hangi sırayla yapıldığını söyler.
   aracı koşmak yeter.
 - Kayıt ekranlarındaki Çalışma Alanı çekmecesi betiği ilk tıkta yükler
   (`ws_record_loader()`); orada sayfa açılırken `workspace.js` yoktur.
+
+## Yeni kod editörü: `PgCodeEditor` facade'ı (CodeMirror 6)
+
+Yeni bir kod alanı açacaksan CodeMirror 5'e değil facade'a git:
+`assets/js/pg_code_editor.js` (`window.PgCodeEditor`). Motor
+`assets/lib/code_editor/cm6.bundle.js`'dir ve ilk editör açılışında
+tembel yüklenir (`PgCodeEditor.open(host, opts)` / `attach(textarea, opts)`);
+sayfa `PgCodeEditor.configure({ bundle: '…?v=damga' })` ile adresini söyler.
+Facade'da `_sdT()`/`lang()` yoktur, metinler çağırandan gelir. Panel
+ekranında bir textarea'ya editör vermek için PHP'den
+`pg_code_editor_attach(array('id' => …, 'code_type' => …))` basılır ve
+ekrana `'code_editor' => false` verilir (`docs/memory/ui/panel-code-fields.md`);
+`get_codemirror_javascript()` yeni koda yazılmaz. Kilitli aralık,
+izlenen aralık, tamamlama kaynağı ve eklenti kaydı için
+`docs/memory/core/code-editor-facade-and-bundle.md`. Bundle'ı elle düzenleme:
+`tools/code_editor/` kaynaklarını değiştirip `php tools/build_code_editor.php`
+koş (CI `--check` ile denetler).
 
 ## Kod editörü (CodeMirror) başlıkta olmayabilir
 

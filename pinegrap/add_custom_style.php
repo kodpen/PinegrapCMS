@@ -24,6 +24,9 @@ validate_area_access($user, 'designer');
 if (!$_POST) {
     
     $output_header = pg_page_shell([
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'title'=> lang('Create Custom Page Style'),
         'extra classes'=>'design',
         'icon'=>'design',
@@ -94,8 +97,7 @@ if (!$_POST) {
                                             <label class="form-label">' . lang('HTML Page with embedded Tags') . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
-                                                ' . get_codemirror_includes() . '
-                                                ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'mixed')) . '
+                                                ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
                                             </div>
                                         </div>
                                     </div>
