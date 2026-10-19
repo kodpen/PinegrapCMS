@@ -23476,5 +23476,6 @@
     "The tag of this element is set by its type; use the options panel.": "Bu öğenin etiketini türü belirler; seçenekler panelini kullan.",
     "Close the file without saving the changes?": "Dosya değişiklikler kaydedilmeden kapatılsın mı?",
     "Unsaved changes": "Kaydedilmemiş değişiklikler",
-    "Save the file (Ctrl+S)": "Dosyayı kaydet (Ctrl+S)"
+    "Save the file (Ctrl+S)": "Dosyayı kaydet (Ctrl+S)",
+    "The note is full, so the answer could not be written under the line that asked.": "Not dolu olduğu için yanıt, soran satırın altına yazılamadı."
 }
