@@ -312,6 +312,14 @@ function duplicate_page($request) {
     $new_page['id'] = mysqli_insert_id(db::$con);
     $new_page['name'] = $page_name;
 
+    // The page's own meta tags go with it.
+    if (pg_meta_tags_ready()) {
+        db("UPDATE page dst, page src
+            SET dst.page_meta_tags = src.page_meta_tags
+            WHERE dst.page_id = '" . (int)$new_page['id'] . "'
+              AND src.page_id = '" . (int)$page_id . "'");
+    }
+
     // The copy of a draft stays in the drafts folder with its original, so it
     // also needs the folder it goes back to when it is published.
     if (pg_page_is_draft($folder['id'])) {

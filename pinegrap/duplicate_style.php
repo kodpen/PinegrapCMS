@@ -120,6 +120,15 @@ if (function_exists('pg_design_look_ready') && pg_design_look_ready()) {
           AND src.style_id = '" . (int)$_GET['id'] . "'");
 }
 
+// ...and writes the same meta tags in the head. The pages' own lists are
+// copied with the rest of their columns below.
+if (pg_meta_tags_ready()) {
+    db("UPDATE style dst, style src
+        SET dst.style_meta_tags = src.style_meta_tags
+        WHERE dst.style_id = '" . (int)$new_style_id . "'
+          AND src.style_id = '" . (int)$_GET['id'] . "'");
+}
+
 // Multi-page visual design: the shared assets sit on the style and every
 // attached page owns its layout. Copy both halves — a duplicated design with
 // no pages would open as an empty editor, and a duplicate that left the

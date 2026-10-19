@@ -262,13 +262,10 @@ const StyleDesigner = (function () {
     var MAX_RECENT_COMPS = 8;
     var _validationDebounceTimer = null;
     var _validationIssues = [];
+    // Canvas-only page options. The meta tags are not here: they are the
+    // design's and the page's lists (_sdMetaTagsEffective()), saved with them.
     let pageSettings = {
-        jquery: false,   // false | 'latest' | 'slim'
-        meta: [
-            { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-            { name: 'description', content: '' },
-            { name: 'robots', content: 'index, follow' }
-        ]
+        jquery: false    // false | 'latest' | 'slim'
     };
     // ─── Shared Components ───────────────────────────────────────────────────
     var _sharedCache      = {};  // id → { name: str, tree: parsed-obj|null }
@@ -22260,13 +22257,11 @@ const StyleDesigner = (function () {
         head.push(row('meta', [['charset', 'utf-8']]));
         var _fp = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
         head.push(row('title', [], (_fp && _fp.page_title) ? String(_fp.page_title) : ''));
-        (pageSettings.meta || []).forEach(function (m) {
-            if (!m.name && !m.property) return;
-            var attrs = [];
-            if (m.name)     attrs.push(['name', m.name]);
-            if (m.property) attrs.push(['property', m.property]);
-            if (m.content !== undefined) attrs.push(['content', m.content]);
-            head.push(row('meta', attrs));
+        // Every page's head carries the viewport (generate_style_code_from_tree()),
+        // then the design's and the page's own meta tags.
+        head.push(row('meta', [['name', 'viewport'], ['content', 'width=device-width, initial-scale=1']]));
+        _sdMetaTagsEffective().forEach(function (m) {
+            head.push(row('meta', [[_sdMetaTagAttr(m.name), m.name], ['content', m.content]]));
         });
 
         var assets = _readAssetsFromFields();
@@ -42556,6 +42551,133 @@ const StyleDesigner = (function () {
         }
     }
 
+    // ========================= META TAGS =========================
+    // The design's meta tags (hidden input style_meta_tags, posted with the
+    // form) and the open page's (hidden page field page_meta_tags, sent with
+    // the page). Each input holds the JSON list the column stores; the rows
+    // are written back as typed, incomplete ones included, and the server
+    // keeps what it can write (pg_meta_tags_normalize()). The names the page
+    // settings write are refused there too, so a row naming one is marked.
+    var _SD_META_RESERVED = { viewport: 1, description: 1, robots: 1, charset: 1 };
+
+    function _sdMetaTagsInput(scope) {
+        return document.getElementById(scope === 'design' ? 'sd-style-meta-tags' : 'pg_page_meta_tags');
+    }
+
+    function _sdMetaTagsParse(json) {
+        var list = [];
+        try { list = json ? JSON.parse(json) : []; } catch (e) { list = []; }
+        if (!Array.isArray(list)) return [];
+        return list.filter(function (m) { return m && typeof m === 'object'; }).map(function (m) {
+            return { name: (m.name == null) ? '' : String(m.name), content: (m.content == null) ? '' : String(m.content) };
+        });
+    }
+
+    // A row the server keeps: the mirror of pg_meta_tags_normalize().
+    function _sdMetaTagWritable(m) {
+        var name = (m.name || '').trim();
+        return /^[A-Za-z][A-Za-z0-9._:-]*$/.test(name) && name.length <= 100
+            && !_SD_META_RESERVED[name.toLowerCase()] && (m.content || '').trim() !== '';
+    }
+
+    // property for the Open Graph namespaces, name otherwise
+    // (pg_meta_tags_attribute()).
+    function _sdMetaTagAttr(name) {
+        return /^(og|fb|article|book|profile|music|video|product):/i.test(name || '') ? 'property' : 'name';
+    }
+
+    // What the open page writes: the design's tags without the names the
+    // page sets, then the page's (pg_meta_tags_merge()).
+    function _sdMetaTagsEffective() {
+        var di = _sdMetaTagsInput('design'), pi = _sdMetaTagsInput('page');
+        var design = _sdMetaTagsParse(di ? di.value : '').filter(_sdMetaTagWritable);
+        var page   = _sdMetaTagsParse(pi ? pi.value : '').filter(_sdMetaTagWritable);
+        var own = {};
+        page.forEach(function (m) { own[m.name.trim().toLowerCase()] = true; });
+        return design.filter(function (m) { return !own[m.name.trim().toLowerCase()]; }).concat(page)
+            .map(function (m) { return { name: m.name.trim(), content: m.content.trim() }; });
+    }
+
+    function _sdMetaListRender(scope) {
+        var input = _sdMetaTagsInput(scope);
+        var group = document.querySelector('[data-sd-meta-scope="' + scope + '"]');
+        var list  = group ? group.querySelector('.sd-meta-list') : null;
+        if (!input || !list) return;
+        list.innerHTML = '';
+        _sdMetaTagsParse(input.value).forEach(function (m) { list.appendChild(_sdMetaRow(m)); });
+    }
+
+    function _sdMetaRow(m) {
+        var row = document.createElement('div');
+        row.className = 'sd-meta-row';
+        row.innerHTML =
+            '<input type="text" class="form-control form-control-sm sd-meta-name" maxlength="100" spellcheck="false" autocomplete="off"' +
+                ' placeholder="' + esc(_sdT('Name, e.g. theme-color or og:image')) + '" aria-label="' + esc(_sdT('Name')) + '" value="' + esc(m.name) + '">' +
+            '<input type="text" class="form-control form-control-sm sd-meta-content" maxlength="1000" autocomplete="off"' +
+                ' placeholder="' + esc(_sdT('Content')) + '" aria-label="' + esc(_sdT('Content')) + '" value="' + esc(m.content) + '">' +
+            '<button type="button" class="btn btn-sm btn-outline-danger sd-meta-del px-2" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '">' +
+                '<span class="bi bi-trash" aria-hidden="true"></span>' +
+            '</button>';
+        _sdMetaRowMark(row);
+        return row;
+    }
+
+    // A reserved name is written by the page settings and left out of the
+    // list on save; the row says so instead of keeping it silently.
+    function _sdMetaRowMark(row) {
+        var nameEl = row.querySelector('.sd-meta-name');
+        if (!nameEl) return;
+        var reserved = !!_SD_META_RESERVED[nameEl.value.trim().toLowerCase()];
+        nameEl.classList.toggle('is-invalid', reserved);
+        nameEl.title = reserved ? _sdT('This tag comes from the page settings and is left out here.') : '';
+    }
+
+    // Rows → hidden input. A change event lets the tab's dirty dot follow
+    // the page field; the design's input is compared by _pgStyleJSON().
+    function _sdMetaListWrite(scope) {
+        var input = _sdMetaTagsInput(scope);
+        var group = document.querySelector('[data-sd-meta-scope="' + scope + '"]');
+        if (!input || !group) return;
+        var rows = [];
+        group.querySelectorAll('.sd-meta-row').forEach(function (row) {
+            rows.push({ name: row.querySelector('.sd-meta-name').value, content: row.querySelector('.sd-meta-content').value });
+        });
+        var json = rows.length ? JSON.stringify(rows) : '';
+        if (input.value === json) return;
+        input.value = json;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function _sdMetaListBind() {
+        ['design', 'page'].forEach(function (scope) {
+            var group = document.querySelector('[data-sd-meta-scope="' + scope + '"]');
+            if (!group || group._sdMetaBound) return;
+            group._sdMetaBound = true;
+            group.addEventListener('input', function (e) {
+                var row = e.target.closest('.sd-meta-row');
+                if (!row) return;
+                _sdMetaRowMark(row);
+                _sdMetaListWrite(scope);
+            });
+            group.addEventListener('click', function (e) {
+                if (e.target.closest('.sd-meta-add')) {
+                    var list = group.querySelector('.sd-meta-list');
+                    var row  = _sdMetaRow({ name: '', content: '' });
+                    list.appendChild(row);
+                    _sdMetaListWrite(scope);
+                    row.querySelector('.sd-meta-name').focus();
+                    return;
+                }
+                var del = e.target.closest('.sd-meta-del');
+                if (del) {
+                    del.closest('.sd-meta-row').remove();
+                    _sdMetaListWrite(scope);
+                }
+            });
+            _sdMetaListRender(scope);
+        });
+    }
+
     // ========================= SETTINGS MODAL =========================
     function initSettingsMenu() {
         // Attach additional dynamic sections (Scripts, Meta Tags) to the Style tab
@@ -42581,67 +42703,17 @@ const StyleDesigner = (function () {
         // the choice persists with the rest of page_custom_js.
         var jqSel = null;
 
-        // ── Section: Meta Tags ──
-        var secMeta = document.createElement('div');
-        secMeta.className = 'mb-3';
-        secMeta.innerHTML =
-            '<div class="d-flex align-items-center justify-content-between mb-2">' +
-              '<p class="mb-0" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#8b9ab0"><span class="bi bi-tags me-1"></span>' + esc(_sdT('Meta Tags')) + '</p>' +
-              '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="sd-sm-add-meta" style="font-size:.72rem">' +
-                '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add')) + '' +
-              '</button>' +
-            '</div>' +
-            '<div id="sd-sm-meta-list"></div>';
-        tabStyle.appendChild(secMeta);
-
-        function renderMetaRows() {
-            var list = document.getElementById('sd-sm-meta-list');
-            if (!list) return;
-            list.innerHTML = '';
-            pageSettings.meta.forEach(function(m, idx) {
-                var row = document.createElement('div');
-                row.className = 'sd-sm-meta-row d-flex gap-1 mb-1';
-                row.dataset.idx = idx;
-                row.innerHTML =
-                    '<input type="text" class="form-control form-control-sm" style="flex:1" ' +
-                        'placeholder="name" value="' + esc(m.name || m.property || '') + '" data-field="name">' +
-                    '<input type="text" class="form-control form-control-sm" style="flex:2" ' +
-                        'placeholder="content" value="' + esc(m.content || '') + '" data-field="content">' +
-                    '<button type="button" class="btn btn-sm btn-outline-danger sd-sm-del-meta px-2" data-idx="' + idx + '" title="' + esc(_sdT('Remove')) + '">' +
-                        '<span class="bi bi-trash"></span>' +
-                    '</button>';
-                list.appendChild(row);
-            });
-        }
-        renderMetaRows();
-
-        document.getElementById('sd-sm-add-meta').addEventListener('click', function() {
-            pageSettings.meta.push({ name: '', content: '' });
-            renderMetaRows();
-        });
-
-        tabStyle.addEventListener('click', function(e) {
-            var delBtn = e.target.closest('.sd-sm-del-meta');
-            if (delBtn) {
-                var idx = parseInt(delBtn.dataset.idx, 10);
-                pageSettings.meta.splice(idx, 1);
-                renderMetaRows();
-            }
-        });
+        // ── Meta Tags: the design's list (Design tab) and the page's (Page
+        // tab), drawn by PHP (pg_designer_meta_tags_group()) where the
+        // columns exist ──
+        _sdMetaListBind();
 
         // ── Wire Apply button to save JS-managed settings ──
         var applyBtn = phpModal.querySelector('.modal-footer .btn-primary');
         if (applyBtn) {
             applyBtn.addEventListener('click', function() {
-                // Collect meta tag values
-                var rows = document.querySelectorAll('.sd-sm-meta-row');
-                var newMeta = [];
-                rows.forEach(function(row) {
-                    var name    = row.querySelector('[data-field="name"]').value.trim();
-                    var content = row.querySelector('[data-field="content"]').value;
-                    if (name) newMeta.push({ name: name, content: content });
-                });
-                pageSettings.meta = newMeta;
+                // The meta tag lists write their inputs as they change; the
+                // HTML tree shows them from there.
 
                 // jQuery moved to the assets panel sentinel — no Settings
                 // modal control to read. Stub kept for any caller looking
@@ -42672,7 +42744,8 @@ const StyleDesigner = (function () {
 
         // ── Refresh dynamic values on modal open ──
         phpModal.addEventListener('show.bs.modal', function() {
-            renderMetaRows();
+            _sdMetaListRender('design');
+            _sdMetaListRender('page');
         });
         // Page and design settings reach an open preview window once the
         // modal is closed (Apply has written them by then).
@@ -48471,14 +48544,13 @@ const StyleDesigner = (function () {
         var _baseTag = '<base href="' + esc(_siteUrl) + '">';
         html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n\n        ' + _baseTag);
 
-        // Replace <meta_tags> placeholder with page settings meta
+        // Replace the <meta_tags> placeholder with the design's and the page's
+        // own meta tags (the front end adds its generated ones as well).
         var _metaHtml = '';
-        if (pageSettings && pageSettings.meta) {
-            pageSettings.meta.forEach(function(m) {
-                if (m.name && m.content) _metaHtml += '        <meta name="' + esc(m.name) + '" content="' + esc(m.content) + '">\n';
-            });
-        }
-        html = html.replace('<meta_tags></meta_tags>', _metaHtml.trim());
+        _sdMetaTagsEffective().forEach(function(m) {
+            _metaHtml += '        <meta ' + _sdMetaTagAttr(m.name) + '="' + esc(m.name) + '" content="' + esc(m.content) + '">\n';
+        });
+        html = html.replace('<meta_tags></meta_tags>', function () { return _metaHtml.trim(); });
 
         // Inject custom CSS/JS assets (from assets panel) into preview: the
         // rows the page on the canvas loads, as the renderer picks them.
@@ -49649,7 +49721,8 @@ const StyleDesigner = (function () {
         'page_noindex', 'page_nofollow', 'page_draft',
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
-        'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'
+        'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
+        'page_meta_tags'
     ];
     var _PG_BOOL_FIELDS = {
         page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1, page_draft: 1,
@@ -49718,7 +49791,7 @@ const StyleDesigner = (function () {
         var names = ['name', 'theme_id', 'collection', 'additional_body_classes',
                      'social_networking_position', 'style_head',
                      'style_custom_css', 'style_custom_js', 'style_custom_fonts',
-                     'style_look', 'style_palette'];
+                     'style_look', 'style_palette', 'style_meta_tags'];
         var o = {};
         names.forEach(function (n) {
             var el = f.querySelector('[name="' + n + '"]');
@@ -49788,6 +49861,8 @@ const StyleDesigner = (function () {
             el.value = _PG_BOOL_FIELDS[k] ? (p[k] ? '1' : '0') : (p[k] == null ? '' : String(p[k]));
         });
         _pgSyncDraftBox(p);
+        // The page's meta tag rows are drawn from its hidden field.
+        _sdMetaListRender('page');
         // Search keywords row + noindex hint follow their switches.
         var kwRow = document.getElementById('pg_search_kw_row');
         if (kwRow) kwRow.style.display = p.page_search ? 'block' : 'none';
@@ -50273,7 +50348,7 @@ const StyleDesigner = (function () {
         var folder = (opts && typeof opts.folder === 'number' && opts.folder > 0) ? opts.folder : 0;
         var p = {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
-            page_id: 0, page_name: '', page_folder: folder, page_title: '', page_meta_description: '',
+            page_id: 0, page_name: '', page_folder: folder, page_title: '', page_meta_description: '', page_meta_tags: '',
             page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
             page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
             pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -50312,6 +50387,7 @@ const StyleDesigner = (function () {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: name,
             page_folder: src.page_folder, page_title: src.page_title, page_meta_description: src.page_meta_description,
+            page_meta_tags: src.page_meta_tags || '',
             page_search: src.page_search, page_search_keywords: src.page_search_keywords,
             page_sitemap: src.page_sitemap, page_home: 0,           // never two home pages
             page_noindex: src.page_noindex, page_nofollow: src.page_nofollow,
@@ -50404,6 +50480,7 @@ const StyleDesigner = (function () {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: name || ((sp.page_name || _sdT('page')) + '-' + _sdT('copy')),
             page_folder: sp.page_folder || 0, page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
+            page_meta_tags: sp.page_meta_tags || '',
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: 0,           // never two home pages
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -52120,6 +52197,7 @@ const StyleDesigner = (function () {
             key: sp.key || ('p' + sp.page_id),
             page_id: sp.page_id, page_name: sp.page_name || '', savedName: sp.page_name || '', page_folder: sp.page_folder || 0,
             page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
+            page_meta_tags: sp.page_meta_tags || '',
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -52513,7 +52591,7 @@ const StyleDesigner = (function () {
                 var p = {
                     key: tabKeys[i],
                     page_id: 0, page_name: sp.page_name || '', page_folder: importFolder,
-                    page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
+                    page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '',
                     page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                     page_draft: _pgNewPageDraft(),
                     pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -52772,7 +52850,7 @@ const StyleDesigner = (function () {
             var p = {
                 key: tabKey,
                 page_id: 0, page_name: sp.page_name || '', page_folder: parseInt(sp.page_folder, 10) || 0,
-                page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
+                page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: '', page_sitemap: sp.page_sitemap ? 1 : 0,
                 page_home: isHome ? 1 : 0, page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: 0,
                 page_draft: isHome ? 0 : _pgNewPageDraft(),
@@ -53247,6 +53325,7 @@ const StyleDesigner = (function () {
                 key: sp.key, page_id: sp.page_id || 0, page_name: sp.page_name || '',
                 page_folder: sp.page_folder || 0, page_title: sp.page_title || '',
                 page_meta_description: sp.page_meta_description || '',
+                page_meta_tags: sp.page_meta_tags || '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
                 page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
                 page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -53273,7 +53352,7 @@ const StyleDesigner = (function () {
         _pgTabsApplyLayout(design && design.tabLayout ? design.tabLayout.layout : null);
         if (!_pages.length) {
             _pages.push({
-                key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '',
+                key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '', page_meta_tags: '',
                 page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                 page_draft: _pgNewPageDraft(),
                 pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,

@@ -50,6 +50,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $page_noindex = (int) ($row['noindex'] ?? 0);
     $page_nofollow = (int) ($row['nofollow'] ?? 0);
     $page_custom_jsonld = trim((string) ($row['custom_jsonld'] ?? ''));
+    // The page's own meta tags (includes/fn/meta_tags.php); absent before
+    // 2026.11.0 (11.0.3), and then there are none.
+    $page_meta_tags = (string) ($row['page_meta_tags'] ?? '');
     $page_type = $row['page_type'] ?? '';
     $comments = $row['comments'] ?? '';
     $comments_label = $row['comments_label'] ?? '';
@@ -153,6 +156,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if ($style_custom_js    !== '') $page_custom_js    = $style_custom_js;
     $style_type = $row['style_type'] ?? '';
     $style_head = $row['style_head'] ?? '';
+    $style_meta_tags = (string) ($row['style_meta_tags'] ?? '');
     $social_networking_position = $row['social_networking_position'] ?? '';
 
     // Social sharing is available when the site setting is on and either the
@@ -5681,9 +5685,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
     
-    // If this page has a title then use that for title tag.
+    // If this page has a title then use that for title tag. Escaped for the
+    // replacement string as well: "$1" in a title is text, not a back reference.
     if ($page_title != '') {
-        $content = preg_replace('/<title>.*?<\/title>/i', '<title>' . h($page_title) . '</title>', $content);
+        $content = preg_replace('/<title>.*?<\/title>/i', addcslashes('<title>' . h($page_title) . '</title>', '\\$'), $content);
 
     // else page does not have a title set, so let's look elsewhere for a title
     } else {
@@ -5693,7 +5698,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if title in style for page does not contain a title, add default title
         // We store the title so we can include it in the open graph tag.
         if (empty($matches[1])) {
-            $content = preg_replace('/<title>.*?<\/title>/i', '<title>' . h(TITLE) . '</title>', $content);
+            $content = preg_replace('/<title>.*?<\/title>/i', addcslashes('<title>' . h(TITLE) . '</title>', '\\$'), $content);
             $page_title = TITLE;
         } else {
             $page_title = unhtmlspecialchars(trim($matches[1]));
@@ -5862,13 +5867,28 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $site_verification_tag = '<meta name="google-site-verification" content="' . h(GOOGLE_SITE_VERIFICATION) . '">';
     }
 
+    // The meta tags the design and the page add themselves (Settings, Design
+    // and Page in the visual designer): the page's win over the design's,
+    // either over the tag of the same name written here. Not for an e-mail
+    // body, for the same reason as robots.
+    $custom_meta_tags = array();
+
+    if ($email != TRUE) {
+        $custom_meta_tags = pg_meta_tags_merge(
+            pg_meta_tags_normalize($style_meta_tags),
+            pg_meta_tags_normalize($page_meta_tags));
+    }
+
     // The <meta name="keywords"> tag was removed: no search engine has used it for years.
     // The keyword fields themselves stay in place, they feed site search and the tag cloud.
-    $meta_tags = $robots_meta_tag .
-        (($site_verification_tag !== '') ? $site_verification_tag . "\n" . '        ' : '') .
-        '<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
-        $open_graph .
-        $twitter_card .
+    $meta_tags = pg_meta_tags_drop_overridden(
+            $robots_meta_tag .
+            (($site_verification_tag !== '') ? $site_verification_tag . "\n" . '        ' : '') .
+            '<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
+            $open_graph .
+            $twitter_card,
+            $custom_meta_tags) .
+        pg_meta_tags_html($custom_meta_tags) .
         ($pg_item_missing ? '' : '        <link rel="canonical" href="' . h($canonical_url) . '">');
 
     // The placeholder is written into every style the software creates, but a
@@ -5878,8 +5898,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // spliced in on its own when the placeholder is gone.
     $meta_tags_placeholder_found = (preg_match('/<meta_tags><\/meta_tags>/i', $content) == 1);
 
-    // embed meta tags in code
-    $content = preg_replace('/<meta_tags><\/meta_tags>/i', $meta_tags, $content);
+    // embed meta tags in code. The block is a replacement string, where $1
+    // or \1 in a title, a description or a tag's content would be read as
+    // a back reference.
+    $content = preg_replace('/<meta_tags><\/meta_tags>/i', addcslashes($meta_tags, '\\$'), $content);
 
     if (($robots_content != '') && ($meta_tags_placeholder_found == FALSE)) {
         $content = preg_replace(
@@ -5893,6 +5915,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = preg_replace(
             '/<\/head>/i',
             '        ' . $site_verification_tag . "\n" . '</head>',
+            $content,
+            1);
+    }
+
+    // The custom tags were asked for by name, so like robots they still reach
+    // the page when its code has lost the placeholder.
+    if ($custom_meta_tags && ($meta_tags_placeholder_found == FALSE)) {
+        $content = preg_replace(
+            '/<\/head>/i',
+            addcslashes('        ' . pg_meta_tags_html($custom_meta_tags, '') . '</head>', '\\$'),
             $content,
             1);
     }

@@ -23638,5 +23638,11 @@
     "Write the new price after the product, like 149,90.": "Yeni fiyatı ürünün ardından yazın: 149,90 gibi.",
     "{var:1}: the value is out of range.": "{var:1}: değer izin verilen aralığın dışında.",
     "The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.": "Kayıt bu arada değişti, hiçbir şey yazılmadı. Şimdiki değerini görmek için komutu yeniden gönderin.",
-    "The change that will be written": "Yazılacak değişiklik"
+    "The change that will be written": "Yazılacak değişiklik",
+    "Name, e.g. theme-color or og:image": "Ad, örn. theme-color ya da og:image",
+    "This tag comes from the page settings and is left out here.": "Bu etiket sayfa ayarlarından gelir, burada yazılmaz.",
+    "Written in the head of every page of this design. A page replaces one with a tag of the same name under Page.": "Bu tasarımın her sayfasının head bölümüne yazılır. Bir sayfa, Sayfa sekmesinde aynı adlı bir etiketle bunun yerine kendininkini koyar.",
+    "Written in the head of this page only. A tag here replaces a design tag of the same name.": "Yalnız bu sayfanın head bölümüne yazılır. Buradaki bir etiket, tasarımın aynı adlı etiketinin yerine geçer.",
+    "Add Meta Tag": "Meta Etiketi Ekle",
+    "Names starting with og:, fb: or article: are written as property, the others as name, and a tag replaces the Open Graph or Twitter tag of the same name the site writes. viewport, description and robots come from the page settings.": "og:, fb: ya da article: ile başlayan adlar property, ötekiler name olarak yazılır; bir etiket, sitenin kendi yazdığı aynı adlı Open Graph ya da Twitter etiketinin yerine geçer. viewport, description ve robots sayfa ayarlarından gelir."
 }

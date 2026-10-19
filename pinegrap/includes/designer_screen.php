@@ -179,6 +179,7 @@ function pg_designer_screen_render($ctx)
             'pg_comments_email_page'    => (int)(isset($p['pg_comments_email_page']) ? $p['pg_comments_email_page'] : 0),
             'pg_comments_email_subject' => (string)(isset($p['pg_comments_email_subject']) ? $p['pg_comments_email_subject'] : ''),
             'pg_comments_notify_email'  => (string)(isset($p['pg_comments_notify_email']) ? $p['pg_comments_notify_email'] : ''),
+            'page_meta_tags'        => (string)(isset($p['page_meta_tags']) ? $p['page_meta_tags'] : ''),
             'tree'                  => $tree,
             'treeLoadWarning'       => $warn,
             // The page's form-level settings (name, notification, confirmation).
@@ -219,6 +220,7 @@ function pg_designer_screen_render($ctx)
             'pg_comments_email_page'    => 0,
             'pg_comments_email_subject' => '',
             'pg_comments_notify_email'  => '',
+            'page_meta_tags'        => '',
             'tree'                  => null,
             'treeLoadWarning'       => false,
             'formSettings'          => array(),
@@ -1690,6 +1692,8 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
                                     <div id="sd-theme-picker"></div>
                                 </div>
 
+                                ' . (pg_designer_is_full($user) ? pg_designer_meta_tags_group('design', isset($ctx['style']['meta_tags']) ? $ctx['style']['meta_tags'] : '') : '') . '
+
                                 <div class="sd-settings-group">
                                     <div class="sd-settings-group-title">' . lang('Advanced') . '</div>
                                     <div class="mb-3">
@@ -1758,6 +1762,8 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
                                     ' . $output_noindex_hint . '
                                 </div>
 
+                                ' . pg_designer_meta_tags_group('page') . '
+
                                 <div class="sd-settings-group">
                                     <div class="sd-settings-group-title">' . lang('Site') . '</div>
                                     <div class="sd-settings-switches">
@@ -1791,6 +1797,38 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
                 </div>
             </div>
         </div>';
+}
+
+/**
+ * A Meta Tags group of the settings modal: the design's list ('design', on
+ * the Design tab) or the open page's ('page', on the Page tab). The list is
+ * a hidden input holding the JSON the column stores; the editor draws a row
+ * per tag from it and writes it back as the rows change
+ * (_sdMetaListMount()). The design's input is posted with the form as
+ * style_meta_tags; the page's is a page field (page_meta_tags) and travels
+ * with the page. Nothing is drawn before the columns exist (11.0.3).
+ */
+function pg_designer_meta_tags_group($scope, $value = '')
+{
+    if (!pg_meta_tags_ready()) {
+        return '';
+    }
+
+    if ($scope === 'design') {
+        $input = '<input type="hidden" name="style_meta_tags" id="sd-style-meta-tags" value="' . h(pg_meta_tags_encode(pg_meta_tags_normalize((string)$value))) . '">';
+        $help  = lang('Written in the head of every page of this design. A page replaces one with a tag of the same name under Page.');
+    } else {
+        $input = '<input type="hidden" id="pg_page_meta_tags" class="sd-page-field" data-page-key="page_meta_tags" value="">';
+        $help  = lang('Written in the head of this page only. A tag here replaces a design tag of the same name.');
+    }
+
+    return '<div class="sd-settings-group" data-sd-meta-scope="' . h($scope) . '">
+        <div class="sd-settings-group-title">' . lang('Meta Tags') . '</div>
+        ' . $input . '
+        <div class="sd-meta-list"></div>
+        <button type="button" class="btn btn-sm btn-outline-secondary sd-meta-add mb-2"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add Meta Tag') . '</button>
+        <small class="form-text d-block mb-2">' . $help . ' ' . lang('Names starting with og:, fb: or article: are written as property, the others as name, and a tag replaces the Open Graph or Twitter tag of the same name the site writes. viewport, description and robots come from the page settings.') . '</small>
+    </div>';
 }
 
 /**
@@ -2232,6 +2270,12 @@ function pg_designer_screen_post($ctx)
         'look'                              => isset($_POST['style_look']) ? (string)$_POST['style_look'] : '',
         'palette'                           => isset($_POST['style_palette']) ? (string)$_POST['style_palette'] : '',
     );
+    // The design's meta tags: the hidden input exists only where the column
+    // does (pg_designer_meta_tags_group()), and save_system_style() leaves
+    // the stored list alone when the key is missing.
+    if (isset($_POST['style_meta_tags'])) {
+        $style_data['style_meta_tags'] = (string)$_POST['style_meta_tags'];
+    }
     // On an un-migrated database the style still carries the tree; keep the
     // first page's so the old readers see something.
     if (!pg_multi_page_design_ready() && isset($pages[0]['tree_json'])) {
