@@ -86,12 +86,12 @@ function test_erp_edoc_parasut_money_and_currency()
 	pg_assert_same('USD', erp_edoc_parasut_currency('usd'));
 }
 
-// Without withholding one total is expected; with it two readings, net
-// plus VAT first and the amount payable second.
+// One total is expected: the amount payable, net plus VAT less the VAT
+// withheld (net_total is read after the withholding on the live API).
 function test_erp_edoc_parasut_expected_totals()
 {
 	pg_assert_same(array(108000), erp_edoc_parasut_expected_totals(pg_test_parasut_invoice()));
-	pg_assert_same(array(108000, 100800), erp_edoc_parasut_expected_totals(pg_test_parasut_invoice(array('withholding_total' => 7200, 'grand_total' => 100800))));
+	pg_assert_same(array(100800), erp_edoc_parasut_expected_totals(pg_test_parasut_invoice(array('withholding_total' => 7200, 'grand_total' => 100800))));
 }
 
 // A complete company card passes; a company needs its tax office; a wrong
@@ -207,10 +207,15 @@ function test_erp_edoc_parasut_total_check()
 	pg_assert_same(array('ok' => false, 'total' => 108001), erp_edoc_parasut_total_check(array('net_total' => '1080.01'), $invoice));
 	pg_assert_same(array('ok' => false, 'total' => 0), erp_edoc_parasut_total_check(array('gross_total' => '1080.0'), $invoice));
 
-	// With withholding either reading is taken until the live answer settles it.
+	// With withholding net_total is the amount payable; a total that still
+	// holds the withheld VAT means Paraşüt did not apply the withholding.
 	$withheld = pg_test_parasut_invoice(array('withholding_total' => 7200, 'grand_total' => 100800));
-	pg_assert_true(erp_edoc_parasut_total_check(array('net_total' => '1080.0'), $withheld)['ok']);
 	pg_assert_true(erp_edoc_parasut_total_check(array('net_total' => '1008.0'), $withheld)['ok']);
+	pg_assert_false(erp_edoc_parasut_total_check(array('net_total' => '1080.0'), $withheld)['ok']);
+
+	// The live tevkifat draft (601, 4/10): 79.95 + 15.99 VAT - 6.40 withheld.
+	$live = pg_test_parasut_invoice(array('subtotal' => 7995, 'discount_total' => 0, 'tax_total' => 1599, 'withholding_total' => 640, 'grand_total' => 8954));
+	pg_assert_true(erp_edoc_parasut_total_check(array('gross_total' => '79.95', 'before_taxes_total' => '79.95', 'total_vat' => '15.99', 'total_vat_withholding' => '6.4', 'net_total' => '89.54'), $live)['ok']);
 }
 
 // The line ids of a sales invoice, in the order it lists them.

@@ -34,9 +34,9 @@
  *
  * The fields follow the published swagger (apidocs.parasut.com/swagger.json)
  * and are read by name with fallbacks; where the documentation is silent
- * (the scale of the withholding rate, which total carries the withholding)
- * the comment beside the reading says UNVERIFIED until a live document
- * settles it. The API takes 10 requests in any 10 seconds.
+ * the comment beside the reading says what the live API answered, or
+ * UNVERIFIED until a live document settles it. The API takes 10 requests in
+ * any 10 seconds.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -449,9 +449,9 @@ function erp_edoc_parasut_document_missing($invoice)
  *
  * Paraşüt keeps one identity field, tax_number, for the VKN of a company
  * and the TCKN of a person (the "TC Kimlik No" box of a person's card); the
- * contact_type says which. UNVERIFIED on the live API: whether a person's
- * TCKN is accepted in tax_number (the old order path sent a 'tckn'
- * attribute the documentation does not list).
+ * contact_type says which. The live API takes a person's TCKN in
+ * tax_number and finds the card by it again (the old order path sent a
+ * 'tckn' attribute the documentation does not list).
  *
  * @param array  $party       erp_edoc_invoice_party() output
  * @param string $tax_number  Digits; the final consumer's for a counter sale
@@ -639,9 +639,9 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         );
 
         // Withholding is a line attribute at Paraşüt (details[].vat_withholding_rate),
-        // so lines with different rates share one document. UNVERIFIED on
-        // the live API: the scale; Pinegrap keeps the withheld share of the
-        // VAT in percent (4/10 = 40).
+        // so lines with different rates share one document. The rate is the
+        // withheld share of the VAT in percent, as Pinegrap keeps it (4/10 =
+        // 40): on the live API 40 on 15.99 VAT came back as 6.40 withheld.
         if ((float) ($line['withholding_rate'] ?? 0) > 0) {
             $attributes['vat_withholding_rate'] = (float) $line['withholding_rate'];
         }
@@ -692,20 +692,18 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
 }
 
 /**
- * The total the ERP expects Paraşüt to compute: net of discounts plus VAT.
- * UNVERIFIED on the live API: whether net_total is read before or after
- * the withholding; a document with withholding compares on both readings
- * and the first live one settles it.
+ * The total the ERP expects Paraşüt to compute: the amount payable, net of
+ * discounts plus VAT less the VAT withheld - the invoice's grand_total.
+ * Paraşüt's net_total is read after the withholding (live: 79.95 net, 15.99
+ * VAT, 6.40 withheld, net_total 89.54), so a total that still holds the
+ * withheld VAT means the withholding was not applied there.
  *
  * @param array $invoice
- * @return array  Kurus, the readings in order of likelihood
+ * @return array  Kurus; one reading
  */
 function erp_edoc_parasut_expected_totals($invoice)
 {
-    $before_withholding = (int) $invoice['subtotal'] - (int) $invoice['discount_total'] + (int) $invoice['tax_total'];
-    $after_withholding = (int) $invoice['grand_total'];
-
-    return array_values(array_unique(array($before_withholding, $after_withholding)));
+    return array((int) $invoice['grand_total']);
 }
 
 /**
