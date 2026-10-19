@@ -74,6 +74,9 @@ if (!$_POST) {
 
     print
         pg_page_shell([
+            // The code field is the facade's editor (pg_code_editor_attach());
+            // CodeMirror 5 waits in the template for a settings pane that draws one.
+            'code_editor' => false,
             'title'=> lang('View Source'),
             'extra classes'=>'design',
             'icon'=>'design',
@@ -104,8 +107,7 @@ if (!$_POST) {
                                 <div class="mb-3">
                                     ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'head', 'id' => 'head')) . '
                                 </div>
-                                ' . get_codemirror_includes() . '
-                                ' . get_codemirror_javascript(array('id' => 'head', 'code_type' => 'mixed', 'height' => '150px', 'readonly' => false)) . '
+                                ' . pg_code_editor_attach(array('id' => 'head', 'code_type' => 'mixed', 'height' => '150px', 'readonly' => false)) . '
                                 <div class="d-flex gap-2 mt-3">
                                     <button type="submit" name="submit_save_and_return" value="Save &amp; Return" class="btn btn-primary">' . lang('Save & Return') . '</button>
                                     <button type="submit" name="submit_save" value="Save" class="btn btn-outline-secondary">' . lang('Save') . '</button>
@@ -120,7 +122,7 @@ if (!$_POST) {
                             <div class="mb-3">
                                 ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'code', 'id' => 'code')) . '
                             </div>
-                            ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'mixed', 'height' => '400px', 'readonly' => true)) . '
+                            ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed', 'height' => '400px', 'readonly' => true)) . '
                         </div>
                     </div>
                 </div>

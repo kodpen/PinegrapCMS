@@ -3228,6 +3228,38 @@ nav.buttons.navigation .btn-secondary {
   border-radius: var(--bs-border-radius);
 }
 
+/* A code field drawn by pg_code_editor_attach(): the facade's editor in a
+   textarea's place. Without a height it grows with the text up to most of
+   the window and scrolls inside after that, so the buttons below a long
+   file stay within reach; F11 fills the window with it. */
+.pg-code-field {
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  overflow: hidden;
+}
+
+.pg-code-field .cm-editor {
+  min-height: 12rem;
+  max-height: 80vh;
+}
+
+.pg-code-field.pg-code-field-full .cm-editor {
+  max-height: none;
+}
+
+.pg-code-field.pg-code-field-full {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  height: auto !important;
+  border: 0;
+  border-radius: 0;
+}
+
+body.pg-code-field-open {
+  overflow: hidden;
+}
+
 table.chart .text-truncate.overflow-hidden * {
   text-overflow: ellipsis;
   overflow: hidden;
@@ -13090,7 +13122,10 @@ a.ws-chip:hover {
 .ws-board-add:hover {
   background: var(--bs-secondary-bg);
 }
-.ws-swatch {
+/* The plan board's legend dots. Not .ws-swatch: that is the colour picker's
+   button (above), and a second rule under the same name overrode its size,
+   shape and centring. */
+.ws-legend-swatch {
   display: inline-block;
   width: 1.5rem;
   height: 1.5rem;

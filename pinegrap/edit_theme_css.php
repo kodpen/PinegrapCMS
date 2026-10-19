@@ -75,6 +75,9 @@ if (!$_POST) {
     $pg_breadcrumb_items[] = array('label' => lang('Edit CSS'));
 
     $output_header = pg_page_shell( array(
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'cancel'=>array('enable'=>'true','url'=>pg_safe_back_url(isset($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', 'view_themes.php')),
         'breadcrumb' => $pg_breadcrumb_items,
     ) ) . '<main id="content" class="container-fluid">';
@@ -110,8 +113,7 @@ if (!$_POST) {
                                                 <label class="form-label">' . lang('CSS File') . '</label>
                                                 <div id="edit_custom">
                                                     <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
-                                                    ' . get_codemirror_includes() . '
-                                                    ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'css')) . '
+                                                    ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css')) . '
                                                 </div>
                                             </div>
                                         </div>

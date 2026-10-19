@@ -9,4 +9,5 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
 - workspace-record-changes.md: How site records are written from the Workspace: the changes.php pipeline and its callers, the Recycle Bin guard, the stock flag, money ceilings, and whose name the writers' sentences carry
+- workspace-ui-notes.md: Where the Workspace screens are drawn and styled, the tokens they use, the colour picker vs the plan board legend class names, Turkish initials in the rail, and the known cosmetic leftovers
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does
