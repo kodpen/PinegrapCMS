@@ -10,7 +10,7 @@ description: Plan (approved 2026-10-19, in progress: endpoint, every planned tex
 - Step 1 (PR #581): the `ai_write` panel action, prompt rules, answer reading, quota guards and tests. Behaviour: docs/memory/ui/ai-write.md.
 - Step 2 (PR #583): buttons and the draft panel on the product screen and the page properties screen (`assets/js/pg_ai_write.js`), the `[NEW]` changelog line. Behaviour: docs/memory/ui/ai-write-panel.md.
 - Step 3 (PRs #585 and #586): custom form records (`record_field`) on the record add and edit screens; the visual designer's page settings (title, meta description). Behaviour: the same two files.
-- The browser's built-in AI (this PR): a site without Pinegrap AI drafts with the person's browser model (Prompt API), Turkish through the Translator API. Behaviour: docs/memory/ui/ai-write-browser.md.
+- The browser's built-in AI (PR #597): a site without Pinegrap AI drafts with the person's browser model (Prompt API), Turkish through the Translator API. Behaviour: docs/memory/ui/ai-write-browser.md.
 
 ## What is decided?
 - One endpoint (`ai_write`, `includes/panel/ai_write.php` + `includes/fn/ai_write.php`), no new provider. The draft never saves itself; the person accepts it.
