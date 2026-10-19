@@ -21,8 +21,8 @@ description: Design-wide and per-page custom meta tags of the visual designer (s
 - The meta block and the `<title>` are passed to `preg_replace()` through `addcslashes(…, '\\$')`; a title or description with `$1` used to lose it.
 
 ## Who edits them, and where?
-- Design list: Settings > Design, full designers only (`pg_designer_meta_tags_group('design')`, hidden input `style_meta_tags`, `save_system_style()` writes it only when the key is sent). Counted in `_pgStyleJSON()`.
-- Page list: Settings > Page, every role that may edit the page title (escaped content, not markup). Page field `page_meta_tags` in `_PG_PAGE_FIELDS`; saved via `$c_extra` in `pg_designer_save_page()` only when sent, so it joins the "carried" comparison.
+- Design list: Settings > Head & meta, full designers only (`pg_designer_meta_tags_group('design')`, hidden input `style_meta_tags`, `save_system_style()` writes it only when the key is sent). Counted in `_pgStyleJSON()`.
+- Page list: Settings > Meta Tags (Only this page), every role that may edit the page title (escaped content, not markup). Page field `page_meta_tags` in `_PG_PAGE_FIELDS`; saved via `$c_extra` in `pg_designer_save_page()` only when sent, so it joins the "carried" comparison.
 - JS: `_sdMetaListBind()` / `_sdMetaListRender()` keep rows as typed (incomplete too) in the hidden input; the server normalises. Reserved names get `is-invalid`.
 - Copied by duplicate design, duplicate page, page detach; page object literals carry `page_meta_tags` (a missing key would send '' and wipe the stored list).
 

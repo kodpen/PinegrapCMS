@@ -12,7 +12,7 @@ description: Plan (2026-10-19, not started): regions editable in the visual desi
   - Menus (`menus`, `users_menus_xref`), ad regions and the tag cloud are data-driven; a static shared component nav loses the menu screen and its editors.
 
 ## What has to be built? (one PR each)
-- R1 Content-editable shared component (owner approved the schema steps 2026-10-19): R1a schema 11.0.8 and the server side done (`designer/shared-component-content-editing.md`); R1b designer toggle and canvas editing at content level; R1c grant checkboxes on the user screens.
+- R1 Content-editable shared component (owner approved the schema steps 2026-10-19): done: schema 11.0.8 and the server side, the designer switch, content-level editing on the canvas, grants on the user screens (`designer/shared-component-content-editing.md`).
 - R2 Common region -> shared component (one per `cregion` with `cregion_designer_type = 'no'`): content through the converter into one `_editable` block, rights carried over. One source of truth while classic styles still print `<cregion>name</cregion>` (see open question).
 - R3 Designer region -> designer-only shared component: PHP blocks lifted to `custom_php` nodes before parsing, nested designer regions as nested shared refs, inner placeholders as region nodes (the placeholder half of L1).
 - R4 Dynamic region stays PHP: region node gains the attribute; its code opens as a code-editor tab in the designer (designer role), like CSS/JS files.
@@ -21,6 +21,7 @@ description: Plan (2026-10-19, not started): regions editable in the visual desi
 - Missing system widget types: `system-widget-missing-types.md`.
 
 ## Open questions?
+- A role-3 user granted a component but no folder edit right opens no page in the designer, so cannot reach it; today such a user edits a common region in front-end edit mode. Entry for R2: open the component on its own in the designer, or allow it from a page they can view?
 - R2 source: the component (a classic placeholder renders it) or the `cregion` row until L5?
 - Front-end inline editing of common and page regions ends for converted pages; content people edit in the designer. Accepted?
 

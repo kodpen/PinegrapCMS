@@ -269,6 +269,24 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'products.price_history',
+			'method'  => 'GET',
+			'path'    => '/products/{id}/price-history',
+			'scope'   => 'products:read',
+			'handler' => 'api_products_price_history',
+			'returns' => array('list' => 'PriceHistoryEntry'),
+			'summary' => 'The price history of a product',
+			'description' => 'Every change of the product\'s own price since the history began, oldest first and cursor paged: the price it became, in which currency, when, and which kind of writer changed it (initial, panel, import, api, offer, erp). The first row of a product is initial, the price it had when the history started on this site. Pass since to read only the changes at or after a moment, which is how a client keeps a copy in step. The rows are the product\'s own price (channel web); an offer\'s reduced price is not recorded yet, so the lowest row of a window is not by itself the lawful price before a discount. A product in the Recycle Bin still answers; a site without the history table answers an empty list.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'since',   'in' => 'query', 'type' => 'datetime', 'description' => 'Only changes recorded at or after this moment.'),
+				array('name' => 'channel', 'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'One sales channel: web (the shop\'s own price), pos, or marketplace:<code>. Every channel when left out.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
 		/* ----- Product groups ----------------------------------------------- */
 
 		array(
@@ -578,6 +596,20 @@ function api_schema() {
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
 				array('name' => 'delivery_date',    'in' => 'body', 'type' => 'datetime'),
 				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
+			)
+		),
+
+		array(
+			'id'      => 'orders.documents',
+			'method'  => 'GET',
+			'path'    => '/orders/{id}/documents',
+			'scope'   => 'orders:read',
+			'handler' => 'api_orders_documents',
+			'returns' => array('list' => 'OrderDocument'),
+			'summary' => 'The legal documents kept with an order',
+			'description' => 'The pre-information form and the distance sales contract the customer accepted at checkout, each as the HTML that was shown and stored with the order, with when it was accepted and from which address. The copy never changes after the order is placed, so it is the record of what was agreed to even after the templates are edited. One page, at most one document per type; an order placed before the documents were switched on, or on a store that never switched them on, has an empty list. Use ?fields=type,accepted,accepted_at to skip the HTML.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 

@@ -1370,7 +1370,7 @@ function pg_panel_designer($request, $action)
 
         // Every page of a design off the site, or its drafts back on it,
         // from the designs list (pg_designer_design_set_draft()). The
-        // answer carries the row's new Status cell.
+        // answer carries the design's new status block.
         case 'design_publish':
             $dp_style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
             $dp_off      = !empty($request['draft']);
@@ -1400,8 +1400,20 @@ function pg_panel_designer($request, $action)
                 'message' => $dp_message,
                 'changed' => $dp['changed'],
                 'drafts'  => $dp_row['draft_count'],
-                'cell'    => pg_designer_list_status_cell($dp_row, true),
+                'cell'    => pg_designer_list_status_cell($dp_row),
             ));
+            break;
+
+        // A design renamed from the designs list (pg_designer_rename_design()).
+        case 'design_rename':
+            $dr = pg_designer_rename_design(
+                isset($request['style_id']) ? (int)$request['style_id'] : 0,
+                (isset($request['name']) && is_scalar($request['name'])) ? (string)$request['name'] : '',
+                $user);
+            if (!$dr['ok']) {
+                respond(array('status' => 'error', 'message' => $dr['error']));
+            }
+            respond(array('status' => 'success', 'name' => $dr['name'], 'message' => lang('The design was renamed.')));
             break;
 
         case 'design_delete':

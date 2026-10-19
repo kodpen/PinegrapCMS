@@ -1488,6 +1488,121 @@ function pg_custom_jsonld_block($raw)
 }
 
 /**
+ * Check a page's own JSON-LD before it is stored (page.custom_jsonld).
+ *
+ * The text is kept as the operator wrote it, trimmed: the output re-encodes
+ * it anyway (pg_custom_jsonld_block()) and the editor shows it back with its
+ * own line breaks. It has to decode, be an object or a list of objects, and
+ * every one of them has to say what it describes: an @type, or an @graph of
+ * items that do. Anything else is refused with a reason the screen can
+ * name, instead of being stored and then left out of the page.
+ *
+ * Returns array('ok' => bool, 'value' => string, 'error' => '' | 'size' |
+ * 'json' | 'shape' | 'type').
+ */
+function pg_page_custom_jsonld_check($raw)
+{
+    $raw = trim((string) $raw);
+
+    if ($raw === '') {
+        return array('ok' => true, 'value' => '', 'error' => '');
+    }
+
+    $refuse = function ($error) {
+        return array('ok' => false, 'value' => '', 'error' => $error);
+    };
+
+    if (strlen($raw) > 65535) {
+        return $refuse('size');
+    }
+
+    $decoded = json_decode($raw);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return $refuse('json');
+    }
+
+    if (is_object($decoded)) {
+        $items = array($decoded);
+    } elseif (is_array($decoded)) {
+        $items = $decoded;
+    } else {
+        return $refuse('shape');
+    }
+
+    if (!$items) {
+        return $refuse('type');
+    }
+
+    foreach ($items as $item) {
+        if (!is_object($item)) {
+            return $refuse('shape');
+        }
+
+        if (!_pg_jsonld_item_typed($item, true)) {
+            return $refuse('type');
+        }
+    }
+
+    return array('ok' => true, 'value' => $raw, 'error' => '');
+}
+
+/**
+ * Whether one JSON-LD item names its type: a non-empty @type (a word or a
+ * list of words), or, at the top only, an @graph of items that do.
+ */
+function _pg_jsonld_item_typed($item, $top)
+{
+    $type = isset($item->{'@type'}) ? $item->{'@type'} : null;
+
+    if (is_string($type) && trim($type) !== '') {
+        return true;
+    }
+
+    if (is_array($type) && $type) {
+        foreach ($type as $word) {
+            if (!is_string($word) || (trim($word) === '')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    if ($top && isset($item->{'@graph'}) && is_array($item->{'@graph'}) && $item->{'@graph'}) {
+        foreach ($item->{'@graph'} as $node) {
+            if (!is_object($node) || !_pg_jsonld_item_typed($node, false)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * The sentence for a refused page JSON-LD (pg_page_custom_jsonld_check()),
+ * naming the page: one save covers every page of a design.
+ */
+function pg_page_custom_jsonld_message($error, $page_name)
+{
+    $page_name = ((string) $page_name !== '') ? (string) $page_name : lang('New Page');
+
+    switch ($error) {
+        case 'size':
+            return lang(array('string' => 'The structured data of {var:1} is too long; it can be at most 64 KB.', 'vars' => array($page_name)));
+        case 'shape':
+            return lang(array('string' => 'The structured data of {var:1} must be a JSON object or a list of objects.', 'vars' => array($page_name)));
+        case 'type':
+            return lang(array('string' => 'Every item in the structured data of {var:1} needs an @type.', 'vars' => array($page_name)));
+        default:
+            return lang(array('string' => 'The structured data of {var:1} is not valid JSON.', 'vars' => array($page_name)));
+    }
+}
+
+/**
  * Disallow lines that block crawling of the pages marked noindex.
  *
  * Returns one "Disallow: ..." line per entry and no User-agent line of its own:
