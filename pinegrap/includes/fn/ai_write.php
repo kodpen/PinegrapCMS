@@ -1331,7 +1331,9 @@ function pg_ai_write_button_markup($config, $label)
 {
     $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
 
-    return '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap pg-ai-write-btn"'
+    // bg-transparent: the panel themes give a link button a hover fill,
+    // which on the designer's dark settings is a white box.
+    return '<button type="button" class="btn btn-link btn-sm p-0 bg-transparent text-decoration-none text-nowrap pg-ai-write-btn"'
         . ' data-pg-ai-write="' . h((string) json_encode($config, $flags)) . '" aria-expanded="false"'
         . ' aria-controls="pg_ai_draft_' . h(preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($config['field'] ?? ''))) . '">'
         . '<i class="bi bi-stars me-1" aria-hidden="true"></i>' . h($label) . '</button>';
@@ -1380,24 +1382,45 @@ function pg_ai_write_buttons_drawn($set = null)
  * @param array $args target, record, record_id, field (the element id the
  *                    draft goes into), context (key => element id); for a
  *                    form record also field_id and format
- *                    (pg_ai_write_form_spec())
+ *                    (pg_ai_write_form_spec()); record_from 'designer' (the
+ *                    page is the designer's open tab), theme 'dark'
  * @return string
  */
 function pg_ai_write_button($user, $args)
 {
+    $config = pg_ai_write_button_config($args);
+
+    if (!$config || !pg_ai_write_available($user, $config['record'], $config['record_id'])) {
+        return '';
+    }
+
+    pg_ai_write_buttons_drawn(true);
+
+    return pg_ai_write_button_markup($config, lang('Write with AI'));
+}
+
+/**
+ * What the script is told about one button, from what the screen asks for;
+ * null for a field and record that do not go together.
+ *
+ * @param array $args as for pg_ai_write_button()
+ * @return array|null target, record, record_id, field, format, context
+ *                    [, field_id] [, record_from] [, theme]
+ */
+function pg_ai_write_button_config($args)
+{
     $target = (string) ($args['target'] ?? '');
     $record = (string) ($args['record'] ?? '');
-    $record_id = (int) ($args['record_id'] ?? 0);
     $row = pg_ai_write_target($target);
 
-    if (!$row || !isset($row['records'][$record]) || !pg_ai_write_available($user, $record, $record_id)) {
-        return '';
+    if (!$row || !isset($row['records'][$record])) {
+        return null;
     }
 
     $config = array(
         'target'    => $target,
         'record'    => $record,
-        'record_id' => $record_id,
+        'record_id' => (int) ($args['record_id'] ?? 0),
         'field'     => (string) ($args['field'] ?? ''),
         'format'    => $row['format'],
         'context'   => is_array($args['context'] ?? null) ? $args['context'] : array(),
@@ -1409,9 +1432,17 @@ function pg_ai_write_button($user, $args)
         $config['format'] = in_array($args['format'] ?? '', array('line', 'text', 'html'), true) ? $args['format'] : 'text';
     }
 
-    pg_ai_write_buttons_drawn(true);
+    // The visual designer has a page per tab: the script asks it which page
+    // is open when the button is pressed. Its settings are drawn dark.
+    if (($args['record_from'] ?? '') === 'designer') {
+        $config['record_from'] = 'designer';
+    }
 
-    return pg_ai_write_button_markup($config, lang('Write with AI'));
+    if (($args['theme'] ?? '') === 'dark') {
+        $config['theme'] = 'dark';
+    }
+
+    return $config;
 }
 
 /**

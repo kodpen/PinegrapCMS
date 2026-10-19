@@ -352,7 +352,7 @@ function test_ai_write_button_markup()
 		'context'   => array('page_title' => 'title'),
 	), 'Write "with" AI');
 
-	pg_assert_contains('class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap pg-ai-write-btn"', $html);
+	pg_assert_contains('class="btn btn-link btn-sm p-0 bg-transparent text-decoration-none text-nowrap pg-ai-write-btn"', $html);
 	pg_assert_contains('type="button"', $html);
 	pg_assert_contains('aria-controls="pg_ai_draft_title"', $html);
 	pg_assert_contains('Write &quot;with&quot; AI</button>', $html);
@@ -365,6 +365,32 @@ function test_ai_write_button_markup()
 	pg_assert_same(5, $settings['record_id']);
 	pg_assert_same(array('page_title' => 'title'), $settings['context']);
 	pg_assert_contains('aria-controls="pg_ai_draft_x1"', pg_ai_write_button_markup(array('field' => 'x"1'), 'W'), 'field id cleaned');
+}
+
+// What the script is told about a button: a field and record that go
+// together, the form record's own format, the designer's open tab and the
+// dark panel only when asked for.
+function test_ai_write_button_config()
+{
+	pg_assert_same(null, pg_ai_write_button_config(array('target' => 'product_short', 'record' => 'page')), 'wrong record');
+	pg_assert_same(null, pg_ai_write_button_config(array('target' => 'alt_text', 'record' => 'page')), 'unknown target');
+
+	pg_assert_same(array(
+		'target' => 'seo_title', 'record' => 'page', 'record_id' => 7, 'field' => 'pg_page_title', 'format' => 'line',
+		'context' => array('page_title' => 'pg_page_title'), 'record_from' => 'designer', 'theme' => 'dark',
+	), pg_ai_write_button_config(array(
+		'target' => 'seo_title', 'record' => 'page', 'record_id' => '7', 'field' => 'pg_page_title',
+		'context' => array('page_title' => 'pg_page_title'), 'record_from' => 'designer', 'theme' => 'dark',
+	)), 'designer');
+
+	$plain = pg_ai_write_button_config(array('target' => 'seo_title', 'record' => 'product', 'record_from' => 'elsewhere', 'theme' => 'pink', 'context' => 'x'));
+	pg_assert_false(isset($plain['record_from']) || isset($plain['theme']), 'unknown values dropped');
+	pg_assert_same(array(), $plain['context'], 'context not a list');
+
+	$form = pg_ai_write_button_config(array('target' => 'record_field', 'record' => 'form', 'record_id' => 313, 'field' => '38', 'field_id' => '38', 'format' => 'html'));
+	pg_assert_same(38, $form['field_id'], 'field id');
+	pg_assert_same('html', $form['format'], 'form format');
+	pg_assert_same('text', pg_ai_write_button_config(array('target' => 'record_field', 'record' => 'form', 'format' => 'svg'))['format'], 'unknown format');
 }
 
 // The label stays as it was when there is no button.
@@ -410,6 +436,10 @@ function test_ai_write_script_reads_what_php_writes()
 	pg_assert_contains("'pg_ai_draft_'", $script, 'panel id');
 	pg_assert_contains('window.PinegrapAiWrite', $script, 'config');
 	pg_assert_contains("action: 'ai_write'", $script, 'action');
+	pg_assert_contains("settings.record_from === 'designer'", $script, 'designer tab');
+	pg_assert_contains('StyleDesigner.aiBridge().page()', $script, 'designer bridge');
+	pg_assert_contains("settings.theme === 'dark'", $script, 'dark panel');
+	pg_assert_contains('field_id: settings.field_id', $script, 'form field');
 
 	foreach (array_keys(pg_ai_write_js_config()['labels']) as $key) {
 		pg_assert_contains("label('" . $key . "')", $script, 'label ' . $key);
