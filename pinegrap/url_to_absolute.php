@@ -156,7 +156,7 @@ function url_remove_dot_segments( $path )
 		$outPath = '/' . $outPath;
 	// compare last multi-byte character against '/'
 	if ( $outPath != '/' &&
-		(mb_strlen($path)-1) == mb_strrpos( $path, '/', 'UTF-8' ) )
+		(mb_strlen($path)-1) == mb_strrpos( $path, '/', 0, 'UTF-8' ) )
 		$outPath .= '/';
 	return $outPath;
 }
@@ -274,7 +274,9 @@ function split_url( $url, $decode=FALSE)
 	// Host name from RFC1035.  Technically, must start with a letter.
 	// Relax that restriction to better parse URL structure, then
 	// leave host name validation to application.
-	$xhost_name    = '([a-zA-Z\d-.%]+)';
+	// The hyphen sits last: between \d and . it reads as a range, which PCRE2
+	// (PHP 7.3+) refuses, and the whole match returned false.
+	$xhost_name    = '([a-zA-Z\d.%-]+)';
 
 	// Authority from RFC3986.  Skip IP future.
 	$xhost         = '(' . $xhost_name . '|' . $xipv4 . '|' . $xipv6 . ')';

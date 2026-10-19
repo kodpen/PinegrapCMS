@@ -93,6 +93,9 @@ if (!empty($_REQUEST['submit_button'])) {
 
 if ($action and !$command_line) {
 
+    // Both the scan and the import step make the server fetch addresses.
+    validate_token_field();
+
     $liveform->validate_required_field('url', lang('URL is required.'));
     $liveform->validate_required_field('max_link_level', lang('Follow Depth is required.'));
 
@@ -129,7 +132,10 @@ if ($action and !$command_line) {
 if ($action != 'import') {
     switch ($action) {
         case '':
-            $output_method = 'get';
+            // The scan makes the server fetch the address typed here, so the
+            // form posts with a token like the import step does: a link that
+            // starts a scan of an address of someone else's choosing is refused.
+            $output_method = 'post';
 
             $current_max_link_level = $liveform->get_field_value('max_link_level');
             if ($current_max_link_level === '' || $current_max_link_level === false || $current_max_link_level === null) {
@@ -137,7 +143,8 @@ if ($action != 'import') {
             }
 
             $output_fields =
-                '<div class="row">
+                get_token_field() . '
+                <div class="row">
                     <div class="col-12">
                         <div class="card my-4">
                             <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Import Settings') . '</div>
@@ -433,7 +440,12 @@ if ($action != 'import') {
             // This avoids the frontend JS, jquery files, and etc. from being imported.
             // We don't want to import them because they are dynamically outputted.
             $content = remove_dynamic_code_blocks($content);
-            
+
+            // The markup becomes style code, which get_page_content.php
+            // evaluates when PHP_REGIONS is on. A PHP open tag served by the
+            // remote site is foreign code, not a design, so it is defused.
+            $content = pg_defuse_php_tags($content);
+
             // If there is a base tag in the content, then get base URL from the tag.
             // We will need this in order to prepare URLs for images and etc.
             // Also we remove the base tag from the content, because we are going to change links.
@@ -1379,54 +1391,174 @@ function remove_dynamic_code_blocks($content)
     return $content;
 }
 
-function fetch_url_response($url)
+// Which address the import may fetch. Every fetch here is made by the server,
+// so an address inside the network (127.0.0.1, 10.x, the cloud metadata
+// address) must never be called, and a redirect is a second address nothing
+// has looked at: redirects are not followed by curl or the stream wrapper but
+// walked here, each hop checked the same way and the resolved address pinned.
+// Plain http stays allowed: the importer reads public pages and sends nothing.
+function import_design_check_url($url)
 {
+    if (!function_exists('api_http_check_url')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+    }
+
+    return api_http_check_url($url, true);
+}
+
+// Resolve a Location header against the address that answered it. A header
+// with no usable target ends the walk.
+function import_design_redirect_target($location, $from)
+{
+    $location = trim((string) $location);
+
+    if ($location === '') {
+        return '';
+    }
+
+    if (!preg_match('#^https?://#i', $location)) {
+        $location = url_to_absolute($from, $location);
+    }
+
+    return is_string($location) ? $location : '';
+}
+
+// One request without redirects. Answers
+// array('status' => int, 'content' => string, 'content_type' => string,
+// 'location' => string) or false when nothing answered.
+function import_design_fetch_once($url, $head_only)
+{
+    $check = import_design_check_url($url);
+
+    if (!$check['ok']) {
+        return false;
+    }
+
+    $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
     if (!function_exists('curl_init')) {
-        $content = @file_get_contents($url, false, get_http_stream_context());
-        if ($content === false) {
-            return false;
-        }
-        // Try to extract Content-Type from the response headers.
-        //
+        $context = get_http_stream_context($head_only ? 'HEAD' : 'GET');
+
+        $content = @file_get_contents($url, false, $context);
+
         // PHP 8.5 deprecated the magic $http_response_header variable in favour of
         // http_get_last_response_headers(). Prefer the function where it exists
         // (8.4 and up) and fall back to the variable on everything older, so this
         // keeps working across the whole supported range.
-        $content_type = '';
         $response_headers = function_exists('http_get_last_response_headers')
             ? http_get_last_response_headers()
             : (isset($http_response_header) ? $http_response_header : null);
 
-        if (is_array($response_headers)) {
-            foreach ($response_headers as $header) {
-                if (stripos($header, 'Content-Type:') === 0) {
-                    $content_type = trim(substr($header, 13));
-                }
+        if (!is_array($response_headers) || !$response_headers) {
+            return false;
+        }
+
+        $status = 0;
+        $content_type = '';
+        $location = '';
+
+        foreach ($response_headers as $header) {
+            if (preg_match('#^HTTP/\S+\s+(\d{3})#', $header, $match)) {
+                $status = (int) $match[1];
+                $content_type = '';
+                $location = '';
+            } elseif (stripos($header, 'Content-Type:') === 0) {
+                $content_type = trim(substr($header, 13));
+            } elseif (stripos($header, 'Location:') === 0) {
+                $location = trim(substr($header, 9));
             }
         }
-        return array('content' => $content, 'content_type' => $content_type);
+
+        return array(
+            'status' => $status,
+            'content' => ($content === false) ? '' : $content,
+            'content_type' => $content_type,
+            'location' => $location,
+        );
     }
+
+    $parts = parse_url($url);
+    $port = isset($parts['port'])
+        ? (int) $parts['port']
+        : ((strtolower($parts['scheme']) === 'https') ? 443 : 80);
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
     curl_setopt($ch, CURLOPT_ENCODING, ''); // Accept all encodings (gzip, deflate) and auto-decompress
+    // The address that was checked is the address that is called.
+    curl_setopt($ch, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
+    if ($head_only) {
+        curl_setopt($ch, CURLOPT_NOBODY, true);
+    }
     pg_curl_tls($ch);
 
     $content = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    // If HEAD is not supported, retry with GET
+    if ($head_only && ($status == 405)) {
+        curl_setopt($ch, CURLOPT_NOBODY, false);
+        curl_setopt($ch, CURLOPT_HTTPGET, true);
+        $content = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    }
+
     $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $location = curl_getinfo($ch, CURLINFO_REDIRECT_URL);
     curl_close($ch);
 
-    if ($content === false || $http_code >= 400) {
+    if (($content === false) && !$head_only) {
         return false;
     }
 
-    return array('content' => $content, 'content_type' => $content_type !== null ? $content_type : '');
+    return array(
+        'status' => $status,
+        'content' => is_string($content) ? $content : '',
+        'content_type' => ($content_type !== null) ? (string) $content_type : '',
+        'location' => ($location !== null) ? (string) $location : '',
+    );
+}
+
+// The request with its redirects walked, at most five hops.
+function import_design_fetch($url, $head_only = false)
+{
+    for ($hop = 0; $hop <= 5; $hop++) {
+        $response = import_design_fetch_once($url, $head_only);
+
+        if ($response === false) {
+            return false;
+        }
+
+        if (($response['status'] >= 300) && ($response['status'] < 400)) {
+            $next = import_design_redirect_target($response['location'], $url);
+
+            if ($next === '') {
+                return $response;
+            }
+
+            $url = $next;
+            continue;
+        }
+
+        return $response;
+    }
+
+    return false;
+}
+
+function fetch_url_response($url)
+{
+    $response = import_design_fetch($url);
+
+    if (($response === false) || ($response['status'] >= 400) || ($response['status'] < 200)) {
+        return false;
+    }
+
+    return array('content' => $response['content'], 'content_type' => $response['content_type']);
 }
 
 function fetch_url_content($url)
@@ -1438,7 +1570,7 @@ function fetch_url_content($url)
     return $response['content'];
 }
 
-function get_http_stream_context()
+function get_http_stream_context($method = 'GET')
 {
     // Same verification as pg_curl_tls(): peer and name checked, and the
     // configured CA bundle used when the host has one.
@@ -1450,65 +1582,31 @@ function get_http_stream_context()
         $ssl_options['cafile'] = CURL_CA_BUNDLE;
     }
 
+    // Redirects are walked by import_design_fetch(), one checked hop at a
+    // time; a 3xx answer must not throw a warning, so its headers are kept.
     return stream_context_create(array(
         'http' => array(
+            'method' => $method,
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'follow_location' => 1,
+            'follow_location' => 0,
+            'ignore_errors' => true,
             'timeout' => 30,
         ),
         'ssl' => $ssl_options,
     ));
 }
 
+// Answers the headers of a page that exists (status 2xx or 3xx after the
+// redirects are walked) or false; the address is checked the same way every
+// other fetch is.
 function check_if_url_exists($url)
 {
-    if (!function_exists('curl_init')) {
-        // The third parameter (context) was only added in PHP 7.1.
-        if (version_compare(PHP_VERSION, '7.1.0', '>=')) {
-            $headers = @get_headers($url, 1, get_http_stream_context());
-        } else {
-            $headers = @get_headers($url, 1);
-        }
-        if ($headers == false) {
-            return false;
-        }
-        $response_parts = explode(' ', $headers[0]);
-        $response_code = $response_parts[1];
-        $first_char = mb_substr($response_code, 0, 1);
-        if ($first_char == '2' || $first_char == '3') {
-            return $headers;
-        }
+    $response = import_design_fetch($url, true);
+
+    if (($response === false) || ($response['status'] < 200) || ($response['status'] >= 400)) {
         return false;
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_NOBODY, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    pg_curl_tls($ch);
-
-    curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    // If HEAD is not supported, retry with GET
-    if ($http_code == 405) {
-        curl_setopt($ch, CURLOPT_NOBODY, false);
-        curl_setopt($ch, CURLOPT_HTTPGET, true);
-        curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    }
-
-    $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    curl_close($ch);
-
-    if ($http_code >= 200 && $http_code < 400) {
-        return array('Content-Type' => $content_type !== null ? $content_type : '');
-    }
-
-    return false;
+    return array('Content-Type' => $response['content_type']);
 }
 ?>

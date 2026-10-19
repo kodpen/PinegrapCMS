@@ -439,7 +439,7 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
         '^^__item_id^^'                   => (string)$iid,
         '^^__item_name^^'                 => h($title),
         '^^__item_short_description^^'    => h($short_desc),
-        '^^__item_description^^'     => $full_desc,    // RAW HTML — full_description is rich text
+        '^^__item_description^^'     => pg_defuse_php_tags($full_desc),    // RAW HTML — full_description is rich text
         '^^__item_summary^^'         => h(pg_sw_item_summary($full_desc)),   // plain one-liner for rows
         '^^__item_qty^^'                  => (string)$qty,
         '^^__item_price^^'      => $fmt($price),

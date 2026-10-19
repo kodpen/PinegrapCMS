@@ -439,6 +439,12 @@ function pg_designer_drop_locked_nodes(&$node)
  * them, and their source may legitimately carry a marker (a loop slot in a
  * custom_html node, for instance).
  *
+ * A PHP open tag is the other way in: get_page_content.php evaluates the
+ * assembled page when PHP_REGIONS is on, and a text prop is emitted into it
+ * raw, so `<?` typed by a content-level operator would run on the server.
+ * It is rewritten to `&lt;?` (pg_defuse_php_tags()), which the browser shows
+ * as the same characters.
+ *
  * `$value` is a node array or a bare string, so the same call serves the
  * whole accepted subtree and a single copied `text`.
  */
@@ -446,6 +452,7 @@ function _pg_dm_neutralise_markers(&$value)
 {
     if (is_string($value)) {
         if (stripos($value, '<!--pg-') !== false) $value = str_ireplace('<!--pg-', '<!-- pg-', $value);
+        if (strpos($value, '<?') !== false) $value = pg_defuse_php_tags($value);
         return;
     }
     if (!is_array($value)) return;
