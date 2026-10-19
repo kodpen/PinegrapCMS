@@ -706,6 +706,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'calendar'  => $base . 'workspace_calendar.php',
             'timeline'  => $base . 'workspace_timeline.php',
             'notes'     => $base . 'workspace_notes.php',
+            'notes_export' => $base . 'workspace_notes_export.php',
             'file_save' => $base . 'workspace_file_save.php',
             'settings'  => $base . 'workspace_settings.php',
             'edit_user' => $base . 'edit_user.php',

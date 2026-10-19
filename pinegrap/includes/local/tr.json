@@ -23438,5 +23438,9 @@
     "Kept as long as the record": "Kayıt durdukça tutuluyor",
     "The IP address was taken out of {var:1} record(s) older than {var:2} days.": "{var:2} günden eski {var:1} kayıttan IP adresi silindi.",
     "general job took the IP address out of {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydından IP adresini sildi",
-    "Removed after {var:1} days": "{var:1} gün sonra silindi"
+    "Removed after {var:1} days": "{var:1} gün sonra silindi",
+    "Download as Markdown": "Markdown olarak indir",
+    "Export all": "Tümünü dışa aktar",
+    "This server cannot make zip files (the PHP zip extension is missing). Export the notes one by one instead.": "Bu sunucu zip dosyası yapamıyor (PHP zip eklentisi yok). Notları tek tek dışa aktarın.",
+    "last changed by {var:1}": "son değiştiren {var:1}"
 }

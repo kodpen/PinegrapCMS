@@ -18,6 +18,7 @@
 
 ==========================================================
 2026.11.0
+[NEW] Added export of Workspace notes: one note as Markdown or a printable page, all notes as a zip that opens as a vault in other note apps.
 [FIX] Miscellaneous bug fixes and new features.
 ==========================================================
 2026.4.10
