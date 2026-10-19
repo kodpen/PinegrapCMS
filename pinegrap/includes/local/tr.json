@@ -24069,5 +24069,14 @@
     "Filled in by Connect. Write it only when the Paraşüt user works in more than one company; an empty box keeps the saved number.": "Bağla doldurur. Yalnız Paraşüt kullanıcısı birden çok firmada çalışıyorsa yazın; boş kutu kayıtlı numarayı korur.",
     "Not connected to Paraşüt yet.": "Henüz Paraşüt'e bağlı değil.",
     "Open the Paraşüt authorization page": "Paraşüt yetkilendirme sayfasını aç",
-    "This is the key that signs the site's mail. It stays on the server.": "Bu, sitenin postalarını imzalayan anahtardır. Sunucudan çıkmaz."
+    "This is the key that signs the site's mail. It stays on the server.": "Bu, sitenin postalarını imzalayan anahtardır. Sunucudan çıkmaz.",
+    "Choose Markdown (.md) or text (.txt) files, one .zip of them, or Evernote exports (.enex).": "Markdown (.md) ya da metin (.txt) dosyaları, bunların tek bir .zip'i veya Evernote dışa aktarımları (.enex) seçin.",
+    "Upload Evernote exports (.enex) on their own, without other files.": "Evernote dışa aktarımlarını (.enex) başka dosya olmadan tek başına yükleyin.",
+    "This server cannot read Evernote exports (the PHP xml extension is missing).": "Bu sunucu Evernote dışa aktarımlarını okuyamıyor (PHP xml eklentisi yok).",
+    "Bring notes in from another app: Markdown (.md) or text (.txt) files, or a .zip of them, such as an Obsidian vault or a Notion, Joplin or Bear export, or Evernote exports (.enex). Notes exported from here are recognised and brought up to date.": "Başka bir uygulamadaki notlarınızı getirin: Markdown (.md) ya da metin (.txt) dosyaları veya bunların .zip'i; örneğin bir Obsidian kasası ya da Notion, Joplin veya Bear dışa aktarımı; ya da Evernote dışa aktarımları (.enex). Buradan dışa aktarılmış notlar tanınır ve güncellenir.",
+    "[encrypted text]": "[şifreli metin]",
+    "The Evernote export holds no notes.": "Evernote dışa aktarımında not yok.",
+    "This is not an Evernote export (.enex).": "Bu bir Evernote dışa aktarımı (.enex) değil.",
+    "Line {var:1}: {var:2}": "Satır {var:1}: {var:2}",
+    "The export holds more than {var:1} notes and attachments.": "Dışa aktarımda {var:1} taneden fazla not ve ek var."
 }
