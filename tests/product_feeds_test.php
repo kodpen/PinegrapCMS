@@ -643,3 +643,74 @@ function test_product_feeds_not_modified()
 	pg_assert_false(pg_product_feed_not_modified($modified, 'yesterday-ish nonsense'), 'unreadable');
 	pg_assert_false(pg_product_feed_not_modified(0, 'Mon, 19 Oct 2026 03:00:00 GMT'), 'no file');
 }
+
+// The seller addresses must be absolute http(s) addresses, or empty.
+function test_product_feeds_valid_url()
+{
+	pg_assert_true(pg_product_feed_valid_url(''), 'empty');
+	pg_assert_true(pg_product_feed_valid_url(' https://shop.example/gizlilik '), 'trimmed');
+	pg_assert_true(pg_product_feed_valid_url('http://shop.example/terms?x=1'));
+	pg_assert_false(pg_product_feed_valid_url('/gizlilik'), 'a site path');
+	pg_assert_false(pg_product_feed_valid_url('javascript:alert(1)'));
+	pg_assert_false(pg_product_feed_valid_url('ftp://shop.example/x'));
+	pg_assert_false(pg_product_feed_valid_url('https://'), 'no host');
+	pg_assert_false(pg_product_feed_valid_url('shop.example'), 'no scheme');
+}
+
+// Only groups the screen offered are kept, once each.
+function test_product_feeds_posted_groups()
+{
+	pg_assert_same(array(3, 7), pg_product_feed_posted_groups(array('3', '7', '3', '99', 'x', '-2', array('5')), array(3, 5, 7)));
+	pg_assert_same(array(), pg_product_feed_posted_groups(null, array(3)), 'nothing chosen');
+	pg_assert_same(array(3), pg_product_feed_posted_groups('3', array(3)), 'a single value is read as a list of one');
+}
+
+// Every reason the builder counts and every error it returns has its own text.
+function test_product_feeds_screen_texts()
+{
+	foreach (array('no_address', 'donation', 'recurring', 'no_price', 'not_in_catalog', 'excluded_group', 'no_title', 'no_brand', 'no_image') as $reason) {
+		pg_assert_true(strpos(pg_product_feed_skip_text($reason, 4), 'another reason') === false, $reason);
+		pg_assert_contains('4', pg_product_feed_skip_text($reason, 4), $reason . ' count');
+	}
+
+	foreach (array('ecommerce_off', 'no_catalog', 'no_detail_page', 'detail_page_not_public', 'no_seller_name', 'write_failed', 'not_ready') as $code) {
+		pg_assert_true(pg_product_feed_error_text($code) !== pg_product_feed_error_text('unknown_code'), $code);
+	}
+
+	pg_assert_same(array_keys(pg_product_feed_formats()), array_keys(pg_product_feed_format_texts()), 'a label for every format');
+}
+
+// The System Status tile: no tile with no feed on, the worst state otherwise.
+function test_product_feeds_health()
+{
+	$now = 1800000000;
+	$settings = pg_product_feed_settings_parse('');
+
+	pg_assert_same('none', pg_product_feed_health($settings, $now)['state'], 'no feed on');
+
+	$settings['formats']['openai_jsonl'] = array_merge($settings['formats']['openai_jsonl'], array('enabled' => 1, 'built_at' => $now - 3600));
+	$health = pg_product_feed_health($settings, $now);
+
+	pg_assert_same('ok', $health['state']);
+	pg_assert_same(1, $health['on']);
+	pg_assert_same(array(array('format' => 'openai_jsonl', 'state' => 'ok', 'built_at' => $now - 3600, 'error' => '')), $health['rows'], 'only feeds that are on');
+
+	$settings['formats']['google_tsv'] = array_merge($settings['formats']['google_tsv'], array('enabled' => 1, 'built_at' => $now - PG_PRODUCT_FEED_STALE_AFTER - 1));
+	$health = pg_product_feed_health($settings, $now);
+
+	pg_assert_same('warn', $health['state'], 'older than two days');
+	pg_assert_same(1, $health['stale']);
+
+	$settings['formats']['google_tsv']['built_at'] = $now - PG_PRODUCT_FEED_STALE_AFTER;
+	pg_assert_same('ok', pg_product_feed_health($settings, $now)['state'], 'exactly two days is not stale yet');
+
+	$settings['formats']['openai_csv'] = array_merge($settings['formats']['openai_csv'], array('enabled' => 1));
+	pg_assert_same('warn', pg_product_feed_health($settings, $now)['state'], 'never built');
+
+	$settings['formats']['openai_jsonl']['error'] = 'no_catalog';
+	$health = pg_product_feed_health($settings, $now);
+
+	pg_assert_same('fail', $health['state'], 'a failed build outweighs the rest');
+	pg_assert_same(1, $health['failing']);
+	pg_assert_same(3, $health['on']);
+}

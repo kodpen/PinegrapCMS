@@ -510,14 +510,21 @@ function pg_img_responsive_sets($src, $source_width, $source_extension, $formats
  * It also keeps the layout as it was. With w descriptors the browser lays out
  * an image that has no CSS width at the size sizes names, not at the file's
  * own size; naming the file's width as the ceiling keeps that size wherever
- * the window is wider than the file. (auto is not used for that reason:
- * Chrome lays an auto-sized image with no CSS width out at 300 px.)
+ * the window is wider than the file.
+ *
+ * auto (the width the layout gives the image, where the browser knows it)
+ * comes first only for a lazy image whose CSS width fills its box
+ * (pg_img_fills_width()): there the layout does not depend on the file, and
+ * a catalog card 300 px wide is sent a 480 px file instead of one as wide as
+ * the window. Without a CSS width Chrome lays an auto-sized image out at
+ * 300 px, so it is never used there.
  *
  * @param string $width         the node's width ('48', '48px', '50%', '')
  * @param int    $natural_width the file's displayed width
+ * @param bool   $auto          lazy, and its CSS width fills its box
  * @return string
  */
-function pg_img_sizes($width, $natural_width)
+function pg_img_sizes($width, $natural_width, $auto = false)
 {
     $width = trim((string) $width);
 
@@ -526,12 +533,132 @@ function pg_img_sizes($width, $natural_width)
     }
 
     $natural_width = (int) $natural_width;
+    $sizes = ($natural_width < 1) ? '100vw' : '(max-width: ' . $natural_width . 'px) 100vw, ' . $natural_width . 'px';
 
-    if ($natural_width < 1) {
-        return '100vw';
+    return $auto ? 'auto, ' . $sizes : $sizes;
+}
+
+
+/**
+ * Whether an image's classes give it a CSS width that fills its box:
+ * Bootstrap's w-100 and the card image classes (width: 100%). img-fluid is
+ * only a max-width, and the image's own size still decides below it.
+ *
+ * @param string $class the class attribute
+ * @return bool
+ */
+function pg_img_fills_width($class)
+{
+    return (bool) preg_match('/(?:^|\s)(?:w-100|card-img|card-img-top|card-img-bottom)(?:\s|$)/', (string) $class);
+}
+
+
+/**
+ * The file manager file an image address points at, when it is one that can
+ * have derivatives: a JPEG, PNG or WebP that is not an ERP document. '' for
+ * anything else. Host names and path come from this request.
+ *
+ * @param string $src the address as written, without a fragment
+ * @return string
+ */
+function pg_img_file_name($src)
+{
+    $hosts = array();
+
+    foreach (array('HOSTNAME_SETTING', 'HOSTNAME') as $constant) {
+        if (defined($constant) && (constant($constant) !== '')) {
+            $hosts[] = strtolower(preg_replace('/:\d+$/', '', (string) constant($constant)));
+        }
     }
 
-    return '(max-width: ' . $natural_width . 'px) 100vw, ' . $natural_width . 'px';
+    $name = pg_img_local_file_name($src, defined('PATH') ? PATH : '/', array_values(array_unique($hosts)));
+
+    if ($name === '') {
+        return '';
+    }
+
+    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+
+    // ERP documents and attachments get no derivatives (get_file.php); a GIF
+    // may be animated, which the engine leaves as it is.
+    if (!in_array($extension, array('jpg', 'jpeg', 'png', 'webp'), true) || (strncasecmp($name, 'erp-', 4) === 0)) {
+        return '';
+    }
+
+    return $name;
+}
+
+
+/**
+ * The files rows of these names, read with one query for the names not
+ * asked about before in this request: name => row, or false when there is
+ * no such file.
+ *
+ * @param array $names
+ * @return array
+ */
+function pg_img_file_rows($names)
+{
+    static $rows = array();
+
+    $connected = class_exists('db', false) && isset(db::$con) && db::$con;
+    $missing = array();
+
+    foreach ($names as $name) {
+        if (!array_key_exists($name, $rows)) {
+            $rows[$name] = false;
+
+            if ($connected) {
+                $missing[] = "'" . e($name) . "'";
+            }
+        }
+    }
+
+    if ($missing) {
+        foreach (array_chunk($missing, 200) as $chunk) {
+            $found = db_items("SELECT id, name, attachment FROM files WHERE name IN (" . implode(', ', $chunk) . ")");
+
+            foreach ((array) $found as $row) {
+                if (array_key_exists($row['name'], $rows)) {
+                    $rows[$row['name']] = $row;
+                }
+            }
+        }
+    }
+
+    $out = array();
+
+    foreach ($names as $name) {
+        $out[$name] = $rows[$name];
+    }
+
+    return $out;
+}
+
+
+/**
+ * Read the files rows of many image addresses at once, so the
+ * pg_img_responsive() calls that follow ask the database nothing more: a
+ * catalog page of 24 products is one query, not 24.
+ *
+ * @param array $srcs addresses as written
+ * @return void
+ */
+function pg_img_prefetch($srcs)
+{
+    $names = array();
+
+    foreach ($srcs as $src) {
+        $name = pg_img_file_name(preg_replace('/#.*$/s', '', trim((string) $src)));
+
+        if ($name !== '') {
+            $names[$name] = true;
+        }
+    }
+
+    if ($names) {
+        pg_img_file_rows(array_keys($names));
+    }
 }
 
 
@@ -539,7 +666,8 @@ function pg_img_sizes($width, $natural_width)
  * The responsive sets of an image address, read from the file it points at:
  * null when it is not a file of this site that can have derivatives.
  *
- * One files row and one header read per address per request.
+ * One files row (pg_img_file_rows(), shared with pg_img_prefetch()) and one
+ * header read per address per request.
  *
  * @param string $src the address as the node holds it
  * @return array|null srcset, sources, width (see pg_img_responsive_sets())
@@ -561,33 +689,18 @@ function pg_img_responsive($src)
 
     $cache[$src] = null;
 
-    if (!defined('FILE_DIRECTORY_PATH') || !isset(db::$con) || !db::$con) {
+    if (!defined('FILE_DIRECTORY_PATH') || !class_exists('db', false) || !isset(db::$con) || !db::$con) {
         return null;
     }
 
-    $hosts = array();
-
-    foreach (array('HOSTNAME_SETTING', 'HOSTNAME') as $constant) {
-        if (defined($constant) && (constant($constant) !== '')) {
-            $hosts[] = strtolower(preg_replace('/:\d+$/', '', (string) constant($constant)));
-        }
-    }
-
-    $name = pg_img_local_file_name($src, defined('PATH') ? PATH : '/', array_values(array_unique($hosts)));
+    $name = pg_img_file_name($src);
 
     if ($name === '') {
         return null;
     }
 
-    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
-
-    // ERP documents and attachments get no derivatives (get_file.php); a GIF
-    // may be animated, which the engine leaves as it is.
-    if (!in_array($extension, array('jpg', 'jpeg', 'png', 'webp'), true) || (strncasecmp($name, 'erp-', 4) === 0)) {
-        return null;
-    }
-
-    $row = db_item("SELECT id, attachment FROM files WHERE name = '" . e($name) . "' LIMIT 1");
+    $rows = pg_img_file_rows(array($name));
+    $row = $rows[$name];
 
     if (!$row || !empty($row['attachment'])) {
         return null;
@@ -599,6 +712,7 @@ function pg_img_responsive($src)
         return null;
     }
 
+    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
     $sets = pg_img_responsive_sets($src, $width, $extension, pg_image_derivative_formats(pg_image_derivative_directory()));
 
     if (($sets['srcset'] === '') && !$sets['sources']) {
@@ -732,6 +846,92 @@ function pg_img_attr_string($attrs)
 
 
 /**
+ * One attribute of an HTML tag, entities decoded; '' when it is not there.
+ *
+ * @param string $tag  the tag as written
+ * @param string $name
+ * @return string
+ */
+function pg_img_tag_attr($tag, $name)
+{
+    if (!preg_match('~\s' . preg_quote($name, '~') . '\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'>]+))~i', $tag, $match)) {
+        return '';
+    }
+
+    $value = isset($match[3]) ? $match[3] : (isset($match[2]) && $match[2] !== '' ? $match[2] : $match[1]);
+
+    return html_entity_decode($value, ENT_QUOTES, 'UTF-8');
+}
+
+
+/**
+ * Give every <img> of a piece of HTML that shows a file of this site its
+ * srcset and sizes, in the file's own format.
+ *
+ * For HTML no renderer of the designer writes image by image: a system
+ * widget's records (catalog cards, a product's photos, a cart line), a
+ * carousel's slides, an image inside a text or a custom HTML block. The tag
+ * keeps everything it has and gains two attributes; no <picture> is put
+ * around it, because scripts swap these images (the variant chooser) and
+ * CSS may expect the <img> where it is. An <img> that already has a srcset,
+ * a ^^token^^ or an address elsewhere is left as it is.
+ *
+ * @param string   $html
+ * @param callable $resolve address => sets or null; pg_img_responsive()
+ * @return string
+ */
+function pg_img_responsive_html($html, $resolve = 'pg_img_responsive')
+{
+    if (!is_string($html) || (stripos($html, '<img') === false) || !preg_match_all('~<img\b[^>]*>~i', $html, $tags)) {
+        return $html;
+    }
+
+    $srcs = array();
+
+    foreach ($tags[0] as $tag) {
+        if (!preg_match('~\ssrcset\s*=~i', $tag)) {
+            $srcs[] = pg_img_tag_attr($tag, 'src');
+        }
+    }
+
+    pg_img_prefetch($srcs);
+
+    return preg_replace_callback('~<img\b[^>]*>~i', function ($match) use ($resolve) {
+
+        $tag = $match[0];
+
+        // Already described, or a tag whose > sits inside an attribute value
+        // (the match ended early): left as written.
+        if (preg_match('~\ssrcset\s*=~i', $tag) || (substr_count($tag, '"') % 2 !== 0) || (substr_count($tag, "'") % 2 !== 0)) {
+            return $tag;
+        }
+
+        $sets = call_user_func($resolve, pg_img_tag_attr($tag, 'src'));
+
+        if (!$sets || ($sets['srcset'] === '')) {
+            return $tag;
+        }
+
+        $add = ' srcset="' . h($sets['srcset']) . '"';
+
+        if (!preg_match('~\ssizes\s*=~i', $tag)) {
+            $auto = (strtolower(pg_img_tag_attr($tag, 'loading')) === 'lazy') && pg_img_fills_width(pg_img_tag_attr($tag, 'class'));
+            $add .= ' sizes="' . h(pg_img_sizes(pg_img_tag_attr($tag, 'width'), $sets['width'], $auto)) . '"';
+        }
+
+        // Before the closing > or />, keeping the space a self-closing tag
+        // has in front of its slash.
+        $close = (substr($tag, -2) === '/>') ? 2 : 1;
+        $body = substr($tag, 0, -$close);
+        $kept = rtrim($body);
+
+        return $kept . $add . substr($body, strlen($kept)) . substr($tag, -$close);
+
+    }, $html);
+}
+
+
+/**
  * The page HTML with the responsive markup taken out, for an e-mail.
  *
  * Mail programs do not choose between candidates the way a browser does, and
@@ -755,4 +955,334 @@ function pg_img_strip_responsive($html)
     return preg_replace_callback('~<img\b[^>]*>~i', function ($match) {
         return preg_replace('~\s(?:srcset|sizes)\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $match[0]);
     }, $html);
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Derivative cache upkeep
+ *
+ * A derivative is replaced on its own when its source changes (the signature
+ * in its name, includes/image_engine.php), but the old file of a width nobody
+ * asks for again, and the folder of a file that was deleted, stay on the
+ * disk. A daily pass of the general job takes them away
+ * (pg_image_derivative_sweep_run()); it reads the files table, so every
+ * door that deletes a file is covered without a hook in each. Nothing is
+ * deleted for being old: a current derivative of an existing file is the
+ * cache working, and there are at most a dozen per file.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Which entries of one file's derivative folder are no longer of use.
+ *
+ * A derivative or a .skip marker whose signature is not the one its source
+ * has now (the source was optimized, rotated or replaced), every entry when
+ * the source is gone, a .lock or temporary file older than an hour (its
+ * request died), and a .try marker of an old signature. Names this software
+ * does not write are left alone.
+ *
+ * @param array      $entries name => modification time
+ * @param array|null $source  mtime, size of the file now; null when it is gone
+ * @param int        $now
+ * @return array names
+ */
+function pg_image_derivative_stale_entries($entries, $source, $now)
+{
+    $stale = array();
+
+    foreach ($entries as $name => $mtime) {
+
+        if ($source === null) {
+            $stale[] = $name;
+            continue;
+        }
+
+        if (!preg_match('/^(\d+)-([0-9a-f]{12})\.([a-z]+)(\.skip|\.try|\.lock|\.tmp[0-9a-z]*)?$/', $name, $match)) {
+            continue;
+        }
+
+        $suffix = isset($match[4]) ? $match[4] : '';
+
+        if (($suffix === '.lock') || (strpos($suffix, '.tmp') === 0)) {
+            if (($now - (int) $mtime) > 3600) {
+                $stale[] = $name;
+            }
+            continue;
+        }
+
+        $current = pg_image_derivative_signature($source['mtime'], $source['size'], pg_image_derivative_quality($match[3]));
+
+        if ($match[2] !== $current) {
+            $stale[] = $name;
+        }
+    }
+
+    return $stale;
+}
+
+
+/**
+ * Delete a folder and everything in it, until a deadline.
+ *
+ * @param string $path
+ * @param float  $deadline microtime(true) to stop at
+ * @return array finished (bool), files, bytes
+ */
+function pg_image_derivative_remove_tree($path, $deadline)
+{
+    $result = array('finished' => true, 'files' => 0, 'bytes' => 0);
+    $entries = @scandir($path);
+
+    if (!is_array($entries)) {
+        return $result;
+    }
+
+    foreach ($entries as $entry) {
+
+        if (($entry === '.') || ($entry === '..')) {
+            continue;
+        }
+
+        if (microtime(true) > $deadline) {
+            $result['finished'] = false;
+            return $result;
+        }
+
+        $item = $path . '/' . $entry;
+
+        if (is_dir($item) && !is_link($item)) {
+            $inner = pg_image_derivative_remove_tree($item, $deadline);
+            $result['files'] += $inner['files'];
+            $result['bytes'] += $inner['bytes'];
+
+            if (!$inner['finished']) {
+                $result['finished'] = false;
+                return $result;
+            }
+
+            continue;
+        }
+
+        $bytes = (int) @filesize($item);
+
+        if (@unlink($item)) {
+            $result['files']++;
+            $result['bytes'] += $bytes;
+        }
+    }
+
+    @rmdir($path);
+
+    return $result;
+}
+
+
+/**
+ * Empty the derivative cache, for the cache purge.
+ *
+ * The folder is renamed out of the way first, which is instant whatever it
+ * holds, so the next request starts from an empty cache (and tests the
+ * formats again, formats.json going with it). What can be deleted in two
+ * seconds is deleted now; the rest of the renamed folder goes with the next
+ * pass of the general job.
+ *
+ * @param string $directory pg_image_derivative_directory()
+ * @return bool whether there was a cache to empty
+ */
+function pg_image_derivative_purge($directory)
+{
+    $directory = rtrim((string) $directory, '/\\');
+
+    if (($directory === '') || !is_dir($directory)) {
+        return false;
+    }
+
+    $aside = $directory . '.old-' . time() . '-' . (function_exists('getmypid') ? getmypid() : mt_rand());
+
+    if (!@rename($directory, $aside)) {
+        return false;
+    }
+
+    pg_image_derivative_remove_tree($aside, microtime(true) + 2);
+
+    return true;
+}
+
+
+/**
+ * Where the daily pass stands: last_id (the file id it got to, 0 between
+ * passes) and done_at (when the last pass finished).
+ *
+ * @param string $directory
+ * @return array
+ */
+function pg_image_derivative_sweep_state($directory)
+{
+    $state = @json_decode((string) @file_get_contents(rtrim((string) $directory, '/\\') . '/sweep.json'), true);
+
+    return array(
+        'last_id' => (is_array($state) && isset($state['last_id'])) ? (int) $state['last_id'] : 0,
+        'done_at' => (is_array($state) && isset($state['done_at'])) ? (int) $state['done_at'] : 0,
+    );
+}
+
+
+/**
+ * The folders a purge set aside next to the cache, still to be deleted.
+ *
+ * @param string $directory
+ * @return array paths
+ */
+function pg_image_derivative_set_aside($directory)
+{
+    $directory = rtrim((string) $directory, '/\\');
+    $parent = dirname($directory);
+    $prefix = basename($directory) . '.old-';
+    $found = array();
+
+    foreach ((array) @scandir($parent) as $entry) {
+        if ((strpos((string) $entry, $prefix) === 0) && is_dir($parent . '/' . $entry)) {
+            $found[] = $parent . '/' . $entry;
+        }
+    }
+
+    return $found;
+}
+
+
+/**
+ * Whether the general job should run a pass now: a pass under way, a purged
+ * cache still to delete, or a day since the last pass finished.
+ *
+ * @param string $directory
+ * @return bool
+ */
+function pg_image_derivative_sweep_due($directory)
+{
+    if ($directory === '') {
+        return false;
+    }
+
+    if (pg_image_derivative_set_aside($directory)) {
+        return true;
+    }
+
+    if (!is_dir($directory)) {
+        return false;
+    }
+
+    $state = pg_image_derivative_sweep_state($directory);
+
+    return ($state['last_id'] > 0) || ($state['done_at'] < (time() - 86400));
+}
+
+
+/**
+ * One pass over the derivative cache, for as many seconds as it is given:
+ * what a purge set aside, then the folder of every file id in turn. A pass
+ * that runs out of time remembers the id it got to and goes on from there on
+ * the next tick.
+ *
+ * @param string $directory pg_image_derivative_directory()
+ * @param int    $seconds
+ * @return array state ('done' or 'more'), folders, files, bytes
+ */
+function pg_image_derivative_sweep_run($directory, $seconds = 10)
+{
+    $directory = rtrim((string) $directory, '/\\');
+    $deadline = microtime(true) + max(1, (int) $seconds);
+    $result = array('state' => 'done', 'folders' => 0, 'files' => 0, 'bytes' => 0);
+
+    foreach (pg_image_derivative_set_aside($directory) as $aside) {
+
+        $removed = pg_image_derivative_remove_tree($aside, $deadline);
+        $result['files'] += $removed['files'];
+        $result['bytes'] += $removed['bytes'];
+
+        if (!$removed['finished']) {
+            $result['state'] = 'more';
+            return $result;
+        }
+    }
+
+    if (!is_dir($directory) || !defined('FILE_DIRECTORY_PATH')) {
+        return $result;
+    }
+
+    $state = pg_image_derivative_sweep_state($directory);
+    $ids = array();
+
+    foreach ((array) @scandir($directory) as $entry) {
+
+        $entry = (string) $entry;
+
+        if (preg_match('/^[1-9][0-9]{0,9}$/', $entry) && ((int) $entry > $state['last_id']) && is_dir($directory . '/' . $entry)) {
+            $ids[] = (int) $entry;
+
+        // The source of a format test whose request died
+        // (pg_image_format_probe()).
+        } elseif (preg_match('/^probe-[0-9a-z]+\.png$/', $entry) && ((time() - (int) @filemtime($directory . '/' . $entry)) > 3600)) {
+            @unlink($directory . '/' . $entry);
+        }
+    }
+
+    sort($ids);
+
+    foreach (array_chunk($ids, 200) as $chunk) {
+
+        $names = array();
+
+        foreach ((array) db_items("SELECT id, name FROM files WHERE id IN (" . implode(',', $chunk) . ")") as $row) {
+            $names[(int) $row['id']] = (string) $row['name'];
+        }
+
+        foreach ($chunk as $id) {
+
+            if (microtime(true) > $deadline) {
+                $result['state'] = 'more';
+                @file_put_contents($directory . '/sweep.json', json_encode(array('last_id' => $state['last_id'], 'done_at' => $state['done_at'])));
+                return $result;
+            }
+
+            $folder = $directory . '/' . $id;
+            $source = null;
+
+            if (isset($names[$id])) {
+                $path = FILE_DIRECTORY_PATH . '/' . $names[$id];
+                $mtime = @filemtime($path);
+                $size = @filesize($path);
+
+                if (($mtime !== false) && ($size !== false)) {
+                    $source = array('mtime' => $mtime, 'size' => $size);
+                }
+            }
+
+            $entries = array();
+
+            foreach ((array) @scandir($folder) as $entry) {
+                if (($entry !== '.') && ($entry !== '..') && is_file($folder . '/' . $entry)) {
+                    $entries[$entry] = (int) @filemtime($folder . '/' . $entry);
+                }
+            }
+
+            foreach (pg_image_derivative_stale_entries($entries, $source, time()) as $entry) {
+                $bytes = (int) @filesize($folder . '/' . $entry);
+
+                if (@unlink($folder . '/' . $entry)) {
+                    $result['files']++;
+                    $result['bytes'] += $bytes;
+                }
+            }
+
+            // Empty now: the file is gone, or none of its derivatives was current.
+            if (@rmdir($folder)) {
+                $result['folders']++;
+            }
+
+            $state['last_id'] = $id;
+        }
+    }
+
+    @file_put_contents($directory . '/sweep.json', json_encode(array('last_id' => 0, 'done_at' => time())));
+
+    return $result;
 }

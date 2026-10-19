@@ -667,7 +667,7 @@ Faz -1 – 9 bitti. Kalanlar (e-belge sürücüleri, mali müşavir onayı, elle
 ## Bugün bilerek yapılmayanlar
 
 Otomatik tahsis eşleştirme yok (FIFO yalnız öneri) · e-İrsaliye yok
-(`erp_waybills` dahili irsaliyedir) · Paraşüt sürücüsü boş · çevrimdışı ödeme
+(`erp_waybills` dahili irsaliyedir) · Paraşüt sürücüsü canlıda doğrulanmadı (kuyruk işleyicisi, webhook yok) · çevrimdışı ödeme
 akışı türetilmiş durumdur, yeni enum değeri değil · kâr/zarar resmî gelir tablosu değildir (amortisman,
 dönemsellik yok) · siparişi birden çok faturaya bölme yok · faturaya ödeme
 linki yok (müşteri faturasını "Faturalarım" widget'ında görür, ödeyemez) · iyzico ve pazaryeri hakedişi yok

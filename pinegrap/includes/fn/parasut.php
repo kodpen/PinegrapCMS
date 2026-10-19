@@ -29,6 +29,77 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // Parasut API V4 helpers
 // ---------------------------------------------------------------------------
 
+// The out-of-band redirect: Paraşüt shows the authorization code on its own
+// page instead of sending the browser anywhere, and the token endpoint wants
+// the same value back with every grant.
+if (!defined('PARASUT_REDIRECT_URI')) {
+    define('PARASUT_REDIRECT_URI', 'urn:ietf:wg:oauth:2.0:oob');
+}
+
+// The API takes 10 requests in any 10 seconds (documentation, "Genel
+// Bilgiler"); one invoice with new products and a buyer to open can pass that.
+if (!defined('PARASUT_RATE_LIMIT')) {
+    define('PARASUT_RATE_LIMIT', 10);
+}
+
+if (!defined('PARASUT_RATE_WINDOW')) {
+    define('PARASUT_RATE_WINDOW', 10.0);
+}
+
+/**
+ * How long to wait before the next request so that no window of
+ * $window seconds holds more than $limit of them.
+ *
+ * @param array $stamps  microtime(true) of the requests made so far
+ * @param float $now
+ * @param int   $limit
+ * @param float $window
+ * @return float  Seconds; 0 when the request may go now
+ */
+function parasut_throttle_wait($stamps, $now, $limit = PARASUT_RATE_LIMIT, $window = PARASUT_RATE_WINDOW)
+{
+    $recent = array();
+
+    foreach ((array) $stamps as $stamp) {
+        if (($now - (float) $stamp) < $window) {
+            $recent[] = (float) $stamp;
+        }
+    }
+
+    if (count($recent) < $limit) {
+        return 0.0;
+    }
+
+    sort($recent);
+
+    // The oldest of the last $limit requests has to leave the window.
+    return max(0.0, round($recent[count($recent) - $limit] + $window - $now, 3));
+}
+
+/**
+ * Holds the request back until the rate limit allows it, then counts it.
+ * Per PHP request: a cron run and a page writing at the same moment are not
+ * counted together, which the 429 retry in the e-document driver covers.
+ *
+ * @return void
+ */
+function parasut_throttle()
+{
+    static $stamps = array();
+
+    $wait = parasut_throttle_wait($stamps, microtime(true));
+
+    if ($wait > 0) {
+        usleep((int) ceil($wait * 1000000));
+    }
+
+    $now = microtime(true);
+    $stamps[] = $now;
+    $stamps = array_values(array_filter($stamps, function ($stamp) use ($now) {
+        return ($now - $stamp) < PARASUT_RATE_WINDOW;
+    }));
+}
+
 /**
  * Make a cURL request to the Parasut API.
  *
@@ -40,6 +111,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function _parasut_request($method, $url, $body = null, $token = null)
 {
+    parasut_throttle();
+
     $ch = curl_init($url);
     // Identify this installation on outgoing requests. Sent with no
     // User-Agent, a request looks like an anonymous client to the receiving
@@ -67,16 +140,28 @@ function _parasut_request($method, $url, $body = null, $token = null)
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
+    // The certificate is checked against the bundle the rest of the software
+    // uses (CURL_CA_BUNDLE), the way the update channel and the e-document
+    // layer do; without it a host with a stale CA store fails every call
+    // with a bare "cURL error 60".
+    if (function_exists('pg_curl_tls')) {
+        pg_curl_tls($ch);
+    }
+
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
+    $curl_errno = curl_errno($ch);
     curl_close($ch);
 
     if ($curl_error) {
-        return ['http_code' => 0, 'body' => null, 'curl_error' => $curl_error];
+        if (function_exists('pg_curl_tls_hint')) {
+            $curl_error .= pg_curl_tls_hint($curl_errno);
+        }
+        return ['http_code' => 0, 'body' => null, 'raw' => '', 'curl_error' => $curl_error];
     }
 
-    return ['http_code' => $http_code, 'body' => json_decode($response, true)];
+    return ['http_code' => $http_code, 'body' => json_decode($response, true), 'raw' => (string) $response];
 }
 
 /**
@@ -89,7 +174,7 @@ function _parasut_base()
     // sandbox offered to customers: it does not answer to a merchant's
     // credentials, and because the OAuth call goes through here too, turning the
     // switch on stopped the integration working at all.
-    return PARASUT_API_BASE;
+    return defined('PARASUT_API_BASE') ? PARASUT_API_BASE : 'https://api.parasut.com';
 }
 
 /**
@@ -286,19 +371,23 @@ function _parasut_track_job($job_id, $token)
  * cannot recover these values, and the caller should report "not connected"
  * rather than stop on a fatal error.
  *
+ * @param bool $fresh  Read the row again instead of what this request already
+ *                     decoded (after _parasut_credentials_store())
  * @return array ['client_secret' => string, 'password' => string]
  */
-function _parasut_credentials()
+function _parasut_credentials($fresh = false)
 {
     static $credentials = null;
 
-    if ($credentials !== null) {
+    if (($credentials !== null) && !$fresh) {
         return $credentials;
     }
 
     $credentials = ['client_secret' => '', 'password' => ''];
 
-    $stored = defined('PARASUT_CREDENTIALS_ENC') ? (string) PARASUT_CREDENTIALS_ENC : '';
+    $stored = $fresh
+        ? (string) db_value("SELECT parasut_credentials_enc FROM config LIMIT 1")
+        : (defined('PARASUT_CREDENTIALS_ENC') ? (string) PARASUT_CREDENTIALS_ENC : '');
     if ($stored === '' || strpos($stored, ':') === false) {
         return $credentials;
     }
@@ -316,14 +405,57 @@ function _parasut_credentials()
 }
 
 /**
+ * Write one or both secrets into the encrypted blob, keeping the other as it
+ * is. The same merge the settings save does (pg_parasut_credentials_for_save())
+ * for the connect endpoint, which has only the secret to write.
+ *
+ * @param array $values  'client_secret' and/or 'password'; a key left out is kept
+ * @return bool
+ */
+function _parasut_credentials_store($values)
+{
+    $current = _parasut_credentials(true);
+
+    foreach (['client_secret', 'password'] as $key) {
+        if (array_key_exists($key, (array) $values)) {
+            $current[$key] = trim((string) $values[$key]);
+        }
+    }
+
+    if (($current['client_secret'] === '') && ($current['password'] === '')) {
+        $encoded = '';
+    } else {
+        list($cipher, $iv) = encrypt_string_with_iv(json_encode($current));
+        $encoded = $cipher . ':' . $iv;
+    }
+
+    $ok = (db("UPDATE config SET parasut_credentials_enc = '" . escape($encoded) . "'") !== false);
+
+    // What this request decoded is stale now.
+    _parasut_credentials(true);
+
+    return $ok;
+}
+
+/**
  * Which Parasut account a cached token belongs to. A token kept from another
  * company, client or user is not offered after the settings change.
  *
+ * The connect endpoint computes the owner for the values it has just saved,
+ * which the constants of the running request do not know yet.
+ *
+ * @param string|null $company_id  PARASUT_COMPANY_ID when null
+ * @param string|null $client_id   PARASUT_CLIENT_ID when null
+ * @param string|null $username    PARASUT_USERNAME when null
  * @return string
  */
-function _parasut_token_owner()
+function _parasut_token_owner($company_id = null, $client_id = null, $username = null)
 {
-    return md5(PARASUT_COMPANY_ID . '|' . PARASUT_CLIENT_ID . '|' . PARASUT_USERNAME);
+    $company_id = ($company_id === null) ? (defined('PARASUT_COMPANY_ID') ? PARASUT_COMPANY_ID : '') : $company_id;
+    $client_id = ($client_id === null) ? (defined('PARASUT_CLIENT_ID') ? PARASUT_CLIENT_ID : '') : $client_id;
+    $username = ($username === null) ? (defined('PARASUT_USERNAME') ? PARASUT_USERNAME : '') : $username;
+
+    return md5((string) $company_id . '|' . (string) $client_id . '|' . (string) $username);
 }
 
 /**
@@ -379,12 +511,13 @@ function _parasut_token_cache_read()
  * second request reads either the old file or the new one, never a half
  * one.
  *
- * @param array $cache
+ * @param array       $cache
+ * @param string|null $owner  _parasut_token_owner() of the running request when null
  * @return void
  */
-function _parasut_token_cache_write($cache)
+function _parasut_token_cache_write($cache, $owner = null)
 {
-    $cache['owner'] = _parasut_token_owner();
+    $cache['owner'] = ($owner === null) ? _parasut_token_owner() : (string) $owner;
 
     if (pg_connect_service_put('parasut', 'Paraşüt', $cache)) {
         return;
@@ -438,13 +571,23 @@ function _parasut_token_refresh($refresh_token, $credentials)
  *
  * Kept on plain cURL rather than api_http_request(): the token endpoint wants a
  * form-encoded body and HTTP Basic auth, neither of which that helper sends.
+ * The client is named both ways - Basic auth and client_id / client_secret in
+ * the body - because the documentation's example uses the body and the
+ * server accepts either; a client id typed on the settings card but not
+ * saved yet travels in $credentials.
  *
  * @param array $body         Grant-specific fields
- * @param array $credentials  From _parasut_credentials()
+ * @param array $credentials  From _parasut_credentials(); 'client_id' overrides the saved one
  * @return array|null  Decoded response, or null on a transport error
  */
 function _parasut_token_exchange($body, $credentials)
 {
+    $client_id = trim((string) (($credentials['client_id'] ?? '') !== '' ? $credentials['client_id'] : (defined('PARASUT_CLIENT_ID') ? PARASUT_CLIENT_ID : '')));
+    $client_secret = (string) ($credentials['client_secret'] ?? '');
+    $body = ['client_id' => $client_id, 'client_secret' => $client_secret] + (array) $body;
+
+    parasut_throttle();
+
     $ch = curl_init(_parasut_base() . '/oauth/token');
     // Identify this installation on outgoing requests. Sent with no
     // User-Agent, a request looks like an anonymous client to the receiving
@@ -455,11 +598,15 @@ function _parasut_token_exchange($body, $credentials)
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => http_build_query($body),
-        CURLOPT_USERPWD => PARASUT_CLIENT_ID . ':' . $credentials['client_secret'],
-        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+        CURLOPT_USERPWD => $client_id . ':' . $client_secret,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
         CURLOPT_TIMEOUT => 30,
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
+
+    if (function_exists('pg_curl_tls')) {
+        pg_curl_tls($ch);
+    }
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -506,33 +653,84 @@ function parasut_get_token()
 
     $credentials = _parasut_credentials();
 
-    if (($credentials['client_secret'] === '') || ($credentials['password'] === '')) {
+    // Two ways in. The authorization code (the Connect button on the settings
+    // card) leaves a refresh token and no password; the password grant needs
+    // the account's user name and password. Without either there is nothing
+    // to renew with.
+    $can_refresh = (!empty($cache['refresh_token']) && ($credentials['client_secret'] !== ''));
+    $can_sign_in = (($credentials['client_secret'] !== '') && ($credentials['password'] !== '')
+        && (defined('PARASUT_USERNAME') && (trim((string) PARASUT_USERNAME) !== '')));
+
+    if (!$can_refresh && !$can_sign_in) {
         return [
             'success' => false,
             'token' => null,
-            'error' => lang('Parasut credentials are not set. Enter them in Settings, E-commerce, Invoicing.'),
+            'error' => ($credentials['client_secret'] === '')
+                ? lang('Parasut credentials are not set. Enter them in Settings, E-commerce, Invoicing.')
+                : lang('Pinegrap is not connected to Paraşüt. On the Paraşüt card of the commerce settings, authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.'),
         ];
     }
 
     $lock_name = 'pinegrap_parasut_token_' . substr(md5(PARASUT_COMPANY_ID . '|' . PARASUT_CLIENT_ID), 0, 20);
     $have_lock = (db_value("SELECT GET_LOCK('" . escape($lock_name) . "', 10)") == '1');
 
-    if ($have_lock) {
-        // Whoever we waited for may have renewed it already.
-        $cache = _parasut_token_cache_read();
-        if (!empty($cache['access_token']) && !empty($cache['expires_at']) && (time() < ($cache['expires_at'] - 60))) {
+    // Whoever we waited for may have renewed it already - also when the wait
+    // ran out without the lock.
+    $cache = _parasut_token_cache_read();
+    if (!empty($cache['access_token']) && !empty($cache['expires_at']) && (time() < ($cache['expires_at'] - 60))) {
+        if ($have_lock) {
             db_value("SELECT RELEASE_LOCK('" . escape($lock_name) . "')");
-            return ['success' => true, 'token' => $cache['access_token'], 'error' => ''];
+        }
+        return ['success' => true, 'token' => $cache['access_token'], 'error' => ''];
+    }
+
+    $refresh = $can_refresh ? _parasut_token_refresh((string) ($cache['refresh_token'] ?? ''), $credentials) : ['success' => false, 'data' => null];
+
+    // Every refresh hands out a new refresh token and retires the one sent
+    // (API documentation). A request that renewed in parallel leaves this one
+    // holding a retired token: invalid_grant here then only means the cache
+    // has moved on, so it is read once more before the connection is called
+    // expired.
+    if (!$refresh['success'] && ((string) ($refresh['data']['error'] ?? '') === 'invalid_grant')) {
+        $moved = _parasut_token_cache_read();
+
+        if (!empty($moved['access_token']) && !empty($moved['expires_at']) && (time() < ($moved['expires_at'] - 60))
+            && ((string) ($moved['refresh_token'] ?? '') !== (string) ($cache['refresh_token'] ?? ''))) {
+            if ($have_lock) {
+                db_value("SELECT RELEASE_LOCK('" . escape($lock_name) . "')");
+            }
+            return ['success' => true, 'token' => $moved['access_token'], 'error' => ''];
         }
     }
 
-    $refresh = _parasut_token_refresh((string) ($cache['refresh_token'] ?? ''), $credentials);
-    $data = $refresh['success'] ? $refresh['data'] : _parasut_token_exchange([
-        'grant_type' => 'password',
-        'username' => PARASUT_USERNAME,
-        'password' => $credentials['password'],
-        'redirect_uri' => 'urn:ietf:wg:oauth:2.0:oob',
-    ], $credentials);
+    if ($refresh['success']) {
+        $data = $refresh['data'];
+    } elseif ($can_sign_in) {
+        $data = _parasut_token_exchange([
+            'grant_type' => 'password',
+            'username' => PARASUT_USERNAME,
+            'password' => $credentials['password'],
+            'redirect_uri' => PARASUT_REDIRECT_URI,
+        ], $credentials);
+        $data['grant'] = 'password';
+    } else {
+        // The refresh token has been revoked or has expired (Paraşüt keeps
+        // one for a limited time), and there is no password to fall back on:
+        // the operator has to authorize once more.
+        $data = (array) $refresh['data'];
+
+        // invalid_grant is the server's word for a refresh token it no longer
+        // honours; anything else (a transport error, a 5xx) is passed on as it
+        // is, because authorizing again would not cure it.
+        if ((string) ($data['error'] ?? '') === 'invalid_grant') {
+            $data['error_description'] = lang(array(
+                'string' => 'The Paraşüt connection has expired ({var:1}). Authorize Pinegrap once more on the Paraşüt card of the commerce settings.',
+                'vars' => (string) ($data['error_description'] ?? 'invalid_grant'),
+            ));
+        }
+
+        unset($data['access_token']);
+    }
 
     if (empty($data['access_token'])) {
         if ($have_lock) {
@@ -542,19 +740,268 @@ function parasut_get_token()
         return ['success' => false, 'token' => null, 'error' => lang(array('string' => 'Parasut token error: {var:1}', 'vars' => array($message)))];
     }
 
-    _parasut_token_cache_write([
+    // What the connect endpoint recorded about the account (grant, user,
+    // company name) rides along; a renewal is not a new connection.
+    _parasut_token_cache_write(array_merge(array_diff_key((array) $cache, ['owner' => 1]), [
         'access_token' => $data['access_token'],
         // Parasut does not always return a new refresh token; keep the old one
         // rather than losing the ability to renew without the password.
         'refresh_token' => $data['refresh_token'] ?? ($cache['refresh_token'] ?? ''),
         'expires_at' => time() + (int) ($data['expires_in'] ?? 7200),
-    ]);
+        'grant' => (string) ($data['grant'] ?? ($cache['grant'] ?? 'password')),
+    ]));
 
     if ($have_lock) {
         db_value("SELECT RELEASE_LOCK('" . escape($lock_name) . "')");
     }
 
     return ['success' => true, 'token' => $data['access_token'], 'error' => ''];
+}
+
+/**
+ * Drops the cached access token so the next parasut_get_token() renews it
+ * (with the refresh token, or the password). For the answer that says the
+ * token is no longer good - a 401 - when its own clock still says it is.
+ *
+ * @return void
+ */
+function parasut_token_forget()
+{
+    $cache = _parasut_token_cache_read();
+
+    if (empty($cache)) {
+        return;
+    }
+
+    unset($cache['access_token'], $cache['owner']);
+    $cache['expires_at'] = 0;
+
+    _parasut_token_cache_write($cache);
+}
+
+/**
+ * The page the operator opens to let this installation into their Paraşüt
+ * account. Paraşüt asks them to sign in and to allow the application, then
+ * prints an authorization code (the out-of-band redirect) that is pasted
+ * on the settings card and exchanged by parasut_connect_with_code().
+ *
+ * @param string|null $client_id  The saved one when null
+ * @return string  '' without a client id
+ */
+function parasut_authorize_url($client_id = null)
+{
+    $client_id = trim((string) (($client_id === null) ? (defined('PARASUT_CLIENT_ID') ? PARASUT_CLIENT_ID : '') : $client_id));
+
+    if ($client_id === '') {
+        return '';
+    }
+
+    return _parasut_base() . '/oauth/authorize?' . http_build_query([
+        'client_id' => $client_id,
+        'redirect_uri' => PARASUT_REDIRECT_URI,
+        'response_type' => 'code',
+    ]);
+}
+
+/**
+ * Who the token belongs to and which companies they can work in
+ * (GET /v4/me, with the companies included). The company list is what fills
+ * an empty Company ID box on connect.
+ *
+ * @param string $token
+ * @return array ['success' => bool, 'email' => string, 'name' => string,
+ *                'companies' => array id => name, 'error' => string]
+ */
+function parasut_me($token)
+{
+    $result = _parasut_request('GET', _parasut_base() . '/v4/me?include=companies', null, $token);
+
+    if (($result['http_code'] !== 200) || empty($result['body']['data'])) {
+        return ['success' => false, 'email' => '', 'name' => '', 'companies' => [], 'error' => _parasut_extract_error($result)];
+    }
+
+    return _parasut_me_parse($result['body']) + ['success' => true, 'error' => ''];
+}
+
+/**
+ * Reads the /v4/me answer: the user's e-mail and name, and the companies
+ * (relationship ids, named from the included records when they were sent).
+ *
+ * @param array $body  The decoded JSON:API document
+ * @return array ['email' => string, 'name' => string, 'companies' => array id => name]
+ */
+function _parasut_me_parse($body)
+{
+    $body = (array) $body;
+    $attributes = (array) ($body['data']['attributes'] ?? []);
+    $companies = [];
+
+    foreach ((array) ($body['data']['relationships']['companies']['data'] ?? []) as $reference) {
+        if (is_array($reference) && isset($reference['id'])) {
+            $companies[(string) $reference['id']] = '';
+        }
+    }
+
+    foreach ((array) ($body['included'] ?? []) as $item) {
+        if (is_array($item) && ((string) ($item['type'] ?? '') === 'companies') && isset($item['id'])) {
+            $companies[(string) $item['id']] = trim((string) ($item['attributes']['name'] ?? ''));
+        }
+    }
+
+    return [
+        'email' => trim((string) ($attributes['email'] ?? '')),
+        'name' => trim((string) ($attributes['name'] ?? '')),
+        'companies' => $companies,
+    ];
+}
+
+/**
+ * Turns the authorization code Paraşüt showed into a connection: the code is
+ * exchanged for a token pair, the account is asked who it is and which
+ * companies it can see, and what the next request needs is written down -
+ * client id and secret in the config row, the company id when the box was
+ * empty and the account has exactly one, and the sealed token with its
+ * refresh token. No password is involved, so none is stored.
+ *
+ * A code is good for one exchange and a few minutes; a second click with
+ * the same code is refused by Paraşüt, which is what the error says.
+ *
+ * @param string $code           What Paraşüt printed after the sign-in
+ * @param string $client_id      As typed on the card (the saved one when empty)
+ * @param string $client_secret  As typed (the saved one when empty)
+ * @param string $company_id     As typed; '' lets the account's one company fill it
+ * @return array ['success' => bool, 'company_id' => string, 'company_name' => string,
+ *                'email' => string, 'error' => string]
+ */
+function parasut_connect_with_code($code, $client_id = '', $client_secret = '', $company_id = '')
+{
+    $fail = function ($error) {
+        return ['success' => false, 'company_id' => '', 'company_name' => '', 'email' => '', 'error' => $error];
+    };
+
+    $code = trim((string) $code);
+    $client_id = trim((string) $client_id);
+    $client_secret = trim((string) $client_secret);
+    $company_id = trim((string) $company_id);
+
+    if ($client_id === '') {
+        $client_id = defined('PARASUT_CLIENT_ID') ? trim((string) PARASUT_CLIENT_ID) : '';
+    }
+
+    if ($client_secret === '') {
+        $stored = _parasut_credentials();
+        $client_secret = $stored['client_secret'];
+    }
+
+    if ($code === '') {
+        return $fail(lang('Paste the authorization code Paraşüt showed after the sign-in.'));
+    }
+
+    if (($client_id === '') || ($client_secret === '')) {
+        return $fail(lang('The client id and the client secret are needed before Pinegrap can be authorized.'));
+    }
+
+    $data = _parasut_token_exchange([
+        'grant_type' => 'authorization_code',
+        'code' => $code,
+        'redirect_uri' => PARASUT_REDIRECT_URI,
+    ], ['client_id' => $client_id, 'client_secret' => $client_secret]);
+
+    if (empty($data['access_token'])) {
+        return $fail(lang(array(
+            'string' => 'Paraşüt did not accept the code: {var:1}. A code works once and only for a few minutes; open the authorization page again for a new one.',
+            'vars' => (string) ($data['error_description'] ?? 'no access token in the response'),
+        )));
+    }
+
+    $me = parasut_me($data['access_token']);
+
+    if (!$me['success']) {
+        return $fail(lang(array('string' => 'Paraşüt gave a token but would not say whose it is: {var:1}', 'vars' => $me['error'])));
+    }
+
+    $companies = $me['companies'];
+
+    if ($company_id === '') {
+        if (count($companies) === 1) {
+            $company_id = (string) key($companies);
+        } elseif (count($companies) === 0) {
+            return $fail(lang('This Paraşüt user has no company to work in.'));
+        } else {
+            $named = [];
+            foreach ($companies as $id => $name) {
+                $named[] = ($name !== '') ? $name . ' (' . $id . ')' : (string) $id;
+            }
+            return $fail(lang(array(
+                'string' => 'This Paraşüt user works in more than one company. Write the id of the one to use in the Company ID box and connect again: {var:1}',
+                'vars' => implode(', ', $named),
+            )));
+        }
+    } elseif (!empty($companies) && !isset($companies[$company_id])) {
+        $named = [];
+        foreach ($companies as $id => $name) {
+            $named[] = ($name !== '') ? $name . ' (' . $id . ')' : (string) $id;
+        }
+        return $fail(lang(array(
+            'string' => 'The Paraşüt user cannot see company {var:1}. Its companies: {var:2}',
+            'vars' => array($company_id, implode(', ', $named)),
+        )));
+    }
+
+    $company_name = (string) ($companies[$company_id] ?? '');
+
+    // Kept in this order: the config row first, so the owner of the sealed
+    // token matches what the next request reads from the constants.
+    db("UPDATE config SET
+        parasut_client_id = '" . escape($client_id) . "',
+        parasut_company_id = '" . escape($company_id) . "'");
+    _parasut_credentials_store(['client_secret' => $client_secret]);
+
+    _parasut_token_cache_write([
+        'access_token' => (string) $data['access_token'],
+        'refresh_token' => (string) ($data['refresh_token'] ?? ''),
+        'expires_at' => time() + (int) ($data['expires_in'] ?? 7200),
+        'grant' => 'code',
+        'email' => $me['email'],
+        'company_name' => $company_name,
+        'connected_at' => time(),
+    ], _parasut_token_owner($company_id, $client_id, null));
+
+    return [
+        'success' => true,
+        'company_id' => $company_id,
+        'company_name' => $company_name,
+        'email' => $me['email'],
+        'error' => '',
+    ];
+}
+
+/**
+ * What the settings card says about the connection, read from the sealed
+ * token alone - nothing is asked of Paraşüt while a settings page is drawn.
+ *
+ * @return array ['connected' => bool, 'grant' => 'code'|'password'|'', 'email' => string,
+ *                'company_name' => string, 'expires_at' => int, 'connected_at' => int,
+ *                'renewable' => bool]
+ */
+function parasut_connection_status()
+{
+    $cache = _parasut_token_cache_read();
+    $credentials = _parasut_credentials();
+
+    $renewable = (!empty($cache['refresh_token']) && ($credentials['client_secret'] !== ''))
+        || (($credentials['client_secret'] !== '') && ($credentials['password'] !== '')
+            && defined('PARASUT_USERNAME') && (trim((string) PARASUT_USERNAME) !== ''));
+
+    return [
+        'connected' => (!empty($cache['access_token']) && (((int) ($cache['expires_at'] ?? 0) > time()) || $renewable)),
+        'grant' => (string) ($cache['grant'] ?? (!empty($cache['access_token']) ? 'password' : '')),
+        'email' => (string) ($cache['email'] ?? ''),
+        'company_name' => (string) ($cache['company_name'] ?? ''),
+        'expires_at' => (int) ($cache['expires_at'] ?? 0),
+        'connected_at' => (int) ($cache['connected_at'] ?? 0),
+        'renewable' => $renewable,
+    ];
 }
 
 /**

@@ -748,9 +748,23 @@ function pg_dashboard_widget_2($request, $user)
             ? $status['storage']
             : array();
 
+        // The image derivatives say which formats this server makes
+        // them in (pg_image_derivative_formats(), a stored answer).
+        $image_formats = array();
+        $image_format_names = array('webp' => 'WebP', 'avif' => 'AVIF');
+
+        if (function_exists('pg_image_derivative_formats')) {
+            foreach (pg_image_derivative_formats(pg_image_derivative_directory()) as $image_format => $image_writes) {
+                if ($image_writes && isset($image_format_names[$image_format])) $image_formats[] = $image_format_names[$image_format];
+            }
+        }
+
         $storage_lines = array(
             'database' => lang('Database'),
             'files'    => lang('Files'),
+            'images'   => $image_formats
+                ? lang(array('string' => 'Image derivatives ({var:1})', 'vars' => array(implode(', ', $image_formats))))
+                : lang('Image derivatives'),
             'backups'  => lang('Backups'),
         );
 
@@ -781,7 +795,7 @@ function pg_dashboard_widget_2($request, $user)
                 'color'  => 'text-primary',
                 'name'   => lang('Storage'),
                 'note'   => convert_bytes_to_string((float) $storage['total'], 1),
-                'hint'   => lang('How much this installation is holding: the database, the file library and the backup folder.'),
+                'hint'   => lang('How much this installation is holding: the database, the file library, the image derivatives made from it and the backup folder.'),
                 'detail' => $storage_rows,
                 'action' => '',
                 'panel'  => '',
