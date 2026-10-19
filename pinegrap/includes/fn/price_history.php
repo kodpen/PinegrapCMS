@@ -44,6 +44,10 @@
  * channel 'web'. The column is there for a price kept per sales channel later
  * (a marketplace account may sell at prices set by hand on its side).
  *
+ * The rows are read back, oldest first, through pg_price_history_list_sql():
+ * the external API lists them under GET /products/{id}/price-history
+ * (includes/api/resources/products.php), and the MCP tools run the same route.
+ *
  * Recording never stops the request that changed the price: the price is
  * already saved when it runs. A failed statement is written to the error log
  * and the next save of that product catches up, because the comparison is
@@ -275,6 +279,60 @@ function pg_price_history_insert_sql($changes, $channel, $currency, $source, $no
 
     return "INSERT INTO product_price_history (product_id, channel, price, currency, changed_at, source) VALUES "
         . implode(', ', $values);
+}
+
+/**
+ * The query that lists one product's history rows, oldest first: what the
+ * external API answers GET /products/{id}/price-history with, and the order
+ * a window's lowest price is read in.
+ *
+ * Rows are ordered by changed_at and then by id, and a cursor compares the
+ * pair, so two rows stamped in the same second are each walked once. The
+ * optional channel narrows the rows to one sales channel and is written into
+ * the statement as it is, so only a name pg_price_history_channel() accepts
+ * reaches it; $since keeps rows stamped at or after a moment.
+ *
+ * @param int|string $product_id
+ * @param string     $channel  '' or null for every channel
+ * @param int        $since    unix time, 0 for no lower bound
+ * @param array|null $cursor   array('v' => changed_at, 'i' => id) of the last row read, as api_cursor_decode() gives it
+ * @param int        $rows     rows to fetch (a caller fetches one more than its page to learn whether there is another)
+ * @return string '' when the product id is not one or the channel is not a channel
+ */
+function pg_price_history_list_sql($product_id, $channel = null, $since = 0, $cursor = null, $rows = 50)
+{
+    $ids = pg_price_history_ids($product_id);
+
+    if (count($ids) !== 1) {
+        return '';
+    }
+
+    $where = array("product_id = '" . $ids[0] . "'");
+
+    if (is_string($channel) && ($channel !== '')) {
+        $channel = pg_price_history_channel($channel);
+
+        if ($channel === null) {
+            return '';
+        }
+
+        $where[] = "channel = '" . $channel . "'";
+    }
+
+    if ((int) $since > 0) {
+        $where[] = "changed_at >= '" . (int) $since . "'";
+    }
+
+    if (is_array($cursor) && isset($cursor['v'], $cursor['i'])) {
+        $where[] = "(changed_at > '" . (int) $cursor['v'] . "'
+                OR (changed_at = '" . (int) $cursor['v'] . "' AND id > '" . (int) $cursor['i'] . "'))";
+    }
+
+    return "SELECT id, channel, price, currency, changed_at, source
+        FROM product_price_history
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY changed_at ASC, id ASC
+        LIMIT " . max(1, (int) $rows);
 }
 
 /**

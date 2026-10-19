@@ -23762,5 +23762,6 @@
     "Friendly": "Samimi",
     "Formal": "Resmî",
     "Persuasive": "İkna edici",
-    "Given to the AI engines with every text, and to Pinegrap AI when it drafts a field for Write with AI: the tone, the form of address, the terms to keep. Google and the browser do not read it.": "Yapay zekâ motorlarına her metinle, Yapay zekâyla yaz için bir alanın taslağını yazan Pinegrap AI'a da verilir: üslup, hitap biçimi, korunacak terimler. Google ve tarayıcı bunu okumaz."
+    "Given to the AI engines with every text, and to Pinegrap AI when it drafts a field for Write with AI: the tone, the form of address, the terms to keep. Google and the browser do not read it.": "Yapay zekâ motorlarına her metinle, Yapay zekâyla yaz için bir alanın taslağını yazan Pinegrap AI'a da verilir: üslup, hitap biçimi, korunacak terimler. Google ve tarayıcı bunu okumaz.",
+    "channel must be web, pos or marketplace:<code>.": "channel web, pos ya da marketplace:<kod> olmalı."
 }
