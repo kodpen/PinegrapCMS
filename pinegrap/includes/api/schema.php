@@ -710,6 +710,18 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		array(
+			'id'      => 'store.feeds',
+			'method'  => 'GET',
+			'path'    => '/store/feeds',
+			'scope'   => 'products:read',
+			'handler' => 'api_store_feeds_list',
+			'returns' => array('list' => 'StoreFeed'),
+			'summary' => 'Product feeds',
+			'description' => 'The product feeds the store publishes for shopping platforms: openai_jsonl and openai_csv (the OpenAI product feed) and google_tsv (Google Merchant Center), always in that order. url is the private address a platform reads the feed from (null until the feed has one); give it to the platform, never publish it. The feeds are switched on and set up under Settings, SEO, Product Feeds and rebuilt once a day. state is off, ok, stale (never built, or not for two days) or failing (the last build failed with error; the file built before is still served). products counts the products in the last good build; skipped says how many were left out and why (no_address, donation, recurring, no_price, not_in_catalog, excluded_group, no_title, no_brand, no_image). One page.',
+			'params'  => array()
+		),
+
 		/* ----- E-mail campaigns -------------------------------------------- */
 
 		array(

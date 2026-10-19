@@ -630,6 +630,7 @@ function api_openapi_objects()
         'StoreState'   => 'api_store_state_schema',
         'StoreCountry' => 'api_store_country_schema',
         'StoreCurrency' => 'api_store_currency_schema',
+        'StoreFeed'    => 'api_store_feed_schema',
         'GiftCard'     => 'api_gift_card_schema',
         'GiftCardRedemption' => 'api_gift_card_redemption_schema',
         'Commission'   => 'api_commission_schema',
