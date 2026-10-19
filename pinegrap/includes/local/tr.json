@@ -23438,5 +23438,6 @@
     "Kept as long as the record": "Kayıt durdukça tutuluyor",
     "The IP address was taken out of {var:1} record(s) older than {var:2} days.": "{var:2} günden eski {var:1} kayıttan IP adresi silindi.",
     "general job took the IP address out of {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydından IP adresini sildi",
-    "Removed after {var:1} days": "{var:1} gün sonra silindi"
+    "Removed after {var:1} days": "{var:1} gün sonra silindi",
+    "The note is full, so the answer could not be written under the line that asked.": "Not dolu olduğu için yanıt, soran satırın altına yazılamadı."
 }
