@@ -20,7 +20,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Design decided for the unfinished Paraşüt e-document driver: credentials, HTTP layer, taxpayer check, scenario, async job ladder, totals check, webhook, account title lookup
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
-- image-delivery-pipeline.md: Plan (approved 2026-10-19, in progress: steps 1-3 done, derivatives, designer and widget srcset, picture, lazy): settings, purge, retention, page rebuild and Loading row left
+- image-delivery-pipeline.md: Plan (approved 2026-10-19, in progress: steps 1-3 and the cache upkeep done): image settings with a schema step, page rebuild button, Loading row left
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves

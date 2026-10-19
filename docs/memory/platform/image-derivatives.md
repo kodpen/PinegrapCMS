@@ -27,4 +27,9 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 ## Why is the engine outside functions.php?
 - `includes/image_engine.php` holds `pg_process_image_file()`, its GD/Imagick halves, `pg_ini_bytes()` and the derivative functions; functions.php requires it, get_file.php only for `?w=`/`?f=` (defines `PG_GET_FILE`). Its functions call only each other and PHP; settings stay in `includes/fn/image.php`.
 
-Still open (srcset, settings, purge, sweep): docs/memory/plans/image-delivery-pipeline.md
+## How is the cache kept clean?
+- General job, once a day, 10 s a tick until through (`pg_image_derivative_sweep_run()`, cursor in `sweep.json`): a folder whose file id is no longer in `files` goes whole, a derivative or `.skip` of an old signature goes, a `.lock`/`.tmp*` older than an hour goes. No delete hooks: reading `files` covers every door that deletes a file. Nothing goes for being old: a current derivative is the cache working (PR #[PR4]).
+- Clear caches (`pg_purge_caches()`) renames the folder to `img.old-<time>-<pid>` (instant, `formats.json` included, so formats are tested again), deletes what it can in 2 s; the job deletes the rest.
+- System Status › Storage: `images` in `pg_storage_usage()` (6 h cache), labelled with the formats this server writes.
+
+Still open (settings, page rebuild): docs/memory/plans/image-delivery-pipeline.md

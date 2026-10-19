@@ -424,6 +424,22 @@ if (pg_visitor_cleanup_due()) {
 
 }
 
+// Image derivatives (includes/image_engine.php) of files that were deleted
+// or have changed since, and a cache the purge set aside
+// (pg_image_derivative_sweep_run()): once a day, ten seconds a tick until
+// the pass is through. A tick with nothing due reads one small file.
+if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
+
+    $image_sweep = pg_image_derivative_sweep_run(pg_image_derivative_directory(), 10);
+
+    if ($image_sweep['files'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} image derivative file(s) of deleted or changed files ({var:2})',
+            'vars'   => array(pg_format_number($image_sweep['files'], 0), convert_bytes_to_string($image_sweep['bytes'], 1)),
+        )), 'UNKNOWN');
+    }
+}
+
 // A visitors table still on MyISAM is moved to InnoDB once the cleanup has
 // brought it down to its period: an InnoDB copy built next to it a chunk at a
 // time, put in its place with one RENAME (pg_visitor_move_run()). Not in a
