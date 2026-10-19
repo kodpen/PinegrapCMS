@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19, checkout and designer bindings built): p
 
 ## What remains?
 1. Done: settings card, templates, renderer, `order_documents`, store in `submit_order.php`; checkboxes on all three checkouts (designer express order, classic express order, classic order preview), cart document page `legal_document.php`, server validation, `[NEW]` changelog line (docs/memory/commerce/order-legal-documents.md).
-2. Done: designer bindings (`legal_preinfo` / `legal_contract` in the field list and prefill, `has_legal_documents` flag, `__legal_*_url` href tokens, both boxes in the PHP and JS starter trees; docs/memory/designer/express-order-legal-documents.md).
+2. Done: designer bindings (`legal_preinfo` / `legal_contract` in the field list and prefill, `has_legal_documents` flag, `__legal_*_url` href tokens, both boxes in the PHP and JS starter trees, PR #570; docs/memory/designer/express-order-legal-documents.md).
 3. Receipt e-mail attachment, My Account and panel order views of the stored copy, API route `GET /orders/{id}/documents` and its schema entry.
 4. KVKK notice link and optional consent checkbox (text setting: needs its own config column, ask first), stored as type `kvkk`.
 5. Template seed for Turkish sites on install and the withdrawal timer shown on the order (14 days from delivery, see `customer-returns-flow.md`).
