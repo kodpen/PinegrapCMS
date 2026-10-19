@@ -5832,17 +5832,32 @@ function pg_version_assets($html)
         return $html;
     }
 
-    return preg_replace_callback(
+    $html = preg_replace_callback(
         '#\b(src|href)(\s*=\s*)(["\'])([^"\'>]+?\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|avif|ico|bmp|woff2?|ttf|otf|eot|mp4|webm|ogg|mp3))(\3)#i',
         'pg_version_assets_callback',
         $html
     );
+
+    // A srcset lists several addresses of one picture: the responsive ones
+    // the visual designer writes (pg_img_responsive_sets()) carry their own
+    // ?w= and &f=, and are versioned too, or a replaced file would keep
+    // answering from a browser's or a CDN's copy of its derivatives for as
+    // long as max-age allows.
+    if (stripos($html, 'srcset') !== false) {
+        $html = preg_replace_callback(
+            '#(\ssrcset\s*=\s*)(["\'])([^"\']*)(\2)#i',
+            function ($match) {
+                return $match[1] . $match[2] . pg_version_srcset($match[3], 'pg_asset_version') . $match[4];
+            },
+            $html
+        );
+    }
+
+    return $html;
 }
 
 function pg_version_assets_callback($match)
 {
-    static $versions = array();
-
     $url = $match[4];
 
     // Already versioned, or carrying its own parameters.
@@ -5850,16 +5865,76 @@ function pg_version_assets_callback($match)
         return $match[0];
     }
 
+    $version = pg_asset_version($url);
+
+    if (!$version) {
+        return $match[0];
+    }
+
+    return $match[1] . $match[2] . $match[3] . $url . '?v=' . $version . $match[5];
+}
+
+/**
+ * The version of a local asset address: its file's modification time, or
+ * false when it is not a file of this site. Asked once per address.
+ *
+ * @param string $url without a query string
+ * @return int|false
+ */
+function pg_asset_version($url)
+{
+    static $versions = array();
+
     if (!array_key_exists($url, $versions)) {
         $file = pg_asset_path($url);
         $versions[$url] = $file !== '' ? @filemtime($file) : false;
     }
 
-    if (!$versions[$url]) {
-        return $match[0];
+    return $versions[$url];
+}
+
+/**
+ * A srcset value with every local image address versioned.
+ *
+ * The value is the attribute as written in the HTML, so its ampersands are
+ * &amp;: the version joins an address that has a query with &amp;v=. An
+ * address already carrying v= is someone's deliberate choice and is left as
+ * it is, like in pg_version_assets().
+ *
+ * @param string   $value      the srcset attribute value
+ * @param callable $version_of address (no query, decoded) => version or false
+ * @return string
+ */
+function pg_version_srcset($value, $version_of)
+{
+    $candidates = preg_split('/,\s+/', trim((string) $value));
+
+    foreach ($candidates as $i => $candidate) {
+
+        $parts = preg_split('/\s+/', trim($candidate), 2);
+        $url = $parts[0];
+        $question = strpos($url, '?');
+        $base = ($question === false) ? $url : substr($url, 0, $question);
+
+        if (!preg_match('#\.(?:png|jpe?g|gif|svg|webp|avif|bmp)$#i', $base)) {
+            continue;
+        }
+
+        if (($question !== false) && preg_match('/(?:^|&amp;|&)v=/', substr($url, $question + 1))) {
+            continue;
+        }
+
+        $version = call_user_func($version_of, html_entity_decode($base, ENT_QUOTES, 'UTF-8'));
+
+        if (!$version) {
+            continue;
+        }
+
+        $parts[0] = $url . (($question === false) ? '?' : '&amp;') . 'v=' . $version;
+        $candidates[$i] = implode(' ', $parts);
     }
 
-    return $match[1] . $match[2] . $match[3] . $url . '?v=' . $versions[$url] . $match[5];
+    return implode(', ', $candidates);
 }
 
 /**

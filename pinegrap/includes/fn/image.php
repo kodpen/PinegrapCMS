@@ -306,3 +306,453 @@ function optimize_this_image($file_path)
 
     return $report['data'];
 }
+
+
+/* ---------------------------------------------------------------------------
+ * Responsive <img> markup
+ *
+ * An image the visual designer places is written with the derivatives
+ * get_file.php makes (includes/image_engine.php): a srcset of the fixed widths
+ * in the file's own format on the <img>, and, for the designer's Image
+ * element, AVIF and WebP <source>s in a <picture> around it. The browser picks
+ * the smallest file that fills the slot, in the best format it reads.
+ *
+ * Only a file of this site's file manager is described: its address is read
+ * back to a files row and its pixel width from the file. Anything else (an
+ * external picture, a bound ^^token^^, an SVG, a GIF) is left as it was.
+ *
+ * The page's first image is fetched first (fetchpriority="high") and every
+ * later one waits until it is near the viewport (loading="lazy"), unless the
+ * node says how it loads. That part only runs while a page body is written
+ * (generate_style_code_from_tree()), where "first" means first on the page.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The file manager file an image address points at, or '' for anything else.
+ *
+ * Accepted: the name relative to the site ("photo.jpg", "{path}photo.jpg"),
+ * under the site's path ("/photo.jpg", "/site/photo.jpg"), and the same as a
+ * full address on one of this site's host names. A file has no folder in its
+ * address, so a second path segment is somewhere else. A query string is
+ * allowed (a cache buster), a fragment is ignored.
+ *
+ * @param string $src   the address as the node holds it
+ * @param string $path  the site's path, PATH ('/' or '/site/')
+ * @param array  $hosts the site's host names, lower case
+ * @return string the file name, decoded
+ */
+function pg_img_local_file_name($src, $path, $hosts)
+{
+    $src = trim((string) $src);
+
+    // A token, a template placeholder or anything that could not be a plain
+    // address.
+    if (($src === '') || preg_match('/\^\^|\{\{|[<>"\s,\\\\]/', $src)) {
+        return '';
+    }
+
+    $hash = strpos($src, '#');
+
+    if ($hash !== false) {
+        $src = substr($src, 0, $hash);
+    }
+
+    $question = strpos($src, '?');
+    $address = ($question !== false) ? substr($src, 0, $question) : $src;
+
+    $path = '/' . trim((string) $path, '/') . '/';
+    $path = ($path === '//') ? '/' : $path;
+
+    if (stripos($address, '{path}') === 0) {
+        $address = $path . substr($address, 6);
+    }
+
+    if (preg_match('#^(?:https?:)?//([^/]+)(/.*)?$#i', $address, $match)) {
+
+        $host = strtolower(preg_replace('/:\d+$/', '', $match[1]));
+
+        if (!in_array($host, $hosts, true)) {
+            return '';
+        }
+
+        $address = isset($match[2]) ? $match[2] : '/';
+
+    } elseif (preg_match('#^[a-z][a-z0-9+.-]*:#i', $address)) {
+        // data:, mailto: and the like.
+        return '';
+    }
+
+    if (substr($address, 0, 1) === '/') {
+
+        if (strpos($address, $path) !== 0) {
+            return '';
+        }
+
+        $address = substr($address, strlen($path));
+    }
+
+    if (($address === '') || (strpos($address, '/') !== false)) {
+        return '';
+    }
+
+    return rawurldecode($address);
+}
+
+
+/**
+ * One derivative's address: the image's own address with w and f added.
+ *
+ * @param string $src          the image's address, without a fragment
+ * @param int    $width        the derivative's width
+ * @param int    $source_width the file's own width; at it, no w is asked
+ * @param string $format       webp, avif or '' for the file's own format
+ * @return string
+ */
+function pg_img_derivative_url($src, $width, $source_width, $format)
+{
+    $query = array();
+
+    if ((int) $width < (int) $source_width) {
+        $query[] = 'w=' . (int) $width;
+    }
+
+    if ($format !== '') {
+        $query[] = 'f=' . $format;
+    }
+
+    if (!$query) {
+        return $src;
+    }
+
+    return $src . ((strpos($src, '?') === false) ? '?' : '&') . implode('&', $query);
+}
+
+
+/**
+ * The srcset of an image in its own format and of each <source>.
+ *
+ * Every fixed width below the file's own is a candidate, and the file itself
+ * at its full width closes the <img>'s list: never larger than what was there
+ * before. A <source> stops at the widest fixed width, because a format change
+ * of a 6000 px photo is a long encode for a picture no screen shows whole; a
+ * file at most that wide is offered whole in the new format.
+ *
+ * A format is offered only when this server writes it
+ * (pg_image_derivative_formats()) and the file is not in it already.
+ *
+ * @param string $src              the image's address, without a fragment
+ * @param int    $source_width     the file's displayed width
+ * @param string $source_extension lower case
+ * @param array  $formats          webp, avif => bool
+ * @return array srcset ('' when the file is no wider than the narrowest
+ *               width), sources (MIME type => srcset, AVIF first), width
+ */
+function pg_img_responsive_sets($src, $source_width, $source_extension, $formats)
+{
+    $source_width = (int) $source_width;
+    $widths = array();
+
+    foreach (pg_image_derivative_widths() as $width) {
+        if ($width < $source_width) {
+            $widths[] = $width;
+        }
+    }
+
+    $sets = array('srcset' => '', 'sources' => array(), 'width' => $source_width);
+
+    if ($source_width < 1) {
+        return $sets;
+    }
+
+    if ($widths) {
+        $own = array();
+
+        foreach ($widths as $width) {
+            $own[] = pg_img_derivative_url($src, $width, $source_width, '') . ' ' . $width . 'w';
+        }
+
+        $own[] = $src . ' ' . $source_width . 'w';
+        $sets['srcset'] = implode(', ', $own);
+    }
+
+    $widest = max(pg_image_derivative_widths());
+
+    foreach (array('avif' => 'image/avif', 'webp' => 'image/webp') as $format => $type) {
+
+        if (empty($formats[$format]) || ($format === $source_extension)) {
+            continue;
+        }
+
+        $candidates = array();
+
+        foreach ($widths as $width) {
+            $candidates[] = pg_img_derivative_url($src, $width, $source_width, $format) . ' ' . $width . 'w';
+        }
+
+        if ($source_width <= $widest) {
+            $candidates[] = pg_img_derivative_url($src, $source_width, $source_width, $format) . ' ' . $source_width . 'w';
+        }
+
+        $sets['sources'][$type] = implode(', ', $candidates);
+    }
+
+    return $sets;
+}
+
+
+/**
+ * The sizes attribute: how wide the image is drawn.
+ *
+ * A width set on the node in pixels is the answer. Without one the image is
+ * at most as wide as the window and at most as wide as the file: the browser
+ * picks a file no larger than the one it fetched before.
+ *
+ * It also keeps the layout as it was. With w descriptors the browser lays out
+ * an image that has no CSS width at the size sizes names, not at the file's
+ * own size; naming the file's width as the ceiling keeps that size wherever
+ * the window is wider than the file. (auto is not used for that reason:
+ * Chrome lays an auto-sized image with no CSS width out at 300 px.)
+ *
+ * @param string $width         the node's width ('48', '48px', '50%', '')
+ * @param int    $natural_width the file's displayed width
+ * @return string
+ */
+function pg_img_sizes($width, $natural_width)
+{
+    $width = trim((string) $width);
+
+    if (preg_match('/^([0-9]{1,5})(?:px)?$/i', $width, $match) && ((int) $match[1] > 0)) {
+        return ((int) $match[1]) . 'px';
+    }
+
+    $natural_width = (int) $natural_width;
+
+    if ($natural_width < 1) {
+        return '100vw';
+    }
+
+    return '(max-width: ' . $natural_width . 'px) 100vw, ' . $natural_width . 'px';
+}
+
+
+/**
+ * The responsive sets of an image address, read from the file it points at:
+ * null when it is not a file of this site that can have derivatives.
+ *
+ * One files row and one header read per address per request.
+ *
+ * @param string $src the address as the node holds it
+ * @return array|null srcset, sources, width (see pg_img_responsive_sets())
+ */
+function pg_img_responsive($src)
+{
+    static $cache = array();
+
+    $src = trim((string) $src);
+    $hash = strpos($src, '#');
+
+    if ($hash !== false) {
+        $src = substr($src, 0, $hash);
+    }
+
+    if (array_key_exists($src, $cache)) {
+        return $cache[$src];
+    }
+
+    $cache[$src] = null;
+
+    if (!defined('FILE_DIRECTORY_PATH') || !isset(db::$con) || !db::$con) {
+        return null;
+    }
+
+    $hosts = array();
+
+    foreach (array('HOSTNAME_SETTING', 'HOSTNAME') as $constant) {
+        if (defined($constant) && (constant($constant) !== '')) {
+            $hosts[] = strtolower(preg_replace('/:\d+$/', '', (string) constant($constant)));
+        }
+    }
+
+    $name = pg_img_local_file_name($src, defined('PATH') ? PATH : '/', array_values(array_unique($hosts)));
+
+    if ($name === '') {
+        return null;
+    }
+
+    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+
+    // ERP documents and attachments get no derivatives (get_file.php); a GIF
+    // may be animated, which the engine leaves as it is.
+    if (!in_array($extension, array('jpg', 'jpeg', 'png', 'webp'), true) || (strncasecmp($name, 'erp-', 4) === 0)) {
+        return null;
+    }
+
+    $row = db_item("SELECT id, attachment FROM files WHERE name = '" . e($name) . "' LIMIT 1");
+
+    if (!$row || !empty($row['attachment'])) {
+        return null;
+    }
+
+    list($width, $height) = pg_image_oriented_size(FILE_DIRECTORY_PATH . '/' . $name);
+
+    if (($width < 1) || ($height < 1)) {
+        return null;
+    }
+
+    $sets = pg_img_responsive_sets($src, $width, $extension, pg_image_derivative_formats(pg_image_derivative_directory()));
+
+    if (($sets['srcset'] === '') && !$sets['sources']) {
+        return null;
+    }
+
+    $cache[$src] = $sets;
+
+    return $sets;
+}
+
+
+/**
+ * The <picture> around an <img> that has <source>s.
+ *
+ * display:contents takes the <picture> out of the layout: the <img> is laid
+ * out as the child of the element around it, as it was before, so flex and
+ * grid placement, widths and Bootstrap's utilities on the <img> act as
+ * before. Inside a .ratio box (inside=true) the <picture> is the box's child
+ * instead, and the <img> must carry w-100 h-100 to fill it.
+ *
+ * @param string $img     the finished <img> tag
+ * @param array  $sources MIME type => srcset
+ * @param string $sizes
+ * @param string $pad     indentation
+ * @param bool   $inside  the <picture> is the child of a .ratio box
+ * @return string
+ */
+function pg_img_picture($img, $sources, $sizes, $pad = '', $inside = false)
+{
+    $html = '<picture data-pg-picture' . ($inside ? '' : ' style="display:contents"') . '>' . "\n";
+
+    foreach ($sources as $type => $srcset) {
+        $html .= $pad . '    <source type="' . h($type) . '" srcset="' . h($srcset) . '" sizes="' . h($sizes) . '">' . "\n";
+    }
+
+    return $html . $pad . '    ' . $img . "\n" . $pad . '</picture>';
+}
+
+
+/**
+ * The page-wide state of the loading rule: whether a page body is being
+ * written, and whether its first image has been met.
+ *
+ * @return array
+ */
+function &pg_img_page_state()
+{
+    static $state = array('active' => false, 'first_seen' => false);
+
+    return $state;
+}
+
+
+/**
+ * How an image loads: the attributes to add to its <img>.
+ *
+ * The node's own choice wins (the multi-select Options "Loading attribute",
+ * or a loading attribute written in the Attributes panel, which is printed
+ * there and needs nothing here). Otherwise, while a page body is written, the
+ * page's first image gets fetchpriority="high" and every later one
+ * loading="lazy" and decoding="async". An attribute the node already carries
+ * is never written twice.
+ *
+ * @param string $chosen  props.loading
+ * @param array  $written attribute names the node's Attributes panel carries,
+ *                        lower case
+ * @return array name => value, in order
+ */
+function pg_img_loading_attrs($chosen, $written)
+{
+    $state = &pg_img_page_state();
+
+    $first = false;
+
+    if ($state['active'] && !$state['first_seen']) {
+        $state['first_seen'] = true;
+        $first = true;
+    }
+
+    $attrs = array();
+    $chosen = strtolower(trim((string) $chosen));
+
+    if (in_array('loading', $written, true)) {
+        return $attrs;
+    }
+
+    if (($chosen === 'lazy') || ($chosen === 'eager')) {
+        $attrs['loading'] = $chosen;
+        return $attrs;
+    }
+
+    if (!$state['active']) {
+        return $attrs;
+    }
+
+    if ($first) {
+        if (!in_array('fetchpriority', $written, true)) {
+            $attrs['fetchpriority'] = 'high';
+        }
+
+        return $attrs;
+    }
+
+    $attrs['loading'] = 'lazy';
+
+    if (!in_array('decoding', $written, true)) {
+        $attrs['decoding'] = 'async';
+    }
+
+    return $attrs;
+}
+
+
+/**
+ * The attributes of an attribute list as one string: ' a="1" b="2"'.
+ *
+ * @param array $attrs name => value
+ * @return string
+ */
+function pg_img_attr_string($attrs)
+{
+    $out = '';
+
+    foreach ($attrs as $name => $value) {
+        $out .= ' ' . $name . '="' . h($value) . '"';
+    }
+
+    return $out;
+}
+
+
+/**
+ * The page HTML with the responsive markup taken out, for an e-mail.
+ *
+ * Mail programs do not choose between candidates the way a browser does, and
+ * the e-mail pass makes only src addresses absolute: a <source> or a srcset
+ * would send a reader's mail program after a relative address. The <img> in a
+ * <picture> written here stays, and every srcset and sizes goes.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_img_strip_responsive($html)
+{
+    if ((stripos($html, 'srcset') === false) && (stripos($html, 'data-pg-picture') === false)) {
+        return $html;
+    }
+
+    $html = preg_replace_callback('~<picture\b[^>]*\bdata-pg-picture\b[^>]*>(.*?)</picture>~is', function ($match) {
+        return trim(preg_replace('~\s*<source\b[^>]*>~i', '', $match[1]));
+    }, $html);
+
+    return preg_replace_callback('~<img\b[^>]*>~i', function ($match) {
+        return preg_replace('~\s(?:srcset|sizes)\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $match[0]);
+    }, $html);
+}
