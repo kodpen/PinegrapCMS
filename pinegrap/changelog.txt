@@ -18,6 +18,7 @@
 
 ==========================================================
 2026.11.0
+[NEW] Added editing of a record's fields (product, stock, order, contact, current account, product group, offer, event) from the Workspace record drawer, with the change kept in the channel as a decision.
 [FIX] Miscellaneous bug fixes and new features.
 ==========================================================
 2026.4.10

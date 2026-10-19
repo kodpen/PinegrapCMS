@@ -13146,6 +13146,24 @@ a.ws-chip:hover {
   display: block;
   color: var(--bs-secondary-color);
 }
+/* The record's fields, edited in the drawer (quick_edit.php). */
+.ws-qe-glance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem .75rem;
+}
+.ws-qe-glance-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.ws-qe-form .ws-sa-field {
+  margin-bottom: .5rem;
+}
+.ws-qe-form .ws-sa-field .form-label {
+  margin-bottom: .15rem;
+}
 .ws-side-card .card-body {
   padding: .75rem;
 }

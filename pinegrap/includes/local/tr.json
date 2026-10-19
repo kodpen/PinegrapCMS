@@ -23446,5 +23446,16 @@
     "{var:1} ({var:2}) was changed in the Workspace: {var:3}": "{var:1} ({var:2}) Çalışma Alanı'nda değiştirildi: {var:3}",
     "{var:1} was changed. {var:2}": "{var:1} değiştirildi. {var:2}",
     "Cancelled in the Workspace by {var:1}.": "Çalışma Alanı'nda {var:1} tarafından iptal edildi.",
-    "Offer ({var:1}) was deleted in the Workspace by {var:2}.": "Teklif ({var:1}) Çalışma Alanında {var:2} tarafından silindi."
+    "Offer ({var:1}) was deleted in the Workspace by {var:2}.": "Teklif ({var:1}) Çalışma Alanında {var:2} tarafından silindi.",
+    "Edit fields": "Alanları düzenle",
+    "More fields": "Daha çok alan",
+    "Fewer fields": "Daha az alan",
+    "Nothing changed.": "Değişen bir şey yok.",
+    "The record changed meanwhile, so nothing was written.": "Kayıt bu arada değişti, hiçbir şey yazılmadı.",
+    "Load it again": "Yeniden yükle",
+    "Keep it in this channel as a decision": "Bu kanalda karar olarak tut",
+    "Stock is not tracked for this product; saving a quantity turns tracking on.": "Bu ürünün stoğu izlenmiyor; bir adet kaydetmek izlemeyi açar.",
+    "One per line": "Her satıra bir tane",
+    "Separated by commas": "Virgülle ayrılmış",
+    "A number, like 0.5": "Bir sayı, 0,5 gibi"
 }

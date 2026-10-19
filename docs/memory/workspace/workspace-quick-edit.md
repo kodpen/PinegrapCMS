@@ -17,5 +17,8 @@ description: A record's fields edited by a person from the record drawer with no
 - Each written row is kept in `ws_ai_changes` as `status = 'applied'` with `request_id = 0` and `message_id = 0` (the marker of a person's edit; assistant rows always have a request, scheduled changes keep no row), so the record's history reads the same whoever changed it. The card code never sees these rows because they hang on no message.
 - With `decision` on and a channel the person may post in, a locked `decision` message "{tag} was changed. Label: “from” → “to” · …" is sent in that channel, like an applied proposal's.
 
+## How does the drawer draw it?
+- docs/memory/workspace/workspace-quick-edit-drawer.md (the "Fields" section of `openRecord()`, the chip menu item, `saValueInput()`).
+
 ## What is not here yet?
-- The drawer form and the chip menu item (plan R2), `/price` and `/stock` commands (R3): docs/memory/plans/workspace-record-quick-edit.md. No new API route: `/products/{id}`, `/products/{id}/inventory` and the record routes cover a client's needs (owner default, 2026-10-19).
+- `/price` and `/stock` commands (plan R3): docs/memory/plans/workspace-record-quick-edit.md. No new API route: `/products/{id}`, `/products/{id}/inventory` and the record routes cover a client's needs (owner default, 2026-10-19).
