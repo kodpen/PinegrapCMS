@@ -17,7 +17,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - external-api-iis-environment.md: Rules imposed by IIS/WAF on the external API: waf_is_api_request() path logic, WAF exemption, no PATCH/DELETE, 422 body keys, POST /products.
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
-- image-derivatives.md: Responsive image derivatives made by get_file.php on request (?w=&f=): fixed widths, WebP/AVIF, data/cache/img naming and signature, skip markers, lock, which files get none
+- image-derivatives.md: Responsive image derivatives (PR #589) made by get_file.php on request (?w=&f=): fixed widths, WebP/AVIF, data/cache/img naming and signature, skip markers, lock, which files get none
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the eight invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels).
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field

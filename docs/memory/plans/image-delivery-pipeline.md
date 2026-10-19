@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19, in progress: step 1 derivative engine an
 - Optional later: Speculation Rules `prefetch` for navbar links.
 
 ## What is built?
-- Step 1: `includes/image_engine.php` (engine moved out of `includes/fn/image.php` so get_file.php can load it, AVIF output, derivative functions), the `get_file.php` route, `tests/image_derivatives_test.php`.
+- Step 1 (PR #589): `includes/image_engine.php` (engine moved out of `includes/fn/image.php` so get_file.php can load it, AVIF output, derivative functions), the `get_file.php` route, `tests/image_derivatives_test.php`.
 - Changed from the first sketch: the name carries a signature (`<w>-<sig>.<ext>`) so a replaced source is noticed without hooks; the folder sits beside `FILE_DIRECTORY_PATH` (multi-site); a requested width rounds up to a step; `.skip` markers and a lock file; no derivatives for ERP, workspace and attachment files.
 
 ## What remains?

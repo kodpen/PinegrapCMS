@@ -1,6 +1,6 @@
 ---
 name: image-derivatives
-description: Responsive image derivatives made by get_file.php on request (?w=&f=): fixed widths, WebP/AVIF, data/cache/img naming and signature, skip markers, lock, which files get none
+description: Responsive image derivatives (PR #589) made by get_file.php on request (?w=&f=): fixed widths, WebP/AVIF, data/cache/img naming and signature, skip markers, lock, which files get none
 ---
 
 ## How is a derivative asked for?
