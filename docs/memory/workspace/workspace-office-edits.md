@@ -1,6 +1,6 @@
 ---
 name: workspace-office-edits
-description: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656): who may, replace or copy
+description: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy
 ---
 
 ## How does a workbook or a document of a conversation get edited?

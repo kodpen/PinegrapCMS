@@ -1,6 +1,6 @@
 ---
 name: office-paragraph-edits
-description: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php): which paragraphs, how new text goes into the runs, refused documents
+description: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs, refused documents
 ---
 
 ## How is a paragraph of a document changed?
