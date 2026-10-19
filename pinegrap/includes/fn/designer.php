@@ -2296,6 +2296,88 @@ function pg_designer_delete_design_message($dd)
     return $message;
 }
 
+/**
+ * A design name as it is stored: one line, single spaces, at most the 100
+ * characters style.style_name holds. '' for anything that is not text.
+ *
+ * @param mixed $name
+ * @return string
+ */
+function pg_designer_design_name_clean($name)
+{
+    if (!is_scalar($name)) return '';
+    $name = preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', (string)$name);
+    if (!is_string($name)) return '';   // not UTF-8
+    $name = trim($name);
+    if (mb_strlen($name, 'UTF-8') > 100) $name = rtrim(mb_substr($name, 0, 100, 'UTF-8'));
+    return $name;
+}
+
+/**
+ * Rename a design from the designs list (api.php designer/design_rename).
+ *
+ * The name is the label the lists and the editor show; nothing on the site
+ * is drawn from it. A name another style already has is refused, as the
+ * editor refuses a typed one. So is a design open in the editor: its next
+ * save writes the name its settings still hold.
+ *
+ * @return array ok, error, name (as stored), old
+ */
+function pg_designer_rename_design($style_id, $name, $user)
+{
+    $style_id = (int)$style_id;
+    $out = array('ok' => false, 'error' => '', 'name' => '', 'old' => '');
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+    if (!pg_designer_is_full($user)) {
+        $out['error'] = lang('Permission denied.');
+        return $out;
+    }
+
+    $style = ($style_id > 0) ? db_item("SELECT style_id, style_name, style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
+    if (!$style) {
+        $out['error'] = lang('The style could not be found.');
+        return $out;
+    }
+    if ((string)$style['style_layout'] !== 'visual_designer') {
+        $out['error'] = lang('Only designs made with the visual editor can be renamed here.');
+        return $out;
+    }
+    $out['old'] = (string)$style['style_name'];
+
+    $name = pg_designer_design_name_clean($name);
+    if ($name === '') {
+        $out['error'] = lang('Name is required.');
+        return $out;
+    }
+    if ($name === $out['old']) {
+        $out['ok']   = true;
+        $out['name'] = $name;
+        return $out;
+    }
+    if ((int)db_value("SELECT style_id FROM style WHERE style_name = '" . e($name) . "' AND style_id <> '$style_id' LIMIT 1") > 0) {
+        $out['error'] = lang('The name that you entered is already in use, so please enter a different name.');
+        return $out;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    $peers = pg_collab_peers('', $style_id);
+    if ($peers) {
+        $names = array();
+        foreach ($peers as $peer) $names[$peer['name']] = true;
+        $out['error'] = lang(array('string' => 'The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.',
+                                   'vars'   => implode(', ', array_keys($names))));
+        return $out;
+    }
+
+    db("UPDATE style SET style_name = '" . e($name) . "', style_user = '" . (int)$user['id'] . "', style_timestamp = UNIX_TIMESTAMP() WHERE style_id = '$style_id'");
+    log_activity(lang(array('string' => '{var:1} was renamed to {var:2}', 'vars' => array($out['old'], $name))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+    $out['ok']   = true;
+    $out['name'] = $name;
+    return $out;
+}
+
 function pg_designer_load_pages($style_id, $style_name = '')
 {
     $style_id = (int)$style_id;
