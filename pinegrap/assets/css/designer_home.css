@@ -309,7 +309,7 @@
 
 /* The card or the page the open menu speaks for. */
 .sdh-card.sdh-menu-for,
-.sdh-page.sdh-menu-for {
+.sdh-pages .sdh-page.sdh-menu-for {
   border-color: var(--sdh-accent);
 }
 
