@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19; step 1 revisions table and writer done):
 - API: `GET /design/pages/{id}/revisions`, `POST …/revisions/{no}/restore` (dry-run supported), `publish_at`/`unpublish_at` on page write.
 
 ## What remains?
-1. Done (PR #PRNUM): step 11.0.15 (`page_revisions`, `config.page_revisions_keep/days`), `includes/fn/page_revisions.php` (writer in `pg_designer_save_page()`, sources, trim, daily sweep in job.php), `tests/page_revisions_test.php`; `docs/memory/designer/page-revisions.md`.
+1. Done (PR #696): step 11.0.15 (`page_revisions`, `config.page_revisions_keep/days`), `includes/fn/page_revisions.php` (writer in `pg_designer_save_page()`, sources, trim, daily sweep in job.php), `tests/page_revisions_test.php`; `docs/memory/designer/page-revisions.md`.
 2. History panel, compare, restore in `style_designer.js` (build with `tools/build_js.php` if bundled) (M).
 3. Scheduling columns, job, list badge, page settings UI (M).
 4. API routes, schema, MCP (S).
