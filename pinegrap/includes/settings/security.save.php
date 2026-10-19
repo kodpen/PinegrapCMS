@@ -144,7 +144,38 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $mfa_post_role = 99;
         }
 
+        $mfa_previous_role = (int) db_value("SELECT mfa_required_role FROM config");
+
+        // 99 is "no role"; as a bound below it covers nobody.
+        $mfa_previous_bound = ($mfa_previous_role >= 99) ? -1 : $mfa_previous_role;
+
         db("UPDATE config SET mfa_required_role = " . $mfa_post_role);
+
+        // Accounts the rule now covers but did not before, and that have no
+        // second factor, lose their remembered devices: a remembered sign-in
+        // would otherwise keep opening a session on a password typed before
+        // the rule applied. The operator saving the rule keeps their own
+        // session (the session is bound to its token) and is asked at their
+        // next sign-in; a pinned device is left to the sign-in gate, which
+        // sends it to setup on its next use.
+        if (($mfa_post_role < 99) && ($mfa_post_role > $mfa_previous_role)
+            && function_exists('pg_mfa_table_exists') && pg_mfa_table_exists()
+            && function_exists('pg_auth_tokens_table_exists') && pg_auth_tokens_table_exists()) {
+
+            $mfa_uncovered_ids = db_values(
+                "SELECT user.user_id
+                FROM user
+                LEFT JOIN user_mfa ON user_mfa.user_id = user.user_id
+                WHERE user.user_role <= " . $mfa_post_role . "
+                    AND user.user_role > " . $mfa_previous_bound . "
+                    AND user.user_id <> '" . (int) USER_ID . "'
+                    AND (user_mfa.user_id IS NULL OR user_mfa.enabled_at = 0 OR user_mfa.totp_secret = '')");
+
+            foreach ($mfa_uncovered_ids as $mfa_uncovered_id) {
+                db("DELETE FROM auth_tokens WHERE user_id = '" . (int) $mfa_uncovered_id . "'"
+                    . (pg_auth_tokens_have_pin() ? " AND pinned = 0" : ""));
+            }
+        }
     }
 
     // Sign in with Microsoft and Apple (10.74): the switches, and Apple's

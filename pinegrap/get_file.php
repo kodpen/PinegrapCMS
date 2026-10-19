@@ -1331,6 +1331,7 @@ function initialize_user()
 
             if (is_array($user) && isset($user['id'])) {
                 pg_session_sign_in($user['id'], $user['username']);
+                pg_session_bind_token((string) strtok((string) $_COOKIE['software']['auth'], ':'), $user['id']);
                 log_activity('user logged in', $user['username']);
             } else {
                 $user = null;
@@ -1344,7 +1345,22 @@ function initialize_user()
     // else if there is a signed-in user id in the session, load that row
     } else if (isset($_SESSION['sessionuserid']) == TRUE) {
 
-        $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
+        // The same binding check the pages make (pg_session_token_binding_broken()
+        // in includes/authentication.php): a session whose token row was
+        // revoked ends here too, else a file in a private folder would still
+        // be served to it.
+        $binding_broken = pg_session_token_binding_broken();
+
+        if ($binding_broken !== '') {
+            log_activity('session ended on this device (' . $binding_broken . ')', (string) ($_SESSION['sessionusername'] ?? ''));
+
+            session_unset();
+            session_destroy();
+            setcookie('software[auth]', '', time() - 1000, '/');
+            unset($_COOKIE['software']['auth']);
+        } else {
+            $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
+        }
     }
 
     // if the user is logged in, then store user info in global constants to be used later
