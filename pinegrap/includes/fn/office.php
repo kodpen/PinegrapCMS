@@ -9,7 +9,9 @@
  * importer reads one), the document with DOMDocument, and what comes out is
  * plain data - rows of text for a workbook, a small safe subset of HTML for
  * a document - that the file manager and the Workspace draw. The files are
- * never written to here; the preview is read-only.
+ * never written to here; changing a workbook's cells is the business of
+ * includes/fn/office_edit.php, which the preview asks which cells it may
+ * offer.
  *
  * Every part of the zip is measured before it is opened, so a file built to
  * expand into gigabytes is refused rather than read, and the output is cut
@@ -260,7 +262,9 @@ function pg_office_part_name($folder, $target)
    --------------------------------------------------------------------------- */
 
 /**
- * The sheets of a workbook in their order: name, part, hidden.
+ * The sheets of a workbook in their order: name, part, hidden, and type
+ * (worksheet; a chart sheet, a dialog sheet or a macro sheet has no cells to
+ * change).
  *
  * @param ZipArchive $zip
  * @return array[]
@@ -293,6 +297,7 @@ function pg_office_xlsx_sheets($zip)
             'name'   => (string) $sheet->getAttribute('name'),
             'part'   => $part,
             'hidden' => in_array(strtolower((string) $sheet->getAttribute('state')), array('hidden', 'veryhidden'), true),
+            'type'   => $rels[$id]['type'],
         );
     }
 
@@ -426,14 +431,16 @@ function pg_office_xlsx_column($reference)
 
 /**
  * A day count as a date, or a date and time when it has a fraction. Day 0
- * is 30 December 1899.
+ * is 30 December 1899, or 1 January 1904 in a workbook that counts from
+ * there (old Mac files).
  *
  * @param float|string $serial
+ * @param bool         $date1904
  * @return string
  */
-function pg_office_xlsx_date($serial)
+function pg_office_xlsx_date($serial, $date1904 = false)
 {
-    $stamp = ((float) $serial - 25569) * 86400;
+    $stamp = ((float) $serial - ($date1904 ? 24107 : 25569)) * 86400;
 
     return gmdate((((float) $serial) == floor((float) $serial)) ? 'Y-m-d' : 'Y-m-d H:i', (int) round($stamp));
 }
@@ -470,9 +477,10 @@ function pg_office_xlsx_number($value)
  * @param array  $date_styles pg_office_xlsx_date_styles()
  * @param int    $cells_left  how many cells may still be read, counted down
  * @param bool   $truncated   set when the sheet was cut
+ * @param bool   $date1904    the workbook counts its days from 1904
  * @return array[]
  */
-function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left, &$truncated)
+function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left, &$truncated, $date1904 = false)
 {
     $rows = array();
     $truncated = false;
@@ -504,6 +512,7 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
         }
 
         $row = array();
+        $waiting = array();
 
         foreach ($row_xml->c as $cell) {
             $column = pg_office_xlsx_column((string) $cell['r']);
@@ -545,7 +554,7 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
                     $value = (string) $cell->v;
 
                     if (($value !== '') && is_numeric($value)) {
-                        $value = isset($date_styles[(int) $cell['s']]) ? pg_office_xlsx_date($value) : pg_office_xlsx_number($value);
+                        $value = isset($date_styles[(int) $cell['s']]) ? pg_office_xlsx_date($value, $date1904) : pg_office_xlsx_number($value);
                     }
             }
 
@@ -554,11 +563,24 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
             }
 
             $row[$column] = $value;
+
+            // A formula with no result stored: the program that wrote the
+            // file did not work it out (or an edit here took the stale one
+            // away), and a spreadsheet program will when it opens the file.
+            if (($value === '') && isset($cell->f)) {
+                $waiting[] = $column;
+            }
         }
 
         // The row number the sheet gives, so an empty stretch stays visible
         // as a gap rather than closing up.
-        $rows[] = array('n' => (int) $row_xml['r'], 'cells' => $row);
+        $entry = array('n' => (int) $row_xml['r'], 'cells' => $row);
+
+        if (!empty($waiting)) {
+            $entry['calc'] = $waiting;
+        }
+
+        $rows[] = $entry;
         $cells_left -= max(1, count($row));
     }
 
@@ -572,10 +594,15 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
 /**
  * A workbook as the preview draws it.
  *
+ * Asked for editing, each sheet also says whether its cells may be changed
+ * and which of the shown ones may not (pg_office_xlsx_sheet_edit_info()),
+ * and the workbook carries its version, which a save hands back.
+ *
  * @param string $path
- * @return array ok, error, sheets (name, hidden, rows [n, cells], truncated), truncated
+ * @param bool   $edit
+ * @return array ok, error, sheets (name, hidden, rows [n, cells], truncated[, edit]), truncated[, version]
  */
-function pg_office_xlsx_read($path)
+function pg_office_xlsx_read($path, $edit = false)
 {
     $zip = pg_office_open($path, $error);
 
@@ -586,9 +613,11 @@ function pg_office_xlsx_read($path)
     $sheets = pg_office_xlsx_sheets($zip);
     $date_styles = pg_office_xlsx_date_styles($zip);
     $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
-    $zip->close();
+    $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904((string) $zip->getFromName('xl/workbook.xml'));
 
     if (empty($sheets)) {
+        $zip->close();
+
         return array('ok' => false, 'error' => lang('The file could not be read.'), 'sheets' => array(), 'truncated' => false);
     }
 
@@ -596,20 +625,40 @@ function pg_office_xlsx_read($path)
     $cells_left = PG_OFFICE_MAX_CELLS;
     $out = array();
     $any_cut = false;
+    $edit = $edit && function_exists('pg_office_xlsx_sheet_edit_info');
+    $signed = $edit && pg_office_signed($zip);
+    $styles = $edit ? pg_office_xlsx_style_kinds($zip) : array();
 
     foreach ($sheets as $sheet) {
         $cut = false;
-        $rows = ($cells_left > 0) ? pg_office_xlsx_rows($path, $sheet['part'], $strings, $date_styles, $cells_left, $cut) : array();
+        $rows = ($cells_left > 0) ? pg_office_xlsx_rows($path, $sheet['part'], $strings, $date_styles, $cells_left, $cut, $date1904) : array();
 
         if ($cells_left <= 0) {
             $cut = true;
         }
 
         $any_cut = $any_cut || $cut;
-        $out[] = array('name' => $sheet['name'], 'hidden' => $sheet['hidden'], 'rows' => $rows, 'truncated' => $cut);
+        $entry = array('name' => $sheet['name'], 'hidden' => $sheet['hidden'], 'rows' => $rows, 'truncated' => $cut);
+
+        if ($edit) {
+            $last_row = empty($rows) ? 0 : (int) $rows[count($rows) - 1]['n'];
+            $entry['edit'] = $signed
+                ? array('ok' => false, 'why' => 'signed')
+                : pg_office_xlsx_sheet_edit_info($path, $zip, $sheet, $last_row, $styles);
+        }
+
+        $out[] = $entry;
     }
 
-    return array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
+    $zip->close();
+
+    $book = array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
+
+    if ($edit) {
+        $book['version'] = pg_office_version($path);
+    }
+
+    return $book;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1216,17 +1265,37 @@ function pg_office_view_includes()
 }
 
 /**
- * The words the preview's drawing code needs, translated.
+ * The words the preview's drawing code needs, translated: the preview's own,
+ * and those of a workbook offered for editing (why a cell or a sheet is not
+ * offered, the hint, the count of changes).
  *
- * @return array hidden, truncated, images_lost, empty
+ * @return array
  */
 function pg_office_view_strings()
 {
     return array(
-        'hidden'      => lang('Hidden sheet'),
-        'truncated'   => lang('Only the beginning is shown. Download the file to see all of it.'),
-        'images_lost' => lang('{1} picture(s) could not be shown.'),
-        'empty'       => lang('The sheet is empty.'),
+        'hidden'            => lang('Hidden sheet'),
+        'truncated'         => lang('Only the beginning is shown. Download the file to see all of it.'),
+        'images_lost'       => lang('{1} picture(s) could not be shown.'),
+        'empty'             => lang('The sheet is empty.'),
+        'calc'              => lang('Worked out by a formula when the file is opened in a spreadsheet program.'),
+        'edit_hint'         => lang('Double-click a cell, or select it and type, to change it. Enter keeps the change, Esc undoes it.'),
+        'changed'           => lang('{1} cell(s) changed.'),
+        'recalc'            => lang('Formulas are worked out again when the file is opened in a spreadsheet program.'),
+        'formula_text'      => lang('Kept as text: formulas are not worked out here.'),
+        'locked_formula'    => lang('Worked out by a formula. Change it in a spreadsheet program.'),
+        'locked_formula_is' => lang('Worked out by a formula: {1}'),
+        'locked_value'      => lang('A linked value or a picture in the cell. Change it in a spreadsheet program.'),
+        'locked_merged'     => lang('Hidden under merged cells. Change the first cell of the area.'),
+        'locked_table'      => lang('A header or totals row of a table. Change it in a spreadsheet program.'),
+        'locked_pivot'      => lang('Part of a pivot table. Change it in a spreadsheet program.'),
+        'locked_array'      => lang('Part of an array formula. Change it in a spreadsheet program.'),
+        'locked_protected'  => lang('The sheet is protected and this cell is locked.'),
+        'sheet_protected'   => lang('The sheet is protected: only its unlocked cells can be changed.'),
+        'sheet_signed'      => lang('The file is digitally signed, so its cells are not changed here.'),
+        'sheet_kind'        => lang('This sheet has no cells to change.'),
+        'sheet_large'       => lang('This sheet is too large to change here.'),
+        'sheet_unusual'     => lang('This sheet cannot be changed here.'),
     );
 }
 
@@ -1235,14 +1304,15 @@ function pg_office_view_strings()
  *
  * @param string $path
  * @param string $name the file's name (for the kind)
+ * @param bool   $edit a workbook also says which cells may be changed
  * @return array ok, error, kind, and the kind's own fields
  */
-function pg_office_read($path, $name)
+function pg_office_read($path, $name, $edit = false)
 {
     $kind = pg_office_kind($name);
 
     if ($kind === 'xlsx') {
-        return array('kind' => 'xlsx') + pg_office_xlsx_read($path);
+        return array('kind' => 'xlsx') + pg_office_xlsx_read($path, $edit);
     }
 
     if ($kind === 'docx') {
