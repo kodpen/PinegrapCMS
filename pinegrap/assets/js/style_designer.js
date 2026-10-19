@@ -32471,6 +32471,7 @@ const StyleDesigner = (function () {
         ],
         error_page: [
             ['is_not_found',   _sdT('The page was not found (404)')],
+            ['is_maintenance', _sdT('The site is in maintenance mode (503)')],
             ['is_other_error', _sdT('Another error (not 404)')],
             ['has_error_code', _sdT('The error carries an HTTP code')]
         ]
@@ -47036,9 +47037,11 @@ const StyleDesigner = (function () {
 
             case 'error_page': {
                 // The site's error screen: one block for "not found", one for
-                // every other error; the server keeps the one that applies.
-                // The home link always stays, "back" drops without a
-                // same-site referrer. Mirrors _render_system_widget_error_page().
+                // maintenance mode, one for every other error; the server
+                // keeps the one that applies. The home link always stays,
+                // "back" drops without a same-site referrer. Maintenance has
+                // no links: every page of the site answers with this screen
+                // until it ends. Mirrors _render_system_widget_error_page().
                 var errLinks = function () {
                     return createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-center gap-2', customName: _sdT('Links') }, [
                         createNode('content', { contentType: 'link', text: _sdT('Go to the Home Page'), href: '#', cssClass: 'btn btn-primary',
@@ -47060,6 +47063,13 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'paragraph', text: '/old-page', cssClass: 'small text-body-secondary font-monospace mb-4',
                                 _bindings: { text: '__requested_url' } }),
                             errLinks()
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'text-center py-5', customName: _sdT('Maintenance'),
+                            _bindings: { eo_visible_if: 'is_maintenance' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Down for Maintenance'), cssClass: 'h2 mb-3' }),
+                            createNode('content', { contentType: 'paragraph',
+                                text: _sdT('This site is undergoing maintenance and will be back shortly.'),
+                                cssClass: 'lead text-body-secondary mb-0', _bindings: { text: '__error_message' } })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'text-center py-5', customName: _sdT('Other Error'),
                             _bindings: { eo_visible_if: 'is_other_error' } }, [

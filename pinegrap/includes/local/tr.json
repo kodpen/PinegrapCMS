@@ -24081,5 +24081,7 @@
     "That address is inside the network of this server, so it is not read. The import reads public websites only.": "Bu adres sunucunun kendi ağının içinde, bu yüzden okunmaz. İçe aktarma yalnız herkese açık web sitelerini okur.",
     "Reject all": "Tümünü reddet",
     "Google tags you add yourself (Tag Manager, Google Ads) are told the answer through Google Consent Mode v2: they set no cookies until the visitor allows statistics or marketing. Such a tag can stay as it is; for the notice to ask about its category, add an empty held tag such as {var:1}.": "Kendi eklediğiniz Google etiketleri (Etiket Yöneticisi, Google Ads) yanıtı Google İzin Modu v2 ile öğrenir: ziyaretçi istatistiğe ya da pazarlamaya izin verene kadar çerez yazmazlar. Böyle bir etiket olduğu gibi kalabilir; bildirimin onun kategorisini sorması için {var:1} gibi boş bir bekletilen etiket ekleyin.",
-    "The name field now holds the registered name.": "Ad alanına kayıtlı unvan yazıldı."
+    "The name field now holds the registered name.": "Ad alanına kayıtlı unvan yazıldı.",
+    "Down for Maintenance": "Bakımdayız",
+    "The site is in maintenance mode (503)": "Site bakım modunda (503)"
 }
