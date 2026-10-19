@@ -229,7 +229,7 @@ function submit_order($type) {
              SET
                 user_id = '$user_id',
                 contact_id = '$contact_id'
-             WHERE id = " . ($_SESSION['ecommerce']['order_id'] ?? '');
+             WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // initialize a variable for storing the total balance of all gift cards
@@ -4356,7 +4356,7 @@ function submit_order($type) {
                 $sql_utm
                 affiliate_code = '" . escape($affiliate_code) . "',
                 ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
-            WHERE id = " . ($_SESSION['ecommerce']['order_id'] ?? '');
+            WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // lock table, so no one can read table, so we can get the order number

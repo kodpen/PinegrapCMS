@@ -575,7 +575,7 @@ if ($user['role'] == 0) {
         $where .= " AND ";
     }
 
-    $where .= '(user.user_role >= ' . $user['role'] . ')';
+    $where .= '(user.user_role >= ' . (int) $user['role'] . ')';
 
 // else user is not an administrator, so only show users that have less power than current user
 } else {
@@ -588,7 +588,7 @@ if ($user['role'] == 0) {
         $where .= " AND ";
     }
 
-    $where .= '(user.user_role > ' . $user['role'] . ')';
+    $where .= '(user.user_role > ' . (int) $user['role'] . ')';
 }
 
 // Get number of user that user has access to manage.

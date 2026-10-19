@@ -24,15 +24,17 @@ include('init.php');
 // then validate token field.  PayPal Express Checkout uses "token" for a query string parameter,
 // like we do, so that is why we can't validate the token.  This should not expose any major problem.
 if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return') {
-    // The 3-D Secure and PayPal returns are cross-site POSTs; re-issue the
-    // session cookie with SameSite=None (HttpOnly, Secure on https) so they
-    // still carry the session. See pg_session_cookie_allow_cross_site().
-    pg_session_cookie_allow_cross_site();
-
     // Pay With Iyzico callback is a cross-site POST from iyzico and does not include the CSRF token field
     if (($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
         validate_token_field();
     }
+
+    // The 3-D Secure and PayPal returns are cross-site POSTs; re-issue the
+    // session cookie with SameSite=None (HttpOnly, Secure on https) so they
+    // still carry the session. See pg_session_cookie_allow_cross_site().
+    // After the token check, so a request that fails it never loosens the
+    // visitor's cookie.
+    pg_session_cookie_allow_cross_site();
 }
 
 // The form names the order preview page it was posted from, and the order is

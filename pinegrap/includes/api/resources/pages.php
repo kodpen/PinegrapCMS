@@ -283,7 +283,7 @@ function api_pages_list($params) {
 
 	if (isset($params['q']) && $params['q'] !== '') {
 
-		$term = escape($params['q']);
+		$term = escape(escape_like($params['q']));
 
 		$where[] = "(page.page_name LIKE '%" . $term . "%' OR page.page_title LIKE '%" . $term . "%')";
 
