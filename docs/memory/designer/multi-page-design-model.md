@@ -24,9 +24,9 @@ description: Data model of multi-page visual designer designs (style + page_styl
 - `select_style()` does not list visual designs: they cannot be assigned as folder/page default.
 
 ## Start screen and lists
-- `view_system_styles.php` (`pg_designer_start_screen`, menu `$menu_items[21]`): New -> `add_system_style.php` (straight to canvas), Import -> `?start=import` (`sdDesign.autoImport`), Designs list. Editor exit and delete return here.
+- `view_system_styles.php` (`pg_designer_start_screen`, menu `$menu_items[21]`): the four starts (New, Import -> `?start=import`, Paste -> `?start=paste`, Template -> `?start=template`), then the designs. Editor exit and delete return here. Layout, menu and rename: docs/memory/designer/designer-home-screen.md.
 - `view_styles.php` shows only `style_layout <> 'visual_designer'`; `add_style.php` is to be removed.
-- Designs list is a standard DataTable, no bulk-select column. Row Delete -> `designer/design_delete` (live pages go to the bin, the style is deleted).
+- No table: the site's design large, the others as tiles. Menu Delete -> `designer/design_delete` (live pages go to the bin, the style with them once the bin holds styles).
 - Design Delete button: `pg_designer_style_live_usage()` does not count binned pages; binned pages are left untouched.
 
 ## Bin and folder rules

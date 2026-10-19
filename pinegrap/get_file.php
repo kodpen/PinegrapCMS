@@ -987,7 +987,8 @@ $mimetype = array(
     'ice'=> 'x-conference/x-cooltalk',
     'svg' => 'image/svg+xml',
     'svgz' => 'image/svg+xml',
-    'webp' => 'image/webp'
+    'webp' => 'image/webp',
+    'avif' => 'image/avif'
 );
 
 // Everything this request needs from the session and the database has now
@@ -1018,6 +1019,44 @@ if (isset(db::$con) && db::$con) {
 }
 
 $file['path'] = FILE_DIRECTORY_PATH . '/' . $file['name'];
+$file['download_name'] = $file['name'];
+
+// A responsive derivative: the picture at one of a few fixed widths, or as
+// WebP / AVIF, asked for as ?w=960&f=webp (includes/image_engine.php). It is
+// made on the first request and kept under data/cache/img. Whether this
+// visitor may have the file was decided above for the original and holds for
+// its derivatives. ERP documents, workspace files and form or comment
+// attachments are personal data and get no copies in the cache.
+//
+// Here, after the session and the connection were let go: making one can
+// take seconds, and nothing else waits on this request meanwhile.
+$derivative_status = '';
+
+if (
+    (isset($_GET['w']) || isset($_GET['f']))
+    && ($erp_document === false)
+    && ($workspace_file === false)
+    && ($file['attachment'] != 1)
+) {
+    if (!defined('PG_GET_FILE')) {
+        define('PG_GET_FILE', true);
+    }
+
+    require_once(dirname(__FILE__) . '/includes/image_engine.php');
+
+    $derivative_request = pg_image_derivative_request($_GET);
+
+    if ($derivative_request !== null) {
+        $derivative = pg_image_derivative($file['id'], $file['path'], $derivative_request, pg_image_derivative_directory());
+        $derivative_status = $derivative['status'];
+
+        if ($derivative_status === 'derivative') {
+            $file['path'] = $derivative['path'];
+            $extension = $derivative['extension'];
+            $file['download_name'] = pg_image_derivative_download_name($file['name'], $derivative['width'], $derivative['extension']);
+        }
+    }
+}
 
 $if_modified_since = '';
 if(isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])){
@@ -1038,7 +1077,7 @@ if ($if_modified_since == $last_modified) {
     if (isset($mimetype[$extension]) && ($mimetype[$extension] != 'application/octet-stream')) {
         header('Content-type: ' . $mimetype[$extension]);
         // Quoted, with the characters that would end the quote or the header removed.
-        header('Content-disposition: filename="' . preg_replace('/["\\\\\r\n]/', '', $file['name']) . '"');
+        header('Content-disposition: filename="' . preg_replace('/["\\\\\r\n]/', '', $file['download_name']) . '"');
 
         // HTML, XHTML, SVG and XML are documents the browser will execute
         // when they are opened by their own address: an inline <script> in
@@ -1063,7 +1102,7 @@ if ($if_modified_since == $last_modified) {
     // else file cannot be displayed in browser, so force download dialog
     } else {
         header('Content-type: application/octet-stream');
-        header('Content-disposition: attachment; filename="' . preg_replace('/["\\\\\r\n]/', '', $file['name']) . '"');
+        header('Content-disposition: attachment; filename="' . preg_replace('/["\\\\\r\n]/', '', $file['download_name']) . '"');
     }
 }
 
@@ -1102,7 +1141,14 @@ if ($workspace_file) {
     $cache_control_type = 'private';
 }
 
-header('Cache-Control: ' . ($erp_document ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
+// The original sent in place of a derivative that is still being made, or
+// that the cache folder cannot hold yet, must not be kept under the
+// derivative's address: the next request should get the derivative.
+if ($derivative_status === 'busy') {
+    header('Cache-Control: no-store');
+} else {
+    header('Cache-Control: ' . ($erp_document ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
+}
 
 // Set the pragma cache.  Technically, this header should not be necessary,
 // however we use it to make sure that this works in all browsers.
@@ -1140,7 +1186,9 @@ if ($if_modified_since == $last_modified) {
 
 // else if x-sendfile is enabled then output file through Apache instead of PHP for performance reasons
 // We can't use x-sendfile for CSS files because they might contain paths that need to be replaced.
-} else if (defined('XSENDFILE') and XSENDFILE) {
+// A derivative is sent by PHP as well: it is small, and it sits in
+// data/cache/img, which mod_xsendfile's XSendFilePath may not allow.
+} else if (defined('XSENDFILE') and XSENDFILE and ($derivative_status !== 'derivative')) {
     // we have to use an absolute path because x-sendfile assumes relative paths
     // are relative to the virtual files directory
     header('X-Sendfile: ' . FILE_DIRECTORY_PATH . '/' . $file['name']);

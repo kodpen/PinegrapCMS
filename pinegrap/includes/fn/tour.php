@@ -68,7 +68,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // everybody once more, which is what has to happen when the frame itself
 // changes underneath them.
 if (!defined('PG_TOUR_SHELL_KEY')) {
-    define('PG_TOUR_SHELL_KEY', 'shell.3');
+    define('PG_TOUR_SHELL_KEY', 'shell.4');
 }
 
 function pg_tour_ready()
@@ -250,7 +250,7 @@ function pg_tour_shell_steps()
             'target' => '#menu',
             'placement' => 'right',
             'title' => lang('The menu on the left'),
-            'text' => lang('Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. The arrow at the foot of it narrows the menu down to its icons when you want the room back, and widens it again.')),
+            'text' => lang('Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. The button at the foot of it chooses how it shows: open with its labels, mini with its icons only, or hidden; the button at the top left puts it away and brings it back.')),
 
         array(
             'at' => 'menu_drawer',
@@ -306,7 +306,7 @@ function pg_tour_shell_steps()
             'target' => '.pg-acctbtn',
             'placement' => 'bottom',
             'title' => lang('Your own menu'),
-            'text' => lang('Your account, the light and dark appearance switch, the keyboard shortcuts, help and the way out. This tour lives here too, under Help & Support, so you can watch it again at any time.')));
+            'text' => lang('Your account, the light and dark appearance switch, help and the way out. This tour lives here too, under Help & Support, so you can watch it again at any time. The keyboard shortcuts open with the ? key.')));
 }
 
 // The inline script that registers the tour of the frame, wires the menu entry

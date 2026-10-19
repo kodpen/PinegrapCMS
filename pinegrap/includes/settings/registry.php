@@ -36,6 +36,11 @@ if (!defined('PG_SETTINGS_ENTRY') && !defined('PG_SETTINGS_MENU')) {
  * included. One string per section keeps it a single tr.json value rather
  * than an array of keys, and splitting here keeps the consumers unchanged.
  *
+ * Every term comes back a string. The repeats are dropped through the keys of
+ * an array, and PHP turns a key that reads as a number ("503") into an
+ * integer; sent on as a number, it broke the command palette, whose matcher
+ * lower-cases every term and stopped at the first that had no toLowerCase().
+ *
  * @param string $terms comma-separated terms
  * @return array lower-case terms, empty entries and repeats dropped
  */
@@ -50,7 +55,7 @@ function pg_settings_keywords($terms)
         }
     }
 
-    return array_keys($keywords);
+    return array_map('strval', array_keys($keywords));
 }
 
 
