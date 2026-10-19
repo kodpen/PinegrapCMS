@@ -25,7 +25,9 @@
  * lock with islands lets only the islands change (an attribute's value, an
  * element's text). The caller decides the ranges; this file only enforces
  * them, through the engine's change filter, and reports a refused edit to
- * onLockHit so the screen can say why.
+ * onLockHit so the screen can say why. With `lockGutter` the locked lines
+ * carry a lock marker in the gutter (closed: nothing on the line may
+ * change; open: the line has an island), titled by `lockTitle(tag, partly)`.
  *
  * Labels are the caller's: the engine's own panel texts come through
  * `phrases` (the search panel, the line prompt), everything else is drawn
@@ -171,7 +173,12 @@
             // inside it keeps the plain background so what may change stands out.
             '.pg-ce-lock': { backgroundColor: 'rgba(240,120,32,.09)' },
             '.pg-ce-mark': { backgroundColor: 'rgba(13,110,253,.16)', borderRadius: '2px' },
-            '.pg-ce-mark-line': { backgroundColor: 'rgba(13,110,253,.10)' }
+            '.pg-ce-mark-line': { backgroundColor: 'rgba(13,110,253,.10)' },
+            // The lock gutter: one marker per locked line, in the tint's hue.
+            '.pg-ce-lock-gutter .cm-gutterElement': { width: '14px', textAlign: 'center' },
+            '.pg-ce-lock-marker': { display: 'inline-block', color: dark ? 'rgba(240,140,60,.9)' : 'rgba(205,100,20,.9)', lineHeight: '1' },
+            '.pg-ce-lock-marker svg': { width: '9px', height: '9px', verticalAlign: '-1px' },
+            '.pg-ce-lock-marker-partly': { opacity: '.6' }
         }, { dark: !!dark });
         var style = cm.language.HighlightStyle.define([
             { tag: t.tagName, color: c.tag, fontWeight: '600' },
@@ -390,6 +397,65 @@
         return out;
     }
 
+    // ── Lock gutter ──────────────────────────────────────────────────────
+    // A marker beside every line a lock reaches: a closed lock when nothing
+    // on the line may change, an open one when the line holds an island (an
+    // attribute's value, an element's text). The marker's title is the
+    // caller's: opts.lockTitle(tag, partly), else labels.locked /
+    // labels.lockedPartly.
+    var _LOCK_SVG_CLOSED = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="7" width="10" height="8" rx="1.5" fill="currentColor"/></svg>';
+    var _LOCK_SVG_OPEN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V4.5a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="7" width="10" height="8" rx="1.5" fill="currentColor"/></svg>';
+
+    function _lockGutter(cm, fields, opts) {
+        var V = cm.view;
+
+        function LockMarker(partly, title) {
+            this.partly = partly;
+            this.title = title;
+        }
+        LockMarker.prototype = Object.create(V.GutterMarker.prototype);
+        LockMarker.prototype.constructor = LockMarker;
+        LockMarker.prototype.eq = function (other) {
+            return other instanceof LockMarker && other.partly === this.partly && other.title === this.title;
+        };
+        LockMarker.prototype.toDOM = function () {
+            var el = document.createElement('span');
+            el.className = 'pg-ce-lock-marker' + (this.partly ? ' pg-ce-lock-marker-partly' : '');
+            if (this.title) el.title = this.title;
+            el.innerHTML = this.partly ? _LOCK_SVG_OPEN : _LOCK_SVG_CLOSED;
+            return el;
+        };
+
+        function titleFor(tag, partly) {
+            if (typeof opts.lockTitle === 'function') {
+                try { var t = opts.lockTitle(tag, partly); if (t) return String(t); } catch (e) {}
+            }
+            var labels = opts.labels || {};
+            return String((partly ? (labels.lockedPartly || labels.locked) : labels.locked) || '');
+        }
+
+        return V.gutter({
+            class: 'pg-ce-lock-gutter',
+            lineMarker: function (view, line) {
+                var set = view.state.field(fields.lockField, false);
+                if (!set || set === cm.state.RangeSet.empty) return null;
+                var locked = false, island = false, tag = '';
+                set.between(line.from, line.to, function (from, to, value) {
+                    // A range that only touches the line's edge is not on
+                    // the line; an empty line is on it when a range spans it.
+                    var hits = (line.from === line.to) ? (from <= line.from && to >= line.to) : (from < line.to && to > line.from);
+                    if (!hits) return;
+                    if (value.kind === 'allow') island = true;
+                    else { locked = true; if (!tag) tag = value.tag; }
+                });
+                return locked ? new LockMarker(island, titleFor(tag, island)) : null;
+            },
+            lineMarkerChange: function (update) {
+                return update.docChanged || update.startState.field(fields.lockField, false) !== update.state.field(fields.lockField, false);
+            }
+        });
+    }
+
     // Does the lock set permit a change of (fromA, toA) in the document the
     // transaction started from? Allowed when no lock is touched, or when an
     // island of the touched lock holds the whole change.
@@ -489,6 +555,7 @@
             V.highlightSpecialChars(),
             C.history(),
             L.foldGutter(),
+            opts.lockGutter ? _lockGutter(cm, fields, opts) : [],
             V.drawSelection(),
             V.dropCursor(),
             S.EditorState.allowMultipleSelections.of(true),

@@ -22724,6 +22724,9 @@ const StyleDesigner = (function () {
             readOnly: !_sdCodeMayEdit(),
             phrases: _sdCodePhrases(),
             labels: { syntaxError: _sdT('Syntax error') },
+            // The lock markers of the HTML tree, beside the locked lines.
+            lockGutter: true,
+            lockTitle: _sdCodeLockTitle,
             onSelection: _sdCodeOnSelection,
             onChange: _sdCodeOnChange,
             onLockHit: _sdCodeOnLockHit
@@ -23087,18 +23090,22 @@ const StyleDesigner = (function () {
         var now = Date.now();
         if (now - _sdCode.lockToastAt < 2500) return;
         _sdCode.lockToastAt = now;
-        var msg;
-        switch (hit.tag) {
+        sdToast('<span class="bi bi-lock-fill me-1"></span>' + esc(_sdCodeLockTitle(hit.tag, true)), 'warning', 3500);
+    }
+
+    // Why a line is locked, by the lock's tag: the tooltip of the lock
+    // marker in the gutter and the toast of a refused keystroke. `partly`
+    // says the line (or the hit) has parts that may change.
+    function _sdCodeLockTitle(tag, partly) {
+        switch (tag) {
             case 'head': case 'foot': case 'frame':
-                msg = _sdT('These lines come from the page settings and the design files; change them there.'); break;
+                return _sdT('These lines come from the page settings and the design files; change them there.');
             case 'body':
-                msg = _sdT('The body tag is fixed; its class, id and attribute values can change.'); break;
+                return _sdT('The body tag is fixed; its class, id and attribute values can change.');
             case 'loop':
-                msg = _sdT('The loop markers of a system widget cannot change.'); break;
-            default:
-                msg = _sdT('This element is locked here: only its attribute values and its text can change.');
+                return _sdT('The loop markers of a system widget cannot change.');
         }
-        sdToast('<span class="bi bi-lock-fill me-1"></span>' + esc(msg), 'warning', 3500);
+        return partly ? _sdT('This element is locked here: only its attribute values and its text can change.') : _sdT('Locked');
     }
 
     // The innermost thing whose text holds the whole typed span: a node, the
