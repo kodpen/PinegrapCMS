@@ -23736,5 +23736,9 @@
     "On: managers and the users given access to it can change its text and images, and everything inside its editable areas, on every page that shows it.": "Açıkken yöneticiler ve erişim verilen kullanıcılar bileşenin metinlerini, görsellerini ve düzenlenebilir alanlarının içindeki her şeyi değiştirebilir; değişiklik bileşeni gösteren her sayfaya yansır.",
     "Content editors can now edit this shared component.": "İçerik düzenleyiciler artık bu ortak bileşeni düzenleyebilir.",
     "This shared component is closed to content editors.": "Bu ortak bileşen içerik düzenleyicilere kapatıldı.",
-    "Shared component": "Ortak bileşen"
+    "Shared component": "Ortak bileşen",
+    "Shared components the User may edit": "Kullanıcının düzenleyebileceği Ortak Bileşenler",
+    "Common regions, shared components and menu items": "Ortak bölgeler, ortak bileşenler ve menü öğeleri",
+    "component": "bileşen",
+    "components": "bileşen"
 }

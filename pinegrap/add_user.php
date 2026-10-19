@@ -45,6 +45,7 @@ if (!$_POST) {
         'edit_tree'      => get_acl_folder_tree('edit'),
         'page_types'     => get_page_type_checkboxes_and_labels(),
         'common_regions' => get_checkboxes_for_items_user_can_edit('common_regions'),
+        'shared_components' => get_checkboxes_for_items_user_can_edit('shared_components'),
         'menus'          => get_checkboxes_for_items_user_can_edit('menus'),
         'view_tree'      => get_date_picker_format() . get_acl_folder_tree('view'),
     );
@@ -547,6 +548,9 @@ if (!$_POST) {
             }
         }
         
+        // the shared components opened to content editors the user was given
+        pg_save_shared_component_grants($user_id, $_POST);
+
         // get all menus
         $query = "SELECT id FROM menus";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
