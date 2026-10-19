@@ -1,6 +1,6 @@
 ---
 name: ai-write
-description: "Write with AI" drafts for product and page fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, how the answer is read
+description: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
 ---
 
 ## What exists?
@@ -8,13 +8,13 @@ description: "Write with AI" drafts for product and page fields (ai_write panel 
 - Targets (`pg_ai_write_targets()`): `product_description` (paragraphs and a "- " list, returned also as HTML), `product_short` (≤100), `seo_title` (≤60; product `title`, page `page_title`), `seo_description` (≤160; `meta_description`), `record_field` (a custom form record's field: `record_id` = the form's page, `field_id`; format and length from the field, `pg_ai_write_form_spec()`). The context keys a record may send are in `pg_ai_write_record_fields()`; unknown keys are dropped, rich text is reduced to plain text, and a stored record's groups, attributes or page text fill what the form left empty. The field's own key travels as `current_text`, so the model rewrites it instead of quoting it as a fact.
 
 ## Which model, which language?
-- Pinegrap AI only, through `pg_ai_chat()` (`includes/translate/engine_ai.php`), which carries the licence, the model and the hold after a failed call. Claude is not asked: a routine run takes 1–3 minutes and counts against a few runs a day, a form button has to answer while the person waits.
-- Screens offer the buttons only when `pg_ai_write_available()` says so: Workspace on, `ws_ai_missing()` empty, the person may edit the record.
+- Pinegrap AI through `pg_ai_chat()` (`includes/translate/engine_ai.php`), which carries the licence, the model and the hold after a failed call. Without it (Workspace off or `ws_ai_missing()` not empty) the person's browser writes with its own model: docs/memory/ui/ai-write-browser.md. `pg_ai_write_engine()` picks. Claude is not asked: a routine run takes 1–3 minutes and counts against a few runs a day, a form button has to answer while the person waits.
+- Screens offer the buttons when `pg_ai_write_available()` names an engine: the feature on, the person may edit the record.
 - Written in the pages' language (`TRANSLATION_SOURCE_LANGUAGE`, name from `pg_tr_known_languages()`), following the style note of Settings › Languages (`TRANSLATION_STYLE_NOTE`, shared with the AI translation engines); the site name (`ORGANIZATION_NAME`) goes in as data. Temperature 0.7 so "Try again" gives another text.
 - The prompt forbids invented specifications, prices, discounts, delivery times and guarantees, and treats the record's data as data, not instructions.
 
 ## What protects the licence's quota?
-- Per person 10 drafts a minute (`waf_rate`, scope `ai_write`). Per site `PG_AI_WRITE_DAILY_CAP` in data/config.php, default 200, 0 switches the feature off; counter `data/temp/ai_write_usage.json` under flock. A counter that cannot be opened lets the call through, and a Cleanup of data/temp starts the day's count again.
+- Per person 10 drafts a minute (`waf_rate`, scope `ai_write`). Per site `PG_AI_WRITE_DAILY_CAP` in data/config.php, default 200, 0 switches the feature off (the browser's way too, which only the per-person limit counts); counter `data/temp/ai_write_usage.json` under flock. A counter that cannot be opened lets the call through, and a Cleanup of data/temp starts the day's count again.
 - The session is closed before the model call, so the person's other screens do not wait.
 
 ## Who may ask?

@@ -403,12 +403,26 @@ function generate_style_code_from_tree($tree, $style_name, $additional_body_clas
 
             <body' . ($body_class ? ' class="' . $body_class . '"' : '') . $body_style . $_body_extra_attrs . '>' . "\n";
 
+    // While the body is written, its first image is fetched first and the
+    // rest lazily (pg_img_loading_attrs()). A shared component or a widget
+    // drawn on its own at request time is not a page, and has no "first".
+    $_img_state = &pg_img_page_state();
+    $_img_saved = $_img_state;
+    $_img_state = array('active' => true, 'first_seen' => false);
+
     // Process children of the root container node
+    $_body = '';
     if (isset($tree['children']) && is_array($tree['children'])) {
         foreach ($tree['children'] as $child) {
-            $code .= _render_tree_node($child, 2);
+            $_body .= _render_tree_node($child, 2);
         }
     }
+
+    // The images no node writes one by one (a carousel's slides, an image
+    // in a text or a custom HTML block) get their srcset here.
+    $code .= pg_img_responsive_html($_body);
+
+    $_img_state = $_img_saved;
 
     $code .= '    </body>
 
@@ -762,7 +776,7 @@ function _expand_shared_refs($html, $depth = 0, $ancestors = array())
         }
         // _render_tree_node emits a marker for every shared_ref it meets: the components
         // nested in this one, expanded here with this one counted as their ancestor.
-        $rendered = _render_tree_node($sc_tree, 0);
+        $rendered = pg_img_responsive_html(_render_tree_node($sc_tree, 0));
         if (strpos($rendered, '<!--pg-shared-ref:') !== false) {
             $rendered = _expand_shared_refs($rendered, $depth + 1, $ancestors + array($sid => true));
         }
@@ -835,9 +849,10 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
         $configs[(int)$ov_sid] = $ov_cfg;
     }
 
-    return preg_replace_callback(
-        '/<!--pg-system-widget:(\d+)-->/',
-        function ($m) use ($configs, $mode, $email) {
+    // A widget's records show their pictures through bound ^^tokens^^, so
+    // their srcset is written on each widget's finished output
+    // (pg_img_responsive_html()). Not in an e-mail, which takes none.
+    $render = function ($m) use ($configs, $mode, $email) {
             $sid = (int)$m[1];
             if (!isset($configs[$sid])) return '';
 
@@ -1059,6 +1074,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';
+        };
+
+    return preg_replace_callback(
+        '/<!--pg-system-widget:(\d+)-->/',
+        function ($m) use ($render, $email) {
+            $out = $render($m);
+            return $email ? $out : pg_img_responsive_html($out);
         },
         $html
     );
@@ -2386,6 +2408,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
     $noindex_ready = pg_page_noindex_ready();
     $multi_ready   = pg_multi_page_design_ready();
     $meta_ready    = pg_meta_tags_ready();
+    $jsonld_ready  = pg_page_custom_jsonld_ready();
 
     $cols = "page.page_id, page.page_name, page.page_folder, page.page_title,
              page.page_meta_description, page.page_search, page.page_search_keywords,
@@ -2398,6 +2421,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
              page.comments_administrator_email_to_email_address,
              page.page_timestamp,
              " . ($meta_ready ? "page.page_meta_tags," : "'' AS page_meta_tags,") . "
+             " . ($jsonld_ready ? "page.custom_jsonld," : "'' AS custom_jsonld,") . "
              " . pg_page_tree_sql_expr() . " AS tree_json";
 
     $rows = db_items(
@@ -2463,6 +2487,8 @@ function pg_designer_load_pages($style_id, $style_name = '')
             // none): the editor posts the string back unchanged when they
             // were not edited.
             'page_meta_tags'        => pg_meta_tags_encode(pg_meta_tags_normalize((string)$r['page_meta_tags'])),
+            // The page's own JSON-LD (page.custom_jsonld), as written.
+            'page_custom_jsonld'    => (string)$r['custom_jsonld'],
             'tree_json'             => (string)$r['tree_json'],
         );
     }
@@ -2836,6 +2862,18 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     }
     foreach ((array)$vt['warnings'] as $w) $warnings[] = $w;
 
+    // The page's own JSON-LD has to be something a search engine can read.
+    // Checked here, so the dry run that checks every page refuses the save
+    // before anything is written. Content like the title: every level that
+    // edits the page writes it, and the output re-encodes it.
+    $jsonld = null;
+    if (array_key_exists('page_custom_jsonld', $page) && pg_page_custom_jsonld_ready()) {
+        $jsonld = pg_page_custom_jsonld_check($page['page_custom_jsonld']);
+        if (!$jsonld['ok']) {
+            $errors[] = pg_page_custom_jsonld_message($jsonld['error'], $name);
+        }
+    }
+
     if (!empty($errors)) {
         return array('ok' => false, 'page_id' => $page_id, 'errors' => $errors, 'warnings' => $warnings);
     }
@@ -2996,6 +3034,11 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // them too; every value is escaped when the page is drawn.
     if (array_key_exists('page_meta_tags', $page) && pg_meta_tags_ready()) {
         $c_extra['page_meta_tags'] = e(pg_meta_tags_encode(pg_meta_tags_normalize($page['page_meta_tags'])));
+    }
+    // The page's own JSON-LD, checked above: written when the editor sends
+    // it, left as stored when it does not.
+    if ($jsonld !== null && $jsonld['ok']) {
+        $c_extra['custom_jsonld'] = e($jsonld['value']);
     }
     $sql_c_extra_set  = '';
     $sql_c_extra_cols = '';
@@ -3693,6 +3736,9 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     }
     $_stretch[] = $_positioned;
 
+    $_parents = &_pg_parent_stack();
+    $_parents[] = array('type' => $type, 'class' => isset($props['cssClass']) ? (string)$props['cssClass'] : '');
+
     $_sz = _build_node_sizing_attrs($props);  // {style, class} — applied per-case below
 
     switch ($type) {
@@ -3844,6 +3890,22 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 }
             }
             if (!empty($sem_style_parts)) $attrs .= ' style="' . h(implode(';', $sem_style_parts)) . '"';
+            // A bare <img> (imported or written markup) keeps its markup: it
+            // gets the srcset of its file's widths in the file's own format,
+            // never a <picture> around it, whose CSS may not expect one. How
+            // it loads: pg_img_loading_attrs().
+            if ($tag_lc === 'img') {
+                $_written = _pg_attr_names($props);
+                $_img_src = !empty($props['src']) ? (string)$props['src'] : _user_attr_value($props, 'src');
+                $_loading = pg_img_loading_attrs(isset($props['loading']) ? $props['loading'] : '', $_written);
+                $attrs   .= pg_img_attr_string($_loading);
+                $_sets    = ($_img_src !== '' && !in_array('srcset', $_written, true)) ? pg_img_responsive($_img_src) : null;
+                if ($_sets && $_sets['srcset'] !== '') {
+                    $_lazy  = (isset($_loading['loading']) ? $_loading['loading'] : strtolower(_user_attr_value($props, 'loading'))) === 'lazy';
+                    $attrs .= ' srcset="' . h($_sets['srcset']) . '"';
+                    if (!in_array('sizes', $_written, true)) $attrs .= ' sizes="' . h(pg_img_sizes(_user_attr_value($props, 'width'), $_sets['width'], $_lazy && pg_img_fills_width(isset($props['cssClass']) ? $props['cssClass'] : ''))) . '"';
+                }
+            }
             $void_tags = array('area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr');
             // Whitespace is content in these: the pretty-printer's newline and
             // indent would become spaces in a textarea's value (an "empty"
@@ -3919,7 +3981,41 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     }
 
     array_pop($_stretch);
+    array_pop($_parents);
     return $html;
+}
+
+// One entry per element being drawn, outermost first: its node type and
+// class. Read and written by _render_tree_node().
+function &_pg_parent_stack()
+{
+    static $stack = array();
+    return $stack;
+}
+
+// Whether the element being drawn is the direct child of one whose CSS styles
+// its direct children: Bootstrap's .ratio (.ratio > *) and .row (.row > *).
+// An image there cannot be wrapped in a <picture>, which would take that
+// styling instead of the image.
+function _pg_parent_styles_children()
+{
+    $stack = &_pg_parent_stack();
+    $count = count($stack);
+    if ($count < 2) return false;
+    $parent = $stack[$count - 2];
+    if ($parent['type'] === 'row') return true;
+    return (bool)preg_match('/(?:^|\s)(?:ratio|row)(?:\s|$)/', $parent['class']);
+}
+
+// The lower-case names of the attributes a node's Attributes panel carries.
+function _pg_attr_names($props)
+{
+    $names = array();
+    if (empty($props['_attrs']) || !is_array($props['_attrs'])) return $names;
+    foreach ($props['_attrs'] as $a) {
+        if (is_array($a) && !empty($a['name'])) $names[] = strtolower((string)$a['name']);
+    }
+    return $names;
 }
 
 // Build Bootstrap column classes from column props
@@ -4554,11 +4650,46 @@ function _render_content_html($props, $pad, $kids = '')
             $extra_style = !empty($props['objectPosition']) ? 'object-position:' . h($props['objectPosition']) : '';
             $obj_pos     = _compose_inline_style($props, $extra_style);
             $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'));
+
+            // A file of this site gets its derivatives (pg_img_responsive()):
+            // a srcset in its own format on the <img>, and AVIF / WebP
+            // <source>s in a <picture>, unless the element around it styles
+            // its direct children (.row, .ratio). A srcset written in the
+            // Attributes panel (imported markup) is the author's and stays
+            // alone. How it loads: pg_img_loading_attrs().
+            $_written  = _pg_attr_names($props);
+            $_ar       = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
+            $_in_ratio = ($_ar !== '' && preg_match('/^[0-9]+x[0-9]+$/', $_ar));
+            $_sets     = ($raw_src !== '' && $raw_src !== '#' && !in_array('srcset', $_written, true)) ? pg_img_responsive($raw_src) : null;
+            $_loading  = pg_img_loading_attrs(isset($props['loading']) ? $props['loading'] : '', $_written);
+            $_resp     = '';
+            $_sizes    = '';
+            $_sources  = array();
+            if ($_sets) {
+                $_lazy  = (isset($_loading['loading']) ? $_loading['loading'] : strtolower(_user_attr_value($props, 'loading'))) === 'lazy';
+                $_fills = pg_img_fills_width($cls) || ($_in_ratio && $_sets['sources']);
+                $_sizes = in_array('sizes', $_written, true) ? _user_attr_value($props, 'sizes') : pg_img_sizes($img_w_raw, $_sets['width'], $_lazy && $_fills);
+                if ($_sets['srcset'] !== '') {
+                    $_resp .= ' srcset="' . h($_sets['srcset']) . '"';
+                    if (!in_array('sizes', $_written, true)) $_resp .= ' sizes="' . h($_sizes) . '"';
+                }
+                if ($_in_ratio || !_pg_parent_styles_children()) $_sources = $_sets['sources'];
+                // In its own .ratio box the <picture> is the box's child and
+                // the image fills it, as it did as the child itself.
+                if ($_sources && $_in_ratio) $cls .= ($cls ? ' ' : '') . 'w-100 h-100';
+            }
+
             // onerror handler: when the bound src 404s, swap to the
             // placeholder. The `this.onerror=null` guard prevents an
             // infinite loop if even the placeholder ever fails to load.
-            $onerror_attr = ' onerror="this.onerror=null;this.src=\'' . h($_pg_no_img) . '\'"';
-            $img_tag = '<img src="' . $src . '" alt="' . $alt . '"' . $w_attr . $h_attr
+            // A srcset or a <source> outranks src, so they go first. A bound
+            // image gets its srcset after the token is filled in
+            // (pg_img_responsive_html() on the widget's output), so it is
+            // given the same handler.
+            $onerror_attr = ($_sets || strpos($raw_src, '^^') !== false)
+                ? ' onerror="' . h("this.onerror=null;var p=this.parentNode;if(p&&p.nodeName==='PICTURE'){var s;while((s=p.querySelector('source')))p.removeChild(s);}this.removeAttribute('srcset');this.src='" . $_pg_no_img . "'") . '"'
+                : ' onerror="this.onerror=null;this.src=\'' . h($_pg_no_img) . '\'"';
+            $img_tag = '<img src="' . $src . '"' . $_resp . ' alt="' . $alt . '"' . pg_img_attr_string($_loading) . $w_attr . $h_attr
                 . ($cls ? ' class="' . $cls . '"' : '') . $obj_pos . $img_extra . $onerror_attr . '>';
 
             // Aspect Ratio wrapper: Bootstrap's .ratio class only works on a parent div.
@@ -4600,10 +4731,10 @@ function _render_content_html($props, $pad, $kids = '')
                     ? ' style="' . implode(';', $wrapper_style_parts) . '"'
                     : '';
                 $html .= $pad . '<div class="' . $wrapper_class . '"' . $wrapper_style_attr . '>' . "\n"
-                      . $pad . '    ' . $img_tag . "\n"
+                      . $pad . '    ' . ($_sources ? pg_img_picture($img_tag, $_sources, $_sizes, $pad . '    ', true) : $img_tag) . "\n"
                       . $pad . '</div>' . "\n";
             } else {
-                $html .= $pad . $img_tag . "\n";
+                $html .= $pad . ($_sources ? pg_img_picture($img_tag, $_sources, $_sizes, $pad) : $img_tag) . "\n";
             }
             break;
 

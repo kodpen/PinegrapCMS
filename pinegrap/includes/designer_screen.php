@@ -85,44 +85,6 @@ function pg_designer_screen_render($ctx)
     $pages    = is_array($ctx['pages']) ? $ctx['pages'] : array();
     $active   = (int)$ctx['active_page_id'];
 
-    // Social networking position lives on the style.
-    $output_modal_social = '';
-    if (SOCIAL_NETWORKING == TRUE) {
-        $output_modal_social =
-            '<div class="mb-3">
-                <label class="form-label small">' . lang('Social Networking') . '</label>
-                ' . $liveform->output_field(array('type'=>'select', 'name'=>'social_networking_position', 'options'=>array(
-                    'Top Left'    => 'top_left',
-                    'Top Right'   => 'top_right',
-                    'Bottom Left' => 'bottom_left',
-                    'Bottom Right'=> 'bottom_right',
-                    'Disabled'    => 'disabled',
-                ), 'class'=>'form-select form-select-sm')) . '
-            </div>';
-    }
-
-    // Search-engine switches — only where the columns exist.
-    $output_noindex_switches = '';
-    $output_noindex_hint = '';
-    if (pg_page_noindex_ready() == TRUE) {
-        $output_noindex_switches =
-            '<div class="form-check form-switch">
-                <input type="hidden" name="page_noindex" value="0">
-                <input class="form-check-input sd-page-field" type="checkbox" name="page_noindex" id="pg_page_noindex" value="1" data-page-key="page_noindex">
-                <label class="form-check-label small" for="pg_page_noindex">' . lang('Close to Search Engines (noindex)') . '</label>
-            </div>
-            <div class="form-check form-switch">
-                <input type="hidden" name="page_nofollow" value="0">
-                <input class="form-check-input sd-page-field" type="checkbox" name="page_nofollow" id="pg_page_nofollow" value="1" data-page-key="page_nofollow" disabled="disabled">
-                <label class="form-check-label small" for="pg_page_nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
-            </div>';
-        $output_noindex_hint =
-            '<div class="form-text small mb-3" id="pg_noindex_hint" style="display:none">
-                ' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '
-                <span class="text-warning d-block">' . lang('A page blocked in robots.txt is not crawled, so the noindex tag on it is never read. Use this before a page reaches the results; a page that is already listed can take a while to drop out.') . '</span>
-            </div>';
-    }
-
     // The design's framework; a style from before 2026.4.5 is Bootstrap 5.
     $sd_framework = pg_design_framework(isset($style['framework']) ? $style['framework'] : '');
 
@@ -180,6 +142,7 @@ function pg_designer_screen_render($ctx)
             'pg_comments_email_subject' => (string)(isset($p['pg_comments_email_subject']) ? $p['pg_comments_email_subject'] : ''),
             'pg_comments_notify_email'  => (string)(isset($p['pg_comments_notify_email']) ? $p['pg_comments_notify_email'] : ''),
             'page_meta_tags'        => (string)(isset($p['page_meta_tags']) ? $p['page_meta_tags'] : ''),
+            'page_custom_jsonld'    => (string)(isset($p['page_custom_jsonld']) ? $p['page_custom_jsonld'] : ''),
             'tree'                  => $tree,
             'treeLoadWarning'       => $warn,
             // The page's form-level settings (name, notification, confirmation).
@@ -221,6 +184,7 @@ function pg_designer_screen_render($ctx)
             'pg_comments_email_subject' => '',
             'pg_comments_notify_email'  => '',
             'page_meta_tags'        => '',
+            'page_custom_jsonld'    => '',
             'tree'                  => null,
             'treeLoadWarning'       => false,
             'formSettings'          => array(),
@@ -318,6 +282,15 @@ function pg_designer_screen_render($ctx)
         // The Bootstrap Icons sheet the site loads (pg_design_icons_url()),
         // for the canvas, the assets panel row and the preview.
         'iconsUrl'      => pg_design_icons_url(),
+        // The site as the settings modal's address and search result
+        // previews show it: its own address (the setting, not the request's
+        // host, like a canonical URL), and the title and description a page
+        // gets when its own are empty (get_page_content.php).
+        'site'          => array(
+            'url'         => URL_SCHEME . HOSTNAME_SETTING . PATH,
+            'title'       => (string)TITLE,
+            'description' => (string)META_DESCRIPTION,
+        ),
         // Add mode from a template: the editor asks for its pages
         // (designer/template_prepare) behind the "preparing" curtain.
         'template'      => !empty($ctx['template']) ? $ctx['template'] : null,
@@ -500,7 +473,7 @@ function pg_designer_screen_render($ctx)
                     </div>
                 </div>
 
-                ' . pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_switches, $output_noindex_hint) . '
+                ' . pg_designer_settings_modal($ctx) . '
                 ' . pg_designer_pick_page_modal() . '
                 ' . pg_designer_import_modal() . '
                 ' . pg_designer_make_template_modal() . '
@@ -544,6 +517,7 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_code_editor.js?v=' . pg_designer_asset_stamp('assets/js/pg_code_editor.js') . '"></script>
         <script>PgCodeEditor.configure({ bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
+        ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
         <script>
             $(document).ready(function() {
@@ -552,7 +526,22 @@ function pg_designer_screen_render($ctx)
                     design: sdDesign
                 });
 
+                // The counters and the indexing switches are bound once; each
+                // later opening may show another page, whose values were
+                // written without an event, so the same events bring the
+                // counters and the switches up to date.
+                var _sdSettingsBound = false;
                 document.getElementById("styleSettingsModal").addEventListener("shown.bs.modal", function () {
+                    if (_sdSettingsBound) {
+                        ["pg_page_title", "pg_page_meta_description"].forEach(function (id) {
+                            var el = document.getElementById(id);
+                            if (el) el.dispatchEvent(new Event("input", { bubbles: true }));
+                        });
+                        var noindex = document.getElementById("pg_page_noindex");
+                        if (noindex) noindex.dispatchEvent(new Event("change", { bubbles: true }));
+                        return;
+                    }
+                    _sdSettingsBound = true;
                     if (typeof initSeoCounters === "function") {
                         initSeoCounters([
                             { sel: "#pg_page_title",            counterId: "seo_c_pg_page_title",            min: 30,  max: 60  },
@@ -1798,7 +1787,7 @@ function pg_designer_template_modal($templates, $from_pages)
  * The look and the colour palette a template opens in, above the template
  * cards. The cards' pictures follow the choice, and "Use This Template"
  * carries it to the editor (?look=&palette=). Both can be changed later in
- * the editor, under Settings > Design > Theme.
+ * the editor, under Settings > Theme.
  */
 function pg_designer_template_theme_picker()
 {
@@ -1899,15 +1888,31 @@ function pg_designer_template_theme_picker()
 }
 
 /**
- * The settings modal. Two sections, named for what they touch: everything
- * under "All pages" is stored on the style and changes every page of the
- * design; everything under "This page" is stored on the page that is
- * currently open in the tab bar, and the heading says which one.
+ * The settings modal of the visual designer.
+ *
+ * Two scopes, named for what they touch, each split into the panes the rail
+ * lists: everything under "Shared by all pages" is stored on the style and
+ * changes every page of the design; everything under "Only this page" is
+ * stored on the page open in the tab bar, and each of its panes names that
+ * page. Every setting is a row (pg_designer_setting()): its name and a
+ * sentence on what it does, with its control.
+ *
+ * The modal closes from its own buttons only: a click beside it or Escape
+ * used to close it in the middle of typing. What is changed here reaches the
+ * design at once; Apply closes the modal, and the button beside it closes it
+ * and saves the design like the toolbar's main button (style_designer.js,
+ * initSettingsMenu()).
+ *
+ * A content-level operator never writes the design (pg_designer_is_full()):
+ * the design's panes are hidden and the page pane opens first. The fields
+ * stay in the form, so the shared values travel unchanged.
  */
-function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_switches, $output_noindex_hint)
+function pg_designer_settings_modal($ctx)
 {
     $liveform = $ctx['liveform'];
     $user     = $ctx['user'];
+    $full     = pg_designer_is_full($user);
+    $design_hidden = $full ? '' : ' d-none';
 
     // The drafts folder is not a place to publish a page to: a draft is a
     // state, set with the switch below the list. Only its own row goes; a
@@ -1920,171 +1925,278 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
         $folder_options = preg_replace('~<option value="' . $draft_folder_id . '"[^>]*>[^<]*</option>~', '', $folder_options, 1);
     }
 
-    return '
-        <div class="modal fade" id="styleSettingsModal" tabindex="-1" aria-labelledby="styleSettingsModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-fullscreen">
-                <div class="modal-content" style="background:#1e2127; color:#c9d1d9; border:none;">
+    // Each folder says who may open the pages in it, inherited from the
+    // nearest parent that sets it, for the line under the folder list.
+    $folder_options = preg_replace_callback('~<option value="(\d+)"~', function ($m) {
+        return $m[0] . ' data-access="' . h(get_access_control_type((int)$m[1])) . '"';
+    }, $folder_options);
 
-                    <div class="modal-header" style="border-color:#30363d; flex-shrink:0;">
-                        <h5 class="modal-title fs-6" id="styleSettingsModalLabel"><span class="bi bi-gear me-2"></span>' . lang('Settings') . '</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    // "Write with AI" beside the page's title and meta description
+    // (includes/fn/ai_write.php). The page is the tab open when the button
+    // is pressed; the saved page's headings and text join the fields.
+    $ai_page = array(
+        'record'      => 'page',
+        'record_id'   => (int) ($ctx['active_page_id'] ?? 0),
+        'record_from' => 'designer',
+        'theme'       => 'dark',
+        'context'     => array('page_title' => 'pg_page_title', 'meta_description' => 'pg_page_meta_description', 'page_name' => 'sd-page-name'),
+    );
+    $ai_title_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_title', 'field' => 'pg_page_title'));
+    $ai_description_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_description', 'field' => 'pg_page_meta_description'));
+
+    $rail = function ($pane, $icon, $label, $scope, $active) use ($design_hidden) {
+        return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . '" id="tab-' . $pane . '-btn"
+                    data-bs-toggle="pill" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
+                    aria-controls="tab-' . $pane . '" aria-selected="' . ($active ? 'true' : 'false') . '" data-sd-settings-scope="' . $scope . '">
+                    <span class="bi ' . $icon . '" aria-hidden="true"></span><span class="sd-settings-nav-txt">' . $label . '</span>
+                </button>';
+    };
+    $pane_open = function ($pane, $scope, $active) use ($design_hidden) {
+        $scope_line = ($scope === 'design')
+            ? '<div class="sd-settings-scope"><span class="bi bi-collection me-1" aria-hidden="true"></span>' . lang('These settings apply to every page in this design.') . '</div>'
+            : '<div class="sd-settings-scope"><span class="bi bi-file-earmark me-1" aria-hidden="true"></span>' . lang('These settings apply only to') . ' <strong class="sd-settings-page-name">—</strong></div>';
+        return '<div class="tab-pane fade' . ($active ? ' show active' : '') . ($scope === 'design' ? $design_hidden : '') . '" id="tab-' . $pane . '"
+                    role="tabpanel" aria-labelledby="tab-' . $pane . '-btn" tabindex="0" data-sd-settings-scope="' . $scope . '">
+                    ' . $scope_line;
+    };
+
+    // ── Shared: General ────────────────────────────────────────────────
+    $general =
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Design') . '</h3>
+            ' . pg_designer_setting(lang('Design Name'),
+                lang('The name in the list of designs. Visitors never see it; left empty, it takes the name of the first page.'),
+                $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'sd-style-name', 'class'=>'form-control form-control-sm', 'maxlength'=>'100', 'placeholder'=>lang('Defaults to the first page name'))),
+                array('for' => 'sd-style-name')) . '
+            ' . pg_designer_setting(lang('Pages'),
+                lang('The tabs at the top are the pages of this design. All of them use these settings, the theme and the files of the Assets panel.'),
+                '<div class="sd-set-value" id="sd-design-summary">—</div>') . '
+            ' . pg_designer_settings_framework_rows($ctx) . '
+            ' . ($full ? pg_designer_setting(lang('Template'),
+                lang('Every saved page of the design, with its shared components, widgets, folders and assets, becomes a template under Choose a Template. Save first: the template is made from what is on the server.'),
+                '<button type="button" class="btn btn-sm btn-outline-light" id="sd-make-template"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i>' . lang('Turn this design into a template') . '</button>',
+                array('id' => 'sd-template-from-design')) : '') . '
+        </section>';
+
+    // Where the share buttons go: only offered while the site shows them.
+    $social = '';
+    if (SOCIAL_NETWORKING == TRUE) {
+        $social = pg_designer_setting(lang('Social Networking'),
+            lang('Where the share buttons of the site stand on the pages of this design, around the System Region; Disabled leaves them out. They show on public pages only.'),
+            $liveform->output_field(array('type'=>'select', 'name'=>'social_networking_position', 'id'=>'sd-style-social', 'options'=>array(
+                lang('Top Left')     => 'top_left',
+                lang('Top Right')    => 'top_right',
+                lang('Bottom Left')  => 'bottom_left',
+                lang('Bottom Right') => 'bottom_right',
+                lang('Disabled')     => 'disabled',
+            ), 'class'=>'form-select form-select-sm')),
+            array('for' => 'sd-style-social'));
+    }
+    $general .=
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Advanced') . '</h3>
+            ' . $social . '
+            ' . pg_designer_setting(lang('Collection'),
+                lang('Only for classic Form List View and Form Item View pages that use this design: they keep two layouts, A and B, and show the one chosen here. The widgets of the visual designer draw their own layout and do not follow it.'),
+                $liveform->output_field(array('type'=>'select', 'name'=>'collection', 'id'=>'sd-style-collection', 'options'=>array('A'=>'a', 'B'=>'b'), 'class'=>'form-select form-select-sm')),
+                array('for' => 'sd-style-collection')) . '
+        </section>';
+
+    // ── Shared: Theme ──────────────────────────────────────────────────
+    // The theme file's empty choice says what it is.
+    $theme_options = get_theme_options();
+    unset($theme_options['']);
+    $theme_options = array(lang('— None —') => '') + $theme_options;
+    $theme =
+        // Look and colour palette: drawn by the editor (sdDesign.themes),
+        // written to style_look / style_palette.
+        '<section class="sd-settings-group" id="sd-theme-settings">
+            <h3 class="sd-settings-group-title">' . lang('Theme') . '</h3>
+            <div id="sd-theme-picker"></div>
+        </section>
+        <section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Theme file') . '</h3>
+            ' . pg_designer_setting(lang('Theme file'),
+                lang('A stylesheet from the file manager, loaded after everything else so it wins over the look and the palette. Shown in the Styles list and the Themes panel.'),
+                $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'id'=>'sd-style-theme-file', 'options'=>$theme_options, 'class'=>'form-select form-select-sm')),
+                array('for' => 'sd-style-theme-file', 'id' => 'sd-theme-file-row')) . '
+        </section>';
+
+    // ── Shared: Head and meta tags ─────────────────────────────────────
+    $head =
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Head code') . '</h3>
+            ' . pg_designer_setting(lang('Code in the head'),
+                lang('Written as it is into the head of every page of this design: a site verification tag, an analytics snippet, a link to an outside stylesheet. It runs on the site, not on the canvas or in the preview; a broken tag can break every page.'),
+                $liveform->output_field(array('type'=>'textarea', 'name'=>'style_head', 'id'=>'sd-style-head', 'rows'=>'6', 'class'=>'form-control form-control-sm sd-code-field', 'spellcheck'=>'false', 'autocomplete'=>'off', 'placeholder'=>'<meta name="google-site-verification" content="…">')),
+                array('for' => 'sd-style-head', 'wide' => true)) . '
+        </section>
+        ' . ($full ? pg_designer_meta_tags_group('design', isset($ctx['style']['meta_tags']) ? $ctx['style']['meta_tags'] : '') : '') . '
+        <p class="sd-settings-note"><span class="bi bi-info-circle me-1" aria-hidden="true"></span>' . lang('Stylesheets, scripts and fonts are managed in the Assets panel on the right and are also shared by every page.') . '</p>';
+
+    // ── Page: the page itself ──────────────────────────────────────────
+    // The name, the folder and the home flag are where the page lives, and
+    // a content-level save keeps the stored ones (pg_designer_save_page()):
+    // shown, not offered.
+    $fixed      = $full ? '' : ' ' . lang('Only a designer changes it.');
+    $fixed_attr = $full ? '' : ' disabled';
+    $page =
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Address and access') . '</h3>
+            ' . pg_designer_setting(lang('Page Name'),
+                lang('The address of the page: it comes after the site address. Plain letters, digits and hyphens work everywhere (about-us rather than About Us). Can also be edited by double-clicking its tab.') . $fixed,
+                '<input type="text" id="sd-page-name" class="form-control form-control-sm sd-page-field" data-page-key="page_name" maxlength="100" placeholder="' . lang('Page name...') . '" autocomplete="off" spellcheck="false"' . ($full ? '' : ' readonly') . '>
+                <div class="sd-set-status" id="sd-page-address" aria-live="polite"></div>',
+                array('for' => 'sd-page-name')) . '
+            ' . pg_designer_setting(lang('Page Folder'),
+                lang('The folder decides who may open the page and where it is listed among the pages; administrators, designers and managers can always open it.') . $fixed,
+                '<select name="page_folder" id="pg_page_folder" class="form-select form-select-sm sd-page-field" data-page-key="page_folder"' . $fixed_attr . '>
+                    ' . $folder_options . '
+                </select>
+                <div class="sd-set-status" id="sd-page-access" aria-live="polite"></div>',
+                array('for' => 'pg_page_folder')) . '
+            ' . (($full && pg_page_draft_ready()) ? pg_designer_setting(lang('Draft - not on the site'),
+                lang('A draft is kept in the private Drafts folder: visitors cannot open it, administrators can. Once published it goes back to the folder above. Applied when the design is published.'),
+                '<div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" id="pg_page_draft" value="1" data-page-key="page_draft"></div>',
+                array('for' => 'pg_page_draft', 'switch' => true)) : '') . '
+        </section>
+        <section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('On the site') . '</h3>
+            ' . (((int)$user['role'] < 3) ? pg_designer_setting(lang('Set As Homepage'),
+                lang('The site address on its own (/) opens this page. A home page cannot be a draft; when several pages are marked, the site shows one of them at random.') . $fixed,
+                '<input type="hidden" name="page_home" value="0">
+                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_home" id="pg_page_home" value="1" data-page-key="page_home"' . $fixed_attr . '></div>',
+                array('for' => 'pg_page_home', 'switch' => true)) : '') . '
+            ' . pg_designer_setting(lang('Include in site search'),
+                lang('The search box of the site finds this page too. Turn it off for pages nobody should land on from a search: a thank-you page, an e-mail page.'),
+                '<input type="hidden" name="page_search" value="0">
+                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_search" id="pg_page_search" value="1" data-page-key="page_search"></div>',
+                array('for' => 'pg_page_search', 'switch' => true)) . '
+            ' . pg_designer_setting(lang('Search Keywords'),
+                lang('Somebody searching for one of these words gets this page at the top of the results; a search for a part of one finds the page too. Press Enter after each word.'),
+                '<input type="text" value="" name="page_search_keywords" id="pg_search_keywords" class="form-control form-control-sm tagin min-height-tagin sd-page-field" data-page-key="page_search_keywords" data-placeholder="' . lang('Add tags') . '">',
+                array('for' => 'pg_search_keywords', 'wide' => true, 'id' => 'pg_search_kw_row')) . '
+        </section>';
+
+    // ── Page: search engines ───────────────────────────────────────────
+    $noindex_rows = '';
+    if (pg_page_noindex_ready() == TRUE) {
+        $noindex_rows =
+            pg_designer_setting(lang('Close to Search Engines (noindex)'),
+                lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.')
+                . '<span class="sd-set-warn" id="pg_noindex_hint" style="display:none">' . lang('A page blocked in robots.txt is not crawled, so the noindex tag on it is never read. Use this before a page reaches the results; a page that is already listed can take a while to drop out.') . '</span>',
+                '<input type="hidden" name="page_noindex" value="0">
+                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_noindex" id="pg_page_noindex" value="1" data-page-key="page_noindex"></div>',
+                array('for' => 'pg_page_noindex', 'switch' => true)) .
+            pg_designer_setting(lang('Do Not Follow Links on This Page (nofollow)'),
+                lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.')
+                . ' ' . lang('It can be turned on only while the page is closed to search engines.'),
+                '<input type="hidden" name="page_nofollow" value="0">
+                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_nofollow" id="pg_page_nofollow" value="1" data-page-key="page_nofollow" disabled="disabled"></div>',
+                array('for' => 'pg_page_nofollow', 'switch' => true));
+    }
+    $seo =
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Search result') . '</h3>
+            ' . pg_designer_setting(lang('Page Title'),
+                lang('The title in the browser tab and in search results; 30 to 60 characters read best. Left empty, the title of the site is used.'),
+                '<input type="text" name="page_title" id="pg_page_title" class="form-control form-control-sm sd-page-field" data-page-key="page_title" maxlength="255">
+                <div id="seo_c_pg_page_title"></div>',
+                array('for' => 'pg_page_title', 'wide' => true, 'action' => $ai_title_button)) . '
+            ' . pg_designer_setting(lang('Meta Description'),
+                lang('The summary under the title in search results and in shared links; 150 to 160 characters read best. Left empty, the description of the site is used.'),
+                '<textarea name="page_meta_description" id="pg_page_meta_description" class="form-control form-control-sm sd-page-field" data-page-key="page_meta_description" rows="3" maxlength="255"></textarea>
+                <div id="seo_c_pg_page_meta_description"></div>',
+                array('for' => 'pg_page_meta_description', 'wide' => true, 'action' => $ai_description_button)) . '
+            ' . pg_designer_setting(lang('Preview'),
+                lang('Roughly how a search engine lists the page. It may shorten the text or show a passage of the page instead; a page that shows one record (a product, a post) takes the title and description of the record.'),
+                '<div class="sd-serp" id="sd-serp" aria-hidden="true">
+                    <div class="sd-serp-site"><span class="sd-serp-icon bi bi-globe2"></span><span class="sd-serp-where"><span class="sd-serp-name"></span><span class="sd-serp-url"></span></span></div>
+                    <div class="sd-serp-title"></div>
+                    <div class="sd-serp-desc"></div>
+                </div>
+                <div class="sd-set-status" id="sd-serp-note"></div>',
+                array('wide' => true)) . '
+        </section>
+        <section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Indexing') . '</h3>
+            ' . pg_designer_setting(lang('Include in the site map'),
+                lang('Lists the page in sitemap.xml, the list search engines read to find the pages of the site. A page closed to search engines is never listed.'),
+                '<input type="hidden" name="page_sitemap" value="0">
+                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_sitemap" id="pg_page_sitemap" value="1" data-page-key="page_sitemap"></div>',
+                array('for' => 'pg_page_sitemap', 'switch' => true)) . '
+            ' . $noindex_rows . '
+        </section>';
+    // The page's own JSON-LD (page.custom_jsonld, 2026.4.4), where the
+    // column exists. The editor checks it as it is typed
+    // (_sdJsonLdStatus()); the save refuses what does not pass
+    // pg_page_custom_jsonld_check().
+    if (pg_page_custom_jsonld_ready()) {
+        $seo .=
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Structured Data') . '</h3>
+            ' . pg_designer_setting(lang('JSON-LD for this page'),
+                lang('A schema.org block that tells search engines what the page is: a FAQ, an event, a local business. Written in the head of the page while structured data is on in the Site Settings, beside the site-wide block and the ones the site writes itself. It must be valid JSON, and every item needs an @type.'),
+                '<textarea id="pg_page_custom_jsonld" class="form-control form-control-sm sd-code-field sd-page-field" data-page-key="page_custom_jsonld" rows="6" spellcheck="false" autocomplete="off" placeholder="' . h('{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": […]}') . '"></textarea>
+                <div class="sd-set-status" id="sd-jsonld-status" aria-live="polite"></div>',
+                array('for' => 'pg_page_custom_jsonld', 'wide' => true)) . '
+        </section>';
+    }
+
+    // ── Page: meta tags ────────────────────────────────────────────────
+    $page_meta = pg_designer_meta_tags_group('page');
+    $has_page_meta = ($page_meta !== '');
+
+    return '
+        <div class="modal fade" id="styleSettingsModal" tabindex="-1" aria-labelledby="styleSettingsModalLabel" aria-hidden="true"
+             data-bs-backdrop="static" data-bs-keyboard="false" data-bs-theme="dark">
+            <!-- The largest dialog from 992px up, the whole screen below it.
+                 Its height and the scroll chain inside are in
+                 style_designer.css (.sd-settings-*): an inline size beats
+                 every media query. -->
+            <div class="modal-dialog modal-xl modal-fullscreen-lg-down modal-dialog-centered sd-settings-dialog">
+                <div class="modal-content sd-settings-content">
+
+                    <div class="modal-header sd-settings-header">
+                        <h2 class="modal-title fs-6" id="styleSettingsModalLabel"><span class="bi bi-gear me-2" aria-hidden="true"></span>' . lang('Settings') . '</h2>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
 
-                    <div class="modal-body p-0 d-flex overflow-hidden" style="flex:1 1 auto;">
+                    <div class="modal-body sd-settings-main">
 
-                        <!-- The rail dimensions live in style_designer.css
-                             (.sd-settings-nav): below 992px the rail turns into
-                             a horizontal strip above the form, and an inline
-                             width would have won over that media query. -->
                         <div class="sd-settings-nav">
                             <!-- ONE tablist: Bootstrap deactivates the previous pill by looking
                                  for the active sibling inside the same tablist, so two separate
                                  navs would leave both panes showing. The group headings are plain
                                  divs the pill logic ignores. -->
-                            <nav class="nav nav-pills px-2" id="settingsTabs" role="tablist">
-                                <div class="sd-settings-nav-title">' . lang('Shared by all pages') . '</div>
-                                <button class="nav-link active text-start" id="tab-style-btn"
-                                        data-bs-toggle="pill" data-bs-target="#tab-style"
-                                        type="button" role="tab">
-                                    <span class="bi bi-palette me-2"></span>' . lang('Design') . '
-                                </button>
-                                <div class="sd-settings-nav-title">' . lang('Only this page') . '</div>
-                                <button class="nav-link text-start" id="tab-page-btn"
-                                        data-bs-toggle="pill" data-bs-target="#tab-page"
-                                        type="button" role="tab">
-                                    <span class="bi bi-file-earmark me-2"></span><span id="sd-settings-page-tab-label">' . lang('Page') . '</span>
-                                </button>
+                            <nav class="nav nav-pills" id="settingsTabs" role="tablist">
+                                <div class="sd-settings-nav-title' . $design_hidden . '" data-sd-settings-scope="design">' . lang('Shared by all pages') . '</div>
+                                ' . $rail('style', 'bi-palette', lang('General'), 'design', $full) . '
+                                ' . $rail('theme', 'bi-brush', lang('Theme'), 'design', false) . '
+                                ' . $rail('head', 'bi-code-slash', lang('Head & meta'), 'design', false) . '
+                                <div class="sd-settings-nav-title" data-sd-settings-scope="page">' . lang('Only this page') . '<span class="sd-settings-nav-page" id="sd-settings-page-tab-label">' . lang('Page') . '</span></div>
+                                ' . $rail('page', 'bi-file-earmark', lang('Page'), 'page', !$full) . '
+                                ' . $rail('seo', 'bi-search', lang('Search Engines'), 'page', false) . '
+                                ' . ($has_page_meta ? $rail('page-meta', 'bi-tags', lang('Meta Tags'), 'page', false) : '') . '
                             </nav>
                         </div>
 
-                        <div class="tab-content flex-grow-1 overflow-y-auto sd-settings-body">
-
-                            <!-- Shared: the design -->
-                            <div class="tab-pane fade show active" id="tab-style" role="tabpanel">
-                                <div class="sd-settings-scope"><span class="bi bi-collection me-1"></span>' . lang('These settings apply to every page in this design.') . '</div>
-
-                                <div class="sd-settings-group">
-                                    <div class="sd-settings-group-title">' . lang('Design') . '</div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">' . lang('Design Name') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'sd-style-name', 'class'=>'form-control form-control-sm', 'maxlength'=>'100', 'placeholder'=>lang('Defaults to the first page name'))) . '
-                                    </div>
-                                    ' . pg_designer_settings_framework_rows($ctx) . '
-                                    ' . (pg_designer_is_full($user) ? '<div class="mb-3" id="sd-template-from-design">
-                                        <label class="form-label small">' . lang('Template') . '</label>
-                                        <div><button type="button" class="btn btn-sm btn-outline-secondary" id="sd-make-template"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i>' . lang('Turn this design into a template') . '</button></div>
-                                        <small class="form-text">' . lang('Every saved page of the design, with its shared components, widgets, folders and assets, becomes a template under Choose a Template. Save first: the template is made from what is on the server.') . '</small>
-                                    </div>' : '') . '
-                                </div>
-
-                                <!-- Look and colour palette: filled by the editor
-                                     (sdDesign.themes), written to style_look /
-                                     style_palette. -->
-                                <div class="sd-settings-group" id="sd-theme-settings">
-                                    <div class="sd-settings-group-title">' . lang('Theme') . '</div>
-                                    <div id="sd-theme-picker"></div>
-                                </div>
-
-                                ' . (pg_designer_is_full($user) ? pg_designer_meta_tags_group('design', isset($ctx['style']['meta_tags']) ? $ctx['style']['meta_tags'] : '') : '') . '
-
-                                <div class="sd-settings-group">
-                                    <div class="sd-settings-group-title">' . lang('Advanced') . '</div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">' . lang('Theme file') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'options'=>get_theme_options(), 'class'=>'form-select form-select-sm')) . '
-                                        <small class="form-text">' . lang('A stylesheet from the file manager, loaded after everything else so it wins over the look and the palette. Shown in the Styles list and the Themes panel.') . '</small>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">' . lang('Collection') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'select', 'name'=>'collection', 'options'=>array('A'=>'a', 'B'=>'b'), 'class'=>'form-select form-select-sm')) . '
-                                    </div>
-                                    ' . $output_modal_social . '
-                                </div>
-                                ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'additional_body_classes')) . '
-                                ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'style_head')) . '
-                                ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'style_empty_cell_width_percentage')) . '
-                                <div class="form-text small">
-                                    <span class="bi bi-info-circle me-1"></span>' . lang('Stylesheets, scripts and fonts are managed in the Assets panel on the right and are also shared by every page.') . '
-                                </div>
-                            </div>
-
-                            <!-- Per page -->
-                            <div class="tab-pane fade" id="tab-page" role="tabpanel">
-                                <div class="sd-settings-scope"><span class="bi bi-file-earmark me-1"></span>' . lang('These settings apply only to') . ' <strong id="sd-settings-page-name">—</strong></div>
-
-                                <div class="sd-settings-group">
-                                    <div class="sd-settings-group-title">' . lang('Page') . '</div>
-                                    <div class="mb-3">
-                                        <label class="form-label small" for="sd-page-name">' . lang('Page Name') . '</label>
-                                        <input type="text" id="sd-page-name" class="form-control form-control-sm sd-page-field" data-page-key="page_name" maxlength="100" placeholder="' . lang('Page name...') . '" autocomplete="off">
-                                        <small class="form-text">' . lang('The address of the page. Can also be edited by double-clicking its tab.') . '</small>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">' . lang('Page Folder') . '</label>
-                                        <select name="page_folder" id="pg_page_folder" class="form-select form-select-sm sd-page-field" data-page-key="page_folder" style="background-color:#0d1117; color:#c9d1d9; border-color:#30363d;">
-                                            ' . $folder_options . '
-                                        </select>
-                                    </div>
-                                    ' . ((pg_designer_is_full($user) && pg_page_draft_ready()) ? '<div class="form-check form-switch mb-0">
-                                        <input class="form-check-input sd-page-field" type="checkbox" id="pg_page_draft" value="1" data-page-key="page_draft">
-                                        <label class="form-check-label small" for="pg_page_draft">' . lang('Draft - not on the site') . '</label>
-                                        <small class="form-text d-block">' . lang('A draft is kept in the private Drafts folder: visitors cannot open it, administrators can. Once published it goes back to the folder above. Applied when the design is published.') . '</small>
-                                    </div>' : '') . '
-                                </div>
-
-                                <div class="sd-settings-group">
-                                    <div class="sd-settings-group-title">' . lang('Search Engines') . '</div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">' . lang('Page Title') . '</label>
-                                        <input type="text" name="page_title" id="pg_page_title" class="form-control form-control-sm sd-page-field" data-page-key="page_title">
-                                        <div id="seo_c_pg_page_title"></div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">' . lang('Meta Description') . '</label>
-                                        <textarea name="page_meta_description" id="pg_page_meta_description" class="form-control form-control-sm sd-page-field" data-page-key="page_meta_description" rows="3"></textarea>
-                                        <div id="seo_c_pg_page_meta_description"></div>
-                                    </div>
-                                    <div class="sd-settings-switches">
-                                        <div class="form-check form-switch">
-                                            <input type="hidden" name="page_sitemap" value="0">
-                                            <input class="form-check-input sd-page-field" type="checkbox" name="page_sitemap" id="pg_page_sitemap" value="1" data-page-key="page_sitemap">
-                                            <label class="form-check-label small" for="pg_page_sitemap">' . lang('Include in the site map') . '</label>
-                                        </div>
-                                        ' . $output_noindex_switches . '
-                                    </div>
-                                    ' . $output_noindex_hint . '
-                                </div>
-
-                                ' . pg_designer_meta_tags_group('page') . '
-
-                                <div class="sd-settings-group">
-                                    <div class="sd-settings-group-title">' . lang('Site') . '</div>
-                                    <div class="sd-settings-switches">
-                                        ' . (((int)$user['role'] < 3) ? '<div class="form-check form-switch">
-                                            <input type="hidden" name="page_home" value="0">
-                                            <input class="form-check-input sd-page-field" type="checkbox" name="page_home" id="pg_page_home" value="1" data-page-key="page_home">
-                                            <label class="form-check-label small" for="pg_page_home">' . lang('Set As Homepage') . '</label>
-                                        </div>' : '') . '
-                                        <div class="form-check form-switch">
-                                            <input type="hidden" name="page_search" value="0">
-                                            <input class="form-check-input sd-page-field" type="checkbox" name="page_search" id="pg_page_search" value="1" data-page-key="page_search"
-                                                   onchange="document.getElementById(\'pg_search_kw_row\').style.display=this.checked?\'block\':\'none\'">
-                                            <label class="form-check-label small" for="pg_page_search">' . lang('Include in site search') . '</label>
-                                        </div>
-                                    </div>
-                                    <div id="pg_search_kw_row" class="mt-2 mb-0">
-                                        <label class="form-label small">' . lang('Search Keywords') . '</label>
-                                        <input type="text" value="" name="page_search_keywords" id="pg_search_keywords" class="form-control form-control-sm tagin min-height-tagin sd-page-field" data-page-key="page_search_keywords" data-placeholder="' . lang('Add tags') . '">
-                                    </div>
-                                </div>
-                            </div>
-
+                        <div class="tab-content sd-settings-body">
+                            ' . $pane_open('style', 'design', $full) . $general . '</div>
+                            ' . $pane_open('theme', 'design', false) . $theme . '</div>
+                            ' . $pane_open('head', 'design', false) . $head . '</div>
+                            ' . $pane_open('page', 'page', !$full) . $page . '</div>
+                            ' . $pane_open('seo', 'page', false) . $seo . '</div>
+                            ' . ($has_page_meta ? $pane_open('page-meta', 'page', false) . $page_meta . '</div>' : '') . '
+                            ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'additional_body_classes')) . '
+                            ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'style_empty_cell_width_percentage')) . '
                         </div>
                     </div>
 
-                    <div class="modal-footer" style="border-color:#30363d; flex-shrink:0;">
-                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                        <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">' . lang('Apply') . '</button>
+                    <div class="modal-footer sd-settings-footer">
+                        <span class="sd-settings-footer-note"><span class="bi bi-lightning-charge me-1" aria-hidden="true"></span>' . lang('Changes reach the design at once; they are stored with the next Save or Publish.') . '</span>
+                        <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">' . lang('Apply') . '</button>
+                        <button type="button" class="btn btn-sm btn-primary" id="sd-settings-save"><span class="bi bi-rocket-takeoff me-1" aria-hidden="true"></span><span class="sd-settings-save-txt">' . lang('Publish') . '</span></button>
                     </div>
 
                 </div>
@@ -2093,9 +2205,39 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
 }
 
 /**
- * A Meta Tags group of the settings modal: the design's list ('design', on
- * the Design tab) or the open page's ('page', on the Page tab). The list is
- * a hidden input holding the JSON the column stores; the editor draws a row
+ * One setting of the settings modal: its name and a sentence on what it
+ * does, beside its control, or above it with 'wide' (text boxes, lists,
+ * previews). A switch stays on the right of its text at every width. The
+ * stylesheet lays the row out (.sd-set in style_designer.css); the editor
+ * points the control's aria-describedby at the sentence.
+ *
+ * $name and $help are lang() text. $opts: 'for' (the control's id, makes
+ * the name its label), 'wide', 'switch', 'id' (the row's), 'action' (a
+ * button beside the name, such as pg_ai_write_button(); its panel opens
+ * under the name).
+ */
+function pg_designer_setting($name, $help, $control, $opts = array())
+{
+    $class = 'sd-set';
+    if (!empty($opts['wide']))   $class .= ' sd-set-wide';
+    if (!empty($opts['switch'])) $class .= ' sd-set-switch';
+    $for  = isset($opts['for']) ? (string)$opts['for'] : '';
+    $name = ($for !== '')
+        ? '<label class="sd-set-name" for="' . h($for) . '">' . $name . '</label>'
+        : '<div class="sd-set-name">' . $name . '</div>';
+    if (!empty($opts['action'])) {
+        $name = pg_ai_write_label_row($name, (string)$opts['action']);
+    }
+    return '<div class="' . $class . '"' . (isset($opts['id']) ? ' id="' . h($opts['id']) . '"' : '') . '>
+                <div class="sd-set-text">' . $name . ($help !== '' ? '<div class="sd-set-help">' . $help . '</div>' : '') . '</div>
+                <div class="sd-set-ctrl">' . $control . '</div>
+            </div>';
+}
+
+/**
+ * A Meta Tags group of the settings modal: the design's list ('design', in
+ * Head & meta) or the open page's ('page', its own pane). The list is a
+ * hidden input holding the JSON the column stores; the editor draws a row
  * per tag from it and writes it back as the rows change
  * (_sdMetaListMount()). The design's input is posted with the form as
  * style_meta_tags; the page's is a page field (page_meta_tags) and travels
@@ -2109,19 +2251,19 @@ function pg_designer_meta_tags_group($scope, $value = '')
 
     if ($scope === 'design') {
         $input = '<input type="hidden" name="style_meta_tags" id="sd-style-meta-tags" value="' . h(pg_meta_tags_encode(pg_meta_tags_normalize((string)$value))) . '">';
-        $help  = lang('Written in the head of every page of this design. A page replaces one with a tag of the same name under Page.');
+        $help  = lang('Written in the head of every page of this design. A tag of the same name in the Meta Tags of a page replaces it on that page.');
     } else {
         $input = '<input type="hidden" id="pg_page_meta_tags" class="sd-page-field" data-page-key="page_meta_tags" value="">';
         $help  = lang('Written in the head of this page only. A tag here replaces a design tag of the same name.');
     }
 
-    return '<div class="sd-settings-group" data-sd-meta-scope="' . h($scope) . '">
-        <div class="sd-settings-group-title">' . lang('Meta Tags') . '</div>
+    return '<section class="sd-settings-group" data-sd-meta-scope="' . h($scope) . '">
+        <h3 class="sd-settings-group-title">' . lang('Meta Tags') . '</h3>
+        <p class="sd-set-help sd-settings-group-help">' . $help . ' ' . lang('Names starting with og:, fb: or article: are written as property, the others as name, and a tag replaces the Open Graph or Twitter tag of the same name the site writes. viewport, description and robots come from the page settings.') . '</p>
         ' . $input . '
         <div class="sd-meta-list"></div>
-        <button type="button" class="btn btn-sm btn-outline-secondary sd-meta-add mb-2"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add Meta Tag') . '</button>
-        <small class="form-text d-block mb-2">' . $help . ' ' . lang('Names starting with og:, fb: or article: are written as property, the others as name, and a tag replaces the Open Graph or Twitter tag of the same name the site writes. viewport, description and robots come from the page settings.') . '</small>
-    </div>';
+        <button type="button" class="btn btn-sm btn-outline-light sd-meta-add"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add Meta Tag') . '</button>
+    </section>';
 }
 
 /**
@@ -2132,22 +2274,19 @@ function pg_designer_settings_framework_rows($ctx)
 {
     $style = isset($ctx['style']) && is_array($ctx['style']) ? $ctx['style'] : array();
     $fw    = pg_design_framework(isset($style['framework']) ? $style['framework'] : '');
-    $out =
-        '<div class="mb-3">
-            <label class="form-label small" for="sd-style-framework">' . lang('Framework') . '</label>
-            <input type="text" class="form-control form-control-sm" id="sd-style-framework" value="' . h($fw['label']) . '" readonly>
-            <small class="form-text">' . lang('Chosen when the design was created. The pages are built on it, so it does not change.') . '</small>
-        </div>';
+    $out = pg_designer_setting(lang('Framework'),
+        lang('Chosen when the design was created. The pages are built on it, so it does not change.'),
+        '<input type="text" class="form-control form-control-sm" id="sd-style-framework" value="' . h($fw['label']) . '" readonly>',
+        array('for' => 'sd-style-framework'));
     $tpl_id = isset($style['template']) ? (string)$style['template'] : '';
     if ($tpl_id !== '') {
         $tpl  = pg_design_template($tpl_id);
         $name = $tpl ? (string)$tpl['name'] : $tpl_id;
         $ver  = isset($style['template_version']) ? (string)$style['template_version'] : '';
-        $out .=
-            '<div class="mb-3">
-                <label class="form-label small" for="sd-style-template">' . lang('Started from') . '</label>
-                <input type="text" class="form-control form-control-sm" id="sd-style-template" value="' . h($name . ($ver !== '' ? ' ' . $ver : '')) . '" readonly>
-            </div>';
+        $out .= pg_designer_setting(lang('Started from'),
+            lang('The template the design was made from, and its version. For reference only: a later version of the template does not change this design.'),
+            '<input type="text" class="form-control form-control-sm" id="sd-style-template" value="' . h($name . ($ver !== '' ? ' ' . $ver : '')) . '" readonly>',
+            array('for' => 'sd-style-template'));
     }
     return $out;
 }
@@ -2224,7 +2363,7 @@ function pg_designer_import_modal()
 }
 
 /**
- * "Turn this design into a template" (Settings > Design): the name and the
+ * "Turn this design into a template" (Settings > General): the name and the
  * description the template is listed with. The fields carry no name: the
  * modal sits inside the design form, and the editor posts them to api.php
  * (designer/template_from_design) itself.
@@ -2429,7 +2568,7 @@ function pg_designer_screen_post($ctx)
 
     // ── Style name ────────────────────────────────────────────────────────
     // Defaults to the first page's name so the styles list never shows a
-    // blank row; the operator can rename it in Settings → Design.
+    // blank row; the operator can rename it in Settings → General.
     $style_name  = trim((string)$liveform->get_field_value('name'));
     $name_is_own = ($style_name !== '');
     if ($style_name === '') {

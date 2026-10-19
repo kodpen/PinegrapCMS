@@ -513,10 +513,13 @@ function getPublicRootFolderId()
 /* ---------------------------------------------------------------------------
  * Image processing
  *
- * One engine, pg_process_image_file(). Everything that recompresses or resizes
- * an image goes through it: the optimize button, the bulk optimize on the file
- * list, the dashboard file manager widget, and the silent pass a product photo
- * makes on its way in.
+ * One engine, pg_process_image_file() in includes/image_engine.php. Everything
+ * that recompresses or resizes an image goes through it: the optimize button,
+ * the bulk optimize on the file list, the dashboard file manager widget, the
+ * silent pass a product photo makes on its way in, and the responsive
+ * derivatives get_file.php makes on request. pg_ini_bytes(), which the upload
+ * limits below read, is in the same file because the engine's memory guard
+ * needs it on the get_file.php path too.
  *
  * Two separate jobs, and the difference is the whole point of the pair of
  * buttons on the file screens:
@@ -535,39 +538,6 @@ function getPublicRootFolderId()
  * job, which is why the optimize button on the file screens cannot silently
  * change the size of a design asset somebody placed at exact dimensions.
  * ------------------------------------------------------------------------- */
-
-/**
- * A php.ini shorthand size ("8M", "128K", "1G") as bytes.
- *
- * ini_get() hands back the string the operator typed, and comparing that to a
- * file size compares "8M" to 14543599 — which in PHP is 8 against 14543599,
- * so the check passes and the upload fails anyway.
- *
- * @param string $value
- * @return int bytes; 0 for an unset value or an explicit no-limit (-1 or 0)
- */
-function pg_ini_bytes($value)
-{
-    $value = trim((string) $value);
-
-    if (($value === '') || ($value === '-1') || ($value === '0')) {
-        return 0;
-    }
-
-    $bytes = (int) $value;
-    $unit  = strtolower(substr($value, -1));
-
-    if ($unit === 'g') {
-        $bytes *= 1024 * 1024 * 1024;
-    } elseif ($unit === 'm') {
-        $bytes *= 1024 * 1024;
-    } elseif ($unit === 'k') {
-        $bytes *= 1024;
-    }
-
-    return max(0, $bytes);
-}
-
 
 /**
  * What this server will actually accept in one upload.

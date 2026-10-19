@@ -7,7 +7,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - accessibility-and-consent-tools.md: Plan (approved 2026-10-19, not started): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement template, consent banner with equal accept/reject and Consent Mode v2 defaults
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-product-feeds.md: Plan (approved 2026-10-19, in progress: builder, job and feed.php done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV); settings card, panel, API left
-- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint and the product, page property and form record buttons done): "Write with AI"; designer page settings, alt text, labelling left
+- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, every planned text button and the browser's model done): "Write with AI"; image alt text and AI-generated labelling (schema) left
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, designer bindings and kept copy built): pre-information form and distance sales contract; left: My Account link, API, KVKK consent
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule, CI checks
@@ -20,7 +20,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Design decided for the unfinished Paraşüt e-document driver: credentials, HTTP layer, taxpayer check, scenario, async job ladder, totals check, webhook, account title lookup
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
-- image-delivery-pipeline.md: Plan (approved 2026-10-19, not started): automatic WebP/AVIF derivatives, srcset/sizes, lazy loading except the LCP image, fetchpriority, derivative cache and disk accounting
+- image-delivery-pipeline.md: Plan (approved 2026-10-19, in progress: steps 1-3 done, derivatives, designer and widget srcset, picture, lazy): settings, purge, retention, page rebuild and Loading row left
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves

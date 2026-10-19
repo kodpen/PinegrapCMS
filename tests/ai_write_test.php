@@ -352,7 +352,7 @@ function test_ai_write_button_markup()
 		'context'   => array('page_title' => 'title'),
 	), 'Write "with" AI');
 
-	pg_assert_contains('class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap pg-ai-write-btn"', $html);
+	pg_assert_contains('class="btn btn-link btn-sm p-0 bg-transparent text-decoration-none text-nowrap pg-ai-write-btn"', $html);
 	pg_assert_contains('type="button"', $html);
 	pg_assert_contains('aria-controls="pg_ai_draft_title"', $html);
 	pg_assert_contains('Write &quot;with&quot; AI</button>', $html);
@@ -365,6 +365,32 @@ function test_ai_write_button_markup()
 	pg_assert_same(5, $settings['record_id']);
 	pg_assert_same(array('page_title' => 'title'), $settings['context']);
 	pg_assert_contains('aria-controls="pg_ai_draft_x1"', pg_ai_write_button_markup(array('field' => 'x"1'), 'W'), 'field id cleaned');
+}
+
+// What the script is told about a button: a field and record that go
+// together, the form record's own format, the designer's open tab and the
+// dark panel only when asked for.
+function test_ai_write_button_config()
+{
+	pg_assert_same(null, pg_ai_write_button_config(array('target' => 'product_short', 'record' => 'page')), 'wrong record');
+	pg_assert_same(null, pg_ai_write_button_config(array('target' => 'alt_text', 'record' => 'page')), 'unknown target');
+
+	pg_assert_same(array(
+		'target' => 'seo_title', 'record' => 'page', 'record_id' => 7, 'field' => 'pg_page_title', 'format' => 'line',
+		'context' => array('page_title' => 'pg_page_title'), 'record_from' => 'designer', 'theme' => 'dark',
+	), pg_ai_write_button_config(array(
+		'target' => 'seo_title', 'record' => 'page', 'record_id' => '7', 'field' => 'pg_page_title',
+		'context' => array('page_title' => 'pg_page_title'), 'record_from' => 'designer', 'theme' => 'dark',
+	)), 'designer');
+
+	$plain = pg_ai_write_button_config(array('target' => 'seo_title', 'record' => 'product', 'record_from' => 'elsewhere', 'theme' => 'pink', 'context' => 'x'));
+	pg_assert_false(isset($plain['record_from']) || isset($plain['theme']), 'unknown values dropped');
+	pg_assert_same(array(), $plain['context'], 'context not a list');
+
+	$form = pg_ai_write_button_config(array('target' => 'record_field', 'record' => 'form', 'record_id' => 313, 'field' => '38', 'field_id' => '38', 'format' => 'html'));
+	pg_assert_same(38, $form['field_id'], 'field id');
+	pg_assert_same('html', $form['format'], 'form format');
+	pg_assert_same('text', pg_ai_write_button_config(array('target' => 'record_field', 'record' => 'form', 'format' => 'svg'))['format'], 'unknown format');
 }
 
 // The label stays as it was when there is no button.
@@ -380,11 +406,14 @@ function test_ai_write_js_config_matches_tones()
 {
 	$config = pg_ai_write_js_config();
 
-	foreach (array('panel', 'title', 'tone', 'writing', 'use', 'again', 'close', 'hint', 'check', 'left', 'failed') as $key) {
+	foreach (array('panel', 'title', 'title_browser', 'tone', 'writing', 'writing_browser', 'translating', 'downloading', 'use', 'again', 'close', 'hint', 'check', 'left', 'failed', 'browser_failed') as $key) {
 		pg_assert_true(isset($config['labels'][$key]) && ($config['labels'][$key] !== ''), 'label ' . $key);
 	}
 
 	pg_assert_contains('{n}', $config['labels']['left'], 'count placeholder');
+	pg_assert_contains('{n}', $config['labels']['downloading'], 'download placeholder');
+	pg_assert_same('pinegrap', $config['engine'], 'default engine');
+	pg_assert_same('en', $config['language'], 'default language');
 	pg_assert_same(array_keys(pg_ai_write_tones()), array_map(function ($tone) {
 		return $tone[0];
 	}, $config['tones']), 'tones');
@@ -410,6 +439,20 @@ function test_ai_write_script_reads_what_php_writes()
 	pg_assert_contains("'pg_ai_draft_'", $script, 'panel id');
 	pg_assert_contains('window.PinegrapAiWrite', $script, 'config');
 	pg_assert_contains("action: 'ai_write'", $script, 'action');
+	pg_assert_contains("settings.record_from === 'designer'", $script, 'designer tab');
+	pg_assert_contains('StyleDesigner.aiBridge().page()', $script, 'designer bridge');
+	pg_assert_contains("settings.theme === 'dark'", $script, 'dark panel');
+	pg_assert_contains('field_id: settings.field_id', $script, 'form field');
+	pg_assert_contains("cfg.engine === 'browser'", $script, 'engine');
+	pg_assert_contains("request.step = 'prompt'", $script, 'prompt step');
+	pg_assert_contains("step: 'finish'", $script, 'finish step');
+	pg_assert_contains("request.language = bridge ? 'en' : siteLanguage", $script, 'model language');
+	pg_assert_contains('window.LanguageModel.create(', $script, 'prompt api');
+	pg_assert_contains('window.Translator.create(', $script, 'translator');
+	pg_assert_contains('responseConstraint: ANSWER', $script, 'structured answer');
+	pg_assert_contains("'.pg-ai-write-btn.d-none'", $script, 'hidden buttons shown');
+	pg_assert_contains('data.rules', $script, 'rules');
+	pg_assert_contains('data.data', $script, 'data');
 
 	foreach (array_keys(pg_ai_write_js_config()['labels']) as $key) {
 		pg_assert_contains("label('" . $key . "')", $script, 'label ' . $key);
@@ -508,4 +551,83 @@ function test_ai_write_unquote()
 	pg_assert_same('Linen shirt', pg_ai_write_unquote("'Linen shirt'"));
 	pg_assert_same('"Linen" and "cotton"', pg_ai_write_unquote('"Linen" and "cotton"'));
 	pg_assert_same('"Open', pg_ai_write_unquote('"Open'));
+}
+
+// Pinegrap AI writes when it is set up, the person's browser when it is
+// not, nobody when the feature is switched off.
+function test_ai_write_pick_engine()
+{
+	pg_assert_same('pinegrap', pg_ai_write_pick_engine(200, ''), 'set up');
+	pg_assert_same('browser', pg_ai_write_pick_engine(200, 'Pinegrap AI is switched off.'), 'not set up');
+	pg_assert_same('', pg_ai_write_pick_engine(0, ''), 'switched off');
+	pg_assert_same('', pg_ai_write_pick_engine(0, 'Pinegrap AI is switched off.'), 'switched off, not set up');
+	pg_assert_same('pinegrap', pg_ai_write_pick_engine('5', ''), 'cap as text');
+}
+
+// A language code as the browser takes it: the primary subtag, in lower
+// case; English for anything else.
+function test_ai_write_language_code()
+{
+	pg_assert_same('tr', pg_ai_write_language_code('tr'));
+	pg_assert_same('pt', pg_ai_write_language_code('pt-BR'), 'region');
+	pg_assert_same('en', pg_ai_write_language_code('EN_us'), 'underscore and case');
+	pg_assert_same('fil', pg_ai_write_language_code('fil'), 'three letters');
+	pg_assert_same('en', pg_ai_write_language_code(''), 'empty');
+	pg_assert_same('en', pg_ai_write_language_code('x1'), 'not a code');
+	pg_assert_same('en', pg_ai_write_language_code(null), 'nothing');
+	pg_assert_same('en', pg_ai_write_language_code(array('tr')), 'not a string');
+}
+
+// The browser's model writes the site's language, or English that the
+// browser translates; a request cannot pick a third language.
+function test_ai_write_browser_language()
+{
+	pg_assert_same(array('code' => 'en', 'translated' => true), pg_ai_write_browser_language('en', 'tr'), 'bridge');
+	pg_assert_same(array('code' => 'en', 'translated' => true), pg_ai_write_browser_language('en-GB', 'tr'), 'bridge with region');
+	pg_assert_same(array('code' => 'tr', 'translated' => false), pg_ai_write_browser_language('tr', 'tr'), 'direct');
+	pg_assert_same(array('code' => 'tr', 'translated' => false), pg_ai_write_browser_language('de', 'tr'), 'another language');
+	pg_assert_same(array('code' => 'tr', 'translated' => false), pg_ai_write_browser_language(null, 'tr'), 'nothing asked');
+	pg_assert_same(array('code' => 'en', 'translated' => false), pg_ai_write_browser_language('en', 'en'), 'english site');
+}
+
+// A draft the browser translates afterwards is asked for in English, with
+// the translation announced; otherwise nothing is said about one.
+function test_ai_write_messages_translated_afterwards()
+{
+	$bridge = ai_write_test_messages(array(
+		'target'        => 'seo_title',
+		'record'        => 'product',
+		'context'       => array('short_description' => 'Keten gömlek'),
+		'language'      => 'English',
+		'translated_to' => 'Turkish',
+	));
+
+	pg_assert_contains('Write in English, whatever language the data is in.', $bridge['system']);
+	pg_assert_contains('translated into Turkish by a machine', $bridge['system']);
+	pg_assert_true(strpos($bridge['system'], 'Write in English') < strpos($bridge['system'], 'translated into Turkish'), 'after the language');
+	pg_assert_same(array('Name (short description)' => 'Keten gömlek'), $bridge['user']['data'], 'data as it was');
+
+	$direct = ai_write_test_messages(array('target' => 'seo_title', 'record' => 'product', 'context' => array('short_description' => 'Keten gömlek'), 'language' => 'Turkish'));
+
+	pg_assert_false(strpos($direct['system'], 'translated into') !== false, 'no translation');
+	pg_assert_same(count(explode("\n", $bridge['system'])), count(explode("\n", $direct['system'])) + 1, 'one line more');
+}
+
+// A button for the browser's AI comes hidden, for the script to show.
+function test_ai_write_button_markup_hidden()
+{
+	$config = array('target' => 'seo_title', 'record' => 'page', 'record_id' => 5, 'field' => 'title', 'format' => 'line', 'context' => array());
+
+	pg_assert_contains('text-nowrap pg-ai-write-btn d-none"', pg_ai_write_button_markup($config, 'W', true), 'hidden');
+	pg_assert_false(strpos(pg_ai_write_button_markup($config, 'W'), 'd-none') !== false, 'shown');
+}
+
+// The script is told which model writes and in which language.
+function test_ai_write_js_config_engine()
+{
+	$config = pg_ai_write_js_config('browser', 'pt-BR');
+
+	pg_assert_same('browser', $config['engine']);
+	pg_assert_same('pt', $config['language']);
+	pg_assert_same('pinegrap', pg_ai_write_js_config('claude', 'tr')['engine'], 'unknown engine');
 }

@@ -6372,5 +6372,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
 
+    // An e-mail body takes no responsive image markup: the e-mail pass makes
+    // src addresses absolute, not srcset ones (pg_img_strip_responsive()).
+    if ($email && function_exists('pg_img_strip_responsive')) {
+        $content = pg_img_strip_responsive($content);
+    }
+
     return $content;
 }
