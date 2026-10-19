@@ -248,8 +248,28 @@ pg_page_shell([
                         success: function(response) {
                             $status = response.status;
                             if($status == "success"){
-                                Progress.attr("style","width:70%");
+                                Progress.attr("style","width:60%");
                                 LogBox.html(response.message);
+                                // The files about to be replaced and the database
+                                // are backed up before anything is written over.
+                                $.ajax({
+                                    contentType: "application/json",
+                                    url: "api.php",
+                                    data: JSON.stringify({
+                                        action: "software_update",
+                                        token:software_token ,
+                                        step: "backup"
+                                    }),
+                                    type: "POST",
+                                    success: function(response) {
+                                        if (!response || (response.status != "success")) {
+                                            Progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style","width:100%");
+                                            LogBox.text(response ? response.message : "");
+                                            update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
+                                            return;
+                                        }
+                                        Progress.attr("style","width:80%");
+                                        LogBox.text(response.message);
                                 $.ajax({
                                     contentType: "application/json",
                                     url: "api.php",
@@ -274,6 +294,13 @@ pg_page_shell([
                                             LogBox.html(response.message);
                                             update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
                                         }
+                                    }
+                                });
+                                    },
+                                    error: function() {
+                                        Progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style","width:100%");
+                                        LogBox.text("' . escape_javascript(lang('The backup before the update could not be written. Nothing was changed.')) . '");
+                                        update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
                                     }
                                 });
                             }else{
@@ -325,7 +352,8 @@ pg_page_shell([
 		</div>
         <div class="col-12 col-md-8 offset-md-2">
             <div class="alert alert-warning">
-                <p class="form-text">' . lang('New files received from the update service will be replaced with software files. If changes have been made specifically for you, contact your server administrator before updating.') . '</p>
+                <p class="form-text">' . lang('New files received from the update service will be replaced with software files. If changes have been made specifically for you, contact your server administrator before updating.') . '</p>' . (pg_update_backup_enabled() ? '
+                <p class="form-text mb-0">' . lang('The files that are replaced and the database are backed up first (data/backups/pre-update-….zip). Repair Software can roll the files back to it.') . '</p>' : '') . '
             </div>
         </div>
 

@@ -1359,3 +1359,723 @@ function pg_update_permissions_script()
     });
 </script>';
 }
+
+// ----------------------------------------------------------------------------
+// The bytecode cache after files are replaced
+// ----------------------------------------------------------------------------
+
+/**
+ * Drop what the bytecode cache holds of files that were just replaced.
+ *
+ * The cache still holds the OLD files. Two reasons this cannot be left to the
+ * cache's own timestamp check:
+ *
+ *  - The update screen sends the browser to install/index.php as soon as the
+ *    files are in place. Between the new files landing and the cache noticing
+ *    them (opcache.revalidate_freq, two seconds by default) the upgrade would
+ *    run the PREVIOUS version's code against the new schema.
+ *  - Where the host turned timestamp validation off (opcache.validate_timestamps
+ *    = 0) the old code keeps running until someone restarts PHP.
+ *
+ * extension_loaded() and function_exists() are not the question: the
+ * extension can be compiled in while opcache.enable is off, when every call
+ * returns false with a warning. The cache is asked whether it runs. A host
+ * that blocks opcache.restrict_api answers nothing at all - status is
+ * unreadable there but a reset may still be allowed, so "unknown" tries
+ * anyway; per-file invalidation of the paths just written is the fallback
+ * where a full reset is refused.
+ *
+ * @param array $files absolute paths that were written
+ * @return array array('running' => bool|null (null: unknown), 'cleared' => bool)
+ */
+function pg_update_clear_opcache(array $files)
+{
+    $status = function_exists('opcache_get_status') ? @opcache_get_status(false) : null;
+    $running = is_array($status) ? !empty($status['opcache_enabled']) : null;
+
+    if ($running === false) {
+        return array('running' => false, 'cleared' => false);
+    }
+
+    $cleared = false;
+
+    if (function_exists('opcache_reset')) {
+        $cleared = (bool) @opcache_reset();
+    }
+
+    if (!$cleared && function_exists('opcache_invalidate')) {
+        foreach ($files as $file) {
+            if ((substr((string) $file, -4) === '.php') && @opcache_invalidate($file, true)) {
+                $cleared = true;
+            }
+        }
+    }
+
+    return array('running' => $running, 'cleared' => $cleared);
+}
+
+// ----------------------------------------------------------------------------
+// The backup an update takes before it replaces the files, and the rollback
+// ----------------------------------------------------------------------------
+//
+// Before the replace step writes the package over the software, the files it
+// is about to overwrite and the database are put into one archive,
+// data/backups/pre-update-<version>-<YmdHis>.zip:
+//
+//   sql.sql        the database, the dump every backup writes
+//                  (pg_backup_dump_database()); the installation screen
+//                  restores it like any backup archive, and keeps the site's
+//                  files because the archive has no files/ folder
+//   software.zip   the files the package replaces, as they were, under the
+//                  names the package uses (relative to the web root)
+//   manifest.json  the version they belong to, and the package's files that
+//                  did not exist before the update
+//
+// A rollback (Repair Software, administrators) writes software.zip back with
+// pg_extract_archive() - the update's own verified extraction - deletes the
+// files the update added, and sets config.version back to the version of the
+// files, so code and recorded version agree again. The database itself is
+// put back only by restoring the archive on the installation screen, which
+// loses what was written since the update; the screen says so.
+//
+// The archives sit in data/backups, where a manager can upload a backup. So a
+// rollback, which replaces executable code, takes only an archive this site
+// made: its SHA-256 is recorded in data/update_backups.json (outside the
+// backup folder) when it is written and checked before anything is extracted.
+
+/**
+ * Whether an update backs up first (Site Settings, General, Update Channel).
+ * On until the 2026.11.0 column says otherwise.
+ *
+ * @return bool
+ */
+function pg_update_backup_enabled()
+{
+    return defined('UPDATE_BACKUP') ? (bool) UPDATE_BACKUP : true;
+}
+
+/**
+ * The archive name of a backup taken before an update.
+ *
+ * @param string $version the installed version, whose files are backed up
+ * @param int    $time
+ * @return string
+ */
+function pg_update_backup_name($version, $time)
+{
+    return 'pre-update-' . preg_replace('/[^0-9.]/', '', (string) $version) . '-' . date('YmdHis', (int) $time) . '.zip';
+}
+
+/**
+ * Whether a name is one pg_update_backup_name() writes. The gate in front of
+ * every read, delete and rollback.
+ *
+ * @param mixed $name
+ * @return bool
+ */
+function pg_update_backup_is_name($name)
+{
+    return is_string($name) && (preg_match('/^pre-update-\d{4}(\.\d+)*-\d{14}\.zip$/', $name) === 1);
+}
+
+/**
+ * An archive entry name made safe to write under the web root, or '' when it
+ * is not a plain relative file name: absolute, a drive letter, a directory, a
+ * '..' or '.' segment, an empty segment or a NUL byte.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_update_safe_entry($name)
+{
+    $name = str_replace('\\', '/', (string) $name);
+
+    if (($name === '') || (substr($name, -1) === '/') || ($name[0] === '/')
+        || (preg_match('#^[a-zA-Z]:#', $name) === 1) || (strpos($name, "\0") !== false)) {
+        return '';
+    }
+
+    foreach (explode('/', $name) as $part) {
+        if (($part === '') || ($part === '.') || ($part === '..')) {
+            return '';
+        }
+    }
+
+    return $name;
+}
+
+/**
+ * Where the record of the archives this site made is kept.
+ *
+ * @return string
+ */
+function pg_update_backup_records_path()
+{
+    return PG_FUNCTIONS_DIR . '/data/update_backups.json';
+}
+
+/**
+ * The record: archive name => array('sha256', 'version', 'created', 'files',
+ * 'added', 'package' - the SHA-256 of the package it was taken before).
+ * Entries that are not well formed are left out.
+ *
+ * @return array
+ */
+function pg_update_backup_records()
+{
+    $decoded = json_decode((string) @file_get_contents(pg_update_backup_records_path()), true);
+    $records = array();
+
+    if (!is_array($decoded)) {
+        return $records;
+    }
+
+    foreach ($decoded as $name => $record) {
+        if (pg_update_backup_is_name($name) && is_array($record) && isset($record['sha256'])
+            && (preg_match('/^[0-9a-f]{64}$/', (string) $record['sha256']) === 1)) {
+            $records[$name] = array(
+                'sha256'  => (string) $record['sha256'],
+                'version' => isset($record['version']) ? (string) $record['version'] : '',
+                'created' => isset($record['created']) ? (int) $record['created'] : 0,
+                'files'   => isset($record['files']) ? (int) $record['files'] : 0,
+                'added'   => isset($record['added']) ? (int) $record['added'] : 0,
+                'package' => (isset($record['package']) && (preg_match('/^[0-9a-f]{64}$/', (string) $record['package']) === 1)) ? (string) $record['package'] : '',
+            );
+        }
+    }
+
+    return $records;
+}
+
+/**
+ * Write the record, whole, through a temporary file.
+ *
+ * @param array $records
+ * @return bool
+ */
+function pg_update_backup_records_write(array $records)
+{
+    $path = pg_update_backup_records_path();
+    $temporary = $path . '.' . substr(md5(uniqid('', true)), 0, 8) . '.tmp';
+
+    if (@file_put_contents($temporary, json_encode($records, JSON_PRETTY_PRINT)) === false) {
+        @unlink($temporary);
+        return false;
+    }
+
+    // rename() does not replace an existing file on Windows.
+    if (!@rename($temporary, $path)) {
+        @unlink($path);
+
+        if (!@rename($temporary, $path)) {
+            @unlink($temporary);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * The file entries of an update package, by safe name.
+ *
+ * @param string $package path of the downloaded package
+ * @return array array('ok' => bool, 'error' => string, 'entries' => array)
+ */
+function pg_update_package_entries($package)
+{
+    $result = array('ok' => false, 'error' => '', 'entries' => array());
+
+    $zip = new ZipArchive();
+
+    if (!is_file($package) || ($zip->open($package) !== true)) {
+        $result['error'] = lang('The downloaded package could not be opened.');
+        return $result;
+    }
+
+    for ($index = 0; $index < $zip->numFiles; $index++) {
+
+        $stat = $zip->statIndex($index);
+
+        if (($stat === false) || !isset($stat['name']) || (substr($stat['name'], -1) === '/')) {
+            continue;
+        }
+
+        $entry = pg_update_safe_entry($stat['name']);
+
+        if ($entry !== '') {
+            $result['entries'][] = $entry;
+        }
+    }
+
+    $zip->close();
+
+    if (!$result['entries']) {
+        $result['error'] = lang('The downloaded package holds no files.');
+        return $result;
+    }
+
+    $result['ok'] = true;
+
+    return $result;
+}
+
+/**
+ * The archives taken before updates that are in the backup folder, newest
+ * first, with what the record says of each.
+ *
+ * @return array of array('name', 'version', 'created', 'size', 'files', 'added', 'recorded')
+ */
+function pg_update_backup_list()
+{
+    $directory = pg_backup_directory();
+    $entries = is_dir($directory) ? @scandir($directory) : false;
+    $records = pg_update_backup_records();
+    $list = array();
+
+    foreach ((array) $entries as $name) {
+
+        if (!pg_update_backup_is_name($name) || !is_file($directory . '/' . $name)) {
+            continue;
+        }
+
+        $recorded = isset($records[$name]);
+
+        preg_match('/^pre-update-(.+)-(\d{14})\.zip$/', $name, $parts);
+
+        $list[] = array(
+            'name'     => $name,
+            'version'  => $recorded ? $records[$name]['version'] : $parts[1],
+            'created'  => $recorded ? $records[$name]['created'] : (int) @filemtime($directory . '/' . $name),
+            'size'     => (float) @filesize($directory . '/' . $name),
+            'files'    => $recorded ? $records[$name]['files'] : 0,
+            'added'    => $recorded ? $records[$name]['added'] : 0,
+            'recorded' => $recorded,
+            'stamp'    => $parts[2],
+        );
+    }
+
+    usort($list, function ($a, $b) {
+        return strcmp($b['stamp'], $a['stamp']);
+    });
+
+    return $list;
+}
+
+/**
+ * Which recorded archives a retention of $keep removes.
+ *
+ * Ordered by the time the record gives, never by the name: anyone who may
+ * upload into the backup folder chooses names. Kept whatever their place:
+ * the archive just written ($protect), and the newest archive of every
+ * version, so that repairing the new version three times does not rotate out
+ * the only copy of the old version's files.
+ *
+ * @param array  $records pg_update_backup_records()
+ * @param int    $keep
+ * @param string $protect
+ * @return array names to delete
+ */
+function pg_update_backup_prune_list(array $records, $keep, $protect = '')
+{
+    uksort($records, function ($a, $b) use ($records) {
+        if ($records[$a]['created'] !== $records[$b]['created']) {
+            return ($records[$a]['created'] > $records[$b]['created']) ? -1 : 1;
+        }
+        return strcmp($b, $a);
+    });
+
+    $keep = max(1, (int) $keep);
+    $versions = array();
+    $position = 0;
+    $delete = array();
+
+    foreach ($records as $name => $record) {
+
+        $newest_of_version = !isset($versions[$record['version']]);
+        $versions[$record['version']] = true;
+
+        if (($position < $keep) || ($name === $protect) || $newest_of_version) {
+            $position++;
+            continue;
+        }
+
+        $delete[] = $name;
+    }
+
+    return $delete;
+}
+
+/**
+ * Apply the retention to the archives this site recorded, and drop the
+ * record of every archive that is no longer in the folder. An archive the
+ * site did not record is never deleted here: it is not this code's to judge;
+ * the Backup Manager deletes it.
+ *
+ * @param int    $keep
+ * @param string $protect the archive just written
+ * @return array the names deleted
+ */
+function pg_update_backup_prune($keep = 3, $protect = '')
+{
+    $directory = pg_backup_directory();
+    $records = pg_update_backup_records();
+    $changed = false;
+
+    foreach (array_keys($records) as $name) {
+        if (!is_file($directory . '/' . $name)) {
+            unset($records[$name]);
+            $changed = true;
+        }
+    }
+
+    $deleted = array();
+
+    foreach (pg_update_backup_prune_list($records, $keep, $protect) as $name) {
+
+        // Asked again at the point of deletion: nothing but such a name
+        // reaches unlink().
+        if (pg_update_backup_is_name($name) && @unlink($directory . '/' . $name)) {
+            $deleted[] = $name;
+            unset($records[$name]);
+            $changed = true;
+        }
+    }
+
+    if ($changed) {
+        pg_update_backup_records_write($records);
+    }
+
+    return $deleted;
+}
+
+/**
+ * Back up the files an update package is about to replace, and the database,
+ * into one archive in the backup folder.
+ *
+ * Built in a working folder under data/temp and moved into the backup folder
+ * only when complete, so a failed run leaves no half archive behind it. The
+ * database goes first: of the two it is what cannot be fetched again.
+ *
+ * @param string $package path of the downloaded package
+ * @return array array('ok' => bool, 'error' => string, 'name' => string,
+ *               'size' => float, 'files' => int, 'added' => int[,
+ *               'reused' => true when an earlier archive of the same day and
+ *               package was kept instead])
+ */
+function pg_update_backup_create($package)
+{
+    $result = array('ok' => false, 'error' => '', 'name' => '', 'size' => 0, 'files' => 0, 'added' => 0);
+
+    if (!class_exists('ZipArchive')) {
+        $result['error'] = lang('The ZipArchive extension of PHP is not available on this server.');
+        return $result;
+    }
+
+    // The dump goes through PDO; without it the dump would end the request
+    // with an Error rather than an answer the screen can show.
+    if (!extension_loaded('pdo_mysql')) {
+        $result['error'] = lang('The PHP extension pdo_mysql is not available, so the database cannot be backed up.');
+        return $result;
+    }
+
+    $listed = pg_update_package_entries($package);
+
+    if (!$listed['ok']) {
+        $result['error'] = $listed['error'];
+        return $result;
+    }
+
+    $now = time();
+    $package_hash = (string) @hash_file('sha256', $package);
+
+    // A retry after a replace that failed part-way: the files on disk may
+    // already be partly the new version's, so a new backup would save a mix
+    // under the old version's name. The archive taken before this same
+    // package earlier the same day holds the files as they were, and is
+    // used again.
+    foreach (pg_update_backup_records() as $recorded_name => $recorded) {
+        if (($recorded['version'] === (string) VERSION) && ($recorded['package'] !== '') && hash_equals($recorded['package'], $package_hash)
+            && (($now - $recorded['created']) < 86400) && is_file(pg_backup_directory() . '/' . $recorded_name)) {
+            $result['ok'] = true;
+            $result['reused'] = true;
+            $result['name'] = $recorded_name;
+            $result['size'] = (float) @filesize(pg_backup_directory() . '/' . $recorded_name);
+            $result['files'] = $recorded['files'];
+            $result['added'] = $recorded['added'];
+            return $result;
+        }
+    }
+
+    $root = dirname(PG_FUNCTIONS_DIR);
+    $sources = array();
+    $added = array();
+    $unreadable = array();
+
+    foreach ($listed['entries'] as $entry) {
+
+        $path = $root . '/' . $entry;
+
+        if (is_file($path)) {
+            if (!is_readable($path)) {
+                $unreadable[] = $entry;
+            }
+            $sources[] = array('path' => $path, 'local' => $entry);
+        } elseif (!file_exists($path)) {
+            $added[] = $entry;
+        }
+    }
+
+    // The archive writer skips a file it cannot read, which would leave that
+    // file out of a rollback without a word.
+    if ($unreadable) {
+        $result['error'] = lang(array(
+            'string' => 'These files cannot be read by the web server, so they cannot be backed up: {var:1}',
+            'vars'   => array(implode(', ', array_slice($unreadable, 0, 10)) . ((count($unreadable) > 10) ? ', …' : '')),
+        ));
+        return $result;
+    }
+
+    $name = pg_update_backup_name(VERSION, $now);
+    $work = PG_FUNCTIONS_DIR . '/data/temp/update_backup_' . date('YmdHis', $now) . '_' . substr(md5(uniqid('', true)), 0, 8);
+
+    if (!@mkdir($work, 0755, true)) {
+        $result['error'] = lang(array('string' => 'The folder {var:1} could not be created.', 'vars' => array('data/temp/' . basename($work))));
+        return $result;
+    }
+
+    $fail = function ($error) use (&$result, $work) {
+        pg_backup_delete_tree($work);
+        $result['error'] = (string) $error;
+        return $result;
+    };
+
+    try {
+        pg_backup_dump_database($work . '/sql.sql');
+    } catch (\Throwable $e) {
+        return $fail($e->getMessage());
+    }
+
+    if (!pg_backup_zip_create($work . '/software.zip', $sources)) {
+        return $fail(lang(array('string' => 'The archive {var:1} could not be written.', 'vars' => array('software.zip'))));
+    }
+
+    $manifest = array(
+        'version' => (string) VERSION,
+        'created' => $now,
+        'package' => basename((string) $package),
+        'files'   => count($sources),
+        'added'   => $added,
+    );
+
+    if (@file_put_contents($work . '/manifest.json', json_encode($manifest, JSON_PRETTY_PRINT)) === false) {
+        return $fail(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => array('manifest.json'))));
+    }
+
+    $archive = $work . '/' . $name;
+
+    $packed = pg_backup_zip_create($archive, array(
+        array('path' => $work . '/sql.sql', 'local' => 'sql.sql'),
+        array('path' => $work . '/software.zip', 'local' => 'software.zip'),
+        array('path' => $work . '/manifest.json', 'local' => 'manifest.json'),
+    ));
+
+    $directory = pg_backup_directory();
+
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0777, true);
+    }
+
+    if (!$packed || !@rename($archive, $directory . '/' . $name)) {
+        return $fail(lang(array('string' => 'The archive {var:1} could not be written.', 'vars' => array($name))));
+    }
+
+    pg_backup_delete_tree($work);
+
+    $records = pg_update_backup_records();
+
+    $records[$name] = array(
+        'sha256'  => (string) hash_file('sha256', $directory . '/' . $name),
+        'version' => (string) VERSION,
+        'created' => $now,
+        'files'   => count($sources),
+        'added'   => count($added),
+        'package' => $package_hash,
+    );
+
+    // Without its record the archive can still be restored as a database
+    // backup, but never rolled back to; an update that cannot be undone is
+    // not what the operator asked for.
+    if (!pg_update_backup_records_write($records)) {
+        @unlink($directory . '/' . $name);
+        $result['error'] = lang(array('string' => '{var:1} could not be written to disk.', 'vars' => array('data/update_backups.json')));
+        return $result;
+    }
+
+    foreach (pg_update_backup_prune(3, $name) as $old) {
+        log_activity(lang(array('string' => 'Old backup taken before an update {var:1} was deleted.', 'vars' => array($old))), 'SYSTEM');
+    }
+
+    $result['ok'] = true;
+    $result['name'] = $name;
+    $result['size'] = (float) @filesize($directory . '/' . $name);
+    $result['files'] = count($sources);
+    $result['added'] = count($added);
+
+    return $result;
+}
+
+/**
+ * Put back the software files of an archive taken before an update.
+ *
+ * Only an archive this site recorded, unchanged since (SHA-256), is used:
+ * copied into a private working folder first, and only that copy is hashed
+ * and read. Its software.zip is copied out and checked against the archive's
+ * own checksum,
+ * then written over the software with the update's verified extraction; the
+ * files the update added are deleted, the bytecode cache and the caches that
+ * remember the old files are cleared, and config.version is set back to the
+ * version of the files when the database says a later one.
+ *
+ * @param string $name the archive's name in the backup folder
+ * @return array array('ok' => bool, 'message' => string, 'version' => string,
+ *               'restored' => int, 'removed' => int)
+ */
+function pg_update_rollback($name)
+{
+    $result = array('ok' => false, 'message' => '', 'version' => '', 'restored' => 0, 'removed' => 0);
+
+    if (!pg_update_backup_is_name($name)) {
+        $result['message'] = lang('That backup cannot be used.');
+        return $result;
+    }
+
+    $path = pg_backup_directory() . '/' . $name;
+    $records = pg_update_backup_records();
+
+    if (!is_file($path)) {
+        $result['message'] = lang('That backup is not in the backup folder any more.');
+        return $result;
+    }
+
+    if (!isset($records[$name])) {
+        $result['message'] = lang('This archive was not made by an update on this site, so it is not used to replace the software files. It can still be restored as a database backup on the installation screen.');
+        return $result;
+    }
+
+    if (!class_exists('ZipArchive')) {
+        $result['message'] = lang('The ZipArchive extension of PHP is not available on this server.');
+        return $result;
+    }
+
+    $work = PG_FUNCTIONS_DIR . '/data/temp/rollback_' . date('YmdHis') . '_' . substr(md5(uniqid('', true)), 0, 8);
+
+    if (!@mkdir($work, 0755, true)) {
+        $result['message'] = lang(array('string' => 'The folder {var:1} could not be created.', 'vars' => array('data/temp/' . basename($work))));
+        return $result;
+    }
+
+    $fail = function ($message) use (&$result, $work) {
+        pg_backup_delete_tree($work);
+        $result['message'] = (string) $message;
+        return $result;
+    };
+
+    // Copied into the private working folder first, and only the copy is
+    // hashed and read. A manager may write into the backup folder, so the
+    // file there could be replaced between a check of it and a read of it,
+    // and the entries would then come from an archive nobody checked.
+    $archive = $work . '/' . $name;
+
+    if (!@copy($path, $archive)) {
+        return $fail(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => array('data/temp/' . basename($work) . '/' . $name))));
+    }
+
+    if (!hash_equals($records[$name]['sha256'], (string) @hash_file('sha256', $archive))) {
+        return $fail(lang('The archive has changed since the update made it, so it is not used to replace the software files.'));
+    }
+
+    $zip = new ZipArchive();
+
+    if ($zip->open($archive) !== true) {
+        return $fail(lang('The archive could not be opened. It might be damaged.'));
+    }
+
+    $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
+    $index = $zip->locateName('software.zip');
+
+    if (!is_array($manifest) || !isset($manifest['version']) || (preg_match('/^\d{4}(\.\d+)*$/', (string) $manifest['version']) !== 1) || ($index === false)) {
+        $zip->close();
+        return $fail(lang('The archive is not a backup taken before an update.'));
+    }
+
+    $copied = pg_restore_archive_copy($zip, $index, $work . '/software.zip');
+
+    $zip->close();
+
+    if ($copied !== '') {
+        return $fail($copied);
+    }
+
+    $root = dirname(PG_FUNCTIONS_DIR);
+
+    $extract = pg_extract_archive($work . '/software.zip', $root . '/');
+
+    pg_backup_delete_tree($work);
+
+    if (!$extract['ok']) {
+        log_activity('software rollback extraction failed: ' . $extract['message'], isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : 'SYSTEM');
+        $result['message'] = $extract['message'];
+        return $result;
+    }
+
+    $result['restored'] = count($extract['files']);
+
+    // The files the update brought that the version rolled back to did not
+    // have. Only names the archive recorded, made safe, under the web root.
+    $added_entries = (isset($manifest['added']) && is_array($manifest['added'])) ? $manifest['added'] : array();
+
+    foreach ($added_entries as $added) {
+
+        $entry = pg_update_safe_entry($added);
+
+        if (($entry !== '') && is_file($root . '/' . $entry) && @unlink($root . '/' . $entry)) {
+            $result['removed']++;
+        }
+    }
+
+    $opcache = pg_update_clear_opcache($extract['files']);
+
+    if (!$opcache['cleared'] && ($opcache['running'] === true)) {
+        log_activity('software rollback: the bytecode cache could not be cleared - run Purge Cache if the rollback does not take effect', 'SYSTEM');
+    }
+
+    foreach (array('system_status_cache.json', 'hash_reference_state.json') as $cache) {
+        if (file_exists(PG_FUNCTIONS_DIR . '/data/temp/' . $cache)) {
+            @unlink(PG_FUNCTIONS_DIR . '/data/temp/' . $cache);
+        }
+    }
+
+    if (function_exists('pg_schema_cache_clear')) {
+        pg_schema_cache_clear();
+    }
+
+    $result['version'] = (string) $manifest['version'];
+
+    // The files are the old version's now; the database is told so, or the
+    // next update would think the old version's steps already ran. The
+    // schema keeps what the newer steps added, which the older code ignores;
+    // the next update runs those steps again, and each one asks before it
+    // changes anything.
+    if (defined('VERSION') && (version_compare((string) VERSION, $result['version'], '>'))) {
+        db("UPDATE config SET version = '" . e($result['version']) . "'");
+    }
+
+    $result['ok'] = true;
+    $result['message'] = lang(array(
+        'string' => 'The software files of {var:1} are back ({var:2} files written, {var:3} files of the update removed).',
+        'vars'   => array($result['version'], $result['restored'], $result['removed']),
+    ));
+
+    return $result;
+}

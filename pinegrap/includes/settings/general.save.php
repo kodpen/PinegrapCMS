@@ -222,6 +222,68 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              backup_remote_settings = '" . escape($backup_blob_value) . "',"
             . ($backup_changed ? " backup_remote_error = ''," : '');
     }
+    // ── Alerts ───────────────────────────────────────────────────────────
+    // The 2026.11.0 columns (11.0.20); before the upgrade nothing is written
+    // here. A recipient that is not an address refuses the whole save, like
+    // the backup card's required fields: a half-saved category is worse than
+    // none. The list is stored comma-separated, whatever the operator typed
+    // between the addresses.
+    $sql_ops_alert_settings = '';
+
+    if (array_key_exists('ops_alerts', $row) && function_exists('pg_ops_alert_recipients')) {
+
+        $ops_alert_recipients_posted = trim((string) post_value('ops_alert_recipients'));
+        $ops_alert_recipients_invalid = pg_ops_alert_recipients_invalid($ops_alert_recipients_posted);
+
+        if ($ops_alert_recipients_invalid) {
+            $liveform->mark_error('ops_alert_recipients', lang(array(
+                'string' => 'Not an e-mail address: {var:1}',
+                'vars'   => array(implode(', ', $ops_alert_recipients_invalid)),
+            )));
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+
+        $sql_ops_alert_settings =
+            "ops_alerts = '" . (post_value('ops_alerts') ? 1 : 0) . "',
+             ops_alert_email = '" . (post_value('ops_alert_email') ? 1 : 0) . "',
+             ops_alert_push = '" . (post_value('ops_alert_push') ? 1 : 0) . "',
+             ops_alert_recipients = '" . escape(implode(', ', pg_ops_alert_recipients($ops_alert_recipients_posted, array()))) . "',";
+
+        // The thresholds (0 = that check off), held to what each column and
+        // check can take, the way the backup retention is. An empty box
+        // keeps what is stored.
+        if (array_key_exists('ops_alert_error_rate', $row)) {
+
+            $ops_alert_limits = array(
+                'ops_alert_error_rate'    => 100000,
+                'ops_alert_disk_percent'  => 50,
+                'ops_alert_mail_failures' => 100000,
+                'ops_alert_cert_days'     => 60,
+            );
+
+            foreach ($ops_alert_limits as $ops_alert_column => $ops_alert_max) {
+
+                $ops_alert_posted = trim((string) post_value($ops_alert_column));
+
+                $ops_alert_value = ($ops_alert_posted === '')
+                    ? (int) $row[$ops_alert_column]
+                    : min($ops_alert_max, max(0, (int) $ops_alert_posted));
+
+                $sql_ops_alert_settings .= "
+             " . $ops_alert_column . " = '" . $ops_alert_value . "',";
+            }
+        }
+    }
+
+    // ── Backup before updating ───────────────────────────────────────────
+    // The 2026.11.0 column (11.0.21); before the upgrade nothing is written.
+    $sql_update_backup = array_key_exists('update_backup', $row)
+        ? "update_backup = '" . (post_value('update_backup') ? 1 : 0) . "',"
+        : '';
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -237,6 +299,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             time_format = '" . escape(post_value('time_format')) . "',
             " . $sql_job_dispatch_settings . "
             " . $sql_backup_settings . "
+            " . $sql_ops_alert_settings . "
+            " . $sql_update_backup . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 

@@ -688,6 +688,84 @@ function pg_backup_remote_decode($stored)
 }
 
 
+/**
+ * How many backups the backup folder holds and when the newest was written.
+ *
+ * Read from the folder, NOT from config.last_software_auto_backup: that column
+ * is the scheduler's cursor, and backups.php sets it to 0 to force the next
+ * run. Every sub-folder counts (a backup taken by hand is a folder), and of
+ * the files only an automatic backup archive does; the two install fixtures
+ * are left out, or a site that was never backed up would show two backups
+ * dated the day it was installed. One stat per entry, never a recursive walk:
+ * the folder can hold gigabytes.
+ *
+ * The System Status check and the operations alerts both read this, so the
+ * tile and the alert never disagree about what "the newest backup" is.
+ *
+ * @param string|null $directory the backup folder; null for pg_backup_directory()
+ * @return array array('count' => int, 'newest' => int unix time, 0 for none)
+ */
+function pg_backup_newest($directory = null)
+{
+    if ($directory === null) {
+        $directory = pg_backup_directory();
+    }
+
+    $found = array('count' => 0, 'newest' => 0);
+
+    $entries = is_dir($directory) ? @scandir($directory) : false;
+
+    if ($entries === false) {
+        return $found;
+    }
+
+    foreach ($entries as $entry) {
+
+        if (($entry === '.') || ($entry === '..') || in_array($entry, array('english_default', 'turkish_default'), true)) {
+            continue;
+        }
+
+        $path = $directory . '/' . $entry;
+
+        if (!is_dir($path) && !(pg_backup_is_auto_name($entry) && is_file($path))) {
+            continue;
+        }
+
+        $found['count']++;
+
+        $stamp = (int) @filemtime($path);
+
+        if ($stamp > $found['newest']) {
+            $found['newest'] = $stamp;
+        }
+    }
+
+    return $found;
+}
+
+
+/**
+ * The reason the last automatic backup run of this request failed.
+ *
+ * Every failure is logged where it happens; the run itself only answers true
+ * or false. The operations alert that follows a failed run names the reason,
+ * so the branches that log it also leave it here.
+ *
+ * @param string|null $set the reason to remember; null only reads
+ * @return string '' when nothing failed
+ */
+function pg_backup_last_error($set = null)
+{
+    static $error = '';
+
+    if ($set !== null) {
+        $error = (string) $set;
+    }
+
+    return $error;
+}
+
+
 // ----------------------------------------------------------------------------
 // The automatic backup
 // ----------------------------------------------------------------------------
@@ -705,6 +783,8 @@ function pg_backup_remote_decode($stored)
  */
 function pg_backup_run_auto()
 {
+    pg_backup_last_error('');
+
     $directory = pg_backup_directory();
 
     if (!is_dir($directory)) {
@@ -792,7 +872,7 @@ function pg_backup_run_zip($name)
     $work = $temp . '/auto_backup_' . date('YmdHis') . '_' . substr(md5(uniqid('', true)), 0, 8);
 
     if (!@mkdir($work, 0755, true)) {
-        log_activity(lang(array('string' => 'Software Auto Backup error: the folder {var:1} could not be created.', 'vars' => array('data/temp/' . basename($work)))), 'SYSTEM');
+        log_activity(pg_backup_last_error(lang(array('string' => 'Software Auto Backup error: the folder {var:1} could not be created.', 'vars' => array('data/temp/' . basename($work))))), 'SYSTEM');
         return '';
     }
 
@@ -802,7 +882,7 @@ function pg_backup_run_zip($name)
         pg_backup_dump_database($work . '/sql.sql');
     } catch (\Exception $e) {
         pg_backup_delete_tree($work);
-        log_activity(lang(array('string' => 'Software Auto Backup error: {var:1}', 'vars' => array($e->getMessage()))), 'SYSTEM');
+        log_activity(pg_backup_last_error(lang(array('string' => 'Software Auto Backup error: {var:1}', 'vars' => array($e->getMessage())))), 'SYSTEM');
         return '';
     }
 
@@ -831,7 +911,7 @@ function pg_backup_run_zip($name)
     pg_backup_delete_tree($work);
 
     if (!$written) {
-        log_activity(lang(array('string' => 'Software Auto Backup error: the archive {var:1} could not be written.', 'vars' => array($name . '.zip'))), 'SYSTEM');
+        log_activity(pg_backup_last_error(lang(array('string' => 'Software Auto Backup error: the archive {var:1} could not be written.', 'vars' => array($name . '.zip')))), 'SYSTEM');
         return '';
     }
 
@@ -863,7 +943,7 @@ function pg_backup_run_folder($name)
         if (is_dir($folder) && (count(glob($folder . '/*')) === 0)) {
             @rmdir($folder);
         }
-        log_activity(lang(array('string' => 'Software Auto Backup error: {var:1}', 'vars' => array($e->getMessage()))), 'SYSTEM');
+        log_activity(pg_backup_last_error(lang(array('string' => 'Software Auto Backup error: {var:1}', 'vars' => array($e->getMessage())))), 'SYSTEM');
         return false;
     }
 
@@ -1029,6 +1109,12 @@ function pg_backup_remote_record($result)
     db("UPDATE config SET backup_remote_error = '" . e($error) . "'");
 
     log_activity(lang(array('string' => 'The remote backup copy failed: {var:1}', 'vars' => array($error))), 'SYSTEM');
+
+    // A backup that exists only on the server it protects is lost with that
+    // server, so the failed copy is worth telling someone about.
+    if (function_exists('pg_ops_alert')) {
+        pg_ops_alert('backup_remote_failed', $error);
+    }
 }
 
 

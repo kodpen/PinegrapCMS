@@ -1532,7 +1532,7 @@ function get_system_status_checks()
     //   robot     → unknown bot filter    broadcast→ IndexNow
     //   terminal  → PHP version           database → database health
     //   puzzle    → PHP extensions        sliders  → php.ini directives
-    //   patch     → CA certificate bundle
+    //   patch     → CA certificate bundle  bell     → operations alerts
     //
     // Where the family offers a natural negative form (unlock, shield-slash,
     // database-x) use it for the failing state: it reinforces the colour instead
@@ -1578,6 +1578,7 @@ function get_system_status_checks()
         'Webhooks'                 => 'Webhook',
         'Storage Engine'           => 'Engine',
         'Visitor Records'          => 'Visitors',
+        'Operations Alerts'        => 'Alerts',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1608,6 +1609,7 @@ function get_system_status_checks()
         'Webhooks',
         'Storage Engine',
         'Visitor Records',
+        'Operations Alerts',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -2578,45 +2580,12 @@ function get_system_status_checks()
     // column is the scheduler's cursor, not a record of what happened: opening
     // backups.php sets it to 0 to force the next run, so a check trusting it
     // would announce "never backed up" to anyone who had just visited the
-    // backup screen. The folders are the only thing that knows.
-    $backup_path = PG_FUNCTIONS_DIR . '/data/backups';
-    $backup_count = 0;
-    $backup_newest = 0;
-
-    // Shipped with the product as install fixtures, not produced by any backup
-    // run. Counting them would let a site that has never been backed up show
-    // two backups dated the day it was installed.
-    $backup_seed = array('english_default', 'turkish_default');
-
-    if (is_dir($backup_path)) {
-        $backup_entries = @scandir($backup_path);
-        if ($backup_entries !== false) {
-            foreach ($backup_entries as $backup_entry) {
-                if (($backup_entry == '.') || ($backup_entry == '..')) {
-                    continue;
-                }
-                if (in_array($backup_entry, $backup_seed)) {
-                    continue;
-                }
-                // The automatic backup writes one archive per week where a
-                // ZipArchive is available. Only its own names are counted:
-                // any other file in the directory is not a backup run.
-                if (!is_dir($backup_path . '/' . $backup_entry)
-                    && !(pg_backup_is_auto_name($backup_entry) && is_file($backup_path . '/' . $backup_entry))
-                ) {
-                    continue;
-                }
-                $backup_count++;
-                // stat per folder, never a recursive walk. folderSize() on this
-                // directory would read every file of every backup — gigabytes —
-                // for one number on a card.
-                $backup_stamp = @filemtime($backup_path . '/' . $backup_entry);
-                if ($backup_stamp && ($backup_stamp > $backup_newest)) {
-                    $backup_newest = (int) $backup_stamp;
-                }
-            }
-        }
-    }
+    // backup screen. The folders are the only thing that knows, and
+    // pg_backup_newest() is the one reading of them that the operations
+    // alerts share.
+    $backup_found = pg_backup_newest();
+    $backup_count = $backup_found['count'];
+    $backup_newest = $backup_found['newest'];
 
     $auto_backup_off = (defined('SOFTWARE_AUTO_BACKUP') && (SOFTWARE_AUTO_BACKUP == false));
 
@@ -2786,6 +2755,18 @@ function get_system_status_checks()
                 'state' => $cron_state,
                 'when'  => $cron_when,
             );
+        }
+
+        // The general job runs the operations checks, so it cannot report
+        // its own death: a panel visit that finds a job stopped asks the
+        // alert check as well (one more read of cron_runs, once per cache
+        // period; the alert itself goes out at most once a day).
+        if ($cron_stalled && function_exists('pg_ops_alerts_enabled') && pg_ops_alerts_enabled()) {
+            try {
+                pg_ops_alerts_check_cron(time());
+            } catch (\Throwable $e) {
+                // The tile below says the same thing; the alert is a courtesy.
+            }
         }
 
         if ($cron_stalled) {
@@ -3014,6 +2995,69 @@ function get_system_status_checks()
 
         }
 
+    }
+
+    // 🔔 Operations alerts (includes/fn/ops_alerts.php)
+    //
+    // What was told, not a check of its own: every problem behind an alert is
+    // already a tile above, and scoring the alert as well would count it
+    // twice. Reported, therefore, and not scored - like Database Size was. The
+    // tile opens into the last alert of each kind from the past week, which is
+    // the one place an operator who deleted the bell entries can still see
+    // what went out. No tile before the upgrade adds the switch.
+    if (function_exists('pg_ops_alert_recent') && pg_schema_has('config', 'ops_alerts')) {
+
+        $alerts_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_general.php#pgset-alerts';
+
+        if (!pg_ops_alerts_enabled()) {
+
+            $output .= $makeIcon(
+                'bi-bell-slash',
+                'text-secondary',
+                'Operations Alerts',
+                'Operations alerts are switched off: a failed backup or a stopped scheduled task is not told to anyone.',
+                lang('Off'),
+                $alerts_href
+            );
+
+        } else {
+
+            $alerts_recent = pg_ops_alert_recent(7);
+            $alerts_detail = array();
+            $alerts_codes = pg_ops_alert_codes();
+
+            foreach ($alerts_recent as $alerts_code => $alerts_row) {
+                $alerts_detail[] = array(
+                    'label' => $alerts_row['label'] . (($alerts_row['detail'] !== '') ? ' - ' . $alerts_row['detail'] : ''),
+                    'state' => ($alerts_codes[$alerts_code]['type'] === 'error') ? 'fail' : 'warn',
+                    'when'  => get_relative_time(array('timestamp' => $alerts_row['timestamp'], 'format' => 'plain_text')),
+                );
+            }
+
+            if ($alerts_detail) {
+                $output .= $makeIcon(
+                    'bi-bell-fill',
+                    'text-warning',
+                    'Operations Alerts',
+                    'Alerts were sent in the last seven days. Each problem is told at most once a day while it lasts.',
+                    lang(array(
+                        'string' => '{var:1} in 7 days',
+                        'vars'   => pg_format_number(count($alerts_detail), 0),
+                    )),
+                    $alerts_href,
+                    $alerts_detail
+                );
+            } else {
+                $output .= $makeIcon(
+                    'bi-bell-fill',
+                    'text-success',
+                    'Operations Alerts',
+                    'No operations alert was sent in the last seven days.',
+                    lang('None'),
+                    $alerts_href
+                );
+            }
+        }
     }
 
     // The fallback carrier, when the site names one.
