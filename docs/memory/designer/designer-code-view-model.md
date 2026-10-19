@@ -1,6 +1,6 @@
 ---
-name: designer-code-editor-design
-description: Design of the designer code view as built (E1-E2): range map from one emitter, document and lock levels, head/foot rows, what lives in the facade and what in the designer
+name: designer-code-view-model
+description: The designer's code view: range map from one emitter, the document and its lock levels, head/foot rows shared with the HTML tree, what lives in the facade and what in the designer
 ---
 
 ## How does the editor know which text belongs to which node?

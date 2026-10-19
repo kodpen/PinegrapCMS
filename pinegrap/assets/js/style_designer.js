@@ -22774,6 +22774,9 @@ const StyleDesigner = (function () {
         // The code editor dialog (codemirror_modal.js) shares the view's
         // engine texts.
         window.PgCodeEditorPhrases = _sdCodePhrases();
+        // Class names are offered inside class="…" in every HTML editor of
+        // the page: the view, the file tabs and the dialog.
+        PgCodeEditor.addCompletionSource('html', _sdCodeClassCompletion);
 
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -23736,6 +23739,46 @@ const StyleDesigner = (function () {
         node.props.text = ws ? _sdCodeDecode(joined) : _sdCodeDecode(joined.replace(/\s+/g, ' ').trim());
         var tag = String(node.props.tag || '').toLowerCase();
         if ((tag === 'button' || tag === 'a') && slot !== 'none') node.props.textPosition = slot;
+    }
+
+    // ========================= CODE VIEW: CLASS COMPLETION =========================
+    // Inside the value of a class attribute the editor offers the Bootstrap
+    // utilities the Attributes panel knows (PG_CLASS_SUGGESTIONS) and every
+    // class the document already uses, the latter read once per document
+    // version.
+    var _sdCodeDocClassesCache = { doc: null, list: [] };
+    function _sdCodeDocClasses(state) {
+        if (_sdCodeDocClassesCache.doc === state.doc) return _sdCodeDocClassesCache.list;
+        var seen = {}, list = [];
+        var text = state.doc.toString();
+        var re = /\sclass\s*=\s*"([^"]*)"/g, m;
+        while ((m = re.exec(text)) !== null) {
+            m[1].split(/\s+/).forEach(function (c) { if (c && !seen[c]) { seen[c] = true; list.push(c); } });
+        }
+        _sdCodeDocClassesCache = { doc: state.doc, list: list };
+        return list;
+    }
+
+    function _sdCodeClassCompletion(context, syntax) {
+        var node = syntax.node;
+        if (node.name !== 'AttributeValue' && node.name !== 'UnquotedAttributeValue') return null;
+        var attr = node.parent;
+        var nameNode = attr ? attr.getChild('AttributeName') : null;
+        if (!nameNode || context.state.sliceDoc(nameNode.from, nameNode.to).toLowerCase() !== 'class') return null;
+        var word = context.matchBefore(/[A-Za-z0-9_-]*/);
+        if (!word || (word.from === word.to && !context.explicit)) return null;
+        var typed = context.state.sliceDoc(word.from, word.to);
+        var seen = {}, options = [];
+        var push = function (label, type) {
+            // The word being typed is in the document already; offering it
+            // back would be the first match and swallow the Enter.
+            if (seen[label] || label === typed) return;
+            seen[label] = true;
+            options.push({ label: label, type: type });
+        };
+        _sdCodeDocClasses(context.state).forEach(function (c) { push(c, 'class'); });
+        (window.PG_CLASS_SUGGESTIONS || []).forEach(function (c) { push(c, 'keyword'); });
+        return { from: word.from, options: options, validFor: /^[A-Za-z0-9_-]*$/ };
     }
 
     // ========================= CODE VIEW: FILE TABS =========================
