@@ -7,8 +7,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - accessibility-and-consent-tools.md: Plan (approved 2026-10-19, not started): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement template, consent banner with equal accept/reject and Consent Mode v2 defaults
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-product-feeds.md: Plan (approved 2026-10-19, in progress: builder, job, feed.php and settings card done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV); status check, API left
-- ai-write-buttons.md: Plan (approved 2026-10-19, not started): "Write with AI" buttons in the product builder, page SEO fields, image alt text and blog records, reusing the Workspace AI client; AI-generated labelling
-- checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, designer bindings and kept copy built): pre-information form and distance sales contract; left: My Account link, API, KVKK consent
+- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, every planned text button and the browser's model done): "Write with AI"; image alt text and AI-generated labelling (schema) left
+- checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, designer bindings, kept copy and API built): pre-information form and distance sales contract; left: My Account link, KVKK consent, Turkish seed
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule, CI checks
 - customer-returns-flow.md: Plan (approved 2026-10-19, not started): customer return request in My Account, approval, return carrier code, status, 14-day timers, bridge to iyzico refund and ERP return invoice
@@ -20,7 +20,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Design decided for the unfinished Paraşüt e-document driver: credentials, HTTP layer, taxpayer check, scenario, async job ladder, totals check, webhook, account title lookup
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
-- image-delivery-pipeline.md: Plan (approved 2026-10-19, not started): automatic WebP/AVIF derivatives, srcset/sizes, lazy loading except the LCP image, fetchpriority, derivative cache and disk accounting
+- image-delivery-pipeline.md: Plan (approved 2026-10-19, in progress: steps 1-3 and the cache upkeep done): image settings with a schema step, page rebuild button, Loading row left
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
@@ -32,7 +32,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - passkeys.md: Plan (approved 2026-10-19, not started): WebAuthn passkeys for panel users and members as a second factor or passwordless sign-in beside TOTP; registration in Account Security, admin reset
 - payment-driver-layer.md: Plan (approved 2026-10-19, not started): payment driver interface beside submit_order.php, Stripe PaymentIntents + wallets, PayTR as first local PSP; legacy gateways frozen, never removed
 - php-compatibility-and-bugs.md: Open items from the 2026-10-19 static analysis (PHPStan level 0, PHPCompatibility): undefined variables, duplicate keys, nested functions, PHP 8.4/8.5 deprecations, dead extension remnants, CI steps
-- price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history table and writers done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), merchant compare-at price, API endpoint, retention
+- price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history table, writers and the API read done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), merchant compare-at price, retention
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19, not started): per-person data export, erasure/anonymisation wizard respecting invoice retention, consent log, structured admin audit trail with before/after values
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions

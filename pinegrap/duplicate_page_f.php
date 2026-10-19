@@ -320,6 +320,14 @@ function duplicate_page($request) {
               AND src.page_id = '" . (int)$page_id . "'");
     }
 
+    // ...and so does its own JSON-LD (Page Settings of the visual designer).
+    if (pg_page_custom_jsonld_ready()) {
+        db("UPDATE page dst, page src
+            SET dst.custom_jsonld = src.custom_jsonld
+            WHERE dst.page_id = '" . (int)$new_page['id'] . "'
+              AND src.page_id = '" . (int)$page_id . "'");
+    }
+
     // The copy of a draft stays in the drafts folder with its original, so it
     // also needs the folder it goes back to when it is published.
     if (pg_page_is_draft($folder['id'])) {

@@ -28,6 +28,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
+- designer-home-screen.md: Visual Page Editor home (view_system_styles.php): drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
@@ -41,7 +42,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-paste-clipboard.md: Designer Ctrl+V: internal node clipboard vs external markup, /*pinegrap-nodes*/ prefix, conditional keydown preventDefault, text sinks, paste target.
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before style_designer.js; English keys, no embedded numbers or variables, price keys, palette labels.
-- designer-settings-modal-sizing.md: Designer settings modal sizes (.sd-settings-nav 230px, .sd-settings-body 640px) live in style_designer.css, not inline; rail becomes a strip under 992px.
+- designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
+- designer-settings-modal-sizing.md: Designer settings modal size and closing: modal-xl from 992px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 992px.
 - designer-sticky-panel-layout.md: Designer left/right panel docking: docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, clamp width, one layer at a time, three-strip bottom panel, rail icons.
 - express-order-legal-documents.md: Checkout document boxes in the designer's express order tree: legal_preinfo/legal_contract field bindings, has_legal_documents flag, __legal_*_url href tokens, sentence split of the label
 - frontend-conventions-layers.md: Palette component vs system widget layers, what is production (legacy) vs development (system widget), and the five invariant principles for system widget work.
@@ -56,6 +58,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, tab switching/menu/rename DOM rules, toolbar overflow, palette order and translation of designer texts.
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - palette-component-atomic.md: Palette components either explode into a real node tree or are atomic (only btn and badge have render/toHTML); button two models and propsButtonLinkOptions.
+- responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, first-image priority, widget pass, variant swap, version stamp, e-mail strip
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.

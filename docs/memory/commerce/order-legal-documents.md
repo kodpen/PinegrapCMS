@@ -17,6 +17,9 @@ description: Legal documents (pre-information form, distance sales contract): se
 - The order receipt e-mail (`submit_order.php`) carries both copies as HTML attachments (`pg_legal_documents_attachments()`, names like `mesafeli-satis-sozlesmesi-1173.html`); they travel through the mail queue as base64.
 - Panel order view (`view_order.php`, left column under Affiliate): `pg_legal_documents_panel_card()` lists each document, its acceptance time or "Not accepted", the IP as title, a link to the copy. No rows, no card.
 
+## How does the API read them?
+- `GET /orders/{id}/documents` (`orders:read`, `api_orders_documents()`, object `OrderDocument`): one page, every `order_documents` row of the order in id order, each with `type`, `label` (null for a type `pg_legal_document_types()` does not name yet, such as `kvkk`), `accepted` + `accepted_at`, `ip`, `user_agent`, `created_at` and the stored `html`. Missing table or no rows → empty list, never an error; the switch being off does not hide kept copies. `?fields=` drops the HTML. The MCP tool comes with the route.
+
 ## Where is the checkout side?
 - docs/memory/commerce/checkout-legal-checkboxes.md
 

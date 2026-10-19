@@ -9,6 +9,7 @@ description: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json
 
 ## How is custom JSON-LD handled?
 - `page.custom_jsonld` + `config.custom_jsonld`: validate with `json_decode` on save; on output decode -> encode (`pg_custom_jsonld_block()`), the `/` escape makes a `</script` break-out impossible. Never echo the text as is.
+- The page's block is written from the visual designer (Settings > Search Engines > Structured Data, #582): `pg_page_custom_jsonld_check()` keeps the trimmed text only when it is an object or a list of objects that each name an `@type` (or an `@graph` of typed items), at most 64 KB (`tests/seo_custom_jsonld_test.php`). `pg_designer_save_page()` refuses the whole save in its dry run with a sentence naming the page (`pg_page_custom_jsonld_message()`); the editor shows the same verdict as it is typed (`_sdJsonLdCheck()`, the JS mirror). Copied by duplicate page and duplicate design; the classic `edit_page.php` does not show it.
 - The SEO save (`includes/settings/seo.save.php`) marks invalid site JSON-LD (`mark_error('custom_jsonld')`, dialog `status: 'invalid'`) before the IndexNow file or a column is written. Why (PR #490): `output_error` gave the dialog a 500 after the IndexNow file was already written.
 
 ## Which rules apply to OG images and merchant data?

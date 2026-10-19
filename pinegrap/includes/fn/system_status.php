@@ -759,7 +759,7 @@ function check_ssl_status()
  * Function: pg_storage_usage
  * ------------------------------------------
  * What this installation is holding, in bytes: the database, the backup
- * folder and the file library. Reported on the System Status card and scored
+ * folder, the file library and the image derivatives made from it. Reported on the System Status card and scored
  * nowhere -- there is no size at which any of the three is wrong, and any
  * threshold set here would be a number invented in this file and charged to
  * sites that grew.
@@ -778,7 +778,8 @@ function check_ssl_status()
  * simply leaves that line out rather than printing a confident zero.
  *
  * Compatibility: PHP 7.0 - 8.5
- * Returns: array('database' => int|null, 'backups' => int|null, 'files' => int|null, 'total' => int)
+ * Returns: array('database' => int|null, 'backups' => int|null, 'files' => int|null,
+ *                'images' => int|null, 'total' => int)
  */
 
 function pg_storage_usage($force = false)
@@ -816,12 +817,18 @@ function pg_storage_usage($force = false)
     $backup_path = PG_FUNCTIONS_DIR . '/data/backups';
     $backups = is_dir($backup_path) ? (int) folderSize($backup_path) : null;
 
+    // The image derivatives (includes/image_engine.php): a walk as well, of a
+    // folder that grows with the pictures visitors look at.
+    $image_path = function_exists('pg_image_derivative_directory') ? pg_image_derivative_directory() : '';
+    $images = (($image_path !== '') && is_dir($image_path)) ? (int) folderSize($image_path) : null;
+
     $result = array(
         'ts'       => time(),
         'database' => $database,
         'backups'  => $backups,
         'files'    => $files,
-        'total'    => (int) $database + (int) $backups + (int) $files,
+        'images'   => $images,
+        'total'    => (int) $database + (int) $backups + (int) $files + (int) $images,
     );
 
     $cache_dir = PG_FUNCTIONS_DIR . '/data/temp';
@@ -1034,6 +1041,14 @@ function pg_purge_caches()
     }
     if ($temp_cleared > 0) {
         $cleared[] = lang('System status') . ' (' . $temp_cleared . ')';
+    }
+
+    // The image derivatives get_file.php made (includes/image_engine.php),
+    // and the formats this server was found to write: both are made again on
+    // the next requests. The folder is set aside at once; what the purge has
+    // no time to delete goes with the general job.
+    if (function_exists('pg_image_derivative_purge') && pg_image_derivative_purge(pg_image_derivative_directory())) {
+        $cleared[] = lang('Image derivatives');
     }
 
     // What pg_schema_has() remembers about tables and columns. A schema
