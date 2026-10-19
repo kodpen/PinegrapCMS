@@ -4,7 +4,7 @@
 
 Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates.
 
-- backup-upload-extraction.md: Installation screen backup upload: archive extracted a megabyte at a time into data/temp/upload_<id>, checksum-checked, moved into data/backups only when whole.
+- backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
 - ca-bundle-panel-update.md: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): https-only source, validation checks, atomic write to data/cacert.pem.
 - clean-up-tool-file-list.md: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
