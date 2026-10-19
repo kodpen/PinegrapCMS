@@ -1,6 +1,6 @@
 ---
 name: accessibility-and-consent-tools
-description: Plan (approved 2026-10-19; consent notice done, PR #PR): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement; consent button texts left
+description: Plan (approved 2026-10-19; consent notice done, PR #619): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement; consent button texts left
 ---
 
 ## Why?
@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19; consent notice done, PR #PR): designer c
 1. Contrast helper + designer rules + tests on the ratio function (S–M).
 2. Nightly a11y job, storage, SEO screen tab, API filter (M).
 3. Statement block + PDF export (S).
-4. Consent notice: done (PR #PR). Left: settings for the button texts (needs `config` columns; ask the owner first, or drop it, since the texts are translatable).
+4. Consent notice: done (PR #619). Left: settings for the button texts (needs `config` columns; ask the owner first, or drop it, since the texts are translatable).
 5. Memory: `docs/memory/platform/accessibility-report.md` when shipped; the plan's one `[NEW]` changelog line goes in with the report.
 
 ## Open questions?
