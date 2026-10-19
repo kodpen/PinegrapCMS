@@ -23740,5 +23740,14 @@
     "Shared components the User may edit": "Kullanıcının düzenleyebileceği Ortak Bileşenler",
     "Common regions, shared components and menu items": "Ortak bölgeler, ortak bileşenler ve menü öğeleri",
     "component": "bileşen",
-    "components": "bileşen"
+    "components": "bileşen",
+    "Writing with AI is switched off on this site.": "Bu sitede yapay zekâyla yazma kapalı.",
+    "This field cannot be written with AI.": "Bu alan yapay zekâyla yazılamaz.",
+    "You do not have access to edit this.": "Bunu düzenleme yetkiniz yok.",
+    "Fill in a few fields first, so there is something to write about.": "Önce birkaç alanı doldurun; yazılacak bir şey olsun.",
+    "You are asking for drafts too quickly. Please wait a moment.": "Çok hızlı taslak istiyorsunuz. Lütfen biraz bekleyin.",
+    "Pinegrap AI did not write anything that could be used. Try again.": "Pinegrap AI kullanılabilecek bir şey yazmadı. Tekrar deneyin.",
+    "new product": "yeni ürün",
+    "This site has used its {var:1} drafts for today. Writing with AI is open again tomorrow.": "Bu site bugünkü {var:1} taslak hakkını kullandı. Yapay zekâyla yazma yarın yeniden açılır.",
+    "asked Pinegrap AI for a draft of {var:1} ({var:2})": "Pinegrap AI'dan {var:1} taslağı istedi ({var:2})"
 }
