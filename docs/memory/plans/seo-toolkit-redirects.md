@@ -16,8 +16,8 @@ description: Plan (approved 2026-10-19, in progress: steps 1-2 done, redirects a
 - API: short links carry `redirect_code` and `is_pattern` (step 1); `/seo/not-found` read.
 
 ## What remains?
-1. Done: redirects as short link options (11.0.12, router, 404-time patterns, classic screens, File Manager server side, API).
-2. Done: CSV import and export on the short link list.
+1. Done (#699): redirects as short link options (11.0.12, router, 404-time patterns, classic screens, File Manager server side, API).
+2. Done (#699): CSV import and export on the short link list.
 3. File Manager short link window: the answer choice (`view_folders.php`, after the open Excel cell edit PR on that file merges) (S).
 4. Slug-change hook in designer save and page edit (S).
 5. 404 logging with retention (S).

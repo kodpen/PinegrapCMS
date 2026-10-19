@@ -20,4 +20,4 @@ description: Short links as a CSV file (2026.11.0): the list's export (from,to,c
 - Loop checks run against one prepared set kept current line by line (`pg_short_link_prepare()`, `pg_short_link_prepared_put()`), so a file may chain its own addresses but not close a loop.
 - The list screen reports added, changed and skipped counts and the first 20 line errors with their line numbers; when nothing is saved, the import screen does.
 
-Tests: `tests/short_link_redirects_test.php` (reader, writer, round trip).
+Tests: `tests/short_link_redirects_test.php` (reader, writer, round trip). PR: #699.
