@@ -49,6 +49,7 @@ function pg_panel_backend_search($request, $action)
     $actions[] = array('label' => lang('Add Folder'), 'icon' => 'bi-folder-plus', 'url' => $base_url . '/add_folder.php', 'keys' => array('klasor ekle', 'add folder', 'yeni klasor', 'klasorekle'));
     if ($can_manage) {
         $actions[] = array('label' => lang('Short Links'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/view_short_links.php', 'keys' => array('kisa link', 'kisa', 'short', 'link', 'kis'));
+        $actions[] = array('label' => lang('Redirects'), 'icon' => 'bi-signpost-split', 'url' => $base_url . '/view_redirects.php', 'keys' => array('yonlendirme', 'yönlendirme', 'redirect', 'redirects', '301', 'yon'));
     }
     $actions[] = array('label' => lang('Comments'), 'icon' => 'bi-chat-dots', 'url' => $base_url . '/view_comments.php', 'keys' => array('yorum', 'comment', 'com', 'yor'));
     $actions[] = array('label' => lang('Auto Dialogs'), 'icon' => 'bi-chat-square-text', 'url' => $base_url . '/view_auto_dialogs.php', 'keys' => array('dialog', 'auto', 'oto', 'diy'));

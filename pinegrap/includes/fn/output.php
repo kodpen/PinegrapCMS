@@ -3159,6 +3159,10 @@ function output_menu($properties = false)
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-link-45deg bi-me-2\'>' . lang('Short Links') . '</a>';
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_short_link.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Short Link'))) . '</a>';
         }
+        // PAGES > Redirects (the screens are gated at manager level, like short links)
+        if ($user['role'] < 3) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_redirects.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-signpost-split bi-me-2\'>' . lang('Redirects') . '</a>';
+        }
         // PAGES > Auto Dialogs (the screens are gated at manager level, so users do not get the entries)
         if ($user['role'] < 3) {
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
@@ -3722,6 +3726,9 @@ function output_menu($properties = false)
         case 'view_short_links.php':
         case 'add_short_link.php':
         case 'edit_short_link.php':
+        case 'view_redirects.php':
+        case 'edit_redirect.php':
+        case 'import_redirects.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':

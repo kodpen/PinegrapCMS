@@ -533,6 +533,10 @@ if ($short_link) {
 // If we have gotten here, then that means the item is not a file, short link, or other item,
 // so just assume it is page so run get page script.  If a page does not exist
 // for the item name, then the get page script will deal with that.
+// Only an address that reaches this point can be an old one with a redirect
+// rule (includes/fn/redirects.php): the rule is asked where get_page.php is
+// about to answer 404, so a page, a file or a short link always wins over it.
+define('PG_REDIRECT_LOOKUP', true);
 $_GET['page'] = $item_name;
 require(dirname(__FILE__) . '/get_page.php');
 exit();

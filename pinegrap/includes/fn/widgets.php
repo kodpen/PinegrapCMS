@@ -4632,6 +4632,12 @@ function pg_sw_item_missing($mark = null)
     if (!empty($sw_ctx['email']) || (function_exists('pg_seo_rendering') && pg_seo_rendering())) {
         return false;
     }
+    // The address may name a product or record that moved: a redirect rule
+    // for it (includes/fn/redirects.php) sends the visitor on and does not
+    // return.
+    if (function_exists('pg_redirect_not_found')) {
+        pg_redirect_not_found();
+    }
     $missing = true;
     if (!headers_sent()) {
         set_response_code(404);

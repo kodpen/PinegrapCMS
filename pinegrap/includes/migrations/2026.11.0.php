@@ -33,6 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_redirects();              // 11.0.11
 
 }
 
@@ -314,5 +315,60 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+// The redirect manager (includes/fn/redirects.php, view_redirects.php).
+//
+// redirects holds one rule per old address: from_path is the address below
+// the site's base path as people typed it (a leading slash, no trailing one,
+// no query string), to_url where it goes now (a path of this site or a full
+// address), code 301 or 302. A from_path with a * in it is a pattern
+// (is_pattern 1) whose stars the target reuses as $1, $2. A rule answers only
+// an address that turned out to be no page, so a live page always wins over a
+// rule written for its address. from_hash is the SHA-1 of the lower-cased
+// from_path: the unique key, so one address has one rule whatever its case,
+// and a key that stays short whatever the length of the address (a plain
+// UNIQUE on a long utf8mb4 VARCHAR passes the 767-byte limit of older
+// servers). hits and last_hit count the visitors a rule sent on; created_by is
+// the user who wrote it (0: the software).
+//
+// not_found_log keeps one row per address that answered 404, with how often,
+// when first and last, the last referrer and the class of the last visitor's
+// user agent, so a missing address can be given a redirect from the list.
+// path_hash is its key for the same reasons as from_hash.
+function upgrade_2026_11_0_redirects() {
+
+	install_create_table('redirects', "CREATE TABLE redirects (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		from_path   VARCHAR(1024) NOT NULL DEFAULT '',
+		from_hash   CHAR(40) NOT NULL DEFAULT '',
+		to_url      VARCHAR(2048) NOT NULL DEFAULT '',
+		code        SMALLINT UNSIGNED NOT NULL DEFAULT 301,
+		is_pattern  TINYINT(1) NOT NULL DEFAULT 0,
+		hits        INT UNSIGNED NOT NULL DEFAULT 0,
+		last_hit    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_from_hash (from_hash),
+		KEY idx_pattern (is_pattern)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('not_found_log', "CREATE TABLE not_found_log (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		path         VARCHAR(1024) NOT NULL DEFAULT '',
+		path_hash    CHAR(40) NOT NULL DEFAULT '',
+		referrer     VARCHAR(1024) NOT NULL DEFAULT '',
+		hits         INT UNSIGNED NOT NULL DEFAULT 0,
+		first_seen   INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen    INT UNSIGNED NOT NULL DEFAULT 0,
+		agent_class  VARCHAR(16) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_path_hash (path_hash),
+		KEY idx_last_seen (last_seen)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Redirects: old addresses can be sent on to their new place under Pages, Redirects, one by one, with a * wildcard or from a CSV file. A rule only answers an address that is no page.');
 
 }
