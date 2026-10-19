@@ -6,7 +6,12 @@
  *
  * Without an order id: the document filled from the visitor's current cart,
  * for the checkout's acceptance checkboxes to link to. It shows the visitor's
- * own cart only (the order id in the session).
+ * own cart only (the order id in the session). The link posts what the
+ * checkout form holds at the moment of the click
+ * (assets/js/pg_legal_documents.js): the billing fields and the payment
+ * method, with the form's token. Those values fill this one page; a post
+ * without this session's token, or a plain GET, shows the values the
+ * checkout page was drawn with.
  *
  * With an order id: the copy kept with a placed order when it was placed
  * (pg_legal_documents_store()), with when it was accepted. Shown to the
@@ -17,6 +22,7 @@
  * Changes nothing in either case.
  *
  * Request: GET type=preinfo|contract [order_id=N]
+ *          POST to the same address: token, billing_*, payment_method
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -54,7 +60,17 @@ if ($order_id > 0) {
         output_error(lang('This page is not available.'));
     }
 
-    $documents = pg_legal_documents_for_cart();
+    // What the checkout form held when its link was clicked; only with this
+    // session's token, so another site cannot put words into the visitor's
+    // document. A body the server dropped (post_max_size) is no values.
+    $posted = array();
+
+    if ((($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') && !pg_post_body_discarded()
+        && pg_legal_document_token_matches($_SESSION['software']['token'] ?? '', $_POST['token'] ?? '')) {
+        $posted = $_POST;
+    }
+
+    $documents = pg_legal_documents_for_cart($posted);
     $document = isset($documents[$type]) ? $documents[$type] : '';
 
     if ($document === '') {
