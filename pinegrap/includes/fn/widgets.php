@@ -4738,6 +4738,13 @@ function pg_sw_item_summary($html, $max = 140)
 //     __order_invoice_pdf_url  URL to customer-facing printable invoice endpoint
 //     visibility flag: can_print_invoice (true only for the logged-in owner)
 //
+//   Returns (includes/fn/returns.php, posted to order_return.php):
+//     __returns                the order's return requests with their status (HTML)
+//     __return_form            the request form (HTML); '' when none may be made
+//     visibility flags: show_returns, can_request_return, has_returns
+//     Signed-in owner only; asking needs ECOMMERCE_ORDER_RETURNS_ALLOWED. A
+//     layout that places neither token gets both after the widget.
+//
 //   Legacy (kept for backward compat):
 //     __shipping_address — same as __shipping_full_address (or billing fallback)
 //
@@ -5441,6 +5448,34 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // 'shipped'. Missing = nothing to show.
     $_ov_cancel_flash = isset($_GET['cancelled']) ? (string)$_GET['cancelled'] : '';
 
+    // ── Returns (includes/fn/returns.php) ──────────────────────────────
+    // Only the signed-in owner reads or asks for returns; a guest who has
+    // just ordered and the receipt e-mail see none. __returns lists every
+    // request of the order, __return_form shows while one may still be made
+    // (ECOMMERCE_ORDER_RETURNS_ALLOWED, the goods sent, the window open).
+    // Both post to order_return.php, whose answer comes back through this
+    // widget's messages node (liveform 'order_receipt').
+    $_ov_returns      = ($is_owner && empty($sw_ctx['email'])) ? pg_return_customer_view($order_id, $fmt_gc_date) : null;
+    $_ov_return_form  = '';
+    $_ov_returns_list = '';
+    if (is_array($_ov_returns) && ($_ov_returns['has_returns'] || $_ov_returns['can_request'])) {
+        $_ov_return_cfg = array(
+            'action'   => (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'software') . '/order_return.php',
+            'send_to'  => isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '',
+            'token'    => function_exists('get_token_field') ? get_token_field() : '',
+            'order_id' => (int)$order['id'],
+        );
+        $_ov_return_form  = $_ov_returns['can_request'] ? pg_return_form_html($_ov_returns['deliveries'], $_ov_return_cfg) : '';
+        $_ov_returns_list = pg_returns_list_html($_ov_returns['returns'], $_ov_return_cfg);
+    }
+    // A layout made before returns existed places neither token: once the
+    // setting is on, the block goes after the widget so every design has it.
+    $_ov_returns_tail = (is_array($_ov_returns) && $_ov_returns['enabled']
+                         && strpos((string)$tree_json, '__return_form') === false
+                         && strpos((string)$tree_json, '__returns') === false)
+        ? pg_return_block_html($_ov_returns_list, $_ov_return_form)
+        : '';
+
     $_ov_vis_ctx = array(
         'has_shipping'             => (bool)$has_shipping,
         'has_notes'                => trim($order_notes) !== '',
@@ -5471,6 +5506,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'cancel_flash_success'     => $_ov_cancel_flash === '1',
         'cancel_flash_already'     => $_ov_cancel_flash === 'already',
         'cancel_flash_shipped'     => $_ov_cancel_flash === 'shipped',
+        // Returns: the card shows when there is a request to follow or one
+        // may be made; the form part only in the second case.
+        'show_returns'             => ($_ov_returns_list !== '' || $_ov_return_form !== ''),
+        'can_request_return'       => $_ov_return_form !== '',
+        'has_returns'              => $_ov_returns_list !== '',
         // The carrier link surfaces only when a parcel number is recorded AND
         // its carrier could be identified.
         'has_tracking_link'        => $tracking_link !== '',
@@ -5624,6 +5664,14 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         ),
         '__cancel_status'         => _eo_render_cancel_status_alert($_ov_cancel_flash),
 
+        // ── Returns ───────────────────────────────────────────────────
+        // __returns: the order's return requests, each with its status and
+        //   the customer's own moves (withdraw, "I have sent it").
+        // __return_form: the request form, one per delivery that still has
+        //   something to give back. Both pre-built HTML, '' when empty.
+        '__returns'               => $_ov_returns_list,
+        '__return_form'           => $_ov_return_form,
+
         // ── Payment ───────────────────────────────────────────────────
         '__payment_method'        => h($payment_method_raw),
         '__payment_method_pretty' => h($payment_method_pretty),
@@ -5712,7 +5760,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         foreach ($skeys as $k) {
             $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
         }
-        return pg_sw_sweep_tokens($rendered);
+        return pg_sw_sweep_tokens($rendered) . $_ov_returns_tail;
     }
 
     $skeys = array_keys($static_values);
@@ -5722,7 +5770,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     }
     $static_html = pg_sw_sweep_tokens($static_html);
 
-    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
+    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $_ov_returns_tail;
 }
 
 // Render a 'membership' system widget: the membership activation form.

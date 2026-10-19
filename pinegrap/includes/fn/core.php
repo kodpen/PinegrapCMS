@@ -3046,13 +3046,13 @@ function create_notification($properties)
 
     // Queue a device notification for everybody allowed to see this one.
     //
-    // Three of the five kinds go out. An out-of-stock line and an available
-    // update are things to find when the panel is next opened; a new order, a
-    // submitted form and a comment are the ones somebody is waiting on. Nothing
-    // is sent from here - this only writes the queue rows, because the request
-    // that caused the notification may be a customer's checkout and must not
-    // wait on a push service.
-    if (($action == 'new_order') || ($action == 'form_submited') || ($action == 'new_comment')) {
+    // An out-of-stock line and an available update are things to find when
+    // the panel is next opened; a new order, a submitted form, a comment and a
+    // customer's return are the ones somebody is waiting on. Nothing is sent
+    // from here - this only writes the queue rows, because the request that
+    // caused the notification may be a customer's checkout and must not wait
+    // on a push service.
+    if (($action == 'new_order') || ($action == 'form_submited') || ($action == 'new_comment') || ($action == 'order_return')) {
 
         include_once(PG_FUNCTIONS_DIR . '/includes/push.php');
 
