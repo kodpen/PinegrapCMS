@@ -5,7 +5,7 @@ description: Backup a software update or repair writes before replacing files (p
 
 ## What does an update write before it replaces the files?
 - A fourth step, `backup`, between `download` and `replace` of the `software_update` panel action (update screen and Repair Software both call it). `pg_update_backup_create()` (`includes/fn/update.php`) writes `data/backups/pre-update-<version>-<YmdHis>.zip`: `sql.sql` (the usual dump, `pg_backup_dump_database()`), `software.zip` (the files the package will overwrite, as they are, under the package's own names relative to the web root) and `manifest.json` (version, package, files the update adds).
-- Built in `data/temp/update_backup_*`, moved into place only when whole. The three newest are kept (`pg_update_backup_prune()`).
+- Built in `data/temp/update_backup_*`, moved into place only when whole. The three newest are kept (`pg_update_backup_prune()`). PR #544.
 - A failed backup stops the update before anything is replaced, with a message naming the setting. `update_backup` (config, 2026.11.0 step 11.0.21, default 1; Settings › General › Update Channel) turns it off for sites too large to dump within one request.
 
 ## How is it rolled back?
