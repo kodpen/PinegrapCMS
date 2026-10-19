@@ -391,7 +391,6 @@ $explorer_lang = array(
     'optimized_done' => lang('{var:1} images were optimized'),
     'converted_done' => lang('{var:1} images were converted'),
     'move_to_bin' => lang('Move to Recycle Bin'),
-    'delete_folder_title' => lang('Delete Folder and Contents'),
     'convert_webp' => lang('Convert to WebP'),
     'convert_webp_all' => lang('Convert all to WebP ({var:1})'),
     'webp_confirm' => lang('{var:1} image(s) will be converted to WebP. The file name changes to the .webp extension, and existing links on pages that point to the old address are not updated. Continue?'),
