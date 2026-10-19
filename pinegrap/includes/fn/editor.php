@@ -852,14 +852,19 @@ function get_codemirror_javascript($properties)
 
 /**
  * The code editor facade (assets/js/pg_code_editor.js, window.PgCodeEditor)
- * for a panel screen: the facade script and where its engine is.
+ * for a panel screen: the engine's translated texts, added to the addresses
+ * the panel header already names (window.pgCodeEditorConfig, see
+ * pg_code_editor_urls()).
  *
  * Printed once per request, by pg_code_editor_attach() or by a screen that
- * opens an editor of its own. The engine, the CodeMirror 6 bundle, is not
- * fetched here: the facade loads it the first time an editor opens, so a
- * screen pays for it only when a code field is drawn. The engine's own texts
- * (the search panel, the line prompt, the fold markers) are translated here;
- * a screen's labels stay with the screen.
+ * opens an editor of its own. Nothing is fetched here: window.pgCodeEditorUse()
+ * (backend.src.js) loads the facade the first time a field asks for it, and
+ * the facade loads its engine, the CodeMirror 6 bundle, when the first editor
+ * opens. The engine's own texts (the search panel, the line prompt, the fold
+ * markers) are translated here; a screen's labels stay with the screen. Being
+ * a plain inline script, it also works in markup put into a page later (a
+ * pane of the settings dialog), where a script tag with a src would be
+ * fetched by jQuery with a blocking request.
  */
 function pg_code_editor_includes()
 {
@@ -871,15 +876,23 @@ function pg_code_editor_includes()
 
     $printed = true;
 
+    $config = pg_code_editor_urls();
+    $config['phrases'] = pg_code_editor_phrases();
+
+    return '<script>window.pgCodeEditorConfig = ' . pg_code_editor_json($config) . ';</script>';
+}
+
+// Where the facade and its engine are, each with a cache-busting stamp.
+function pg_code_editor_urls()
+{
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
     $facade = '/assets/js/pg_code_editor.js';
     $bundle = '/assets/lib/code_editor/cm6.bundle.js';
 
-    return '<script src="' . $base . $facade . '?v=' . pg_code_editor_asset_version($facade) . '"></script>
-        <script>PgCodeEditor.configure(' . pg_code_editor_json(array(
-            'bundle'  => $base . $bundle . '?v=' . pg_code_editor_asset_version($bundle),
-            'phrases' => pg_code_editor_phrases(),
-        )) . ');</script>';
+    return array(
+        'facade' => $base . $facade . '?v=' . pg_code_editor_asset_version($facade),
+        'bundle' => $base . $bundle . '?v=' . pg_code_editor_asset_version($bundle),
+    );
 }
 
 /**
@@ -909,7 +922,7 @@ function pg_code_editor_attach($properties)
         'language'  => pg_code_editor_language(isset($properties['code_type']) ? $properties['code_type'] : ''),
         'readOnly'  => !empty($properties['readonly']),
         'theme'     => pg_code_editor_theme(),
-        'className' => 'pg-code-field',
+        'className' => 'pg-code-field' . (!empty($properties['readonly']) ? ' pg-code-field-ro' : ''),
         'labels'    => array('syntaxError' => lang('Syntax error')),
     );
 
@@ -926,7 +939,7 @@ function pg_code_editor_attach($properties)
     return pg_code_editor_includes() . '<script>
         (function () {
             var field = document.getElementById(' . pg_code_editor_json($id) . ');
-            if (!field || (typeof PgCodeEditor === "undefined")) return;
+            if (!field || (typeof window.pgCodeEditorUse !== "function")) return;
             var options = ' . pg_code_editor_json($options) . ';
             var editor = null;
             var full = function (on) {
@@ -941,12 +954,15 @@ function pg_code_editor_attach($properties)
                 { key: "Escape", run: function () { return isFull() ? full(false) : false; } }
             ];
             window.pgCodeEditors = window.pgCodeEditors || {};
-            PgCodeEditor.attach(field, options).then(function (instance) {
-                editor = instance;
-                window.pgCodeEditors[field.id] = instance;
-            }, function () {
-                // The engine could not be fetched: the textarea stays a plain
-                // field, which is what a missing editor looked like before.
+            window.pgCodeEditorUse(function () {
+                // The facade or its engine could not be fetched: the textarea
+                // stays a plain field, which is what a missing editor looked
+                // like before.
+                if (typeof PgCodeEditor === "undefined") return;
+                PgCodeEditor.attach(field, options).then(function (instance) {
+                    editor = instance;
+                    window.pgCodeEditors[field.id] = instance;
+                }, function () {});
             });
         })();
     </script>';

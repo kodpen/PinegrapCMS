@@ -38,8 +38,7 @@ $pg_settings_cards[] = '
                                             <label class="form-label">' . lang('Custom CSS') . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="custom_css" id="custom_css" rows="25" cols="60" wrap="off">' . $custom_css . '</textarea>
-                                                ' . get_codemirror_includes() . '
-                                                ' . get_codemirror_javascript(array('id' => 'custom_css', 'code_type' => 'css')) . '
+                                                ' . pg_code_editor_attach(array('id' => 'custom_css', 'code_type' => 'css')) . '
                                             </div>
                                         </div>
                                     </div>

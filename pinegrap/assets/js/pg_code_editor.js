@@ -811,6 +811,8 @@
 
     // Like fromTextArea: the editor takes the textarea's place and keeps its
     // value current, so the form that submits the textarea sees every edit.
+    // Each write raises an input event on the textarea, as typing into it
+    // would, so a screen that watches its form for changes hears this one.
     function attach(textarea, opts) {
         opts = opts || {};
         if (!textarea || textarea.tagName !== 'TEXTAREA') return Promise.reject(new Error('PgCodeEditor.attach() needs a textarea.'));
@@ -826,6 +828,7 @@
         merged.readOnly = (opts.readOnly !== undefined) ? opts.readOnly : textarea.readOnly;
         merged.onChange = function (inst, update) {
             textarea.value = inst.getValue();
+            try { textarea.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
             if (typeof userChange === 'function') userChange(inst, update);
         };
         return open(host, merged).then(function (inst) {

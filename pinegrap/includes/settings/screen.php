@@ -172,6 +172,9 @@ if (!$_POST) {
     $output =
     pg_page_shell(array(
         'title'         => lang('Site Settings') . ' - ' . $pg_settings_category['label'],
+        // The categories' code fields are the facade's editor
+        // (pg_code_editor_attach()), so CodeMirror 5 stays in its template.
+        'code_editor'   => false,
         'extra classes' => 'setting',
         'icon'          => 'setting',
         'heading'       => $pg_settings_category['label'],
@@ -179,7 +182,6 @@ if (!$_POST) {
         'head'          => $pg_settings_head,
     )) . '
 <main id="content" class="container-fluid">
-    ' . get_codemirror_includes() . '
     <div class="row gy-3">
         <div class="col-12">
             ' . $liveform->output_errors() . '

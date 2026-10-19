@@ -60,6 +60,10 @@ function pg_help_url($properties = array())
  * window.pgCodeEditorReady() (backend.src.js) loads them the first time
  * something on the screen needs them, such as a pane of the settings dialog
  * with a code field.
+ *
+ * Every screen is told where the newer code editor is
+ * (window.pgCodeEditorConfig, two addresses); its script is fetched by
+ * window.pgCodeEditorUse() the first time a code field is drawn.
  */
 function output_control_panel_header_includes($include_assistant = true, $help_topic = '', $code_editor = true)
 {
@@ -282,6 +286,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
     ' . ($code_editor ? get_codemirror_includes() : '<template id="pg-code-editor-assets">' . get_codemirror_includes() . '</template>') . '
+    <script>window.pgCodeEditorConfig = ' . pg_code_editor_json(pg_code_editor_urls()) . ';</script>
     <link rel="stylesheet" type="text/css" href="' . CONTROL_PANEL_STYLESHEET_URL . '" />
     ' . $assistant_snippet . '
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/backend.src.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js') . '"></script>

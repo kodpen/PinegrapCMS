@@ -42,12 +42,12 @@ $pg_settings_cards[] = '
                                         <div class="pg-f-lg">
                                             <label for="additional_sitemap_content" class="form-label">' . lang('Additional sitemap.xml Content') . '</label>
                                             <textarea name="additional_sitemap_content" id="additional_sitemap_content" class="form-control" >' . h($additional_sitemap_content) . '</textarea>
-                                            ' . get_codemirror_javascript(array('id' => 'additional_sitemap_content', 'code_type' => 'xml.text')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'additional_sitemap_content', 'code_type' => 'xml.text')) . '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="additional_robots_content" class="form-label">' . lang('Additional robots.txt Content') . '</label>
                                             <textarea name="additional_robots_content" id="additional_robots_content" class="form-control" >' . h($additional_robots_content) . '</textarea>
-                                            ' . get_codemirror_javascript(array('id' => 'additional_robots_content', 'code_type' => 'plain')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'additional_robots_content', 'code_type' => 'plain')) . '
                                             <div class="">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="pgRobotsNoIndex()" title="' . lang('Adds the rule that closes the entire site to search engines.') . '"><i class="bi bi-slash-circle me-1"></i>' . lang('Block All Search Engines') . '</button>
                                                 <div class="form-text text-warning d-none" id="robots_noindex_hint"></div>
@@ -84,9 +84,9 @@ $pg_settings_scripts[] = '
         ]);
 
         // Fills the additional robots.txt field with the rule that blocks every crawler.
-        // The field is managed by CodeMirror, which hides the original textarea and keeps
-        // its own document, so writing to textarea.value alone would not show up on screen
-        // and would be overwritten on submit.
+        // The field is the code editor (pg_code_editor_attach()), which hides the
+        // textarea and keeps its own document, so the text is written through the
+        // editor; it writes the textarea back itself.
         function pgRobotsNoIndex() {
             var snippet = "User-agent: *\\nDisallow: /";
             var textarea = document.getElementById("additional_robots_content");
@@ -95,19 +95,9 @@ $pg_settings_scripts[] = '
                 return;
             }
 
-            // CodeMirror.fromTextArea() inserts its wrapper right after the textarea and
-            // exposes the instance on that element. The walk is bounded and stays inside
-            // this column, so it can never pick up the sitemap editor next door.
-            var cm = null;
-            var sibling = textarea.nextElementSibling;
-            var hops = 0;
-            while (sibling && hops < 3) {
-                if (sibling.CodeMirror) {
-                    cm = sibling.CodeMirror;
-                    break;
-                }
-                sibling = sibling.nextElementSibling;
-                hops++;
+            var cm = (window.pgCodeEditors && window.pgCodeEditors.additional_robots_content) || null;
+            if (cm && cm.isDestroyed && cm.isDestroyed()) {
+                cm = null;
             }
             var current = cm ? cm.getValue() : textarea.value;
 
@@ -123,7 +113,8 @@ $pg_settings_scripts[] = '
             // Keep whatever the operator already wrote, append below it.
             var updated = (current.replace(/\\s+$/, "") === "") ? snippet : current.replace(/\\s+$/, "") + "\\n\\n" + snippet;
             if (cm) {
-                cm.setValue(updated);
+                // In the undo history: Ctrl+Z in the field takes the rule back out.
+                cm.setValue(updated, true);
             } else {
                 textarea.value = updated;
             }

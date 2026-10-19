@@ -3243,6 +3243,12 @@ nav.buttons.navigation .btn-secondary {
   max-height: 80vh;
 }
 
+/* A read-only field (a command to copy, a source to read) is as tall as its
+   text: a one-line cron command is one line. */
+.pg-code-field.pg-code-field-ro .cm-editor {
+  min-height: 0;
+}
+
 .pg-code-field.pg-code-field-full .cm-editor {
   max-height: none;
 }

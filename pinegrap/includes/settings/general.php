@@ -167,7 +167,7 @@ $pg_settings_cards[] = '
                                                 <div class="col-12 ">
                                                     <div class="alert alert-secondary ">' . lang('The general job must have a scheduled task of its own for this to work, and it is the only one that then needs one. Its command for this server is below.') . '</div>
                                                     <textarea id="cron_job_general_dispatch">' . $cron_job_general . '</textarea>
-                                                    ' . get_codemirror_javascript(array('id' => 'cron_job_general_dispatch', 'code_type' => 'plain','readonly'=>true )) . '
+                                                    ' . pg_code_editor_attach(array('id' => 'cron_job_general_dispatch', 'code_type' => 'plain','readonly'=>true )) . '
                                                     <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
                                                 </div>' . $output_job_dispatch_switches . '
                                             </div>
@@ -513,7 +513,7 @@ $pg_settings_modals[] = '
                                         <h5>' . lang('General Jobs') . '</h5>
                                         <p>' . lang('The general job is an optional feature which only needs to be enabled if you are using the scheduled comment feature to publish comments at a future date &amp; time.') . '</p>
                                         <textarea id="cron_job_general">' . $cron_job_general . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_general', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_general', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
                                     </div>
                                     <div class="col-12 ">
@@ -521,7 +521,7 @@ $pg_settings_modals[] = '
                                         <p>' . lang('The webhook delivery job sends the events your integrations asked to hear about: a new order, a cancelled order, a stock change. It usually needs no scheduled task of its own - the general job runs it on every turn as long as "Webhook delivery" is selected in the list further down this page, and on a site with no subscriptions that costs a single indexed read.') . '</p>
                                         <div class="alert alert-secondary">' . lang('NOTE: Schedule the command below only if you want an event delivered within a minute of it happening, without waiting for the general job. It is the same work either way; a dedicated task simply runs it more often.') . '</div>
                                         <textarea id="cron_job_webhook">' . $cron_job_webhook . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_webhook', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_webhook', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
                                     </div>
                                     <div class="col-12 ">
@@ -529,14 +529,14 @@ $pg_settings_modals[] = '
                                         <p>' . lang('The device notification job wakes the phones and computers your operators have turned notifications on for: a new order, a submitted form, a new comment, an unanswered chat message. Like the webhook job it runs inside the general job on every turn as long as "Device notifications" is selected in the list further down this page, so it needs no scheduled task of its own.') . '</p>
                                         <div class="alert alert-secondary">' . lang('NOTE: A chat message waits a minute before it is sent, so that a message somebody has already read on screen does not arrive on their phone as well. The delay an operator feels is that wait plus however often this job runs.') . '</div>
                                         <textarea id="cron_job_push">' . $cron_job_push . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_push', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_push', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
                                     </div>
                                     <div class="col-12 ">
                                         <h5>' . lang('Exchange Rates Jobs') . '</h5>
                                         <p>' . lang('The exchange rates job is an optional feature which only needs to be enabled if you are using the multi-currency e-commerce feature and want exchange rates for currencies to be updated automatically. Exchange rates can be manually updated via the Admin Panel.') . '</p>
                                         <textarea id="cron_job_exchange_rates">' . $cron_job_exchange_rates . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_exchange_rates', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_exchange_rates', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
@@ -544,21 +544,21 @@ $pg_settings_modals[] = '
                                         <p>' . lang(array('string' => 'The e-mail campaign job is an alternative to users manually sending e-mail campaigns from the Software. It is a script that can be scheduled to automatically send e-mail Campaigns. Also, the e-mail campaign job allows e-mail campaigns to be scheduled to be sent at a later time. If you are interested in using the e-mail campaign job, please complete {var:1}.', 'vars' => array('<a class="link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/smtp_settings.php">' . lang('campaign smtp settings') . '</a>'))) . '</p>
                                         <div class="alert alert-danger">' . lang('WARNING: Once the e-mail campaign job is enabled, it will send e-mails for all campaigns where the status was "Ready to Send", so please make sure you update the status for old, incomplete, e-mail campaigns to be "Cancelled" before you enable the e-mail campaign job.') . '</div>
                                         <textarea id="cron_job_email_campaign">' . $cron_job_email_campaign . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_email_campaign', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_email_campaign', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Every 5 Minutes') . '</div>
                                     </div>
                                     <div class="col-12 ">
                                         <h5>' . lang('Update Search Index Jobs') . '</h5>
                                         <p>' . lang('The update search index job is an alternative to clicking the Update Search Index button on the Pages tab. It does the spidering of your website and updates the search index with any new or changed content it finds. Since this is an intensive script that may slow down your site while it runs, you should not run it more than once an hour at the most. Less frequently is even better.') . '</p>
                                         <textarea id="cron_job_search_index">' . $cron_job_search_index . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_search_index', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_search_index', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
                                         <h5>' . lang('SEO Score Jobs') . '</h5>
                                         <p>' . lang('The SEO score job recalculates the SEO score of every page, product and product group. It only reads database columns, so it is quick, but it has to cover the whole site because the duplicate title and duplicate description checks depend on every other record. Schedule it before the SEO structure analysis job.') . '</p>
                                         <textarea id="cron_job_seo_score">' . $cron_job_seo_score . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_seo_score', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_seo_score', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
@@ -567,7 +567,7 @@ $pg_settings_modals[] = '
                                         <p>' . lang('The SEO structure analysis job renders each page in the background and examines the resulting HTML: heading order, image alt text, internal links and orphan pages. This is the expensive half of the SEO score, so it works within a time budget and may need several runs to get through a large site for the first time.') . '</p>
                                         <div class="alert alert-secondary">' . lang('NOTE: Schedule this job to run after the SEO score job, because a catalog page is scored from the products it lists.') . '</div>
                                         <textarea id="cron_job_seo_analyze">' . $cron_job_seo_analyze . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_seo_analyze', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_seo_analyze', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
@@ -579,14 +579,14 @@ $pg_settings_modals[] = '
                                         ' . lang('For example, if you have a membership product which has a monthly recurring payment, you might want to expire a persons membership if his/her payment fails (e.g. credit card declined). Also, you might want to send an e-mail to the member with a link to order new membership.') . '</p>
                                         <div class="alert alert-secondary">' . lang('NOTE: The Recurring Payment Job is NOT REQUIRED for setting up Recurring Products. That is handled through your payment gateway automatically once an Order is submitted for one or more recurring products through your Pinegrap website.') . '</div>
                                         <textarea id="cron_job_requrring_payment">' . $cron_job_requrring_payment . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_requrring_payment', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_requrring_payment', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
                                         <h5>' . lang('Membership Jobs') . '</h5>
                                         <p>' . lang('The membership job is an optional feature which only needs to be enabled if you want one or more of the features below. Send membership expiration warning e-mail to members whose membership is about to expire. You can enable and configure this feature via the Settings Page. Remove contacts from the Membership Contact Group when a contact\'s membership is no longer valid (e.g. membership has expired). This feature runs automatically once a scheduled task is setup for the membership job.') . '</p>
                                         <textarea id="cron_job_membership">' . $cron_job_membership . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_membership', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_membership', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 ">
@@ -595,7 +595,7 @@ $pg_settings_modals[] = '
                                         <p>' . lang('The auto backup job is an optional feature that must be enabled only if you want the automatic backup feature.') . '</p>
                                         <div class="alert alert-secondary">' . lang('NOTE: Auto Backup feature is available by default but can be disabled by a developer from the config.php file. This feature can only be operated once a day.') . '</div>
                                         <textarea id="cron_job_auto_backup">' . $cron_job_auto_backup . '</textarea>
-                                        ' . get_codemirror_javascript(array('id' => 'cron_job_auto_backup', 'code_type' => 'plain','readonly'=>true )) . '
+                                        ' . pg_code_editor_attach(array('id' => 'cron_job_auto_backup', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a week') . '</div>
                                     </div>
                                 </div>

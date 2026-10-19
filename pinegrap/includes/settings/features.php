@@ -144,7 +144,7 @@ $pg_settings_cards[] = '
                                                                         <div class="col-12 ">
                                                                             <label for="social_networking_code" class="form-label">'. lang('Code') . '</label>
                                                                             <textarea class="form-control" id="social_networking_code" name="social_networking_code">' . h($social_networking_code) . '</textarea>
-                                                                            ' . get_codemirror_javascript(array('id' => 'social_networking_code', 'code_type' => 'mixed')) . '
+                                                                            ' . pg_code_editor_attach(array('id' => 'social_networking_code', 'code_type' => 'mixed')) . '
                                                                         </div>
                                                                     </div>
                                                                 </div>
