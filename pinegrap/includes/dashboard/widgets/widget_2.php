@@ -748,13 +748,14 @@ function pg_dashboard_widget_2($request, $user)
             ? $status['storage']
             : array();
 
-        // The image derivatives say which formats this server makes
-        // them in (pg_image_derivative_formats(), a stored answer).
+        // The image derivatives say which formats they are made in: written
+        // by this server and switched on in the settings
+        // (pg_image_delivery_formats(), a stored answer).
         $image_formats = array();
         $image_format_names = array('webp' => 'WebP', 'avif' => 'AVIF');
 
-        if (function_exists('pg_image_derivative_formats')) {
-            foreach (pg_image_derivative_formats(pg_image_derivative_directory()) as $image_format => $image_writes) {
+        if (function_exists('pg_image_delivery_formats')) {
+            foreach (pg_image_delivery_formats() as $image_format => $image_writes) {
                 if ($image_writes && isset($image_format_names[$image_format])) $image_formats[] = $image_format_names[$image_format];
             }
         }

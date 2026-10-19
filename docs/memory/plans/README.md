@@ -19,7 +19,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder, account title lookup), decisions behind both
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
-- image-delivery-pipeline.md: Plan (approved 2026-10-19, in progress: steps 1-3 and the cache upkeep done): image settings with a schema step, page rebuild button, Loading row left
+- image-delivery-pipeline.md: Plan (approved 2026-10-19, in progress: steps 1-4 done): only the Loading row of the single Image element left
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
@@ -28,7 +28,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export and Markdown/zip import done; enex, Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
 - page-revisions-and-scheduling.md: Plan (approved 2026-10-19, not started): server-side page revision history with compare and restore, retention, scheduled publish and unpublish for designer pages; live pages still publish directly
-- passkeys.md: Plan (approved 2026-10-19, not started): WebAuthn passkeys for panel users and members as a second factor or passwordless sign-in beside TOTP; registration in Account Security, admin reset
+- passkeys.md: Plan (approved 2026-10-19, in progress: step 1 verifier done, PR #594): WebAuthn passkeys for panel users and members as second factor or passwordless sign-in; Account Security, admin reset
 - payment-driver-layer.md: Plan (approved 2026-10-19, not started): payment driver interface beside submit_order.php, Stripe PaymentIntents + wallets, PayTR as first local PSP; legacy gateways frozen, never removed
 - php-compatibility-and-bugs.md: Open items from the 2026-10-19 static analysis (PHPStan level 0, PHPCompatibility): undefined variables, duplicate keys, nested functions, PHP 8.4/8.5 deprecations, dead extension remnants, CI steps
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history table, writers and the API read done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), merchant compare-at price, retention
@@ -38,7 +38,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - security-findings-2026-10.md: Security findings of the 2026-10-19 audit: what the PRs of 2026-10-19 fixed, what still waits (eval re-ordering, classic form renderers, CVV, gateway secrets) and the owner questions
 - seo-toolkit-redirects.md: Plan (approved 2026-10-19, not started): redirect manager (301/302, wildcard, CSV, auto 301 on slug change), 404 log, per-page canonical and JSON-LD editor, llms.txt and robots AI-bot policy UI
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
-- shipping-management.md: Not started shipping plan (2026-10-08): carrier recognition, shipment row status, single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields
+- shipping-management.md: Shipping plan (2026-10-08; phase 1 done but new carriers): shipment row status, single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - sms-and-iys.md: Plan (approved 2026-10-19, in progress: provider layer, Netgsm driver and settings card done): queue, order/shipping/OTP messages, İYS consent sync for e-mail and SMS marketing, 3-year consent log
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
 - storefront-conversion-pack.md: Plan (approved 2026-10-19, not started): verified-buyer product reviews with request e-mail and real aggregateRating, wishlist, back-in-stock notice, bundles as a later phase

@@ -18,4 +18,4 @@ Two places describe `<body>` (custom controls in Body Settings, and the Attribut
 - Previously PHP dropped all three, JS knew only `style`, the canvas applied only `cssClass` + font: one tree produced three different bodies.
 
 ## Do existing pages pick up a body-tag fix?
-- **`page_tree_code` is a snapshot.** Any fix that changes the body tag appears only in new saves; existing pages are not published with it until re-saved once.
+- **`page_tree_code` is a snapshot.** Any fix that changes the body tag appears only in new saves, or after Rebuild Page HTML (docs/memory/designer/page-html-rebuild.md).

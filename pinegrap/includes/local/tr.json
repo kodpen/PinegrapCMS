@@ -24051,5 +24051,20 @@
     "Netgsm sent an answer that could not be read (HTTP {var:1}).": "Netgsm okunamayan bir cevap gönderdi (HTTP {var:1}).",
     "No text message is sent from a demonstration site.": "Tanıtım sitesinden kısa mesaj gönderilmez.",
     "This is a demonstration site: no SMS provider can be set up here.": "Bu bir tanıtım sitesi: burada SMS sağlayıcısı ayarlanamaz.",
-    "The message is longer than {var:1} characters.": "Mesaj {var:1} karakterden uzun."
+    "The message is longer than {var:1} characters.": "Mesaj {var:1} karakterden uzun.",
+    "image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark": "image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark, resim, gorsel, görsel, foto, optimizasyon, duyarlı, duyarli, kalite, boyut, yukleme, filigran",
+    "Offer pictures as WebP": "Görselleri WebP olarak sun",
+    "Offer pictures as AVIF": "Görselleri AVIF olarak sun",
+    "Lighter still than WebP. Browsers that cannot read AVIF get WebP or the original instead.": "WebP'den de hafiftir. AVIF okuyamayan tarayıcılar onun yerine WebP'yi ya da asıl dosyayı alır.",
+    "This server cannot write {var:1}, so it is not offered while that stays so.": "Bu sunucu {var:1} yazamıyor; bu durum sürdükçe bu biçim sunulmaz.",
+    "WebP Quality": "WebP Kalitesi",
+    "AVIF Quality": "AVIF Kalitesi",
+    "Save and rebuild page HTML": "Kaydet ve sayfa HTML'ini yeniden oluştur",
+    "Visual designer pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.": "Görsel tasarımcı sayfaları son kaydedildiklerinde oluşturulan HTML'i saklar. Bu işlem her sayfayı kaydedilmiş hâlinden yeniden oluşturur; böylece duyarlı görsellerden ya da bir biçim açılıp kapatılmadan önce yayımlanan sayfalar güncel görsel işaretlemesini alır. Sayfaların içeriği, değiştirilme tarihi ve yazarı değişmez.",
+    "Page HTML rebuilt: {var:1} visual designer pages drawn again, {var:2} of them changed.": "Sayfa HTML'i yeniden oluşturuldu: {var:1} görsel tasarımcı sayfası yeniden oluşturuldu, {var:2} tanesi değişti.",
+    "the HTML of {var:1} visual designer pages was rebuilt": "{var:1} görsel tasarımcı sayfasının HTML'i yeniden oluşturuldu",
+    "{var:1} visual designer pages drawn again so far, {var:2} still to go. Press Save and rebuild page HTML again to go on.": "Şimdiye kadar {var:1} görsel tasarımcı sayfası yeniden oluşturuldu, {var:2} sayfa kaldı. Devam etmek için Kaydet ve sayfa HTML'ini yeniden oluştur düğmesine yeniden basın.",
+    "Pictures on pages are sent at the width the screen needs, and as WebP to browsers that read it: usually about a third lighter than JPEG. Each is made the first time it is asked for.": "Sayfalardaki görseller ekranın ihtiyaç duyduğu genişlikte, WebP okuyan tarayıcılara da WebP olarak gönderilir; WebP genellikle JPEG'den üçte bir kadar hafiftir. Her görsel ilk istendiğinde hazırlanır.",
+    "A changed quality makes the pictures again as they are next asked for. Resized JPEG and PNG pictures use the quality when resizing above.": "Kalite değişirse görseller bir sonraki istendiklerinde yeniden hazırlanır. Küçültülen JPEG ve PNG görseller yukarıdaki küçültme kalitesini kullanır.",
+    "AVIF holds up at a lower number than WebP, so its quality is set apart.": "AVIF, WebP'den daha düşük bir sayıda da iyi görünür; bu yüzden kalitesi ayrı ayarlanır."
 }

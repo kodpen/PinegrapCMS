@@ -132,6 +132,45 @@ function pg_image_settings_ready($recheck = false)
 
 
 /**
+ * Whether the config row carries the image delivery columns (2026.11.0,
+ * 11.0.9): which modern formats are offered and the quality of each.
+ *
+ * Probed apart from pg_image_settings_ready(): an install that has the
+ * 2026.4.4 columns and not these keeps its image limits, and the delivery
+ * part of the card is hidden until the upgrade has run.
+ *
+ * @param bool $recheck skip the static cache
+ * @return bool
+ */
+function pg_image_delivery_ready($recheck = false)
+{
+    static $cached = null;
+
+    if ($cached !== null && !$recheck) {
+        return $cached;
+    }
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(
+        db::$con,
+        "SHOW COLUMNS FROM config
+         WHERE Field IN (
+            'image_derivative_formats',
+            'image_quality_webp',
+            'image_quality_avif')");
+
+    $cached = ($result && @mysqli_num_rows($result) == 3);
+
+    return $cached;
+}
+
+
+/**
  * The image limits the operator set on the settings screen.
  *
  * Read once per request. Every value is clamped here rather than at the call
@@ -162,7 +201,10 @@ function pg_image_settings($recheck = false)
         'product_min_dimension' => 500,
         'file_resize_trigger'   => 2560,
         'file_max_dimension'    => 1920,
-        'resize_quality'        => 82);
+        'resize_quality'        => 82,
+        'derivative_formats'    => 3,
+        'quality_webp'          => 80,
+        'quality_avif'          => 50);
 
     if (pg_image_settings_ready($recheck)) {
 
@@ -198,9 +240,66 @@ function pg_image_settings($recheck = false)
     // image the shrink would leave exactly as it is.
     $settings['file_resize_trigger'] = max($settings['file_max_dimension'], min(20000, $settings['file_resize_trigger']));
 
+    // How derivatives are delivered (includes/image_engine.php). Clamped by
+    // the same function get_file.php uses on its own read of the row, so the
+    // markup and the files it asks for never disagree.
+    if (pg_image_delivery_ready($recheck)) {
+
+        $row = db_item(
+            "SELECT
+                image_derivative_formats,
+                image_quality_webp,
+                image_quality_avif
+            FROM config
+            LIMIT 1");
+
+        if ($row) {
+            $settings['derivative_formats'] = (int) $row['image_derivative_formats'];
+            $settings['quality_webp']       = (int) $row['image_quality_webp'];
+            $settings['quality_avif']       = (int) $row['image_quality_avif'];
+        }
+    }
+
+    $delivery = pg_image_delivery_settings(array(
+        'image_derivative_formats' => $settings['derivative_formats'],
+        'image_quality_webp'       => $settings['quality_webp'],
+        'image_quality_avif'       => $settings['quality_avif'],
+        'image_resize_quality'     => $settings['resize_quality']));
+
+    $settings['derivative_formats'] = ($delivery['formats']['webp'] ? 1 : 0) | ($delivery['formats']['avif'] ? 2 : 0);
+    $settings['quality_webp']       = $delivery['quality']['webp'];
+    $settings['quality_avif']       = $delivery['quality']['avif'];
+    $settings['delivery']           = $delivery;
+
     $cached = $settings;
 
     return $cached;
+}
+
+
+/**
+ * The delivery settings of derivatives (pg_image_delivery_settings()) as the
+ * operator set them: formats offered, quality of each.
+ *
+ * @return array formats, quality
+ */
+function pg_image_delivery()
+{
+    $settings = pg_image_settings();
+
+    return $settings['delivery'];
+}
+
+
+/**
+ * The modern formats the responsive markup offers: written by this server
+ * and switched on by the operator.
+ *
+ * @return array webp, avif => bool
+ */
+function pg_image_delivery_formats()
+{
+    return pg_image_derivative_offered(pg_image_derivative_formats(pg_image_derivative_directory()), pg_image_delivery());
 }
 
 
@@ -437,8 +536,9 @@ function pg_img_derivative_url($src, $width, $source_width, $format)
  * of a 6000 px photo is a long encode for a picture no screen shows whole; a
  * file at most that wide is offered whole in the new format.
  *
- * A format is offered only when this server writes it
- * (pg_image_derivative_formats()) and the file is not in it already.
+ * A format is offered only when this server writes it and the operator has
+ * it switched on (pg_image_delivery_formats()), and the file is not in it
+ * already.
  *
  * @param string $src              the image's address, without a fragment
  * @param int    $source_width     the file's displayed width
@@ -713,7 +813,7 @@ function pg_img_responsive($src)
     }
 
     $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
-    $sets = pg_img_responsive_sets($src, $width, $extension, pg_image_derivative_formats(pg_image_derivative_directory()));
+    $sets = pg_img_responsive_sets($src, $width, $extension, pg_image_delivery_formats());
 
     if (($sets['srcset'] === '') && !$sets['sources']) {
         return null;
@@ -980,13 +1080,27 @@ function pg_img_strip_responsive($html)
  * request died), and a .try marker of an old signature. Names this software
  * does not write are left alone.
  *
- * @param array      $entries name => modification time
- * @param array|null $source  mtime, size of the file now; null when it is gone
+ * The signature carries the encoding quality, so a quality changed in the
+ * settings makes every derivative of that format stale. So does a format
+ * switched off: nothing asks for it any more (get_file.php answers such a
+ * request in another format). A resized copy in the source's own format is
+ * not a conversion and stays.
+ *
+ * @param array      $entries  name => modification time
+ * @param array|null $source   mtime, size and extension (lower case) of the
+ *                             file now; null when it is gone
  * @param int        $now
+ * @param array|null $settings pg_image_delivery_settings(); null for the defaults
  * @return array names
  */
-function pg_image_derivative_stale_entries($entries, $source, $now)
+function pg_image_derivative_stale_entries($entries, $source, $now, $settings = null)
 {
+    if (!is_array($settings) || !isset($settings['formats'], $settings['quality'])) {
+        $settings = pg_image_delivery_settings(null);
+    }
+
+    $source_extension = (is_array($source) && isset($source['extension'])) ? strtolower((string) $source['extension']) : '';
+
     $stale = array();
 
     foreach ($entries as $name => $mtime) {
@@ -1009,7 +1123,14 @@ function pg_image_derivative_stale_entries($entries, $source, $now)
             continue;
         }
 
-        $current = pg_image_derivative_signature($source['mtime'], $source['size'], pg_image_derivative_quality($match[3]));
+        $extension = $match[3];
+
+        if (isset($settings['formats'][$extension]) && empty($settings['formats'][$extension]) && ($extension !== $source_extension)) {
+            $stale[] = $name;
+            continue;
+        }
+
+        $current = pg_image_derivative_signature($source['mtime'], $source['size'], pg_image_derivative_quality($extension, $settings));
 
         if ($match[2] !== $current) {
             $stale[] = $name;
@@ -1209,6 +1330,7 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
     }
 
     $state = pg_image_derivative_sweep_state($directory);
+    $delivery = pg_image_delivery();
     $ids = array();
 
     foreach ((array) @scandir($directory) as $entry) {
@@ -1252,7 +1374,7 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
                 $size = @filesize($path);
 
                 if (($mtime !== false) && ($size !== false)) {
-                    $source = array('mtime' => $mtime, 'size' => $size);
+                    $source = array('mtime' => $mtime, 'size' => $size, 'extension' => strtolower((string) pathinfo($names[$id], PATHINFO_EXTENSION)));
                 }
             }
 
@@ -1264,7 +1386,7 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
                 }
             }
 
-            foreach (pg_image_derivative_stale_entries($entries, $source, time()) as $entry) {
+            foreach (pg_image_derivative_stale_entries($entries, $source, time(), $delivery) as $entry) {
                 $bytes = (int) @filesize($folder . '/' . $entry);
 
                 if (@unlink($folder . '/' . $entry)) {

@@ -3211,16 +3211,20 @@ function get_system_status_checks()
 
         $default_carrier = trim((string) ECOMMERCE_DEFAULT_TRACKING_PROVIDER);
 
+        // Read the way the order screens read it, capitals and all, so the
+        // tile never contradicts the links customers are given.
+        $default_carrier_key = function_exists('pg_shipping_default_carrier') ? pg_shipping_default_carrier() : $default_carrier;
+
         $known_carriers = pg_shipping_carriers();
 
-        if (isset($known_carriers[$default_carrier])) {
+        if (isset($known_carriers[$default_carrier_key])) {
 
             $output .= $makeIcon(
                 'bi-truck',
                 'text-success',
                 'Default Shipping Carrier',
                 'Parcels whose shipping method does not name a courier are linked to this one.',
-                $known_carriers[$default_carrier]['name']
+                $known_carriers[$default_carrier_key]['name']
             );
 
         } else {

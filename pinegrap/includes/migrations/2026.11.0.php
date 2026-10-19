@@ -32,6 +32,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_update_backup();          // 11.0.6
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
+	upgrade_2026_11_0_image_delivery();         // 11.0.9
 
 }
 
@@ -290,5 +291,28 @@ function upgrade_2026_11_0_shared_component_content() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visual designer: a shared component can now be opened to content editors. Managers edit every opened component, users the ones granted to them; until a designer opens one, nothing changes.');
+
+}
+
+// How the site's pictures are delivered (2026.11.0, 11.0.9;
+// pg_image_delivery_settings() in includes/image_engine.php, the Image
+// Optimization card under Site Settings, Features).
+//
+// image_derivative_formats is a bit set of the modern formats the responsive
+// markup offers and get_file.php writes: 1 WebP, 2 AVIF. A number rather than
+// a list of names because config takes no VARCHAR (the InnoDB row limit,
+// tests/innodb_test.php). Both on by default, which is what the code did
+// before there was a setting; a format this server cannot write stays off
+// whatever the bit says. The two qualities are the encoder's 1-100 scale of
+// each format; JPEG and PNG derivatives keep image_resize_quality (2026.4.4).
+function upgrade_2026_11_0_image_delivery() {
+
+	install_add_column('config', 'image_derivative_formats', "TINYINT UNSIGNED NOT NULL DEFAULT 3");
+
+	install_add_column('config', 'image_quality_webp', "TINYINT UNSIGNED NOT NULL DEFAULT 80");
+
+	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
+
+	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
 
 }
