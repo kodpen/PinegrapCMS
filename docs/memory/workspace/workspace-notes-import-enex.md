@@ -1,6 +1,6 @@
 ---
 name: workspace-notes-import-enex
-description: Evernote exports (.enex) as notes (notes_enex.php, PR #PRNUM): laid out in the stage as Markdown and attachment files, ENML to Markdown, limits and refusals
+description: Evernote exports (.enex) as notes (notes_enex.php, PR #644): laid out in the stage as Markdown and attachment files, ENML to Markdown, limits and refusals
 ---
 
 ## How does an .enex come in?

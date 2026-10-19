@@ -17,7 +17,7 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip and Eve
 ## What are the slices?
 - N1 Export — done (PR #528, memory docs/memory/workspace/workspace-notes-export.md): `.md` with front matter, the zip vault, the print page.
 - N2 Import, Markdown/zip — done (PR #553, memory docs/memory/workspace/workspace-notes-import.md): `.md`/`.txt` or a `.zip` (Obsidian, Notion, Joplin, Bear, our own vault), preview, batches, linked files, `[[wikilinks]]`, an export of ours updating its note.
-- N2 Import, Evernote `.enex` — done (PR #PRNUM, memory docs/memory/workspace/workspace-notes-import-enex.md): read as a stream at upload and laid out in the stage as Markdown and attachment files, so the preview, batches and `finish` stayed as they were.
+- N2 Import, Evernote `.enex` — done (PR #644, memory docs/memory/workspace/workspace-notes-import-enex.md): read as a stream at upload and laid out in the stage as Markdown and attachment files, so the preview, batches and `finish` stayed as they were.
 - N2 Import, other formats: Google Keep Takeout JSON, single `.html`, each laid out in the stage the same way.
 - N3 Sync API: paging and `created_at` done (issue #511); left: `DELETE /workspace/notes/{id}`, deletion records, a per-note `revision` (today `base` has one-second resolution and only refuses another person's change). Schema asks: `ws_notes.revision`, `ws_note_deletions`, `ws_note_sources` (user_id, provider, external_id, hash) for re-import de-duplication.
 - N4 Outside apps: Notion through the MCP alias ("save to my notes" target in `mcp_form.php`), OneNote through a Microsoft connect purpose; both wait on the reverse-oauth decisions.
