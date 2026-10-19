@@ -40,8 +40,21 @@ COMPOSE=(docker compose -f "$ROOT/docker/docker-compose.yml" -p pinegrap-check)
 
 say() { printf '\n== %s\n' "$1"; }
 
+# On GitHub Actions the text read from stdin also becomes an error
+# annotation, which the API returns where the raw log is out of reach.
+annotate() {
+	local text
+
+	text="$(tail -c 3000)"
+	printf '%s\n' "$text" >&2
+
+	if [ -n "${GITHUB_ACTIONS:-}" ]; then
+		printf '::error title=%s::%s\n' "$1" "$(printf '%s' "$text" | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
+	fi
+}
+
 fail() {
-	echo "FAIL: $1" >&2
+	echo "FAIL: $1" | annotate "check_docker.sh"
 	exit 1
 }
 
@@ -49,8 +62,7 @@ cleanup() {
 	local status=$?
 
 	if [ "$status" -ne 0 ]; then
-		echo "Container logs:" >&2
-		"${COMPOSE[@]}" logs --no-color --tail 40 >&2 || true
+		"${COMPOSE[@]}" logs --no-color --tail 25 2>&1 | annotate "container logs" || true
 	fi
 
 	"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
@@ -80,7 +92,10 @@ wait_for_installer() {
 }
 
 say "Building the images and starting the containers"
-"${COMPOSE[@]}" up -d --build
+if ! "${COMPOSE[@]}" up -d --build > "$WORK/up.log" 2>&1; then
+	tail -60 "$WORK/up.log" | annotate "docker compose up --build"
+	exit 1
+fi
 wait_for_installer
 
 say "PHP extensions and settings"
