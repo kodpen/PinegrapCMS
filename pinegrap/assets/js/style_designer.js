@@ -22758,9 +22758,22 @@ const StyleDesigner = (function () {
         if (!quad || !body) return;
         var host = document.createElement('div');
         host.id = 'sd-html-code';
-        host.className = 'sd-html-code pg-code-editor';
+        host.className = 'sd-html-code';
+        host.innerHTML =
+            '<div class="sd-code-tabs" id="sd-code-tabs"></div>' +
+            '<div class="sd-code-panes" id="sd-code-panes">' +
+                '<div class="sd-code-pane pg-code-editor sd-code-pane-active" data-key="page" id="sd-code-pane-page"></div>' +
+            '</div>';
         body.appendChild(host);
         _sdCode.host = host;
+        _sdCode.pageHost = host.querySelector('#sd-code-pane-page');
+        _sdCode.tabs = [{ key: 'page', title: '', icon: 'bi-filetype-html', pane: _sdCode.pageHost, ed: null, dirty: false, spec: null }];
+        _sdCode.active = 'page';
+        _sdCodeTabsRender();
+
+        // The code editor dialog (codemirror_modal.js) shares the view's
+        // engine texts.
+        window.PgCodeEditorPhrases = _sdCodePhrases();
 
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -22797,7 +22810,7 @@ const StyleDesigner = (function () {
         if (_sdCode.ed) { _sdCodeRefresh(); return; }
         if (_sdCode.loading) return;
         _sdCode.loading = true;
-        PgCodeEditor.open(_sdCode.host, {
+        PgCodeEditor.open(_sdCode.pageHost, {
             language: 'html',
             value: '',
             readOnly: !_sdCodeMayEdit(),
@@ -22809,11 +22822,13 @@ const StyleDesigner = (function () {
         }).then(function (ed) {
             _sdCode.loading = false;
             _sdCode.ed = ed;
+            _sdCode.tabs[0].ed = ed;
             _sdCode.editable = _sdCodeMayEdit();
             // Switched off while the bundle was on its way.
             if (!_sdCode.on) return;
             _sdCode.text = '';
             _sdCodeRefresh();
+            _sdCodeTabsFlush();
         }, function (err) {
             _sdCode.loading = false;
             sdToast('<strong>' + esc(_sdT('The code editor could not be loaded.')) + '</strong><br>' + esc(err && err.message ? err.message : ''), 'error', 6000);
@@ -23721,6 +23736,163 @@ const StyleDesigner = (function () {
         node.props.text = ws ? _sdCodeDecode(joined) : _sdCodeDecode(joined.replace(/\s+/g, ' ').trim());
         var tag = String(node.props.tag || '').toLowerCase();
         if ((tag === 'button' || tag === 'a') && slot !== 'none') node.props.textPosition = slot;
+    }
+
+    // ========================= CODE VIEW: FILE TABS =========================
+    // The design's CSS and JS files open beside the page in the same editor,
+    // one tab each. The assets panel hands over a spec: how to load the
+    // text, how to save it, and the address field an external link keeps.
+    // The page tab is the code view itself; a file tab is its own editor on
+    // its own pane. Ctrl+S in a file tab saves that file; elsewhere it saves
+    // the design as always.
+    function _sdCodeTabFind(key) {
+        for (var i = 0; i < _sdCode.tabs.length; i++) if (_sdCode.tabs[i].key === key) return _sdCode.tabs[i];
+        return null;
+    }
+    function _sdCodeActiveTab() { return _sdCodeTabFind(_sdCode.active) || _sdCode.tabs[0]; }
+
+    // Opens (or shows) a file tab. The code view switches on for it; a
+    // request made before the bundle arrived waits in _sdCode.queued.
+    function _sdCodeTabOpen(spec) {
+        if (!_sdCode.host) return;
+        if (!_sdCode.on) _sdCodeToggle(true);
+        if (!_sdCode.ed) { _sdCode.queued = (_sdCode.queued || []).concat([spec]); return; }
+        var tab = _sdCodeTabFind(spec.key);
+        if (tab) {
+            if (spec.title) tab.title = spec.title;
+            tab.spec = spec;
+            _sdCodeTabActivate(spec.key);
+            return;
+        }
+        var pane = document.createElement('div');
+        pane.className = 'sd-code-pane pg-code-editor';
+        pane.setAttribute('data-key', spec.key);
+        document.getElementById('sd-code-panes').appendChild(pane);
+        tab = { key: spec.key, title: spec.title || '', icon: spec.icon || 'bi-file-earmark-code', pane: pane, ed: null, dirty: false, spec: spec, loaded: false };
+        _sdCode.tabs.push(tab);
+        tab.ed = PgCodeEditor.create(pane, {
+            language: spec.language || 'css',
+            value: '',
+            readOnly: true,
+            phrases: _sdCodePhrases(),
+            labels: { syntaxError: _sdT('Syntax error') },
+            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }],
+            onChange: function () {
+                if (!tab.loaded || tab.dirty) return;
+                tab.dirty = true;
+                _sdCodeTabsRender();
+            }
+        });
+        _sdCodeTabActivate(spec.key);
+        spec.load(function (res) {
+            if (!_sdCodeTabFind(spec.key)) return;   // closed meanwhile
+            if (res && res.ok) {
+                tab.ed.setValue(res.content || '');
+                tab.loaded = true;
+                tab.dirty = false;
+                tab.ed.setReadOnly(!!spec.readOnly);
+            } else {
+                tab.ed.setValue('/* ' + ((res && res.message) || _sdT('The file could not be read.')) + ' */');
+            }
+            _sdCodeTabsRender();
+            if (_sdCode.active === spec.key && !spec.readOnly) tab.ed.focus();
+        });
+    }
+    function _sdCodeTabsFlush() {
+        var q = _sdCode.queued || [];
+        _sdCode.queued = [];
+        q.forEach(_sdCodeTabOpen);
+    }
+
+    function _sdCodeTabActivate(key) {
+        var tab = _sdCodeTabFind(key);
+        if (!tab) return;
+        _sdCode.active = key;
+        _sdCode.tabs.forEach(function (t) { t.pane.classList.toggle('sd-code-pane-active', t === tab); });
+        _sdCodeTabsRender();
+        if (key === 'page') _sdCodeRefresh();
+        if (tab.ed && (key !== 'page' || _sdCodeMayEdit())) tab.ed.focus();
+    }
+
+    function _sdCodeTabClose(key) {
+        var tab = _sdCodeTabFind(key);
+        if (!tab || key === 'page') return;
+        if (tab.dirty && !window.confirm(_sdT('Close the file without saving the changes?'))) return;
+        if (tab.ed) tab.ed.destroy();
+        if (tab.pane.parentNode) tab.pane.parentNode.removeChild(tab.pane);
+        _sdCode.tabs = _sdCode.tabs.filter(function (t) { return t !== tab; });
+        if (_sdCode.active === key) _sdCodeTabActivate('page');
+        else _sdCodeTabsRender();
+    }
+
+    function _sdCodeTabSave(key) {
+        var tab = _sdCodeTabFind(key);
+        if (!tab || !tab.spec || !tab.ed || !tab.loaded) return;
+        if (tab.spec.readOnly) return;
+        var btn = document.getElementById('sd-code-file-save');
+        if (btn) btn.disabled = true;
+        tab.spec.save(tab.ed.getValue(), function (res) {
+            if (btn) btn.disabled = false;
+            if (res && res.ok) {
+                tab.dirty = false;
+                _sdCodeTabsRender();
+                sdToast(esc(_sdT('The file was saved')) + ' <span class="bi bi-check2"></span>', 'success', 2200);
+            } else {
+                sdToast('<strong>' + esc(_sdT('The file could not be saved:')) + '</strong><br>' + esc((res && res.message) || ''), 'error', 5000);
+            }
+        });
+    }
+
+    // Ctrl+S with the keyboard in a file tab saves that file, not the design.
+    function _sdCodeSaveShortcut() {
+        var tab = _sdCodeActiveTab();
+        if (!tab || tab.key === 'page' || !tab.ed || !tab.ed.hasFocus()) return false;
+        _sdCodeTabSave(tab.key);
+        return true;
+    }
+
+    // The strip: one button per tab, the active file's address field and
+    // save button on the right.
+    function _sdCodeTabsRender() {
+        var strip = document.getElementById('sd-code-tabs');
+        if (!strip) return;
+        var active = _sdCodeActiveTab();
+        var html = '';
+        _sdCode.tabs.forEach(function (t) {
+            var title = t.key === 'page' ? _sdT('Page') : t.title;
+            html += '<button type="button" class="sd-code-tab' + (t === active ? ' sd-code-tab-active' : '') + '" data-key="' + esc(t.key) + '" title="' + esc(title) + '">' +
+                '<span class="bi ' + esc(t.icon) + '"></span><span class="sd-code-tab-title">' + esc(title) + '</span>' +
+                (t.dirty ? '<span class="sd-code-tab-dirty" title="' + esc(_sdT('Unsaved changes')) + '">&#9679;</span>' : '') +
+                (t.key !== 'page' ? '<span class="sd-code-tab-close" data-close="' + esc(t.key) + '" title="' + esc(_sdT('Close')) + '">&times;</span>' : '') +
+                '</button>';
+        });
+        html += '<span class="sd-code-tabs-spacer"></span>';
+        if (active && active.key !== 'page' && active.spec) {
+            if (active.spec.url) {
+                html += '<input type="text" class="sd-code-url" id="sd-code-url" value="' + esc(active.spec.url.value || '') + '" placeholder="https://" title="' + esc(_sdT('External URL:')) + '">';
+            }
+            if (!active.spec.readOnly) {
+                html += '<button type="button" class="sd-styles-tool sd-styles-create" id="sd-code-file-save" title="' + esc(_sdT('Save the file (Ctrl+S)')) + '"><span class="bi bi-check-lg me-1"></span>' + esc(_sdT('Save')) + '</button>';
+            }
+        }
+        strip.innerHTML = html;
+        strip.querySelectorAll('.sd-code-tab').forEach(function (b) {
+            b.addEventListener('click', function (e) {
+                var close = e.target.closest('.sd-code-tab-close');
+                if (close) { e.stopPropagation(); _sdCodeTabClose(close.getAttribute('data-close')); return; }
+                _sdCodeTabActivate(this.getAttribute('data-key'));
+            });
+            b.addEventListener('auxclick', function (e) {
+                if (e.button === 1 && this.getAttribute('data-key') !== 'page') { e.preventDefault(); _sdCodeTabClose(this.getAttribute('data-key')); }
+            });
+        });
+        var save = strip.querySelector('#sd-code-file-save');
+        if (save) save.addEventListener('click', function () { _sdCodeTabSave(active.key); });
+        var url = strip.querySelector('#sd-code-url');
+        if (url && active.spec && active.spec.url) {
+            url.addEventListener('change', function () { active.spec.url.onSave(this.value.trim()); });
+            url.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } });
+        }
     }
 
     // ── Shared Context Menu Builder ────────────────────────────────────────────────
@@ -35984,7 +36156,7 @@ const StyleDesigner = (function () {
             } else if (key === 'width' || key === 'height') {
                 h += row(capFirst(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('e.g. 100% or 50px')) + '">');
             } else if (key === 'html' || key === 'php') {
-                // No visible input — hidden textarea holds the value; "Edit" opens CodeMirror modal.
+                // No visible input — hidden textarea holds the value; "Edit" opens the code editor dialog.
                 var _lineCount = String(val).split('\n').length;
                 var _hint = String(val).length
                     ? ' <span class="sd-edit-hint">· ' + esc(_sdT('{var} lines', _lineCount)) + '</span>'
@@ -38697,7 +38869,7 @@ const StyleDesigner = (function () {
             });
         });
 
-        // ── Code Editor Triggers (generic CodeMirror modal) ─────────────────────
+        // ── Code Editor Triggers (the code editor dialog, codemirror_modal.js) ──
         // Any `[data-sd-code-edit=mode]` button in the prop panel opens the shared modal.
         // The companion textarea (first `[data-prop]` inside the same input-group) is the
         // value store — we round-trip through it so the existing input-event wiring above
@@ -39593,8 +39765,6 @@ const StyleDesigner = (function () {
     // Data flows through hidden form fields: #sd-custom-css-field, #sd-custom-js-field,
     // #sd-custom-fonts-field — submitted with the rest of the style form on Save.
 
-    var _cmCss  = null;   // CodeMirror instance for CSS tab
-    var _cmJs   = null;   // CodeMirror instance for JS tab
     var _assetsH = 220;   // panel height in px (persisted to localStorage)
     var _ASSETS_H_KEY = 'sd_assets_h';
 
@@ -40007,32 +40177,6 @@ const StyleDesigner = (function () {
             '</div>';
         rightPanel.appendChild(wrap);
 
-        // ── CodeMirror modal ──────────────────────────────────────────────────
-        var modalEl = document.createElement('div');
-        modalEl.id = 'sd-as-modal';
-        modalEl.className = 'sd-as-modal';
-        modalEl.style.display = 'none';
-        modalEl.innerHTML =
-            '<div class="sd-as-modal-dialog">' +
-                '<div class="sd-as-modal-hdr">' +
-                    '<span class="sd-as-modal-title" id="sd-as-modal-title">—</span>' +
-                    '<div class="sd-as-modal-actions">' +
-                        '<button class="sd-as-modal-save" id="sd-as-modal-save" type="button"><span class="bi bi-check-lg"></span> ' + esc(_sdT('Save')) + '</button>' +
-                        '<button class="sd-as-modal-close" id="sd-as-modal-close" type="button"><span class="bi bi-x-lg"></span></button>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="sd-as-modal-body" id="sd-as-modal-body">' +
-                    '<div id="sd-as-modal-url-wrap" class="sd-as-modal-url-wrap" style="display:none">' +
-                        '<label class="sd-as-modal-url-label">' + esc(_sdT('External URL:')) + '</label>' +
-                        '<input type="text" id="sd-as-modal-url" class="sd-as-modal-url" placeholder="https://">' +
-                    '</div>' +
-                    '<div id="sd-as-modal-cm-wrap" style="flex:1;min-height:0;display:flex;flex-direction:column;">' +
-                        '<textarea id="sd-as-modal-cm-ta"></textarea>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(modalEl);
-
         // ── Google Fonts Modal ─────────────────────────────────────────────────
         var gfModalEl = document.createElement('div');
         gfModalEl.id = 'sd-gf-modal';
@@ -40072,161 +40216,86 @@ const StyleDesigner = (function () {
         document.getElementById('sd-gf-modal-close').addEventListener('click', closeGfModal);
         gfModalEl.addEventListener('click', function(e) { if (e.target === gfModalEl) closeGfModal(); });
 
-        var _modalCm = null, _modalType = null, _modalFileId = null;
-
-        function cmModeFor(t) { if (t === 'css' || t === 'external-css') return 'css'; if (t === 'json') return 'application/json'; return 'javascript'; }
-
-        function _modalIsExt(file)         { return file.type === 'external-css' || file.type === 'external-js'; }
+        function _fileIsExt(file)        { return file.type === 'external-css' || file.type === 'external-js'; }
         // Managed = backed by a real `files` row + on-disk file. Includes JSON
         // entries created via designer_file/create even though `type='json'`
         // (not external-*) — the _file flag is the single source of truth.
-        function _modalIsManagedFile(file) { return !!file._file; }
-        function _modalIsUnmanagedExt(file){ return _modalIsExt(file) && !file._file; }
-
-        // Mounts CodeMirror in the modal if not already mounted, swaps mode,
-        // and sets the value. Centralised so every modal path uses the same
-        // editor lifecycle. The `readOnly` switch is honoured on (re)mount and
-        // on subsequent value swaps so external-link entries can show their
-        // body without letting the user type into it.
-        function _modalMountCm(mode, value, readOnly) {
-            if (!_modalCm && typeof CodeMirror !== 'undefined') {
-                _modalCm = CodeMirror.fromTextArea(document.getElementById('sd-as-modal-cm-ta'), {
-                    theme: 'pastel-on-dark',
-                    mode: mode,
-                    lineNumbers: true,
-                    lineWrapping: false,
-                    indentUnit: 4,
-                    tabSize: 4,
-                    styleActiveLine: true,
-                    autoCloseBrackets: true,
-                    autoRefresh: true,
-                    lint: !readOnly,
-                    gutters: ['CodeMirror-lint-markers'],
-                    readOnly: !!readOnly
-                });
-            } else if (_modalCm) {
-                _modalCm.setOption('mode', mode);
-                _modalCm.setOption('readOnly', !!readOnly);
-                _modalCm.setOption('lint', false);
-                if (!readOnly) setTimeout(function() { _modalCm.setOption('lint', true); }, 0);
-            }
-            if (_modalCm) { _modalCm.setValue(value || ''); _modalCm.refresh(); if (!readOnly) _modalCm.focus(); }
-            else { document.getElementById('sd-as-modal-cm-ta').value = value || ''; }
-        }
-
-        // Modes: 'css' / 'javascript' / 'application/json' — derived from the
-        // entry's type (incl. external-*).
-        function _modalCmMode(file) {
+        function _fileIsManaged(file)    { return !!file._file; }
+        function _fileIsUnmanagedExt(file) { return _fileIsExt(file) && !file._file; }
+        function _fileLanguage(file) {
             if (file.type === 'css' || file.type === 'external-css') return 'css';
-            if (file.type === 'json') return 'application/json';
+            if (file.type === 'json') return 'json';
             return 'javascript';
         }
 
+        // Opens a file in the code view, as a tab beside the page. What the
+        // tab loads and saves depends on the entry: a managed file goes
+        // through the API (designer_file/read and /save) and the canvas
+        // fetches the saved body again; an external link shows its body
+        // read-only and keeps its address editable; a legacy inline entry
+        // edits the text stored in the per-page JSON.
         function openModal(type, fileId) {
             var files = type === 'css' ? cssFiles : jsFiles;
-            var file = null; for (var i=0; i<files.length; i++) { if (files[i].id === fileId) { file = files[i]; break; } }
+            var file = null; for (var i = 0; i < files.length; i++) { if (files[i].id === fileId) { file = files[i]; break; } }
             if (!file) return;
-            _modalType = type; _modalFileId = fileId;
-            document.getElementById('sd-as-modal-title').textContent = file.name;
-            var urlWrap = document.getElementById('sd-as-modal-url-wrap');
-            var cmWrap  = document.getElementById('sd-as-modal-cm-wrap');
-            // Show modal first so browser lays out before CodeMirror measures
-            modalEl.style.display = 'flex';
-            var mode = _modalCmMode(file);
-
-            if (_modalIsManagedFile(file)) {
-                // Managed file: load body via the API into an editable CodeMirror.
-                // Closing without Save leaves the on-disk file untouched.
-                urlWrap.style.display = 'none'; cmWrap.style.display = 'flex';
-                _modalMountCm(mode, _sdT('/* Loading… */'), false);
-                _readDesignerFile(file.name, function (res) {
-                    if (_modalFileId !== fileId) return;  // user moved on
-                    if (res.ok) _modalMountCm(mode, res.content, false);
-                    else        sdToast('<strong>' + esc(_sdT('The file could not be read:')) + '</strong><br>' + res.message, 'error', 5000);
-                });
-                return;
-            }
-
-            if (_modalIsUnmanagedExt(file)) {
-                // External link (CDN / arbitrary URL): show URL header AND a
-                // read-only CodeMirror with the fetched body. Some CDNs (incl.
-                // jsdelivr) send permissive CORS so this works for Bootstrap;
-                // when CORS blocks the fetch we fall back to a placeholder.
-                urlWrap.style.display = ''; cmWrap.style.display = 'flex';
-                var url = file.content || '';
-                document.getElementById('sd-as-modal-url').value = url;
-                _modalMountCm(mode, _sdT('/* Loading… */'), true);
-                if (url) {
+            var fieldId = (type === 'css') ? 'sd-custom-css-field' : 'sd-custom-js-field';
+            var spec = {
+                key: 'file:' + type + ':' + fileId,
+                title: file.name,
+                icon: FILE_ICONS[file.type] || (type === 'css' ? 'bi-filetype-css' : 'bi-filetype-js'),
+                language: _fileLanguage(file),
+                readOnly: false,
+                url: null
+            };
+            if (_fileIsManaged(file)) {
+                spec.load = function (cb) { _readDesignerFile(file.name, cb); };
+                spec.save = function (content, cb) {
+                    _saveDesignerFile(file.name, content, function (res) {
+                        if (res.ok) {
+                            // JSON entries are inlined on the frontend via
+                            // <script type="application/json">{content}</script>,
+                            // so the per-page JSON's content field has to mirror
+                            // the on-disk body for the save to be visible without
+                            // re-running the API on every render. CSS/JS managed
+                            // entries render via <link>/<script src> so their
+                            // entry.content stays as the URL pointer.
+                            if (file.type === 'json') { file.content = content; saveFiles(fieldId, files); }
+                            // Refresh the canvas link/script tags: a new stamp on
+                            // this file's URL fetches the saved body.
+                            _sdBustAsset(file.content);
+                            applyAssetsToIframe();
+                        }
+                        cb(res);
+                    });
+                };
+            } else if (_fileIsUnmanagedExt(file)) {
+                // External link (CDN / arbitrary URL): the body is shown
+                // read-only when the browser may fetch it (jsdelivr sends
+                // permissive CORS); the address is what can change.
+                spec.readOnly = true;
+                spec.url = {
+                    value: file.content || '',
+                    onSave: function (url) { file.content = url; saveFiles(fieldId, files); spec.url.value = url; spec.title = file.name; }
+                };
+                spec.load = function (cb) {
+                    var url = file.content || '';
+                    if (!url) { cb({ ok: true, content: '' }); return; }
                     fetch(url, { mode: 'cors', credentials: 'omit' })
                         .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-                        .then(function (txt) { if (_modalFileId === fileId) _modalMountCm(mode, txt, true); })
+                        .then(function (txt) { cb({ ok: true, content: txt }); })
                         .catch(function () {
-                            if (_modalFileId === fileId) {
-                                _modalMountCm(mode,
-                                    '/* ' + _sdT('The content could not be read by the browser (CORS or an access error).') + '\n' +
-                                    '   URL: ' + url + ' */', true);
-                            }
+                            cb({ ok: true, content: '/* ' + _sdT('The content could not be read by the browser (CORS or an access error).') + '\n   URL: ' + url + ' */' });
                         });
-                } else {
-                    _modalMountCm(mode, '', true);
-                }
-                return;
-            }
-
-            // Legacy inline entry (type='css'|'js'|'json' without _file): edit
-            // the content stored in the per-page JSON.
-            urlWrap.style.display = 'none'; cmWrap.style.display = 'flex';
-            setTimeout(function() { _modalMountCm(mode, file.content || '', false); }, 30);
-        }
-        function closeModal() { modalEl.style.display = 'none'; _modalType = null; _modalFileId = null; }
-        document.getElementById('sd-as-modal-close').addEventListener('click', closeModal);
-        document.getElementById('sd-as-modal-save').addEventListener('click', function() {
-            if (!_modalType || !_modalFileId) return;
-            var files = _modalType === 'css' ? cssFiles : jsFiles;
-            var file = null; for (var i=0; i<files.length; i++) { if (files[i].id === _modalFileId) { file = files[i]; break; } }
-            if (!file) { closeModal(); return; }
-            var fieldId = (_modalType === 'css') ? 'sd-custom-css-field' : 'sd-custom-js-field';
-
-            if (_modalIsManagedFile(file)) {
-                var newContent = _modalCm ? _modalCm.getValue() : document.getElementById('sd-as-modal-cm-ta').value;
-                _saveDesignerFile(file.name, newContent, function (res) {
-                    if (res.ok) {
-                        sdToast(esc(_sdT('The file was saved')) + ' <span class="bi bi-check2"></span>', 'success', 2200);
-                        // JSON entries are inlined on the frontend via
-                        // <script type="application/json">{content}</script>,
-                        // so the per-page JSON's content field has to mirror
-                        // the on-disk body for the save to be visible without
-                        // re-running the API on every render. CSS/JS managed
-                        // entries render via <link>/<script src> so their
-                        // entry.content stays as the URL pointer.
-                        if (file.type === 'json') {
-                            file.content = newContent;
-                            saveFiles(fieldId, files);
-                        }
-                        // Refresh the canvas link/script tags: a new stamp on
-                        // this file's URL fetches the saved body.
-                        _sdBustAsset(file.content);
-                        applyAssetsToIframe();
-                    } else {
-                        sdToast('<strong>' + esc(_sdT('The file could not be saved:')) + '</strong><br>' + res.message, 'error', 5000);
-                    }
-                });
-                closeModal();
-                return;
-            }
-
-            if (_modalIsUnmanagedExt(file)) {
-                // External link entries are read-only — Save just persists any
-                // URL edit the user made in the URL field (the CodeMirror body
-                // is intentionally not written anywhere).
-                file.content = document.getElementById('sd-as-modal-url').value;
+                };
+                spec.save = function (content, cb) { cb({ ok: true }); };
             } else {
-                // Legacy inline path: persist editor value into the JSON entry.
-                file.content = _modalCm ? _modalCm.getValue() : document.getElementById('sd-as-modal-cm-ta').value;
+                // Legacy inline entry (type='css'|'js'|'json' without _file): the
+                // text lives in the per-page JSON.
+                spec.load = function (cb) { cb({ ok: true, content: file.content || '' }); };
+                spec.save = function (content, cb) { file.content = content; saveFiles(fieldId, files); cb({ ok: true }); };
             }
-            saveFiles(fieldId, files);
-            closeModal();
-        });
+            _sdCodeTabOpen(spec);
+        }
 
         // ── Context menu ──────────────────────────────────────────────────────
         var ctxEl = document.createElement('div');
@@ -40623,7 +40692,7 @@ const StyleDesigner = (function () {
                 openFilePicker(type, function(picked) {
                     // Picked files are already in `files` so they are "managed"
                     // — set _file=true so the modal opens them in the
-                    // CodeMirror edit-via-API path instead of the URL input.
+                    // the edit-via-API path of the code view instead of the URL input.
                     if (type === 'css') {
                         cssFiles.push({ id: mkId(), name: picked.name, type: 'external-css', content: picked.url, enabled: true, _file: true });
                         saveFiles('sd-custom-css-field', cssFiles);
@@ -40883,7 +40952,7 @@ const StyleDesigner = (function () {
         }
 
         document.addEventListener('click', function(e) { if (!e.target.closest || !e.target.closest('#sd-as-ctx')) ctxEl.style.display = 'none'; });
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { ctxEl.style.display = 'none'; closeModal(); } });
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') ctxEl.style.display = 'none'; });
 
         // ── Render file list ──────────────────────────────────────────────────
         var FILE_ICONS = { 'css': 'bi-filetype-css', 'external-css': 'bi-link-45deg', 'js': 'bi-filetype-js', 'json': 'bi-filetype-json', 'external-js': 'bi-link-45deg' };
@@ -52781,8 +52850,8 @@ const StyleDesigner = (function () {
     /**
      * "Paste HTML content" — a design started from markup on the clipboard.
      *
-     * The same parser the file import uses, fed from a CodeMirror box instead
-     * of a file, because the markup being pasted usually has no file: it is a
+     * The same parser the file import uses, fed from the code editor dialog
+     * instead of a file, because the markup being pasted usually has no file: it is a
      * page open in an editor, or a block copied out of a live site.
      */
     function _pgPasteHtmlOpen(initial) {
@@ -53105,6 +53174,7 @@ const StyleDesigner = (function () {
     // Ctrl+S / Cmd+S: what the main button does - Save on a draft, Publish
     // on a page on the site - or nothing while it cannot.
     function _sdSaveShortcut() {
+        if (_sdCodeSaveShortcut()) return;
         var b = document.getElementById('sd-ajax-save');
         if (b && !b.disabled) b.click();
     }
