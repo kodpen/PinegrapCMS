@@ -1,0 +1,26 @@
+{
+  "name": "pinegrap-code-editor-bundle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Builds pinegrap/assets/lib/code_editor/cm6.bundle.js (CodeMirror 6) through tools/build_code_editor.php",
+  "license": "MIT",
+  "dependencies": {
+    "@codemirror/autocomplete": "6.20.3",
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/lang-css": "6.3.1",
+    "@codemirror/lang-html": "6.4.12",
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.14",
+    "@lezer/common": "1.5.3",
+    "@lezer/highlight": "1.2.5",
+    "@replit/codemirror-vscode-keymap": "6.0.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
