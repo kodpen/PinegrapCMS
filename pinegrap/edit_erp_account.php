@@ -85,15 +85,6 @@ if (!$_POST) {
         $output_balance_fc = '<span class="text-body-secondary">' . h(erp_money_out_currency(abs($balance_fc), $account_currency)) . ' ' . h($account_currency) . '</span>';
     }
 
-    // Asking GİB whether the counterparty is an e-Invoice taxpayer. The
-    // button sits in the toolbar above the form and submits it through the
-    // form attribute, so the number on screen is the one asked about; the
-    // form therefore needs the id the attribute names. It is only drawn when
-    // a provider that can answer is on.
-    $output_einvoice_check = (erp_edoc_installed() && erp_edoc_supports('check_taxpayer'))
-        ? '<button type="submit" form="erp_account_form" name="erp_action" value="einvoice_check" class="btn btn-sm btn-outline-secondary m-1"><i class="bi bi-patch-question me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Ask GİB about the tax number') . '</span></button>'
-        : '';
-
     // The account's card at the e-document provider, when the provider hands
     // its cards over: linked and the same, linked and different, or none yet.
     $output_card_sync = '';
@@ -223,7 +214,6 @@ if (!$_POST) {
                         ' . (($show_quotes && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
                         ' . ($show_purchase_orders ? '<a class="btn btn-sm btn-outline-secondary" href="erp_purchase_orders.php?account_id=' . $account_id . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . lang('Purchase orders') . '</a>' : '') . '
                         ' . (($show_purchase_orders && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
-                        ' . $output_einvoice_check . '
                         ' . $output_card_sync . '
                         ' . $output_workspace_button . '
                     </nav>
@@ -292,27 +282,11 @@ if (!$_POST) {
     // Every field of the form is one value. One posted as an array counts as
     // not given: (int) read an array id as 1 and saved over that account,
     // (string) wrote "Array" onto the card with a notice.
-    pg_request_single_values(array_merge(erp_account_form_single_fields(), array('id', 'erp_action')));
+    pg_request_single_values(array_merge(erp_account_form_single_fields(), array('id')));
 
     $liveform->add_fields_to_session();
 
     $account_id = (int) $liveform->get_field_value('id');
-
-    // Asking GİB about the tax number is not a save: what is on screen stays
-    // on screen (the session keeps it), the card is not written to, and the
-    // answer comes back as a notice.
-    if ((string) ($_POST['erp_action'] ?? '') === 'einvoice_check') {
-
-        $result = erp_edoc_account_check_taxpayer($account_id, (string) $liveform->get_field_value('tax_number'));
-
-        if ($result['success']) {
-            $liveform->add_notice($result['message']);
-        } else {
-            $liveform->mark_error('_error', $result['error']);
-        }
-
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id);
-    }
 
     // This screen only edits. Without an existing account behind the id the
     // save would fall through to an insert and create a record nobody asked for.

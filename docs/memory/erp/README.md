@@ -26,7 +26,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting.
 - erp-isbasi-driver.md: Logo Isbasi e-document driver (edoc/isbasi.php): source document rule, fields and environments, login flow and session, request helper, success envelope.
 - erp-isbasi-invoice-payload.md: What goes to Isbasi on send_invoice: final-consumer rule, pre-send validation, SimpleInv body fields, internet-sale block, unsupported types.
-- erp-isbasi-poll-documents-screens.md: Isbasi poll status mapping, fetch_document type pitfalls, e-document screens/buttons, taxpayer query, invoice list column, edoc_changed event, 4.62 schema.
+- erp-isbasi-poll-documents-screens.md: Isbasi poll status mapping, fetch_document type pitfalls, e-document screens/buttons, invoice list column, edoc_changed event, 4.62 schema.
 - erp-list-edit-screen-pattern.md: How ERP list and add/edit screens are built (table.chart, separate edit pages, liveform fields, menu highlight) and which lists must not be DataTables.
 - erp-local-sale.md: Counter sale (add_order.php) customer handling, walk-in account, VAT per line, invoice from order screen, waybill from invoice and write-back rules (4.59).
 - erp-manual-invoice-draft-issue.md: Manual ERP invoices: files and endpoints, the draft boundary (_D series, no number), issue transaction, invoice_manual.php functions, foreign-currency drafts.
@@ -41,4 +41,5 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-reconciliation-letter.md: ERP account reconciliation letter (cari mutabakat): as-of balance from the ledger, option sanitizing, reference, row cap, e-mail attachments, screen pattern.
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, line VAT rate, returned_qty and parent_line_id.
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
+- erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, and the carrier columns.
