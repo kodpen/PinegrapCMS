@@ -167,7 +167,6 @@
             // Locks: a tinted band over text no edit may touch; an island
             // inside it keeps the plain background so what may change stands out.
             '.pg-ce-lock': { backgroundColor: 'rgba(240,120,32,.09)' },
-            '.pg-ce-lock.pg-ce-allow': { backgroundColor: 'transparent' },
             '.pg-ce-mark': { backgroundColor: 'rgba(13,110,253,.16)', borderRadius: '2px' },
             '.pg-ce-mark-line': { backgroundColor: 'rgba(13,110,253,.10)' }
         }, { dark: !!dark });
@@ -321,16 +320,19 @@
             }
         });
 
+        // The tint: the locked text minus the islands, as flat segments.
+        // Nested locks (a widget inside a locked block) would otherwise
+        // nest their spans and darken with every level, and an island's
+        // span would sit inside its lock's and never clear the tint.
         var lockMark = Decoration.mark({ class: 'pg-ce-lock' });
-        var allowMark = Decoration.mark({ class: 'pg-ce-allow' });
         var lockDecorations = EditorView.decorations.compute([lockField], function (state) {
             var set = state.field(lockField);
-            var out = [];
+            var locks = [], allows = [];
             set.between(0, state.doc.length, function (from, to, value) {
-                if (from >= to) return;
-                out.push((value.kind === 'allow' ? allowMark : lockMark).range(from, to));
+                if (from < to) (value.kind === 'allow' ? allows : locks).push([from, to]);
             });
-            return Decoration.set(out, true);
+            var segments = _subtractRanges(_unionRanges(locks), _unionRanges(allows));
+            return Decoration.set(segments.map(function (r) { return lockMark.range(r[0], r[1]); }), true);
         });
 
         var trackDecorations = EditorView.decorations.compute([trackedField], function (state) {
@@ -350,6 +352,34 @@
             classes: classes
         };
         return cm._pgFields;
+    }
+
+    // Sorted, merged [from, to] pairs.
+    function _unionRanges(list) {
+        if (!list.length) return [];
+        list.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+        var out = [list[0].slice()];
+        for (var i = 1; i < list.length; i++) {
+            var last = out[out.length - 1];
+            if (list[i][0] <= last[1]) { if (list[i][1] > last[1]) last[1] = list[i][1]; }
+            else out.push(list[i].slice());
+        }
+        return out;
+    }
+
+    // `base` minus `holes`, both merged and sorted.
+    function _subtractRanges(base, holes) {
+        var out = [], h = 0;
+        for (var i = 0; i < base.length; i++) {
+            var from = base[i][0], to = base[i][1];
+            while (h < holes.length && holes[h][1] <= from) h++;
+            for (var k = h; k < holes.length && holes[k][0] < to; k++) {
+                if (holes[k][0] > from) out.push([from, holes[k][0]]);
+                if (holes[k][1] > from) from = holes[k][1];
+            }
+            if (from < to) out.push([from, to]);
+        }
+        return out;
     }
 
     // Does the lock set permit a change of (fromA, toA) in the document the
@@ -457,7 +487,9 @@
             langComp.of(_languageExtension(cm, lang)),
             completionsComp.of(_completionExtensions(cm, lang)),
             lintComp.of(opts.lint === false ? [] : _syntaxLinter(cm, lang, opts.labels)),
-            readOnlyComp.of([S.EditorState.readOnly.of(!!opts.readOnly), V.EditorView.editable.of(!opts.readOnly)]),
+            // Read-only keeps the content focusable: the cursor, the keyboard
+            // and the search panel work, only changes are refused.
+            readOnlyComp.of(S.EditorState.readOnly.of(!!opts.readOnly)),
             wrapComp.of(opts.lineWrapping ? V.EditorView.lineWrapping : []),
             fields.trackedField,
             fields.lockField,
@@ -526,7 +558,7 @@
             view.dispatch({ effects: completionsComp.reconfigure(_completionExtensions(cm, lang)) });
         };
         inst.setReadOnly = function (on) {
-            view.dispatch({ effects: readOnlyComp.reconfigure([S.EditorState.readOnly.of(!!on), V.EditorView.editable.of(!on)]) });
+            view.dispatch({ effects: readOnlyComp.reconfigure(S.EditorState.readOnly.of(!!on)) });
         };
         inst.isReadOnly = function () { return view.state.readOnly; };
         inst.setLineWrapping = function (on) {
