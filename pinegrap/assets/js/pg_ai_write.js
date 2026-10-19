@@ -319,6 +319,7 @@
             target: settings.target,
             record: settings.record,
             record_id: settings.record_id || 0,
+            field_id: settings.field_id || 0,
             context: contextOf(settings),
             tone: state.tone.value,
             hint: state.hint.value

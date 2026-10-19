@@ -38,12 +38,23 @@ function test_ai_write_targets_are_complete()
 	$fields = pg_ai_write_record_fields();
 
 	foreach (pg_ai_write_targets() as $target => $row) {
-		pg_assert_true(in_array($row['format'], array('html', 'line'), true), $target . ' format');
+		pg_assert_true(in_array($row['format'], array('html', 'line', 'text'), true), $target . ' format');
 		pg_assert_true($row['max'] > 0 && $row['tokens'] > 0, $target . ' sizes');
 		pg_assert_true(!empty($row['records']), $target . ' records');
 
 		foreach ($row['records'] as $record => $own) {
+			// A form record's own field is the one asked for, by its id.
+			if ($record === 'form') {
+				pg_assert_same('', $own, $target . ' form own field');
+				continue;
+			}
+
 			pg_assert_true(isset($fields[$record][$own]), $target . ' ' . $record . ' own field');
+		}
+
+		// A form record's field has rules of its own (pg_ai_write_form_rules()).
+		if ($target === 'record_field') {
+			continue;
 		}
 
 		$rules = pg_ai_write_target_rules($target, 'product');
@@ -206,6 +217,8 @@ function test_ai_write_tidy_line()
 	pg_assert_same('Linen shirt', pg_ai_write_tidy('line', '<b>Linen</b> shirt', 60), 'markup');
 	pg_assert_same('A "quoted" word inside', pg_ai_write_tidy('line', 'A "quoted" word inside', 60), 'inner quotes stay');
 	pg_assert_same('Başlık değil', pg_ai_write_tidy('line', 'Başlık: Başlık değil', 60), 'turkish label');
+	pg_assert_same('Linen shirt. Soft Light', pg_ai_write_tidy('line', "Linen shirt.\n\n- Soft\n2. Light", 60), 'list marks');
+	pg_assert_same('-5% on linen', pg_ai_write_tidy('line', '-5% on linen', 60), 'minus sign');
 	pg_assert_true(mb_strlen(pg_ai_write_tidy('line', str_repeat('word ', 50), 60)) <= 60, 'cut');
 }
 
@@ -278,6 +291,9 @@ function test_ai_write_user_may()
 	pg_assert_false(pg_ai_write_user_may(array('id' => 3, 'role' => 3, 'manage_ecommerce' => false), 'product'), 'no store right');
 	pg_assert_false(pg_ai_write_user_may(array('id' => 3, 'role' => 3), 'page', 0), 'unsaved page');
 	pg_assert_false(pg_ai_write_user_may(array('id' => 1, 'role' => 0), 'order'), 'unknown record');
+	pg_assert_true(pg_ai_write_user_may(array('id' => 2, 'role' => 2), 'form', 313), 'manager form');
+	pg_assert_false(pg_ai_write_user_may(array('id' => 3, 'role' => 3, 'manage_forms' => false), 'form', 313), 'no forms right');
+	pg_assert_false(pg_ai_write_user_may(array('id' => 3, 'role' => 3, 'manage_forms' => true), 'form', 0), 'no form');
 	pg_assert_false(pg_ai_write_user_may(null, 'product'), 'nobody');
 }
 
@@ -398,6 +414,91 @@ function test_ai_write_script_reads_what_php_writes()
 	foreach (array_keys(pg_ai_write_js_config()['labels']) as $key) {
 		pg_assert_contains("label('" . $key . "')", $script, 'label ' . $key);
 	}
+}
+
+// Free text a record is about may be drafted; a contact's data and other
+// text boxes may not.
+function test_ai_write_form_writable()
+{
+	pg_assert_true(pg_ai_write_form_writable(array('type' => 'text area', 'contact_field' => '', 'rss_field' => '')), 'text area');
+	pg_assert_true(pg_ai_write_form_writable(array('type' => 'text box', 'contact_field' => '', 'rss_field' => 'title')), 'title box');
+	pg_assert_true(pg_ai_write_form_writable(array('type' => 'text box', 'contact_field' => '', 'rss_field' => 'description')), 'description box');
+	pg_assert_false(pg_ai_write_form_writable(array('type' => 'text box', 'contact_field' => '', 'rss_field' => '')), 'plain box');
+	pg_assert_false(pg_ai_write_form_writable(array('type' => 'text box', 'contact_field' => 'first_name', 'rss_field' => 'title')), 'contact name');
+	pg_assert_false(pg_ai_write_form_writable(array('type' => 'text area', 'contact_field' => 'description', 'rss_field' => '')), 'contact description');
+	pg_assert_false(pg_ai_write_form_writable(array('type' => 'pick list', 'contact_field' => '', 'rss_field' => 'title')), 'pick list');
+	pg_assert_false(pg_ai_write_form_writable(null), 'nothing');
+}
+
+// A field's format, length and label come from the field itself.
+function test_ai_write_form_spec()
+{
+	pg_assert_same(
+		array('key' => '36', 'label' => 'Başlık', 'format' => 'line', 'max' => 100, 'tokens' => 600),
+		pg_ai_write_form_spec(array('id' => '36', 'label' => 'Başlık:', 'type' => 'text box', 'wysiwyg' => '0', 'maxlength' => '100')),
+		'title box');
+	pg_assert_same('html', pg_ai_write_form_spec(array('id' => 38, 'label' => 'Gönderi', 'type' => 'text area', 'wysiwyg' => '1', 'maxlength' => '0'))['format'], 'rich text');
+	pg_assert_same(4000, pg_ai_write_form_spec(array('id' => 38, 'label' => 'Gönderi', 'type' => 'text area', 'wysiwyg' => '1', 'maxlength' => '0'))['max'], 'rich text length');
+	pg_assert_same(2000, pg_ai_write_form_spec(array('id' => 12, 'label' => 'Details', 'type' => 'text area', 'wysiwyg' => '0', 'maxlength' => '90000'))['max'], 'longer than the default');
+	pg_assert_same('Bold label', pg_ai_write_form_label("<b>Bold</b>  label :"), 'label');
+}
+
+// Only the form's own text fields go to the model, labelled, in the form's
+// order.
+function test_ai_write_form_context()
+{
+	$fields = array(
+		'36' => array('label' => 'Başlık:', 'type' => 'text box'),
+		'38' => array('label' => 'Gönderi', 'type' => 'text area'),
+		'40' => array('label' => 'Empty', 'type' => 'text box'),
+	);
+
+	$built = pg_ai_write_form_context($fields, array(38 => '<p>Body</p>', 36 => 'Title', 99 => 'Not a field', '40' => ' '));
+
+	pg_assert_same(array('36' => 'Title', '38' => 'Body'), $built['context']);
+	pg_assert_same(array('36' => 'Başlık', '38' => 'Gönderi'), $built['labels']);
+	pg_assert_same(array('context' => array(), 'labels' => array()), pg_ai_write_form_context($fields, 'x'), 'not an array');
+}
+
+// A form record's rules name the field and the form, its data goes under the
+// form's labels and its own text is current_text.
+function test_ai_write_messages_for_a_form_record()
+{
+	$out = ai_write_test_messages(array(
+		'target'   => 'record_field',
+		'record'   => 'form',
+		'context'  => array('36' => 'Linen season', '38' => 'Old body'),
+		'labels'   => array('36' => 'Başlık', '38' => 'Gönderi'),
+		'spec'     => array('key' => '38', 'label' => 'Gönderi', 'format' => 'html', 'max' => 4000, 'tokens' => 2400),
+		'form'     => 'BLOG',
+		'language' => 'Turkish',
+	));
+
+	pg_assert_contains('the field "Gönderi" of a record of the form "BLOG" on the site', $out['system']);
+	pg_assert_contains('a list may follow, one item per line starting with "- "', $out['system']);
+	pg_assert_contains('At most 4000 characters.', $out['system']);
+	pg_assert_same('form record', $out['user']['record']);
+	pg_assert_same('BLOG', $out['user']['form']);
+	pg_assert_same(array('Başlık' => 'Linen season'), $out['user']['data']);
+	pg_assert_same('Old body', $out['user']['current_text']);
+
+	$rules = pg_ai_write_form_rules(array('label' => 'Özet', 'format' => 'line', 'max' => 150), '');
+	pg_assert_same('the field "Özet" of a record on the site', $rules['field'], 'no form name');
+	pg_assert_same('One line of plain text, without quotation marks.', $rules['shape'], 'line');
+}
+
+// The button of a form record carries the field's id and format.
+function test_ai_write_form_button_markup()
+{
+	$html = pg_ai_write_button_markup(array('target' => 'record_field', 'record' => 'form', 'record_id' => 313, 'field' => '38', 'field_id' => 38, 'format' => 'html', 'context' => array('36' => '36', '38' => '38')), 'W');
+
+	preg_match('/data-pg-ai-write="([^"]*)"/', $html, $match);
+	$settings = json_decode(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8'), true);
+
+	pg_assert_same(38, $settings['field_id']);
+	pg_assert_same('html', $settings['format']);
+	pg_assert_same(array('36' => '36', '38' => '38'), $settings['context']);
+	pg_assert_contains('aria-controls="pg_ai_draft_38"', $html);
 }
 
 // Quotation marks around the whole line go; one-sided or inner ones stay.

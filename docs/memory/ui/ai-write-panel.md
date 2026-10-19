@@ -6,6 +6,7 @@ description: The "Write with AI" button and draft panel (pg_ai_write_button(), p
 ## Where is it?
 - Product screen (`product_builder.php`, create and edit; PR #583): Short Description, Full Description, Web Browser Title, Web Browser Description. Not for a product in the Recycle Bin.
 - Page properties (`edit_page.php`): Web Browser Title and Description.
+- Custom form records (`add_submitted_form.php`, `edit_submitted_form.php`, `pg_ai_write_form_button()`): every text area, and a text box the form feeds as an item's title or description (`rss_field`); never a field mapped to a contact field (`pg_ai_write_form_writable()`). The draft reads the form's text fields by id, labelled from `form_fields`. Text boxes there carry their field id as element id and the labels a `for`.
 - The endpoint and its rules: docs/memory/ui/ai-write.md.
 
 ## How do I add it to a field?
