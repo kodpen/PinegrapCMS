@@ -1,6 +1,6 @@
 ---
 name: ai-write-buttons
-description: Plan (approved 2026-10-19, in progress: endpoint done): "Write with AI" buttons in the product builder, page SEO fields, image alt text and form records; AI-generated labelling left
+description: Plan (approved 2026-10-19, in progress: endpoint, product and page property buttons done): "Write with AI"; designer page settings, form records, alt text and AI-generated labelling left
 ---
 
 ## Why?
@@ -8,6 +8,7 @@ description: Plan (approved 2026-10-19, in progress: endpoint done): "Write with
 
 ## What is done?
 - Step 1 (PR #581): the `ai_write` panel action, prompt rules, answer reading, quota guards and tests. Behaviour: docs/memory/ui/ai-write.md.
+- Step 2: buttons and the draft panel on the product screen and the page properties screen (`assets/js/pg_ai_write.js`), the `[NEW]` changelog line. Behaviour: docs/memory/ui/ai-write-panel.md.
 
 ## What is decided?
 - One endpoint (`ai_write`, `includes/panel/ai_write.php` + `includes/fn/ai_write.php`), no new provider. The draft never saves itself; the person accepts it.
@@ -20,10 +21,9 @@ description: Plan (approved 2026-10-19, in progress: endpoint done): "Write with
 - Alt text needs a model that reads images. Nothing in the Pinegrap AI connection says whether its model does (the code sends text only, and the model it tunes for, gpt-oss, reads text), so that button stays hidden until the connection can tell.
 
 ## What remains?
-2. Product builder (full and short description, browser title and description) and page settings (classic `edit_page.php` and the designer's page settings) buttons, shared `assets/js/pg_ai_write.js`; the `[NEW]` changelog line when they ship (S).
-3. Form record text fields in the form widget (target `record_field`, gate by form rights); designer alt-text button once a vision model is known (S).
+3. The visual designer: browser title and description in its page settings; form record text fields in the form widget (target `record_field`, gate by form rights); the alt-text button once a vision model is known (S).
 4. `ai_fields` columns in a migration step (ask the owner first), panel marker, token `__ai_generated` (S).
 5. When done: decisions move to docs/memory/ui/ai-write.md and this file is deleted.
 
 ## Where to start?
-- Step 2; read docs/memory/ui/ai-write.md, `product_builder.php` (`pg_pb_render_product_screen()`), `edit_page.php` and the `pinegrap-ui-deseni` and `pinegrap-js-varliklari` skills.
+- Step 3; read docs/memory/ui/ai-write-panel.md, the `pinegrap-tasarimci-widget` skill and docs/memory/designer/designer-sdt-translation.md (the designer's words go through `_sdT()`).
