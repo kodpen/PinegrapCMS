@@ -650,61 +650,147 @@ function pg_designer_list_designs()
 }
 
 /**
- * The Status cell of a design on the designs list: on the site, a draft, or
- * partly on the site, and the buttons that take every page off the site or
- * put the drafts back on it (api.php designer/design_publish). The home page
- * stays on the site, so a design that holds it is a draft without it.
+ * The pages of each design, as the home screen lists them under the design:
+ * the design's own outside the bin, the home page first, then in the order
+ * they were made (the editor's own first tab). A page whose folder the
+ * operator may not even know about is left out; one they may see but not
+ * open is marked locked, as the editor's tab strip shows it
+ * (pg_designer_page_access()).
  *
- * @param array $d          a pg_designer_list_designs() row
- * @param bool  $can_change the operator decides drafts
+ * @param array $style_ids
+ * @param array $user
+ * @return array style_id => list of array(id, name, home, draft, locked)
+ */
+function pg_designer_list_pages($style_ids, $user)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$style_ids))));
+    $out = array();
+    foreach ($ids as $id) $out[$id] = array();
+    if (!$ids) return $out;
+
+    $rows = db_items(
+        "SELECT page_id, page_name, page_style, page_home, page_folder
+         FROM page
+         WHERE page_style IN (" . implode(',', $ids) . ") AND layout_type = 'system'" . pg_designer_not_binned_sql() . "
+         ORDER BY (page_home = 'yes') DESC, page_id ASC");
+    $full = pg_designer_is_full($user);
+    foreach ((array)$rows as $r) {
+        $access = $full ? 'edit' : pg_designer_page_access(array('page_id' => (int)$r['page_id'], 'page_folder' => (int)$r['page_folder']), $user);
+        if ($access === 'hidden') continue;
+        $out[(int)$r['page_style']][] = array(
+            'id'     => (int)$r['page_id'],
+            'name'   => (string)$r['page_name'],
+            'home'   => ((string)$r['page_home'] === 'yes'),
+            'draft'  => pg_page_is_draft($r['page_folder']),
+            'locked' => ($access !== 'edit'),
+        );
+    }
+    return $out;
+}
+
+/**
+ * How many folders name each design as their default design, for the
+ * computer or for phones: deleting the design clears that setting, and the
+ * confirmation says so before it happens. A folder with it as both counts
+ * once, as pg_designer_delete_design() counts it.
+ *
+ * @param array $style_ids
+ * @return array style_id => count
+ */
+function pg_designer_list_folder_counts($style_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$style_ids))));
+    $out = array();
+    foreach ($ids as $id) $out[$id] = 0;
+    if (!$ids) return $out;
+
+    $in = implode(',', $ids);
+    foreach ((array)db_items("SELECT folder_style, mobile_style_id FROM folder WHERE folder_style IN ($in) OR mobile_style_id IN ($in)") as $r) {
+        $seen = array();
+        foreach (array((int)$r['folder_style'], (int)$r['mobile_style_id']) as $sid) {
+            if (isset($out[$sid]) && !isset($seen[$sid])) {
+                $out[$sid]++;
+                $seen[$sid] = true;
+            }
+        }
+    }
+    return $out;
+}
+
+/**
+ * Which design the home screen shows large: the only one, or the one the
+ * home page is in. Most sites have one design; with several and none (or
+ * more than one) holding the home page, they are all shown alike and this
+ * is 0.
+ *
+ * @param array $designs pg_designer_list_designs() rows
+ * @return int style_id
+ */
+function pg_designer_home_featured_id($designs)
+{
+    $designs = array_values((array)$designs);
+    if (count($designs) === 1) return (int)$designs[0]['style_id'];
+    $holders = array();
+    foreach ($designs as $d) {
+        if ((int)$d['home_count'] > 0) $holders[] = (int)$d['style_id'];
+    }
+    return (count($holders) === 1) ? $holders[0] : 0;
+}
+
+/**
+ * Where a design stands on the site, under its name: on the site, a draft
+ * (the home page stays on it), partly on it, or no pages yet, with one line
+ * saying what that means. The counts ride along as data attributes for the
+ * page script (assets/js/designer_home.js): they decide which of "Put on the
+ * site" and "Take off the site" a menu offers, and the answer of
+ * api.php designer/design_publish brings this block anew.
+ *
+ * @param array $d a pg_designer_list_designs() row
  * @return string
  */
-function pg_designer_list_status_cell($d, $can_change)
+function pg_designer_list_status_cell($d)
 {
     $c = array('pages' => (int)$d['page_count'], 'drafts' => (int)$d['draft_count'], 'home' => (int)$d['home_count']);
     $s = pg_designer_design_state($c);
 
-    if ($s['state'] === 'empty') return '<span class="text-body-secondary">—</span>';
-
     if ($s['state'] === 'live') {
-        $html = '<span class="badge rounded-pill text-bg-success"><i class="bi bi-broadcast me-1" aria-hidden="true"></i>' . lang('Live on the site') . '</span>';
+        $badge = '<span class="badge rounded-pill text-bg-success"><i class="bi bi-broadcast me-1" aria-hidden="true"></i>' . h(lang('Live on the site')) . '</span>';
+        $note  = h(lang('All pages are on the site.'));
     } elseif ($s['state'] === 'draft') {
-        $html = '<span class="badge rounded-pill text-bg-secondary"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . lang('Draft') . '</span>'
-              . ($c['home'] > 0 ? '<div class="small text-body-secondary mt-1">' . lang('The home page stays on the site.') . '</div>' : '');
+        $badge = '<span class="badge rounded-pill text-bg-secondary"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . h(lang('Draft')) . '</span>';
+        $note  = ($c['home'] > 0) ? h(lang('The home page stays on the site.')) : h(lang('Visitors cannot open the pages; administrators can.'));
+    } elseif ($s['state'] === 'mixed') {
+        $badge = '<span class="badge rounded-pill text-bg-warning"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>' . h(lang('Partly on the site')) . '</span>';
+        $note  = h(lang(array('string' => '{var:1} of {var:2} pages are drafts', 'vars' => array($c['drafts'], $c['pages']))));
     } else {
-        $html = '<span class="badge rounded-pill text-bg-warning"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>' . lang('Partly on the site') . '</span>'
-              . '<div class="small text-body-secondary mt-1">' . lang(array('string' => '{var:1} of {var:2} pages are drafts', 'vars' => array($c['drafts'], $c['pages']))) . '</div>';
+        $badge = '<span class="badge rounded-pill text-bg-secondary">' . h(lang('Empty')) . '</span>';
+        $note  = h(lang('No pages yet. Open it to add one.'));
     }
 
-    if ($can_change && pg_page_draft_ready()) {
-        $name = h($d['style_name']);
-        $buttons = '';
-        if ($s['offable'] > 0) {
-            $buttons .= '<button type="button" class="btn btn-sm btn-outline-secondary sd-design-status" data-style-id="' . (int)$d['style_id'] . '" data-name="' . $name . '" data-draft="1" data-count="' . $s['offable'] . '"><i class="bi bi-cloud-slash me-1" aria-hidden="true"></i>' . lang('Take off the site') . '</button>';
-        }
-        if ($c['drafts'] > 0) {
-            $buttons .= '<button type="button" class="btn btn-sm btn-outline-success sd-design-status" data-style-id="' . (int)$d['style_id'] . '" data-name="' . $name . '" data-draft="0" data-count="' . $c['drafts'] . '"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . lang('Put on the site') . '</button>';
-        }
-        if ($buttons !== '') $html .= '<div class="d-flex flex-wrap gap-1 mt-2">' . $buttons . '</div>';
-    }
-
-    return $html;
+    return '<div class="sdh-status" data-state="' . h($s['state']) . '" data-pages="' . $c['pages'] . '" data-drafts="' . $c['drafts'] . '" data-home="' . $c['home'] . '" data-offable="' . (int)$s['offable'] . '">'
+         . $badge . '<span class="sdh-status-note">' . $note . '</span></div>';
 }
 
 /**
- * The thumbnail beside a design's name: its template's picture in the
- * design's own look and colours. A design started blank or imported has no
- * picture of its own; it gets an empty frame so the column stays even.
+ * A design's picture: its template's drawing in the design's own look and
+ * colours. A design started blank or imported has no picture of its own; it
+ * gets the outline of a page with what it is built on in the middle.
  */
 function pg_designer_list_thumb($d)
 {
     $tpl = !empty($d['template']) ? pg_design_template($d['template']) : null;
     if ($tpl && !empty($d['framework_bootstrap']) && function_exists('pg_design_thumb_svg')) {
-        return '<span class="sd-design-thumb" title="' . h(pg_designer_list_theme_text($d)) . '">'
-             . pg_design_thumb_svg($d['look'], $d['palette'], '', lang(array('string' => 'Preview of {var:1}', 'vars' => $d['style_name'])), isset($tpl['thumb']) ? (string)$tpl['thumb'] : '')
-             . '</span>';
+        return pg_design_thumb_svg($d['look'], $d['palette'], '', lang(array('string' => 'Preview of {var:1}', 'vars' => $d['style_name'])), isset($tpl['thumb']) ? (string)$tpl['thumb'] : '');
     }
-    return '<span class="sd-design-thumb-blank" aria-hidden="true"><i class="bi bi-file-earmark"></i></span>';
+    return '<svg class="sdh-blank" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">'
+         . '<rect x="18" y="14" width="44" height="8" rx="3" class="k"/>'
+         . '<rect x="196" y="16" width="22" height="4" rx="2" class="k"/><rect x="226" y="16" width="22" height="4" rx="2" class="k"/><rect x="256" y="16" width="22" height="4" rx="2" class="k"/><rect x="286" y="16" width="16" height="4" rx="2" class="k"/>'
+         . '<rect x="18" y="34" width="284" height="66" rx="6" class="g"/>'
+         . '<rect x="36" y="50" width="120" height="9" rx="3" class="k"/><rect x="36" y="64" width="88" height="9" rx="3" class="k"/><rect x="36" y="80" width="52" height="10" rx="3" class="k"/>'
+         . '<rect x="18" y="114" width="88" height="54" rx="6" class="g"/><rect x="116" y="114" width="88" height="54" rx="6" class="g"/><rect x="214" y="114" width="88" height="54" rx="6" class="g"/>'
+         . '<rect x="18" y="182" width="284" height="6" rx="3" class="g"/>'
+         . '</svg>'
+         . '<span class="sdh-blank-mark" aria-hidden="true"><i class="bi ' . (!empty($d['framework_bootstrap']) ? 'bi-bootstrap' : 'bi-code-slash') . '"></i></span>';
 }
 
 // "Modern Soft · Ocean" (+ the theme file, when one is chosen).
@@ -737,95 +823,503 @@ function pg_designer_list_theme_label($d)
     $sw = '';
     if (!empty($d['framework_bootstrap']) && !empty($d['palette']) && function_exists('pg_design_palette_colors')) {
         $c = pg_design_palette_colors($d['palette']);
-        $sw = '<span class="d-inline-flex rounded-circle overflow-hidden me-2 align-middle" style="width:14px;height:14px;transform:rotate(-45deg);box-shadow:0 0 0 1px var(--bs-border-color)" aria-hidden="true">'
-            . '<i style="flex:1;background:' . h($c['primary']) . '"></i><i style="flex:1;background:' . h($c['secondary']) . '"></i></span>';
+        $sw = '<span class="sdh-swatch" aria-hidden="true"><i style="background:' . h($c['primary']) . '"></i><i style="background:' . h($c['secondary']) . '"></i></span>';
     }
     return $sw . h($text);
 }
 
 /**
- * The Visual Page Editor home (view_system_styles.php): start a new design
- * blank (on Bootstrap 5, or custom without a framework), from an HTML
- * project or from a template, or open one of the designs that exist. The
- * list is the editor's own designs only — a legacy style opened here would
- * show a blank page and nothing to explain why.
+ * The drawing at the top of a start card: what the start does, in the
+ * panel's own colours (assets/css/designer_home.css). The template card
+ * shows three of the templates themselves, fanned out.
+ *
+ * @param string $kind      blank | import | paste | template
+ * @param array  $templates pg_design_templates(), for the template card
+ * @return string
+ */
+function pg_designer_home_drawing($kind, $templates = array())
+{
+    if ($kind === 'template') {
+        $look0 = function_exists('pg_design_default_look') ? pg_design_default_look() : '';
+        $minis = array();
+        foreach ((array)$templates as $tpl) {
+            if (count($minis) >= 3) break;
+            $s = pg_design_template_summary($tpl);
+            if ($s['framework'] !== 'bootstrap5' || !function_exists('pg_design_thumb_svg')) continue;
+            $minis[] = '<span class="sdh-tpl-mini">'
+                     . pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], '', '', $s['thumb'])
+                     . '</span>';
+        }
+        // The first template in the middle, in front.
+        if (count($minis) === 3) $minis = array($minis[1], $minis[0], $minis[2]);
+        if ($minis) return '<span class="sdh-ill sdh-ill-tpl" aria-hidden="true">' . implode('', $minis) . '</span>';
+        $kind = 'template-none';
+    }
+
+    // A browser window: the frame, the bar with its three dots, an address.
+    $window = function ($x, $w) {
+        return '<rect x="' . $x . '" y="10" width="' . $w . '" height="76" rx="8" class="p s"/>'
+             . '<path d="M' . $x . ' 24 h' . $w . '" class="s"/>'
+             . '<circle cx="' . ($x + 10) . '" cy="17" r="2.2" class="l"/><circle cx="' . ($x + 17) . '" cy="17" r="2.2" class="l"/><circle cx="' . ($x + 24) . '" cy="17" r="2.2" class="l"/>'
+             . '<rect x="' . ($x + 33) . '" y="13.5" width="' . min(60, $w - 45) . '" height="7" rx="3.5" class="g"/>';
+    };
+    // From the source on the left into the page on the right.
+    $arrow = '<path d="M78 48 h20" class="sa" stroke-dasharray="3 4"/><path d="M96 43 l6 5 l-6 5" class="sa"/>';
+
+    switch ($kind) {
+        case 'blank':
+            // An empty canvas, and a block on its way in from the palette.
+            $art = $window(66, 158)
+                 . '<rect x="78" y="32" width="134" height="44" rx="6" class="dash"/>'
+                 . '<circle cx="166" cy="54" r="9" class="as"/><path d="M166 50 v8 M162 54 h8" class="sa"/>'
+                 . '<rect x="16" y="14" width="38" height="68" rx="7" class="p s"/>'
+                 . '<rect x="23" y="22" width="24" height="10" rx="2.5" class="g"/><rect x="23" y="36" width="24" height="10" rx="2.5" class="g"/>'
+                 . '<rect x="23" y="50" width="24" height="10" rx="2.5" class="g"/><rect x="23" y="64" width="24" height="10" rx="2.5" class="g"/>'
+                 . '<g transform="rotate(-5 67 50)"><rect x="40" y="40" width="54" height="20" rx="4" class="a"/>'
+                 . '<rect x="47" y="46" width="24" height="3" rx="1.5" fill="#fff" fill-opacity=".9"/><rect x="47" y="52" width="36" height="3" rx="1.5" fill="#fff" fill-opacity=".6"/></g>'
+                 . '<path d="M88 54 v14 l3.6 -3.4 l2.6 5.8 l2.6 -1.2 l-2.6 -5.7 l4.9 -.3 z" class="cursor"/>';
+            break;
+        case 'import':
+            // A zipped project; its pages arrive as tabs.
+            $teeth = '';
+            for ($i = 0; $i < 6; $i++) {
+                $teeth .= '<rect x="' . (($i % 2) ? 43 : 37) . '" y="' . (16 + $i * 6) . '" width="6" height="3.5" rx="1" class="k2"/>';
+            }
+            $art = '<path d="M22 10 h31 l13 13 v59 a4 4 0 0 1 -4 4 h-40 a4 4 0 0 1 -4 -4 v-68 a4 4 0 0 1 4 -4 z" class="p s"/>'
+                 . '<path d="M53 10 v9 a4 4 0 0 0 4 4 h9" class="s" fill="none"/>'
+                 . $teeth
+                 . '<rect x="35" y="53" width="12" height="15" rx="3" class="a"/><circle cx="41" cy="63" r="2" class="p"/>'
+                 . $arrow
+                 . '<rect x="110" y="10" width="114" height="76" rx="8" class="p s"/>'
+                 . '<rect x="118" y="15" width="28" height="10" rx="3" class="as"/><rect x="121" y="22.5" width="22" height="2" rx="1" class="a"/>'
+                 . '<rect x="150" y="15" width="28" height="10" rx="3" class="g"/><rect x="182" y="15" width="28" height="10" rx="3" class="g"/>'
+                 . '<path d="M110 29 h114" class="s"/>'
+                 . '<rect x="120" y="37" width="52" height="5" rx="2" class="k"/>'
+                 . '<rect x="120" y="46" width="90" height="3" rx="1.5" class="l"/><rect x="120" y="52" width="74" height="3" rx="1.5" class="l"/>'
+                 . '<rect x="120" y="61" width="44" height="17" rx="3" class="g"/><rect x="168" y="61" width="44" height="17" rx="3" class="g"/>';
+            break;
+        case 'paste':
+            // Markup on the clipboard; it lands on the page as a section.
+            $art = '<rect x="18" y="14" width="54" height="72" rx="7" class="p s"/>'
+                 . '<rect x="32" y="9" width="26" height="10" rx="4" class="k2"/>'
+                 . '<path d="M31 31 l-5 5 l5 5" class="sa"/><path d="M59 31 l5 5 l-5 5" class="sa"/><path d="M48 30 l-6 12" class="sa"/>'
+                 . '<rect x="27" y="52" width="36" height="3.5" rx="1.75" class="l"/><rect x="33" y="59" width="30" height="3.5" rx="1.75" class="l"/>'
+                 . '<rect x="33" y="66" width="22" height="3.5" rx="1.75" class="l"/><rect x="27" y="73" width="30" height="3.5" rx="1.75" class="l"/>'
+                 . $arrow
+                 . $window(110, 114)
+                 . '<rect x="120" y="30" width="94" height="6" rx="2" class="g"/>'
+                 . '<rect x="120" y="41" width="94" height="27" rx="4" class="as"/><rect x="120" y="41" width="94" height="27" rx="4" class="dash"/>'
+                 . '<rect x="128" y="48" width="42" height="5" rx="2" class="a"/><rect x="128" y="57" width="70" height="3.5" rx="1.75" class="l"/>'
+                 . '<rect x="120" y="73" width="94" height="6" rx="2" class="g"/>';
+            break;
+        default:
+            // No template to show: three empty frames.
+            $art = '<rect x="24" y="20" width="60" height="56" rx="6" class="p s"/><rect x="90" y="14" width="60" height="62" rx="6" class="p s"/><rect x="156" y="20" width="60" height="56" rx="6" class="p s"/>'
+                 . '<rect x="98" y="24" width="44" height="18" rx="3" class="g"/><rect x="98" y="48" width="30" height="4" rx="2" class="l"/><rect x="98" y="56" width="38" height="4" rx="2" class="l"/>';
+    }
+
+    return '<span class="sdh-ill" aria-hidden="true"><svg viewBox="0 0 240 96" xmlns="http://www.w3.org/2000/svg" focusable="false">' . $art . '</svg></span>';
+}
+
+/**
+ * One of the four ways to start a design. A start opens a choice first (the
+ * framework, a template): nothing loads until the operator picks.
+ *
+ * $opts: modal (the dialog it opens), start (import | paste, read by the
+ * framework dialog), disabled (no templates to offer), id.
+ */
+function pg_designer_home_start_card($drawing, $icon, $title, $text, $opts = array())
+{
+    $disabled = !empty($opts['disabled']);
+    $modal    = isset($opts['modal']) ? (string)$opts['modal'] : '';
+    $start    = isset($opts['start']) ? (string)$opts['start'] : '';
+    $body = $drawing
+          . '<span class="sdh-start-body">'
+          .     '<span class="sdh-start-title"><i class="bi ' . h($icon) . '" aria-hidden="true"></i>' . h($title)
+          .         ($disabled ? '<span class="badge text-bg-secondary">' . h(lang('Soon')) . '</span>' : '')
+          .     '</span>'
+          .     '<span class="sdh-start-text">' . h($text) . '</span>'
+          . '</span>';
+    $card = $disabled
+        ? '<div class="sdh-start" aria-disabled="true">' . $body . '</div>'
+        : '<a href="#" role="button" class="sdh-start" data-bs-toggle="modal" data-bs-target="' . h($modal) . '"'
+          . ($start !== '' ? ' data-sd-start="' . h($start) . '"' : '')
+          . (!empty($opts['id']) ? ' id="' . h($opts['id']) . '"' : '') . '>' . $body . '</a>';
+    return '<div class="col-6 col-xl-3">' . $card . '</div>';
+}
+
+/**
+ * A design's pages as chips that open the page in the editor. The first
+ * $limit are shown; the rest fold behind a "+n more" chip. The house is the
+ * home page, a dashed outline a draft, a padlock a page this operator may
+ * see but not open (assets/js/designer_home.js repaints a chip whose state
+ * changes, the same way).
+ */
+function pg_designer_home_page_chips($d, $pages, $limit)
+{
+    $id  = (int)$d['style_id'];
+    $out = '';
+    foreach (array_values($pages) as $i => $p) {
+        $view  = PATH . encode_url_path($p['name']);
+        // Only the home page and a locked page carry an icon; a draft is
+        // told by its dashed outline (and in words to a screen reader).
+        $state = $p['locked'] ? array('bi-lock', lang('Locked'))
+               : ($p['home'] ? array('bi-house-door', lang('Home page'))
+               : ($p['draft'] ? array('', lang('Draft')) : array('', '')));
+        $class = 'sdh-page' . ($p['home'] ? ' is-home' : '') . ($p['draft'] ? ' is-draft' : '') . ($p['locked'] ? ' is-locked' : '') . ($i >= $limit ? ' is-extra' : '');
+        $attrs = ' class="' . $class . '" data-page-id="' . (int)$p['id'] . '" data-name="' . h($p['name']) . '" data-view-url="' . h($view) . '"'
+               . ' data-home="' . ($p['home'] ? '1' : '0') . '" data-draft="' . ($p['draft'] ? '1' : '0') . '" data-locked="' . ($p['locked'] ? '1' : '0') . '"';
+        $inner = '<i class="bi ' . $state[0] . ($state[0] === '' ? ' d-none' : '') . '" aria-hidden="true"></i><span class="sdh-page-name">' . h($p['name']) . '</span>'
+               . '<span class="visually-hidden sdh-page-state">' . ($state[1] !== '' ? ' (' . h($state[1]) . ')' : '') . '</span>';
+        $out .= $p['locked']
+            ? '<span' . $attrs . ' tabindex="0">' . $inner . '</span>'
+            : '<a href="' . h('edit_system_style.php?id=' . $id . '&page=' . (int)$p['id']) . '"' . $attrs . '>' . $inner . '</a>';
+    }
+    $more = count($pages) - $limit;
+    if ($more > 0) {
+        $more_text = lang(array('string' => '+{var:1} more', 'vars' => $more));
+        $out .= '<button type="button" class="sdh-page sdh-pages-toggle" aria-expanded="false" data-more="' . h($more_text) . '" data-less="' . h(lang('Show fewer')) . '">' . h($more_text) . '</button>';
+    }
+    return '<div class="sdh-pages' . ($more > 0 ? ' is-folded' : '') . '">' . $out . '</div>';
+}
+
+/**
+ * One design on the home screen. The featured one (the site's design, see
+ * pg_designer_home_featured_id()) is drawn large, with what it is built on,
+ * its theme, its pages and its main buttons; the others are tiles. Both
+ * open the same menu (right mouse button, the ⋯ button, a long press), which
+ * reads the data attributes written here.
+ *
+ * $ctx: featured, can_change (a designer: the design's own actions),
+ * can_draft (drafts exist on this site), folders (folders that use it as
+ * their default design).
+ */
+function pg_designer_home_design_card($d, $pages, $ctx)
+{
+    $id       = (int)$d['style_id'];
+    $featured = !empty($ctx['featured']);
+    $count    = (int)$d['page_count'];
+    $home     = ((int)$d['home_count'] > 0);
+
+    // The page the editor and "View on site" open: the home page when the
+    // design has it, otherwise the first page this operator may open.
+    $open = null;
+    foreach ($pages as $p) {
+        if (!$p['locked']) { $open = $p; break; }
+    }
+    $edit_url = 'edit_system_style.php?id=' . $id . ($open ? '&page=' . (int)$open['id'] : '');
+    $view_url = $open ? PATH . encode_url_path($open['name']) : '';
+    $add_url  = 'edit_system_style.php?id=' . $id . '&new_page=1';
+    // A design with no page to open has no address to show.
+    $address  = $open ? HOSTNAME . PATH . ($open['home'] ? '' : $open['name']) : '';
+
+    $name = h($d['style_name']);
+    $attrs = ' data-style-id="' . $id . '" data-name="' . $name . '" data-pages="' . $count . '" data-home="' . ($home ? '1' : '0') . '"'
+           . ' data-folders="' . (int)$ctx['folders'] . '" data-edit-url="' . h($edit_url) . '" data-add-url="' . h($add_url) . '" data-view-url="' . h($view_url) . '"';
+    $more = '<button type="button" class="btn btn-sm btn-ghost sdh-more no-popover" data-bs-toggle="tooltip" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '" aria-haspopup="menu" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i></button>';
+    // The picture opens the editor too; the name link is the one announced.
+    $picture = '<a class="sdh-browser" href="' . h($edit_url) . '" tabindex="-1" aria-hidden="true">'
+             .     '<span class="sdh-browser-bar"><i></i><i></i><i></i><span class="sdh-browser-url">' . h($address) . '</span></span>'
+             .     '<span class="sdh-browser-view">' . pg_designer_list_thumb($d) . '</span>'
+             . '</a>';
+    $title = '<a href="' . h($edit_url) . '"><span class="sdh-name-text">' . $name . '</span></a>';
+    // Markup of its own (a <time> element), so it is not escaped again.
+    $when  = get_relative_time(array('timestamp' => (int)$d['last_modified_timestamp']));
+
+    if (!$featured) {
+        return '<article class="sdh-card sdh-tile" tabindex="0" aria-label="' . $name . '"' . $attrs . '>'
+             .     $picture
+             .     '<div class="sdh-tile-body">'
+             .         '<div class="sdh-title-row"><h3 class="sdh-name">' . $title . '</h3>' . $more . '</div>'
+             .         pg_designer_list_status_cell($d)
+             .         '<div class="sdh-tile-meta d-flex justify-content-between gap-2"><span>' . h(lang(array('string' => '{var:1} page{suffix:1}', 'vars' => $count, 'suffix' => ($count === 1 ? '' : 's')))) . '</span><span class="text-truncate">' . $when . '</span></div>'
+             .     '</div>'
+             . '</article>';
+    }
+
+    $who = ($d['last_modified_username'] !== '' && $d['last_modified_username'] !== null) ? (string)$d['last_modified_username'] : '[' . lang('Unknown') . ']';
+    $tpl = !empty($d['template']) ? pg_design_template($d['template']) : null;
+    $facts = array(array(lang('Framework'), h($d['framework_label'])));
+    if ($tpl) $facts[] = array(lang('Started from'), h(isset($tpl['name']) ? (string)$tpl['name'] : (string)$d['template']));
+    $theme = pg_designer_list_theme_label($d);
+    $facts[] = array(lang('Theme'), ($theme !== '') ? $theme : '<span class="text-body-secondary">—</span>');
+    $facts[] = array(lang('Last modified'), lang(array('string' => '{var:1}, by {var:2}', 'vars' => array($when, h($who)))));
+    $facts_html = '';
+    foreach ($facts as $f) {
+        $facts_html .= '<div><dt>' . h($f[0]) . '</dt><dd>' . $f[1] . '</dd></div>';
+    }
+
+    // Four buttons at most; everything else is in the menu. "Put on the
+    // site" shows while there are drafts (designer_home.js hides it once
+    // there are none); taking a live design off the site is left to the
+    // menu, where it is not one stray click away.
+    $buttons = '<a class="btn btn-sm btn-primary rounded-pill px-3" href="' . h($edit_url) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
+    if (!empty($ctx['can_change'])) {
+        $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
+    }
+    if ($view_url !== '') {
+        $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($view_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View on site')) . '</a>';
+    }
+    if (!empty($ctx['can_draft'])) {
+        $buttons .= '<button type="button" class="btn btn-sm btn-ghost' . ((int)$d['draft_count'] > 0 ? '' : ' d-none') . '" data-act="on"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . h(lang('Put on the site')) . '</button>';
+    }
+
+    $pages_html = $pages
+        ? '<h4 class="sdh-pages-title">' . h(lang('Pages')) . '<span class="sdh-count">' . pg_format_number(count($pages), 0) . '</span></h4>' . pg_designer_home_page_chips($d, $pages, 12)
+        : '';
+
+    return '<article class="sdh-card sdh-site" tabindex="0" aria-label="' . $name . '"' . $attrs . '>'
+         .     '<div class="row g-4">'
+         .         '<div class="col-12 col-lg-5 col-xxl-4">' . $picture . '</div>'
+         .         '<div class="col-12 col-lg-7 col-xxl-8">'
+         .             ($home ? '<div class="sdh-flag"><i class="bi bi-house-door" aria-hidden="true"></i>' . h(lang('The home page is in this design')) . '</div>' : '')
+         .             '<div class="sdh-title-row"><h3 class="sdh-name">' . $title . '</h3>' . $more . '</div>'
+         .             pg_designer_list_status_cell($d)
+         .             '<dl class="sdh-facts">' . $facts_html . '</dl>'
+         .             $pages_html
+         .             '<div class="sdh-actions">' . $buttons . '</div>'
+         .         '</div>'
+         .     '</div>'
+         . '</article>';
+}
+
+/**
+ * The texts assets/js/designer_home.js shows, translated here: the script
+ * holds none of its own.
+ */
+function pg_designer_home_texts()
+{
+    return array(
+        'edit'          => lang('Edit'),
+        'newTab'        => lang('Open in new tab'),
+        'addPage'       => lang('Add Page'),
+        'view'          => lang('View on site'),
+        'on'            => lang('Put on the site'),
+        'off'           => lang('Take off the site'),
+        'rename'        => lang('Rename'),
+        'template'      => lang('Turn this design into a template'),
+        'delete'        => lang('Delete'),
+        'editPage'      => lang('Edit Page'),
+        'copy'          => lang('Copy address'),
+        'copied'        => lang('Copied.'),
+        'copyFailed'    => lang('The address could not be copied.'),
+        'homePage'      => lang('Home page'),
+        'draft'         => lang('Draft'),
+        'locked'        => lang('Locked'),
+        'fail'          => lang('Sorry, we could not accept your request.'),
+        'network'       => lang('Network error.'),
+        'no'            => lang('No'),
+        'deleteTitle'   => lang('Delete Design'),
+        'deleteYes'     => lang('Yes, delete'),
+        'delBinPages'   => lang('The design "{name}" and its {n} page(s) will be moved to the Recycle Bin.'),
+        'delBin'        => lang('The design "{name}" will be moved to the Recycle Bin.'),
+        'delPlain'      => lang('The design "{name}" will be deleted.'),
+        'delPlainPages' => lang('Its {n} page(s) will be moved to the Recycle Bin.'),
+        'delPlainNone'  => lang('It has no pages.'),
+        'delHome'       => lang('The home page is one of them: until another page is marked as home, the site has none.'),
+        'delFolders'    => lang('{var:1} folder(s) use it as their default design; that setting will be cleared.'),
+        'offAsk'        => lang('{var} pages will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open them; administrators will.'),
+        'homeStays'     => lang('The home page stays on the site.'),
+        'onAsk'         => lang('The {var} draft pages of the design will be put on the site: visitors will be able to open them.'),
+        'offYes'        => lang('Yes, make it a draft'),
+        'usedOn'        => lang('Used on: '),
+        'compAsk'       => lang('{var} shared components and system widgets will be deleted for good:'),
+        'compUsed'      => lang('{var} of them are still in use: their places on those pages are left empty.'),
+        'undo'          => lang('This cannot be undone.'),
+        'compTitle'     => lang('Delete shared components and system widgets'),
+        'compYes'       => lang('Delete ({var})'),
+        'compDone'      => lang('{var} deleted.'),
+        'compKept'      => lang('{var} kept: a saved page uses them.'),
+    );
+}
+
+/**
+ * "Turn this design into a template" from the designs list: the name and the
+ * description the template is listed with (api.php
+ * designer/template_from_design, the editor's Settings > Design does the
+ * same). The panel's own dialog, light or dark with the panel.
+ */
+function pg_designer_home_template_dialog()
+{
+    return '
+        <div class="modal fade" id="sdhTemplateFromModal" tabindex="-1" aria-labelledby="sdhTemplateFromModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="sdhTemplateFromModalLabel"><i class="bi bi-grid-1x2 me-2" aria-hidden="true"></i>' . h(lang('Turn this design into a template')) . '</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-body-secondary">' . h(lang('The template is made from the saved pages and is listed under Choose a Template.')) . '</p>
+                        <div class="mb-3">
+                            <label class="form-label" for="sdh-tpl-name">' . h(lang('Name')) . '</label>
+                            <input type="text" class="form-control" id="sdh-tpl-name" maxlength="255" autocomplete="off">
+                        </div>
+                        <div>
+                            <label class="form-label" for="sdh-tpl-description">' . h(lang('Description')) . '</label>
+                            <textarea class="form-control" id="sdh-tpl-description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . h(lang('Cancel')) . '</button>
+                        <button type="button" class="btn btn-primary" id="sdh-tpl-run"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i>' . h(lang('Create template')) . '</button>
+                    </div>
+                </div>
+            </div>
+        </div>';
+}
+
+/**
+ * The Visual Page Editor home (view_system_styles.php): the ways to start a
+ * new design (blank on Bootstrap 5 or custom, from an HTML project, from
+ * pasted markup, from a template), each with a drawing of what it does, and
+ * the designs that exist. Most sites have one design, so it is not a table:
+ * the site's design is shown large, with its pages one click away, and any
+ * other design as a tile. A design or a page answers the right mouse button
+ * with a menu (assets/js/designer_home.js). The list is the editor's own
+ * designs only: a legacy style opened here would show a blank page and
+ * nothing to explain why.
  */
 function pg_designer_start_screen($ctx)
 {
     $liveform   = $ctx['liveform'];
+    $user       = $ctx['user'];
     $from_pages = !empty($ctx['from_pages']);
-    $qs         = $from_pages ? '?from=pages' : '';
-    $qs_import  = $from_pages ? '?start=import&from=pages' : '?start=import';
-    $qs_paste   = $from_pages ? '?start=paste&from=pages'  : '?start=paste';
     $designs    = pg_designer_list_designs();
 
     // Starting a design is a design job (add_system_style.php refuses anyone
     // below designer). Showing the cards to a content-level operator would be
-    // offering three buttons that all end in an access error.
+    // offering four doors that all end in an access error.
     require_once(dirname(__FILE__) . '/designer_access.php');
-    $can_create = pg_designer_is_full($ctx['user']);
+    $can_create = pg_designer_is_full($user);
 
     // The templates this installation ships (includes/design_templates/).
     $templates = $can_create ? pg_design_templates() : array();
 
-    // Rows of the standard admin DataTable (same table as view_styles.php,
-    // without the bulk-select column). A design is deleted from its row or
-    // from the editor's toolbar, one at a time: its pages go to the recycle
-    // bin and the folders using it are cleared (pg_designer_delete_design()).
-    // Once the bin holds styles the design goes there with them, and the
-    // confirmation says so.
+    // A design is deleted from its menu or from the editor's toolbar, one at
+    // a time: its pages go to the recycle bin and the folders using it are
+    // cleared (pg_designer_delete_design()). Once the bin holds styles the
+    // design goes there with them, and the confirmation says so.
     require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
     $style_bin = pg_recycle_style_ready();
-    $output_rows = '';
-    foreach ($designs as $d) {
-        $count = (int)$d['page_count'];
-        $user_label = ($d['last_modified_username'] !== '' && $d['last_modified_username'] !== null) ? $d['last_modified_username'] : '[' . lang('Unknown') . ']';
-        $output_rows .= '
-        <tr>
-            <td class="align-middle text-start" nowrap>
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_system_style.php?id=' . (int)$d['style_id'] . '\'"><i class="bi bi-pencil"></i></button>
-                ' . ($can_create ? '<button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2 sd-design-delete" title="' . lang('Delete') . '" data-style-id="' . (int)$d['style_id'] . '" data-name="' . h($d['style_name']) . '" data-pages="' . $count . '"><i class="bi bi-trash"></i></button>' : '') . '
-            </td>
-            <td class="align-middle chart_label" nowrap>' . h($d['style_name']) . ($count == 0 ? ' <span class="badge text-bg-secondary ms-1" title="' . lang('No pages — open it to add one, or delete it from the toolbar') . '">' . lang('Empty') . '</span>' : '') . '</td>
-            <td class="align-middle sd-design-thumb-cell">' . pg_designer_list_thumb($d) . '</td>
-            <td class="align-middle" nowrap>' . h($d['framework_label']) . '</td>
-            <td class="align-middle text-center" data-order="' . $count . '">' . pg_format_number($count, 0) . '</td>
-            <td class="align-middle sd-design-status-cell" data-order="' . (int)$d['draft_count'] . '">' . pg_designer_list_status_cell($d, $can_create) . '</td>
-            <td class="align-middle">' . pg_designer_list_theme_label($d) . '</td>
-            <td class="align-middle" nowrap data-order="' . (int)$d['last_modified_timestamp'] . '">' . get_relative_time(array('timestamp' => (int)$d['last_modified_timestamp'])) . '  ' . h($user_label) . '</td>
-        </tr>';
-    }
+    $can_draft = $can_create && pg_page_draft_ready();
+    $can_tpl   = $can_create && function_exists('pg_design_template_custom_ready') && pg_design_template_custom_ready();
 
-    $card = function ($href, $icon, $title, $text, $opts = array()) {
-        $primary  = !empty($opts['primary']);
-        $disabled = !empty($opts['disabled']);
-        $modal    = !empty($opts['modal']) ? (string)$opts['modal'] : '';
-        $start    = !empty($opts['start']) ? (string)$opts['start'] : '';
-        $badge    = $disabled ? '<span class="badge text-bg-secondary ms-auto">' . lang('Soon') . '</span>' : '';
-        if ($disabled) {
-            $tag_open = '<div class="card h-100 sd-start-card sd-start-card-disabled" aria-disabled="true">';
-        } elseif ($modal !== '') {
-            // Opens a choice first (framework, template); nothing loads yet.
-            $tag_open = '<a href="#" role="button" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '" data-bs-toggle="modal" data-bs-target="' . h($modal) . '"' . ($start !== '' ? ' data-sd-start="' . h($start) . '"' : '') . '>';
+    $ids     = array_map(function ($d) { return (int)$d['style_id']; }, $designs);
+    $pages   = pg_designer_list_pages($ids, $user);
+    $folders = $can_create ? pg_designer_list_folder_counts($ids) : array();
+
+    $featured_id = pg_designer_home_featured_id($designs);
+    $featured    = '';
+    $tiles       = '';
+    foreach ($designs as $d) {
+        $sid  = (int)$d['style_id'];
+        $card = pg_designer_home_design_card($d, isset($pages[$sid]) ? $pages[$sid] : array(), array(
+            'featured'   => ($sid === $featured_id),
+            'can_change' => $can_create,
+            'can_draft'  => $can_draft,
+            'folders'    => isset($folders[$sid]) ? $folders[$sid] : 0,
+        ));
+        if ($sid === $featured_id) {
+            $featured = $card;
         } else {
-            $tag_open = '<a href="' . h($href) . '" class="card h-100 text-decoration-none sd-start-card' . ($primary ? ' border-primary' : '') . '">';
+            $tiles .= '<div class="col sdh-tile-col" data-name="' . h($d['style_name']) . '">' . $card . '</div>';
         }
-        $tag_close = $disabled ? '</div>' : '</a>';
-        return
-            '<div class="col-12 col-sm-6 col-xl-3">
-                ' . $tag_open . '
-                    <div class="card-body d-flex flex-column align-items-start gap-2">
-                        <div class="d-flex w-100 align-items-start"><span class="bi ' . h($icon) . ' fs-2 ' . ($primary ? 'text-primary' : ($disabled ? 'text-muted' : 'text-body-secondary')) . '"></span>' . $badge . '</div>
-                        <span class="h5 mb-0 ' . ($disabled ? 'text-muted' : 'text-body') . '">' . h($title) . '</span>
-                        <span class="small text-muted">' . h($text) . '</span>
-                    </div>
-                ' . $tag_close . '
-            </div>';
-    };
+    }
 
     // Button and panel come from one query: the button only shows when the
     // panel has rows to list.
-    $comp = pg_designer_components_card($ctx['user']);
+    $comp = pg_designer_components_card($user);
+
+    if ($can_create) {
+        $start =
+            '<section class="sdh-section" aria-labelledby="sdh-start-title">
+                <div class="sdh-head">
+                    <div class="sdh-head-text">
+                        <h2 id="sdh-start-title">' . h(lang('Start a new design')) . '</h2>
+                        <p>' . h($designs
+                            ? lang('A new design starts with pages of its own; the designs you have stay as they are.')
+                            : lang('From a blank page, from your own HTML or from a ready-made template.')) . '</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    ' . pg_designer_home_start_card(pg_designer_home_drawing('blank'), 'bi-file-earmark-plus', lang('Create New'),
+                            lang('An empty page on the canvas, on Bootstrap 5 or as a custom design. Add sections from the palette and build the design up.'),
+                            array('modal' => '#sdNewDesignModal')) . '
+                    ' . pg_designer_home_start_card(pg_designer_home_drawing('import'), 'bi-file-earmark-zip', lang('Import HTML / ZIP'),
+                            lang('Bring in a finished HTML page or a whole project archive. Pages become tabs, files go to the file manager.'),
+                            array('modal' => '#sdNewDesignModal', 'start' => 'import')) . '
+                    ' . pg_designer_home_start_card(pg_designer_home_drawing('paste'), 'bi-clipboard-plus', lang('Paste HTML content'),
+                            lang('Paste the markup straight in — from a code editor, from a page you have open. The design starts from what you paste.'),
+                            array('modal' => '#sdNewDesignModal', 'start' => 'paste')) . '
+                    ' . pg_designer_home_start_card(pg_designer_home_drawing('template', $templates), 'bi-grid-1x2', lang('Choose a Template'),
+                            lang('Start from a ready-made design and change what you like.'),
+                            $templates ? array('modal' => '#sdTemplateModal', 'id' => 'sdh-start-template') : array('disabled' => true)) . '
+                </div>
+            </section>';
+    } else {
+        $start =
+            '<div class="alert alert-secondary py-2 small mb-4">
+                <i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('Open a design to edit its text and the areas marked for you. New designs are created by designers.')) . '
+            </div>';
+    }
+
+    if ($designs) {
+        // A name to look for once there are more designs than fit a glance.
+        $search = (count($designs) > 6)
+            ? '<div class="input-group input-group-sm">
+                    <span class="input-group-text rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
+                    <input type="search" class="form-control rounded-end-pill" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
+               </div>'
+            : '';
+        $list =
+            '<section class="sdh-section" aria-labelledby="sdh-designs-title">
+                <div class="sdh-head">
+                    <div class="sdh-head-text">
+                        <h2 id="sdh-designs-title">' . h(lang('Designs')) . (count($designs) > 1 ? '<span class="sdh-count">' . count($designs) . '</span>' : '') . '</h2>
+                        <p><span class="sdh-hint-mouse">' . h(lang('Right-click a design or a page for more.')) . '</span><span class="sdh-hint-touch">' . h(lang('Press and hold a design or a page for more.')) . '</span></p>
+                    </div>
+                    <div class="sdh-head-tools">' . $search . $comp['button'] . '</div>
+                </div>
+                ' . $featured . '
+                ' . ($tiles !== ''
+                    ? ($featured !== '' ? '<h3 class="sdh-subhead">' . h(lang('Other designs')) . '</h3>' : '')
+                      . '<div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 row-cols-xxl-4 g-3" id="sdh-tiles">' . $tiles . '</div>'
+                      . '<p class="small text-body-secondary mt-3 mb-0 d-none" id="sdh-filter-empty">' . h(lang('No design matches this name.')) . '</p>'
+                    : '') . '
+            </section>';
+    } else {
+        $list =
+            '<section class="sdh-section" aria-labelledby="sdh-empty-title">
+                <div class="sdh-empty">
+                    <div class="d-flex flex-wrap align-items-start gap-3">
+                        <div class="flex-grow-1">
+                            <h3 id="sdh-empty-title">' . h(lang('No designs yet')) . '</h3>
+                            <p class="mb-0 small text-body-secondary">' . h(lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.')) . '</p>
+                        </div>
+                        ' . $comp['button'] . '
+                    </div>
+                    ' . ($can_create
+                        ? '<ol class="sdh-steps">
+                                <li>' . h(lang('Start it blank, from your own HTML or from a template.')) . '</li>
+                                <li>' . h(lang('Build the pages on the canvas: drag sections in and type over the text.')) . '</li>
+                                <li>' . h(lang('New pages start as drafts. Put them on the site when they are ready.')) . '</li>
+                           </ol>'
+                        : '<p class="small mt-3 mb-0">' . h(lang('There is no design to open yet.')) . '</p>') . '
+                </div>
+            </section>';
+    }
+
+    $config = array(
+        'canChange'   => $can_create,
+        'canDraft'    => $can_draft,
+        'canTemplate' => $can_tpl,
+        'styleBin'    => $style_bin,
+        // A template made from a design is listed once the page is drawn
+        // again: the gallery is printed with the page.
+        'templateUrl' => 'view_system_styles.php?start=template' . ($from_pages ? '&from=pages' : ''),
+        't'           => pg_designer_home_texts(),
+    );
 
     print
         pg_page_shell(array(
@@ -834,227 +1328,20 @@ function pg_designer_start_screen($ctx)
             'icon'                => 'design',
             'heading'             => lang('Visual Page Editor'),
             'heading_description' => lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.'),
+            'head'                => '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/css/designer_home.css?v=' . pg_designer_asset_stamp('assets/css/designer_home.css') . '">',
         )) . '
-        <style>
-            .sd-start-card-disabled { opacity: .55; cursor: not-allowed; }
-            .pg-design-thumb { display: block; width: 100%; height: auto; }
-            .sd-design-thumb-cell { width: 96px; }
-            .sd-design-thumb { display: block; width: 88px; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--bs-border-color); background: var(--bs-body-bg); }
-            .sd-design-thumb-blank { display: flex; align-items: center; justify-content: center; width: 88px; aspect-ratio: 8 / 5; border-radius: 6px; border: 1px dashed var(--bs-border-color); color: var(--bs-secondary-color); }
-            #sdTemplateModal .sd-tpl-dialog { --bs-modal-width: min(96vw, 1600px); }
-            .sd-tpl-thumb { position: relative; border-bottom: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
-            .sd-tpl-ver { font-size: .6875rem; line-height: 1.4; white-space: nowrap; }
-            .sd-tpl-thumb .sd-tpl-ver { position: absolute; right: .5rem; bottom: .5rem; padding: .1rem .45rem; border-radius: 999px; background: rgba(var(--bs-body-bg-rgb), .82); color: var(--bs-secondary-color); box-shadow: 0 0 0 1px var(--bs-border-color-translucent); }
-            .sd-tpl-title { min-width: 0; }
-            .sd-tpl-look .btn { --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem; --bs-btn-font-size: .8125rem; }
-            .sd-tpl-pal { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--bs-border-color); cursor: pointer; }
-            .sd-tpl-pal i { flex: 1; }
-            .btn-check:checked + .sd-tpl-pal { border-color: var(--bs-body-bg); box-shadow: 0 0 0 2px var(--bs-emphasis-color); }
-            .btn-check:focus-visible + .sd-tpl-pal { box-shadow: 0 0 0 3px var(--bs-focus-ring-color, rgba(13,110,253,.25)), 0 0 0 1px var(--bs-border-color); }
-            /* pgConfirm escapes its message; the list of rows to delete is one line each. */
-            .modal[aria-labelledby="pg-confirm-title"] .modal-body { white-space: pre-line; }
-        </style>
-        <main id="content" class="container-fluid">
+        <main id="content" class="container-fluid sdh">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
-            ' . ($can_create ? '
-            <div class="row g-3 mb-4">
-                ' . $card('#', 'bi-file-earmark-plus', lang('Create New'), lang('An empty page on the canvas, on Bootstrap 5 or as a custom design. Add sections from the palette and build the design up.'), array('primary' => true, 'modal' => '#sdNewDesignModal')) . '
-                ' . $card('#', 'bi-file-earmark-zip', lang('Import HTML / ZIP'), lang('Bring in a finished HTML page or a whole project archive. Pages become tabs, files go to the file manager.'), array('modal' => '#sdNewDesignModal', 'start' => 'import')) . '
-                ' . $card('#', 'bi-clipboard-plus', lang('Paste HTML content'), lang('Paste the markup straight in — from a code editor, from a page you have open. The design starts from what you paste.'), array('modal' => '#sdNewDesignModal', 'start' => 'paste')) . '
-                ' . $card('#', 'bi-grid-1x2', lang('Choose a Template'), lang('Start from a ready-made design and change what you like.'), $templates ? array('modal' => '#sdTemplateModal') : array('disabled' => true)) . '
-            </div>' : '
-            <div class="alert alert-secondary py-2 small mb-4">
-                <span class="bi bi-info-circle me-1"></span>' . lang('Open a design to edit its text and the areas marked for you. New designs are created by designers.') . '
-            </div>') . '
-            ' . ($comp['button'] !== '' ? '<div class="d-flex justify-content-end mt-4 mb-2">' . $comp['button'] . '</div>' : '') . '
-            <div class="card ' . ($comp['button'] !== '' ? 'mb-4' : 'my-4') . '">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table" style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang('Action') . '</th>
-                                <th>' . lang('Name') . '</th>
-                                <th class="no-sort">' . lang('Preview') . '</th>
-                                <th>' . lang('Framework') . '</th>
-                                <th class="text-center">' . lang('Pages') . '</th>
-                                <th>' . lang('Status') . '</th>
-                                <th>' . lang('Theme') . '</th>
-                                <th nowrap>' . lang('Last Modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-            </div>
+            ' . $start . '
+            ' . $list . '
         </main>
         ' . $comp['panel'] . '
         ' . ($can_create ? pg_designer_new_design_modal($from_pages) . pg_designer_template_modal($templates, $from_pages) : '') . '
-        <script>
-            // Delete a design from its row: its pages go to the recycle bin,
-            // and the design with them once the bin holds styles. api.php
-            // reads a JSON body.
-            document.addEventListener("click", function (e) {
-                var btn = e.target.closest(".sd-design-delete");
-                if (!btn) return;
-                e.preventDefault();
-                var id = parseInt(btn.dataset.styleId, 10), name = btn.dataset.name || "", pages = parseInt(btn.dataset.pages, 10) || 0;
-                var msg = ' . ($style_bin
-                    ? '(pages > 0 ? ' . json_encode(lang('The design "{name}" and its {n} page(s) will be moved to the Recycle Bin.')) . '.replace("{n}", pages) : ' . json_encode(lang('The design "{name}" will be moved to the Recycle Bin.')) . ').replace("{name}", name);'
-                    : json_encode(lang('The design "{name}" will be deleted.')) . '.replace("{name}", name) + " " +
-                          (pages > 0 ? ' . json_encode(lang('Its {n} page(s) will be moved to the Recycle Bin.')) . '.replace("{n}", pages) : ' . json_encode(lang('It has no pages.')) . ');') . '
-                var run = function () {
-                    btn.disabled = true;
-                    fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-                           body: JSON.stringify({ action: "designer", sub_action: "design_delete", style_id: id, token: (typeof software_token !== "undefined" ? software_token : "") }) })
-                    .then(function (r) { return r.json(); })
-                    .then(function (res) {
-                        if (!res || res.status !== "success") { btn.disabled = false; alert((res && res.message) || ' . json_encode(lang('Sorry, we could not accept your request.')) . '); return; }
-                        var tr = btn.closest("tr");
-                        var table = tr && tr.closest("table");
-                        if (table && window.jQuery && jQuery.fn.dataTable && jQuery.fn.dataTable.isDataTable(table)) {
-                            jQuery(table).DataTable().row(tr).remove().draw(false);
-                        } else if (tr) { tr.remove(); }
-                        if (typeof pgToast === "function") pgToast({ message: res.message, variant: "success" });
-                    })
-                    .catch(function () { btn.disabled = false; alert(' . json_encode(lang('Network error.')) . '); });
-                };
-                if (typeof window.pgConfirm === "function") {
-                    window.pgConfirm({ title: ' . json_encode(lang('Delete Design')) . ', message: msg, confirmText: ' . json_encode(lang('Yes, delete')) . ', cancelText: ' . json_encode(lang('No')) . ', variant: "danger" })
-                        .then(function (ok) { if (ok) run(); });
-                } else if (window.confirm(msg)) { run(); }
-            });
-
-            // Shared components and system widgets (pg_designer_components_card()):
-            // tick rows in the offcanvas panel, delete them in one go. Rows
-            // still placed on a page are deleted too (force) once the operator
-            // has seen where.
-            (function () {
-                var card = document.getElementById("sd-comp-offcanvas");
-                if (!card) return;
-                var all = document.getElementById("sd-comp-all"), del = document.getElementById("sd-comp-delete"), counter = document.getElementById("sd-comp-count");
-                var opener = document.getElementById("sd-comp-open"), total = document.getElementById("sd-comp-total");
-                // Nothing left to list: close the panel, then drop it and its
-                // button once the slide-out has finished.
-                var retire = function () {
-                    if (opener) opener.remove();
-                    var oc = (window.bootstrap && bootstrap.Offcanvas) ? bootstrap.Offcanvas.getInstance(card) : null;
-                    if (oc && card.classList.contains("show")) {
-                        card.addEventListener("hidden.bs.offcanvas", function () { oc.dispose(); card.remove(); }, { once: true });
-                        oc.hide();
-                    } else {
-                        card.remove();
-                    }
-                };
-                var boxes = function () { return Array.prototype.slice.call(card.querySelectorAll(".sd-comp-pick")); };
-                var sync = function () {
-                    var list = boxes(), n = list.filter(function (b) { return b.checked; }).length;
-                    counter.textContent = String(n);
-                    del.disabled = (n === 0);
-                    all.checked = list.length > 0 && n === list.length;
-                    all.indeterminate = n > 0 && n < list.length;
-                };
-                all.addEventListener("change", function () {
-                    boxes().forEach(function (b) { b.checked = all.checked; });
-                    sync();
-                });
-                card.addEventListener("change", function (e) {
-                    if (e.target.classList.contains("sd-comp-pick")) sync();
-                });
-                del.addEventListener("click", function () {
-                    var rows = boxes().filter(function (b) { return b.checked; }).map(function (b) { return b.closest("tr"); });
-                    if (!rows.length) return;
-                    // The rows still in use lead the list, where they are read.
-                    rows.sort(function (a, b) { return (b.dataset.used === "1" ? 1 : 0) - (a.dataset.used === "1" ? 1 : 0); });
-                    var used = 0, lines = [];
-                    rows.forEach(function (tr) {
-                        var where = [];
-                        try { where = JSON.parse(tr.dataset.usage || "[]"); } catch (err) {}
-                        if (where.length) used++;
-                        lines.push("• " + (tr.dataset.name || "") + (where.length ? " — " + ' . json_encode(lang('Used on: ')) . ' + where.join(", ") : ""));
-                    });
-                    var msg = ' . json_encode(lang('{var} shared components and system widgets will be deleted for good:')) . '.replace("{var}", rows.length) + "\n" + lines.join("\n") + "\n\n" +
-                              (used ? ' . json_encode(lang('{var} of them are still in use: their places on those pages are left empty.')) . '.replace("{var}", used) + " " : "") +
-                              ' . json_encode(lang('This cannot be undone.')) . ';
-                    var ids = rows.map(function (tr) { return parseInt(tr.dataset.id, 10); });
-                    var run = function () {
-                        del.disabled = true;
-                        fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-                               body: JSON.stringify({ action: "shared_component", sub_action: "delete_many", ids: ids, force: used > 0, token: (typeof software_token !== "undefined" ? software_token : "") }) })
-                        .then(function (r) { return r.json(); })
-                        .then(function (res) {
-                            if (!res || res.status !== "success") {
-                                sync();
-                                var fail = (res && res.message) || ' . json_encode(lang('Sorry, we could not accept your request.')) . ';
-                                if (typeof pgToast === "function") pgToast({ message: fail, variant: "danger" }); else alert(fail);
-                                return;
-                            }
-                            var gone = (res.deleted || []).map(function (s) { return parseInt(s, 10); });
-                            rows.forEach(function (tr) { if (gone.indexOf(parseInt(tr.dataset.id, 10)) !== -1) tr.remove(); });
-                            if (total) total.textContent = String(boxes().length);
-                            if (boxes().length) sync(); else retire();
-                            if (typeof pgToast === "function") {
-                                pgToast({ message: ' . json_encode(lang('{var} deleted.')) . '.replace("{var}", gone.length), variant: "success" });
-                                if (res.kept && res.kept.length) pgToast({ message: ' . json_encode(lang('{var} kept: a saved page uses them.')) . '.replace("{var}", res.kept.length), variant: "warning" });
-                            }
-                        })
-                        .catch(function () { sync(); alert(' . json_encode(lang('Network error.')) . '); });
-                    };
-                    if (typeof window.pgConfirm === "function") {
-                        window.pgConfirm({ title: ' . json_encode(lang('Delete shared components and system widgets')) . ', message: msg,
-                                           confirmText: ' . json_encode(lang('Delete ({var})')) . '.replace("{var}", rows.length), cancelText: ' . json_encode(lang('No')) . ', variant: "danger" })
-                            .then(function (ok) { if (ok) run(); });
-                    } else if (window.confirm(msg)) { run(); }
-                });
-            })();
-
-            // Take every page of a design off the site, or put its drafts
-            // back on it, from its row. The home page stays on the site. The
-            // answer brings the row\'s new Status cell.
-            document.addEventListener("click", function (e) {
-                var btn = e.target.closest(".sd-design-status");
-                if (!btn) return;
-                e.preventDefault();
-                var id = parseInt(btn.dataset.styleId, 10), off = (btn.dataset.draft === "1"), n = parseInt(btn.dataset.count, 10) || 0;
-                var name = btn.dataset.name || "";
-                var msg = off
-                    ? ' . json_encode(lang('{var} pages will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open them; administrators will.')) . '.replace("{var}", n) + " " + ' . json_encode(lang('The home page stays on the site.')) . '
-                    : ' . json_encode(lang('The {var} draft pages of the design will be put on the site: visitors will be able to open them.')) . '.replace("{var}", n);
-                var run = function () {
-                    var cell = btn.closest("td");
-                    cell.querySelectorAll(".sd-design-status").forEach(function (b) { b.disabled = true; });
-                    fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-                           body: JSON.stringify({ action: "designer", sub_action: "design_publish", style_id: id, draft: off ? 1 : 0, token: (typeof software_token !== "undefined" ? software_token : "") }) })
-                    .then(function (r) { return r.json(); })
-                    .then(function (res) {
-                        if (!res || res.status !== "success") {
-                            cell.querySelectorAll(".sd-design-status").forEach(function (b) { b.disabled = false; });
-                            if (typeof pgToast === "function") pgToast({ message: (res && res.message) || ' . json_encode(lang('Sorry, we could not accept your request.')) . ', variant: "danger" });
-                            else alert((res && res.message) || ' . json_encode(lang('Sorry, we could not accept your request.')) . ');
-                            return;
-                        }
-                        cell.innerHTML = res.cell || "";
-                        if (typeof res.drafts !== "undefined") cell.setAttribute("data-order", String(res.drafts));
-                        var table = cell.closest("table");
-                        if (table && window.jQuery && jQuery.fn.dataTable && jQuery.fn.dataTable.isDataTable(table)) {
-                            jQuery(table).DataTable().row(cell.closest("tr")).invalidate("dom");
-                        }
-                        if (typeof pgToast === "function") pgToast({ message: res.message, variant: "success" });
-                    })
-                    .catch(function () {
-                        cell.querySelectorAll(".sd-design-status").forEach(function (b) { b.disabled = false; });
-                        alert(' . json_encode(lang('Network error.')) . ');
-                    });
-                };
-                var title = name + " — " + (off ? ' . json_encode(lang('Take off the site')) . ' : ' . json_encode(lang('Put on the site')) . ');
-                if (typeof window.pgConfirm === "function") {
-                    window.pgConfirm({ title: title, message: msg,
-                                       confirmText: off ? ' . json_encode(lang('Yes, make it a draft')) . ' : ' . json_encode(lang('Put on the site')) . ',
-                                       cancelText: ' . json_encode(lang('No')) . ', variant: off ? "warning" : "success" })
-                        .then(function (ok) { if (ok) run(); });
-                } else if (window.confirm(msg)) { run(); }
-            });
-        </script>
+        ' . ($can_tpl ? pg_designer_home_template_dialog() : '') . '
+        <div class="dropdown-menu sdh-menu" id="sdh-menu" role="menu" tabindex="-1"></div>
+        <script type="application/json" id="sdh-config">' . json_encode($config, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>
+        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/designer_home.js?v=' . pg_designer_asset_stamp('assets/js/designer_home.js') . '"></script>
         ';
     print output_footer();
 }
@@ -1377,31 +1664,34 @@ function pg_designer_template_modal($templates, $from_pages)
         // "Use this theme" stays inside .sd-tpl-card: the picker script finds
         // the card's data-look / data-palette from the button.
         $theme_apply = ($made_for !== '')
-            ? '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap sd-tpl-theme-apply" title="' . h(h($made_for)) . '">'
+            ? '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap sd-tpl-theme-apply no-popover" data-bs-toggle="tooltip" title="' . h($made_for) . '">'
               . '<i class="bi bi-palette me-1" aria-hidden="true"></i>' . lang('Use this theme') . '</button>'
             : '';
-        // The details live in the info button's title, which the panel turns
-        // into an HTML popover (pgBindTitlePopovers()): every piece escaped,
-        // then the whole markup escaped once more for the attribute.
+        // The details live in the info button's popover (pgBindTitlePopovers()):
+        // the name on top, then the whole description, the first pages, two
+        // highlights and the theme it is made for, kept to a short card.
+        // Every piece is escaped, then the markup once more for the attribute.
         $info = array();
-        if ($s['description'] !== '') $info[] = h($s['description']);
+        if ($s['description'] !== '') $info[] = '<div class="mb-2">' . h($s['description']) . '</div>';
         if ($s['pages']) {
-            $info[] = '<strong>' . h(lang(array('string' => 'Pages ({var:1})', 'vars' => count($s['pages'])))) . '</strong><br>' . h(implode(', ', $s['pages']));
+            $info_pages = array_slice($s['pages'], 0, 6);
+            $info_rest  = count($s['pages']) - count($info_pages);
+            $info[] = '<div class="mb-2"><strong>' . h(lang(array('string' => 'Pages ({var:1})', 'vars' => count($s['pages'])))) . '</strong><br>'
+                    . h(implode(', ', $info_pages)) . ($info_rest > 0 ? ' ' . h(lang(array('string' => '+{var:1} more', 'vars' => $info_rest))) : '') . '</div>';
         }
         if ($s['highlights']) {
-            $info[] = '<strong>' . h(lang('Highlights')) . '</strong><br>• ' . implode('<br>• ', array_map('h', $s['highlights']));
+            $info[] = '<div class="mb-2"><strong>' . h(lang('Highlights')) . '</strong><ul class="ps-3 mb-0">'
+                    . implode('', array_map(function ($line) { return '<li>' . h($line) . '</li>'; }, array_slice($s['highlights'], 0, 2))) . '</ul></div>';
         }
-        if ($made_for !== '') $info[] = h($made_for);
-        $info[] = '<strong>' . h(lang('Framework')) . '</strong> ' . h($s['framework_label'])
-                . '<br><strong>' . h(lang('Template version')) . '</strong> ' . h($s['version']);
+        if ($made_for !== '') $info[] = '<div>' . h($made_for) . '</div>';
         $info_btn = '<button type="button" class="btn btn-link btn-sm p-0 text-body-secondary" aria-label="' . h(lang('Template details')) . '"'
-                  . ' title="' . h(implode('<br>', $info)) . '"><i class="bi bi-info-circle" aria-hidden="true"></i></button>';
+                  . ' title="' . h(h($s['name'])) . '" data-bs-content="' . h(implode('', $info)) . '" data-bs-custom-class="sd-tpl-info"><i class="bi bi-info-circle" aria-hidden="true"></i></button>';
         // A template made from a design (builtin false) can be deleted; the
         // ones the installation ships cannot.
         $custom = isset($s['builtin']) && !$s['builtin'];
         $custom_badge = $custom ? '<span class="badge text-bg-secondary fw-normal text-nowrap">' . lang('Made from a design') . '</span>' : '';
         $delete_btn = $custom
-            ? '<button type="button" class="btn btn-sm btn-ghost sd-tpl-delete" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
+            ? '<button type="button" class="btn btn-sm btn-ghost sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
             : '';
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $cards .=
@@ -1512,7 +1802,7 @@ function pg_designer_template_theme_picker()
         $id = 'sd-tpl-look-' . (++$n);
         $look_btns .= '<input type="radio" class="btn-check" name="sd_tpl_look" id="' . $id . '" value="' . h($key) . '"' . ($key === $look0 ? ' checked' : '')
                     . ' data-preview="' . h(json_encode($l['preview'])) . '" autocomplete="off">'
-                    . '<label class="btn btn-outline-secondary rounded-pill" for="' . $id . '" title="' . h($l['description']) . '">' . h($l['name']) . '</label>';
+                    . '<label class="btn btn-outline-secondary rounded-pill no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($l['description']) . '">' . h($l['name']) . '</label>';
     }
     $bs = pg_design_bootstrap_colors();
     $palettes = array('' => array('name' => lang('Bootstrap'), 'primary' => $bs['primary'], 'secondary' => $bs['secondary']));
@@ -1527,7 +1817,7 @@ function pg_designer_template_theme_picker()
         $id = 'sd-tpl-pal-' . (++$n);
         $pal_btns .= '<input type="radio" class="btn-check" name="sd_tpl_palette" id="' . $id . '" value="' . h($key) . '"' . ($key === '' ? ' checked' : '')
                    . ' data-primary="' . h($p['primary']) . '" data-secondary="' . h($p['secondary']) . '" data-name="' . h($p['name']) . '" autocomplete="off">'
-                   . '<label class="sd-tpl-pal" for="' . $id . '" title="' . h($p['name']) . '"><i style="background:' . h($p['primary']) . '"></i><i style="background:' . h($p['secondary']) . '"></i>'
+                   . '<label class="sd-tpl-pal no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($p['name']) . '"><i style="background:' . h($p['primary']) . '"></i><i style="background:' . h($p['secondary']) . '"></i>'
                    . '<span class="visually-hidden">' . h($p['name']) . '</span></label>';
     }
     return '
