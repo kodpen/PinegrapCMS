@@ -1,6 +1,6 @@
 ---
 name: seo-toolkit-redirects
-description: Plan (approved 2026-10-19; step 1 redirect manager done, PR #PRNUM): left: auto 301 on slug change, 404 log, page canonical, llms.txt and robots AI section, API
+description: Plan (approved 2026-10-19; step 1 redirect manager done, PR #654): left: auto 301 on slug change, 404 log, page canonical, llms.txt and robots AI section, API
 ---
 
 ## Why?
@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19; step 1 redirect manager done, PR #PRNUM)
 - API: `/redirects` CRUD with dry run; `/seo/not-found` read.
 
 ## What remains?
-1. Done (PR #PRNUM): migration step 11.0.11 (`redirects`, `not_found_log`), the match where a routed page request is about to 404, manager screens, CSV import and export. Behaviour: docs/memory/platform/redirect-manager.md.
+1. Done (PR #654): migration step 11.0.11 (`redirects`, `not_found_log`), the match where a routed page request is about to 404, manager screens, CSV import and export. Behaviour: docs/memory/platform/redirect-manager.md.
 2. Slug-change hook in designer save and page edit (S).
 3. 404 logging with retention (S): `not_found_log` exists (11.0.11) with `path_hash` as its key; write it beside `pg_redirect_not_found()` (same three call sites), and link each row to `edit_redirect.php?from=`.
 4. Page settings fields + render (S).
