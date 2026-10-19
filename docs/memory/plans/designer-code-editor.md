@@ -1,6 +1,6 @@
 ---
 name: designer-code-editor
-description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (data-binding completion, Emmet license, formatter, minimap)
+description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 ---
 
 ## What is being built?
@@ -19,7 +19,7 @@ description: Plan (2026-10-19) for the visual designer's code editor: owner rule
 - Built (PRs #503 facade, #504 view, #505 incremental refresh, #521 editing, #522 file tabs and CM5 removal, #523 class completion, #525/#527 panel screens, E10 `esc()` quotes and `buildNodeHTML()` removed): docs/memory/designer/designer-code-view-model.md and designer-code-view-editing.md; facade docs/memory/core/code-editor-facade-and-bundle.md.
 
 ## What is left, and where to start?
-- Completion of data-binding tokens (`{{…}}`) in text and attribute values; the class source (`_sdCodeClassCompletion`) is the pattern.
+- Done (PR #PRNUM): bindings in the code view — a bound value prints as `{{token}}`, typing one binds, `{{` completes the widget's tokens (`docs/memory/designer/designer-code-view-bindings.md`).
 - Emmet: `@emmetio/codemirror6-plugin` carries no license (repo and package, 2026-10-19), so it is not bundled; the `emmet` core package is MIT and an expand-abbreviation command of our own on it is the way, if wanted.
 - A formatter for CSS/JS tabs (the page view is normalised by the emitter already), a minimap, search across the open tabs.
 - Done 2026-10-19: every panel screen, the File Manager, the legacy page designer and CKEditor's source mode are on the facade and CodeMirror 5 left the product (docs/memory/ui/panel-code-fields.md).
