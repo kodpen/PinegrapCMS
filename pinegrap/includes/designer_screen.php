@@ -255,6 +255,9 @@ function pg_designer_screen_render($ctx)
         'editUrl'       => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php',
         'exitUrl'       => pg_safe_back_url($ctx['send_to'], ($ctx['from_pages'] ? 'view_pages.php' : 'view_system_styles.php')),
         'access'        => $access,
+        // The schema can open shared components to content editors
+        // (includes/designer_access.php); the designer's switch shows then.
+        'sharedContentReady' => pg_shared_component_content_ready(),
         // Who is sitting here. The page lock names its holder by user id;
         // when that id is this one, the holder is another tab of the same
         // person and the editor may offer to take the page over.

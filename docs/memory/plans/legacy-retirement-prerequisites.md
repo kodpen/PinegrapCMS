@@ -12,7 +12,7 @@ description: Plan (2026-10-19, not started): regions editable in the visual desi
   - Menus (`menus`, `users_menus_xref`), ad regions and the tag cloud are data-driven; a static shared component nav loses the menu screen and its editors.
 
 ## What has to be built? (one PR each)
-- R1 Content-editable shared component (owner approved the schema steps 2026-10-19): R1a schema 11.0.8 and the server side done (`designer/shared-component-content-editing.md`); R1b designer toggle and canvas editing at content level; R1c grant checkboxes on the user screens.
+- R1 Content-editable shared component (owner approved the schema steps 2026-10-19): R1a schema 11.0.8 and the server side, R1b the designer switch and content-level editing on the canvas, done (`designer/shared-component-content-editing.md`); R1c grant checkboxes on the user screens.
 - R2 Common region -> shared component (one per `cregion` with `cregion_designer_type = 'no'`): content through the converter into one `_editable` block, rights carried over. One source of truth while classic styles still print `<cregion>name</cregion>` (see open question).
 - R3 Designer region -> designer-only shared component: PHP blocks lifted to `custom_php` nodes before parsing, nested designer regions as nested shared refs, inner placeholders as region nodes (the placeholder half of L1).
 - R4 Dynamic region stays PHP: region node gains the attribute; its code opens as a code-editor tab in the designer (designer role), like CSS/JS files.

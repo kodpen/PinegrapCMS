@@ -271,6 +271,7 @@ const StyleDesigner = (function () {
     var _sharedCache      = {};  // id → { name: str, tree: parsed-obj|null }
     var _sharedDirty      = {};  // id → true  — unsaved inline edits awaiting flush
     var _editingSharedSid = 0;   // sid of shared component currently being edited (0 = none)
+    var _sdSharedContentReady = false;  // the schema can open components to content editors
     var _sharedSnapshots  = {};  // id → JSON string snapshot taken before first edit this session
 
     // Pre-save hook for the assets panel. Default no-op so saveAjax can call
@@ -679,6 +680,7 @@ const StyleDesigner = (function () {
             try {
                 var resp = JSON.parse(xhr.responseText);
                 if (resp && resp.status === 'success' && Array.isArray(resp.items)) {
+                    if (resp.content_ready) _sdSharedContentReady = true;
                     var repaired = [];
                     resp.items.forEach(function (item) {
                         var sid = parseInt(item.id, 10);
@@ -710,7 +712,11 @@ const StyleDesigner = (function () {
                             // snapshot of the old one (kept after a save) no
                             // longer says what is stored.
                             delete _sharedSnapshots[sid];
-                            _sharedCache[sid] = { name: item.name || '', tree: parsed, system_region_config: item.system_region_config || null };
+                            _sharedCache[sid] = { name: item.name || '', tree: parsed, system_region_config: item.system_region_config || null,
+                                                  // Opened to content editors, and whether this
+                                                  // operator is one of them (_sdSharedOpenToContent()).
+                                                  contentEditable: String(item.content_editable) === '1',
+                                                  mayEditContent: String(item.may_edit_content) === '1' };
                             // A form control's name used to live in a binding;
                             // it lives on the attribute now. Moved on load so the
                             // next save writes the tree in its current shape.
@@ -3335,7 +3341,10 @@ const StyleDesigner = (function () {
      *   - a node that carries text, anywhere, is theirs for its TEXT
      *   - everything else is read-only
      *   - a shared component or system widget is never theirs, marked area
-     *     or not: its tree belongs to every page that uses it
+     *     or not: its tree belongs to every page that uses it. The exception
+     *     is a component a designer opened to content editors that names this
+     *     operator (_sdSharedOpenToContent()): inside it the rules above
+     *     apply, and it is saved through its own content_update
      *
      * The server enforces the same rule on save. This function decides what
      * the SCREEN allows; it is a courtesy, not the gate.
@@ -3365,6 +3374,9 @@ const StyleDesigner = (function () {
     var _sdEditEpoch    = 0;
     var _sdEditSet      = null;
     var _sdEditSetEpoch = -1;
+    // node -> id of the shared component whose tree holds it, built in the
+    // same pass as the set (a node of the page is not in it).
+    var _sdEditOwner    = null;
 
     // Called wherever the tree changes. saveState() runs before every
     // mutation and render() before every repaint, so between them nothing
@@ -3374,22 +3386,26 @@ const StyleDesigner = (function () {
     function _sdEditableSet() {
         if (_sdEditSet && _sdEditSetEpoch === _sdEditEpoch) return _sdEditSet;
         var set = new WeakSet();
-        var walk = function (n, on) {
+        var owner = new WeakMap();
+        var walk = function (n, on, sid) {
             if (!n || typeof n !== 'object') return;
             var here = on || !!(n.props && n.props._editable);
             if (here) set.add(n);
+            if (sid) owner.set(n, sid);
             if (Array.isArray(n.children)) {
-                for (var i = 0; i < n.children.length; i++) walk(n.children[i], here);
+                for (var i = 0; i < n.children.length; i++) walk(n.children[i], here, sid);
             }
         };
-        walk(tree, false);
-        // Shared component trees are walked too. Nothing in them is editable
-        // at content level, but the same set answers both questions and a
-        // second code path would be a second answer to keep in step.
+        walk(tree, false, 0);
+        // Shared component trees are walked too: a component a designer
+        // opened to content editors has editable areas of its own
+        // (_sdSharedOpenToContent()), and the owner map says which tree a
+        // node belongs to without walking every cached tree per node.
         Object.keys(_sharedCache).forEach(function (k) {
             var c = _sharedCache[k];
-            if (c && c.tree) walk(c.tree, false);
+            if (c && c.tree) walk(c.tree, false, parseInt(k, 10) || 0);
         });
+        _sdEditOwner    = owner;
         _sdEditSet      = set;
         _sdEditSetEpoch = _sdEditEpoch;
         return set;
@@ -3398,6 +3414,28 @@ const StyleDesigner = (function () {
     function _sdInEditableArea(node) {
         if (!node || typeof node !== 'object') return false;
         return _sdEditableSet().has(node);
+    }
+
+    // The shared component whose tree holds the node, or 0 for the page's own.
+    function _sdNodeSharedSid(node) {
+        if (!node || typeof node !== 'object') return 0;
+        _sdEditableSet();
+        return (_sdEditOwner && _sdEditOwner.get(node)) || 0;
+    }
+
+    // A component a designer opened to content editors, and this operator is
+    // one of them (the server's pg_shared_component_content_editable_ids()).
+    // A system widget never is.
+    function _sdSharedOpenToContent(sid) {
+        var c = sid > 0 ? _sharedCache[sid] : null;
+        return !!(c && c.mayEditContent && !c.system_region_config);
+    }
+
+    // At content level: a node of a shared component that is not open to
+    // this operator. Nothing in it is theirs, text included.
+    function _sdInClosedShared(node) {
+        var sid = _sdNodeSharedSid(node);
+        return !!sid && !_sdSharedOpenToContent(sid);
     }
 
     // Does this node's own text belong to the operator?
@@ -3423,7 +3461,9 @@ const StyleDesigner = (function () {
     function _sdCanEditNode(node, what) {
         if (!_collab.mayEdit) return false;
         if (!_sdIsContentLevel()) return true;
-        if (node && _isInsideSystemWidget(node)) return false;
+        // A shared component's node is theirs only in a component opened to
+        // them; inside it the page's rule applies. A widget never opens.
+        if (node && _sdInClosedShared(node)) return false;
         if (_sdInEditableArea(node)) return true;
         if (what === 'text'  && _sdIsTextNode(node)) return true;
         // Pictures are content, wherever they sit. Swapping the photo in a
@@ -3442,7 +3482,7 @@ const StyleDesigner = (function () {
         }
         if (_sdCanEditNode(node, what)) return true;
         if (!_sdIsContentLevel()) return true;
-        _sdContentNudge((node && _isInsideSystemWidget(node)) ? 'shared' : 'area');
+        _sdContentNudge((node && _sdInClosedShared(node)) ? 'shared' : 'area');
         return false;
     }
 
@@ -8031,6 +8071,11 @@ const StyleDesigner = (function () {
     function _sdTrackSharedEditing() {
         var _prevSid = _editingSharedSid;
         _editingSharedSid = _resolveSharedSid(selectedNode);
+        // At content level only a component opened to the operator is
+        // written; selecting inside another one changes nothing.
+        if (_editingSharedSid > 0 && _sdIsContentLevel() && !_sdSharedOpenToContent(_editingSharedSid)) {
+            _editingSharedSid = 0;
+        }
         if (_editingSharedSid > 0) {
             _sharedDirty[_editingSharedSid] = true;
             if (_editingSharedSid !== _prevSid && !_sharedSnapshots[_editingSharedSid]) {
@@ -10136,11 +10181,12 @@ const StyleDesigner = (function () {
         // fades. Text nodes are left alone — they are always editable, and
         // fading every paragraph would make the whole page look disabled.
         if (_sdIsContentLevel()) {
-            if (node.props && node.props._editable) {
+            var _closedShared = _sdInClosedShared(node);
+            if (node.props && node.props._editable && !_closedShared) {
                 wrapper.classList.add('sd-editable-area');
                 wrapper.setAttribute('data-sd-editable-label', _sdT('EDITABLE'));
             }
-            else if (!_sdInEditableArea(node) && !_sdIsTextNode(node) && node.type !== 'root') {
+            else if (_closedShared || (!_sdInEditableArea(node) && !_sdIsTextNode(node) && node.type !== 'root')) {
                 wrapper.classList.add('sd-content-locked');
             }
         } else if (node.props && node.props._editable) {
@@ -23890,9 +23936,11 @@ const StyleDesigner = (function () {
         var on      = !!(node.props && node.props._editable);
         var inherit = !on && _sdInEditableArea(node);
 
-        // A shared component or system widget is never editable at content
-        // level, so marking something inside one would set a flag that can
-        // never mean anything. Say so rather than letting it be set.
+        // A system widget is never editable at content level, so marking
+        // something inside one would set a flag that can never mean anything;
+        // a shared_ref is marked inside its component, not on the page. Say
+        // so rather than letting it be set. Inside an ordinary component the
+        // mark counts once a designer opens it to content editors.
         if (node.type === 'shared_ref' || _isInsideSystemWidget(node)) {
             return { icon: 'bi-pencil-square', label: _sdT('Not available in a shared component'), disabled: true, handler: function () {} };
         }
@@ -24403,8 +24451,9 @@ const StyleDesigner = (function () {
         else if (node.props._locked) li.classList.add('sd-tree-locked');
         else if (hasLockedAncestor(node)) li.classList.add('sd-tree-locked-desc');
         if (_sdIsContentLevel()) {
-            if (node.props && node.props._editable) li.classList.add('sd-tree-editable');
-            else if (!_sdInEditableArea(node) && !_sdIsTextNode(node)) li.classList.add('sd-tree-nocontent');
+            var _treeClosed = _sdInClosedShared(node);
+            if (node.props && node.props._editable && !_treeClosed) li.classList.add('sd-tree-editable');
+            else if (_treeClosed || (!_sdInEditableArea(node) && !_sdIsTextNode(node))) li.classList.add('sd-tree-nocontent');
         }
 
         // Right-click context menu
@@ -26187,10 +26236,10 @@ const StyleDesigner = (function () {
                         '<span class="bi bi-lock-fill me-2"></span>' +
                         esc(_isInsideSystemWidget(selectedNode)
                             ? _sdT('System widget')
-                            : _sdT('Read-only')) +
+                            : (_sdInClosedShared(selectedNode) ? _sdT('Shared component') : _sdT('Read-only'))) +
                     '</div>' +
                     '<div class="sd-props-readonly-body">' +
-                        esc(_isInsideSystemWidget(selectedNode)
+                        esc(_sdInClosedShared(selectedNode)
                             ? _sdT('System widgets and shared components are managed by designers.')
                             : _sdT('You can edit text here, and everything inside an area marked as editable.')) +
                     '</div>' +
@@ -28906,11 +28955,24 @@ const StyleDesigner = (function () {
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The name shown in the palette and the tree. The server adds a suffix when the name is taken.')) + '</div>')
             : row(_sdT('Name'), '<span class="sd-prop-static" style="color:#22c55e;font-weight:600">' + esc(sname) + '</span>');
 
+        // A designer opens a component to content editors here: managers and
+        // the users given access to it then change its text and images and
+        // everything inside its editable areas, as they do a common region.
+        var contentHtml = (!_cfg && sid > 0 && cached && (_sdSharedContentReady || (_design && _design.sharedContentReady)) && !_sdIsContentLevel())
+            ? row(_sdT('Content editors'),
+                '<label class="sd-prop-switch">' +
+                    '<input type="checkbox" class="sd-sw-inp" id="sd-sc-content-editable" data-sc-id="' + sid + '"' + (cached.contentEditable ? ' checked' : '') + '>' +
+                    '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                '</label>' +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('On: managers and the users given access to it can change its text and images, and everything inside its editable areas, on every page that shows it.')) + '</div>')
+            : '';
+
         return systemSection +
             sect('bi-puzzle-fill', _cfg ? _sdT('System Widget Record') : _sdT('Shared Component'),
                 nameHtml +
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
                 row(_sdT('Status'), statusHtml) +
+                contentHtml +
                 usageHtml +
                 actionHtml
             );
@@ -43135,6 +43197,14 @@ const StyleDesigner = (function () {
             });
         }
 
+        // ── Shared Component: open to content editors ───────────────────────
+        var _scContentSw = document.getElementById('sd-sc-content-editable');
+        if (_scContentSw) {
+            _scContentSw.addEventListener('change', function () {
+                _sdSetSharedContentEditable(parseInt(this.dataset.scId, 10) || 0, this.checked, this);
+            });
+        }
+
         // ── System Widget: save config button + data binding wiring ────────────
         if (selectedNode && selectedNode.type === 'shared_ref') {
             _wireSystemWidgetProps();
@@ -43149,6 +43219,34 @@ const StyleDesigner = (function () {
     }
 
     // ========================= SHARED COMPONENT OPERATIONS =========================
+
+    // Opens a shared component to content editors or closes it again
+    // (set_content_editable, administrators and designers). Written at once,
+    // like a rename: it is a property of the component, not of this page.
+    function _sdSetSharedContentEditable(sid, on, input) {
+        if (!sid) return;
+        var apiBase = (typeof path !== 'undefined' ? path : '') +
+                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+        var token   = (typeof software_token !== 'undefined') ? software_token : '';
+        var undo = function (msg) {
+            if (input) { input.disabled = false; input.checked = !on; }
+            sdToast(esc(msg || _sdT('The change could not be saved.')), 'error', 6000);
+        };
+        if (input) input.disabled = true;
+        fetch(apiBase, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'shared_component', sub_action: 'set_content_editable',
+                                   id: sid, content_editable: on ? 1 : 0, token: token })
+        }).then(function (r) { return r.json(); }).then(function (resp) {
+            if (!resp || resp.status !== 'success') { undo(resp && resp.message); return; }
+            if (input) input.disabled = false;
+            if (_sharedCache[sid]) _sharedCache[sid].contentEditable = !!resp.content_editable;
+            sdToast(esc(on ? _sdT('Content editors can now edit this shared component.')
+                           : _sdT('This shared component is closed to content editors.')), 'success', 4000);
+        }).catch(function () { undo(''); });
+    }
 
     // Convert the selected node into a shared_ref + create shared component record.
     // `node` is replaced in the tree by a { type:'shared_ref', props:{ sharedId, sharedName } } node.
@@ -53678,10 +53776,16 @@ const StyleDesigner = (function () {
                       (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
         var token   = (typeof software_token !== 'undefined') ? software_token : '';
         var pending = [];
+        // A content-level operator writes only a component opened to them,
+        // through content_update: the server takes what their level allows
+        // (as it does for a page) and answers with the tree it stored.
+        var contentLevel = _sdIsContentLevel();
+        var redraw = false;
         dirtyIds.forEach(function (idStr) {
             var sid    = parseInt(idStr, 10);
             var cached = _sharedCache[sid];
             if (!cached || !cached.tree) { delete _sharedDirty[sid]; return; }
+            if (contentLevel && !_sdSharedOpenToContent(sid)) { delete _sharedDirty[sid]; return; }
             var currentJson = JSON.stringify(cached.tree);
             // Skip if tree is unchanged since the snapshot (no real edit happened).
             // The snapshot stays: it is still what the stored row holds.
@@ -53696,7 +53800,7 @@ const StyleDesigner = (function () {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
-                    action: 'shared_component', sub_action: 'update',
+                    action: 'shared_component', sub_action: contentLevel ? 'content_update' : 'update',
                     id: sid, tree_json: currentJson, token: token
                 })
             }).then(function (r) { return r.json(); }).then(function (resp) {
@@ -53707,6 +53811,23 @@ const StyleDesigner = (function () {
                     if (resp && resp.message) sdToast(esc(resp.message), 'error', 8000);
                     return;
                 }
+                // A content-level save may keep less than was sent; the
+                // editor then shows what was written instead.
+                if (contentLevel && typeof resp.tree_json === 'string') {
+                    var stored = null;
+                    try { stored = JSON.parse(resp.tree_json); } catch (e) {}
+                    if (stored && typeof stored === 'object') {
+                        _sdTreeObjects(stored);
+                        var storedJson = JSON.stringify(stored);
+                        if (storedJson !== currentJson && _sharedCache[sid] && _sharedCache[sid].tree === cached.tree) {
+                            if (selectedNode && _nodeInTree(selectedNode, cached.tree)) { selectedNode = null; selectedNodes = []; }
+                            _sharedCache[sid].tree = stored;
+                            _sharedSnapshots[sid] = storedJson;
+                            redraw = true;
+                            return;
+                        }
+                    }
+                }
                 // Written: what was sent is the stored row now. Kept as the
                 // snapshot so an edit made after this save is found by
                 // _sdSharedCatchEdits() even when no new selection marks it.
@@ -53716,7 +53837,9 @@ const StyleDesigner = (function () {
                 _sharedDirty[sid] = true;
             }));
         });
-        return Promise.all(pending);
+        return Promise.all(pending).then(function () {
+            if (redraw) { _sdEditableInvalidate(); render(); }
+        });
     }
 
     // ========================= ICON MODAL =========================
