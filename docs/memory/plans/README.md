@@ -6,9 +6,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - accessibility-and-consent-tools.md: Plan (approved 2026-10-19, not started): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement template, consent banner with equal accept/reject and Consent Mode v2 defaults
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- agent-product-feeds.md: Plan (approved 2026-10-19, in progress: builder done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV) beside ?rss=true; job, feed.php, settings, panel, API left
+- agent-product-feeds.md: Plan (approved 2026-10-19, in progress: builder, job and feed.php done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV); settings card, panel, API left
 - ai-write-buttons.md: Plan (approved 2026-10-19, not started): "Write with AI" buttons in the product builder, page SEO fields, image alt text and blog records, reusing the Workspace AI client; AI-generated labelling
-- checkout-legal-documents.md: Plan (approved 2026-10-19, checkout and designer bindings built): pre-information form and distance sales contract; left: receipt e-mail, account and panel views, API, KVKK consent
+- checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, designer bindings and kept copy built): pre-information form and distance sales contract; left: My Account link, API, KVKK consent
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule, CI checks
 - customer-returns-flow.md: Plan (approved 2026-10-19, not started): customer return request in My Account, approval, return carrier code, status, 14-day timers, bridge to iyzico refund and ERP return invoice
@@ -23,7 +23,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - image-delivery-pipeline.md: Plan (approved 2026-10-19, not started): automatic WebP/AVIF derivatives, srcset/sizes, lazy loading except the LCP image, fetchpriority, derivative cache and disk accounting
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
-- legacy-page-designer-retirement.md: Plan (2026-10-19, not started) to open classic (legacy) pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
+- legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
+- legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19, not started): Trendyol (V2 API, first) and Hepsiburada connectors on the n11 connector layer: listings, stock/price queue, orders, status, invoice link, returns, Q&A
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export and Markdown/zip import done; enex, Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
@@ -43,6 +44,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
 - storefront-conversion-pack.md: Plan (approved 2026-10-19, not started): verified-buyer product reviews with request e-mail and real aggregateRating, wishlist, back-in-stock notice, bundles as a later phase
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
+- system-widget-missing-types.md: Plan (2026-10-19, not started): classic page types with no designer system widget (folder view, photo gallery, confirmations, affiliate, order form…) and the fallback
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions

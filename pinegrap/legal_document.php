@@ -2,13 +2,21 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The pre-information form or the distance sales contract filled from the
- * visitor's current cart, for the checkout's acceptance checkboxes to link
- * to. Shows the visitor's own cart only (the order id in the session) and
- * changes nothing; the copy kept with the order is written when the order is
- * placed (pg_legal_documents_store()).
+ * The pre-information form or the distance sales contract.
  *
- * Request: GET type=preinfo|contract
+ * Without an order id: the document filled from the visitor's current cart,
+ * for the checkout's acceptance checkboxes to link to. It shows the visitor's
+ * own cart only (the order id in the session).
+ *
+ * With an order id: the copy kept with a placed order when it was placed
+ * (pg_legal_documents_store()), with when it was accepted. Shown to the
+ * customer the order belongs to, to the guest who has just placed it and to
+ * staff who manage the store (pg_legal_document_may_view()); a kept copy
+ * stays readable after the store switches the documents off.
+ *
+ * Changes nothing in either case.
+ *
+ * Request: GET type=preinfo|contract [order_id=N]
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,49 +26,45 @@
 
 include('init.php');
 
-if (!defined('ECOMMERCE') || (ECOMMERCE !== true) || !pg_legal_documents_enabled()) {
-    output_error(lang('This page is not available.'));
-}
-
 $types = pg_legal_document_types();
 $type = isset($_GET['type']) && is_string($_GET['type']) ? $_GET['type'] : '';
+$order_id = isset($_GET['order_id']) && is_scalar($_GET['order_id']) ? (int) $_GET['order_id'] : 0;
 
-if (!isset($types[$type])) {
+if (!defined('ECOMMERCE') || (ECOMMERCE !== true) || !isset($types[$type])) {
     output_error(lang('This page is not available.'));
 }
 
-$documents = pg_legal_documents_for_cart();
-$document = isset($documents[$type]) ? $documents[$type] : '';
+$note = '';
 
-// The document carries the visitor's own details: never kept by a cache.
+if ($order_id > 0) {
+    $order = db_item("SELECT id, user_id FROM orders WHERE id = '" . $order_id . "' AND status != 'incomplete'");
+    $kept = $order ? pg_legal_documents_of_order($order_id) : array();
+
+    // An order that is not the visitor's reads the same as one that does not
+    // exist, so the page tells nothing about other people's orders.
+    if (!$order || !pg_legal_document_may_view($order) || !isset($kept[$type])) {
+        output_error(lang('This page is not available.'));
+    }
+
+    $document = (string) $kept[$type]['html'];
+    $note = pg_legal_document_acceptance_note($kept[$type]);
+
+} else {
+    if (!pg_legal_documents_enabled()) {
+        output_error(lang('This page is not available.'));
+    }
+
+    $documents = pg_legal_documents_for_cart();
+    $document = isset($documents[$type]) ? $documents[$type] : '';
+
+    if ($document === '') {
+        $document = '<h2>' . h($types[$type]) . '</h2><p class="pg-legal-empty">' . h(lang('There is nothing in your cart, so there is no document to show.')) . '</p>';
+    }
+}
+
+// The document carries the customer's own details: never kept by a cache.
 header('Cache-Control: private, no-store');
 header('X-Robots-Tag: noindex, nofollow');
 header('Content-Type: text/html; charset=utf-8');
 
-echo '<!DOCTYPE html>
-<html lang="' . h(lang(array('info' => true))) . '">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>' . h($types[$type]) . '</title>
-<style>
-body { margin: 0; padding: 1.5rem 1rem 3rem; background: #fff; color: #212529; font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
-main { max-width: 52rem; margin: 0 auto; }
-h2 { font-size: 1.5rem; margin: 0 0 1rem; }
-h3 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
-table { width: 100%; border-collapse: collapse; margin: .5rem 0 1rem; }
-th, td { padding: .35rem .5rem; border-bottom: 1px solid #dee2e6; vertical-align: top; }
-th { font-weight: 600; }
-.pg-legal-empty { padding: 1rem; border: 1px solid #dee2e6; border-radius: .375rem; }
-@media print { body { padding: 0; } }
-</style>
-</head>
-<body>
-<main>'
-    . (($document !== '')
-        ? $document
-        : '<h2>' . h($types[$type]) . '</h2><p class="pg-legal-empty">' . h(lang('There is nothing in your cart, so there is no document to show.')) . '</p>')
-    . '</main>
-</body>
-</html>';
+echo pg_legal_document_page_html($types[$type], $document, lang(array('info' => true)), $note);

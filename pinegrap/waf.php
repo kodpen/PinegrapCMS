@@ -3271,7 +3271,8 @@ function waf_user_is_authenticated()
  * calendar address (workspace_ical.php) is read by a calendar service's
  * servers - Google's, Microsoft's, Apple's - with the token in the address
  * as its credential, under whatever user agent that service sends, from
- * whichever country it runs in.
+ * whichever country it runs in. A product feed (feed.php) is read the same
+ * way by a shopping platform's fetcher, with its token in the address.
  */
 /**
  * Is this a call to the REST API?
@@ -3299,7 +3300,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php'));
+        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php'));
     }
 
     return $answer;
