@@ -284,7 +284,7 @@ if (!isset($_POST['name'])) {
     $file_extension = mb_strtolower(mb_substr($file_name, mb_strrpos($file_name, '.') + 1));
     $file['type'] = mb_strtolower($row['type']);
 
-    // Map extension to CodeMirror mode
+    // Map extension to the editor's language (pg_code_editor_language())
     switch ($file_extension) {
         case 'css':
             $code_type = 'css';
@@ -299,9 +299,8 @@ if (!isset($_POST['name'])) {
         case 'xml':
             $code_type = 'xml';
             break;
-        // htmlmixed: the tags, plus the CSS inside <style> and the JavaScript
-        // inside <script>. The mode and its three dependencies are already in
-        // get_codemirror_includes().
+        // The tags, plus the CSS inside <style> and the JavaScript inside
+        // <script>.
         case 'html':
         case 'htm':
             $code_type = 'mixed';
@@ -334,8 +333,7 @@ if (!isset($_POST['name'])) {
                                 . ($read_only ? ' <span class="badge text-bg-secondary">' . lang('Read only') . '</span>' : '') . '</label>
                             <div id="edit_custom">
                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off"' . ($read_only ? ' readonly="readonly"' : '') . '>' . h($code) . '</textarea>
-                                ' . get_codemirror_includes() . '
-                                ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => $code_type, 'readonly' => $read_only)) . '
+                                ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => $code_type, 'readonly' => $read_only)) . '
                             </div>
                         </div>
                     </div>
@@ -497,6 +495,10 @@ if (!isset($_POST['name'])) {
     pg_page_shell(
         array(
             'title'=> lang('Edit File'),
+            // The file's code field is the facade's editor
+            // (pg_code_editor_attach()); CodeMirror 5 waits in the template
+            // for a settings pane that still draws one.
+            'code_editor' => false,
             'extra classes'=>'file',
             'icon'=>'file', 
             'heading'=>lang('Edit File'),

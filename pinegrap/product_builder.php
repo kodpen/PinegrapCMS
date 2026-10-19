@@ -4436,6 +4436,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     print
     pg_page_shell(array(
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'title'         => ($pg_mode === 'edit') ? lang('Edit Product') : lang('Create Product'),
         'section_nav'   => $pg_pb_nav,
         'extra classes' => 'products',
@@ -4547,8 +4550,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                             </div>
                                             <div class="col-12 my-2">
                                                 <textarea id="code" name="code">' . h($image_code) . '</textarea>
-                                                ' . get_codemirror_includes() . '
-                                                ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'mixed')) . '
+                                                ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
                                             </div>
                                         </div>
                                     </div>

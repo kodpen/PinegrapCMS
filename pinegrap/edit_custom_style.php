@@ -68,7 +68,7 @@ if (!$_POST) {
         OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'
     );
 
-    $output_header = pg_page_shell( array('cancel'=>array('enable'=>'true','url'=>$output_cancel_button_url) ,
+    $output_header = pg_page_shell( array('code_editor' => false, 'cancel'=>array('enable'=>'true','url'=>$output_cancel_button_url) ,
             'breadcrumb' => array(array('label' => lang('All Page Styles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'), array('label' => lang('Edit Custom Page Style'))),
         ) ) . '<main id="content" class="container-fluid">';
     
@@ -217,8 +217,7 @@ if (!$_POST) {
                                             <label class="form-label">' . lang('HTML Page with embedded Tags') . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($style_code) . '</textarea>
-                                                ' . get_codemirror_includes() . '
-                                                ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'mixed')) . '
+                                                ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
                                             </div>
                                         </div>
                                     </div>

@@ -36,6 +36,16 @@ window.pgLang = function (key) {
                 cmElem.CodeMirror.setOption("theme", resolvedTheme === "dark" ? "pastel-on-dark" : "default");
             }
         });
+
+        // The facade's editors (pg_code_editor_attach() keeps them in
+        // window.pgCodeEditors) follow the scheme the same way.
+        const editors = window.pgCodeEditors || {};
+        Object.keys(editors).forEach(id => {
+            const editor = editors[id];
+            if (editor && (typeof editor.setTheme === "function") && !(editor.isDestroyed && editor.isDestroyed())) {
+                editor.setTheme(resolvedTheme);
+            }
+        });
     };
 
     const showActiveTheme = (theme) => {
