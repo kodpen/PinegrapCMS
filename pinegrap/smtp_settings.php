@@ -245,7 +245,6 @@ if (!$_POST) {
         'heading_description' => lang('Update the Smtp settings for the Software Mail Function.')
     ]) . '
 <main id="content" class="container-fluid">
-            ' . get_codemirror_includes() . '
         <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . $liveform->get_warnings() . $liveform->output_notices() . '

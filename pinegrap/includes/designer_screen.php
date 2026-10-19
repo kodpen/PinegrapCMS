@@ -356,10 +356,6 @@ function pg_designer_screen_render($ctx)
             'extra classes'=> 'design',
             'icon'         => 'design',
             'heading'      => lang('Visual Page Editor'),
-            // The editor's code fields are the facade's (pg_code_editor.js);
-            // CodeMirror 5 stays in its template for a settings pane that
-            // still draws one.
-            'code_editor'  => false,
             'heading_description' => lang('The pages of the design are the tabs; drop blocks from the palette on the left, edit their options on the right.'),
             'hide_menu'    => true,
             // The shared curtain hides itself when the document is ready.

@@ -8906,6 +8906,7 @@ function get_tables() {
 		'offers',
 		'offers_offer_actions_xref',
 		'opt_in',
+		'order_documents',
 		'order_form_pages',
 		'order_item_gift_cards',
 		'order_items',

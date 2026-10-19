@@ -303,7 +303,7 @@ if ($_POST) {
 
 			$liveform->add_notice(lang(array(
 				'string' => 'Waiting events for {var:1} will be sent again on the next run of the scheduled task.',
-				'vars'   => $hook['url']
+				'vars'   => h($hook['url'])
 			)));
 
 		}
@@ -325,7 +325,7 @@ if ($_POST) {
 
 			db("DELETE FROM api_webhook_queue WHERE webhook_id = '" . (int)$hook['id'] . "'");
 
-			$liveform->add_notice(lang(array('string' => 'The subscription to {var:1} was removed.', 'vars' => $hook['url'])));
+			$liveform->add_notice(lang(array('string' => 'The subscription to {var:1} was removed.', 'vars' => h($hook['url']))));
 
 			log_activity(lang(array(
 				'string' => 'API event subscription ({var:1}) was removed.',
@@ -356,7 +356,7 @@ if ($_POST) {
 
 			$liveform->add_notice(lang(array(
 				'string' => '{var:1} was signed out on {var:2}.',
-				'vars'   => array($device['user_username'], $device['name'])
+				'vars'   => array(h($device['user_username']), h($device['name']))
 			)));
 
 			log_activity(lang(array(
@@ -388,7 +388,7 @@ if ($_POST) {
 
 				pg_oauth_client_delete((int)$client['id']);
 
-				$liveform->add_notice(lang(array('string' => '{var:1} was removed, and its connections were ended.', 'vars' => $client_name)));
+				$liveform->add_notice(lang(array('string' => '{var:1} was removed, and its connections were ended.', 'vars' => h($client_name))));
 
 				log_activity(lang(array(
 					'string' => 'OAuth application ({var:1}) was removed.',
@@ -403,7 +403,7 @@ if ($_POST) {
 
 				if ($turn_on) {
 
-					$liveform->add_notice(lang(array('string' => '{var:1} was turned on again.', 'vars' => $client_name)));
+					$liveform->add_notice(lang(array('string' => '{var:1} was turned on again.', 'vars' => h($client_name))));
 
 					log_activity(lang(array(
 						'string' => 'OAuth application ({var:1}) was turned on.',
@@ -414,7 +414,7 @@ if ($_POST) {
 
 					$liveform->add_notice(lang(array(
 						'string' => '{var:1} was turned off. It cannot connect, and its connections are refused until it is turned on again.',
-						'vars'   => $client_name
+						'vars'   => h($client_name)
 					)));
 
 					log_activity(lang(array(
@@ -449,7 +449,7 @@ if ($_POST) {
 			// learned to check it kept being delivered to.
 			api_webhooks_delete_for_app($app_id);
 
-			$liveform->add_notice(lang(array('string' => 'The application {var:1} was deleted.', 'vars' => $existing['name'])));
+			$liveform->add_notice(lang(array('string' => 'The application {var:1} was deleted.', 'vars' => h($existing['name']))));
 
 			log_activity(lang(array(
 				'string' => 'API application ({var:1}) was deleted.',

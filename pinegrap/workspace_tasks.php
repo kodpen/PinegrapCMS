@@ -23,9 +23,6 @@ echo
 pg_page_shell([
         'title' => lang('My Tasks'),
         'extra classes' => 'workspace workspace_tasks',
-        // No code field here: CodeMirror is loaded only if the settings
-        // dialog opens a pane that has one.
-        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => lang('My Tasks'),
         'heading_description' => lang('The work handed to you and the work you handed out, with its due dates.'),

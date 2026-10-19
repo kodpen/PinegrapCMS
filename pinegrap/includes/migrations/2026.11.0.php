@@ -24,7 +24,35 @@ if (!defined('INSTALL_OR_UPDATE')) {
 // 11.0.80-11.0.89); the order of the calls is what runs.
 function upgrade_to_2026_11_0() {
 
+	upgrade_2026_11_0_legal_documents();        // 11.0.1
 	upgrade_2026_11_0_price_history();          // 11.0.2
+
+}
+
+// The pre-information form and the distance sales contract a customer accepts
+// at checkout. The two templates and the switch live on the config row; every
+// accepted copy is kept in order_documents exactly as it was shown, so a later
+// template edit never changes what a customer agreed to.
+function upgrade_2026_11_0_legal_documents() {
+
+	install_add_column('config', 'ecommerce_legal_documents', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('config', 'ecommerce_preinfo_template', "TEXT NULL");
+	install_add_column('config', 'ecommerce_contract_template', "TEXT NULL");
+
+	install_create_table('order_documents', "CREATE TABLE order_documents (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id            INT UNSIGNED NOT NULL DEFAULT 0,
+		type                ENUM('preinfo','contract','kvkk') NOT NULL,
+		html                MEDIUMTEXT NULL,
+		accepted_at         INT UNSIGNED NULL DEFAULT NULL,
+		ip                  VARCHAR(45) NOT NULL DEFAULT '',
+		user_agent          VARCHAR(255) NOT NULL DEFAULT '',
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order_type (order_id, type)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Checkout legal documents: the pre-information form and the distance sales contract can be switched on under Site Settings, Ecommerce, Legal Documents. They stay off until the templates are reviewed and the switch is turned on.');
 
 }
 

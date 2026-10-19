@@ -8,7 +8,7 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// A module of functions.php: The WYSIWYG editor, the image editor and CodeMirror includes, rich text preparation.
+// A module of functions.php: The WYSIWYG editor, the image editor and the code editor includes, rich text preparation.
 //
 // Loaded by functions.php through require_once, never on its own. The
 // functions were moved here from functions.php as they were; PG_FUNCTIONS_DIR
@@ -256,15 +256,6 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             $output_background_color_toolbar_property = '["BGColor"],';
         }
 
-        $output_ckeditor_theme_configs = '';
-        //if its dark theme
-        if (isset($_COOKIE['prefers-color-scheme']) && $_COOKIE['prefers-color-scheme'] == 'dark') {
-            $output_ckeditor_theme_configs = 'software_ckeditor_config.codemirror = {theme: "pastel-on-dark"};';
-        } else {
-            //else default
-            $output_ckeditor_theme_configs = 'software_ckeditor_config.codemirror = {theme: "default"};';
-        }
-
         // We have to remove the various plugins listed by removePlugins,
         // because we were using those plugins at one point during testing
         // and we told ckbuilder to add them to the bundled ckeditor.js file.
@@ -281,6 +272,8 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
         // This avoids slow load-speed and browser generating 404 errors.
         return
             '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/ckeditor_4_20/ckeditor.js"></script>
+            ' . pg_code_editor_includes() . '
+            <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ckeditor_source.js?v=' . pg_code_editor_asset_version('/assets/js/pg_ckeditor_source.js') . '"></script>
             <script>
                 var software_editor_version = "' . $page_editor_version . '";
                 CKEDITOR.config.language = "' . lang(array('info' => '')) . '";
@@ -326,9 +319,10 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
                     ],
                     ' . $output_editor_properties . '
                 };
-                ' . $output_ckeditor_theme_configs . '
                 CKEDITOR.config.skin = "moono-lisa";
-                CKEDITOR.config.extraPlugins = "sourcedialog,codemirror";
+                // Source mode and the Source dialog show the HTML in the code
+                // editor every other code field uses (pg_ckeditor_source.js).
+                CKEDITOR.config.extraPlugins = "sourcedialog,pgcodeeditor";
                 ' . $output_editor_initialization . '
 
             </script>';
@@ -686,170 +680,6 @@ function get_image_editor_includes()
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/image_editor_modal.js?v=' . $modal_version . '"></script>';
 }
 
-function get_codemirror_includes()
-{
-    // All assets self-hosted. Previously this section pulled 11 files from
-    // unpkg.com / cdnjs.cloudflare.com / cdn.jsdelivr.net on every backend
-    // page that included CodeMirror, adding 200-800ms of blocking network
-    // latency depending on user location and CDN health. Files were mirrored
-    // into:
-    //   - assets/lib/codemirror/linters/                              (jshint, jsonlint, csslint)
-    //   - assets/lib/codemirror/codemirror-5.65.9/addon/{mode,scroll,search,selection}/
-    //     (4 addons originally pulled from CodeMirror 5.19 on cdnjs)
-    //   - assets/lib/codemirror/codemirror-5.65.9/addon/kofifus/      (kofifus New/Combo/CodeMirrorSearch)
-    return '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/codemirror.css">
-        <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/hint/show-hint.css">
-        <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/lint/lint.css">
-        <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/display/fullscreen.css">
-        <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/theme/pastel-on-dark.css">
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/codemirror.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/linters/jshint.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/linters/jsonlint.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/linters/csslint.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/mode/overlay.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/scroll/simplescrollbars.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/search/searchcursor.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/selection/mark-selection.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/kofifus/new.min.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/kofifus/combo.min.js"></script>
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/kofifus/cmsearch.min.js"></script>
-        <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/kofifus/cmsearch.css">
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/display/fullscreen.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/display/autorefresh.js"></script>
-
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/fold/foldcode.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/fold/xml-fold.js"></script>
-
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/hint/show-hint.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/hint/xml-hint.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/hint/html-hint.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/hint/css-hint.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/hint/javascript-hint.js"></script>
-
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/edit/closetag.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/edit/closebrackets.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/edit/matchtags.js"></script>
-        
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/mode/clike.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/mode/css.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/mode/htmlmixed.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/mode/javascript.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/mode/php.js?v=20012025"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/mode/xml.js"></script>
-
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/lint/lint.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/lint/javascript-lint.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/lint/json-lint.js"></script>
-        <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/lint/css-lint.js"></script>';
-}
-function get_codemirror_javascript($properties)
-{
-    switch ($properties['code_type']) {
-        case 'mixed':
-        default:
-            $output_mode = 'htmlmixed';
-            break;
-
-        case 'css':
-            $output_mode = 'css';
-            break;
-
-        case 'javascript':
-            $output_mode = 'javascript';
-            break;
-
-        case 'php':
-            $output_mode = 'php';
-            break;
-
-        case 'xml':
-            $output_mode = 'application/xml';
-            break;
-
-        case 'xml.text':
-            $output_mode = 'text/xml';
-            break;
-
-        case 'plain':
-            $output_mode = 'text/plain';
-            break;
-
-        case 'clike.java':
-            $output_mode = 'text/x-java';
-            break;
-
-        case 'clike.objc':
-            $output_mode = 'text/x-objectivec';
-            break;
-
-        case 'clike.cpp':
-            $output_mode = 'text/x-c++src';
-            break;
-
-        case 'clike.c':
-            $output_mode = 'text/x-csrc';
-            break;
-        case 'application/json':
-            $output_mode = 'application/json';
-            break;
-
-        case 'text':
-        case 'text.txt':
-            $output_mode = 'text/plain';
-            break;
-
-        case 'svg':
-            $output_mode = 'image/svg+xml';
-            break;
-    }
-
-    $output_readonly = '';
-    if (isset($properties['readonly']) && $properties['readonly'] == true) {
-        $output_readonly = 'readOnly: true,';
-    }
-
-    $output_codemirror_theme = '';
-    if (isset($_COOKIE['prefers-color-scheme']) && $_COOKIE['prefers-color-scheme'] == 'dark') {
-        $output_codemirror_theme = 'theme: "pastel-on-dark",';
-    } else {
-        $output_codemirror_theme = 'theme: "default",';
-    }
-
-
-
-    // Docs said that "viewportMargin: Infinity" is required for auto-grow to work.
-    // Did not appear to be required, but we decided to leave it in, just in case.
-    return '<script>
-
-            var editor = CodeMirror.fromTextArea(document.getElementById("' . $properties['id'] . '"), {
-                mode: "' . $output_mode . '",
-                lineNumbers: true,
-                indentUnit: 4,
-                matchTags: {bothTags: true},
-                autoCloseTags: true,
-                autoRefresh: true,
-                extraKeys: {
-                    "F11": function(cm) {
-                        cm.setOption("fullScreen", !cm.getOption("fullScreen"));
-                    },
-                    "Esc": function(cm) {
-                        if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
-                    },
-                    "Ctrl-Space": "autocomplete"
-                },
-                ' . $output_codemirror_theme . '
-                lint: true,
-                gutters: ["CodeMirror-lint-markers"],
-                lineWrapping: false,
-                autoCloseBrackets: true,
-                styleActiveLine: true,
-                ' . $output_readonly . '
-                viewportMargin: Infinity
-
-            });
-        </script>';
-}
-
 /**
  * The code editor facade (assets/js/pg_code_editor.js, window.PgCodeEditor)
  * for a panel screen: the engine's translated texts, added to the addresses
@@ -878,6 +708,7 @@ function pg_code_editor_includes()
 
     $config = pg_code_editor_urls();
     $config['phrases'] = pg_code_editor_phrases();
+    $config['labels'] = array('syntaxError' => lang('Syntax error'));
 
     return '<script>window.pgCodeEditorConfig = ' . pg_code_editor_json($config) . ';</script>';
 }
@@ -897,22 +728,22 @@ function pg_code_editor_urls()
 
 /**
  * A code field on a panel screen: the editor of the facade takes the place
- * of the textarea $properties['id'], as get_codemirror_javascript() gave it
- * CodeMirror 5. The textarea keeps the value current, so the form that
- * submits it sees every edit and the screen's save path does not change.
+ * of the textarea $properties['id']. The textarea keeps the value current, so
+ * the form that submits it sees every edit and the screen's save path does
+ * not change.
  *
  * $properties:
  *   'id'        the textarea
- *   'code_type' the names get_codemirror_javascript() takes ('mixed', 'css',
- *               'javascript', 'application/json', 'php', 'xml', …); see
- *               pg_code_editor_language()
+ *   'code_type' 'mixed', 'css', 'javascript', 'application/json', 'php',
+ *               'xml', 'plain', …; see pg_code_editor_language()
  *   'readonly'  true shows the text and refuses changes (the cursor, the
  *               keyboard and the search panel still work)
  *   'height'    a CSS height; without it the editor grows with the text
  *
  * F11 fills the window with the editor, Esc leaves. The instance is kept in
  * window.pgCodeEditors[id] for a screen that needs it, such as one that
- * changes the language after the file name.
+ * changes the language after the file name; the textarea raises
+ * "pgcodeeditorready" (detail: the instance) once it is there.
  */
 function pg_code_editor_attach($properties)
 {
@@ -962,6 +793,9 @@ function pg_code_editor_attach($properties)
                 PgCodeEditor.attach(field, options).then(function (instance) {
                     editor = instance;
                     window.pgCodeEditors[field.id] = instance;
+                    // A screen that changes the editor (its language, after a
+                    // choice made before it arrived) hears when it is there.
+                    try { field.dispatchEvent(new CustomEvent("pgcodeeditorready", { detail: instance })); } catch (e) {}
                 }, function () {});
             });
         })();
@@ -969,10 +803,10 @@ function pg_code_editor_attach($properties)
 }
 
 /**
- * The facade's language for a code type of get_codemirror_javascript():
+ * The facade's language for a code type of pg_code_editor_attach():
  * 'css', 'javascript', 'json' or 'html'. PHP, XML, SVG and plain text are
- * shown with the HTML grammar, which the facade carries; CodeMirror 5's own
- * MIME names ('text/css', 'application/json', …) are read as well.
+ * shown with the HTML grammar, which the facade carries; MIME names
+ * ('text/css', 'application/json', …) are read as well.
  */
 function pg_code_editor_language($code_type)
 {
@@ -993,7 +827,7 @@ function pg_code_editor_language($code_type)
     return 'html';
 }
 
-// Whether a code type of get_codemirror_javascript() means plain text.
+// Whether a code type of pg_code_editor_attach() means plain text.
 function pg_code_editor_is_plain($code_type)
 {
     $type = mb_strtolower(trim((string) $code_type));
@@ -1001,8 +835,8 @@ function pg_code_editor_is_plain($code_type)
     return in_array($type, array('plain', 'text', 'text.txt', 'text/plain'), true);
 }
 
-// The editor follows the panel's colour scheme, the way CodeMirror 5's
-// theme did: the cookie the panel sets when the person picks dark mode.
+// The editor follows the panel's colour scheme: the cookie the panel sets
+// when the person picks dark mode.
 function pg_code_editor_theme()
 {
     return (isset($_COOKIE['prefers-color-scheme']) && ($_COOKIE['prefers-color-scheme'] == 'dark')) ? 'dark' : 'light';

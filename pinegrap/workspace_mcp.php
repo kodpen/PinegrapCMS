@@ -356,7 +356,6 @@ echo
 pg_page_shell(array(
     'title'               => lang('My MCP connections'),
     'extra classes'       => 'workspace workspace_mcp',
-    'code_editor'         => false,
     'icon'                => 'workspace',
     'heading'             => lang('My MCP connections'),
     'heading_description' => lang('Your own accounts on the other services\' MCP servers of the Workspace, and their tools that read, run with a form.'),

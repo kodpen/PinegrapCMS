@@ -19,7 +19,8 @@ olduğunu `docs/memory/release/release-status.md` söyler — erişemiyorsan
 dokunulmaz). **Açık sürüm 2026.11.0** (yıl.ay.yama numaralarının ilki,
 `docs/memory/release/version-numbering.md`): `versions.php` satırı, changelog
 başlığı ve `includes/migrations/2026.11.0.php` → `upgrade_to_2026_11_0()`
-dosyası var. Yeni adım dosyayı yeniden oluşturmaz, girişe yeni bir çağrı ekler.
+dosyası var (alt adımlar 11.0.1 `legal_documents`, 11.0.2 `price_history`).
+Yeni adım dosyayı yeniden oluşturmaz, girişe yeni bir çağrı ekler.
 `config.version`'ı zaten `2026.11.0` olan bir dev DB yeni adımı koşmaz: önce
 `2026.4.10`'a geri çek.
 Sonraki numarayı ürün sahibine sor. Alt adım etiketleri önceki sürümlerin

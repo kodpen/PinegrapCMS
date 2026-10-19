@@ -1049,6 +1049,65 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Legal Documents ──
+// The pre-information form and the distance sales contract, filled from the
+// order. Drawn once the schema has its fields; the save writes them only then.
+if ($legal_documents_ready) {
+    $legal_placeholder_rows = '';
+
+    foreach (pg_legal_document_placeholders() as $legal_name => $legal_description) {
+        $legal_placeholder_rows .= '<tr><td class="text-nowrap"><code>^^' . h($legal_name) . '^^</code></td><td>' . h($legal_description) . '</td></tr>';
+    }
+
+    $legal_template_fields = '';
+
+    foreach (pg_legal_document_types() as $legal_type => $legal_label) {
+        $legal_field = 'ecommerce_' . $legal_type . '_template';
+        $legal_template_fields .= '
+                                                        <div class="col-12">
+                                                            <label class="form-label" for="' . $legal_field . '">' . h($legal_label) . '</label>
+                                                            <textarea class="form-control font-monospace" id="' . $legal_field . '" name="' . $legal_field . '" rows="12" spellcheck="false">' . h($ecommerce_legal_templates[$legal_type]) . '</textarea>
+                                                        </div>';
+    }
+
+    $pg_settings_cards[] = '
+    <div id="pgset-legal" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                ' . lang('Legal Documents') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $ecommerce_legal_documents_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_legal_documents" name="ecommerce_legal_documents" data-bs-target="#ecommerce_legal_documents_row"/>
+                            <label class="form-check-label" for="ecommerce_legal_documents">' . lang('Ask customers to accept the pre-information form and the distance sales contract') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('Both documents are filled from the order and a copy is kept with it as the customer saw it, so a later change to a template never changes an accepted copy.') . '</div>
+                        <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_legal_documents_row">
+                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(50px, 0px);"></div>
+                            <div class="popover-body">
+                                <div class="row gy-3">
+                                    <div class="col-12">
+                                        <div class="form-text">' . lang('The templates are a starting point. Have them reviewed for your business before switching this on, and add what only you know, such as your MERSİS number and your return carrier. Clear a template to go back to the built-in one.') . '</div>
+                                    </div>' . $legal_template_fields . '
+                                    <div class="col-12">
+                                        <details>
+                                            <summary class="form-text">' . lang('Fields you can use in a template') . '</summary>
+                                            <div class="form-text">' . lang('[[text ^^field^^ text]] shows the text only when the field has a value.') . '</div>
+                                            <table class="table table-sm mt-2 mb-0"><tbody>' . $legal_placeholder_rows . '</tbody></table>
+                                        </details>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+}
+
 // ── Affiliate Program ──
 $pg_settings_cards[] = '
                         <div id="pgset-affiliate" class="pg-set-card">

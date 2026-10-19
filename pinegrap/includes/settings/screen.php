@@ -172,9 +172,6 @@ if (!$_POST) {
     $output =
     pg_page_shell(array(
         'title'         => lang('Site Settings') . ' - ' . $pg_settings_category['label'],
-        // The categories' code fields are the facade's editor
-        // (pg_code_editor_attach()), so CodeMirror 5 stays in its template.
-        'code_editor'   => false,
         'extra classes' => 'setting',
         'icon'          => 'setting',
         'heading'       => $pg_settings_category['label'],

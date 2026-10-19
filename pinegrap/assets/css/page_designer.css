@@ -29,15 +29,6 @@ main {
 
 
 
-.CodeMirror-scrollbar-filler,
-.CodeMirror-gutter-filler {
-    background-color: #f7f7f7;
-}
-
-[data-bs-theme=dark] .CodeMirror-scrollbar-filler,
-[data-bs-theme=dark] .CodeMirror-gutter-filler {
-    background-color: #34302f;
-}
 
 .max-h-100 {
     max-height: 100%;
@@ -47,9 +38,6 @@ main {
     height: 100%;
 }
 
-.CodeMirror-scroll {
-    min-height: 200px;
-}
 
 .resizeable {
     min-width: 300px;
@@ -287,9 +275,21 @@ main {
 }
 
 .editor_container,
-.editor_container .CodeMirror {
+.editor_container .pg-code-editor {
     height: 100%;
     border-radius: 0;
+}
+
+.editor_container .pg-code-editor {
+    min-height: 230px;
+}
+
+/* The "create a region" dialogs' code boxes. */
+.pg-pd-region-code {
+    height: 50vh;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    overflow: hidden;
 }
 
 
@@ -299,13 +299,6 @@ main {
     }
 }
 
-.CodeMirror-scroll {
-    min-height: 230px !important;
-}
-
-.CodeMirror {
-    height: 100%;
-}
 
 ul.listtree {
     list-style: none;

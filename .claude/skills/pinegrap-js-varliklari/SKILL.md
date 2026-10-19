@@ -1,6 +1,6 @@
 ---
 name: "pinegrap-js-varliklari"
-description: "Pinegrap CMS'te JavaScript düzenlerken kullan: .src.js / .min.js ikizleri, panel ile ön yüz JS'inin ayrımı, CodeMirror ve Chart.js yıkımı, yükleniyor perdesi, JSON gövdeli uçlar."
+description: "Pinegrap CMS'te JavaScript düzenlerken kullan: .src.js / .min.js ikizleri, panel ile ön yüz JS'inin ayrımı, kod editörü (PgCodeEditor) ve Chart.js yıkımı, yükleniyor perdesi, JSON gövdeli uçlar."
 ---
 
 # Pinegrap — JS varlıkları
@@ -34,36 +34,26 @@ hangi `.min.js`'in hangi kaynaklardan, hangi sırayla yapıldığını söyler.
 - Kayıt ekranlarındaki Çalışma Alanı çekmecesi betiği ilk tıkta yükler
   (`ws_record_loader()`); orada sayfa açılırken `workspace.js` yoktur.
 
-## Yeni kod editörü: `PgCodeEditor` facade'ı (CodeMirror 6)
+## Kod editörü: `PgCodeEditor` facade'ı (CodeMirror 6)
 
-Yeni bir kod alanı açacaksan CodeMirror 5'e değil facade'a git:
-`assets/js/pg_code_editor.js` (`window.PgCodeEditor`). Motor
-`assets/lib/code_editor/cm6.bundle.js`'dir ve ilk editör açılışında
-tembel yüklenir (`PgCodeEditor.open(host, opts)` / `attach(textarea, opts)`);
-sayfa `PgCodeEditor.configure({ bundle: '…?v=damga' })` ile adresini söyler.
-Facade'da `_sdT()`/`lang()` yoktur, metinler çağırandan gelir. Panel
-ekranında bir textarea'ya editör vermek için PHP'den
-`pg_code_editor_attach(array('id' => …, 'code_type' => …))` basılır ve
-ekrana `'code_editor' => false` verilir (`docs/memory/ui/panel-code-fields.md`);
-`get_codemirror_javascript()` yeni koda yazılmaz. Kilitli aralık,
-izlenen aralık, tamamlama kaynağı ve eklenti kaydı için
-`docs/memory/core/code-editor-facade-and-bundle.md`. Bundle'ı elle düzenleme:
-`tools/code_editor/` kaynaklarını değiştirip `php tools/build_code_editor.php`
-koş (CI `--check` ile denetler).
+Üründeki tek kod editörü budur; CodeMirror 5 2026.11.0'da çıktı
+(`get_codemirror_*()`, `'code_editor'` sayfa özelliği ve başlıktaki şablon
+yok). Facade `assets/js/pg_code_editor.js` (`window.PgCodeEditor`), motor
+`assets/lib/code_editor/cm6.bundle.js`; ikisi de ilk editörde tembel yüklenir.
+Facade'da `_sdT()`/`lang()` yoktur, metinler çağırandan gelir.
 
-## Kod editörü (CodeMirror) başlıkta olmayabilir
-
-`pg_page_shell()`/`output_header()`'a `'code_editor' => false` verilen
-ekranda (Çalışma Alanı ekranları) CodeMirror başlıkta değil,
-`<template id="pg-code-editor-assets">` içinde bekler. AJAX ile kod alanı
-getiren yol işaretlemeyi basmadan önce
-`window.pgCodeEditorReady(markup, done)` çağırmalı (Site Ayarları penceresi
-böyle yapar); CodeMirror zaten varsa `done` hemen koşar. Aynı fonksiyon
-`pgCodeEditorUse` çağıran işaretleme için facade'ı ve motorunu da bekler.
-Facade hiçbir ekranın başlığında yoktur: `window.pgCodeEditorUse(run)`
-(`backend.src.js`) ilk kod alanında çeker. Kod alanı taşıyan bir bölgeyi
-atmadan önce `window.pgReleaseEditors(scope)` hem CodeMirror 5'i hem facade
-editörlerini bırakır.
+- Panel ekranında bir textarea'ya editör: PHP'den
+  `pg_code_editor_attach(array('id' => …, 'code_type' => …))`. Facade'ı
+  `window.pgCodeEditorUse(run)` (`backend.src.js`) çeker; kendi editörünü
+  kuran ekran da onu kullanır. Örnekler `window.pgCodeEditors[id]`'de.
+- AJAX ile kod alanı getiren yol işaretlemeyi basmadan önce
+  `window.pgCodeEditorReady(markup, done)` çağırmalı (Site Ayarları penceresi
+  böyle yapar); bölme editörleriyle boyanır.
+- Ayrıntılar `docs/memory/ui/panel-code-fields.md`; kilitli aralık, izlenen
+  aralık, tamamlama kaynağı, eklenti kaydı
+  `docs/memory/core/code-editor-facade-and-bundle.md`. Bundle'ı elle
+  düzenleme: `tools/code_editor/` kaynaklarını değiştirip
+  `php tools/build_code_editor.php` koş (CI `--check` ile denetler).
 
 ## İki yerde birden ara
 
@@ -74,11 +64,10 @@ kısayol sessizce düşer.
 
 ## Yıkım kuralları
 
-- **CodeMirror:** düzenleyici taşıyabilecek bir bölgeyi değiştiren/kapatan her
-  kod önce `window.pgReleaseEditors(scope)` çağırsın (`backend.src.js`).
-  `autoRefresh` gizli düzenleyiciyi 250 ms'de bir yoklar ve sekme kapanana kadar
-  sürer. `toTextArea()` yeterli değildir: eklenti yıkımı değil seçeneği dinler ve
-  `window`'a bağladığı `mouseup`/`keyup` işleyicilerini kaldırmaz.
+- **Kod editörü:** editör taşıyabilecek bir bölgeyi değiştiren/kapatan her
+  kod önce `window.pgReleaseEditors(scope)` çağırsın (`backend.src.js`): bölgedeki
+  `window.pgCodeEditors` örneklerini `destroy()` eder. Editör görünümü belgeye
+  dinleyici ve kutusuna bir gözlemci bağlar; işaretlemeyi atmak onları kaldırmaz.
 - **Chart.js:** grafik taşıyabilecek bir bölgeyi `.html()` / `.remove()` /
   `.append()` ile değiştiren her kod önce o bölgedeki grafikleri kapatsın
   (`destroy_widget_charts($scope)` → `Chart.getChart(canvas).destroy()`).
