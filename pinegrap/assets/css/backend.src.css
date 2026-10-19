@@ -15460,6 +15460,85 @@ button.ws-home-row:hover,
     max-height: 30vh;
   }
 }
+/* Notes brought in from other apps: the drop area, the files and what each becomes */
+.ws-nb-import-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ws-space-1);
+  padding: 2rem var(--ws-space-4);
+  border: 2px dashed var(--bs-border-color);
+  border-radius: var(--ws-radius);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.ws-nb-import-drop > .bi {
+  font-size: 2rem;
+  color: var(--ws-accent);
+}
+.ws-nb-import-drop:hover,
+.ws-nb-import-drop.ws-nb-import-over {
+  border-color: var(--ws-accent);
+  background-color: rgba(var(--ws-accent-rgb), .06);
+}
+.ws-nb-import-list {
+  max-height: 55vh;
+  overflow-y: auto;
+  border-radius: var(--ws-radius-sm);
+}
+.ws-nb-import-row {
+  display: flex;
+  gap: var(--ws-space-2);
+  align-items: flex-start;
+  cursor: pointer;
+}
+.ws-nb-import-row .form-check-input {
+  flex: none;
+  margin-top: .2rem;
+}
+.ws-nb-import-row.ws-nb-import-off {
+  cursor: default;
+}
+.ws-nb-import-row.ws-nb-import-off .ws-nb-import-main > .fw-semibold {
+  opacity: .6;
+}
+.ws-nb-import-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-nb-import-path {
+  overflow: hidden;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-nb-import-state {
+  font-size: .8rem;
+  color: var(--bs-secondary-color);
+}
+.ws-nb-import-kind.ws-nb-import-new,
+.ws-nb-import-badge.ws-nb-import-new {
+  color: var(--bs-success-text-emphasis);
+}
+.ws-nb-import-kind.ws-nb-import-update,
+.ws-nb-import-badge.ws-nb-import-update {
+  color: var(--ws-accent);
+}
+.ws-nb-import-kind.ws-nb-import-error,
+.ws-nb-import-badge.ws-nb-import-error {
+  color: var(--bs-danger-text-emphasis);
+}
+.ws-nb-import-badge {
+  font-weight: 500;
+  background-color: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+}
+.ws-nb-import-warn {
+  font-size: .75rem;
+  color: var(--bs-warning-text-emphasis);
+}
 .ws-table-edit td[data-ws-result]::after,
 .ws-table-edit th[data-ws-result]::after {
   content: attr(data-ws-result);
