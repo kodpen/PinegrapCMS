@@ -2646,6 +2646,10 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             'has_offers'         => !empty($_eo_offers['upsell_offers']) || !empty($_eo_offers['pending_offers']),
             'has_upsell'         => !empty($_eo_offers['upsell_offers']),
             'has_terms'          => true,  // terms section is always available
+            // The pre-information form and the distance sales contract are
+            // switched on: their required acceptance boxes show. Off, the
+            // boxes would block a checkout the server does not ask them for.
+            'has_legal_documents' => pg_legal_documents_enabled(),
             // Site-level tax-exempt switch. Both flags must be ON: tax
             // calculation must be enabled AND the operator must have
             // explicitly opened the exemption option. When false, the
