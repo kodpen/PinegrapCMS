@@ -40,6 +40,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/qr.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/forms.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/meta_tags.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/content.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/calendar.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/editor.php');

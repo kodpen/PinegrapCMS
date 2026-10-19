@@ -303,6 +303,17 @@
 .sd-settings-switches { display: flex; flex-direction: column; gap: .45rem; margin-bottom: .75rem; }
 .sd-settings-switches .form-check { margin-bottom: 0; }
 .sd-settings-body .form-text { color: #8b949e; }
+/* Meta Tags groups (Design and Page): one row per tag, the name narrower
+   than the content; below 576px the two boxes stack. */
+.sd-meta-list:empty { display: none; }
+.sd-meta-row { display: flex; align-items: flex-start; gap: .35rem; margin-bottom: .35rem; }
+.sd-meta-row .sd-meta-name { flex: 0 0 36%; min-width: 0; }
+.sd-meta-row .sd-meta-content { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 575.98px) {
+    .sd-meta-row { flex-wrap: wrap; }
+    .sd-meta-row .sd-meta-name { flex: 1 1 calc(100% - 2.5rem); }
+    .sd-meta-row .sd-meta-content { flex: 1 1 100%; order: 3; }
+}
 
 /* ── Toolbar ── */
 .sd-toolbar {

@@ -1549,6 +1549,19 @@ function save_system_style($data)
         $sql_theme_value = "'$_look', '$_palette',";
     }
 
+    // The design's meta tags (includes/fn/meta_tags.php): written when the
+    // column exists and the caller supplied them, so a caller that knows
+    // nothing of them leaves the stored list alone.
+    $sql_meta_set   = '';
+    $sql_meta_field = '';
+    $sql_meta_value = '';
+    if (array_key_exists('style_meta_tags', $data) && pg_meta_tags_ready()) {
+        $_meta = e(pg_meta_tags_encode(pg_meta_tags_normalize($data['style_meta_tags'])));
+        $sql_meta_set   = "style_meta_tags = '$_meta',";
+        $sql_meta_field = 'style_meta_tags,';
+        $sql_meta_value = "'$_meta',";
+    }
+
     $sql_social_set   = '';
     $sql_social_field = '';
     $sql_social_value = '';
@@ -1570,6 +1583,7 @@ function save_system_style($data)
                 $sql_social_set
                 $sql_assets_set
                 $sql_theme_set
+                $sql_meta_set
                 theme_id                         = '" . escape($theme_id) . "',
                 additional_body_classes          = '" . escape($abc) . "',
                 collection                       = '" . escape($collection) . "',
@@ -1590,6 +1604,7 @@ function save_system_style($data)
                 $sql_assets_field
                 $sql_fw_field
                 $sql_theme_field
+                $sql_meta_field
                 theme_id,
                 additional_body_classes,
                 collection,
@@ -1607,6 +1622,7 @@ function save_system_style($data)
                 $sql_assets_value
                 $sql_fw_value
                 $sql_theme_value
+                $sql_meta_value
                 '" . escape($theme_id) . "',
                 '" . escape($abc) . "',
                 '" . escape($collection) . "',
@@ -2284,6 +2300,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
 
     $noindex_ready = pg_page_noindex_ready();
     $multi_ready   = pg_multi_page_design_ready();
+    $meta_ready    = pg_meta_tags_ready();
 
     $cols = "page.page_id, page.page_name, page.page_folder, page.page_title,
              page.page_meta_description, page.page_search, page.page_search_keywords,
@@ -2295,6 +2312,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
              page.comments_watcher_email_page_id, page.comments_watcher_email_subject,
              page.comments_administrator_email_to_email_address,
              page.page_timestamp,
+             " . ($meta_ready ? "page.page_meta_tags," : "'' AS page_meta_tags,") . "
              " . pg_page_tree_sql_expr() . " AS tree_json";
 
     $rows = db_items(
@@ -2356,6 +2374,10 @@ function pg_designer_load_pages($style_id, $style_name = '')
             'pg_comments_email_subject' => (string)$r['comments_watcher_email_subject'],
             'pg_comments_notify_email'  => (string)$r['comments_administrator_email_to_email_address'],
             'page_timestamp'        => (int)$r['page_timestamp'],
+            // The page's own meta tags, as the column stores them ('' for
+            // none): the editor posts the string back unchanged when they
+            // were not edited.
+            'page_meta_tags'        => pg_meta_tags_encode(pg_meta_tags_normalize((string)$r['page_meta_tags'])),
             'tree_json'             => (string)$r['tree_json'],
         );
     }
@@ -2882,6 +2904,13 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     }
     if (array_key_exists('pg_comments_notify_email', $page)) {
         $c_extra['comments_administrator_email_to_email_address'] = e(mb_substr(trim((string)$page['pg_comments_notify_email']), 0, 100));
+    }
+    // The page's own meta tags (includes/fn/meta_tags.php) go the same way:
+    // written when the editor sends them, left as stored when it does not.
+    // They are content like the title, so a content-level operator writes
+    // them too; every value is escaped when the page is drawn.
+    if (array_key_exists('page_meta_tags', $page) && pg_meta_tags_ready()) {
+        $c_extra['page_meta_tags'] = e(pg_meta_tags_encode(pg_meta_tags_normalize($page['page_meta_tags'])));
     }
     $sql_c_extra_set  = '';
     $sql_c_extra_cols = '';
