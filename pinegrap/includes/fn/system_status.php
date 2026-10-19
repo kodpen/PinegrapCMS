@@ -1548,7 +1548,7 @@ function get_system_status_checks()
     //   terminal  → PHP version           database → database health
     //   puzzle    → PHP extensions        sliders  → php.ini directives
     //   patch     → CA certificate bundle  bell     → operations alerts
-    //   cone      → maintenance mode
+    //   cone      → maintenance mode       rss      → product feeds
     //
     // Where the family offers a natural negative form (unlock, shield-slash,
     // database-x) use it for the failing state: it reinforces the colour instead
@@ -1596,6 +1596,7 @@ function get_system_status_checks()
         'Visitor Records'          => 'Visitors',
         'Operations Alerts'        => 'Alerts',
         'Maintenance Mode'         => 'Maintenance',
+        'Product Feeds'            => 'Feeds',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1628,6 +1629,7 @@ function get_system_status_checks()
         'Visitor Records',
         'Operations Alerts',
         'Maintenance Mode',
+        'Product Feeds',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -3113,6 +3115,80 @@ function get_system_status_checks()
                 lang('Ended'),
                 $maintenance_href
             );
+        }
+    }
+
+    // 📶 Product feeds (includes/fn/product_feeds.php)
+    //
+    // A tile only while a feed is on. A platform keeps reading the last file
+    // it was given, so a feed that stopped being built goes unnoticed until
+    // the prices it shows are wrong: red when the last build failed, yellow
+    // when a feed was never built or not for two days (the daily job is not
+    // running). Reported, not scored, like Maintenance Mode: an integration
+    // the operator chose, not a fault of the site itself.
+    if (function_exists('pg_product_feed_health') && pg_product_feed_schema_ready()) {
+
+        $feeds_health = pg_product_feed_health(pg_product_feed_settings(), time());
+
+        if ($feeds_health['state'] !== 'none') {
+
+            $feeds_texts = pg_product_feed_format_texts();
+            $feeds_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_seo.php#pgset-feeds';
+            $feeds_detail = array();
+
+            foreach ($feeds_health['rows'] as $feeds_row) {
+                if ($feeds_row['state'] === 'fail') {
+                    $feeds_when = lang('Failing');
+                } elseif ($feeds_row['built_at'] <= 0) {
+                    $feeds_when = lang('Not built yet.');
+                } else {
+                    $feeds_when = get_relative_time(array('timestamp' => $feeds_row['built_at'], 'format' => 'plain_text'));
+                }
+
+                $feeds_detail[] = array(
+                    'label' => $feeds_texts[$feeds_row['format']]['label'],
+                    'state' => $feeds_row['state'],
+                    'when'  => $feeds_when,
+                );
+            }
+
+            if ($feeds_health['state'] === 'fail') {
+
+                $output .= $makeIcon(
+                    'bi-rss-fill',
+                    'text-danger',
+                    'Product Feeds',
+                    'A product feed could not be built. Platforms still read the file built before, which no longer follows the shop. The reason is on the Product Feeds card.',
+                    lang(array('string' => '{var:1} failing', 'vars' => pg_format_number($feeds_health['failing'], 0))),
+                    $feeds_href,
+                    $feeds_detail
+                );
+
+            } elseif ($feeds_health['state'] === 'warn') {
+
+                $output .= $makeIcon(
+                    'bi-rss',
+                    'text-warning',
+                    'Product Feeds',
+                    'A product feed has not been built for more than two days. Check that the scheduled tasks run, or build it from the Product Feeds card.',
+                    lang(array('string' => '{var:1} not built', 'vars' => pg_format_number($feeds_health['stale'], 0))),
+                    $feeds_href,
+                    $feeds_detail
+                );
+
+            } else {
+
+                $output .= $makeIcon(
+                    'bi-rss-fill',
+                    'text-success',
+                    'Product Feeds',
+                    'The product feeds that are on were built in the last two days.',
+                    lang(array('string' => '{var:1} on', 'vars' => pg_format_number($feeds_health['on'], 0))),
+                    $feeds_href,
+                    $feeds_detail
+                );
+
+            }
         }
     }
 

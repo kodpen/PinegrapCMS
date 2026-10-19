@@ -23920,5 +23920,12 @@
     "{var:1} has a new address; the old one no longer works.": "{var:1} için yeni adres oluşturuldu; eskisi artık çalışmıyor.",
     "The product feeds were not built: {var:1}": "Ürün akışları oluşturulmadı: {var:1}",
     "{var:1} was built with {var:2} product(s).": "{var:1} {var:2} ürünle oluşturuldu.",
-    "{var:1} was not built: {var:2}": "{var:1} oluşturulmadı: {var:2}"
+    "{var:1} was not built: {var:2}": "{var:1} oluşturulmadı: {var:2}",
+    "Feeds": "Akışlar",
+    "{var:1} failing": "{var:1} başarısız",
+    "{var:1} not built": "{var:1} oluşturulmadı",
+    "{var:1} on": "{var:1} açık",
+    "A product feed could not be built. Platforms still read the file built before, which no longer follows the shop. The reason is on the Product Feeds card.": "Bir ürün akışı oluşturulamadı. Platformlar önceki dosyayı okumaya devam ediyor; bu dosya mağazadaki değişiklikleri artık izlemiyor. Nedeni Ürün Akışları kartında.",
+    "A product feed has not been built for more than two days. Check that the scheduled tasks run, or build it from the Product Feeds card.": "Bir ürün akışı iki günden uzun süredir oluşturulmadı. Zamanlanmış görevlerin çalıştığını kontrol edin ya da akışı Ürün Akışları kartından oluşturun.",
+    "The product feeds that are on were built in the last two days.": "Açık olan ürün akışları son iki gün içinde oluşturuldu."
 }
