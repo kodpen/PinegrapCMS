@@ -18,9 +18,9 @@ olduğunu `docs/memory/release/release-status.md` söyler — erişemiyorsan
 2026-10-16 itibarıyla 2026.4.10 yayında ve kapalı (`includes/migrations/2026.4.10.php`
 dokunulmaz). **Açık sürüm 2026.11.0** (yıl.ay.yama numaralarının ilki,
 `docs/memory/release/version-numbering.md`): `versions.php` satırı ve changelog
-başlığı var, migration dosyası henüz yok. İlk şema adımını yazan
-`includes/migrations/2026.11.0.php` → `upgrade_to_2026_11_0()` dosyasını açar;
-sonra gelen adım dosyayı yeniden oluşturmaz, girişe yeni bir çağrı ekler.
+başlığı ve migration dosyası var (`includes/migrations/2026.11.0.php` →
+`upgrade_to_2026_11_0()`, ilk alt adım 11.0.1). Yeni adım dosyayı yeniden
+oluşturmaz, girişe yeni bir çağrı ekler.
 Sonraki numarayı ürün sahibine sor. Alt adım etiketleri önceki sürümlerin
 yapısını `11.0.` önekiyle korur (Çalışma Alanı .80–.89, ERP .58–.69 ve .90–,
 API .70–.79). `versions.php` satırı eklendiği an dev paneli yükseltme ekranına
