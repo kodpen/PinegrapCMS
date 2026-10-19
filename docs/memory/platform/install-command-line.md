@@ -1,6 +1,6 @@
 ---
 name: install-command-line
-description: php install/index.php install (PR #PRNUM): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
+description: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
 ---
 
 ## What does it do?
