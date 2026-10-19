@@ -4,9 +4,8 @@ description: Design decided for the unfinished Paraşüt e-document driver: cred
 ---
 
 ## How are Paraşüt credentials obtained and stored?
-- Paraşüt API v4 documents the password grant (today's code uses it). First check whether `authorization_code` works; then no password is stored.
-- If password grant is unavoidable: store the `refresh_token` and actually use it, so the password can be dropped after the first connection.
-- Never use the API key hash pattern (`hash_hmac`, one-way). Store `client_secret` + password + refresh token in one encrypted column with `mp_credentials_encode()` / `mp_credentials_decode()` (AES-256-CBC from `ENCRYPTION_KEY`). The panel shows only "•••• last 4".
+- Done: the authorization-code flow (Connect on the Paraşüt card, `parasut_connect.php`) beside the password grant; the refresh token is used; the secret stays in `config.parasut_credentials_enc`, the token sealed in the service tokens. Details: docs/memory/erp/erp-parasut-connection.md.
+- Still to verify live (demo application, 2026-10-19): that Paraşüt accepts `authorization_code` with the out-of-band redirect, the token lifetime, whether the refresh token rotates on use.
 - `client_id` / `client_secret` are not self-service; they come through Paraşüt support.
 
 ## Which HTTP layer?

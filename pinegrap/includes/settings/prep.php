@@ -404,6 +404,27 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         : lang('The secret and the password are stored encrypted and are never shown again after saving.');
     $parasut_company_id = $row['parasut_company_id'] ?? '';
 
+    // The connection as the sealed token tells it (nothing is asked of
+    // Paraşüt while the card is drawn) and the page the operator opens to
+    // authorize Pinegrap; the link follows the Client ID box as it is typed.
+    $parasut_connection = function_exists('parasut_connection_status')
+        ? parasut_connection_status()
+        : array('connected' => false, 'grant' => '', 'email' => '', 'company_name' => '', 'expires_at' => 0, 'connected_at' => 0, 'renewable' => false);
+    $parasut_authorize_url = function_exists('parasut_authorize_url') ? parasut_authorize_url($parasut_client_id) : '';
+
+    if (!empty($parasut_connection['connected'])) {
+        $parasut_connection_text = (($parasut_connection['grant'] === 'code')
+            ? lang('Connected with an authorization code')
+            : lang('Connected with the user name and password'))
+            . (($parasut_connection['email'] !== '') ? ' · ' . $parasut_connection['email'] : '')
+            . (($parasut_connection['company_name'] !== '') ? ' · ' . $parasut_connection['company_name'] : '')
+            . (($parasut_connection['connected_at'] > 0) ? ' · ' . date('d.m.Y H:i', $parasut_connection['connected_at']) : '');
+        $parasut_connection_tone = 'success';
+    } else {
+        $parasut_connection_text = lang('Not connected. Open the authorization page, sign in to Paraşüt, allow Pinegrap and paste the code it shows; or enter the user name and password below.');
+        $parasut_connection_tone = 'secondary';
+    }
+
     // The e-document provider (4.61): which one carries the ERP's invoices,
     // and each provider's own fields. Drawn only once the provider table is
     // there; the radio group uses the pane's collapse switcher, so picking a
