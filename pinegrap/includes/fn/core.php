@@ -3630,8 +3630,27 @@ function get_short_version()
         define('VERSION', 'SETUP');
     }
 
+    return pg_short_version(VERSION);
+}
+
+/**
+ * The short form of a version, as get_short_version() describes it, for a
+ * value given rather than read: "26.11" for "2026.11.0". The installer
+ * defines VERSION as true, which names no version: anything but a string or
+ * a number answers '', so a title goes without a version instead of printing
+ * true as "1".
+ *
+ * @param mixed $version
+ * @return string
+ */
+function pg_short_version($version)
+{
+    if (!is_string($version) && !is_int($version) && !is_float($version)) {
+        return '';
+    }
+
     // Ensure we are working with a string
-    $version = (string) VERSION;
+    $version = (string) $version;
 
     // Helper: multibyte-safe substr wrapper
     $sub = function ($str, $start, $length = null) {

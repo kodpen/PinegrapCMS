@@ -15,6 +15,7 @@
 !docker/nginx.conf
 !docker/cron.sh
 !docker/job-ready.php
+!docker/install.sh
 
 pinegrap/data/*
 !pinegrap/data/.htaccess

@@ -87,22 +87,41 @@
         return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
     }
 
-    // The facade's editor over `textarea`, `height` tall. Resolves with the
+    // The facade's editor over `textarea`, `height` tall (and `extra`
+    // options, the dialog's width and isolation). Calls `done` with the
     // instance, or with null when there is no editor to be had.
-    function attachTo(textarea, height, done) {
+    function attachTo(textarea, height, done, extra) {
         useFacade(function () {
             if (!window.PgCodeEditor || !textarea.parentNode) {
                 done(null);
                 return;
             }
 
-            window.PgCodeEditor.attach(textarea, {
+            var options = {
                 language: 'html',
                 theme: theme(),
                 height: height,
                 className: 'pg-cke-source',
                 labels: (window.pgCodeEditorConfig && window.pgCodeEditorConfig.labels) || {}
-            }).then(done, function () { done(null); });
+            };
+
+            for (var key in (extra || {})) {
+                if (Object.prototype.hasOwnProperty.call(extra, key)) options[key] = extra[key];
+            }
+
+            window.PgCodeEditor.attach(textarea, options).then(done, function () { done(null); });
+        });
+    }
+
+    // CKEditor's dialog presses OK on Enter and moves the focus on Tab. In
+    // the code both belong to the editor, as does a key the editor used
+    // (Escape closing its search or its completion list), so those stop at
+    // the editor. Escape the editor leaves alone still cancels the dialog.
+    function keepKeys(container) {
+        container.addEventListener('keydown', function (event) {
+            if ((event.key === 'Enter') || (event.key === 'Tab') || event.defaultPrevented) {
+                event.stopPropagation();
+            }
         });
     }
 
@@ -189,14 +208,19 @@
 
             var mine = dialog._pgCodeTurn = (dialog._pgCodeTurn || 0) + 1;
 
+            // The textarea gives the dialog its size (sourcedialog sets it
+            // from the window); the editor takes the same once it is hidden,
+            // or the dialog shrinks to its narrowest. The dialog resets every
+            // element inside it, so the editor lives in a shadow root.
             attachTo(textarea, (textarea.offsetHeight || 400) + 'px', function (instance) {
                 if (!instance || mine !== dialog._pgCodeTurn) {
                     if (instance) instance.destroy();
                     return;
                 }
+                keepKeys(instance.container || instance.host);
                 dialog._pgCodeEditor = instance;
                 instance.focus();
-            });
+            }, { width: (textarea.offsetWidth || 800) + 'px', isolate: true });
         };
 
         definition.onHide = function () {
