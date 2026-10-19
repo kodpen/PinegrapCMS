@@ -1181,8 +1181,19 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
 // outputs the form's <select> file list for selecting a file (value is file id)
 function select_files_for_theme_designer()
 {
+    global $user;
+
     $files = array();
-    
+
+    // A basic user (role 3) only sees images in folders they have edit
+    // access to; check_folder_access_in_array() needs an array here, since
+    // in_array() on null is a TypeError on PHP 8.
+    $folders_that_user_has_access_to = array();
+
+    if (isset($user['role']) && ($user['role'] == 3)) {
+        $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
+    }
+
     // get image list
     $query =
         "SELECT
