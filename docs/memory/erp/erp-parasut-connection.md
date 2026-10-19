@@ -20,6 +20,7 @@ description: How Pinegrap is connected to Paraşüt (authorization code or passw
 - After Connect the operator must close and reopen the settings before saving anything else on the page: the pane would otherwise write the boxes it loaded (an empty company id, an old client id) back.
 
 ## What happens when the refresh token dies?
+- Paraşüt rotates the refresh token: every refresh answers a new one and retires the old (API documentation; access token lives 2 h). The new one is saved over the old. A request that renewed in parallel leaves the other holding a retired token, so `invalid_grant` first re-reads the cache and uses a token another request has just stored.
 - `invalid_grant` on refresh with no password on file → "The Paraşüt connection has expired … authorize once more"; with a password on file the password grant runs instead. Any other refresh failure (transport, 5xx) is passed on as it is.
 
 ## Tests

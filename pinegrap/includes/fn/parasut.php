@@ -606,16 +606,34 @@ function parasut_get_token()
     $lock_name = 'pinegrap_parasut_token_' . substr(md5(PARASUT_COMPANY_ID . '|' . PARASUT_CLIENT_ID), 0, 20);
     $have_lock = (db_value("SELECT GET_LOCK('" . escape($lock_name) . "', 10)") == '1');
 
-    if ($have_lock) {
-        // Whoever we waited for may have renewed it already.
-        $cache = _parasut_token_cache_read();
-        if (!empty($cache['access_token']) && !empty($cache['expires_at']) && (time() < ($cache['expires_at'] - 60))) {
+    // Whoever we waited for may have renewed it already - also when the wait
+    // ran out without the lock.
+    $cache = _parasut_token_cache_read();
+    if (!empty($cache['access_token']) && !empty($cache['expires_at']) && (time() < ($cache['expires_at'] - 60))) {
+        if ($have_lock) {
             db_value("SELECT RELEASE_LOCK('" . escape($lock_name) . "')");
-            return ['success' => true, 'token' => $cache['access_token'], 'error' => ''];
         }
+        return ['success' => true, 'token' => $cache['access_token'], 'error' => ''];
     }
 
     $refresh = $can_refresh ? _parasut_token_refresh((string) ($cache['refresh_token'] ?? ''), $credentials) : ['success' => false, 'data' => null];
+
+    // Every refresh hands out a new refresh token and retires the one sent
+    // (API documentation). A request that renewed in parallel leaves this one
+    // holding a retired token: invalid_grant here then only means the cache
+    // has moved on, so it is read once more before the connection is called
+    // expired.
+    if (!$refresh['success'] && ((string) ($refresh['data']['error'] ?? '') === 'invalid_grant')) {
+        $moved = _parasut_token_cache_read();
+
+        if (!empty($moved['access_token']) && !empty($moved['expires_at']) && (time() < ($moved['expires_at'] - 60))
+            && ((string) ($moved['refresh_token'] ?? '') !== (string) ($cache['refresh_token'] ?? ''))) {
+            if ($have_lock) {
+                db_value("SELECT RELEASE_LOCK('" . escape($lock_name) . "')");
+            }
+            return ['success' => true, 'token' => $moved['access_token'], 'error' => ''];
+        }
+    }
 
     if ($refresh['success']) {
         $data = $refresh['data'];
