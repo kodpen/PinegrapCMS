@@ -16,7 +16,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - docker-image.md: Plan (approved 2026-10-19, steps 1 and 3 built in PR #565): docker/ compose stack in the release tree; unattended install, README section and GHCR publishing left
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, not started): read ERP_AUTO_INVOICE_ON to create the invoice and queue the e-document on order status, revenue-threshold warnings (e-Fatura, e-Arşiv), internet-sale note
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
-- erp-parasut-driver-design.md: Design decided for the unfinished Paraşüt e-document driver: credentials, HTTP layer, taxpayer check, scenario, async job ladder, totals check, webhook, account title lookup
+- erp-parasut-driver-design.md: Paraşüt e-document driver: what is written and awaits the live test (2026-10-19), what is still open (queue worker and reconcile ladder, webhook, account title lookup), decisions behind both
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
 - image-delivery-pipeline.md: Plan (approved 2026-10-19, in progress: steps 1-3 and the cache upkeep done): image settings with a schema step, page rebuild button, Loading row left

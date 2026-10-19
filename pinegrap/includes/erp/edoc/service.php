@@ -526,6 +526,7 @@ function erp_edoc_fix_fields()
     return array(
         'title' => array('group' => 'buyer', 'label' => lang('Name or title')),
         'tax_number' => array('group' => 'buyer', 'label' => lang('VKN / TCKN')),
+        'tax_office' => array('group' => 'buyer', 'label' => lang('Tax office')),
         'address' => array('group' => 'buyer', 'label' => lang('Address')),
         'postcode' => array('group' => 'buyer', 'label' => lang('Zip Code')),
         'city' => array('group' => 'buyer', 'label' => lang('City')),
@@ -709,6 +710,7 @@ function erp_edoc_invoice_party_fix($invoice_id, $values, $user_id = 0)
     $allowed = array(
         'title' => array('title', 'account_title', 255),
         'tax_number' => array('tax_number', 'account_tax_number', 32),
+        'tax_office' => array('tax_office', 'account_tax_office', 100),
         'address' => array('address', 'account_address', 255),
         'postcode' => array('postcode', 'account_postcode', 20),
         'city' => array('city', 'account_city', 100),

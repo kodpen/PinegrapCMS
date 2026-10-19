@@ -691,6 +691,27 @@ function parasut_get_token()
 }
 
 /**
+ * Drops the cached access token so the next parasut_get_token() renews it
+ * (with the refresh token, or the password). For the answer that says the
+ * token is no longer good - a 401 - when its own clock still says it is.
+ *
+ * @return void
+ */
+function parasut_token_forget()
+{
+    $cache = _parasut_token_cache_read();
+
+    if (empty($cache)) {
+        return;
+    }
+
+    unset($cache['access_token'], $cache['owner']);
+    $cache['expires_at'] = 0;
+
+    _parasut_token_cache_write($cache);
+}
+
+/**
  * The page the operator opens to let this installation into their Paraşüt
  * account. Paraşüt asks them to sign in and to allow the application, then
  * prints an authorization code (the out-of-band redirect) that is pasted

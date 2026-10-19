@@ -59,7 +59,7 @@ if ($_POST) {
     // not given: (int) read an array allocation or repeat as record 1 and
     // took that one off or stopped it, (string) wrote "Array" into the note,
     // the buyer's card and the e-mail.
-    pg_request_single_values(array('erp_action', 'notes', 'snooze_until', 'settlement_id', 'fix_title', 'fix_tax_number', 'fix_address', 'fix_postcode',
+    pg_request_single_values(array('erp_action', 'notes', 'snooze_until', 'settlement_id', 'fix_title', 'fix_tax_number', 'fix_tax_office', 'fix_address', 'fix_postcode',
         'fix_city', 'fix_district', 'fix_carrier_title', 'fix_carrier_vkn', 'recur_every', 'recur_first', 'recur_end', 'recur_mode', 'recurrence_id',
         'mail_to', 'mail_subject', 'mail_message'));
 
@@ -207,6 +207,7 @@ if ($_POST) {
         $result = erp_edoc_invoice_party_fix($invoice_id, array(
             'title' => (string) ($_POST['fix_title'] ?? ''),
             'tax_number' => (string) ($_POST['fix_tax_number'] ?? ''),
+            'tax_office' => (string) ($_POST['fix_tax_office'] ?? ''),
             'address' => (string) ($_POST['fix_address'] ?? ''),
             'postcode' => (string) ($_POST['fix_postcode'] ?? ''),
             'city' => (string) ($_POST['fix_city'] ?? ''),

@@ -5,7 +5,7 @@ description: Open ERP work (e-document phase 3): Paraşüt send path, queue work
 
 ## What is left of the ERP plan?
 ERP phases -1 to 9 are done (2026.4.4–2026.4.10). Open, all e-document (phase 3) or outside approval:
-1. Paraşüt driver send path (`includes/erp/edoc/parasut.php`): API credentials never came from Paraşüt support. Design: docs/memory/plans/erp-parasut-driver-design.md
+1. Paraşüt driver: the send path is written (send / submit / poll / PDF / cancel) and awaits its first live run with the demo application the owner received on 2026-10-19; the queue worker, the webhook and the title lookup stay open. State and decisions: docs/memory/plans/erp-parasut-driver-design.md
 2. Worker for `erp_edoc_queue` (the table exists, nothing processes it) and the e-document error notification that hangs on it.
 3. Logo İşbaşı live key (the owner enters it). The chain works end to end on the test environment.
 4. Code lists from Logo: return and exemption codes, `eArchivePaymentType` for internet sales. GİB UBL-TR code lists v1.43 took effect 2026-09-14: review exemption and withholding codes.
@@ -14,7 +14,7 @@ ERP phases -1 to 9 are done (2026.4.4–2026.4.10). Open, all e-document (phase 
 7. Manual checks on dev (owner): phase 6 tools through the Claude connector, purchase-order PDF and supplier e-mail, My Account → My Invoices in a template and the cart for a customer with account prices.
 
 ## Who works on it?
-- The owner, locally (scope decision 2026-10-13). Cloud threads do not touch `includes/erp/edoc/`.
+- The Paraşüt driver: the cloud thread the owner assigned it to on 2026-10-19 (it lifts the 2026-10-13 rule for `includes/erp/edoc/parasut.php`); the rest of `includes/erp/edoc/` stays the owner's local work.
 - Driver contract: comment at the top of `includes/erp/edoc/registry.php`; layer: docs/memory/erp/erp-edoc-driver-layer.md. Provider comparison: project note `notes/efatura-saglayici-karsilastirma.md`.
 
 ## Which cancellation or return path applies?
@@ -39,7 +39,7 @@ A consumer who is not a taxpayer cannot issue an invoice; the return document co
 - `gross_total` sent to and returned by the provider are identical, else nothing is issued.
 - Provider down: the panel still works and the queue drains on its own afterwards.
 - Two concurrent requests refresh the token once; a tampered webhook body changes no field.
-- No invoice or waybill creating code left in `includes/fn/parasut.php`; `view_parasut_inbox.php` keeps working.
+- No invoice or waybill creating code left in `includes/fn/parasut.php` (the order screen's buttons still use it today); `view_parasut_inbox.php` keeps working.
 
 ## Is the tax advice verified?
 - No. UBL-TR exemption and withholding codes, VUK 509 fields, the e-archive cancellation window and the consumer return section were compiled from public sources and must be confirmed by the store's accountant.
