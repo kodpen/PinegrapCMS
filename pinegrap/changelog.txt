@@ -22,8 +22,9 @@
 [NEW] Added editing of a record's fields (product, stock, order, contact, current account, product group, offer, event) from the Workspace record drawer, with the change kept in the channel as a decision.
 [NEW] Added export of Workspace notes: one note as Markdown or a printable page, all notes as a zip that opens as a vault in other note apps.
 [NEW] Added operations alerts: a failed or stale backup, a stopped scheduled task, changed software files, a burst of PHP errors, low disk space, failing e-mail or webhooks and an expiring certificate are told on the panel bell, by e-mail and on subscribed devices.
+[NEW] Added a backup before every software update and repair: the files it replaces and the database are saved first, and Repair Software can roll the files back to it.
 [FIX] Miscellaneous bug fixes and new features.
-[SCHEME] Settings for operations alerts are added to the site configuration.
+[SCHEME] Settings for operations alerts and for the backup before software updates are added to the site configuration.
 ==========================================================
 2026.4.10
 [NEW] Added an OAuth 2.1 authorization server and an MCP server: AI apps such as Claude and ChatGPT connect with a person's own permissions.

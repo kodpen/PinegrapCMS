@@ -781,6 +781,10 @@ define('OPS_ALERT_ERROR_RATE', isset($row['ops_alert_error_rate']) ? (int) $row[
 define('OPS_ALERT_DISK_PERCENT', isset($row['ops_alert_disk_percent']) ? (int) $row['ops_alert_disk_percent'] : 10);
 define('OPS_ALERT_MAIL_FAILURES', isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10);
 define('OPS_ALERT_CERT_DAYS', isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14);
+// Whether an update backs up the files it replaces and the database first
+// (2026.11.0, 11.0.21; pg_update_backup_create()). On while the column is not
+// there: the step defaults it on too.
+define('UPDATE_BACKUP', isset($row['update_backup']) ? (int) $row['update_backup'] : 1);
 
 
 if (!defined('SOFTWARE_LANGUAGE')) {

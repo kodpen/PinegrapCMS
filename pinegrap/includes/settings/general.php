@@ -96,7 +96,13 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="col-12">
                         <div class="alert' . (($software_update_channel === 'beta') ? ' alert-warning' : ' alert-secondary') . ' mb-0 py-2 small">' . lang('Stable is the release everyone runs. Beta receives new versions earlier, before they have been through as many sites; use it on a test installation or when you are working with us on a fix. Switching back to stable does not remove a beta already installed — the site stays on it until a stable release passes it.') . '</div>
-                    </div>
+                    </div>' . ($update_backup_ready ? '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . ($update_backup ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="update_backup" name="update_backup"/>
+                            <label class="form-check-label" for="update_backup">' . lang('Back up before updating') . '<br/><span class="form-text">' . lang('Before an update or a repair replaces the software files, the files it replaces and the database are written to data/backups/pre-update-….zip; the three newest are kept. Repair Software rolls the files back from it, and the installation screen restores its database. Switch it off only for a site too large to back up within one request.') . '</span></label>
+                        </div>
+                    </div>' : '') . '
                 </div>
             </div>
         </div>
