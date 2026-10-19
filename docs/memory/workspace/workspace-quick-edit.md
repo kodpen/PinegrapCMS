@@ -20,5 +20,5 @@ description: A record's fields edited by a person from the record drawer with no
 ## How does the drawer draw it?
 - docs/memory/workspace/workspace-quick-edit-drawer.md (the "Fields" section of `openRecord()`, the chip menu item, `saValueInput()`).
 
-## What is not here yet?
-- `/price` and `/stock` commands (plan R3): docs/memory/plans/workspace-record-quick-edit.md. No new API route: `/products/{id}`, `/products/{id}/inventory` and the record routes cover a client's needs (owner default, 2026-10-19).
+## What else saves through it?
+- The `/price` and `/stock` channel commands (docs/memory/workspace/workspace-record-commands.md). No new API route: `/products/{id}`, `/products/{id}/inventory` and the record routes cover a client's needs (owner default, 2026-10-19).

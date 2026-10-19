@@ -838,7 +838,7 @@ function ws_handle_action($action, $request)
                 'quick_edit'  => array_values(array_filter(ws_quick_edit_types(), function ($type) use ($viewer) {
                     return ws_change_allowed($viewer, $type, 0);
                 })),
-                'commands'    => ws_command_help(),
+                'commands'    => ws_command_help($viewer),
                 'upload'      => array('max' => ws_upload_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
                 'reactions'   => ws_reaction_quick(),
@@ -1111,6 +1111,8 @@ function ws_handle_action($action, $request)
                 'confirm'   => !empty($request['confirm']),
                 'force'     => !empty($request['force']),
                 'assignees' => isset($request['assignees']) ? (array) $request['assignees'] : null,
+                'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
+                'decision'  => !empty($request['decision']),
             ));
 
             if ($command !== null) {
