@@ -7,7 +7,7 @@ description: Plan (approved 2026-10-19, in progress: builder done): product feed
 - The catalog page `?rss=true` feed carries Google `g:` fields (`get_page.php:2384-2468`, `includes/fn/widgets_catalog.php:5722-5779`) but nothing produces the OpenAI product feed (JSONL/CSV with nine required fields and `is_eligible_search`/`is_eligible_checkout` flags) or a Google Merchant TSV file that can be scheduled. Agent discovery (ChatGPT search, Google AI Mode through UCP) starts with a feed; the checkout side belongs to `storefront-api-agentic-commerce.md`.
 
 ## What is done?
-- Step 1: `includes/fn/product_feeds.php` (`pg_product_feed_build()`, reader, item, per-format rows, JSONL/CSV/TSV writers) and `tests/product_feeds_test.php`. Rules and field mapping: docs/memory/commerce/product-feeds.md.
+- Step 1 (PR #561): `includes/fn/product_feeds.php` (`pg_product_feed_build()`, reader, item, per-format rows, JSONL/CSV/TSV writers) and `tests/product_feeds_test.php`. Rules and field mapping: docs/memory/commerce/product-feeds.md.
 
 ## What is decided?
 - Files are written to `data/feeds/<token>.<ext>` by the daily dispatcher job and served by `feed.php?f=<token>` with `Last-Modified`/304; the token is a secret per feed so the URL can be given to a platform without exposing the site. Extension and Content-Type per format: `pg_product_feed_formats()`.

@@ -1,6 +1,6 @@
 ---
 name: product-feeds
-description: Product feed builder (includes/fn/product_feeds.php): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
+description: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
 ---
 
 ## What exists?
