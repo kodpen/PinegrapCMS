@@ -50,7 +50,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $banned_email_addresses = (string) ($row['banned_email_addresses'] ?? '');
     $remember_me_device_limit = ($row['remember_me_device_limit'] ?? 0);
     $software_update_channel = ((($row['software_update_channel'] ?? 'stable') === 'beta') ? 'beta' : 'stable');
-    // The backup an update takes first (2026.11.0, 11.0.21); the switch is
+    // The backup an update takes first (2026.11.0, 11.0.6); the switch is
     // drawn once the column is there, and reads on until then.
     $update_backup_ready = array_key_exists('update_backup', $row);
     $update_backup = $update_backup_ready ? (int) $row['update_backup'] : 1;
@@ -2190,7 +2190,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $backup_remote_ftp['password'] = '';
     $backup_remote_s3['secret_key'] = '';
 
-    // Operations alerts card (2026.11.0, 11.0.20). The columns arrive with the
+    // Operations alerts card (2026.11.0, 11.0.5). The columns arrive with the
     // upgrade; until then the card says so instead of drawing controls. The
     // recipient list is shown as it was saved; the box's placeholder is the
     // address used while it is empty.
@@ -2204,7 +2204,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ops_alert_mail_failures = isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10;
     $ops_alert_cert_days = isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14;
 
-    // Maintenance mode card (2026.11.0, 11.0.22). The end time goes into a
+    // Maintenance mode card (2026.11.0, 11.0.7). The end time goes into a
     // datetime-local box, which takes the site's own time zone.
     $maintenance_ready = array_key_exists('maintenance_mode', $row);
     $maintenance_mode = $maintenance_ready ? (int) $row['maintenance_mode'] : 0;
