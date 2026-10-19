@@ -1,6 +1,6 @@
 ---
 name: product-feed-decisions
-description: Product feed decisions (plan approved 2026-10-19, built in PRs #561, #571, #572, #576 and the API PR): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
+description: Product feed decisions (plan approved 2026-10-19; PRs #561, #571, #572, #576, #577): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
 ---
 
 ## Why do the feeds exist?
