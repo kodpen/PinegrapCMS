@@ -5227,6 +5227,7 @@ function ws_api_note_present($viewer, $note)
         'channel_id'  => is_array($note['channel'] ?? null) ? (int) $note['channel']['id'] : null,
         'text'        => $full ? ws_plain_text($viewer, (string) $note['body']) : null,
         'body'        => $full ? (string) $note['body'] : null,
+        'created_at'  => api_time($note['created_at']),
         'updated_at'  => api_time($note['updated_at']),
     );
 }
@@ -5250,6 +5251,7 @@ function ws_api_note_schema()
         'channel_id'  => 'integer?',
         'text'        => 'string?',
         'body'        => 'string?',
+        'created_at'  => 'string?',
         'updated_at'  => 'string?',
     );
 }
@@ -5257,29 +5259,37 @@ function ws_api_note_schema()
 function ws_api_notes_list($params)
 {
     $viewer = ws_api_viewer();
-    $scope = (string) ($params['scope'] ?? 'all');
-    $lists = ws_notes_list($viewer, (string) ($params['search'] ?? ''));
-    $notes = array();
+    $after = null;
 
-    if ($scope !== 'shared') {
-        $notes = array_merge($notes, $lists['mine']);
+    if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+        $cursor = api_cursor_decode($params['cursor']);
+        $after = ($cursor === null) ? null : ws_notes_position_unpack($cursor['v'], $cursor['i']);
+
+        if ($after === null) {
+            api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+        }
     }
 
-    if ($scope !== 'mine') {
-        $notes = array_merge($notes, $lists['shared']);
-    }
+    $limit = (int) ($params['limit'] ?? 100);
+    $page = ws_notes_page($viewer, array(
+        'scope'         => (string) ($params['scope'] ?? 'all'),
+        'search'        => (string) ($params['search'] ?? ''),
+        'updated_since' => isset($params['updated_since']) ? (int) $params['updated_since'] : 0,
+        'after'         => $after,
+        'limit'         => $limit,
+    ));
 
     $out = array();
 
-    foreach ($notes as $note) {
-        if (isset($params['updated_since']) && ((int) $note['updated_at'] < (int) $params['updated_since'])) {
-            continue;
-        }
-
+    foreach ($page['rows'] as $note) {
         $out[] = ws_api_note_present($viewer, $note);
     }
 
-    api_ok_list($out, count($out));
+    $next = ($page['next'] !== null)
+        ? api_cursor_encode(ws_notes_position_pack($page['next']['group'], $page['next']['updated_at']), $page['next']['id'])
+        : null;
+
+    api_ok_list($out, $limit, $next, $page['total']);
 }
 
 function ws_api_notes_get($params)
