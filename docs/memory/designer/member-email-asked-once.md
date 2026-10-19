@@ -5,7 +5,7 @@ description: Registration and membership activation ask for the email once: emai
 
 ## Is the address asked twice on sign-up?
 - No. `pg_member_register()` and `pg_member_activate()` (`includes/fn/auth.php`) do not require `email_verify` (nor `email_address_verify`, the membership entrance's own name). A second copy that was typed in still has to be the same address (`pg_member_email_repeat_ok()`: absent or empty passes, compared as typed, no case folding), so a layout that keeps the field still catches a typo. Tests: `tests/member_email_test.php` (the two functions run in a PHP process of their own; their cases stop before the first query).
-- Why: WCAG 2.2 3.3.7 (redundant entry). Decided 2026-10-19; before, both functions sent the form back with "Please type email address again.".
+- Why: WCAG 2.2 3.3.7 (redundant entry). Decided 2026-10-19, PR #668; before, both functions sent the form back with "Please type email address again.".
 
 ## Which forms ask once now?
 - The registration and membership widgets' starter layouts (`_buildStarterTree()`, `StyleDesigner.starterTree()`): no "Email (again)" control. Built-in templates take these layouts (`'tree' => 'starter'`), so their sign-up pages ask once without a change to the template files.
