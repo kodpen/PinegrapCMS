@@ -864,10 +864,6 @@ echo
         ($explorer_area == 'catalog')
             ? array(
                 'title' => lang('Catalog Manager'),
-                // The file window's code editor is the facade's, fetched on
-                // the first text file; CodeMirror 5 waits in the template
-                // for a settings pane that still draws one.
-                'code_editor' => false,
                 'extra classes' => 'products file-manager',
                 'icon' => 'store',
                 'heading' => lang('Catalog Manager'),
@@ -876,7 +872,6 @@ echo
             )
             : array(
                 'title' => lang('File Manager'),
-                'code_editor' => false,
                 'extra classes' => 'folders files file-manager',
                 'icon' => 'folder',
                 'heading' => lang('File Manager'),

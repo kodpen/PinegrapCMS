@@ -45,9 +45,6 @@ if (($user['role'] < 1) && ((defined('DYNAMIC_REGIONS') == true) && (DYNAMIC_REG
 echo pg_page_shell(
     array(
         'title'=> lang('Page Designer'),
-        // The code panel is the facade's editor; CodeMirror 5 waits in its
-        // template.
-        'code_editor' => false,
         'extra classes'=>'page_designer',
         'icon'=>'design',
         'replace_home_with'=>'close',

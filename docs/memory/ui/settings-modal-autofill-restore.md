@@ -6,7 +6,7 @@ description: Settings dialog defence against password-manager fills: hold()/revi
 ## Why are unchosen values put back instead of only not counted dirty?
 - Identity-filling managers (Kaspersky) ignore `autocomplete` and vendor opt-out attributes (Kuruluş Adresi 2 was filled in the field). Merely "not counting dirty" leaves the value on screen and it enters the database at the NEXT save, silently.
 - `hold()` keeps the value of every VISIBLE control when the pane arrives; `review()` writes an ownerless change back to its old value and says `say('filled')` once per pane.
-- Hidden controls are excluded: the token, the tag field's hidden input and CodeMirror's textarea are written by this software; restoring them would be fighting ourselves.
+- Hidden controls are excluded: the token, the tag field's hidden input and a code field's textarea are written by this software; restoring them would be fighting ourselves.
 - A control that becomes visible later (operator opened a block) is taken into the list at every review with its current value; while closed it could not have been filled.
 
 ## Who owns a change?

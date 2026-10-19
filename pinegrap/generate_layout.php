@@ -41,8 +41,6 @@ $form->set('layout', "\n" . generate_layout_content($_GET['page_id']));
 
 echo pg_page_shell([
         'title'=> lang('Generate Layout'),
-        // The layout is shown in the facade's editor (pg_code_editor_attach()).
-        'code_editor' => false,
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Generate Layout'),

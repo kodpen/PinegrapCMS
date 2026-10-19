@@ -622,7 +622,7 @@ function pg_panel_update_layout($request, $action)
     // that the layout has not been modified and delete layout file.
     // We strip white-spaces, because we had issues where possibly
     // new lines characters were different in the generated content from
-    // the codemirror content.
+    // the code editor's content.
     if (preg_replace('/\s+/', '', $request['layout']['content']) === preg_replace('/\s+/', '', generate_layout_content($request['layout']['id']))) {
         // If a layout file exists, then delete it.
         if (file_exists(LAYOUT_DIRECTORY_PATH . '/' . $layout['id'] . '.php')) {
