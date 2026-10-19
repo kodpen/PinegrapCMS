@@ -5,7 +5,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 
 ## What are operations alerts?
 - Failures that used to show only on System Status or in the logs, told on the panel bell (role < 3), by e-mail and as a device banner: `backup_failed`, `backup_remote_failed`, `backup_stale`, `cron_stalled`, `integrity`. Catalogue: `pg_ops_alert_codes()` (label, notification type, panel url).
-- One sender, `pg_ops_alert($code, $detail)`. Added in 2026.11.0 (step 11.0.20).
+- One sender, `pg_ops_alert($code, $detail)`. Added in 2026.11.0 (step 11.0.20), PR #542.
 
 ## Where is an alert stored?
 - As a `notifications` row, `action = 'ops'`, `order_total` = code, `title` = detail (or the code when there is none). No table of its own (owner approval 2026-10-19). `pg_notification_display()` builds the sentence from the catalogue; `pg_ops_alert_recent()` lists the last one per code for the System Status tile "Operations Alerts" (reported, not scored).
