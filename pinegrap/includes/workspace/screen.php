@@ -645,6 +645,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
 
+    // A file of the file manager picked under the paperclip (library.php).
+    $strings = array_merge($strings, ws_library_js_strings());
+
     // Scheduled actions (includes/workspace/scheduled.php) and the messages
     // scheduled from the writing box (scheduled_messages.php).
     if (function_exists('ws_scheduled_js_strings')) {
@@ -721,6 +724,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'files' => ws_note_import_files_max(),
             'limit' => WS_NOTE_LIMIT,
         ) : null,
+        // The paperclip also picks from the file manager (library.php).
+        'library'      => function_exists('ws_library_browse'),
         // Word and Excel files of a conversation, drawn by a script fetched
         // on first use (includes/fn/office.php).
         'office'       => function_exists('pg_office_view_includes') ? array(

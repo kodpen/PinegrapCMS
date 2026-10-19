@@ -50,6 +50,22 @@ if ($explorer_area == 'catalog') {
 // is simply not drawn, and the listing refuses the request on its own as well.
 $explorer_erp = ($explorer_area != 'catalog') && defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || !empty($user['manage_erp']));
 
+// "Send to a channel" on a file, for the people of the Workspace: a copy of
+// the file posted as a message (includes/workspace/library.php). The
+// Workspace's own folder is the one place it is not offered: its files
+// already belong to a conversation.
+$explorer_ws_send = false;
+$explorer_ws_folder_id = 0;
+
+if (($explorer_area != 'catalog') && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    if (ws_enabled() && ws_rights($user)['member']) {
+        $explorer_ws_send = true;
+        $explorer_ws_folder_id = ws_library_workspace_folder();
+    }
+}
+
 // This screen no longer links across to the other area at all -- neither from
 // the sidebar nor from the menu at the top right -- so it no longer has to
 // work out who may go there.  The left menu carries both entries and already
@@ -650,6 +666,11 @@ $explorer_lang = array(
     'where_used_none' => lang('Nothing on the site refers to this file.'),
     'where_used_count' => lang('Referred to in {var:1} place(s)'),
     'where_used_more' => lang('Only the first of them are listed.'),
+    // A copy of a file posted into a Workspace channel.
+    'ws_send' => lang('Send to a channel'),
+    'ws_send_none' => lang('There is no channel you can write in.'),
+    'ws_sent' => lang('Sent to {var:1}.'),
+    'ws_open_channel' => lang('Open the channel'),
     // Renaming a whole selection by a rule rather than one at a time.
     'bulk_rename' => lang('Bulk Rename'),
     'bulk_rename_menu' => lang('Rename {var:1} item(s)...'),
@@ -1988,6 +2009,36 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     </div>
 </div>
 
+<?php if ($explorer_ws_send) { ?>
+<!-- Sending a file to a Workspace channel: the channels the operator may
+     write in, with a filter box, and the words to go beside the file. The
+     channel gets a copy (includes/workspace/library.php). -->
+<div class="modal fade" id="ws_send_modal" tabindex="-1" aria-labelledby="ws_send_modal_label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 1rem;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-truncate" id="ws_send_modal_label"><span class="bi bi-send me-2"></span><span id="ws_send_title"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo lang('Close'); ?>"></button>
+            </div>
+            <div class="modal-body pt-0">
+                <div class="form-text mt-0 mb-2"><?php echo lang('The channel gets a copy of this file; the original stays where it is.'); ?></div>
+                <div class="input-group input-group-sm rounded-pill mb-2">
+                    <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
+                    <input type="search" id="ws_send_filter" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Filter'); ?>" aria-label="<?php echo lang('Filter'); ?>" autocomplete="off" />
+                </div>
+                <div id="ws_send_channels" class="list-group list-group-flush mb-3" style="max-height: 36vh; overflow-y: auto;"></div>
+                <label for="ws_send_body" class="form-label small"><?php echo lang('Add a message (optional)'); ?></label>
+                <textarea id="ws_send_body" class="form-control" rows="2" maxlength="4000"></textarea>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo lang('Cancel'); ?></button>
+                <button type="button" class="btn btn-primary" id="ws_send_confirm_button" disabled><span class="bi bi-send me-1"></span><?php echo lang('Send'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php } ?>
+
 <!-- Quick look.
      The preview panel answers "what is this" beside the grid; this answers
      "let me actually look at it" without leaving the folder, and the arrow
@@ -2021,6 +2072,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // Visual pages are added by designers, into a design they choose
     // (pg_designer_target_modal()); the store has none.
     var canVisualPages = <?php echo (($user['role'] < 2) && ($explorer_area != 'catalog')) ? 'true' : 'false'; ?>;
+
+    // A file sent to a Workspace channel as a copy; not from the Workspace's
+    // own folder, whose files already belong to a conversation.
+    var wsSend = <?php echo $explorer_ws_send ? 'true' : 'false'; ?>;
+    var wsFolderId = <?php echo (int) $explorer_ws_folder_id; ?>;
 
     var state = {
         area: '<?php echo $explorer_area; ?>',
@@ -7304,6 +7360,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 }
                 html += menuItem('bi-diagram-3', L.where_used, 'where_used', multi);
                 html += menuItem('bi-file-earmark-arrow-down', L.download, 'download', multi);
+                if (wsSend) {
+                    html += menuItem('bi-send', L.ws_send, 'ws_send', multi || insideWorkspaceFolder());
+                }
                 if (item.is_image && item.can_edit) {
                     html += menuItem('bi-brush', L.image_editor, 'image_editor', multi);
                     if (!item.optimized && OPTIMIZABLE_TYPES.indexOf(item.type) !== -1) {
@@ -7653,6 +7712,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // screen: the report is about the file that is being looked at.
             case 'pin_toggle': if (item) { togglePin(item.id, item.name); } break;
             case 'tree_pin_toggle': if (node) { togglePin(node.id, node.name); } break;
+            case 'ws_send': if (item) { openWsSend(item); } break;
             case 'where_used':
                 if (item) {
                     setSelection([item], item);
@@ -8470,6 +8530,153 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         transferState = null;
 
         transferItemsTo(target, items, copy);
+    }
+
+    // ── Send to a Workspace channel ─────────────────────────────────────
+    //
+    // The channels are asked for each time the window opens, so one joined a
+    // minute ago is there; ws_library_attach checks the file, the channel and
+    // the sender again before it posts the copy.
+
+    var wsSendModal = null;
+    var wsSendState = null;
+
+    function insideWorkspaceFolder() {
+        if ((wsFolderId <= 0) || (state.mode !== 'browse')) { return false; }
+        if (Number(state.folderId) === wsFolderId) { return true; }
+
+        return (state.breadcrumb || []).some(function (crumb) { return Number(crumb.id) === wsFolderId; });
+    }
+
+    function wsAction(action, data, done) {
+        api(Object.assign({}, data, { action: action }), function (response) {
+            if (response.status !== 'success') {
+                toast(response.message || L.request_failed, false);
+                done(null);
+                return;
+            }
+
+            done(response.data || {});
+        }, function () {
+            toast(L.request_failed, false);
+            done(null);
+        });
+    }
+
+    function renderWsSendChannels() {
+        if (!wsSendState) { return; }
+
+        var container = document.getElementById('ws_send_channels');
+        var filter = (document.getElementById('ws_send_filter').value || '').trim().toLocaleLowerCase('tr');
+        var html = '';
+
+        wsSendState.channels.forEach(function (channel) {
+            if (filter && (String(channel.name || '').toLocaleLowerCase('tr').indexOf(filter) === -1)) { return; }
+
+            var tint = /^#[0-9a-f]{3,8}$/i.test(channel.hex || '') ? (' style="color:' + channel.hex + '"') : '';
+            var iconName = /^bi-[a-z0-9-]+$/.test(channel.icon || '') ? channel.icon : 'bi-hash';
+
+            html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2' +
+                ((String(channel.id) === String(wsSendState.picked)) ? ' active' : '') +
+                '" data-channel-id="' + Number(channel.id) + '">' +
+                '<i class="bi ' + iconName + '"' + tint + '></i>' +
+                '<span class="text-truncate">' + esc(channel.name) + '</span></button>';
+        });
+
+        if (html === '') {
+            html = '<div class="text-center text-body-secondary small py-3">' +
+                esc(wsSendState.channels.length ? L.no_target_match : L.ws_send_none) + '</div>';
+        }
+
+        container.innerHTML = html;
+        document.getElementById('ws_send_confirm_button').disabled = (wsSendState.picked === null) || wsSendState.busy;
+    }
+
+    function openWsSend(item) {
+        if ((!wsSend) || (!item) || (item.kind !== 'file')) { return; }
+
+        var modalElement = document.getElementById('ws_send_modal');
+
+        if (!wsSendModal) {
+            wsSendModal = new bootstrap.Modal(modalElement);
+
+            document.getElementById('ws_send_filter').addEventListener('input', renderWsSendChannels);
+
+            document.getElementById('ws_send_channels').addEventListener('click', function (event) {
+                var row = event.target.closest('[data-channel-id]');
+
+                if ((!row) || (!wsSendState)) { return; }
+
+                wsSendState.picked = Number(row.getAttribute('data-channel-id'));
+                renderWsSendChannels();
+            });
+
+            document.getElementById('ws_send_confirm_button').addEventListener('click', runWsSend);
+
+            modalElement.addEventListener('shown.bs.modal', function () {
+                document.getElementById('ws_send_filter').focus();
+            });
+        }
+
+        wsSendState = { file: item, channels: [], picked: null, busy: false };
+
+        document.getElementById('ws_send_title').textContent = item.name;
+        document.getElementById('ws_send_filter').value = '';
+        document.getElementById('ws_send_body').value = '';
+        document.getElementById('ws_send_confirm_button').disabled = true;
+        document.getElementById('ws_send_channels').innerHTML =
+            '<div class="text-center py-3"><span class="spinner-border spinner-border-sm text-secondary"></span></div>';
+
+        wsSendModal.show();
+
+        wsAction('ws_library_channels', {}, function (data) {
+            if (!wsSendState) { return; }
+
+            if (!data) {
+                hideModal(wsSendModal, 'ws_send_modal');
+                wsSendState = null;
+                return;
+            }
+
+            wsSendState.channels = data.channels || [];
+
+            // One channel is the choice already made.
+            if (wsSendState.channels.length === 1) {
+                wsSendState.picked = Number(wsSendState.channels[0].id);
+            }
+
+            renderWsSendChannels();
+        });
+    }
+
+    function runWsSend() {
+        if ((!wsSendState) || (wsSendState.picked === null) || wsSendState.busy) { return; }
+
+        var sending = wsSendState;
+
+        sending.busy = true;
+        renderWsSendChannels();
+
+        wsAction('ws_library_attach', {
+            channel_id: sending.picked,
+            file_id: sending.file.id,
+            body: document.getElementById('ws_send_body').value
+        }, function (data) {
+            sending.busy = false;
+
+            if (!data) {
+                renderWsSendChannels();
+                return;
+            }
+
+            hideModal(wsSendModal, 'ws_send_modal');
+            wsSendState = null;
+
+            toast(fmt(L.ws_sent, [(data.channel && data.channel.name) || '']), true, data.url ? {
+                label: L.ws_open_channel,
+                run: function () { window.open(data.url, '_blank', 'noopener'); }
+            } : null);
+        });
     }
 
     // ── Clipboard ───────────────────────────────────────────────────────

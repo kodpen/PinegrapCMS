@@ -23696,5 +23696,22 @@
     "the Distance Sales Contract": "Mesafeli Satış Sözleşmesini",
     "I have read and approve {var:1}.": "{var:1} okudum ve onaylıyorum.",
     "I have read and accept {var:1}.": "{var:1} okudum ve kabul ediyorum.",
-    "{var:1} must be accepted.": "{var:1} onaylanmalıdır."
+    "{var:1} must be accepted.": "{var:1} onaylanmalıdır.",
+    "Channels do not take this kind of file.": "Kanallar bu tür dosyayı kabul etmiyor.",
+    "This file is already in the Workspace. Forward the message that carries it instead.": "Bu dosya zaten Çalışma Alanı'nda. Onun yerine dosyayı taşıyan mesajı iletin.",
+    "From this device": "Bu cihazdan",
+    "From the file manager": "Dosya yöneticisinden",
+    "The channel gets a copy of the file you pick; the original stays where it is.": "Kanala seçtiğiniz dosyanın bir kopyası gider; asıl dosya yerinde kalır.",
+    "Search the file manager": "Dosya yöneticisinde ara",
+    "All folders": "Tüm klasörler",
+    "Changed last": "Son değişenler",
+    "There are no files in this folder.": "Bu klasörde dosya yok.",
+    "No file matches that.": "Bununla eşleşen dosya yok.",
+    "There is no folder in the file manager you can open.": "Dosya yöneticisinde açabileceğiniz bir klasör yok.",
+    "Only the first files are listed. Search to find the others.": "Yalnız ilk dosyalar listelendi. Diğerlerini bulmak için arayın.",
+    "Send to a channel": "Kanala gönder",
+    "There is no channel you can write in.": "Yazabileceğiniz bir kanal yok.",
+    "Sent to {var:1}.": "{var:1} kanalına gönderildi.",
+    "The channel gets a copy of this file; the original stays where it is.": "Kanala bu dosyanın bir kopyası gider; asıl dosya yerinde kalır.",
+    "Add a message (optional)": "Mesaj ekleyin (isteğe bağlı)"
 }

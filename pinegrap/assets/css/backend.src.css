@@ -10329,6 +10329,56 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="settings"] > .bi { color: 
   flex-direction: column;
   min-width: 0;
 }
+/* The file manager's files under the paperclip (workspace.js libraryPicker). */
+.ws-lib-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-1);
+  margin-bottom: var(--ws-space-2);
+  font-size: .875rem;
+}
+.ws-lib-trail:empty {
+  display: none;
+}
+.ws-lib-sep {
+  font-size: .7rem;
+  color: var(--bs-tertiary-color);
+}
+.ws-lib-section {
+  margin-top: var(--ws-space-2);
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+.ws-lib-row {
+  align-items: center;
+}
+.ws-lib-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ws-lib-thumb {
+  flex: 0 0 auto;
+  width: var(--ws-avatar);
+  height: var(--ws-avatar);
+  object-fit: cover;
+  border-radius: var(--ws-radius-xs);
+  background: var(--bs-tertiary-bg);
+}
+.ws-lib-row .ws-pull-icon {
+  flex: 0 0 auto;
+  width: var(--ws-avatar);
+  margin-top: 0;
+  font-size: 1.35rem;
+  text-align: center;
+}
+.ws-lib-refused {
+  opacity: .6;
+  cursor: not-allowed;
+}
 /* Versions of a conversation. */
 .ws-era-row {
   display: flex;
