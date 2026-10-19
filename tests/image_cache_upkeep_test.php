@@ -65,6 +65,44 @@ function test_image_derivative_stale_entries()
 	pg_assert_same(array_keys($entries), pg_image_derivative_stale_entries($entries, null, $now), 'everything when the file is gone');
 }
 
+// The settings decide what is current: a quality changed makes that format's
+// derivatives stale, a format switched off makes its conversions stale but
+// not the resized copies of a file already in it.
+function test_image_derivative_stale_entries_follow_the_settings()
+{
+	$now = 1760000000;
+	$settings = pg_image_delivery_settings(array('image_derivative_formats' => 1, 'image_quality_webp' => 70, 'image_resize_quality' => 82));
+
+	$jpg = array('mtime' => 1750000000, 'size' => 4321, 'extension' => 'jpg');
+	$webp_at_80 = pg_image_derivative_signature(1750000000, 4321, 80);
+	$webp_at_70 = pg_image_derivative_signature(1750000000, 4321, 70);
+	$avif = pg_image_derivative_signature(1750000000, 4321, 50);
+	$own = pg_image_derivative_signature(1750000000, 4321, 82);
+
+	$entries = array(
+		'960-' . $webp_at_80 . '.webp' => $now - 10,
+		'960-' . $webp_at_70 . '.webp' => $now - 10,
+		'960-' . $avif . '.avif' => $now - 10,
+		'960-' . $avif . '.avif.skip' => $now - 10,
+		'960-' . $own . '.jpg' => $now - 10,
+	);
+
+	$stale = pg_image_derivative_stale_entries($entries, $jpg, $now, $settings);
+	sort($stale);
+
+	$expected = array('960-' . $avif . '.avif', '960-' . $avif . '.avif.skip', '960-' . $webp_at_80 . '.webp');
+	sort($expected);
+
+	pg_assert_same($expected, $stale, 'the old webp quality and avif, which is off');
+
+	// A WebP file: its resized copies are WebP whatever the switch says.
+	$webp_file = array('mtime' => 1750000000, 'size' => 4321, 'extension' => 'webp');
+	$off = pg_image_delivery_settings(array('image_derivative_formats' => 0, 'image_quality_webp' => 70));
+
+	pg_assert_same(array(), pg_image_derivative_stale_entries(array('480-' . $webp_at_70 . '.webp' => $now - 10), $webp_file, $now, $off), 'a resized copy in the file\'s own format stays');
+	pg_assert_same(array('480-' . $webp_at_70 . '.webp'), pg_image_derivative_stale_entries(array('480-' . $webp_at_70 . '.webp' => $now - 10), $jpg, $now, $off), 'a conversion to a format switched off goes');
+}
+
 function test_image_derivative_purge_sets_the_cache_aside()
 {
 	$folder = image_cache_upkeep_test_folder();

@@ -1202,22 +1202,97 @@ function pg_image_derivative_format($requested, $source_extension, $writable)
 
 
 /**
- * The encoding quality of a derivative.
+ * How derivatives are delivered, from the config row: which modern formats
+ * are offered and the encoding quality of each.
+ *
+ * get_file.php reads the row itself (it never loads functions.php) and
+ * pg_image_delivery() reads it for everything else; both come through here,
+ * so a value out of range is clamped the same way on both sides. A column the
+ * row does not have (the 2026.11.0 upgrade has not run, or the read failed)
+ * takes its default, which is what the software did before the settings.
  *
  * The three scales are not the same one: AVIF 50 and WebP 80 are the common
- * web defaults for those formats, and 82 is what the resize button already
- * uses for JPEG. PNG and GIF are lossless and ignore it.
+ * web defaults for those formats, and 82 is what the resize button uses for
+ * JPEG (image_resize_quality). AVIF holds up lower on its own scale than the
+ * other two, hence its lower floor.
  *
- * @param string $format the derivative's format or the source's extension
+ * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF),
+ *                        image_quality_webp, image_quality_avif,
+ *                        image_resize_quality
+ * @return array formats (webp, avif => bool), quality (webp, avif, source)
+ */
+function pg_image_delivery_settings($row)
+{
+    $row = is_array($row) ? $row : array();
+
+    $value = function ($key, $default, $min) use ($row) {
+        if (!isset($row[$key]) || !is_numeric($row[$key])) {
+            return $default;
+        }
+
+        return max($min, min(100, (int) $row[$key]));
+    };
+
+    $bits = (isset($row['image_derivative_formats']) && is_numeric($row['image_derivative_formats']))
+        ? (int) $row['image_derivative_formats']
+        : 3;
+
+    return array(
+        'formats' => array(
+            'webp' => (($bits & 1) === 1),
+            'avif' => (($bits & 2) === 2)),
+        'quality' => array(
+            'webp'   => $value('image_quality_webp', 80, 40),
+            'avif'   => $value('image_quality_avif', 50, 20),
+            'source' => $value('image_resize_quality', 82, 40)));
+}
+
+
+/**
+ * The encoding quality of a derivative.
+ *
+ * PNG and GIF are lossless and ignore it.
+ *
+ * @param string     $format   the derivative's format or the source's extension
+ * @param array|null $settings pg_image_delivery_settings(); null for the defaults
  * @return int
  */
-function pg_image_derivative_quality($format)
+function pg_image_derivative_quality($format, $settings = null)
 {
-    $qualities = array('avif' => 50, 'webp' => 80);
+    if (!is_array($settings) || !isset($settings['quality'])) {
+        $settings = pg_image_delivery_settings(null);
+    }
 
     $format = strtolower((string) $format);
 
-    return isset($qualities[$format]) ? $qualities[$format] : 82;
+    return isset($settings['quality'][$format])
+        ? (int) $settings['quality'][$format]
+        : (int) $settings['quality']['source'];
+}
+
+
+/**
+ * The formats a derivative may be written in on this server under these
+ * settings: written by a library (pg_image_derivative_formats()) and offered
+ * by the operator.
+ *
+ * @param array      $writable format => bool, pg_image_derivative_formats()
+ * @param array|null $settings pg_image_delivery_settings(); null for the defaults
+ * @return array webp, avif => bool
+ */
+function pg_image_derivative_offered($writable, $settings = null)
+{
+    if (!is_array($settings) || !isset($settings['formats'])) {
+        $settings = pg_image_delivery_settings(null);
+    }
+
+    $offered = array();
+
+    foreach (array('webp', 'avif') as $format) {
+        $offered[$format] = !empty($writable[$format]) && !empty($settings['formats'][$format]);
+    }
+
+    return $offered;
 }
 
 
@@ -1597,9 +1672,10 @@ function pg_image_derivative_unlock($lock, $path)
  * @param string $source_path the original on disk
  * @param array  $request     pg_image_derivative_request()
  * @param string $directory   pg_image_derivative_directory()
+ * @param array|null $settings pg_image_delivery_settings(); null for the defaults
  * @return array status, path, extension, width
  */
-function pg_image_derivative($file_id, $source_path, $request, $directory)
+function pg_image_derivative($file_id, $source_path, $request, $directory, $settings = null)
 {
     $original = array('status' => 'original', 'path' => $source_path, 'extension' => '', 'width' => 0);
 
@@ -1635,13 +1711,15 @@ function pg_image_derivative($file_id, $source_path, $request, $directory)
     $resize = ($width < $source_width);
 
     // The formats this server really writes are only looked up when one is
-    // asked for: a width alone keeps the source's format.
+    // asked for: a width alone keeps the source's format. A format the
+    // operator switched off is answered like one the server cannot write,
+    // so a page published before the switch still gets a picture.
     $requested_format = isset($request['format']) ? (string) $request['format'] : '';
 
     $format = pg_image_derivative_format(
         $requested_format,
         $source_extension,
-        ($requested_format !== '') ? pg_image_derivative_formats($directory) : array());
+        ($requested_format !== '') ? pg_image_derivative_offered(pg_image_derivative_formats($directory), $settings) : array());
 
     // The original already is what was asked for.
     if (!$resize && ($format === '')) {
@@ -1649,7 +1727,7 @@ function pg_image_derivative($file_id, $source_path, $request, $directory)
     }
 
     $extension = ($format !== '') ? $format : $source_extension;
-    $quality = pg_image_derivative_quality($extension);
+    $quality = pg_image_derivative_quality($extension, $settings);
     $name = pg_image_derivative_file_name($width, pg_image_derivative_signature($mtime, $size, $quality), $extension);
     $folder = rtrim((string) $directory, '/\\') . '/' . $file_id;
     $path = $folder . '/' . $name;

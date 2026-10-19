@@ -24007,5 +24007,20 @@
     "Paraşüt has not prepared the PDF yet; try again in a minute.": "Paraşüt PDF'i henüz hazırlamadı; bir dakika sonra yeniden deneyin.",
     "Exemption code {var:1} needs its reason in words: write it in the invoice note (it goes to GİB as the exemption reason), or choose the specific exemption code.": "{var:1} istisna kodu gerekçenin yazıyla verilmesini ister: gerekçeyi fatura notuna yazın (GİB'e istisna gerekçesi olarak gider) ya da özel istisna kodunu seçin.",
     "Paraşüt would not show the lines of the invoice: {var:1}": "Paraşüt faturanın kalemlerini göstermedi: {var:1}",
-    "The e-Archive invoice could be cancelled until {var:1}; after that it is answered with a return invoice.": "e-Arşiv faturası {var:1} tarihine kadar iptal edilebiliyordu; bundan sonra iade faturasıyla karşılanır."
+    "The e-Archive invoice could be cancelled until {var:1}; after that it is answered with a return invoice.": "e-Arşiv faturası {var:1} tarihine kadar iptal edilebiliyordu; bundan sonra iade faturasıyla karşılanır.",
+    "image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark": "image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark, resim, gorsel, görsel, foto, optimizasyon, duyarlı, duyarli, kalite, boyut, yukleme, filigran",
+    "Offer pictures as WebP": "Görselleri WebP olarak sun",
+    "Offer pictures as AVIF": "Görselleri AVIF olarak sun",
+    "Lighter still than WebP. Browsers that cannot read AVIF get WebP or the original instead.": "WebP'den de hafiftir. AVIF okuyamayan tarayıcılar onun yerine WebP'yi ya da asıl dosyayı alır.",
+    "This server cannot write {var:1}, so it is not offered while that stays so.": "Bu sunucu {var:1} yazamıyor; bu durum sürdükçe bu biçim sunulmaz.",
+    "WebP Quality": "WebP Kalitesi",
+    "AVIF Quality": "AVIF Kalitesi",
+    "Save and rebuild page HTML": "Kaydet ve sayfa HTML'ini yeniden oluştur",
+    "Visual designer pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.": "Görsel tasarımcı sayfaları son kaydedildiklerinde oluşturulan HTML'i saklar. Bu işlem her sayfayı kaydedilmiş hâlinden yeniden oluşturur; böylece duyarlı görsellerden ya da bir biçim açılıp kapatılmadan önce yayımlanan sayfalar güncel görsel işaretlemesini alır. Sayfaların içeriği, değiştirilme tarihi ve yazarı değişmez.",
+    "Page HTML rebuilt: {var:1} visual designer pages drawn again, {var:2} of them changed.": "Sayfa HTML'i yeniden oluşturuldu: {var:1} görsel tasarımcı sayfası yeniden oluşturuldu, {var:2} tanesi değişti.",
+    "the HTML of {var:1} visual designer pages was rebuilt": "{var:1} görsel tasarımcı sayfasının HTML'i yeniden oluşturuldu",
+    "{var:1} visual designer pages drawn again so far, {var:2} still to go. Press Save and rebuild page HTML again to go on.": "Şimdiye kadar {var:1} görsel tasarımcı sayfası yeniden oluşturuldu, {var:2} sayfa kaldı. Devam etmek için Kaydet ve sayfa HTML'ini yeniden oluştur düğmesine yeniden basın.",
+    "Pictures on pages are sent at the width the screen needs, and as WebP to browsers that read it: usually about a third lighter than JPEG. Each is made the first time it is asked for.": "Sayfalardaki görseller ekranın ihtiyaç duyduğu genişlikte, WebP okuyan tarayıcılara da WebP olarak gönderilir; WebP genellikle JPEG'den üçte bir kadar hafiftir. Her görsel ilk istendiğinde hazırlanır.",
+    "A changed quality makes the pictures again as they are next asked for. Resized JPEG and PNG pictures use the quality when resizing above.": "Kalite değişirse görseller bir sonraki istendiklerinde yeniden hazırlanır. Küçültülen JPEG ve PNG görseller yukarıdaki küçültme kalitesini kullanır.",
+    "AVIF holds up at a lower number than WebP, so its quality is set apart.": "AVIF, WebP'den daha düşük bir sayıda da iyi görünür; bu yüzden kalitesi ayrı ayarlanır."
 }

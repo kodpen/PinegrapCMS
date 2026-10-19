@@ -410,6 +410,12 @@ function generate_style_code_from_tree($tree, $style_name, $additional_body_clas
     $_img_saved = $_img_state;
     $_img_state = array('active' => true, 'first_seen' => false);
 
+    // Each body writes its own once-per-page assets (_pg_once_state()). What
+    // it wrote still counts as written for the rest of the request, as before.
+    $_once_state = &_pg_once_state();
+    $_once_saved = $_once_state;
+    $_once_state = array();
+
     // Process children of the root container node
     $_body = '';
     if (isset($tree['children']) && is_array($tree['children'])) {
@@ -423,6 +429,7 @@ function generate_style_code_from_tree($tree, $style_name, $additional_body_clas
     $code .= pg_img_responsive_html($_body);
 
     $_img_state = $_img_saved;
+    $_once_state = $_once_state + $_once_saved;
 
     $code .= '    </body>
 
@@ -3186,6 +3193,95 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
 }
 
 /**
+ * Draw the HTML of every visual-designer page again from its stored tree.
+ *
+ * A page's body is drawn when it is saved (pg_designer_save_page()) and kept
+ * in page.page_tree_code, so a change to how the renderer draws (responsive
+ * images, the image formats offered) reaches a page only when it is saved
+ * again. This draws every page from the tree it already has, as a save with
+ * no changes would: the tree, the modified time and the author stay as they
+ * are, and a body that comes out the same is not written. A translated body
+ * follows on its next request (its fingerprint is the source body's).
+ *
+ * Pages go in id order until the deadline; a large site takes several calls,
+ * each starting after the last page the one before looked at.
+ *
+ * @param int $after_id the last page id an earlier call looked at; 0 to start
+ * @param int $seconds  how long this call may take
+ * @return array done (bool), after (last page id looked at), checked,
+ *               changed, left (pages after it still to do)
+ */
+function pg_designer_rebuild_page_code($after_id = 0, $seconds = 15)
+{
+    $result = array('done' => true, 'after' => max(0, (int)$after_id), 'checked' => 0, 'changed' => 0, 'left' => 0);
+
+    if (!pg_multi_page_design_ready()) return $result;
+
+    $deadline     = microtime(true) + max(1, (int)$seconds);
+    $body_classes = array();
+    $designer_sql = "page_tree_json IS NOT NULL AND page_tree_json <> ''";
+
+    // The renderer's messages node shows the session's pending form messages
+    // and uses them up. They belong to the screen this request answers, not
+    // to the pages drawn here, so they are set aside meanwhile.
+    $has_liveforms = isset($_SESSION['software']['liveforms']);
+    $liveforms     = $has_liveforms ? $_SESSION['software']['liveforms'] : null;
+    unset($_SESSION['software']['liveforms']);
+
+    while ($result['done']) {
+
+        $rows = db_items("SELECT page_id, page_name, page_style, page_tree_json, page_tree_code
+                          FROM page
+                          WHERE page_id > '" . (int)$result['after'] . "' AND $designer_sql
+                          ORDER BY page_id
+                          LIMIT 10");
+
+        if (!$rows) break;
+
+        foreach ($rows as $row) {
+
+            if (microtime(true) > $deadline) {
+                $result['done'] = false;
+                break;
+            }
+
+            $page_id  = (int)$row['page_id'];
+            $style_id = (int)$row['page_style'];
+
+            $result['after'] = $page_id;
+            $result['checked']++;
+
+            $tree = json_decode((string)$row['page_tree_json'], true);
+
+            if (!is_array($tree)) continue;
+
+            // Body classes come from the design, as in pg_designer_save_page().
+            if (!array_key_exists($style_id, $body_classes)) {
+                $body_classes[$style_id] = (string)db_value("SELECT additional_body_classes FROM style WHERE style_id = '$style_id' LIMIT 1");
+            }
+
+            $code = generate_style_code_from_tree($tree, (string)$row['page_name'], $body_classes[$style_id]);
+
+            if (($code === '') || ($code === (string)$row['page_tree_code'])) continue;
+
+            db("UPDATE page SET page_tree_code = '" . e($code) . "' WHERE page_id = '$page_id'");
+
+            $result['changed']++;
+        }
+    }
+
+    if ($has_liveforms) {
+        $_SESSION['software']['liveforms'] = $liveforms;
+    }
+
+    if (!$result['done']) {
+        $result['left'] = (int)db_value("SELECT COUNT(*) FROM page WHERE page_id > '" . (int)$result['after'] . "' AND $designer_sql");
+    }
+
+    return $result;
+}
+
+/**
  * Write the inline CSS / JS / JSON assets of a design to disk and keep the
  * `files` table in step. Extracted from edit_system_style.php so the
  * multi-page save can call it once per design instead of once per page.
@@ -3417,8 +3513,25 @@ function _props_has_position_class($props)
 }
 
 /**
- * Emit the pg_lightbox CSS+JS asset tags exactly once per request.
- * Subsequent calls return ''. Called from the carousel render so the assets
+ * The assets written once per page so far: name => true.
+ *
+ * One request can write several page bodies: a designer save that carries
+ * every page showing a changed shared component, and the Rebuild Page HTML
+ * action. With one flag for the whole request, every body after the first
+ * would be stored without the carousel's Fancybox script and styles, so
+ * generate_style_code_from_tree() gives each body a fresh state.
+ *
+ * @return array
+ */
+function &_pg_once_state()
+{
+    static $state = array();
+    return $state;
+}
+
+/**
+ * Emit the pg_lightbox CSS+JS asset tags once per page (_pg_once_state()).
+ * Later calls return ''. Called from the carousel render so the assets
  * are only loaded on pages that actually have a lightbox-enabled carousel.
  *
  * The version query string busts the browser cache on every script update —
@@ -3428,9 +3541,9 @@ function _props_has_position_class($props)
  */
 function _pg_lightbox_assets_once()
 {
-    static $emitted = false;
-    if ($emitted) return '';
-    $emitted = true;
+    $once = &_pg_once_state();
+    if (!empty($once['lightbox'])) return '';
+    $once['lightbox'] = true;
     // Toolbar labels for pg_lightbox.js, which falls back to the English key.
     $labels = array(
         'Zoom out'                       => lang('Zoom out'),
@@ -3523,9 +3636,9 @@ function pg_theme_switcher_inject($content)
  */
 function _pg_widget_layout_css_once()
 {
-    static $emitted = false;
-    if ($emitted) return '';
-    $emitted = true;
+    $once = &_pg_once_state();
+    if (!empty($once['widget_layout'])) return '';
+    $once['widget_layout'] = true;
     $base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
           . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
           . '/assets/css/';
@@ -3542,9 +3655,9 @@ function _pg_fancybox_assets_once()
     // global handler so any element with `data-fancybox` becomes a
     // lightbox trigger automatically; the carousel render below stamps
     // those attributes onto every slide image.
-    static $emitted = false;
-    if ($emitted) return '';
-    $emitted = true;
+    $once = &_pg_once_state();
+    if (!empty($once['fancybox'])) return '';
+    $once['fancybox'] = true;
     $base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
           . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
           . '/assets/';
