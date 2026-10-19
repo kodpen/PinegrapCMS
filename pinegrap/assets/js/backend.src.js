@@ -378,8 +378,10 @@ $(document).ready(function () {
                         event.preventDefault();
                         fullscreen_toggle.click();
                     } else {
+                        // The button in the bar: the drawer on a phone, the
+                        // menu hidden and brought back on a wide screen.
                         event.preventDefault();
-                        $('#menu_toggle').click();
+                        $('#menu_drawer_toggle').trigger('click');
                     }
                     break;
 
@@ -807,24 +809,31 @@ $(document).ready(function () {
 
 
     /*
-     * Menu behaviour has two distinct modes.
+     * The main menu (output_header(), includes/fn/output.php).
      *
-     *  - lg and up: the sidebar is a rail that shares the grid with the content. The
-     *    toggle expands and collapses it and the choice is remembered in a cookie.
-     *  - below lg: the sidebar is an off-canvas drawer that slides over the content.
-     *    The rail is removed from the grid entirely, so the drawer state is transient
-     *    and deliberately NOT written to the cookie - otherwise opening the menu once
-     *    on a phone would silently rewrite the desktop preference.
+     *  - lg and up: the sidebar shares the grid with the content, in one of three
+     *    states -- expanded (icons and labels), collapsed (the icon rail) or
+     *    hidden (no column at all). The foot of the menu chooses among them and
+     *    the button in the bar hides the menu and brings it back as it was. The
+     *    state is kept in the softwaremenustatus cookie, which the server reads
+     *    to draw the page in it (pg_menu_state()); softwaremenulast remembers
+     *    which of the two visible states the button brings back.
+     *  - below lg: the sidebar is an off-canvas drawer that slides over the
+     *    content, opened and shut by the same button in the bar. The drawer
+     *    state is transient and deliberately NOT written to the cookie --
+     *    otherwise opening the menu once on a phone would silently rewrite the
+     *    desktop preference.
      *
      * The drawer uses its own .drawer-open class instead of .expanded because
      * .expanded is rendered server side from the cookie and would flash the drawer
      * open on every mobile page load.
      */
     var MENU_DRAWER_BREAKPOINT = 992;
+    var MENU_STATES = ['expanded', 'collapsed', 'hidden'];
     var menuBackdrop = null;
 
-    initMenuToggle();                 // Rail toggle (lg and up) plus drawer toggle
-    initMenuDrawer();                 // Navbar button, scrim, Escape, outside click
+    initMenuToggle();                 // The button in the bar, and the foot of the menu
+    initMenuDrawer();                 // Scrim, Escape, outside click, header menus
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
     initMenuClock();                  // Dashboard clock and Calendars day keep running
 
@@ -850,7 +859,7 @@ $(document).ready(function () {
     function openMenuDrawer() {
         var backdrop = getMenuBackdrop();
         $('.software-container').addClass('drawer-open');
-        $('#menu_drawer_toggle').attr('aria-expanded', 'true');
+        paintMenuToggle();
         // Next frame, so the element is in the DOM before the opacity transition runs.
         window.requestAnimationFrame(function () {
             backdrop.classList.add('show');
@@ -859,7 +868,7 @@ $(document).ready(function () {
 
     function closeMenuDrawer() {
         $('.software-container').removeClass('drawer-open');
-        $('#menu_drawer_toggle').attr('aria-expanded', 'false');
+        paintMenuToggle();
         if (menuBackdrop) {
             menuBackdrop.classList.remove('show');
         }
@@ -873,29 +882,84 @@ $(document).ready(function () {
         }
     }
 
-    // Rail toggle. Below lg it drives the drawer instead, so the control keeps working
-    // if a stylesheet override ever leaves it visible there.
+    // The wide-screen state the cookie holds, and the visible one the button
+    // in the bar brings back from hidden.
+    function savedMenuState() {
+        var state = getCookie('softwaremenustatus');
+        return (MENU_STATES.indexOf(state) === -1) ? 'collapsed' : state;
+    }
+
+    function lastVisibleMenuState() {
+        return (getCookie('softwaremenulast') === 'expanded') ? 'expanded' : 'collapsed';
+    }
+
+    // Says on the button in the bar whether the menu is on screen: the drawer
+    // below lg, the rail above. The picture follows from the stylesheet.
+    function paintMenuToggle() {
+        var toggle = document.getElementById('menu_drawer_toggle');
+
+        if (!toggle) {
+            return;
+        }
+
+        var open = isMenuDrawerMode() ? isMenuDrawerOpen() : !$('.software-container').hasClass('menu-hidden');
+        var label = toggle.getAttribute(open ? 'data-label-hide' : 'data-label-show');
+
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        if (label) {
+            toggle.setAttribute('aria-label', label);
+            toggle.setAttribute('title', label + ' (Ctrl+D)');
+        }
+    }
+
+    // Draws a wide-screen state on the container, the menu and both controls.
+    function paintMenuState(state) {
+        $('#menu, .software-container').toggleClass('expanded', state === 'expanded');
+        $('.software-container').toggleClass('menu-hidden', (state === 'hidden') && ($('#menu').length > 0));
+
+        $('[data-pg-menu-mode]').each(function () {
+            this.setAttribute('aria-checked', (this.getAttribute('data-pg-menu-mode') === state) ? 'true' : 'false');
+        });
+
+        paintMenuToggle();
+    }
+
+    // Chooses a wide-screen state and remembers it, for a year rather than the
+    // day the old expand/collapse cookie lasted.
+    function setMenuState(state) {
+        if (MENU_STATES.indexOf(state) === -1) {
+            return;
+        }
+
+        if (state !== 'hidden') {
+            setCookie('softwaremenulast', state, 365);
+        }
+
+        setCookie('softwaremenustatus', state, 365);
+        paintMenuState(state);
+    }
+
     function initMenuToggle() {
-        $('#menu_toggle').on('click', function () {
+        // The button in the bar: the drawer below lg, hide and bring back above.
+        $('#menu_drawer_toggle').on('click', function (e) {
+            e.preventDefault();
+
             if (isMenuDrawerMode()) {
                 toggleMenuDrawer();
                 return;
             }
 
-            if (!$(this).hasClass('active')) {
-                expandMenu();
-            } else {
-                collapseMenu();
-            }
+            setMenuState($('.software-container').hasClass('menu-hidden') ? lastVisibleMenuState() : 'hidden');
+        });
+
+        // The three states at the foot of the menu.
+        $(document).on('click', '[data-pg-menu-mode]', function () {
+            setMenuState(this.getAttribute('data-pg-menu-mode'));
         });
     }
 
     function initMenuDrawer() {
-        $('#menu_drawer_toggle').on('click', function (e) {
-            e.preventDefault();
-            toggleMenuDrawer();
-        });
-
         // Scrim tap closes. Bound on document because the element is created lazily.
         $(document).on('click', '.software-menu-backdrop', function () {
             closeMenuDrawer();
@@ -943,38 +1007,22 @@ $(document).ready(function () {
             }
             wasDrawerMode = drawerMode;
 
+            closeMenuDrawer();
+
             if (drawerMode) {
-                // Entering drawer mode: drop the rail state without touching the cookie
-                // so the desktop preference survives.
-                closeMenuDrawer();
+                // Entering drawer mode: set the wide-screen state aside without
+                // touching the cookie, so the desktop preference survives.
                 $('#menu, .software-container').removeClass('expanded');
-                $('#menu_toggle').removeClass('active');
+                $('.software-container').removeClass('menu-hidden');
+                paintMenuToggle();
             } else {
-                // Back to rail mode: restore whatever the user last chose on desktop.
-                closeMenuDrawer();
-                if (getCookie('softwaremenustatus') === 'expanded') {
-                    $('#menu, .software-container').addClass('expanded');
-                    $('#menu_toggle').addClass('active');
-                }
+                // Back to the wide screen: whatever the user last chose there.
+                paintMenuState(savedMenuState());
             }
         }
 
         $(window).on('load resize orientationchange', syncMenuMode);
         syncMenuMode();
-    }
-
-    // Expand the rail and remember it (lg and up only).
-    function expandMenu() {
-        $('#menu, .software-container').addClass('expanded');
-        $('#menu_toggle').addClass('active');
-        setCookie('softwaremenustatus', 'expanded', 1);
-    }
-
-    // Collapse the rail and remember it (lg and up only).
-    function collapseMenu() {
-        $('#menu, .software-container').removeClass('expanded');
-        $('#menu_toggle').removeClass('active');
-        setCookie('softwaremenustatus', 'collapsed', 1);
     }
 
     // The Dashboard entry's icon is a clock and the Calendars entry's icon
