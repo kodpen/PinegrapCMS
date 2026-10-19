@@ -1,20 +1,27 @@
 # Pinegrap - Enterprise Website Platform
 #
-# What docker/Dockerfile may see of the repository: the release tree and the
-# files of this folder. Of pinegrap/data/ only what the repository tracks
-# goes in (the guard files, the default config template, the CA bundle and
-# the two starter sites); everything else there belongs to an installation -
-# a development machine's real config.php, its uploads and backups - and
-# must never end up in an image layer.
+# What docker/Dockerfile does not need from the repository. The image takes
+# index.php, pinegrap/ and a few files of docker/; the development tree is
+# left out of the build context.
+#
+# Of pinegrap/data/ only what the repository tracks goes in (the guard files,
+# the default config template, the CA bundle and the two starter sites):
+# everything else there belongs to an installation - a development machine's
+# real config.php, its uploads and backups - and must never end up in an
+# image layer.
 
-**
-
-!index.php
-!pinegrap
-!docker/php.ini
-!docker/nginx.conf
-!docker/cron.sh
-!docker/job-ready.php
+.git
+.github
+.claude
+CLAUDE.md
+docs
+tests
+tools
+dev
+*.md
+web.config
+download_assistant.php
+docker/.env
 
 pinegrap/data/*
 !pinegrap/data/.htaccess

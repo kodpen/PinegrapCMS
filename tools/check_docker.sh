@@ -38,6 +38,10 @@ export PG_CRON_INTERVAL=5
 
 COMPOSE=(docker compose -f "$ROOT/docker/docker-compose.yml" -p pinegrap-check)
 
+# A file an installation would have under pinegrap/data/: the build context
+# has to leave it out of the image.
+LEAK_MARKER="$ROOT/pinegrap/data/files/check-docker-not-in-image.txt"
+
 say() { printf '\n== %s\n' "$1"; }
 
 # On GitHub Actions the text read from stdin also becomes an error
@@ -66,6 +70,7 @@ cleanup() {
 	fi
 
 	"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+	rm -f "$LEAK_MARKER"
 	rm -rf "$WORK"
 }
 
@@ -92,11 +97,25 @@ wait_for_installer() {
 }
 
 say "Building the images and starting the containers"
+echo "installation data" > "$LEAK_MARKER"
+
 if ! "${COMPOSE[@]}" up -d --build > "$WORK/up.log" 2>&1; then
 	tail -60 "$WORK/up.log" | annotate "docker compose up --build"
 	exit 1
 fi
 wait_for_installer
+
+say "What the image took from pinegrap/data/"
+"${COMPOSE[@]}" exec -T app sh -c '
+	set -e
+	cd /var/www/html/pinegrap/data
+	test ! -e files/check-docker-not-in-image.txt
+	test "$(cat config.php)" = "<?php ?>"
+	test -f backups/english_default/sql.sql
+	test -f backups/turkish_default/sql.sql
+	test "$(stat -c %U .)" = "www-data"
+' || fail "the data volume should hold the empty config.php and the starter sites, owned by www-data, and no file of the build machine's installation"
+echo "OK: only the tracked files of pinegrap/data/, owned by www-data."
 
 say "PHP extensions and settings"
 MODULES="$("${COMPOSE[@]}" exec -T app php -m)"

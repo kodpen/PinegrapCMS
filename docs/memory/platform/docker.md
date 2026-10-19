@@ -9,7 +9,8 @@ description: docker/ compose stack (PR #565): app (PHP-FPM 8.3) and web (nginx) 
 - The folder ships in the release tree (release-status.md removes only CLAUDE.md, .claude/, docs/, tools/, tests/).
 
 ## What does the image take from the repository?
-- Only the root `index.php` and `pinegrap/`; `web.config` and `download_assistant.php` stay out. `Dockerfile.dockerignore` (BuildKit) lets in only the tracked files of `pinegrap/data/` (guards, `config(default).php`, `cacert.pem`, the two starter sites), so a development machine's real config.php, uploads and backups never reach an image layer. `data/config.php` starts as `<?php ?>`.
+- Only the root `index.php` and `pinegrap/`; `web.config` and `download_assistant.php` stay out. `Dockerfile.dockerignore` (BuildKit) drops the development tree and lets in only the tracked files of `pinegrap/data/` (guards, `config(default).php`, `cacert.pem`, the two starter sites), so a development machine's real config.php, uploads and backups never reach an image layer. `data/config.php` starts as `<?php ?>`.
+- The ignore file names what to leave out; a blanket `**` with exceptions for docker/ files worked locally but the CI runner's BuildKit left `docker/php.ini` out of the context.
 - A new named volume is filled from the image on first start (starter sites included). Later images do not refresh what is already in the volume.
 
 ## How do nginx and the installer's rules stay the same?
@@ -23,7 +24,7 @@ description: docker/ compose stack (PR #565): app (PHP-FPM 8.3) and web (nginx) 
 - The software is in the image: a release is installed by building or pulling the new image and recreating the containers. An update installed from the panel lasts until the app container is recreated, and the web container keeps the old static files; recreating then leaves the code older than the database (the cron service stops running the job).
 
 ## How is it checked?
-- `tools/check_docker.sh` (CI: `.github/workflows/docker-check.yml`, every push to development, pull requests that touch docker/ or the files the images depend on): build, extensions and settings, 403 for data/, includes/ and dumps, a static file, installation of the starter site through the installation screen with host `db`, home page, control panel, an uploaded picture over nginx, a recreated app container, a job.php run from the cron container.
+- `tools/check_docker.sh` (CI: `.github/workflows/docker-check.yml`, every push to development, pull requests that touch docker/ or the files the images depend on): build, a file planted in `pinegrap/data/files/` must not reach the image, extensions and settings, 403 for data/, includes/ and dumps, a static file, installation of the starter site through the installation screen with host `db`, home page, control panel, an uploaded picture over nginx, a recreated app container, a job.php run from the cron container.
 - The cloud sandbox reaches no image registry; the same nginx block was also run there over PHP-FPM and MariaDB (pages, files, rules, installer).
 
 Related: docs/memory/plans/docker-image.md, docs/memory/platform/server-config-web-root-rules.md
