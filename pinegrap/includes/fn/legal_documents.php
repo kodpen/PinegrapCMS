@@ -980,6 +980,23 @@ function pg_legal_document_file_name($label, $order_number)
 }
 
 /**
+ * A moment as the documents print it: the date in the site's order, the
+ * time on the site's clock (Site Settings: 12 or 24 hours). The form
+ * formatter (prepare_form_data_for_output()) prints AM/PM whatever the
+ * setting.
+ *
+ * @param int $timestamp
+ * @return string
+ */
+function pg_legal_document_time_text($timestamp)
+{
+    $date = (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) ? 'n/j/Y' : 'j/n/Y';
+    $clock = (defined('TIME_FORMAT') && (TIME_FORMAT == 'twelve_hours')) ? 'g:i A' : 'H:i';
+
+    return date($date . ' ' . $clock, (int) $timestamp);
+}
+
+/**
  * The note printed under a stored copy: when it was accepted, or that it
  * was not.
  *
@@ -994,7 +1011,7 @@ function pg_legal_document_acceptance_note(array $row)
         return lang('This copy was kept with the order without being accepted.');
     }
 
-    return lang(array('string' => 'Accepted by the customer on {var:1}.', 'vars' => array(prepare_form_data_for_output(date('Y-m-d H:i:s', $accepted), 'date and time', false))));
+    return lang(array('string' => 'Accepted by the customer on {var:1}.', 'vars' => array(pg_legal_document_time_text($accepted))));
 }
 
 /**
@@ -1094,7 +1111,7 @@ function pg_legal_documents_panel_card($order_id)
 
         $accepted = (int) $row['accepted_at'];
         $status = ($accepted > 0)
-            ? h(prepare_form_data_for_output(date('Y-m-d H:i:s', $accepted), 'date and time', false))
+            ? h(pg_legal_document_time_text($accepted))
             : '<span class="text-danger">' . h(lang('Not accepted')) . '</span>';
 
         $rows .= '<div class="row">
