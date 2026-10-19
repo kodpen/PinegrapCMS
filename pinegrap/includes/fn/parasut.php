@@ -1005,6 +1005,56 @@ function parasut_connection_status()
 }
 
 /**
+ * The settings card's line for a connection state, the same after a page
+ * draw and after Connect answers.
+ *
+ * @param array $status  parasut_connection_status() output
+ * @return array ['text' => string, 'tone' => 'success'|'secondary']
+ */
+function parasut_connection_line($status)
+{
+    $status = (array) $status;
+
+    if (empty($status['connected'])) {
+        return ['text' => lang('Not connected to Paraşüt yet.'), 'tone' => 'secondary'];
+    }
+
+    $parts = [((string) ($status['grant'] ?? '') === 'code')
+        ? lang('Connected with an authorization code')
+        : lang('Connected with the user name and password')];
+
+    foreach (['email', 'company_name'] as $key) {
+        if (trim((string) ($status[$key] ?? '')) !== '') {
+            $parts[] = trim((string) $status[$key]);
+        }
+    }
+
+    if ((int) ($status['connected_at'] ?? 0) > 0) {
+        $parts[] = date('d.m.Y H:i', (int) $status['connected_at']);
+    }
+
+    return ['text' => implode(' · ', $parts), 'tone' => 'success'];
+}
+
+/**
+ * The company number the settings save writes. An empty box keeps the saved
+ * number: Connect writes the number it finds while the open page still holds
+ * the empty box, and saving that page used to blank the number, which
+ * orphaned the token (its owner stamp names the company) and disconnected
+ * the store. Another number typed in the box replaces it.
+ *
+ * @param mixed  $posted  The box as posted
+ * @param string $stored  The saved number
+ * @return string
+ */
+function parasut_company_id_for_save($posted, $stored)
+{
+    $posted = is_string($posted) ? trim($posted) : '';
+
+    return ($posted !== '') ? $posted : trim((string) $stored);
+}
+
+/**
  * Find or create a Parasut contact for the given order row.
  * Stores the Parasut contact ID back to orders.parasut_contact_id.
  *
