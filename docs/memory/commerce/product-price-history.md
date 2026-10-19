@@ -7,7 +7,7 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 - `product_price_history` (product_id, channel, price minor units, currency, changed_at, source): one row each time a product's own price changes. The "price before the discount" (TR price label rule: lowest of the last 30 days, last 10 days for discount ads from 2026-08-01; EU Omnibus: 30 days) is read from it, so it must see every change.
 - `channel` is `web` for `products.price`, the shop's own price. `pos` / `marketplace:<code>` are reserved for prices kept per channel (a marketplace account selling at its own prices).
 - `source`: `initial` (upgrade), `panel` (screens, Workspace included), `import`, `api` (API and MCP tools), `offer`, `erp` (reserved). VARCHAR, not ENUM, so a later label never turns into `''`.
-- `products.compare_at_price` (INT NULL) came in the same step for the merchant's "was" price; nothing reads or writes it yet.
+- `products.compare_at_price` (INT NULL), same step: the merchant's "was" price, never in the history.
 
 ## How do writers record a change?
 - After the write, `pg_price_history_record($ids, $source)` (`includes/fn/price_history.php`): it reads the stored price, compares it with the product's newest row (MAX(id)) and writes a row only when price or currency differs. The same price again writes nothing, so a screen that cannot tell whether the price changed calls it on every save.
@@ -35,4 +35,4 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 ## How was it verified?
 - `tests/price_history_test.php`; on MariaDB 10.11 the step ran twice (second run skipped all), the MyISAM copy fallback, a fresh install, and each writer above over HTTP or directly (dry runs wrote nothing).
 
-Related: docs/memory/plans/price-history-reference-price.md, docs/memory/commerce/variant-price-rules.md
+Related: docs/memory/plans/price-history-reference-price.md, docs/memory/commerce/variant-price-rules.md, docs/memory/commerce/product-compare-at-price.md
