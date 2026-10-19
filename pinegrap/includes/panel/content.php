@@ -239,6 +239,16 @@ function pg_panel_get_file($request, $action)
         exit();
     }
 
+    // The key that signs the site's mail is never read out, whoever asks
+    // (pg_file_withheld()); get_file.php does not serve it either.
+    if (pg_file_withheld($file['name'])) {
+        echo encode_json(array(
+            'status' => 'error',
+            'message' => lang('Access denied')
+        ));
+        exit();
+    }
+
     // If this file is a CSS theme, then determine what type of theme it is.
     if ($file['theme'] == 1) {
         // If this is a system theme, then set that.
