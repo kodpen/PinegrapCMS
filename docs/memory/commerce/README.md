@@ -34,8 +34,9 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-feed-decisions.md: Product feed decisions (plan approved 2026-10-19; PRs #561, #571, #572, #576, #577): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile
 - product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
-- product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows through the external API and the MCP tools, paging, since and channel filters, what the rows do not contain yet
-- product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of products.price, pg_price_history_record() / queue after every writer, initial rows, API read, compare_at_price, known limits
+- product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them
+- product-price-history-offers.md: Offer rows of product_price_history (2026.11.0): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
+- product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
 - shipping-today.md: How shipping works today (checked 2026-10-16): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers

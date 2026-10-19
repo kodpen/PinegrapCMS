@@ -1511,11 +1511,12 @@ function api_price_history_entry_present($row) {
 // table answers an empty list rather than an error: the product exists, it
 // simply has no history yet.
 //
-// What is not here, on purpose: an offer's reduced price. The history keeps
-// what products.price was set to; an offer changes what the visitor pays
-// without changing that column, and recording it is a step of its own (the
-// price-history plan). Until then a client must not read the lowest row of a
-// window as the lawful "price before the discount".
+// Offer rows (source 'offer') are the price the open offers gave a visitor
+// with no offer code, no account and an empty cart, written by the general job
+// within the hour an offer began, ended or changed
+// (pg_price_history_offer_pass_run()); the other rows are products.price as
+// its writers set it. The newest row at or before a moment is what such a
+// visitor paid then.
 function api_products_price_history($params) {
 
 	$id = (int)$params['id'];
