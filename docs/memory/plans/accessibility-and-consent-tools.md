@@ -1,6 +1,6 @@
 ---
 name: accessibility-and-consent-tools
-description: Plan (approved 2026-10-19; consent notice done, PR #619): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement
+description: Plan (approved 2026-10-19; consent notice PR #619 and statement block done): designer contrast rule, nightly WCAG 2.2 Level A report, PDF export of the report
 ---
 
 ## Why?
@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19; consent notice done, PR #619): designer 
 ## What remains?
 1. Contrast helper + designer rules + tests on the ratio function (S–M).
 2. Nightly a11y job, storage, SEO screen tab, API filter (M).
-3. Statement block + PDF export (S).
+3. Statement block: done (PR #PRNUM; palette Blocks › Legal › "Legal: Accessibility Statement", `legal-accessibility-statement`, six sections). PDF export of the checklist report comes with step 2's report.
 4. Consent notice: done (PR #619).
 5. Memory: `docs/memory/platform/accessibility-report.md` when shipped; the plan's one `[NEW]` changelog line goes in with the report.
 
