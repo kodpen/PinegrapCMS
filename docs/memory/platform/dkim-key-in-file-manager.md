@@ -5,7 +5,7 @@ description: dkim.key never leaves the server through the panel: no content view
 
 ## Which file is withheld, and why?
 - `dkim.key`, the private key that signs the site's mail. SMTP settings (`smtp_settings.php`) write it to the file directory and register it in the public root folder with `design = 1`; older installations may have registered it in another public folder. `get_file.php` answers 404 for that name whatever folder its record sits in.
-- Owner decision on issue #514 (option A): the file screens follow the same rule. Before, the file manager's file window (`explorer_file_get`) and `edit_file.php` returned the whole key to anyone who passed the folder's edit check, because `.key` is in the "shown, not written" formats.
+- Owner decision on issue #514 (option A), PR #562: the file screens follow the same rule. Before, the file manager's file window (`explorer_file_get`) and `edit_file.php` returned the whole key to anyone who passed the folder's edit check, because `.key` is in the "shown, not written" formats.
 - Only that name is withheld, case-insensitive. Other `.key` and `.pub` files (and `dkim.pub`, which is published in DNS) are still shown.
 
 ## Where is the rule asked?
