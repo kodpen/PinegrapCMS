@@ -8,7 +8,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-product-feeds.md: Plan (approved 2026-10-19, in progress: builder done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV) beside ?rss=true; job, feed.php, settings, panel, API left
 - ai-write-buttons.md: Plan (approved 2026-10-19, not started): "Write with AI" buttons in the product builder, page SEO fields, image alt text and blog records, reusing the Workspace AI client; AI-generated labelling
-- checkout-legal-documents.md: Plan (approved 2026-10-19, checkout built): pre-information form and distance sales contract; left: designer bindings, receipt e-mail, account and panel views, API, KVKK consent
+- checkout-legal-documents.md: Plan (approved 2026-10-19, checkout and designer bindings built): pre-information form and distance sales contract; left: receipt e-mail, account and panel views, API, KVKK consent
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule, CI checks
 - customer-returns-flow.md: Plan (approved 2026-10-19, not started): customer return request in My Account, approval, return carrier code, status, 14-day timers, bridge to iyzico refund and ERP return invoice

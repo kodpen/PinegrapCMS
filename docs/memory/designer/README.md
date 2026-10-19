@@ -43,6 +43,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before style_designer.js; English keys, no embedded numbers or variables, price keys, palette labels.
 - designer-settings-modal-sizing.md: Designer settings modal sizes (.sd-settings-nav 230px, .sd-settings-body 640px) live in style_designer.css, not inline; rail becomes a strip under 992px.
 - designer-sticky-panel-layout.md: Designer left/right panel docking: docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, clamp width, one layer at a time, three-strip bottom panel, rail icons.
+- express-order-legal-documents.md: Checkout document boxes in the designer's express order tree: legal_preinfo/legal_contract field bindings, has_legal_documents flag, __legal_*_url href tokens, sentence split of the label
 - frontend-conventions-layers.md: Palette component vs system widget layers, what is production (legacy) vs development (system widget), and the five invariant principles for system widget work.
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, and why a canvas paste is not an import (no disk, style/script dropped, URLs kept).
 - image-editor-tool.md: Bindable image editor (Pintura): save endpoint contract, write rules, openImageEditor modal, designer-side contract, images save independently of the design.

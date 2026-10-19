@@ -31851,6 +31851,12 @@ const StyleDesigner = (function () {
             ['__cart_total_cents',                _sdT('Total (cents)')],
             ['__cart_total_with_surcharge_cents', _sdT('Total with the surcharge (cents)')]
         ]},
+        // The documents filled from the visitor's cart (legal_document.php),
+        // for the links beside the legal_preinfo / legal_contract boxes.
+        { label: _sdT('Checkout documents'), tokens: [
+            ['__legal_preinfo_url',               _sdT('Pre-Information Form page URL')],
+            ['__legal_contract_url',              _sdT('Distance Sales Contract page URL')]
+        ]},
         // The recipient loop had no entry here at all, so every one of its
         // tokens had to be typed by hand through "Custom".
         { label: _sdT('Recipient (recipient loop)'), tokens: [
@@ -31935,6 +31941,13 @@ const StyleDesigner = (function () {
             ['special_offer_code',  _sdT('Special offer code')],
             ['tax_exempt',          _sdT('Tax exemption (checkbox)')],
             ['opt_in',              _sdT('Newsletter subscription (checkbox)')]
+        ]},
+        // Acceptance boxes. legal_preinfo / legal_contract are asked for by
+        // submit_order.php while the checkout documents are switched on.
+        { label: _sdT('Checkout approvals'), tokens: [
+            ['agree_terms',     _sdT('Order terms accepted (checkbox)')],
+            ['legal_preinfo',   _sdT('Pre-Information Form approved (checkbox)')],
+            ['legal_contract',  _sdT('Distance Sales Contract accepted (checkbox)')]
         ]},
         { label: _sdT('Other'), tokens: [
             ['custom_field_1',  _sdT('Custom field 1 (defined in express_order_pages)')],
@@ -32252,6 +32265,7 @@ const StyleDesigner = (function () {
             ['has_offers',           _sdT('There are offers')],
             ['has_upsell',           _sdT('There are upsell offers')],
             ['has_terms',            _sdT('Terms are shown')],
+            ['has_legal_documents',  _sdT('Checkout documents are switched on')],
             ['tax_exempt_allowed',   _sdT('Tax exemption is allowed')],
             ['has_discount',         _sdT('There is a discount')],
             ['has_tax',              _sdT('There is tax')],
@@ -44200,6 +44214,43 @@ const StyleDesigner = (function () {
                     { attrs: [{ name: 'for', value: eoField }] })
             ], extra);
         }
+        // The words before and after the {var:1} a link takes the place of
+        // (twin of PHP _eo_sentence_around()): each language puts the link
+        // where its grammar wants it.
+        function _eoSentenceAround(sentence) {
+            var parts = String(sentence).split('{var:1}');
+            return [parts[0].trim(), parts.length > 1 ? parts.slice(1).join('{var:1}').trim() : ''];
+        }
+        // Checkout document row — see _eo_default_designer_tree's
+        // $legal_row: a required box whose label links to the document
+        // filled from the cart; the address comes from the href binding.
+        function legalRow(type, sentence, linkText) {
+            var field = 'legal_' + type;
+            var around = _eoSentenceAround(sentence);
+            var label = [];
+            if (around[0]) label.push(sem('span', '', around[0]));
+            label.push(sem('a', '', linkText, {
+                attrs: [
+                    { name: 'href',   value: '#' },
+                    { name: 'target', value: '_blank' },
+                    { name: 'rel',    value: 'noopener' }
+                ],
+                bindings: { href: '__legal_' + type + '_url' }
+            }));
+            if (around[1]) label.push(sem('span', '', around[1]));
+            return sem('div', 'form-check mb-2', [
+                sem('input', 'form-check-input', null, {
+                    attrs: [
+                        { name: 'type',     value: 'checkbox' },
+                        { name: 'value',    value: '1' },
+                        { name: 'required', value: '' }
+                    ],
+                    bindings: { eo_field: field }
+                }),
+                sem('label', 'form-check-label small', label,
+                    { attrs: [{ name: 'for', value: field }] })
+            ]);
+        }
         function textarea(eoField, rows, placeholder) {
             return sem('textarea', 'form-control', null, {
                 attrs: [
@@ -44584,6 +44635,13 @@ const StyleDesigner = (function () {
                                     { bindings: { text: '__currency_disclaimer', eo_visible_if: 'has_foreign_currency' } }),
                                 // Aktif promosyon listesi
                                 bind('applied_offers', 'pg-eo-applied-offers-anchor'),
+                                // ── CHECKOUT DOCUMENTS ────────────────────────
+                                // Pre-information form and distance sales
+                                // contract; only while they are switched on.
+                                sem('div', 'pg-eo-legal-documents mb-2', [
+                                    legalRow('preinfo',  _sdT('I have read and approve {var:1}'), _sdT('the Pre-Information Form')),
+                                    legalRow('contract', _sdT('I have read and accept {var:1}'),  _sdT('the Distance Sales Contract'))
+                                ], { bindings: { eo_visible_if: 'has_legal_documents' } }),
                                 // ── TERMS CHECKBOX (real form-check) ─────────
                                 // Real checkbox + label + modal trigger link.
                                 // The modal itself is a real Bootstrap modal

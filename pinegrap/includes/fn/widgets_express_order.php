@@ -251,6 +251,10 @@ function _eo_compute_static_tokens($state)
         '^^__cart_total_charged^^'           => pg_format_money($tws / 100, defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '')
                                                 . (defined('BASE_CURRENCY_CODE') ? ' ' . h(BASE_CURRENCY_CODE) : ''),
         '^^__currency_disclaimer^^'          => _eo_currency_disclaimer(),
+        // The checkout documents filled from the visitor's cart
+        // (legal_document.php), for the links beside their acceptance boxes.
+        '^^__legal_preinfo_url^^'            => h(pg_legal_document_page_url() . '?type=preinfo'),
+        '^^__legal_contract_url^^'           => h(pg_legal_document_page_url() . '?type=contract'),
     );
 }
 
@@ -763,6 +767,9 @@ function _eo_known_input_names()
         'notes','tax_exempt','opt_in','agree_terms','update_contact',
         'tax_number','tax_office','billing_same_as_shipping',
         'card_number','expiration','card_verification_number',
+        // The checkout documents' acceptance boxes (pg_legal_documents_inject()
+        // adds its own pair only to a page that draws neither).
+        'legal_preinfo','legal_contract',
         // payment_method/installment are NOT pre-filled here — they're set by
         // their own dedicated section renderers (radio/installment selector).
     ));
@@ -878,6 +885,17 @@ function _eo_sem($tag, $cssClass = '', $childrenOrText = null, $extra = array())
         $children = $childrenOrText;
     }
     return array('type' => 'semantic', 'props' => $props, 'children' => $children);
+}
+
+// The words of a translated sentence before and after the {var:1} a link
+// takes the place of. Each language puts the link where its grammar wants
+// it, so a label built of text, link, text follows one translated sentence
+// instead of fixing the order in pieces translated apart. Twin of
+// _eoSentenceAround() in the JS starter tree.
+function _eo_sentence_around($sentence)
+{
+    $parts = explode('{var:1}', (string)$sentence, 2);
+    return array(trim($parts[0]), isset($parts[1]) ? trim($parts[1]) : '');
 }
 
 function _eo_default_designer_tree()
@@ -1027,6 +1045,38 @@ function _eo_default_designer_tree()
             $sem('label', 'form-check-label small', $label_text,
                  array('attrs' => array(array('name' => 'for', 'value' => $eo_field)))),
         ), $extra);
+    };
+
+    // ── Checkout document row ──
+    // A required checkbox whose label links to the document filled from the
+    // visitor's cart; the link's address comes from its binding
+    // (__legal_<type>_url), so the tree carries no path.
+    $legal_row = function ($type, $sentence, $link_text) use ($sem) {
+        $field = 'legal_' . $type;
+        list($before, $after) = _eo_sentence_around($sentence);
+        $label = array();
+        if ($before !== '') $label[] = $sem('span', '', $before);
+        $label[] = $sem('a', '', $link_text, array(
+            'attrs' => array(
+                array('name' => 'href',   'value' => '#'),
+                array('name' => 'target', 'value' => '_blank'),
+                array('name' => 'rel',    'value' => 'noopener'),
+            ),
+            'bindings' => array('href' => '__legal_' . $type . '_url'),
+        ));
+        if ($after !== '') $label[] = $sem('span', '', $after);
+        return $sem('div', 'form-check mb-2', array(
+            $sem('input', 'form-check-input', null, array(
+                'attrs' => array(
+                    array('name' => 'type',     'value' => 'checkbox'),
+                    array('name' => 'value',    'value' => '1'),
+                    array('name' => 'required', 'value' => ''),
+                ),
+                'bindings' => array('eo_field' => $field),
+            )),
+            $sem('label', 'form-check-label small', $label,
+                 array('attrs' => array(array('name' => 'for', 'value' => $field)))),
+        ));
     };
 
     // ── Textarea helper ──
@@ -1451,6 +1501,16 @@ function _eo_default_designer_tree()
                                 // orders.discount_offer_id /
                                 // order_items.offer_id / ship_tos.offer_id.
                                 $bind('applied_offers', 'pg-eo-applied-offers-anchor'),
+
+                                // ── Checkout documents ─────────────────────
+                                // Pre-information form and distance sales
+                                // contract, each accepted before the order is
+                                // sent. Only while the documents are switched
+                                // on (submit_order.php asks for them then).
+                                $sem('div', 'pg-eo-legal-documents mb-2', array(
+                                    $legal_row('preinfo',  lang('I have read and approve {var:1}'), lang('the Pre-Information Form')),
+                                    $legal_row('contract', lang('I have read and accept {var:1}'),  lang('the Distance Sales Contract')),
+                                ), array('bindings' => array('eo_visible_if' => 'has_legal_documents'))),
 
                                 // ── Terms consent checkbox ─────────────────
                                 // Real form-check with real <input> (eo_field bound)
