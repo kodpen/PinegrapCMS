@@ -26,10 +26,10 @@ function upgrade_to_2026_11_0() {
 
 	upgrade_2026_11_0_legal_documents();        // 11.0.1
 	upgrade_2026_11_0_price_history();          // 11.0.2
-	upgrade_2026_11_0_ops_alerts();             // 11.0.20
-	upgrade_2026_11_0_update_backup();          // 11.0.21
-	upgrade_2026_11_0_maintenance_mode();       // 11.0.22
 	upgrade_2026_11_0_meta_tags();              // 11.0.3
+	upgrade_2026_11_0_ops_alerts();             // 11.0.5
+	upgrade_2026_11_0_update_backup();          // 11.0.6
+	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 
 }
 
@@ -150,7 +150,7 @@ function upgrade_2026_11_0_price_history() {
 
 }
 
-// Operations alerts (2026.11.0, 11.0.20; includes/fn/ops_alerts.php, the
+// Operations alerts (2026.11.0, 11.0.5; includes/fn/ops_alerts.php, the
 // Alerts card under Site Settings, General).
 //
 // A failed or missing backup, a scheduled task that stopped, changed software
@@ -183,7 +183,7 @@ function upgrade_2026_11_0_ops_alerts() {
 
 }
 
-// The backup an update takes before it replaces the files (2026.11.0, 11.0.21;
+// The backup an update takes before it replaces the files (2026.11.0, 11.0.6;
 // pg_update_backup_create() in includes/fn/update.php, the switch on the
 // Update Channel card).
 //
@@ -199,7 +199,7 @@ function upgrade_2026_11_0_update_backup() {
 
 }
 
-// Maintenance mode (2026.11.0, 11.0.22; includes/fn/maintenance_mode.php, the
+// Maintenance mode (2026.11.0, 11.0.7; includes/fn/maintenance_mode.php, the
 // Maintenance Mode card under Site Settings, General).
 //
 // Off: nothing changes for a site that never switches it on. While on, a
