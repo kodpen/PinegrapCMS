@@ -12,7 +12,7 @@ description: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where
 
 ## Where does the gate sit?
 - `pg_mfa_gate($user_id, $username, $send_to, $remember, $origin)`: after the password (or Google) was accepted and the throttle cleared, BEFORE `pg_device_limit_gate()` and before any remember-me token. A token minted earlier would sign the browser in on its next request through `initialize_user()` with no code.
-- Callers: `index.php`, `membership_entrance.php`, `registration_entrance.php`, `signin.php` (Google and other providers; a provider is not a second factor). `device_limit.php` re-checks via `mfa_passed` in its pending record.
+- Callers: `index.php`, `membership_entrance.php`, `registration_entrance.php`, `signin.php` (Google and other providers; a provider is not a second factor). `device_limit.php` re-checks via `mfa_passed` in its pending record. The remember-me branch of `initialize_user()` gates too: a remembered device of a covered account without a factor is sent to setup and its token revoked; raising `mfa_required_role` drops the unpinned tokens of newly covered accounts without one (not the operator's own).
 - The gate regenerates the session id, stores `$_SESSION['software']['mfa_pending']` and redirects to `mfa.php`; `sessionuserid` is not set until the code passes.
 - `change_password.php` opens no session unless the browser is already signed in as that account; `set_password.php` signs in only through `pg_post_password_signin()`, which refuses accounts with a second factor.
 - New account paths (`custom_form.php`, `submit_order.php`, member register/activate) need no gate.

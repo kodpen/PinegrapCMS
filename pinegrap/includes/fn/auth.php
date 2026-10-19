@@ -1338,10 +1338,16 @@ function pg_login_set_device_cookie($user_id, $remember)
         setcookie('software[auth]', $auth_cookie, $cookie_expiry, '/', '', $secure);
     }
 
+    // The session is bound to the row just minted (pg_session_bind_token()),
+    // so revoking the row ends the session whether or not the browser keeps
+    // sending the cookie.
+    $selector = strtok($auth_cookie, ':');
+    pg_session_bind_token($selector, $user_id);
+
     // The new selector, so a caller that had to replace a token (a password
     // change does) can carry a pin onto the replacement instead of dropping
     // the operator's decision on the floor.
-    return strtok($auth_cookie, ':');
+    return $selector;
 }
 
 // Sign the browser in after it has just set the account's password through a
@@ -3344,7 +3350,15 @@ function initialize_user()
         $auth_bind_kick = false;
         $auth_bind_reason = '';
 
-        if (isset($_COOKIE['software']['auth'])) {
+        // The session's own binding first (pg_session_token_binding_broken()):
+        // a revoked, expired or foreign row ends the session whether or not
+        // the cookie still arrives. The cookie-side rules below only run for
+        // a session that passed.
+        $auth_bind_reason = pg_session_token_binding_broken();
+
+        if ($auth_bind_reason !== '') {
+            $auth_bind_kick = true;
+        } elseif (isset($_COOKIE['software']['auth'])) {
             $auth_bind_parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
             $auth_bind_selector = isset($auth_bind_parts[0]) ? $auth_bind_parts[0] : '';
 
@@ -3410,14 +3424,16 @@ function initialize_user()
             // limit is in force.
             $auth_bind_kick = true;
             $auth_bind_reason = 'session carried no device token';
-        } elseif (empty($_SESSION['software']['auth_bind_attempted'])) {
+        } elseif (empty($_SESSION['software']['auth_bind_attempted'])
+            && empty($_SESSION['software']['auth_selector'])) {
             // No token and no limit: a session from before universal binding.
             // Bind it quietly so it appears in the session lists and can be
             // signed out remotely; from the next request on it is a normal
             // token-bound session. Tried once per session: a browser that
             // does not keep the cookie (blocked, or a Secure cookie reaching
             // it over plain http) would otherwise mint a new auth_tokens row
-            // on every request.
+            // on every request. A session already bound to a live row (the
+            // check above passed) is not minted another.
             $_SESSION['software']['auth_bind_attempted'] = time();
             pg_login_set_device_cookie((int) $_SESSION['sessionuserid'], false);
         }
@@ -3480,8 +3496,27 @@ function initialize_user()
 
             $user = pg_load_user_row($token_user_id);
 
+            // A role that must have a second factor, on an account that has
+            // none: the remembered device was signed in before the rule
+            // covered it (or the rule was raised since). It does not get a
+            // session on the password that was typed back then; the token is
+            // retired and the visitor is sent to set the factor up, the way
+            // the sign-in screens do.
+            if (is_array($user) && isset($user['id'])
+                && function_exists('pg_mfa_required_for_user')
+                && pg_mfa_required_for_user($user['id'])
+                && !pg_mfa_enabled($user['id'])) {
+
+                pg_auth_token_revoke((string) strtok((string) $_COOKIE['software']['auth'], ':'));
+                setcookie('software[auth]', '', time() - 1000, '/');
+                unset($_COOKIE['software']['auth']);
+
+                pg_mfa_gate($user['id'], $user['username'], get_request_uri(), true, 'remember_me');
+            }
+
             if (is_array($user) && isset($user['id'])) {
                 pg_session_sign_in($user['id'], $user['username']);
+                pg_session_bind_token((string) strtok((string) $_COOKIE['software']['auth'], ':'), $user['id']);
                 log_activity(lang('user logged in'), $user['username']);
             } else {
                 $user = null;
