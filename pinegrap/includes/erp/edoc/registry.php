@@ -584,6 +584,38 @@ function erp_edoc_postcode_valid($postcode, $country_code = 'TR')
 }
 
 /**
+ * What GİB said about a tax number, in one sentence for the operator: an
+ * e-Invoice user (and its mailboxes) or not, an e-Delivery note user too,
+ * and the name the number is registered under when the provider gave one.
+ *
+ * @param string $number  The digits asked about
+ * @param array  $result  A check_taxpayer answer: is_einvoice_user, aliases,
+ *                        is_edispatch_user, title
+ * @return string
+ */
+function erp_edoc_taxpayer_message($number, $result)
+{
+    $result = (array) $result;
+    $aliases = array_values(array_filter(array_map('strval', (array) ($result['aliases'] ?? array())), 'strlen'));
+    $title = trim((string) ($result['title'] ?? ''));
+
+    $message = !empty($result['is_einvoice_user'])
+        ? lang(array('string' => '{var:1} is registered for e-Invoice at GİB{var:2}.', 'vars' => array($number,
+            empty($aliases) ? '' : ' (' . implode(', ', array_slice($aliases, 0, 3)) . ')')))
+        : lang(array('string' => '{var:1} is not registered for e-Invoice at GİB; a document for this buyer goes as an e-Archive.', 'vars' => $number));
+
+    if (!empty($result['is_edispatch_user'])) {
+        $message .= ' ' . lang('Registered for e-Delivery notes as well.');
+    }
+
+    if ($title !== '') {
+        $message .= ' ' . lang(array('string' => 'Registered name: “{var:1}”.', 'vars' => $title));
+    }
+
+    return $message;
+}
+
+/**
  * The capability words as the screen prints them.
  *
  * @return array  code => label

@@ -1311,31 +1311,23 @@ function erp_edoc_invoice_poll($invoice_id)
 
 /**
  * Asks the active provider whether a tax number is registered at GİB for
- * e-Invoice, and keeps the answer on the account card.
+ * e-Invoice. Nothing is kept: a number typed on a form that has not been
+ * saved yet is asked about this way (the account card's own question,
+ * erp_edoc_account_check_taxpayer(), keeps the answer).
  *
- * erp_accounts has carried einvoice_user / einvoice_alias / einvoice_aliases
- * / einvoice_checked_at since 4.43 and nothing has ever written to them; this
- * is what fills them. The number asked about is the one on screen, which may
- * not be the one on file yet - then the answer is reported and not stored,
- * because a stored answer has to belong to a stored number.
- *
- * @param int         $account_id
- * @param string|null $tax_number  The number to ask about; the stored one when null
- * @return array ['success' => bool, 'message' => string, 'error' => string, 'stored' => bool]
+ * @param string $tax_number
+ * @return array ['success' => bool, 'error' => string, 'number' => string,
+ *                'is_einvoice_user' => bool, 'aliases' => string[],
+ *                'is_edispatch_user' => bool, 'title' => string, 'message' => string]
  */
-function erp_edoc_account_check_taxpayer($account_id, $tax_number = null)
+function erp_edoc_taxpayer_lookup($tax_number)
 {
-    $account_id = (int) $account_id;
-    $account = db_item("SELECT * FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
-    $out = array('success' => false, 'message' => '', 'error' => '', 'stored' => false);
-
-    if (!is_array($account)) {
-        $out['error'] = lang('The account could not be found.');
-        return $out;
-    }
-
-    $stored_number = preg_replace('/\D/', '', (string) $account['tax_number']);
-    $number = ($tax_number === null) ? $stored_number : preg_replace('/\D/', '', (string) $tax_number);
+    $number = preg_replace('/\D/', '', (string) $tax_number);
+    $out = array(
+        'success' => false, 'error' => '', 'number' => $number,
+        'is_einvoice_user' => false, 'aliases' => array(), 'is_edispatch_user' => false,
+        'title' => '', 'message' => '',
+    );
 
     if ((strlen($number) !== 10) && (strlen($number) !== 11)) {
         $out['error'] = lang('A VKN has 10 digits and a TCKN 11.');
@@ -1357,17 +1349,61 @@ function erp_edoc_account_check_taxpayer($account_id, $tax_number = null)
     $result = erp_edoc_call('check_taxpayer', array($number), $provider);
 
     if (empty($result['success'])) {
-        $out['error'] = (string) $result['error'];
+        $out['error'] = (string) ($result['error'] ?? '');
         return $out;
     }
 
-    $is_user = !empty($result['is_einvoice_user']);
-    $aliases = array_values(array_filter(array_map('strval', (array) ($result['aliases'] ?? ''))));
+    $out['success'] = true;
+    $out['is_einvoice_user'] = !empty($result['is_einvoice_user']);
+    $out['aliases'] = array_values(array_filter(array_map('strval', (array) ($result['aliases'] ?? array())), 'strlen'));
+    $out['is_edispatch_user'] = !empty($result['is_edispatch_user']);
+    $out['title'] = trim((string) ($result['title'] ?? ''));
+    $out['message'] = erp_edoc_taxpayer_message($number, $out);
+
+    return $out;
+}
+
+/**
+ * Asks the active provider whether a tax number is registered at GİB for
+ * e-Invoice, and keeps the answer on the account card.
+ *
+ * erp_accounts has carried einvoice_user / einvoice_alias / einvoice_aliases
+ * / einvoice_checked_at since 4.43 and nothing has ever written to them; this
+ * is what fills them. The number asked about is the one on screen, which may
+ * not be the one on file yet - then the answer is reported and not stored,
+ * because a stored answer has to belong to a stored number. The registered
+ * name is handed back for the screen to offer; it is never written here.
+ *
+ * @param int         $account_id
+ * @param string|null $tax_number  The number to ask about; the stored one when null
+ * @return array ['success' => bool, 'message' => string, 'error' => string, 'stored' => bool, 'title' => string]
+ */
+function erp_edoc_account_check_taxpayer($account_id, $tax_number = null)
+{
+    $account_id = (int) $account_id;
+    $account = db_item("SELECT * FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
+    $out = array('success' => false, 'message' => '', 'error' => '', 'stored' => false, 'title' => '');
+
+    if (!is_array($account)) {
+        $out['error'] = lang('The account could not be found.');
+        return $out;
+    }
+
+    $stored_number = preg_replace('/\D/', '', (string) $account['tax_number']);
+    $lookup = erp_edoc_taxpayer_lookup(($tax_number === null) ? $stored_number : (string) $tax_number);
+
+    if (!$lookup['success']) {
+        $out['error'] = $lookup['error'];
+        return $out;
+    }
+
+    $number = $lookup['number'];
+    $aliases = $lookup['aliases'];
 
     // Only an answer about the number the card actually holds may be kept.
     if ($number === $stored_number) {
         erp_query("UPDATE erp_accounts
-            SET einvoice_user = '" . ($is_user ? 1 : 0) . "',
+            SET einvoice_user = '" . ($lookup['is_einvoice_user'] ? 1 : 0) . "',
                 einvoice_alias = '" . escape(mb_substr((string) ($aliases[0] ?? ''), 0, 100)) . "',
                 einvoice_aliases = '" . escape(json_encode($aliases, JSON_UNESCAPED_UNICODE)) . "',
                 einvoice_checked_at = '" . time() . "',
@@ -1378,11 +1414,8 @@ function erp_edoc_account_check_taxpayer($account_id, $tax_number = null)
     }
 
     $out['success'] = true;
-    $out['message'] = ($is_user
-        ? lang(array('string' => '{var:1} is registered for e-Invoice at GİB{var:2}.', 'vars' => array($number,
-            empty($aliases) ? '' : ' (' . implode(', ', array_slice($aliases, 0, 3)) . ')')))
-        : lang(array('string' => '{var:1} is not registered for e-Invoice at GİB; a document for this buyer goes as an e-Archive.', 'vars' => $number)))
-        . (!empty($result['is_edispatch_user']) ? ' ' . lang('Registered for e-Delivery notes as well.') : '')
+    $out['title'] = $lookup['title'];
+    $out['message'] = $lookup['message']
         . ($out['stored'] ? '' : ' ' . lang('Not kept on the card: the number on the card is a different one. Save the account first.'));
 
     return $out;

@@ -377,3 +377,48 @@ function test_erp_edoc_parasut_totals()
 	);
 	pg_assert_same(7995, erp_edoc_parasut_totals(array('gross_total' => '79.95', 'net_total' => '95.94'))['before_taxes']);
 }
+
+// An e_invoice_inboxes answer: every mailbox once, and the registered name
+// from the first entry that carries one.
+function test_erp_edoc_parasut_inboxes_read()
+{
+	pg_assert_same(array('aliases' => array(), 'title' => ''), erp_edoc_parasut_inboxes_read(array('data' => array())));
+	pg_assert_same(array('aliases' => array(), 'title' => ''), erp_edoc_parasut_inboxes_read(null));
+	pg_assert_same(array('aliases' => array(), 'title' => ''), erp_edoc_parasut_inboxes_read(array('data' => 'x')));
+
+	$read = erp_edoc_parasut_inboxes_read(array('data' => array(
+		array('id' => '1', 'type' => 'e_invoice_inboxes', 'attributes' => array('vkn' => '1234567890', 'e_invoice_address' => 'urn:mail:defaultpk@ornek.com.tr', 'name' => '  ÖRNEK   YAZILIM A.Ş. ', 'inbox_type' => 'PK')),
+		array('id' => '2', 'type' => 'e_invoice_inboxes', 'attributes' => array('vkn' => '1234567890', 'e_invoice_address' => 'urn:mail:faturapk@ornek.com.tr', 'name' => 'ÖRNEK YAZILIM A.Ş.')),
+		array('id' => '3', 'type' => 'e_invoice_inboxes', 'attributes' => array('vkn' => '1234567890', 'e_invoice_address' => 'urn:mail:defaultpk@ornek.com.tr')),
+		'not an entry',
+	)));
+
+	pg_assert_same(array('urn:mail:defaultpk@ornek.com.tr', 'urn:mail:faturapk@ornek.com.tr'), $read['aliases']);
+	pg_assert_same('ÖRNEK YAZILIM A.Ş.', $read['title']);
+
+	// A mailbox without a name still counts; the name may come later.
+	$read = erp_edoc_parasut_inboxes_read(array('data' => array(
+		array('attributes' => array('e_invoice_address' => 'urn:mail:a@b.com', 'name' => '')),
+		array('attributes' => array('e_invoice_address' => 'urn:mail:a@b.com', 'name' => 'B LTD. ŞTİ.')),
+	)));
+	pg_assert_same(array('urn:mail:a@b.com'), $read['aliases']);
+	pg_assert_same('B LTD. ŞTİ.', $read['title']);
+}
+
+// The operator's sentence about a tax number, the registered name included
+// when the provider gave one.
+function test_erp_edoc_taxpayer_message()
+{
+	$user = erp_edoc_taxpayer_message('1234567890', array('is_einvoice_user' => true, 'aliases' => array('urn:mail:a@b.com', ''), 'title' => 'ÖRNEK A.Ş.'));
+	pg_assert_contains('1234567890 is registered for e-Invoice at GİB (urn:mail:a@b.com).', $user);
+	pg_assert_contains('“ÖRNEK A.Ş.”', $user);
+
+	$plain = erp_edoc_taxpayer_message('1234567890', array('is_einvoice_user' => true, 'aliases' => array()));
+	pg_assert_contains('is registered for e-Invoice at GİB.', $plain);
+	pg_assert_same(false, strpos($plain, '“'));
+
+	$not = erp_edoc_taxpayer_message('12345678901', array('is_einvoice_user' => false));
+	pg_assert_contains('is not registered for e-Invoice', $not);
+
+	pg_assert_contains('e-Delivery notes', erp_edoc_taxpayer_message('1234567890', array('is_einvoice_user' => true, 'is_edispatch_user' => true)));
+}

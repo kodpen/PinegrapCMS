@@ -305,31 +305,55 @@ function erp_edoc_parasut_ping($credentials)
 }
 
 /**
- * Whether a tax number belongs to a registered e-invoice user, and its
- * aliases (the mailbox addresses) when it does.
+ * Whether a tax number belongs to a registered e-invoice user, its aliases
+ * (the mailbox addresses) and the name it is registered under at GİB.
  *
  * @param string $vkn
- * @return array ['success' => bool, 'is_einvoice_user' => bool, 'aliases' => array, 'error' => string]
+ * @return array ['success' => bool, 'is_einvoice_user' => bool, 'aliases' => array, 'title' => string, 'error' => string]
  */
 function erp_edoc_parasut_check_taxpayer($vkn)
 {
     $result = erp_edoc_parasut_request('GET', '/e_invoice_inboxes?filter[vkn]=' . rawurlencode((string) $vkn), null, array('doc_type' => '', 'doc_id' => 0));
 
     if (!erp_edoc_parasut_ok($result)) {
-        return array('success' => false, 'is_einvoice_user' => false, 'aliases' => array(), 'error' => erp_edoc_parasut_error_text($result));
+        return array('success' => false, 'is_einvoice_user' => false, 'aliases' => array(), 'title' => '', 'error' => erp_edoc_parasut_error_text($result));
     }
 
-    $aliases = array();
+    $inboxes = erp_edoc_parasut_inboxes_read($result['body']);
 
-    foreach ((array) ($result['body']['data'] ?? array()) as $item) {
-        $alias = trim((string) ($item['attributes']['e_invoice_address'] ?? ''));
+    return array('success' => true, 'is_einvoice_user' => !empty($inboxes['aliases']), 'aliases' => $inboxes['aliases'], 'title' => $inboxes['title'], 'error' => '');
+}
+
+/**
+ * Reads an e_invoice_inboxes answer: one entry per GİB mailbox of the tax
+ * number, each carrying the mailbox (e_invoice_address) and the name the
+ * taxpayer is registered under (name). The name is the same on every
+ * mailbox of one number; the first one given is taken.
+ *
+ * @param mixed $body  The decoded answer
+ * @return array ['aliases' => string[], 'title' => string]
+ */
+function erp_edoc_parasut_inboxes_read($body)
+{
+    $aliases = array();
+    $title = '';
+    $data = (is_array($body) && is_array($body['data'] ?? null)) ? $body['data'] : array();
+
+    foreach ($data as $item) {
+        $attributes = (is_array($item) && is_array($item['attributes'] ?? null)) ? $item['attributes'] : array();
+        $alias = trim((string) ($attributes['e_invoice_address'] ?? ''));
+        $name = trim(preg_replace('/\s+/u', ' ', (string) ($attributes['name'] ?? '')));
 
         if (($alias !== '') && !in_array($alias, $aliases, true)) {
             $aliases[] = $alias;
         }
+
+        if (($title === '') && ($name !== '')) {
+            $title = $name;
+        }
     }
 
-    return array('success' => true, 'is_einvoice_user' => !empty($aliases), 'aliases' => $aliases, 'error' => '');
+    return array('aliases' => $aliases, 'title' => $title);
 }
 
 /* ---------------------------------------------------------------------------
