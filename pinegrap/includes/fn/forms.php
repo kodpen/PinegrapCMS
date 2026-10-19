@@ -1126,9 +1126,9 @@ function select_image_options($image_name = '', $design = false)
             if (is_array($image_name)) {
                 // loop through each image and create an <option> tag
                 $selected_class = ' selected';
-                $control_button = '<button type="button" onclick="add_this_image(\'' . $row['name'] . '\',\'' . $row['id'] . '\');return false;" data-bs-dismiss="modal"  class="m-1 btn-data-control btn btn-outline-primary border-2 "  title="' . lang('Select') . '" ><i class="material-icons">done</i></button>';
+                $control_button = '<button type="button" onclick="add_this_image(\'' . h(escape_javascript($row['name'])) . '\',\'' . (int) $row['id'] . '\');return false;" data-bs-dismiss="modal"  class="m-1 btn-data-control btn btn-outline-primary border-2 "  title="' . lang('Select') . '" ><i class="material-icons">done</i></button>';
             } else {
-                $control_button = '<button type="button" onclick="add_this_image(\'' . $row['name'] . '\',\'' . $row['id'] . '\');return false;" data-bs-dismiss="modal"  class="m-1 btn-data-control btn btn-outline-primary border-2 "  title="' . lang('Select') . '" ><i class="material-icons">done</i></button>';
+                $control_button = '<button type="button" onclick="add_this_image(\'' . h(escape_javascript($row['name'])) . '\',\'' . (int) $row['id'] . '\');return false;" data-bs-dismiss="modal"  class="m-1 btn-data-control btn btn-outline-primary border-2 "  title="' . lang('Select') . '" ><i class="material-icons">done</i></button>';
             }
             $output .= '
             <tr file-id="' . $row['id'] . '" class="image_selector_item ' . $selected_class . '">

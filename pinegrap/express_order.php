@@ -1335,7 +1335,7 @@ foreach ($order_items as $order_item) {
                     
                     // if there is a field label, then prepare error message
                     if ($form_field['label']) {
-                        $error_message = lang(array('string' => '{var:1} is required.', 'vars' => $form_field['label']));
+                        $error_message = lang(array('string' => '{var:1} is required.', 'vars' => h($form_field['label'])));
                     }
                     
                     $liveform->validate_required_field($html_field_name, $error_message);
@@ -1346,7 +1346,7 @@ foreach ($order_items as $order_item) {
                     case 'date':
                         // if value is not blank and date is not valid, then mark error
                         if (($liveform->get_field_value($html_field_name) != '') && (validate_date($liveform->get_field_value($html_field_name)) == false)) {
-                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => $form_field['label'])));
+                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => h($form_field['label']))));
                         }
                         
                         break;
@@ -1354,7 +1354,7 @@ foreach ($order_items as $order_item) {
                     case 'date and time':
                         // if value is not blank and date and time is not valid, then mark error
                         if (($liveform->get_field_value($html_field_name) != '') && (validate_date_and_time($liveform->get_field_value($html_field_name)) == false)) {
-                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date &amp; time for {var:1}', 'vars' => $form_field['label'])));
+                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date &amp; time for {var:1}', 'vars' => h($form_field['label']))));
                         }
                         
                         break;
@@ -1362,7 +1362,7 @@ foreach ($order_items as $order_item) {
                     case 'email address':
                         // if value is not blank and e-mail address is not valid, then mark error
                         if (($liveform->get_field_value($html_field_name) != '') && (validate_email_address($liveform->get_field_value($html_field_name)) == false)) {
-                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => $form_field['label'])));
+                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => h($form_field['label']))));
                         }
                         
                         break;
@@ -1370,7 +1370,7 @@ foreach ($order_items as $order_item) {
                     case 'time':
                         // if value is not blank and time is not valid, then mark error
                         if (($liveform->get_field_value($html_field_name) != '') && (validate_time($liveform->get_field_value($html_field_name)) == false)) {
-                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => $form_field['label'])));
+                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => h($form_field['label']))));
                         }
                         
                         break;
@@ -1401,7 +1401,7 @@ foreach ($order_items as $order_item) {
 
                     // If the reference code was not found, then it is not valid, so output error.
                     if (!$reference_code) {
-                        $liveform->mark_error($html_field_name, lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => $form_field['label'])));
+                        $liveform->mark_error($html_field_name, lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h($form_field['label']))));
                     }
                 }
                 

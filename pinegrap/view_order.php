@@ -1207,7 +1207,7 @@ if (!$_POST) {
                     $output_product_name = '<span class="cursor-pointer" onclick="document.location.href = \'edit_product.php?id=' . $product_id . '\'">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</span>';
                     // if a product image_name found, output
                     if ($image_name) {
-                        $output_image = '<img  class="rounded-4 card-img cursor-pointer d-print-none" style="top:52px;position:sticky;" src="' .  PATH . $image_name . '" onclick="document.location.href = \'edit_product.php?id=' . $product_id . '\'"/>';
+                        $output_image = '<img  class="rounded-4 card-img cursor-pointer d-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" onclick="document.location.href = \'edit_product.php?id=' . (int) $product_id . '\'"/>';
                     } 
                 
                 // else a product was not found, so do not include a link to product   
@@ -1683,7 +1683,7 @@ if (!$_POST) {
                 $output_product_name = '<span class="cursor-pointer" onclick="document.location.href = \'edit_product.php?id=' . $product_id . '\'">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</span>';
                 // if a product image_name found, output
                 if ($image_name) {
-                    $output_image = '<img  class="rounded-4 card-img cursor-pointer d-print-none" style="top:52px;position:sticky;" src="' .  PATH . $image_name . '" onclick="document.location.href = \'edit_product.php?id=' . $product_id . '\'"/>';
+                    $output_image = '<img  class="rounded-4 card-img cursor-pointer d-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" onclick="document.location.href = \'edit_product.php?id=' . (int) $product_id . '\'"/>';
                 } 
             
             // else a product was not found, so do not include a link to product   
