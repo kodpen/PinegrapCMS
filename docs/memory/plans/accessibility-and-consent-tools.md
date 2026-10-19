@@ -1,6 +1,6 @@
 ---
 name: accessibility-and-consent-tools
-description: Plan (approved 2026-10-19; designer checks done, PRs #628, #PR): nightly WCAG 2.2 Level A report, accessibility statement template, consent banner with equal accept/reject and Consent Mode v2 defaults
+description: Plan (approved 2026-10-19; designer checks done, #628 #642): nightly WCAG 2.2 Level A report, accessibility statement, consent banner (equal accept/reject, Consent Mode v2 defaults)
 ---
 
 ## Why?
@@ -14,7 +14,7 @@ description: Plan (approved 2026-10-19; designer checks done, PRs #628, #PR): ni
 - Legacy classic pages: the nightly report covers them read-only; nothing in their markup is changed automatically.
 
 ## What remains?
-1. Done (PR #628, PR #PR): contrast helper with the PHP-JS test, designer contrast, target size and redundant entry checks. The nightly report (2) reuses `_pg_theme_contrast()`.
+1. Done (PR #628, PR #642): contrast helper with the PHP-JS test, designer contrast, target size and redundant entry checks. The nightly report (2) reuses `_pg_theme_contrast()`.
 2. Nightly a11y job, storage, SEO screen tab, API filter (M).
 3. Statement block + PDF export (S).
 4. Consent banner changes in `includes/fn/consent.php` and `pg_consent.js`, settings for button texts (S–M).
