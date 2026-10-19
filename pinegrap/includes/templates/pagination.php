@@ -36,5 +36,3 @@ if (!defined('PG_INIT_LOADED')) {
 		</ul>
 	</nav>
 <?php endif ?>
-
-
