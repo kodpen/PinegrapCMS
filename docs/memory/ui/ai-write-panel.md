@@ -4,7 +4,7 @@ description: The "Write with AI" button and draft panel (pg_ai_write_button(), p
 ---
 
 ## Where is it?
-- Product screen (`product_builder.php`, create and edit): Short Description, Full Description, Web Browser Title, Web Browser Description. Not for a product in the Recycle Bin.
+- Product screen (`product_builder.php`, create and edit; PR #583): Short Description, Full Description, Web Browser Title, Web Browser Description. Not for a product in the Recycle Bin.
 - Page properties (`edit_page.php`): Web Browser Title and Description.
 - The endpoint and its rules: docs/memory/ui/ai-write.md.
 
