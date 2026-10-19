@@ -14,7 +14,7 @@ description: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send 
 
 ## When may a send be retried?
 - Only when Netgsm cannot have taken it: cURL 2/5/6/7 (cURL could not start or is missing, proxy or host not resolved, no connection), a proxy that answered the tunnel with 300 or more (`CURLINFO_HTTP_CONNECTCODE`; cURL 8.5 reports that as 56), both in `pg_sms_http_never_sent($errno, $connect)`; HTTP 429/503; codes 80/85/100/101. A timeout or a 500/502/504 may come after Netgsm took the message and a doubled message cannot be taken back, so `retry` is false.
-- `uncertain` marks a send Netgsm may have although no success came back: no answer after a connection, a 2xx/3xx or a 5xx (not 503) that is not Netgsm's JSON, `00` without `jobid`. A coded refusal and a plain 4xx took nothing. The queue keeps such a message `uncertain` and never resends it by itself (`sms-outbox-queue.md`, PR #609).
+- `uncertain` marks a send Netgsm may have although no success came back: no answer after a connection, a 2xx/3xx or a 5xx (not 503) that is not Netgsm's JSON, `00` without `jobid`. A coded refusal and a plain 4xx took nothing. The queue keeps such a message `uncertain` and never resends it by itself (`sms-outbox-queue.md`, PR #610).
 - The sender check reports `refused` (Netgsm answered and refused: a code other than 80/85/100/101, or 401/403) apart from "could not ask" (no answer, unreadable answer, limit, outage), which the settings save unchecked.
 
 ## Why its own cURL call?

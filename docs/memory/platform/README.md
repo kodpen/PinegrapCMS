@@ -34,7 +34,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
 - sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call
-- sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, the SMS tab
+- sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
 - sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the Communication › SMS card and its save decision, test message
 - structured-data-open-graph.md: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json_encode only, custom JSON-LD, merchant parts, OG image resolvers, SEO card key.
 - system-status-ca-bundle.md: The "CA Certificate Bundle" system status check (CURL_CA_BUNDLE age) - when it runs, how age is read from the mk-ca-bundle header, thresholds, weight and cache.

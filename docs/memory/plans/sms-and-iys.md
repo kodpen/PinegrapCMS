@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19, in progress: provider layer, Netgsm driv
 
 ## What remains?
 1. ~~Provider interface + Netgsm driver + settings card + test send~~ (done, PR #600). Commercial kinds are refused by `pg_sms_send()` until step 5.
-2. ~~`sms_outbox` step, queue sending in `job.php`, Mail Queue tab~~ (done, PR #609).
+2. ~~`sms_outbox` step, queue sending in `job.php`, Mail Queue tab~~ (done, PR #610).
 3. Order and shipping templates, hooks at `submit_order.php` (after the order exists) through `pg_sms_enqueue()` with a `reference` per order and event (`order:<id>:received`), `pg_shipment_record()` once `shipping-management.md` lands, COD code check at checkout (M). Netgsm's OTP route (`/sms/rest/v2/otp`: OTP package, 160 characters, no Turkish letters) for `otp` or not: decide. The changelog's `[NEW]` line comes with this step, when a message first goes out on its own.
 4. `consent_log` migration, consent writers at sign-up, account page, checkout, unsubscribe (M).
 5. İYS client (`includes/iys/client.php`): brand/consent endpoints, push and pull jobs in the dispatcher (daily), status column on contacts, filter in campaign sending (M).

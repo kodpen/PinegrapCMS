@@ -1,6 +1,6 @@
 ---
 name: sms-outbox-queue
-description: SMS queue (sms_outbox, step 11.0.10): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, the SMS tab
+description: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
 ---
 
 ## How does a message go out?
