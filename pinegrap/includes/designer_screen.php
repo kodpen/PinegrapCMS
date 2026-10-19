@@ -544,6 +544,7 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_code_editor.js?v=' . pg_designer_asset_stamp('assets/js/pg_code_editor.js') . '"></script>
         <script>PgCodeEditor.configure({ bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
+        ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
         <script>
             $(document).ready(function() {
@@ -1630,6 +1631,19 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
         $folder_options = preg_replace('~<option value="' . $draft_folder_id . '"[^>]*>[^<]*</option>~', '', $folder_options, 1);
     }
 
+    // "Write with AI" beside the page's title and meta description
+    // (includes/fn/ai_write.php). The page is the tab open when the button
+    // is pressed; the saved page's headings and text join the fields.
+    $ai_page = array(
+        'record'      => 'page',
+        'record_id'   => (int) ($ctx['active_page_id'] ?? 0),
+        'record_from' => 'designer',
+        'theme'       => 'dark',
+        'context'     => array('page_title' => 'pg_page_title', 'meta_description' => 'pg_page_meta_description', 'page_name' => 'sd-page-name'),
+    );
+    $ai_title_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_title', 'field' => 'pg_page_title'));
+    $ai_description_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_description', 'field' => 'pg_page_meta_description'));
+
     return '
         <div class="modal fade" id="styleSettingsModal" tabindex="-1" aria-labelledby="styleSettingsModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-fullscreen">
@@ -1745,12 +1759,12 @@ function pg_designer_settings_modal($ctx, $output_modal_social, $output_noindex_
                                 <div class="sd-settings-group">
                                     <div class="sd-settings-group-title">' . lang('Search Engines') . '</div>
                                     <div class="mb-3">
-                                        <label class="form-label small">' . lang('Page Title') . '</label>
+                                        ' . pg_ai_write_label_row('<label class="form-label small" for="pg_page_title">' . lang('Page Title') . '</label>', $ai_title_button) . '
                                         <input type="text" name="page_title" id="pg_page_title" class="form-control form-control-sm sd-page-field" data-page-key="page_title">
                                         <div id="seo_c_pg_page_title"></div>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label small">' . lang('Meta Description') . '</label>
+                                        ' . pg_ai_write_label_row('<label class="form-label small" for="pg_page_meta_description">' . lang('Meta Description') . '</label>', $ai_description_button) . '
                                         <textarea name="page_meta_description" id="pg_page_meta_description" class="form-control form-control-sm sd-page-field" data-page-key="page_meta_description" rows="3"></textarea>
                                         <div id="seo_c_pg_page_meta_description"></div>
                                     </div>
