@@ -361,5 +361,3 @@ pg_page_shell([
 </main>
 ' . output_footer();
 $liveform->remove_form();
-
-?> 
