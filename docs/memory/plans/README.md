@@ -13,7 +13,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - customer-returns-flow.md: Plan (approved 2026-10-19, not started): customer return request in My Account, approval, return carrier code, status, 14-day timers, bridge to iyzico refund and ERP return invoice
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (data-binding completion, Emmet license, formatter, minimap)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
-- docker-image.md: Plan (approved 2026-10-19, steps 1 and 3 built in PR #565): docker/ compose stack in the release tree; unattended install, README section and GHCR publishing left
+- docker-image.md: Plan (approved 2026-10-19, steps 1-3 built in PR #565 and #621): docker/ compose stack in the release tree with an unattended install service; README section and GHCR publishing left
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, not started): read ERP_AUTO_INVOICE_ON to create the invoice and queue the e-document on order status, revenue-threshold warnings (e-Fatura, e-Arşiv), internet-sale note
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder, account name for accounts opened from orders), decisions behind both
