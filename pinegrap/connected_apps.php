@@ -48,7 +48,7 @@ if ($_POST) {
 
 		if ($ended !== null) {
 
-			$liveform->add_notice(lang(array('string' => 'The connection of {var:1} was ended.', 'vars' => $ended)));
+			$liveform->add_notice(lang(array('string' => 'The connection of {var:1} was ended.', 'vars' => h($ended))));
 
 			log_activity(lang(array(
 				'string' => 'ended the OAuth connection of an application ({var:1})',
