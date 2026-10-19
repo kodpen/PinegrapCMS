@@ -24066,5 +24066,6 @@
     "{var:1} visual designer pages drawn again so far, {var:2} still to go. Press Save and rebuild page HTML again to go on.": "Şimdiye kadar {var:1} görsel tasarımcı sayfası yeniden oluşturuldu, {var:2} sayfa kaldı. Devam etmek için Kaydet ve sayfa HTML'ini yeniden oluştur düğmesine yeniden basın.",
     "Pictures on pages are sent at the width the screen needs, and as WebP to browsers that read it: usually about a third lighter than JPEG. Each is made the first time it is asked for.": "Sayfalardaki görseller ekranın ihtiyaç duyduğu genişlikte, WebP okuyan tarayıcılara da WebP olarak gönderilir; WebP genellikle JPEG'den üçte bir kadar hafiftir. Her görsel ilk istendiğinde hazırlanır.",
     "A changed quality makes the pictures again as they are next asked for. Resized JPEG and PNG pictures use the quality when resizing above.": "Kalite değişirse görseller bir sonraki istendiklerinde yeniden hazırlanır. Küçültülen JPEG ve PNG görseller yukarıdaki küçültme kalitesini kullanır.",
-    "AVIF holds up at a lower number than WebP, so its quality is set apart.": "AVIF, WebP'den daha düşük bir sayıda da iyi görünür; bu yüzden kalitesi ayrı ayarlanır."
+    "AVIF holds up at a lower number than WebP, so its quality is set apart.": "AVIF, WebP'den daha düşük bir sayıda da iyi görünür; bu yüzden kalitesi ayrı ayarlanır.",
+    "Paraşüt has it at {var:1} before VAT, {var:2} VAT, {var:3} withheld, {var:4} in all.": "Paraşüt'te KDV öncesi {var:1}, KDV {var:2}, tevkifat {var:3}, toplam {var:4}."
 }
