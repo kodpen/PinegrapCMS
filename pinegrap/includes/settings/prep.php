@@ -50,6 +50,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $banned_email_addresses = (string) ($row['banned_email_addresses'] ?? '');
     $remember_me_device_limit = ($row['remember_me_device_limit'] ?? 0);
     $software_update_channel = ((($row['software_update_channel'] ?? 'stable') === 'beta') ? 'beta' : 'stable');
+    // The backup an update takes first (2026.11.0, 11.0.21); the switch is
+    // drawn once the column is there, and reads on until then.
+    $update_backup_ready = array_key_exists('update_backup', $row);
+    $update_backup = $update_backup_ready ? (int) $row['update_backup'] : 1;
     $remember_me_device_limit_enabled = ($row['remember_me_device_limit_enabled'] ?? 0);
     $remember_me_device_limit_strict = ($row['remember_me_device_limit_strict'] ?? 0);
     // Two-step verification (8.40): who must have it, and whether the site
@@ -2183,6 +2187,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ops_alert_email = $ops_alerts_ready ? (int) $row['ops_alert_email'] : 1;
     $ops_alert_push = $ops_alerts_ready ? (int) $row['ops_alert_push'] : 1;
     $ops_alert_recipients = (string) ($row['ops_alert_recipients'] ?? '');
+    $ops_alert_error_rate = isset($row['ops_alert_error_rate']) ? (int) $row['ops_alert_error_rate'] : 50;
+    $ops_alert_disk_percent = isset($row['ops_alert_disk_percent']) ? (int) $row['ops_alert_disk_percent'] : 10;
+    $ops_alert_mail_failures = isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10;
+    $ops_alert_cert_days = isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14;
 
     // The structure pass parses rendered markup with DOMDocument. Without the
     // extension the job records its run and exits, so the operator would see

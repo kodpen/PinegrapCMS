@@ -4,9 +4,10 @@
  *
  * Operations alerts: the failures that otherwise surface only when somebody
  * opens System Status or the logs - a failed or missing backup, a scheduled
- * task that stopped, software files that no longer match the release - told
- * to the people who run the site on the panel bell, by e-mail and on the
- * devices they subscribed.
+ * task that stopped, software files that no longer match the release, a burst
+ * of PHP errors, a disk running full, mail or webhooks that stopped going out,
+ * a certificate about to run out - told to the people who run the site on the
+ * panel bell, by e-mail and on the devices they subscribed.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -72,6 +73,51 @@ function pg_ops_alert_codes()
             'type'  => 'error',
             'url'   => 'software_repair.php',
         ),
+        'error_spike' => array(
+            'label' => lang('Many PHP errors'),
+            'type'  => 'warning',
+            'url'   => 'view_log.php',
+        ),
+        'disk_low' => array(
+            'label' => lang('Disk space is running out'),
+            'type'  => 'error',
+            'url'   => 'welcome.php',
+        ),
+        'mail_failures' => array(
+            'label' => lang('E-mails are not being sent'),
+            'type'  => 'error',
+            'url'   => 'mail_queue.php',
+            'direct' => true,
+        ),
+        'webhook_failing' => array(
+            'label' => lang('An event address stopped answering'),
+            'type'  => 'warning',
+            'url'   => 'api_settings.php#events',
+        ),
+        'cert_expiring' => array(
+            'label' => lang('The SSL certificate is about to expire'),
+            'type'  => 'error',
+            'url'   => 'welcome.php',
+        ),
+    );
+}
+
+/**
+ * The thresholds of the checks, from the settings or their defaults.
+ *
+ * 0 switches that one check off. The defaults are those of the 2026.11.0
+ * step, so a site whose columns are older than this code still checks.
+ *
+ * @return array error_rate (errors an hour), disk_percent (free %),
+ *               mail_failures (a day), cert_days (days before the end)
+ */
+function pg_ops_alert_thresholds()
+{
+    return array(
+        'error_rate'    => defined('OPS_ALERT_ERROR_RATE') ? max(0, (int) OPS_ALERT_ERROR_RATE) : 50,
+        'disk_percent'  => defined('OPS_ALERT_DISK_PERCENT') ? max(0, min(50, (int) OPS_ALERT_DISK_PERCENT)) : 10,
+        'mail_failures' => defined('OPS_ALERT_MAIL_FAILURES') ? max(0, (int) OPS_ALERT_MAIL_FAILURES) : 10,
+        'cert_days'     => defined('OPS_ALERT_CERT_DAYS') ? max(0, min(60, (int) OPS_ALERT_CERT_DAYS)) : 14,
     );
 }
 
@@ -717,6 +763,14 @@ function pg_ops_alerts_check_integrity($now)
         return '';
     }
 
+    // Between an update's file replacement and its database upgrade the new
+    // files sit under the old version's number, and the check would compare
+    // them with the old release: a false alert that would also use up the
+    // day's slot a real one needs.
+    if (function_exists('pg_schema_upgrade_pending') && pg_schema_upgrade_pending()) {
+        return '';
+    }
+
     $previous = getcwd();
 
     if (!@chdir(PG_FUNCTIONS_DIR)) {
@@ -741,6 +795,465 @@ function pg_ops_alerts_check_integrity($now)
 }
 
 /**
+ * The last $bytes of a file, from the first whole line on.
+ *
+ * @param string $path
+ * @param int    $bytes
+ * @return string '' when the file cannot be read
+ */
+function pg_ops_read_tail($path, $bytes)
+{
+    $size = @filesize($path);
+
+    if (($size === false) || ($size < 1)) {
+        return '';
+    }
+
+    $handle = @fopen($path, 'rb');
+
+    if ($handle === false) {
+        return '';
+    }
+
+    $offset = max(0, (int) $size - (int) $bytes);
+
+    fseek($handle, $offset);
+
+    $text = (string) stream_get_contents($handle);
+
+    fclose($handle);
+
+    // The first line of a tail is cut somewhere in its middle.
+    if ($offset > 0) {
+        $break = strpos($text, "\n");
+        $text = ($break === false) ? '' : (string) substr($text, $break + 1);
+    }
+
+    return $text;
+}
+
+/**
+ * How many entries of the PHP error log were written since $since, and the
+ * message written most often among them.
+ *
+ * One entry a line, "[Y-m-d H:i:s] {json}" (pg_error_format_line()), the time
+ * in the site's zone - the zone this request runs in as well. A line that does
+ * not start that way is not an entry and is skipped.
+ *
+ * @param string $text
+ * @param int    $since unix time
+ * @return array array('count' => int, 'top' => string, 'top_count' => int)
+ */
+function pg_ops_error_lines_since($text, $since)
+{
+    $found = array('count' => 0, 'top' => '', 'top_count' => 0);
+    $messages = array();
+
+    foreach (preg_split('/\r?\n/', (string) $text) as $line) {
+
+        if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (.*)$/', $line, $parts) !== 1) {
+            continue;
+        }
+
+        $stamp = strtotime($parts[1]);
+
+        if (($stamp === false) || ($stamp < (int) $since)) {
+            continue;
+        }
+
+        $found['count']++;
+
+        $entry = json_decode($parts[2], true);
+        $message = (is_array($entry) && isset($entry['message'])) ? trim((string) $entry['message']) : '';
+
+        if ($message === '') {
+            continue;
+        }
+
+        $key = mb_substr($message, 0, 200, 'UTF-8');
+        $messages[$key] = isset($messages[$key]) ? ($messages[$key] + 1) : 1;
+
+        // The first message to reach the highest count wins a tie.
+        if ($messages[$key] > $found['top_count']) {
+            $found['top'] = $key;
+            $found['top_count'] = $messages[$key];
+        }
+    }
+
+    return $found;
+}
+
+/**
+ * Errors: more PHP errors in the last hour than the setting allows.
+ *
+ * The last megabyte of the log, and of its previous file when that was
+ * written to within the hour (the log rotates at 5 MB). An hour that wrote
+ * more than a megabyte of errors is past any threshold anyway.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_errors($now)
+{
+    $limit = pg_ops_alert_thresholds()['error_rate'];
+
+    if (($limit < 1) || !function_exists('pg_error_log_path')) {
+        return '';
+    }
+
+    $since = (int) $now - 3600;
+    $path = pg_error_log_path();
+    $text = '';
+
+    foreach (array($path . '.1', $path) as $file) {
+        if (is_file($file) && ((int) @filemtime($file) >= $since)) {
+            $text .= pg_ops_read_tail($file, 1048576) . "\n";
+        }
+    }
+
+    $found = pg_ops_error_lines_since($text, $since);
+
+    if ($found['count'] < $limit) {
+        return '';
+    }
+
+    if ($found['top'] !== '') {
+        $detail = lang(array(
+            'string' => '{var:1} PHP errors were recorded in the last hour. The most frequent ({var:2} times): {var:3}',
+            'vars'   => array($found['count'], $found['top_count'], $found['top']),
+        ));
+    } else {
+        $detail = lang(array(
+            'string' => '{var:1} PHP errors were recorded in the last hour.',
+            'vars'   => array($found['count']),
+        ));
+    }
+
+    pg_ops_alert('error_spike', $detail);
+
+    return 'error_spike';
+}
+
+/**
+ * Whether the free space on a disk is too low: under the floor (1 GB) or
+ * under the given share of the disk.
+ *
+ * @param float|int|false $free    bytes, false when unknown
+ * @param float|int|false $total   bytes, false when unknown
+ * @param int             $percent 0 switches the check off
+ * @param float|int       $floor   bytes
+ * @return bool
+ */
+function pg_ops_disk_low($free, $total, $percent, $floor = 1073741824)
+{
+    if (((int) $percent < 1) || !is_numeric($free) || ((float) $free < 0)) {
+        return false;
+    }
+
+    if ((float) $free < (float) $floor) {
+        return true;
+    }
+
+    return is_numeric($total) && ((float) $total > 0) && (((float) $free * 100) < ((float) $total * (int) $percent));
+}
+
+/**
+ * Disk: the disk that holds data/ (backups, uploads, the database dump of a
+ * backup run, the error log) is running out.
+ *
+ * disk_free_space() is among the functions shared hosts switch off; then
+ * there is nothing to read and nothing is said.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_disk($now)
+{
+    $percent = pg_ops_alert_thresholds()['disk_percent'];
+
+    if (($percent < 1) || !function_exists('disk_free_space') || !function_exists('disk_total_space')) {
+        return '';
+    }
+
+    $free = @disk_free_space(PG_FUNCTIONS_DIR . '/data');
+    $total = @disk_total_space(PG_FUNCTIONS_DIR . '/data');
+
+    if (!pg_ops_disk_low($free, $total, $percent)) {
+        return '';
+    }
+
+    pg_ops_alert('disk_low', lang(array(
+        'string' => '{var:1} free of {var:2} on the disk that holds the site\'s data.',
+        'vars'   => array(convert_bytes_to_string((float) $free, 1), is_numeric($total) ? convert_bytes_to_string((float) $total, 1) : '?'),
+    )));
+
+    return 'disk_low';
+}
+
+/**
+ * Mail: messages of the last day that the queue could not send - given up,
+ * or failed at least once and waiting to be tried again.
+ *
+ * Only the queue keeps a record of a failure: a message email() sent at once
+ * (the general job not running) failed in the request that sent it.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_mail($now)
+{
+    $limit = pg_ops_alert_thresholds()['mail_failures'];
+
+    if (($limit < 1) || !function_exists('pg_mail_queue_ready') || !pg_mail_queue_ready()) {
+        return '';
+    }
+
+    $row = db_item(
+        "SELECT COUNT(*) AS total, MAX(id) AS last_id
+        FROM mail_outbox
+        WHERE
+            (attempts > 0)
+            AND (status IN ('queued', 'failed'))
+            AND (created_at >= '" . ((int) $now - 86400) . "')");
+
+    $total = is_array($row) ? (int) $row['total'] : 0;
+
+    if ($total < $limit) {
+        return '';
+    }
+
+    $error = (string) db_value("SELECT last_error FROM mail_outbox WHERE id = '" . (int) $row['last_id'] . "'");
+
+    pg_ops_alert('mail_failures', lang(array(
+        'string' => '{var:1} e-mail(s) of the last day could not be sent. The last error: {var:2}',
+        'vars'   => array($total, ($error !== '') ? $error : '-'),
+    )));
+
+    return 'mail_failures';
+}
+
+/**
+ * Webhooks: an event address that stopped answering and is no longer tried.
+ *
+ * The dispatcher marks a subscription failing after six failures in a row and
+ * stops sending to it; from outside that looks like a quiet week.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_webhooks($now)
+{
+    if (!pg_schema_has('api_webhooks')) {
+        return '';
+    }
+
+    $total = (int) db_value("SELECT COUNT(*) FROM api_webhooks WHERE status = 'failing'");
+
+    if ($total < 1) {
+        return '';
+    }
+
+    $urls = db_values("SELECT url FROM api_webhooks WHERE status = 'failing' ORDER BY id ASC LIMIT 3");
+
+    pg_ops_alert('webhook_failing', lang(array(
+        'string' => '{var:1} event address(es) stopped answering and are no longer sent to: {var:2}',
+        'vars'   => array($total, implode(', ', (array) $urls)),
+    )));
+
+    return 'webhook_failing';
+}
+
+/**
+ * The host whose certificate is checked: the site's host name without its
+ * port, lower case. '' for a name that has no public certificate to check -
+ * an IP address, localhost, a name without a dot.
+ *
+ * @param string $hostname HOSTNAME_SETTING
+ * @return string
+ */
+function pg_ops_certificate_host($hostname)
+{
+    $host = strtolower(trim((string) $hostname));
+
+    if (($host === '') || (strpos($host, '[') === 0)) {
+        return '';
+    }
+
+    $colon = strrpos($host, ':');
+
+    if ($colon !== false) {
+        $host = substr($host, 0, $colon);
+    }
+
+    if ((filter_var($host, FILTER_VALIDATE_IP) !== false) || (strpos($host, '.') === false) || (substr($host, -10) === '.localhost')) {
+        return '';
+    }
+
+    return (preg_match('/^[a-z0-9.-]+$/', $host) === 1) ? $host : '';
+}
+
+/**
+ * What a certificate's end date means at $now: 'ok', 'expiring' (within
+ * $days), 'expired', or 'unknown' when it could not be read.
+ *
+ * @param int $ends unix time, 0 for unknown
+ * @param int $now
+ * @param int $days
+ * @return string
+ */
+function pg_ops_certificate_state($ends, $now, $days)
+{
+    $ends = (int) $ends;
+
+    if ($ends < 1) {
+        return 'unknown';
+    }
+
+    if ($ends <= (int) $now) {
+        return 'expired';
+    }
+
+    return (($ends - (int) $now) < ((int) $days * 86400)) ? 'expiring' : 'ok';
+}
+
+/**
+ * When the certificate the site's host name answers with runs out.
+ *
+ * The host is checked the way every outgoing call is (no private or reserved
+ * address) and the connection goes to the address that was checked. The
+ * certificate is read, not trusted: one that ran out is reported as such
+ * rather than as a failed connection. The same reading as the Workspace's
+ * web check (ws_scheduled_ssl_check()), which needs the Workspace loaded.
+ *
+ * @param string $host
+ * @return array array('ok' => bool, 'ends' => int, 'error' => string)
+ */
+function pg_ops_certificate_end($host)
+{
+    $result = array('ok' => false, 'ends' => 0, 'error' => '');
+
+    if (!function_exists('stream_socket_client') || !function_exists('openssl_x509_parse')) {
+        $result['error'] = 'openssl';
+        return $result;
+    }
+
+    if (!function_exists('api_http_check_url')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+    }
+
+    $check = api_http_check_url('https://' . $host . '/');
+
+    if (!$check['ok']) {
+        $result['error'] = (string) $check['error'];
+        return $result;
+    }
+
+    $context = stream_context_create(array('ssl' => array(
+        'capture_peer_cert' => true,
+        'verify_peer'       => false,
+        'verify_peer_name'  => false,
+        'SNI_enabled'       => true,
+        'peer_name'         => $host,
+    )));
+
+    $errno = 0;
+    $errstr = '';
+    $address = (filter_var($check['ip'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false) ? '[' . $check['ip'] . ']' : $check['ip'];
+
+    $socket = @stream_socket_client('ssl://' . $address . ':443', $errno, $errstr, 10, STREAM_CLIENT_CONNECT, $context);
+
+    if (!$socket) {
+        $result['error'] = ($errstr !== '') ? $errstr : (string) $errno;
+        return $result;
+    }
+
+    $params = stream_context_get_params($socket);
+    fclose($socket);
+
+    $certificate = isset($params['options']['ssl']['peer_certificate']) ? $params['options']['ssl']['peer_certificate'] : null;
+    $parsed = $certificate ? @openssl_x509_parse($certificate) : false;
+
+    if (!is_array($parsed) || empty($parsed['validTo_time_t'])) {
+        $result['error'] = 'no certificate';
+        return $result;
+    }
+
+    $result['ok'] = true;
+    $result['ends'] = (int) $parsed['validTo_time_t'];
+
+    return $result;
+}
+
+/**
+ * Certificate: the site is served over https and its certificate runs out
+ * within the days the setting gives, or already has.
+ *
+ * The certificate is read once a day (and again when the host name changes);
+ * the passes in between judge the end date kept in the state file. A reading
+ * that fails says nothing: a firewall that blocks the server from calling its
+ * own address is not an expiring certificate.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_certificate($now)
+{
+    $days = pg_ops_alert_thresholds()['cert_days'];
+
+    if (($days < 1) || !defined('URL_SCHEME') || (URL_SCHEME !== 'https://')) {
+        return '';
+    }
+
+    $host = pg_ops_certificate_host(defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '');
+
+    if ($host === '') {
+        return '';
+    }
+
+    $state = pg_ops_alert_state();
+    $known = (is_array($state) && isset($state['cert']) && is_array($state['cert'])) ? $state['cert'] : array();
+
+    $fresh = isset($known['host'], $known['checked_at'], $known['ends'])
+        && ((string) $known['host'] === $host)
+        && !pg_ops_alert_due((int) $known['checked_at'], $now);
+
+    if (!$fresh) {
+
+        $read = pg_ops_certificate_end($host);
+
+        $known = array(
+            'host'       => $host,
+            'checked_at' => (int) $now,
+            'ends'       => $read['ok'] ? $read['ends'] : 0,
+        );
+
+        pg_ops_alert_state(function ($state) use ($known) {
+            $state['cert'] = $known;
+            return $state;
+        });
+    }
+
+    $verdict = pg_ops_certificate_state($known['ends'], $now, $days);
+
+    if (($verdict !== 'expiring') && ($verdict !== 'expired')) {
+        return '';
+    }
+
+    $date = date('d.m.Y', (int) $known['ends']);
+
+    pg_ops_alert('cert_expiring', ($verdict === 'expired')
+        ? lang(array('string' => 'The certificate of {var:1} ran out on {var:2}', 'vars' => array($host, $date)))
+        : lang(array('string' => 'The certificate of {var:1} ends in {var:2} days ({var:3})', 'vars' => array($host, (int) floor(((int) $known['ends'] - (int) $now) / 86400), $date))));
+
+    return 'cert_expiring';
+}
+
+/**
  * The checks the general job runs, in order.
  *
  * @return array name => callable taking the current time, returning the code found
@@ -748,9 +1261,16 @@ function pg_ops_alerts_check_integrity($now)
 function pg_ops_alert_sources()
 {
     return array(
-        'backup'    => 'pg_ops_alerts_check_backup',
-        'cron'      => 'pg_ops_alerts_check_cron',
-        'integrity' => 'pg_ops_alerts_check_integrity',
+        'backup'      => 'pg_ops_alerts_check_backup',
+        'cron'        => 'pg_ops_alerts_check_cron',
+        'integrity'   => 'pg_ops_alerts_check_integrity',
+        'errors'      => 'pg_ops_alerts_check_errors',
+        'disk'        => 'pg_ops_alerts_check_disk',
+        'mail'        => 'pg_ops_alerts_check_mail',
+        'webhooks'    => 'pg_ops_alerts_check_webhooks',
+        // Last: the only one that may wait on the network, for up to ten
+        // seconds once a day.
+        'certificate' => 'pg_ops_alerts_check_certificate',
     );
 }
 

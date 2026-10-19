@@ -15,8 +15,8 @@ description: Plan (approved 2026-10-19, in progress): alerts for backup, cron, i
 
 ## What remains?
 1. Done: alert helper, de-dup, backup/cron/integrity sources, Alerts card (`docs/memory/platform/ops-alerts.md`).
-2. Error-spike, disk, mail-queue, webhook, certificate sources and their threshold columns (S).
-3. Pre-update backup + rollback button (S–M).
+2. Done: error-spike, disk, mail-queue, webhook, certificate sources and their threshold columns.
+3. Done: pre-update backup + rollback (`docs/memory/platform/update-backup-rollback.md`; rollback lives on Repair Software).
 4. Maintenance mode + `health.php` (S).
 5. Memory updates in `docs/memory/platform/` (system status, updates).
 
