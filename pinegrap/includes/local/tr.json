@@ -23863,5 +23863,6 @@
     "The template is made from the saved pages and is listed under Choose a Template.": "Şablon kayıtlı sayfalardan yapılır ve Şablondan Seç altında listelenir.",
     "Only designs made with the visual editor can be renamed here.": "Burada yalnız görsel editörle yapılmış tasarımların adı değiştirilebilir.",
     "The design was renamed.": "Tasarımın adı değiştirildi.",
-    "Press and hold a design or a page for more.": "Daha fazlası için bir tasarıma ya da sayfaya basılı tutun."
+    "Press and hold a design or a page for more.": "Daha fazlası için bir tasarıma ya da sayfaya basılı tutun.",
+    "channel must be web, pos or marketplace:<code>.": "channel web, pos ya da marketplace:<kod> olmalı."
 }

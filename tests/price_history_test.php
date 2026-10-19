@@ -4,7 +4,8 @@
  *
  * Tests for the pure parts of includes/fn/price_history.php: which products
  * get a history row after a write, the product list a writer hands over, the
- * source label and the statements the recorder runs.
+ * source label, the statements the recorder runs and the query that lists a
+ * product's rows back.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -150,6 +151,32 @@ function test_price_history_insert_sql()
 	pg_assert_same('', pg_price_history_insert_sql(array(5 => 700), 'shop', 'TRY', 'panel', 1760000000), 'not a channel');
 	pg_assert_same('', pg_price_history_insert_sql(array(5 => 700), 'web', 'TRY', 'workspace', 1760000000), 'not a label the history keeps');
 	pg_assert_contains("'5', 'web', '700', 'TRY'", pg_price_history_insert_sql(array(5 => 700), 'web', "t'ry", 'panel', 1760000000), 'currency cleaned');
+}
+
+// One product's rows, oldest first, with the pair the cursor compares.
+function test_price_history_list_sql()
+{
+	$sql = pg_price_history_list_sql('7', null, 0, null, 51);
+
+	pg_assert_contains('SELECT id, channel, price, currency, changed_at, source', $sql);
+	pg_assert_contains("WHERE product_id = '7'", $sql);
+	pg_assert_contains('ORDER BY changed_at ASC, id ASC', $sql);
+	pg_assert_contains('LIMIT 51', $sql);
+	pg_assert_false(strpos($sql, 'channel =') !== false, 'every channel when none is named');
+	pg_assert_false(strpos($sql, 'changed_at >=') !== false, 'no lower bound');
+
+	$sql = pg_price_history_list_sql(7, 'marketplace:n11', 1760000000, array('v' => '1760003600', 'i' => '42'), 50);
+
+	pg_assert_contains("channel = 'marketplace:n11'", $sql);
+	pg_assert_contains("changed_at >= '1760000000'", $sql);
+	pg_assert_contains("(changed_at > '1760003600'", $sql, 'the rows after the last one read');
+	pg_assert_contains("(changed_at = '1760003600' AND id > '42')", $sql, 'the same second, by id');
+	pg_assert_contains('LIMIT 50', $sql);
+
+	pg_assert_contains("LIMIT 1", pg_price_history_list_sql(7, '', 0, null, 0), 'at least one row');
+	pg_assert_same('', pg_price_history_list_sql(0, null, 0, null, 50), 'not a product id');
+	pg_assert_same('', pg_price_history_list_sql(array(7, 9), null, 0, null, 50), 'one product, not a list');
+	pg_assert_same('', pg_price_history_list_sql(7, "web' OR 1", 0, null, 50), 'not a channel');
 }
 
 // A bulk writer's queue keeps each product once per source label, and a flush
