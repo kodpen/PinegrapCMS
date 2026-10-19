@@ -581,6 +581,20 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'orders.documents',
+			'method'  => 'GET',
+			'path'    => '/orders/{id}/documents',
+			'scope'   => 'orders:read',
+			'handler' => 'api_orders_documents',
+			'returns' => array('list' => 'OrderDocument'),
+			'summary' => 'The legal documents kept with an order',
+			'description' => 'The pre-information form and the distance sales contract the customer accepted at checkout, each as the HTML that was shown and stored with the order, with when it was accepted and from which address. The copy never changes after the order is placed, so it is the record of what was agreed to even after the templates are edited. One page, at most one document per type; an order placed before the documents were switched on, or on a store that never switched them on, has an empty list. Use ?fields=type,accepted,accepted_at to skip the HTML.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Customers ---------------------------------------------------- */
 
 		array(

@@ -60,6 +60,7 @@ $presenters = array(
 	'api_product_schema'       => 'api_product_present',
 	'api_product_group_schema' => 'api_product_group_present',
 	'api_order_schema'         => 'api_order_present',
+	'api_order_document_schema' => 'api_order_document_present',
 	'api_customer_schema'      => 'api_customer_present',
 	'api_page_schema'          => 'api_page_present',
 	'api_folder_schema'        => 'api_folder_present',

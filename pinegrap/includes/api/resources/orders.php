@@ -764,6 +764,100 @@ function api_orders_ship($params) {
 
 }
 
+// The legal documents kept with an order: the pre-information form and the
+// distance sales contract the customer accepted at checkout (and, once written,
+// the KVKK consent), each as the HTML the customer saw. The copy is the row's
+// own: a template edited afterwards changes nothing here, which is the point
+// of keeping it - what an integration archives is what was agreed to.
+//
+// accepted_at is null on a copy that was stored without acceptance (a checkout
+// that did not show the box); accepted says the same thing as a boolean so a
+// client need not compare timestamps to null.
+function api_order_document_present($row, $types = null) {
+
+	if ($types === null) {
+
+		$types = pg_legal_document_types();
+
+	}
+
+	$accepted = (int)$row['accepted_at'];
+
+	return array(
+		'id'               => (int)$row['id'],
+		'type'             => $row['type'],
+		'label'            => isset($types[$row['type']]) ? $types[$row['type']] : null,
+		'accepted'         => ($accepted > 0),
+		'accepted_at'      => api_time($accepted),
+		'accepted_at_unix' => ($accepted > 0) ? $accepted : null,
+		'ip'               => (string)$row['ip'],
+		'user_agent'       => (string)$row['user_agent'],
+		'created_at'       => api_time($row['created_at']),
+		'created_at_unix'  => (int)$row['created_at'],
+		'html'             => (string)$row['html']
+	);
+
+}
+
+// GET /orders/{id}/documents
+//
+// One page, never more than one row per document type, so there is no cursor.
+// An installation upgraded before the legal documents step, or one that never
+// switched them on, answers an empty list rather than an error: the order
+// exists, it simply has no documents. The switch being off today does not hide
+// what was kept while it was on.
+function api_orders_documents($params) {
+
+	$id = (int)$params['id'];
+
+	$order = api_row("SELECT id FROM orders WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($order === null) {
+
+		api_fail_not_found(lang('Order'));
+
+	}
+
+	$out = array();
+
+	if (pg_schema_has('order_documents')) {
+
+		$types = pg_legal_document_types();
+
+		foreach (api_rows("SELECT id, type, html, accepted_at, ip, user_agent, created_at
+			FROM order_documents
+			WHERE order_id = '" . $id . "'
+			ORDER BY id ASC") as $row) {
+
+			$out[] = api_order_document_present($row, $types);
+
+		}
+
+	}
+
+	api_ok_list($out, max(1, count($out)), null);
+
+}
+
+// What api_order_document_present() returns, declared for the OpenAPI document.
+function api_order_document_schema() {
+
+	return array(
+		'id'               => 'integer',
+		'type'             => 'string',
+		'label'            => 'string?',
+		'accepted'         => 'boolean',
+		'accepted_at'      => 'string?',
+		'accepted_at_unix' => 'integer?',
+		'ip'               => 'string',
+		'user_agent'       => 'string',
+		'created_at'       => 'string?',
+		'created_at_unix'  => 'integer',
+		'html'             => 'string'
+	);
+
+}
+
 // What api_order_present() returns, declared for the OpenAPI document. items
 // and shipments are carried by the single-order endpoint only.
 function api_order_schema() {
