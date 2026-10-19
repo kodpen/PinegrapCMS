@@ -504,7 +504,7 @@ if ($ops_alerts_ready) {
                     <div class="col-12">
                         <div class="form-check form-switch">
                             <input value="1"' . ($ops_alerts ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="ops_alerts" name="ops_alerts"/>
-                            <label class="form-check-label" for="ops_alerts">' . lang('Operations alerts') . '<br/><span class="form-text">' . lang('Tells the people who run the site when an automatic backup fails or goes stale, a scheduled task stops running or the software files no longer match the release. Each problem is told at most once a day while it lasts, on the panel bell of managers and administrators and by the channels below. System Status lists the alerts of the last seven days.') . '</span></label>
+                            <label class="form-check-label" for="ops_alerts">' . lang('Operations alerts') . '<br/><span class="form-text">' . lang('Tells the people who run the site when something stops working: an automatic backup fails or goes stale, a scheduled task stops running, the software files no longer match the release, PHP errors pile up, the disk runs full, e-mails or event notifications stop going out, or the site\'s certificate is about to run out. Each problem is told at most once a day while it lasts, on the panel bell of managers and administrators and by the channels below. System Status lists the alerts of the last seven days.') . '</span></label>
                         </div>
                     </div>
                     <div class="col-12" id="ops_alert_fields">
@@ -525,6 +525,25 @@ if ($ops_alerts_ready) {
                                     <input value="1"' . ($ops_alert_push ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="ops_alert_push" name="ops_alert_push"/>
                                     <label class="form-check-label" for="ops_alert_push">' . lang('Send alerts to subscribed devices') . '<br/><span class="form-text">' . lang('Phones and computers on which a manager or administrator turned notifications on. Delivered by the Device notifications job, which has to be selected under Cron Jobs.') . '</span></label>
                                 </div>
+                            </div>
+                            <div class="pg-f-xs">
+                                <label for="ops_alert_error_rate" class="form-label">' . lang('PHP errors in an hour') . '</label>
+                                <input type="number" name="ops_alert_error_rate" id="ops_alert_error_rate" min="0" max="100000" step="1" class="form-control" value="' . (int) $ops_alert_error_rate . '" />
+                            </div>
+                            <div class="pg-f-xs">
+                                <label for="ops_alert_disk_percent" class="form-label">' . lang('Free disk space below %') . '</label>
+                                <input type="number" name="ops_alert_disk_percent" id="ops_alert_disk_percent" min="0" max="50" step="1" class="form-control" value="' . (int) $ops_alert_disk_percent . '" />
+                            </div>
+                            <div class="pg-f-xs">
+                                <label for="ops_alert_mail_failures" class="form-label">' . lang('Failed e-mails in a day') . '</label>
+                                <input type="number" name="ops_alert_mail_failures" id="ops_alert_mail_failures" min="0" max="100000" step="1" class="form-control" value="' . (int) $ops_alert_mail_failures . '" />
+                            </div>
+                            <div class="pg-f-xs">
+                                <label for="ops_alert_cert_days" class="form-label">' . lang('Certificate days left') . '</label>
+                                <input type="number" name="ops_alert_cert_days" id="ops_alert_cert_days" min="0" max="60" step="1" class="form-control" value="' . (int) $ops_alert_cert_days . '" />
+                            </div>
+                            <div class="col-12">
+                                <div class="form-text">' . lang('An alert goes out when the number is reached: as many PHP errors recorded in an hour, free disk space under this share of the disk (or under 1 GB), as many e-mails of the last day failing, or the site\'s certificate ending within as many days. 0 switches that check off. The certificate is checked once a day, only while the site is served over https.') . '</div>
                             </div>
                         </div>
                     </div>';

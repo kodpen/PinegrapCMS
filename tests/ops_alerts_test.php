@@ -4,7 +4,8 @@
  *
  * Tests for the operations alerts (includes/fn/ops_alerts.php): who an alert
  * e-mail goes to, the once-a-day rule, the stored detail, the state file's
- * shape, when a backup is stale, which scheduled jobs count as stopped - and
+ * shape, when a backup is stale, which scheduled jobs count as stopped, how
+ * the error log, the disk and the certificate are judged - and
  * pg_backup_newest() (includes/fn/backup.php), the one reading of the backup
  * folder the alert and the System Status tile share.
  *
@@ -224,4 +225,90 @@ function test_ops_alerts_notification_visibility()
 	pg_assert_true(pg_notification_visible(array('action' => 'ops'), $rights(0)));
 	pg_assert_true(pg_notification_visible(array('action' => 'ops'), $rights(2)));
 	pg_assert_false(pg_notification_visible(array('action' => 'ops'), $rights(3)));
+}
+
+// Error log lines inside the hour are counted, the cut first line of a tail
+// and the older lines are not, and the most frequent message is named.
+function test_ops_alerts_error_lines_since()
+{
+	$since = strtotime('2026-10-19 10:00:00');
+
+	$line = function ($time, $message) {
+		return '[' . $time . '] ' . json_encode(array('level' => 'warning', 'message' => $message));
+	};
+
+	$text = implode("\n", array(
+		'ning","message":"cut in half"}',
+		$line('2026-10-19 09:59:59', 'Too old'),
+		$line('2026-10-19 10:00:00', 'Undefined index: a'),
+		$line('2026-10-19 10:10:00', 'Division by zero'),
+		$line('2026-10-19 10:20:00', 'Undefined index: a'),
+		'[2026-10-19 10:30:00] not json',
+		'',
+	));
+
+	pg_assert_same(array('count' => 4, 'top' => 'Undefined index: a', 'top_count' => 2), pg_ops_error_lines_since($text, $since));
+	pg_assert_same(array('count' => 0, 'top' => '', 'top_count' => 0), pg_ops_error_lines_since('', $since));
+}
+
+// A tail starts at the first whole line; a short file is read whole.
+function test_ops_alerts_read_tail()
+{
+	$path = sys_get_temp_dir() . '/pg_ops_tail_' . getmypid() . '_' . mt_rand(1000, 9999) . '.log';
+
+	file_put_contents($path, "first line\nsecond line\nthird\n");
+
+	pg_assert_same("first line\nsecond line\nthird\n", pg_ops_read_tail($path, 1000));
+	pg_assert_same("third\n", pg_ops_read_tail($path, 10));
+
+	unlink($path);
+
+	pg_assert_same('', pg_ops_read_tail($path, 10));
+}
+
+// Low disk: under the share of the disk or under 1 GB; 0 or an unknown
+// reading says nothing.
+function test_ops_alerts_disk_low()
+{
+	$gb = 1073741824;
+
+	pg_assert_false(pg_ops_disk_low(50 * $gb, 100 * $gb, 10));
+	pg_assert_true(pg_ops_disk_low(9 * $gb, 100 * $gb, 10));
+	pg_assert_false(pg_ops_disk_low(10 * $gb, 100 * $gb, 10));
+	pg_assert_true(pg_ops_disk_low(0.5 * $gb, 4 * $gb, 10));
+	pg_assert_true(pg_ops_disk_low(0.5 * $gb, false, 10));
+	pg_assert_false(pg_ops_disk_low(9 * $gb, 100 * $gb, 0));
+	pg_assert_false(pg_ops_disk_low(false, 100 * $gb, 10));
+	pg_assert_true(pg_ops_disk_low(150 * $gb, 2000 * $gb, 10));
+}
+
+// Only a public host name has a certificate to check.
+function test_ops_alerts_certificate_host()
+{
+	pg_assert_same('www.example.com', pg_ops_certificate_host(' WWW.Example.com:8443 '));
+	pg_assert_same('', pg_ops_certificate_host('127.0.0.1:8000'));
+	pg_assert_same('', pg_ops_certificate_host('[::1]:443'));
+	pg_assert_same('', pg_ops_certificate_host('localhost'));
+	pg_assert_same('', pg_ops_certificate_host('site.localhost'));
+	pg_assert_same('', pg_ops_certificate_host(''));
+	pg_assert_same('', pg_ops_certificate_host('bad host.com'));
+}
+
+// A certificate is expiring within the days given, expired once its end has
+// passed, unknown when it could not be read.
+function test_ops_alerts_certificate_state()
+{
+	$now = 2000000000;
+
+	pg_assert_same('unknown', pg_ops_certificate_state(0, $now, 14));
+	pg_assert_same('expired', pg_ops_certificate_state($now, $now, 14));
+	pg_assert_same('expiring', pg_ops_certificate_state($now + (13 * 86400), $now, 14));
+	pg_assert_same('ok', pg_ops_certificate_state($now + (14 * 86400), $now, 14));
+}
+
+// Without the constants (no init.php here) the thresholds are the step's
+// defaults.
+function test_ops_alerts_threshold_defaults()
+{
+	pg_assert_same(array('error_rate' => 50, 'disk_percent' => 10, 'mail_failures' => 10, 'cert_days' => 14), pg_ops_alert_thresholds());
 }

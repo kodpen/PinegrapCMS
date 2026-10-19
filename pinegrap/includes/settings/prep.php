@@ -2183,6 +2183,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ops_alert_email = $ops_alerts_ready ? (int) $row['ops_alert_email'] : 1;
     $ops_alert_push = $ops_alerts_ready ? (int) $row['ops_alert_push'] : 1;
     $ops_alert_recipients = (string) ($row['ops_alert_recipients'] ?? '');
+    $ops_alert_error_rate = isset($row['ops_alert_error_rate']) ? (int) $row['ops_alert_error_rate'] : 50;
+    $ops_alert_disk_percent = isset($row['ops_alert_disk_percent']) ? (int) $row['ops_alert_disk_percent'] : 10;
+    $ops_alert_mail_failures = isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10;
+    $ops_alert_cert_days = isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14;
 
     // The structure pass parses rendered markup with DOMDocument. Without the
     // extension the job records its run and exits, so the operator would see

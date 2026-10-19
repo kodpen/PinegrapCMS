@@ -31,12 +31,14 @@ function upgrade_to_2026_11_0() {
 // Operations alerts (2026.11.0, 11.0.20; includes/fn/ops_alerts.php, the
 // Alerts card under Site Settings, General).
 //
-// A failed or missing backup, a scheduled task that stopped and changed
-// software files are told on the panel bell, by e-mail and on subscribed
-// devices. On after the upgrade, both channels included, to the site's own
-// address while no recipient is typed: the point is that nobody has to have
-// thought of it. The alerts themselves are notification rows (action 'ops'),
-// so there is no table.
+// A failed or missing backup, a scheduled task that stopped, changed software
+// files, a burst of PHP errors, low disk space, failing mail or webhooks and a
+// certificate about to run out are told on the panel bell, by e-mail and on
+// subscribed devices. On after the upgrade, both channels included, to the
+// site's own address while no recipient is typed: the point is that nobody has
+// to have thought of it. The four thresholds are per check, 0 switching that
+// check off. The alerts themselves are notification rows (action 'ops'), so
+// there is no table.
 function upgrade_2026_11_0_ops_alerts() {
 
 	install_add_column('config', 'ops_alerts', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
@@ -47,6 +49,14 @@ function upgrade_2026_11_0_ops_alerts() {
 
 	install_add_column('config', 'ops_alert_recipients', "TEXT NULL");
 
-	install_note('Operations alerts: a failed or missing backup, a scheduled task that stopped and changed software files are now told on the panel bell, by e-mail to the site address and on subscribed devices. They are set under Site Settings, General, Alerts.');
+	install_add_column('config', 'ops_alert_error_rate', "INT UNSIGNED NOT NULL DEFAULT 50");
+
+	install_add_column('config', 'ops_alert_disk_percent', "TINYINT UNSIGNED NOT NULL DEFAULT 10");
+
+	install_add_column('config', 'ops_alert_mail_failures', "INT UNSIGNED NOT NULL DEFAULT 10");
+
+	install_add_column('config', 'ops_alert_cert_days', "TINYINT UNSIGNED NOT NULL DEFAULT 14");
+
+	install_note('Operations alerts: a failed or missing backup, a scheduled task that stopped, changed software files, a burst of PHP errors, low disk space, failing mail or webhooks and an expiring certificate are now told on the panel bell, by e-mail to the site address and on subscribed devices. They are set under Site Settings, General, Alerts.');
 
 }
