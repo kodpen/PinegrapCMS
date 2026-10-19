@@ -517,6 +517,7 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_code_editor.js?v=' . pg_designer_asset_stamp('assets/js/pg_code_editor.js') . '"></script>
         <script>PgCodeEditor.configure({ bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
+        ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
         <script>
             $(document).ready(function() {
@@ -1640,6 +1641,19 @@ function pg_designer_settings_modal($ctx)
         return $m[0] . ' data-access="' . h(get_access_control_type((int)$m[1])) . '"';
     }, $folder_options);
 
+    // "Write with AI" beside the page's title and meta description
+    // (includes/fn/ai_write.php). The page is the tab open when the button
+    // is pressed; the saved page's headings and text join the fields.
+    $ai_page = array(
+        'record'      => 'page',
+        'record_id'   => (int) ($ctx['active_page_id'] ?? 0),
+        'record_from' => 'designer',
+        'theme'       => 'dark',
+        'context'     => array('page_title' => 'pg_page_title', 'meta_description' => 'pg_page_meta_description', 'page_name' => 'sd-page-name'),
+    );
+    $ai_title_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_title', 'field' => 'pg_page_title'));
+    $ai_description_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_description', 'field' => 'pg_page_meta_description'));
+
     $rail = function ($pane, $icon, $label, $scope, $active) use ($design_hidden) {
         return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . '" id="tab-' . $pane . '-btn"
                     data-bs-toggle="pill" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
@@ -1798,12 +1812,12 @@ function pg_designer_settings_modal($ctx)
                 lang('The title in the browser tab and in search results; 30 to 60 characters read best. Left empty, the title of the site is used.'),
                 '<input type="text" name="page_title" id="pg_page_title" class="form-control form-control-sm sd-page-field" data-page-key="page_title" maxlength="255">
                 <div id="seo_c_pg_page_title"></div>',
-                array('for' => 'pg_page_title', 'wide' => true)) . '
+                array('for' => 'pg_page_title', 'wide' => true, 'action' => $ai_title_button)) . '
             ' . pg_designer_setting(lang('Meta Description'),
                 lang('The summary under the title in search results and in shared links; 150 to 160 characters read best. Left empty, the description of the site is used.'),
                 '<textarea name="page_meta_description" id="pg_page_meta_description" class="form-control form-control-sm sd-page-field" data-page-key="page_meta_description" rows="3" maxlength="255"></textarea>
                 <div id="seo_c_pg_page_meta_description"></div>',
-                array('for' => 'pg_page_meta_description', 'wide' => true)) . '
+                array('for' => 'pg_page_meta_description', 'wide' => true, 'action' => $ai_description_button)) . '
             ' . pg_designer_setting(lang('Preview'),
                 lang('Roughly how a search engine lists the page. It may shorten the text or show a passage of the page instead; a page that shows one record (a product, a post) takes the title and description of the record.'),
                 '<div class="sd-serp" id="sd-serp" aria-hidden="true">
@@ -1908,7 +1922,9 @@ function pg_designer_settings_modal($ctx)
  * points the control's aria-describedby at the sentence.
  *
  * $name and $help are lang() text. $opts: 'for' (the control's id, makes
- * the name its label), 'wide', 'switch', 'id' (the row's).
+ * the name its label), 'wide', 'switch', 'id' (the row's), 'action' (a
+ * button beside the name, such as pg_ai_write_button(); its panel opens
+ * under the name).
  */
 function pg_designer_setting($name, $help, $control, $opts = array())
 {
@@ -1919,6 +1935,9 @@ function pg_designer_setting($name, $help, $control, $opts = array())
     $name = ($for !== '')
         ? '<label class="sd-set-name" for="' . h($for) . '">' . $name . '</label>'
         : '<div class="sd-set-name">' . $name . '</div>';
+    if (!empty($opts['action'])) {
+        $name = pg_ai_write_label_row($name, (string)$opts['action']);
+    }
     return '<div class="' . $class . '"' . (isset($opts['id']) ? ' id="' . h($opts['id']) . '"' : '') . '>
                 <div class="sd-set-text">' . $name . ($help !== '' ? '<div class="sd-set-help">' . $help . '</div>' : '') . '</div>
                 <div class="sd-set-ctrl">' . $control . '</div>

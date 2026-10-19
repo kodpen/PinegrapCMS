@@ -208,9 +208,11 @@ function pg_panel_actions()
         'backend_search' => array('file' => 'search.php', 'handler' => 'pg_panel_backend_search', 'exempt' => true, 'token' => false, 'write' => false),
 
         // "Write with AI" is for whoever edits the record: roles 0-2, and a
-        // basic user with the store right (products) or edit rights to the
-        // page's folder. The handler checks that, the session and the token;
-        // it saves nothing but spends the site's daily allowance.
+        // basic user with the store right (products), edit rights to the
+        // page's folder (pages) or the forms right with edit rights to the
+        // form's folder (form records). The handler checks that, the session
+        // and the token; it saves nothing but spends the site's daily
+        // allowance.
         'ai_write' => array('file' => 'ai_write.php', 'handler' => 'pg_panel_ai_write', 'exempt' => true, 'token' => true, 'write' => true),
 
         'software_backup' => array('file' => 'software.php', 'handler' => 'pg_panel_software_backup', 'exempt' => true, 'token' => true, 'write' => true),

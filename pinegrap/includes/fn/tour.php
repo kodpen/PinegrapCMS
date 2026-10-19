@@ -306,7 +306,7 @@ function pg_tour_shell_steps()
             'target' => '.pg-acctbtn',
             'placement' => 'bottom',
             'title' => lang('Your own menu'),
-            'text' => lang('Your account, the light and dark appearance switch, the keyboard shortcuts, help and the way out. This tour lives here too, under Help & Support, so you can watch it again at any time.')));
+            'text' => lang('Your account, the light and dark appearance switch, help and the way out. This tour lives here too, under Help & Support, so you can watch it again at any time. The keyboard shortcuts open with the ? key.')));
 }
 
 // The inline script that registers the tour of the frame, wires the menu entry

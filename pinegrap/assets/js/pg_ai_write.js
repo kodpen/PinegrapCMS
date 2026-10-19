@@ -77,6 +77,19 @@
         return (typeof el.value === 'string') ? el.value : String(el.textContent || '');
     }
 
+    // The record the draft is for. In the visual designer every tab is a
+    // page, so the page is the one open when the button is pressed.
+    function recordIdOf(settings) {
+        if ((settings.record_from === 'designer') && (typeof StyleDesigner !== 'undefined') && StyleDesigner
+            && (typeof StyleDesigner.aiBridge === 'function')) {
+            var page = StyleDesigner.aiBridge().page();
+
+            return page ? (parseInt(page.page_id, 10) || 0) : 0;
+        }
+
+        return settings.record_id || 0;
+    }
+
     // The form's values right now, unsaved edits included.
     function contextOf(settings) {
         var out = {};
@@ -118,6 +131,12 @@
     function buildPanel(button, settings) {
         var panel = make('div', 'pg-ai-draft border rounded-3 p-2 mb-2 bg-body-tertiary');
         panel.id = panelId(settings);
+
+        // On a dark screen that does not use Bootstrap's colour modes (the
+        // designer's settings), the panel takes the dark ones itself.
+        if (settings.theme === 'dark') {
+            panel.setAttribute('data-bs-theme', 'dark');
+        }
         panel.setAttribute('role', 'group');
         panel.setAttribute('aria-label', label('panel'));
 
@@ -318,7 +337,8 @@
             token: formToken(),
             target: settings.target,
             record: settings.record,
-            record_id: settings.record_id || 0,
+            record_id: recordIdOf(settings),
+            field_id: settings.field_id || 0,
             context: contextOf(settings),
             tone: state.tone.value,
             hint: state.hint.value

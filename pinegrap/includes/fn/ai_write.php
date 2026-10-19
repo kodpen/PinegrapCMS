@@ -94,6 +94,15 @@ function pg_ai_write_targets()
             'max'     => 160,
             'tokens'  => 600,
         ),
+        // A text field of a custom form's record (a blog post's title,
+        // summary or body): the field itself says its format and length
+        // (pg_ai_write_form_spec()), and its own key is its id.
+        'record_field' => array(
+            'records' => array('form' => ''),
+            'format'  => 'text',
+            'max'     => 2000,
+            'tokens'  => 1600,
+        ),
     );
 }
 
@@ -474,6 +483,154 @@ function pg_ai_write_facts($record, $record_id)
 }
 
 /* ---------------------------------------------------------------------------
+   Custom form records
+   --------------------------------------------------------------------------- */
+
+/**
+ * A field's label as the model reads it: without the colon forms put after
+ * their labels.
+ *
+ * @param string $label
+ * @return string
+ */
+function pg_ai_write_form_label($label)
+{
+    $label = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $label)));
+
+    return mb_substr(rtrim($label, ': '), 0, 100);
+}
+
+/**
+ * Is this a field a draft can be asked for? Free text the record is about:
+ * a text area, or a text box the form feeds as an item's title or
+ * description. A field that fills a contact's name, phone or company is the
+ * person's data, not something to write.
+ *
+ * @param array $field form_fields row (type, contact_field, rss_field)
+ * @return bool
+ */
+function pg_ai_write_form_writable($field)
+{
+    if (!is_array($field) || ((string) ($field['contact_field'] ?? '') !== '')) {
+        return false;
+    }
+
+    $type = (string) ($field['type'] ?? '');
+
+    if ($type === 'text area') {
+        return true;
+    }
+
+    return ($type === 'text box') && in_array((string) ($field['rss_field'] ?? ''), array('title', 'description'), true);
+}
+
+/**
+ * What a writable field asks of a draft: its format (line for a text box,
+ * html for a rich text area, text for a plain one), its length (its own
+ * maximum, else the format's) and what the model may spend.
+ *
+ * @param array $field form_fields row
+ * @return array key, label, format, max, tokens
+ */
+function pg_ai_write_form_spec($field)
+{
+    $type = (string) ($field['type'] ?? '');
+
+    if ($type === 'text box') {
+        $format = 'line';
+    } else {
+        $format = !empty($field['wysiwyg']) ? 'html' : 'text';
+    }
+
+    $defaults = array('line' => 255, 'text' => 2000, 'html' => 4000);
+    $tokens = array('line' => 600, 'text' => 1600, 'html' => 2400);
+    $max = (int) ($field['maxlength'] ?? 0);
+
+    return array(
+        'key'    => (string) (int) ($field['id'] ?? 0),
+        'label'  => pg_ai_write_form_label($field['label'] ?? ''),
+        'format' => $format,
+        'max'    => (($max > 0) && ($max < $defaults[$format])) ? $max : $defaults[$format],
+        'tokens' => $tokens[$format],
+    );
+}
+
+/**
+ * The text fields of a custom form, by id: what a request may send as the
+ * record's context, and their labels.
+ *
+ * @param int $form_page_id the custom form's page
+ * @return array id => form_fields row
+ */
+function pg_ai_write_form_fields($form_page_id)
+{
+    $out = array();
+
+    foreach ((array) db_items("SELECT id, label, type, wysiwyg, maxlength, contact_field, rss_field
+        FROM form_fields
+        WHERE page_id = '" . (int) $form_page_id . "' AND type IN ('text box', 'text area')
+        ORDER BY sort_order, id") as $row) {
+        $out[(string) (int) $row['id']] = $row;
+    }
+
+    return $out;
+}
+
+/**
+ * The record's context as the model reads it: the values the form sent for
+ * the form's own text fields, each made plain and cut, labelled, in the
+ * form's order; anything else is dropped.
+ *
+ * @param array $fields pg_ai_write_form_fields()
+ * @param mixed $sent   field id => value from the screen
+ * @return array context (id => text), labels (id => label)
+ */
+function pg_ai_write_form_context($fields, $sent)
+{
+    $context = array();
+    $labels = array();
+
+    if (!is_array($sent)) {
+        return array('context' => $context, 'labels' => $labels);
+    }
+
+    foreach ($fields as $id => $field) {
+        if (!array_key_exists($id, $sent)) {
+            continue;
+        }
+
+        $text = pg_ai_write_plain($sent[$id], 1500);
+
+        if ($text !== '') {
+            $context[(string) $id] = $text;
+            $labels[(string) $id] = pg_ai_write_form_label($field['label']);
+        }
+    }
+
+    return array('context' => $context, 'labels' => $labels);
+}
+
+/**
+ * The name of a custom form, '' when the page is not one.
+ *
+ * @param int $form_page_id
+ * @return string
+ */
+function pg_ai_write_form_name($form_page_id)
+{
+    $row = db_item("SELECT custom_form_pages.form_name, page.page_name
+        FROM custom_form_pages
+        LEFT JOIN page ON custom_form_pages.page_id = page.page_id
+        WHERE custom_form_pages.page_id = '" . (int) $form_page_id . "' LIMIT 1");
+
+    if (!is_array($row)) {
+        return '';
+    }
+
+    return ((string) $row['form_name'] !== '') ? (string) $row['form_name'] : (string) $row['page_name'];
+}
+
+/* ---------------------------------------------------------------------------
    What the model is told
    --------------------------------------------------------------------------- */
 
@@ -559,6 +716,32 @@ function pg_ai_write_target_rules($target, $record)
 }
 
 /**
+ * The three sentences for a field of a custom form's record: what the field
+ * is by its label and its form, its shape by its format, its length by its
+ * own maximum.
+ *
+ * @param array  $spec pg_ai_write_form_spec()
+ * @param string $form the form's name
+ * @return array field, shape, length
+ */
+function pg_ai_write_form_rules($spec, $form)
+{
+    $form = mb_substr(trim((string) $form), 0, 100);
+    $shapes = array(
+        'line' => 'One line of plain text, without quotation marks.',
+        'text' => 'Plain text; separate paragraphs with an empty line. No headings, no Markdown, no HTML.',
+        'html' => 'Paragraphs of plain text separated by an empty line; a list may follow, one item per line starting with "- ". No headings, no Markdown, no HTML.',
+    );
+    $format = isset($shapes[$spec['format'] ?? '']) ? $spec['format'] : 'text';
+
+    return array(
+        'field'  => 'the field "' . $spec['label'] . '" of a record' . (($form !== '') ? ' of the form "' . $form . '"' : '') . ' on the site',
+        'shape'  => $shapes[$format],
+        'length' => 'At most ' . (int) $spec['max'] . ' characters.',
+    );
+}
+
+/**
  * The conversation that asks for a draft: the rules as the system message,
  * the data as a JSON object in the user message.
  *
@@ -566,8 +749,11 @@ function pg_ai_write_target_rules($target, $record)
  * current_text rather than among the data, so the model rewrites it instead
  * of quoting it as a fact about the record.
  *
- * @param array $args target, record, context (pg_ai_write_context()), tone,
- *                    hint, language (a name: Turkish), style_note, site
+ * @param array $args target, record, context (pg_ai_write_context() or, for
+ *                    a form record, pg_ai_write_form_context()), tone, hint,
+ *                    language (a name: Turkish), style_note, site; for a form
+ *                    record also spec (pg_ai_write_form_spec()), form (its
+ *                    name) and labels (context key => label)
  * @return array messages for pg_ai_chat()
  */
 function pg_ai_write_messages($args)
@@ -577,17 +763,20 @@ function pg_ai_write_messages($args)
     $row = pg_ai_write_target($target);
     $context = is_array($args['context'] ?? null) ? $args['context'] : array();
     $fields = pg_ai_write_record_fields();
+    $labels = is_array($args['labels'] ?? null) ? $args['labels'] : array();
     $tones = pg_ai_write_tones();
     $tone = pg_ai_write_tone($args['tone'] ?? '');
     $hint = pg_ai_write_plain($args['hint'] ?? '', PG_AI_WRITE_HINT_MAX);
     $note = trim((string) ($args['style_note'] ?? ''));
     $site = trim((string) ($args['site'] ?? ''));
     $language = trim((string) ($args['language'] ?? ''));
-    $rules = pg_ai_write_target_rules($target, $record);
+    $form = ($record === 'form');
+    $spec = ($form && is_array($args['spec'] ?? null)) ? $args['spec'] : array('key' => '', 'label' => '', 'format' => 'text', 'max' => 2000);
+    $rules = $form ? pg_ai_write_form_rules($spec, $args['form'] ?? '') : pg_ai_write_target_rules($target, $record);
 
     // The field's own text, taken out of the data.
     $current = '';
-    $own = ($row && isset($row['records'][$record])) ? $row['records'][$record] : '';
+    $own = $form ? (string) $spec['key'] : (($row && isset($row['records'][$record])) ? $row['records'][$record] : '');
 
     if (($own !== '') && isset($context[$own])) {
         $current = $context[$own];
@@ -597,7 +786,12 @@ function pg_ai_write_messages($args)
     $data = array();
 
     foreach ($context as $key => $value) {
-        $label = isset($fields[$record][$key]) ? $fields[$record][$key][0] : (string) $key;
+        if (isset($labels[$key]) && ($labels[$key] !== '')) {
+            $label = (string) $labels[$key];
+        } else {
+            $label = isset($fields[$record][$key]) ? $fields[$record][$key][0] : (string) $key;
+        }
+
         $data[$label] = $value;
     }
 
@@ -629,7 +823,11 @@ function pg_ai_write_messages($args)
 
     $lines[] = 'Answer with one JSON object only, no words around it and no code fence: {"text": "..."}';
 
-    $payload = array('record' => ($record === 'product') ? 'product' : 'page', 'data' => (object) $data);
+    if ($form) {
+        $payload = array('record' => 'form record', 'form' => mb_substr(trim((string) ($args['form'] ?? '')), 0, 100), 'data' => (object) $data);
+    } else {
+        $payload = array('record' => ($record === 'product') ? 'product' : 'page', 'data' => (object) $data);
+    }
 
     if ($current !== '') {
         $payload['current_text'] = $current;
@@ -743,8 +941,10 @@ function pg_ai_write_tidy($format, $text, $max)
     $text = preg_replace('/^[ \t]*(?:[*•·▪●◦]|-(?=\s)|–(?=\s))[ \t]*/mu', '- ', (string) $text);
 
     if ($format === 'line') {
+        // Lines the model broke the answer into are joined, without their
+        // list marks.
+        $text = preg_replace('/^[ \t]*(?:-|\d{1,2}[.)])[ \t]+/mu', '', (string) $text);
         $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
-        $text = ltrim($text, '- ');
 
         // A label the model put in front of the line.
         $text = preg_replace('/^(?:title|page title|browser title|meta description|description|short description|name|başlık|sayfa başlığı|açıklama|kısa açıklama|ad)\s*:\s*/iu', '', $text);
@@ -995,11 +1195,14 @@ function pg_ai_write_usage_take($cap)
 /**
  * May this person ask for a draft of this record's fields? The people who
  * may edit the record: roles 0-2 always; a basic user (role 3) for products
- * with the store right, for a saved page whose folder they may edit.
+ * with the store right, for a saved page whose folder they may edit, for a
+ * custom form's records with the forms right and edit rights to the form's
+ * folder (as edit_submitted_form.php decides who manages them).
  *
  * @param array  $user      validate_user()
- * @param string $record    product | page
- * @param int    $record_id 0 for a record not saved yet
+ * @param string $record    product | page | form
+ * @param int    $record_id the product or page, 0 for one not saved yet; for
+ *                          a form record the custom form's page
  * @return bool
  */
 function pg_ai_write_user_may($user, $record, $record_id = 0)
@@ -1008,7 +1211,7 @@ function pg_ai_write_user_may($user, $record, $record_id = 0)
         return false;
     }
 
-    if (!in_array($record, array('product', 'page'), true)) {
+    if (!in_array($record, array('product', 'page', 'form'), true)) {
         return false;
     }
 
@@ -1018,6 +1221,16 @@ function pg_ai_write_user_may($user, $record, $record_id = 0)
 
     if ($record === 'product') {
         return !empty($user['manage_ecommerce']);
+    }
+
+    if ($record === 'form') {
+        if (((int) $record_id <= 0) || empty($user['manage_forms'])) {
+            return false;
+        }
+
+        $folder_id = (int) db_value("SELECT page_folder FROM page WHERE page_id = '" . (int) $record_id . "' LIMIT 1");
+
+        return ($folder_id > 0) && pg_folder_edit_access($folder_id, (int) $user['id'], (int) $user['role']);
     }
 
     // A page: only one that exists, in a folder the person may edit (a draft
@@ -1118,7 +1331,9 @@ function pg_ai_write_button_markup($config, $label)
 {
     $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
 
-    return '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap pg-ai-write-btn"'
+    // bg-transparent: the panel themes give a link button a hover fill,
+    // which on the designer's dark settings is a white box.
+    return '<button type="button" class="btn btn-link btn-sm p-0 bg-transparent text-decoration-none text-nowrap pg-ai-write-btn"'
         . ' data-pg-ai-write="' . h((string) json_encode($config, $flags)) . '" aria-expanded="false"'
         . ' aria-controls="pg_ai_draft_' . h(preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($config['field'] ?? ''))) . '">'
         . '<i class="bi bi-stars me-1" aria-hidden="true"></i>' . h($label) . '</button>';
@@ -1165,30 +1380,114 @@ function pg_ai_write_buttons_drawn($set = null)
  *
  * @param array $user validate_user()
  * @param array $args target, record, record_id, field (the element id the
- *                    draft goes into), context (key => element id)
+ *                    draft goes into), context (key => element id); for a
+ *                    form record also field_id and format
+ *                    (pg_ai_write_form_spec()); record_from 'designer' (the
+ *                    page is the designer's open tab), theme 'dark'
  * @return string
  */
 function pg_ai_write_button($user, $args)
 {
-    $target = (string) ($args['target'] ?? '');
-    $record = (string) ($args['record'] ?? '');
-    $record_id = (int) ($args['record_id'] ?? 0);
-    $row = pg_ai_write_target($target);
+    $config = pg_ai_write_button_config($args);
 
-    if (!$row || !isset($row['records'][$record]) || !pg_ai_write_available($user, $record, $record_id)) {
+    if (!$config || !pg_ai_write_available($user, $config['record'], $config['record_id'])) {
         return '';
     }
 
     pg_ai_write_buttons_drawn(true);
 
-    return pg_ai_write_button_markup(array(
+    return pg_ai_write_button_markup($config, lang('Write with AI'));
+}
+
+/**
+ * What the script is told about one button, from what the screen asks for;
+ * null for a field and record that do not go together.
+ *
+ * @param array $args as for pg_ai_write_button()
+ * @return array|null target, record, record_id, field, format, context
+ *                    [, field_id] [, record_from] [, theme]
+ */
+function pg_ai_write_button_config($args)
+{
+    $target = (string) ($args['target'] ?? '');
+    $record = (string) ($args['record'] ?? '');
+    $row = pg_ai_write_target($target);
+
+    if (!$row || !isset($row['records'][$record])) {
+        return null;
+    }
+
+    $config = array(
         'target'    => $target,
         'record'    => $record,
-        'record_id' => $record_id,
+        'record_id' => (int) ($args['record_id'] ?? 0),
         'field'     => (string) ($args['field'] ?? ''),
         'format'    => $row['format'],
         'context'   => is_array($args['context'] ?? null) ? $args['context'] : array(),
-    ), lang('Write with AI'));
+    );
+
+    // A form record's field says its own format; the server checks it again.
+    if ($record === 'form') {
+        $config['field_id'] = (int) ($args['field_id'] ?? 0);
+        $config['format'] = in_array($args['format'] ?? '', array('line', 'text', 'html'), true) ? $args['format'] : 'text';
+    }
+
+    // The visual designer has a page per tab: the script asks it which page
+    // is open when the button is pressed. Its settings are drawn dark.
+    if (($args['record_from'] ?? '') === 'designer') {
+        $config['record_from'] = 'designer';
+    }
+
+    if (($args['theme'] ?? '') === 'dark') {
+        $config['theme'] = 'dark';
+    }
+
+    return $config;
+}
+
+/**
+ * The button of a custom form record's field on the record screens
+ * (add_submitted_form.php, edit_submitted_form.php): '' for a field that is
+ * not free text (pg_ai_write_form_writable()) or a person who may not ask.
+ * The draft reads every text field of the form, by its id.
+ *
+ * @param array $user
+ * @param int   $form_page_id the custom form's page
+ * @param int   $field_id
+ * @return string
+ */
+function pg_ai_write_form_button($user, $form_page_id, $field_id)
+{
+    static $forms = array();
+
+    $form_page_id = (int) $form_page_id;
+
+    if (!isset($forms[$form_page_id])) {
+        $forms[$form_page_id] = pg_ai_write_form_fields($form_page_id);
+    }
+
+    $fields = $forms[$form_page_id];
+    $key = (string) (int) $field_id;
+
+    if (!isset($fields[$key]) || !pg_ai_write_form_writable($fields[$key])) {
+        return '';
+    }
+
+    $context = array();
+
+    foreach (array_keys($fields) as $id) {
+        $context[(string) $id] = (string) $id;
+    }
+
+    return pg_ai_write_button($user, array(
+        'target'    => 'record_field',
+        'record'    => 'form',
+        'record_id' => $form_page_id,
+        'field'     => $key,
+        'field_id'  => (int) $key,
+        'format'    => pg_ai_write_form_spec($fields[$key])['format'],
+        'context'   => $context,
+    ));
 }
 
 /**
@@ -1340,21 +1639,50 @@ function pg_ai_write($user, $args)
         return $fail($state['reason']);
     }
 
-    // The form's values first; what the site knows fills only what the form
-    // did not send.
     $sent = is_array($args['context'] ?? null) ? $args['context'] : array();
+    $format = $row['format'];
+    $max = $row['max'];
+    $tokens = $row['tokens'];
+    $label = pg_ai_write_target_label($target);
+    $spec = null;
+    $labels = array();
+    $form_name = '';
 
-    if (($record === 'product') && array_key_exists('price', $sent)) {
-        $sent['price'] = pg_ai_write_price_text($sent['price'], defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '');
-    }
+    if ($record === 'form') {
+        // A form record: the field and the context's names come from the
+        // form itself, the values from the screen.
+        $form_fields = pg_ai_write_form_fields($record_id);
+        $field_id = (string) (int) ($args['field_id'] ?? 0);
 
-    foreach (pg_ai_write_facts($record, $record_id) as $key => $value) {
-        if (!isset($sent[$key]) || (is_scalar($sent[$key]) && (trim((string) $sent[$key]) === ''))) {
-            $sent[$key] = $value;
+        if (!isset($form_fields[$field_id]) || !pg_ai_write_form_writable($form_fields[$field_id])) {
+            return $fail(lang('This field cannot be written with AI.'));
         }
+
+        $spec = pg_ai_write_form_spec($form_fields[$field_id]);
+        $built = pg_ai_write_form_context($form_fields, $sent);
+        $context = $built['context'];
+        $labels = $built['labels'];
+        $form_name = pg_ai_write_form_name($record_id);
+        $format = $spec['format'];
+        $max = $spec['max'];
+        $tokens = $spec['tokens'];
+        $label = $spec['label'];
+    } else {
+        // The form's values first; what the site knows fills only what the
+        // form did not send.
+        if (($record === 'product') && array_key_exists('price', $sent)) {
+            $sent['price'] = pg_ai_write_price_text($sent['price'], defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '');
+        }
+
+        foreach (pg_ai_write_facts($record, $record_id) as $key => $value) {
+            if (!isset($sent[$key]) || (is_scalar($sent[$key]) && (trim((string) $sent[$key]) === ''))) {
+                $sent[$key] = $value;
+            }
+        }
+
+        $context = pg_ai_write_context($record, $sent);
     }
 
-    $context = pg_ai_write_context($record, $sent);
     $hint = pg_ai_write_plain($args['hint'] ?? '', PG_AI_WRITE_HINT_MAX);
 
     // Something to write about: the field's own text alone is enough to
@@ -1388,9 +1716,12 @@ function pg_ai_write($user, $args)
         'language'   => pg_ai_write_language_name(defined('TRANSLATION_SOURCE_LANGUAGE') ? TRANSLATION_SOURCE_LANGUAGE : 'en'),
         'style_note' => defined('TRANSLATION_STYLE_NOTE') ? TRANSLATION_STYLE_NOTE : '',
         'site'       => defined('ORGANIZATION_NAME') ? (string) ORGANIZATION_NAME : '',
+        'spec'       => $spec,
+        'form'       => $form_name,
+        'labels'     => $labels,
     ));
 
-    $record_name = pg_ai_write_record_name($record, $record_id);
+    $record_name = ($record === 'form') ? $form_name : pg_ai_write_record_name($record, $record_id);
     $username = isset($_SESSION['sessionusername']) ? (string) $_SESSION['sessionusername'] : '';
 
     if (session_status() === PHP_SESSION_ACTIVE) {
@@ -1402,29 +1733,33 @@ function pg_ai_write($user, $args)
         @set_time_limit(ws_ai_call_timeout() + 30);
     }
 
-    $reply = pg_ai_chat($messages, array('temperature' => 0.7, 'max_tokens' => $row['tokens']));
+    $reply = pg_ai_chat($messages, array('temperature' => 0.7, 'max_tokens' => $tokens));
 
     if (!$reply['ok']) {
         return $fail($reply['error']);
     }
 
-    $text = pg_ai_write_tidy($row['format'], pg_ai_write_answer($reply['text']), $row['max']);
+    $text = pg_ai_write_tidy($format, pg_ai_write_answer($reply['text']), $max);
 
     if ($text === '') {
         return $fail(lang('Pinegrap AI did not write anything that could be used. Try again.'));
     }
 
+    if ($record_name === '') {
+        $record_name = ($record === 'product') ? lang('new product') : lang('new page');
+    }
+
     log_activity(lang(array(
         'string' => 'asked Pinegrap AI for a draft of {var:1} ({var:2})',
-        'vars'   => array(pg_ai_write_target_label($target), ($record_name !== '') ? $record_name : (($record === 'product') ? lang('new product') : lang('new page'))),
+        'vars'   => array($label, $record_name),
     )), $username);
 
     return array(
         'ok'        => true,
         'error'     => '',
         'text'      => $text,
-        'html'      => ($row['format'] === 'html') ? pg_ai_write_html($text) : '',
-        'format'    => $row['format'],
+        'html'      => ($format === 'html') ? pg_ai_write_html($text) : '',
+        'format'    => $format,
         'remaining' => max(0, $cap - $usage['count']),
     );
 }
