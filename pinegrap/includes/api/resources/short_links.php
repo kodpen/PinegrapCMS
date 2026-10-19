@@ -104,13 +104,15 @@ function api_short_link_present($row) {
 
 	}
 
+	$is_pattern = !empty($row['is_pattern']);
+
 	return array(
 		'id'               => (int)$row['id'],
 		'name'             => ($name !== '') ? $name : null,
 		// The address a visitor opens. A one-time link's is a token that was
 		// shown once and is not kept; token_hint is how its first characters
-		// read.
-		'address'          => ($name !== '') ? $base . encode_url_path($name) : null,
+		// read. A name with a * stands for many addresses and has none.
+		'address'          => (($name !== '') && !$is_pattern) ? $base . encode_url_path($name) : null,
 		'token_hint'       => (($name === '') && isset($row['token_hint']) && ((string)$row['token_hint'] !== '')) ? (string)$row['token_hint'] : null,
 		'mode'             => $mode,
 		'status'           => $state['status'],
@@ -127,6 +129,11 @@ function api_short_link_present($row) {
 		'file_id'          => ($type === 'file') ? (int)$row['file_id'] : null,
 		'file_name'        => ($type === 'file') && ((string)$row['file_name'] !== '') ? (string)$row['file_name'] : null,
 		'target'           => $target,
+		// 0: the destination is shown at the link's address (an address off
+		// the site is sent on by mode); 301 or 302: the visitor is sent to the
+		// destination's own address with that status (2026.11.0, 11.0.12).
+		'redirect_code'    => isset($row['redirect_code']) ? (int)$row['redirect_code'] : 0,
+		'is_pattern'       => $is_pattern,
 		'tracking_code'    => (string)$row['tracking_code'],
 		'recycled'         => !empty($row['recycled']),
 		'created_at'       => api_time($row['created_timestamp']),
@@ -158,6 +165,8 @@ function api_short_link_schema() {
 		'file_id'          => 'integer?',
 		'file_name'        => 'string?',
 		'target'           => 'string?',
+		'redirect_code'    => 'integer',
+		'is_pattern'       => 'boolean',
 		'tracking_code'    => 'string',
 		'recycled'         => 'boolean',
 		'created_at'       => 'string?',
@@ -308,15 +317,18 @@ function api_short_links_get($params) {
 
 }
 
-// A name a visitor types: the screen's character rule, and free across pages,
-// files, folders and other short links.
+// A name a visitor types, or an old address (only its path is kept): the
+// screens' rule (pg_short_link_name_problem()), and free across pages, files,
+// folders and other short links.
 function api_short_link_name_or_fail($raw, $ignore_id = 0) {
 
-	$name = pg_short_link_clean_name($raw);
+	$name = pg_short_link_name_from_address($raw);
 
-	if ($name === '') {
+	$problem = pg_short_link_name_problem($name);
 
-		api_fail_validation(lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.'), 'name');
+	if ($problem !== '') {
+
+		api_fail_validation($problem, 'name');
 
 	}
 
@@ -356,6 +368,14 @@ function api_short_link_url_or_fail($url) {
 		|| (strpos($url, '//') === 0) || (strpos($url, '\\') !== false)) {
 
 		api_fail_validation(lang('The address must be a web address or a path on this site.'), 'url');
+
+	}
+
+	// The column takes 2048 characters since 2026.11.0 (255 before); a longer
+	// address would be cut short in silence.
+	if (mb_strlen($url, 'UTF-8') > pg_short_link_url_max()) {
+
+		api_fail_validation(lang(array('string' => 'The address can be at most {var:1} characters long.', 'vars' => array(pg_short_link_url_max()))), 'url');
 
 	}
 
@@ -449,6 +469,40 @@ function api_short_link_duration_or_fail($seconds, $field) {
 
 }
 
+// The answer and pattern columns of a link about to be written, the way the
+// screens check them: a pattern sends visitors on, an address may not lead
+// back to the link or round a loop. $code null keeps the stored answer.
+function api_short_link_answer_or_fail($link, $code, $stored) {
+
+	if (($code !== null) && !in_array((int)$code, pg_short_link_answer_codes(), true)) {
+
+		api_fail_validation(lang(array(
+			'string' => '{var:1} must be one of: {var:2}',
+			'vars'   => array('redirect_code', implode(', ', pg_short_link_answer_codes()))
+		)), 'redirect_code');
+
+	}
+
+	// 0 is the answer every link gave before the upgrade, so it is taken
+	// without it; the others need the column.
+	if (($code !== null) && ((int)$code !== 0) && !pg_short_link_redirects_ready()) {
+
+		api_fail_validation(lang('Redirect answers come with an upgrade this site has not run yet.'), 'redirect_code');
+
+	}
+
+	$answer = pg_short_link_redirect_columns($link, ($code === null) ? null : (int)$code, (int)$stored);
+
+	if ($answer['problem'] !== null) {
+
+		api_fail_validation($answer['problem']['message'], $answer['problem']['field']);
+
+	}
+
+	return $answer['columns'];
+
+}
+
 function api_short_links_create($params) {
 
 	api_short_links_helpers();
@@ -504,6 +558,11 @@ function api_short_links_create($params) {
 	$set['name'] = $name;
 
 	$set['tracking_code'] = isset($params['tracking_code']) ? (string)$params['tracking_code'] : '';
+
+	$set = array_merge($set, api_short_link_answer_or_fail(
+		array('id' => 0, 'name' => $name, 'destination_type' => $set['destination_type'], 'url' => $set['url']),
+		isset($params['redirect_code']) ? $params['redirect_code'] : null,
+		0));
 
 	$token = '';
 
@@ -615,6 +674,32 @@ function api_short_links_update($params) {
 	if (isset($params['tracking_code'])) {
 
 		$set['tracking_code'] = (string)$params['tracking_code'];
+
+	}
+
+	// A new name, destination or answer is checked as a whole: the link as it
+	// would stand once written.
+	if (isset($set['name']) || isset($set['destination_type']) || isset($params['redirect_code'])) {
+
+		$answer = api_short_link_answer_or_fail(
+			array(
+				'id'               => $id,
+				'name'             => isset($set['name']) ? $set['name'] : (string)$row['name'],
+				'destination_type' => isset($set['destination_type']) ? $set['destination_type'] : (string)$row['destination_type'],
+				'url'              => isset($set['url']) ? $set['url'] : (string)$row['url']
+			),
+			isset($params['redirect_code']) ? $params['redirect_code'] : null,
+			isset($row['redirect_code']) ? (int)$row['redirect_code'] : 0);
+
+		foreach ($answer as $column => $value) {
+
+			if (!isset($row[$column]) || ((string)$row[$column] !== (string)$value) || isset($params['redirect_code'])) {
+
+				$set[$column] = $value;
+
+			}
+
+		}
 
 	}
 

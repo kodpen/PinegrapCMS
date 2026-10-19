@@ -1075,6 +1075,13 @@ function output_error($error_message, $response_code = 0)
         throw new RuntimeException(trim(strip_tags((string) $error_message)));
     }
 
+    // A missing address may be one that a short link with a * in its name
+    // stands for (includes/fn/short_link_redirects.php); then this does not
+    // return.
+    if (((int) $response_code === 404) && function_exists('pg_short_link_not_found')) {
+        pg_short_link_not_found();
+    }
+
     set_response_code($response_code);
     $mysql_error = '';
     if (db::$con) {
@@ -1136,6 +1143,12 @@ function output_error($error_message, $response_code = 0)
 // and shows the error page, which does not have a toolbar and etc.
 function error($content, $response_code = 0)
 {
+    // The classic catalog reports an item it cannot find this way: the
+    // address may be one a short link with a * stands for.
+    if (((int) $response_code === 404) && function_exists('pg_short_link_not_found')) {
+        pg_short_link_not_found();
+    }
+
     set_response_code($response_code);
     return '<div class="software_error">
             <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_error.png" alt="Error" title="" class="icon" style="float: none; display: inline-block; height: 1em; width: 1em; min-height: 16px; min-width: 16px">
