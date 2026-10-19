@@ -4,7 +4,7 @@ description: Shipping plan (2026-10-08; phases 1 and 2 done, phase 1 waits for n
 ---
 
 ## What state is it in?
-- Phase 1 built (#601), phase 2 built (#PR_SHIPPING_2, step 11.0.20; `commerce/shipment-row-schema.md`); no `includes/fn/shipping.php` yet. The old labels 8.20–8.22 (2026.4.8) are void: later schema work takes free labels of the open version from its `upgrade_to_…()` entry function. Full old text (stale line numbers): `git show 41aea113:docs/_plan_kargo.md`.
+- Phase 1 built (#601), phase 2 built (#694, step 11.0.20; `commerce/shipment-row-schema.md`); no `includes/fn/shipping.php` yet. The old labels 8.20–8.22 (2026.4.8) are void: later schema work takes free labels of the open version from its `upgrade_to_…()` entry function. Full old text (stale line numbers): `git show 41aea113:docs/_plan_kargo.md`.
 - Every phase is one PR; `tests/shipping_test.php` pins today's behaviour and changes only together with a test (red first).
 
 ## Which decisions are fixed?
@@ -15,7 +15,7 @@ description: Shipping plan (2026-10-08; phases 1 and 2 done, phase 1 waits for n
 
 ## What are the phases?
 1. Carrier recognition: method code, site default, number shape and Turkish capitals done in #601 (`commerce/order-view-tracking-link.md`); the helpers read the default themselves, so no caller passes it. Left: hepsijet, trendyolexpress, kolaygelsin, horoz, ceva, sendeo, each once its tracking URL is checked on its own site (candidates in that file), then n11 `HLZ`/`CEVA`/`BL` aliases.
-2. Schema - done (#PR_SHIPPING_2): `shipping_tracking_numbers` has `carrier`, `tracking_url`, `status` (VARCHAR, values in code), `status_at`, `shipped_at`, `delivered_at`, `created_at`, `source` (default `panel`), `format_warning`; repeated (`ship_to_id`, `number`) rows reduced to the lowest id under the unique key `uk_parcel`; `shipped_at` backfilled from `ship_tos.ship_date` where that date is not in the future; `shipping_methods.carrier`; `order_delivered` in `email_campaign_profiles.action`. Nothing reads them yet.
+2. Schema - done (#694): `shipping_tracking_numbers` has `carrier`, `tracking_url`, `status` (VARCHAR, values in code), `status_at`, `shipped_at`, `delivered_at`, `created_at`, `source` (default `panel`), `format_warning`; repeated (`ship_to_id`, `number`) rows reduced to the lowest id under the unique key `uk_parcel`; `shipped_at` backfilled from `ship_tos.ship_date` where that date is not in the future; `shipping_methods.carrier`; `order_delivered` in `email_campaign_profiles.action`. Nothing reads them yet.
 3. One write path (M): `pg_shipment_record($order_id, $ship_to_id, $number, $opts)` UPSERTs (no delete + insert) and sets the format warning; `pg_shipment_delivered($ship_to_id, $time)` fires `order.delivered` and the campaign exactly once. `update_order.php`, `mp_order_apply_tracking()` and `mp_order_mark_dates()` use it.
 4. Panel (M): carrier select per number (+ Automatic), status badge, yellow format warning; tag input ids `ship_to_id_tracking_numbers_<id>` so two recipients work.
 5. Customer side (M): mail-merge fields `^^tracking_numbers^^`, `^^carrier_name^^`, `^^tracking_url^^`; `order_delivered` trigger; widget `__tracking_*` tokens read the row first; guest tracking by order number + billing e-mail (CSRF, 10/hour/IP, shipping data only). Leave the TR seed page "Kargo Yola Çıktı"; tell operators via `install_note()`.
