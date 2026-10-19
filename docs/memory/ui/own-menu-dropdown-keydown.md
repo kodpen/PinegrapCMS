@@ -4,7 +4,7 @@ description: A right-click menu of a screen's own built on .dropdown-menu: Boots
 ---
 
 ## Why does an arrow key in my own menu throw "reading 'parentNode'"?
-- Bootstrap's dropdown registers its data-api keydown on the document for `.dropdown-menu` with the delegated (capture) phase. ArrowUp, ArrowDown or Escape inside any `.dropdown-menu` makes it look for the toggle that opened the menu; a menu opened by a screen's own script has none, `getOrCreateInstance(undefined)` throws and the key never reaches the menu's own listener (`stopPropagation()` there is too late).
+- Bootstrap's dropdown registers its data-api keydown on the document for `.dropdown-menu` with the delegated (capture) phase. ArrowUp, ArrowDown or Escape inside any `.dropdown-menu` makes it look for the toggle that opened the menu; a menu opened by a screen's own script has none, `getOrCreateInstance(undefined)` throws ("Cannot read properties of undefined (reading 'parentNode')" in `dataApiKeydownHandler`) and the key never reaches the menu's own listener (`stopPropagation()` there is too late). Found in PR #584.
 - Fix: listen on `window` with capture (`addEventListener('keydown', fn, true)`), act only while the menu is open and the event is inside it, `stopPropagation()` first. Used by the Visual Page Editor home (`assets/js/designer_home.js`).
 
 ## What else does such a menu need?

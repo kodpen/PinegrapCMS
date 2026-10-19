@@ -5,7 +5,7 @@ description: Visual Page Editor home (view_system_styles.php): drawn start cards
 
 ## What does the home show?
 - Top: four starts as cards with a drawing each (`pg_designer_home_start_card()`, `pg_designer_home_drawing()`): blank canvas, ZIP into tabs, pasted markup, and the template card fanning three real template thumbnails (`pg_design_thumb_svg()`). Designers only; below that level a one-line alert. Phones: two by two, title only.
-- Below: no DataTable (most sites have one design). `pg_designer_home_featured_id()` picks the design shown large: the only one, or the single design holding the home page; otherwise all are tiles. The large card has the preview in a browser frame, status block, facts (framework, template, theme, last modified), page chips (12, then "+n more") and at most four buttons.
+- Below: no DataTable since PR #584 (most sites have one design, and a one-row table said nothing about it). `pg_designer_home_featured_id()` picks the design shown large: the only one, or the single design holding the home page; otherwise all are tiles. The large card has the preview in a browser frame, status block, facts (framework, template, theme, last modified), page chips (12, then "+n more") and at most four buttons.
 - No designs: a dashed box with the three steps (start, build, publish). More than six designs: a name search (accent and dotless-i folding).
 
 ## Where is the data from?
