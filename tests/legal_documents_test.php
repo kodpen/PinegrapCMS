@@ -268,3 +268,44 @@ function test_legal_documents_inject_off_without_setting()
 
 	pg_assert_same($html, pg_legal_documents_inject($html, array()));
 }
+
+// Attachment names are ASCII, lower case, with the order number.
+function test_legal_documents_file_name()
+{
+	pg_assert_same('on-bilgilendirme-formu-1172.html', pg_legal_document_file_name('Ön Bilgilendirme Formu', '1172'));
+	pg_assert_same('mesafeli-satis-sozlesmesi-1172.html', pg_legal_document_file_name('Mesafeli Satış Sözleşmesi', '1172'));
+	pg_assert_same('distance-sales-contract.html', pg_legal_document_file_name('Distance Sales Contract', ''));
+	pg_assert_same('document-12.html', pg_legal_document_file_name('???', '1/2'));
+}
+
+// The standalone page escapes its title and note and keeps the document's markup.
+function test_legal_documents_page_html()
+{
+	$page = pg_legal_document_page_html('A <b>', '<h2>Body</h2>', 'tr', 'Accepted & kept');
+
+	pg_assert_contains('<html lang="tr">', $page, 'language');
+	pg_assert_contains('<title>A &lt;b&gt;</title>', $page, 'title escaped');
+	pg_assert_contains('<main><h2>Body</h2><p class="pg-legal-note">Accepted &amp; kept</p></main>', $page, 'body and note');
+	pg_assert_contains('noindex', $page, 'not indexed');
+	pg_assert_false(strpos(pg_legal_document_page_html('T', 'B', 'en'), 'pg-legal-note">') !== false, 'no note');
+}
+
+// Without a signed-in user or staff rights (constants undefined here) only
+// the guest who has just placed the order may read its copies.
+function test_legal_documents_may_view_guest_receipt()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array('ecommerce' => array('completed_order_id' => '42'));
+
+	pg_assert_true(pg_legal_document_may_view(array('id' => 42, 'user_id' => 0)), 'the order just placed');
+	pg_assert_false(pg_legal_document_may_view(array('id' => 43, 'user_id' => 0)), 'another order');
+
+	$_SESSION = array();
+	pg_assert_false(pg_legal_document_may_view(array('id' => 42, 'user_id' => 0)), 'no receipt in the session');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}

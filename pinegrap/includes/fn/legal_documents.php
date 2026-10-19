@@ -892,3 +892,197 @@ function pg_legal_documents_for_cart()
     return pg_legal_documents_for_order($order_id, $seen);
 }
 
+
+/**
+ * A document as a page of its own: the shape the cart document page, a
+ * stored copy and an e-mail attachment share.
+ *
+ * @param string $title     escaped here
+ * @param string $body      the document's markup
+ * @param string $language  html lang code
+ * @param string $note      plain text shown under the document ('' for none)
+ * @return string
+ */
+function pg_legal_document_page_html($title, $body, $language, $note = '')
+{
+    return '<!DOCTYPE html>
+<html lang="' . h((string) $language) . '">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>' . h((string) $title) . '</title>
+<style>
+body { margin: 0; padding: 1.5rem 1rem 3rem; background: #fff; color: #212529; font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+main { max-width: 52rem; margin: 0 auto; }
+h2 { font-size: 1.5rem; margin: 0 0 1rem; }
+h3 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
+table { width: 100%; border-collapse: collapse; margin: .5rem 0 1rem; }
+th, td { padding: .35rem .5rem; border-bottom: 1px solid #dee2e6; vertical-align: top; }
+th { font-weight: 600; }
+.pg-legal-empty, .pg-legal-note { padding: 1rem; border: 1px solid #dee2e6; border-radius: .375rem; }
+.pg-legal-note { margin-top: 2rem; color: #495057; }
+@media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<main>' . $body . ((trim((string) $note) !== '') ? '<p class="pg-legal-note">' . h((string) $note) . '</p>' : '') . '</main>
+</body>
+</html>';
+}
+
+/**
+ * The file name an e-mailed copy is attached under: the document's name and
+ * the order number, ASCII only (a Turkish name would reach some mail clients
+ * as "=?utf-8?...").
+ *
+ * @param string $label         the document's name
+ * @param string $order_number
+ * @return string
+ */
+function pg_legal_document_file_name($label, $order_number)
+{
+    $base = strtolower(pg_transliterate_to_ascii((string) $label));
+    $base = trim((string) preg_replace('/[^a-z0-9]+/', '-', $base), '-');
+    $number = preg_replace('/[^0-9A-Za-z]+/', '', (string) $order_number);
+
+    return (($base !== '') ? $base : 'document') . (($number !== '') ? '-' . $number : '') . '.html';
+}
+
+/**
+ * The note printed under a stored copy: when it was accepted, or that it
+ * was not.
+ *
+ * @param array $row  order_documents row
+ * @return string
+ */
+function pg_legal_document_acceptance_note(array $row)
+{
+    $accepted = (int) ($row['accepted_at'] ?? 0);
+
+    if ($accepted <= 0) {
+        return lang('This copy was kept with the order without being accepted.');
+    }
+
+    return lang(array('string' => 'Accepted by the customer on {var:1}.', 'vars' => array(prepare_form_data_for_output(date('Y-m-d H:i:s', $accepted), 'date and time', false))));
+}
+
+/**
+ * The documents kept with an order, by type.
+ *
+ * @param int $order_id
+ * @return array  type => order_documents row; empty without the table
+ */
+function pg_legal_documents_of_order($order_id)
+{
+    $order_id = (int) $order_id;
+    $documents = array();
+
+    if (($order_id <= 0) || !pg_schema_has('order_documents')) {
+        return $documents;
+    }
+
+    foreach ((array) db_items("SELECT id, type, html, accepted_at, ip, user_agent, created_at FROM order_documents WHERE order_id = '" . $order_id . "' ORDER BY id") as $row) {
+        if (!isset($documents[$row['type']])) {
+            $documents[$row['type']] = $row;
+        }
+    }
+
+    return $documents;
+}
+
+/**
+ * Whether the visitor may read the documents of a placed order: the
+ * customer the order belongs to, the guest who has just placed it (the
+ * receipt's order in the session), or staff who manage the store.
+ *
+ * @param array $order  orders row with id and user_id
+ * @return bool
+ */
+function pg_legal_document_may_view(array $order)
+{
+    if (defined('USER_MANAGE_ECOMMERCE') && (USER_MANAGE_ECOMMERCE === true)) {
+        return true;
+    }
+
+    $user_id = defined('USER_ID') ? (int) USER_ID : 0;
+
+    if (($user_id > 0) && ((int) ($order['user_id'] ?? 0) === $user_id)) {
+        return true;
+    }
+
+    $completed = (int) ($_SESSION['ecommerce']['completed_order_id'] ?? 0);
+
+    return ($completed > 0) && ($completed === (int) ($order['id'] ?? 0));
+}
+
+/**
+ * The kept copies of an order as e-mail attachments, one standalone HTML
+ * page each, for the order receipt.
+ *
+ * @param int    $order_id
+ * @param string $order_number
+ * @return array  attachments for email(): name, content, type
+ */
+function pg_legal_documents_attachments($order_id, $order_number)
+{
+    $types = pg_legal_document_types();
+    $attachments = array();
+
+    foreach (pg_legal_documents_of_order($order_id) as $type => $row) {
+        if (!isset($types[$type]) || (trim((string) $row['html']) === '')) {
+            continue;
+        }
+
+        $attachments[] = array(
+            'name'    => pg_legal_document_file_name($types[$type], $order_number),
+            'content' => pg_legal_document_page_html($types[$type], (string) $row['html'], lang(array('info' => true)), pg_legal_document_acceptance_note($row)),
+            'type'    => 'text/html',
+        );
+    }
+
+    return $attachments;
+}
+
+/**
+ * The order screen's card listing the documents kept with the order: each
+ * one's name, whether and when it was accepted, from which address, and a
+ * link to the copy.
+ *
+ * @param int $order_id
+ * @return string  '' when nothing is kept
+ */
+function pg_legal_documents_panel_card($order_id)
+{
+    $types = pg_legal_document_types();
+    $rows = '';
+
+    foreach (pg_legal_documents_of_order($order_id) as $type => $row) {
+        if (!isset($types[$type])) {
+            continue;
+        }
+
+        $accepted = (int) $row['accepted_at'];
+        $status = ($accepted > 0)
+            ? h(prepare_form_data_for_output(date('Y-m-d H:i:s', $accepted), 'date and time', false))
+            : '<span class="text-danger">' . h(lang('Not accepted')) . '</span>';
+
+        $rows .= '<div class="row">
+                        <span class="col text-muted"><a class="link-secondary" href="' . h(PATH . SOFTWARE_DIRECTORY . '/legal_document.php?order_id=' . (int) $order_id . '&type=' . $type) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
+                        <span class="col text-end" title="' . h((string) $row['ip']) . '">' . $status . '</span>
+                    </div>';
+    }
+
+    if ($rows === '') {
+        return '';
+    }
+
+    return '<div class="card mt-3">
+                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                    ' . h(lang('Legal Documents')) . '
+                </div>
+                <div class="card-body">
+                    ' . $rows . '
+                </div>
+            </div>';
+}

@@ -5825,6 +5825,9 @@ function submit_order($type) {
             'subject' => (function_exists('pg_tr_text') ? pg_tr_text($order_receipt_email_subject) : $order_receipt_email_subject) . $order_number,
             'format' => $order_receipt_email_format,
             'body' => $body,
+            // The checkout documents the customer accepted go with the
+            // receipt as they were kept with the order.
+            'attachments' => pg_legal_documents_attachments((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $order_number),
             'queue' => true));
     }
 
