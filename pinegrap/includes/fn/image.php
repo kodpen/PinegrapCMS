@@ -956,3 +956,333 @@ function pg_img_strip_responsive($html)
         return preg_replace('~\s(?:srcset|sizes)\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $match[0]);
     }, $html);
 }
+
+
+/* ---------------------------------------------------------------------------
+ * Derivative cache upkeep
+ *
+ * A derivative is replaced on its own when its source changes (the signature
+ * in its name, includes/image_engine.php), but the old file of a width nobody
+ * asks for again, and the folder of a file that was deleted, stay on the
+ * disk. A daily pass of the general job takes them away
+ * (pg_image_derivative_sweep_run()); it reads the files table, so every
+ * door that deletes a file is covered without a hook in each. Nothing is
+ * deleted for being old: a current derivative of an existing file is the
+ * cache working, and there are at most a dozen per file.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Which entries of one file's derivative folder are no longer of use.
+ *
+ * A derivative or a .skip marker whose signature is not the one its source
+ * has now (the source was optimized, rotated or replaced), every entry when
+ * the source is gone, a .lock or temporary file older than an hour (its
+ * request died), and a .try marker of an old signature. Names this software
+ * does not write are left alone.
+ *
+ * @param array      $entries name => modification time
+ * @param array|null $source  mtime, size of the file now; null when it is gone
+ * @param int        $now
+ * @return array names
+ */
+function pg_image_derivative_stale_entries($entries, $source, $now)
+{
+    $stale = array();
+
+    foreach ($entries as $name => $mtime) {
+
+        if ($source === null) {
+            $stale[] = $name;
+            continue;
+        }
+
+        if (!preg_match('/^(\d+)-([0-9a-f]{12})\.([a-z]+)(\.skip|\.try|\.lock|\.tmp[0-9a-z]*)?$/', $name, $match)) {
+            continue;
+        }
+
+        $suffix = isset($match[4]) ? $match[4] : '';
+
+        if (($suffix === '.lock') || (strpos($suffix, '.tmp') === 0)) {
+            if (($now - (int) $mtime) > 3600) {
+                $stale[] = $name;
+            }
+            continue;
+        }
+
+        $current = pg_image_derivative_signature($source['mtime'], $source['size'], pg_image_derivative_quality($match[3]));
+
+        if ($match[2] !== $current) {
+            $stale[] = $name;
+        }
+    }
+
+    return $stale;
+}
+
+
+/**
+ * Delete a folder and everything in it, until a deadline.
+ *
+ * @param string $path
+ * @param float  $deadline microtime(true) to stop at
+ * @return array finished (bool), files, bytes
+ */
+function pg_image_derivative_remove_tree($path, $deadline)
+{
+    $result = array('finished' => true, 'files' => 0, 'bytes' => 0);
+    $entries = @scandir($path);
+
+    if (!is_array($entries)) {
+        return $result;
+    }
+
+    foreach ($entries as $entry) {
+
+        if (($entry === '.') || ($entry === '..')) {
+            continue;
+        }
+
+        if (microtime(true) > $deadline) {
+            $result['finished'] = false;
+            return $result;
+        }
+
+        $item = $path . '/' . $entry;
+
+        if (is_dir($item) && !is_link($item)) {
+            $inner = pg_image_derivative_remove_tree($item, $deadline);
+            $result['files'] += $inner['files'];
+            $result['bytes'] += $inner['bytes'];
+
+            if (!$inner['finished']) {
+                $result['finished'] = false;
+                return $result;
+            }
+
+            continue;
+        }
+
+        $bytes = (int) @filesize($item);
+
+        if (@unlink($item)) {
+            $result['files']++;
+            $result['bytes'] += $bytes;
+        }
+    }
+
+    @rmdir($path);
+
+    return $result;
+}
+
+
+/**
+ * Empty the derivative cache, for the cache purge.
+ *
+ * The folder is renamed out of the way first, which is instant whatever it
+ * holds, so the next request starts from an empty cache (and tests the
+ * formats again, formats.json going with it). What can be deleted in two
+ * seconds is deleted now; the rest of the renamed folder goes with the next
+ * pass of the general job.
+ *
+ * @param string $directory pg_image_derivative_directory()
+ * @return bool whether there was a cache to empty
+ */
+function pg_image_derivative_purge($directory)
+{
+    $directory = rtrim((string) $directory, '/\\');
+
+    if (($directory === '') || !is_dir($directory)) {
+        return false;
+    }
+
+    $aside = $directory . '.old-' . time() . '-' . (function_exists('getmypid') ? getmypid() : mt_rand());
+
+    if (!@rename($directory, $aside)) {
+        return false;
+    }
+
+    pg_image_derivative_remove_tree($aside, microtime(true) + 2);
+
+    return true;
+}
+
+
+/**
+ * Where the daily pass stands: last_id (the file id it got to, 0 between
+ * passes) and done_at (when the last pass finished).
+ *
+ * @param string $directory
+ * @return array
+ */
+function pg_image_derivative_sweep_state($directory)
+{
+    $state = @json_decode((string) @file_get_contents(rtrim((string) $directory, '/\\') . '/sweep.json'), true);
+
+    return array(
+        'last_id' => (is_array($state) && isset($state['last_id'])) ? (int) $state['last_id'] : 0,
+        'done_at' => (is_array($state) && isset($state['done_at'])) ? (int) $state['done_at'] : 0,
+    );
+}
+
+
+/**
+ * The folders a purge set aside next to the cache, still to be deleted.
+ *
+ * @param string $directory
+ * @return array paths
+ */
+function pg_image_derivative_set_aside($directory)
+{
+    $directory = rtrim((string) $directory, '/\\');
+    $parent = dirname($directory);
+    $prefix = basename($directory) . '.old-';
+    $found = array();
+
+    foreach ((array) @scandir($parent) as $entry) {
+        if ((strpos((string) $entry, $prefix) === 0) && is_dir($parent . '/' . $entry)) {
+            $found[] = $parent . '/' . $entry;
+        }
+    }
+
+    return $found;
+}
+
+
+/**
+ * Whether the general job should run a pass now: a pass under way, a purged
+ * cache still to delete, or a day since the last pass finished.
+ *
+ * @param string $directory
+ * @return bool
+ */
+function pg_image_derivative_sweep_due($directory)
+{
+    if ($directory === '') {
+        return false;
+    }
+
+    if (pg_image_derivative_set_aside($directory)) {
+        return true;
+    }
+
+    if (!is_dir($directory)) {
+        return false;
+    }
+
+    $state = pg_image_derivative_sweep_state($directory);
+
+    return ($state['last_id'] > 0) || ($state['done_at'] < (time() - 86400));
+}
+
+
+/**
+ * One pass over the derivative cache, for as many seconds as it is given:
+ * what a purge set aside, then the folder of every file id in turn. A pass
+ * that runs out of time remembers the id it got to and goes on from there on
+ * the next tick.
+ *
+ * @param string $directory pg_image_derivative_directory()
+ * @param int    $seconds
+ * @return array state ('done' or 'more'), folders, files, bytes
+ */
+function pg_image_derivative_sweep_run($directory, $seconds = 10)
+{
+    $directory = rtrim((string) $directory, '/\\');
+    $deadline = microtime(true) + max(1, (int) $seconds);
+    $result = array('state' => 'done', 'folders' => 0, 'files' => 0, 'bytes' => 0);
+
+    foreach (pg_image_derivative_set_aside($directory) as $aside) {
+
+        $removed = pg_image_derivative_remove_tree($aside, $deadline);
+        $result['files'] += $removed['files'];
+        $result['bytes'] += $removed['bytes'];
+
+        if (!$removed['finished']) {
+            $result['state'] = 'more';
+            return $result;
+        }
+    }
+
+    if (!is_dir($directory) || !defined('FILE_DIRECTORY_PATH')) {
+        return $result;
+    }
+
+    $state = pg_image_derivative_sweep_state($directory);
+    $ids = array();
+
+    foreach ((array) @scandir($directory) as $entry) {
+
+        $entry = (string) $entry;
+
+        if (preg_match('/^[1-9][0-9]{0,9}$/', $entry) && ((int) $entry > $state['last_id']) && is_dir($directory . '/' . $entry)) {
+            $ids[] = (int) $entry;
+
+        // The source of a format test whose request died
+        // (pg_image_format_probe()).
+        } elseif (preg_match('/^probe-[0-9a-z]+\.png$/', $entry) && ((time() - (int) @filemtime($directory . '/' . $entry)) > 3600)) {
+            @unlink($directory . '/' . $entry);
+        }
+    }
+
+    sort($ids);
+
+    foreach (array_chunk($ids, 200) as $chunk) {
+
+        $names = array();
+
+        foreach ((array) db_items("SELECT id, name FROM files WHERE id IN (" . implode(',', $chunk) . ")") as $row) {
+            $names[(int) $row['id']] = (string) $row['name'];
+        }
+
+        foreach ($chunk as $id) {
+
+            if (microtime(true) > $deadline) {
+                $result['state'] = 'more';
+                @file_put_contents($directory . '/sweep.json', json_encode(array('last_id' => $state['last_id'], 'done_at' => $state['done_at'])));
+                return $result;
+            }
+
+            $folder = $directory . '/' . $id;
+            $source = null;
+
+            if (isset($names[$id])) {
+                $path = FILE_DIRECTORY_PATH . '/' . $names[$id];
+                $mtime = @filemtime($path);
+                $size = @filesize($path);
+
+                if (($mtime !== false) && ($size !== false)) {
+                    $source = array('mtime' => $mtime, 'size' => $size);
+                }
+            }
+
+            $entries = array();
+
+            foreach ((array) @scandir($folder) as $entry) {
+                if (($entry !== '.') && ($entry !== '..') && is_file($folder . '/' . $entry)) {
+                    $entries[$entry] = (int) @filemtime($folder . '/' . $entry);
+                }
+            }
+
+            foreach (pg_image_derivative_stale_entries($entries, $source, time()) as $entry) {
+                $bytes = (int) @filesize($folder . '/' . $entry);
+
+                if (@unlink($folder . '/' . $entry)) {
+                    $result['files']++;
+                    $result['bytes'] += $bytes;
+                }
+            }
+
+            // Empty now: the file is gone, or none of its derivatives was current.
+            if (@rmdir($folder)) {
+                $result['folders']++;
+            }
+
+            $state['last_id'] = $id;
+        }
+    }
+
+    @file_put_contents($directory . '/sweep.json', json_encode(array('last_id' => 0, 'done_at' => time())));
+
+    return $result;
+}
