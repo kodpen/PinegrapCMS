@@ -1,6 +1,6 @@
 ---
 name: ai-write
-description: "Write with AI" drafts for product and page fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, how the answer is read
+description: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
 ---
 
 ## What exists?

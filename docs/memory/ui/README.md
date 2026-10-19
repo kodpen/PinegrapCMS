@@ -7,7 +7,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
 - admin-screen-toolbar.md: Panel UI basics (helpers, icons) and the single-toolbar design principle for every admin screen, with view_folders.php as reference: slot order and classes.
 - ai-write-panel.md: The "Write with AI" button and draft panel (pg_ai_write_button(), pg_ai_write.js): where it is, adding it to a field, what the panel does, what the server adds
-- ai-write.md: "Write with AI" drafts for product and page fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, how the answer is read
+- ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404; use pg_ascii_file_name, any name that enters a URL must be ASCII.
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
