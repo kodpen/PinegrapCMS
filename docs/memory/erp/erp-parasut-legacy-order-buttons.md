@@ -7,7 +7,7 @@ description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipmen
 - `view_order.php` toolbar: "Create Invoice" (`parasut_create_invoice()`) and "E-Shipment" (`parasut_create_shipment()`), posted back as `parasut_action`; drawn when `ENABLE_PARASUT` and the Paraşüt company and client id are set. They send the order straight to Paraşüt, outside the ERP's books. The status rows (Sent / Paraşüt ID) sit in the Order Information card.
 
 ## When are they not drawn?
-- When `parasut_order_documents_in_erp()` (includes/fn/parasut.php): the ERP is on and an e-document provider is switched on (`erp_edoc_providers.is_active`; before 4.61 `ERP_PARASUT_ENABLED`). The order's invoice is then the ERP's ("Invoice and delivery documents" card) and the provider takes it to GİB; both on one order put the same sale into Paraşüt twice (seen on dev: "Fatura Kes" in the toolbar beside the card's "Faturayı Kes"). Since #631.
+- When `parasut_order_documents_in_erp()` (includes/fn/parasut.php): the ERP is on and an e-document provider is switched on (`erp_edoc_providers.is_active`; before 4.61 `ERP_PARASUT_ENABLED`). The order's invoice is then the ERP's ("Invoice and delivery documents" card) and the provider takes it to GİB; both on one order put the same sale into Paraşüt twice (seen on dev: "Fatura Kes" in the toolbar beside the card's "Faturayı Kes"). Since #639.
 - A post that still arrives (a page opened before the provider was switched on) is refused with a notice pointing to the card.
 - An order already sent from the old buttons keeps its status rows.
 - Without the ERP, or with the ERP and no provider (its invoices stay on paper), the buttons work as before. The orders list's Excel export for Paraşüt is not affected.

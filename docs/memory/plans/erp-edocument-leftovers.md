@@ -39,7 +39,7 @@ A consumer who is not a taxpayer cannot issue an invoice; the return document co
 - `gross_total` sent to and returned by the provider are identical, else nothing is issued.
 - Provider down: the panel still works and the queue drains on its own afterwards.
 - Two concurrent requests refresh the token once; a tampered webhook body changes no field.
-- No invoice or waybill creating code left in `includes/fn/parasut.php` (the order screen's buttons still use it without the ERP; with the ERP and a provider they give way, #631: docs/memory/erp/erp-parasut-legacy-order-buttons.md); `view_parasut_inbox.php` keeps working.
+- No invoice or waybill creating code left in `includes/fn/parasut.php` (the order screen's buttons still use it without the ERP; with the ERP and a provider they give way, #639: docs/memory/erp/erp-parasut-legacy-order-buttons.md); `view_parasut_inbox.php` keeps working.
 
 ## Is the tax advice verified?
 - No. UBL-TR exemption and withholding codes, VUK 509 fields, the e-archive cancellation window and the consumer return section were compiled from public sources and must be confirmed by the store's accountant.
