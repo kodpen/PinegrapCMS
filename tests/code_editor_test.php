@@ -105,3 +105,33 @@ function test_code_editor_lint_skips_an_empty_document()
 
 	pg_assert_true($blank !== false, 'a blank JSON document is not handed to the JSON parser');
 }
+
+// attach() sizes its host by `width` as well as `height`, builds the editor
+// in a shadow root with `isolate` (out of reach of a container that resets
+// every element in it), and hands back the host as `container`.
+function test_code_editor_attach_can_isolate_the_editor()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, 'function attach(');
+	$attach = ($from !== false) ? substr($facade, $from, strpos($facade, "\n    window.PgCodeEditor = {", $from) - $from) : '';
+
+	pg_assert_contains('if (opts.width) host.style.width = opts.width;', $attach, 'width');
+	pg_assert_contains("if (opts.isolate && host.attachShadow) {", $attach, 'isolate asks for a shadow root');
+	pg_assert_contains('host.attachShadow({ mode: \'open\' }).appendChild(mount);', $attach, 'the editor is mounted inside it');
+	pg_assert_contains('return pgCeCreate(mount, merged);', $attach, 'the editor is built on the mount');
+	pg_assert_contains('inst.container = host;', $attach, 'the host is handed back');
+}
+
+// The rich text editor's Source dialog resets every element inside it and
+// presses OK on Enter: its code editor is isolated, as wide as the textarea
+// the dialog was sized by, and keeps Enter, Tab and the keys it used.
+function test_code_editor_ckeditor_source_dialog()
+{
+	$plugin = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_ckeditor_source.js');
+	$dialog = substr($plugin, (int) strpos($plugin, "CKEDITOR.on('dialogDefinition'"));
+
+	pg_assert_contains("{ width: (textarea.offsetWidth || 800) + 'px', isolate: true }", $dialog, 'isolated, as wide as the textarea');
+	pg_assert_contains('keepKeys(instance.container || instance.host);', $dialog, 'its keys stop at the editor');
+	pg_assert_contains("if ((event.key === 'Enter') || (event.key === 'Tab') || event.defaultPrevented) {", $plugin, 'Enter, Tab and the keys the editor used');
+	pg_assert_contains('event.stopPropagation();', $plugin, 'do not reach the dialog');
+}

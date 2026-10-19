@@ -12917,7 +12917,7 @@
     "Whether this number is registered for e-Invoice has not been asked yet.": "Bu numaranın e-Fatura mükellefi olup olmadığı henüz sorulmadı.",
     "e-Invoice taxpayer": "e-Fatura mükellefi",
     "Not an e-Invoice taxpayer": "e-Fatura mükellefi değil",
-    "asked {var:1}": "sorulma {var:1}",
+    "asked {var:1}": "sorgulandı: {var:1}",
     "Ask GİB about the tax number": "Vergi numarasını GİB'e sor",
     "İşbaşı is not answering at the moment (HTTP {var:1}). Try again in a little while.": "İşbaşı şu anda yanıt vermiyor (HTTP {var:1}). Biraz sonra tekrar deneyin.",
     "Hand to GİB": "GİB'e Gönder",
@@ -24079,5 +24079,7 @@
     "{var:1} is on the list, but it is the server or a proxy every visitor arrives through, so everyone sees the site during maintenance. Add it to Trusted Proxies on the Firewall card and list your own address instead.": "{var:1} listede, ama bu her ziyaretçinin üzerinden geldiği sunucu ya da vekil sunucu; bakım sırasında siteyi herkes görür. Onu Güvenlik Duvarı kartında Güvenilen Vekil Sunucular'a ekleyin ve listeye kendi adresinizi yazın.",
     "The ERP issues this order's invoice and delivery note, and its e-document provider takes them to GİB. Use the Invoice and delivery documents card of the order.": "Bu siparişin faturasını ve irsaliyesini ERP keser, e-belge sağlayıcısı GİB'e iletir. Siparişin Fatura ve Sevk Belgeleri kartını kullanın.",
     "That address is inside the network of this server, so it is not read. The import reads public websites only.": "Bu adres sunucunun kendi ağının içinde, bu yüzden okunmaz. İçe aktarma yalnız herkese açık web sitelerini okur.",
-    "Low text contrast {var:1}:1, at least {var:2}:1 is needed: \"{var:3}\"": "Metin kontrastı düşük: {var:1}:1, en az {var:2}:1 gerekli: \"{var:3}\""
+    "Low text contrast {var:1}:1, at least {var:2}:1 is needed: \"{var:3}\"": "Metin kontrastı düşük: {var:1}:1, en az {var:2}:1 gerekli: \"{var:3}\"",
+    "Reject all": "Tümünü reddet",
+    "Google tags you add yourself (Tag Manager, Google Ads) are told the answer through Google Consent Mode v2: they set no cookies until the visitor allows statistics or marketing. Such a tag can stay as it is; for the notice to ask about its category, add an empty held tag such as {var:1}.": "Kendi eklediğiniz Google etiketleri (Etiket Yöneticisi, Google Ads) yanıtı Google İzin Modu v2 ile öğrenir: ziyaretçi istatistiğe ya da pazarlamaya izin verene kadar çerez yazmazlar. Böyle bir etiket olduğu gibi kalabilir; bildirimin onun kategorisini sorması için {var:1} gibi boş bir bekletilen etiket ekleyin."
 }

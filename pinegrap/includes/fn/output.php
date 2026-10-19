@@ -1573,7 +1573,7 @@ function output_header_secure($properties = false)
 
     $software_title = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
-        $software_title = 'Pinegrap ' . get_short_version() . ' | ';
+        $software_title = trim('Pinegrap ' . get_short_version()) . ' | ';
     } else {
         $software_title = ' | ';
     }
@@ -1810,7 +1810,7 @@ function output_header($properties = false)
 
     $software_title = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
-        $software_title = 'Pinegrap ' . get_short_version() . ' | ';
+        $software_title = trim('Pinegrap ' . get_short_version()) . ' | ';
     } else {
         $software_title = ' | ';
     }
@@ -1871,7 +1871,7 @@ function output_header($properties = false)
             . '<span class="pinegrap-logo">'
             . pg_logo_svg()
             . '</span>'
-            . '<span class="pinegrap-version ms-1 border rounded-pill px-1 d-none d-md-inline-block">' . get_short_version() . '</span>'
+            . ((get_short_version() !== '') ? '<span class="pinegrap-version ms-1 border rounded-pill px-1 d-none d-md-inline-block">' . get_short_version() . '</span>' : '')
             . '</span>';
     } else {
         $output_logo = '<li class="nav-item"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' type="button" class="nav-link p-0 me-1 position-relative overflow-hidden" style="width:39.97px;;height:39.99px;border-radius:2px;"><img src="' . LOGO_URL . '" style="object-fit: scale-down;height: inherit;width: inherit;transform: rotate3d(0, 1, 0, 180deg);" border="0" alt="logo" title="" /></a></li>';

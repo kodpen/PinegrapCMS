@@ -70,3 +70,17 @@ function test_core_other_escape_helpers_take_null()
 	pg_assert_same('a""b', escape_csv('a"b'));
 	pg_assert_same('a%20b/c', encode_url_path('a b/c'));
 }
+
+// The short version in titles and the logo badge. The installer's VERSION is
+// true, which names no version: '' then, and the title goes without one.
+function test_core_short_version()
+{
+	pg_assert_same('26.11', pg_short_version('2026.11.0'), 'year and month');
+	pg_assert_same('26.4', pg_short_version('2026.4.10'), 'a one-digit month');
+	pg_assert_same('26', pg_short_version('2026'), 'the year alone');
+	pg_assert_same('26', pg_short_version(2026), 'a number');
+	pg_assert_same('26.11', pg_short_version('v2026.11.0'), 'a leading v');
+	pg_assert_same('', pg_short_version(true), 'the installer\'s marker');
+	pg_assert_same('', pg_short_version(null), 'nothing');
+	pg_assert_same('', pg_short_version(array('2026')), 'not a version');
+}

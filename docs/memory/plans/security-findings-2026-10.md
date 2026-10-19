@@ -19,4 +19,5 @@ description: Security findings of the 2026-10-19 audit: what the PRs of 2026-10-
 7. **ERP sales invoice `web_address`** falls back to `URL_SCHEME . HOSTNAME` (the checkout request's Host header) when `ERP_WEB_ADDRESS` is empty (`includes/erp/order_bridge.php` ~614) and is stored on the invoice. Should it be `HOSTNAME_SETTING`, as for mail links (`platform/hostname-in-mail-links.md`)? Owner decision needed (asked on #558).
 
 ## What was never verified on a running site?
-- The #550 exploit path end to end, #551's revoke → next-request sign-out and the no-table upgrade bridge, #552 on IIS/nginx, #556's gateway returns with the re-ordered cookie re-issue. A sandbox pass (`tools/setup_sandbox.sh`) before the release is the way to close these.
+- The #550 designer-text path end to end (the product-description path was checked on dev in the 2026-10-19 test round), #552 on IIS/nginx, #556's gateway returns with the re-ordered cookie re-issue. A sandbox pass (`tools/setup_sandbox.sh`) before the release is the way to close these.
+- #551 was checked in the sandbox on 2026-10-19 (`core/session-token-binding.md`): revoke → next-request sign-out, and the no-table upgrade bridge.
