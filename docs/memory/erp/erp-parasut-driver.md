@@ -19,7 +19,7 @@ description: The Paraşüt e-document driver (includes/erp/edoc/parasut.php): re
 - 10 requests per 10 seconds (documentation). `parasut_throttle()` (includes/fn/parasut.php) holds every request of the PHP process back; `erp_edoc_parasut_request()` waits a full window and repeats once after a 429, and renews the token once after a 401.
 
 ## What did the live API show? (demo company, 2026-10-19)
-- Seen: a person's TCKN in `tax_number` (201); only VAT rates 0, 1, 10, 20 (18 → 422; refused before anything is sent since #PRNO, `erp_edoc_parasut_vat_rate_refusal()`); `?include=details`, `?include=active_e_document,contact`, `e_invoice_inboxes`, `DELETE sales_invoices/{id}` (204) as documented. Errors repeat the detail as the title; it is said once.
+- Seen: a person's TCKN in `tax_number` (201); only VAT rates 0, 1, 10, 20 (18 → 422; refused before anything is sent since #690, `erp_edoc_parasut_vat_rate_refusal()`); `?include=details`, `?include=active_e_document,contact`, `e_invoice_inboxes`, `DELETE sales_invoices/{id}` (204) as documented. Errors repeat the detail as the title; it is said once.
 - Not seen: the demo company has no e-document integration (`POST e_archives` → 422); conversion, the job, PDF and e-Arşiv cancel wait for a company with one.
 - Settled on the tevkifat draft (601, 4/10): `vat_withholding_rate` is percent of the VAT (40 on 15.99 → 6.40) and `net_total` is after withholding (79.95 + 15.99 − 6.40 = 89.54), so the total check takes `grand_total` only (#630); the draft's poll message prints Paraşüt's totals (`erp_edoc_parasut_totals()`). Still open: whether `internet_sale.payment_type` takes `DIGER`.
 - Capabilities declared: `einvoice`, `earchive`. No `inbox`, `accounts`, `ewaybill`, `return` yet.
