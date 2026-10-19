@@ -130,7 +130,7 @@ function ws_change_types()
                 'gtin'                    => array('text', 50, lang('GTIN'), 'gtin'),
                 'mpn'                     => array('text', 50, lang('MPN'), 'mpn'),
                 'google_product_category' => array('text', 255, lang('Google Product Category'), 'google_product_category'),
-                'price'                   => array('money', 0, lang('Price'), 'price'),
+                'price'                   => array('money', 2147483647, lang('Price'), 'price'),
                 'enabled'                 => array('bool', 0, lang('On sale'), 'enabled'),
                 'taxable'                 => array('bool', 0, lang('Taxable'), 'taxable'),
                 // Empty follows the tax zone.
@@ -138,7 +138,7 @@ function ws_change_types()
                 'vat_exemption_code'      => array('text', 10, lang('VAT exemption code'), 'vat_exemption_code'),
                 'shippable'               => array('bool', 0, lang('Shippable'), 'shippable'),
                 'free_shipping'           => array('bool', 0, lang('Free Shipping'), 'free_shipping'),
-                'extra_shipping_cost'     => array('money', 0, lang('Extra Shipping Cost'), 'extra_shipping_cost'),
+                'extra_shipping_cost'     => array('money', 2147483647, lang('Extra Shipping Cost'), 'extra_shipping_cost'),
                 'weight'                  => array('decimal', array(0, 99999999, 4, false), lang('Weight'), 'weight'),
                 'length'                  => array('decimal', array(0, 99999999, 4, false), lang('Length'), 'length'),
                 'width'                   => array('decimal', array(0, 99999999, 4, false), lang('Width'), 'width'),
@@ -600,7 +600,12 @@ function ws_change_value($field, $value)
             return trim(mb_substr(str_replace("\r\n", "\n", (string) $value), 0, (int) $field[1]));
 
         case 'money':
-            if (!is_numeric($value) || ((int) $value < 0) || ((float) $value != (int) $value)) {
+            // The limit is the column's ceiling in minor units (products.price
+            // is a signed INT); 0 for a column wide enough for any amount.
+            // Sessions run non-strict, so MySQL would clamp a larger value in
+            // silence while the decision shows the amount that was asked.
+            if (!is_numeric($value) || ((int) $value < 0) || ((float) $value != (int) $value)
+                || (((int) $field[1] > 0) && ((int) $value > (int) $field[1]))) {
                 return null;
             }
 
@@ -1169,6 +1174,21 @@ function ws_change_allowed($viewer, $type, $record_id = 0)
 function ws_change_check($viewer, $type, $action, $record, $values)
 {
     switch ($type) {
+
+        // A product or a group in the Recycle Bin is only restored or deleted
+        // for good from the panel; the product screens and the quick edit
+        // refuse to write one, and so does this. Deleting it again is refused
+        // by ws_change_delete_blocked(); a bulk change never reaches one.
+        case 'product':
+        case 'stock':
+        case 'product_group':
+            if (($action !== 'create') && ($action !== 'delete') && is_array($record) && !empty($record['recycled'])) {
+                return ($type === 'product_group')
+                    ? lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.')
+                    : lang('This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.');
+            }
+
+            return '';
 
         case 'user':
             if ((int) $viewer['role'] !== 0) {
@@ -2682,6 +2702,53 @@ function ws_change_dismiss($viewer, $change_id)
  *
  * @param string $what
  */
+/**
+ * Who is writing the record when it is not an assistant's proposal being
+ * applied. The writers' sentences (the log line, a cancellation reason the
+ * customer reads, the note on a deleted offer) name the proposer, and a
+ * scheduled action (scheduled.php) is no proposer: it sets this before it
+ * calls a writer and clears it after.
+ *
+ * @param array|false|null $source array kind ('scheduled'), name; false to
+ *                                 clear; null to read
+ * @return array|null null while an assistant's proposal is applied
+ */
+function ws_change_source($source = null)
+{
+    static $current = null;
+
+    if (is_array($source)) {
+        $current = $source;
+    } elseif ($source === false) {
+        $current = null;
+    }
+
+    return $current;
+}
+
+/**
+ * The sentence a writer leaves on the record itself, in the name of whoever
+ * made the change: the assistant that proposed it, or the scheduled action.
+ *
+ * @param string $by_assistant the sentence written for Claude's proposal
+ * @param string $by_scheduled the sentence with {var:1} for the action's name
+ *                             (and {var:2} when $var is given)
+ * @param mixed  $var          the sentence's own variable, if any
+ * @return string
+ */
+function ws_change_sentence($by_assistant, $by_scheduled, $var = null)
+{
+    $source = ws_change_source();
+
+    if (is_array($source) && ($source['kind'] === 'scheduled')) {
+        return lang(array('string' => $by_scheduled, 'vars' => ($var === null) ? (string) $source['name'] : array($var, (string) $source['name'])));
+    }
+
+    $text = ($var === null) ? lang($by_assistant) : lang(array('string' => $by_assistant, 'vars' => $var));
+
+    return function_exists('ws_ai_voice') ? ws_ai_voice($text) : $text;
+}
+
 function ws_change_log($what)
 {
     // A scheduled action writes its own line (scheduled.php).
@@ -2876,6 +2943,18 @@ function ws_change_write_product($viewer, $action, $record, $values)
 
     db("UPDATE products SET " . implode(', ', $set) . " WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
 
+    // Switching stock tracking on or off decides whether the product is out
+    // of stock, as pg_pb_apply_stock_flag() works it out on the product
+    // screen: tracked and empty is out of stock (stamped once on the way in),
+    // untracked never is.
+    if (array_key_exists('track_stock', $values)) {
+        db("UPDATE products
+            SET out_of_stock_timestamp = IF(inventory = '1' AND inventory_quantity <= 0 AND out_of_stock <> '1', UNIX_TIMESTAMP(), out_of_stock_timestamp),
+                out_of_stock = IF(inventory = '1' AND inventory_quantity <= 0, '1', '0')
+            WHERE id = '" . (int) $record['id'] . "'
+            LIMIT 1");
+    }
+
     // Site search keeps its own index of the promoted keywords.
     $indexed = db_item("SELECT name, keywords, enabled FROM products WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
 
@@ -2907,10 +2986,15 @@ function ws_change_write_product($viewer, $action, $record, $values)
 function ws_change_write_stock($viewer, $action, $record, $values)
 {
     $quantity = max(0, (int) ($values['quantity'] ?? 0));
+    $empty = ($quantity <= 0);
 
-    // out_of_stock first: MySQL assigns left to right.
+    // The timestamp is "out of stock since" on the product list, stamped
+    // once on the way in and left alone while the product stays flagged, as
+    // pg_pb_apply_stock_flag() does; MySQL assigns left to right, so it reads
+    // the flag before the flag is written.
     db("UPDATE products
-        SET out_of_stock = '" . (($quantity <= 0) ? '1' : '0') . "',
+        SET out_of_stock_timestamp = " . ($empty ? "IF(out_of_stock = '1', out_of_stock_timestamp, UNIX_TIMESTAMP())" : 'out_of_stock_timestamp') . ",
+            out_of_stock = '" . ($empty ? '1' : '0') . "',
             inventory_quantity = '" . $quantity . "',
             inventory = '1',
             timestamp = UNIX_TIMESTAMP()
@@ -2963,8 +3047,16 @@ function ws_change_write_order($viewer, $action, $record, $values)
             return array('ok' => false, 'error' => lang('Orders cannot be cancelled on this site.'), 'id' => 0);
         }
 
+        // The reason stays on the order, goes to the payment provider with the
+        // refund and is read by the customer in the cancellation e-mail: it
+        // names whoever cancelled, and a scheduled action is not Claude.
         $reason = trim((string) ($values['cancellation_reason'] ?? ''));
-        $outcome = process_order_cancellation((int) $record['id'], ($reason !== '') ? $reason : (function_exists('ws_ai_voice') ? ws_ai_voice(lang('Cancelled in the Workspace, on Claude\'s proposal.')) : lang('Cancelled in the Workspace, on Claude\'s proposal.')), true, (int) $viewer['id']);
+
+        if ($reason === '') {
+            $reason = ws_change_sentence('Cancelled in the Workspace, on Claude\'s proposal.', 'Cancelled in the Workspace by the scheduled action “{var:1}”.');
+        }
+
+        $outcome = process_order_cancellation((int) $record['id'], $reason, true, (int) $viewer['id']);
 
         if (!in_array($outcome['status'], array('ok', 'success', 'cancelled', 'already'), true)) {
             return array('ok' => false, 'error' => (string) ($outcome['message'] ?? lang('The order could not be cancelled.')), 'id' => 0);
@@ -3646,7 +3738,9 @@ function ws_change_write_offer($viewer, $action, $record, $values)
             require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
         }
 
-        $deleted = _pg_offer_delete($id, null, lang(array('string' => 'Offer ({var:1}) was deleted in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['code'])));
+        // The deletion's own log line names whoever deleted it; it does not go
+        // through ws_change_log(), so a scheduled action is named here.
+        $deleted = _pg_offer_delete($id, null, ws_change_sentence('Offer ({var:1}) was deleted in the Workspace, on Claude\'s proposal.', 'Offer ({var:1}) was deleted in the Workspace by the scheduled action “{var:2}”.', (string) $record['code']));
 
         return $deleted ? array('ok' => true, 'error' => '', 'id' => $id) : array('ok' => false, 'error' => lang('The offer could not be found.'), 'id' => $id);
     }

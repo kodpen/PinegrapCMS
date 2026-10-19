@@ -4394,9 +4394,13 @@ function ws_scheduled_change($viewer, $row, $action)
         $values = array();
     }
 
-    // The writers log in words about Claude; this run logs its own line.
+    // The writers log in words about Claude; this run logs its own line. The
+    // sentences a writer leaves on the record itself (a cancellation reason,
+    // the note on a deleted offer) name this action instead (ws_change_source()).
     $GLOBALS['ws_change_log_quiet'] = true;
+    ws_change_source(array('kind' => 'scheduled', 'name' => (string) $row['name']));
     $done = call_user_func('ws_change_write_' . $type, $viewer, $change['action'], $record, $values);
+    ws_change_source(false);
     $GLOBALS['ws_change_log_quiet'] = false;
 
     if (!$done['ok']) {
