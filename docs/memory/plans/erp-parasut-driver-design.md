@@ -4,7 +4,7 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 ---
 
 ## Where does it stand?
-- Written: the authorization-code connection (docs/memory/erp/erp-parasut-connection.md) and the driver's send / submit / poll / fetch_document / cancel path (docs/memory/erp/erp-parasut-driver.md), checked against the published swagger (apidocs.parasut.com/swagger.json, read 2026-10-19). The live run on dev.pinegrap.com with the owner's demo application settles the readings still marked UNVERIFIED in the code.
+- Written and checked against the published swagger: the authorization-code connection (docs/memory/erp/erp-parasut-connection.md) and the driver (docs/memory/erp/erp-parasut-driver.md). Live on dev.pinegrap.com with the owner's demo company (830533) on 2026-10-19: connection, contacts, sales invoice, totals, poll, delete. The demo company has no e-document integration, so conversion, job, PDF and e-Arşiv cancel are still untried; ask Paraşüt support for a test e-Arşiv / e-Fatura integration on the demo company, or try them on a company that has one.
 
 ## How are Paraşüt credentials obtained and stored?
 - Done: the authorization code (Connect on the Paraşüt card, `parasut_connect.php`) beside the password grant; the secret in `config.parasut_credentials_enc`, the token sealed in the service tokens; access token 2 h, refresh token rotates on every use.

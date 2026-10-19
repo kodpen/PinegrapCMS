@@ -338,6 +338,9 @@ function test_erp_edoc_parasut_document_state()
 function test_erp_edoc_parasut_error_text()
 {
 	pg_assert_same('Geçersiz: tax_number boş olamaz', erp_edoc_parasut_error_text(array('http_code' => 422, 'body' => array('errors' => array(array('title' => 'Geçersiz', 'detail' => 'tax_number boş olamaz'))))));
+	// The live API repeats the detail as the title; it is said once.
+	pg_assert_same('Bu firmaya ait aktif bir e-Arşiv entegrasyonu bulunmamaktadır.', erp_edoc_parasut_error_text(array('http_code' => 422, 'body' => array('errors' => array(array('source' => array('pointer' => '/data/attributes/base'), 'title' => 'Bu firmaya ait aktif bir e-Arşiv entegrasyonu bulunmamaktadır.', 'detail' => 'Bu firmaya ait aktif bir e-Arşiv entegrasyonu bulunmamaktadır.'))))));
+	pg_assert_same('KDV oranı (18.0) artık kullanılamaz.', erp_edoc_parasut_error_text(array('http_code' => 422, 'body' => array('errors' => array(array('detail' => 'KDV oranı (18.0) artık kullanılamaz.'))))));
 	pg_assert_same('invalid_grant: expired', erp_edoc_parasut_error_text(array('http_code' => 401, 'body' => array('error' => 'invalid_grant', 'error_description' => 'invalid_grant: expired'))));
 	pg_assert_same('curl: timed out', erp_edoc_parasut_error_text(array('http_code' => 0, 'error' => 'curl: timed out', 'body' => null)));
 	pg_assert_same('HTTP 500', erp_edoc_parasut_error_text(array('http_code' => 500, 'body' => null)));
@@ -362,4 +365,15 @@ function test_erp_edoc_parasut_cancellable()
 
 	$einvoice = erp_edoc_parasut_cancellable(array('edoc_status' => 'accepted', 'edoc_external_id' => '77', 'edoc_kind' => 'einvoice'));
 	pg_assert_false($einvoice['ok']);
+}
+
+// The totals of a sales invoice as Paraşüt answers them, in kurus.
+function test_erp_edoc_parasut_totals()
+{
+	pg_assert_same(array(), erp_edoc_parasut_totals(array('gross_total' => '79.95')));
+	pg_assert_same(
+		array('before_taxes' => 7995, 'vat' => 1599, 'vat_withholding' => 640, 'net' => 8954),
+		erp_edoc_parasut_totals(array('gross_total' => '79.95', 'before_taxes_total' => '79.95', 'total_vat' => '15.99', 'total_vat_withholding' => '6.4', 'net_total' => '89.54'))
+	);
+	pg_assert_same(7995, erp_edoc_parasut_totals(array('gross_total' => '79.95', 'net_total' => '95.94'))['before_taxes']);
 }

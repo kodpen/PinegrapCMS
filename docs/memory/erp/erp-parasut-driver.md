@@ -18,8 +18,10 @@ description: The Paraşüt e-document driver (includes/erp/edoc/parasut.php): re
 ## Rate limit and retries?
 - 10 requests per 10 seconds (documentation). `parasut_throttle()` (includes/fn/parasut.php) holds every request of the PHP process back; `erp_edoc_parasut_request()` waits a full window and repeats once after a 429, and renews the token once after a 401.
 
-## Which readings are still unverified on the live API?
-- A person's TCKN in `contacts.tax_number`; the scale of `vat_withholding_rate` (percent assumed); whether `net_total` is before or after withholding (both accepted, `erp_edoc_parasut_expected_totals()`); whether `internet_sale.payment_type` takes `DIGER` (not in Paraşüt's enum).
+## What did the live API show? (demo company, 2026-10-19)
+- Seen: a person's contact with the final consumer's TCKN in `tax_number` (201); `POST sales_invoices` 201 and `net_total` matching the ERP's grand total; only VAT rates 0, 1, 10, 20 are taken (18 → 422 "artık kullanılamaz"); a line with `vat_withholding_rate` 40 is taken; `?include=details`, `?include=active_e_document,contact`, `e_invoice_inboxes` and `DELETE sales_invoices/{id}` (204) answer as documented. Errors repeat the detail as the title; it is said once.
+- Not seen: the demo company has no e-document integration, so `POST e_archives` answers 422 "Bu firmaya ait aktif bir e-Arşiv entegrasyonu bulunmamaktadır."; conversion, the job, PDF and e-Arşiv cancel wait for a company with one.
+- Still open: the scale of `vat_withholding_rate` and whether `net_total` is before or after withholding (the draft's poll message now prints Paraşüt's own totals, `erp_edoc_parasut_totals()`); whether `internet_sale.payment_type` takes `DIGER`.
 - Capabilities declared: `einvoice`, `earchive`. No `inbox`, `accounts`, `ewaybill`, `return` yet.
 
 ## Tests
