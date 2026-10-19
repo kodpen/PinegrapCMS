@@ -19,7 +19,7 @@ description: Plan (approved 2026-10-19; step 1 revisions table and writer done):
 
 ## What remains?
 1. Done (PR #696): step 11.0.15 (`page_revisions`, `config.page_revisions_keep/days`), `includes/fn/page_revisions.php` (writer in `pg_designer_save_page()`, sources, trim, daily sweep in job.php), `tests/page_revisions_test.php`; `docs/memory/designer/page-revisions.md`.
-2. Done (PR #PRNUM2): History panel (revisions above local snapshots), compare (side-by-side blob documents + line diff), restore as unsaved work with `revision_source: 'restore'`; actions `revisions_list` / `revision_get`. Shared components have no history yet (open question below).
+2. Done (PR #705): History panel (revisions above local snapshots), compare (side-by-side blob documents + line diff), restore as unsaved work with `revision_source: 'restore'`; actions `revisions_list` / `revision_get`. Shared components have no history yet (open question below).
 3. Scheduling columns, job, list badge, page settings UI (M).
 4. API routes, schema, MCP (S).
 5. Memory: `docs/memory/designer/page-revisions.md` when shipped.
