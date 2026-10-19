@@ -154,3 +154,117 @@ function test_legal_documents_off_without_setting()
 	pg_assert_false(pg_legal_documents_enabled());
 	pg_assert_same(0, pg_legal_documents_store(5, array('preinfo')));
 }
+
+// A cart's amounts come from its rows; the checkout's own total decides,
+// and what it takes off the row sums is the discount.
+function test_legal_documents_cart_order_amounts()
+{
+	$lines = array(
+		array('line_total' => 20000, 'tax' => 3600),
+		array('line_total' => 5000, 'tax' => 0),
+	);
+	$ship_tos = array(array('cost' => 1500), array('cost' => 0));
+
+	$order = pg_legal_document_cart_order(array('order_number' => '17', 'surcharge' => 99, 'gift_card_discount' => 10), $lines, $ship_tos, array('total' => 28100));
+
+	pg_assert_same(25000, $order['subtotal'], 'subtotal');
+	pg_assert_same(3600, $order['tax'], 'tax');
+	pg_assert_same(1500, $order['shipping'], 'shipping');
+	pg_assert_same(2000, $order['discount'], 'discount is what the checkout took off');
+	pg_assert_same(0, $order['gift_card_discount'], 'gift card counted in the discount');
+	pg_assert_same(0, $order['surcharge'], 'no surcharge before the payment method');
+	pg_assert_same(28100, $order['total'], 'checkout total');
+	pg_assert_same('', $order['order_number'], 'no number on a cart');
+
+	$plain = pg_legal_document_cart_order(array(), $lines, $ship_tos, array());
+
+	pg_assert_same(30100, $plain['total'], 'row sums without a checkout total');
+	pg_assert_same(0, $plain['discount'], 'no discount without a checkout total');
+
+	$higher = pg_legal_document_cart_order(array(), $lines, $ship_tos, array('total' => 40000));
+
+	pg_assert_same(0, $higher['discount'], 'a higher checkout total is no negative discount');
+	pg_assert_same(11400, $higher['shipping'], 'the rest is shipping the rows do not know');
+	pg_assert_same(40000, $higher['total'], 'the checkout total still decides');
+
+	$unchosen = pg_legal_document_cart_order(array(), $lines, $ship_tos, array('total' => 28600));
+
+	pg_assert_same(0, $unchosen['shipping'], 'goods and tax only: no shipping chosen yet');
+	pg_assert_same(0, $unchosen['discount'], 'a stale shipping row is no discount');
+}
+
+// Typed billing values replace the row's; empty ones and the country code do not.
+function test_legal_documents_cart_order_billing()
+{
+	$order = pg_legal_document_cart_order(
+		array('billing_first_name' => 'Old', 'billing_city' => 'Ankara', 'billing_country' => 'Türkiye', 'payment_method' => ''),
+		array(),
+		array(),
+		array('billing' => array('billing_first_name' => 'Ayşe', 'billing_city' => '  ', 'billing_country' => 'DE', 'notes' => 'x'), 'payment_method' => 'Offline Payment')
+	);
+
+	pg_assert_same('Ayşe', $order['billing_first_name'], 'typed name');
+	pg_assert_same('Ankara', $order['billing_city'], 'empty value keeps the row');
+	pg_assert_same('Türkiye', $order['billing_country'], 'country is named by the caller');
+	pg_assert_false(isset($order['notes']), 'only billing fields');
+	pg_assert_same('Offline Payment', $order['payment_method'], 'payment method');
+}
+
+// The snapshot reads the hidden total, billing inputs, the selected country
+// and the ticked payment method, whatever the attribute order.
+function test_legal_documents_form_snapshot()
+{
+	$html = '<form><input type="hidden" name="total" value="1,281.00">'
+		. '<input value="Ay&amp;şe" name="billing_first_name" class="form-control">'
+		. '<input type="text" name="billing_last_name" value="">'
+		. '<input type="hidden" name="billing_city" value="hidden city">'
+		. "<input type='email' name='billing_email_address' value='a@example.test'>"
+		. '<select name="billing_country" class="form-select"><option value="">-</option><option value="TR" selected>Türkiye</option></select>'
+		. '<input type="radio" name="payment_method" value="Credit/Debit Card">'
+		. '<input type="radio" name="payment_method" value="Offline Payment" checked>'
+		. '<input type="hidden" name="total" value="5.00">'
+		. '</form>';
+
+	$snapshot = pg_legal_document_form_snapshot($html);
+
+	pg_assert_same(128100, $snapshot['total'], 'first total, commas dropped');
+	pg_assert_same(array('billing_first_name' => 'Ay&şe', 'billing_email_address' => 'a@example.test', 'billing_country' => 'TR'), $snapshot['billing'], 'billing values');
+	pg_assert_same('Offline Payment', $snapshot['payment_method'], 'ticked payment method');
+
+	pg_assert_same(array('total' => null, 'billing' => array(), 'payment_method' => ''), pg_legal_document_form_snapshot('<p>no form</p>'), 'nothing to read');
+	pg_assert_same(null, pg_legal_document_form_snapshot('<input type="hidden" name="total" value="abc">')['total'], 'not a number');
+}
+
+// Two required checkboxes, each linking to its document; a ticked answer stays ticked.
+function test_legal_documents_checkboxes_html()
+{
+	$html = pg_legal_documents_checkboxes_html(array('legal_contract' => '1', 'legal_preinfo' => '0'), '/pinegrap/legal_document.php');
+
+	pg_assert_contains('name="legal_preinfo" id="legal_preinfo" value="1" required>', $html, 'preinfo unticked');
+	pg_assert_contains('name="legal_contract" id="legal_contract" value="1" required checked>', $html, 'contract ticked');
+	pg_assert_contains('href="/pinegrap/legal_document.php?type=preinfo" target="_blank" rel="noopener"', $html, 'preinfo link');
+	pg_assert_contains('href="/pinegrap/legal_document.php?type=contract"', $html, 'contract link');
+	pg_assert_contains('<label class="form-check-label" for="legal_contract">', $html, 'label');
+
+	pg_assert_contains('legal_document.php?x=1&amp;type=preinfo', pg_legal_documents_checkboxes_html(array(), 'legal_document.php?x=1'), 'query kept, escaped');
+}
+
+// The block goes in front of the purchase button's tag; no button, no change.
+function test_legal_documents_insert_before_purchase()
+{
+	$html = '<form><input name="a"><div><button type="submit" name="submit_purchase_now" value="1">Buy</button></div></form>';
+
+	pg_assert_same(
+		'<form><input name="a"><div>[X]<button type="submit" name="submit_purchase_now" value="1">Buy</button></div></form>',
+		pg_legal_documents_insert_before_purchase($html, '[X]')
+	);
+	pg_assert_same('<form><input name="a"></form>', pg_legal_documents_insert_before_purchase('<form><input name="a"></form>', '[X]'), 'no purchase button');
+}
+
+// Without the setting the checkout output passes through untouched.
+function test_legal_documents_inject_off_without_setting()
+{
+	$html = '<button name="submit_purchase_now">Buy</button>';
+
+	pg_assert_same($html, pg_legal_documents_inject($html, array()));
+}

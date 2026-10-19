@@ -23638,5 +23638,12 @@
     "Write the new price after the product, like 149,90.": "Yeni fiyatı ürünün ardından yazın: 149,90 gibi.",
     "{var:1}: the value is out of range.": "{var:1}: değer izin verilen aralığın dışında.",
     "The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.": "Kayıt bu arada değişti, hiçbir şey yazılmadı. Şimdiki değerini görmek için komutu yeniden gönderin.",
-    "The change that will be written": "Yazılacak değişiklik"
+    "The change that will be written": "Yazılacak değişiklik",
+    "This page is not available.": "Bu sayfa kullanılamıyor.",
+    "There is nothing in your cart, so there is no document to show.": "Sepetinizde ürün olmadığı için gösterilecek bir belge yok.",
+    "the Pre-Information Form": "Ön Bilgilendirme Formunu",
+    "the Distance Sales Contract": "Mesafeli Satış Sözleşmesini",
+    "I have read and approve {var:1}.": "{var:1} okudum ve onaylıyorum.",
+    "I have read and accept {var:1}.": "{var:1} okudum ve kabul ediyorum.",
+    "{var:1} must be accepted.": "{var:1} onaylanmalıdır."
 }

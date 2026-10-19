@@ -974,7 +974,10 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             //   land back on the page complete cleanly without re-rendering the form.
             if ($region_type === 'express_order') {
                 if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
-                return _render_system_widget_express_order($tree_json, $sid, $cfg);
+                // The visitor's last submit is read before rendering: the
+                // widget drops the form from the session as it draws.
+                $legal_values = pg_legal_documents_form_values('express_order');
+                return pg_legal_documents_inject(_render_system_widget_express_order($tree_json, $sid, $cfg), $legal_values);
             }
 
             // 'order_view' — renders a single completed order (id from $_GET['order_id']).

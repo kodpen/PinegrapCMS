@@ -3368,11 +3368,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     
                     require_once(dirname(__FILE__) . '/get_express_order.php');
 
-                    $system_output .= get_express_order(array(
+                    // The checkout documents' checkboxes go in front of the
+                    // purchase button; the page itself is not changed.
+                    $legal_values = pg_legal_documents_form_values('express_order');
+
+                    $system_output .= pg_legal_documents_inject(get_express_order(array(
                         'page_id'=>$system_region_properties['page_id'],
                         'editable'=>$editable,
                         'device_type' => $device_type,
-                        'folder_id_for_default_value' => $page_folder));
+                        'folder_id_for_default_value' => $page_folder)), $legal_values);
 
                     break;
 
@@ -3505,9 +3509,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                     require_once(dirname(__FILE__) . '/get_order_preview.php');
 
-                    $system_output .= get_order_preview(array(
+                    $legal_values = pg_legal_documents_form_values('order_preview');
+
+                    $system_output .= pg_legal_documents_inject(get_order_preview(array(
                         'page_id' => $system_region_properties['page_id'],
-                        'device_type' => $device_type));
+                        'device_type' => $device_type)), $legal_values);
 
                     break;
 
