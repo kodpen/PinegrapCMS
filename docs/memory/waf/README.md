@@ -22,7 +22,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-login-captcha.md: pg_login_captcha_* login question: when it appears, counter-driven decision, field name/id rule for password managers, wrong answer is not an offence.
 - waf-no-counters-before-db.md: Why a pre-DB request counter ("siege mode") was tried and removed; the design flaws to read before reintroducing one.
 - waf-outgoing-user-agent.md: Every outgoing cURL call must set CURLOPT_USERAGENT via pinegrap_user_agent(); an empty UA made one Pinegrap install block another as bot-empty.
-- waf-path-exemption-and-robots.md: waf_is_excluded() matches the path only; waf_path_is_always_served() exempts /robots.txt and /.well-known/ from bot policy; feed readers are good bots.
+- waf-path-exemption-and-robots.md: waf_is_excluded() matches the path only; /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
 - waf-score-calibration-and-bot-order.md: WAF signature score bands (thresholds 15/10/6, dead zone 7-9), targets key, and the fixed bot classification order with token-boundary residual signal.
 - waf-secure-mode-enable-guard.md: firewall.save.php refuses to enable Secure Mode from a request not seen as HTTPS: predicate, messages, early return, why disabling is unchecked.
 - waf-security-headers-hsts.md: Security response headers are sent outside waf_run() and independent of the firewall switch; HSTS default off and its https gating; Permissions-Policy form.

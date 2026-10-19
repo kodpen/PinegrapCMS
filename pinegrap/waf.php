@@ -3150,6 +3150,38 @@ function waf_path_is_always_served()
 }
 
 /**
+ * Is this a call to health.php, the address uptime monitors poll?
+ *
+ * A monitor is a generic HTTP client - curl, a language's HTTP library, a
+ * hosting panel's checker, often with no user agent at all - and runs from
+ * wherever its provider does. With "block unknown bots" on, or a country
+ * restriction that leaves the monitor's country out, every check was refused
+ * with 403 and a site that was up was reported down. The answer carries
+ * nothing a page of the site does not show already (up, in maintenance, or
+ * the general job stalled), so the bot policy and the country restriction
+ * leave it alone, as they leave robots.txt. The IP block list, the attack
+ * tool check and the rate limits still apply.
+ *
+ * Asked of the script that runs, not of the path. health.php is a file in the
+ * software directory and monitors call it by that address, so the server
+ * always runs it by name; a path that only mentions it
+ * (/x/health.php/y, which IIS hands to router.php) is not a call to it and
+ * must not carry the exemption to whatever router.php serves.
+ *
+ * @param string|null $script the running script's file name; null reads it
+ *                            from the request (waf_script_name())
+ * @return bool
+ */
+function waf_is_health_request($script = null)
+{
+    if ($script === null) {
+        $script = waf_script_name();
+    }
+
+    return ($script === 'health.php');
+}
+
+/**
  * Is this request another Pinegrap installation calling in?
  *
  * Used for visitor tracking, NOT for access control. The distinction matters:
@@ -3700,8 +3732,10 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
 
     // robots.txt and ACME challenges are served to anyone. See
     // waf_path_is_always_served() — turning a crawler away from the file that
-    // would have told it to go away achieves nothing.
-    if (waf_path_is_always_served()) {
+    // would have told it to go away achieves nothing. health.php likewise:
+    // an uptime monitor refused here reports a working site as down
+    // (waf_is_health_request()).
+    if (waf_path_is_always_served() || waf_is_health_request()) {
         return;
     }
 
@@ -3874,6 +3908,9 @@ function waf_country_staff_signed_in()
  *   - robots.txt and .well-known/ (waf_path_is_always_served()): certificate
  *     renewal is checked from several countries, and a refused challenge
  *     takes the site's certificate down months later;
+ *   - health.php (waf_is_health_request()): uptime monitors check from
+ *     wherever their provider runs, and a refused check reports the site
+ *     down;
  *   - the external API, the MCP server, the OAuth endpoints and the
  *     workspace calendar address, when the operator keeps them open: their
  *     callers present a credential, and an integration, an AI application or
@@ -3888,7 +3925,7 @@ function waf_country_staff_signed_in()
  */
 function waf_country_request_exempt()
 {
-    if (waf_path_is_always_served()) {
+    if (waf_path_is_always_served() || waf_is_health_request()) {
         return true;
     }
 

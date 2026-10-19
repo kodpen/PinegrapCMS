@@ -89,3 +89,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_partitions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_ip.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ops_alerts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/price_history.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_mode.php');

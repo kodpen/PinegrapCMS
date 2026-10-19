@@ -786,6 +786,11 @@ define('OPS_ALERT_CERT_DAYS', isset($row['ops_alert_cert_days']) ? (int) $row['o
 // (2026.11.0, 11.0.21; pg_update_backup_create()). On while the column is not
 // there: the step defaults it on too.
 define('UPDATE_BACKUP', isset($row['update_backup']) ? (int) $row['update_backup'] : 1);
+// Maintenance mode (2026.11.0, 11.0.22; includes/fn/maintenance_mode.php):
+// off, with no end and no listed address, while the columns are not there.
+define('MAINTENANCE_MODE', isset($row['maintenance_mode']) ? (int) $row['maintenance_mode'] : 0);
+define('MAINTENANCE_UNTIL', isset($row['maintenance_until']) ? (int) $row['maintenance_until'] : 0);
+define('MAINTENANCE_ALLOW_IPS', (string) ($row['maintenance_allow_ips'] ?? ''));
 
 
 if (!defined('SOFTWARE_LANGUAGE')) {

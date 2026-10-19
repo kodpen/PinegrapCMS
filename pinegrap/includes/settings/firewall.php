@@ -405,7 +405,7 @@ if (!empty($waf_country_ready)) {
                     </div>
                     <div class="col-12">
                         <label class="form-label">' . lang('Always let in') . '</label>' . $output_waf_country_exemptions . '
-                        <div class="form-text">' . lang('Allowed IP addresses, robots.txt and certificate renewal (.well-known) are always let in.') . '</div>
+                        <div class="form-text">' . lang('Allowed IP addresses, robots.txt, certificate renewal (.well-known) and the uptime check address (health.php) are always let in.') . '</div>
                     </div>' . $output_waf_country_check . '
                     <div class="col-12">' . pg_geo_settings_note() . '
                     </div>';

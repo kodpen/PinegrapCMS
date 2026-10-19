@@ -91,6 +91,7 @@ function pg_settings_categories()
                 'pgset-cron'     => lang('Cron Jobs'),
                 'pgset-backup'   => lang('Backups'),
                 'pgset-alerts'   => lang('Alerts'),
+                'pgset-maintenance' => lang('Maintenance Mode'),
             ),
             'keywords' => array(
                 'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy')),
@@ -100,6 +101,7 @@ function pg_settings_categories()
                 'pgset-cron'     => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'   => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
                 'pgset-alerts'   => pg_settings_keywords(lang('alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning')),
+                'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),
             ),
             'lists' => array(
                 'job_dispatch_job' => 1,

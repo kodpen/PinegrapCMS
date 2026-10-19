@@ -1533,6 +1533,7 @@ function get_system_status_checks()
     //   terminal  → PHP version           database → database health
     //   puzzle    → PHP extensions        sliders  → php.ini directives
     //   patch     → CA certificate bundle  bell     → operations alerts
+    //   cone      → maintenance mode
     //
     // Where the family offers a natural negative form (unlock, shield-slash,
     // database-x) use it for the failing state: it reinforces the colour instead
@@ -1579,6 +1580,7 @@ function get_system_status_checks()
         'Storage Engine'           => 'Engine',
         'Visitor Records'          => 'Visitors',
         'Operations Alerts'        => 'Alerts',
+        'Maintenance Mode'         => 'Maintenance',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1610,6 +1612,7 @@ function get_system_status_checks()
         'Storage Engine',
         'Visitor Records',
         'Operations Alerts',
+        'Maintenance Mode',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -3057,6 +3060,44 @@ function get_system_status_checks()
                     $alerts_href
                 );
             }
+        }
+    }
+
+    // 🚧 Maintenance mode (includes/fn/maintenance_mode.php)
+    //
+    // A tile only while the switch is on: a site that never uses the mode has
+    // nothing to read here. Reported, not scored - closing the site to
+    // visitors is a decision, not a fault - and in the actions column, so the
+    // operator who opened it for an hour sees on every dashboard that it is
+    // still on.
+    if (function_exists('pg_maintenance_settings') && pg_schema_has('config', 'maintenance_mode')) {
+
+        $maintenance = pg_maintenance_settings();
+        $maintenance_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_general.php#pgset-maintenance';
+
+        if ($maintenance['on'] && pg_maintenance_holds(true, $maintenance['until'], time())) {
+
+            $output .= $makeIcon(
+                'bi-cone-striped',
+                'text-warning',
+                'Maintenance Mode',
+                'Maintenance mode is on: visitors see the maintenance screen.',
+                ($maintenance['until'] > 0)
+                    ? lang(array('string' => 'Until {var:1}', 'vars' => array(pg_maintenance_time_text($maintenance['until']))))
+                    : lang('On'),
+                $maintenance_href
+            );
+
+        } elseif ($maintenance['on']) {
+
+            $output .= $makeIcon(
+                'bi-cone-striped',
+                'text-secondary',
+                'Maintenance Mode',
+                'The end time of maintenance mode has passed, so visitors see the site again. Switch it off, or set a new end time.',
+                lang('Ended'),
+                $maintenance_href
+            );
         }
     }
 

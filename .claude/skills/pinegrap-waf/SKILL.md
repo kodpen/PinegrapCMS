@@ -59,6 +59,10 @@ description: "Pinegrap CMS'in dahili güvenlik duvarına (waf.php) dokunurken ku
 - `/robots.txt` ve `/.well-known/` bot politikasından muaf kalır
   (`waf_path_is_always_served()`); IP kara listesi ve hız sınırı yine uygulanır.
   Engellenirse ACME yenilemesi 90 gün sonra sessizce ölür.
+- `health.php` de bot politikasından ve ülke kısıtlamasından muaftır
+  (`waf_is_health_request()`); izleyici çoğu zaman UA'sız jenerik istemcidir,
+  reddedilirse site "çöktü" görünür. Muafiyet **çalışan betiğe** bakar, yola
+  değil: yola bakarsan `router.php`'ye düşen `/x/health.php/y` da muaf olur.
 - `waf_is_api_request()` isteğin **yoluna** bakar, çalışan dosyaya değil.
 - Bot politikası kimlikle girilen uçlarda (`integration.php`, `mcp.php`,
   `oauth.php`, takvim aboneliği `workspace_ical.php`) uygulanmaz; yalnız
