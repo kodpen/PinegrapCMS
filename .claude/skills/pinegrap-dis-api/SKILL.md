@@ -17,6 +17,10 @@ Kaldırılmış olan: `apps.php`, `apps_settings.php`, `custom_apps` tablosu
   kullan (liste 250 satıra kadar döner).
 - Gövdede tanınmayan alan 422 ile reddedilir (`api_request_body_keys()`);
   query string denetlenmez.
+- Metin alanının `max_length`'i yazıldığı `varchar` sütunun genişliğini
+  aşmaz: oturum katı değil, MySQL fazlasını sessizce keser ve istemci 200
+  alır. Ürün ve grup rotalarını `tests/api_text_bounds_test.php` setup
+  SQL'iyle karşılaştırır; başka tabloya yazan yeni rotayı oraya ekle.
 - Yeni hata kodu uydurma: yalnız `validation_failed`, `not_found`, `forbidden`,
   `invalid_cursor`, `service_unavailable`.
 - Her uç için `'returns'` bildir (`'ErpInvoice'` veya
