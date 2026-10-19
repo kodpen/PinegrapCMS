@@ -25,6 +25,7 @@ if (!defined('INSTALL_OR_UPDATE')) {
 function upgrade_to_2026_11_0() {
 
 	upgrade_2026_11_0_ops_alerts();             // 11.0.20
+	upgrade_2026_11_0_update_backup();          // 11.0.21
 
 }
 
@@ -58,5 +59,21 @@ function upgrade_2026_11_0_ops_alerts() {
 	install_add_column('config', 'ops_alert_cert_days', "TINYINT UNSIGNED NOT NULL DEFAULT 14");
 
 	install_note('Operations alerts: a failed or missing backup, a scheduled task that stopped, changed software files, a burst of PHP errors, low disk space, failing mail or webhooks and an expiring certificate are now told on the panel bell, by e-mail to the site address and on subscribed devices. They are set under Site Settings, General, Alerts.');
+
+}
+
+// The backup an update takes before it replaces the files (2026.11.0, 11.0.21;
+// pg_update_backup_create() in includes/fn/update.php, the switch on the
+// Update Channel card).
+//
+// On by default: the files the package replaces and the database go into
+// data/backups/pre-update-<version>-<time>.zip, and Repair Software rolls the
+// files back from it. Off is for a site too large to back up within one
+// request; then the update replaces the files without a backup, as before.
+function upgrade_2026_11_0_update_backup() {
+
+	install_add_column('config', 'update_backup', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_note('Software update: before an update replaces the files, the files it replaces and the database are backed up to data/backups/pre-update-….zip, and Repair Software can roll the files back. It can be switched off under Site Settings, General, Update Channel.');
 
 }

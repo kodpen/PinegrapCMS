@@ -278,6 +278,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // ── Backup before updating ───────────────────────────────────────────
+    // The 2026.11.0 column (11.0.21); before the upgrade nothing is written.
+    $sql_update_backup = array_key_exists('update_backup', $row)
+        ? "update_backup = '" . (post_value('update_backup') ? 1 : 0) . "',"
+        : '';
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -294,6 +300,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             " . $sql_job_dispatch_settings . "
             " . $sql_backup_settings . "
             " . $sql_ops_alert_settings . "
+            " . $sql_update_backup . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 

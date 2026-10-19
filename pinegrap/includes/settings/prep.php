@@ -50,6 +50,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $banned_email_addresses = (string) ($row['banned_email_addresses'] ?? '');
     $remember_me_device_limit = ($row['remember_me_device_limit'] ?? 0);
     $software_update_channel = ((($row['software_update_channel'] ?? 'stable') === 'beta') ? 'beta' : 'stable');
+    // The backup an update takes first (2026.11.0, 11.0.21); the switch is
+    // drawn once the column is there, and reads on until then.
+    $update_backup_ready = array_key_exists('update_backup', $row);
+    $update_backup = $update_backup_ready ? (int) $row['update_backup'] : 1;
     $remember_me_device_limit_enabled = ($row['remember_me_device_limit_enabled'] ?? 0);
     $remember_me_device_limit_strict = ($row['remember_me_device_limit_strict'] ?? 0);
     // Two-step verification (8.40): who must have it, and whether the site

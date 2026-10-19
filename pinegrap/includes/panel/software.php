@@ -8,7 +8,9 @@
  *                          database dump, files, archive)
  *   software_update_check  the background update check output_header() starts
  *   software_update        the step-by-step software update (check, download,
- *                          replace)
+ *                          backup, replace)
+ *   software_rollback      Repair Software's rollback to the backup an update
+ *                          took before it replaced the files
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
  * for the contract.
@@ -333,7 +335,7 @@ function pg_panel_software_update($request, $action)
     ini_set('max_execution_time', '9999');
 
     $step = isset($request['step']) ? $request['step'] : '';
-    if (!in_array($step, array('check', 'download', 'replace'), true)) {
+    if (!in_array($step, array('check', 'download', 'backup', 'replace'), true)) {
         respond(array(
             'status' => 'error',
             'message' => 'Invalid step.'
@@ -611,8 +613,43 @@ function pg_panel_software_update($request, $action)
             exit();
             break;
 
+        case 'backup':
+            // Step 3: the files the package is about to replace and the
+            // database, into data/backups/pre-update-<version>-<time>.zip
+            // (pg_update_backup_create()), so Repair Software can roll the
+            // files back and the installation screen can restore the
+            // database. A backup that cannot be written stops the update
+            // before anything is replaced: the operator asked for one. The
+            // setting is the way past it, for a site too large to back up
+            // within one request.
+            if (!pg_update_backup_enabled()) {
+                respond(array(
+                    'status' => 'success',
+                    'message' => lang('No backup is taken before the update (switched off in the settings). Files overwriting...')
+                ));
+            }
+
+            $update_backup = pg_update_backup_create(PG_FUNCTIONS_DIR . '/' . pg_update_package_file());
+
+            if (!$update_backup['ok']) {
+                log_activity(lang(array('string' => 'The backup before the software update could not be written: {var:1}', 'vars' => array($update_backup['error']))), $_SESSION['sessionusername']);
+
+                respond(array(
+                    'status' => 'error',
+                    'message' => lang(array('string' => 'The backup before the update could not be written: {var:1} Nothing was changed. Free some disk space and try again, or switch off "Back up before updating" under Site Settings, General, Update Channel to update without it.', 'vars' => array($update_backup['error'])))
+                ));
+            }
+
+            log_activity(lang(array('string' => 'Backup taken before the software update: {var:1}', 'vars' => array($update_backup['name']))), $_SESSION['sessionusername']);
+
+            respond(array(
+                'status' => 'success',
+                'message' => lang(array('string' => 'Backed up to {var:1} ({var:2}). Files overwriting...', 'vars' => array($update_backup['name'], convert_bytes_to_string($update_backup['size'], 1))))
+            ));
+            break;
+
         case 'replace':
-            //Step 3: replace files.
+            //Step 4: replace files.
             define('_PATH', PG_FUNCTIONS_DIR);
             // Zip file name — the channel's package, the same name the download step used.
             $filename = pg_update_package_file();
@@ -650,70 +687,16 @@ function pg_panel_software_update($request, $action)
 
             unlink($filename);
 
-            // The bytecode cache still holds the OLD files. Two reasons
-            // this has to be dropped here rather than left to the cache's
-            // own timestamp check:
-            //
-            //  • The screen sends the browser to install/index.php as
-            //    soon as this returns. Between the new files landing and
-            //    the cache noticing them (opcache.revalidate_freq, two
-            //    seconds by default) the upgrade would run the PREVIOUS
-            //    version's code against the new schema — the exact
-            //    window the upgrade bridge exists to survive, entered on
-            //    purpose for no reason.
-            //  • Where the host turned timestamp validation off
-            //    (opcache.validate_timestamps = 0, common on tuned
-            //    production boxes) the old code keeps running until
-            //    someone restarts PHP. The operator sees "update
-            //    complete" and no change whatsoever.
-            //
-            // Also reclaims the memory the replaced files occupied:
-            // every superseded copy stays in the cache as waste until
-            // it is invalidated, and this software's largest file is
-            // several megabytes of compiled opcodes on its own.
-            //
-            // Failure is not fatal — purge_cache.php exists for the
-            // hosts that refuse the API — but it is worth a log line,
-            // because "I updated and nothing changed" starts here.
-            // extension_loaded() is not the question, and neither is
-            // function_exists(): the extension can be compiled in while
-            // opcache.enable is off, in which case the functions all
-            // exist, every call returns false and emits a warning. Ask
-            // the cache whether it is running.
-            //
-            // A host that blocks opcache.restrict_api answers nothing at
-            // all — status is unreadable there but a reset may still be
-            // allowed, so "unknown" tries anyway and stays quiet about
-            // the outcome. Only a cache that says it is enabled AND
-            // refuses every attempt is worth a log line.
-            $pg_opcache_status  = function_exists('opcache_get_status') ? @opcache_get_status(false) : null;
-            $pg_opcache_running = is_array($pg_opcache_status) ? !empty($pg_opcache_status['opcache_enabled']) : null;
+            // The bytecode cache still holds the OLD files; dropped here, not
+            // left to its own timestamp check (pg_update_clear_opcache()
+            // says why). Failure is not fatal - purge_cache.php exists for the
+            // hosts that refuse the API - but a cache that says it runs and
+            // refuses every attempt is worth a log line, because "I updated
+            // and nothing changed" starts here.
+            $pg_update_opcache = pg_update_clear_opcache((isset($extract['files']) && is_array($extract['files'])) ? $extract['files'] : array());
 
-            if ($pg_opcache_running !== false) {
-                $pg_update_opcache_cleared = false;
-
-                if (function_exists('opcache_reset')) {
-                    $pg_update_opcache_cleared = (bool) @opcache_reset();
-                }
-
-                // opcache.restrict_api blocks reset() from a script
-                // outside its directory; per-file invalidation is still
-                // allowed on some of those hosts. The paths are the ones
-                // the archive just wrote, so nothing else is walked.
-                if (!$pg_update_opcache_cleared && function_exists('opcache_invalidate')) {
-                    $pg_update_files = (isset($extract['files']) && is_array($extract['files'])) ? $extract['files'] : array();
-                    foreach ($pg_update_files as $pg_update_file) {
-                        if (substr($pg_update_file, -4) === '.php') {
-                            if (@opcache_invalidate($pg_update_file, true)) {
-                                $pg_update_opcache_cleared = true;
-                            }
-                        }
-                    }
-                }
-
-                if (!$pg_update_opcache_cleared && $pg_opcache_running === true) {
-                    log_activity('software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect');
-                }
+            if (!$pg_update_opcache['cleared'] && ($pg_update_opcache['running'] === true)) {
+                log_activity('software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect');
             }
 
             $query = "DELETE FROM notifications WHERE action = 'software_update'";
@@ -741,4 +724,40 @@ function pg_panel_software_update($request, $action)
     }
 
     exit();
+}
+
+function pg_panel_software_rollback($request, $action)
+{
+    // Writes an older version's code over the software, so it is an
+    // administrator's, like Repair Software, the screen that offers it.
+    $user = validate_user();
+    validate_area_access($user, 'administrator');
+    validate_token();
+
+    // A hosted site's code is replaced by the platform, never from one site.
+    if (pg_hosted()) {
+        respond(array(
+            'status' => 'error',
+            'message' => lang('Software updates are managed by the hosting platform.')
+        ));
+    }
+
+    ini_set('max_execution_time', '9999');
+
+    $name = (isset($request['name']) && is_string($request['name'])) ? $request['name'] : '';
+
+    $rollback = pg_update_rollback($name);
+
+    log_activity(
+        $rollback['ok']
+            ? lang(array('string' => 'Software rolled back to {var:1} from {var:2}.', 'vars' => array($rollback['version'], $name)))
+            : lang(array('string' => 'The software could not be rolled back from {var:1}: {var:2}', 'vars' => array($name, $rollback['message']))),
+        $_SESSION['sessionusername']
+    );
+
+    respond(array(
+        'status'  => $rollback['ok'] ? 'success' : 'error',
+        'message' => $rollback['message'],
+        'version' => $rollback['version'],
+    ));
 }

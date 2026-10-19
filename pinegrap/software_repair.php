@@ -189,6 +189,43 @@ if (count($rerun_choices) == 0) {
                     </form>';
 }
 
+// -- Roll back an update -------------------------------------------------------
+
+// The archives an update took before it replaced the files
+// (pg_update_backup_create()). Only one this site recorded can be rolled back
+// to; one that only sits in the folder - uploaded, copied in - is listed, but
+// its button stays off and the reason is said.
+$rollback_backups = pg_update_backup_list();
+
+if (!$rollback_backups) {
+
+    $rollback_body = '
+                    <p class="small text-body-secondary mb-0">' . h(lang('No backup taken before an update is in the backup folder yet. The next update writes one, unless it is switched off under Site Settings, General, Update Channel.')) . '</p>';
+
+} else {
+
+    $rollback_rows = '';
+
+    foreach ($rollback_backups as $rollback_backup) {
+
+        $rollback_rows .= '
+                        <li class="list-group-item d-flex flex-wrap gap-2 align-items-center">
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold">' . h(lang(array('string' => 'Version {var:1}', 'vars' => array($rollback_backup['version'])))) . ' <span class="text-body-secondary fw-normal small">· ' . h(date('d.m.Y H:i', (int) $rollback_backup['created'])) . ' · ' . h(convert_bytes_to_string($rollback_backup['size'], 1)) . '</span></div>
+                                <div class="small text-body-secondary text-break">' . h($rollback_backup['name']) . ($rollback_backup['recorded'] ? '' : ' · ' . h(lang('not made by an update on this site'))) . '</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-warning pg-rollback" data-name="' . h($rollback_backup['name']) . '" data-version="' . h($rollback_backup['version']) . '"' . ($rollback_backup['recorded'] ? '' : ' disabled data-unrecorded="1"') . '>
+                                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Roll back')) . '
+                            </button>
+                        </li>';
+    }
+
+    $rollback_body = '
+                    <ul class="list-group mb-3">' . $rollback_rows . '
+                    </ul>
+                    <div class="alert d-none mb-0" id="rollback_result" role="status"></div>';
+}
+
 echo pg_page_shell(array(
     'title' => lang('Repair Software'),
     'extra classes' => 'setting',
@@ -237,7 +274,22 @@ echo '
                 </div>
             </div>
 
-            <p class="small text-body-secondary mb-5">' . h(lang('The upgrade screen writes what it did; the activity log keeps a line for each repair and each rerun.')) . '</p>
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <div class="card" id="rollback" style="scroll-margin-top: 5rem;">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Roll back an update')) . '</span>
+                            <a class="btn btn-sm btn-outline-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
+                        </div>
+                        <div class="card-body">
+                            <p>' . h(lang('Before an update or a repair replaces the software files, it backs up the files it replaces and the database. Rolling back writes those files back, deletes the files the update added and records the older version as the installed one. The database is not changed: what the newer upgrade steps added stays and the older version does not use it; the next update runs those steps again.')) . '</p>
+                            <p>' . h(lang('To put the database back as well, restore the same archive on the installation screen afterwards. Everything written to the site since the update - orders, form entries, changes - is lost then.')) . ' <a href="' . h(PATH . SOFTWARE_DIRECTORY . '/install/') . '">' . h(lang('Installation screen')) . '</a></p>' . $rollback_body . '
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="small text-body-secondary mb-5">' . h(lang('The upgrade screen writes what it did; the activity log keeps a line for each repair, each rerun and each rollback.')) . '</p>
         </div>
     </div>
 </main>
@@ -249,11 +301,14 @@ echo '
         var progress = $(".progress .progress-bar");
         var log_box = $(".logbox");
 
-        // The update\'s three steps with repair set; each starts when the one
-        // before it answered with success.
+        // The update\'s four steps with repair set; each starts when the one
+        // before it answered with success. The backup step writes the files
+        // the package replaces and the database to a pre-update archive, or
+        // answers at once when that is switched off.
         var steps = [
-            { step: "check", width: "40%" },
-            { step: "download", width: "70%" },
+            { step: "check", width: "30%" },
+            { step: "download", width: "55%" },
+            { step: "backup", width: "80%" },
             { step: "replace", width: "100%" }
         ];
 
@@ -308,6 +363,49 @@ echo '
             progress.addClass("progress-bar-animated").removeClass("bg-danger").attr("style", "width:20%");
             log_box.text("' . escape_javascript(lang('Starting')) . '...");
             run(0);
+        });
+
+        // A rollback writes code over the software: asked first, one at a
+        // time, and the page reloads on success so the list and the version
+        // shown are the ones now on disk.
+        $(".pg-rollback").click(function(){
+            var button = $(this);
+            var result = $("#rollback_result");
+            var question = "' . escape_javascript(lang('Write the software files of version {var:1} back over the current ones? The database is not changed.')) . '".replace("{var:1}", button.attr("data-version") || "");
+
+            if (button.prop("disabled") || !window.confirm(question)) {
+                return;
+            }
+
+            $(".pg-rollback").prop("disabled", true);
+            result.addClass("d-none");
+
+            $.ajax({
+                contentType: "application/json",
+                url: "api.php",
+                type: "POST",
+                data: JSON.stringify({
+                    action: "software_rollback",
+                    token: software_token,
+                    name: button.attr("data-name")
+                }),
+                success: function(response) {
+                    var ok = response && (response.status == "success");
+                    result.removeClass("d-none alert-success alert-danger").addClass(ok ? "alert-success" : "alert-danger")
+                        .text((response && response.message) ? response.message : "' . escape_javascript(lang('An error occurred.')) . '");
+                    if (ok) {
+                        window.setTimeout(function(){
+                            window.location.reload();
+                        }, 4000);
+                    } else {
+                        $(".pg-rollback").not("[data-unrecorded]").prop("disabled", false);
+                    }
+                },
+                error: function() {
+                    result.removeClass("d-none alert-success").addClass("alert-danger").text("' . escape_javascript(lang('An error occurred.')) . '");
+                    $(".pg-rollback").not("[data-unrecorded]").prop("disabled", false);
+                }
+            });
         });
 
         $("#rerun_form").on("submit", function(event){
