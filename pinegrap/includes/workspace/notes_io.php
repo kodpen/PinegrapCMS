@@ -211,8 +211,8 @@ function ws_note_export_source($viewer, $note)
 
 /**
  * The notes a person takes with them: every note they own and every note
- * shared with them, however many (ws_notes_list() shows the latest 500 of
- * each on the screen; an export is not cut).
+ * shared with them, however many, each read whole (ws_notes_list() reads
+ * only the start of each text for the screen's list).
  *
  * @param array $viewer
  * @return array mine, shared

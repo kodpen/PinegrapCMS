@@ -1149,11 +1149,13 @@ function ws_api_routes()
             'handler'     => 'ws_api_notes_list',
             'returns'     => array('list' => 'WorkspaceNote'),
             'summary'     => 'The owner\'s notes',
-            'description' => 'The personal notes of the owner of the application - the pinned ones first, then the latest changed - followed by the notes colleagues shared with them, the latest changed first. A note is seen by nobody but the one who wrote it until it is shared, administrators included, so nobody else\'s notes are listed here. scope mine or shared keeps one of the two. text and body are null in the listing; GET /workspace/notes/{id} carries them.',
+            'description' => 'The personal notes of the owner of the application - the pinned ones first, then the latest changed - followed by the notes colleagues shared with them, the latest changed first. A note is seen by nobody but the one who wrote it until it is shared, administrators included, so nobody else\'s notes are listed here. scope mine or shared keeps one of the two. search and updated_since are applied before the list is paged, so every note that matches comes in some page; page.total counts them. Page with next_cursor until has_more is false. A note changed while the pages are read moves to the top and may be missed in that pass; read again with updated_since from the moment the first page was asked for. text and body are null in the listing; GET /workspace/notes/{id} carries them.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'shared'), 'default' => 'all'),
                 array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Words in the title or the text.'),
                 array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only notes changed at or after this moment.'),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 100, 'description' => 'Notes per page.'),
             ),
         ),
 

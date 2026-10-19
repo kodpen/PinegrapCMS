@@ -55,6 +55,19 @@ define('WS_NOTE_VERSIONS_KEEP', 30);
 define('WS_NOTE_VERSION_GAP', 600);
 
 /**
+ * How much of a note's text a list reads (characters): enough for its name
+ * and its excerpt (ws_notes_present()), so a list of every note a person has
+ * does not pull up to WS_NOTE_MAX characters for each. A single note is read
+ * whole.
+ */
+define('WS_NOTE_LIST_BODY', 4000);
+
+/**
+ * The most notes one page of the API's list carries.
+ */
+define('WS_NOTES_PAGE_MAX', 200);
+
+/**
  * Are notes installed (4.110)?
  *
  * @return bool
@@ -673,9 +686,48 @@ function ws_note_present($viewer, $row)
 }
 
 /**
+ * The columns a list of notes reads: every one, with the text cut to
+ * WS_NOTE_LIST_BODY characters.
+ *
+ * @return string
+ */
+function ws_notes_list_columns()
+{
+    return "n.id, n.user_id, n.title, LEFT(n.body, " . WS_NOTE_LIST_BODY . ") AS body, n.pinned,
+        n.source_message_id, n.source_channel_id, n.source_user_id, n.channel_id, n.updated_by, n.folder_id,
+        n.created_at, n.updated_at";
+}
+
+/**
+ * The conditions every list of notes shares: words in the title or the text,
+ * and a change at or after a moment.
+ *
+ * @param string $search
+ * @param int    $updated_since unix time; 0 for any
+ * @return string " AND ..." or ''
+ */
+function ws_notes_filter_sql($search, $updated_since = 0)
+{
+    $filter = '';
+    $search = trim(mb_substr((string) $search, 0, 100));
+
+    if ($search !== '') {
+        $like = e(addcslashes($search, '%_\\'));
+        $filter .= " AND (n.title LIKE '%" . $like . "%' OR n.body LIKE '%" . $like . "%')";
+    }
+
+    if ((int) $updated_since > 0) {
+        $filter .= " AND n.updated_at >= '" . (int) $updated_since . "'";
+    }
+
+    return $filter;
+}
+
+/**
  * The person's notes and the notes shared with them: their own, the pinned
  * ones first, then the latest changed; then the ones people shared with
- * them, the latest changed first.
+ * them, the latest changed first. Every note they own is listed (a person
+ * keeps at most WS_NOTE_LIMIT), and as many shared ones.
  *
  * @param array  $viewer
  * @param string $search words in the title or the text
@@ -688,22 +740,16 @@ function ws_notes_list($viewer, $search = '')
     }
 
     $me = (int) $viewer['id'];
-    $filter = '';
-    $search = trim(mb_substr((string) $search, 0, 100));
+    $filter = ws_notes_filter_sql($search);
 
-    if ($search !== '') {
-        $like = e(addcslashes($search, '%_\\'));
-        $filter = " AND (n.title LIKE '%" . $like . "%' OR n.body LIKE '%" . $like . "%')";
-    }
+    $mine = (array) db_items("SELECT " . ws_notes_list_columns() . " FROM ws_notes n WHERE n.user_id = '" . $me . "'" . $filter . "
+        ORDER BY n.pinned DESC, n.updated_at DESC, n.id DESC LIMIT " . WS_NOTE_LIMIT);
 
-    $mine = (array) db_items("SELECT n.* FROM ws_notes n WHERE n.user_id = '" . $me . "'" . $filter . "
-        ORDER BY n.pinned DESC, n.updated_at DESC, n.id DESC LIMIT 500");
-
-    $shared = (array) db_items("SELECT n.*, IF(MAX(s.can_edit) = 1, 'edit', 'view') AS access FROM ws_notes n
+    $shared = (array) db_items("SELECT " . ws_notes_list_columns() . ", IF(MAX(s.can_edit) = 1, 'edit', 'view') AS access FROM ws_notes n
         INNER JOIN ws_note_shares s ON s.note_id = n.id AND s.user_id = '" . $me . "'
         WHERE n.user_id <> '" . $me . "'" . $filter . "
         GROUP BY n.id
-        ORDER BY n.updated_at DESC, n.id DESC LIMIT 500");
+        ORDER BY n.updated_at DESC, n.id DESC LIMIT " . WS_NOTE_LIMIT);
 
     foreach ($mine as $index => $row) {
         $mine[$index]['access'] = 'owner';
@@ -713,6 +759,146 @@ function ws_notes_list($viewer, $search = '')
         'mine'   => ws_notes_present($viewer, $mine),
         'shared' => ws_notes_present($viewer, $shared),
     );
+}
+
+/**
+ * A note's place in the API's list, which runs the screen's two lists one
+ * after the other: group 0 for an own pinned note, 1 for another own note,
+ * 2 for a shared one; within a group the latest change first, then the
+ * higher id. Packed into the one number a cursor carries beside the id.
+ *
+ * @param int $group
+ * @param int $updated_at
+ * @return int
+ */
+function ws_notes_position_pack($group, $updated_at)
+{
+    return (int) $group * 10000000000 + max(0, (int) $updated_at);
+}
+
+/**
+ * A position from a cursor's two numbers; null when they cannot be one.
+ *
+ * @param int $value
+ * @param int $id
+ * @return array|null group, updated_at, id
+ */
+function ws_notes_position_unpack($value, $id)
+{
+    $value = (int) $value;
+    $id = (int) $id;
+    $group = intdiv($value, 10000000000);
+
+    if (($value < 0) || ($id <= 0) || ($group > 2)) {
+        return null;
+    }
+
+    return array('group' => $group, 'updated_at' => $value % 10000000000, 'id' => $id);
+}
+
+/**
+ * The condition that keeps the notes after a position, for a query whose
+ * rows all fall in the group $group_sql gives.
+ *
+ * @param string     $group_sql an SQL expression or number
+ * @param array|null $after     a position, or null for the start
+ * @return string " AND (...)" or ''
+ */
+function ws_notes_after_sql($group_sql, $after)
+{
+    if (!is_array($after)) {
+        return '';
+    }
+
+    $group = (int) $after['group'];
+    $updated_at = (int) $after['updated_at'];
+    $id = (int) $after['id'];
+
+    return " AND ((" . $group_sql . ") > " . $group . " OR ((" . $group_sql . ") = " . $group . "
+        AND (n.updated_at < '" . $updated_at . "' OR (n.updated_at = '" . $updated_at . "' AND n.id < '" . $id . "'))))";
+}
+
+/**
+ * The rows of one page of a person's notes, in the order of
+ * ws_notes_position_pack(), with the conditions applied in the query, so no
+ * note is lost to a cut made before them.
+ *
+ * @param int   $user_id
+ * @param array $options scope (all, mine or shared), search, updated_since
+ *                       (unix time), after (a position, null for the first
+ *                       page), limit
+ * @return array rows (with list_group and access), next (the position to go
+ *               on from, null on the last page), total (every note that
+ *               matches)
+ */
+function ws_notes_page_rows($user_id, $options)
+{
+    $me = (int) $user_id;
+    $scope = (string) ($options['scope'] ?? 'all');
+    $limit = max(1, min(WS_NOTES_PAGE_MAX, (int) ($options['limit'] ?? 100)));
+    $after = is_array($options['after'] ?? null) ? $options['after'] : null;
+    $filter = ws_notes_filter_sql((string) ($options['search'] ?? ''), (int) ($options['updated_since'] ?? 0));
+    $rows = array();
+    $total = 0;
+
+    if ($scope !== 'shared') {
+        $own = "IF(n.pinned = 1, 0, 1)";
+
+        $total += (int) db_value("SELECT COUNT(*) FROM ws_notes n WHERE n.user_id = '" . $me . "'" . $filter);
+
+        $rows = (array) db_items("SELECT " . ws_notes_list_columns() . ", " . $own . " AS list_group FROM ws_notes n
+            WHERE n.user_id = '" . $me . "'" . $filter . ws_notes_after_sql($own, $after) . "
+            ORDER BY list_group, n.updated_at DESC, n.id DESC LIMIT " . ($limit + 1));
+
+        foreach ($rows as $index => $row) {
+            $rows[$index]['access'] = 'owner';
+        }
+    }
+
+    if ($scope !== 'mine') {
+        $from = " FROM ws_notes n
+            INNER JOIN ws_note_shares s ON s.note_id = n.id AND s.user_id = '" . $me . "'
+            WHERE n.user_id <> '" . $me . "'" . $filter;
+
+        $total += (int) db_value("SELECT COUNT(DISTINCT n.id)" . $from);
+
+        if (count($rows) <= $limit) {
+            $rows = array_merge($rows, (array) db_items("SELECT " . ws_notes_list_columns() . ", 2 AS list_group,
+                    IF(MAX(s.can_edit) = 1, 'edit', 'view') AS access" . $from . ws_notes_after_sql('2', $after) . "
+                GROUP BY n.id
+                ORDER BY n.updated_at DESC, n.id DESC LIMIT " . ($limit + 1 - count($rows))));
+        }
+    }
+
+    $next = null;
+
+    if (count($rows) > $limit) {
+        $rows = array_slice($rows, 0, $limit);
+        $last = $rows[$limit - 1];
+        $next = array('group' => (int) $last['list_group'], 'updated_at' => (int) $last['updated_at'], 'id' => (int) $last['id']);
+    }
+
+    return array('rows' => $rows, 'next' => $next, 'total' => $total);
+}
+
+/**
+ * One page of the person's notes for the API (ws_notes_page_rows()),
+ * presented as the screen's list presents them.
+ *
+ * @param array $viewer
+ * @param array $options see ws_notes_page_rows()
+ * @return array rows (presented), next, total
+ */
+function ws_notes_page($viewer, $options)
+{
+    if (!ws_notes_ready()) {
+        return array('rows' => array(), 'next' => null, 'total' => 0);
+    }
+
+    $page = ws_notes_page_rows((int) $viewer['id'], $options);
+    $page['rows'] = ws_notes_present($viewer, $page['rows']);
+
+    return $page;
 }
 
 /**

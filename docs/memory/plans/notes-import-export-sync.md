@@ -10,7 +10,7 @@ description: Plan (2026-10-19) for Workspace notes: export and Markdown/zip impo
 - `ws_notes` (user_id, title, body, pinned, source_*, channel_id, folder_id, updated_by, created_at, updated_at), shares in `ws_note_shares`, 30 versions in `ws_note_versions`, attachments in a `Workspace/Notes/Note N` folder linked as `[name](url)`. `WS_NOTE_MAX` 60000 chars, `WS_NOTE_LIMIT` 2000 notes a person. Hard delete; no notebooks, tags or external ids.
 - Body is a Markdown subset drawn only by `ws_render_body()` (bold, `_italic_`, strike, code, links, GFM tables with `=` formulas, checklists, fences, `::: Title` blocks); headings, lists, quotes and inline images are not drawn. No Markdown library in the code base.
 - Screen `startNotes()` (workspace.js): export, print and import buttons (N1, N2); no templates.
-- API: `GET/POST /workspace/notes`, `GET/POST|PATCH /workspace/notes/{id}` (dry run, Idempotency-Key, `base` → 409), versions routes; generic `workspace:read/write` scopes; no delete, no deletion records, no `created_at` in the object, list capped at 500 with `has_more:false` (issue #511). All note routes are MCP tools.
+- API: `GET/POST /workspace/notes`, `GET/POST|PATCH /workspace/notes/{id}` (dry run, Idempotency-Key, `base` → 409), versions routes; generic `workspace:read/write` scopes; the list is paged with `created_at` in the object (issue #511, docs/memory/workspace/workspace-notes.md); no delete, no deletion records. All note routes are MCP tools.
 - Precedents: ERP import (`erp_accounts_import.php`: upload → map/preview → result, staged in `data/temp`, 5 MB), calendar token feed (`ws_calendar_feeds`), OAuth 2.1 server (`oauth.php`, PKCE).
 - Outside apps: `docs/memory/plans/reverse-oauth-leftovers.md` lists Notion (MCP alias first) and OneNote (Graph); Google Keep, Evernote and Apple Notes have no usable API, file route only.
 
@@ -18,7 +18,7 @@ description: Plan (2026-10-19) for Workspace notes: export and Markdown/zip impo
 - N1 Export — done (PR #528, memory docs/memory/workspace/workspace-notes-export.md): `.md` with front matter, the zip vault, the print page.
 - N2 Import, Markdown/zip — done (PR #553, memory docs/memory/workspace/workspace-notes-import.md): `.md`/`.txt` or a `.zip` (Obsidian, Notion, Joplin, Bear, our own vault), preview, batches, linked files, `[[wikilinks]]`, an export of ours updating its note.
 - N2 Import, other formats: Evernote `.enex` (XMLReader; `en-todo` → checklist, `en-media` → attachment), Google Keep Takeout JSON, single `.html`. Each a reader that hands `ws_note_import_plan()` the same rows: the stage, the preview, the batches and `finish` stay as they are.
-- N3 Sync API: paging on the list, `created_at`, `DELETE /workspace/notes/{id}`, deletion records, a per-note `revision` (today `base` has one-second resolution and only refuses another person's change). Schema asks: `ws_notes.revision`, `ws_note_deletions`, `ws_note_sources` (user_id, provider, external_id, hash) for re-import de-duplication.
+- N3 Sync API: paging and `created_at` done (issue #511); left: `DELETE /workspace/notes/{id}`, deletion records, a per-note `revision` (today `base` has one-second resolution and only refuses another person's change). Schema asks: `ws_notes.revision`, `ws_note_deletions`, `ws_note_sources` (user_id, provider, external_id, hash) for re-import de-duplication.
 - N4 Outside apps: Notion through the MCP alias ("save to my notes" target in `mcp_form.php`), OneNote through a Microsoft connect purpose; both wait on the reverse-oauth decisions.
 
 ## What is still open?
