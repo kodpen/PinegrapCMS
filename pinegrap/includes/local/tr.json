@@ -23731,5 +23731,10 @@
     "Please run the software upgrade to open shared components to content editors.": "Ortak bileşenleri içerik düzenleyicilere açmak için lütfen yazılım yükseltmesini çalıştırın.",
     "A system widget cannot be opened to content editors.": "Sistem widget'ı içerik düzenleyicilere açılamaz.",
     "shared component ({var:1}) was opened to content editors": "ortak bileşen ({var:1}) içerik düzenleyicilere açıldı",
-    "shared component ({var:1}) was closed to content editors": "ortak bileşen ({var:1}) içerik düzenleyicilere kapatıldı"
+    "shared component ({var:1}) was closed to content editors": "ortak bileşen ({var:1}) içerik düzenleyicilere kapatıldı",
+    "Content editors": "İçerik düzenleyiciler",
+    "On: managers and the users given access to it can change its text and images, and everything inside its editable areas, on every page that shows it.": "Açıkken yöneticiler ve erişim verilen kullanıcılar bileşenin metinlerini, görsellerini ve düzenlenebilir alanlarının içindeki her şeyi değiştirebilir; değişiklik bileşeni gösteren her sayfaya yansır.",
+    "Content editors can now edit this shared component.": "İçerik düzenleyiciler artık bu ortak bileşeni düzenleyebilir.",
+    "This shared component is closed to content editors.": "Bu ortak bileşen içerik düzenleyicilere kapatıldı.",
+    "Shared component": "Ortak bileşen"
 }

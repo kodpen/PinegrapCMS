@@ -116,7 +116,8 @@ function pg_panel_shared_component($request, $action)
                      FROM shared_components
                      WHERE id IN ($sc_ids_str)"
             );
-            respond(array('status' => 'success', 'items' => _sc_content_flags($rows ? $rows : array(), $user)));
+            respond(array('status' => 'success', 'items' => _sc_content_flags($rows ? $rows : array(), $user),
+                          'content_ready' => pg_shared_component_content_ready() ? 1 : 0));
             break;
 
         // ── GET ──────────────────────────────────────────────────────────
