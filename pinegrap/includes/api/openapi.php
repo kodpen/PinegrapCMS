@@ -617,6 +617,7 @@ function api_openapi_objects()
         'Product'      => 'api_product_schema',
         'ProductGroup' => 'api_product_group_schema',
         'Order'        => 'api_order_schema',
+        'OrderDocument' => 'api_order_document_schema',
         'Customer'     => 'api_customer_schema',
         'Page'         => 'api_page_schema',
         'Folder'       => 'api_folder_schema',
