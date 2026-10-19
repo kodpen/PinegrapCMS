@@ -1874,3 +1874,59 @@ function pg_product_feed_save_from_screen($input)
 
     return array('settings' => $settings, 'issued' => $issued, 'built' => $built, 'renewed' => $renewed);
 }
+
+// ---------------------------------------------------------------------------
+// System Status
+// ---------------------------------------------------------------------------
+
+// How long a feed that is on may go without a good build before System
+// Status calls it stale: two days, the job's own stale_after, so one missed
+// daily run is not yet a warning.
+if (!defined('PG_PRODUCT_FEED_STALE_AFTER')) {
+    define('PG_PRODUCT_FEED_STALE_AFTER', 172800);
+}
+
+// The state of the feeds that are on, for the System Status tile.
+//
+// Per format that is on: 'fail' when its last build failed (platforms still
+// read the file built before it), 'warn' when it was never built or not for
+// longer than PG_PRODUCT_FEED_STALE_AFTER, 'ok' otherwise. The whole is the
+// worst of them, or 'none' when no feed is on (no tile).
+//
+// Returns array('state', 'on', 'failing', 'stale', 'rows' => list of
+// array('format', 'state', 'built_at', 'error')).
+function pg_product_feed_health($settings, $now)
+{
+    $health = array('state' => 'none', 'on' => 0, 'failing' => 0, 'stale' => 0, 'rows' => array());
+
+    foreach ($settings['formats'] as $format => $entry) {
+        if (!$entry['enabled']) {
+            continue;
+        }
+
+        $health['on']++;
+        $built_at = (int) $entry['built_at'];
+
+        if ($entry['error'] !== '') {
+            $state = 'fail';
+            $health['failing']++;
+        } elseif (($built_at <= 0) || (((int) $now - $built_at) > PG_PRODUCT_FEED_STALE_AFTER)) {
+            $state = 'warn';
+            $health['stale']++;
+        } else {
+            $state = 'ok';
+        }
+
+        $health['rows'][] = array('format' => $format, 'state' => $state, 'built_at' => $built_at, 'error' => $entry['error']);
+    }
+
+    if ($health['failing'] > 0) {
+        $health['state'] = 'fail';
+    } elseif ($health['stale'] > 0) {
+        $health['state'] = 'warn';
+    } elseif ($health['on'] > 0) {
+        $health['state'] = 'ok';
+    }
+
+    return $health;
+}

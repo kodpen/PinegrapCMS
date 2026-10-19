@@ -1,6 +1,6 @@
 ---
 name: agent-product-feeds
-description: Plan (approved 2026-10-19, in progress: builder, job, feed.php and settings card done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV); status check, API left
+description: Plan (approved 2026-10-19, in progress: builder, job, feed.php, settings card, status tile done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV); API left
 ---
 
 ## Why?
@@ -10,6 +10,7 @@ description: Plan (approved 2026-10-19, in progress: builder, job, feed.php and 
 - Step 1 (PR #561): `includes/fn/product_feeds.php` (`pg_product_feed_build()`, reader, item, per-format rows, JSONL/CSV/TSV writers) and `tests/product_feeds_test.php`. Rules and field mapping: docs/memory/commerce/product-feeds.md.
 - Step 2a (PR #571): `config.product_feeds` (11.0.4), tokens, `product_feed_job.php` writing `data/feeds/<format>.<ext>`, `feed.php`, WAF exemption: docs/memory/commerce/product-feed-serving.md.
 - Step 2b (PR #572): Settings › SEO › Product Feeds card, `[NEW]` changelog line (same file).
+- Step 3: System Status "Product Feeds" tile (same file).
 
 ## What is decided?
 - Files are named by format (`data/feeds/<format>.<ext>`), not by token, so the token is never on disk in clear; the token is kept as a hash plus a sealed copy.
@@ -20,12 +21,11 @@ description: Plan (approved 2026-10-19, in progress: builder, job, feed.php and 
 - UCP groundwork: `/.well-known/ucp` is **not** published by this plan (it would claim a checkout capability the site cannot serve); the plan only reserves the route in the router and documents the manifest fields for `storefront-api-agentic-commerce.md`.
 
 ## What remains?
-3. System Status check "feed stale > 2 days" for a format that is on (the card already lists addresses, build times and counts) (S).
 4. API: `GET /store/feeds` (read URLs and status) (S).
-5. When steps 3 and 4 are in: decisions move to the commerce topic files and this file is deleted.
+5. When step 4 is in: decisions move to the commerce topic files and this file is deleted.
 
 ## Open questions?
 - Weight, dimensions, shipping and return fields are optional in both specs and not sent; add them when the settings know the units and the return window.
 
 ## Where to start?
-- Step 3; read docs/memory/commerce/product-feed-serving.md and `includes/fn/system_status.php`.
+- Step 4; read docs/memory/commerce/product-feed-serving.md and the `pinegrap-dis-api` skill.

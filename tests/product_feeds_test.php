@@ -679,3 +679,38 @@ function test_product_feeds_screen_texts()
 
 	pg_assert_same(array_keys(pg_product_feed_formats()), array_keys(pg_product_feed_format_texts()), 'a label for every format');
 }
+
+// The System Status tile: no tile with no feed on, the worst state otherwise.
+function test_product_feeds_health()
+{
+	$now = 1800000000;
+	$settings = pg_product_feed_settings_parse('');
+
+	pg_assert_same('none', pg_product_feed_health($settings, $now)['state'], 'no feed on');
+
+	$settings['formats']['openai_jsonl'] = array_merge($settings['formats']['openai_jsonl'], array('enabled' => 1, 'built_at' => $now - 3600));
+	$health = pg_product_feed_health($settings, $now);
+
+	pg_assert_same('ok', $health['state']);
+	pg_assert_same(1, $health['on']);
+	pg_assert_same(array(array('format' => 'openai_jsonl', 'state' => 'ok', 'built_at' => $now - 3600, 'error' => '')), $health['rows'], 'only feeds that are on');
+
+	$settings['formats']['google_tsv'] = array_merge($settings['formats']['google_tsv'], array('enabled' => 1, 'built_at' => $now - PG_PRODUCT_FEED_STALE_AFTER - 1));
+	$health = pg_product_feed_health($settings, $now);
+
+	pg_assert_same('warn', $health['state'], 'older than two days');
+	pg_assert_same(1, $health['stale']);
+
+	$settings['formats']['google_tsv']['built_at'] = $now - PG_PRODUCT_FEED_STALE_AFTER;
+	pg_assert_same('ok', pg_product_feed_health($settings, $now)['state'], 'exactly two days is not stale yet');
+
+	$settings['formats']['openai_csv'] = array_merge($settings['formats']['openai_csv'], array('enabled' => 1));
+	pg_assert_same('warn', pg_product_feed_health($settings, $now)['state'], 'never built');
+
+	$settings['formats']['openai_jsonl']['error'] = 'no_catalog';
+	$health = pg_product_feed_health($settings, $now);
+
+	pg_assert_same('fail', $health['state'], 'a failed build outweighs the rest');
+	pg_assert_same(1, $health['failing']);
+	pg_assert_same(3, $health['on']);
+}
