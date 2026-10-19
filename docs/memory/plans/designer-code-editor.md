@@ -25,12 +25,12 @@ description: Plan (2026-10-19) for the editable code view in the visual designer
 - E3 (done): incremental refresh; a tree change writes only the differing span (`_sdCodeTextDiff()`, `ed.applyExternal()` outside the undo history), ranges and locks replaced whole.
 - E4 (done): typing applies to the tree after a 400 ms pause (docs/memory/plans/designer-code-editor-apply.md); the switch reads Edit.
 - E5 (done with E4): insert, delete, move and reorder inside free nodes; new elements through the converter.
-- E6 CSS/JS tabs replace `#sd-as-modal`; `window.openCodeEditor()` adapter for the three modal uses; find/replace; CM5 removed from `designer_screen.php`.
-- E7 extras: class completion (`PG_CLASS_SUGGESTIONS`), binding tokens, Emmet, format, lint, minimap. Changelog `[NEW]` line at E6.
+- E6 (done): the design's CSS/JS files open as tabs beside the page (`_sdCodeTabOpen(spec)`, spec from the assets panel: load/save/url; Ctrl+S in a file tab saves the file); `codemirror_modal.js` rebuilt on the facade; CodeMirror 5 left the designer page (`'code_editor' => false`); changelog `[NEW]` line.
+- E7 extras: class completion (`PG_CLASS_SUGGESTIONS`), binding tokens, Emmet, format, lint, minimap; later the panel screens (`get_codemirror_javascript()`) move to `PgCodeEditor.attach()`.
 
 ## Open questions (owner)
 1. `buildNodeHTML()` has no callers; remove with E4?
 2. `esc()` escapes text, not quotes: a `"` in an attribute value breaks the tag in `generateHTML()` (the frame rows use `_sdAttrEsc()` since E2). Fix in the emitter, with the PHP twin?
 
 ## Where to start?
-E6: the assets panel's `#sd-as-modal` (CM5) becomes tabs of the same editor (`_sdCode.host` gets a tab strip: the page, then each CSS/JS file opened; `_readDesignerFile` / `_saveDesignerFile` stay the file contract); `window.openCodeEditor()` of `codemirror_modal.js` is reimplemented on the facade; then `get_codemirror_includes()` leaves `designer_screen.php`.
+E7: `PgCodeEditor.addCompletionSource('html', source)` with `PG_CLASS_SUGGESTIONS` for `class` values and the page's own stylesheets' class names; then Emmet (`@emmetio/codemirror6-plugin`, rebuild the bundle) and a formatter.

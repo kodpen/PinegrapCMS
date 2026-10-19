@@ -23473,5 +23473,8 @@
     "The loop markers of a system widget cannot change.": "Sistem widget'ının döngü işaretleri değiştirilemez.",
     "This element is locked here: only its attribute values and its text can change.": "Bu öğe burada kilitli: yalnız nitelik değerleri ve metni değişebilir.",
     "A class set by the element's type cannot be removed in the code; use the options panel.": "Öğenin türünün verdiği sınıf kodda kaldırılamaz; seçenekler panelini kullan.",
-    "The tag of this element is set by its type; use the options panel.": "Bu öğenin etiketini türü belirler; seçenekler panelini kullan."
+    "The tag of this element is set by its type; use the options panel.": "Bu öğenin etiketini türü belirler; seçenekler panelini kullan.",
+    "Close the file without saving the changes?": "Dosya değişiklikler kaydedilmeden kapatılsın mı?",
+    "Unsaved changes": "Kaydedilmemiş değişiklikler",
+    "Save the file (Ctrl+S)": "Dosyayı kaydet (Ctrl+S)"
 }

@@ -6,12 +6,12 @@ description: The code editor facade window.PgCodeEditor (assets/js/pg_code_edito
 ## What is the code editor and where does it live?
 - Engine: CodeMirror 6, one bundle `assets/lib/code_editor/cm6.bundle.js` (~600 KB, `window.PgCM`). Nothing calls PgCM directly; screens call the facade `assets/js/pg_code_editor.js` (`window.PgCodeEditor`), served raw (no `.min.js` twin).
 - The bundle is fetched the first time an editor opens (`PgCodeEditor.load()`), so a page that never opens one never downloads it. The page says where it is: `PgCodeEditor.configure({ bundle: 'assets/lib/code_editor/cm6.bundle.js?v=<stamp>' })` (the designer does this in `includes/designer_screen.php`); without it the URL is derived from the facade's own script URL.
-- CodeMirror 5 (`get_codemirror_includes()`, `codemirror_modal.js`) still serves the panel screens and the designer's modals until they migrate to the facade (plan: docs/memory/plans/designer-code-editor.md).
+- The designer page loads no CodeMirror 5 (`'code_editor' => false`): its code view, file tabs and code dialog (`codemirror_modal.js`, `window.openCodeEditor()`, API unchanged) run on the facade. The other panel screens keep CM5 through `get_codemirror_includes()` until they migrate.
 
 ## How does a screen open an editor?
 - `PgCodeEditor.open(host, opts).then(function (ed) {})` = load + create; `PgCodeEditor.attach(textarea, opts)` takes a textarea's place and writes every edit back into it (the fromTextArea of CM5).
-- `opts`: `language` (html|css|javascript|json), `value`, `readOnly`, `lineWrapping`, `theme` ('dark' default, 'light'), `keymap` ('vscode' default, 'default'), `phrases` (engine texts: 'Find', 'Replace'...), `labels.syntaxError`, `onChange(ed, update)`, `onSelection`, `onFocus`, `onBlur`, `onLockHit(hit, ed)`, `keys` (extra key bindings), `extensions`.
-- Instance: `getValue/setValue(text, keepHistory)`, `replaceRange(from, to, text, force)` (false when a lock refused it), `setLanguage`, `setReadOnly`, `goTo(from, to, {y, focus})`, `scrollTo`, `selection()`, `openSearch(query)`, `setSearchQuery`, `findNext/Previous`, `replaceNext/All`, `destroy`.
+- `opts`: `language` (html|css|javascript|json), `value`, `readOnly` (focusable, refuses changes), `lineWrapping`, `theme` ('dark'|'light'), `keymap` ('vscode'|'default'), `phrases` (engine texts), `labels.syntaxError`, `onChange`, `onSelection`, `onFocus`, `onBlur`, `onLockHit`, `keys`, `extensions`.
+- Instance: `getValue/setValue(text, keepHistory)`, `replaceRange(from, to, text, force)` (false when a lock refused it), `applyExternal` (past the locks, outside the undo history), `syntaxTree()`, `sliceDoc`, `setLanguage`, `setReadOnly`, `goTo`, `scrollTo`, `selection()`, `openSearch`, `setSearchQuery`, `findNext/Previous`, `replaceNext/All`, `destroy`.
 - No `_sdT()` / `lang()` in the facade: every text is passed in by the caller, so the `_sdT` scanners keep their one file.
 
 ## How do locks and tracked ranges work?
