@@ -23749,5 +23749,18 @@
     "Pinegrap AI did not write anything that could be used. Try again.": "Pinegrap AI kullanılabilecek bir şey yazmadı. Tekrar deneyin.",
     "new product": "yeni ürün",
     "This site has used its {var:1} drafts for today. Writing with AI is open again tomorrow.": "Bu site bugünkü {var:1} taslak hakkını kullandı. Yapay zekâyla yazma yarın yeniden açılır.",
-    "asked Pinegrap AI for a draft of {var:1} ({var:2})": "Pinegrap AI'dan {var:1} taslağı istedi ({var:2})"
+    "asked Pinegrap AI for a draft of {var:1} ({var:2})": "Pinegrap AI'dan {var:1} taslağı istedi ({var:2})",
+    "Write with AI": "Yapay zekâyla yaz",
+    "Draft by Pinegrap AI": "Pinegrap AI taslağı",
+    "Tone": "Ton",
+    "Use this text": "Bu metni kullan",
+    "Anything to mention? (optional)": "Ek isteğiniz (isteğe bağlı)",
+    "AI can be wrong: read the text before you save.": "Yapay zekâ yanılabilir: kaydetmeden önce metni okuyun.",
+    "{var:1} drafts left today on this site.": "Bu sitede bugün {var:1} taslak hakkı kaldı.",
+    "The draft could not be fetched. Check the connection and try again.": "Taslak alınamadı. Bağlantıyı kontrol edip tekrar deneyin.",
+    "Informative": "Bilgilendirici",
+    "Friendly": "Samimi",
+    "Formal": "Resmî",
+    "Persuasive": "İkna edici",
+    "Given to the AI engines with every text, and to Pinegrap AI when it drafts a field for Write with AI: the tone, the form of address, the terms to keep. Google and the browser do not read it.": "Yapay zekâ motorlarına her metinle, Yapay zekâyla yaz için bir alanın taslağını yazan Pinegrap AI'a da verilir: üslup, hitap biçimi, korunacak terimler. Google ve tarayıcı bunu okumaz."
 }

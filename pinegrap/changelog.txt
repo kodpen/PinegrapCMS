@@ -26,6 +26,7 @@
 [NEW] Added a maintenance mode that shows visitors a maintenance page while staff see the site, and a health address for uptime monitors.
 [NEW] Added the pre-information form and the distance sales contract to checkout: the customer accepts both before ordering, and the copy they accepted is kept with the order.
 [NEW] Added Word and Excel previews in the file manager and the Workspace, and the file manager's files in Workspace channels: a file is sent to a channel from the file manager, or picked from the writing box.
+[NEW] Added Write with AI: Pinegrap AI drafts a product's descriptions and the browser title and description of products and pages from what the form holds, and a draft goes into the field only when you use it.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.
 [SCHEME] Fields for the checkout legal documents are added to the settings, with a table for the documents each order accepted; a table for the price history of products and a compare-at price field for products, and settings for operations alerts, for the backup before software updates, for maintenance mode and for product feeds, fields for the meta tags of designs and pages, and a field and a table that open shared components to content editors are added.

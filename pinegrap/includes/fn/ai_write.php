@@ -221,10 +221,12 @@ function pg_ai_write_plain($value, $max)
         $text = (string) mb_convert_encoding($text, 'UTF-8', 'UTF-8');
     }
 
-    // A rich text field's blocks keep their breaks; everything else of the
-    // markup goes.
+    // A rich text field's blocks keep their breaks and its list items their
+    // dashes; everything else of the markup goes.
     $text = preg_replace('#<(script|style)\b[^>]*>.*?</\1\s*>#isu', '', $text);
-    $text = preg_replace('#<br\s*/?>|</(p|div|li|h[1-6]|tr|blockquote)\s*>#iu', "\n", (string) $text);
+    $text = preg_replace('#<li\b[^>]*>#iu', "\n- ", (string) $text);
+    $text = preg_replace('#</li\s*>#iu', '', (string) $text);
+    $text = preg_replace('#<br\s*/?>|</(p|div|h[1-6]|tr|blockquote|ul|ol)\s*>#iu', "\n", (string) $text);
     $text = pg_ai_write_strip_markup((string) $text);
     $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = str_replace("\xC2\xA0", ' ', $text);
@@ -232,7 +234,20 @@ function pg_ai_write_plain($value, $max)
     $text = preg_replace('/ *\n */u', "\n", (string) $text);
     $text = trim((string) preg_replace("/\n{3,}/u", "\n\n", (string) $text));
 
-    return pg_ai_write_cut($text, (int) $max);
+    return pg_ai_write_cut(pg_ai_write_join_lists($text), (int) $max);
+}
+
+/**
+ * List items a blank line apart are still one list.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_ai_write_join_lists($text)
+{
+    $text = preg_replace('/^(- .*)\n\n(?=- )/mu', "$1\n", (string) $text);
+
+    return (string) preg_replace('/^(\d{1,2}[.)] .*)\n\n(?=\d{1,2}[.)] )/mu', "$1\n", (string) $text);
 }
 
 /**
@@ -283,6 +298,179 @@ function pg_ai_write_context($record, $context)
     }
 
     return $out;
+}
+
+/* ---------------------------------------------------------------------------
+   What the site knows besides the form
+   --------------------------------------------------------------------------- */
+
+/**
+ * The words of an HTML document: what the page runs (scripts, styles, PHP)
+ * left out, blocks kept apart by line breaks, entities resolved. Unlike
+ * pg_ai_write_plain() every tag goes: in HTML a "<" that is a word is
+ * written as &lt;.
+ *
+ * @param string $html
+ * @param int    $max
+ * @return string
+ */
+function pg_ai_write_html_text($html, $max)
+{
+    $html = substr((string) $html, 0, max(200000, 8 * (int) $max));
+
+    if (function_exists('mb_convert_encoding')) {
+        $html = (string) mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+    }
+
+    $html = preg_replace('#<(script|style|noscript|template|svg|head)\b[^>]*>.*?</\1\s*>#isu', ' ', $html);
+    $html = preg_replace('#<\?(?:php|=)?.*?(?:\?>|$)#isu', ' ', (string) $html);
+    $html = preg_replace('#<br\s*/?>|</?(p|div|li|ul|ol|h[1-6]|tr|table|section|article|header|footer|nav|blockquote|figure|figcaption)\b[^>]*>#iu', "\n", (string) $html);
+    $text = html_entity_decode(strip_tags((string) $html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = str_replace("\xC2\xA0", ' ', $text);
+    $text = preg_replace('/[ \t]+/u', ' ', $text);
+    $text = preg_replace('/ *\n */u', "\n", (string) $text);
+    $text = trim((string) preg_replace("/\n{2,}/u", "\n", (string) $text));
+
+    return pg_ai_write_cut($text, (int) $max);
+}
+
+/**
+ * The headings (h1-h3, at most twelve, each once) and the text of a page's
+ * HTML, as the context keys of a page.
+ *
+ * @param string $html
+ * @return array headings, page_text
+ */
+function pg_ai_write_html_digest($html)
+{
+    $html = (string) $html;
+    $headings = array();
+
+    if (preg_match_all('#<h([1-3])\b[^>]*>(.*?)</h\1\s*>#isu', $html, $matches)) {
+        foreach ($matches[2] as $inner) {
+            $heading = pg_ai_write_html_text($inner, 200);
+
+            if (($heading !== '') && !in_array($heading, $headings, true)) {
+                $headings[] = $heading;
+            }
+
+            if (count($headings) >= 12) {
+                break;
+            }
+        }
+    }
+
+    return array('headings' => implode("\n", $headings), 'page_text' => pg_ai_write_html_text($html, 6000));
+}
+
+/**
+ * A price as the model reads it: the amount with the store's currency, or
+ * nothing for an empty or zero price, which says nothing about the product.
+ *
+ * @param mixed  $price  as the form holds it ("89,95")
+ * @param string $symbol the store's currency symbol
+ * @return string
+ */
+function pg_ai_write_price_text($price, $symbol)
+{
+    $price = trim(is_scalar($price) ? (string) $price : '');
+
+    if (!preg_match('/[1-9]/', $price)) {
+        return '';
+    }
+
+    $symbol = trim((string) $symbol);
+
+    if (($symbol === '') || (mb_strpos($price, $symbol) !== false)) {
+        return $price;
+    }
+
+    return $price . ' ' . $symbol;
+}
+
+/**
+ * What the site holds about a stored record that the form does not show:
+ * a product's groups and attribute choices, a page's folder, headings and
+ * text. Read only for records the person may edit (checked before).
+ *
+ * @param string $record
+ * @param int    $record_id
+ * @return array context key => value
+ */
+function pg_ai_write_facts($record, $record_id)
+{
+    $record_id = (int) $record_id;
+
+    if ($record_id <= 0) {
+        return array();
+    }
+
+    $facts = array();
+
+    if ($record === 'product') {
+        $groups = db_values("SELECT product_groups.name
+            FROM products_groups_xref
+            LEFT JOIN product_groups ON products_groups_xref.product_group = product_groups.id
+            WHERE products_groups_xref.product = '" . $record_id . "' AND product_groups.name IS NOT NULL
+            ORDER BY product_groups.name LIMIT 10");
+
+        if (is_array($groups) && !empty($groups)) {
+            $facts['groups'] = $groups;
+        }
+
+        $attributes = array();
+
+        foreach ((array) db_items("SELECT product_attributes.label AS attribute, product_attributes.name, product_attribute_options.label AS choice
+            FROM products_attributes_xref
+            LEFT JOIN product_attributes ON products_attributes_xref.attribute_id = product_attributes.id
+            LEFT JOIN product_attribute_options ON products_attributes_xref.option_id = product_attribute_options.id
+            WHERE products_attributes_xref.product_id = '" . $record_id . "'
+            ORDER BY products_attributes_xref.sort_order LIMIT 20") as $row) {
+            $name = trim((string) (($row['attribute'] ?? '') !== '' ? $row['attribute'] : ($row['name'] ?? '')));
+            $choice = trim((string) ($row['choice'] ?? ''));
+
+            if ($choice !== '') {
+                $attributes[] = (($name !== '') ? rtrim($name, ': ') . ': ' : '') . $choice;
+            }
+        }
+
+        if (!empty($attributes)) {
+            $facts['attributes'] = $attributes;
+        }
+
+        return $facts;
+    }
+
+    if ($record === 'page') {
+        $page = db_item("SELECT page.page_tree_code, folder.folder_name
+            FROM page
+            LEFT JOIN folder ON page.page_folder = folder.folder_id
+            WHERE page.page_id = '" . $record_id . "' LIMIT 1");
+
+        if (!is_array($page)) {
+            return array();
+        }
+
+        if ((string) $page['folder_name'] !== '') {
+            $facts['folder'] = (string) $page['folder_name'];
+        }
+
+        // A page of a visual design keeps its markup as one block; a classic
+        // page in its regions.
+        $html = (string) $page['page_tree_code'];
+
+        if (trim($html) === '') {
+            $html = implode("\n", (array) db_values("SELECT pregion_content FROM pregion
+                WHERE pregion_page = '" . $record_id . "' AND collection = 'a'
+                ORDER BY pregion_order ASC"));
+        }
+
+        if (trim($html) !== '') {
+            $facts = array_merge($facts, array_filter(pg_ai_write_html_digest($html), 'strlen'));
+        }
+    }
+
+    return $facts;
 }
 
 /* ---------------------------------------------------------------------------
@@ -569,11 +757,7 @@ function pg_ai_write_tidy($format, $text, $max)
     $text = preg_replace('/ *\n */u', "\n", (string) $text);
     $text = trim((string) preg_replace("/\n{3,}/u", "\n\n", (string) $text));
 
-    // List items a blank line apart are still one list.
-    $text = preg_replace('/^(- .*)\n\n(?=- )/mu', "$1\n", $text);
-    $text = preg_replace('/^(\d{1,2}[.)] .*)\n\n(?=\d{1,2}[.)] )/mu', "$1\n", (string) $text);
-
-    return pg_ai_write_cut((string) $text, $max);
+    return pg_ai_write_cut(pg_ai_write_join_lists($text), $max);
 }
 
 /**
@@ -917,6 +1101,148 @@ function pg_ai_write_available($user, $record, $record_id = 0)
 }
 
 /* ---------------------------------------------------------------------------
+   On the screen
+   --------------------------------------------------------------------------- */
+
+/**
+ * The "Write with AI" button of one field. What the script needs travels in
+ * one JSON attribute: the target and the record, the id of the field the
+ * draft goes into, its format, and which form element holds each context key.
+ *
+ * @param array  $config target, record, record_id, field, format, context
+ *                       (key => element id)
+ * @param string $label  the button's words
+ * @return string
+ */
+function pg_ai_write_button_markup($config, $label)
+{
+    $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+
+    return '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap pg-ai-write-btn"'
+        . ' data-pg-ai-write="' . h((string) json_encode($config, $flags)) . '" aria-expanded="false"'
+        . ' aria-controls="pg_ai_draft_' . h(preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($config['field'] ?? ''))) . '">'
+        . '<i class="bi bi-stars me-1" aria-hidden="true"></i>' . h($label) . '</button>';
+}
+
+/**
+ * The field's label with the button beside it, or the label alone when there
+ * is no button.
+ *
+ * @param string $label  the <label> markup
+ * @param string $button pg_ai_write_button()
+ * @return string
+ */
+function pg_ai_write_label_row($label, $button)
+{
+    if ($button === '') {
+        return $label;
+    }
+
+    return '<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2">' . $label . $button . '</div>';
+}
+
+/**
+ * Whether a button was drawn on this request, so the screen loads the script
+ * once and only when something uses it.
+ *
+ * @param bool|null $set true to note that one was
+ * @return bool
+ */
+function pg_ai_write_buttons_drawn($set = null)
+{
+    static $drawn = false;
+
+    if ($set === true) {
+        $drawn = true;
+    }
+
+    return $drawn;
+}
+
+/**
+ * The button of one field, '' when the person or the site cannot ask for a
+ * draft of it.
+ *
+ * @param array $user validate_user()
+ * @param array $args target, record, record_id, field (the element id the
+ *                    draft goes into), context (key => element id)
+ * @return string
+ */
+function pg_ai_write_button($user, $args)
+{
+    $target = (string) ($args['target'] ?? '');
+    $record = (string) ($args['record'] ?? '');
+    $record_id = (int) ($args['record_id'] ?? 0);
+    $row = pg_ai_write_target($target);
+
+    if (!$row || !isset($row['records'][$record]) || !pg_ai_write_available($user, $record, $record_id)) {
+        return '';
+    }
+
+    pg_ai_write_buttons_drawn(true);
+
+    return pg_ai_write_button_markup(array(
+        'target'    => $target,
+        'record'    => $record,
+        'record_id' => $record_id,
+        'field'     => (string) ($args['field'] ?? ''),
+        'format'    => $row['format'],
+        'context'   => is_array($args['context'] ?? null) ? $args['context'] : array(),
+    ), lang('Write with AI'));
+}
+
+/**
+ * The words the script shows, through lang().
+ *
+ * @return array
+ */
+function pg_ai_write_js_config()
+{
+    return array(
+        'labels' => array(
+            'panel'     => lang('Write with AI'),
+            'title'     => lang('Draft by Pinegrap AI'),
+            'tone'      => lang('Tone'),
+            'writing'   => lang('Pinegrap AI is writing…'),
+            'use'       => lang('Use this text'),
+            'again'     => lang('Try again'),
+            'close'     => lang('Close'),
+            'hint'      => lang('Anything to mention? (optional)'),
+            'check'     => lang('AI can be wrong: read the text before you save.'),
+            'left'      => lang(array('string' => '{var:1} drafts left today on this site.', 'vars' => '{n}')),
+            'failed'    => lang('The draft could not be fetched. Check the connection and try again.'),
+        ),
+        'tones' => array(
+            array('neutral', lang('Informative')),
+            array('friendly', lang('Friendly')),
+            array('formal', lang('Formal')),
+            array('persuasive', lang('Persuasive')),
+        ),
+    );
+}
+
+/**
+ * The script and its words, once per screen and only when a button was
+ * drawn; '' otherwise. Printed after the form.
+ *
+ * @return string
+ */
+function pg_ai_write_assets()
+{
+    static $printed = false;
+
+    if ($printed || !pg_ai_write_buttons_drawn()) {
+        return '';
+    }
+
+    $printed = true;
+    $flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
+
+    return '<script>window.PinegrapAiWrite = ' . json_encode(pg_ai_write_js_config(), $flags) . ';</script>'
+        . '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ai_write.js?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_ai_write.js') . '"></script>';
+}
+
+/* ---------------------------------------------------------------------------
    Asking
    --------------------------------------------------------------------------- */
 
@@ -1014,7 +1340,21 @@ function pg_ai_write($user, $args)
         return $fail($state['reason']);
     }
 
-    $context = pg_ai_write_context($record, $args['context'] ?? array());
+    // The form's values first; what the site knows fills only what the form
+    // did not send.
+    $sent = is_array($args['context'] ?? null) ? $args['context'] : array();
+
+    if (($record === 'product') && array_key_exists('price', $sent)) {
+        $sent['price'] = pg_ai_write_price_text($sent['price'], defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '');
+    }
+
+    foreach (pg_ai_write_facts($record, $record_id) as $key => $value) {
+        if (!isset($sent[$key]) || (is_scalar($sent[$key]) && (trim((string) $sent[$key]) === ''))) {
+            $sent[$key] = $value;
+        }
+    }
+
+    $context = pg_ai_write_context($record, $sent);
     $hint = pg_ai_write_plain($args['hint'] ?? '', PG_AI_WRITE_HINT_MAX);
 
     // Something to write about: the field's own text alone is enough to

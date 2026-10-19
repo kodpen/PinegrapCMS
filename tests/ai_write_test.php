@@ -69,6 +69,7 @@ function test_ai_write_tone_falls_back_to_neutral()
 function test_ai_write_plain_reduces_markup_to_text()
 {
 	pg_assert_same("Soft cotton.\nFits <10 cm pockets & more.", pg_ai_write_plain('<p>Soft <strong>cotton</strong>.</p><p>Fits &lt;10 cm pockets &amp; more.</p>', 500));
+	pg_assert_same("Intro\n\n- A\n- B", pg_ai_write_plain("<p>Intro</p>\n\n<ul>\n\t<li>A</li>\n\t<li>B</li>\n</ul>\n", 500), 'editor list');
 	pg_assert_same('Red; Large', pg_ai_write_plain(array('Red', 'Large', array('nested')), 100), 'list');
 	pg_assert_same('a b', pg_ai_write_plain("a \t  b", 100), 'spaces');
 	pg_assert_same('', pg_ai_write_plain(true, 100), 'boolean');
@@ -287,6 +288,116 @@ function test_ai_write_language_name()
 	pg_assert_same('German', pg_ai_write_language_name('de-AT'));
 	pg_assert_same('xx', pg_ai_write_language_name('xx'));
 	pg_assert_same('English', pg_ai_write_language_name(''));
+}
+
+// A page's HTML gives its words: what it runs is left out, every tag goes
+// (in HTML a "<" that is a word is &lt;), blocks stay apart.
+function test_ai_write_html_text()
+{
+	$html = '<style>.a{}</style><h1>Hello</h1><p>Linen &amp; cotton,<br>&lt;10 cm</p><script>x()</script><?php echo 1; ?><div>End</div>';
+
+	pg_assert_same("Hello\nLinen & cotton,\n<10 cm\nEnd", pg_ai_write_html_text($html, 500));
+	pg_assert_same('Hello', pg_ai_write_html_text('<custom-tag a="b">Hello</custom-tag>', 500), 'unknown tag');
+	pg_assert_same('Open', pg_ai_write_html_text('Open <?php never closed', 500), 'open php');
+}
+
+// The digest keeps the first headings once each, and the text.
+function test_ai_write_html_digest()
+{
+	$digest = pg_ai_write_html_digest('<h1>Linen</h1><p>Soft.</p><h2 class="x">Care</h2><h2>Care</h2><h4>Small</h4>');
+
+	pg_assert_same("Linen\nCare", $digest['headings']);
+	pg_assert_same("Linen\nSoft.\nCare\nCare\nSmall", $digest['page_text']);
+	pg_assert_same(array('headings' => '', 'page_text' => ''), pg_ai_write_html_digest(''), 'empty');
+}
+
+// A price goes with the store's currency; an empty or zero price goes not
+// at all.
+function test_ai_write_price_text()
+{
+	pg_assert_same('89,95 ₺', pg_ai_write_price_text('89,95', '₺'));
+	pg_assert_same('₺89,95', pg_ai_write_price_text('₺89,95', '₺'), 'already there');
+	pg_assert_same('', pg_ai_write_price_text('0,00', '₺'), 'zero');
+	pg_assert_same('', pg_ai_write_price_text('', '₺'), 'empty');
+	pg_assert_same('', pg_ai_write_price_text(array('1'), '₺'), 'not a value');
+	pg_assert_same('12', pg_ai_write_price_text('12', ''), 'no symbol');
+}
+
+// The button carries its settings as escaped JSON and names the panel it
+// opens.
+function test_ai_write_button_markup()
+{
+	$html = pg_ai_write_button_markup(array(
+		'target'    => 'seo_title',
+		'record'    => 'page',
+		'record_id' => 5,
+		'field'     => 'title',
+		'format'    => 'line',
+		'context'   => array('page_title' => 'title'),
+	), 'Write "with" AI');
+
+	pg_assert_contains('class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap pg-ai-write-btn"', $html);
+	pg_assert_contains('type="button"', $html);
+	pg_assert_contains('aria-controls="pg_ai_draft_title"', $html);
+	pg_assert_contains('Write &quot;with&quot; AI</button>', $html);
+	pg_assert_false(strpos($html, '{"target"') !== false, 'raw json');
+
+	preg_match('/data-pg-ai-write="([^"]*)"/', $html, $match);
+	$settings = json_decode(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8'), true);
+
+	pg_assert_same('seo_title', $settings['target']);
+	pg_assert_same(5, $settings['record_id']);
+	pg_assert_same(array('page_title' => 'title'), $settings['context']);
+	pg_assert_contains('aria-controls="pg_ai_draft_x1"', pg_ai_write_button_markup(array('field' => 'x"1'), 'W'), 'field id cleaned');
+}
+
+// The label stays as it was when there is no button.
+function test_ai_write_label_row()
+{
+	pg_assert_same('<label>A</label>', pg_ai_write_label_row('<label>A</label>', ''));
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2"><label>A</label><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>'));
+}
+
+// The script's words: every key the panel reads, a tone for each of the
+// model's tones, in the same order.
+function test_ai_write_js_config_matches_tones()
+{
+	$config = pg_ai_write_js_config();
+
+	foreach (array('panel', 'title', 'tone', 'writing', 'use', 'again', 'close', 'hint', 'check', 'left', 'failed') as $key) {
+		pg_assert_true(isset($config['labels'][$key]) && ($config['labels'][$key] !== ''), 'label ' . $key);
+	}
+
+	pg_assert_contains('{n}', $config['labels']['left'], 'count placeholder');
+	pg_assert_same(array_keys(pg_ai_write_tones()), array_map(function ($tone) {
+		return $tone[0];
+	}, $config['tones']), 'tones');
+}
+
+// Nothing is printed when no button was drawn.
+function test_ai_write_assets_need_a_button()
+{
+	if (pg_ai_write_buttons_drawn()) {
+		return;
+	}
+
+	pg_assert_same('', pg_ai_write_assets());
+}
+
+// The script reads the settings and the words the PHP side writes.
+function test_ai_write_script_reads_what_php_writes()
+{
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_ai_write.js');
+
+	pg_assert_contains("'.pg-ai-write-btn'", $script, 'button class');
+	pg_assert_contains("'data-pg-ai-write'", $script, 'settings attribute');
+	pg_assert_contains("'pg_ai_draft_'", $script, 'panel id');
+	pg_assert_contains('window.PinegrapAiWrite', $script, 'config');
+	pg_assert_contains("action: 'ai_write'", $script, 'action');
+
+	foreach (array_keys(pg_ai_write_js_config()['labels']) as $key) {
+		pg_assert_contains("label('" . $key . "')", $script, 'label ' . $key);
+	}
 }
 
 // Quotation marks around the whole line go; one-sided or inner ones stay.

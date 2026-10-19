@@ -4,8 +4,8 @@ description: "Write with AI" drafts for product and page fields (ai_write panel 
 ---
 
 ## What exists?
-- Panel action `ai_write` (`includes/panel/ai_write.php`, PR #581): a draft for one field, written by Pinegrap AI from the form's current values (unsaved edits included); nothing is saved. Logic in `includes/fn/ai_write.php`, pure parts tested in `tests/ai_write_test.php`. The buttons on the screens: `docs/memory/plans/ai-write-buttons.md`.
-- Targets (`pg_ai_write_targets()`): `product_description` (paragraphs and a "- " list, returned also as HTML), `product_short` (≤100), `seo_title` (≤60; product `title`, page `page_title`), `seo_description` (≤160; `meta_description`). The context keys a record may send are in `pg_ai_write_record_fields()`; unknown keys are dropped, rich text is reduced to plain text. The field's own key travels as `current_text`, so the model rewrites it instead of quoting it as a fact.
+- Panel action `ai_write` (`includes/panel/ai_write.php`, PR #581): a draft for one field, written by Pinegrap AI from the form's current values (unsaved edits included); nothing is saved. Logic in `includes/fn/ai_write.php`, pure parts tested in `tests/ai_write_test.php`. The buttons on the screens: docs/memory/ui/ai-write-panel.md.
+- Targets (`pg_ai_write_targets()`): `product_description` (paragraphs and a "- " list, returned also as HTML), `product_short` (≤100), `seo_title` (≤60; product `title`, page `page_title`), `seo_description` (≤160; `meta_description`). The context keys a record may send are in `pg_ai_write_record_fields()`; unknown keys are dropped, rich text is reduced to plain text, and a stored record's groups, attributes or page text fill what the form left empty. The field's own key travels as `current_text`, so the model rewrites it instead of quoting it as a fact.
 
 ## Which model, which language?
 - Pinegrap AI only, through `pg_ai_chat()` (`includes/translate/engine_ai.php`), which carries the licence, the model and the hold after a failed call. Claude is not asked: a routine run takes 1–3 minutes and counts against a few runs a day, a form button has to answer while the person waits.
