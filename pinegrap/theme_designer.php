@@ -1076,11 +1076,10 @@ if (!$_POST) {
         <head>
             <meta charset="utf-8">
             <title>' . lang('Theme Designer') . '</title>
-            ' . output_control_panel_header_includes() . '
+            ' . output_control_panel_header_includes(true, '', false) . '
             <link rel="stylesheet" media="screen" type="text/css" href="assets/lib/colorpicker/css/colorpicker.css" />
             <script type="text/javascript" src="assets/lib/colorpicker/js/colorpicker.js"></script>
             <script type="text/javascript" src="assets/lib/colorpicker/js/eye.js"></script>
-            ' . get_codemirror_includes() . '
             <script type="text/javascript">
                 
                 $(document).ready(function() {

@@ -37,6 +37,8 @@ if (!$_POST) {
 
     echo  pg_page_shell(array(
         'title'=> lang('Create File'),
+        // The code field is the facade's editor (pg_code_editor_attach()).
+        'code_editor' => false,
         'icon'=>'file',
         'heading'=>lang('Create File'),
         'heading_description' => lang('Create a new editable file'),
@@ -132,27 +134,30 @@ if (!$_POST) {
             </div>
         </div>
 
-    ' . get_codemirror_includes() . '
-    ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'text')) . '
+    ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'text')) . '
 
     <script>
+        // The editor follows the chosen type: its grammar, and the syntax
+        // check for everything but plain text. The editor may still be on its
+        // way when the page starts; it opens as plain text, the default type.
         function updateMode(type) {
-            let mode = "text/plain";
+            let language = "html";
             let lint = false;
 
             switch(type) {
-                case "css": mode = "css"; lint = true; break;
-                case "js": mode = "javascript"; lint = true; break;
-                case "json": mode = "application/json"; lint = true; break;
+                case "css": language = "css"; lint = true; break;
+                case "js": language = "javascript"; lint = true; break;
+                case "json": language = "json"; lint = true; break;
                 case "xml":
-                case "svg": mode = "xml"; lint = true; break;
-                case "txt": default: mode = "text/plain"; lint = false; break;
+                case "svg": language = "html"; lint = true; break;
+                case "txt": default: language = "html"; lint = false; break;
             }
 
-            if (typeof editor !== "undefined") {
-                editor.setOption("lint", false);
-                editor.setOption("mode", mode);
-                editor.setOption("lint", lint);
+            var editor = window.pgCodeEditors && window.pgCodeEditors.code;
+
+            if (editor && !editor.isDestroyed()) {
+                editor.setLanguage(language);
+                editor.setLint(lint);
             }
         }
 
@@ -163,8 +168,10 @@ if (!$_POST) {
             updateMode(val);
         });
 
-        document.addEventListener("DOMContentLoaded", function() {
-            updateMode("txt");
+        // The editor arrives after the page; a type chosen before then is
+        // applied when it does.
+        document.getElementById("code").addEventListener("pgcodeeditorready", function () {
+            updateMode(document.getElementById("type").value);
         });
     </script>
     

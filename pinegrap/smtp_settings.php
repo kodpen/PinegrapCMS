@@ -239,13 +239,14 @@ if (!$_POST) {
 
     print pg_page_shell([
         'title'=> lang('SMTP Settings'),
+        // No code field here; CodeMirror 5 waits in its template.
+        'code_editor' => false,
         'extra classes'=>'setting',
         'icon'=>'setting',
         'heading'=>lang('SMTP Settings'),
         'heading_description' => lang('Update the Smtp settings for the Software Mail Function.')
     ]) . '
 <main id="content" class="container-fluid">
-            ' . get_codemirror_includes() . '
         <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . $liveform->get_warnings() . $liveform->output_notices() . '
