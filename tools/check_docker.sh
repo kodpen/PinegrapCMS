@@ -66,7 +66,7 @@ cleanup() {
 	local status=$?
 
 	if [ "$status" -ne 0 ]; then
-		"${COMPOSE[@]}" logs --no-color --tail 25 2>&1 | annotate "container logs" || true
+		"${COMPOSE[@]}" logs --no-color --tail 25 app web cron 2>&1 | annotate "container logs" || true
 	fi
 
 	"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
@@ -75,6 +75,10 @@ cleanup() {
 }
 
 trap cleanup EXIT
+
+# A command that fails outside fail() still says where.
+set -E
+trap 'echo "line $LINENO: $BASH_COMMAND failed" | annotate "check_docker.sh"' ERR
 
 # The HTTP status of an address, without following redirects.
 status_of() {
@@ -135,7 +139,7 @@ for address in /pinegrap/data/config.php /pinegrap/data/backups/english_default/
 	[ "$code" = "403" ] || fail "$address answered $code, expected 403"
 done
 
-ASSET="$(cd "$ROOT/pinegrap" && find assets -type f -name '*.css' | head -1)"
+ASSET="$(cd "$ROOT/pinegrap" && find assets -type f -name '*.css' -print -quit)"
 [ -n "$ASSET" ] && [ "$(status_of "/pinegrap/$ASSET")" = "200" ] || fail "the static file /pinegrap/$ASSET is not served"
 echo "OK: data/ and includes/ refused, static files served."
 
