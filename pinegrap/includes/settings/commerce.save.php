@@ -66,6 +66,49 @@ function pg_parasut_credentials_for_save()
 
 
 
+    // Checkout legal documents (11.0.1). A template naming a field that does
+    // not exist would print nothing where a customer expects a fact, and a
+    // template past the column's size would be cut; either refuses the whole
+    // save before anything below writes.
+    $sql_legal_documents = '';
+
+    if (pg_schema_has('config', 'ecommerce_legal_documents')) {
+        $legal_values = array();
+
+        foreach (pg_legal_document_types() as $legal_type => $legal_label) {
+            $legal_field = 'ecommerce_' . $legal_type . '_template';
+            // Browsers post a textarea's line breaks as CRLF.
+            $legal_value = trim(str_replace("\r\n", "\n", (string) post_value($legal_field)));
+
+            // The built-in template is not stored, so a later improvement to
+            // it reaches a store that never changed it.
+            if ($legal_value === trim(str_replace("\r\n", "\n", pg_legal_document_default_template($legal_type, lang(array('info' => true)))))) {
+                $legal_value = '';
+            }
+
+            $legal_unknown = pg_legal_document_unknown_placeholders($legal_value);
+
+            if ($legal_unknown) {
+                $liveform->mark_error($legal_field, lang(array('string' => '{var:1}: unknown field {var:2}.', 'vars' => array($legal_label, '^^' . implode('^^, ^^', $legal_unknown) . '^^'))));
+            } elseif (strlen($legal_value) > 65535) {
+                $liveform->mark_error($legal_field, lang(array('string' => '{var:1} is too long.', 'vars' => array($legal_label))));
+            }
+
+            $legal_values[$legal_field] = $legal_value;
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+
+        $sql_legal_documents = "ecommerce_legal_documents = '" . ((post_value('ecommerce_legal_documents') == 1) ? 1 : 0) . "',";
+
+        foreach ($legal_values as $legal_field => $legal_value) {
+            $sql_legal_documents .= "
+            " . $legal_field . " = " . (($legal_value === '') ? 'NULL' : "'" . escape($legal_value) . "'") . ",";
+        }
+    }
+
     // if the user selected to reset encryption key, then do that
     if (
         isset($_POST['ecommerce_reset_encryption_key'])
@@ -441,6 +484,7 @@ function pg_parasut_credentials_for_save()
             " . $sql_erp_fx . "
             " . $sql_erp_due . "
             " . $sql_erp_overdue . "
+            " . $sql_legal_documents . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',

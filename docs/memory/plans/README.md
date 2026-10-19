@@ -8,7 +8,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-product-feeds.md: Plan (approved 2026-10-19, not started): product feed exports for AI shopping agents (OpenAI JSONL/CSV, Google TSV) with eligibility flags and policy URLs beside ?rss=true; UCP manifest groundwork
 - ai-write-buttons.md: Plan (approved 2026-10-19, not started): "Write with AI" buttons in the product builder, page SEO fields, image alt text and blog records, reusing the Workspace AI client; AI-generated labelling
-- checkout-legal-documents.md: Plan (approved 2026-10-19, not started): pre-information form and distance sales contract generated per order at checkout, approval before payment, stored copy, KVKK consent texts
+- checkout-legal-documents.md: Plan (approved 2026-10-19, steps 1-2 built): pre-information form and distance sales contract generated per order at checkout, approval before payment, stored copy, KVKK consent texts
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - customer-returns-flow.md: Plan (approved 2026-10-19, not started): customer return request in My Account, approval, return carrier code, status, 14-day timers, bridge to iyzico refund and ERP return invoice
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, panel screens off CodeMirror 5)

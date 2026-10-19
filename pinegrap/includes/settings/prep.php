@@ -550,6 +550,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_storefront_account_prices_checked = ((int) ($row['erp_storefront_account_prices'] ?? 0) === 1) ? ' checked' : '';
     // Putting an order on the account at checkout (10.60).
     $erp_open_account_ready = array_key_exists('erp_open_account_payment', $row);
+    // Checkout legal documents (11.0.1): the switch and the two templates. An
+    // empty template is shown as the built-in one, so it is edited rather than
+    // written from nothing.
+    $legal_documents_ready = array_key_exists('ecommerce_legal_documents', $row);
+    $ecommerce_legal_documents_checked = ((int) ($row['ecommerce_legal_documents'] ?? 0) === 1) ? ' checked' : '';
+    $ecommerce_legal_templates = array();
+    foreach (array('preinfo' => 'ecommerce_preinfo_template', 'contract' => 'ecommerce_contract_template') as $legal_type => $legal_column) {
+        $legal_template = (string) ($row[$legal_column] ?? '');
+        $ecommerce_legal_templates[$legal_type] = (trim($legal_template) !== '')
+            ? $legal_template
+            : pg_legal_document_default_template($legal_type, lang(array('info' => true)));
+    }
     $erp_open_account_payment_checked = ((int) ($row['erp_open_account_payment'] ?? 0) === 1) ? ' checked' : '';
 
     // ERP notices on the bell and the devices (4.91); the amount is kept in
