@@ -114,6 +114,45 @@ function pg_maintenance_passes(array $allow)
 }
 
 /**
+ * Whether an address the firewall resolved is one every visitor arrives
+ * with, not a person's own: the server itself (a tunnel or a reverse proxy on
+ * the same machine) or a trusted proxy whose header named nobody
+ * (waf_ip_is_infrastructure()). Shown on the card, so the operator does not
+ * take it for theirs.
+ *
+ * @param string $ip as waf_client_ip() returns it
+ * @return bool
+ */
+function pg_maintenance_ip_is_shared($ip)
+{
+    $ip = (string) $ip;
+
+    return ($ip !== '') && function_exists('waf_ip_is_infrastructure') && waf_ip_is_infrastructure($ip);
+}
+
+/**
+ * Whether a typed address list lets every visitor through: it holds the
+ * address this request arrives from, and every visitor shares that address.
+ *
+ * @param string $list   the list as typed
+ * @param string $ip     the address the firewall resolved for this request
+ * @param bool   $shared pg_maintenance_ip_is_shared($ip)
+ * @return bool
+ */
+function pg_maintenance_list_opens_to_all($list, $ip, $shared)
+{
+    $ip = (string) $ip;
+
+    if (!$shared || ($ip === '') || !function_exists('waf_parse_list') || !function_exists('waf_ip_in_any')) {
+        return false;
+    }
+
+    $patterns = waf_parse_list((string) $list);
+
+    return $patterns ? waf_ip_in_any($ip, $patterns) : false;
+}
+
+/**
  * The entries of a typed address list that are not an address, a range
  * (CIDR) or an IPv4 wildcard - the patterns the firewall's lists take.
  *
