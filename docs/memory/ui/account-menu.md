@@ -8,7 +8,7 @@ description: Header account menu (pg_account_menu()): fixed card, phone sheet, w
 - Order: who is signed in (an administrator's links to `edit_user.php`), the address book form while the name or picture is missing, the licence card (`license_check('bar')`), appearance, My Account / connected applications / calendar subscription / start page, Help & Support, logout, version line.
 
 ## Why is it fixed to the viewport?
-- Bootstrap gives no Popper to a dropdown inside a `.navbar`, so a menu hung from its toggle has nothing keeping it on screen. The old menu ran off the left edge of a phone, and could not scroll: `#header .pg-usermenu {overflow:hidden}` beat `#user_menu {overflow-y:auto}` on specificity, so on a phone logout and the rows below the fold were out of reach.
+- Bootstrap gives no Popper to a dropdown inside a `.navbar`, so a menu hung from its toggle has nothing keeping it on screen. The old menu ran off the left edge of a phone, and could not scroll: `#header .pg-usermenu {overflow:hidden}` beat `#user_menu {overflow-y:auto}` on specificity, so on a phone logout and the rows below the fold were out of reach (rebuilt in #593).
 - Now: from 576px a 20rem card under the bar's right edge, `max-height` from `100dvh`, scrolling inside with `overscroll-behavior: contain`. Below 576px a sheet anchored to all four edges under the bar, solid even with the acrylic effect, with its own close button (`[data-pg-account-close]`); the page behind does not scroll and the chat bubble steps aside while it is open.
 - Opening any header menu closes the main menu drawer (`initMenuDrawer()`), which is drawn above the header's layer.
 
