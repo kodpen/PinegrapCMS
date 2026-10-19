@@ -50,6 +50,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/workdays.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notify.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/files.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/library.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calendar.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calendar_feed.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/briefing.php');

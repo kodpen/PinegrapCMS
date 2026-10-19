@@ -1472,6 +1472,34 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
+        // A file of the file manager in a conversation (library.php): the
+        // picker under the paperclip, the channels the file manager's "Send
+        // to a channel" offers, and the copy posted from either.
+        case 'ws_library_browse':
+            return ws_action_ok(ws_library_browse($viewer, (int) ($request['folder_id'] ?? 0), (string) ($request['q'] ?? '')));
+
+        case 'ws_library_channels':
+            return ws_action_ok(array('channels' => ws_library_channels($viewer)));
+
+        case 'ws_library_attach':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $result = ws_library_send($viewer, $channel, (int) ($request['file_id'] ?? 0), (string) ($request['body'] ?? ''));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array(
+                'message_id' => $result['message_id'],
+                'channel'    => array('id' => (int) $channel['id'], 'name' => (string) $channel['name']),
+                'url'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'] . '&message=' . (int) $result['message_id'],
+            ));
+
         // A conversation with a guest (guests.php): started, a new link
         // given, ended. Staff in the room only; the functions check.
         case 'ws_guest_start':

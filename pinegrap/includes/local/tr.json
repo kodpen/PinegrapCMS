@@ -23638,5 +23638,22 @@
     "Write the new price after the product, like 149,90.": "Yeni fiyatı ürünün ardından yazın: 149,90 gibi.",
     "{var:1}: the value is out of range.": "{var:1}: değer izin verilen aralığın dışında.",
     "The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.": "Kayıt bu arada değişti, hiçbir şey yazılmadı. Şimdiki değerini görmek için komutu yeniden gönderin.",
-    "The change that will be written": "Yazılacak değişiklik"
+    "The change that will be written": "Yazılacak değişiklik",
+    "Channels do not take this kind of file.": "Kanallar bu tür dosyayı kabul etmiyor.",
+    "This file is already in the Workspace. Forward the message that carries it instead.": "Bu dosya zaten Çalışma Alanı'nda. Onun yerine dosyayı taşıyan mesajı iletin.",
+    "From this device": "Bu cihazdan",
+    "From the file manager": "Dosya yöneticisinden",
+    "The channel gets a copy of the file you pick; the original stays where it is.": "Kanala seçtiğiniz dosyanın bir kopyası gider; asıl dosya yerinde kalır.",
+    "Search the file manager": "Dosya yöneticisinde ara",
+    "All folders": "Tüm klasörler",
+    "Changed last": "Son değişenler",
+    "There are no files in this folder.": "Bu klasörde dosya yok.",
+    "No file matches that.": "Bununla eşleşen dosya yok.",
+    "There is no folder in the file manager you can open.": "Dosya yöneticisinde açabileceğiniz bir klasör yok.",
+    "Only the first files are listed. Search to find the others.": "Yalnız ilk dosyalar listelendi. Diğerlerini bulmak için arayın.",
+    "Send to a channel": "Kanala gönder",
+    "There is no channel you can write in.": "Yazabileceğiniz bir kanal yok.",
+    "Sent to {var:1}.": "{var:1} kanalına gönderildi.",
+    "The channel gets a copy of this file; the original stays where it is.": "Kanala bu dosyanın bir kopyası gider; asıl dosya yerinde kalır.",
+    "Add a message (optional)": "Mesaj ekleyin (isteğe bağlı)"
 }

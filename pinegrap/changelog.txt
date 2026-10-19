@@ -24,6 +24,7 @@
 [NEW] Added operations alerts: a failed or stale backup, a stopped scheduled task, changed software files, a burst of PHP errors, low disk space, failing e-mail or webhooks and an expiring certificate are told on the panel bell, by e-mail and on subscribed devices.
 [NEW] Added a backup before every software update and repair: the files it replaces and the database are saved first, and Repair Software can roll the files back to it.
 [NEW] Added a maintenance mode that shows visitors a maintenance page while staff see the site, and a health address for uptime monitors.
+[NEW] Added Word and Excel previews in the file manager and the Workspace, and the file manager's files in Workspace channels: a file is sent to a channel from the file manager, or picked from the writing box.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.
 [SCHEME] Fields for the checkout legal documents are added to the settings, with a table for the documents each order accepted; a table for the price history of products and a compare-at price field for products, and settings for operations alerts, for the backup before software updates and for maintenance mode are added.

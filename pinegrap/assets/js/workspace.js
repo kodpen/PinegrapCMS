@@ -2323,6 +2323,173 @@
         setTimeout(function () { search.focus(); }, 250);
     }
 
+    // A file of the file manager, picked to go into a channel as a copy
+    // (includes/workspace/library.php): its folders to walk, a search over
+    // every folder the person may open, and the files changed last where it
+    // starts. A file a channel would refuse is listed with the reason and
+    // cannot be picked.
+    function libraryPicker(onPick) {
+        var node = offcanvas('ws-library', t('lib_from_manager'));
+        var body = clear(node.querySelector('.offcanvas-body'));
+        var search = el('input', 'form-control form-control-sm mb-2');
+        var trail = el('nav', 'ws-lib-trail');
+        var list = el('div', 'ws-pull-list');
+        var serial = 0;
+        var folder = 0;
+
+        node.querySelector('.offcanvas-footer').classList.add('d-none');
+        search.type = 'search';
+        search.placeholder = t('lib_search');
+        search.setAttribute('aria-label', search.placeholder);
+        trail.setAttribute('aria-label', t('lib_top'));
+        body.appendChild(el('p', 'small text-body-secondary', t('lib_help')));
+        body.appendChild(search);
+        body.appendChild(trail);
+        body.appendChild(list);
+
+        function fileIcon(file) {
+            var byExt = {
+                pdf: 'bi-file-earmark-pdf', doc: 'bi-file-earmark-word', docx: 'bi-file-earmark-word',
+                xls: 'bi-file-earmark-spreadsheet', xlsx: 'bi-file-earmark-spreadsheet', csv: 'bi-file-earmark-spreadsheet', ods: 'bi-file-earmark-spreadsheet',
+                ppt: 'bi-file-earmark-slides', pptx: 'bi-file-earmark-slides', zip: 'bi-file-earmark-zip', txt: 'bi-file-earmark-text', md: 'bi-file-earmark-text'
+            };
+            var byKind = { image: 'bi-file-earmark-image', video: 'bi-file-earmark-play', audio: 'bi-file-earmark-music' };
+
+            return byExt[file.ext] || byKind[file.kind] || 'bi-file-earmark';
+        }
+
+        function crumb(label, id, current) {
+            var step = el(current ? 'span' : 'button', current ? 'ws-lib-crumb fw-semibold' : 'ws-lib-crumb btn btn-link btn-sm p-0', label);
+
+            if (!current) {
+                step.type = 'button';
+                step.addEventListener('click', function () { open(id); });
+            } else {
+                step.setAttribute('aria-current', 'page');
+            }
+
+            return step;
+        }
+
+        function folderRow(item) {
+            var row = el('button', 'ws-pull-item ws-lib-row');
+
+            row.type = 'button';
+            row.appendChild(icon('bi-folder2', 'ws-pull-icon'));
+            row.appendChild(el('span', 'ws-lib-name', item.name));
+            row.appendChild(icon('bi-chevron-right', 'ms-auto text-body-tertiary'));
+            row.addEventListener('click', function () { open(item.id); });
+
+            return row;
+        }
+
+        function fileRow(file, withPlace) {
+            var row = el('button', 'ws-pull-item ws-lib-row');
+            var words = el('span', 'ws-pull-words');
+            var facts = [withPlace ? file.where : '', file.size, file.time].filter(Boolean);
+
+            row.type = 'button';
+
+            if (file.thumb) {
+                var picture = el('img', 'ws-lib-thumb');
+
+                // A picture that will not load shows the file's icon instead.
+                picture.addEventListener('error', function () {
+                    picture.replaceWith(icon(fileIcon(file), 'ws-pull-icon'));
+                });
+                picture.alt = '';
+                picture.loading = 'lazy';
+                picture.src = file.thumb;
+                row.appendChild(picture);
+            } else {
+                row.appendChild(icon(fileIcon(file), 'ws-pull-icon'));
+            }
+
+            words.appendChild(el('span', 'ws-lib-name', file.name));
+            words.appendChild(el('span', 'small text-body-secondary', file.refused || facts.join(' · ')));
+            row.appendChild(words);
+
+            if (file.refused) {
+                row.disabled = true;
+                row.classList.add('ws-lib-refused');
+            } else {
+                row.addEventListener('click', function () {
+                    hideOffcanvas(node);
+                    onPick(file);
+                });
+            }
+
+            return row;
+        }
+
+        function draw(data) {
+            clear(trail);
+            clear(list);
+
+            // Another folder opens at its top, not where the last one was left.
+            body.scrollTop = 0;
+
+            if (data.nothing) {
+                search.disabled = true;
+                list.appendChild(el('div', 'ws-empty', t('lib_nothing')));
+                return;
+            }
+
+            if (!data.search) {
+                if (data.several) {
+                    trail.appendChild(crumb(t('lib_top'), 0, !data.folder));
+                }
+
+                data.trail.forEach(function (step, index) {
+                    if (trail.firstChild) {
+                        trail.appendChild(icon('bi-chevron-right', 'ws-lib-sep'));
+                    }
+
+                    trail.appendChild(crumb(step.name, step.id, index === data.trail.length - 1));
+                });
+            }
+
+            if (data.recent.length) {
+                list.appendChild(el('div', 'ws-lib-section', t('lib_recent')));
+                data.recent.forEach(function (file) { list.appendChild(fileRow(file, true)); });
+                list.appendChild(el('div', 'ws-lib-section', data.folder ? data.folder.name : t('lib_top')));
+            }
+
+            data.folders.forEach(function (item) { list.appendChild(folderRow(item)); });
+            data.files.forEach(function (file) { list.appendChild(fileRow(file, data.search)); });
+
+            if (!data.folders.length && !data.files.length) {
+                list.appendChild(el('div', 'ws-empty', t(data.search ? 'lib_no_match' : 'lib_empty')));
+            }
+
+            if (data.more) {
+                list.appendChild(el('div', 'small text-body-secondary', t('lib_more')));
+            }
+        }
+
+        function load() {
+            var asked = ++serial;
+
+            api('ws_library_browse', { folder_id: folder, q: search.value.trim() }).then(function (data) {
+                if (asked === serial) {
+                    draw(data);
+                }
+            }).catch(fail);
+        }
+
+        function open(id) {
+            folder = id;
+            search.value = '';
+            load();
+        }
+
+        clear(list).appendChild(el('div', 'ws-empty', t('loading')));
+        search.addEventListener('input', debounce(load, 250));
+        showOffcanvas(node);
+        load();
+        setTimeout(function () { search.focus(); }, 250);
+    }
+
     function richField(wrap, options) {
         if (!window.PGWsEditor) {
             return null;
@@ -10595,8 +10762,22 @@
             box.appendChild(input);
 
             var tools = el('div', 'ws-composer-tools');
+            // A file from this device, or one of the file manager's.
             var attach = button('btn btn-sm btn-ghost', '', 'bi-paperclip', t('attach'));
-            attach.addEventListener('click', function () { self.attach(); });
+            attach.addEventListener('click', function (event) {
+                var box = attach.getBoundingClientRect();
+
+                if (!CFG.library) {
+                    self.attach();
+                    return;
+                }
+
+                event.stopPropagation();
+                ctxMenu(box.left, box.top - 6, [
+                    { icon: 'bi-laptop', label: t('lib_from_device'), action: function () { self.attach(); } },
+                    { icon: 'bi-folder2-open', label: t('lib_from_manager'), action: function () { self.attachFromLibrary(); } }
+                ], true);
+            });
             tools.appendChild(attach);
 
             var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
@@ -11403,6 +11584,28 @@
             });
 
             input.click();
+        },
+
+        // A copy of a file of the file manager, the text in the composer
+        // going with it as it does with an upload.
+        attachFromLibrary: function () {
+            var self = this;
+
+            if (!self.channel || !self.channel.can_post) {
+                return;
+            }
+
+            libraryPicker(function (file) {
+                var body = self.input ? self.tokens(self.inputText()) : '';
+
+                api('ws_library_attach', { channel_id: self.channel.id, file_id: file.id, body: body }).then(function () {
+                    if (body !== '') {
+                        self.clearInput();
+                    }
+
+                    self.sync(true);
+                }).catch(fail);
+            });
         },
 
         // Files picked, dropped or pasted: one after the other, the text in

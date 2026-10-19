@@ -14,4 +14,4 @@ description: Word and Excel previews (includes/fn/office.php, pg_office_view.js)
 - `get_file.php` now names the OOXML MIME types (docx, xlsx, pptx, their macro and template forms); they still go out as attachments.
 
 ## Where do the readers go next?
-- Cell-level xlsx edits and paragraph-level docx edits by patching the package on the server, send-to-channel and a picker: docs/memory/plans/files-office-documents.md (D2–D5). Tests: `tests/office_test.php` (pure helpers, and both readers over packages the test writes).
+- Cell-level xlsx edits and paragraph-level docx edits by patching the package on the server: docs/memory/plans/files-office-documents.md (D2, D3, D5). Sending a file manager file to a channel, and picking one from the writing box: docs/memory/workspace/workspace-file-manager-files.md. Tests: `tests/office_test.php` (pure helpers, and both readers over packages the test writes).

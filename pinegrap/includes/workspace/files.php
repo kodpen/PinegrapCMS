@@ -560,7 +560,25 @@ function ws_upload_discard($file_id)
  */
 function ws_message_send_file($viewer, $channel, $body, $original_name, $data, $options = array())
 {
-    $binary = ws_upload_decode($data);
+    return ws_message_send_file_bytes($viewer, $channel, $body, $original_name, ws_upload_decode($data), $options);
+}
+
+/**
+ * Posts a file into a channel as a message carrying it, from its bytes: the
+ * panel's base64 once decoded, or a copy of a file in the file manager
+ * (includes/workspace/library.php). Checked the way ws_message_send_file()
+ * says.
+ *
+ * @param array        $viewer
+ * @param array        $channel
+ * @param string       $body          the words beside the file, may be empty
+ * @param string       $original_name
+ * @param string|false $binary        false when the bytes could not be decoded
+ * @param array        $options       as for ws_message_send(), file_id and file_name aside
+ * @return array ok, error, message_id
+ */
+function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $binary, $options = array())
+{
     $checked = ws_upload_check($viewer, $channel, $original_name, $binary);
 
     if (!$checked['ok']) {
