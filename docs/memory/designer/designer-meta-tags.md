@@ -5,7 +5,7 @@ description: Design-wide and per-page custom meta tags of the visual designer (s
 
 ## Why did the designer's meta tags never reach the site?
 - Settings > Design > "Meta Tags" edited `pageSettings.meta`, a JS variable with three defaults (viewport, description, robots). Save never sent it, no column held it, so every load started from the defaults again. The HTML tree, code view and blob preview drew the variable, which made the tags look saved.
-- Fixed in 2026.11.0 (step 11.0.3): the list is stored and drawn by `get_page_content.php`. `pageSettings` keeps only `jquery`.
+- Fixed in 2026.11.0 (step 11.0.3, PR #555): the list is stored and drawn by `get_page_content.php`. `pageSettings` keeps only `jquery`.
 
 ## Where are the tags stored?
 - `style.style_meta_tags` (the design's, on every page of the design) and `page.page_meta_tags` (the page's own), both TEXT holding a JSON list of `{"name","content"}`; `''`/NULL is none. Readiness: `pg_meta_tags_ready()`.
