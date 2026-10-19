@@ -94,6 +94,8 @@ if (!$_POST) {
 	    pg_page_shell(
 	        array(
 	            'title'          => lang('Backup Manager'),
+	            // No code field here; CodeMirror 5 waits in its template.
+	            'code_editor'    => false,
 	            'extra classes'  => 'setting',
 	            'icon'           => 'setting',
 	            'heading'        => lang('Backup Manager'),
@@ -103,7 +105,6 @@ if (!$_POST) {
 	    ) . '
 <main id="content" class="container-fluid">
 
-	    	        ' . get_codemirror_includes() . '
 	        <div class="row">
 	            <div class="col-12">
 	                ' . $liveform->output_errors() . '

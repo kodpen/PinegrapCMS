@@ -655,6 +655,7 @@
             next = _normLanguage(next);
             if (next === lang) return;
             lang = next;
+            opts.language = lang;
             view.dispatch({ effects: [
                 langComp.reconfigure(_languageExtension(cm, lang)),
                 completionsComp.reconfigure(_completionExtensions(cm, lang)),
@@ -663,6 +664,12 @@
         };
         inst.refreshCompletions = function () {
             view.dispatch({ effects: completionsComp.reconfigure(_completionExtensions(cm, lang)) });
+        };
+        // Syntax errors marked or not, for a field whose language can be
+        // plain text (a file whose type is chosen after it is opened).
+        inst.setLint = function (on) {
+            opts.lint = !!on;
+            view.dispatch({ effects: lintComp.reconfigure(opts.lint ? _syntaxLinter(cm, lang, opts.labels) : []) });
         };
         inst.setReadOnly = function (on) {
             view.dispatch({ effects: readOnlyComp.reconfigure(S.EditorState.readOnly.of(!!on)) });

@@ -912,7 +912,8 @@ function pg_code_editor_urls()
  *
  * F11 fills the window with the editor, Esc leaves. The instance is kept in
  * window.pgCodeEditors[id] for a screen that needs it, such as one that
- * changes the language after the file name.
+ * changes the language after the file name; the textarea raises
+ * "pgcodeeditorready" (detail: the instance) once it is there.
  */
 function pg_code_editor_attach($properties)
 {
@@ -962,6 +963,9 @@ function pg_code_editor_attach($properties)
                 PgCodeEditor.attach(field, options).then(function (instance) {
                     editor = instance;
                     window.pgCodeEditors[field.id] = instance;
+                    // A screen that changes the editor (its language, after a
+                    // choice made before it arrived) hears when it is there.
+                    try { field.dispatchEvent(new CustomEvent("pgcodeeditorready", { detail: instance })); } catch (e) {}
                 }, function () {});
             });
         })();
