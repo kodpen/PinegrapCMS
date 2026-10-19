@@ -3,7 +3,7 @@ name: erp-auto-invoice
 description: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 ---
 
-## What does the setting do?
+## What does the setting do? (PR #697)
 - ERP settings card, "The invoice of a web order": `config.erp_auto_invoice_on` (ENUM since 2026.4.4, `ERP_AUTO_INVOICE_ON`) is `off` (the order screen's Issue the Invoice, default), `order_paid` or `order_shipped`. Written only when posted; any other value is stored as `off`.
 - Not built: the plan's "only orders with a billing tax number" and "skip orders below N" need two config columns (owner approval pending): docs/memory/plans/erp-auto-invoice-earchive.md.
 

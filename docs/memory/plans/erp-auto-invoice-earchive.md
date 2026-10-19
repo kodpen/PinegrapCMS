@@ -1,13 +1,13 @@
 ---
 name: erp-auto-invoice-earchive
-description: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #PRNUM): auto invoice once paid or shipped built; card filters (schema), internet-sale UBL fields, threshold warnings left
+description: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): auto invoice once paid or shipped built; card filters (schema), internet-sale UBL fields, threshold warnings left
 ---
 
 ## Why?
 - Invoicing an order was only a manual "next step" on the order card, and `config.erp_auto_invoice_on` (ENUM `off|order_paid|order_shipped`, 2026.4.4) had no reader. From 2026 taxpayers outside e-Fatura/e-Arşiv must issue every invoice as e-Arşiv through the GİB portal regardless of amount, and sellers on their own sites with gross sales of 500 Bin TL or more must join e-Fatura from the seventh month after that year (general threshold 3 Milyon TL). Competitors issue the e-document automatically on order status with several integrators.
 
 ## What is built?
-- Steps 1-2 (PR #PRNUM): the ERP card's "The invoice of a web order" (the existing enum), `erp_auto_invoice_decision()` with tests, `erp_auto_invoice_for_order()` at the end of the checkout, on Payment Received and on a new shipment, the invoicing lock in `erp_invoice_from_order()`, refusals on the panel bell. Behaviour: docs/memory/erp/erp-auto-invoice.md.
+- Steps 1-2 (PR #697): the ERP card's "The invoice of a web order" (the existing enum), `erp_auto_invoice_decision()` with tests, `erp_auto_invoice_for_order()` at the end of the checkout, on Payment Received and on a new shipment, the invoicing lock in `erp_invoice_from_order()`, refusals on the panel bell. Behaviour: docs/memory/erp/erp-auto-invoice.md.
 
 ## What is decided?
 - Setting card in Settings › Ecommerce › ERP: the existing enum plus "only for orders with a billing tax number" and "skip orders below N" (the two filters wait for their columns).
