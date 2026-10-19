@@ -582,7 +582,9 @@ function api_products_create($params) {
 		'images'      => ($images === null) ? array() : $images,
 		// No form behind this request, so the builder is told not to look for
 		// one rather than left to read whatever $_POST happens to hold.
-		'submit_form' => array()
+		'submit_form' => array(),
+		// The first row of the product's price history (MCP tools included).
+		'price_source' => 'api'
 	);
 
 	// Everything above is a check on what arrived; the next line puts a product
@@ -1009,6 +1011,14 @@ function api_products_update($params) {
 		WHERE id = '" . $id . "'
 		LIMIT 1");
 
+	// A row only when the stored price is not the newest one in the history:
+	// the same price sent again adds nothing.
+	if (array_key_exists('price', $params)) {
+
+		pg_price_history_record($id, 'api');
+
+	}
+
 	// The links are rewritten, not appended, as the product screen rewrites
 	// them: a list sent here is the whole answer, and an empty one clears it.
 	if ($images !== null) {
@@ -1339,6 +1349,8 @@ function api_products_prices($params) {
 			api_exec("UPDATE products SET price = '" . $price . "', timestamp = '" . time() . "'
 				WHERE id = '" . (int)$product['id'] . "' LIMIT 1");
 
+			pg_price_history_queue((int)$product['id'], 'api');
+
 			api_webhook_enqueue('product.updated', array('id' => (int)$product['id'], 'name' => $product['name']));
 
 			// The same fact, going the other way: a shop whose prices are driven
@@ -1372,6 +1384,8 @@ function api_products_prices($params) {
 		'total'   => count($items),
 		'items'   => $results
 	));
+
+	pg_price_history_flush();
 
 	log_activity(lang(array(
 		'string' => 'Prices for {var:1} of {var:2} products were changed through the API by the application {var:3} (key {var:4}).',

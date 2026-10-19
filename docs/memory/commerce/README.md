@@ -28,6 +28,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge classes.
 - order-view-tracking-link.md: Order view tracking tokens and flag, how the carrier provider is resolved, supported provider keys with URL templates, and how to add a provider.
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date), optional columns, status enum, and the fields the external API returns for orders.
+- product-price-history.md: product_price_history (2026.11.0, 11.0.2): one row per change of products.price, pg_price_history_record() / queue after every writer, initial rows, compare_at_price column, known limits
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
 - shipping-today.md: How shipping works today (checked 2026-10-16): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers

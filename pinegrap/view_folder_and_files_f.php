@@ -5886,6 +5886,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                             timestamp = UNIX_TIMESTAMP(),
                             user = '" . e($user['id']) . "'
                         WHERE id = '" . e($product_id) . "'");
+
+                    if ($bulk_price_method !== '') {
+                        pg_price_history_queue($product_id, 'panel');
+                    }
                 }
 
                 // Whatever wrote a price or a stock figure has to tell the
@@ -5902,6 +5906,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 $updated++;
             }
+
+            // A product skipped because its price would have gone to zero or
+            // below kept its price and gets no history row.
+            pg_price_history_flush();
 
             // What was actually done, in the operator's words rather than a
             // bare count: a run that changed the price and the stock of eleven
@@ -6372,6 +6380,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     timestamp = UNIX_TIMESTAMP(),
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($quick_id) . "'");
+
+            if ($quick_field === 'price') {
+                pg_price_history_record($quick_id, 'panel');
+            }
 
             // Price and stock are what the marketplaces are told about, and
             // this is now one of the places they change. Queue only -- the

@@ -8924,6 +8924,7 @@ function get_tables() {
 		'product_groups_attributes_xref',
 		'products_images_xref',
 		'product_groups_images_xref',
+		'product_price_history',
 		'product_submit_form_fields',
 		'products',
 		'push_subscriptions',

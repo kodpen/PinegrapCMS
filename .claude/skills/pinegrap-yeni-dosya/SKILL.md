@@ -137,6 +137,11 @@ satırı yerine tek listeleme yeterlidir).
   sonra `remove_form()` demeli (uyarılar oturumdan okunur, silinmez).
 - Stok/fiyat yazan yeni kod eklersen `pg_marketplace_product_changed()` satırını
   da ekle; ağ çağrısını istek akışında yapma, kuyruğa yaz.
+- `products.price` yazan yeni kod, yazımdan sonra
+  `pg_price_history_record($id_ya_da_idler, '<kaynak>')` çağırır (kaynaklar:
+  `panel`, `import`, `api`…; toplu yazımda döngüden sonra bir kez). Atlanırsa
+  "indirimden önceki fiyat" o değişikliği görmez:
+  `docs/memory/commerce/product-price-history.md`.
 - POST alan yeni betikte `init.php`'den hemen sonra `pg_post_body_discarded()`
   kontrolünü yap (JSON gövdeli uçta **yapma**, `php://input`'a bak).
 - URL'e girecek her adı ASCII'ye indir (`pg_ascii_file_name()` /
