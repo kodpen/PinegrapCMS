@@ -14,7 +14,7 @@ Open the index of the folder the task needs, then only the files you need.
 - plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (45)
 - platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (36)
 - release/README.md: Versions, migrations and upgrade steps, change log rules, release status (14)
-- ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (38)
+- ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (40)
 - visitors/README.md: Visitor statistics, page and article views, search engine index flags (16)
 - waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers (22)
 - workflow/README.md: Project overview, owner rules, git and branches, sandbox and dev machine (4)

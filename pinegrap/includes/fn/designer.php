@@ -411,11 +411,16 @@ function generate_style_code_from_tree($tree, $style_name, $additional_body_clas
     $_img_state = array('active' => true, 'first_seen' => false);
 
     // Process children of the root container node
+    $_body = '';
     if (isset($tree['children']) && is_array($tree['children'])) {
         foreach ($tree['children'] as $child) {
-            $code .= _render_tree_node($child, 2);
+            $_body .= _render_tree_node($child, 2);
         }
     }
+
+    // The images no node writes one by one (a carousel's slides, an image
+    // in a text or a custom HTML block) get their srcset here.
+    $code .= pg_img_responsive_html($_body);
 
     $_img_state = $_img_saved;
 
@@ -771,7 +776,7 @@ function _expand_shared_refs($html, $depth = 0, $ancestors = array())
         }
         // _render_tree_node emits a marker for every shared_ref it meets: the components
         // nested in this one, expanded here with this one counted as their ancestor.
-        $rendered = _render_tree_node($sc_tree, 0);
+        $rendered = pg_img_responsive_html(_render_tree_node($sc_tree, 0));
         if (strpos($rendered, '<!--pg-shared-ref:') !== false) {
             $rendered = _expand_shared_refs($rendered, $depth + 1, $ancestors + array($sid => true));
         }
@@ -844,9 +849,10 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
         $configs[(int)$ov_sid] = $ov_cfg;
     }
 
-    return preg_replace_callback(
-        '/<!--pg-system-widget:(\d+)-->/',
-        function ($m) use ($configs, $mode, $email) {
+    // A widget's records show their pictures through bound ^^tokens^^, so
+    // their srcset is written on each widget's finished output
+    // (pg_img_responsive_html()). Not in an e-mail, which takes none.
+    $render = function ($m) use ($configs, $mode, $email) {
             $sid = (int)$m[1];
             if (!isset($configs[$sid])) return '';
 
@@ -1068,6 +1074,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';
+        };
+
+    return preg_replace_callback(
+        '/<!--pg-system-widget:(\d+)-->/',
+        function ($m) use ($render, $email) {
+            $out = $render($m);
+            return $email ? $out : pg_img_responsive_html($out);
         },
         $html
     );
@@ -3806,8 +3819,9 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 $attrs   .= pg_img_attr_string($_loading);
                 $_sets    = ($_img_src !== '' && !in_array('srcset', $_written, true)) ? pg_img_responsive($_img_src) : null;
                 if ($_sets && $_sets['srcset'] !== '') {
+                    $_lazy  = (isset($_loading['loading']) ? $_loading['loading'] : strtolower(_user_attr_value($props, 'loading'))) === 'lazy';
                     $attrs .= ' srcset="' . h($_sets['srcset']) . '"';
-                    if (!in_array('sizes', $_written, true)) $attrs .= ' sizes="' . h(pg_img_sizes(_user_attr_value($props, 'width'), $_sets['width'])) . '"';
+                    if (!in_array('sizes', $_written, true)) $attrs .= ' sizes="' . h(pg_img_sizes(_user_attr_value($props, 'width'), $_sets['width'], $_lazy && pg_img_fills_width(isset($props['cssClass']) ? $props['cssClass'] : ''))) . '"';
                 }
             }
             $void_tags = array('area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr');
@@ -4570,7 +4584,9 @@ function _render_content_html($props, $pad, $kids = '')
             $_sizes    = '';
             $_sources  = array();
             if ($_sets) {
-                $_sizes = in_array('sizes', $_written, true) ? _user_attr_value($props, 'sizes') : pg_img_sizes($img_w_raw, $_sets['width']);
+                $_lazy  = (isset($_loading['loading']) ? $_loading['loading'] : strtolower(_user_attr_value($props, 'loading'))) === 'lazy';
+                $_fills = pg_img_fills_width($cls) || ($_in_ratio && $_sets['sources']);
+                $_sizes = in_array('sizes', $_written, true) ? _user_attr_value($props, 'sizes') : pg_img_sizes($img_w_raw, $_sets['width'], $_lazy && $_fills);
                 if ($_sets['srcset'] !== '') {
                     $_resp .= ' srcset="' . h($_sets['srcset']) . '"';
                     if (!in_array('sizes', $_written, true)) $_resp .= ' sizes="' . h($_sizes) . '"';
@@ -4584,8 +4600,11 @@ function _render_content_html($props, $pad, $kids = '')
             // onerror handler: when the bound src 404s, swap to the
             // placeholder. The `this.onerror=null` guard prevents an
             // infinite loop if even the placeholder ever fails to load.
-            // A srcset or a <source> outranks src, so they go first.
-            $onerror_attr = $_sets
+            // A srcset or a <source> outranks src, so they go first. A bound
+            // image gets its srcset after the token is filled in
+            // (pg_img_responsive_html() on the widget's output), so it is
+            // given the same handler.
+            $onerror_attr = ($_sets || strpos($raw_src, '^^') !== false)
                 ? ' onerror="' . h("this.onerror=null;var p=this.parentNode;if(p&&p.nodeName==='PICTURE'){var s;while((s=p.querySelector('source')))p.removeChild(s);}this.removeAttribute('srcset');this.src='" . $_pg_no_img . "'") . '"'
                 : ' onerror="this.onerror=null;this.src=\'' . h($_pg_no_img) . '\'"';
             $img_tag = '<img src="' . $src . '"' . $_resp . ' alt="' . $alt . '"' . pg_img_attr_string($_loading) . $w_attr . $h_attr

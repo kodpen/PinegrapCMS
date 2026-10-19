@@ -510,14 +510,21 @@ function pg_img_responsive_sets($src, $source_width, $source_extension, $formats
  * It also keeps the layout as it was. With w descriptors the browser lays out
  * an image that has no CSS width at the size sizes names, not at the file's
  * own size; naming the file's width as the ceiling keeps that size wherever
- * the window is wider than the file. (auto is not used for that reason:
- * Chrome lays an auto-sized image with no CSS width out at 300 px.)
+ * the window is wider than the file.
+ *
+ * auto (the width the layout gives the image, where the browser knows it)
+ * comes first only for a lazy image whose CSS width fills its box
+ * (pg_img_fills_width()): there the layout does not depend on the file, and
+ * a catalog card 300 px wide is sent a 480 px file instead of one as wide as
+ * the window. Without a CSS width Chrome lays an auto-sized image out at
+ * 300 px, so it is never used there.
  *
  * @param string $width         the node's width ('48', '48px', '50%', '')
  * @param int    $natural_width the file's displayed width
+ * @param bool   $auto          lazy, and its CSS width fills its box
  * @return string
  */
-function pg_img_sizes($width, $natural_width)
+function pg_img_sizes($width, $natural_width, $auto = false)
 {
     $width = trim((string) $width);
 
@@ -526,12 +533,132 @@ function pg_img_sizes($width, $natural_width)
     }
 
     $natural_width = (int) $natural_width;
+    $sizes = ($natural_width < 1) ? '100vw' : '(max-width: ' . $natural_width . 'px) 100vw, ' . $natural_width . 'px';
 
-    if ($natural_width < 1) {
-        return '100vw';
+    return $auto ? 'auto, ' . $sizes : $sizes;
+}
+
+
+/**
+ * Whether an image's classes give it a CSS width that fills its box:
+ * Bootstrap's w-100 and the card image classes (width: 100%). img-fluid is
+ * only a max-width, and the image's own size still decides below it.
+ *
+ * @param string $class the class attribute
+ * @return bool
+ */
+function pg_img_fills_width($class)
+{
+    return (bool) preg_match('/(?:^|\s)(?:w-100|card-img|card-img-top|card-img-bottom)(?:\s|$)/', (string) $class);
+}
+
+
+/**
+ * The file manager file an image address points at, when it is one that can
+ * have derivatives: a JPEG, PNG or WebP that is not an ERP document. '' for
+ * anything else. Host names and path come from this request.
+ *
+ * @param string $src the address as written, without a fragment
+ * @return string
+ */
+function pg_img_file_name($src)
+{
+    $hosts = array();
+
+    foreach (array('HOSTNAME_SETTING', 'HOSTNAME') as $constant) {
+        if (defined($constant) && (constant($constant) !== '')) {
+            $hosts[] = strtolower(preg_replace('/:\d+$/', '', (string) constant($constant)));
+        }
     }
 
-    return '(max-width: ' . $natural_width . 'px) 100vw, ' . $natural_width . 'px';
+    $name = pg_img_local_file_name($src, defined('PATH') ? PATH : '/', array_values(array_unique($hosts)));
+
+    if ($name === '') {
+        return '';
+    }
+
+    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+
+    // ERP documents and attachments get no derivatives (get_file.php); a GIF
+    // may be animated, which the engine leaves as it is.
+    if (!in_array($extension, array('jpg', 'jpeg', 'png', 'webp'), true) || (strncasecmp($name, 'erp-', 4) === 0)) {
+        return '';
+    }
+
+    return $name;
+}
+
+
+/**
+ * The files rows of these names, read with one query for the names not
+ * asked about before in this request: name => row, or false when there is
+ * no such file.
+ *
+ * @param array $names
+ * @return array
+ */
+function pg_img_file_rows($names)
+{
+    static $rows = array();
+
+    $connected = class_exists('db', false) && isset(db::$con) && db::$con;
+    $missing = array();
+
+    foreach ($names as $name) {
+        if (!array_key_exists($name, $rows)) {
+            $rows[$name] = false;
+
+            if ($connected) {
+                $missing[] = "'" . e($name) . "'";
+            }
+        }
+    }
+
+    if ($missing) {
+        foreach (array_chunk($missing, 200) as $chunk) {
+            $found = db_items("SELECT id, name, attachment FROM files WHERE name IN (" . implode(', ', $chunk) . ")");
+
+            foreach ((array) $found as $row) {
+                if (array_key_exists($row['name'], $rows)) {
+                    $rows[$row['name']] = $row;
+                }
+            }
+        }
+    }
+
+    $out = array();
+
+    foreach ($names as $name) {
+        $out[$name] = $rows[$name];
+    }
+
+    return $out;
+}
+
+
+/**
+ * Read the files rows of many image addresses at once, so the
+ * pg_img_responsive() calls that follow ask the database nothing more: a
+ * catalog page of 24 products is one query, not 24.
+ *
+ * @param array $srcs addresses as written
+ * @return void
+ */
+function pg_img_prefetch($srcs)
+{
+    $names = array();
+
+    foreach ($srcs as $src) {
+        $name = pg_img_file_name(preg_replace('/#.*$/s', '', trim((string) $src)));
+
+        if ($name !== '') {
+            $names[$name] = true;
+        }
+    }
+
+    if ($names) {
+        pg_img_file_rows(array_keys($names));
+    }
 }
 
 
@@ -539,7 +666,8 @@ function pg_img_sizes($width, $natural_width)
  * The responsive sets of an image address, read from the file it points at:
  * null when it is not a file of this site that can have derivatives.
  *
- * One files row and one header read per address per request.
+ * One files row (pg_img_file_rows(), shared with pg_img_prefetch()) and one
+ * header read per address per request.
  *
  * @param string $src the address as the node holds it
  * @return array|null srcset, sources, width (see pg_img_responsive_sets())
@@ -561,33 +689,18 @@ function pg_img_responsive($src)
 
     $cache[$src] = null;
 
-    if (!defined('FILE_DIRECTORY_PATH') || !isset(db::$con) || !db::$con) {
+    if (!defined('FILE_DIRECTORY_PATH') || !class_exists('db', false) || !isset(db::$con) || !db::$con) {
         return null;
     }
 
-    $hosts = array();
-
-    foreach (array('HOSTNAME_SETTING', 'HOSTNAME') as $constant) {
-        if (defined($constant) && (constant($constant) !== '')) {
-            $hosts[] = strtolower(preg_replace('/:\d+$/', '', (string) constant($constant)));
-        }
-    }
-
-    $name = pg_img_local_file_name($src, defined('PATH') ? PATH : '/', array_values(array_unique($hosts)));
+    $name = pg_img_file_name($src);
 
     if ($name === '') {
         return null;
     }
 
-    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
-
-    // ERP documents and attachments get no derivatives (get_file.php); a GIF
-    // may be animated, which the engine leaves as it is.
-    if (!in_array($extension, array('jpg', 'jpeg', 'png', 'webp'), true) || (strncasecmp($name, 'erp-', 4) === 0)) {
-        return null;
-    }
-
-    $row = db_item("SELECT id, attachment FROM files WHERE name = '" . e($name) . "' LIMIT 1");
+    $rows = pg_img_file_rows(array($name));
+    $row = $rows[$name];
 
     if (!$row || !empty($row['attachment'])) {
         return null;
@@ -599,6 +712,7 @@ function pg_img_responsive($src)
         return null;
     }
 
+    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
     $sets = pg_img_responsive_sets($src, $width, $extension, pg_image_derivative_formats(pg_image_derivative_directory()));
 
     if (($sets['srcset'] === '') && !$sets['sources']) {
@@ -728,6 +842,92 @@ function pg_img_attr_string($attrs)
     }
 
     return $out;
+}
+
+
+/**
+ * One attribute of an HTML tag, entities decoded; '' when it is not there.
+ *
+ * @param string $tag  the tag as written
+ * @param string $name
+ * @return string
+ */
+function pg_img_tag_attr($tag, $name)
+{
+    if (!preg_match('~\s' . preg_quote($name, '~') . '\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'>]+))~i', $tag, $match)) {
+        return '';
+    }
+
+    $value = isset($match[3]) ? $match[3] : (isset($match[2]) && $match[2] !== '' ? $match[2] : $match[1]);
+
+    return html_entity_decode($value, ENT_QUOTES, 'UTF-8');
+}
+
+
+/**
+ * Give every <img> of a piece of HTML that shows a file of this site its
+ * srcset and sizes, in the file's own format.
+ *
+ * For HTML no renderer of the designer writes image by image: a system
+ * widget's records (catalog cards, a product's photos, a cart line), a
+ * carousel's slides, an image inside a text or a custom HTML block. The tag
+ * keeps everything it has and gains two attributes; no <picture> is put
+ * around it, because scripts swap these images (the variant chooser) and
+ * CSS may expect the <img> where it is. An <img> that already has a srcset,
+ * a ^^token^^ or an address elsewhere is left as it is.
+ *
+ * @param string   $html
+ * @param callable $resolve address => sets or null; pg_img_responsive()
+ * @return string
+ */
+function pg_img_responsive_html($html, $resolve = 'pg_img_responsive')
+{
+    if (!is_string($html) || (stripos($html, '<img') === false) || !preg_match_all('~<img\b[^>]*>~i', $html, $tags)) {
+        return $html;
+    }
+
+    $srcs = array();
+
+    foreach ($tags[0] as $tag) {
+        if (!preg_match('~\ssrcset\s*=~i', $tag)) {
+            $srcs[] = pg_img_tag_attr($tag, 'src');
+        }
+    }
+
+    pg_img_prefetch($srcs);
+
+    return preg_replace_callback('~<img\b[^>]*>~i', function ($match) use ($resolve) {
+
+        $tag = $match[0];
+
+        // Already described, or a tag whose > sits inside an attribute value
+        // (the match ended early): left as written.
+        if (preg_match('~\ssrcset\s*=~i', $tag) || (substr_count($tag, '"') % 2 !== 0) || (substr_count($tag, "'") % 2 !== 0)) {
+            return $tag;
+        }
+
+        $sets = call_user_func($resolve, pg_img_tag_attr($tag, 'src'));
+
+        if (!$sets || ($sets['srcset'] === '')) {
+            return $tag;
+        }
+
+        $add = ' srcset="' . h($sets['srcset']) . '"';
+
+        if (!preg_match('~\ssizes\s*=~i', $tag)) {
+            $auto = (strtolower(pg_img_tag_attr($tag, 'loading')) === 'lazy') && pg_img_fills_width(pg_img_tag_attr($tag, 'class'));
+            $add .= ' sizes="' . h(pg_img_sizes(pg_img_tag_attr($tag, 'width'), $sets['width'], $auto)) . '"';
+        }
+
+        // Before the closing > or />, keeping the space a self-closing tag
+        // has in front of its slash.
+        $close = (substr($tag, -2) === '/>') ? 2 : 1;
+        $body = substr($tag, 0, -$close);
+        $kept = rtrim($body);
+
+        return $kept . $add . substr($body, strlen($kept)) . substr($tag, -$close);
+
+    }, $html);
 }
 
 

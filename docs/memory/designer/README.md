@@ -57,7 +57,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, tab switching/menu/rename DOM rules, toolbar overflow, palette order and translation of designer texts.
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - palette-component-atomic.md: Palette components either explode into a real node tree or are atomic (only btn and badge have render/toHTML); button two models and propsButtonLinkOptions.
-- responsive-images.md: Designer images published with srcset/sizes and AVIF/WebP <picture> (image-delivery step 2): which images, the sizes rule, first-image fetchpriority and lazy rest, version stamp, e-mail strip
+- responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, first-image priority, widget pass, variant swap, version stamp, e-mail strip
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
