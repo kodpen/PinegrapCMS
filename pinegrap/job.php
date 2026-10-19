@@ -526,6 +526,18 @@ if (pg_mail_queue_ready()) {
 
 }
 
+// Queued text messages (pg_sms_queue_run() in includes/fn/sms.php). A request
+// only queues a message, since the provider's answer is not worth a visitor's
+// wait, so apart from the queue screen's Run now this pass is what sends
+// them, and it depends on no setting. An empty queue, which is every site
+// without SMS, costs one read. Fewer rows and less time than the mail pass:
+// each message is a paid call that waits on the provider.
+if (pg_sms_queue_ready()) {
+
+    pg_sms_queue_run(10, 15);
+
+}
+
 // Workspace task reminders, and the notice that a task went overdue
 // (includes/workspace/reminders.php). Each look is one read; the workspace is
 // loaded only when one of them is due, so the general job stays as light as

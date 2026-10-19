@@ -33,6 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_sms_outbox();             // 11.0.10
 
 }
 
@@ -314,5 +315,51 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+// The queue of outgoing text messages (2026.11.0, 11.0.10; pg_sms_enqueue()
+// and pg_sms_queue_run() in includes/fn/sms.php, the SMS tab of the mail
+// queue screen).
+//
+// A request that wants an SMS writes a row here and the general job sends it,
+// so no visitor waits on the provider. A row is sent again only when the
+// provider's answer shows it never took the message (the driver's retry);
+// after a timeout, a 5xx or a run that stopped halfway the provider may have
+// it, the row becomes 'uncertain' and is not sent again by itself, since a
+// text message sent twice cannot be taken back. status is a VARCHAR rather
+// than an ENUM so a state added later (a delivery report) needs no step.
+// expires_at (0: none) is the time after which a message is no longer worth
+// sending, a sign-in code above all. reference names what a message is about
+// ('order:438:received'); it is unique, so a writer that runs twice queues
+// one message, and NULL for a message about nothing in particular.
+// provider and provider_id say who took the message and under which id, for
+// a delivery report or a question to the provider. InnoDB, so the claim
+// (UPDATE ... WHERE status = 'queued') is a row lock.
+function upgrade_2026_11_0_sms_outbox() {
+
+	install_create_table('sms_outbox', "CREATE TABLE sms_outbox (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		send_after   INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		status       VARCHAR(16) NOT NULL DEFAULT 'queued',
+		attempts     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		last_error   VARCHAR(500) NOT NULL DEFAULT '',
+		claimed_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		kind         VARCHAR(16) NOT NULL DEFAULT '',
+		recipient    VARCHAR(16) NOT NULL DEFAULT '',
+		body         TEXT NOT NULL,
+		reference    VARCHAR(64) NULL DEFAULT NULL,
+		provider     VARCHAR(32) NOT NULL DEFAULT '',
+		provider_id  VARCHAR(64) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_reference (reference),
+		KEY idx_due (status, send_after),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('SMS: outgoing text messages wait in a queue that the scheduled general job sends, so no visitor waits on the SMS provider. The queue is on the SMS tab of the mail queue, under Settings, Jobs.');
 
 }
