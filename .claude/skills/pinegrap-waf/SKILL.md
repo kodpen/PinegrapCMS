@@ -65,7 +65,7 @@ description: "Pinegrap CMS'in dahili güvenlik duvarına (waf.php) dokunurken ku
   değil: yola bakarsan `router.php`'ye düşen `/x/health.php/y` da muaf olur.
 - `waf_is_api_request()` isteğin **yoluna** bakar, çalışan dosyaya değil.
 - Bot politikası kimlikle girilen uçlarda (`integration.php`, `mcp.php`,
-  `oauth.php`, takvim aboneliği `workspace_ical.php`) uygulanmaz; yalnız
+  `oauth.php`, takvim aboneliği `workspace_ical.php`, ürün akışı `feed.php`) uygulanmaz; yalnız
   saldırı aracı kontrolü işler. Bu dönüşü
   iyi-bot dalının **önüne** koy, yoksa `IS_BOT` tanımlanır ve hız sınırı
   atlanır. `api.php` (`waf_is_site_api_request()`) kapsam dışıdır. Sebep:

@@ -19,8 +19,13 @@
  *     serialise the rows.
  *
  * pg_product_feed_render() joins the last two for one format and
- * pg_product_feed_build() runs everything. Nothing here writes a file or
- * answers a request; the caller stores or serves the body.
+ * pg_product_feed_build() runs everything.
+ *
+ * Around the builder: the setup in config.product_feeds (2026.11.0, 11.0.4),
+ * one secret address per format, the daily build that writes each format
+ * that is on to data/feeds/ (pg_product_feed_refresh(), product_feed_job.php)
+ * and the answer feed.php gives a platform reading it
+ * (pg_product_feed_serve()).
  *
  * The catalog page's ?rss=true feed (_pg_build_product_rss_item()) stays as
  * it is; its title, availability and product type rules are reused here so a
@@ -1108,18 +1113,10 @@ function pg_product_feed_products($options = array())
     return $result;
 }
 
-// One feed body from the running site: pg_product_feed_products() then
-// pg_product_feed_render(). 'skipped' adds both steps' reasons.
-function pg_product_feed_build($format, $options = array())
+// One format's result from what pg_product_feed_products() returned: its
+// error, or pg_product_feed_render() with the reader's skip counts added.
+function pg_product_feed_render_loaded($format, $products, $options = array())
 {
-    $formats = pg_product_feed_formats();
-
-    if (!isset($formats[$format])) {
-        return array('ok' => false, 'error' => 'unknown_format', 'body' => '', 'count' => 0, 'skipped' => array());
-    }
-
-    $products = pg_product_feed_products($options);
-
     if ($products['error'] !== '') {
         return array('ok' => false, 'error' => $products['error'], 'body' => '', 'count' => 0, 'skipped' => $products['skipped']);
     }
@@ -1131,4 +1128,525 @@ function pg_product_feed_build($format, $options = array())
     }
 
     return $result;
+}
+
+// One feed body from the running site: pg_product_feed_products() then
+// pg_product_feed_render(). 'skipped' adds both steps' reasons.
+function pg_product_feed_build($format, $options = array())
+{
+    $formats = pg_product_feed_formats();
+
+    if (!isset($formats[$format])) {
+        return array('ok' => false, 'error' => 'unknown_format', 'body' => '', 'count' => 0, 'skipped' => array());
+    }
+
+    return pg_product_feed_render_loaded($format, pg_product_feed_products($options), $options);
+}
+
+// ---------------------------------------------------------------------------
+// Setup (config.product_feeds, 2026.11.0, 11.0.4)
+// ---------------------------------------------------------------------------
+
+// What config.product_feeds keeps for one format: whether it is on, its
+// address token (a SHA-256 hash to find it, the token sealed with the site's
+// key to show it again) and how its last build went. built_at, count and
+// bytes describe the file being served, so a failed build leaves them as they
+// were and only sets error.
+function pg_product_feed_format_defaults()
+{
+    return array(
+        'enabled'      => 0,
+        'token_hash'   => '',
+        'token_secret' => '',
+        'built_at'     => 0,
+        'count'        => 0,
+        'bytes'        => 0,
+        'error'        => '',
+        'skipped'      => array(),
+    );
+}
+
+// The setup as stored, every key present and typed: the seller fields and
+// excluded groups pg_product_feed_products() and pg_product_feed_render()
+// take as options, and one pg_product_feed_format_defaults() entry per
+// format. Anything else in the stored JSON is dropped.
+function pg_product_feed_settings_parse($json)
+{
+    $settings = array(
+        'seller_name'        => '',
+        'seller_url'         => '',
+        'privacy_policy_url' => '',
+        'terms_url'          => '',
+        'default_brand'      => '',
+        'excluded_group_ids' => array(),
+        'formats'            => array(),
+    );
+
+    foreach (array_keys(pg_product_feed_formats()) as $format) {
+        $settings['formats'][$format] = pg_product_feed_format_defaults();
+    }
+
+    $stored = json_decode((string) $json, true);
+
+    if (!is_array($stored)) {
+        return $settings;
+    }
+
+    foreach (array('seller_name', 'seller_url', 'privacy_policy_url', 'terms_url', 'default_brand') as $key) {
+        if (isset($stored[$key]) && is_scalar($stored[$key])) {
+            $settings[$key] = trim((string) $stored[$key]);
+        }
+    }
+
+    if (isset($stored['excluded_group_ids']) && is_array($stored['excluded_group_ids'])) {
+        $ids = array();
+
+        foreach ($stored['excluded_group_ids'] as $id) {
+            if (is_scalar($id) && ((int) $id > 0)) {
+                $ids[(int) $id] = true;
+            }
+        }
+
+        $settings['excluded_group_ids'] = array_keys($ids);
+    }
+
+    if (!isset($stored['formats']) || !is_array($stored['formats'])) {
+        return $settings;
+    }
+
+    foreach ($settings['formats'] as $format => $defaults) {
+        if (!isset($stored['formats'][$format]) || !is_array($stored['formats'][$format])) {
+            continue;
+        }
+
+        $entry = $stored['formats'][$format];
+
+        foreach (array('enabled', 'built_at', 'count', 'bytes') as $key) {
+            if (isset($entry[$key]) && is_scalar($entry[$key])) {
+                $settings['formats'][$format][$key] = max(0, (int) $entry[$key]);
+            }
+        }
+
+        $settings['formats'][$format]['enabled'] = ($settings['formats'][$format]['enabled'] > 0) ? 1 : 0;
+
+        if (isset($entry['token_hash']) && is_string($entry['token_hash']) && preg_match('/^[0-9a-f]{64}$/', $entry['token_hash'])) {
+            $settings['formats'][$format]['token_hash'] = $entry['token_hash'];
+        }
+
+        if (isset($entry['token_secret']) && is_string($entry['token_secret'])) {
+            $settings['formats'][$format]['token_secret'] = $entry['token_secret'];
+        }
+
+        if (isset($entry['error']) && is_string($entry['error']) && preg_match('/^[a-z_]{1,40}$/', $entry['error'])) {
+            $settings['formats'][$format]['error'] = $entry['error'];
+        }
+
+        if (isset($entry['skipped']) && is_array($entry['skipped'])) {
+            foreach ($entry['skipped'] as $reason => $count) {
+                if (is_string($reason) && preg_match('/^[a-z_]{1,40}$/', $reason) && is_scalar($count) && ((int) $count > 0)) {
+                    $settings['formats'][$format]['skipped'][$reason] = (int) $count;
+                }
+            }
+        }
+    }
+
+    return $settings;
+}
+
+// The options pg_product_feed_products() and pg_product_feed_render() take,
+// from the setup.
+function pg_product_feed_settings_options($settings)
+{
+    return array(
+        'seller_name'        => $settings['seller_name'],
+        'seller_url'         => $settings['seller_url'],
+        'privacy_policy_url' => $settings['privacy_policy_url'],
+        'terms_url'          => $settings['terms_url'],
+        'default_brand'      => $settings['default_brand'],
+        'excluded_group_ids' => $settings['excluded_group_ids'],
+    );
+}
+
+// The setup after a build: each format's status replaced by the one the build
+// left ($statuses: format => pg_product_feed_status() entry), everything else
+// - the seller fields, the switches, the tokens - as $settings has it. The
+// job reads the setup again before it writes, so a change saved on the
+// settings screen while the feed was being built is kept.
+function pg_product_feed_settings_merge_statuses($settings, $statuses)
+{
+    foreach ((array) $statuses as $format => $status) {
+        if (!isset($settings['formats'][$format])) {
+            continue;
+        }
+
+        foreach (array('built_at', 'count', 'bytes', 'error', 'skipped') as $key) {
+            $settings['formats'][$format][$key] = $status[$key];
+        }
+    }
+
+    return $settings;
+}
+
+// A format's entry after one build at $now. A good build describes the new
+// file; a failed one keeps the description of the file still being served
+// and says why it was not replaced.
+function pg_product_feed_status($entry, $result, $now)
+{
+    $entry['error'] = $result['ok'] ? '' : (string) $result['error'];
+    $entry['skipped'] = array();
+
+    foreach ((array) $result['skipped'] as $reason => $count) {
+        if ((int) $count > 0) {
+            $entry['skipped'][(string) $reason] = (int) $count;
+        }
+    }
+
+    if ($result['ok']) {
+        $entry['built_at'] = (int) $now;
+        $entry['count'] = (int) $result['count'];
+        $entry['bytes'] = strlen((string) $result['body']);
+    }
+
+    return $entry;
+}
+
+// Whether the 11.0.4 column is there.
+function pg_product_feed_schema_ready()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('config', 'product_feeds');
+}
+
+function pg_product_feed_settings()
+{
+    if (!pg_product_feed_schema_ready()) {
+        return pg_product_feed_settings_parse('');
+    }
+
+    return pg_product_feed_settings_parse(db_value("SELECT product_feeds FROM config"));
+}
+
+function pg_product_feed_settings_save($settings)
+{
+    if (!pg_product_feed_schema_ready()) {
+        return false;
+    }
+
+    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+
+    return (bool) db("UPDATE config SET product_feeds = '" . e(json_encode(pg_product_feed_settings_parse(json_encode($settings, $flags)), $flags)) . "'");
+}
+
+// ---------------------------------------------------------------------------
+// Addresses
+// ---------------------------------------------------------------------------
+
+// The shape of a feed token (43 URL-safe characters, pg_short_link_new_token()),
+// checked before anything is hashed or read.
+function pg_product_feed_token_shape($token)
+{
+    return is_string($token) && (preg_match('/^[A-Za-z0-9_-]{43}$/', $token) === 1);
+}
+
+// The format a token opens, or '' when it opens none. Compared against every
+// format's hash in constant time; an empty hash (no address yet) matches
+// nothing.
+function pg_product_feed_format_for_token($token, $settings)
+{
+    if (!pg_product_feed_token_shape($token)) {
+        return '';
+    }
+
+    $hash = hash('sha256', $token);
+    $found = '';
+
+    foreach ($settings['formats'] as $format => $entry) {
+        if (($entry['token_hash'] !== '') && hash_equals($entry['token_hash'], $hash)) {
+            $found = $format;
+        }
+    }
+
+    return $found;
+}
+
+// A new address for a format: the old token stops working at once. Changes
+// $settings; the caller saves them. Returns the token.
+function pg_product_feed_issue_token(&$settings, $format)
+{
+    $token = pg_short_link_new_token();
+
+    $settings['formats'][$format]['token_hash'] = hash('sha256', $token);
+    $settings['formats'][$format]['token_secret'] = pg_product_feed_seal($token);
+
+    return $token;
+}
+
+// The token as kept for showing again: encrypted with the site's key,
+// "<ciphertext>:<iv>". Empty where the site has no key; the address is then
+// shown once, when it is made.
+function pg_product_feed_seal($token)
+{
+    if (!defined('ENCRYPTION_KEY') || ((string) ENCRYPTION_KEY === '') || !function_exists('openssl_encrypt')) {
+        return '';
+    }
+
+    list($cipher, $iv) = encrypt_string_with_iv((string) $token);
+
+    return $cipher . ':' . $iv;
+}
+
+// A format's token read back; empty when it cannot be, or when it no longer
+// matches its hash (the site's key was changed).
+function pg_product_feed_token($entry)
+{
+    $sealed = (string) $entry['token_secret'];
+
+    if (($sealed === '') || (strpos($sealed, ':') === false) || !defined('ENCRYPTION_KEY') || !function_exists('openssl_decrypt')) {
+        return '';
+    }
+
+    list($cipher, $iv) = explode(':', $sealed, 2);
+    $token = decode_ssl_keys($cipher, $iv);
+
+    if (!pg_product_feed_token_shape($token) || !hash_equals((string) $entry['token_hash'], hash('sha256', $token))) {
+        return '';
+    }
+
+    return $token;
+}
+
+// The address a platform reads a feed from.
+function pg_product_feed_url($token)
+{
+    return URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/feed.php?f=' . rawurlencode((string) $token);
+}
+
+// Where a format's file is kept: data/feeds/<format>.<extension>. Named by
+// format, not by token, so the token is never written to the disk in the
+// clear. data/ is closed to HTTP by the server rules; feed.php reads it.
+function pg_product_feed_path($format)
+{
+    $formats = pg_product_feed_formats();
+
+    if (!isset($formats[$format])) {
+        return '';
+    }
+
+    return PG_FUNCTIONS_DIR . '/data/feeds/' . $format . '.' . $formats[$format]['extension'];
+}
+
+// Writes a feed file whole or not at all: a temporary file beside it, then a
+// rename, so feed.php never serves half a file.
+function pg_product_feed_write_file($path, $body)
+{
+    $directory = dirname($path);
+
+    if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
+        return false;
+    }
+
+    $temporary = $path . '.tmp-' . bin2hex(random_bytes(6));
+
+    if (@file_put_contents($temporary, (string) $body) !== strlen((string) $body)) {
+        @unlink($temporary);
+        return false;
+    }
+
+    if (!@rename($temporary, $path)) {
+        // Windows will not rename over an existing file.
+        @unlink($path);
+
+        if (!@rename($temporary, $path)) {
+            @unlink($temporary);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Daily build (product_feed_job.php)
+// ---------------------------------------------------------------------------
+
+// Builds every format that is on and writes its file; removes the file of a
+// format that is off. The catalog is read once for all formats. $only limits
+// the run to some formats (the settings screen's "Build now").
+//
+// Returns array('error' => '' | 'not_ready', 'formats' => format =>
+// array('ok', 'error', 'count', 'skipped')).
+function pg_product_feed_refresh($only = null)
+{
+    $report = array('error' => '', 'formats' => array());
+
+    if (!pg_product_feed_schema_ready()) {
+        $report['error'] = 'not_ready';
+        return $report;
+    }
+
+    $settings = pg_product_feed_settings();
+    $options = pg_product_feed_settings_options($settings);
+    $products = null;
+    $statuses = array();
+
+    foreach ($settings['formats'] as $format => $entry) {
+        if (($only !== null) && !in_array($format, (array) $only, true)) {
+            continue;
+        }
+
+        $path = pg_product_feed_path($format);
+
+        if (!$entry['enabled']) {
+            if (is_file($path)) {
+                @unlink($path);
+            }
+
+            continue;
+        }
+
+        if ($products === null) {
+            $products = pg_product_feed_products($options);
+        }
+
+        $result = pg_product_feed_render_loaded($format, $products, $options);
+
+        if ($result['ok'] && !pg_product_feed_write_file($path, $result['body'])) {
+            $result['ok'] = false;
+            $result['error'] = 'write_failed';
+        }
+
+        $statuses[$format] = pg_product_feed_status($entry, $result, time());
+
+        $report['formats'][$format] = array(
+            'ok'      => $result['ok'],
+            'error'   => $result['ok'] ? '' : $result['error'],
+            'count'   => $result['count'],
+            'skipped' => $result['skipped'],
+        );
+    }
+
+    if ($statuses) {
+        pg_product_feed_settings_save(pg_product_feed_settings_merge_statuses(pg_product_feed_settings(), $statuses));
+    }
+
+    return $report;
+}
+
+// Adds the daily build to the jobs the general job runs, when the general job
+// is the one running them; a site that schedules each job on its own keeps
+// its own schedule. True when the job is (now) in the list.
+function pg_product_feed_job_switch_on()
+{
+    if (!defined('JOB_DISPATCH_ENABLED') || !JOB_DISPATCH_ENABLED) {
+        return false;
+    }
+
+    $list = pg_cron_dispatch_list();
+
+    if (in_array('product_feed_job', $list, true)) {
+        return true;
+    }
+
+    $list[] = 'product_feed_job';
+
+    db("UPDATE config SET job_dispatch = '" . e(implode(',', $list)) . "'");
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Serving (feed.php)
+// ---------------------------------------------------------------------------
+
+// Whether a reader's If-Modified-Since already covers a file changed at
+// $modified: HTTP dates have whole seconds, so equal is current.
+function pg_product_feed_not_modified($modified, $if_modified_since)
+{
+    $since = ((string) $if_modified_since !== '') ? strtotime((string) $if_modified_since) : false;
+
+    return ($since !== false) && ((int) $modified > 0) && ($since >= (int) $modified);
+}
+
+// Answers feed.php: the file of the format the token opens, with
+// Last-Modified, and 304 to a reader that has it. One 404 for every address
+// that opens nothing - an unknown or renewed token, a format switched off, a
+// feed not built yet, a shop without e-commerce - so the answer says nothing
+// about which.
+function pg_product_feed_serve($token)
+{
+    $method = strtoupper((string) (isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET'));
+
+    if (($method !== 'GET') && ($method !== 'HEAD')) {
+        pg_product_feed_refuse(405);
+    }
+
+    if (!defined('ECOMMERCE') || (ECOMMERCE !== true) || !pg_product_feed_schema_ready()) {
+        pg_product_feed_refuse(404);
+    }
+
+    $settings = pg_product_feed_settings();
+    $format = pg_product_feed_format_for_token((string) $token, $settings);
+
+    if (($format === '') || !$settings['formats'][$format]['enabled']) {
+        pg_product_feed_refuse(404);
+    }
+
+    $path = pg_product_feed_path($format);
+    $modified = is_file($path) ? (int) @filemtime($path) : 0;
+
+    if ($modified <= 0) {
+        pg_product_feed_refuse(404);
+    }
+
+    $formats = pg_product_feed_formats();
+
+    pg_product_feed_discard_output();
+
+    header('Content-Type: ' . $formats[$format]['content_type']);
+    header('Content-Disposition: inline; filename="products.' . $formats[$format]['extension'] . '"');
+    header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $modified) . ' GMT');
+    // The address carries its token: no shared cache may keep it.
+    header('Cache-Control: private, max-age=3600');
+    header('X-Robots-Tag: noindex, nofollow');
+    header('Referrer-Policy: no-referrer');
+
+    if (pg_product_feed_not_modified($modified, isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? $_SERVER['HTTP_IF_MODIFIED_SINCE'] : '')) {
+        http_response_code(304);
+        exit;
+    }
+
+    $size = (int) @filesize($path);
+
+    header('Content-Length: ' . $size);
+
+    if ($method !== 'HEAD') {
+        readfile($path);
+    }
+
+    exit;
+}
+
+// Ends the request with a status and nothing else.
+function pg_product_feed_refuse($status)
+{
+    pg_product_feed_discard_output();
+
+    http_response_code((int) $status);
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-Robots-Tag: noindex, nofollow');
+
+    if ((int) $status === 405) {
+        header('Allow: GET, HEAD');
+    }
+
+    exit;
+}
+
+// Drops whatever the shared code printed on the way here; it would sit in
+// front of the feed and break it.
+function pg_product_feed_discard_output()
+{
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
 }

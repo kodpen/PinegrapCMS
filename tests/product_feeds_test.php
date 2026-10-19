@@ -499,3 +499,147 @@ function test_product_feeds_formats()
 		pg_assert_true(count(pg_product_feed_columns($format)) > 0, $format . ' columns');
 	}
 }
+
+// The stored setup comes back with every key present and typed.
+function test_product_feeds_settings_parse_defaults()
+{
+	$settings = pg_product_feed_settings_parse(null);
+
+	pg_assert_same(array('openai_jsonl', 'openai_csv', 'google_tsv'), array_keys($settings['formats']));
+	pg_assert_same(pg_product_feed_format_defaults(), $settings['formats']['google_tsv']);
+	pg_assert_same('', $settings['seller_name']);
+	pg_assert_same(array(), $settings['excluded_group_ids']);
+	pg_assert_same($settings, pg_product_feed_settings_parse('not json'), 'unreadable JSON');
+}
+
+// What is stored is read back typed; anything else is dropped.
+function test_product_feeds_settings_parse_stored()
+{
+	$hash = hash('sha256', 'x');
+	$settings = pg_product_feed_settings_parse(json_encode(array(
+		'seller_name'        => ' Kodpen Mağaza ',
+		'default_brand'      => array('not', 'text'),
+		'excluded_group_ids' => array('12', 0, -3, 12, 'x', 7),
+		'unknown'            => 'dropped',
+		'formats'            => array(
+			'openai_jsonl' => array(
+				'enabled'    => '1',
+				'token_hash' => $hash,
+				'built_at'   => '1792390000',
+				'count'      => 13,
+				'error'      => 'no_seller_name',
+				'skipped'    => array('no_brand' => '4', 'Bad Key' => 2, 'zero' => 0),
+			),
+			'openai_csv' => array('enabled' => 5, 'token_hash' => 'not-a-hash', 'error' => '<b>x</b>'),
+			'xml'        => array('enabled' => 1),
+		),
+	)));
+
+	pg_assert_same('Kodpen Mağaza', $settings['seller_name'], 'trimmed');
+	pg_assert_same('', $settings['default_brand'], 'a list is not text');
+	pg_assert_same(array(12, 7), $settings['excluded_group_ids'], 'positive ids, once each');
+	pg_assert_false(isset($settings['unknown']));
+	pg_assert_false(isset($settings['formats']['xml']), 'an unknown format');
+
+	$jsonl = $settings['formats']['openai_jsonl'];
+
+	pg_assert_same(1, $jsonl['enabled']);
+	pg_assert_same($hash, $jsonl['token_hash']);
+	pg_assert_same(1792390000, $jsonl['built_at']);
+	pg_assert_same('no_seller_name', $jsonl['error']);
+	pg_assert_same(array('no_brand' => 4), $jsonl['skipped']);
+
+	$csv = $settings['formats']['openai_csv'];
+
+	pg_assert_same(1, $csv['enabled'], 'any positive number is on');
+	pg_assert_same('', $csv['token_hash'], 'not a SHA-256 hash');
+	pg_assert_same('', $csv['error'], 'not an error code');
+}
+
+// The builder options come from the setup.
+function test_product_feeds_settings_options()
+{
+	$settings = pg_product_feed_settings_parse(json_encode(array('seller_name' => 'Kodpen', 'default_brand' => 'Atölye', 'excluded_group_ids' => array(3))));
+	$options = pg_product_feed_settings_options($settings);
+
+	pg_assert_same('Kodpen', $options['seller_name']);
+	pg_assert_same('Atölye', $options['default_brand']);
+	pg_assert_same(array(3), $options['excluded_group_ids']);
+	pg_assert_false(isset($options['formats']));
+}
+
+// A token opens the format whose hash it matches, and nothing else.
+function test_product_feeds_format_for_token()
+{
+	$token = str_repeat('a', 21) . '-' . str_repeat('B', 21);
+	$settings = pg_product_feed_settings_parse('');
+	$settings['formats']['google_tsv']['token_hash'] = hash('sha256', $token);
+
+	pg_assert_true(pg_product_feed_token_shape($token));
+	pg_assert_same('google_tsv', pg_product_feed_format_for_token($token, $settings));
+	pg_assert_same('', pg_product_feed_format_for_token(str_repeat('c', 43), $settings), 'another token');
+	pg_assert_same('', pg_product_feed_format_for_token($token . 'x', $settings), 'wrong length');
+	pg_assert_same('', pg_product_feed_format_for_token('../../config', $settings), 'not a token');
+	pg_assert_same('', pg_product_feed_format_for_token('', pg_product_feed_settings_parse('')), 'no address made yet');
+}
+
+// A good build describes the new file; a failed one keeps the old description.
+function test_product_feeds_status()
+{
+	$entry = array_merge(pg_product_feed_format_defaults(), array('enabled' => 1, 'built_at' => 100, 'count' => 5, 'bytes' => 900, 'error' => 'write_failed'));
+
+	$good = pg_product_feed_status($entry, array('ok' => true, 'error' => '', 'body' => 'abc', 'count' => 7, 'skipped' => array('no_brand' => 2, 'none' => 0)), 200);
+
+	pg_assert_same(200, $good['built_at']);
+	pg_assert_same(7, $good['count']);
+	pg_assert_same(3, $good['bytes']);
+	pg_assert_same('', $good['error']);
+	pg_assert_same(array('no_brand' => 2), $good['skipped']);
+	pg_assert_same(1, $good['enabled'], 'the switch is not the build\'s');
+
+	$bad = pg_product_feed_status($entry, array('ok' => false, 'error' => 'no_catalog', 'body' => '', 'count' => 0, 'skipped' => array()), 300);
+
+	pg_assert_same(100, $bad['built_at'], 'the file still served');
+	pg_assert_same(5, $bad['count']);
+	pg_assert_same('no_catalog', $bad['error']);
+}
+
+// The job writes its statuses over a setup read again, so a save in between is kept.
+function test_product_feeds_settings_merge_statuses()
+{
+	$fresh = pg_product_feed_settings_parse(json_encode(array(
+		'seller_name' => 'Saved meanwhile',
+		'formats'     => array('openai_jsonl' => array('enabled' => 0, 'token_hash' => hash('sha256', 'new'))),
+	)));
+	$status = array_merge(pg_product_feed_format_defaults(), array('enabled' => 1, 'token_hash' => hash('sha256', 'old'), 'built_at' => 500, 'count' => 9));
+
+	$merged = pg_product_feed_settings_merge_statuses($fresh, array('openai_jsonl' => $status, 'xml' => $status));
+
+	pg_assert_same('Saved meanwhile', $merged['seller_name']);
+	pg_assert_same(0, $merged['formats']['openai_jsonl']['enabled'], 'the switch as saved');
+	pg_assert_same(hash('sha256', 'new'), $merged['formats']['openai_jsonl']['token_hash'], 'the address as saved');
+	pg_assert_same(500, $merged['formats']['openai_jsonl']['built_at']);
+	pg_assert_same(9, $merged['formats']['openai_jsonl']['count']);
+	pg_assert_false(isset($merged['formats']['xml']));
+}
+
+// Files are named by format under data/feeds/, never by token.
+function test_product_feeds_path()
+{
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/feeds/openai_jsonl.jsonl', pg_product_feed_path('openai_jsonl'));
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/feeds/google_tsv.tsv', pg_product_feed_path('google_tsv'));
+	pg_assert_same('', pg_product_feed_path('../config'));
+}
+
+// If-Modified-Since: a reader with the current file gets 304.
+function test_product_feeds_not_modified()
+{
+	$modified = gmmktime(3, 0, 0, 10, 19, 2026);
+
+	pg_assert_true(pg_product_feed_not_modified($modified, 'Mon, 19 Oct 2026 03:00:00 GMT'), 'same second');
+	pg_assert_true(pg_product_feed_not_modified($modified, 'Mon, 19 Oct 2026 05:00:00 GMT'), 'later');
+	pg_assert_false(pg_product_feed_not_modified($modified, 'Sun, 18 Oct 2026 03:00:00 GMT'), 'older copy');
+	pg_assert_false(pg_product_feed_not_modified($modified, ''), 'no header');
+	pg_assert_false(pg_product_feed_not_modified($modified, 'yesterday-ish nonsense'), 'unreadable');
+	pg_assert_false(pg_product_feed_not_modified(0, 'Mon, 19 Oct 2026 03:00:00 GMT'), 'no file');
+}
