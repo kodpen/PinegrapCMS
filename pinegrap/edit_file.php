@@ -108,6 +108,12 @@ if (!isset($_POST['name'])) {
     $design = $row['design'];
     $optimized = $row['optimized'];
     $folder_archived = $row['folder_archived'];
+
+    // The signing key is listed without its content: it never leaves the
+    // server (pg_file_withheld()).
+    if (pg_file_withheld($file_name)) {
+        $viewable_formats = $editable_formats;
+    }
     // Get file content -- only for what the editor actually opens. Every other
     // type is a zip, an image or a font, and pulling one into memory to build a
     // page that never shows it is work nobody sees.
@@ -982,6 +988,11 @@ $liveform->remove_form('edit_file');
 
     // SAVE / SAVE & RETURN
     if (!empty($_POST['submit_save']) || !empty($_POST['submit_save_and_return'])) {
+        // Under another name the signing key would be served.
+        if (($name !== $row['name']) && pg_file_withheld($row['name'])) {
+            output_error(lang('Access denied'));
+        }
+
         // NAME CONFLICT
         if (!check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file'))) {
             output_error(lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
@@ -1049,6 +1060,13 @@ $liveform->remove_form('edit_file');
     // DUPLICATE
     if (!empty($_POST['submit_duplicate']) && ($_POST['submit_duplicate'] ?? '') === 'Duplicate') {
         $original_name = $row['name']; // always use last saved file from DB
+
+        // A copy of the signing key would carry another name, and
+        // get_file.php serves it under that name.
+        if (pg_file_withheld($original_name)) {
+            output_error(lang('Access denied'));
+        }
+
         $new_file_name = prepare_file_name($original_name);
         $new_file_name = get_unique_name(array('name' => $new_file_name, 'type' => 'file'));
         $new_file_path = FILE_DIRECTORY_PATH . '/' . $new_file_name;
