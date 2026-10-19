@@ -1311,6 +1311,15 @@ function submit_order($type) {
         if ($terms_page_name) {
             $liveform->validate_required_field('terms', lang('Agreement to the terms and conditions is required.'));
         }
+
+        // The pre-information form and the distance sales contract are each
+        // accepted when the store asks for them (pg_legal_documents_inject()
+        // draws their checkboxes on every checkout).
+        if (pg_legal_documents_enabled()) {
+            foreach (pg_legal_document_types() as $legal_type => $legal_label) {
+                $liveform->validate_required_field('legal_' . $legal_type, lang(array('string' => '{var:1} must be accepted.', 'vars' => array($legal_label))));
+            }
+        }
         
         // we are done with the validation of fields now
     }

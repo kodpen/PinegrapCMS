@@ -300,6 +300,218 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
 }
 
 /**
+ * A cart's order fields for the documents shown at checkout.
+ *
+ * A cart row has no totals until the order is placed. Subtotal, tax and
+ * shipping are the sums of its item and recipient rows (the same sums the
+ * placed order stores). The total is the one the checkout page showed and
+ * submit_order.php compares against, so offers, gift cards and rounding are
+ * the checkout's own; the difference to the row sums is placed below.
+ * Billing fields the visitor has typed or the page filled in replace the
+ * row's, which a cart has only after an earlier submit.
+ *
+ * @param array $order     orders row fields
+ * @param array $lines     each with line_total and tax (minor units)
+ * @param array $ship_tos  each with cost (minor units)
+ * @param array $seen      total (minor units or null), billing (field => value), payment_method
+ * @return array  the order fields with amounts, billing and payment method filled
+ */
+function pg_legal_document_cart_order(array $order, array $lines, array $ship_tos, array $seen)
+{
+    $subtotal = 0;
+    $tax = 0;
+    $shipping = 0;
+
+    foreach ($lines as $line) {
+        $subtotal += (int) round($line['line_total'] ?? 0);
+        $tax += (int) round($line['tax'] ?? 0);
+    }
+
+    foreach ($ship_tos as $ship_to) {
+        $shipping += (int) round($ship_to['cost'] ?? 0);
+    }
+
+    $before = $subtotal + $tax + $shipping;
+    $total = (isset($seen['total']) && is_int($seen['total']) && ($seen['total'] >= 0)) ? $seen['total'] : $before;
+    $discount = 0;
+
+    // A recipient row keeps the cost of a shipping method the checkout no
+    // longer offers or has not had chosen yet; the checkout then shows no
+    // shipping, and its total is the goods with their tax. Any other shortfall
+    // is what the checkout took off (offers, gift cards); a higher total is
+    // shipping the rows do not know yet.
+    if (($total !== $before) && ($total === ($subtotal + $tax))) {
+        $shipping = 0;
+    } elseif ($total < $before) {
+        $discount = $before - $total;
+    } elseif ($total > $before) {
+        $shipping += $total - $before;
+    }
+
+    $order['subtotal'] = $subtotal;
+    $order['tax'] = $tax;
+    $order['shipping'] = $shipping;
+    $order['discount'] = $discount;
+    $order['gift_card_discount'] = 0;
+    // The card surcharge depends on the payment method chosen at the very
+    // end; the total shown is the one without it.
+    $order['surcharge'] = 0;
+    $order['total'] = $total;
+    $order['order_number'] = '';
+
+    foreach (pg_legal_document_billing_fields() as $field) {
+        $value = trim((string) ($seen['billing'][$field] ?? ''));
+
+        if (($value !== '') && ($field !== 'billing_country')) {
+            $order[$field] = $value;
+        }
+    }
+
+    if (trim((string) ($seen['payment_method'] ?? '')) !== '') {
+        $order['payment_method'] = (string) $seen['payment_method'];
+    }
+
+    return $order;
+}
+
+/**
+ * The billing fields a checkout page posts and the documents print.
+ *
+ * @return string[]
+ */
+function pg_legal_document_billing_fields()
+{
+    return array(
+        'billing_first_name', 'billing_last_name', 'billing_company',
+        'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state',
+        'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_email_address',
+    );
+}
+
+/**
+ * What a rendered checkout page shows: its total, the billing values in its
+ * fields and the payment method ticked.
+ *
+ * The total is the hidden "total" field (major units, as submit_order.php
+ * reads it). Only input values and the selected option of the country list
+ * are read; a field the page draws empty is left out.
+ *
+ * @param string $html
+ * @return array  total (minor units or null), billing (field => value), payment_method
+ */
+function pg_legal_document_form_snapshot($html)
+{
+    $html = (string) $html;
+    $wanted = array_flip(pg_legal_document_billing_fields());
+    $snapshot = array('total' => null, 'billing' => array(), 'payment_method' => '');
+
+    $attribute = function ($tag, $name) {
+        if (preg_match('/\s' . $name . '\s*=\s*"([^"]*)"/i', $tag, $match) || preg_match("/\\s" . $name . "\\s*=\\s*'([^']*)'/i", $tag, $match)) {
+            return html_entity_decode($match[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        return null;
+    };
+
+    if (preg_match_all('/<input\b[^>]*>/i', $html, $inputs)) {
+        foreach ($inputs[0] as $tag) {
+            $name = $attribute($tag, 'name');
+            $value = $attribute($tag, 'value');
+            $type = strtolower((string) $attribute($tag, 'type'));
+
+            if (($name === null) || ($value === null)) {
+                continue;
+            }
+
+            if (($name === 'total') && ($snapshot['total'] === null)) {
+                $amount = str_replace(',', '', trim($value));
+
+                if (is_numeric($amount)) {
+                    $snapshot['total'] = (int) round((float) $amount * 100);
+                }
+            } elseif (($name === 'payment_method') && in_array($type, array('radio', 'checkbox'), true)) {
+                if (preg_match('/\schecked\b/i', $tag)) {
+                    $snapshot['payment_method'] = $value;
+                }
+            } elseif (isset($wanted[$name]) && !in_array($type, array('radio', 'checkbox', 'hidden'), true) && (trim($value) !== '')) {
+                $snapshot['billing'][$name] = $value;
+            }
+        }
+    }
+
+    if (preg_match('/<select\b[^>]*\sname\s*=\s*"billing_country"[^>]*>(.*?)<\/select>/is', $html, $select)
+        && preg_match('/<option\b[^>]*\sselected\b[^>]*>/i', $select[1], $option)) {
+        $code = $attribute($option[0], 'value');
+
+        if (($code !== null) && (trim($code) !== '')) {
+            $snapshot['billing']['billing_country'] = trim($code);
+        }
+    }
+
+    return $snapshot;
+}
+
+/**
+ * The two acceptance checkboxes for a checkout form, each linking to its
+ * document filled from the visitor's cart.
+ *
+ * @param array  $checked  field => value from the visitor's last submit
+ * @param string $url      the document page's address, without the type
+ * @return string
+ */
+function pg_legal_documents_checkboxes_html(array $checked, $url)
+{
+    $labels = array(
+        'preinfo'  => lang('the Pre-Information Form'),
+        'contract' => lang('the Distance Sales Contract'),
+    );
+
+    $rows = '';
+
+    foreach ($labels as $type => $label) {
+        $field = 'legal_' . $type;
+        $link = '<a href="' . h($url . (strpos($url, '?') === false ? '?' : '&') . 'type=' . $type) . '" target="_blank" rel="noopener">' . h($label) . '</a>';
+        $text = ($type === 'preinfo')
+            ? lang(array('string' => 'I have read and approve {var:1}.', 'vars' => array($link)))
+            : lang(array('string' => 'I have read and accept {var:1}.', 'vars' => array($link)));
+
+        $rows .= '<div class="form-check pg-legal-document">'
+            . '<input class="form-check-input software_input_checkbox" type="checkbox" name="' . $field . '" id="' . $field . '" value="1" required'
+            . (((string) ($checked[$field] ?? '') === '1') ? ' checked' : '') . '>'
+            . ' <label class="form-check-label" for="' . $field . '">' . $text . '</label>'
+            . '</div>';
+    }
+
+    return '<div class="pg-legal-documents mb-3">' . $rows . '</div>';
+}
+
+/**
+ * Put a block in front of a checkout form's purchase button (the tag named
+ * submit_purchase_now). A page without that button is returned as it is.
+ *
+ * @param string $html
+ * @param string $block
+ * @return string
+ */
+function pg_legal_documents_insert_before_purchase($html, $block)
+{
+    $html = (string) $html;
+    $at = strpos($html, 'name="submit_purchase_now"');
+
+    if ($at === false) {
+        return $html;
+    }
+
+    $tag = strrpos(substr($html, 0, $at), '<');
+
+    if ($tag === false) {
+        return $html;
+    }
+
+    return substr($html, 0, $tag) . $block . substr($html, $tag);
+}
+
+/**
  * The built-in template for a type in a language: the language's own file
  * when one ships, the English one otherwise.
  *
@@ -412,16 +624,22 @@ function pg_legal_document_payment_label($payment_method)
  * Fill every document type for an order from its stored rows.
  *
  * Amounts are shown in the visitor's currency, as the checkout showed them.
+ * A placed order is read as stored. A cart (status incomplete) carries no
+ * totals on its row yet, so its amounts come from its item and recipient
+ * rows and from what the checkout page showed ($seen, see
+ * pg_legal_document_cart_order()).
  *
- * @param int $order_id
+ * @param int   $order_id
+ * @param array $seen  the checkout page's snapshot for this cart
  * @return array  type => html; empty when the order is not found
  */
-function pg_legal_documents_for_order($order_id)
+function pg_legal_documents_for_order($order_id, array $seen = array())
 {
     $order_id = (int) $order_id;
 
     $order = db_item(
         "SELECT
+            orders.status,
             orders.order_number,
             orders.billing_first_name,
             orders.billing_last_name,
@@ -453,13 +671,14 @@ function pg_legal_documents_for_order($order_id)
 
     $lines = array();
 
-    foreach ((array) db_items("SELECT product_name, quantity, price FROM order_items WHERE order_id = '" . $order_id . "' ORDER BY id") as $item) {
+    foreach ((array) db_items("SELECT product_name, quantity, price, tax_total FROM order_items WHERE order_id = '" . $order_id . "' ORDER BY id") as $item) {
         $quantity = (int) $item['quantity'];
         $lines[] = array(
             'name'       => $item['product_name'],
             'quantity'   => $quantity,
             'unit_price' => (int) round($item['price']),
             'line_total' => (int) round($item['price'] * $quantity),
+            'tax'        => (int) round((float) $item['tax_total']),
         );
     }
 
@@ -477,6 +696,7 @@ function pg_legal_documents_for_order($order_id)
             ship_tos.zip_code,
             IFNULL(countries.name, ship_tos.country) AS country,
             ship_tos.arrival_date,
+            ship_tos.shipping_cost,
             shipping_methods.name AS shipping_method_name
         FROM ship_tos
         LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
@@ -496,7 +716,20 @@ function pg_legal_documents_for_order($order_id)
             )),
             'method'       => (string) $ship_to['shipping_method_name'],
             'arrival_date' => (($arrival !== '') && ($arrival !== '0000-00-00')) ? prepare_form_data_for_output($arrival, 'date', false) : '',
+            'cost'         => (int) round((float) $ship_to['shipping_cost']),
         );
+    }
+
+    if ($order['status'] === 'incomplete') {
+        $order = pg_legal_document_cart_order($order, $lines, $ship_tos, $seen);
+
+        // The checkout posts a country code; the documents name the country.
+        $seen_country = (string) ($seen['billing']['billing_country'] ?? '');
+
+        if ($seen_country !== '') {
+            $country_name = (string) db_value("SELECT name FROM countries WHERE code = '" . e($seen_country) . "' LIMIT 1");
+            $order['billing_country'] = ($country_name !== '') ? $country_name : $seen_country;
+        }
     }
 
     // The plain-text price keeps a symbol stored as an entity (&#8378;); the
@@ -572,3 +805,90 @@ function pg_legal_documents_store($order_id, array $accepted_types)
 
     return $stored;
 }
+
+/**
+ * A liveform's values as the visitor last submitted them.
+ *
+ * Read before a checkout renderer runs: the designer's checkout drops the
+ * form from the session while it draws its messages.
+ *
+ * @param string $form  liveform name (express_order, order_preview)
+ * @return array  field => value
+ */
+function pg_legal_documents_form_values($form)
+{
+    $values = array();
+
+    foreach ((array) ($_SESSION['software']['liveforms'][(string) $form][0] ?? array()) as $field => $data) {
+        if (is_array($data) && isset($data['value']) && is_scalar($data['value'])) {
+            $values[$field] = (string) $data['value'];
+        }
+    }
+
+    return $values;
+}
+
+/**
+ * The address of the page that shows a document filled from the cart.
+ *
+ * @return string
+ */
+function pg_legal_document_page_url()
+{
+    // Unescaped: pg_legal_documents_checkboxes_html() escapes the link once.
+    return PATH . SOFTWARE_DIRECTORY . '/legal_document.php';
+}
+
+/**
+ * Give a rendered checkout page its acceptance checkboxes.
+ *
+ * Every checkout (the designer's express order, the classic express order
+ * and the classic order preview) passes its output through here. The page's
+ * total and billing values are kept for the document page the checkboxes
+ * link to, so the documents show what the visitor is looking at. A page that
+ * already carries the fields (a designer tree that binds them) gets none
+ * added; a page without a purchase button needs none.
+ *
+ * @param string $html
+ * @param array  $values  pg_legal_documents_form_values() taken before rendering
+ * @return string
+ */
+function pg_legal_documents_inject($html, array $values = array())
+{
+    $html = (string) $html;
+
+    if ((strpos($html, 'name="submit_purchase_now"') === false) || !pg_legal_documents_enabled()) {
+        return $html;
+    }
+
+    $_SESSION['ecommerce']['legal_documents_seen'] = array('order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0)) + pg_legal_document_form_snapshot($html);
+
+    if (strpos($html, 'name="legal_preinfo"') !== false) {
+        return $html;
+    }
+
+    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_page_url()));
+}
+
+/**
+ * The documents for the visitor's current cart, as the checkout shows them.
+ *
+ * @return array  type => html; empty without a cart
+ */
+function pg_legal_documents_for_cart()
+{
+    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+
+    if ($order_id <= 0) {
+        return array();
+    }
+
+    $seen = (array) ($_SESSION['ecommerce']['legal_documents_seen'] ?? array());
+
+    if ((int) ($seen['order_id'] ?? 0) !== $order_id) {
+        $seen = array();
+    }
+
+    return pg_legal_documents_for_order($order_id, $seen);
+}
+
