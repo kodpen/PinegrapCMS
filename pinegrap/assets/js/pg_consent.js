@@ -12,6 +12,13 @@
  * same format pg_consent_parse() reads on the server. Answers for categories
  * this page does not show are carried over untouched.
  *
+ * No optional category is switched on for the visitor: a switch shows on
+ * only for what the stored answer allows. Google Consent Mode v2: the page's
+ * <head> already set the default from the stored answer
+ * (pg_consent_mode_script()); every answer given here, and the stored one on
+ * each page, is sent as an update before a held script starts, so a Google
+ * tag the answer releases reads it from its first command.
+ *
  * After an answer the notice folds into the cookie button in the corner,
  * which reopens it. Withdrawing consent has to stay as easy as giving it, so
  * the button is hidden only when the page itself links to the settings: any
@@ -114,6 +121,34 @@
         return true;
     }
 
+    // ── Google Consent Mode ─────────────────────────────────────────────
+
+    // The answer as a Consent Mode v2 update, mapped like
+    // pg_consent_mode_states(): statistics decides analytics storage,
+    // marketing the three advertising types. Through the site's own gtag
+    // when it has one, otherwise queued on dataLayer the way gtag queues it
+    // (an Arguments object, not an array), for a tag that loads later.
+    function signal(choices) {
+        var marketing = choices.marketing ? 'granted' : 'denied';
+        var states = {
+            ad_storage: marketing,
+            ad_user_data: marketing,
+            ad_personalization: marketing,
+            analytics_storage: choices.analytics ? 'granted' : 'denied'
+        };
+
+        if (typeof window.gtag === 'function') {
+            window.gtag('consent', 'update', states);
+            return;
+        }
+
+        var layer = window.dataLayer = window.dataLayer || [];
+
+        (function () {
+            layer.push(arguments);
+        })('consent', 'update', states);
+    }
+
     // ── Held scripts ────────────────────────────────────────────────────
 
     // A held script is re-created as a live one in the same place. External
@@ -148,17 +183,6 @@
 
             node.parentNode.replaceChild(live, node);
         });
-
-        // A tag manager or gtag the site set up with Consent Mode defaults
-        // hears the answer too.
-        if (typeof window.gtag === 'function') {
-            window.gtag('consent', 'update', {
-                analytics_storage: choices.analytics ? 'granted' : 'denied',
-                ad_storage: choices.marketing ? 'granted' : 'denied',
-                ad_user_data: choices.marketing ? 'granted' : 'denied',
-                ad_personalization: choices.marketing ? 'granted' : 'denied'
-            });
-        }
 
         var event;
 
@@ -232,6 +256,10 @@
 
         write(merged);
 
+        // Before anything starts, and before a reload, so a tag that is
+        // already running stops being granted at once.
+        signal(merged);
+
         // What was on and is off now: its cookies go, and the page reloads,
         // because a script that already ran cannot be stopped in place.
         Array.prototype.forEach.call(switches, function (input) {
@@ -275,10 +303,9 @@
         Array.prototype.forEach.call(switches, function (input) {
             var category = input.getAttribute('data-pg-cc-category');
 
-            // An unanswered category stays as drawn: switched on.
-            if (stored.hasOwnProperty(category)) {
-                input.checked = stored[category];
-            }
+            // On only where the visitor said yes; an unanswered category is
+            // off, never ticked for them.
+            input.checked = stored.hasOwnProperty(category) ? stored[category] : false;
         });
     }
 
@@ -348,6 +375,15 @@
             case 'settings':
                 sync();
                 view('prefs');
+
+                // The pressed button is hidden with its view: focus moves
+                // into the settings, or it would fall back to the page and
+                // Escape would no longer reach the notice.
+                var first = views.prefs.querySelector('.pg-cc-switch, .pg-cc-btn');
+
+                if (first) {
+                    first.focus();
+                }
                 break;
 
             case 'accept':
@@ -412,15 +448,16 @@
     });
 
     var stored = read();
+    var ready = answered(stored);
 
-    if (answered(stored) && location.hash !== '#cookie-settings') {
+    if (ready) {
+        signal(stored);
         start(stored);
+    }
+
+    if (ready && location.hash !== '#cookie-settings') {
         rest();
     } else {
-        if (answered(stored)) {
-            start(stored);
-        }
-
         show(location.hash === '#cookie-settings');
     }
 })();
