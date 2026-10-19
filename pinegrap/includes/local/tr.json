@@ -23496,5 +23496,9 @@
     "Stock is not tracked for this product; saving a quantity turns tracking on.": "Bu ürünün stoğu izlenmiyor; bir adet kaydetmek izlemeyi açar.",
     "One per line": "Her satıra bir tane",
     "Separated by commas": "Virgülle ayrılmış",
-    "A number, like 0.5": "Bir sayı, 0,5 gibi"
+    "A number, like 0.5": "Bir sayı, 0,5 gibi",
+    "Download as Markdown": "Markdown olarak indir",
+    "Export all": "Tümünü dışa aktar",
+    "This server cannot make zip files (the PHP zip extension is missing). Export the notes one by one instead.": "Bu sunucu zip dosyası yapamıyor (PHP zip eklentisi yok). Notları tek tek dışa aktarın.",
+    "last changed by {var:1}": "son değiştiren {var:1}"
 }

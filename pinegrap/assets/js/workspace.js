@@ -18079,6 +18079,14 @@
         });
 
         bar.appendChild(menuPin);
+
+        // Every note as a zip that opens as a vault in Obsidian and the like.
+        if (CFG.urls.notes_export) {
+            var exportAll = button('btn btn-sm btn-ghost', t('notes_export_all'), 'bi-file-earmark-zip');
+            exportAll.addEventListener('click', function () { window.location.href = CFG.urls.notes_export + '?all=1'; });
+            bar.appendChild(exportAll);
+        }
+
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
         var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
@@ -18110,6 +18118,14 @@
             }
 
             items.push({ icon: 'bi-link-45deg', label: t('notes_copy_link'), action: function () { copyText(absoluteUrl(CFG.urls.notes + '?note=' + note.id)); } });
+
+            // The note as a file for another app, or as a page to print
+            // (workspace_notes_export.php).
+            if (CFG.urls.notes_export) {
+                items.push('-');
+                items.push({ icon: 'bi-filetype-md', label: t('notes_export_md'), action: function () { window.location.href = CFG.urls.notes_export + '?note=' + note.id; } });
+                items.push({ icon: 'bi-printer', label: t('notes_print'), action: function () { window.open(CFG.urls.notes_export + '?note=' + note.id + '&print=1', '_blank', 'noopener'); } });
+            }
 
             // A meeting note's decisions and action items (meetings.php).
             if (CFG.meetings && (mine || note.access === 'edit')) {

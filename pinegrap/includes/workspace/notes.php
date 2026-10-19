@@ -1806,6 +1806,9 @@ function ws_notes_js_strings()
     return array(
         'my_notes'              => lang('My Notes'),
         'nav_notes'             => lang('My Notes'),
+        'notes_export_md'       => lang('Download as Markdown'),
+        'notes_print'           => lang('Print'),
+        'notes_export_all'      => lang('Export all'),
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),
         'notes_new'             => lang('New note'),
