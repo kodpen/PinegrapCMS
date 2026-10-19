@@ -534,6 +534,7 @@ if (!$_POST) {
     }
 
     $common_regions_user_can_edit = get_items_user_can_edit('common_regions', $_GET['id']);
+    $shared_components_user_can_edit = get_items_user_can_edit('shared_components', $_GET['id']);
     $menus_user_can_edit          = get_items_user_can_edit('menus', $_GET['id']);
 
     $output_hidden_role = '';
@@ -550,6 +551,7 @@ if (!$_POST) {
         'edit_tree'      => get_acl_folder_tree('edit', 0, 0, array(), $folders_that_user_has_edit_access_to),
         'page_types'     => get_page_type_checkboxes_and_labels($set_page_type_values),
         'common_regions' => get_checkboxes_for_items_user_can_edit('common_regions', $common_regions_user_can_edit),
+        'shared_components' => get_checkboxes_for_items_user_can_edit('shared_components', $shared_components_user_can_edit),
         'menus'          => get_checkboxes_for_items_user_can_edit('menus', $menus_user_can_edit),
         'view_tree'      => get_date_picker_format() . get_acl_folder_tree('view', 0, 0, array(), $folders_that_user_has_view_access_to, $_GET['id']),
     );
@@ -670,6 +672,7 @@ if (!$_POST) {
             'view_folders'   => count($folders_that_user_has_view_access_to),
             'page_types'     => $page_type_count,
             'common_regions' => count($common_regions_user_can_edit),
+            'shared_components' => count($shared_components_user_can_edit),
             'menus'          => count($menus_user_can_edit),
             'calendars'      => $calendar_count,
             'contact_groups' => $contact_group_count,
@@ -1705,6 +1708,9 @@ if (!$_POST) {
                 }
             }
             
+            // the shared components opened to content editors the user was given
+            pg_save_shared_component_grants($_POST['id'] ?? 0, $_POST);
+
             // delete user and menu references in users_menus_xref
             $query = "DELETE FROM users_menus_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

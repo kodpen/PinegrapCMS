@@ -23,5 +23,6 @@ description: Shared components opened to content editors (the designer's common 
 - `_sdTrackSharedEditing()` marks only an opened component dirty at content level; `_flushDirtyShared()` sends it as `content_update` and, when the answer differs from what was sent, puts the stored tree in the cache and redraws.
 - Symptom fixed with it (PR #579): a manager could type into a shared component's text (only widgets were refused on screen) and the save failed with "Permission denied.".
 
-## What is not built yet?
-- The grant checkboxes on the user screens (R1c): `plans/legacy-retirement-prerequisites.md`. Tests: `tests/shared_component_content_test.php`.
+## Where are the grants given?
+- User screens (add, edit, import; PR #580): Shared Content panel, list "Shared components the User may edit" (fields `shared_component_<id>`), shown only when a component is open; `get_checkboxes_for_items_user_can_edit('shared_components')` / `get_items_user_can_edit()` in `includes/fn/content.php`. Saved for role 3 by `pg_save_shared_component_grants($user_id, $_POST)`, which rewrites only the rows of open components: a grant on a closed one stays for when it opens again.
+- A role-3 user still reaches a component only through a page the designer lets them open (folder edit right): see the open question in `plans/legacy-retirement-prerequisites.md`. Tests: `tests/shared_component_content_test.php`.
