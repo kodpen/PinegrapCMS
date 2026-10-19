@@ -15,25 +15,23 @@ description: Plan (2026-10-19) for the editable code view in the visual designer
 
 ## Which decisions are made?
 - Owner (2026-10-19): engine CodeMirror 6 (one bundle, syntax tree with positions, change filters for the locks; Monaco rejected for weight: 2.5 MB core + 0.7-7 MB workers); shared components and system widgets are half-locked in code mode (attribute values and text, `_sharedDirty` marked); changes apply while typing.
-- One emitter: `generateHTML()` is split into `_sdEmitTree()` that returns the text and a range map (node -> open tag, attributes, text, close tag). Tree view, code view and the saved output all read it. Design: docs/memory/plans/designer-code-editor-design.md
-- Head/foot rows come from one `_sdPageFrameRows()` shared by the tree and the code view (today `renderHtmlTree()`, the canvas and `_sdPreviewDocHtml()` each assemble their own copy; the preview's order is the closest to `get_page_content.php`).
+- One emitter: `generateHTML()` writes through `_sdEmitNode(n, indent, base, sink)`, which with a sink records every node's range (`{node, from, to, sid}`); attribute and text positions are read from the text (`_sdCodeOpenTag()`). Design: docs/memory/plans/designer-code-editor-design.md
+- Head/foot rows come from one `_sdPageFrameRows()`, shared by the tree and the code view (the canvas and `_sdPreviewDocHtml()` still assemble their own).
 - Existing nodes change in place by range; a new element typed in the editor goes through the server converter (`designer/import_fragment`), never a JS twin of `pg_di_node()`.
 - Apply while typing is debounced and runs only when the edited region parses without an error node; one `saveState()` per edit burst.
 
 ## Slices (one PR each)
 - E1 (done): facade `assets/js/pg_code_editor.js`, lazy loader, bundle, `tools/build_code_editor.php`; see docs/memory/core/code-editor-facade-and-bundle.md.
-- E2 read-only code view: Edit switch, click -> select, selection -> scroll, text replaced on tree change.
-- E3 emitter range map, lock levels as protected ranges.
+- E2 (done): "Code" switch in the HTML column, read-only view over the range map and the frame rows, click -> select, selection -> mark and scroll, locks drawn (frame rows full; `<body>` attributes, `_locked`/shared/widget nodes and content-role limits half). The switch becomes Edit when E4 lets the text change.
+- E3 incremental refresh: a tree change rewrites only the changed node's text instead of the whole document (E2 replaces it all on every change).
 - E4 in-place edits: attributes (Attrs-panel write rules), text per node kind, tag name; undo.
 - E5 structural edits: insert, delete, move, reorder, via the converter.
 - E6 CSS/JS tabs replace `#sd-as-modal`; `window.openCodeEditor()` adapter for the three modal uses; find/replace; CM5 removed from `designer_screen.php`.
 - E7 extras: class completion (`PG_CLASS_SUGGESTIONS`), binding tokens, Emmet, format, lint, minimap. Changelog `[NEW]` line at E6.
 
 ## Open questions (owner)
-1. Engine: CodeMirror 6 (one 700 KB file, syntax tree with positions, change filters for the locks; recommended) or Monaco (VS Code itself: 2.5 MB core + 0.7-7 MB workers, locks by plugin, ESM loader)?
-2. Shared components and system widgets in code mode: locked, half-locked or free (inline edit marks `_sharedDirty`)?
-3. Apply while typing, or an Apply button?
-4. `buildNodeHTML()` has no callers; remove with E3?
+1. `buildNodeHTML()` has no callers; remove with E4?
+2. `esc()` escapes text, not quotes: a `"` in an attribute value breaks the tag in `generateHTML()` (the frame rows use `_sdAttrEsc()` since E2). Fix in the emitter, with the PHP twin?
 
 ## Where to start?
-E1. Build the bundle with esbuild into `assets/lib/code_editor/` (pinned versions, a build tool under `tools/` like `build_js.php`); the facade exposes create/setValue/getValue/setLocks/find/goto/destroy and takes labels from the caller so `_sdT()` stays in `style_designer.js`.
+E3, in `_sdCodeRefresh()`: compare the new range map with the last one and replace only the text of the nodes whose text changed (the editor keeps the ranges mapped), so a keystroke in a panel does not rewrite the whole document.

@@ -19572,6 +19572,9 @@ const StyleDesigner = (function () {
             '</div>';
         canvas.appendChild(p);
 
+        // The code view's switch and host live in the HTML column.
+        _sdCodeInit();
+
         // ── Collapse/expand: header click or button click ──
         var colBtn = document.getElementById('sd-bp-collapse');
         var bpHdr  = p.querySelector('.sd-panel-bottom-header');
@@ -22321,16 +22324,162 @@ const StyleDesigner = (function () {
         _sdFxSoon();
     }
 
+    // ========================= PAGE FRAME (head and foot rows) =========================
+    // What the page prints around the body, as rows: the HTML tree of the
+    // bottom panel and the code view both draw these, so they cannot drift
+    // apart. A row is { tag, attrs: [[name, value], ...], void, inner, comment }:
+    // `inner` is the text between the tags, a placeholder comment (`comment`)
+    // when the real content lives elsewhere (a stylesheet's rules, a script's
+    // code). The order follows the preview (_sdPreviewDocHtml()), the closest
+    // client-side mirror of get_page_content.php: the look and the palette
+    // go right after the Bootstrap row, the user styles close the head, the
+    // scripts come in the front end's order (linked, JSON, classic, modules).
+    function _sdPageFrameRows() {
+        var head = [], foot = [];
+        var row = function (tag, attrs, inner, comment) {
+            var r = { tag: tag, attrs: attrs || [], void: false, inner: null, comment: false };
+            if (inner === undefined) r.void = true;
+            else { r.inner = inner; r.comment = !!comment; }
+            return r;
+        };
+        head.push(row('meta', [['charset', 'utf-8']]));
+        var _fp = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        head.push(row('title', [], (_fp && _fp.page_title) ? String(_fp.page_title) : ''));
+        (pageSettings.meta || []).forEach(function (m) {
+            if (!m.name && !m.property) return;
+            var attrs = [];
+            if (m.name)     attrs.push(['name', m.name]);
+            if (m.property) attrs.push(['property', m.property]);
+            if (m.content !== undefined) attrs.push(['content', m.content]);
+            head.push(row('meta', attrs));
+        });
+
+        var assets = _readAssetsFromFields();
+        var cssRows = _sdAssetsInPlay(assets.cssFiles);
+        var themeRows = _sdThemeAssets().map(function (a) {
+            return a.css ? row('style', [['id', a.id]], '…', true) : row('link', [['rel', 'stylesheet'], ['id', a.id], ['href', a.url]]);
+        });
+        var themeDone = false;
+        // Without the Bootstrap rows in the assets panel the renderer adds
+        // the framework, the theme and the icons itself, in that order.
+        var sentinel = assets.cssFiles.some(function (f) { return f && f.enabled !== false && (f.meta === 'bootstrap-css' || f.meta === 'bootstrap-icons'); });
+        if (!sentinel) {
+            var fw = _sdFrameworkInfo();
+            if (fw.css) head.push(row('link', [['rel', 'stylesheet'], ['href', fw.css]]));
+            themeRows.forEach(function (r) { head.push(r); });
+            themeDone = true;
+            var ownIcons = cssRows.some(function (f) { return !f.meta && f.type === 'external-css' && /bootstrap-icons/i.test(f.content || ''); });
+            if (!ownIcons) head.push(row('link', [['rel', 'stylesheet'], ['href', _sdIconsUrl()]]));
+        }
+        assets.gfFonts.forEach(function (f) {
+            if (f.enabled === false || !f.family) return;
+            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
+            head.push(row('link', [['rel', 'stylesheet'], ['href', 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap']]));
+        });
+        var inlineNames = [], userStyles = false;
+        cssRows.forEach(function (f) {
+            if (f.meta === 'user-styles') { if (f.content && f.content.trim()) userStyles = true; return; }
+            if (f.type === 'external-css') {
+                if (f.content && f.content.trim()) {
+                    head.push(row('link', [['rel', 'stylesheet'], ['href', f.content.trim()]]));
+                    if (!themeDone && _sdIsBootstrapCssHref(f.content)) { themeRows.forEach(function (r) { head.push(r); }); themeDone = true; }
+                }
+                return;
+            }
+            if (f.content) inlineNames.push(f.name || '');
+        });
+        if (!themeDone && themeRows.length) themeRows.forEach(function (r) { head.push(r); });
+        // The classic theme file (style.theme_id), when the design has one.
+        var themeSel = document.querySelector('select[name="theme_id"]');
+        var themeStr = themeSel ? themeSel.options[themeSel.selectedIndex].text.trim() : '';
+        if (themeStr && themeStr.indexOf('.css') !== -1) head.push(row('link', [['rel', 'stylesheet'], ['href', '/' + themeStr]]));
+        if (inlineNames.length) head.push(row('style', [['id', 'pg-page-css']], '/* ' + inlineNames.join(', ') + ' */', true));
+        if (userStyles) head.push(row('style', [['id', 'pg-user-styles']], '…', true));
+
+        var jsRows = _sdAssetsInPlay(assets.jsFiles);
+        var classic = [];
+        jsRows.forEach(function (f) {
+            if (f.type === 'external-js' && f.content && f.content.trim()) {
+                foot.push(row('script', (f.module ? [['type', 'module']] : []).concat([['src', f.content.trim()]]), ''));
+            }
+        });
+        jsRows.forEach(function (f) {
+            if (f.type === 'json' && f.content) foot.push(row('script', [['type', 'application/json'], ['id', f.name || '']], '…', true));
+            else if (f.type !== 'external-js' && f.type !== 'json' && f.content && !f.module) classic.push(f.name || '');
+        });
+        if (classic.length) foot.push(row('script', [['id', 'pg-page-js']], '/* ' + classic.join(', ') + ' */', true));
+        jsRows.forEach(function (f) {
+            if (f.type !== 'external-js' && f.type !== 'json' && f.content && f.module) {
+                foot.push(row('script', [['type', 'module']], '/* ' + (f.name || '') + ' */', true));
+            }
+        });
+        return { head: head, foot: foot };
+    }
+
+    // The <body> tag's attributes as the page gets them (_sdBodyAttrParts()),
+    // as [[name, value], ...] for the frame rows.
+    function _sdPageBodyAttrs() {
+        var nameEl = document.querySelector('[name="name"]');
+        var bcEl   = document.querySelector('[name="additional_body_classes"]');
+        var parts  = _sdBodyAttrParts(tree, nameEl ? nameEl.value.trim() : '', bcEl ? bcEl.value.trim() : '');
+        var attrs  = [];
+        if (parts.cls)   attrs.push(['class', parts.cls]);
+        if (parts.style) attrs.push(['style', parts.style]);
+        // parts.attrs is already markup (` id="…" data-x="…"`): read it back.
+        String(parts.attrs || '').replace(/\s([^\s=]+)="([^"]*)"/g, function (m, name, value) {
+            attrs.push([name, _sdUnescapeHtml(value)]);
+            return m;
+        });
+        return attrs;
+    }
+
+    // An attribute value between double quotes: esc() leaves quotes alone
+    // (it escapes text), so they are written here.
+    function _sdAttrEsc(v) { return esc(String(v == null ? '' : v)).replace(/"/g, '&quot;'); }
+
+    // The text a frame row prints: the tag the page gets.
+    function _sdFrameRowText(r) {
+        var out = '<' + r.tag;
+        r.attrs.forEach(function (a) { out += ' ' + a[0] + (a[1] !== undefined && a[1] !== null ? '="' + _sdAttrEsc(a[1]) + '"' : ''); });
+        out += '>';
+        if (r.void) return out;
+        var inner = r.inner == null ? '' : String(r.inner);
+        return out + (r.comment ? inner : esc(inner)) + '</' + r.tag + '>';
+    }
+
+    // The same row as the HTML tree draws it (the coloured spans).
+    function _sdFrameRowHtml(r) {
+        var html = '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">' + esc(r.tag) + '</span>';
+        r.attrs.forEach(function (a) {
+            html += '&nbsp;<span class="sd-ht-attr">' + esc(a[0]) + '</span>';
+            if (a[1] !== undefined && a[1] !== null) html += '<span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(String(a[1])) + '"</span>';
+        });
+        if (r.void) return html + '&nbsp;<span class="sd-ht-bracket">/&gt;</span>';
+        html += '<span class="sd-ht-bracket">&gt;</span>';
+        var inner = r.inner == null ? '' : String(r.inner);
+        if (inner) html += '<span class="' + (r.comment ? 'sd-ht-comment' : 'sd-ht-content') + '">' + esc(inner) + '</span>';
+        return html + '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">' + esc(r.tag) + '</span><span class="sd-ht-bracket">&gt;</span>';
+    }
+
+    function _sdUnescapeHtml(s) {
+        return String(s == null ? '' : s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    }
+
     // Renders the HTML tree in the bottom panel — the full page structure
     function renderHtmlTree() {
+        // The code view draws the same page as text (_sdCodeRefresh()).
+        if (_sdCodeEnabled()) { _sdCodeRefresh(); return; }
         var panel = document.getElementById('sd-html-tree');
         if (!panel) return;
         panel.innerHTML = '';
 
-        // Resolve current theme text — themes are CSS-only; no JS is ever injected.
-        var themeSel = document.querySelector('select[name="theme_id"]');
-        var themeStr = themeSel ? themeSel.options[themeSel.selectedIndex].text.trim() : '';
-        var hasThemeCss = themeStr && themeStr.indexOf('.css') !== -1;
+        var frame = _sdPageFrameRows();
+        var bodyAttrs = _sdPageBodyAttrs();
+        var bodyOpenHtml = '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">body</span>';
+        bodyAttrs.forEach(function (a) {
+            bodyOpenHtml += '&nbsp;<span class="sd-ht-attr">' + esc(a[0]) + '</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(String(a[1])) + '"</span>';
+        });
+        bodyOpenHtml += '<span class="sd-ht-bracket">&gt;</span>';
 
         // ── <html> ──
         // Clicking selects the root node so the user can edit body-level
@@ -22348,110 +22497,19 @@ const StyleDesigner = (function () {
                     '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">head</span><span class="sd-ht-bracket">&gt;</span>',
                     '</head>',
                     function(headWrap) {
-                        var d = 2;
-                        // charset
-                        buildHtmlLockedRow(headWrap, d,
-                            '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">meta</span>' +
-                            '&nbsp;<span class="sd-ht-attr">charset</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"utf-8"</span>' +
-                            '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        // The design's stylesheets as the page on the canvas
-                        // gets them (get_page_content.php): the Google Fonts,
-                        // the linked files in their order - the framework and
-                        // Bootstrap Icons rows among them, at their real
-                        // addresses - then the inline files in one <style>
-                        // and the User Styles in their own.
-                        var _assets = _readAssetsFromFields();
-                        var _htLink = function (href) {
-                            buildHtmlLockedRow(headWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
-                                '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
-                                '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(href) + '"</span>' +
-                                '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        };
-                        var _htStyle = function (id, names) {
-                            buildHtmlLockedRow(headWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">style</span>' +
-                                '&nbsp;<span class="sd-ht-attr">id</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + id + '"</span>' +
-                                '<span class="sd-ht-bracket">&gt;</span>' +
-                                (names ? '<span class="sd-ht-comment">/* ' + esc(names) + ' */</span>' : '<span class="sd-ht-comment">…</span>') +
-                                '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">style</span><span class="sd-ht-bracket">&gt;</span>');
-                        };
-                        _assets.gfFonts.forEach(function(f) {
-                            if (f.enabled === false || !f.family) return;
-                            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
-                            _htLink('https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap');
-                        });
-                        var _cssRows = _sdAssetsInPlay(_assets.cssFiles);
-                        var _inlineNames = [], _userStyles = false;
-                        _cssRows.forEach(function(f) {
-                            if (f.meta === 'user-styles') { if (f.content && f.content.trim()) _userStyles = true; return; }
-                            if (f.type === 'external-css') { if (f.content && f.content.trim()) _htLink(f.content.trim()); return; }
-                            if (f.content) _inlineNames.push(f.name || '');
-                        });
-                        // Theme CSS
-                        if (hasThemeCss) _htLink('/' + themeStr);
-                        if (_inlineNames.length) _htStyle('pg-page-css', _inlineNames.join(', '));
-                        if (_userStyles) _htStyle('pg-user-styles', '');
-                        // Meta tags from pageSettings
-                        pageSettings.meta.forEach(function(m) {
-                            if (!m.name && !m.property) return;
-                            var attrs = '';
-                            if (m.name)     attrs += '&nbsp;<span class="sd-ht-attr">name</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(m.name) + '"</span>';
-                            if (m.property) attrs += '&nbsp;<span class="sd-ht-attr">property</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(m.property) + '"</span>';
-                            if (m.content !== undefined) attrs += '&nbsp;<span class="sd-ht-attr">content</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(m.content) + '"</span>';
-                            buildHtmlLockedRow(headWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">meta</span>' + attrs +
-                                '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        });
+                        frame.head.forEach(function (r) { buildHtmlLockedRow(headWrap, 2, _sdFrameRowHtml(r)); });
                     }
                 );
 
                 // ── <body> + editable content ──
                 buildHtmlLockedSection(wrap, 1,
-                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">body</span><span class="sd-ht-bracket">&gt;</span>',
+                    bodyOpenHtml,
                     '</body>',
                     function(bodyWrap) {
                         // Editable content nodes
                         if (tree) buildHtmlTreeEl(bodyWrap, tree, 2);
-                        // Footer scripts (locked)
-                        var d = 2;
-                        // ── The design's scripts, as the page gets them: the
-                        // linked files in their order (jQuery and the framework
-                        // bundle among them), then the JSON blocks, the classic
-                        // inline code in one <script>, the modules.
-                        var _assetsJs = _readAssetsFromFields();
-                        var _jsRows = _sdAssetsInPlay(_assetsJs.jsFiles);
-                        var _htScript = function (attrs, body) {
-                            buildHtmlLockedRow(bodyWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' + attrs +
-                                '<span class="sd-ht-bracket">&gt;</span>' + body +
-                                '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">script</span><span class="sd-ht-bracket">&gt;</span>');
-                        };
-                        var _htAttr = function (name, value) {
-                            return '&nbsp;<span class="sd-ht-attr">' + name + '</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(value) + '"</span>';
-                        };
-                        var _classic = [];
-                        _jsRows.forEach(function(f) {
-                            if (f.type === 'external-js' && f.content && f.content.trim()) {
-                                _htScript((f.module ? _htAttr('type', 'module') : '') + _htAttr('src', f.content.trim()), '');
-                            }
-                        });
-                        _jsRows.forEach(function(f) {
-                            if (f.type === 'json' && f.content) _htScript(_htAttr('type', 'application/json') + _htAttr('id', f.name || ''), '<span class="sd-ht-comment">…</span>');
-                            else if (f.type !== 'external-js' && f.type !== 'json' && f.content && !f.module) _classic.push(f.name || '');
-                        });
-                        if (_classic.length) _htScript(_htAttr('id', 'pg-page-js'), '<span class="sd-ht-comment">/* ' + esc(_classic.join(', ')) + ' */</span>');
-                        _jsRows.forEach(function(f) {
-                            if (f.type !== 'external-js' && f.type !== 'json' && f.content && f.module) {
-                                _htScript(_htAttr('type', 'module'), '<span class="sd-ht-comment">/* ' + esc(f.name || '') + ' */</span>');
-                            }
-                        });
-                        // jQuery + Bootstrap bundle are now emitted via the
-                        // assets-panel sentinel iteration above (jquery-js,
-                        // bootstrap-js). Hardcoded fallback rows removed —
-                        // showing them again here would render duplicate
-                        // <script> entries in the HTML preview tree.
-                        // Themes are CSS-only — no theme JS is ever emitted.
+                        // The design's scripts, as the page gets them (locked)
+                        frame.foot.forEach(function (r) { buildHtmlLockedRow(bodyWrap, 2, _sdFrameRowHtml(r)); });
                     },
                     {
                         onClick: function () {
@@ -22623,13 +22681,354 @@ const StyleDesigner = (function () {
             closeLine.style.paddingLeft = (depth * 14 + 4) + 'px';
             closeLine.innerHTML = '<span class="sd-ht-chev-ph"></span><span class="sd-ht-close">&lt;/' + info.tag + '&gt;</span>';
             closeLine.dataset.nid = node._id;
+            // A click only selects: the canvas keeps its DOM, as it does
+            // for the opening row (_sdSelectRender()).
             closeLine.addEventListener('click', function(e) {
-                e.stopPropagation(); selectedNode = node; render();
+                e.stopPropagation(); selectedNode = node; _sdSelectRender();
             });
             container.appendChild(closeLine);
         } else if (!info.selfClose && !info.preview && !hasChildren) {
             // Empty element: close it inline
         }
+    }
+
+    // ========================= CODE VIEW (bottom panel, HTML column) =========================
+    // The page as text, in place of the HTML tree: the frame rows the page
+    // prints around the body (_sdPageFrameRows()), the body from the same
+    // emitter the output comes from (_sdEmitNode(), with the range map), and
+    // the foot rows. The editor is the facade's (PgCodeEditor, CodeMirror 6),
+    // fetched the first time the view opens. Selection goes both ways: the
+    // cursor's element is selected on the canvas, the canvas selection is
+    // marked and brought into view here. Rows the page prints from settings
+    // and files are locked; an element a hand may not change (a lock on the
+    // layers panel, a shared component, a widget, a content role's limits)
+    // is locked with islands over what may change, so the tint says what
+    // the hand can do. Until the editing slice lands the editor itself is
+    // read-only; the locks are drawn now so the picture does not change
+    // later. renderHtmlTree() hands over to _sdCodeRefresh() while the view
+    // is on, so the 60-odd places that redraw the tree need no change.
+    var _sdCode = {
+        on: false,          // the switch
+        ed: null,           // PgCodeEditor instance
+        host: null,         // #sd-html-code
+        text: '',           // the text last written to the editor
+        entries: [],        // the range map behind it (see _sdCodeDocument())
+        busy: false,        // true while the editor is being written to
+        fromEditor: false,  // true while a selection made in the editor is applied
+        loading: false
+    };
+    var _SD_CODE_KEY = 'pinegrap_designer_code_view';
+
+    function _sdCodeEnabled() { return !!(_sdCode.on && _sdCode.ed); }
+
+    // The engine's own texts (search panel, line prompt, fold gutter).
+    function _sdCodePhrases() {
+        return {
+            'Find': _sdT('Find'), 'Replace': _sdT('Replace'), 'next': _sdT('next'), 'previous': _sdT('previous'),
+            'all': _sdT('all'), 'match case': _sdT('match case'), 'by word': _sdT('by word'), 'regexp': _sdT('regexp'),
+            'replace': _sdT('replace'), 'replace all': _sdT('replace all'), 'close': _sdT('close'),
+            'current match': _sdT('current match'), 'replaced $ matches': _sdT('replaced $ matches'),
+            'replaced match on line $': _sdT('replaced match on line $'), 'on line': _sdT('on line'),
+            'Go to line': _sdT('Go to line'), 'go': _sdT('go'), 'to': _sdT('to'),
+            'Diagnostics': _sdT('Diagnostics'), 'No diagnostics': _sdT('No diagnostics'), 'Completions': _sdT('Completions'),
+            'Control character': _sdT('Control character'), 'Selection deleted': _sdT('Selection deleted'),
+            'folded code': _sdT('folded code'), 'unfold': _sdT('unfold'), 'Fold line': _sdT('Fold line'),
+            'Unfold line': _sdT('Unfold line'), 'Folded lines': _sdT('Folded lines'), 'Unfolded lines': _sdT('Unfolded lines')
+        };
+    }
+
+    // The switch in the HTML column's header and the editor's host; from
+    // initBottomPanel(). The view that was on when the editor was last
+    // closed comes back on.
+    function _sdCodeInit() {
+        var quad = document.getElementById('sd-bp-quad-tl');
+        var body = quad ? quad.querySelector('.sd-bp-quad-body') : null;
+        if (!quad || !body) return;
+        var host = document.createElement('div');
+        host.id = 'sd-html-code';
+        host.className = 'sd-html-code pg-code-editor';
+        body.appendChild(host);
+        _sdCode.host = host;
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'sd-html-code-toggle';
+        btn.className = 'sd-styles-tool sd-html-code-toggle';
+        btn.title = _sdT('Show the page as code (click a line to select its element)');
+        btn.innerHTML = '<span class="bi bi-braces-asterisk me-1"></span>' + esc(_sdT('Code'));
+        btn.addEventListener('click', function (e) { e.stopPropagation(); _sdCodeToggle(!_sdCode.on); });
+        var caret = document.getElementById('sd-bp-collapse');
+        if (caret && caret.parentNode) caret.parentNode.insertBefore(btn, caret);
+        else quad.querySelector('.sd-bp-quad-hdr').appendChild(btn);
+
+        var wanted = false;
+        try { wanted = localStorage.getItem(_SD_CODE_KEY) === '1'; } catch (e) {}
+        if (wanted) _sdCodeToggle(true);
+    }
+
+    function _sdCodeToggle(on) {
+        var quad = document.getElementById('sd-bp-quad-tl');
+        var btn  = document.getElementById('sd-html-code-toggle');
+        if (!quad || !_sdCode.host) return;
+        if (!on) {
+            _sdCode.on = false;
+            quad.classList.remove('sd-code-on');
+            if (btn) btn.classList.remove('active');
+            try { localStorage.setItem(_SD_CODE_KEY, '0'); } catch (e) {}
+            renderHtmlTree();
+            return;
+        }
+        if (typeof PgCodeEditor === 'undefined') return;
+        _sdCode.on = true;
+        quad.classList.add('sd-code-on');
+        if (btn) btn.classList.add('active');
+        try { localStorage.setItem(_SD_CODE_KEY, '1'); } catch (e) {}
+        if (_sdCode.ed) { _sdCodeRefresh(); return; }
+        if (_sdCode.loading) return;
+        _sdCode.loading = true;
+        PgCodeEditor.open(_sdCode.host, {
+            language: 'html',
+            value: '',
+            readOnly: true,
+            phrases: _sdCodePhrases(),
+            labels: { syntaxError: _sdT('Syntax error') },
+            onSelection: _sdCodeOnSelection
+        }).then(function (ed) {
+            _sdCode.loading = false;
+            _sdCode.ed = ed;
+            // Switched off while the bundle was on its way.
+            if (!_sdCode.on) return;
+            _sdCode.text = '';
+            _sdCodeRefresh();
+        }, function (err) {
+            _sdCode.loading = false;
+            sdToast('<strong>' + esc(_sdT('The code editor could not be loaded.')) + '</strong><br>' + esc(err && err.message ? err.message : ''), 'error', 6000);
+            _sdCodeToggle(false);
+        });
+    }
+
+    // The document for the editor: its text, the range map (one entry per
+    // node and per frame row, with the islands an edit may touch) and the
+    // locks derived from it.
+    function _sdCodeDocument() {
+        var text = '';
+        var entries = [];
+        var locks = [];
+        var lang = document.documentElement.lang || 'en';
+        var frame = _sdPageFrameRows();
+        var addRow = function (r, indent, role) {
+            var line = '    '.repeat(indent) + _sdFrameRowText(r);
+            var from = text.length;
+            text += line + '\n';
+            entries.push({ key: role + ':' + entries.length, node: null, from: from, to: from + line.length, lock: 'full', role: role });
+        };
+        var addLine = function (line) {
+            var from = text.length;
+            text += line + '\n';
+            entries.push({ key: 'frame:' + entries.length, node: null, from: from, to: from + line.length, lock: 'full', role: 'frame' });
+        };
+
+        addLine('<!DOCTYPE html>');
+        addLine('<html lang="' + esc(lang) + '">');
+        addLine('<head>');
+        frame.head.forEach(function (r) { addRow(r, 1, 'head'); });
+        addLine('</head>');
+
+        // The <body> tag: the root node's attributes may change, the tag may not.
+        var bodyOpen = '<body';
+        var bodyIslands = [];
+        _sdPageBodyAttrs().forEach(function (a) {
+            bodyOpen += ' ' + a[0] + '="';
+            var vf = bodyOpen.length;
+            bodyOpen += _sdAttrEsc(a[1]);
+            bodyIslands.push([vf, bodyOpen.length]);
+            bodyOpen += '"';
+        });
+        bodyOpen += '>';
+        var bodyFrom = text.length;
+        text += bodyOpen + '\n';
+        var rootLock = _sdCodeLockOf(tree);
+        entries.push({ key: 'body', node: tree, from: bodyFrom, to: bodyFrom + bodyOpen.length, lock: 'half', role: 'body',
+            islands: (rootLock.attrs ? bodyIslands.map(function (p) { return [bodyFrom + p[0], bodyFrom + p[1]]; }) : []) });
+
+        // The body: the emitter with its range map, widgets written whole.
+        var sink = { ranges: [], scope: 0, full: true };
+        var bodyStart = text.length;
+        if (tree && tree.children) {
+            tree.children.forEach(function (c) { text += _sdEmitNode(c, 1, text.length, sink); });
+        }
+        sink.ranges.forEach(function (r) {
+            if (r.to <= r.from) return;
+            var type = r.node.type;
+            // A loop area is its two marker lines; the rows between them
+            // are nodes of their own. A shared reference and a widget's root
+            // wrapper hold nothing of their own either: what is inside decides.
+            if (type === 'loop_area' || type === 'recipient_loop_area') {
+                var openEnd = text.indexOf('-->', r.from) + 3;
+                var closeAt = text.lastIndexOf('<!--', r.to);
+                if (openEnd > 2 && closeAt > r.from) {
+                    entries.push({ key: r.sid + ':' + r.node._id + ':open', node: r.node, sid: r.sid, from: r.from, to: openEnd, lock: 'full', role: 'loop' });
+                    entries.push({ key: r.sid + ':' + r.node._id + ':close', node: r.node, sid: r.sid, from: closeAt, to: text.indexOf('-->', closeAt) + 3, lock: 'full', role: 'loop' });
+                }
+                return;
+            }
+            var lock = (type === 'root' || type === 'shared_ref') ? { level: '', attrs: false, text: false } : _sdCodeLockOf(r.node);
+            var e = { key: r.sid + ':' + r.node._id, node: r.node, sid: r.sid, from: r.from, to: r.to, lock: lock.level, role: 'node' };
+            if (lock.level === 'half') e.islands = _sdCodeIslands(text, r, lock);
+            entries.push(e);
+        });
+
+        frame.foot.forEach(function (r) { addRow(r, 1, 'foot'); });
+        addLine('</body>');
+        text += '</html>';
+        var endFrom = text.length - 7;
+        entries.push({ key: 'frame:end', node: null, from: endFrom, to: text.length, lock: 'full', role: 'frame' });
+
+        entries.forEach(function (e) {
+            if (e.lock === 'full') locks.push({ from: e.from, to: e.to, tag: e.role });
+            else if (e.lock === 'half') locks.push({ from: e.from, to: e.to, tag: e.role, allow: e.islands || [] });
+        });
+        return { text: text, entries: entries, locks: locks, bodyStart: bodyStart };
+    }
+
+    // What a hand may change on a node, in the code view's terms:
+    // { level: 'full' | 'half' | '', attrs: bool, text: bool }. The same
+    // questions the canvas asks (_sdCanEditNode(), the layer lock, the
+    // shared component), answered once per node while the document is built.
+    function _sdCodeLockOf(node) {
+        if (!node) return { level: 'full', attrs: false, text: false };
+        if (node.type === 'region') return { level: 'full', attrs: false, text: false };
+        if (!_collab.mayEdit) return { level: 'full', attrs: false, text: false };
+        var structural = _sdCanEditNode(node);
+        if (node.type === 'root') return { level: 'half', attrs: structural, text: false };
+        var textOk = structural || _sdCanEditNode(node, 'text');
+        if (!structural) {
+            // A content role outside its area: the text, nothing else.
+            return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };
+        }
+        // A locked layer, a shared component or a widget (owner's rule:
+        // half-locked): values and text, never the structure.
+        if ((node.props && node.props._locked) || hasLockedAncestor(node) || _resolveSharedSid(node) > 0) {
+            return { level: 'half', attrs: true, text: true };
+        }
+        return { level: '', attrs: true, text: true };
+    }
+
+    // The islands of a half-locked node: its attribute values (when values
+    // may change) and its own text (when the text may). Read from the text
+    // itself, so a component's output needs no map of its own.
+    function _sdCodeIslands(text, r, lock) {
+        var out = [];
+        var open = _sdCodeOpenTag(text, r.from, r.to);
+        if (!open) return out;
+        if (lock.attrs) {
+            open.attrs.forEach(function (a) { if (a.valueFrom !== null) out.push([a.valueFrom, a.valueTo]); });
+        }
+        if (lock.text && r.node.props && typeof r.node.props.text === 'string' && r.node.props.text !== '') {
+            var raw = r.node.props.text;
+            var needle = (r.node.type === 'semantic') ? esc(raw) : raw;
+            var at = text.indexOf(needle, open.end);
+            if (at !== -1 && at + needle.length <= r.to) out.push([at, at + needle.length]);
+        }
+        return out;
+    }
+
+    // The opening tag at the start of a node's text: where the tag name is,
+    // each attribute's name and value, and where the tag ends. null when the
+    // text does not begin with a tag (a region placeholder, raw markup).
+    function _sdCodeOpenTag(text, from, to) {
+        var i = from;
+        while (i < to && (text[i] === ' ' || text[i] === '\t' || text[i] === '\n')) i++;
+        if (text[i] !== '<' || text[i + 1] === '!' || text[i + 1] === '/') return null;
+        var m = /^<([A-Za-z][\w:-]*)/.exec(text.slice(i, Math.min(to, i + 200)));
+        if (!m) return null;
+        var out = { from: i, tagFrom: i + 1, tagTo: i + 1 + m[1].length, attrs: [], end: 0 };
+        var p = out.tagTo;
+        var attrRe = /\s+([^\s=\/>"']+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?|\s*\/?>/y;
+        while (p < to) {
+            attrRe.lastIndex = p;
+            var a = attrRe.exec(text);
+            if (!a) return null;
+            if (a[1] === undefined) { out.end = attrRe.lastIndex; return out; }
+            var entry = { name: a[1], nameFrom: a.index + (a[0].length - a[0].replace(/^\s+/, '').length), nameTo: 0, valueFrom: null, valueTo: null };
+            entry.nameTo = entry.nameFrom + a[1].length;
+            if (a[2] !== undefined || a[3] !== undefined || a[4] !== undefined) {
+                var val = a[2] !== undefined ? a[2] : (a[3] !== undefined ? a[3] : a[4]);
+                var quoted = a[4] === undefined;
+                entry.valueTo = attrRe.lastIndex - (quoted ? 1 : 0);
+                entry.valueFrom = entry.valueTo - val.length;
+            }
+            out.attrs.push(entry);
+            p = attrRe.lastIndex;
+        }
+        return null;
+    }
+
+    // Writes the document when it changed, then shows the selection.
+    function _sdCodeRefresh() {
+        if (!_sdCodeEnabled()) return;
+        var doc = _sdCodeDocument();
+        if (doc.text !== _sdCode.text) {
+            _sdCode.busy = true;
+            try {
+                _sdCode.ed.setValue(doc.text);
+                _sdCode.ed.track(doc.entries.map(function (e) {
+                    return { id: e.key, from: e.from, to: e.to, data: e, grow: false };
+                }));
+                _sdCode.ed.lock(doc.locks);
+            } finally { _sdCode.busy = false; }
+            _sdCode.text = doc.text;
+            _sdCode.entries = doc.entries;
+        }
+        _sdCodeRevealSelection();
+    }
+
+    // The entry of a node in the map, by identity (ids repeat across widgets).
+    function _sdCodeEntryOf(node) {
+        if (!node) return null;
+        var list = _sdCode.entries;
+        for (var i = 0; i < list.length; i++) if (list[i].node === node) return list[i];
+        return null;
+    }
+
+    // Marks the selected node's opening tag and brings it into view; a
+    // selection made in the editor itself is not scrolled to.
+    function _sdCodeRevealSelection() {
+        if (!_sdCodeEnabled()) return;
+        var ed = _sdCode.ed;
+        var entry = _sdCodeEntryOf(selectedNodes.length > 1 ? null : selectedNode);
+        if (!entry) { ed.mark('sel'); return; }
+        var live = ed.tracked(entry.key) || entry;
+        var open = _sdCodeOpenTag(ed.getValue(), live.from, live.to);
+        var from = open ? open.from : live.from, to = open ? open.end : Math.min(live.to, live.from + 200);
+        ed.mark('sel', from, to, 'pg-ce-mark');
+        if (!_sdCode.fromEditor) ed.scrollTo(from, { y: 'center' });
+    }
+
+    // The cursor moved by hand: the innermost element under it is selected
+    // on the canvas, as a click on a row of the tree does.
+    function _sdCodeOnSelection(inst, update) {
+        if (_sdCode.busy || !_sdCode.on) return;
+        var byHand = false;
+        for (var i = 0; i < update.transactions.length; i++) {
+            if (update.transactions[i].isUserEvent('select')) { byHand = true; break; }
+        }
+        if (!byHand) return;
+        var pos = inst.selection().head;
+        var hits = inst.trackedAt(pos);
+        var entry = null;
+        for (var j = 0; j < hits.length; j++) {
+            var e = hits[j].data;
+            if (e && e.node) { entry = e; break; }
+        }
+        if (!entry || entry.node === selectedNode) return;
+        _sdCode.fromEditor = true;
+        try {
+            selectedNode = entry.node;
+            selectedNodes = [];
+            _sdSelectRender();
+            scrollCanvasToNode(selectedNode);
+        } finally { _sdCode.fromEditor = false; }
     }
 
     // ── Shared Context Menu Builder ────────────────────────────────────────────────
@@ -46566,159 +46965,221 @@ const StyleDesigner = (function () {
     }
 
     // ========================= HTML OUTPUT =========================
+    // The markup of one node and its subtree, as the page gets it: the
+    // compiler behind generateHTML(), the preview and the code view.
+    //
+    // `base` is the offset the returned string lands at in the document being
+    // built. With a `sink` every node written is recorded in `sink.ranges` as
+    // { node, from, to, sid } in document order, parent before children (sid:
+    // the shared component whose tree holds the node, 0 for the page's own),
+    // which is how the code view maps text back to nodes. A component's
+    // children are written inside its toHTML() output and located there
+    // afterwards; a component that drops or rewrites them loses their
+    // records and counts as one block. With `sink.full` the trees of system
+    // widgets are written whole, their loop areas as comment markers, so the
+    // code view shows what the canvas shows. Without a sink nothing here
+    // differs from before: generateHTML() passes none.
+    function _sdEmitNode(n, indent, base, sink) {
+        var pad = '    '.repeat(indent);
+        var h = '';
+        var rec = null;
+        if (sink) {
+            rec = { node: n, from: base, to: base, sid: sink.scope || 0 };
+            sink.ranges.push(rec);
+        }
+        var kidsMark = sink ? sink.ranges.length : 0;
+        switch (n.type) {
+            case 'container': {
+                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '') + (_pEC ? ' ' + _pEC : '');
+                var _ccStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
+                h += pad + '<div class="' + cc + '"' + _ccStyle + '>\n';
+                if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                h += pad + '</div>\n';
+                break; }
+            case 'semantic': {
+                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                var stg = n.props.tag || 'section';
+                var _semCls = (n.props.cssClass || '') + (_pEC ? ' ' + _pEC : '');
+                var scls = _semCls ? ' class="' + esc(_semCls.trim()) + '"' : '';
+                var sid2 = n.props.id ? ' id="' + esc(n.props.id) + '"' : '';
+                var sStyleParts = [];
+                if (n.props.inlineStyle) sStyleParts.push(n.props.inlineStyle.replace(/;?\s*$/, ''));
+                if (n.props.fontFamily) sStyleParts.push('font-family:' + n.props.fontFamily);
+                if (_pES) sStyleParts.push(_pES);
+                var sfont = sStyleParts.length ? ' style="' + esc(sStyleParts.join(';')) + '"' : '';
+                var shref = (stg === 'a' && n.props.href) ? ' href="' + esc(n.props.href) + '"' : '';
+                var starget = (stg === 'a' && n.props.target) ? ' target="' + esc(n.props.target) + '"' : '';
+                var srel = (stg === 'a' && n.props.rel) ? ' rel="' + esc(n.props.rel) + '"' : '';
+                var sattrs = '';
+                if (n.props._attrs) n.props._attrs.forEach(function(a) {
+                    // Skip `id` — always sourced from props.id to avoid duplicate attributes
+                    if (a.name && a.name.trim() && a.name !== 'id') sattrs += ' ' + a.name.trim() + '="' + esc(a.value || '') + '"';
+                });
+                if (n.props.tooltipEnabled && n.props.tooltipTitle) {
+                    sattrs += ' data-bs-toggle="tooltip" data-bs-placement="' + esc(n.props.tooltipPlacement || 'top') + '" title="' + esc(n.props.tooltipTitle) + '"';
+                }
+                var _semVoidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
+                var _semIsVoid = _semVoidTags.indexOf(stg.toLowerCase()) !== -1;
+                // Whitespace is CONTENT in these two. The pretty-printer's
+                // newline and indent would show up as indentation in a code
+                // sample and as leading spaces in a textarea's value, so
+                // they are written on one line with nothing added inside.
+                // <code> is in the list because it is almost always
+                // inside a <pre>, where the indent it would otherwise
+                // gain is indentation the visitor reads.
+                var _semWsTags = ['pre', 'textarea', 'code'];
+                var _semIsWs = _semWsTags.indexOf(stg.toLowerCase()) !== -1;
+                h += pad + '<' + stg + sid2 + scls + sfont + shref + starget + srel + sattrs + '>';
+                if (_semIsVoid) {
+                    // Void elements: no content, no closing tag
+                    h += '\n';
+                } else if (_semIsWs) {
+                    var _wsInner = '';
+                    if (n.children) n.children.forEach(function (c) {
+                        var _wsMark = sink ? sink.ranges.length : 0;
+                        var _wsPart = _sdEmitNode(c, 0, base + h.length + _wsInner.length, sink);
+                        var _wsKept = _wsPart.replace(/\n+$/, '');
+                        // The newline the child ended with is not written: its record ends where the kept text ends.
+                        if (sink && sink.ranges[_wsMark] && sink.ranges[_wsMark].node === c) sink.ranges[_wsMark].to -= (_wsPart.length - _wsKept.length);
+                        _wsInner += _wsKept;
+                    });
+                    if (n.props.text) _wsInner += esc(n.props.text);
+                    h += _wsInner + '</' + stg + '>\n';
+                } else {
+                    h += '\n';
+                    // Button/a honor textPosition — matches canvas virtual-text placement.
+                    var _stgLc = stg.toLowerCase();
+                    var _isBtnL = (_stgLc === 'button' || _stgLc === 'a');
+                    var _tp2 = n.props.textPosition || 'end';
+                    if (_isBtnL && _tp2 === 'start' && n.props.text) h += pad + '    ' + esc(n.props.text) + '\n';
+                    if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                    if (n.props.text && (!_isBtnL || _tp2 !== 'start')) h += pad + '    ' + esc(n.props.text) + '\n';
+                    h += pad + '</' + stg + '>\n';
+                }
+                break; }
+            case 'row': {
+                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                var rc = 'row';
+                if (n.props.gutter) rc += ' g-' + n.props.gutter;
+                if (n.props.justify) rc += ' justify-content-' + n.props.justify;
+                if (n.props.align) rc += ' align-items-' + n.props.align;
+                if (n.props.cssClass) rc += ' ' + n.props.cssClass;
+                if (_pEC) rc += ' ' + _pEC;
+                var _rcStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
+                h += pad + '<div class="' + rc + '"' + _rcStyle + '>\n';
+                if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                h += pad + '</div>\n';
+                break; }
+            case 'col': {
+                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                var _colCls = buildColClasses(n.props) + (_pEC ? ' ' + _pEC : '');
+                var _colStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
+                h += pad + '<div class="' + _colCls + '"' + _colStyle + '>\n';
+                if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                h += pad + '</div>\n';
+                break; }
+            case 'region':
+                h += pad + _sdRegionTag(n.props) + '\n';
+                break;
+            case 'component': {
+                var comp = COMPONENTS[n.props.componentType];
+                if (comp && comp.toHTML) {
+                    var _pcChildren = '';
+                    if (n.children) n.children.forEach(function(c) { _pcChildren += _sdEmitNode(c, indent + 1, _pcChildren.length, sink); });
+                    h += comp.toHTML(n.props, pad, _pcChildren);
+                    if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pcChildren, base);
+                }
+                break; }
+            case 'content': {
+                var cnt = CONTENT[n.props.contentType];
+                if (cnt && cnt.toHTML) {
+                    var _pctChildren = '';
+                    if (n.children) n.children.forEach(function(c) { _pctChildren += _sdEmitNode(c, indent + 1, _pctChildren.length, sink); });
+                    var cHtml = cnt.toHTML(n.props, pad, _pctChildren);
+                    cHtml = addGlobalAttrs(cHtml, n);
+                    h += cHtml;
+                    if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pctChildren, base);
+                }
+                break; }
+            case 'shared_ref': {
+                // Expand shared component inline for HTML export / client-side preview.
+                var _prId = (n.props && n.props.sharedId) ? parseInt(n.props.sharedId, 10) : 0;
+                var _prCached = _prId > 0 ? _sharedCache[_prId] : null;
+                if (_prCached && _prCached.system_region_config && _sdPreviewWidgetMarkers) {
+                    // A system widget is drawn by the server; the Preview
+                    // puts its answer here (openPreview()).
+                    h += '<!--pg-sw-preview:' + _prId + '-->';
+                } else if (_prCached && _prCached.tree && !_sdSharedOpen[_prId]) {
+                    // Nested components expand in place; a loop of them
+                    // stops at the one already open.
+                    _sdSharedOpen[_prId] = true;
+                    var _prScope = sink ? sink.scope : 0;
+                    if (sink) sink.scope = _prId;
+                    try { h += _sdEmitNode(_prCached.tree, indent, base + h.length, sink); }
+                    finally { delete _sdSharedOpen[_prId]; if (sink) sink.scope = _prScope; }
+                }
+                break; }
+            // The code view's picture of a system widget: the page prints
+            // the server's render here, the canvas draws the tree. A root
+            // wrapper is its children; a loop area is a comment pair around
+            // the row template. Only asked for with sink.full.
+            case 'root':
+                if (sink && sink.full && n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent, base + h.length, sink); });
+                break;
+            case 'loop_area':
+            case 'recipient_loop_area':
+                if (sink && sink.full) {
+                    h += pad + '<!-- ' + (n.type === 'loop_area' ? 'loop' : 'recipients') + ' -->\n';
+                    if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                    h += pad + '<!-- /' + (n.type === 'loop_area' ? 'loop' : 'recipients') + ' -->\n';
+                }
+                break;
+        }
+        if (rec) rec.to = base + h.length;
+        return h;
+    }
+
+    // Children written into a component's output (see _sdEmitNode): their
+    // records were made relative to the children string, so they are moved
+    // to where that string sits in the finished markup, or dropped when the
+    // component did not keep it as one piece.
+    function _sdEmitPlaceKids(sink, kidsMark, html, kids, base) {
+        if (sink.ranges.length <= kidsMark) return;
+        var at = kids ? html.indexOf(kids) : -1;
+        if (at === -1) { sink.ranges.length = kidsMark; return; }
+        for (var i = kidsMark; i < sink.ranges.length; i++) {
+            sink.ranges[i].from += base + at;
+            sink.ranges[i].to   += base + at;
+        }
+    }
+
+    function _sdRegionTag(p) {
+        switch (p.regionType) {
+            case 'page': return '<pregion></pregion>';
+            case 'system': return p.regionName ? '<system>' + esc(p.regionName) + '</system>' : '<system></system>';
+            case 'common': case 'designer': return '<cregion>' + esc(p.regionName || '') + '</cregion>';
+            case 'dynamic': return '<dregion>' + esc(p.regionName || '') + '</dregion>';
+            case 'menu': return '<menu>' + esc(p.regionName || '') + '</menu><div style="clear:both"></div>';
+            case 'menu_sequence': return '<menu_sequence>' + esc(p.regionName || '') + '</menu_sequence>';
+            case 'login': return '<login>' + esc(p.regionName || '') + '</login>';
+            case 'ad': return '<ad>' + esc(p.regionName || '') + '</ad>';
+            case 'cart': return '<cart></cart>';
+            case 'tag_cloud': return '<tcloud>' + esc(p.regionName || '') + '</tcloud>';
+            case 'mobile_switch': return '<mobile_switch></mobile_switch>';
+            case 'pdf': return '<pdf></pdf>';
+            // comments_block uses an HTML comment marker rather than a
+            // tag — get_page_content.php scans for the literal string
+            // `<!--pg-comments-block-->` and swaps it for the rendered
+            // comments HTML. Keep this in sync with `regionTag()` in
+            // functions.php (line ~22122).
+            case 'comments_block': return '<!--pg-comments-block-->';
+            default: return '';
+        }
+    }
+
     function generateHTML(styleName, additionalBodyClasses) {
         if (!tree) return '';
-        function proc(n, indent) {
-            var pad = '    '.repeat(indent);
-            var h = '';
-            switch (n.type) {
-                case 'container': {
-                    var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                    var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '') + (_pEC ? ' ' + _pEC : '');
-                    var _ccStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                    h += pad + '<div class="' + cc + '"' + _ccStyle + '>\n';
-                    if (n.children) n.children.forEach(function (c) { h += proc(c, indent + 1); });
-                    h += pad + '</div>\n';
-                    break; }
-                case 'semantic': {
-                    var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                    var stg = n.props.tag || 'section';
-                    var _semCls = (n.props.cssClass || '') + (_pEC ? ' ' + _pEC : '');
-                    var scls = _semCls ? ' class="' + esc(_semCls.trim()) + '"' : '';
-                    var sid2 = n.props.id ? ' id="' + esc(n.props.id) + '"' : '';
-                    var sStyleParts = [];
-                    if (n.props.inlineStyle) sStyleParts.push(n.props.inlineStyle.replace(/;?\s*$/, ''));
-                    if (n.props.fontFamily) sStyleParts.push('font-family:' + n.props.fontFamily);
-                    if (_pES) sStyleParts.push(_pES);
-                    var sfont = sStyleParts.length ? ' style="' + esc(sStyleParts.join(';')) + '"' : '';
-                    var shref = (stg === 'a' && n.props.href) ? ' href="' + esc(n.props.href) + '"' : '';
-                    var starget = (stg === 'a' && n.props.target) ? ' target="' + esc(n.props.target) + '"' : '';
-                    var srel = (stg === 'a' && n.props.rel) ? ' rel="' + esc(n.props.rel) + '"' : '';
-                    var sattrs = '';
-                    if (n.props._attrs) n.props._attrs.forEach(function(a) {
-                        // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                        if (a.name && a.name.trim() && a.name !== 'id') sattrs += ' ' + a.name.trim() + '="' + esc(a.value || '') + '"';
-                    });
-                    if (n.props.tooltipEnabled && n.props.tooltipTitle) {
-                        sattrs += ' data-bs-toggle="tooltip" data-bs-placement="' + esc(n.props.tooltipPlacement || 'top') + '" title="' + esc(n.props.tooltipTitle) + '"';
-                    }
-                    var _semVoidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
-                    var _semIsVoid = _semVoidTags.indexOf(stg.toLowerCase()) !== -1;
-                    // Whitespace is CONTENT in these two. The pretty-printer's
-                    // newline and indent would show up as indentation in a code
-                    // sample and as leading spaces in a textarea's value, so
-                    // they are written on one line with nothing added inside.
-                    // <code> is in the list because it is almost always
-                    // inside a <pre>, where the indent it would otherwise
-                    // gain is indentation the visitor reads.
-                    var _semWsTags = ['pre', 'textarea', 'code'];
-                    var _semIsWs = _semWsTags.indexOf(stg.toLowerCase()) !== -1;
-                    h += pad + '<' + stg + sid2 + scls + sfont + shref + starget + srel + sattrs + '>';
-                    if (_semIsVoid) {
-                        // Void elements: no content, no closing tag
-                        h += '\n';
-                    } else if (_semIsWs) {
-                        var _wsInner = '';
-                        if (n.children) n.children.forEach(function (c) { _wsInner += proc(c, 0).replace(/\n+$/, ''); });
-                        if (n.props.text) _wsInner += esc(n.props.text);
-                        h += _wsInner + '</' + stg + '>\n';
-                    } else {
-                        h += '\n';
-                        // Button/a honor textPosition — matches canvas virtual-text placement.
-                        var _stgLc = stg.toLowerCase();
-                        var _isBtnL = (_stgLc === 'button' || _stgLc === 'a');
-                        var _tp2 = n.props.textPosition || 'end';
-                        if (_isBtnL && _tp2 === 'start' && n.props.text) h += pad + '    ' + esc(n.props.text) + '\n';
-                        if (n.children) n.children.forEach(function (c) { h += proc(c, indent + 1); });
-                        if (n.props.text && (!_isBtnL || _tp2 !== 'start')) h += pad + '    ' + esc(n.props.text) + '\n';
-                        h += pad + '</' + stg + '>\n';
-                    }
-                    break; }
-                case 'row': {
-                    var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                    var rc = 'row';
-                    if (n.props.gutter) rc += ' g-' + n.props.gutter;
-                    if (n.props.justify) rc += ' justify-content-' + n.props.justify;
-                    if (n.props.align) rc += ' align-items-' + n.props.align;
-                    if (n.props.cssClass) rc += ' ' + n.props.cssClass;
-                    if (_pEC) rc += ' ' + _pEC;
-                    var _rcStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                    h += pad + '<div class="' + rc + '"' + _rcStyle + '>\n';
-                    if (n.children) n.children.forEach(function (c) { h += proc(c, indent + 1); });
-                    h += pad + '</div>\n';
-                    break; }
-                case 'col': {
-                    var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                    var _colCls = buildColClasses(n.props) + (_pEC ? ' ' + _pEC : '');
-                    var _colStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                    h += pad + '<div class="' + _colCls + '"' + _colStyle + '>\n';
-                    if (n.children) n.children.forEach(function (c) { h += proc(c, indent + 1); });
-                    h += pad + '</div>\n';
-                    break; }
-                case 'region':
-                    h += pad + regionTag(n.props) + '\n';
-                    break;
-                case 'component':
-                    var comp = COMPONENTS[n.props.componentType];
-                    if (comp && comp.toHTML) {
-                        var _pcChildren = '';
-                        if (n.children) n.children.forEach(function(c) { _pcChildren += proc(c, indent + 1); });
-                        h += comp.toHTML(n.props, pad, _pcChildren);
-                    }
-                    break;
-                case 'content':
-                    var cnt = CONTENT[n.props.contentType];
-                    if (cnt && cnt.toHTML) {
-                        var _pctChildren = '';
-                        if (n.children) n.children.forEach(function(c) { _pctChildren += proc(c, indent + 1); });
-                        var cHtml = cnt.toHTML(n.props, pad, _pctChildren);
-                        cHtml = addGlobalAttrs(cHtml, n);
-                        h += cHtml;
-                    }
-                    break;
-                case 'shared_ref':
-                    // Expand shared component inline for HTML export / client-side preview.
-                    var _prId = (n.props && n.props.sharedId) ? parseInt(n.props.sharedId, 10) : 0;
-                    var _prCached = _prId > 0 ? _sharedCache[_prId] : null;
-                    if (_prCached && _prCached.system_region_config && _sdPreviewWidgetMarkers) {
-                        // A system widget is drawn by the server; the Preview
-                        // puts its answer here (openPreview()).
-                        h += '<!--pg-sw-preview:' + _prId + '-->';
-                    } else if (_prCached && _prCached.tree && !_sdSharedOpen[_prId]) {
-                        // Nested components expand in place; a loop of them
-                        // stops at the one already open.
-                        _sdSharedOpen[_prId] = true;
-                        try { h += proc(_prCached.tree, indent); }
-                        finally { delete _sdSharedOpen[_prId]; }
-                    }
-                    break;
-            }
-            return h;
-        }
-
-        function regionTag(p) {
-            switch (p.regionType) {
-                case 'page': return '<pregion></pregion>';
-                case 'system': return p.regionName ? '<system>' + esc(p.regionName) + '</system>' : '<system></system>';
-                case 'common': case 'designer': return '<cregion>' + esc(p.regionName || '') + '</cregion>';
-                case 'dynamic': return '<dregion>' + esc(p.regionName || '') + '</dregion>';
-                case 'menu': return '<menu>' + esc(p.regionName || '') + '</menu><div style="clear:both"></div>';
-                case 'menu_sequence': return '<menu_sequence>' + esc(p.regionName || '') + '</menu_sequence>';
-                case 'login': return '<login>' + esc(p.regionName || '') + '</login>';
-                case 'ad': return '<ad>' + esc(p.regionName || '') + '</ad>';
-                case 'cart': return '<cart></cart>';
-                case 'tag_cloud': return '<tcloud>' + esc(p.regionName || '') + '</tcloud>';
-                case 'mobile_switch': return '<mobile_switch></mobile_switch>';
-                case 'pdf': return '<pdf></pdf>';
-                // comments_block uses an HTML comment marker rather than a
-                // tag — get_page_content.php scans for the literal string
-                // `<!--pg-comments-block-->` and swaps it for the rendered
-                // comments HTML. Keep this in sync with `regionTag()` in
-                // functions.php (line ~22122).
-                case 'comments_block': return '<!--pg-comments-block-->';
-                default: return '';
-            }
-        }
 
         // The <body> tag. Twin of generate_style_code_from_tree() in
         // functions.php — class, style and id each have two sources (the
@@ -46749,7 +47210,7 @@ const StyleDesigner = (function () {
             + (bc ? ' class="' + bc + '"' : '')
             + (bodyStyle ? ' style="' + esc(bodyStyle) + '"' : '')
             + bodyExtraAttrs + '>\n';
-        if (tree.children) tree.children.forEach(function (c) { code += proc(c, 2); });
+        if (tree.children) tree.children.forEach(function (c) { code += _sdEmitNode(c, 2, code.length, null); });
         code += '    </body>\n\n</html>';
         return code;
     }
@@ -54622,6 +55083,10 @@ const StyleDesigner = (function () {
     function initKeyboard() {
         document.addEventListener('keydown', function (e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            // The code editor has its own keymap (Ctrl+D selects the next
+            // match there, Ctrl+Z is its history); the designer's shortcuts
+            // keep off it. Ctrl+S is caught before this listener and saves.
+            if (e.target.closest && e.target.closest('.cm-editor')) return;
             // Command palette (Ctrl+Shift+P)
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); e.stopPropagation(); openCommandPalette(); return; }
             // N — the note key the notes panel has always advertised. Before

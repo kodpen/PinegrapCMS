@@ -2222,6 +2222,19 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-html-tree::-webkit-scrollbar { width: 5px; height: 5px; }
 .sd-html-tree::-webkit-scrollbar-thumb { background: var(--sd-panel-border); border-radius: 3px; }
 
+/* Code view: the page as text in place of the tree (PgCodeEditor host) */
+.sd-html-code { display: none; height: 100%; min-height: 0; }
+.sd-bp-quad-tl.sd-code-on .sd-bp-quad-body { overflow: hidden; }
+.sd-bp-quad-tl.sd-code-on .sd-html-code { display: block; }
+.sd-bp-quad-tl.sd-code-on .sd-html-tree { display: none; }
+.sd-html-code .cm-editor { height: 100%; }
+.sd-html-code-toggle { margin-right: .35rem; }
+.sd-html-code-toggle.active {
+    background: rgba(13,110,253,.18);
+    border-color: rgba(13,110,253,.5);
+    color: #6ea8fe;
+}
+
 /* HTML tree row */
 .sd-ht-row {
     display: flex;
