@@ -1424,6 +1424,25 @@ $(document).ready(function () {
 
                 $alert.append($body);
                 $result.empty().append($alert).append($("<div>").addClass("form-text").text(answer.note || ""));
+
+                // What the endpoint saved goes back into the open card (the
+                // Paraşüt company number, emptied code and secret boxes), so
+                // the pane's own Save writes the same values again instead of
+                // the ones the page was drawn with.
+                $.each(answer.fill || {}, function (name, value) {
+                    $card.find("[name='" + name + "']").val(value);
+                });
+
+                if (answer.status && answer.status.text) {
+                    var $status = $card.find(".pg-parasut-status").first();
+                    var tone = answer.status.tone || "secondary";
+
+                    $status.removeClass(function (index, classes) {
+                        return (classes.match(/(^|\s)alert-\S+/g) || []).join(" ");
+                    }).addClass("alert-" + tone);
+                    $status.find("i").attr("class", "bi " + (tone === "success" ? "bi-check-circle" : "bi-plug"));
+                    $status.find("span").text(answer.status.text);
+                }
             })
             .catch(function (error) {
                 $result.html($("<div>").addClass("alert alert-danger mb-1").text("HTTP " + error.message));
