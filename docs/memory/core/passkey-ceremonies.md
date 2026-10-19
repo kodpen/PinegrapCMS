@@ -1,0 +1,24 @@
+---
+name: passkey-ceremonies
+description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php; what is not built yet
+---
+
+## What is built? (PR #654, passkeys step 2)
+- Table `user_passkeys` (2026.11.0, 11.0.13): one row per credential. Binary values are base64url in `ascii_bin` columns; the unique key is `credential_hash` (SHA-256 hex of the raw ID), since an ID of up to 1023 bytes is past the 767-byte index of old row formats. `user_handle` is 32 random bytes drawn at the account's first passkey and copied to the next ones (never derived from site keys).
+- Module `includes/fn/passkeys.php` around the verifier (`docs/memory/core/webauthn-verifier.md`): `pg_passkey_registration_begin()` / `pg_passkey_register()`, `pg_passkey_signin_begin($user_id)` / `pg_passkey_signin_check()`, `pg_passkeys_of_user()`, `pg_passkeys_forget()` (both account deletion paths call it). Tests: `tests/passkeys_test.php` (software authenticator with the W3C ES256 test key).
+- `passkey.php`: POST + session token, JSON only. `register_options` / `register` for the signed-in account (refused while logged in as another user); `signin_options` for a sign-in waiting in `mfa.php` verify mode.
+- `mfa.php` verify mode shows "Use a passkey" when the account has one and the browser can (`assets/js/pg_passkey.js`). The answer is posted to `mfa.php` (`pg_mfa_action=passkey`), counts against `pg_mfa_attempt_blocked()` and completes through `pg_mfa_screen_complete()`.
+
+## Why is the sign-in answer posted to mfa.php, not passkey.php?
+- Completing a sign-in redirects (device limit screen, send_to, home page); a JSON answer to fetch() cannot. The screen that owns the step takes the answer; passkey.php only hands out options and keeps registrations.
+
+## How are ceremonies kept?
+- `$_SESSION['software']['passkey_ceremonies'][purpose]`: challenge (base64url), account, time. One per purpose; a newer one replaces the older. Taken out before the answer is read, so any answer uses it up; refused after 360 s or for another account.
+- Relying party: `URL_SCHEME` + `HOSTNAME_SETTING`, never the Host header. A page opened at another host answers `host` ("Passkeys work at … only"); an IP address or plain http (but localhost) is `unavailable`.
+
+## What does a visitor see on a refusal?
+- One sentence per site/session/list code (`unavailable`, `host`, `challenge`, `none`, `limit`, `duplicate`); every refusal of the credential itself reads "The passkey was not accepted." The code goes to the activity log (`access denied (passkey not accepted: …)`, `passkey not added (…)`).
+
+## What is not built yet? (plans/passkeys.md)
+- Account screens (list, add, rename, remove; admin reset on `edit_user.php`).
+- The gate: an account with passkeys but no TOTP is not asked for a second step; a required role still sets up TOTP. Passwordless sign-in: `pg_passkey_signin_begin(0)` and the check already handle it (user handle required, UV required) but no screen offers it.

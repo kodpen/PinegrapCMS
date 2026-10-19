@@ -8986,6 +8986,7 @@ function get_tables() {
 		'user_identities',
 		'user_mfa',
 		'user_mfa_recovery',
+		'user_passkeys',
 		'users_ad_regions_xref',
 		'users_calendars_xref',
 		'users_common_regions_xref',

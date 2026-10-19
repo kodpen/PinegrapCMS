@@ -33,6 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_passkeys();               // 11.0.13
 
 }
 
@@ -314,5 +315,50 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+// Passkeys (2026.11.0, 11.0.13; includes/fn/passkeys.php, passkey.php).
+//
+// user_passkeys keeps one row per WebAuthn credential an account registered:
+// what the verifier (includes/webauthn/) needs to check a later sign-in - the
+// credential ID, its public key as PEM with its COSE algorithm, the signature
+// counter, the backup eligibility fixed at registration and the user handle
+// of the account - and what an account screen shows: a name, the AAGUID that
+// says which authenticator made it, the transports the browser reported,
+// whether it is backed up now, when it was added and last used.
+//
+// Binary values are kept as base64url text in ASCII columns, compared as
+// bytes (ascii_bin): in base64url "a" and "A" are different values. A
+// credential ID may be 1023 bytes, longer than an index of the older InnoDB
+// row formats takes (767 bytes), so the unique key is the SHA-256 of the raw
+// ID in hex.
+// The user handle is 32 random bytes drawn at the account's first passkey and
+// copied to the next ones; a handle derived from the site's keys would change
+// with them and orphan every passkey made before. Rows go with their account.
+function upgrade_2026_11_0_passkeys() {
+
+	install_create_table('user_passkeys', "CREATE TABLE user_passkeys (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id          INT UNSIGNED NOT NULL,
+		credential_hash  CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		credential_id    VARCHAR(1364) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		public_key       TEXT CHARACTER SET ascii NOT NULL,
+		alg              SMALLINT NOT NULL,
+		sign_count       INT UNSIGNED NOT NULL DEFAULT 0,
+		transports       VARCHAR(64) CHARACTER SET ascii NOT NULL DEFAULT '',
+		aaguid           CHAR(36) CHARACTER SET ascii NOT NULL DEFAULT '',
+		backup_eligible  TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+		backup_state     TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+		user_handle      VARCHAR(86) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		name             VARCHAR(100) NOT NULL DEFAULT '',
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		last_used_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_credential (credential_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Passkeys: the table that will keep the passkeys of accounts is added. Nothing changes on the site with this update.');
 
 }
