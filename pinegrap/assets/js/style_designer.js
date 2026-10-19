@@ -22964,23 +22964,44 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    // Writes the document when it changed, then shows the selection.
+    // Writes the document when it changed, then shows the selection. Only
+    // the part that differs is written (the longest common start and end
+    // of the old and the new text are left alone): a keystroke in a panel
+    // touches one attribute, and the cursor, the scroll position, the folds
+    // and the undo history of the editor stay as they were. The ranges and
+    // the locks are replaced whole: their positions in the new text are
+    // known from the emitter, and the set is cheap to rebuild.
     function _sdCodeRefresh() {
         if (!_sdCodeEnabled()) return;
+        var ed = _sdCode.ed;
         var doc = _sdCodeDocument();
-        if (doc.text !== _sdCode.text) {
+        var current = ed.getValue();
+        if (doc.text !== current) {
             _sdCode.busy = true;
             try {
-                _sdCode.ed.setValue(doc.text);
-                _sdCode.ed.track(doc.entries.map(function (e) {
+                var d = _sdCodeTextDiff(current, doc.text);
+                ed.applyExternal(d.from, d.to, d.insert);
+                ed.track(doc.entries.map(function (e) {
                     return { id: e.key, from: e.from, to: e.to, data: e, grow: false };
                 }));
-                _sdCode.ed.lock(doc.locks);
+                ed.lock(doc.locks);
             } finally { _sdCode.busy = false; }
-            _sdCode.text = doc.text;
-            _sdCode.entries = doc.entries;
         }
+        _sdCode.text = doc.text;
+        _sdCode.entries = doc.entries;
         _sdCodeRevealSelection();
+    }
+
+    // The one replacement that turns `before` into `after`: the common start
+    // and end are kept, what is between them is replaced. Compared by UTF-16
+    // units, which is what the editor's positions count.
+    function _sdCodeTextDiff(before, after) {
+        var a = before.length, b = after.length;
+        var start = 0, max = Math.min(a, b);
+        while (start < max && before.charCodeAt(start) === after.charCodeAt(start)) start++;
+        var end = 0;
+        while (end < max - start && before.charCodeAt(a - 1 - end) === after.charCodeAt(b - 1 - end)) end++;
+        return { from: start, to: a - end, insert: after.slice(start, b - end) };
     }
 
     // The entry of a node in the map, by identity (ids repeat across widgets).

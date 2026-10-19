@@ -543,6 +543,17 @@
             view.dispatch({ changes: { from: from, to: to, insert: String(text == null ? '' : text) }, filter: !force, userEvent: 'input' });
             return inst._refused === refused;
         };
+        // A change that comes from outside the editor (the screen's own model
+        // changed): applied whole, past the locks, and kept out of the undo
+        // history, so Ctrl+Z undoes only what was typed here. The cursor,
+        // the scroll position and the folds around it stay where they are.
+        inst.applyExternal = function (from, to, text) {
+            view.dispatch({
+                changes: { from: from, to: to, insert: String(text == null ? '' : text) },
+                filter: false,
+                annotations: [S.Transaction.addToHistory.of(false)]
+            });
+        };
         inst.getLanguage = function () { return lang; };
         inst.setLanguage = function (next) {
             next = _normLanguage(next);
