@@ -709,15 +709,83 @@ function pg_explorer_backup_upload_allowed_names()
     return array('.htaccess');
 }
 
-function pg_explorer_backup_upload_blocked($name)
+// $segments is the path the upload carries inside the backup folder, $root
+// the resolved backup folder. The .htaccess exception is for the file that
+// protects the folder: it is accepted at the folder's root only, and only
+// while there is none - a second one, or one in a sub-folder, would override
+// the protection (a child .htaccess resets the inherited deny and rewrite
+// rules on Apache) rather than restore it.
+function pg_explorer_backup_upload_blocked($name, $segments = array(), $root = '')
 {
     $base = mb_strtolower(basename(trim(str_replace('\\', '/', (string) $name))));
 
     if (in_array($base, pg_explorer_backup_upload_allowed_names(), true)) {
+        return (count($segments) > 0) || ($root === '') || is_file($root . '/' . $base);
+    }
+
+    return pg_explorer_unsafe_archive_name($base);
+}
+
+// Whether an entry of a backup archive may be written where it says.
+//
+// A backup comes out whole - sql.sql, files/ and layouts/ - and a layout is
+// PHP, so the web-root rule cannot apply as it is. What is refused is what
+// changes how the folder is served or what would run outside layouts/: a
+// dotfile or web.config anywhere (the folder's own .htaccess is what keeps
+// the archives unreachable), and an executable name outside layouts/.
+function pg_explorer_backup_entry_blocked($segments)
+{
+    $base = mb_strtolower((string) end($segments));
+
+    if (($base === '') || (mb_substr($base, 0, 1) === '.') || in_array($base, pg_explorer_blocked_upload_names(), true)) {
+        return true;
+    }
+
+    // layouts/ at the root of the archive, or under the one wrapper folder a
+    // hand-made archive may carry (the restore accepts both shapes).
+    $folders = array_map('mb_strtolower', array_slice($segments, 0, -1));
+
+    if (in_array('layouts', array_slice($folders, 0, 2), true)) {
         return false;
     }
 
     return pg_explorer_unsafe_archive_name($base);
+}
+
+// The room an archive needs on disk, from its directory: every entry's
+// uncompressed size, so a bomb is refused from its listing before a byte of
+// it is inflated. Answers array(bytes, entries) or false when a size is not
+// known (a damaged directory is not extracted at all).
+function pg_explorer_archive_size($zip)
+{
+    $total = 0.0;
+
+    for ($index = 0; $index < $zip->numFiles; $index++) {
+
+        $stat = $zip->statIndex($index);
+
+        if (($stat === false) || !isset($stat['size'])) {
+            return false;
+        }
+
+        $total += (float) $stat['size'];
+    }
+
+    return array($total, (int) $zip->numFiles);
+}
+
+// Whether the disk the data folder sits on has room for $bytes plus a
+// margin. Hosts that switch disk_free_space() off answer "unknown", which is
+// not a refusal.
+function pg_explorer_disk_has_room($bytes)
+{
+    if (!function_exists('disk_free_space')) {
+        return true;
+    }
+
+    $free = @disk_free_space(PG_FUNCTIONS_DIR . '/data');
+
+    return ($free === false) || ((float) $free >= ((float) $bytes + 67108864));
 }
 
 // Names that must never be written into the web root by an extraction.
@@ -8999,13 +9067,15 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
         // ── Extract an archive inside the backup directory ──────────────
         //
-        // Faithful, unlike the extraction into the web root: a backup that
-        // arrives as a zip has to come out whole or it cannot restore
-        // anything. Safe because of where it lands - data/backups sits
-        // outside the web root behind its own .htaccess, so nothing written
-        // here is reachable by a visitor, let alone executable. The rule
-        // that does apply is structural: every entry must resolve inside the
-        // folder being extracted into.
+        // Nearly faithful: a backup that arrives as a zip has to come out
+        // whole or it cannot restore anything, so .php layouts are written.
+        // data/backups is kept from visitors by its own .htaccess and the
+        // root rewrite rule, and the entries that could undo that (a dotfile,
+        // web.config) or run outside layouts/ are the ones refused
+        // (pg_explorer_backup_entry_blocked()). Every entry must resolve
+        // inside the folder being extracted into, the archive's listed size
+        // must fit on the disk, and each file is streamed to disk rather
+        // than inflated into memory.
         case 'explorer_backup_extract':
 
             if ($user['role'] > 2) {
@@ -9028,12 +9098,23 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             }
 
             @set_time_limit(600);
-            @ini_set('memory_limit', '-1');
 
             $zip = new ZipArchive();
 
             if ($zip->open($path) !== true) {
                 respond(array('status' => 'error', 'message' => lang('The zip archive could not be opened.')));
+            }
+
+            $archive_size = pg_explorer_archive_size($zip);
+
+            if ($archive_size === false) {
+                $zip->close();
+                respond(array('status' => 'error', 'message' => lang('The archive could not be opened. It might be damaged.')));
+            }
+
+            if (!pg_explorer_disk_has_room($archive_size[0])) {
+                $zip->close();
+                respond(array('status' => 'error', 'message' => lang('There is not enough free disk space to extract the archive.')));
             }
 
             // Its own folder, named after the archive, so extracting twice
@@ -9089,6 +9170,12 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 }
 
                 $is_directory = (substr($entry, -1) == '/');
+
+                if (!$is_directory && pg_explorer_backup_entry_blocked($segments)) {
+                    $skipped++;
+                    continue;
+                }
+
                 $target = $destination_real . '/' . implode('/', $segments);
                 $directory = $is_directory ? $target : dirname($target);
 
@@ -9110,9 +9197,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
-                $contents = $zip->getFromIndex($index);
-
-                if (($contents === false) || (@file_put_contents($target, $contents) === false)) {
+                // Streamed and checksummed, the way the restore reads a backup.
+                if (pg_restore_archive_copy($zip, $index, $target) !== '') {
                     $skipped++;
                     continue;
                 }
@@ -9177,7 +9263,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             // What may be written here is what an extraction may write, plus
             // .htaccess. Without this the drag-and-drop that fills this folder
             // was a way to put a .php file on disk inside the site.
-            if (pg_explorer_backup_upload_blocked($file_name)) {
+            if (pg_explorer_backup_upload_blocked($file_name, $segments, realpath($path))) {
                 respond(array('status' => 'error', 'message' => lang('Sorry, that name is not allowed here.')));
             }
 
@@ -9566,12 +9652,34 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             }
 
             @set_time_limit(600);
-            @ini_set('memory_limit', '-1');
 
             $zip = new ZipArchive();
 
             if ($zip->open($archive_path) !== true) {
                 respond(array('status' => 'error', 'message' => lang('The zip archive could not be opened.')));
+            }
+
+            // The listing is checked before anything is inflated: a zip bomb
+            // declares its size in its directory, and this screen is open to
+            // a role-3 user with edit rights on a folder. The archive may
+            // hold at most 10,000 entries and 2 GB uncompressed, and that
+            // room has to be free on the disk; each file is then streamed to
+            // disk rather than read into memory.
+            $archive_size = pg_explorer_archive_size($zip);
+
+            if ($archive_size === false) {
+                $zip->close();
+                respond(array('status' => 'error', 'message' => lang('The archive could not be opened. It might be damaged.')));
+            }
+
+            if (($archive_size[1] > 10000) || ($archive_size[0] > 2147483648)) {
+                $zip->close();
+                respond(array('status' => 'error', 'message' => lang('Sorry, that archive is too large to extract here.')));
+            }
+
+            if (!pg_explorer_disk_has_room($archive_size[0])) {
+                $zip->close();
+                respond(array('status' => 'error', 'message' => lang('There is not enough free disk space to extract the archive.')));
             }
 
             // Everything lands in one new folder named after the archive, so
@@ -9623,12 +9731,6 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
-                $contents = $zip->getFromIndex($index);
-
-                if ($contents === false) {
-                    continue;
-                }
-
                 $new_name = get_unique_name(array('name' => prepare_file_name($entry_name), 'type' => 'file'));
 
                 // prepare_file_name() cannot invent a safe name out of an
@@ -9641,7 +9743,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 $new_path = FILE_DIRECTORY_PATH . '/' . $new_name;
 
-                if (@file_put_contents($new_path, $contents) === false) {
+                if (pg_restore_archive_copy($zip, $index, $new_path) !== '') {
                     continue;
                 }
 
