@@ -26,7 +26,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting.
 - erp-isbasi-driver.md: Logo Isbasi e-document driver (edoc/isbasi.php): source document rule, fields and environments, login flow and session, request helper, success envelope.
 - erp-isbasi-invoice-payload.md: What goes to Isbasi on send_invoice: final-consumer rule, pre-send validation, SimpleInv body fields, internet-sale block, unsupported types.
-- erp-isbasi-poll-documents-screens.md: Isbasi poll status mapping, fetch_document type pitfalls, e-document screens/buttons, taxpayer query, invoice list column, edoc_changed event, 4.62 schema.
+- erp-isbasi-poll-documents-screens.md: Isbasi poll status mapping, fetch_document type pitfalls, e-document screens/buttons, invoice list column, edoc_changed event, 4.62 schema.
 - erp-list-edit-screen-pattern.md: How ERP list and add/edit screens are built (table.chart, separate edit pages, liveform fields, menu highlight) and which lists must not be DataTables.
 - erp-local-sale.md: Counter sale (add_order.php) customer handling, walk-in account, VAT per line, invoice from order screen, waybill from invoice and write-back rules (4.59).
 - erp-manual-invoice-draft-issue.md: Manual ERP invoices: files and endpoints, the draft boundary (_D series, no number), issue transaction, invoice_manual.php functions, foreign-currency drafts.
@@ -36,9 +36,11 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-connection.md: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect button and endpoint, company id discovery
-- erp-parasut-driver.md: The Paraşüt e-document driver (includes/erp/edoc/parasut.php): request wrapper, buyer card, sales invoice, conversion job, poll, PDF, cancel; which API readings are still unverified
+- erp-parasut-driver.md: The Paraşüt e-document driver (includes/erp/edoc/parasut.php): request wrapper, buyer card, sales invoice, conversion job, poll, PDF, cancel; what the live API showed
+- erp-parasut-legacy-order-buttons.md: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment, includes/fn/parasut.php) and when they give way to the ERP's invoice and delivery documents card
 - erp-receipt-corrections-and-gift-card.md: ERP receipt cancel, settlement removal/late allocation, FX reversal, and the gift card as the only automatic settlement.
 - erp-reconciliation-letter.md: ERP account reconciliation letter (cari mutabakat): as-of balance from the ledger, option sanitizing, reference, row cap, e-mail attachments, screen pattern.
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, line VAT rate, returned_qty and parent_line_id.
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
+- erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, and the carrier columns.

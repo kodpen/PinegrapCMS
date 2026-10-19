@@ -193,6 +193,23 @@ function pg_legal_document_lines_html(array $lines, $money)
 }
 
 /**
+ * The name an ordered item goes by in the documents: what the shop calls the
+ * product, its short description, as the cart and the order receipt show it.
+ * order_items.product_name is the Product ID / SKU at the time of sale; it is
+ * printed only when the product has no short description or no longer exists.
+ *
+ * @param string|null $short_description  products.short_description, null for a deleted product
+ * @param string|null $product_name       order_items.product_name
+ * @return string
+ */
+function pg_legal_document_item_name($short_description, $product_name)
+{
+    $short_description = trim((string) $short_description);
+
+    return ($short_description !== '') ? $short_description : (string) $product_name;
+}
+
+/**
  * Join the non-empty parts of an address, one line per part group.
  *
  * @param array $lines  each a string or a list of strings joined by a space
@@ -671,10 +688,21 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
 
     $lines = array();
 
-    foreach ((array) db_items("SELECT product_name, quantity, price, tax_total FROM order_items WHERE order_id = '" . $order_id . "' ORDER BY id") as $item) {
+    foreach ((array) db_items(
+        "SELECT
+            order_items.product_name,
+            products.short_description,
+            order_items.quantity,
+            order_items.price,
+            order_items.tax_total
+        FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_items.order_id = '" . $order_id . "'
+        ORDER BY order_items.id"
+    ) as $item) {
         $quantity = (int) $item['quantity'];
         $lines[] = array(
-            'name'       => $item['product_name'],
+            'name'       => pg_legal_document_item_name($item['short_description'], $item['product_name']),
             'quantity'   => $quantity,
             'unit_price' => (int) round($item['price']),
             'line_total' => (int) round($item['price'] * $quantity),
@@ -784,7 +812,9 @@ function pg_legal_documents_store($order_id, array $accepted_types)
     }
 
     $now = time();
-    $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+    // The visitor's address as the firewall resolves it: behind a CDN or a
+    // trusted proxy REMOTE_ADDR is the proxy, the same for every customer.
+    $ip = substr((string) (function_exists('waf_client_ip') ? waf_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '')), 0, 45);
     $agent = mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
     $stored = 0;
 
@@ -950,6 +980,23 @@ function pg_legal_document_file_name($label, $order_number)
 }
 
 /**
+ * A moment as the documents print it: the date in the site's order, the
+ * time on the site's clock (Site Settings: 12 or 24 hours). The form
+ * formatter (prepare_form_data_for_output()) prints AM/PM whatever the
+ * setting.
+ *
+ * @param int $timestamp
+ * @return string
+ */
+function pg_legal_document_time_text($timestamp)
+{
+    $date = (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) ? 'n/j/Y' : 'j/n/Y';
+    $clock = (defined('TIME_FORMAT') && (TIME_FORMAT == 'twelve_hours')) ? 'g:i A' : 'H:i';
+
+    return date($date . ' ' . $clock, (int) $timestamp);
+}
+
+/**
  * The note printed under a stored copy: when it was accepted, or that it
  * was not.
  *
@@ -964,7 +1011,7 @@ function pg_legal_document_acceptance_note(array $row)
         return lang('This copy was kept with the order without being accepted.');
     }
 
-    return lang(array('string' => 'Accepted by the customer on {var:1}.', 'vars' => array(prepare_form_data_for_output(date('Y-m-d H:i:s', $accepted), 'date and time', false))));
+    return lang(array('string' => 'Accepted by the customer on {var:1}.', 'vars' => array(pg_legal_document_time_text($accepted))));
 }
 
 /**
@@ -1064,7 +1111,7 @@ function pg_legal_documents_panel_card($order_id)
 
         $accepted = (int) $row['accepted_at'];
         $status = ($accepted > 0)
-            ? h(prepare_form_data_for_output(date('Y-m-d H:i:s', $accepted), 'date and time', false))
+            ? h(pg_legal_document_time_text($accepted))
             : '<span class="text-danger">' . h(lang('Not accepted')) . '</span>';
 
         $rows .= '<div class="row">

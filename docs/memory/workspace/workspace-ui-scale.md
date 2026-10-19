@@ -10,6 +10,7 @@ description: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as 
 
 ## How do focus rings work?
 - They follow the keyboard, not the mouse: `*:focus:not(:focus-visible)` clears outline and shadow (a click leaves no ring, the complaint that had switched rings off entirely), `*:focus-visible` draws a 2px accent outline with a 2px offset. Before #531 every ring was off with `!important`, so the Tab key had nothing to show. Scoped to `body.workspace`, `[id^="ws-"]`, `.ws-ctx`, `.ws-ask-modal`.
+- The composer is the exception: a text field (the `.ws-rich` contenteditable, the textarea fallback) matches `:focus-visible` on a mouse click too, so the frame (`.ws-composer:focus-within`, accent border) is its only focus mark and the field inside draws no ring (#635). Before, every click into the writing box drew a second ring inside the frame.
 
 ## What else is on the scale?
 - Drawers (`.offcanvas-end` in the workspace or with a `ws-` id) have their inner corners on `--ws-radius-lg`, no hairline, the soft shadow; the overview's cards the same; the composer sits on `--ws-shadow` and lifts to `--ws-shadow-accent` while written in; context menus on `--ws-radius-sm`. The nav icon tones (`[data-ws-nav]`) have lighter twins under `html[data-bs-theme="dark"]`.

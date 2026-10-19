@@ -18,7 +18,10 @@
  * for everybody: the Workspace folder (its files belong to the channels and
  * notes they were posted in; a message is forwarded, its file is not), the
  * recycle bin and archived folders. Files without a folder are other
- * modules' (ERP documents) and never come up.
+ * modules' (ERP documents) and never come up. dkim.key, the key that signs
+ * the site's mail, is listed like any file but never picked
+ * (pg_file_withheld()): its copy in a channel would be an ordinary file under
+ * another name, which get_file.php serves.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -284,6 +287,16 @@ function ws_library_folder_list($folder_ids)
 }
 
 /**
+ * Why the key that signs the site's mail cannot be picked.
+ *
+ * @return string
+ */
+function ws_library_withheld_message()
+{
+    return lang('This is the key that signs the site\'s mail. It stays on the server.');
+}
+
+/**
  * A file as the picker shows it: what it is, where it is, and why a
  * channel would not take it, so it is shown but cannot be picked.
  *
@@ -298,7 +311,9 @@ function ws_library_file_payload($row)
     $size = (int) $row['size'];
     $refused = '';
 
-    if (ws_upload_refused($name)) {
+    if (pg_file_withheld($name)) {
+        $refused = ws_library_withheld_message();
+    } elseif (ws_upload_refused($name)) {
         $refused = lang('Channels do not take this kind of file.');
     } elseif ($size > ws_upload_max_bytes()) {
         $refused = lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor(ws_upload_max_bytes() / 1048576)));
@@ -443,6 +458,12 @@ function ws_library_file($viewer, $file_id)
     $open = ws_library_open($viewer);
 
     if (isset($open[(int) $row['folder']])) {
+        // The picker lists the signing key with this reason; whoever sees it
+        // there hears the same reason here, and nobody gets a copy.
+        if (pg_file_withheld($row['name'])) {
+            return array('ok' => false, 'error' => ws_library_withheld_message(), 'file' => null);
+        }
+
         return array('ok' => true, 'error' => '', 'file' => $row);
     }
 
