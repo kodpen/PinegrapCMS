@@ -14,4 +14,5 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-quick-edit.md: A record's fields edited by a person from the record drawer with no assistant (quick_edit.php): kinds offered, the two actions, checks reused from changes.php, stale check, history row, log, decision
 - workspace-record-changes.md: How site records are written from the Workspace: the changes.php pipeline and its callers, the Recycle Bin guard, the stock flag, money ceilings, and whose name the writers' sentences carry
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, the tokens they use, the colour picker vs the plan board legend class names, Turkish initials in the rail, and the known cosmetic leftovers
+- workspace-ui-scale.md: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does

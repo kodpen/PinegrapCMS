@@ -12,11 +12,11 @@ description: Plan (2026-10-19) for a friendlier Workspace look: token scale, ava
 - Avatars: initials with 8 tones already exist (`pg_initials_avatar_url()` in `includes/fn/contacts.php`); `avatar()` in `workspace.js` ~1847 returns a bare `<img>` without a class and gives `src=""` when a person has no picture (acks.php, status.php, task_work.php fallbacks). The `.ws-avatar` rules at ~15346 match nothing. Tones ignore the dark theme.
 - Channel colour (20 matte colours, `ws_palette()` in groups.php) shows on the sidebar icon, the rail tile and group borders, not on the channel header.
 - Empty states are grey text (`.ws-empty`, 20 uses); loading is the text "Loading…" in 12 places, no skeletons; two keyframes only; no typing indicator. `workspace_tour.js` has a small theme-aware SVG kit reusable for empty-state art.
-- Keyboard focus rings are switched off with `!important` (css ~9422-9435): an accessibility defect to undo in U1.
+- Keyboard focus rings were switched off with `!important` (css ~9422-9435); U1 made them keyboard-only.
 - `.ws-swatch` is defined twice (picker ~9928, board legend ~13093); fixed in its own PR.
 
 ## What are the slices?
-- U1 Tokens and shape: `--ws-radius-sm/md/lg`, `--ws-space-*`, `--ws-avatar-sm/md/lg`, accent RGB derived from one place, soft tinted shadows, rounder cards, drawers and composer; restore `:focus-visible` rings with the accent; dark variants for the nav icon colours.
+- U1 Tokens and shape — done (PR #531, memory docs/memory/workspace/workspace-ui-scale.md): the token scale, every radius on it, keyboard-only focus rings, rounder drawers, home cards and context menus, the composer's shadows, dark nav tones. The accent RGB stays typed beside the hex (CSS cannot derive it); the two sit together.
 - U2 Avatar component: `avatar()` gets `.ws-avatar` and size classes, an initials fallback drawn client-side when no URL, a presence dot (data already in the member list), tones that work in dark mode.
 - U3 Channel identity: the channel colour on the header icon and a thin colour stripe; group colour chips in the sidebar section titles.
 - U4 Empty states and loading: friendly one-line copy plus a small SVG from the tour kit for "no channels", "no tasks", "inbox zero", "no notes"; skeleton rows instead of "Loading…"; the first "Loading…" and the start-up error span the grid (`grid-column: 1 / -1`), today they sit in the sidebar column.
@@ -29,4 +29,4 @@ description: Plan (2026-10-19) for a friendlier Workspace look: token scale, ava
 3. Whether the owner wants a screenshot round on dev.pinegrap.com after U1 before U2-U5 start (recommended: yes, U1 sets the tone).
 
 ## Where to start?
-- U1 first (it defines the tokens the others use), then U2 and U4; U3, U5, U6 in any order. Check on dev in light and dark, phone width (`14027-14160` phone block), and with `prefers-reduced-motion`.
+- U2 and U4 next (they use the tokens), then U3, U5, U6 in any order. Check on dev in light and dark, phone width (`14027-14160` phone block), and with `prefers-reduced-motion`.
