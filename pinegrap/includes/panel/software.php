@@ -640,6 +640,13 @@ function pg_panel_software_update($request, $action)
                 ));
             }
 
+            if (!empty($update_backup['reused'])) {
+                respond(array(
+                    'status' => 'success',
+                    'message' => lang(array('string' => 'Already backed up before this package today: {var:1}. Files overwriting...', 'vars' => array($update_backup['name'])))
+                ));
+            }
+
             log_activity(lang(array('string' => 'Backup taken before the software update: {var:1}', 'vars' => array($update_backup['name']))), $_SESSION['sessionusername']);
 
             respond(array(
@@ -729,9 +736,17 @@ function pg_panel_software_update($request, $action)
 function pg_panel_software_rollback($request, $action)
 {
     // Writes an older version's code over the software, so it is an
-    // administrator's, like Repair Software, the screen that offers it.
+    // administrator's, like Repair Software, the screen that offers it. The
+    // refusal is JSON, like every answer of this endpoint.
     $user = validate_user();
-    validate_area_access($user, 'administrator');
+
+    if ((int) $user['role'] !== 0) {
+        respond(array(
+            'status' => 'error',
+            'message' => lang('Access denied.')
+        ));
+    }
+
     validate_token();
 
     // A hosted site's code is replaced by the platform, never from one site.

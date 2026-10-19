@@ -101,3 +101,48 @@ function test_update_backup_step_is_before_replace()
 		pg_assert_true(($backup !== false) && ($replace !== false) && ($backup < $replace), $screen);
 	}
 }
+
+// Retention removes recorded archives only, by the recorded time - never by
+// a name somebody uploaded - and keeps the archive just written and the
+// newest archive of every version.
+function test_update_backup_prune_list()
+{
+	$record = function ($version, $created) {
+		return array('sha256' => str_repeat('a', 64), 'version' => $version, 'created' => $created, 'files' => 1, 'added' => 0, 'package' => '');
+	};
+
+	$records = array(
+		'pre-update-2026.11.0-20261019090000.zip' => $record('2026.11.0', 1000),
+		'pre-update-2026.12.0-20261020090000.zip' => $record('2026.12.0', 2000),
+		'pre-update-2026.12.0-20261021090000.zip' => $record('2026.12.0', 3000),
+		'pre-update-2026.12.0-20261022090000.zip' => $record('2026.12.0', 4000),
+		'pre-update-2026.12.0-20261023090000.zip' => $record('2026.12.0', 5000),
+	);
+
+	// The old version's only archive stays although four newer ones exist.
+	pg_assert_same(array('pre-update-2026.12.0-20261020090000.zip'), pg_update_backup_prune_list($records, 3));
+
+	// A name dated far ahead does not move an archive up: the record's time counts.
+	$records['pre-update-2026.12.0-29990101000000.zip'] = $record('2026.12.0', 1500);
+	pg_assert_same(array('pre-update-2026.12.0-20261020090000.zip', 'pre-update-2026.12.0-29990101000000.zip'), pg_update_backup_prune_list($records, 3));
+
+	// The archive just written is never removed.
+	pg_assert_same(array('pre-update-2026.12.0-20261020090000.zip'), pg_update_backup_prune_list($records, 3, 'pre-update-2026.12.0-29990101000000.zip'));
+}
+
+// The rollback hashes and reads one private copy of the archive, never the
+// file in the backup folder twice.
+function test_update_backup_rollback_reads_its_copy()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/update.php');
+	$start = strpos($source, 'function pg_update_rollback(');
+	$body = substr($source, $start);
+
+	$copy = strpos($body, '@copy($path, $archive)');
+	$hash = strpos($body, "hash_file('sha256', \$archive)");
+	$open = strpos($body, '$zip->open($archive)');
+
+	pg_assert_true(($copy !== false) && ($hash !== false) && ($open !== false) && ($copy < $hash) && ($hash < $open));
+	pg_assert_false(strpos($body, "hash_file('sha256', \$path)") !== false);
+	pg_assert_false(strpos($body, '$zip->open($path)') !== false);
+}

@@ -1516,7 +1516,8 @@ function pg_update_backup_records_path()
 
 /**
  * The record: archive name => array('sha256', 'version', 'created', 'files',
- * 'added'). Entries that are not well formed are left out.
+ * 'added', 'package' - the SHA-256 of the package it was taken before).
+ * Entries that are not well formed are left out.
  *
  * @return array
  */
@@ -1538,6 +1539,7 @@ function pg_update_backup_records()
                 'created' => isset($record['created']) ? (int) $record['created'] : 0,
                 'files'   => isset($record['files']) ? (int) $record['files'] : 0,
                 'added'   => isset($record['added']) ? (int) $record['added'] : 0,
+                'package' => (isset($record['package']) && (preg_match('/^[0-9a-f]{64}$/', (string) $record['package']) === 1)) ? (string) $record['package'] : '',
             );
         }
     }
@@ -1661,36 +1663,80 @@ function pg_update_backup_list()
 }
 
 /**
- * Keep the newest $keep archives taken before updates, delete the rest, and
- * drop the record of every archive that is no longer there.
+ * Which recorded archives a retention of $keep removes.
  *
- * @param int $keep
- * @return array the names deleted
+ * Ordered by the time the record gives, never by the name: anyone who may
+ * upload into the backup folder chooses names. Kept whatever their place:
+ * the archive just written ($protect), and the newest archive of every
+ * version, so that repairing the new version three times does not rotate out
+ * the only copy of the old version's files.
+ *
+ * @param array  $records pg_update_backup_records()
+ * @param int    $keep
+ * @param string $protect
+ * @return array names to delete
  */
-function pg_update_backup_prune($keep = 3)
+function pg_update_backup_prune_list(array $records, $keep, $protect = '')
 {
-    $deleted = array();
-    $kept = array();
+    uksort($records, function ($a, $b) use ($records) {
+        if ($records[$a]['created'] !== $records[$b]['created']) {
+            return ($records[$a]['created'] > $records[$b]['created']) ? -1 : 1;
+        }
+        return strcmp($b, $a);
+    });
 
-    foreach (pg_update_backup_list() as $position => $backup) {
+    $keep = max(1, (int) $keep);
+    $versions = array();
+    $position = 0;
+    $delete = array();
 
-        if ($position < max(1, (int) $keep)) {
-            $kept[] = $backup['name'];
+    foreach ($records as $name => $record) {
+
+        $newest_of_version = !isset($versions[$record['version']]);
+        $versions[$record['version']] = true;
+
+        if (($position < $keep) || ($name === $protect) || $newest_of_version) {
+            $position++;
             continue;
         }
 
-        // Asked again at the point of deletion: nothing but such a name
-        // reaches unlink().
-        if (pg_update_backup_is_name($backup['name']) && @unlink(pg_backup_directory() . '/' . $backup['name'])) {
-            $deleted[] = $backup['name'];
-        }
+        $delete[] = $name;
     }
 
+    return $delete;
+}
+
+/**
+ * Apply the retention to the archives this site recorded, and drop the
+ * record of every archive that is no longer in the folder. An archive the
+ * site did not record is never deleted here: it is not this code's to judge;
+ * the Backup Manager deletes it.
+ *
+ * @param int    $keep
+ * @param string $protect the archive just written
+ * @return array the names deleted
+ */
+function pg_update_backup_prune($keep = 3, $protect = '')
+{
+    $directory = pg_backup_directory();
     $records = pg_update_backup_records();
     $changed = false;
 
     foreach (array_keys($records) as $name) {
-        if (!in_array($name, $kept, true)) {
+        if (!is_file($directory . '/' . $name)) {
+            unset($records[$name]);
+            $changed = true;
+        }
+    }
+
+    $deleted = array();
+
+    foreach (pg_update_backup_prune_list($records, $keep, $protect) as $name) {
+
+        // Asked again at the point of deletion: nothing but such a name
+        // reaches unlink().
+        if (pg_update_backup_is_name($name) && @unlink($directory . '/' . $name)) {
+            $deleted[] = $name;
             unset($records[$name]);
             $changed = true;
         }
@@ -1713,7 +1759,9 @@ function pg_update_backup_prune($keep = 3)
  *
  * @param string $package path of the downloaded package
  * @return array array('ok' => bool, 'error' => string, 'name' => string,
- *               'size' => float, 'files' => int, 'added' => int)
+ *               'size' => float, 'files' => int, 'added' => int[,
+ *               'reused' => true when an earlier archive of the same day and
+ *               package was kept instead])
  */
 function pg_update_backup_create($package)
 {
@@ -1724,6 +1772,13 @@ function pg_update_backup_create($package)
         return $result;
     }
 
+    // The dump goes through PDO; without it the dump would end the request
+    // with an Error rather than an answer the screen can show.
+    if (!extension_loaded('pdo_mysql')) {
+        $result['error'] = lang('The PHP extension pdo_mysql is not available, so the database cannot be backed up.');
+        return $result;
+    }
+
     $listed = pg_update_package_entries($package);
 
     if (!$listed['ok']) {
@@ -1731,22 +1786,56 @@ function pg_update_backup_create($package)
         return $result;
     }
 
+    $now = time();
+    $package_hash = (string) @hash_file('sha256', $package);
+
+    // A retry after a replace that failed part-way: the files on disk may
+    // already be partly the new version's, so a new backup would save a mix
+    // under the old version's name. The archive taken before this same
+    // package earlier the same day holds the files as they were, and is
+    // used again.
+    foreach (pg_update_backup_records() as $recorded_name => $recorded) {
+        if (($recorded['version'] === (string) VERSION) && ($recorded['package'] !== '') && hash_equals($recorded['package'], $package_hash)
+            && (($now - $recorded['created']) < 86400) && is_file(pg_backup_directory() . '/' . $recorded_name)) {
+            $result['ok'] = true;
+            $result['reused'] = true;
+            $result['name'] = $recorded_name;
+            $result['size'] = (float) @filesize(pg_backup_directory() . '/' . $recorded_name);
+            $result['files'] = $recorded['files'];
+            $result['added'] = $recorded['added'];
+            return $result;
+        }
+    }
+
     $root = dirname(PG_FUNCTIONS_DIR);
     $sources = array();
     $added = array();
+    $unreadable = array();
 
     foreach ($listed['entries'] as $entry) {
 
         $path = $root . '/' . $entry;
 
         if (is_file($path)) {
+            if (!is_readable($path)) {
+                $unreadable[] = $entry;
+            }
             $sources[] = array('path' => $path, 'local' => $entry);
         } elseif (!file_exists($path)) {
             $added[] = $entry;
         }
     }
 
-    $now = time();
+    // The archive writer skips a file it cannot read, which would leave that
+    // file out of a rollback without a word.
+    if ($unreadable) {
+        $result['error'] = lang(array(
+            'string' => 'These files cannot be read by the web server, so they cannot be backed up: {var:1}',
+            'vars'   => array(implode(', ', array_slice($unreadable, 0, 10)) . ((count($unreadable) > 10) ? ', …' : '')),
+        ));
+        return $result;
+    }
+
     $name = pg_update_backup_name(VERSION, $now);
     $work = PG_FUNCTIONS_DIR . '/data/temp/update_backup_' . date('YmdHis', $now) . '_' . substr(md5(uniqid('', true)), 0, 8);
 
@@ -1763,7 +1852,7 @@ function pg_update_backup_create($package)
 
     try {
         pg_backup_dump_database($work . '/sql.sql');
-    } catch (\Exception $e) {
+    } catch (\Throwable $e) {
         return $fail($e->getMessage());
     }
 
@@ -1811,6 +1900,7 @@ function pg_update_backup_create($package)
         'created' => $now,
         'files'   => count($sources),
         'added'   => count($added),
+        'package' => $package_hash,
     );
 
     // Without its record the archive can still be restored as a database
@@ -1822,7 +1912,7 @@ function pg_update_backup_create($package)
         return $result;
     }
 
-    foreach (pg_update_backup_prune(3) as $old) {
+    foreach (pg_update_backup_prune(3, $name) as $old) {
         log_activity(lang(array('string' => 'Old backup taken before an update {var:1} was deleted.', 'vars' => array($old))), 'SYSTEM');
     }
 
@@ -1838,8 +1928,10 @@ function pg_update_backup_create($package)
 /**
  * Put back the software files of an archive taken before an update.
  *
- * Only an archive this site recorded, unchanged since (SHA-256), is used. Its
- * software.zip is copied out and checked against the archive's own checksum,
+ * Only an archive this site recorded, unchanged since (SHA-256), is used:
+ * copied into a private working folder first, and only that copy is hashed
+ * and read. Its software.zip is copied out and checked against the archive's
+ * own checksum,
  * then written over the software with the update's verified extraction; the
  * files the update added are deleted, the bytecode cache and the caches that
  * remember the old files are cleared, and config.version is set back to the
@@ -1871,21 +1963,42 @@ function pg_update_rollback($name)
         return $result;
     }
 
-    if (!hash_equals($records[$name]['sha256'], (string) @hash_file('sha256', $path))) {
-        $result['message'] = lang('The archive has changed since the update made it, so it is not used to replace the software files.');
-        return $result;
-    }
-
     if (!class_exists('ZipArchive')) {
         $result['message'] = lang('The ZipArchive extension of PHP is not available on this server.');
         return $result;
     }
 
+    $work = PG_FUNCTIONS_DIR . '/data/temp/rollback_' . date('YmdHis') . '_' . substr(md5(uniqid('', true)), 0, 8);
+
+    if (!@mkdir($work, 0755, true)) {
+        $result['message'] = lang(array('string' => 'The folder {var:1} could not be created.', 'vars' => array('data/temp/' . basename($work))));
+        return $result;
+    }
+
+    $fail = function ($message) use (&$result, $work) {
+        pg_backup_delete_tree($work);
+        $result['message'] = (string) $message;
+        return $result;
+    };
+
+    // Copied into the private working folder first, and only the copy is
+    // hashed and read. A manager may write into the backup folder, so the
+    // file there could be replaced between a check of it and a read of it,
+    // and the entries would then come from an archive nobody checked.
+    $archive = $work . '/' . $name;
+
+    if (!@copy($path, $archive)) {
+        return $fail(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => array('data/temp/' . basename($work) . '/' . $name))));
+    }
+
+    if (!hash_equals($records[$name]['sha256'], (string) @hash_file('sha256', $archive))) {
+        return $fail(lang('The archive has changed since the update made it, so it is not used to replace the software files.'));
+    }
+
     $zip = new ZipArchive();
 
-    if ($zip->open($path) !== true) {
-        $result['message'] = lang('The archive could not be opened. It might be damaged.');
-        return $result;
+    if ($zip->open($archive) !== true) {
+        return $fail(lang('The archive could not be opened. It might be damaged.'));
     }
 
     $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
@@ -1893,16 +2006,7 @@ function pg_update_rollback($name)
 
     if (!is_array($manifest) || !isset($manifest['version']) || (preg_match('/^\d{4}(\.\d+)*$/', (string) $manifest['version']) !== 1) || ($index === false)) {
         $zip->close();
-        $result['message'] = lang('The archive is not a backup taken before an update.');
-        return $result;
-    }
-
-    $work = PG_FUNCTIONS_DIR . '/data/temp/rollback_' . date('YmdHis') . '_' . substr(md5(uniqid('', true)), 0, 8);
-
-    if (!@mkdir($work, 0755, true)) {
-        $zip->close();
-        $result['message'] = lang(array('string' => 'The folder {var:1} could not be created.', 'vars' => array('data/temp/' . basename($work))));
-        return $result;
+        return $fail(lang('The archive is not a backup taken before an update.'));
     }
 
     $copied = pg_restore_archive_copy($zip, $index, $work . '/software.zip');
@@ -1910,9 +2014,7 @@ function pg_update_rollback($name)
     $zip->close();
 
     if ($copied !== '') {
-        pg_backup_delete_tree($work);
-        $result['message'] = $copied;
-        return $result;
+        return $fail($copied);
     }
 
     $root = dirname(PG_FUNCTIONS_DIR);
