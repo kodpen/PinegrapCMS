@@ -768,7 +768,7 @@ define('LANGUAGE_REDIRECT_MODE', in_array(($row['language_redirect_mode'] ?? '')
 define('LANGUAGE_REDIRECT_SCOPE', (($row['language_redirect_scope'] ?? '') === 'all') ? 'all' : 'home');
 define('LANGUAGE_REDIRECT_FALLBACK', (string) ($row['language_redirect_fallback'] ?? ''));
 
-// Operations alerts (2026.11.0, 11.0.20; includes/fn/ops_alerts.php). Off
+// Operations alerts (2026.11.0, 11.0.5; includes/fn/ops_alerts.php). Off
 // while the columns are not there: the general job of a site that has the
 // files but not the upgrade raises nothing. The step turns them on, with the
 // e-mail and device channels, to the site's own address.
@@ -783,10 +783,10 @@ define('OPS_ALERT_DISK_PERCENT', isset($row['ops_alert_disk_percent']) ? (int) $
 define('OPS_ALERT_MAIL_FAILURES', isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10);
 define('OPS_ALERT_CERT_DAYS', isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14);
 // Whether an update backs up the files it replaces and the database first
-// (2026.11.0, 11.0.21; pg_update_backup_create()). On while the column is not
+// (2026.11.0, 11.0.6; pg_update_backup_create()). On while the column is not
 // there: the step defaults it on too.
 define('UPDATE_BACKUP', isset($row['update_backup']) ? (int) $row['update_backup'] : 1);
-// Maintenance mode (2026.11.0, 11.0.22; includes/fn/maintenance_mode.php):
+// Maintenance mode (2026.11.0, 11.0.7; includes/fn/maintenance_mode.php):
 // off, with no end and no listed address, while the columns are not there.
 define('MAINTENANCE_MODE', isset($row['maintenance_mode']) ? (int) $row['maintenance_mode'] : 0);
 define('MAINTENANCE_UNTIL', isset($row['maintenance_until']) ? (int) $row['maintenance_until'] : 0);

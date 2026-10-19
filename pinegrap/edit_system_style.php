@@ -80,6 +80,8 @@ $style = array(
     'palette'                           => pg_design_palette_key(isset($row['style_palette']) ? $row['style_palette'] : ''),
     // Absent before 2026.4.8 (8.19): the tabs follow page_id.
     'tab_layout'                        => isset($row['style_tab_layout']) ? (string)$row['style_tab_layout'] : '',
+    // Absent before 2026.11.0 (11.0.3): the design adds no meta tags.
+    'meta_tags'                         => isset($row['style_meta_tags']) ? (string)$row['style_meta_tags'] : '',
 );
 
 // Every page on this design, in creation order. Also performs the legacy

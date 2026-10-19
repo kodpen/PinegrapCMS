@@ -1468,7 +1468,9 @@ function test_ws_bell_rows_carry_the_owner()
 // folder behind.
 function test_ws_message_send_file_checks_before_storing()
 {
-	$send = ws_api_test_handler_source('ws_message_send_file');
+	pg_assert_contains('ws_message_send_file_bytes(', ws_api_test_handler_source('ws_message_send_file'), 'base64 goes through the bytes path');
+
+	$send = ws_api_test_handler_source('ws_message_send_file_bytes');
 
 	pg_assert_true(strpos($send, 'ws_upload_check(') < strpos($send, 'ws_store_upload_bytes('), 'the file is checked before it is kept');
 	pg_assert_true(strpos($send, 'ws_message_send_check(') < strpos($send, 'ws_store_upload_bytes('), 'the message is checked before the file is kept');
@@ -1489,6 +1491,19 @@ function test_ws_message_send_file_checks_before_storing()
 
 	pg_assert_contains('ws_message_send_file(', $attach, 'the paperclip goes through it');
 	pg_assert_false(strpos($attach, 'ws_store_upload') !== false, 'the paperclip keeps no file of its own');
+
+	// A copy of a file of the file manager (library.php) too.
+	$library = ws_api_test_handler_source('ws_library_send');
+
+	pg_assert_contains('ws_message_send_file_bytes(', $library, 'a file of the file manager goes through it');
+	pg_assert_false(strpos($library, 'ws_store_upload') !== false, 'a file of the file manager keeps no file of its own');
+	pg_assert_true(strpos($library, 'ws_library_file(') < strpos($library, 'file_get_contents('), 'the file is checked before it is read');
+
+	$start = strpos($actions, "case 'ws_library_attach':");
+	$picked = ($start === false) ? '' : substr($actions, $start, strpos($actions, 'case \'', $start + 26) - $start);
+
+	pg_assert_contains("ws_action_channel(\$viewer, \$request, 'post')", $picked, 'the picker needs a channel the person may post in');
+	pg_assert_contains('ws_library_send(', $picked, 'the picker goes through it');
 }
 
 // Every write of the module can be rehearsed: X-Dry-Run is offered on the

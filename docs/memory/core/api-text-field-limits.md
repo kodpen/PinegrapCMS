@@ -8,7 +8,7 @@ description: External API text limits must fit their varchar column (the non-str
 - The limit is in characters, as `varchar(N)` in utf8mb4 is.
 
 ## What did the product and group routes accept before, and what now?
-- Before the fix (issue #513), `products.create`/`products.update` took `name` 255 and `short_description` 2000 (columns `varchar(100)`), `meta_description` and `keywords` 500 (255), `brand` 190 (100), `gtin` and `mpn` 100 (50); `product_groups.update` took `short_description` 2000 (100) and both group routes `keywords` 2000 (255).
+- Before the fix (issue #513, PR #560), `products.create`/`products.update` took `name` 255 and `short_description` 2000 (columns `varchar(100)`), `meta_description` and `keywords` 500 (255), `brand` 190 (100), `gtin` and `mpn` 100 (50); `product_groups.update` took `short_description` 2000 (100) and both group routes `keywords` 2000 (255).
 - Now every one of them is the column's width, the same limits the Workspace catalogue (`ws_change_types()` in `includes/workspace/changes.php`) already used. A longer value gets 422 `validation_failed` naming the field and the limit.
 - The product screen still offers 255 characters in its short description box (`product_builder.php`); the column cuts that one too.
 

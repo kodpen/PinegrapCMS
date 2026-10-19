@@ -1024,6 +1024,8 @@ function pg_panel_designer($request, $action)
                 'framework'                         => isset($src['style_framework']) ? $src['style_framework'] : '',
                 'look'                              => isset($src['style_look']) ? $src['style_look'] : '',
                 'palette'                           => isset($src['style_palette']) ? $src['style_palette'] : '',
+                // ...and keeps the design's meta tags in its head.
+                'style_meta_tags'                   => isset($src['style_meta_tags']) ? (string)$src['style_meta_tags'] : '',
             ));
             if ($new_style_id <= 0) {
                 respond(array('status' => 'error', 'message' => lang('The style could not be created.')));

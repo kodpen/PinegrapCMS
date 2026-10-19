@@ -4,7 +4,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 ---
 
 ## What are operations alerts?
-- Failures that used to show only on System Status or in the logs, told on the panel bell (role < 3), by e-mail and as a device banner. Catalogue `pg_ops_alert_codes()` (label, type, panel url, `direct`); one sender `pg_ops_alert($code, $detail)`. 2026.11.0, step 11.0.20; PR #542 (backup, cron, integrity), PR #543 (errors, disk, mail, webhooks, certificate).
+- Failures that used to show only on System Status or in the logs, told on the panel bell (role < 3), by e-mail and as a device banner. Catalogue `pg_ops_alert_codes()` (label, type, panel url, `direct`); one sender `pg_ops_alert($code, $detail)`. 2026.11.0, step 11.0.5; PR #542 (backup, cron, integrity), PR #543 (errors, disk, mail, webhooks, certificate).
 
 ## Where is an alert stored?
 - A `notifications` row, `action = 'ops'`, `order_total` = code, `title` = detail (or the code). No table (owner approval 2026-10-19). `pg_notification_display()` words it; `pg_ops_alert_recent()` feeds the System Status tile "Operations Alerts" (reported, not scored).

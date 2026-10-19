@@ -299,6 +299,15 @@ function pg_session_sign_in($user_id, $username)
         session_regenerate_id(true);
     }
 
+    // A binding made for another account (login_as_user.php signs an
+    // administrator's session in as someone else) must not follow the new
+    // identity; one made for this account a moment ago (the sign-in screens
+    // mint the token before they call this) is kept.
+    if (isset($_SESSION['software']['auth_user_id'])
+        && ((int) $_SESSION['software']['auth_user_id'] !== (int) $user_id)) {
+        pg_session_unbind_token();
+    }
+
     $_SESSION['sessionuserid']  = $user_id;
     $_SESSION['sessionusername'] = $username;
 
@@ -311,6 +320,80 @@ function pg_session_sign_in($user_id, $username)
         unset($_SESSION['software']['token']);
         initialize_token();
     }
+}
+
+// Bind the session to the auth_tokens row that identifies this device.
+//
+// The token cookie alone does not make a revoke authoritative: a client that
+// stops sending the revoked cookie keeps its session, and is even minted a
+// fresh token on its next request. So the selector is also kept in the
+// session, and initialize_user() asks pg_session_token_binding_broken() on
+// every request: the row must still exist, be unexpired and belong to the
+// session's user, and a cookie that is sent must name the same selector.
+// A password change, "sign out everywhere", an administrator ending the
+// session and the device limit all delete the row, and the session ends with
+// it. Every minting path passes through pg_login_set_device_cookie(), which
+// calls this; the remember-me paths bind the selector they verified.
+function pg_session_bind_token($selector, $user_id)
+{
+    $selector = (string) $selector;
+
+    if (!preg_match('/^[a-f0-9]{24}$/', $selector)) {
+        return;
+    }
+
+    $_SESSION['software']['auth_selector'] = $selector;
+    $_SESSION['software']['auth_user_id']  = (int) $user_id;
+}
+
+function pg_session_unbind_token()
+{
+    unset($_SESSION['software']['auth_selector'], $_SESSION['software']['auth_user_id']);
+}
+
+// '' while a bound session is still backed by its token (or carries no
+// binding); otherwise the reason it is not, for the activity log.
+function pg_session_token_binding_broken()
+{
+    if (empty($_SESSION['sessionuserid']) || empty($_SESSION['software']['auth_selector'])) {
+        return '';
+    }
+
+    $selector = (string) $_SESSION['software']['auth_selector'];
+
+    if (isset($_COOKIE['software']['auth']) && is_string($_COOKIE['software']['auth'])) {
+        $cookie_selector = (string) strtok($_COOKIE['software']['auth'], ':');
+
+        if ($cookie_selector !== $selector) {
+            return 'session token does not match the device';
+        }
+    }
+
+    // Asked directly rather than through db_item(): a failed query is the
+    // upgrade bridge (no auth_tokens table yet, or a database restored from
+    // before it), where there is nothing to verify against and the session is
+    // left alone the way the previous release treated it, not a fatal error.
+    $result = @mysqli_query(db::$con, "SELECT user_id, expires_at FROM auth_tokens WHERE selector = '" . escape($selector) . "'");
+
+    if (!$result) {
+        return '';
+    }
+
+    $row = mysqli_fetch_assoc($result);
+
+    if (!is_array($row) || !isset($row['expires_at'])) {
+        return 'session token was revoked';
+    }
+
+    if ((int) $row['expires_at'] < time()) {
+        return 'session token expired';
+    }
+
+    if ((int) $row['user_id'] !== (int) $_SESSION['sessionuserid']) {
+        return 'session token belongs to another account';
+    }
+
+    return '';
 }
 
 // ---------------------------------------------------------------------------

@@ -1547,7 +1547,7 @@ function ws_note_channel_sync($channel_id)
 
 /**
  * Keeps a file for a note in the note's folder, base64 as the panel sends
- * files. What a channel refuses is refused here too.
+ * files (see ws_note_file_store_bytes()).
  *
  * @param array  $viewer
  * @param array  $note one the person may change
@@ -1556,6 +1556,30 @@ function ws_note_channel_sync($channel_id)
  * @return array ok, error, id, name, url, image
  */
 function ws_note_file_store($viewer, $note, $original_name, $data)
+{
+    $parts = explode('base64,', (string) $data, 2);
+    $binary = base64_decode(str_replace(' ', '+', end($parts)), true);
+
+    if (($binary === false) || ($binary === '')) {
+        return array('ok' => false, 'error' => lang('The file could not be read.'), 'id' => 0, 'name' => '', 'url' => '', 'image' => false);
+    }
+
+    return ws_note_file_store_bytes($viewer, $note, $original_name, $binary);
+}
+
+/**
+ * Keeps a file for a note in the note's folder, from its bytes: what the
+ * screen sends (ws_note_file_store()) and what a note brought in from another
+ * app carries with it (includes/workspace/notes_import.php). What a channel
+ * refuses is refused here too.
+ *
+ * @param array  $viewer
+ * @param array  $note one the person may change
+ * @param string $original_name
+ * @param string $binary
+ * @return array ok, error, id, name, url, image
+ */
+function ws_note_file_store_bytes($viewer, $note, $original_name, $binary)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'id' => 0, 'name' => '', 'url' => '', 'image' => false);
@@ -1572,10 +1596,9 @@ function ws_note_file_store($viewer, $note, $original_name, $data)
         return $fail(function_exists('pg_upload_blocked_message') ? pg_upload_blocked_message($original_name) : lang('This file type is not allowed.'));
     }
 
-    $parts = explode('base64,', (string) $data, 2);
-    $binary = base64_decode(str_replace(' ', '+', end($parts)), true);
+    $binary = (string) $binary;
 
-    if (($binary === false) || ($binary === '')) {
+    if ($binary === '') {
         return $fail(lang('The file could not be read.'));
     }
 
@@ -1995,6 +2018,36 @@ function ws_notes_js_strings()
         'notes_export_md'       => lang('Download as Markdown'),
         'notes_print'           => lang('Print'),
         'notes_export_all'      => lang('Export all'),
+        'notes_import'          => lang('Import'),
+        'notes_import_title'    => lang('Import notes'),
+        'notes_import_intro'    => lang('Bring notes in from another app: Markdown (.md) or text (.txt) files, or a .zip of them, such as an Obsidian vault or a Notion, Joplin or Bear export. Notes exported from here are recognised and brought up to date.'),
+        'notes_import_pick'     => lang('Choose the files or drop them here'),
+        'notes_import_limit'    => ws_js_template('Up to {var:1} MB', 1),
+        'notes_import_too_many' => ws_js_template('Pick at most {var:1} files at a time, or put them in a .zip.', 1),
+        'notes_import_too_large' => ws_js_template('The upload is larger than {var:1} MB.', 1),
+        'notes_import_reading'  => lang('Reading the files…'),
+        'notes_import_found'    => ws_js_template('{var:1} note file(s) found', 1),
+        'notes_import_count_new' => ws_js_template('{var:1} new', 1),
+        'notes_import_count_update' => ws_js_template('{var:1} to bring up to date', 1),
+        'notes_import_count_same' => ws_js_template('{var:1} already here', 1),
+        'notes_import_count_error' => ws_js_template('{var:1} cannot be imported', 1),
+        'notes_import_more'     => ws_js_template('{var:1} more note file(s) were not read: one import reads at most {var:2}.', 2),
+        'notes_import_mode'     => lang('Notes exported from here'),
+        'notes_import_mode_update' => lang('Bring the note they came from up to date'),
+        'notes_import_mode_new' => lang('Add them as new notes'),
+        'notes_import_all'      => lang('Select all'),
+        'notes_import_kind_new' => lang('New note'),
+        'notes_import_kind_copy' => lang('New note, a copy'),
+        'notes_import_kind_update' => ws_js_template('Brings "{var:1}" up to date', 1),
+        'notes_import_kind_same' => lang('Already in your notes, unchanged'),
+        'notes_import_kind_error' => lang('Cannot be imported'),
+        'notes_import_files'    => ws_js_template('{var:1} file(s)', 1),
+        'notes_import_capacity' => ws_js_template('You can add {var:1} more note(s): one person keeps at most {var:2}.', 2),
+        'notes_import_go'       => ws_js_template('Import {var:1} note(s)', 1),
+        'notes_import_running'  => ws_js_template('Importing… {var:1} of {var:2}', 2),
+        'notes_import_linking'  => lang('Linking the notes to each other…'),
+        'notes_import_done'     => ws_js_template('{var:1} note(s) added, {var:2} brought up to date, {var:3} left as they were.', 3),
+        'notes_import_failed'   => lang('Not imported:'),
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),
         'notes_new'             => lang('New note'),

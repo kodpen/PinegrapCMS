@@ -645,6 +645,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
 
+    // A file of the file manager picked under the paperclip (library.php).
+    $strings = array_merge($strings, ws_library_js_strings());
+
     // Scheduled actions (includes/workspace/scheduled.php) and the messages
     // scheduled from the writing box (scheduled_messages.php).
     if (function_exists('ws_scheduled_js_strings')) {
@@ -707,11 +710,22 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'timeline'  => $base . 'workspace_timeline.php',
             'notes'     => $base . 'workspace_notes.php',
             'notes_export' => $base . 'workspace_notes_export.php',
+            'notes_import' => $base . 'workspace_notes_import.php',
             'file_save' => $base . 'workspace_file_save.php',
             'settings'  => $base . 'workspace_settings.php',
             'edit_user' => $base . 'edit_user.php',
         ),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
+        // What one import of notes may send (workspace_notes_import.php): its
+        // size and how many files the server takes in one request; and how
+        // many notes a person keeps.
+        'notes_import' => function_exists('ws_note_import_upload_max') ? array(
+            'max'   => ws_note_import_upload_max(),
+            'files' => ws_note_import_files_max(),
+            'limit' => WS_NOTE_LIMIT,
+        ) : null,
+        // The paperclip also picks from the file manager (library.php).
+        'library'      => function_exists('ws_library_browse'),
         // Word and Excel files of a conversation, drawn by a script fetched
         // on first use (includes/fn/office.php).
         'office'       => function_exists('pg_office_view_includes') ? array(

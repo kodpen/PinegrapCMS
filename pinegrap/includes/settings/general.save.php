@@ -223,7 +223,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             . ($backup_changed ? " backup_remote_error = ''," : '');
     }
     // ── Alerts ───────────────────────────────────────────────────────────
-    // The 2026.11.0 columns (11.0.20); before the upgrade nothing is written
+    // The 2026.11.0 columns (11.0.5); before the upgrade nothing is written
     // here. A recipient that is not an address refuses the whole save, like
     // the backup card's required fields: a half-saved category is worse than
     // none. The list is stored comma-separated, whatever the operator typed
@@ -279,7 +279,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     }
 
     // ── Maintenance mode ─────────────────────────────────────────────────
-    // The 2026.11.0 columns (11.0.22); before the upgrade nothing is written.
+    // The 2026.11.0 columns (11.0.7); before the upgrade nothing is written.
     // The end time arrives from a datetime-local box in the site's own time
     // zone. An address the firewall's lists would not take, a time that is
     // not one, or an end that has already passed while the mode is being
@@ -333,7 +333,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     }
 
     // ── Backup before updating ───────────────────────────────────────────
-    // The 2026.11.0 column (11.0.21); before the upgrade nothing is written.
+    // The 2026.11.0 column (11.0.6); before the upgrade nothing is written.
     $sql_update_backup = array_key_exists('update_backup', $row)
         ? "update_backup = '" . (post_value('update_backup') ? 1 : 0) . "',"
         : '';

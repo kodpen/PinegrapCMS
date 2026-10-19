@@ -26,9 +26,10 @@ function upgrade_to_2026_11_0() {
 
 	upgrade_2026_11_0_legal_documents();        // 11.0.1
 	upgrade_2026_11_0_price_history();          // 11.0.2
-	upgrade_2026_11_0_ops_alerts();             // 11.0.20
-	upgrade_2026_11_0_update_backup();          // 11.0.21
-	upgrade_2026_11_0_maintenance_mode();       // 11.0.22
+	upgrade_2026_11_0_meta_tags();              // 11.0.3
+	upgrade_2026_11_0_ops_alerts();             // 11.0.5
+	upgrade_2026_11_0_update_backup();          // 11.0.6
+	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 
 }
 
@@ -149,7 +150,7 @@ function upgrade_2026_11_0_price_history() {
 
 }
 
-// Operations alerts (2026.11.0, 11.0.20; includes/fn/ops_alerts.php, the
+// Operations alerts (2026.11.0, 11.0.5; includes/fn/ops_alerts.php, the
 // Alerts card under Site Settings, General).
 //
 // A failed or missing backup, a scheduled task that stopped, changed software
@@ -182,7 +183,7 @@ function upgrade_2026_11_0_ops_alerts() {
 
 }
 
-// The backup an update takes before it replaces the files (2026.11.0, 11.0.21;
+// The backup an update takes before it replaces the files (2026.11.0, 11.0.6;
 // pg_update_backup_create() in includes/fn/update.php, the switch on the
 // Update Channel card).
 //
@@ -198,7 +199,7 @@ function upgrade_2026_11_0_update_backup() {
 
 }
 
-// Maintenance mode (2026.11.0, 11.0.22; includes/fn/maintenance_mode.php, the
+// Maintenance mode (2026.11.0, 11.0.7; includes/fn/maintenance_mode.php, the
 // Maintenance Mode card under Site Settings, General).
 //
 // Off: nothing changes for a site that never switches it on. While on, a
@@ -214,5 +215,41 @@ function upgrade_2026_11_0_maintenance_mode() {
 	install_add_column('config', 'maintenance_allow_ips', "TEXT NULL");
 
 	install_note('Maintenance mode: visitors can be shown a maintenance page (503, with the time the site is expected back) while managers, administrators and listed addresses see the site. It is under Site Settings, General, Maintenance Mode; health.php answers uptime monitors.');
+
+}
+
+// Custom meta tags in the head (2026.11.0, 11.0.3; includes/fn/meta_tags.php,
+// the Meta Tags groups of the visual designer's Settings).
+//
+// style.style_meta_tags holds the design's list, written on every page of the
+// design; page.page_meta_tags a page's own, which wins over the design's for
+// the same name. Both are JSON lists of name/content pairs, NULL or '' for
+// none. The designer's design-wide list had no column before: what it showed
+// was kept in the browser only and never reached the site.
+//
+// Added without copying the tables where the server can do that; they carry
+// the page trees and the generated HTML, so a copy is slow on a big site.
+function upgrade_2026_11_0_meta_tags() {
+
+	$tables = array(
+		'style' => array('style_meta_tags' => "TEXT NULL"),
+		'page'  => array('page_meta_tags' => "TEXT NULL"),
+	);
+
+	foreach ($tables as $table => $columns) {
+
+		if (!install_add_columns_instant($table, $columns)) {
+
+			foreach ($columns as $column => $definition) {
+
+				install_add_column($table, $column, $definition);
+
+			}
+
+		}
+
+	}
+
+	install_note('Visual designer: meta tags added under Settings, Design now reach every page of the design, and each page can have meta tags of its own under Settings, Page. A page tag replaces a design tag, and either replaces the Open Graph or Twitter tag of the same name the site writes itself.');
 
 }
