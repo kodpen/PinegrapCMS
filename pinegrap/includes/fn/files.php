@@ -315,6 +315,20 @@ function pg_file_withheld($name)
     return mb_strtolower(trim((string) $name)) === 'dkim.key';
 }
 
+// Whether this person may not give a file this name. The one such name is
+// dkim.key: the mailer signs the site's mail with whatever file is called
+// that (includes/fn/mail.php), and the SMTP settings screen offers its
+// record's description as the TXT record to publish. Staff (roles 0-2) may
+// add it; a basic user (role 3) and a visitor who is not signed in ($role
+// null) may not. $name is the name as it will be stored, so a name that only
+// becomes dkim.key on the way in ("dkım.key" after pg_ascii_file_name()) or
+// that a case-insensitive file system keeps as the same file ("DKIM.KEY") is
+// the same name.
+function pg_file_name_reserved($name, $role)
+{
+    return pg_file_withheld($name) && (($role === null) || ((int) $role >= 3));
+}
+
 // The one sentence every door says when it refuses such a file.
 function pg_upload_blocked_message($name = '')
 {
@@ -361,9 +375,8 @@ function pg_upload_neutralize_name($file_name)
 function prepare_file_name($file_name)
 {
     $file_name = trim($file_name);
-    // If file name is invalid, change file name.  We don't allow a basic user to add a "dkim.key"
-    // file, because that file is used to sign emails for DKIM.
-    if ($file_name == '.htaccess' or ($file_name == 'dkim.key' and (!USER_LOGGED_IN or USER_ROLE == 3))) {
+    // If file name is invalid, change file name.
+    if ($file_name == '.htaccess') {
         $file_name = 'file';
     }
     // Done before the length check below so that the 100 character limit is
@@ -414,6 +427,20 @@ function prepare_file_name($file_name)
     $file_name = str_replace('&', '_', $file_name);
     $file_name = str_replace('+', '_', $file_name);
     $file_name = str_replace('#', '_', $file_name);
+    // Windows drops the dots at the end of a file name, so "photo.jpg." would
+    // be written over photo.jpg while its record kept a name of its own. The
+    // length limit above can leave one too. Never empty here: a name that
+    // started with a dot was given "file" in front of it.
+    $file_name = rtrim($file_name, '.');
+    // A basic user or a visitor may not add dkim.key (pg_file_name_reserved()).
+    // Asked last, on the name as it is stored: the transliteration above turns
+    // "dkım.key" into "dkim.key", and a case-insensitive disk keeps "DKIM.KEY"
+    // as the same file. Without a session (a job, the external API) nobody
+    // counts as staff.
+    $role = (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ROLE')) ? USER_ROLE : null;
+    if (pg_file_name_reserved($file_name, $role)) {
+        $file_name = 'file';
+    }
     return $file_name;
 }
 // Create a function that is used in order to determine if a page type

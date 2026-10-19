@@ -1,6 +1,6 @@
 ---
 name: ascii-names-in-urls-iis
-description: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404; use pg_ascii_file_name, any name that enters a URL must be ASCII.
+description: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
 ---
 
 ## Why can a record with a Turkish character in its name not be found by URL?
@@ -11,6 +11,10 @@ description: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish
 ## What fixes it and where is the open gap?
 - `prepare_file_name()` solves it with `pg_ascii_file_name()` (Turkish mapping first: the general accent stripper breaks `İ` and does not know `ş`/`ğ`).
 - The same gap remains in `prepare_catalog_item_address_name()`: product pages with Turkish addresses 404 the same way. Changing it would affect live links, so it is a separate decision.
+
+## Why does no stored file name end in a dot?
+- Windows drops the dots at the end of a file name: `photo.jpg.` is written over `photo.jpg`, while the record keeps `photo.jpg.`, so the name check (`check_name_availability()`, records only) sees no clash. Two records then share one file, and a basic user could store the signing key as `dkim.key.` (`platform/dkim-key-in-file-manager.md`).
+- `prepare_file_name()` drops them last, after the length limit (which can leave one) and after the upload rule (`shell.php.` is still `shell_php`). #620.
 
 ## What is the rule?
 - When you generate a new name that enters a URL, reduce it to ASCII. Do not trust the server to behave correctly.

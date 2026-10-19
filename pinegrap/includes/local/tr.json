@@ -24068,5 +24068,6 @@
     "Connect in three steps": "Üç adımda bağlanın",
     "Filled in by Connect. Write it only when the Paraşüt user works in more than one company; an empty box keeps the saved number.": "Bağla doldurur. Yalnız Paraşüt kullanıcısı birden çok firmada çalışıyorsa yazın; boş kutu kayıtlı numarayı korur.",
     "Not connected to Paraşüt yet.": "Henüz Paraşüt'e bağlı değil.",
-    "Open the Paraşüt authorization page": "Paraşüt yetkilendirme sayfasını aç"
+    "Open the Paraşüt authorization page": "Paraşüt yetkilendirme sayfasını aç",
+    "This is the key that signs the site's mail. It stays on the server.": "Bu, sitenin postalarını imzalayan anahtardır. Sunucudan çıkmaz."
 }
