@@ -10184,6 +10184,9 @@ var pgSettingsModal = (function () {
      */
     function clearExtras() {
 
+        // The code fields of a card's own dialog (the cron commands) go with it.
+        window.pgReleaseEditors(byId('pg_settings_modal_extras'));
+
         $('#pg_settings_modal_extras .modal').each(function () {
 
             var instance = bootstrap.Modal.getInstance(this);
@@ -10392,6 +10395,10 @@ var pgSettingsModal = (function () {
 // removes the handlers it put on window. toTextArea() does not do this - it
 // destroys the editor and leaves the addon polling a wrapper that is no longer
 // in the document.
+//
+// The facade's editors (pg_code_editor_attach(), kept in window.pgCodeEditors)
+// inside the region are destroyed as well: an editor view keeps listeners on
+// the document and an observer on its box until it is told to go.
 window.pgReleaseEditors = function (scope) {
 
     var root = scope || document;
@@ -10411,7 +10418,78 @@ window.pgReleaseEditors = function (scope) {
 
         try { editor.setOption('autoRefresh', false); } catch (e) {}
     }
+
+    var editors = window.pgCodeEditors || {};
+
+    Object.keys(editors).forEach(function (id) {
+
+        var instance = editors[id];
+
+        if (!instance || !instance.host || ((root !== document) && !root.contains(instance.host))) {
+            return;
+        }
+
+        try { instance.destroy(); } catch (e) {}
+
+        delete editors[id];
+    });
 };
+
+// Runs `run` once the code editor facade (assets/js/pg_code_editor.js,
+// window.PgCodeEditor) is on the page, fetching it the first time.
+//
+// The panel header names the facade and its engine in window.pgCodeEditorConfig
+// (output_control_panel_header_includes()); a screen that draws a code field
+// adds the engine's translated texts to it (pg_code_editor_includes()). The
+// facade itself is a small script, but most screens never draw a code field,
+// so it is not in the head: pg_code_editor_attach() asks for it here, and so
+// does markup that arrives later, such as a pane of the settings dialog.
+//
+// `run` also runs when the script cannot be fetched; it checks for
+// PgCodeEditor itself and leaves the plain textarea in place.
+window.pgCodeEditorUse = (function () {
+
+    var waiting = null;     // callbacks while the facade loads; null otherwise
+
+    var configure = function () {
+        if (window.PgCodeEditor && window.pgCodeEditorConfig) {
+            window.PgCodeEditor.configure(window.pgCodeEditorConfig);
+        }
+    };
+
+    return function (run) {
+
+        var config = window.pgCodeEditorConfig || {};
+
+        if (window.PgCodeEditor || !config.facade) {
+            configure();
+            run();
+            return;
+        }
+
+        if (waiting) {
+            waiting.push(run);
+            return;
+        }
+
+        waiting = [run];
+
+        var script = document.createElement('script');
+
+        script.src = config.facade;
+        script.onload = script.onerror = function () {
+            var callbacks = waiting;
+
+            waiting = null;
+            configure();
+            callbacks.forEach(function (callback) {
+                try { callback(); } catch (e) {}
+            });
+        };
+
+        document.head.appendChild(script);
+    };
+})();
 
 // Makes sure CodeMirror is on the page before markup that starts an editor is
 // put into it, then calls done.
@@ -10425,10 +10503,43 @@ window.pgReleaseEditors = function (scope) {
 // order the head would have run them. Anywhere else CodeMirror is already
 // there and done runs at once, before this returns.
 //
+// Markup that draws a code field with the facade (it calls pgCodeEditorUse())
+// waits the same way for the facade and its engine, so the pane is painted
+// with its editors rather than with plain boxes that turn into editors a
+// moment later.
+//
 // Returns true when done will run later. A file that fails to load still ends
 // in done: the textarea stays a plain field, which is what a missing editor
 // looked like before.
-window.pgCodeEditorReady = (function () {
+window.pgCodeEditorReady = function (markup, done) {
+
+    markup = String(markup || '');
+
+    var facade = (markup.indexOf('pgCodeEditorUse') !== -1)
+        && !(window.PgCodeEditor && window.PgCodeEditor.isLoaded());
+
+    var classic = pgCodeMirrorReady(markup, function () {
+
+        if (!facade) {
+            done();
+            return;
+        }
+
+        window.pgCodeEditorUse(function () {
+            if (window.PgCodeEditor) {
+                window.PgCodeEditor.load().then(done, done);
+            } else {
+                done();
+            }
+        });
+    });
+
+    return classic || facade;
+};
+
+// CodeMirror 5 from its template, for markup that still starts one; see
+// pgCodeEditorReady(). Returns true when done will run later.
+var pgCodeMirrorReady = (function () {
 
     var waiting = null;     // callbacks while the files load; null otherwise
 

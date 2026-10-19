@@ -2016,6 +2016,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="explorer_toasts"></div>
 
+<?php echo pg_code_editor_includes(); ?>
 <script type="text/javascript">
 (function () {
     'use strict';
@@ -13047,12 +13048,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // screens put in their head, from the same PHP functions, so the list of
     // files lives in one place; here they are read out of that markup and
     // appended one at a time, each script waiting for the one before it --
-    // the order the head would have loaded them in. The code editor is the
-    // facade (pg_code_editor_includes()): a small script here, its engine
-    // fetched by PgCodeEditor.load() the first time a text file opens.
+    // the order the head would have loaded them in. The code editor is
+    // fetched by window.pgCodeEditorUse() (backend.src.js) instead, the first
+    // time a text file opens.
     var assetBundles = {
         image_editor: <?php echo encode_json(get_image_editor_includes()); ?>,
-        code_editor: <?php echo encode_json(pg_code_editor_includes()); ?>,
         office_view: <?php echo encode_json(pg_office_view_includes()); ?>
     };
 
@@ -13205,8 +13205,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // waits for it: an empty box that fills in a moment later reads
             // as the file having nothing in it. A facade or an engine that
             // does not arrive leaves the plain text box.
-            if ((kind === 'text') && (file.content !== null)) {
-                loadAssets('code_editor', function () {
+            if ((kind === 'text') && (file.content !== null) && (typeof window.pgCodeEditorUse === 'function')) {
+                window.pgCodeEditorUse(function () {
                     var show = function () { showFileEditor(item, file, kind); };
                     if (typeof PgCodeEditor === 'undefined') { show(); return; }
                     PgCodeEditor.load().then(show, show);

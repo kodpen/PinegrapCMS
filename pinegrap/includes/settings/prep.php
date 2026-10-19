@@ -742,7 +742,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     <div class="col-12 ">
                                                         <label for="custom_jsonld" class="form-label">' . lang('Site-Wide JSON-LD') . '</label>
                                                         <textarea name="custom_jsonld" id="custom_jsonld" class="form-control" >' . h($site_custom_jsonld) . '</textarea>
-                                                        ' . get_codemirror_javascript(array('id' => 'custom_jsonld', 'code_type' => 'plain')) . '
+                                                        ' . pg_code_editor_attach(array('id' => 'custom_jsonld', 'code_type' => 'application/json')) . '
                                                         <div class="form-text">' . lang('Added to every page as structured data. Must be valid JSON. Use this for blocks you would otherwise paste into a template by hand, such as an Organization or SoftwareApplication description.') . '</div>
                                                     </div>
                                                     <div class="col-12 ">

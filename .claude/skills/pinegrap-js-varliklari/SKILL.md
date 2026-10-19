@@ -58,7 +58,12 @@ ekranda (Çalışma Alanı ekranları) CodeMirror başlıkta değil,
 `<template id="pg-code-editor-assets">` içinde bekler. AJAX ile kod alanı
 getiren yol işaretlemeyi basmadan önce
 `window.pgCodeEditorReady(markup, done)` çağırmalı (Site Ayarları penceresi
-böyle yapar); CodeMirror zaten varsa `done` hemen koşar.
+böyle yapar); CodeMirror zaten varsa `done` hemen koşar. Aynı fonksiyon
+`pgCodeEditorUse` çağıran işaretleme için facade'ı ve motorunu da bekler.
+Facade hiçbir ekranın başlığında yoktur: `window.pgCodeEditorUse(run)`
+(`backend.src.js`) ilk kod alanında çeker. Kod alanı taşıyan bir bölgeyi
+atmadan önce `window.pgReleaseEditors(scope)` hem CodeMirror 5'i hem facade
+editörlerini bırakır.
 
 ## İki yerde birden ara
 
