@@ -4,7 +4,7 @@ description: How shipping works today (checked 2026-10-16): tracking tables and 
 ---
 
 ## Where is shipping data kept?
-- Tracking numbers: `shipping_tracking_numbers` (`id, order_id, ship_to_id, number`); no carrier, status, date or unique key. Carrier is guessed each time by `pg_shipping_carrier()` from `ship_tos.shipping_method_code`, then the number pattern (`pg_shipping_carriers()` in `includes/fn/ecommerce.php`; Turkish carriers have no patterns).
+- Tracking numbers: `shipping_tracking_numbers` (`id, order_id, ship_to_id, number`); no carrier, status, date or unique key. Carrier is guessed each time by `pg_shipping_carrier()` from `ship_tos.shipping_method_code`, then the site's default carrier, then the number pattern (`pg_shipping_carriers()` in `includes/fn/ecommerce.php`; Turkish carriers have no patterns): docs/memory/commerce/order-view-tracking-link.md.
 - `ship_tos.ship_date` / `delivery_date` are ESTIMATES written at checkout (`submit_order.php`); there is no column for the real dates.
 - `orders.tracking_code` is a campaign code; `orders.tracking_company` / `orders.notes` are reserved for ERP.
 - The plan to change all this: docs/memory/plans/shipping-management.md. Old audit with line numbers: `git show 88e7ac6d:docs/_tespit_2026_10_08/kargo_yonetimi_kesif_raporu.md`
@@ -24,8 +24,7 @@ Four meanings live side by side:
 - The timeline (`includes/fn/widgets.php`) shows "Delivered" once the estimated `delivery_date` has passed.
 
 ## Which gaps are known?
-- No number format check (panel and ShipWorks only trim; API only checks length). An 11-digit number with no carrier in the method code is taken as UPS, 12/15 digits as FedEx.
-- `ECOMMERCE_DEFAULT_TRACKING_PROVIDER` is used only by the order view widget and only when the method code is empty.
+- No number format check (panel and ShipWorks only trim; API only checks length). An 11-digit number with no carrier in the method code is taken as UPS, 12/15 digits as FedEx, unless the site names a default carrier (`ECOMMERCE_DEFAULT_TRACKING_PROVIDER`, every order screen since #601).
 - n11 import maps city = `city`, state = district; checkout (and `includes/erp/accounts.php`) treat a Turkish city as district and state as province, so n11 records come in swapped (not checked on a live order).
 - `mp_n11_request_collection()` is registered in the n11 connector but nothing calls `request_collection`.
 - `config.erp_auto_invoice_on` / `ERP_AUTO_INVOICE_ON` exist (2026.4.4) but no screen sets and no code reads them.

@@ -1,10 +1,10 @@
 ---
 name: shipping-management
-description: Not started shipping plan (2026-10-08): carrier recognition, shipment row status, single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields
+description: Shipping plan (2026-10-08; phase 1 done but new carriers): shipment row status, single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 ---
 
 ## What state is it in?
-- Plan only, nothing built (no `includes/fn/shipping.php`). Its labels 8.20–8.22 (2026.4.8) are void: take free labels of the open version from its `upgrade_to_…()` entry function. Full old text (stale line numbers): `git show 41aea113:docs/_plan_kargo.md`.
+- Phase 1 built (#601); no `includes/fn/shipping.php` yet. Its labels 8.20–8.22 (2026.4.8) are void: take free labels of the open version from its `upgrade_to_…()` entry function. Full old text (stale line numbers): `git show 41aea113:docs/_plan_kargo.md`.
 - Every phase is one PR; `tests/shipping_test.php` pins today's behaviour and changes only together with a test (red first).
 
 ## Which decisions are fixed?
@@ -14,7 +14,7 @@ description: Not started shipping plan (2026-10-08): carrier recognition, shipme
 - Number format checks only warn, never block. Carrier label/create APIs are not in this plan; `status` and `source='carrier'` are ready for them.
 
 ## What are the phases?
-1. Carrier recognition (S): `pg_shipping_carrier($number, $method_code, $default = '')`, order: whole method code, its words, the site default `ECOMMERCE_DEFAULT_TRACKING_PROVIDER` (passed by all six callers), number pattern. Turkish lower-casing (`İ`→`i`, `I`→`ı`) before `mb_strtolower`. New carriers hepsijet, trendyolexpress, kolaygelsin, horoz, ceva, sendeo, each only with a tracking URL verified on the carrier's site; n11 codes `HLZ`/`CEVA`/`BL` as aliases. 11 digits + no code + no default stays `ups`.
+1. Carrier recognition: method code, site default, number shape and Turkish capitals done in #601 (`commerce/order-view-tracking-link.md`); the helpers read the default themselves, so no caller passes it. Left: hepsijet, trendyolexpress, kolaygelsin, horoz, ceva, sendeo, each once its tracking URL is checked on its own site (candidates in that file), then n11 `HLZ`/`CEVA`/`BL` aliases.
 2. Schema: `shipping_tracking_numbers` adds `carrier`, `tracking_url`, `status` (VARCHAR, values in code: created, in_transit, out_for_delivery, delivered, returned, exception), `status_at`, `shipped_at`, `delivered_at`, `created_at`, `source` (default `panel`), `format_warning`; drop duplicate (`ship_to_id`, `number`) rows except the lowest id, then a unique key. `shipping_methods.carrier`. Backfill `shipped_at` from `ship_tos.ship_date` (compare with `'0000-00-00'`). Add `order_delivered` to `email_campaign_profiles.action` (read the ENUM first).
 3. One write path (M): `pg_shipment_record($order_id, $ship_to_id, $number, $opts)` UPSERTs (no delete + insert) and sets the format warning; `pg_shipment_delivered($ship_to_id, $time)` fires `order.delivered` and the campaign exactly once. `update_order.php`, `mp_order_apply_tracking()` and `mp_order_mark_dates()` use it.
 4. Panel (M): carrier select per number (+ Automatic), status badge, yellow format warning; tag input ids `ship_to_id_tracking_numbers_<id>` so two recipients work.
