@@ -113,7 +113,9 @@ function url_to_absolute( $baseUrl, $relativeUrl )
 	// If relative URL path doesn't start with /, merge with base path
 	if ( $r['path'][0] != '/' )
 	{
-		$base = mb_strrchr( $b['path'], '/', TRUE, 'UTF-8' );
+		// A base without a path ("http://example.com") merges from the root.
+		$basePath = isset( $b['path'] ) ? $b['path'] : '';
+		$base = mb_strrchr( $basePath, '/', TRUE, 'UTF-8' );
 		if ( $base === FALSE ) $base = '';
 		$r['path'] = $base . '/' . $r['path'];
 	}
@@ -139,8 +141,10 @@ function url_to_absolute( $baseUrl, $relativeUrl )
  */
 function url_remove_dot_segments( $path )
 {
-	// multi-byte character explode
-	$inSegs  = preg_split( '!/!u', $path );
+	// Split on the "/" byte: it never occurs inside a UTF-8 multi-byte
+	// sequence, and unlike a /u pattern this does not fail (return false)
+	// on a byte string that is not valid UTF-8, such as a Latin-1 name.
+	$inSegs  = explode( '/', $path );
 	$outSegs = array( );
 	foreach ( $inSegs as $seg )
 	{
@@ -154,9 +158,13 @@ function url_remove_dot_segments( $path )
 	$outPath = implode( '/', $outSegs );
 	if ( $path[0] == '/' )
 		$outPath = '/' . $outPath;
-	// compare last multi-byte character against '/'
+	// The result ends in a slash when the input does (its last segment is
+	// empty) or when the input ends in a "." or ".." segment: RFC 3986 5.2.4
+	// turns "/b/c/." into "/b/c/" and "/b/c/.." into "/b/". Comparing whole
+	// segments needs no multi-byte position arithmetic.
+	$lastSeg = end( $inSegs );
 	if ( $outPath != '/' &&
-		(mb_strlen($path)-1) == mb_strrpos( $path, '/', 'UTF-8' ) )
+		( $lastSeg === '' || $lastSeg === '.' || $lastSeg === '..' ) )
 		$outPath .= '/';
 	return $outPath;
 }
@@ -256,10 +264,16 @@ function split_url( $url, $decode=FALSE)
 {
 	// Character sets from RFC3986.
 	$xunressub     = 'a-zA-Z\d\-._~\!$&\'()*+,;=';
-	$xpchar        = $xunressub . ':@% ';
+	// Path, query and fragment also accept a space and raw UTF-8 bytes
+	// (\x80-\xff, the pattern runs in byte mode): pages and archive entry
+	// names often carry them unencoded, and the ZIP importer matches the
+	// resolved URL against those names as they are.
+	$xpchar        = $xunressub . ':@% \x80-\xff';
 
-	// Scheme from RFC3986.
-	$xscheme        = '([a-zA-Z][a-zA-Z\d+-.]*)';
+	// Scheme from RFC3986. A hyphen inside a character class stays last:
+	// between two members it is a range, and PCRE2 (PHP 7.3+) refuses a
+	// range that starts at an escape such as \d, failing the whole pattern.
+	$xscheme        = '([a-zA-Z][a-zA-Z\d+.-]*)';
 
 	// User info (user + password) from RFC3986.
 	$xuserinfo     = '((['  . $xunressub . '%]*)' .
@@ -274,7 +288,7 @@ function split_url( $url, $decode=FALSE)
 	// Host name from RFC1035.  Technically, must start with a letter.
 	// Relax that restriction to better parse URL structure, then
 	// leave host name validation to application.
-	$xhost_name    = '([a-zA-Z\d-.%]+)';
+	$xhost_name    = '([a-zA-Z\d.%-]+)';
 
 	// Authority from RFC3986.  Skip IP future.
 	$xhost         = '(' . $xhost_name . '|' . $xipv4 . '|' . $xipv6 . ')';
@@ -301,6 +315,9 @@ function split_url( $url, $decode=FALSE)
 	// Split the URL into components.
 	if ( !preg_match( '!' . $xurl . '!', $url, $m ) )
 		return FALSE;
+
+	// An empty reference matches with no parts; it resolves to the base.
+	$parts = array( );
 
 	if ( !empty($m[2]) )		$parts['scheme']  = strtolower($m[2]);
 
