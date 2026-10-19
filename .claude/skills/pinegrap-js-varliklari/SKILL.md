@@ -34,6 +34,19 @@ hangi `.min.js`'in hangi kaynaklardan, hangi sırayla yapıldığını söyler.
 - Kayıt ekranlarındaki Çalışma Alanı çekmecesi betiği ilk tıkta yükler
   (`ws_record_loader()`); orada sayfa açılırken `workspace.js` yoktur.
 
+## Yeni kod editörü: `PgCodeEditor` facade'ı (CodeMirror 6)
+
+Yeni bir kod alanı açacaksan CodeMirror 5'e değil facade'a git:
+`assets/js/pg_code_editor.js` (`window.PgCodeEditor`). Motor
+`assets/lib/code_editor/cm6.bundle.js`'dir ve ilk editör açılışında
+tembel yüklenir (`PgCodeEditor.open(host, opts)` / `attach(textarea, opts)`);
+sayfa `PgCodeEditor.configure({ bundle: '…?v=damga' })` ile adresini söyler.
+Facade'da `_sdT()`/`lang()` yoktur, metinler çağırandan gelir. Kilitli aralık,
+izlenen aralık, tamamlama kaynağı ve eklenti kaydı için
+`docs/memory/core/code-editor-facade-and-bundle.md`. Bundle'ı elle düzenleme:
+`tools/code_editor/` kaynaklarını değiştirip `php tools/build_code_editor.php`
+koş (CI `--check` ile denetler).
+
 ## Kod editörü (CodeMirror) başlıkta olmayabilir
 
 `pg_page_shell()`/`output_header()`'a `'code_editor' => false` verilen

@@ -5,11 +5,14 @@
 Unfinished and shelved plans: remaining work, decisions made, open questions, where to start.
 
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
+- designer-code-editor-design.md: Design decided for the designer code view: range map from one emitter, lock levels and protected ranges, text/tree sync loop and its guard, attribute write rules, hook points in style_designer.js
+- designer-code-editor.md: Plan (2026-10-19) for the editable code view in the visual designer (HTML of the page, CSS/JS files, find and replace): rules, slices E1-E7, open questions, where to start
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Design decided for the unfinished Paraşüt e-document driver: credentials, HTTP layer, taxpayer check, scenario, async job ladder, totals check, webhook, account title lookup
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
+- legacy-page-designer-retirement.md: Plan (2026-10-19, not started) to open classic (legacy) pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export (Markdown, zip vault, print), import (Markdown/zip, enex, Keep, HTML), API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
