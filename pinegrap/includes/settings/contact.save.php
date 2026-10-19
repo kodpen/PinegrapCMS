@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the Communication screen writes: e-mail campaigns and live chat.
+ * Site Settings - what the Communication screen writes: e-mail campaigns,
+ * live chat, MailChimp and SMS.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -222,6 +223,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // ── SMS ──
+    //
+    // Checked here, before anything is written: a changed account is asked
+    // about at the provider, and a refusal stops the whole category like a
+    // refused MailChimp key.
+    $sms_settings_post = pg_sms_settings_check($_POST, $liveform);
+
     if ($liveform->check_form_errors()) {
         return;
     }
@@ -248,3 +256,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             " . $sql_chat_settings . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    // The SMS account goes to the connected accounts' applications, after the
+    // config row; the test message, when its button was pressed, after that.
+    pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);

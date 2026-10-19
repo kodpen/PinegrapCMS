@@ -181,16 +181,18 @@ function pg_settings_categories()
         'contact' => array(
             'label' => lang('Communication'),
             'icon'  => 'bi-chat-dots',
-            'description' => lang('E-mail campaigns, live chat and MailChimp.'),
+            'description' => lang('E-mail campaigns, live chat, MailChimp and SMS.'),
             'sections' => array(
                 'pgset-campaigns' => lang('Campaigns'),
                 'pgset-chat'      => lang('Chat'),
                 'pgset-mailchimp' => lang('MailChimp'),
+                'pgset-sms'       => lang('SMS'),
             ),
             'keywords' => array(
                 'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
                 'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
+                'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
             ),
         ),
 
