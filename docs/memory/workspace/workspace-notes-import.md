@@ -21,4 +21,4 @@ description: Notes brought in from other apps (workspace_notes_import.php, notes
 - The export wrote people as `@@name` (labels already carry `@`); fixed with this PR (issue #549). Tests: tests/workspace_notes_io_test.php.
 
 ## Why did every upload say "The file could not be saved." (Dosya kaydedilemedi.) on dev?
-- Windows, site in a OneDrive folder: the upload writes stage.json twice within a second, and a program holding the file just written (sync client, virus scanner) refuses the second rename(). `ws_note_import_replace()` tries rename, then writing in place, again for ~3 s on Windows. A failed file step logs "Notes import: <step> failed: <PHP message>". Test: tests/workspace_notes_import_test.php.
+- Windows, site in a OneDrive folder: the upload writes stage.json twice within a second, and a program holding the file just written (sync client, virus scanner) refuses the second rename(). `ws_note_import_replace()` tries rename, then writing in place, again for ~3 s on Windows (PR #708). A failed file step logs "Notes import: <step> failed: <PHP message>". Test: tests/workspace_notes_import_test.php.
