@@ -178,7 +178,8 @@
             '.pg-ce-lock-gutter .cm-gutterElement': { width: '14px', textAlign: 'center' },
             '.pg-ce-lock-marker': { display: 'inline-block', color: dark ? 'rgba(240,140,60,.9)' : 'rgba(205,100,20,.9)', lineHeight: '1' },
             '.pg-ce-lock-marker svg': { width: '9px', height: '9px', verticalAlign: '-1px' },
-            '.pg-ce-lock-marker-partly': { opacity: '.6' }
+            '.pg-ce-lock-marker-partly': { opacity: '.6' },
+            '.pg-ce-line-gutter .cm-gutterElement': { position: 'relative', width: '18px' }
         }, { dark: !!dark });
         var style = cm.language.HighlightStyle.define([
             { tag: t.tagName, color: c.tag, fontWeight: '600' },
@@ -456,6 +457,37 @@
         });
     }
 
+    // ── Active line marker ───────────────────────────────────────────────
+    // A gutter that carries one element, made once by the caller
+    // (opts.activeLineMarker()), on the line the cursor is on: a button that
+    // acts on that line, such as "insert a region here".
+    function _activeLineGutter(cm, opts) {
+        var V = cm.view;
+        var marker = null;
+
+        function LineMarker(el) { this.el = el; }
+        LineMarker.prototype = Object.create(V.GutterMarker.prototype);
+        LineMarker.prototype.constructor = LineMarker;
+        LineMarker.prototype.eq = function (other) { return other === this; };
+        LineMarker.prototype.toDOM = function () { return this.el; };
+
+        return V.gutter({
+            class: 'pg-ce-line-gutter',
+            lineMarker: function (view, line) {
+                var head = view.state.selection.main.head;
+                if (head < line.from || head > line.to) return null;
+                if (!marker) {
+                    var el = null;
+                    try { el = opts.activeLineMarker(); } catch (e) {}
+                    if (!el) return null;
+                    marker = new LineMarker(el);
+                }
+                return marker;
+            },
+            lineMarkerChange: function (update) { return update.selectionSet || update.docChanged; }
+        });
+    }
+
     // Does the lock set permit a change of (fromA, toA) in the document the
     // transaction started from? Allowed when no lock is touched, or when an
     // island of the touched lock holds the whole change.
@@ -556,6 +588,7 @@
             C.history(),
             L.foldGutter(),
             opts.lockGutter ? _lockGutter(cm, fields, opts) : [],
+            (typeof opts.activeLineMarker === 'function') ? _activeLineGutter(cm, opts) : [],
             V.drawSelection(),
             V.dropCursor(),
             S.EditorState.allowMultipleSelections.of(true),
@@ -692,6 +725,19 @@
         // ── Cursor, selection, scrolling ──
         inst.focus = function () { view.focus(); };
         inst.hasFocus = function () { return view.hasFocus; };
+        // Text typed in at the cursor by a button: replaces the selection,
+        // leaves the cursor after it, and is undoable like typing.
+        inst.insertAtCursor = function (text) {
+            text = String(text == null ? '' : text);
+            var r = view.state.selection.main;
+            view.dispatch({
+                changes: { from: r.from, to: r.to, insert: text },
+                selection: { anchor: r.from + text.length },
+                userEvent: 'input',
+                scrollIntoView: true
+            });
+            view.focus();
+        };
         inst.selection = function () {
             var r = view.state.selection.main;
             return { from: r.from, to: r.to, anchor: r.anchor, head: r.head };

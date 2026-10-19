@@ -322,6 +322,9 @@ if ($pg_toolbar_panel['panel'] !== '') {
 print pg_page_shell(
     array(
         'toolbar' => true,
+        // The toolbar sits over every site page an editor views and draws no
+        // code field; CodeMirror 5 (some 2 MB) waits in its template.
+        'code_editor' => false,
         'title' => lang('Toolbar'),
         'extra classes' => 'page toolbar',
         'icon' => 'page',
