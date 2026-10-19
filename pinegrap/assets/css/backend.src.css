@@ -13341,6 +13341,175 @@ a.ws-chip:hover {
   max-height: 80vh;
   background: #000;
 }
+.ws-preview-office {
+  height: 78vh;
+  background: var(--bs-body-bg);
+}
+
+/* ── Word and Excel previews (assets/js/pg_office_view.js) ──
+   One look in the file manager's window and Quick Look and in the
+   Workspace's preview: a workbook as tabs over a grid, a document as a
+   page of text. */
+.office-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  font-size: .85rem;
+  color: var(--bs-body-color);
+}
+.office-view .empty-note {
+  margin: auto;
+}
+.office-book {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.office-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  padding: .4rem .5rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+  background: var(--bs-tertiary-bg);
+}
+.office-tab {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: .15rem .7rem;
+  font: inherit;
+  font-size: .8rem;
+  color: var(--bs-secondary-color);
+  background: transparent;
+}
+.office-tab.active {
+  color: var(--bs-body-color);
+  background: var(--bs-body-bg);
+  border-color: var(--bs-border-color);
+}
+.office-tab-hidden {
+  font-style: italic;
+  opacity: .7;
+}
+.office-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--bs-body-bg);
+}
+.office-sheet {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+  min-width: 100%;
+}
+.office-sheet th,
+.office-sheet td {
+  border-right: 1px solid var(--bs-border-color-translucent);
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+  padding: .15rem .45rem;
+  white-space: pre;
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+}
+.office-sheet thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: center;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  background: var(--bs-tertiary-bg);
+}
+.office-sheet tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: right;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+  background: var(--bs-tertiary-bg);
+}
+.office-sheet .office-corner {
+  left: 0;
+  z-index: 3;
+}
+.office-sheet .office-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.office-doc {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 1.25rem 1.5rem;
+  line-height: 1.5;
+  background: var(--bs-body-bg);
+}
+.office-doc h1, .office-doc h2, .office-doc h3, .office-doc h4, .office-doc h5, .office-doc h6 {
+  margin: 1rem 0 .4rem;
+  font-weight: 600;
+}
+.office-doc h1 { font-size: 1.5rem; }
+.office-doc h2 { font-size: 1.25rem; }
+.office-doc h3 { font-size: 1.1rem; }
+.office-doc p {
+  margin: 0 0 .6rem;
+}
+.office-doc blockquote {
+  margin: .6rem 0;
+  padding-left: .9rem;
+  border-left: 3px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+.office-doc .office-list {
+  margin: 0 0 .6rem;
+  padding-left: 1.6rem;
+}
+.office-doc .office-lvl-1 { margin-left: 1.2rem; }
+.office-doc .office-lvl-2 { margin-left: 2.4rem; }
+.office-doc .office-lvl-3 { margin-left: 3.6rem; }
+.office-doc .office-lvl-4, .office-doc .office-lvl-5, .office-doc .office-lvl-6, .office-doc .office-lvl-7, .office-doc .office-lvl-8 { margin-left: 4.8rem; }
+.office-doc .office-table {
+  border-collapse: collapse;
+  margin: .6rem 0;
+  max-width: 100%;
+}
+.office-doc .office-table td {
+  border: 1px solid var(--bs-border-color);
+  padding: .25rem .5rem;
+  vertical-align: top;
+}
+.office-doc .office-table td p:last-child {
+  margin-bottom: 0;
+}
+.office-doc .office-img {
+  max-width: 100%;
+  height: auto;
+}
+.office-doc .office-tabchar {
+  display: inline-block;
+  min-width: 2em;
+}
+.office-doc .office-page {
+  margin: 1.25rem 0;
+  border: 0;
+  border-top: 1px dashed var(--bs-border-color);
+}
+.office-doc .office-lost {
+  color: var(--bs-secondary-color);
+  font-style: italic;
+}
+.office-note {
+  padding: .5rem .75rem;
+  font-size: .8rem;
+  color: var(--bs-secondary-color);
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
 
 /* Files dragged over a conversation. */
 .ws-center {

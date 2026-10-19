@@ -23438,5 +23438,13 @@
     "Kept as long as the record": "Kayıt durdukça tutuluyor",
     "The IP address was taken out of {var:1} record(s) older than {var:2} days.": "{var:2} günden eski {var:1} kayıttan IP adresi silindi.",
     "general job took the IP address out of {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydından IP adresini sildi",
-    "Removed after {var:1} days": "{var:1} gün sonra silindi"
+    "Removed after {var:1} days": "{var:1} gün sonra silindi",
+    "There is no preview for this kind of file.": "Bu tür dosya için önizleme yok.",
+    "This server cannot show office files (the PHP zip or xml extension is missing).": "Bu sunucu ofis dosyalarını gösteremiyor (PHP zip ya da xml eklentisi yok).",
+    "This file is too large to show here. Download it to open it.": "Bu dosya burada gösterilemeyecek kadar büyük. Açmak için indirin.",
+    "picture": "resim",
+    "Hidden sheet": "Gizli sayfa",
+    "Only the beginning is shown. Download the file to see all of it.": "Yalnız başı gösteriliyor. Tamamını görmek için dosyayı indirin.",
+    "{1} picture(s) could not be shown.": "{1} resim gösterilemedi.",
+    "The sheet is empty.": "Sayfa boş."
 }

@@ -5967,6 +5967,38 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // waiting to see what broke.
         //
         // files.name IS the address -- every reader resolves a file as
+        // A Word or Excel file read on the server for the file window and
+        // Quick Look (includes/fn/office.php): rows for a workbook, a safe
+        // subset of HTML for a document. Reading only, so it is open to
+        // whoever may view the folder; a document the ERP module keeps to
+        // whoever may read the ERP (get_file.php's rule for those).
+        case 'explorer_office_preview':
+
+            $office_file = pg_explorer_file_row((int) (isset($request['id']) ? $request['id'] : 0));
+
+            if (!$office_file || (pg_office_kind($office_file['name']) === '')) {
+                respond(array('status' => 'error', 'message' => lang('There is no preview for this kind of file.')));
+            }
+
+            if (pg_files_include_erp_document(array($office_file['id']))) {
+                if (!defined('ERP_ENABLED') || !ERP_ENABLED || (((int) $user['role'] >= 3) && empty($user['manage_erp']))) {
+                    respond(array('status' => 'error', 'message' => lang('Access denied')));
+                }
+            } elseif (check_view_access($office_file['folder']) == false) {
+                respond(array('status' => 'error', 'message' => lang('Access denied')));
+            }
+
+            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $office_file['name'], $office_file['name']);
+
+            if (!$office['ok']) {
+                respond(array('status' => 'error', 'message' => $office['error']));
+            }
+
+            unset($office['ok'], $office['error']);
+
+            respond(array('status' => 'success', 'request' => $type, 'office' => $office));
+            break;
+
         // FILE_DIRECTORY_PATH . '/' . name -- so the name is what the content
         // carries, and a LIKE over the places content lives finds it.
         //

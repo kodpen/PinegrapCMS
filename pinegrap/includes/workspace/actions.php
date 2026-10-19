@@ -717,6 +717,33 @@ function ws_handle_action($action, $request)
         // Text files in a conversation (includes/workspace/file_edits.php):
         // read, and saved over the person's own file or sent as an edited
         // copy of somebody else's.
+        // A Word or Excel file of a message, read on the server for the
+        // preview window (includes/fn/office.php); whoever may read the
+        // channel may look.
+        case 'ws_file_office':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+            $channel = $message ? ws_channel($message['channel_id']) : null;
+
+            if (!$message || !$channel || !ws_can_read_channel($viewer, $channel) || ((int) $message['deleted_at'] > 0)) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $stored = ((int) $message['file_id'] > 0) ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'") : '';
+
+            if (($stored === '') || (pg_office_kind($message['file_name']) === '')) {
+                return ws_action_error(lang('There is no preview for this kind of file.'));
+            }
+
+            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $stored, $message['file_name']);
+
+            if (!$office['ok']) {
+                return ws_action_error($office['error']);
+            }
+
+            unset($office['ok'], $office['error']);
+
+            return ws_action_ok(array('name' => (string) $message['file_name'], 'office' => $office));
+
         case 'ws_file_text':
             $target = ws_file_edit_target($viewer, (int) ($request['message_id'] ?? 0), 'text');
 

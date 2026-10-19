@@ -272,7 +272,7 @@ function pg_panel_actions()
         'ws_notes', 'ws_note_get', 'ws_note_save', 'ws_note_delete',
         'ws_note_from_message', 'ws_note_share', 'ws_note_channel',
         'ws_note_unshare', 'ws_note_file', 'ws_note_claude',
-        'ws_note_claude_deliver', 'ws_note_menu_pin', 'ws_file_text',
+        'ws_note_claude_deliver', 'ws_note_menu_pin', 'ws_file_office', 'ws_file_text',
         'ws_file_text_save', 'ws_file_history', 'ws_channel_notify',
         'ws_channel_pin', 'ws_channel_order', 'ws_channel_summary',
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',

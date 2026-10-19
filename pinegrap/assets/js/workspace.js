@@ -497,7 +497,39 @@
         return imageEditorLoading;
     }
 
-    // A PDF or a video, large, without leaving the screen.
+    // The drawing code of the Word and Excel preview (assets/js/pg_office_view.js),
+    // fetched the first time such a file is opened.
+    var officeViewLoading = null;
+
+    function loadOfficeView() {
+        if (window.pgOfficeView) {
+            return Promise.resolve();
+        }
+
+        if (officeViewLoading) {
+            return officeViewLoading;
+        }
+
+        if (!CFG.office || !CFG.office.script) {
+            return Promise.reject(new Error(t('error_generic')));
+        }
+
+        officeViewLoading = new Promise(function (resolve, reject) {
+            var script = document.createElement('script');
+            script.src = CFG.office.script;
+            script.onload = function () { window.pgOfficeView ? resolve() : reject(new Error(t('error_generic'))); };
+            script.onerror = function () { reject(new Error(t('error_generic'))); };
+            document.head.appendChild(script);
+        });
+
+        officeViewLoading.catch(function () {
+            officeViewLoading = null;
+        });
+
+        return officeViewLoading;
+    }
+
+    // A PDF, a video, or a Word or Excel file, large, without leaving the screen.
     var previewModal = null;
 
     function previewFile(file) {
@@ -546,6 +578,22 @@
             video.autoplay = true;
             video.playsInline = true;
             body.appendChild(video);
+        } else if (file.office && file.message_id) {
+            // Read on the server, drawn here (ws_file_office).
+            var box = el('div', 'ws-preview-office office-view');
+            box.appendChild(el('div', 'ws-empty', t('loading')));
+            body.appendChild(box);
+
+            Promise.all([api('ws_file_office', { message_id: file.message_id }), loadOfficeView()]).then(function (results) {
+                if (box.isConnected) {
+                    window.pgOfficeView.render(box, results[0].office, (CFG.office && CFG.office.strings) || {});
+                }
+            }).catch(function (error) {
+                if (box.isConnected) {
+                    clear(box);
+                    box.appendChild(el('div', 'ws-empty', (error && error.message) ? error.message : t('error_generic')));
+                }
+            });
         } else {
             var frame = el('iframe', 'ws-preview-frame');
             frame.src = file.url;
@@ -8489,7 +8537,7 @@
             text.appendChild(name);
             card.appendChild(text);
 
-            if (kind === 'pdf') {
+            if (kind === 'pdf' || file.office) {
                 var look = button('btn btn-sm btn-outline-secondary', t('preview'), 'bi-eye');
                 look.addEventListener('click', function () { previewFile(file); });
                 card.appendChild(look);
@@ -12022,7 +12070,7 @@
                         items.push({ icon: 'bi-arrows-fullscreen', label: t('view_image'), action: function () { viewImages(gallery, index); } });
                     }
 
-                    if (message.file.kind === 'video' || message.file.kind === 'pdf') {
+                    if (message.file.kind === 'video' || message.file.kind === 'pdf' || message.file.office) {
                         items.push({ icon: 'bi-eye', label: t('preview'), action: function () { previewFile(message.file); } });
                     }
 
@@ -12123,10 +12171,10 @@
                         row.appendChild(link);
                         row.appendChild(el('small', 'text-body-secondary ws-grow', (message.sender ? message.sender.name + ' · ' : '') + message.time));
 
-                        if (message.file.kind === 'pdf' || message.file.kind === 'audio') {
-                            var look = button('btn btn-sm btn-ghost', '', message.file.kind === 'pdf' ? 'bi-eye' : 'bi-play-circle', t('preview'));
+                        if (message.file.kind === 'pdf' || message.file.kind === 'audio' || message.file.office) {
+                            var look = button('btn btn-sm btn-ghost', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
                             look.addEventListener('click', function () {
-                                if (message.file.kind === 'pdf') {
+                                if (message.file.kind === 'pdf' || message.file.office) {
                                     previewFile(message.file);
                                 } else {
                                     var sound = el('audio');
