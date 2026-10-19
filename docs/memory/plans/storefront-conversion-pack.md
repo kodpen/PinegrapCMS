@@ -15,8 +15,8 @@ description: Plan (approved 2026-10-19, in progress: schema, verified-buyer revi
 - Added in 2a: an unpaid bank transfer is not bought; one review per purchase; only verified reviews count (28/B(6)); aggregateRating only where the reviews show with stars: `docs/memory/commerce/product-reviews-verified.md`.
 
 ## What is done?
-1. Schema 11.0.14 `upgrade_2026_11_0_conversion_pack()`: comments and products columns, `wishlist_items`, `stock_notify`, `order_review_request` in both campaign action enums.
-2a. Review gate in the comment form and `add_comment.php`, "Verified purchase" badge, rating refresh on every write path plus a daily pass, `aggregateRating` in the legacy catalog detail markup (`includes/fn/reviews.php`, `tests/reviews_test.php`).
+1. Schema 11.0.14 (PR #698) `upgrade_2026_11_0_conversion_pack()`: comments and products columns, `wishlist_items`, `stock_notify`, `order_review_request` in both campaign action enums.
+2a. (PR #698) Review gate in the comment form and `add_comment.php`, "Verified purchase" badge, rating refresh on every write path plus a daily pass, `aggregateRating` in the legacy catalog detail markup (`includes/fn/reviews.php`, `tests/reviews_test.php`).
 
 ## What remains?
 2b. Seller reply in `edit_comment.php`, shown under the review (28/C: 48 hours); verified marker and filter in `view_comments.php`; the `order_review_request` profile (option in `edit_email_campaign_profile.php`, trigger on shipping, links to the review forms) (S–M).
