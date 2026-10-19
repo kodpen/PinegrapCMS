@@ -281,6 +281,17 @@
     }
 
     /**
+     * The zoom an element is drawn at: CSS zoom on it or an ancestor (the
+     * visual designer zooms its canvas that way) scales what
+     * getBoundingClientRect() reports, so a size in CSS pixels is the
+     * rectangle's divided by this.
+     */
+    function zoom(el) {
+        var z = el && el.currentCSSZoom;
+        return (typeof z === 'number' && z > 0) ? z : 1;
+    }
+
+    /**
      * The contrast of one text (a textRuns() entry): {ratio, min, ok, color,
      * background}, or null when it cannot be told or does not apply - the
      * text is hidden or disabled (inactive controls are exempt), a picture is
@@ -293,19 +304,21 @@
         if (cs.visibility !== 'visible' || parseFloat(cs.opacity) === 0) return null;
         if (el.closest && el.closest(':disabled, [aria-disabled="true"], .disabled')) return null;
 
+        var z = zoom(el);
+
         // Text for screen readers only (Bootstrap's .visually-hidden and its
         // kin): a one-pixel box clipped to nothing, read aloud, never seen.
         // Its own glyphs still report a full-size rectangle.
         if (/^rect\(\s*0(px)?[\s,]+0(px)?[\s,]+0(px)?[\s,]+0(px)?\s*\)$/.test(cs.clip || '')) return null;
         if (cs.display !== 'contents') {
             var box = el.getBoundingClientRect();
-            if (box.width <= 1 || box.height <= 1) return null;
+            if (box.width / z <= 1 || box.height / z <= 1) return null;
         }
 
         var rect = textRect(run.node);
 
         // Not drawn: inside something hidden (display: none, a closed menu).
-        if (!rect || rect.width < 2 || rect.height < 2) return null;
+        if (!rect || rect.width / z < 2 || rect.height / z < 2) return null;
 
         var bg = backdrop(el, opts, cache);
         if (!bg) return null;
@@ -336,6 +349,7 @@
         over: over,
         weight: weight,
         minimum: minimum,
+        zoom: zoom,
         backdrop: backdrop,
         pictures: pictures,
         textRuns: textRuns,
