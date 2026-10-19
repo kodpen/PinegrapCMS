@@ -7114,6 +7114,8 @@ function duplicate_product($id)
                 '" . $products_group['product_group'] . "')");
     }
 
+    // The copy starts a price history of its own at the original's price.
+    pg_price_history_record($new_product_id, 'panel');
 
 
     return $new_product_id;

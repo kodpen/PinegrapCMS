@@ -10,7 +10,8 @@ description: Last released version (2026.4.10), the open version (2026.11.0, fir
 
 ## What is open?
 - 2026.11.0 (opened 2026-10-16), the first number in the year.month.patch scheme: docs/memory/release/version-numbering.md. It has its `versions.php` row and its changelog heading with the `[FIX]` line.
-- Its migration file is `includes/migrations/2026.11.0.php` with `upgrade_to_2026_11_0()`; the first sub-step is `upgrade_2026_11_0_legal_documents()` (11.0.1). A new schema step adds its sub-step and a call there, it never recreates the file.
+- Its migration file `includes/migrations/2026.11.0.php` holds `upgrade_to_2026_11_0()`; each schema step is a sub-step `upgrade_2026_11_0_<topic>()` called from there with its label (11.0.1 `legal_documents`, 11.0.2 `price_history`); a new step adds a call, not a file.
+- A database that already recorded `2026.11.0` (dev, beta, demo sites that pulled `development` while the version was code-only or before a step was added) skips the steps added since: set `config.version` back to `2026.4.10` and run the upgrade again.
 - Step labels take the prefix `11.0.` with the earlier ranges (version-numbering.md).
 - The next version number is the owner's; ask. A version opens with its first schema step or changelog entry, always together with its `versions.php` row (the dashboard compares the changelog's newest heading with `config.version`).
 - Rerun on dev: set `config.version` back to the last released version (today `2026.4.10`); steps are idempotent, applied ones are skipped. A pull that adds a `versions.php` row sends the panel to the upgrade screen once, also for a code-only version.

@@ -2962,6 +2962,11 @@ function ws_change_write_product($viewer, $action, $record, $values)
 
     db("UPDATE products SET " . implode(', ', $set) . " WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
 
+    // Approved in the Workspace, so it is a change made in the panel.
+    if (array_key_exists('price', $values)) {
+        pg_price_history_record((int) $record['id'], 'panel');
+    }
+
     // Switching stock tracking on or off decides whether the product is out
     // of stock, as pg_pb_apply_stock_flag() works it out on the product
     // screen: tracked and empty is out of stock (stamped once on the way in),

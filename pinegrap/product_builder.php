@@ -954,16 +954,19 @@ function pg_pb_create_group($group)
  * @param array $product   column => value, already prepared
  * @param array $relations keys: images, group_ids, zone_ids, attributes,
  *                         submit_form (the array the form fields are read from,
- *                         $_POST when the key is absent)
+ *                         $_POST when the key is absent), price_source (the
+ *                         label of the first price history row, 'panel' when
+ *                         the key is absent; pg_price_history_sources())
  * @return int product id
  */
 function pg_pb_create_product($product, $relations = array())
 {
-    $images      = isset($relations['images'])      ? $relations['images']      : array();
-    $group_ids   = isset($relations['group_ids'])   ? $relations['group_ids']   : array();
-    $zone_ids    = isset($relations['zone_ids'])    ? $relations['zone_ids']    : array();
-    $attributes  = isset($relations['attributes'])  ? $relations['attributes']  : array();
-    $submit_form = isset($relations['submit_form']) ? $relations['submit_form'] : NULL;
+    $images       = isset($relations['images'])       ? $relations['images']       : array();
+    $group_ids    = isset($relations['group_ids'])    ? $relations['group_ids']    : array();
+    $zone_ids     = isset($relations['zone_ids'])     ? $relations['zone_ids']     : array();
+    $attributes   = isset($relations['attributes'])   ? $relations['attributes']   : array();
+    $submit_form  = isset($relations['submit_form'])  ? $relations['submit_form']  : NULL;
+    $price_source = isset($relations['price_source']) ? $relations['price_source'] : 'panel';
 
     // products.name is the SKU and has to be unique — the matrix can easily
     // produce a collision with an existing product.
@@ -986,6 +989,11 @@ function pg_pb_create_product($product, $relations = array())
     unset($product['address_name']);
 
     $product_id = pg_pb_insert_row('products', $product);
+
+    // The first price of the product starts its history, right after the row
+    // exists so that a failure further down cannot leave it out. A variant
+    // priced by the set's rules is recorded at the price the rules gave it.
+    pg_price_history_record($product_id, $price_source);
 
     if ($address_source === '') {
         $address_source = isset($product['short_description']) ? trim($product['short_description']) : '';
@@ -1898,6 +1906,10 @@ function pg_pb_delete_product($product_id)
     // Barcodes are unique across the table, so a row left behind would keep a
     // deleted product's barcode from ever being assigned again.
     db("DELETE FROM product_barcodes WHERE product_id = '$product_id'");
+
+    // MySQL 5.7 may give the id to a new product after a restart, which must
+    // not inherit this one's prices.
+    pg_price_history_forget($product_id);
 
     // The "!= 0" guard is inherited from edit_products.php: product_id 0 means
     // "belongs to a page", and dropping that guard deletes every page form.
@@ -5646,6 +5658,10 @@ function pg_pb_update_product($product_id)
 
     pg_pb_update_row('products', $product, 'id', $product_id);
 
+    // The price history writes a row only when the stored price differs from
+    // its newest one, so a save that left the price alone adds nothing.
+    pg_price_history_record($product_id, 'panel');
+
     // The operator may have changed the price or the stock on this screen, and
     // there is no cheap way to know which - so it is queued either way. A
     // marketplace that is told the same numbers twice does nothing with the
@@ -6114,6 +6130,10 @@ function pg_pb_quick_update($product_id, $field, $value)
         }
 
         pg_pb_update_row('products', $change, 'id', $product_id);
+
+        if ($field === 'price') {
+            pg_price_history_record($product_id, 'panel');
+        }
 
         if ($field === 'enabled') {
             pg_pb_sync_tag_cloud_keywords($product_id, $current['keywords'], ($change['enabled'] === '1'));

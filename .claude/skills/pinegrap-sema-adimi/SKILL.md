@@ -17,10 +17,12 @@ olduğunu `docs/memory/release/release-status.md` söyler — erişemiyorsan
 
 2026-10-16 itibarıyla 2026.4.10 yayında ve kapalı (`includes/migrations/2026.4.10.php`
 dokunulmaz). **Açık sürüm 2026.11.0** (yıl.ay.yama numaralarının ilki,
-`docs/memory/release/version-numbering.md`): `versions.php` satırı ve changelog
-başlığı ve migration dosyası var (`includes/migrations/2026.11.0.php` →
-`upgrade_to_2026_11_0()`, ilk alt adım 11.0.1). Yeni adım dosyayı yeniden
-oluşturmaz, girişe yeni bir çağrı ekler.
+`docs/memory/release/version-numbering.md`): `versions.php` satırı, changelog
+başlığı ve `includes/migrations/2026.11.0.php` → `upgrade_to_2026_11_0()`
+dosyası var (alt adımlar 11.0.1 `legal_documents`, 11.0.2 `price_history`).
+Yeni adım dosyayı yeniden oluşturmaz, girişe yeni bir çağrı ekler.
+`config.version`'ı zaten `2026.11.0` olan bir dev DB yeni adımı koşmaz: önce
+`2026.4.10`'a geri çek.
 Sonraki numarayı ürün sahibine sor. Alt adım etiketleri önceki sürümlerin
 yapısını `11.0.` önekiyle korur (Çalışma Alanı .80–.89, ERP .58–.69 ve .90–,
 API .70–.79). `versions.php` satırı eklendiği an dev paneli yükseltme ekranına

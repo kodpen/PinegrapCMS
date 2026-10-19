@@ -317,6 +317,10 @@ if (!$_POST) {
                                 user = '" . USER_ID . "'
                             WHERE id = '" . escape($product_id) . "'");
 
+                        if ($edit_change_price_method != '') {
+                            pg_price_history_queue($product_id, 'panel');
+                        }
+
                         // Price or stock may have moved on this row. Queued per
                         // product rather than once for the selection, because
                         // the queue is keyed on the product and folds repeats.
@@ -328,6 +332,11 @@ if (!$_POST) {
 						
                     }
                     
+                    // A history row for each product whose price moved, none
+                    // for one left as it was (a decrease that would have gone
+                    // to zero or below keeps its price).
+                    pg_price_history_flush();
+
                     // If at least one product was modified, then log activity.
                     if ($number_of_products > 0) {
                         $log_message = '';

@@ -1740,6 +1740,9 @@ function install_heavy_tables() {
 		// the Database Engine screen. perf_stats (up to PERF_MONITOR_MAX_ROWS
 		// rows) and perf_log take the query count columns (8.15).
 		'2026.4.8' => array('orders', 'order_items', 'log', 'email_recipients', 'contacts', 'form_data', 'comments', 'notifications', 'products', 'product_groups', 'search_items', 'page', 'style', 'perf_stats', 'perf_log'),
+		// 2026.11.0 adds products.compare_at_price (11.0.2). Where the server
+		// cannot add a column in place, the catalogue is copied whole.
+		'2026.11.0' => array('products'),
 	);
 
 }
