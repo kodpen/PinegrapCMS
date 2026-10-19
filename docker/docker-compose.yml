@@ -7,11 +7,17 @@
 #
 # and opened at http://localhost:8080/pinegrap/install/. In the installation
 # wizard the database is host "db" with the name, user and password below.
+# With PG_INSTALL_ADMIN_EMAIL and PG_INSTALL_ADMIN_PASSWORD set, the install
+# service installs the starter site on the first start instead: the site is
+# then at http://localhost:8080/, its control panel at /pinegrap/, and
+# `docker compose logs install` shows the steps.
 #
-#   web    nginx on port 8080 (PG_HTTP_PORT), the installer's nginx rules
-#   app    PHP-FPM running the software
-#   cron   the general job once a minute (same image as app)
-#   db     MariaDB 10.11, reachable only from the other containers
+#   web      nginx on port 8080 (PG_HTTP_PORT), the installer's nginx rules
+#   app      PHP-FPM running the software
+#   cron     the general job once a minute (same image as app)
+#   install  the installation without the wizard; runs at every start, does
+#            nothing once a site is installed, then stops (same image as app)
+#   db       MariaDB 10.11, reachable only from the other containers
 #
 # Two named volumes hold everything that is not the software itself:
 # pinegrap_data (config.php, uploads, layouts, backups) and pinegrap_db. The
@@ -26,6 +32,15 @@
 #   PG_DB_PASSWORD   database password (pinegrap; set your own for anything
 #                    but a trial)
 #   PG_CRON_INTERVAL seconds between two runs of the general job (60)
+#
+# For the install service (pinegrap/includes/install_cli.php has the rest):
+#   PG_INSTALL_ADMIN_EMAIL     the administrator's e-mail address and
+#   PG_INSTALL_ADMIN_PASSWORD  password; without both nothing is installed
+#   PG_INSTALL_ADMIN_USERNAME  the administrator's username (admin)
+#   PG_INSTALL_STARTER         english_default or turkish_default
+#                              (english_default)
+#   PG_INSTALL_LANGUAGE        en or tr (the starter site's)
+#   PG_INSTALL_HOSTNAME        the site's address (localhost:PG_HTTP_PORT)
 #
 # @author      Erdal Güral (Kodpen)
 # @link        https://kodpen.com
@@ -90,6 +105,36 @@ services:
       options:
         max-size: "1m"
         max-file: "3"
+
+  # Started after app, which fills a new data volume from the image first.
+  install:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: app
+    image: pinegrap-app:local
+    restart: "no"
+    command: ["pinegrap-install"]
+    user: www-data
+    environment:
+      PG_HTTP_PORT: ${PG_HTTP_PORT:-8080}
+      PG_INSTALL_DB_HOST: db
+      PG_INSTALL_DB_NAME: ${PG_DB_NAME:-pinegrap}
+      PG_INSTALL_DB_USER: ${PG_DB_USER:-pinegrap}
+      PG_INSTALL_DB_PASSWORD: ${PG_DB_PASSWORD:-pinegrap}
+      PG_INSTALL_ADMIN_EMAIL: ${PG_INSTALL_ADMIN_EMAIL:-}
+      PG_INSTALL_ADMIN_PASSWORD: ${PG_INSTALL_ADMIN_PASSWORD:-}
+      PG_INSTALL_ADMIN_USERNAME: ${PG_INSTALL_ADMIN_USERNAME:-}
+      PG_INSTALL_STARTER: ${PG_INSTALL_STARTER:-}
+      PG_INSTALL_LANGUAGE: ${PG_INSTALL_LANGUAGE:-}
+      PG_INSTALL_HOSTNAME: ${PG_INSTALL_HOSTNAME:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    volumes:
+      - data:/var/www/html/pinegrap/data
 
   web:
     build:
