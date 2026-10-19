@@ -1,6 +1,6 @@
 ---
 name: product-compare-at-price
-description: products.compare_at_price (2026.11.0, 11.0.2), the merchant's "was" price: NULL/0 rules, product screen switch, list column, import/export, API field, copy paths, what does not read it yet
+description: products.compare_at_price (2026.11.0, 11.0.2, PR #658), the merchant's "was" price: NULL/0 rules, product screen switch, list column, import/export, API field, copy paths, what does not read it yet
 ---
 
 ## What is it and how is it stored?
