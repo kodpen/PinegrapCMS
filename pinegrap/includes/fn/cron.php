@@ -398,6 +398,18 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // Product feeds for shopping agents and Merchant Center: each feed
+        // that is on is rebuilt into data/feeds/. Daily, as the platforms
+        // read them; a site with no feed on records the run and reads
+        // nothing. Switching a feed on puts it in the dispatch list.
+        'product_feed_job' => array(
+            'label'       => lang('Product feeds'),
+            'script'      => 'product_feed_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
     );
 }
 

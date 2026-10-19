@@ -27,6 +27,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_legal_documents();        // 11.0.1
 	upgrade_2026_11_0_price_history();          // 11.0.2
 	upgrade_2026_11_0_meta_tags();              // 11.0.3
+	upgrade_2026_11_0_product_feeds();          // 11.0.4
 	upgrade_2026_11_0_ops_alerts();             // 11.0.5
 	upgrade_2026_11_0_update_backup();          // 11.0.6
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
@@ -251,5 +252,21 @@ function upgrade_2026_11_0_meta_tags() {
 	}
 
 	install_note('Visual designer: meta tags added under Settings, Design now reach every page of the design, and each page can have meta tags of its own under Settings, Page. A page tag replaces a design tag, and either replaces the Open Graph or Twitter tag of the same name the site writes itself.');
+
+}
+
+// Product feeds for shopping agents and Merchant Center (2026.11.0, 11.0.4;
+// includes/fn/product_feeds.php, product_feed_job.php, feed.php).
+//
+// config.product_feeds is the setup as JSON: the seller fields and the groups
+// left out, and per format (OpenAI JSONL, OpenAI CSV, Google TSV) whether it
+// is on, its address token (a hash to find it, the token sealed with the
+// site's key to show it again) and how its last build went. The feed files
+// themselves are written to data/feeds/ by the daily job.
+function upgrade_2026_11_0_product_feeds() {
+
+	install_add_column('config', 'product_feeds', "TEXT NULL");
+
+	install_note('Product feeds: the shop\'s products can be published as an OpenAI product feed (JSONL or CSV) and a Google Merchant Center file (TSV), rebuilt every day at a private address.');
 
 }

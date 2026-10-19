@@ -1,6 +1,6 @@
 ---
 name: agent-product-feeds
-description: Plan (approved 2026-10-19, in progress: builder done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV) beside ?rss=true; job, feed.php, settings, panel, API left
+description: Plan (approved 2026-10-19, in progress: builder, job and feed.php done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV); settings card, panel, API left
 ---
 
 ## Why?
@@ -8,9 +8,10 @@ description: Plan (approved 2026-10-19, in progress: builder done): product feed
 
 ## What is done?
 - Step 1 (PR #561): `includes/fn/product_feeds.php` (`pg_product_feed_build()`, reader, item, per-format rows, JSONL/CSV/TSV writers) and `tests/product_feeds_test.php`. Rules and field mapping: docs/memory/commerce/product-feeds.md.
+- Step 2a (PR #571): `config.product_feeds` (11.0.4), tokens, `product_feed_job.php` writing `data/feeds/<format>.<ext>`, `feed.php`, WAF exemption: docs/memory/commerce/product-feed-serving.md.
 
 ## What is decided?
-- Files are written to `data/feeds/<token>.<ext>` by the daily dispatcher job and served by `feed.php?f=<token>` with `Last-Modified`/304; the token is a secret per feed so the URL can be given to a platform without exposing the site. Extension and Content-Type per format: `pg_product_feed_formats()`.
+- Files are named by format (`data/feeds/<format>.<ext>`), not by token, so the token is never on disk in clear; the token is kept as a hash plus a sealed copy.
 - Settings › SEO › Product feeds: enable per format, seller name (required for OpenAI), seller URL, privacy policy and terms URLs, brand for products without one (`default_brand`; OpenAI rejects a row without brand), excluded groups (`excluded_group_ids`), language of titles (default site language; translations via the Translations module later). These are the `$options` keys the builder already takes.
 - Eligibility: search only. `is_eligible_checkout` is written false until the storefront API exists; the setting appears with that API.
 - Scope is the groups the shop's catalogs show (legacy catalog pages and Catalog widgets in public folders), not every group under the top group: templates keep dues, exam and membership groups there.
@@ -18,7 +19,7 @@ description: Plan (approved 2026-10-19, in progress: builder done): product feed
 - UCP groundwork: `/.well-known/ucp` is **not** published by this plan (it would claim a checkout capability the site cannot serve); the plan only reserves the route in the router and documents the manifest fields for `storefront-api-agentic-commerce.md`.
 
 ## What remains?
-2. Job + `feed.php` + settings card; store build counts and skip reasons for the panel (S). Error codes from the builder (`no_catalog`, `no_detail_page`, `detail_page_not_public`, `no_seller_name`) need translated messages there.
+2b. Settings card (Settings › SEO › Product feeds): the fields above, a switch and address per format with "New address" and "Build now", last build time, count and skip reasons; on save of a switched-on format issue its token when it has none, call `pg_product_feed_job_switch_on()` and build. Builder error codes (`no_catalog`, `no_detail_page`, `detail_page_not_public`, `no_seller_name`, `write_failed`) need translated messages; `excluded_group_ids` is a list field (`lists` in the registry) (S).
 3. Panel link list with last build time and item counts; System Status check "feed stale > 2 days" (S).
 4. API: `GET /store/feeds` (read URLs and status) (S).
 5. When it ships: one `[NEW]` changelog line; decisions move to docs/memory/commerce/product-feeds.md and this file is deleted.
@@ -27,4 +28,4 @@ description: Plan (approved 2026-10-19, in progress: builder done): product feed
 - Weight, dimensions, shipping and return fields are optional in both specs and not sent; add them when the settings know the units and the return window.
 
 ## Where to start?
-- Step 2; read docs/memory/commerce/product-feeds.md, `includes/fn/cron.php` (dispatcher) and how `workspace_ical.php` serves a token URL.
+- Step 2b; read docs/memory/commerce/product-feed-serving.md, `includes/settings/seo.php`, `seo.save.php`, `prep.php` and the `pinegrap-ui-deseni` skill.
