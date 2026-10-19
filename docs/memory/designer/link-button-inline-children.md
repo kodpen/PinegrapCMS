@@ -18,7 +18,7 @@ Two ways, and both survive a save:
 - `_isInlineOnlyDrag()` accepted content `text` / `icon` / `image` only. The palette's Span is content `span`, so the drop was refused on every link and button (PR #468).
 
 ## Where does a semantic `<a>` / `<button>` print its label beside its children?
-- Canvas (virtual text), `generateHTML()` and `buildNodeHTML()`: after the children by default (`textPosition` 'end'), before them with 'start'. Component `btn` does the same on the server.
+- Canvas (virtual text) and `generateHTML()`: after the children by default (`textPosition` 'end'), before them with 'start'. Component `btn` does the same on the server.
 - `_render_tree_node()` printed a semantic label first whatever `textPosition` said, so a span placed in front of the label on the canvas came out behind it on the page. It now follows `textPosition` for `a` / `button` (PR #468, tests/designer_button_label_test.php). Pages keep their stored code until saved again.
 - Other semantic tags (div, li, td) still print text first on the server and after the children on the canvas. The importer never gives them both: mixed content becomes span children.
 

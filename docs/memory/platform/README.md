@@ -10,6 +10,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - clean-up-tool-file-list.md: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
 - design-template-install-at-setup.md: Install wizard step "Site Tasarımı": two-request template install, StyleDesigner.starterTree() API, home/staff keys, starter removal and preview lists.
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
+- erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - external-api-iis-environment.md: Rules imposed by IIS/WAF on the external API: waf_is_api_request() path logic, WAF exemption, no PATCH/DELETE, 422 body keys, POST /products.
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.

@@ -194,7 +194,7 @@ function ws_screen_rail($viewer, $current)
     // The pinned channels by their first letter; the channel screen itself
     // opens on the first of them.
     foreach (array_slice($pinned, 0, 8) as $channel) {
-        $initial = mb_strtoupper(mb_substr(ltrim((string) $channel['name'], '#'), 0, 1));
+        $initial = pg_initials_upper(mb_substr(ltrim((string) $channel['name'], '#'), 0, 1));
 
         $rail .= '<a class="ws-rail-item ws-rail-channel" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '" title="#' . h($channel['name']) . '" aria-label="#' . h($channel['name']) . '"'
             . (($channel['hex'] !== '') ? ' style="--ws-ch: ' . h($channel['hex']) . '" data-ws-colored="1"' : '') . '>'

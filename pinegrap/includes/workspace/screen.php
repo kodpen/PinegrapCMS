@@ -665,7 +665,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_templates_js_strings());
 
     // Colours and groups of channels, versions of a conversation.
-    $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings());
+    $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings(), ws_quick_edit_js_strings());
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
@@ -706,6 +706,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'calendar'  => $base . 'workspace_calendar.php',
             'timeline'  => $base . 'workspace_timeline.php',
             'notes'     => $base . 'workspace_notes.php',
+            'notes_export' => $base . 'workspace_notes_export.php',
             'file_save' => $base . 'workspace_file_save.php',
             'settings'  => $base . 'workspace_settings.php',
             'edit_user' => $base . 'edit_user.php',

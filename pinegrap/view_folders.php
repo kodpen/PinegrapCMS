@@ -249,6 +249,7 @@ $explorer_lang = array(
     'file_not_on_disk' => lang('The file is recorded here but is not on the disk.'),
     'file_too_large_to_edit' => lang('This file is larger than {var:1}, so its text is not shown here.'),
     'file_read_only' => lang('Shown for reference only. This file cannot be edited here.'),
+    'syntax_error' => lang('Syntax error'),
     'save_copy_as' => lang('Save a copy as {var:1}'),
     'home_page' => lang('Homepage'),
     'draft' => lang('Draft'),
@@ -863,6 +864,10 @@ echo
         ($explorer_area == 'catalog')
             ? array(
                 'title' => lang('Catalog Manager'),
+                // The file window's code editor is the facade's, fetched on
+                // the first text file; CodeMirror 5 waits in the template
+                // for a settings pane that still draws one.
+                'code_editor' => false,
                 'extra classes' => 'products file-manager',
                 'icon' => 'store',
                 'heading' => lang('Catalog Manager'),
@@ -871,6 +876,7 @@ echo
             )
             : array(
                 'title' => lang('File Manager'),
+                'code_editor' => false,
                 'extra classes' => 'folders files file-manager',
                 'icon' => 'folder',
                 'heading' => lang('File Manager'),
@@ -1291,7 +1297,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #file_edit_preview .file-edit-glyph { font-size: 4rem; line-height: 1; color: var(--bs-secondary-color); padding: 1.5rem 0; }
 #file_edit_preview .office-view { width: 100%; height: 46vh; align-self: stretch; }
 #explorer_quicklook .ql-stage .office-view { width: 100%; height: 100%; border-radius: .5rem; }
-#file_edit_editor_wrap .CodeMirror { height: 52vh; border: 1px solid var(--bs-border-color-translucent); border-radius: .5rem; font-size: .85rem; }
+#file_edit_editor_wrap .pg-code-editor { height: 52vh; border: 1px solid var(--bs-border-color-translucent); border-radius: .5rem; overflow: hidden; }
+#file_edit_editor_wrap .cm-editor { font-size: .85rem; }
 #file_edit_facts span + span::before { content: '·'; margin: 0 .45rem; opacity: .6; }
 
 #explorer_upload_overlay { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: color-mix(in srgb, var(--bs-primary) 10%, transparent); backdrop-filter: blur(2px); border: 2px dashed var(--bs-primary); border-radius: .8rem; pointer-events: none; }
@@ -13035,15 +13042,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // -- Heavy tools, fetched the first time somebody reaches for them ----
     //
-    // The picture editor and the code editor between them weigh close to a
-    // megabyte of script, and most visits to this screen open neither. The
-    // tags are the ones the designer puts in its head, from the same two PHP
-    // functions, so the list of files lives in one place; here they are read
-    // out of that markup and appended one at a time, each script waiting for
-    // the one before it -- the order the head would have loaded them in.
+    // The picture editor weighs close to a megabyte of script, and most
+    // visits to this screen never open it. The tags are the ones the other
+    // screens put in their head, from the same PHP functions, so the list of
+    // files lives in one place; here they are read out of that markup and
+    // appended one at a time, each script waiting for the one before it --
+    // the order the head would have loaded them in. The code editor is the
+    // facade (pg_code_editor_includes()): a small script here, its engine
+    // fetched by PgCodeEditor.load() the first time a text file opens.
     var assetBundles = {
         image_editor: <?php echo encode_json(get_image_editor_includes()); ?>,
-        code_editor: <?php echo encode_json(get_codemirror_includes()); ?>,
+        code_editor: <?php echo encode_json(pg_code_editor_includes()); ?>,
         office_view: <?php echo encode_json(pg_office_view_includes()); ?>
     };
 
@@ -13194,9 +13203,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // The code editor is fetched only for a text file, and the window
             // waits for it: an empty box that fills in a moment later reads
-            // as the file having nothing in it.
+            // as the file having nothing in it. A facade or an engine that
+            // does not arrive leaves the plain text box.
             if ((kind === 'text') && (file.content !== null)) {
-                loadAssets('code_editor', function () { showFileEditor(item, file, kind); });
+                loadAssets('code_editor', function () {
+                    var show = function () { showFileEditor(item, file, kind); };
+                    if (typeof PgCodeEditor === 'undefined') { show(); return; }
+                    PgCodeEditor.load().then(show, show);
+                });
             } else {
                 showFileEditor(item, file, kind);
             }
@@ -13351,10 +13365,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function disposeFileEditor() {
 
         if (fileEdit && fileEdit.editor) {
-            // The refresh addon has to be stopped by name; toTextArea() leaves it
-            // polling a wrapper that is no longer in the document.
-            try { fileEdit.editor.setOption('autoRefresh', false); } catch (e) { }
-            try { fileEdit.editor.toTextArea(); } catch (e) { }
+            try { fileEdit.editor.destroy(); } catch (e) { }
+            if (fileEdit.host && fileEdit.host.parentNode) { fileEdit.host.parentNode.removeChild(fileEdit.host); }
+            if (window.pgCodeEditors) { delete window.pgCodeEditors.file_edit_code; }
         }
 
         var preview = document.getElementById('file_edit_preview');
@@ -13370,7 +13383,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         disposeFileEditor();
 
-        fileEdit = { item: item, file: file, kind: kind, editor: null, baseline: null };
+        fileEdit = { item: item, file: file, kind: kind, editor: null, host: null, baseline: null };
 
         document.getElementById('file_edit_preview').innerHTML = filePreviewHtml(file, kind);
 
@@ -13392,7 +13405,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 note.textContent = L.file_not_on_disk;
             } else if (file.content_too_large) {
                 note.textContent = fmt(L.file_too_large_to_edit, [file.editor_max_label]);
-            } else if (typeof CodeMirror === 'undefined') {
+            } else if ((typeof PgCodeEditor === 'undefined') || !PgCodeEditor.isLoaded()) {
                 // The editor did not arrive; the text is still there to read
                 // and change in the plain box.
                 textarea.classList.remove('d-none');
@@ -13401,29 +13414,27 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 textarea.value = file.content || '';
                 textarea.readOnly = !file.editable;
             } else {
-                textarea.value = file.content || '';
-                fileEdit.editor = CodeMirror.fromTextArea(textarea, {
-                    mode: file.editor_mode || 'text/plain',
-                    lineNumbers: true,
-                    indentUnit: 4,
-                    matchTags: { bothTags: true },
-                    autoCloseTags: true,
-                    autoCloseBrackets: true,
-                    autoRefresh: true,
-                    styleActiveLine: true,
-                    lineWrapping: false,
-                    lint: file.editable,
-                    gutters: ['CodeMirror-lint-markers'],
-                    readOnly: file.editable ? false : 'nocursor',
-                    theme: (document.documentElement.getAttribute('data-bs-theme') === 'dark') ? 'pastel-on-dark' : 'default',
-                    extraKeys: {
-                        'F11': function (cm) { cm.setOption('fullScreen', !cm.getOption('fullScreen')); },
-                        'Esc': function (cm) { if (cm.getOption('fullScreen')) { cm.setOption('fullScreen', false); } },
-                        'Ctrl-Space': 'autocomplete',
-                        'Ctrl-S': function () { saveFileEditor(); },
-                        'Cmd-S': function () { saveFileEditor(); }
-                    }
+                // The editor is built in place, in the window's own box;
+                // the text goes back through getValue() when the file is
+                // saved, so the textarea stays empty.
+                var language = file.editor_language || 'text';
+                fileEdit.host = document.createElement('div');
+                fileEdit.host.className = 'pg-code-editor';
+                textarea.parentNode.insertBefore(fileEdit.host, textarea.nextSibling);
+                fileEdit.editor = PgCodeEditor.create(fileEdit.host, {
+                    language: (language === 'text') ? 'html' : language,
+                    value: file.content || '',
+                    readOnly: !file.editable,
+                    lint: file.editable && (language !== 'text'),
+                    theme: (document.documentElement.getAttribute('data-bs-theme') === 'dark') ? 'dark' : 'light',
+                    labels: { syntaxError: L.syntax_error },
+                    keys: [{ key: 'Mod-s', run: function () { saveFileEditor(); return true; } }]
                 });
+
+                // The panel's colour scheme switch reaches the editors it
+                // finds here (backend.src.js).
+                window.pgCodeEditors = window.pgCodeEditors || {};
+                window.pgCodeEditors.file_edit_code = fileEdit.editor;
 
                 if (!file.editable) { note.textContent = L.file_read_only; }
             }
@@ -13454,7 +13465,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             fileEditModal = new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
 
             modalElement.addEventListener('shown.bs.modal', function () {
-                if (fileEdit && fileEdit.editor) { fileEdit.editor.refresh(); fileEdit.editor.focus(); }
+                if (fileEdit && fileEdit.editor && fileEdit.file.editable) { fileEdit.editor.focus(); }
             });
 
             modalElement.addEventListener('hide.bs.modal', function () { fileEditHiding = true; });

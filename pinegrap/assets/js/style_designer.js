@@ -19572,6 +19572,9 @@ const StyleDesigner = (function () {
             '</div>';
         canvas.appendChild(p);
 
+        // The code view's switch and host live in the HTML column.
+        _sdCodeInit();
+
         // ── Collapse/expand: header click or button click ──
         var colBtn = document.getElementById('sd-bp-collapse');
         var bpHdr  = p.querySelector('.sd-panel-bottom-header');
@@ -20555,19 +20558,28 @@ const StyleDesigner = (function () {
     }
 
     function _writeInlineStyleValue(node, value) {
-        // Inverse of `_currentInlineStyleValue`: split the incoming serialized
-        // style back into prop-bound decls (routed to node.props.<key>) and
-        // freeform decls (kept in _attrs.style). Removing a prop-derived
-        // decl from element.style clears the corresponding prop — keeps the
-        // font picker in sync when the user deletes the font-family row.
         if (!node) return;
-        if (!node.props) node.props = {};
-        if (!Array.isArray(node.props._attrs)) node.props._attrs = [];
-
         // Snapshot BEFORE we start mutating node.props. Without this, the
         // saveState() call at the bottom of the function would capture the
         // POST-mutation state, making undo a no-op for inline-style edits.
         saveState();
+        _sdApplyInlineStyle(node, value);
+        // saveState() runs at the top of this function — it must capture the
+        // PRE-edit state, not the post-edit state, for undo to roll back.
+        render();
+    }
+
+    // Inverse of `_currentInlineStyleValue`: split the incoming serialized
+    // style back into prop-bound decls (routed to node.props.<key>) and
+    // freeform decls (kept in _attrs.style). Removing a prop-derived decl
+    // from element.style clears the corresponding prop — keeps the font
+    // picker in sync when the user deletes the font-family row. Writes the
+    // node only: the Attributes panel and the code view call it between
+    // their own saveState() and render().
+    function _sdApplyInlineStyle(node, value) {
+        if (!node) return;
+        if (!node.props) node.props = {};
+        if (!Array.isArray(node.props._attrs)) node.props._attrs = [];
 
         var decls = _parseInlineStyle(value || '');
         var maps = _sdInlineStyleProps(node);
@@ -20608,9 +20620,6 @@ const StyleDesigner = (function () {
             if (idx === -1) node.props._attrs.push({ name: 'style', value: trimmed });
             else            node.props._attrs[idx].value = trimmed;
         }
-        // saveState() runs at the top of this function — it must capture the
-        // PRE-edit state, not the post-edit state, for undo to roll back.
-        render();
     }
     function _parseInlineStyle(s) {
         if (!s) return [];
@@ -21680,97 +21689,6 @@ const StyleDesigner = (function () {
         return classes.join(' ');
     }
 
-    function buildNodeHTML(node, pad) {
-        var h = '';
-        switch (node.type) {
-            case 'container':
-                var cl = (node.props.fluid ? 'container-fluid' : 'container') + (node.props.cssClass ? ' ' + node.props.cssClass : '');
-                h = pad + '<div class="' + cl + '">\n';
-                if (node.children) node.children.forEach(function (c) { h += buildNodeHTML(c, pad + '    '); });
-                h += pad + '</div>\n';
-                break;
-            case 'semantic':
-                var stag = node.props.tag || 'section';
-                var scl = node.props.cssClass ? ' class="' + node.props.cssClass + '"' : '';
-                var _voidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
-                // Whitespace is content in these two: the pretty-printer's
-                // newline and indent would be indentation the visitor sees in
-                // a code sample, and leading spaces inside a textarea's
-                // default value. They are written on one line, unpadded.
-                var _wsTags = ['pre', 'textarea', 'code'];
-                if (_voidTags.indexOf(stag.toLowerCase()) !== -1) {
-                    // Void elements have no children and no closing tag
-                    h = pad + '<' + stag + scl + '>\n';
-                } else if (_wsTags.indexOf(stag.toLowerCase()) !== -1) {
-                    var _wsInner = '';
-                    if (node.children) node.children.forEach(function (c) { _wsInner += buildNodeHTML(c, '').replace(/\n+$/, ''); });
-                    if (node.props.text) _wsInner += node.props.text;
-                    h = pad + '<' + stag + scl + '>' + _wsInner + '</' + stag + '>\n';
-                } else {
-                    h = pad + '<' + stag + scl + '>\n';
-                    // Button/a honor textPosition so virtual-text placement is preserved on export.
-                    var _stagLc = stag.toLowerCase();
-                    var _isBtnLike = (_stagLc === 'button' || _stagLc === 'a');
-                    var _tp = node.props.textPosition || 'end';
-                    if (_isBtnLike && _tp === 'start' && node.props.text) {
-                        h += pad + '    ' + node.props.text + '\n';
-                    }
-                    if (node.children) node.children.forEach(function (c) { h += buildNodeHTML(c, pad + '    '); });
-                    if (node.props.text && (!_isBtnLike || _tp !== 'start')) {
-                        h += pad + '    ' + node.props.text + '\n';
-                    }
-                    h += pad + '</' + stag + '>\n';
-                }
-                break;
-            case 'row':
-                var rcl = 'row';
-                if (node.props.gutter) rcl += ' g-' + node.props.gutter;
-                if (node.props.justify) rcl += ' justify-content-' + node.props.justify;
-                if (node.props.align) rcl += ' align-items-' + node.props.align;
-                if (node.props.cssClass) rcl += ' ' + node.props.cssClass;
-                h = pad + '<div class="' + rcl + '">\n';
-                if (node.children) node.children.forEach(function (c) { h += buildNodeHTML(c, pad + '    '); });
-                h += pad + '</div>\n';
-                break;
-            case 'col':
-                var ccl = buildColClasses(node.props) + (node.props.cssClass ? ' ' + node.props.cssClass : '');
-                h = pad + '<div class="' + ccl.trim() + '">\n';
-                if (node.children) node.children.forEach(function (c) { h += buildNodeHTML(c, pad + '    '); });
-                h += pad + '</div>\n';
-                break;
-            case 'region':
-                h = pad + '<!-- ' + regionLabels[node.props.regionType] + (node.props.regionName ? ': ' + node.props.regionName : '') + ' -->\n';
-                break;
-            case 'component':
-                if (COMPONENTS[node.props.componentType] && typeof COMPONENTS[node.props.componentType].toHTML === 'function') {
-                    var _cChildren = '';
-                    if (node.children) node.children.forEach(function(c) { _cChildren += buildNodeHTML(c, pad + '    '); });
-                    h = COMPONENTS[node.props.componentType].toHTML(node.props, pad, _cChildren);
-                }
-                break;
-            case 'content':
-                if (CONTENT[node.props.contentType] && typeof CONTENT[node.props.contentType].toHTML === 'function') {
-                    var _ctChildren = '';
-                    if (node.children) node.children.forEach(function(c) { _ctChildren += buildNodeHTML(c, pad + '    '); });
-                    h = CONTENT[node.props.contentType].toHTML(node.props, pad, _ctChildren);
-                }
-                break;
-            case 'shared_ref':
-                // Expand the cached shared component tree inline.
-                var _scId = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
-                var _scCached = _scId > 0 ? _sharedCache[_scId] : null;
-                // A nested component is expanded too; one already open further
-                // up (a loop) is left out rather than expanded forever.
-                if (_scCached && _scCached.tree && !_sdSharedOpen[_scId]) {
-                    _sdSharedOpen[_scId] = true;
-                    try { h = buildNodeHTML(_scCached.tree, pad); }
-                    finally { delete _sdSharedOpen[_scId]; }
-                }
-                break;
-        }
-        return addGlobalAttrs(h, node);
-    }
-
     // ========================= TREE VIEW & HTML GEN =========================
     function renderTree() {
         var list = document.getElementById('sd-tree-list');
@@ -22321,16 +22239,158 @@ const StyleDesigner = (function () {
         _sdFxSoon();
     }
 
+    // ========================= PAGE FRAME (head and foot rows) =========================
+    // What the page prints around the body, as rows: the HTML tree of the
+    // bottom panel and the code view both draw these, so they cannot drift
+    // apart. A row is { tag, attrs: [[name, value], ...], void, inner, comment }:
+    // `inner` is the text between the tags, a placeholder comment (`comment`)
+    // when the real content lives elsewhere (a stylesheet's rules, a script's
+    // code). The order follows the preview (_sdPreviewDocHtml()), the closest
+    // client-side mirror of get_page_content.php: the look and the palette
+    // go right after the Bootstrap row, the user styles close the head, the
+    // scripts come in the front end's order (linked, JSON, classic, modules).
+    function _sdPageFrameRows() {
+        var head = [], foot = [];
+        var row = function (tag, attrs, inner, comment) {
+            var r = { tag: tag, attrs: attrs || [], void: false, inner: null, comment: false };
+            if (inner === undefined) r.void = true;
+            else { r.inner = inner; r.comment = !!comment; }
+            return r;
+        };
+        head.push(row('meta', [['charset', 'utf-8']]));
+        var _fp = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        head.push(row('title', [], (_fp && _fp.page_title) ? String(_fp.page_title) : ''));
+        (pageSettings.meta || []).forEach(function (m) {
+            if (!m.name && !m.property) return;
+            var attrs = [];
+            if (m.name)     attrs.push(['name', m.name]);
+            if (m.property) attrs.push(['property', m.property]);
+            if (m.content !== undefined) attrs.push(['content', m.content]);
+            head.push(row('meta', attrs));
+        });
+
+        var assets = _readAssetsFromFields();
+        var cssRows = _sdAssetsInPlay(assets.cssFiles);
+        var themeRows = _sdThemeAssets().map(function (a) {
+            return a.css ? row('style', [['id', a.id]], '…', true) : row('link', [['rel', 'stylesheet'], ['id', a.id], ['href', a.url]]);
+        });
+        var themeDone = false;
+        // Without the Bootstrap rows in the assets panel the renderer adds
+        // the framework, the theme and the icons itself, in that order.
+        var sentinel = assets.cssFiles.some(function (f) { return f && f.enabled !== false && (f.meta === 'bootstrap-css' || f.meta === 'bootstrap-icons'); });
+        if (!sentinel) {
+            var fw = _sdFrameworkInfo();
+            if (fw.css) head.push(row('link', [['rel', 'stylesheet'], ['href', fw.css]]));
+            themeRows.forEach(function (r) { head.push(r); });
+            themeDone = true;
+            var ownIcons = cssRows.some(function (f) { return !f.meta && f.type === 'external-css' && /bootstrap-icons/i.test(f.content || ''); });
+            if (!ownIcons) head.push(row('link', [['rel', 'stylesheet'], ['href', _sdIconsUrl()]]));
+        }
+        assets.gfFonts.forEach(function (f) {
+            if (f.enabled === false || !f.family) return;
+            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
+            head.push(row('link', [['rel', 'stylesheet'], ['href', 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap']]));
+        });
+        var inlineNames = [], userStyles = false;
+        cssRows.forEach(function (f) {
+            if (f.meta === 'user-styles') { if (f.content && f.content.trim()) userStyles = true; return; }
+            if (f.type === 'external-css') {
+                if (f.content && f.content.trim()) {
+                    head.push(row('link', [['rel', 'stylesheet'], ['href', f.content.trim()]]));
+                    if (!themeDone && _sdIsBootstrapCssHref(f.content)) { themeRows.forEach(function (r) { head.push(r); }); themeDone = true; }
+                }
+                return;
+            }
+            if (f.content) inlineNames.push(f.name || '');
+        });
+        if (!themeDone && themeRows.length) themeRows.forEach(function (r) { head.push(r); });
+        // The classic theme file (style.theme_id), when the design has one.
+        var themeSel = document.querySelector('select[name="theme_id"]');
+        var themeStr = themeSel ? themeSel.options[themeSel.selectedIndex].text.trim() : '';
+        if (themeStr && themeStr.indexOf('.css') !== -1) head.push(row('link', [['rel', 'stylesheet'], ['href', '/' + themeStr]]));
+        if (inlineNames.length) head.push(row('style', [['id', 'pg-page-css']], '/* ' + inlineNames.join(', ') + ' */', true));
+        if (userStyles) head.push(row('style', [['id', 'pg-user-styles']], '…', true));
+
+        var jsRows = _sdAssetsInPlay(assets.jsFiles);
+        var classic = [];
+        jsRows.forEach(function (f) {
+            if (f.type === 'external-js' && f.content && f.content.trim()) {
+                foot.push(row('script', (f.module ? [['type', 'module']] : []).concat([['src', f.content.trim()]]), ''));
+            }
+        });
+        jsRows.forEach(function (f) {
+            if (f.type === 'json' && f.content) foot.push(row('script', [['type', 'application/json'], ['id', f.name || '']], '…', true));
+            else if (f.type !== 'external-js' && f.type !== 'json' && f.content && !f.module) classic.push(f.name || '');
+        });
+        if (classic.length) foot.push(row('script', [['id', 'pg-page-js']], '/* ' + classic.join(', ') + ' */', true));
+        jsRows.forEach(function (f) {
+            if (f.type !== 'external-js' && f.type !== 'json' && f.content && f.module) {
+                foot.push(row('script', [['type', 'module']], '/* ' + (f.name || '') + ' */', true));
+            }
+        });
+        return { head: head, foot: foot };
+    }
+
+    // The <body> tag's attributes as the page gets them (_sdBodyAttrParts()),
+    // as [[name, value], ...] for the frame rows.
+    function _sdPageBodyAttrs() {
+        var nameEl = document.querySelector('[name="name"]');
+        var bcEl   = document.querySelector('[name="additional_body_classes"]');
+        var parts  = _sdBodyAttrParts(tree, nameEl ? nameEl.value.trim() : '', bcEl ? bcEl.value.trim() : '');
+        var attrs  = [];
+        if (parts.cls)   attrs.push(['class', parts.cls]);
+        if (parts.style) attrs.push(['style', parts.style]);
+        // parts.attrs is already markup (` id="…" data-x="…"`): read it back.
+        String(parts.attrs || '').replace(/\s([^\s=]+)="([^"]*)"/g, function (m, name, value) {
+            attrs.push([name, _sdUnescapeHtml(value)]);
+            return m;
+        });
+        return attrs;
+    }
+
+    // The text a frame row prints: the tag the page gets.
+    function _sdFrameRowText(r) {
+        var out = '<' + r.tag;
+        r.attrs.forEach(function (a) { out += ' ' + a[0] + (a[1] !== undefined && a[1] !== null ? '="' + esc(a[1]) + '"' : ''); });
+        out += '>';
+        if (r.void) return out;
+        var inner = r.inner == null ? '' : String(r.inner);
+        return out + (r.comment ? inner : esc(inner)) + '</' + r.tag + '>';
+    }
+
+    // The same row as the HTML tree draws it (the coloured spans).
+    function _sdFrameRowHtml(r) {
+        var html = '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">' + esc(r.tag) + '</span>';
+        r.attrs.forEach(function (a) {
+            html += '&nbsp;<span class="sd-ht-attr">' + esc(a[0]) + '</span>';
+            if (a[1] !== undefined && a[1] !== null) html += '<span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(String(a[1])) + '"</span>';
+        });
+        if (r.void) return html + '&nbsp;<span class="sd-ht-bracket">/&gt;</span>';
+        html += '<span class="sd-ht-bracket">&gt;</span>';
+        var inner = r.inner == null ? '' : String(r.inner);
+        if (inner) html += '<span class="' + (r.comment ? 'sd-ht-comment' : 'sd-ht-content') + '">' + esc(inner) + '</span>';
+        return html + '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">' + esc(r.tag) + '</span><span class="sd-ht-bracket">&gt;</span>';
+    }
+
+    function _sdUnescapeHtml(s) {
+        return String(s == null ? '' : s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    }
+
     // Renders the HTML tree in the bottom panel — the full page structure
     function renderHtmlTree() {
+        // The code view draws the same page as text (_sdCodeRefresh()).
+        if (_sdCodeEnabled()) { _sdCodeRefresh(); return; }
         var panel = document.getElementById('sd-html-tree');
         if (!panel) return;
         panel.innerHTML = '';
 
-        // Resolve current theme text — themes are CSS-only; no JS is ever injected.
-        var themeSel = document.querySelector('select[name="theme_id"]');
-        var themeStr = themeSel ? themeSel.options[themeSel.selectedIndex].text.trim() : '';
-        var hasThemeCss = themeStr && themeStr.indexOf('.css') !== -1;
+        var frame = _sdPageFrameRows();
+        var bodyAttrs = _sdPageBodyAttrs();
+        var bodyOpenHtml = '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">body</span>';
+        bodyAttrs.forEach(function (a) {
+            bodyOpenHtml += '&nbsp;<span class="sd-ht-attr">' + esc(a[0]) + '</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(String(a[1])) + '"</span>';
+        });
+        bodyOpenHtml += '<span class="sd-ht-bracket">&gt;</span>';
 
         // ── <html> ──
         // Clicking selects the root node so the user can edit body-level
@@ -22348,110 +22408,19 @@ const StyleDesigner = (function () {
                     '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">head</span><span class="sd-ht-bracket">&gt;</span>',
                     '</head>',
                     function(headWrap) {
-                        var d = 2;
-                        // charset
-                        buildHtmlLockedRow(headWrap, d,
-                            '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">meta</span>' +
-                            '&nbsp;<span class="sd-ht-attr">charset</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"utf-8"</span>' +
-                            '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        // The design's stylesheets as the page on the canvas
-                        // gets them (get_page_content.php): the Google Fonts,
-                        // the linked files in their order - the framework and
-                        // Bootstrap Icons rows among them, at their real
-                        // addresses - then the inline files in one <style>
-                        // and the User Styles in their own.
-                        var _assets = _readAssetsFromFields();
-                        var _htLink = function (href) {
-                            buildHtmlLockedRow(headWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">link</span>' +
-                                '&nbsp;<span class="sd-ht-attr">rel</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"stylesheet"</span>' +
-                                '&nbsp;<span class="sd-ht-attr">href</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(href) + '"</span>' +
-                                '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        };
-                        var _htStyle = function (id, names) {
-                            buildHtmlLockedRow(headWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">style</span>' +
-                                '&nbsp;<span class="sd-ht-attr">id</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + id + '"</span>' +
-                                '<span class="sd-ht-bracket">&gt;</span>' +
-                                (names ? '<span class="sd-ht-comment">/* ' + esc(names) + ' */</span>' : '<span class="sd-ht-comment">…</span>') +
-                                '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">style</span><span class="sd-ht-bracket">&gt;</span>');
-                        };
-                        _assets.gfFonts.forEach(function(f) {
-                            if (f.enabled === false || !f.family) return;
-                            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
-                            _htLink('https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap');
-                        });
-                        var _cssRows = _sdAssetsInPlay(_assets.cssFiles);
-                        var _inlineNames = [], _userStyles = false;
-                        _cssRows.forEach(function(f) {
-                            if (f.meta === 'user-styles') { if (f.content && f.content.trim()) _userStyles = true; return; }
-                            if (f.type === 'external-css') { if (f.content && f.content.trim()) _htLink(f.content.trim()); return; }
-                            if (f.content) _inlineNames.push(f.name || '');
-                        });
-                        // Theme CSS
-                        if (hasThemeCss) _htLink('/' + themeStr);
-                        if (_inlineNames.length) _htStyle('pg-page-css', _inlineNames.join(', '));
-                        if (_userStyles) _htStyle('pg-user-styles', '');
-                        // Meta tags from pageSettings
-                        pageSettings.meta.forEach(function(m) {
-                            if (!m.name && !m.property) return;
-                            var attrs = '';
-                            if (m.name)     attrs += '&nbsp;<span class="sd-ht-attr">name</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(m.name) + '"</span>';
-                            if (m.property) attrs += '&nbsp;<span class="sd-ht-attr">property</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(m.property) + '"</span>';
-                            if (m.content !== undefined) attrs += '&nbsp;<span class="sd-ht-attr">content</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(m.content) + '"</span>';
-                            buildHtmlLockedRow(headWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">meta</span>' + attrs +
-                                '&nbsp;<span class="sd-ht-bracket">/&gt;</span>');
-                        });
+                        frame.head.forEach(function (r) { buildHtmlLockedRow(headWrap, 2, _sdFrameRowHtml(r)); });
                     }
                 );
 
                 // ── <body> + editable content ──
                 buildHtmlLockedSection(wrap, 1,
-                    '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">body</span><span class="sd-ht-bracket">&gt;</span>',
+                    bodyOpenHtml,
                     '</body>',
                     function(bodyWrap) {
                         // Editable content nodes
                         if (tree) buildHtmlTreeEl(bodyWrap, tree, 2);
-                        // Footer scripts (locked)
-                        var d = 2;
-                        // ── The design's scripts, as the page gets them: the
-                        // linked files in their order (jQuery and the framework
-                        // bundle among them), then the JSON blocks, the classic
-                        // inline code in one <script>, the modules.
-                        var _assetsJs = _readAssetsFromFields();
-                        var _jsRows = _sdAssetsInPlay(_assetsJs.jsFiles);
-                        var _htScript = function (attrs, body) {
-                            buildHtmlLockedRow(bodyWrap, d,
-                                '<span class="sd-ht-bracket">&lt;</span><span class="sd-ht-tag">script</span>' + attrs +
-                                '<span class="sd-ht-bracket">&gt;</span>' + body +
-                                '<span class="sd-ht-bracket">&lt;/</span><span class="sd-ht-tag">script</span><span class="sd-ht-bracket">&gt;</span>');
-                        };
-                        var _htAttr = function (name, value) {
-                            return '&nbsp;<span class="sd-ht-attr">' + name + '</span><span class="sd-ht-eq">=</span><span class="sd-ht-val">"' + esc(value) + '"</span>';
-                        };
-                        var _classic = [];
-                        _jsRows.forEach(function(f) {
-                            if (f.type === 'external-js' && f.content && f.content.trim()) {
-                                _htScript((f.module ? _htAttr('type', 'module') : '') + _htAttr('src', f.content.trim()), '');
-                            }
-                        });
-                        _jsRows.forEach(function(f) {
-                            if (f.type === 'json' && f.content) _htScript(_htAttr('type', 'application/json') + _htAttr('id', f.name || ''), '<span class="sd-ht-comment">…</span>');
-                            else if (f.type !== 'external-js' && f.type !== 'json' && f.content && !f.module) _classic.push(f.name || '');
-                        });
-                        if (_classic.length) _htScript(_htAttr('id', 'pg-page-js'), '<span class="sd-ht-comment">/* ' + esc(_classic.join(', ')) + ' */</span>');
-                        _jsRows.forEach(function(f) {
-                            if (f.type !== 'external-js' && f.type !== 'json' && f.content && f.module) {
-                                _htScript(_htAttr('type', 'module'), '<span class="sd-ht-comment">/* ' + esc(f.name || '') + ' */</span>');
-                            }
-                        });
-                        // jQuery + Bootstrap bundle are now emitted via the
-                        // assets-panel sentinel iteration above (jquery-js,
-                        // bootstrap-js). Hardcoded fallback rows removed —
-                        // showing them again here would render duplicate
-                        // <script> entries in the HTML preview tree.
-                        // Themes are CSS-only — no theme JS is ever emitted.
+                        // The design's scripts, as the page gets them (locked)
+                        frame.foot.forEach(function (r) { buildHtmlLockedRow(bodyWrap, 2, _sdFrameRowHtml(r)); });
                     },
                     {
                         onClick: function () {
@@ -22623,12 +22592,1261 @@ const StyleDesigner = (function () {
             closeLine.style.paddingLeft = (depth * 14 + 4) + 'px';
             closeLine.innerHTML = '<span class="sd-ht-chev-ph"></span><span class="sd-ht-close">&lt;/' + info.tag + '&gt;</span>';
             closeLine.dataset.nid = node._id;
+            // A click only selects: the canvas keeps its DOM, as it does
+            // for the opening row (_sdSelectRender()).
             closeLine.addEventListener('click', function(e) {
-                e.stopPropagation(); selectedNode = node; render();
+                e.stopPropagation(); selectedNode = node; _sdSelectRender();
             });
             container.appendChild(closeLine);
         } else if (!info.selfClose && !info.preview && !hasChildren) {
             // Empty element: close it inline
+        }
+    }
+
+    // ========================= CODE VIEW (bottom panel, HTML column) =========================
+    // The page as text, in place of the HTML tree: the frame rows the page
+    // prints around the body (_sdPageFrameRows()), the body from the same
+    // emitter the output comes from (_sdEmitNode(), with the range map), and
+    // the foot rows. The editor is the facade's (PgCodeEditor, CodeMirror 6),
+    // fetched the first time the view opens. Selection goes both ways: the
+    // cursor's element is selected on the canvas, the canvas selection is
+    // marked and brought into view here. Rows the page prints from settings
+    // and files are locked; an element a hand may not change (a lock on the
+    // layers panel, a shared component, a widget, a content role's limits)
+    // is locked with islands over what may change, so the tint says what
+    // the hand can do. Until the editing slice lands the editor itself is
+    // read-only; the locks are drawn now so the picture does not change
+    // later. renderHtmlTree() hands over to _sdCodeRefresh() while the view
+    // is on, so the 60-odd places that redraw the tree need no change.
+    var _sdCode = {
+        on: false,          // the switch
+        ed: null,           // PgCodeEditor instance
+        host: null,         // #sd-html-code
+        text: '',           // the text last written to the editor
+        entries: [],        // the range map behind it (see _sdCodeDocument())
+        busy: false,        // true while the editor is being written to
+        fromEditor: false,  // true while a selection made in the editor is applied
+        loading: false,
+        editable: null,     // what the editor was last told (null: never)
+        dirty: null,        // { from, to } typed since the last apply, in editor positions
+        applyTimer: 0,
+        applying: false,    // true while typed changes are being put into the tree
+        lockToastAt: 0
+    };
+    var _SD_CODE_APPLY_MS = 400;
+    var _SD_CODE_KEY = 'pinegrap_designer_code_view';
+
+    function _sdCodeEnabled() { return !!(_sdCode.on && _sdCode.ed); }
+
+    // The engine's own texts (search panel, line prompt, fold gutter).
+    function _sdCodePhrases() {
+        return {
+            'Find': _sdT('Find'), 'Replace': _sdT('Replace'), 'next': _sdT('next'), 'previous': _sdT('previous'),
+            'all': _sdT('all'), 'match case': _sdT('match case'), 'by word': _sdT('by word'), 'regexp': _sdT('regexp'),
+            'replace': _sdT('replace'), 'replace all': _sdT('replace all'), 'close': _sdT('close'),
+            'current match': _sdT('current match'), 'replaced $ matches': _sdT('replaced $ matches'),
+            'replaced match on line $': _sdT('replaced match on line $'), 'on line': _sdT('on line'),
+            'Go to line': _sdT('Go to line'), 'go': _sdT('go'), 'to': _sdT('to'),
+            'Diagnostics': _sdT('Diagnostics'), 'No diagnostics': _sdT('No diagnostics'), 'Completions': _sdT('Completions'),
+            'Control character': _sdT('Control character'), 'Selection deleted': _sdT('Selection deleted'),
+            'folded code': _sdT('folded code'), 'unfold': _sdT('unfold'), 'Fold line': _sdT('Fold line'),
+            'Unfold line': _sdT('Unfold line'), 'Folded lines': _sdT('Folded lines'), 'Unfolded lines': _sdT('Unfolded lines')
+        };
+    }
+
+    // The switch in the HTML column's header and the editor's host; from
+    // initBottomPanel(). The view that was on when the editor was last
+    // closed comes back on.
+    function _sdCodeInit() {
+        var quad = document.getElementById('sd-bp-quad-tl');
+        var body = quad ? quad.querySelector('.sd-bp-quad-body') : null;
+        if (!quad || !body) return;
+        var host = document.createElement('div');
+        host.id = 'sd-html-code';
+        host.className = 'sd-html-code';
+        host.innerHTML =
+            '<div class="sd-code-tabs" id="sd-code-tabs"></div>' +
+            '<div class="sd-code-panes" id="sd-code-panes">' +
+                '<div class="sd-code-pane pg-code-editor sd-code-pane-active" data-key="page" id="sd-code-pane-page"></div>' +
+            '</div>';
+        body.appendChild(host);
+        _sdCode.host = host;
+        _sdCode.pageHost = host.querySelector('#sd-code-pane-page');
+        _sdCode.tabs = [{ key: 'page', title: '', icon: 'bi-filetype-html', pane: _sdCode.pageHost, ed: null, dirty: false, spec: null }];
+        _sdCode.active = 'page';
+        _sdCodeTabsRender();
+
+        // The code editor dialog (codemirror_modal.js) shares the view's
+        // engine texts.
+        window.PgCodeEditorPhrases = _sdCodePhrases();
+        // Class names are offered inside class="…" in every HTML editor of
+        // the page: the view, the file tabs and the dialog.
+        PgCodeEditor.addCompletionSource('html', _sdCodeClassCompletion);
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'sd-html-code-toggle';
+        btn.className = 'sd-styles-tool sd-html-code-toggle';
+        btn.addEventListener('click', function (e) { e.stopPropagation(); _sdCodeToggle(!_sdCode.on); });
+        _sdCodeLabelSwitch(btn, _sdCodeMayEdit());
+        var caret = document.getElementById('sd-bp-collapse');
+        if (caret && caret.parentNode) caret.parentNode.insertBefore(btn, caret);
+        else quad.querySelector('.sd-bp-quad-hdr').appendChild(btn);
+
+        var wanted = false;
+        try { wanted = localStorage.getItem(_SD_CODE_KEY) === '1'; } catch (e) {}
+        if (wanted) _sdCodeToggle(true);
+    }
+
+    function _sdCodeToggle(on) {
+        var quad = document.getElementById('sd-bp-quad-tl');
+        var btn  = document.getElementById('sd-html-code-toggle');
+        if (!quad || !_sdCode.host) return;
+        if (!on) {
+            _sdCode.on = false;
+            quad.classList.remove('sd-code-on');
+            if (btn) btn.classList.remove('active');
+            try { localStorage.setItem(_SD_CODE_KEY, '0'); } catch (e) {}
+            renderHtmlTree();
+            return;
+        }
+        if (typeof PgCodeEditor === 'undefined') return;
+        _sdCode.on = true;
+        quad.classList.add('sd-code-on');
+        if (btn) btn.classList.add('active');
+        try { localStorage.setItem(_SD_CODE_KEY, '1'); } catch (e) {}
+        if (_sdCode.ed) { _sdCodeRefresh(); return; }
+        if (_sdCode.loading) return;
+        _sdCode.loading = true;
+        PgCodeEditor.open(_sdCode.pageHost, {
+            language: 'html',
+            value: '',
+            readOnly: !_sdCodeMayEdit(),
+            phrases: _sdCodePhrases(),
+            labels: { syntaxError: _sdT('Syntax error') },
+            // The lock markers of the HTML tree, beside the locked lines.
+            lockGutter: true,
+            lockTitle: _sdCodeLockTitle,
+            onSelection: _sdCodeOnSelection,
+            onChange: _sdCodeOnChange,
+            onLockHit: _sdCodeOnLockHit
+        }).then(function (ed) {
+            _sdCode.loading = false;
+            _sdCode.ed = ed;
+            _sdCode.tabs[0].ed = ed;
+            _sdCode.editable = _sdCodeMayEdit();
+            // Switched off while the bundle was on its way.
+            if (!_sdCode.on) return;
+            _sdCode.text = '';
+            _sdCodeRefresh();
+            _sdCodeTabsFlush();
+        }, function (err) {
+            _sdCode.loading = false;
+            sdToast('<strong>' + esc(_sdT('The code editor could not be loaded.')) + '</strong><br>' + esc(err && err.message ? err.message : ''), 'error', 6000);
+            _sdCodeToggle(false);
+        });
+    }
+
+    // The document for the editor: its text, the range map (one entry per
+    // node and per frame row, with the islands an edit may touch) and the
+    // locks derived from it.
+    function _sdCodeDocument() {
+        var text = '';
+        var entries = [];
+        var locks = [];
+        var lang = document.documentElement.lang || 'en';
+        var frame = _sdPageFrameRows();
+        var addRow = function (r, indent, role) {
+            var line = '    '.repeat(indent) + _sdFrameRowText(r);
+            var from = text.length;
+            text += line + '\n';
+            entries.push({ key: role + ':' + entries.length, node: null, from: from, to: from + line.length, lock: 'full', role: role });
+        };
+        var addLine = function (line) {
+            var from = text.length;
+            text += line + '\n';
+            entries.push({ key: 'frame:' + entries.length, node: null, from: from, to: from + line.length, lock: 'full', role: 'frame' });
+        };
+
+        addLine('<!DOCTYPE html>');
+        addLine('<html lang="' + esc(lang) + '">');
+        addLine('<head>');
+        frame.head.forEach(function (r) { addRow(r, 1, 'head'); });
+        addLine('</head>');
+
+        // The <body> tag: the root node's attributes may change, the tag may not.
+        var bodyOpen = '<body';
+        var bodyIslands = [];
+        _sdPageBodyAttrs().forEach(function (a) {
+            bodyOpen += ' ' + a[0] + '="';
+            var vf = bodyOpen.length;
+            bodyOpen += esc(a[1]);
+            bodyIslands.push([vf, bodyOpen.length]);
+            bodyOpen += '"';
+        });
+        bodyOpen += '>';
+        var bodyFrom = text.length;
+        text += bodyOpen + '\n';
+        var rootLock = _sdCodeLockOf(tree);
+        entries.push({ key: 'body', node: tree, from: bodyFrom, to: bodyFrom + bodyOpen.length, lock: 'half', role: 'body',
+            islands: (rootLock.attrs ? bodyIslands.map(function (p) { return [bodyFrom + p[0], bodyFrom + p[1]]; }) : []) });
+
+        // The body: the emitter with its range map, widgets written whole.
+        var sink = { ranges: [], scope: 0, full: true };
+        var bodyStart = text.length;
+        if (tree && tree.children) {
+            tree.children.forEach(function (c) { text += _sdEmitNode(c, 1, text.length, sink); });
+        }
+        // Where the page's own content is: what is typed between the body
+        // tag and the scripts belongs to the root node. Grows at both ends
+        // so a line typed right after <body> or right before the scripts
+        // counts.
+        var contentEnd = text.length;
+        entries.push({ key: 'content', node: tree, from: bodyStart, to: contentEnd, lock: '', role: 'content', grow: true });
+
+        var recorded = new Set();
+        sink.ranges.forEach(function (r) { recorded.add(r.node); });
+        sink.ranges.forEach(function (r) {
+            if (r.to <= r.from) return;
+            var type = r.node.type;
+            // A loop area is its two marker lines; the rows between them
+            // are nodes of their own. A shared reference and a widget's root
+            // wrapper hold nothing of their own either: what is inside decides.
+            if (type === 'loop_area' || type === 'recipient_loop_area') {
+                var openEnd = text.indexOf('-->', r.from) + 3;
+                var closeAt = text.lastIndexOf('<!--', r.to);
+                if (openEnd > 2 && closeAt > r.from) {
+                    entries.push({ key: r.sid + ':' + r.node._id + ':open', node: r.node, sid: r.sid, from: r.from, to: openEnd, lock: 'full', role: 'loop' });
+                    entries.push({ key: r.sid + ':' + r.node._id + ':close', node: r.node, sid: r.sid, from: closeAt, to: text.indexOf('-->', closeAt) + 3, lock: 'full', role: 'loop' });
+                }
+                return;
+            }
+            if (type === 'root' || type === 'shared_ref') return;
+            // The range is the element itself: from its "<" to its last
+            // character, without the indentation and the line break the
+            // emitter puts around it, so a tag typed just before it is a
+            // new element and not a change to it.
+            var from = r.from, to = r.to;
+            var open = _sdCodeOpenTag(text, from, to);
+            if (open) from = open.from;
+            else { while (from < to && /\s/.test(text[from])) from++; }
+            while (to > from && /\s/.test(text[to - 1])) to--;
+            if (to <= from) return;
+            var lock = _sdCodeLockOf(r.node);
+            var e = { key: r.sid + ':' + r.node._id, node: r.node, sid: r.sid, from: from, to: to, lock: lock.level, role: 'node',
+                      kind: _sdCodeTextKind(r.node),
+                      // Children the emitter could not locate (a component
+                      // that rewrote them) stay as they are: the text is
+                      // read for the element itself only.
+                      atomic: !!(r.node.children && r.node.children.length && r.node.children.some(function (c) { return !recorded.has(c); })) };
+            if (lock.level === 'half') e.islands = _sdCodeIslands(text, { from: from, to: to, node: r.node }, lock);
+            entries.push(e);
+        });
+
+        frame.foot.forEach(function (r) { addRow(r, 1, 'foot'); });
+        addLine('</body>');
+        text += '</html>';
+        var endFrom = text.length - 7;
+        entries.push({ key: 'frame:end', node: null, from: endFrom, to: text.length, lock: 'full', role: 'frame' });
+
+        entries.forEach(function (e) {
+            if (e.lock === 'full') locks.push({ from: e.from, to: e.to, tag: e.role });
+            else if (e.lock === 'half') locks.push({ from: e.from, to: e.to, tag: e.role, allow: e.islands || [] });
+        });
+        return { text: text, entries: entries, locks: locks, bodyStart: bodyStart };
+    }
+
+    // What a hand may change on a node, in the code view's terms:
+    // { level: 'full' | 'half' | '', attrs: bool, text: bool }. The same
+    // questions the canvas asks (_sdCanEditNode(), the layer lock, the
+    // shared component), answered once per node while the document is built.
+    function _sdCodeLockOf(node) {
+        if (!node) return { level: 'full', attrs: false, text: false };
+        if (node.type === 'region') return { level: 'full', attrs: false, text: false };
+        if (!_collab.mayEdit) return { level: 'full', attrs: false, text: false };
+        var structural = _sdCanEditNode(node);
+        if (node.type === 'root') return { level: 'half', attrs: structural, text: false };
+        var textOk = structural || _sdCanEditNode(node, 'text');
+        if (!structural) {
+            // A content role outside its area: the text, nothing else.
+            return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };
+        }
+        // A locked layer, a shared component or a widget (owner's rule:
+        // half-locked): values and text, never the structure.
+        if ((node.props && node.props._locked) || hasLockedAncestor(node) || _resolveSharedSid(node) > 0) {
+            return { level: 'half', attrs: true, text: true };
+        }
+        return { level: '', attrs: true, text: true };
+    }
+
+    // The islands of a half-locked node: its attribute values (when values
+    // may change) and its own text (when the text may). Read from the text
+    // itself, so a component's output needs no map of its own.
+    function _sdCodeIslands(text, r, lock) {
+        var out = [];
+        var open = _sdCodeOpenTag(text, r.from, r.to);
+        if (!open) return out;
+        if (lock.attrs) {
+            open.attrs.forEach(function (a) { if (a.valueFrom !== null) out.push([a.valueFrom, a.valueTo]); });
+        }
+        if (lock.text && r.node.props && typeof r.node.props.text === 'string' && r.node.props.text !== '') {
+            var raw = r.node.props.text;
+            var needle = (r.node.type === 'semantic') ? esc(raw) : raw;
+            var at = text.indexOf(needle, open.end);
+            if (at !== -1 && at + needle.length <= r.to) out.push([at, at + needle.length]);
+        }
+        return out;
+    }
+
+    // The opening tag at the start of a node's text: where the tag name is,
+    // each attribute's name and value, and where the tag ends. null when the
+    // text does not begin with a tag (a region placeholder, raw markup).
+    function _sdCodeOpenTag(text, from, to) {
+        var i = from;
+        while (i < to && (text[i] === ' ' || text[i] === '\t' || text[i] === '\n')) i++;
+        if (text[i] !== '<' || text[i + 1] === '!' || text[i + 1] === '/') return null;
+        var m = /^<([A-Za-z][\w:-]*)/.exec(text.slice(i, Math.min(to, i + 200)));
+        if (!m) return null;
+        var out = { from: i, tagFrom: i + 1, tagTo: i + 1 + m[1].length, attrs: [], end: 0 };
+        var p = out.tagTo;
+        var attrRe = /\s+([^\s=\/>"']+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?|\s*\/?>/y;
+        while (p < to) {
+            attrRe.lastIndex = p;
+            var a = attrRe.exec(text);
+            if (!a) return null;
+            if (a[1] === undefined) { out.end = attrRe.lastIndex; return out; }
+            var entry = { name: a[1], nameFrom: a.index + (a[0].length - a[0].replace(/^\s+/, '').length), nameTo: 0, valueFrom: null, valueTo: null };
+            entry.nameTo = entry.nameFrom + a[1].length;
+            if (a[2] !== undefined || a[3] !== undefined || a[4] !== undefined) {
+                var val = a[2] !== undefined ? a[2] : (a[3] !== undefined ? a[3] : a[4]);
+                var quoted = a[4] === undefined;
+                entry.valueTo = attrRe.lastIndex - (quoted ? 1 : 0);
+                entry.valueFrom = entry.valueTo - val.length;
+            }
+            out.attrs.push(entry);
+            p = attrRe.lastIndex;
+        }
+        return null;
+    }
+
+    // Writes the document when it changed, then shows the selection. Only
+    // the part that differs is written (the longest common start and end
+    // of the old and the new text are left alone): a keystroke in a panel
+    // touches one attribute, and the cursor, the scroll position, the folds
+    // and the undo history of the editor stay as they were. The ranges and
+    // the locks are replaced whole: their positions in the new text are
+    // known from the emitter, and the set is cheap to rebuild.
+    function _sdCodeRefresh() {
+        if (!_sdCodeEnabled()) return;
+        var ed = _sdCode.ed;
+        _sdCodeSyncMode();
+        var doc = _sdCodeDocument();
+        var current = ed.getValue();
+        if (doc.text !== current) {
+            _sdCode.busy = true;
+            try {
+                var d = _sdCodeTextDiff(current, doc.text);
+                ed.applyExternal(d.from, d.to, d.insert);
+                // The text is the tree's again: nothing typed is waiting.
+                _sdCode.dirty = null;
+                if (_sdCode.applyTimer) { clearTimeout(_sdCode.applyTimer); _sdCode.applyTimer = 0; }
+            } finally { _sdCode.busy = false; }
+        }
+        // The map and the locks are replaced on every pass, text change or
+        // not: a node the tree gained has no range yet even when its text
+        // is already there (typed, then applied).
+        ed.track(doc.entries.map(function (e) {
+            return { id: e.key, from: e.from, to: e.to, data: e, grow: !!e.grow };
+        }));
+        ed.lock(doc.locks);
+        _sdCode.text = doc.text;
+        _sdCode.entries = doc.entries;
+        _sdCodeRevealSelection();
+    }
+
+    // Whether the editor may change the page right now: not in view mode.
+    // Content roles edit inside the locks; the server gate decides the rest.
+    function _sdCodeMayEdit() { return !!(_collab && _collab.mayEdit); }
+
+    function _sdCodeLabelSwitch(btn, editable) {
+        if (!btn) return;
+        btn.innerHTML = '<span class="bi ' + (editable ? 'bi-pencil-square' : 'bi-braces-asterisk') + ' me-1"></span>' + esc(editable ? _sdT('Edit') : _sdT('Code'));
+        _sdSetButtonTitle(btn, editable
+            ? _sdT('Edit the page as code: what you type goes onto the canvas; click a line to select its element')
+            : _sdT('Show the page as code (click a line to select its element)'));
+    }
+
+    // Read-only follows the page lock: a session that lost the page keeps
+    // the view but not the keyboard.
+    function _sdCodeSyncMode() {
+        var editable = _sdCodeMayEdit();
+        if (_sdCode.editable === editable) return;
+        _sdCode.editable = editable;
+        if (_sdCode.ed) _sdCode.ed.setReadOnly(!editable);
+        _sdCodeLabelSwitch(document.getElementById('sd-html-code-toggle'), editable);
+    }
+
+    // The one replacement that turns `before` into `after`: the common start
+    // and end are kept, what is between them is replaced. Compared by UTF-16
+    // units, which is what the editor's positions count.
+    function _sdCodeTextDiff(before, after) {
+        var a = before.length, b = after.length;
+        var start = 0, max = Math.min(a, b);
+        while (start < max && before.charCodeAt(start) === after.charCodeAt(start)) start++;
+        var end = 0;
+        while (end < max - start && before.charCodeAt(a - 1 - end) === after.charCodeAt(b - 1 - end)) end++;
+        return { from: start, to: a - end, insert: after.slice(start, b - end) };
+    }
+
+    // The entry of a node in the map, by identity (ids repeat across widgets).
+    function _sdCodeEntryOf(node) {
+        if (!node) return null;
+        var list = _sdCode.entries;
+        for (var i = 0; i < list.length; i++) if (list[i].node === node) return list[i];
+        return null;
+    }
+
+    // Marks the selected node's opening tag and brings it into view; a
+    // selection made in the editor itself is not scrolled to.
+    function _sdCodeRevealSelection() {
+        if (!_sdCodeEnabled()) return;
+        var ed = _sdCode.ed;
+        var entry = _sdCodeEntryOf(selectedNodes.length > 1 ? null : selectedNode);
+        if (!entry) { ed.mark('sel'); return; }
+        var live = ed.tracked(entry.key) || entry;
+        var open = _sdCodeOpenTag(ed.getValue(), live.from, live.to);
+        var from = open ? open.from : live.from, to = open ? open.end : Math.min(live.to, live.from + 200);
+        ed.mark('sel', from, to, 'pg-ce-mark');
+        if (!_sdCode.fromEditor && !_sdCode.applying) ed.scrollTo(from, { y: 'center' });
+    }
+
+    // The cursor moved by hand: the innermost element under it is selected
+    // on the canvas, as a click on a row of the tree does.
+    function _sdCodeOnSelection(inst, update) {
+        if (_sdCode.busy || !_sdCode.on) return;
+        var byHand = false;
+        for (var i = 0; i < update.transactions.length; i++) {
+            if (update.transactions[i].isUserEvent('select')) { byHand = true; break; }
+        }
+        if (!byHand) return;
+        var pos = inst.selection().head;
+        var hits = inst.trackedAt(pos);
+        var entry = null;
+        for (var j = 0; j < hits.length; j++) {
+            var e = hits[j].data;
+            if (e && e.node) { entry = e; break; }
+        }
+        if (!entry || entry.node === selectedNode) return;
+        _sdCode.fromEditor = true;
+        try {
+            selectedNode = entry.node;
+            selectedNodes = [];
+            _sdSelectRender();
+            scrollCanvasToNode(selectedNode);
+        } finally { _sdCode.fromEditor = false; }
+    }
+
+    // ========================= CODE VIEW: TYPED CHANGES INTO THE TREE =========================
+    // What is typed is read back from the editor's syntax tree after a pause
+    // and put into the nodes it belongs to. The range map says which element
+    // of the text is which node: an element whose "<" sits where a node's
+    // range starts is that node; one without a range is new. An existing
+    // node changes in place (tag, attributes, text), a free node's children
+    // are rebuilt from the elements inside it (so a deletion, a move or a
+    // paste in the text is one in the tree), a new element with no node
+    // inside it goes through the server's converter (the same one a paste
+    // uses) and stands as a Custom HTML node until the answer comes. Locks
+    // never reach here: the editor refused the keystroke. After the tree is
+    // written the normal render follows, and the refresh writes back the
+    // tree's own spelling of what was typed (quotes, escaping, indentation).
+
+    // The editor changed under the operator's hands: remember the span and
+    // apply after a pause. The facade's writes (busy) are not typing.
+    function _sdCodeOnChange(inst, update) {
+        if (_sdCode.busy || !_sdCode.on || !_sdCodeMayEdit()) return;
+        var d = _sdCode.dirty;
+        if (d) {
+            d.from = update.changes.mapPos(d.from, -1);
+            d.to = update.changes.mapPos(d.to, 1);
+        }
+        update.changes.iterChangedRanges(function (fromA, toA, fromB, toB) {
+            if (!d) d = { from: fromB, to: toB };
+            else { d.from = Math.min(d.from, fromB); d.to = Math.max(d.to, toB); }
+        });
+        _sdCode.dirty = d;
+        if (_sdCode.applyTimer) clearTimeout(_sdCode.applyTimer);
+        _sdCode.applyTimer = setTimeout(_sdCodeApply, _SD_CODE_APPLY_MS);
+    }
+
+    // Whatever is waiting goes in now (a save, a tab switch).
+    function _sdCodeFlush() {
+        if (!_sdCode.applyTimer) return;
+        clearTimeout(_sdCode.applyTimer);
+        _sdCode.applyTimer = 0;
+        _sdCodeApply();
+    }
+
+    function _sdCodeOnLockHit(hit) {
+        var now = Date.now();
+        if (now - _sdCode.lockToastAt < 2500) return;
+        _sdCode.lockToastAt = now;
+        sdToast('<span class="bi bi-lock-fill me-1"></span>' + esc(_sdCodeLockTitle(hit.tag, true)), 'warning', 3500);
+    }
+
+    // Why a line is locked, by the lock's tag: the tooltip of the lock
+    // marker in the gutter and the toast of a refused keystroke. `partly`
+    // says the line (or the hit) has parts that may change.
+    function _sdCodeLockTitle(tag, partly) {
+        switch (tag) {
+            case 'head': case 'foot': case 'frame':
+                return _sdT('These lines come from the page settings and the design files; change them there.');
+            case 'body':
+                return _sdT('The body tag is fixed; its class, id and attribute values can change.');
+            case 'loop':
+                return _sdT('The loop markers of a system widget cannot change.');
+        }
+        return partly ? _sdT('This element is locked here: only its attribute values and its text can change.') : _sdT('Locked');
+    }
+
+    // The innermost thing whose text holds the whole typed span: a node, the
+    // body tag (its attributes) or the page content between the tags.
+    function _sdCodeScopeOf(dirty) {
+        var ed = _sdCode.ed;
+        var hits = ed.trackedAt(dirty.from);
+        for (var i = 0; i < hits.length; i++) {
+            var h = hits[i];
+            if (!(h.from <= dirty.from && dirty.to <= h.to)) continue;
+            var role = h.data && h.data.role;
+            if (role === 'node' || role === 'body' || role === 'content') return { entry: h.data, from: h.from, to: h.to };
+        }
+        return null;
+    }
+
+    // The node an element of the text stands for: the one whose range starts
+    // at the element's "<". Nothing there: the element is new.
+    function _sdCodeOwnerOf(item) {
+        var hits = _sdCode.ed.trackedAt(item.from);
+        for (var i = 0; i < hits.length; i++) {
+            if (hits[i].from === item.from && hits[i].data && hits[i].data.role === 'node') return hits[i].data;
+        }
+        return null;
+    }
+
+    // Reads the elements between `from` and `to` among the children of a
+    // syntax node: elements with their tags, attributes and children, text
+    // runs with their raw markup. null when the parser left an error there
+    // (an unclosed tag, a stray close tag): nothing is applied until the
+    // text parses, and the lint shows where it does not.
+    function _sdCodeParse(syntax, from, to, text) {
+        var items = [];
+        for (var child = syntax.firstChild; child; child = child.nextSibling) {
+            if (child.to <= from || child.from >= to) continue;
+            var name = child.name;
+            if (child.type.isError || name === 'MismatchedCloseTag' || name === 'IncompleteCloseTag') return null;
+            if (name === 'Element') {
+                var el = _sdCodeParseElement(child, text);
+                if (!el) return null;
+                items.push(el);
+            } else if (name === 'Text' || name === 'EntityReference' || name === 'CharacterReference' || name === 'InvalidEntity') {
+                var raw = text.slice(child.from, child.to);
+                var last = items.length ? items[items.length - 1] : null;
+                if (last && last.kind === 'text' && last.to === child.from) { last.to = child.to; last.raw += raw; }
+                else items.push({ kind: 'text', from: child.from, to: child.to, raw: raw });
+            }
+            // Comments, doctype and processing instructions are not nodes.
+        }
+        return items;
+    }
+
+    function _sdCodeParseElement(node, text) {
+        var open = node.getChild('OpenTag') || node.getChild('SelfClosingTag');
+        if (!open) return null;
+        var tagNode = open.getChild('TagName');
+        if (!tagNode) return null;
+        var item = {
+            kind: 'element', from: node.from, to: node.to,
+            tag: text.slice(tagNode.from, tagNode.to).toLowerCase(),
+            open: { from: open.from, to: open.to },
+            selfClosing: open.name === 'SelfClosingTag',
+            close: null, attrs: [], children: [], texts: []
+        };
+        var attrs = open.getChildren('Attribute');
+        for (var i = 0; i < attrs.length; i++) {
+            var an = attrs[i].getChild('AttributeName');
+            if (!an) continue;
+            var av = attrs[i].getChild('AttributeValue');
+            var au = av ? null : attrs[i].getChild('UnquotedAttributeValue');
+            var value = null;
+            if (av) {
+                var q = text.slice(av.from, av.to);
+                value = (q.length >= 2 && (q[0] === '"' || q[0] === "'")) ? q.slice(1, -1) : q;
+            } else if (au) {
+                value = text.slice(au.from, au.to);
+            }
+            item.attrs.push({ name: text.slice(an.from, an.to).toLowerCase(), value: value === null ? null : _sdCodeDecode(value) });
+        }
+        var close = node.getChild('CloseTag');
+        if (close) item.close = { from: close.from, to: close.to };
+        var innerFrom = open.to, innerTo = close ? close.from : node.to;
+        item.innerFrom = innerFrom; item.innerTo = innerTo;
+        // Raw-text elements: the text is what it is.
+        var raw = node.getChild('ScriptText') || node.getChild('StyleText') || node.getChild('TextareaText');
+        if (raw) { item.texts.push({ from: raw.from, to: raw.to, raw: text.slice(raw.from, raw.to) }); return item; }
+        if (innerTo <= innerFrom) return item;
+        var inner = _sdCodeParse(node, innerFrom, innerTo, text);
+        if (inner === null) return null;
+        for (var k = 0; k < inner.length; k++) {
+            if (inner[k].kind === 'element') item.children.push(inner[k]);
+            else item.texts.push(inner[k]);
+        }
+        item.items = inner;
+        return item;
+    }
+
+    function _sdCodeDecode(s) {
+        if (s.indexOf('&') === -1) return s;
+        var t = document.createElement('textarea');
+        t.innerHTML = s;
+        return t.value;
+    }
+
+    // How a node holds its text: 'plain' (a semantic element's text node),
+    // 'inner' (a content element's innerHTML), 'outer' (Custom HTML: the
+    // markup itself), 'none' (nothing of its own to read).
+    function _sdCodeTextKind(node) {
+        if (!node) return 'none';
+        if (node.type === 'semantic') return 'plain';
+        if (node.type === 'content') {
+            var ct = node.props.contentType;
+            if (ct === 'custom_html') return 'outer';
+            if (['heading', 'paragraph', 'span', 'text', 'link', 'button'].indexOf(ct) !== -1) return 'inner';
+        }
+        return 'none';
+    }
+
+    // Puts the typed span into the tree. Called after the pause, and
+    // before a save or a tab switch.
+    function _sdCodeApply() {
+        _sdCode.applyTimer = 0;
+        if (!_sdCodeEnabled() || !_sdCode.dirty || !_sdCodeMayEdit()) return;
+        var ed = _sdCode.ed;
+        var dirty = _sdCode.dirty;
+        var text = ed.getValue();
+        var syntax;
+        try { syntax = ed.syntaxTree(); } catch (e) { syntax = null; }
+        if (!syntax) return;
+        var scope = _sdCodeScopeOf(dirty);
+        if (!scope) { _sdCode.dirty = null; return; }
+
+        var changed = false;
+        var report = { derived: false, tag: false, imports: [] };
+        _sdCode.applying = true;
+        try {
+            if (scope.entry.role === 'body') {
+                // The body tag's attributes belong to the root node.
+                var bodyEl = _sdCodeElementAt(syntax, scope.from);
+                if (!bodyEl) return;
+                var body = _sdCodeParseElementShallow(bodyEl, text);
+                if (!body) return;
+                saveState('run:code');
+                _sdCodeApplyAttrs(tree, body, scope.entry, { level: 'half', attrs: true, text: false }, report);
+                changed = true;
+            } else if (scope.entry.role === 'content') {
+                // The page's own content, between the body tag and the scripts.
+                var bodyNode = _sdCodeElementAt(syntax, _sdCodeBodyOpenAt(text));
+                if (!bodyNode) return;
+                var items = _sdCodeParse(bodyNode, scope.from, scope.to, text);
+                if (items === null) return;   // not well-formed yet
+                saveState('run:code');
+                _sdCodeReconcileChildren(tree, items, 0, report);
+                changed = true;
+            } else {
+                var entry = scope.entry;
+                var el = _sdCodeElementAt(syntax, scope.from);
+                // The element must still cover the typed span; when the
+                // typing split it, the parent reads it as a whole.
+                if (!el || el.to < dirty.to) { _sdCodeApplyOuter(dirty); return; }
+                var item = _sdCodeParseElement(el, text);
+                if (!item) return;
+                saveState('run:code');
+                _sdCodeReconcileNode(entry.node, item, entry, report);
+                changed = true;
+            }
+        } finally {
+            _sdCode.applying = false;
+        }
+        if (!changed) return;
+        _sdCode.dirty = null;
+        if (selectedNode && !_sdCodeNodeExists(selectedNode)) { selectedNode = null; selectedNodes = []; }
+        _sdCode.applying = true;
+        try { render(); } finally { _sdCode.applying = false; }
+        if (report.derived) sdToast(esc(_sdT('A class set by the element\'s type cannot be removed in the code; use the options panel.')), 'warning', 4000);
+        if (report.tag) sdToast(esc(_sdT('The tag of this element is set by its type; use the options panel.')), 'warning', 4000);
+        report.imports.forEach(_sdCodeImport);
+    }
+
+    // The typed span is no longer inside one element (a close tag was typed
+    // or removed): widen to the enclosing one and try again from there.
+    function _sdCodeApplyOuter(dirty) {
+        var hits = _sdCode.ed.trackedAt(dirty.from);
+        var entry = null;
+        for (var i = 0; i < hits.length; i++) {
+            if (hits[i].from <= dirty.from && dirty.to <= hits[i].to && hits[i].data && hits[i].data.role === 'node') { entry = hits[i]; break; }
+        }
+        // Grow the span to the whole parent of the element that broke.
+        var parentHit = null;
+        for (var j = 0; j < hits.length; j++) {
+            if (entry && hits[j].data === entry.data) continue;
+            if (hits[j].from <= (entry ? entry.from : dirty.from) && (entry ? entry.to : dirty.to) <= hits[j].to && hits[j].data && (hits[j].data.role === 'node' || hits[j].data.role === 'content')) { parentHit = hits[j]; break; }
+        }
+        if (!parentHit) return;
+        _sdCode.dirty = { from: parentHit.from, to: parentHit.to };
+        _sdCodeApply();
+    }
+
+    function _sdCodeBodyOpenAt(text) {
+        var e = null;
+        for (var i = 0; i < _sdCode.entries.length; i++) if (_sdCode.entries[i].role === 'body') { e = _sdCode.entries[i]; break; }
+        var live = e ? _sdCode.ed.tracked(e.key) : null;
+        return live ? live.from : text.indexOf('<body');
+    }
+
+    // The Element syntax node whose opening "<" is at `pos`.
+    function _sdCodeElementAt(syntax, pos) {
+        var n = syntax.resolveInner(pos + 1, 1);
+        while (n) {
+            if (n.name === 'Element' && n.from === pos) return n;
+            n = n.parent;
+        }
+        return null;
+    }
+
+    function _sdCodeParseElementShallow(node, text) {
+        var open = node.getChild('OpenTag');
+        if (!open) return null;
+        var item = { kind: 'element', from: node.from, to: node.to, tag: 'body', open: { from: open.from, to: open.to }, attrs: [], children: [], texts: [] };
+        var attrs = open.getChildren('Attribute');
+        for (var i = 0; i < attrs.length; i++) {
+            var an = attrs[i].getChild('AttributeName');
+            if (!an) continue;
+            var av = attrs[i].getChild('AttributeValue');
+            var au = av ? null : attrs[i].getChild('UnquotedAttributeValue');
+            var value = null;
+            if (av) { var q = text.slice(av.from, av.to); value = (q.length >= 2 && (q[0] === '"' || q[0] === "'")) ? q.slice(1, -1) : q; }
+            else if (au) value = text.slice(au.from, au.to);
+            item.attrs.push({ name: text.slice(an.from, an.to).toLowerCase(), value: value === null ? null : _sdCodeDecode(value) });
+        }
+        return item;
+    }
+
+    function _sdCodeNodeExists(node) {
+        if (_nodeInTree(node, tree)) return true;
+        for (var k in _sharedCache) {
+            if (Object.prototype.hasOwnProperty.call(_sharedCache, k) && _sharedCache[k] && _sharedCache[k].tree && _nodeInTree(node, _sharedCache[k].tree)) return true;
+        }
+        return false;
+    }
+
+    // One element of the text against its node.
+    function _sdCodeReconcileNode(node, item, entry, report) {
+        var lock = _sdCodeLockOf(node);
+        if (lock.level === 'full' || node.type === 'region') return;
+        var sid = entry.sid || 0;
+        if (lock.attrs) _sdCodeApplyTag(node, item, entry, report);
+        if (lock.attrs) _sdCodeApplyAttrs(node, item, entry, lock, report);
+        if (lock.text) _sdCodeApplyText(node, item, entry, report);
+        // The structure follows the text only for a free node whose children
+        // the emitter could place; a locked one keeps its children.
+        if (lock.level === '' && !entry.atomic && entry.kind !== 'inner' && entry.kind !== 'outer' && node.type !== 'shared_ref') {
+            _sdCodeReconcileChildren(node, item.items || [], sid, report);
+        }
+        if (sid) _sharedDirty[sid] = true;
+    }
+
+    // A parent's children, rebuilt from the elements inside it in the text.
+    function _sdCodeReconcileChildren(parent, items, sid, report) {
+        var kids = [];
+        var isPlain = parent.type === 'semantic';
+        var textRuns = items.filter(function (it) { return it.kind === 'text' && it.raw.trim() !== ''; });
+        var elements = items.filter(function (it) { return it.kind === 'element'; });
+        // Text beside elements in a plain element becomes spans, in order,
+        // as the converter does: a text node has one place, before or
+        // after all the children.
+        var mixed = isPlain && textRuns.length && elements.length && !_sdCodeTextSlot(parent, items);
+        items.forEach(function (it) {
+            if (it.kind === 'text') {
+                if (it.raw.trim() === '') return;
+                if (parent.type === 'root' || mixed) kids.push(_sdCodeNewSpan(it.raw));
+                return;
+            }
+            var owner = _sdCodeOwnerOf(it) || _sdCodeOwnerInside(it);
+            if (owner && (owner.sid || 0) !== sid) {
+                // The element belongs to a shared component or widget this
+                // parent places: the reference stays, its tree is its own.
+                var ref = _sdCodeSharedRefFor(parent, owner.sid);
+                if (ref && kids.indexOf(ref) === -1) kids.push(ref);
+                return;
+            }
+            if (owner && owner.node && owner.from === it.from) {
+                _sdCodeReconcileNode(owner.node, it, owner, report);
+                kids.push(owner.node);
+            } else if (_sdCodeHasOwnedInside(it)) {
+                var wrap = _sdCodeNewSemantic(it);
+                kids.push(wrap);
+                _sdCodeReconcileChildren(wrap, it.items || [], sid, report);
+            } else {
+                var html = _sdCode.ed.sliceDoc(it.from, it.to);
+                var holder = _sdCodeNewHolder(html);
+                kids.push(holder);
+                report.imports.push(holder);
+            }
+        });
+        parent.children = kids;
+        if (mixed) parent.props.text = '';
+    }
+
+    function _sdCodeHasOwnedInside(item) {
+        for (var i = 0; i < item.children.length; i++) {
+            if (_sdCodeOwnerOf(item.children[i]) || _sdCodeHasOwnedInside(item.children[i])) return true;
+        }
+        return false;
+    }
+
+    // The first owned element inside an element without an owner of its own
+    // (a widget's root wrapper prints no tag: its children are the first
+    // owned elements seen).
+    function _sdCodeOwnerInside(item) {
+        for (var i = 0; i < item.children.length; i++) {
+            var o = _sdCodeOwnerOf(item.children[i]);
+            if (o) return o;
+        }
+        return null;
+    }
+
+    // The shared_ref among a parent's children that places component `sid`.
+    function _sdCodeSharedRefFor(parent, sid) {
+        var kids = parent.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            if (kids[i].type === 'shared_ref' && parseInt(kids[i].props && kids[i].props.sharedId, 10) === sid) return kids[i];
+        }
+        return null;
+    }
+
+    // A new element around existing nodes: a plain element with the typed
+    // tag and attributes, so the nodes inside keep what they are.
+    function _sdCodeNewSemantic(item) {
+        var props = { tag: item.tag, cssClass: '' };
+        var attrs = [];
+        item.attrs.forEach(function (a) {
+            var v = a.value === null ? '' : a.value;
+            if (a.name === 'class') props.cssClass = v;
+            else if (a.name === 'id') props.id = v;
+            else if (item.tag === 'a' && (a.name === 'href' || a.name === 'target' || a.name === 'rel')) props[a.name] = v;
+            else attrs.push({ name: a.name, value: v });
+        });
+        if (attrs.length) props._attrs = attrs;
+        return { _id: gid(), type: 'semantic', props: props, children: [] };
+    }
+
+    function _sdCodeNewSpan(raw) {
+        return { _id: gid(), type: 'content', props: { contentType: 'span', text: raw.trim(), cssClass: '' }, children: [] };
+    }
+
+    // The place a new element keeps until the converter answers: its own
+    // markup as Custom HTML, which prints the same text.
+    function _sdCodeNewHolder(html) {
+        return { _id: gid(), type: 'content', props: { contentType: 'custom_html', html: html, cssClass: '', _sdPending: html }, children: [] };
+    }
+
+    // The converter reads the new element and the holder gives way to what
+    // it made. No answer, or nothing made: the holder stays as Custom HTML
+    // and the page prints the markup as typed.
+    function _sdCodeImport(holder) {
+        var html = holder.props._sdPending;
+        if (!html) return;
+        _pgApiPost('import_fragment', { html: html }).then(function (res) {
+            if (!_sdCodeNodeExists(holder)) return;
+            // Typed again meanwhile: ask about the newer text instead.
+            if (holder.props.html !== html) { holder.props._sdPending = holder.props.html; _sdCodeImport(holder); return; }
+            delete holder.props._sdPending;
+            var kids = (res && res.status === 'success' && Array.isArray(res.children)) ? res.children : [];
+            if (!kids.length) { render(); return; }
+            _backfillIds({ type: 'root', props: {}, children: kids });
+            var owner = _sdAnyParent(holder);
+            if (!owner || !owner.parent) return;
+            var idx = owner.parent.children.indexOf(holder);
+            if (idx === -1) return;
+            Array.prototype.splice.apply(owner.parent.children, [idx, 1].concat(kids));
+            kids.forEach(function (k) { if (typeof _cfAdoptOnDrop === 'function') _cfAdoptOnDrop(k); });
+            if (owner.sid) _sharedDirty[owner.sid] = true;
+            if (selectedNode === holder) selectedNode = kids[kids.length - 1];
+            _sdCode.applying = true;
+            try { render(); } finally { _sdCode.applying = false; }
+        }).catch(function () {
+            delete holder.props._sdPending;
+        });
+    }
+
+    // The tag name: a plain element and a heading may change theirs; the
+    // rest wear the tag their type prints.
+    function _sdCodeApplyTag(node, item, entry, report) {
+        var oldOpen = _sdCodeOpenTag(_sdCode.text, entry.from, entry.to);
+        var oldTag = oldOpen ? _sdCode.text.slice(oldOpen.tagFrom, oldOpen.tagTo).toLowerCase() : '';
+        if (!oldTag || item.tag === oldTag) return;
+        if (!/^[a-z][a-z0-9-]*$/.test(item.tag)) return;
+        if (node.type === 'semantic') { node.props.tag = item.tag; return; }
+        if (node.type === 'content' && node.props.contentType === 'heading' && /^h[1-6]$/.test(item.tag)) { node.props.tag = item.tag; return; }
+        report.tag = true;
+    }
+
+    // Attributes: only those that differ from what the emitter printed are
+    // touched, each by the Attributes panel's rules.
+    function _sdCodeApplyAttrs(node, item, entry, lock, report) {
+        var oldOpen = _sdCodeOpenTag(_sdCode.text, entry.from, entry.to);
+        var oldMap = {};
+        if (oldOpen) oldOpen.attrs.forEach(function (a) {
+            oldMap[a.name.toLowerCase()] = a.valueFrom === null ? '' : _sdCodeDecode(_sdCode.text.slice(a.valueFrom, a.valueTo));
+        });
+        var newMap = {};
+        item.attrs.forEach(function (a) { newMap[a.name] = a.value === null ? '' : a.value; });
+        var names = {};
+        Object.keys(oldMap).forEach(function (n) { names[n] = 1; });
+        Object.keys(newMap).forEach(function (n) { names[n] = 1; });
+        Object.keys(names).forEach(function (name) {
+            var was = Object.prototype.hasOwnProperty.call(oldMap, name) ? oldMap[name] : undefined;
+            var now = Object.prototype.hasOwnProperty.call(newMap, name) ? newMap[name] : undefined;
+            if (was === now) return;
+            _sdCodeSetAttr(node, name, was, now, report);
+        });
+    }
+
+    function _sdCodeSetAttr(node, name, was, now, report) {
+        var p = node.props;
+        if (name === 'class') {
+            var oldT = (was || '').split(/\s+/).filter(Boolean), newT = (now || '').split(/\s+/).filter(Boolean);
+            var cls = (p.cssClass || '').split(/\s+/).filter(Boolean);
+            var isIcon = node.type === 'content' && p.contentType === 'icon';
+            oldT.forEach(function (t) {
+                if (newT.indexOf(t) !== -1) return;
+                var at = cls.indexOf(t);
+                if (at !== -1) cls.splice(at, 1);
+                else if (isIcon && /^bi-/.test(t)) { /* the icon itself: replaced below */ }
+                else if (t !== 'bi' || !isIcon) report.derived = true;
+            });
+            newT.forEach(function (t) {
+                if (oldT.indexOf(t) !== -1) return;
+                if (isIcon && /^bi-/.test(t)) { p.iconName = t; return; }
+                if (cls.indexOf(t) === -1) cls.push(t);
+            });
+            p.cssClass = cls.join(' ');
+            return;
+        }
+        if (name === 'id') {
+            if (node.type === 'root') { _sdCodeSetRootAttr(node, 'id', now); return; }
+            var oldId = p.id || '';
+            p.id = now || '';
+            _sdRetargetLabels(oldId, p.id);
+            return;
+        }
+        if (name === 'style') {
+            if (node.type === 'root') { _sdCodeSetRootAttr(node, 'style', now); return; }
+            _sdApplyInlineStyle(node, now || '');
+            return;
+        }
+        var key = _sdCodeAttrProp(node, name);
+        if (key) { p[key] = now || ''; return; }
+        if (p.tooltipEnabled && name === 'title') { p.tooltipTitle = now || ''; return; }
+        if (p.tooltipEnabled && name === 'data-bs-placement') { p.tooltipPlacement = now || 'top'; return; }
+        if (!Array.isArray(p._attrs)) p._attrs = [];
+        var idx = -1;
+        for (var i = 0; i < p._attrs.length; i++) {
+            if (p._attrs[i] && String(p._attrs[i].name || '').toLowerCase() === name) { idx = i; break; }
+        }
+        if (now === undefined) { if (idx !== -1) p._attrs.splice(idx, 1); }
+        else if (idx === -1) p._attrs.push({ name: name, value: now });
+        else p._attrs[idx].value = now;
+    }
+
+    // The body tag's id and style live where the Attributes panel keeps the
+    // root node's: the dedicated field and the attribute list respectively.
+    function _sdCodeSetRootAttr(node, name, now) {
+        var p = node.props;
+        if (name === 'id') { p.id = now || ''; return; }
+        if (!Array.isArray(p._attrs)) p._attrs = [];
+        // The style printed is the font and inline style props plus
+        // _attrs.style; what is typed replaces the lot as _attrs.style.
+        p.fontFamily = '';
+        p.inlineStyle = '';
+        var idx = -1;
+        for (var i = 0; i < p._attrs.length; i++) if (p._attrs[i] && String(p._attrs[i].name || '').toLowerCase() === 'style') { idx = i; break; }
+        if (!now) { if (idx !== -1) p._attrs.splice(idx, 1); }
+        else if (idx === -1) p._attrs.push({ name: 'style', value: now });
+        else p._attrs[idx].value = now;
+    }
+
+    // The prop an attribute of this node is printed from, when it has one.
+    function _sdCodeAttrProp(node, name) {
+        var p = node.props, t = node.type, ct = p.contentType, cpt = p.componentType;
+        if (t === 'content' && ct === 'image' && /^(src|alt|width|height)$/.test(name)) return name;
+        var linkLike = (t === 'content' && ct === 'link') || (t === 'semantic' && String(p.tag || '').toLowerCase() === 'a')
+            || (t === 'component' && cpt === 'btn' && (p.btnElement || 'a') === 'a');
+        if (linkLike && /^(href|target|rel)$/.test(name)) return name;
+        if (t === 'component' && cpt === 'btn' && p.btnElement === 'input') { if (name === 'type') return 'btnType'; if (name === 'value') return 'text'; }
+        if (t === 'component' && cpt === 'btn' && p.btnElement === 'button' && name === 'type') return 'btnType';
+        return null;
+    }
+
+    // Where a plain element's single text sits against its children: before
+    // them all ('start'), after them all ('end'), or nowhere clean (null).
+    function _sdCodeTextSlot(node, items) {
+        var firstEl = -1, lastEl = -1, firstTx = -1, lastTx = -1;
+        items.forEach(function (it, i) {
+            if (it.kind === 'element') { if (firstEl === -1) firstEl = i; lastEl = i; }
+            else if (it.raw.trim() !== '') { if (firstTx === -1) firstTx = i; lastTx = i; }
+        });
+        if (firstTx === -1) return 'none';
+        if (firstEl === -1) return 'end';
+        if (lastTx < firstEl) return 'start';
+        if (firstTx > lastEl) return 'end';
+        return null;
+    }
+
+    // The node's own text, by the kind of node.
+    function _sdCodeApplyText(node, item, entry, report) {
+        var ed = _sdCode.ed;
+        var kind = entry.kind || _sdCodeTextKind(node);
+        if (kind === 'none') return;
+        if (kind === 'outer') { node.props.html = ed.sliceDoc(item.from, item.to); return; }
+        if (kind === 'inner') {
+            // Everything between the tags is the text, except the children
+            // that are nodes of their own (an icon inside a link); those
+            // stay children, in the order they are in, and one removed
+            // from the text goes.
+            var inner = '';
+            var pos = item.innerFrom;
+            var kept = [];
+            (item.items || []).forEach(function (it) {
+                var owner = (it.kind === 'element') ? _sdCodeOwnerOf(it) : null;
+                if (owner && owner.node) {
+                    inner += ed.sliceDoc(pos, it.from);
+                    pos = it.to;
+                    _sdCodeReconcileNode(owner.node, it, owner, report);
+                    kept.push(owner.node);
+                }
+            });
+            inner += ed.sliceDoc(pos, item.innerTo);
+            node.props.text = inner.trim();
+            if (_sdCodeLockOf(node).level === '' && !entry.atomic) node.children = kept;
+            return;
+        }
+        // plain: a semantic element's text node, entities decoded. Beside
+        // children it keeps its one slot; mixed with them it is split into
+        // spans by _sdCodeReconcileChildren().
+        var items = item.items || [];
+        var slot = _sdCodeTextSlot(node, items);
+        if (slot === null) return;   // handled as spans
+        var runs = items.filter(function (it) { return it.kind === 'text' && it.raw.trim() !== ''; });
+        var ws = ['pre', 'textarea', 'code'].indexOf(String(node.props.tag || '').toLowerCase()) !== -1;
+        var joined = runs.map(function (r) { return r.raw; }).join('');
+        node.props.text = ws ? _sdCodeDecode(joined) : _sdCodeDecode(joined.replace(/\s+/g, ' ').trim());
+        var tag = String(node.props.tag || '').toLowerCase();
+        if ((tag === 'button' || tag === 'a') && slot !== 'none') node.props.textPosition = slot;
+    }
+
+    // ========================= CODE VIEW: CLASS COMPLETION =========================
+    // Inside the value of a class attribute the editor offers the Bootstrap
+    // utilities the Attributes panel knows (PG_CLASS_SUGGESTIONS) and every
+    // class the document already uses, the latter read once per document
+    // version.
+    var _sdCodeDocClassesCache = { doc: null, list: [] };
+    function _sdCodeDocClasses(state) {
+        if (_sdCodeDocClassesCache.doc === state.doc) return _sdCodeDocClassesCache.list;
+        var seen = {}, list = [];
+        var text = state.doc.toString();
+        var re = /\sclass\s*=\s*"([^"]*)"/g, m;
+        while ((m = re.exec(text)) !== null) {
+            m[1].split(/\s+/).forEach(function (c) { if (c && !seen[c]) { seen[c] = true; list.push(c); } });
+        }
+        _sdCodeDocClassesCache = { doc: state.doc, list: list };
+        return list;
+    }
+
+    function _sdCodeClassCompletion(context, syntax) {
+        var node = syntax.node;
+        if (node.name !== 'AttributeValue' && node.name !== 'UnquotedAttributeValue') return null;
+        var attr = node.parent;
+        var nameNode = attr ? attr.getChild('AttributeName') : null;
+        if (!nameNode || context.state.sliceDoc(nameNode.from, nameNode.to).toLowerCase() !== 'class') return null;
+        var word = context.matchBefore(/[A-Za-z0-9_-]*/);
+        if (!word || (word.from === word.to && !context.explicit)) return null;
+        var typed = context.state.sliceDoc(word.from, word.to);
+        var seen = {}, options = [];
+        var push = function (label, type) {
+            // The word being typed is in the document already; offering it
+            // back would be the first match and swallow the Enter.
+            if (seen[label] || label === typed) return;
+            seen[label] = true;
+            options.push({ label: label, type: type });
+        };
+        _sdCodeDocClasses(context.state).forEach(function (c) { push(c, 'class'); });
+        (window.PG_CLASS_SUGGESTIONS || []).forEach(function (c) { push(c, 'keyword'); });
+        return { from: word.from, options: options, validFor: /^[A-Za-z0-9_-]*$/ };
+    }
+
+    // ========================= CODE VIEW: FILE TABS =========================
+    // The design's CSS and JS files open beside the page in the same editor,
+    // one tab each. The assets panel hands over a spec: how to load the
+    // text, how to save it, and the address field an external link keeps.
+    // The page tab is the code view itself; a file tab is its own editor on
+    // its own pane. Ctrl+S in a file tab saves that file; elsewhere it saves
+    // the design as always.
+    function _sdCodeTabFind(key) {
+        for (var i = 0; i < _sdCode.tabs.length; i++) if (_sdCode.tabs[i].key === key) return _sdCode.tabs[i];
+        return null;
+    }
+    function _sdCodeActiveTab() { return _sdCodeTabFind(_sdCode.active) || _sdCode.tabs[0]; }
+
+    // Opens (or shows) a file tab. The code view switches on for it; a
+    // request made before the bundle arrived waits in _sdCode.queued.
+    function _sdCodeTabOpen(spec) {
+        if (!_sdCode.host) return;
+        if (!_sdCode.on) _sdCodeToggle(true);
+        if (!_sdCode.ed) { _sdCode.queued = (_sdCode.queued || []).concat([spec]); return; }
+        var tab = _sdCodeTabFind(spec.key);
+        if (tab) {
+            if (spec.title) tab.title = spec.title;
+            tab.spec = spec;
+            _sdCodeTabActivate(spec.key);
+            return;
+        }
+        var pane = document.createElement('div');
+        pane.className = 'sd-code-pane pg-code-editor';
+        pane.setAttribute('data-key', spec.key);
+        document.getElementById('sd-code-panes').appendChild(pane);
+        tab = { key: spec.key, title: spec.title || '', icon: spec.icon || 'bi-file-earmark-code', pane: pane, ed: null, dirty: false, spec: spec, loaded: false };
+        _sdCode.tabs.push(tab);
+        tab.ed = PgCodeEditor.create(pane, {
+            language: spec.language || 'css',
+            value: '',
+            readOnly: true,
+            phrases: _sdCodePhrases(),
+            labels: { syntaxError: _sdT('Syntax error') },
+            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }],
+            onChange: function () {
+                if (!tab.loaded || tab.dirty) return;
+                tab.dirty = true;
+                _sdCodeTabsRender();
+            }
+        });
+        _sdCodeTabActivate(spec.key);
+        spec.load(function (res) {
+            if (!_sdCodeTabFind(spec.key)) return;   // closed meanwhile
+            if (res && res.ok) {
+                tab.ed.setValue(res.content || '');
+                tab.loaded = true;
+                tab.dirty = false;
+                tab.ed.setReadOnly(!!spec.readOnly);
+            } else {
+                tab.ed.setValue('/* ' + ((res && res.message) || _sdT('The file could not be read.')) + ' */');
+            }
+            _sdCodeTabsRender();
+            if (_sdCode.active === spec.key && !spec.readOnly) tab.ed.focus();
+        });
+    }
+    function _sdCodeTabsFlush() {
+        var q = _sdCode.queued || [];
+        _sdCode.queued = [];
+        q.forEach(_sdCodeTabOpen);
+    }
+
+    function _sdCodeTabActivate(key) {
+        var tab = _sdCodeTabFind(key);
+        if (!tab) return;
+        _sdCode.active = key;
+        _sdCode.tabs.forEach(function (t) { t.pane.classList.toggle('sd-code-pane-active', t === tab); });
+        _sdCodeTabsRender();
+        if (key === 'page') _sdCodeRefresh();
+        if (tab.ed && (key !== 'page' || _sdCodeMayEdit())) tab.ed.focus();
+    }
+
+    function _sdCodeTabClose(key) {
+        var tab = _sdCodeTabFind(key);
+        if (!tab || key === 'page') return;
+        if (tab.dirty && !window.confirm(_sdT('Close the file without saving the changes?'))) return;
+        if (tab.ed) tab.ed.destroy();
+        if (tab.pane.parentNode) tab.pane.parentNode.removeChild(tab.pane);
+        _sdCode.tabs = _sdCode.tabs.filter(function (t) { return t !== tab; });
+        if (_sdCode.active === key) _sdCodeTabActivate('page');
+        else _sdCodeTabsRender();
+    }
+
+    function _sdCodeTabSave(key) {
+        var tab = _sdCodeTabFind(key);
+        if (!tab || !tab.spec || !tab.ed || !tab.loaded) return;
+        if (tab.spec.readOnly) return;
+        var btn = document.getElementById('sd-code-file-save');
+        if (btn) btn.disabled = true;
+        tab.spec.save(tab.ed.getValue(), function (res) {
+            if (btn) btn.disabled = false;
+            if (res && res.ok) {
+                tab.dirty = false;
+                _sdCodeTabsRender();
+                sdToast(esc(_sdT('The file was saved')) + ' <span class="bi bi-check2"></span>', 'success', 2200);
+            } else {
+                sdToast('<strong>' + esc(_sdT('The file could not be saved:')) + '</strong><br>' + esc((res && res.message) || ''), 'error', 5000);
+            }
+        });
+    }
+
+    // Ctrl+S with the keyboard in a file tab saves that file, not the design.
+    function _sdCodeSaveShortcut() {
+        var tab = _sdCodeActiveTab();
+        if (!tab || tab.key === 'page' || !tab.ed || !tab.ed.hasFocus()) return false;
+        _sdCodeTabSave(tab.key);
+        return true;
+    }
+
+    // The strip: one button per tab, the active file's address field and
+    // save button on the right.
+    function _sdCodeTabsRender() {
+        var strip = document.getElementById('sd-code-tabs');
+        if (!strip) return;
+        var active = _sdCodeActiveTab();
+        var html = '';
+        _sdCode.tabs.forEach(function (t) {
+            var title = t.key === 'page' ? _sdT('Page') : t.title;
+            html += '<button type="button" class="sd-code-tab' + (t === active ? ' sd-code-tab-active' : '') + '" data-key="' + esc(t.key) + '" title="' + esc(title) + '">' +
+                '<span class="bi ' + esc(t.icon) + '"></span><span class="sd-code-tab-title">' + esc(title) + '</span>' +
+                (t.dirty ? '<span class="sd-code-tab-dirty" title="' + esc(_sdT('Unsaved changes')) + '">&#9679;</span>' : '') +
+                (t.key !== 'page' ? '<span class="sd-code-tab-close" data-close="' + esc(t.key) + '" title="' + esc(_sdT('Close')) + '">&times;</span>' : '') +
+                '</button>';
+        });
+        html += '<span class="sd-code-tabs-spacer"></span>';
+        if (active && active.key !== 'page' && active.spec) {
+            if (active.spec.url) {
+                html += '<input type="text" class="sd-code-url" id="sd-code-url" value="' + esc(active.spec.url.value || '') + '" placeholder="https://" title="' + esc(_sdT('External URL:')) + '">';
+            }
+            if (!active.spec.readOnly) {
+                html += '<button type="button" class="sd-styles-tool sd-styles-create" id="sd-code-file-save" title="' + esc(_sdT('Save the file (Ctrl+S)')) + '"><span class="bi bi-check-lg me-1"></span>' + esc(_sdT('Save')) + '</button>';
+            }
+        }
+        strip.innerHTML = html;
+        strip.querySelectorAll('.sd-code-tab').forEach(function (b) {
+            b.addEventListener('click', function (e) {
+                var close = e.target.closest('.sd-code-tab-close');
+                if (close) { e.stopPropagation(); _sdCodeTabClose(close.getAttribute('data-close')); return; }
+                _sdCodeTabActivate(this.getAttribute('data-key'));
+            });
+            b.addEventListener('auxclick', function (e) {
+                if (e.button === 1 && this.getAttribute('data-key') !== 'page') { e.preventDefault(); _sdCodeTabClose(this.getAttribute('data-key')); }
+            });
+        });
+        var save = strip.querySelector('#sd-code-file-save');
+        if (save) save.addEventListener('click', function () { _sdCodeTabSave(active.key); });
+        var url = strip.querySelector('#sd-code-url');
+        if (url && active.spec && active.spec.url) {
+            url.addEventListener('change', function () { active.spec.url.onSave(this.value.trim()); });
+            url.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } });
         }
     }
 
@@ -34893,7 +36111,7 @@ const StyleDesigner = (function () {
             } else if (key === 'width' || key === 'height') {
                 h += row(capFirst(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('e.g. 100% or 50px')) + '">');
             } else if (key === 'html' || key === 'php') {
-                // No visible input — hidden textarea holds the value; "Edit" opens CodeMirror modal.
+                // No visible input — hidden textarea holds the value; "Edit" opens the code editor dialog.
                 var _lineCount = String(val).split('\n').length;
                 var _hint = String(val).length
                     ? ' <span class="sd-edit-hint">· ' + esc(_sdT('{var} lines', _lineCount)) + '</span>'
@@ -37606,7 +38824,7 @@ const StyleDesigner = (function () {
             });
         });
 
-        // ── Code Editor Triggers (generic CodeMirror modal) ─────────────────────
+        // ── Code Editor Triggers (the code editor dialog, codemirror_modal.js) ──
         // Any `[data-sd-code-edit=mode]` button in the prop panel opens the shared modal.
         // The companion textarea (first `[data-prop]` inside the same input-group) is the
         // value store — we round-trip through it so the existing input-event wiring above
@@ -38502,8 +39720,6 @@ const StyleDesigner = (function () {
     // Data flows through hidden form fields: #sd-custom-css-field, #sd-custom-js-field,
     // #sd-custom-fonts-field — submitted with the rest of the style form on Save.
 
-    var _cmCss  = null;   // CodeMirror instance for CSS tab
-    var _cmJs   = null;   // CodeMirror instance for JS tab
     var _assetsH = 220;   // panel height in px (persisted to localStorage)
     var _ASSETS_H_KEY = 'sd_assets_h';
 
@@ -38916,32 +40132,6 @@ const StyleDesigner = (function () {
             '</div>';
         rightPanel.appendChild(wrap);
 
-        // ── CodeMirror modal ──────────────────────────────────────────────────
-        var modalEl = document.createElement('div');
-        modalEl.id = 'sd-as-modal';
-        modalEl.className = 'sd-as-modal';
-        modalEl.style.display = 'none';
-        modalEl.innerHTML =
-            '<div class="sd-as-modal-dialog">' +
-                '<div class="sd-as-modal-hdr">' +
-                    '<span class="sd-as-modal-title" id="sd-as-modal-title">—</span>' +
-                    '<div class="sd-as-modal-actions">' +
-                        '<button class="sd-as-modal-save" id="sd-as-modal-save" type="button"><span class="bi bi-check-lg"></span> ' + esc(_sdT('Save')) + '</button>' +
-                        '<button class="sd-as-modal-close" id="sd-as-modal-close" type="button"><span class="bi bi-x-lg"></span></button>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="sd-as-modal-body" id="sd-as-modal-body">' +
-                    '<div id="sd-as-modal-url-wrap" class="sd-as-modal-url-wrap" style="display:none">' +
-                        '<label class="sd-as-modal-url-label">' + esc(_sdT('External URL:')) + '</label>' +
-                        '<input type="text" id="sd-as-modal-url" class="sd-as-modal-url" placeholder="https://">' +
-                    '</div>' +
-                    '<div id="sd-as-modal-cm-wrap" style="flex:1;min-height:0;display:flex;flex-direction:column;">' +
-                        '<textarea id="sd-as-modal-cm-ta"></textarea>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(modalEl);
-
         // ── Google Fonts Modal ─────────────────────────────────────────────────
         var gfModalEl = document.createElement('div');
         gfModalEl.id = 'sd-gf-modal';
@@ -38981,161 +40171,86 @@ const StyleDesigner = (function () {
         document.getElementById('sd-gf-modal-close').addEventListener('click', closeGfModal);
         gfModalEl.addEventListener('click', function(e) { if (e.target === gfModalEl) closeGfModal(); });
 
-        var _modalCm = null, _modalType = null, _modalFileId = null;
-
-        function cmModeFor(t) { if (t === 'css' || t === 'external-css') return 'css'; if (t === 'json') return 'application/json'; return 'javascript'; }
-
-        function _modalIsExt(file)         { return file.type === 'external-css' || file.type === 'external-js'; }
+        function _fileIsExt(file)        { return file.type === 'external-css' || file.type === 'external-js'; }
         // Managed = backed by a real `files` row + on-disk file. Includes JSON
         // entries created via designer_file/create even though `type='json'`
         // (not external-*) — the _file flag is the single source of truth.
-        function _modalIsManagedFile(file) { return !!file._file; }
-        function _modalIsUnmanagedExt(file){ return _modalIsExt(file) && !file._file; }
-
-        // Mounts CodeMirror in the modal if not already mounted, swaps mode,
-        // and sets the value. Centralised so every modal path uses the same
-        // editor lifecycle. The `readOnly` switch is honoured on (re)mount and
-        // on subsequent value swaps so external-link entries can show their
-        // body without letting the user type into it.
-        function _modalMountCm(mode, value, readOnly) {
-            if (!_modalCm && typeof CodeMirror !== 'undefined') {
-                _modalCm = CodeMirror.fromTextArea(document.getElementById('sd-as-modal-cm-ta'), {
-                    theme: 'pastel-on-dark',
-                    mode: mode,
-                    lineNumbers: true,
-                    lineWrapping: false,
-                    indentUnit: 4,
-                    tabSize: 4,
-                    styleActiveLine: true,
-                    autoCloseBrackets: true,
-                    autoRefresh: true,
-                    lint: !readOnly,
-                    gutters: ['CodeMirror-lint-markers'],
-                    readOnly: !!readOnly
-                });
-            } else if (_modalCm) {
-                _modalCm.setOption('mode', mode);
-                _modalCm.setOption('readOnly', !!readOnly);
-                _modalCm.setOption('lint', false);
-                if (!readOnly) setTimeout(function() { _modalCm.setOption('lint', true); }, 0);
-            }
-            if (_modalCm) { _modalCm.setValue(value || ''); _modalCm.refresh(); if (!readOnly) _modalCm.focus(); }
-            else { document.getElementById('sd-as-modal-cm-ta').value = value || ''; }
-        }
-
-        // Modes: 'css' / 'javascript' / 'application/json' — derived from the
-        // entry's type (incl. external-*).
-        function _modalCmMode(file) {
+        function _fileIsManaged(file)    { return !!file._file; }
+        function _fileIsUnmanagedExt(file) { return _fileIsExt(file) && !file._file; }
+        function _fileLanguage(file) {
             if (file.type === 'css' || file.type === 'external-css') return 'css';
-            if (file.type === 'json') return 'application/json';
+            if (file.type === 'json') return 'json';
             return 'javascript';
         }
 
+        // Opens a file in the code view, as a tab beside the page. What the
+        // tab loads and saves depends on the entry: a managed file goes
+        // through the API (designer_file/read and /save) and the canvas
+        // fetches the saved body again; an external link shows its body
+        // read-only and keeps its address editable; a legacy inline entry
+        // edits the text stored in the per-page JSON.
         function openModal(type, fileId) {
             var files = type === 'css' ? cssFiles : jsFiles;
-            var file = null; for (var i=0; i<files.length; i++) { if (files[i].id === fileId) { file = files[i]; break; } }
+            var file = null; for (var i = 0; i < files.length; i++) { if (files[i].id === fileId) { file = files[i]; break; } }
             if (!file) return;
-            _modalType = type; _modalFileId = fileId;
-            document.getElementById('sd-as-modal-title').textContent = file.name;
-            var urlWrap = document.getElementById('sd-as-modal-url-wrap');
-            var cmWrap  = document.getElementById('sd-as-modal-cm-wrap');
-            // Show modal first so browser lays out before CodeMirror measures
-            modalEl.style.display = 'flex';
-            var mode = _modalCmMode(file);
-
-            if (_modalIsManagedFile(file)) {
-                // Managed file: load body via the API into an editable CodeMirror.
-                // Closing without Save leaves the on-disk file untouched.
-                urlWrap.style.display = 'none'; cmWrap.style.display = 'flex';
-                _modalMountCm(mode, _sdT('/* Loading… */'), false);
-                _readDesignerFile(file.name, function (res) {
-                    if (_modalFileId !== fileId) return;  // user moved on
-                    if (res.ok) _modalMountCm(mode, res.content, false);
-                    else        sdToast('<strong>' + esc(_sdT('The file could not be read:')) + '</strong><br>' + res.message, 'error', 5000);
-                });
-                return;
-            }
-
-            if (_modalIsUnmanagedExt(file)) {
-                // External link (CDN / arbitrary URL): show URL header AND a
-                // read-only CodeMirror with the fetched body. Some CDNs (incl.
-                // jsdelivr) send permissive CORS so this works for Bootstrap;
-                // when CORS blocks the fetch we fall back to a placeholder.
-                urlWrap.style.display = ''; cmWrap.style.display = 'flex';
-                var url = file.content || '';
-                document.getElementById('sd-as-modal-url').value = url;
-                _modalMountCm(mode, _sdT('/* Loading… */'), true);
-                if (url) {
+            var fieldId = (type === 'css') ? 'sd-custom-css-field' : 'sd-custom-js-field';
+            var spec = {
+                key: 'file:' + type + ':' + fileId,
+                title: file.name,
+                icon: FILE_ICONS[file.type] || (type === 'css' ? 'bi-filetype-css' : 'bi-filetype-js'),
+                language: _fileLanguage(file),
+                readOnly: false,
+                url: null
+            };
+            if (_fileIsManaged(file)) {
+                spec.load = function (cb) { _readDesignerFile(file.name, cb); };
+                spec.save = function (content, cb) {
+                    _saveDesignerFile(file.name, content, function (res) {
+                        if (res.ok) {
+                            // JSON entries are inlined on the frontend via
+                            // <script type="application/json">{content}</script>,
+                            // so the per-page JSON's content field has to mirror
+                            // the on-disk body for the save to be visible without
+                            // re-running the API on every render. CSS/JS managed
+                            // entries render via <link>/<script src> so their
+                            // entry.content stays as the URL pointer.
+                            if (file.type === 'json') { file.content = content; saveFiles(fieldId, files); }
+                            // Refresh the canvas link/script tags: a new stamp on
+                            // this file's URL fetches the saved body.
+                            _sdBustAsset(file.content);
+                            applyAssetsToIframe();
+                        }
+                        cb(res);
+                    });
+                };
+            } else if (_fileIsUnmanagedExt(file)) {
+                // External link (CDN / arbitrary URL): the body is shown
+                // read-only when the browser may fetch it (jsdelivr sends
+                // permissive CORS); the address is what can change.
+                spec.readOnly = true;
+                spec.url = {
+                    value: file.content || '',
+                    onSave: function (url) { file.content = url; saveFiles(fieldId, files); spec.url.value = url; spec.title = file.name; }
+                };
+                spec.load = function (cb) {
+                    var url = file.content || '';
+                    if (!url) { cb({ ok: true, content: '' }); return; }
                     fetch(url, { mode: 'cors', credentials: 'omit' })
                         .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-                        .then(function (txt) { if (_modalFileId === fileId) _modalMountCm(mode, txt, true); })
+                        .then(function (txt) { cb({ ok: true, content: txt }); })
                         .catch(function () {
-                            if (_modalFileId === fileId) {
-                                _modalMountCm(mode,
-                                    '/* ' + _sdT('The content could not be read by the browser (CORS or an access error).') + '\n' +
-                                    '   URL: ' + url + ' */', true);
-                            }
+                            cb({ ok: true, content: '/* ' + _sdT('The content could not be read by the browser (CORS or an access error).') + '\n   URL: ' + url + ' */' });
                         });
-                } else {
-                    _modalMountCm(mode, '', true);
-                }
-                return;
-            }
-
-            // Legacy inline entry (type='css'|'js'|'json' without _file): edit
-            // the content stored in the per-page JSON.
-            urlWrap.style.display = 'none'; cmWrap.style.display = 'flex';
-            setTimeout(function() { _modalMountCm(mode, file.content || '', false); }, 30);
-        }
-        function closeModal() { modalEl.style.display = 'none'; _modalType = null; _modalFileId = null; }
-        document.getElementById('sd-as-modal-close').addEventListener('click', closeModal);
-        document.getElementById('sd-as-modal-save').addEventListener('click', function() {
-            if (!_modalType || !_modalFileId) return;
-            var files = _modalType === 'css' ? cssFiles : jsFiles;
-            var file = null; for (var i=0; i<files.length; i++) { if (files[i].id === _modalFileId) { file = files[i]; break; } }
-            if (!file) { closeModal(); return; }
-            var fieldId = (_modalType === 'css') ? 'sd-custom-css-field' : 'sd-custom-js-field';
-
-            if (_modalIsManagedFile(file)) {
-                var newContent = _modalCm ? _modalCm.getValue() : document.getElementById('sd-as-modal-cm-ta').value;
-                _saveDesignerFile(file.name, newContent, function (res) {
-                    if (res.ok) {
-                        sdToast(esc(_sdT('The file was saved')) + ' <span class="bi bi-check2"></span>', 'success', 2200);
-                        // JSON entries are inlined on the frontend via
-                        // <script type="application/json">{content}</script>,
-                        // so the per-page JSON's content field has to mirror
-                        // the on-disk body for the save to be visible without
-                        // re-running the API on every render. CSS/JS managed
-                        // entries render via <link>/<script src> so their
-                        // entry.content stays as the URL pointer.
-                        if (file.type === 'json') {
-                            file.content = newContent;
-                            saveFiles(fieldId, files);
-                        }
-                        // Refresh the canvas link/script tags: a new stamp on
-                        // this file's URL fetches the saved body.
-                        _sdBustAsset(file.content);
-                        applyAssetsToIframe();
-                    } else {
-                        sdToast('<strong>' + esc(_sdT('The file could not be saved:')) + '</strong><br>' + res.message, 'error', 5000);
-                    }
-                });
-                closeModal();
-                return;
-            }
-
-            if (_modalIsUnmanagedExt(file)) {
-                // External link entries are read-only — Save just persists any
-                // URL edit the user made in the URL field (the CodeMirror body
-                // is intentionally not written anywhere).
-                file.content = document.getElementById('sd-as-modal-url').value;
+                };
+                spec.save = function (content, cb) { cb({ ok: true }); };
             } else {
-                // Legacy inline path: persist editor value into the JSON entry.
-                file.content = _modalCm ? _modalCm.getValue() : document.getElementById('sd-as-modal-cm-ta').value;
+                // Legacy inline entry (type='css'|'js'|'json' without _file): the
+                // text lives in the per-page JSON.
+                spec.load = function (cb) { cb({ ok: true, content: file.content || '' }); };
+                spec.save = function (content, cb) { file.content = content; saveFiles(fieldId, files); cb({ ok: true }); };
             }
-            saveFiles(fieldId, files);
-            closeModal();
-        });
+            _sdCodeTabOpen(spec);
+        }
 
         // ── Context menu ──────────────────────────────────────────────────────
         var ctxEl = document.createElement('div');
@@ -39532,7 +40647,7 @@ const StyleDesigner = (function () {
                 openFilePicker(type, function(picked) {
                     // Picked files are already in `files` so they are "managed"
                     // — set _file=true so the modal opens them in the
-                    // CodeMirror edit-via-API path instead of the URL input.
+                    // the edit-via-API path of the code view instead of the URL input.
                     if (type === 'css') {
                         cssFiles.push({ id: mkId(), name: picked.name, type: 'external-css', content: picked.url, enabled: true, _file: true });
                         saveFiles('sd-custom-css-field', cssFiles);
@@ -39792,7 +40907,7 @@ const StyleDesigner = (function () {
         }
 
         document.addEventListener('click', function(e) { if (!e.target.closest || !e.target.closest('#sd-as-ctx')) ctxEl.style.display = 'none'; });
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { ctxEl.style.display = 'none'; closeModal(); } });
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') ctxEl.style.display = 'none'; });
 
         // ── Render file list ──────────────────────────────────────────────────
         var FILE_ICONS = { 'css': 'bi-filetype-css', 'external-css': 'bi-link-45deg', 'js': 'bi-filetype-js', 'json': 'bi-filetype-json', 'external-js': 'bi-link-45deg' };
@@ -46566,159 +47681,221 @@ const StyleDesigner = (function () {
     }
 
     // ========================= HTML OUTPUT =========================
+    // The markup of one node and its subtree, as the page gets it: the
+    // compiler behind generateHTML(), the preview and the code view.
+    //
+    // `base` is the offset the returned string lands at in the document being
+    // built. With a `sink` every node written is recorded in `sink.ranges` as
+    // { node, from, to, sid } in document order, parent before children (sid:
+    // the shared component whose tree holds the node, 0 for the page's own),
+    // which is how the code view maps text back to nodes. A component's
+    // children are written inside its toHTML() output and located there
+    // afterwards; a component that drops or rewrites them loses their
+    // records and counts as one block. With `sink.full` the trees of system
+    // widgets are written whole, their loop areas as comment markers, so the
+    // code view shows what the canvas shows. Without a sink nothing here
+    // differs from before: generateHTML() passes none.
+    function _sdEmitNode(n, indent, base, sink) {
+        var pad = '    '.repeat(indent);
+        var h = '';
+        var rec = null;
+        if (sink) {
+            rec = { node: n, from: base, to: base, sid: sink.scope || 0 };
+            sink.ranges.push(rec);
+        }
+        var kidsMark = sink ? sink.ranges.length : 0;
+        switch (n.type) {
+            case 'container': {
+                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '') + (_pEC ? ' ' + _pEC : '');
+                var _ccStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
+                h += pad + '<div class="' + cc + '"' + _ccStyle + '>\n';
+                if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                h += pad + '</div>\n';
+                break; }
+            case 'semantic': {
+                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                var stg = n.props.tag || 'section';
+                var _semCls = (n.props.cssClass || '') + (_pEC ? ' ' + _pEC : '');
+                var scls = _semCls ? ' class="' + esc(_semCls.trim()) + '"' : '';
+                var sid2 = n.props.id ? ' id="' + esc(n.props.id) + '"' : '';
+                var sStyleParts = [];
+                if (n.props.inlineStyle) sStyleParts.push(n.props.inlineStyle.replace(/;?\s*$/, ''));
+                if (n.props.fontFamily) sStyleParts.push('font-family:' + n.props.fontFamily);
+                if (_pES) sStyleParts.push(_pES);
+                var sfont = sStyleParts.length ? ' style="' + esc(sStyleParts.join(';')) + '"' : '';
+                var shref = (stg === 'a' && n.props.href) ? ' href="' + esc(n.props.href) + '"' : '';
+                var starget = (stg === 'a' && n.props.target) ? ' target="' + esc(n.props.target) + '"' : '';
+                var srel = (stg === 'a' && n.props.rel) ? ' rel="' + esc(n.props.rel) + '"' : '';
+                var sattrs = '';
+                if (n.props._attrs) n.props._attrs.forEach(function(a) {
+                    // Skip `id` — always sourced from props.id to avoid duplicate attributes
+                    if (a.name && a.name.trim() && a.name !== 'id') sattrs += ' ' + a.name.trim() + '="' + esc(a.value || '') + '"';
+                });
+                if (n.props.tooltipEnabled && n.props.tooltipTitle) {
+                    sattrs += ' data-bs-toggle="tooltip" data-bs-placement="' + esc(n.props.tooltipPlacement || 'top') + '" title="' + esc(n.props.tooltipTitle) + '"';
+                }
+                var _semVoidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
+                var _semIsVoid = _semVoidTags.indexOf(stg.toLowerCase()) !== -1;
+                // Whitespace is CONTENT in these two. The pretty-printer's
+                // newline and indent would show up as indentation in a code
+                // sample and as leading spaces in a textarea's value, so
+                // they are written on one line with nothing added inside.
+                // <code> is in the list because it is almost always
+                // inside a <pre>, where the indent it would otherwise
+                // gain is indentation the visitor reads.
+                var _semWsTags = ['pre', 'textarea', 'code'];
+                var _semIsWs = _semWsTags.indexOf(stg.toLowerCase()) !== -1;
+                h += pad + '<' + stg + sid2 + scls + sfont + shref + starget + srel + sattrs + '>';
+                if (_semIsVoid) {
+                    // Void elements: no content, no closing tag
+                    h += '\n';
+                } else if (_semIsWs) {
+                    var _wsInner = '';
+                    if (n.children) n.children.forEach(function (c) {
+                        var _wsMark = sink ? sink.ranges.length : 0;
+                        var _wsPart = _sdEmitNode(c, 0, base + h.length + _wsInner.length, sink);
+                        var _wsKept = _wsPart.replace(/\n+$/, '');
+                        // The newline the child ended with is not written: its record ends where the kept text ends.
+                        if (sink && sink.ranges[_wsMark] && sink.ranges[_wsMark].node === c) sink.ranges[_wsMark].to -= (_wsPart.length - _wsKept.length);
+                        _wsInner += _wsKept;
+                    });
+                    if (n.props.text) _wsInner += esc(n.props.text);
+                    h += _wsInner + '</' + stg + '>\n';
+                } else {
+                    h += '\n';
+                    // Button/a honor textPosition — matches canvas virtual-text placement.
+                    var _stgLc = stg.toLowerCase();
+                    var _isBtnL = (_stgLc === 'button' || _stgLc === 'a');
+                    var _tp2 = n.props.textPosition || 'end';
+                    if (_isBtnL && _tp2 === 'start' && n.props.text) h += pad + '    ' + esc(n.props.text) + '\n';
+                    if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                    if (n.props.text && (!_isBtnL || _tp2 !== 'start')) h += pad + '    ' + esc(n.props.text) + '\n';
+                    h += pad + '</' + stg + '>\n';
+                }
+                break; }
+            case 'row': {
+                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                var rc = 'row';
+                if (n.props.gutter) rc += ' g-' + n.props.gutter;
+                if (n.props.justify) rc += ' justify-content-' + n.props.justify;
+                if (n.props.align) rc += ' align-items-' + n.props.align;
+                if (n.props.cssClass) rc += ' ' + n.props.cssClass;
+                if (_pEC) rc += ' ' + _pEC;
+                var _rcStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
+                h += pad + '<div class="' + rc + '"' + _rcStyle + '>\n';
+                if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                h += pad + '</div>\n';
+                break; }
+            case 'col': {
+                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                var _colCls = buildColClasses(n.props) + (_pEC ? ' ' + _pEC : '');
+                var _colStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
+                h += pad + '<div class="' + _colCls + '"' + _colStyle + '>\n';
+                if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                h += pad + '</div>\n';
+                break; }
+            case 'region':
+                h += pad + _sdRegionTag(n.props) + '\n';
+                break;
+            case 'component': {
+                var comp = COMPONENTS[n.props.componentType];
+                if (comp && comp.toHTML) {
+                    var _pcChildren = '';
+                    if (n.children) n.children.forEach(function(c) { _pcChildren += _sdEmitNode(c, indent + 1, _pcChildren.length, sink); });
+                    h += comp.toHTML(n.props, pad, _pcChildren);
+                    if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pcChildren, base);
+                }
+                break; }
+            case 'content': {
+                var cnt = CONTENT[n.props.contentType];
+                if (cnt && cnt.toHTML) {
+                    var _pctChildren = '';
+                    if (n.children) n.children.forEach(function(c) { _pctChildren += _sdEmitNode(c, indent + 1, _pctChildren.length, sink); });
+                    var cHtml = cnt.toHTML(n.props, pad, _pctChildren);
+                    cHtml = addGlobalAttrs(cHtml, n);
+                    h += cHtml;
+                    if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pctChildren, base);
+                }
+                break; }
+            case 'shared_ref': {
+                // Expand shared component inline for HTML export / client-side preview.
+                var _prId = (n.props && n.props.sharedId) ? parseInt(n.props.sharedId, 10) : 0;
+                var _prCached = _prId > 0 ? _sharedCache[_prId] : null;
+                if (_prCached && _prCached.system_region_config && _sdPreviewWidgetMarkers) {
+                    // A system widget is drawn by the server; the Preview
+                    // puts its answer here (openPreview()).
+                    h += '<!--pg-sw-preview:' + _prId + '-->';
+                } else if (_prCached && _prCached.tree && !_sdSharedOpen[_prId]) {
+                    // Nested components expand in place; a loop of them
+                    // stops at the one already open.
+                    _sdSharedOpen[_prId] = true;
+                    var _prScope = sink ? sink.scope : 0;
+                    if (sink) sink.scope = _prId;
+                    try { h += _sdEmitNode(_prCached.tree, indent, base + h.length, sink); }
+                    finally { delete _sdSharedOpen[_prId]; if (sink) sink.scope = _prScope; }
+                }
+                break; }
+            // The code view's picture of a system widget: the page prints
+            // the server's render here, the canvas draws the tree. A root
+            // wrapper is its children; a loop area is a comment pair around
+            // the row template. Only asked for with sink.full.
+            case 'root':
+                if (sink && sink.full && n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent, base + h.length, sink); });
+                break;
+            case 'loop_area':
+            case 'recipient_loop_area':
+                if (sink && sink.full) {
+                    h += pad + '<!-- ' + (n.type === 'loop_area' ? 'loop' : 'recipients') + ' -->\n';
+                    if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
+                    h += pad + '<!-- /' + (n.type === 'loop_area' ? 'loop' : 'recipients') + ' -->\n';
+                }
+                break;
+        }
+        if (rec) rec.to = base + h.length;
+        return h;
+    }
+
+    // Children written into a component's output (see _sdEmitNode): their
+    // records were made relative to the children string, so they are moved
+    // to where that string sits in the finished markup, or dropped when the
+    // component did not keep it as one piece.
+    function _sdEmitPlaceKids(sink, kidsMark, html, kids, base) {
+        if (sink.ranges.length <= kidsMark) return;
+        var at = kids ? html.indexOf(kids) : -1;
+        if (at === -1) { sink.ranges.length = kidsMark; return; }
+        for (var i = kidsMark; i < sink.ranges.length; i++) {
+            sink.ranges[i].from += base + at;
+            sink.ranges[i].to   += base + at;
+        }
+    }
+
+    function _sdRegionTag(p) {
+        switch (p.regionType) {
+            case 'page': return '<pregion></pregion>';
+            case 'system': return p.regionName ? '<system>' + esc(p.regionName) + '</system>' : '<system></system>';
+            case 'common': case 'designer': return '<cregion>' + esc(p.regionName || '') + '</cregion>';
+            case 'dynamic': return '<dregion>' + esc(p.regionName || '') + '</dregion>';
+            case 'menu': return '<menu>' + esc(p.regionName || '') + '</menu><div style="clear:both"></div>';
+            case 'menu_sequence': return '<menu_sequence>' + esc(p.regionName || '') + '</menu_sequence>';
+            case 'login': return '<login>' + esc(p.regionName || '') + '</login>';
+            case 'ad': return '<ad>' + esc(p.regionName || '') + '</ad>';
+            case 'cart': return '<cart></cart>';
+            case 'tag_cloud': return '<tcloud>' + esc(p.regionName || '') + '</tcloud>';
+            case 'mobile_switch': return '<mobile_switch></mobile_switch>';
+            case 'pdf': return '<pdf></pdf>';
+            // comments_block uses an HTML comment marker rather than a
+            // tag — get_page_content.php scans for the literal string
+            // `<!--pg-comments-block-->` and swaps it for the rendered
+            // comments HTML. Keep this in sync with `regionTag()` in
+            // functions.php (line ~22122).
+            case 'comments_block': return '<!--pg-comments-block-->';
+            default: return '';
+        }
+    }
+
     function generateHTML(styleName, additionalBodyClasses) {
         if (!tree) return '';
-        function proc(n, indent) {
-            var pad = '    '.repeat(indent);
-            var h = '';
-            switch (n.type) {
-                case 'container': {
-                    var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                    var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '') + (_pEC ? ' ' + _pEC : '');
-                    var _ccStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                    h += pad + '<div class="' + cc + '"' + _ccStyle + '>\n';
-                    if (n.children) n.children.forEach(function (c) { h += proc(c, indent + 1); });
-                    h += pad + '</div>\n';
-                    break; }
-                case 'semantic': {
-                    var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                    var stg = n.props.tag || 'section';
-                    var _semCls = (n.props.cssClass || '') + (_pEC ? ' ' + _pEC : '');
-                    var scls = _semCls ? ' class="' + esc(_semCls.trim()) + '"' : '';
-                    var sid2 = n.props.id ? ' id="' + esc(n.props.id) + '"' : '';
-                    var sStyleParts = [];
-                    if (n.props.inlineStyle) sStyleParts.push(n.props.inlineStyle.replace(/;?\s*$/, ''));
-                    if (n.props.fontFamily) sStyleParts.push('font-family:' + n.props.fontFamily);
-                    if (_pES) sStyleParts.push(_pES);
-                    var sfont = sStyleParts.length ? ' style="' + esc(sStyleParts.join(';')) + '"' : '';
-                    var shref = (stg === 'a' && n.props.href) ? ' href="' + esc(n.props.href) + '"' : '';
-                    var starget = (stg === 'a' && n.props.target) ? ' target="' + esc(n.props.target) + '"' : '';
-                    var srel = (stg === 'a' && n.props.rel) ? ' rel="' + esc(n.props.rel) + '"' : '';
-                    var sattrs = '';
-                    if (n.props._attrs) n.props._attrs.forEach(function(a) {
-                        // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                        if (a.name && a.name.trim() && a.name !== 'id') sattrs += ' ' + a.name.trim() + '="' + esc(a.value || '') + '"';
-                    });
-                    if (n.props.tooltipEnabled && n.props.tooltipTitle) {
-                        sattrs += ' data-bs-toggle="tooltip" data-bs-placement="' + esc(n.props.tooltipPlacement || 'top') + '" title="' + esc(n.props.tooltipTitle) + '"';
-                    }
-                    var _semVoidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
-                    var _semIsVoid = _semVoidTags.indexOf(stg.toLowerCase()) !== -1;
-                    // Whitespace is CONTENT in these two. The pretty-printer's
-                    // newline and indent would show up as indentation in a code
-                    // sample and as leading spaces in a textarea's value, so
-                    // they are written on one line with nothing added inside.
-                    // <code> is in the list because it is almost always
-                    // inside a <pre>, where the indent it would otherwise
-                    // gain is indentation the visitor reads.
-                    var _semWsTags = ['pre', 'textarea', 'code'];
-                    var _semIsWs = _semWsTags.indexOf(stg.toLowerCase()) !== -1;
-                    h += pad + '<' + stg + sid2 + scls + sfont + shref + starget + srel + sattrs + '>';
-                    if (_semIsVoid) {
-                        // Void elements: no content, no closing tag
-                        h += '\n';
-                    } else if (_semIsWs) {
-                        var _wsInner = '';
-                        if (n.children) n.children.forEach(function (c) { _wsInner += proc(c, 0).replace(/\n+$/, ''); });
-                        if (n.props.text) _wsInner += esc(n.props.text);
-                        h += _wsInner + '</' + stg + '>\n';
-                    } else {
-                        h += '\n';
-                        // Button/a honor textPosition — matches canvas virtual-text placement.
-                        var _stgLc = stg.toLowerCase();
-                        var _isBtnL = (_stgLc === 'button' || _stgLc === 'a');
-                        var _tp2 = n.props.textPosition || 'end';
-                        if (_isBtnL && _tp2 === 'start' && n.props.text) h += pad + '    ' + esc(n.props.text) + '\n';
-                        if (n.children) n.children.forEach(function (c) { h += proc(c, indent + 1); });
-                        if (n.props.text && (!_isBtnL || _tp2 !== 'start')) h += pad + '    ' + esc(n.props.text) + '\n';
-                        h += pad + '</' + stg + '>\n';
-                    }
-                    break; }
-                case 'row': {
-                    var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                    var rc = 'row';
-                    if (n.props.gutter) rc += ' g-' + n.props.gutter;
-                    if (n.props.justify) rc += ' justify-content-' + n.props.justify;
-                    if (n.props.align) rc += ' align-items-' + n.props.align;
-                    if (n.props.cssClass) rc += ' ' + n.props.cssClass;
-                    if (_pEC) rc += ' ' + _pEC;
-                    var _rcStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                    h += pad + '<div class="' + rc + '"' + _rcStyle + '>\n';
-                    if (n.children) n.children.forEach(function (c) { h += proc(c, indent + 1); });
-                    h += pad + '</div>\n';
-                    break; }
-                case 'col': {
-                    var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                    var _colCls = buildColClasses(n.props) + (_pEC ? ' ' + _pEC : '');
-                    var _colStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                    h += pad + '<div class="' + _colCls + '"' + _colStyle + '>\n';
-                    if (n.children) n.children.forEach(function (c) { h += proc(c, indent + 1); });
-                    h += pad + '</div>\n';
-                    break; }
-                case 'region':
-                    h += pad + regionTag(n.props) + '\n';
-                    break;
-                case 'component':
-                    var comp = COMPONENTS[n.props.componentType];
-                    if (comp && comp.toHTML) {
-                        var _pcChildren = '';
-                        if (n.children) n.children.forEach(function(c) { _pcChildren += proc(c, indent + 1); });
-                        h += comp.toHTML(n.props, pad, _pcChildren);
-                    }
-                    break;
-                case 'content':
-                    var cnt = CONTENT[n.props.contentType];
-                    if (cnt && cnt.toHTML) {
-                        var _pctChildren = '';
-                        if (n.children) n.children.forEach(function(c) { _pctChildren += proc(c, indent + 1); });
-                        var cHtml = cnt.toHTML(n.props, pad, _pctChildren);
-                        cHtml = addGlobalAttrs(cHtml, n);
-                        h += cHtml;
-                    }
-                    break;
-                case 'shared_ref':
-                    // Expand shared component inline for HTML export / client-side preview.
-                    var _prId = (n.props && n.props.sharedId) ? parseInt(n.props.sharedId, 10) : 0;
-                    var _prCached = _prId > 0 ? _sharedCache[_prId] : null;
-                    if (_prCached && _prCached.system_region_config && _sdPreviewWidgetMarkers) {
-                        // A system widget is drawn by the server; the Preview
-                        // puts its answer here (openPreview()).
-                        h += '<!--pg-sw-preview:' + _prId + '-->';
-                    } else if (_prCached && _prCached.tree && !_sdSharedOpen[_prId]) {
-                        // Nested components expand in place; a loop of them
-                        // stops at the one already open.
-                        _sdSharedOpen[_prId] = true;
-                        try { h += proc(_prCached.tree, indent); }
-                        finally { delete _sdSharedOpen[_prId]; }
-                    }
-                    break;
-            }
-            return h;
-        }
-
-        function regionTag(p) {
-            switch (p.regionType) {
-                case 'page': return '<pregion></pregion>';
-                case 'system': return p.regionName ? '<system>' + esc(p.regionName) + '</system>' : '<system></system>';
-                case 'common': case 'designer': return '<cregion>' + esc(p.regionName || '') + '</cregion>';
-                case 'dynamic': return '<dregion>' + esc(p.regionName || '') + '</dregion>';
-                case 'menu': return '<menu>' + esc(p.regionName || '') + '</menu><div style="clear:both"></div>';
-                case 'menu_sequence': return '<menu_sequence>' + esc(p.regionName || '') + '</menu_sequence>';
-                case 'login': return '<login>' + esc(p.regionName || '') + '</login>';
-                case 'ad': return '<ad>' + esc(p.regionName || '') + '</ad>';
-                case 'cart': return '<cart></cart>';
-                case 'tag_cloud': return '<tcloud>' + esc(p.regionName || '') + '</tcloud>';
-                case 'mobile_switch': return '<mobile_switch></mobile_switch>';
-                case 'pdf': return '<pdf></pdf>';
-                // comments_block uses an HTML comment marker rather than a
-                // tag — get_page_content.php scans for the literal string
-                // `<!--pg-comments-block-->` and swaps it for the rendered
-                // comments HTML. Keep this in sync with `regionTag()` in
-                // functions.php (line ~22122).
-                case 'comments_block': return '<!--pg-comments-block-->';
-                default: return '';
-            }
-        }
 
         // The <body> tag. Twin of generate_style_code_from_tree() in
         // functions.php — class, style and id each have two sources (the
@@ -46749,7 +47926,7 @@ const StyleDesigner = (function () {
             + (bc ? ' class="' + bc + '"' : '')
             + (bodyStyle ? ' style="' + esc(bodyStyle) + '"' : '')
             + bodyExtraAttrs + '>\n';
-        if (tree.children) tree.children.forEach(function (c) { code += proc(c, 2); });
+        if (tree.children) tree.children.forEach(function (c) { code += _sdEmitNode(c, 2, code.length, null); });
         code += '    </body>\n\n</html>';
         return code;
     }
@@ -48285,6 +49462,9 @@ const StyleDesigner = (function () {
     // instead of a Location header.
     function saveAjax(opts) {
         opts = opts || {};
+        // A change typed in the code view in the last moments is applied
+        // before the tree is read, else the save is one edit behind.
+        _sdCodeFlush();
         // Belt-and-suspenders against the original race: even if a Ctrl+S
         // shortcut, custom button, or a programmatic call gets past the
         // disabled `#sd-ajax-save` button, bail here. Without this guard
@@ -49035,6 +50215,8 @@ const StyleDesigner = (function () {
     function _pgTabsSwitch(key) {
         var next = _pgPageByKey(key);
         if (!next) return;
+        // What was typed in the code view goes into the page we are leaving.
+        _sdCodeFlush();
         // Listed, not opened. The tab strip shows the page so the design
         // reads as a whole; the folder decides whether it opens.
         if (next.access === 'locked') {
@@ -51623,8 +52805,8 @@ const StyleDesigner = (function () {
     /**
      * "Paste HTML content" — a design started from markup on the clipboard.
      *
-     * The same parser the file import uses, fed from a CodeMirror box instead
-     * of a file, because the markup being pasted usually has no file: it is a
+     * The same parser the file import uses, fed from the code editor dialog
+     * instead of a file, because the markup being pasted usually has no file: it is a
      * page open in an editor, or a block copied out of a live site.
      */
     function _pgPasteHtmlOpen(initial) {
@@ -51947,6 +53129,7 @@ const StyleDesigner = (function () {
     // Ctrl+S / Cmd+S: what the main button does - Save on a draft, Publish
     // on a page on the site - or nothing while it cannot.
     function _sdSaveShortcut() {
+        if (_sdCodeSaveShortcut()) return;
         var b = document.getElementById('sd-ajax-save');
         if (b && !b.disabled) b.click();
     }
@@ -54622,6 +55805,10 @@ const StyleDesigner = (function () {
     function initKeyboard() {
         document.addEventListener('keydown', function (e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            // The code editor has its own keymap (Ctrl+D selects the next
+            // match there, Ctrl+Z is its history); the designer's shortcuts
+            // keep off it. Ctrl+S is caught before this listener and saves.
+            if (e.target.closest && e.target.closest('.cm-editor')) return;
             // Command palette (Ctrl+Shift+P)
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); e.stopPropagation(); openCommandPalette(); return; }
             // N — the note key the notes panel has always advertised. Before
@@ -54737,7 +55924,18 @@ const StyleDesigner = (function () {
     }
 
     // ========================= UTIL =========================
-    function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.appendChild(document.createTextNode(s)); return d.innerHTML; }
+    // Text for markup, in an element's content or in a double-quoted
+    // attribute value: & < > and the double quote are written as entities,
+    // as h() does on the server, so a quote in a value cannot end the
+    // attribute and break the tag. The apostrophe is left alone: every
+    // attribute the designer prints is double-quoted and the text keeps
+    // its "don't".
+    function esc(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML.replace(/"/g, '&quot;');
+    }
 
     // ========================= PUBLIC =========================
     // ── File/page picker integration ──

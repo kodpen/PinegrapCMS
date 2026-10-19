@@ -15,7 +15,7 @@ description: Plan (2026-10-19) for Workspace notes: export (Markdown, zip vault,
 - Outside apps: `docs/memory/plans/reverse-oauth-leftovers.md` lists Notion (MCP alias first) and OneNote (Graph); Google Keep, Evernote and Apple Notes have no usable API, file route only.
 
 ## What are the slices?
-- N1 Export: one note as `.md` with front matter (title, created, updated, source); "Export all" as a `.zip` that is an Obsidian-style vault (one `.md` per note, `attachments/` copied, tokens written as `[Label](url)` for that reader); a print stylesheet. Root `workspace_notes_export.php`, buttons in the note menu and toolbar.
+- N1 Export — done (PR #528, memory docs/memory/workspace/workspace-notes-export.md): `.md` with front matter, the zip vault, the print page.
 - N2 Import: `.md`/`.txt`, a `.zip` of Markdown (Obsidian, Notion, Joplin, Bear exports), Evernote `.enex` (XMLReader; `en-todo` → checklist, `en-media` → attachment), Google Keep Takeout JSON, single `.html`. Pure converters in `includes/workspace/notes_io.php` with `tests/workspace_notes_io_test.php`; root `workspace_notes_import.php` (multipart, CSRF, `data/temp`, upload → preview with warnings → batched import → result); `ws_note_import_write()` reusing `ws_note_save_check()`, keeping source dates, indexing blocks, refusing over 60000 chars, checking the 2000 limit up front. Conversions: `# heading` → bold line, lists → `- ` lines, `*x*` → `_x_`, rename ```` ```math ```` fences, neutralise text shaped like `<@…>`/`<#…>`, `[[wikilinks]]` → note links in a second pass.
 - N3 Sync API: paging on the list, `created_at`, `DELETE /workspace/notes/{id}`, deletion records, a per-note `revision` (today `base` has one-second resolution and only refuses another person's change). Schema asks: `ws_notes.revision`, `ws_note_deletions`, `ws_note_sources` (user_id, provider, external_id, hash) for re-import de-duplication.
 - N4 Outside apps: Notion through the MCP alias ("save to my notes" target in `mcp_form.php`), OneNote through a Microsoft connect purpose; both wait on the reverse-oauth decisions.
@@ -27,4 +27,4 @@ description: Plan (2026-10-19) for Workspace notes: export (Markdown, zip vault,
 4. Format priority (default: Markdown/zip → enex → Keep → HTML).
 
 ## Where to start?
-- N1, then N2 Markdown/zip, then the N3 bugs and schema, then enex/Keep, then N4.
+- N2 Markdown/zip next (a `pinegrap_note` front matter line names the note it came from), then the N3 bugs and schema, then enex/Keep, then N4.
