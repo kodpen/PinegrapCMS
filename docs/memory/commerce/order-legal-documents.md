@@ -14,7 +14,7 @@ description: Legal documents (pre-information form, distance sales contract): se
 
 ## What does order_documents hold and who reads it?
 - One row per type per order: rendered `html`, `accepted_at` (NULL = not accepted), `ip`, `user_agent`, `created_at`; a second store call writes nothing.
-- Acceptance times (the kept copy's note, the panel card) print on the site's clock, date in the site's order (`pg_legal_document_time_text()`). Until #NNN the form formatter printed AM/PM whatever the setting.
+- Acceptance times (the kept copy's note, the panel card) print on the site's clock, date in the site's order (`pg_legal_document_time_text()`). Until #643 the form formatter printed AM/PM whatever the setting.
 - `ip` is `waf_client_ip()`: the visitor behind Cloudflare or a trusted proxy. Until #626 it was the raw `REMOTE_ADDR`, the proxy's address for every customer.
 - `legal_document.php?order_id=N&type=...` shows the kept copy with "Accepted by the customer on …" (`pg_legal_document_acceptance_note()`) to `pg_legal_document_may_view()`: staff with `USER_MANAGE_ECOMMERCE`, the signed-in owner (`orders.user_id`), the guest whose `completed_order_id` it is. Anyone else, an incomplete order or a missing type gets "This page is not available.". Readable after the switch is turned off.
 - The order receipt e-mail (`submit_order.php`) carries both copies as HTML attachments (`pg_legal_documents_attachments()`, names like `mesafeli-satis-sozlesmesi-1173.html`); they travel through the mail queue as base64.
