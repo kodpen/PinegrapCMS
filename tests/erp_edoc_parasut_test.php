@@ -427,3 +427,17 @@ function test_erp_edoc_taxpayer_message()
 
 	pg_assert_contains('e-Delivery notes', erp_edoc_taxpayer_message('1234567890', array('is_einvoice_user' => true, 'is_edispatch_user' => true)));
 }
+
+// Paraşüt takes 0, 1, 10 and 20 percent; any other rate is refused before
+// anything is sent, each refused rate named once.
+function test_erp_edoc_parasut_vat_rate_refusal()
+{
+	pg_assert_same('', erp_edoc_parasut_vat_rate_refusal(array(array('tax_rate' => 20), array('tax_rate' => '10.000'), array('tax_rate' => 0), array('tax_rate' => 1))));
+	pg_assert_same('', erp_edoc_parasut_vat_rate_refusal(array()));
+
+	$refusal = erp_edoc_parasut_vat_rate_refusal(array(array('tax_rate' => 18), array('tax_rate' => 20), array('tax_rate' => '18.000'), array('tax_rate' => 8)));
+	pg_assert_contains('18%', $refusal);
+	pg_assert_contains('8%', $refusal);
+	pg_assert_same(1, substr_count($refusal, '18%'));
+	pg_assert_contains('0%, 1%, 10%, 20%', $refusal);
+}

@@ -24082,5 +24082,6 @@
     "Low text contrast {var:1}:1, at least {var:2}:1 is needed: \"{var:3}\"": "Metin kontrastı düşük: {var:1}:1, en az {var:2}:1 gerekli: \"{var:3}\"",
     "Reject all": "Tümünü reddet",
     "Google tags you add yourself (Tag Manager, Google Ads) are told the answer through Google Consent Mode v2: they set no cookies until the visitor allows statistics or marketing. Such a tag can stay as it is; for the notice to ask about its category, add an empty held tag such as {var:1}.": "Kendi eklediğiniz Google etiketleri (Etiket Yöneticisi, Google Ads) yanıtı Google İzin Modu v2 ile öğrenir: ziyaretçi istatistiğe ya da pazarlamaya izin verene kadar çerez yazmazlar. Böyle bir etiket olduğu gibi kalabilir; bildirimin onun kategorisini sorması için {var:1} gibi boş bir bekletilen etiket ekleyin.",
-    "The name field now holds the registered name.": "Ad alanına kayıtlı unvan yazıldı."
+    "The name field now holds the registered name.": "Ad alanına kayıtlı unvan yazıldı.",
+    "Paraşüt takes VAT at {var:1} only; this invoice has {var:2}. It cannot be sent at that rate: cancel it and issue it again at a current rate.": "Paraşüt KDV'yi yalnız {var:1} oranlarıyla alır; bu faturada {var:2} var. Fatura bu oranla gönderilemez: iptal edip güncel bir oranla yeniden kesin."
 }
