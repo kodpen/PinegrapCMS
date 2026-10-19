@@ -25,6 +25,6 @@ description: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what t
 - A version change edits the pins in the script and regenerates both baselines in the same PR. PHPCS 4 refuses a ruleset that excludes a sniff its standard lacks: the `trim()` form-feed sniff (PHP 8.6) is not in 10.0.0-alpha2, so the ruleset excludes nothing yet.
 
 ## How long does it take?
-- PHPStan cold 2-4 minutes on two cores (its result cache makes a rerun take a second), phpcs about 40 seconds.
+- In GitHub Actions PHPStan takes about 4.5 minutes and phpcs one; in a two-core session 2-4 minutes and 40 seconds. PHPStan's result cache makes a rerun on an unchanged tree take a second.
 
 Related: docs/memory/plans/php-compatibility-and-bugs.md, docs/memory/workflow/sandbox-and-environment.md
