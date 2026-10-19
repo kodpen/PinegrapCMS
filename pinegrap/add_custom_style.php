@@ -24,9 +24,6 @@ validate_area_access($user, 'designer');
 if (!$_POST) {
     
     $output_header = pg_page_shell([
-        // The code field is the facade's editor (pg_code_editor_attach());
-        // CodeMirror 5 waits in the template for a settings pane that draws one.
-        'code_editor' => false,
         'title'=> lang('Create Custom Page Style'),
         'extra classes'=>'design',
         'icon'=>'design',

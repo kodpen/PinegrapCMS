@@ -547,9 +547,6 @@ if (!$_POST) {
 
     echo
     pg_page_shell([
-        // The code field is the facade's editor (pg_code_editor_attach());
-        // CodeMirror 5 waits in the template for a settings pane that draws one.
-        'code_editor' => false,
         'title'=> lang('Edit Product Group'),
         'extra classes'=>'products',
         'icon'=>'store',

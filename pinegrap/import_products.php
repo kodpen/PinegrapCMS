@@ -428,6 +428,8 @@ if (!$_POST) {
                         WHERE name = '" . escape($row[$name_key]) . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+                    pg_price_history_queue($product_id, 'import');
+
                     // If an enabled column exists and the product is disabled, then delete tag cloud keywords.
                     if (
                         ($enabled_column_exists == true)
@@ -562,6 +564,8 @@ if (!$_POST) {
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 
                 $product_id = mysqli_insert_id(db::$con);
+
+                pg_price_history_queue($product_id, 'import');
                 
                 $address_name = '';
                 
@@ -695,6 +699,12 @@ if (!$_POST) {
     }
     
     fclose($handle);
+
+    // The rest of the queued products. A row is written only for a product
+    // whose price is not the newest one in its history (or that has no
+    // history yet), so a file without a price column adds rows for the
+    // products it created and leaves the rest.
+    pg_price_history_flush();
 
     // The converted spreadsheet has done its work. PHP would clear the temp
     // directory eventually; a file of ten thousand products is worth not

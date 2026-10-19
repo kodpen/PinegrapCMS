@@ -24,9 +24,6 @@ echo
 pg_page_shell([
         'title' => lang('Planning Board'),
         'extra classes' => 'workspace workspace_board',
-        // No code field here: CodeMirror is loaded only if the settings
-        // dialog opens a pane that has one.
-        'code_editor' => false,
         'icon' => 'workspace',
         'heading' => lang('Planning Board'),
         'heading_description' => lang('Who has what on which day, and where the week is too full.'),

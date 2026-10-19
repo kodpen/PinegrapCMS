@@ -240,6 +240,7 @@ function pg_settings_categories()
                 'pgset-invoice'   => lang('E-Invoice'),
                 'pgset-erp'       => lang('ERP'),
                 'pgset-payments'  => lang('Payment Methods'),
+                'pgset-legal'     => lang('Legal Documents'),
                 'pgset-affiliate' => lang('Affiliate Program'),
             ),
             'keywords' => array(
@@ -249,6 +250,7 @@ function pg_settings_categories()
                 'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
                 'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
+                'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
             ),
             'lists' => array(

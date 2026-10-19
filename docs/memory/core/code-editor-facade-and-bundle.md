@@ -6,7 +6,7 @@ description: The code editor facade window.PgCodeEditor (assets/js/pg_code_edito
 ## What is the code editor and where does it live?
 - Engine: CodeMirror 6, one bundle `assets/lib/code_editor/cm6.bundle.js` (~600 KB, `window.PgCM`). Nothing calls PgCM directly; screens call the facade `assets/js/pg_code_editor.js` (`window.PgCodeEditor`), served raw.
 - The bundle is fetched the first time an editor opens (`PgCodeEditor.load()`), so a page that never opens one never downloads it. The page says where it is: `PgCodeEditor.configure({ bundle: '…/cm6.bundle.js?v=<stamp>' })` (`pg_code_editor_includes()`, `designer_screen.php`).
-- The designer page loads no CodeMirror 5 (`'code_editor' => false`): its code view, file tabs and code dialog (`codemirror_modal.js`, `window.openCodeEditor()`, API unchanged) run on the facade. Panel screens move with `pg_code_editor_attach()` (docs/memory/ui/panel-code-fields.md).
+- The product's only code editor (CodeMirror 5 removed in 2026.11.0): designer code view and dialog (`codemirror_modal.js`), panel fields (docs/memory/ui/panel-code-fields.md), legacy page designer, CKEditor source mode.
 
 ## How does a screen open an editor?
 - `PgCodeEditor.open(host, opts).then(function (ed) {})` = load + create; `PgCodeEditor.attach(textarea, opts)` takes a textarea's place and writes every edit back into it.

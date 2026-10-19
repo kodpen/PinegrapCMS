@@ -103,7 +103,6 @@ if (!$_POST) {
 	    ) . '
 <main id="content" class="container-fluid">
 
-	    	        ' . get_codemirror_includes() . '
 	        <div class="row">
 	            <div class="col-12">
 	                ' . $liveform->output_errors() . '

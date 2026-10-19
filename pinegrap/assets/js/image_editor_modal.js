@@ -500,7 +500,7 @@
         _modal.show();
 
         // Pintura measures its container, so it can only be built once the
-        // modal is actually on screen — same reason CodeMirror waits.
+        // modal is actually on screen — same reason the code editor waits.
         var onShown = function () {
             _modalEl.removeEventListener('shown.bs.modal', onShown);
             var $ = window.jQuery;

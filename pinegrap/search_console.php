@@ -548,7 +548,6 @@ echo pg_page_shell(array(
 	'heading'             => lang('Google Search Console'),
 	'heading_description' => lang('The searches that bring people to the site, how often its pages are shown in Google and where they rank.'),
 	'cancel'              => false,
-	'code_editor'         => false,
 )) . '
 
 <main id="content" class="container-fluid">
