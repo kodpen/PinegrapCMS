@@ -1650,3 +1650,227 @@ function pg_product_feed_discard_output()
         ob_end_clean();
     }
 }
+
+// ---------------------------------------------------------------------------
+// Settings screen (Settings › SEO › Product Feeds)
+// ---------------------------------------------------------------------------
+
+// An address the feeds may carry as the seller's site, privacy policy or
+// terms: empty, or an absolute http(s) address with a host. The OpenAI
+// specification takes absolute addresses only.
+function pg_product_feed_valid_url($url)
+{
+    $url = trim((string) $url);
+
+    if ($url === '') {
+        return true;
+    }
+
+    if ((strlen($url) > 2000) || (filter_var($url, FILTER_VALIDATE_URL) === false)) {
+        return false;
+    }
+
+    $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+    $host = (string) parse_url($url, PHP_URL_HOST);
+
+    return in_array($scheme, array('http', 'https'), true) && ($host !== '');
+}
+
+// The groups the card offers to leave out: the ones the shop's catalogs
+// show, gid => trail ("Shop > Office > Chairs"), in walk order. Empty
+// without e-commerce or before the 11.0.4 step.
+function pg_product_feed_screen_groups()
+{
+    if (!defined('ECOMMERCE') || (ECOMMERCE !== true) || !pg_product_feed_schema_ready()) {
+        return array();
+    }
+
+    $groups = array();
+
+    $index = pg_product_feed_group_index(
+        db_items("SELECT id, parent_id, name, display_type FROM product_groups WHERE enabled = 1 ORDER BY sort_order ASC, id ASC"),
+        pg_product_feed_catalog_roots()
+    );
+
+    foreach ($index as $group_id => $group) {
+        $groups[(int) $group_id] = $group['path'];
+    }
+
+    return $groups;
+}
+
+// The excluded group ids a save posted, kept only where they name one of the
+// groups the screen offered.
+function pg_product_feed_posted_groups($posted, $offered_ids)
+{
+    $offered = array_flip(array_map('intval', (array) $offered_ids));
+    $ids = array();
+
+    foreach ((array) $posted as $id) {
+        if (is_scalar($id) && ctype_digit((string) $id) && isset($offered[(int) $id])) {
+            $ids[(int) $id] = true;
+        }
+    }
+
+    return array_keys($ids);
+}
+
+// What each format is called on the screen, and what it is for.
+function pg_product_feed_format_texts()
+{
+    return array(
+        'openai_jsonl' => array(
+            'label' => lang('OpenAI product feed (JSON Lines)'),
+            'help'  => lang('For shopping answers in ChatGPT. Give this address where OpenAI asks for your product feed.'),
+        ),
+        'openai_csv' => array(
+            'label' => lang('OpenAI product feed (CSV)'),
+            'help'  => lang('The same feed as a CSV file, for a platform that asks for CSV.'),
+        ),
+        'google_tsv' => array(
+            'label' => lang('Google Merchant Center (TSV)'),
+            'help'  => lang('Add this address in Merchant Center as a scheduled fetch; Google Shopping and its AI answers read your products from there.'),
+        ),
+    );
+}
+
+// Why a build failed, as the screen says it.
+function pg_product_feed_error_text($code)
+{
+    $texts = array(
+        'ecommerce_off'          => lang('E-commerce is turned off.'),
+        'no_catalog'             => lang('No catalog page or Catalog widget on a public page shows a product group.'),
+        'no_detail_page'         => lang('The site has no product detail page, so the products have no address.'),
+        'detail_page_not_public' => lang('The product detail page is in a folder visitors cannot open.'),
+        'no_seller_name'         => lang('The OpenAI feed needs the seller name on every product; enter it below.'),
+        'write_failed'           => lang('The file could not be written to the data/feeds folder; check that the folder can be written to.'),
+        'not_ready'              => lang('The database upgrade that adds product feeds has not run yet.'),
+    );
+
+    return isset($texts[$code]) ? $texts[$code] : lang('The feed could not be built.');
+}
+
+// One reason products were left out, with how many, as the screen says it.
+function pg_product_feed_skip_text($reason, $count)
+{
+    $vars = array((int) $count);
+
+    switch ($reason) {
+        case 'no_address':
+            return lang(array('string' => '{var:1} without an address', 'vars' => $vars));
+        case 'donation':
+            return lang(array('string' => '{var:1} donation(s)', 'vars' => $vars));
+        case 'recurring':
+            return lang(array('string' => '{var:1} with recurring payments', 'vars' => $vars));
+        case 'no_price':
+            return lang(array('string' => '{var:1} without a price', 'vars' => $vars));
+        case 'not_in_catalog':
+            return lang(array('string' => '{var:1} not in a catalog', 'vars' => $vars));
+        case 'excluded_group':
+            return lang(array('string' => '{var:1} in an excluded group', 'vars' => $vars));
+        case 'no_title':
+            return lang(array('string' => '{var:1} without a name', 'vars' => $vars));
+        case 'no_brand':
+            return lang(array('string' => '{var:1} without a brand', 'vars' => $vars));
+        case 'no_image':
+            return lang(array('string' => '{var:1} without a suitable image', 'vars' => $vars));
+    }
+
+    return lang(array('string' => '{var:1} for another reason', 'vars' => $vars));
+}
+
+// The last build of a format, as one line for the screen; '' before the first.
+function pg_product_feed_status_text($entry)
+{
+    $parts = array();
+
+    if ((int) $entry['built_at'] > 0) {
+        $parts[] = lang(array('string' => 'Built {var:1}: {var:2} product(s).', 'vars' => array(
+            get_relative_time(array('timestamp' => (int) $entry['built_at'], 'format' => 'plain_text')),
+            (int) $entry['count'],
+        )));
+    }
+
+    if ($entry['skipped']) {
+        $reasons = array();
+
+        foreach ($entry['skipped'] as $reason => $count) {
+            $reasons[] = pg_product_feed_skip_text($reason, $count);
+        }
+
+        $parts[] = lang(array('string' => 'Left out: {var:1}.', 'vars' => array(implode(', ', $reasons))));
+    }
+
+    return implode(' ', $parts);
+}
+
+// Reads a save of the Product Feeds card into the stored setup: the seller
+// fields, the excluded groups, the switches, a new address asked for, and a
+// build when one was asked for or a feed was just switched on. Called by
+// includes/settings/seo.save.php after its own columns are written; the
+// fields were validated there first.
+//
+// $input: 'seller_name', 'seller_url', 'privacy_policy_url', 'terms_url',
+// 'default_brand', 'excluded_group_ids', 'enabled' (format => bool),
+// 'new_address' (a format or ''), 'build' (bool).
+// Returns array('settings', 'issued' => format => token for addresses that
+// cannot be shown again, 'built' => pg_product_feed_refresh() or null,
+// 'renewed' => format or '').
+function pg_product_feed_save_from_screen($input)
+{
+    $settings = pg_product_feed_settings();
+    $issued = array();
+    $switched_on = false;
+    $renewed = '';
+
+    foreach (array('seller_name', 'seller_url', 'privacy_policy_url', 'terms_url', 'default_brand') as $key) {
+        $settings[$key] = mb_substr(trim((string) $input[$key]), 0, 255, 'UTF-8');
+    }
+
+    $settings['excluded_group_ids'] = array_values(array_map('intval', (array) $input['excluded_group_ids']));
+
+    foreach ($settings['formats'] as $format => $entry) {
+        $on = !empty($input['enabled'][$format]);
+
+        if ($on && !$entry['enabled']) {
+            $switched_on = true;
+        }
+
+        $settings['formats'][$format]['enabled'] = $on ? 1 : 0;
+
+        $renew = ($input['new_address'] === $format);
+
+        if (($on && ($entry['token_hash'] === '')) || $renew) {
+            $token = pg_product_feed_issue_token($settings, $format);
+
+            if ($settings['formats'][$format]['token_secret'] === '') {
+                $issued[$format] = $token;
+            }
+
+            if ($renew) {
+                $renewed = $format;
+            }
+        }
+    }
+
+    pg_product_feed_settings_save($settings);
+
+    $any_on = false;
+
+    foreach ($settings['formats'] as $entry) {
+        $any_on = $any_on || $entry['enabled'];
+    }
+
+    if ($any_on) {
+        pg_product_feed_job_switch_on();
+    }
+
+    $built = null;
+
+    if ($any_on && (!empty($input['build']) || $switched_on)) {
+        $built = pg_product_feed_refresh();
+        $settings = pg_product_feed_settings();
+    }
+
+    return array('settings' => $settings, 'issued' => $issued, 'built' => $built, 'renewed' => $renewed);
+}

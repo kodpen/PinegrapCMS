@@ -235,6 +235,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $google_analytics_web_property_id = $row['google_analytics_web_property_id'];
     $cookie_consent = (int) ($row['cookie_consent'] ?? 0);
     $cookie_consent_policy_url = (string) ($row['cookie_consent_policy_url'] ?? '');
+    // Product feeds (2026.11.0, 11.0.4; includes/fn/product_feeds.php). The
+    // group list the card offers is read by the card itself
+    // (pg_product_feed_screen_groups()): it walks the catalogs, which only the
+    // SEO screen needs.
+    $product_feeds_ready = array_key_exists('product_feeds', $row);
+    $product_feeds_settings = pg_product_feed_settings_parse($product_feeds_ready ? (string) $row['product_feeds'] : '');
     $page_editor_version = $row['page_editor_version'];
     $page_editor_font = $row['page_editor_font'];
     $page_editor_font_size = $row['page_editor_font_size'];

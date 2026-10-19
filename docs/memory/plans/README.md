@@ -6,7 +6,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - accessibility-and-consent-tools.md: Plan (approved 2026-10-19, not started): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement template, consent banner with equal accept/reject and Consent Mode v2 defaults
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- agent-product-feeds.md: Plan (approved 2026-10-19, in progress: builder, job and feed.php done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV); settings card, panel, API left
+- agent-product-feeds.md: Plan (approved 2026-10-19, in progress: builder, job, feed.php and settings card done): product feeds for AI shopping agents (OpenAI JSONL/CSV, Google TSV); status check, API left
 - ai-write-buttons.md: Plan (approved 2026-10-19, not started): "Write with AI" buttons in the product builder, page SEO fields, image alt text and blog records, reusing the Workspace AI client; AI-generated labelling
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, designer bindings and kept copy built): pre-information form and distance sales contract; left: My Account link, API, KVKK consent
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
