@@ -5,7 +5,7 @@ description: Legal documents (pre-information form, distance sales contract): se
 
 ## What is built?
 - Settings › Ecommerce › Legal Documents (`pgset-legal`): switch `ECOMMERCE_LEGAL_DOCUMENTS` and two HTML templates (schema 11.0.1, PR #540). Card and save only when the column exists.
-- `includes/fn/legal_documents.php` (tests `tests/legal_documents_test.php`), `legal_document.php` (cart document page), store call in `submit_order.php` after the order number (PR #540), checkout part PR #559, kept copy for customer and staff PR #PRNUM.
+- `includes/fn/legal_documents.php` (tests `tests/legal_documents_test.php`), `legal_document.php` (cart document page), store call in `submit_order.php` after the order number (PR #540), checkout part PR #559, kept copy for customer and staff PR #569.
 
 ## How does a template work?
 - `^^field^^`, `[[text ^^field^^ text]]`, `[[...||other]]`; values escaped, `^^order_lines^^` is the only markup. Unknown field or over 65535 bytes refuses the settings save. Built-ins `includes/legal_documents/<type>.<lang>.html` (tr, en); an unchanged built-in is stored as NULL.
