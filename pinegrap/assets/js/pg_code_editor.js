@@ -238,12 +238,22 @@
     }
 
     // Syntax errors as diagnostics: the parser leaves an error node where a
-    // tag or a block does not close. JSON has a real parser to ask.
+    // tag or a block does not close. JSON has a real parser to ask. An empty
+    // document has nothing to check: the HTML parser leaves a zero-length
+    // error node at its start and the JSON parser reports an unexpected end,
+    // which would mark every empty field red. A blank JSON document counts as
+    // empty too.
     function _syntaxLinter(cm, lang, labels) {
-        if (lang === 'json') return cm.lint.linter(cm.langJson.jsonParseLinter());
+        if (lang === 'json') {
+            var json = cm.langJson.jsonParseLinter();
+            return cm.lint.linter(function (view) {
+                return /\S/.test(view.state.doc.toString()) ? json(view) : [];
+            });
+        }
         var message = (labels && labels.syntaxError) ? String(labels.syntaxError) : 'Syntax error';
         return cm.lint.linter(function (view) {
             var out = [];
+            if (view.state.doc.length === 0) return out;
             var tree = cm.language.syntaxTree(view.state);
             tree.iterate({
                 enter: function (node) {

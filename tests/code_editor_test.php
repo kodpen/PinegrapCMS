@@ -69,3 +69,39 @@ function test_code_editor_is_plain_names_the_text_types()
 	pg_assert_false(pg_code_editor_is_plain('php'), 'php');
 	pg_assert_false(pg_code_editor_is_plain(''), 'empty');
 }
+
+// The source of the facade's syntax linter, up to the next function of the
+// facade.
+function code_editor_test_linter_source()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, 'function _syntaxLinter(');
+
+	if ($from === false) {
+		return '';
+	}
+
+	$next = strpos($facade, "\n    function ", $from + 10);
+
+	return ($next !== false) ? substr($facade, $from, $next - $from) : substr($facade, $from);
+}
+
+// An empty field is not a syntax error: the HTML parser leaves a zero-length
+// error node at the start of an empty document and the JSON parser reports
+// an unexpected end, so the linter checks nothing until there is text (for
+// JSON, more than white space).
+function test_code_editor_lint_skips_an_empty_document()
+{
+	$linter = code_editor_test_linter_source();
+
+	pg_assert_true($linter !== '', 'the linter is found');
+
+	$empty = strpos($linter, 'if (view.state.doc.length === 0) return out;');
+	$tree = strpos($linter, 'cm.language.syntaxTree(view.state)');
+
+	pg_assert_true(($empty !== false) && ($tree !== false) && ($empty < $tree), 'an empty document is not parsed for errors');
+
+	$blank = strpos($linter, '/\S/.test(view.state.doc.toString()) ? json(view) : []');
+
+	pg_assert_true($blank !== false, 'a blank JSON document is not handed to the JSON parser');
+}
