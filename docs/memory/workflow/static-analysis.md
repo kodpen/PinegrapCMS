@@ -8,7 +8,7 @@ description: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what t
 - Vendored libraries are scanned for their classes, not analysed; `data/` (the starter sites' layouts) is skipped; the root `download_assistant.php` and `index.php` are checked.
 
 ## What are the baselines?
-- What the tree held when the checks went in: 48 PHPStan errors, 200 PHPCompatibility findings (guarded APIs, the dead `mysql_*`/`pfpro`/`mcrypt` paths, nested named functions, PHP 8.1-8.5 deprecations; `plans/php-compatibility-and-bugs.md`). `tools/phpstan-baseline.neon` counts per file and message, `tools/phpcs-baseline.json` per file and sniff (`tools/check_php_compat.php` compares). More than the count fails; fewer passes.
+- What the tree held when the checks went in: 39 PHPStan errors, 200 PHPCompatibility findings (guarded APIs, the dead `mysql_*`/`pfpro`/`mcrypt` paths, nested named functions, PHP 8.1-8.5 deprecations; `plans/php-compatibility-and-bugs.md`). `tools/phpstan-baseline.neon` counts per file and message, `tools/phpcs-baseline.json` per file and sniff (`tools/check_php_compat.php` compares). More than the count fails; fewer passes.
 - After a fix, `bash tools/static_analysis.sh --generate-baseline` in the same PR shrinks them. Never regenerate to let a new finding through; the baseline diff shows it.
 - `reportUnmatchedIgnoredErrors` is off, so a fix merged without the baseline update stays green.
 

@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^File ends with a trailing whitespace\. This may cause problems when running the code in the web browser\. Remove the closing \?\> mark or remove the whitespace\.$#'
-			identifier: whitespace.fileEnd
-			count: 1
-			path: ../index.php
-
-		-
 			message: '#^Function imagecreatefrombmp not found\.$#'
 			identifier: function.notFound
 			count: 1
@@ -35,18 +29,6 @@ parameters:
 			identifier: variable.undefined
 			count: 1
 			path: ../pinegrap/get_catalog.php
-
-		-
-			message: '#^Undefined variable\: \$folders_that_user_has_access_to$#'
-			identifier: variable.undefined
-			count: 1
-			path: ../pinegrap/get_theme_designer_module.php
-
-		-
-			message: '#^Undefined variable\: \$output$#'
-			identifier: variable.undefined
-			count: 1
-			path: ../pinegrap/get_update_address_book.php
 
 		-
 			message: '#^Function render_sub_row not found\.$#'
@@ -115,12 +97,6 @@ parameters:
 			path: ../pinegrap/includes/panel/explorer.php
 
 		-
-			message: '#^File ends with a trailing whitespace\. This may cause problems when running the code in the web browser\. Remove the closing \?\> mark or remove the whitespace\.$#'
-			identifier: whitespace.fileEnd
-			count: 1
-			path: ../pinegrap/includes/templates/pagination.php
-
-		-
 			message: '#^Function mysql_query not found\.$#'
 			identifier: function.notFound
 			count: 1
@@ -139,37 +115,7 @@ parameters:
 			path: ../pinegrap/router.php
 
 		-
-			message: '#^File ends with a trailing whitespace\. This may cause problems when running the code in the web browser\. Remove the closing \?\> mark or remove the whitespace\.$#'
-			identifier: whitespace.fileEnd
-			count: 1
-			path: ../pinegrap/software_update.php
-
-		-
 			message: '#^Function pfpro_process not found\.$#'
 			identifier: function.notFound
 			count: 2
 			path: ../pinegrap/submit_order.php
-
-		-
-			message: '#^Array has 2 duplicate keys with value ''delete_folder_title'' \(''delete_folder_title'', ''delete_folder_title''\)\.$#'
-			identifier: array.duplicateKey
-			count: 1
-			path: ../pinegrap/view_folders.php
-
-		-
-			message: '#^Undefined variable\: \$c_len$#'
-			identifier: variable.undefined
-			count: 1
-			path: ../pinegrap/view_orders.php
-
-		-
-			message: '#^Undefined variable\: \$crc$#'
-			identifier: variable.undefined
-			count: 1
-			path: ../pinegrap/view_orders.php
-
-		-
-			message: '#^Undefined variable\: \$unc_len$#'
-			identifier: variable.undefined
-			count: 1
-			path: ../pinegrap/view_orders.php

@@ -13,4 +13,4 @@ description: Architecture items from the 2026-10-19 audit that no other plan hol
 4. Done (PR #PRNUM): PHPStan level 0 and PHPCompatibility (PHP 7.1+) run in CI against baselines of today's findings (`docs/memory/workflow/static-analysis.md`). A PR that fixes an item here or in `php-compatibility-and-bugs.md` shrinks the baselines in the same PR.
 
 ## Where to start?
-- Item 2 is the cheapest and takes 27 of the 48 PHPStan baseline errors with it; item 1 after `payment-driver-layer.md` settles which gateway calls move.
+- Item 2 is the cheapest and takes 27 of the 39 PHPStan baseline errors with it; item 1 after `payment-driver-layer.md` settles which gateway calls move.
