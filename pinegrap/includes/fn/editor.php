@@ -849,6 +849,189 @@ function get_codemirror_javascript($properties)
             });
         </script>';
 }
+
+/**
+ * The code editor facade (assets/js/pg_code_editor.js, window.PgCodeEditor)
+ * for a panel screen: the facade script and where its engine is.
+ *
+ * Printed once per request, by pg_code_editor_attach() or by a screen that
+ * opens an editor of its own. The engine, the CodeMirror 6 bundle, is not
+ * fetched here: the facade loads it the first time an editor opens, so a
+ * screen pays for it only when a code field is drawn. The engine's own texts
+ * (the search panel, the line prompt, the fold markers) are translated here;
+ * a screen's labels stay with the screen.
+ */
+function pg_code_editor_includes()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
+    $facade = '/assets/js/pg_code_editor.js';
+    $bundle = '/assets/lib/code_editor/cm6.bundle.js';
+
+    return '<script src="' . $base . $facade . '?v=' . pg_code_editor_asset_version($facade) . '"></script>
+        <script>PgCodeEditor.configure(' . pg_code_editor_json(array(
+            'bundle'  => $base . $bundle . '?v=' . pg_code_editor_asset_version($bundle),
+            'phrases' => pg_code_editor_phrases(),
+        )) . ');</script>';
+}
+
+/**
+ * A code field on a panel screen: the editor of the facade takes the place
+ * of the textarea $properties['id'], as get_codemirror_javascript() gave it
+ * CodeMirror 5. The textarea keeps the value current, so the form that
+ * submits it sees every edit and the screen's save path does not change.
+ *
+ * $properties:
+ *   'id'        the textarea
+ *   'code_type' the names get_codemirror_javascript() takes ('mixed', 'css',
+ *               'javascript', 'application/json', 'php', 'xml', …); see
+ *               pg_code_editor_language()
+ *   'readonly'  true shows the text and refuses changes (the cursor, the
+ *               keyboard and the search panel still work)
+ *   'height'    a CSS height; without it the editor grows with the text
+ *
+ * F11 fills the window with the editor, Esc leaves. The instance is kept in
+ * window.pgCodeEditors[id] for a screen that needs it, such as one that
+ * changes the language after the file name.
+ */
+function pg_code_editor_attach($properties)
+{
+    $id = isset($properties['id']) ? (string) $properties['id'] : 'code';
+
+    $options = array(
+        'language'  => pg_code_editor_language(isset($properties['code_type']) ? $properties['code_type'] : ''),
+        'readOnly'  => !empty($properties['readonly']),
+        'theme'     => pg_code_editor_theme(),
+        'className' => 'pg-code-field',
+        'labels'    => array('syntaxError' => lang('Syntax error')),
+    );
+
+    if (!empty($properties['height'])) {
+        $options['height'] = (string) $properties['height'];
+    }
+
+    return pg_code_editor_includes() . '<script>
+        (function () {
+            var field = document.getElementById(' . pg_code_editor_json($id) . ');
+            if (!field || (typeof PgCodeEditor === "undefined")) return;
+            var options = ' . pg_code_editor_json($options) . ';
+            var editor = null;
+            var full = function (on) {
+                if (!editor || !editor.host) return false;
+                editor.host.classList.toggle("pg-code-field-full", on);
+                document.body.classList.toggle("pg-code-field-open", on);
+                return true;
+            };
+            var isFull = function () { return !!(editor && editor.host && editor.host.classList.contains("pg-code-field-full")); };
+            options.keys = [
+                { key: "F11", run: function () { return full(!isFull()); } },
+                { key: "Escape", run: function () { return isFull() ? full(false) : false; } }
+            ];
+            window.pgCodeEditors = window.pgCodeEditors || {};
+            PgCodeEditor.attach(field, options).then(function (instance) {
+                editor = instance;
+                window.pgCodeEditors[field.id] = instance;
+            }, function () {
+                // The engine could not be fetched: the textarea stays a plain
+                // field, which is what a missing editor looked like before.
+            });
+        })();
+    </script>';
+}
+
+/**
+ * The facade's language for a code type of get_codemirror_javascript():
+ * 'css', 'javascript', 'json' or 'html'. PHP, XML, SVG and plain text are
+ * shown with the HTML grammar, which the facade carries; CodeMirror 5's own
+ * MIME names ('text/css', 'application/json', …) are read as well.
+ */
+function pg_code_editor_language($code_type)
+{
+    $type = mb_strtolower(trim((string) $code_type));
+
+    if (($type === 'css') || ($type === 'text/css')) {
+        return 'css';
+    }
+
+    if (($type === 'javascript') || ($type === 'js') || ($type === 'text/javascript') || ($type === 'application/javascript')) {
+        return 'javascript';
+    }
+
+    if (($type === 'json') || ($type === 'application/json')) {
+        return 'json';
+    }
+
+    return 'html';
+}
+
+// The editor follows the panel's colour scheme, the way CodeMirror 5's
+// theme did: the cookie the panel sets when the person picks dark mode.
+function pg_code_editor_theme()
+{
+    return (isset($_COOKIE['prefers-color-scheme']) && ($_COOKIE['prefers-color-scheme'] == 'dark')) ? 'dark' : 'light';
+}
+
+// The engine's own texts, keyed by its English phrases ($ is the number the
+// engine fills in). The designer builds the same map in JavaScript
+// (_sdCodePhrases(), style_designer.js); the keys are shared in tr.json.
+function pg_code_editor_phrases()
+{
+    return array(
+        'Find'                      => lang('Find'),
+        'Replace'                   => lang('Replace'),
+        'next'                      => lang('next'),
+        'previous'                  => lang('previous'),
+        'all'                       => lang('all'),
+        'match case'                => lang('match case'),
+        'by word'                   => lang('by word'),
+        'regexp'                    => lang('regexp'),
+        'replace'                   => lang('replace'),
+        'replace all'               => lang('replace all'),
+        'close'                     => lang('close'),
+        'current match'             => lang('current match'),
+        'replaced $ matches'        => lang('replaced $ matches'),
+        'replaced match on line $'  => lang('replaced match on line $'),
+        'on line'                   => lang('on line'),
+        'Go to line'                => lang('Go to line'),
+        'go'                        => lang('go'),
+        'to'                        => lang('to'),
+        'Diagnostics'               => lang('Diagnostics'),
+        'No diagnostics'            => lang('No diagnostics'),
+        'Completions'               => lang('Completions'),
+        'Control character'         => lang('Control character'),
+        'Selection deleted'         => lang('Selection deleted'),
+        'folded code'               => lang('folded code'),
+        'unfold'                    => lang('unfold'),
+        'Fold line'                 => lang('Fold line'),
+        'Unfold line'               => lang('Unfold line'),
+        'Folded lines'              => lang('Folded lines'),
+        'Unfolded lines'            => lang('Unfolded lines'),
+    );
+}
+
+// A cache-busting stamp for a file under the software directory: its
+// modification time, or the version when the file cannot be read.
+function pg_code_editor_asset_version($path)
+{
+    $stamp = @filemtime(PG_FUNCTIONS_DIR . $path);
+
+    return $stamp ? $stamp : (defined('VERSION') ? rawurlencode(VERSION) : '1');
+}
+
+// JSON for an inline <script>: < > & are escaped so a translated phrase can
+// never close the script element.
+function pg_code_editor_json($value)
+{
+    return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
+}
+
 // create function that replaces the actual path in the content from a rich-text editor with the {path} placeholder,
 // so that the actual path is not stored in the database
 function prepare_rich_text_editor_content_for_input($content)

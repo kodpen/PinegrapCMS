@@ -26,4 +26,4 @@ description: Plan (2026-10-19) for the visual designer's code editor: owner rule
 - Completion of data-binding tokens (`{{…}}`) in text and attribute values; the class source (`_sdCodeClassCompletion`) is the pattern.
 - Emmet: `@emmetio/codemirror6-plugin` carries no license (repo and package, 2026-10-19), so it is not bundled; the `emmet` core package is MIT and an expand-abbreviation command of our own on it is the way, if wanted.
 - A formatter for CSS/JS tabs (the page view is normalised by the emitter already), a minimap, search across the open tabs.
-- The panel screens: `get_codemirror_javascript()` fields move to `PgCodeEditor.attach(textarea)` screen by screen, then CodeMirror 5 leaves the product. Start with `edit_file.php` (one field, read-only switch).
+- The panel screens move to `pg_code_editor_attach()` one by one (`edit_file.php` done; the list and the recipe: docs/memory/ui/panel-code-fields.md), then CodeMirror 5 leaves the product.
