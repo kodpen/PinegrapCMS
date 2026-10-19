@@ -33,6 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_conversion_pack();        // 11.0.14
 
 }
 
@@ -314,5 +315,119 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+// The storefront's conversion pack (2026.11.0, 11.0.14; includes/fn/reviews.php).
+//
+// Product reviews stay comments. comments.verified_order_id is the order that
+// let a customer review the product (0: not a verified purchase - a comment
+// written before this step, a member of staff's note, a page comment), and
+// seller_reply / seller_reply_at are the store's answer shown under it.
+// products.rating_avg and rating_count are the average stars and the number of
+// a product's published reviews from verified purchases, kept on the row so a
+// product list can show them without counting; they are worked out again
+// whenever such a review changes, and once a day from the comments.
+//
+// wishlist_items keeps a product saved for later: a customer's by user_id, a
+// visitor's by the token of their cookie until they sign in. stock_notify
+// keeps a request to be told when a product is back in stock, by e-mail, user
+// or phone; sent_at is stamped once the notice went out.
+//
+// order_review_request, the e-mail that asks a customer to review what they
+// received, is added to the action enums of the campaign profiles and of the
+// campaigns made from them. Each list is read first and only widened, so a
+// value another step added stays; the default and the null rule are kept as
+// they are.
+function upgrade_2026_11_0_conversion_pack() {
+
+	$comment_columns = array(
+		'verified_order_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'seller_reply'      => "TEXT NULL",
+		'seller_reply_at'   => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('comments', $comment_columns)) {
+
+		foreach ($comment_columns as $column => $definition) {
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('comments', 'idx_verified_order', "INDEX idx_verified_order (verified_order_id)");
+
+	$product_columns = array(
+		'rating_avg'   => "DECIMAL(3,2) NOT NULL DEFAULT 0.00",
+		'rating_count' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('products', $product_columns)) {
+
+		foreach ($product_columns as $column => $definition) {
+
+			install_add_column('products', $column, $definition);
+
+		}
+
+	}
+
+	install_create_table('wishlist_items', "CREATE TABLE wishlist_items (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		cookie_token  VARCHAR(64) NOT NULL DEFAULT '',
+		product_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		added_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_owner_product (user_id, cookie_token, product_id),
+		KEY idx_product (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('stock_notify', "CREATE TABLE stock_notify (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		product_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		email_address  VARCHAR(100) NOT NULL DEFAULT '',
+		user_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		phone          VARCHAR(50) NOT NULL DEFAULT '',
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_product_sent (product_id, sent_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		if (strpos((string) $action['Type'], "'order_review_request'") !== false) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action order_review_request')));
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+		$values[] = 'order_review_request';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('Product reviews: a review of a product can now be written only by a customer who bought it, signed in with the account they ordered with, and it is marked as a verified purchase. Comments written before this version stay as they are; only verified reviews count towards the star rating given to search engines.');
 
 }

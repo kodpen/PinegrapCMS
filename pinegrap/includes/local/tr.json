@@ -24089,5 +24089,12 @@
     "Paraşüt takes VAT at {var:1} only; this invoice has {var:2}. It cannot be sent at that rate: cancel it and issue it again at a current rate.": "Paraşüt KDV'yi yalnız {var:1} oranlarıyla alır; bu faturada {var:2} var. Fatura bu oranla gönderilemez: iptal edip güncel bir oranla yeniden kesin.",
     "Down for Maintenance": "Bakımdayız",
     "The site is in maintenance mode (503)": "Site bakım modunda (503)",
-    "Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.": "Varsayılan: sayfanın ilk görseli önce, diğerleri ekrana yaklaştıkça yüklenir. Gecikmeli: bu görsel ekrana yaklaşınca yüklenir. Hemen: sayfa açılırken yüklenir."
+    "Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.": "Varsayılan: sayfanın ilk görseli önce, diğerleri ekrana yaklaştıkça yüklenir. Gecikmeli: bu görsel ekrana yaklaşınca yüklenir. Hemen: sayfa açılırken yüklenir.",
+    "Sign in with the account you ordered with to review this product.": "Bu ürünü değerlendirmek için sipariş verdiğiniz hesapla giriş yapın.",
+    "Only customers who bought this product can review it.": "Bu ürünü yalnız satın alan müşteriler değerlendirebilir.",
+    "You have already reviewed this product. You can review it again after your next order of it.": "Bu ürünü zaten değerlendirdiniz. Ürünü yeniden sipariş ettiğinizde tekrar değerlendirebilirsiniz.",
+    "access denied to submit a review to page ({var:1}) because the visitor has no purchase of the product left to review": "ziyaretçinin değerlendirebileceği bir satın alımı kalmadığı için sayfaya ({var:1}) değerlendirme gönderme erişimi reddedildi",
+    "Verified purchase": "Doğrulanmış satın alma",
+    "Please {var:1} to review a product you bought.": "Satın aldığınız ürünü değerlendirmek için lütfen {var:1}.",
+    "general job corrected the rating of {var:1} product(s) from their reviews": "genel iş {var:1} ürünün puanını değerlendirmelerinden yeniden hesaplayarak düzeltti"
 }

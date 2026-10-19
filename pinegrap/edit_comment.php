@@ -96,6 +96,9 @@ $comments_rating = $row['comments_rating'];
 
 
 $form_reference_code = '';
+$output_reference_button = '';
+$output_reference_line = '';
+$output_reference_buttons = '';
 if($item_type === 'submitted_form'){
     //if this is custom page check referance code from forms
     $form_reference_code = $row['reference_code'];
@@ -533,7 +536,11 @@ if (!$_POST) {
         // create bookmark for header
         $bookmark = '#c-' . $liveform->get_field_value('id');
     }
-    
+
+    // A review published, held back, re-rated or deleted moves its product's
+    // rating (includes/fn/reviews.php).
+    pg_review_comment_changed($item_type, $item_id);
+
     // if the page type is form item view, then update the submitted_form_info table so that form list views can show comment info
     if ($page_type == 'form item view') {
         // Get the number of views so we do not lose that data when we delete record below.
