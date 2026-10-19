@@ -23500,5 +23500,13 @@
     "Download as Markdown": "Markdown olarak indir",
     "Export all": "Tümünü dışa aktar",
     "This server cannot make zip files (the PHP zip extension is missing). Export the notes one by one instead.": "Bu sunucu zip dosyası yapamıyor (PHP zip eklentisi yok). Notları tek tek dışa aktarın.",
-    "last changed by {var:1}": "son değiştiren {var:1}"
+    "last changed by {var:1}": "son değiştiren {var:1}",
+    "There is no preview for this kind of file.": "Bu tür dosya için önizleme yok.",
+    "This server cannot show office files (the PHP zip or xml extension is missing).": "Bu sunucu ofis dosyalarını gösteremiyor (PHP zip ya da xml eklentisi yok).",
+    "This file is too large to show here. Download it to open it.": "Bu dosya burada gösterilemeyecek kadar büyük. Açmak için indirin.",
+    "picture": "resim",
+    "Hidden sheet": "Gizli sayfa",
+    "Only the beginning is shown. Download the file to see all of it.": "Yalnız başı gösteriliyor. Tamamını görmek için dosyayı indirin.",
+    "{1} picture(s) could not be shown.": "{1} resim gösterilemedi.",
+    "The sheet is empty.": "Sayfa boş."
 }

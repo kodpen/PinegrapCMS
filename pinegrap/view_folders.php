@@ -1295,6 +1295,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #file_edit_preview audio { width: 100%; max-width: 560px; margin: 2rem 1rem; }
 #file_edit_preview iframe { width: 100%; height: 46vh; border: 0; background: #fff; }
 #file_edit_preview .file-edit-glyph { font-size: 4rem; line-height: 1; color: var(--bs-secondary-color); padding: 1.5rem 0; }
+#file_edit_preview .office-view { width: 100%; height: 46vh; align-self: stretch; }
+#explorer_quicklook .ql-stage .office-view { width: 100%; height: 100%; border-radius: .5rem; }
 #file_edit_editor_wrap .pg-code-editor { height: 52vh; border: 1px solid var(--bs-border-color-translucent); border-radius: .5rem; overflow: hidden; }
 #file_edit_editor_wrap .cm-editor { font-size: .85rem; }
 #file_edit_facts span + span::before { content: '·'; margin: 0 .45rem; opacity: .6; }
@@ -6305,6 +6307,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.erp && item.picture) { return '<img draggable="false" src="' + esc(item.url) + '" alt="" />'; }
         if (item.is_image) { return '<img draggable="false" src="' + esc(imageUrl(item)) + '" alt="" />'; }
         if (item.type === 'pdf') { return '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>'; }
+        if (isOfficeType(item.type) && !item.erp) { return '<div class="office-view" id="quicklook_office"></div>'; }
         if (PREVIEW_VIDEO_TYPES.indexOf(item.type) !== -1) { return '<video controls autoplay preload="metadata" src="' + esc(item.url) + '"></video>'; }
         if (PREVIEW_AUDIO_TYPES.indexOf(item.type) !== -1) { return '<audio controls autoplay preload="metadata" src="' + esc(item.url) + '" style="width:min(32rem,80vw);"></audio>'; }
 
@@ -6339,6 +6342,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('quicklook_name').textContent = item.name || '';
         document.getElementById('quicklook_meta').textContent = quickLookMeta(item);
         document.getElementById('quicklook_media').innerHTML = quickLookMediaHtml(item);
+
+        if (document.getElementById('quicklook_office')) {
+            loadOfficePreview(document.getElementById('quicklook_office'), item.id);
+        }
 
         // The few things worth doing while looking at it. Editing goes through
         // the same door the panel and the menu use, so there is one file window
@@ -13045,8 +13052,50 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // fetched by PgCodeEditor.load() the first time a text file opens.
     var assetBundles = {
         image_editor: <?php echo encode_json(get_image_editor_includes()); ?>,
-        code_editor: <?php echo encode_json(pg_code_editor_includes()); ?>
+        code_editor: <?php echo encode_json(pg_code_editor_includes()); ?>,
+        office_view: <?php echo encode_json(pg_office_view_includes()); ?>
     };
+
+    // A Word or Excel file is read on the server (includes/fn/office.php)
+    // and drawn here by assets/js/pg_office_view.js, fetched on first use.
+    var OFFICE_TYPES = ['docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xlsm', 'xltx', 'xltm'];
+    var OFFICE_STRINGS = <?php echo encode_json(pg_office_view_strings()); ?>;
+
+    function isOfficeType(type) {
+        return OFFICE_TYPES.indexOf(String(type || '').toLowerCase()) !== -1;
+    }
+
+    // The preview of one file drawn into a box: a spinner while the server
+    // reads it, the sheets or the document when it answers, the reason when
+    // it cannot.
+    function loadOfficePreview(box, fileId) {
+
+        if (!box) { return; }
+
+        box.innerHTML = '<div class="text-center empty-note"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + esc(L.loading) + '</div>';
+
+        api({ type: 'explorer_office_preview', id: fileId }, function (response) {
+
+            if (!box.isConnected) { return; }
+
+            if (!response || response.status !== 'success') {
+                box.innerHTML = '<div class="text-center empty-note"><span class="bi bi-file-earmark-x file-edit-glyph d-block"></span>' + esc((response && response.message) ? response.message : L.no_preview) + '</div>';
+                return;
+            }
+
+            loadAssets('office_view', function () {
+
+                if (!box.isConnected) { return; }
+
+                if (!window.pgOfficeView) {
+                    box.innerHTML = '<div class="text-center empty-note">' + esc(L.no_preview) + '</div>';
+                    return;
+                }
+
+                window.pgOfficeView.render(box, response.office, OFFICE_STRINGS);
+            });
+        });
+    }
 
     // false: not asked for yet; an array: being fetched, these are waiting;
     // true: on the page.
@@ -13132,6 +13181,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (file.type === 'pdf') { return 'pdf'; }
         if (PREVIEW_VIDEO_TYPES.indexOf(file.type) !== -1) { return 'video'; }
         if (PREVIEW_AUDIO_TYPES.indexOf(file.type) !== -1) { return 'audio'; }
+        if (isOfficeType(file.type)) { return 'office'; }
         if (file.viewable) { return 'text'; }
         return 'other';
     }
@@ -13182,6 +13232,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 return '<audio controls preload="metadata" src="' + esc(file.url) + '"></audio>';
             case 'pdf':
                 return '<iframe loading="lazy" src="' + esc(file.url) + '"></iframe>';
+            case 'office':
+                // Filled by loadOfficePreview() once the window stands.
+                return '<div class="office-view" id="file_edit_office"></div>';
             case 'text':
                 // The editor is the preview.
                 return '';
@@ -13333,6 +13386,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         fileEdit = { item: item, file: file, kind: kind, editor: null, host: null, baseline: null };
 
         document.getElementById('file_edit_preview').innerHTML = filePreviewHtml(file, kind);
+
+        if ((kind === 'office') && file.on_disk) {
+            loadOfficePreview(document.getElementById('file_edit_office'), file.id);
+        }
 
         var editorWrap = document.getElementById('file_edit_editor_wrap');
         var note = document.getElementById('file_edit_editor_note');

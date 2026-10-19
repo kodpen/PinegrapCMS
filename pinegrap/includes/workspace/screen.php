@@ -712,6 +712,12 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'edit_user' => $base . 'edit_user.php',
         ),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
+        // Word and Excel files of a conversation, drawn by a script fetched
+        // on first use (includes/fn/office.php).
+        'office'       => function_exists('pg_office_view_includes') ? array(
+            'script'  => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_office_view.js?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_office_view.js'),
+            'strings' => pg_office_view_strings(),
+        ) : null,
         'strings'      => $strings,
         'recurrence'   => function_exists('ws_recurrence_js_config') ? ws_recurrence_js_config() : array('ready' => false),
         'reminders'    => function_exists('ws_task_reminders_js_config') ? ws_task_reminders_js_config() : array('ready' => false),

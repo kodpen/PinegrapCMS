@@ -373,6 +373,10 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 // A text file opens in the text window; an edited file lists
                 // the versions it replaced.
                 'text'     => function_exists('ws_file_is_text') && ws_file_is_text($row['file_name']),
+                // A Word or Excel file opens in the preview window, read on
+                // the server (ws_file_office).
+                'office'   => function_exists('pg_office_kind') && (pg_office_kind($row['file_name']) !== ''),
+                'message_id' => (int) $id,
                 'versions' => (int) ($extra['versions'][$id] ?? 0),
             );
         }
