@@ -197,7 +197,6 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         . ' title="' . h(lang('Asks GİB whether the number is an e-Invoice user and under which name it is registered.')) . '">'
                         . '<i class="bi bi-search me-1" aria-hidden="true"></i>' . lang('Query') . '</button></div>' : '') . '
                     ' . erp_account_form_einvoice_state($account) . '
-                    ' . ($taxpayer_lookup ? '<div class="form-text" data-erp-taxpayer-answer aria-live="polite"></div>' : '') . '
                 </div>
                 <div class="col-12 col-lg-6 my-2' . $tr_only . '" data-erp-tr-only>
                     <label for="tax_office" class="form-label">' . lang('Tax Office') . '</label>
@@ -205,6 +204,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'type' => 'text', 'id' => 'tax_office', 'name' => 'tax_office',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
+                ' . ($taxpayer_lookup ? '<div class="col-12"><div class="form-text text-break mt-0" data-erp-taxpayer-answer aria-live="polite"></div></div>' : '') . '
             </div>
         </div>
     </div>
@@ -344,10 +344,11 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         holder.innerHTML = data.state;
                         var fresh = holder.firstElementChild;
                         var old = document.querySelector("[data-erp-einvoice-state]");
+                        var group = button.closest(".input-group");
                         if (fresh && old) {
                             old.replaceWith(fresh);
-                        } else if (fresh) {
-                            answer.parentNode.insertBefore(fresh, answer);
+                        } else if (fresh && group) {
+                            group.after(fresh);
                         }
                     }
                     var name = (data.title || "").trim();

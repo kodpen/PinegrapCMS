@@ -16,3 +16,6 @@ description: How a signed-in session is bound to its auth_tokens row (selector k
 ## What must a new sign-in path do?
 - `pg_session_sign_in()` drops a binding made for another account (so `login_as_user.php` does not inherit the administrator's row) and keeps one made for the same account; mint with `pg_login_set_device_cookie()` before or after it, both orders work.
 - Never write `sessionuserid` without going through `pg_session_sign_in()`, and never mint a token outside `pg_login_set_device_cookie()`: a session with a user but no binding is accepted, but then a revoke cannot end it.
+
+## Was it checked on a running site?
+- Sandbox (`tools/setup_sandbox.sh`), 2026-10-19, a basic user signed in on several cookie jars: deleting one device's `auth_tokens` row, as every revoke path does, signed that session out on its next request (panel and a private file through `get_file.php`, log "session token was revoked") while the other devices stayed in; a client that had stopped sending `software[auth]` was signed out the same way and no fresh token was minted; with the table renamed away (an install mid-upgrade) every session kept working without errors.
