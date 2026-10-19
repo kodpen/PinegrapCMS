@@ -18,6 +18,9 @@ description: Plan (2026-10-19, not started) to open classic (legacy) pages in th
 - The legacy custom style layer is production (`pinegrap-verilmis-kararlar`): conversion never runs by itself, and the renderers (`get_catalog.php`, `get_shopping_cart.php`) are not touched.
 - A converted page re-exported by the designer is normalised (indentation, attribute order, quoting); byte-identical output is not a goal unless the owner says so.
 
+## What waits on this plan? (PHP region eval; owner 2026-10-19: no change now)
+- `get_page_content.php` runs `eval('?>' . $content)` when `PHP_REGIONS` is on (default) and the assembled page holds `<?`. Page text saved by a content-level operator (`pg_designer_merge_restricted_tree()`; `_pg_dm_neutralise_markers()` defuses only `<!--pg-`) and the raw widget tokens `__description` / `__details` (role 3 with `manage_ecommerce`, API `products:write`) are expanded before that line, so they reach the eval. The replacement must evaluate designer code only (style code, designer regions) before text and widgets are expanded, or escape `<?` in text props and raw tokens.
+
 ## Open questions
 - Theme designer (`theme_designer.php`) and `view_styles.php`: retire with the page designer or keep for classic sites?
 - What happens to a classic style that uses a PHP template file (`style_file`)? Not convertible; it stays classic.
