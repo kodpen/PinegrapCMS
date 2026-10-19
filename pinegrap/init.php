@@ -767,6 +767,15 @@ define('LANGUAGE_REDIRECT_MODE', in_array(($row['language_redirect_mode'] ?? '')
 define('LANGUAGE_REDIRECT_SCOPE', (($row['language_redirect_scope'] ?? '') === 'all') ? 'all' : 'home');
 define('LANGUAGE_REDIRECT_FALLBACK', (string) ($row['language_redirect_fallback'] ?? ''));
 
+// Operations alerts (2026.11.0, 11.0.20; includes/fn/ops_alerts.php). Off
+// while the columns are not there: the general job of a site that has the
+// files but not the upgrade raises nothing. The step turns them on, with the
+// e-mail and device channels, to the site's own address.
+define('OPS_ALERTS', isset($row['ops_alerts']) ? (int) $row['ops_alerts'] : 0);
+define('OPS_ALERT_EMAIL', isset($row['ops_alert_email']) ? (int) $row['ops_alert_email'] : 0);
+define('OPS_ALERT_PUSH', isset($row['ops_alert_push']) ? (int) $row['ops_alert_push'] : 0);
+define('OPS_ALERT_RECIPIENTS', (string) ($row['ops_alert_recipients'] ?? ''));
+
 
 if (!defined('SOFTWARE_LANGUAGE')) {
     $lang = isset($row['software_language']) && $row['software_language'] !== '' && $row['software_language'] !== 'undefined'

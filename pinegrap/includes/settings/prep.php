@@ -2174,6 +2174,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $backup_remote_ftp['password'] = '';
     $backup_remote_s3['secret_key'] = '';
 
+    // Operations alerts card (2026.11.0, 11.0.20). The columns arrive with the
+    // upgrade; until then the card says so instead of drawing controls. The
+    // recipient list is shown as it was saved; the box's placeholder is the
+    // address used while it is empty.
+    $ops_alerts_ready = array_key_exists('ops_alerts', $row);
+    $ops_alerts = $ops_alerts_ready ? (int) $row['ops_alerts'] : 1;
+    $ops_alert_email = $ops_alerts_ready ? (int) $row['ops_alert_email'] : 1;
+    $ops_alert_push = $ops_alerts_ready ? (int) $row['ops_alert_push'] : 1;
+    $ops_alert_recipients = (string) ($row['ops_alert_recipients'] ?? '');
+
     // The structure pass parses rendered markup with DOMDocument. Without the
     // extension the job records its run and exits, so the operator would see
     // a scheduled task that reports healthy and analyzes nothing.

@@ -90,6 +90,7 @@ function pg_settings_categories()
                 'pgset-datetime' => lang('Date & Time'),
                 'pgset-cron'     => lang('Cron Jobs'),
                 'pgset-backup'   => lang('Backups'),
+                'pgset-alerts'   => lang('Alerts'),
             ),
             'keywords' => array(
                 'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy')),
@@ -98,6 +99,7 @@ function pg_settings_categories()
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
                 'pgset-cron'     => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'   => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
+                'pgset-alerts'   => pg_settings_keywords(lang('alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning')),
             ),
             'lists' => array(
                 'job_dispatch_job' => 1,

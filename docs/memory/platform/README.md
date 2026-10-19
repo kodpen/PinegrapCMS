@@ -18,6 +18,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section).
+- ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits
 - performance-monitor-cost.md: Request-path cost rules for perf_monitor_shutdown(): fastcgi_finish_request, row cap, index cost, p95 without big OFFSET, PERF_MONITOR_SAMPLE_RATE.
 - redirect-after-hostname.md: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere and why it checks only the first two characters (a design decision).
 - redirect-validator-context.md: Redirect validation corner rules: leave escape_url() alone, validators are context-bound (pg_safe_back_url vs go()), go() hardening, no hand-written checks.

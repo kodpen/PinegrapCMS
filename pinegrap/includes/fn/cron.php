@@ -130,11 +130,18 @@ function pg_cron_last_runs()
 function pg_cron_jobs()
 {
     return array(
+        // Two hours: the general job is scheduled every minute and records its
+        // run before it dispatches anything, so even a backup that runs for
+        // hours in one tick does not hold the stamp back. A site whose host
+        // only allows an hourly schedule still finishes well inside it. The
+        // operations alert (includes/fn/ops_alerts.php) reads the same
+        // number, so the tile and the e-mail agree on when the job counts as
+        // stopped.
         'job' => array(
             'label'       => lang('General job'),
             'script'      => 'job.php',
             'interval'    => 60,
-            'stale_after' => 21600,
+            'stale_after' => 7200,
             'dispatch'    => false,
             'lane'        => 'light',
         ),

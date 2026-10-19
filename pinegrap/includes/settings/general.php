@@ -489,6 +489,82 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Alerts ──
+//
+// Who is told when a backup fails, a scheduled task stops or the software
+// files change, and by which channel (includes/fn/ops_alerts.php). The bell is
+// not a choice: an alert is a notification row, and the row is what makes it
+// once a day. Before the 2026.11.0 columns the card says so, and the save
+// module writes nothing for it either.
+$output_ops_alert_settings = '<div class="col-12"><div class="alert alert-secondary mb-0">' . lang('Run the upgrade to use this setting.') . '</div></div>';
+
+if ($ops_alerts_ready) {
+
+    $output_ops_alert_settings = '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . ($ops_alerts ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="ops_alerts" name="ops_alerts"/>
+                            <label class="form-check-label" for="ops_alerts">' . lang('Operations alerts') . '<br/><span class="form-text">' . lang('Tells the people who run the site when an automatic backup fails or goes stale, a scheduled task stops running or the software files no longer match the release. Each problem is told at most once a day while it lasts, on the panel bell of managers and administrators and by the channels below. System Status lists the alerts of the last seven days.') . '</span></label>
+                        </div>
+                    </div>
+                    <div class="col-12" id="ops_alert_fields">
+                        <div class="row gy-3">
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . ($ops_alert_email ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="ops_alert_email" name="ops_alert_email"/>
+                                    <label class="form-check-label" for="ops_alert_email">' . lang('Send alerts by e-mail') . '</label>
+                                </div>
+                            </div>
+                            <div class="pg-f-lg">
+                                <label for="ops_alert_recipients" class="form-label">' . lang('Alert recipients') . '</label>
+                                <input type="text" name="ops_alert_recipients" id="ops_alert_recipients" maxlength="1000" class="form-control" value="' . h($ops_alert_recipients) . '" placeholder="' . h($email_address) . '" inputmode="email" autocomplete="off" />
+                                <div class="form-text">' . lang('Separate several addresses with commas. Left empty, the alerts go to the site e-mail address.') . '</div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . ($ops_alert_push ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="ops_alert_push" name="ops_alert_push"/>
+                                    <label class="form-check-label" for="ops_alert_push">' . lang('Send alerts to subscribed devices') . '<br/><span class="form-text">' . lang('Phones and computers on which a manager or administrator turned notifications on. Delivered by the Device notifications job, which has to be selected under Cron Jobs.') . '</span></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>';
+
+    // The channels mean nothing while the master switch is off. They stay
+    // in the form and are posted while hidden, so switching alerts off and
+    // saving keeps the recipients for next time.
+    $pg_settings_scripts[] = '
+    <script>
+        (function () {
+            var master = document.getElementById("ops_alerts");
+            var fields = document.getElementById("ops_alert_fields");
+
+            if (!master || !fields) {
+                return;
+            }
+
+            function sync() {
+                fields.style.display = master.checked ? "" : "none";
+            }
+
+            master.addEventListener("change", sync);
+            sync();
+        })();
+    </script>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-alerts" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                ' . lang('Alerts') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">' . $output_ops_alert_settings . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // The modal explains every job the card can switch on. It is printed outside
 // the form, so it travels in its own variable.
 $pg_settings_modals[] = '

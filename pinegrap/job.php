@@ -567,6 +567,15 @@ if (function_exists('pg_geo_db_due') && pg_geo_db_due()) {
 
 }
 
+// Operations alerts (includes/fn/ops_alerts.php): a backup gone stale, a
+// scheduled task that stopped, software files that no longer match the
+// release - to the bell, the subscribed devices and the alert recipients, at
+// most once a day per problem. The checks run at most every ten minutes and
+// skip a tick that overlaps a slow pass; with alerts off, or between passes,
+// this is one constant read and one small file read. The alert mail is
+// queued, so the next tick's mail pass sends it.
+pg_ops_alerts_run();
+
 // The file of an InnoDB visitors table keeps the room of the rows the cleanup
 // removed. Once a large share of it is free, the table is rebuilt online in
 // the quietest hour of the day, which writes a file holding only the rows that
