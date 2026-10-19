@@ -632,6 +632,30 @@ function h($content)
     return htmlspecialchars($content, ENT_QUOTES | ENT_HTML401, 'UTF-8');
 }
 
+// Defuse PHP open tags in markup that is printed raw into a page.
+//
+// get_page_content.php evaluates the assembled page as a PHP template when
+// PHP_REGIONS is on, and a content-level operator's text, a product's rich
+// description and an imported page all land in that page before the eval.
+// Rewriting `<?` to `&lt;?` keeps the characters on screen while the PHP
+// parser no longer sees an open tag; the rest of the markup is untouched.
+// Designer code (style code, designer regions, custom_php nodes) never goes
+// through here, so PHP written by a designer still runs.
+function pg_defuse_php_tags($html)
+{
+    if ($html === null || $html === '') {
+        return '';
+    }
+
+    $html = (string) $html;
+
+    if (strpos($html, '<?') === false) {
+        return $html;
+    }
+
+    return str_replace('<?', '&lt;?', $html);
+}
+
 function escape($string)
 {
     // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
