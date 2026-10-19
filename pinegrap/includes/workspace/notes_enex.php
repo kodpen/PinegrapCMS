@@ -1187,7 +1187,12 @@ function ws_note_enex_read($path, &$context)
         fclose($file['handle']);
     }
 
-    xml_parser_free($parser);
+    // A no-op since PHP 8.0 and deprecated in 8.5: there the parser goes with
+    // its variable.
+    if (PHP_VERSION_ID < 80000) {
+        xml_parser_free($parser);
+    }
+
     fclose($handle);
 
     if ($failed !== '') {
