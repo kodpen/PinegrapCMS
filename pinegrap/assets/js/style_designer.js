@@ -55976,27 +55976,25 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
-    // Read from the canvas, not from the tree: the colour of a text and of
-    // what it sits on come from the design's CSS, its theme and Bootstrap's
-    // classes. Every text the canvas shows is measured against the colour
-    // behind it (PgContrast, assets/js/pg_contrast.js); a text with a picture
-    // under it is left alone, since no single colour is behind it. One issue
-    // per element, for its worst text, on the nearest element a tree knows -
-    // inside shared components and widgets too, like cf_field_unnamed.
+    // ── Canvas checks (WCAG 2.2) ─────────────────────────────────────
+    // What only the browser can tell: the colours a text is drawn in, the
+    // size a control is drawn at, the fields a form ends up with. Read from
+    // the canvas, not from the tree; each finding goes on the nearest element
+    // a tree knows, inside shared components and widgets too, like
+    // cf_field_unnamed, so its badge and Go work as for every issue.
 
-    // Editor chrome that has text of its own (toolbars, badges, placeholders,
-    // bands), the sample records drawn after a loop's first, and elements a
-    // switched-off feature drops from the page.
-    var _SD_CONTRAST_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
+    // Editor chrome that has text or controls of its own (toolbars, badges,
+    // placeholders, bands), the sample records drawn after a loop's first,
+    // and elements a switched-off feature drops from the page.
+    var _SD_CANVAS_AUDIT_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
         '.sd-system-empty-hint, .sd-system-placeholder, .sd-section-binding-hint, .sd-loop-band, .sd-loop-band-row, ' +
         '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off';
 
     // An editor box around an element: its background (the selection tint,
-    // the loop area's) is the editor's, not the page's. Table parts and a
-    // summary are their own wrapper (buildTableNodeEl(), _sdSelfWrapped()),
-    // so theirs is the page's.
-    function _sdContrastEditorBox(el) {
+    // the loop area's) and its display are the editor's, not the page's.
+    // Table parts and a summary are their own wrapper (buildTableNodeEl(),
+    // _sdSelfWrapped()), so theirs are the page's.
+    function _sdCanvasEditorBox(el) {
         var cl = el.classList;
         if (!cl) return false;
         if (cl.contains('sd-wrap')) {
@@ -56007,7 +56005,7 @@ const StyleDesigner = (function () {
 
     // Every node the canvas can show, by id: the page's and those of the
     // shared components, whose own nodes carry their ids on the canvas.
-    function _sdContrastNodeIndex(root) {
+    function _sdCanvasNodeIndex(root) {
         var index = {};
         function walk(n) {
             if (!n) return;
@@ -56022,12 +56020,49 @@ const StyleDesigner = (function () {
         return index;
     }
 
-    function _sdContrastIssues(root) {
+    // The node a canvas element belongs to: the nearest wrapper a tree knows.
+    function _sdCanvasNodeOf(el, index) {
+        for (var w = el.closest('[data-sd-id]'); w; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
+            var n = index[w.getAttribute('data-sd-id')];
+            if (n) return n.type === 'root' ? null : n;
+        }
+        return null;
+    }
+
+    // A number in the panel's language: 4,4 in Turkish.
+    function _sdAuditNum(v, digits) {
+        try {
+            return Number(v).toLocaleString(_sdLocale(), { minimumFractionDigits: digits, maximumFractionDigits: 1 });
+        } catch (e) {
+            return String(v);
+        }
+    }
+
+    function _sdCanvasAuditIssues(root) {
         if (!canvasDoc || !canvasDoc.body || !window.PgContrast) return [];
-        var body = canvasDoc.body;
+        var ctx = { index: _sdCanvasNodeIndex(root), body: canvasDoc.body };
+        var out = [];
+        // One check that cannot read this canvas does not stop the others.
+        [_sdContrastIssues, _sdTargetSizeIssues, _sdRedundantEntryIssues].forEach(function (check) {
+            try {
+                check(ctx).forEach(function (issue) { out.push(issue); });
+            } catch (e) {
+                if (window.console) console.warn('Canvas check skipped', e);
+            }
+        });
+        return out;
+    }
+
+    // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
+    // Every text the canvas shows against the colour behind it (PgContrast,
+    // assets/js/pg_contrast.js); a text with a picture under it is left
+    // alone, since no single colour is behind it. One issue per element, for
+    // its worst text.
+    function _sdContrastIssues(ctx) {
+        var body = ctx.body;
         var opts = {
-            skip: function (el) { return el.matches(_SD_CONTRAST_SKIP); },
-            ignore: _sdContrastEditorBox,
+            skip: function (el) { return el.matches(_SD_CANVAS_AUDIT_SKIP); },
+            ignore: _sdCanvasEditorBox,
             // The canvas grid overlay is the body's background image.
             noImage: function (el) { return el === body && body.classList.contains('sd-grid-overlay'); },
             // The editor tints the cells of a repeated table row; under the
@@ -56040,39 +56075,155 @@ const StyleDesigner = (function () {
             }
         };
         var cache = (typeof WeakMap === 'function') ? new WeakMap() : null;
-        var index = _sdContrastNodeIndex(root);
         var pics = PgContrast.pictures(body, opts);
         var worst = {};
         PgContrast.textRuns(body, opts).forEach(function (run) {
-            var node = null;
-            for (var w = run.el.closest('[data-sd-id]'); w && !node; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
-                node = index[w.getAttribute('data-sd-id')] || null;
-            }
-            if (!node || node.type === 'root') return;
+            var node = _sdCanvasNodeOf(run.el, ctx.index);
+            if (!node) return;
             var res = PgContrast.check(run, pics, opts, cache);
             if (!res || res.ok) return;
             // How far below its minimum: the text that reads worst is named.
             var gap = res.ratio / res.min;
             if (!worst[node._id] || gap < worst[node._id].gap) worst[node._id] = { node: node, gap: gap, res: res, text: run.text };
         });
-        var num = function (v, digits) {
-            try {
-                return Number(v).toLocaleString(_sdLocale(), { minimumFractionDigits: digits, maximumFractionDigits: 1 });
-            } catch (e) {
-                return String(v);
-            }
-        };
         return Object.keys(worst).map(function (id) {
             var f = worst[id];
             var text = f.text.length > 40 ? f.text.slice(0, 39) + '…' : f.text;
             // Rounded down, so a 4.48:1 never reads as the 4.5:1 it misses.
-            var ratio = num(Math.floor(f.res.ratio * 10) / 10, 1);
+            var ratio = _sdAuditNum(Math.floor(f.res.ratio * 10) / 10, 1);
             return {
                 rule: 'low_contrast',
-                label: _sdT('Low text contrast {var:1}:1, at least {var:2}:1 is needed: "{var:3}"', [ratio, num(f.res.min, 0), text]),
+                label: _sdT('Low text contrast {var:1}:1, at least {var:2}:1 is needed: "{var:3}"', [ratio, _sdAuditNum(f.res.min, 0), text]),
                 node: f.node, nodeLabel: getNodeLabel(f.node), seo: ''
             };
         });
+    }
+
+    // ── Target size (WCAG 2.5.8) ─────────────────────────────────────
+    // What the visitor clicks or taps is at least 24×24 CSS pixels, or has
+    // room around it: a 24px circle centred on it touches no other target
+    // and no other small target's circle. Exempt, as in the criterion: a
+    // link inside a sentence, the browser's own checkboxes and radio buttons,
+    // and a stretched link, whose target is its whole card. Sizes are CSS
+    // pixels, the canvas zoom divided out.
+    var _SD_AUDIT_TARGETS = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, ' +
+        '[role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [role="menuitem"]';
+
+    // A link in running text: drawn inline, with words beside it in the
+    // nearest block of the page (editor boxes looked through).
+    function _sdTargetInSentence(el, cs, win) {
+        if (cs.display !== 'inline') return false;
+        var block = el.parentElement;
+        while (block && block !== win.document.body && (_sdCanvasEditorBox(block) || win.getComputedStyle(block).display === 'inline')) {
+            block = block.parentElement;
+        }
+        if (!block) return false;
+        var own = (el.textContent || '').replace(/\s+/g, '').length;
+        var around = 0;
+        PgContrast.textRuns(block, { skip: function (n) { return n === el || n.matches(_SD_CANVAS_AUDIT_SKIP); } }).forEach(function (run) {
+            around += run.text.replace(/\s+/g, '').length;
+        });
+        return around > 0 && own > 0;
+    }
+
+    function _sdTargetSizeIssues(ctx) {
+        var win = canvasDoc.defaultView;
+        var targets = [];
+        Array.prototype.forEach.call(ctx.body.querySelectorAll(_SD_AUDIT_TARGETS), function (el) {
+            if (el.closest(_SD_CANVAS_AUDIT_SKIP)) return;
+            var cs = win.getComputedStyle(el);
+            if (cs.visibility !== 'visible' || el.closest(':disabled, [aria-disabled="true"], .disabled')) return;
+            var z = PgContrast.zoom(el);
+            var r = el.getBoundingClientRect();
+            var t = { el: el, left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z };
+            t.w = t.right - t.left;
+            t.h = t.bottom - t.top;
+            // Not drawn, or a visually hidden one-pixel box.
+            if (t.w <= 1 || t.h <= 1) return;
+            t.cx = (t.left + t.right) / 2;
+            t.cy = (t.top + t.bottom) / 2;
+            var type = (el.getAttribute('type') || '').toLowerCase();
+            var uaDrawn = (type === 'checkbox' || type === 'radio') && (cs.appearance || cs.webkitAppearance || 'auto') !== 'none';
+            t.small = (t.w < 24 || t.h < 24) && !uaDrawn && !el.classList.contains('stretched-link') && !_sdTargetInSentence(el, cs, win);
+            targets.push(t);
+        });
+        var worst = {};
+        targets.forEach(function (t) {
+            if (!t.small) return;
+            var crowded = targets.some(function (o) {
+                if (o === t || o.el.contains(t.el) || t.el.contains(o.el)) return false;
+                // The circle touches the other target's box...
+                var dx = Math.max(o.left - t.cx, 0, t.cx - o.right);
+                var dy = Math.max(o.top - t.cy, 0, t.cy - o.bottom);
+                if (dx * dx + dy * dy < 144) return true;
+                // ...or another small target's circle.
+                return o.small && ((o.cx - t.cx) * (o.cx - t.cx) + (o.cy - t.cy) * (o.cy - t.cy) < 576);
+            });
+            if (!crowded) return;
+            var node = _sdCanvasNodeOf(t.el, ctx.index);
+            if (!node) return;
+            var area = t.w * t.h;
+            if (!worst[node._id] || area < worst[node._id].area) worst[node._id] = { node: node, area: area, t: t };
+        });
+        return Object.keys(worst).map(function (id) {
+            var f = worst[id];
+            return {
+                rule: 'target_size',
+                label: _sdT('Small target {var:1}×{var:2}px with others close by: at least 24×24px, or room around it', [Math.round(f.t.w), Math.round(f.t.h)]),
+                node: f.node, nodeLabel: getNodeLabel(f.node), seo: ''
+            };
+        });
+    }
+
+    // ── Redundant entry (WCAG 3.3.7) ─────────────────────────────────
+    // A form that asks for the same thing twice - an e-mail and its "confirm
+    // e-mail", two fields with one autocomplete purpose - makes the visitor
+    // type it again. A password asked twice is exempt (asked again for
+    // safety), like choices, files and buttons.
+    var _SD_ENTRY_NOT_TYPED = ['hidden', 'password', 'submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'range', 'color'];
+
+    // Asked twice by the software itself: the registration and membership
+    // forms post to pg_member_register() / pg_member_activate(), which
+    // require the address again; a design cannot drop the field.
+    var _SD_ENTRY_SOFTWARE_TWICE = ['email_verify', 'email_address_verify'];
+
+    // What a field asks for: its autocomplete purpose, or its name without a
+    // "confirm" / "repeat" / "tekrar" part. '' when it says nothing usable.
+    function _sdEntryPurpose(el) {
+        var name = String(el.getAttribute('name') || '').toLowerCase().replace(/\[\]$/, '');
+        if (_SD_ENTRY_SOFTWARE_TWICE.indexOf(name) !== -1) return '';
+        var ac = String(el.getAttribute('autocomplete') || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        if (ac && ac !== 'on' && ac !== 'off') return 'ac:' + ac;
+        name = name.replace(/(^|[_\-.])(confirm|confirmation|repeat|again|verify|retype|tekrar|dogrula|dogrulama|onay)(?=$|[_\-.])/g, '$1')
+                   .replace(/[_\-.]{2,}/g, '_').replace(/^[_\-.]+|[_\-.]+$/g, '');
+        return name ? 'name:' + name : '';
+    }
+
+    function _sdRedundantEntryIssues(ctx) {
+        var out = [], flagged = {}, scopes = [];
+        // A form on the canvas, or a widget whose form the server wraps
+        // around its fields only when the page is drawn.
+        Array.prototype.forEach.call(ctx.body.querySelectorAll('input, select, textarea'), function (el) {
+            if (el.closest(_SD_CANVAS_AUDIT_SKIP)) return;
+            var type = (el.getAttribute('type') || 'text').toLowerCase();
+            if (el.tagName === 'INPUT' && _SD_ENTRY_NOT_TYPED.indexOf(type) !== -1) return;
+            var scope = el.closest('form') || el.closest('.sd-system-wrap');
+            var purpose = scope ? _sdEntryPurpose(el) : '';
+            if (!purpose) return;
+            var seen = null;
+            for (var i = 0; i < scopes.length && !seen; i++) if (scopes[i].el === scope) seen = scopes[i].seen;
+            if (!seen) { seen = {}; scopes.push({ el: scope, seen: seen }); }
+            if (!seen[purpose]) { seen[purpose] = true; return; }
+            var node = _sdCanvasNodeOf(el, ctx.index);
+            if (!node || flagged[node._id]) return;
+            flagged[node._id] = true;
+            out.push({
+                rule: 'redundant_entry',
+                label: _sdT('This field asks again for what the form already asked: fill it in for the visitor or let them pick it'),
+                node: node, nodeLabel: getNodeLabel(node), seo: ''
+            });
+        });
+        return out;
     }
 
     function validateTree(root) {
@@ -56122,12 +56273,7 @@ const StyleDesigner = (function () {
                 seo: pi.seo
             });
         });
-        // A broken canvas must not take the rest of the audit with it.
-        try {
-            _sdContrastIssues(root).forEach(function (ci) { issues.push(ci); });
-        } catch (e) {
-            if (window.console) console.warn('Contrast check skipped', e);
-        }
+        _sdCanvasAuditIssues(root).forEach(function (ci) { issues.push(ci); });
         return issues;
     }
 
