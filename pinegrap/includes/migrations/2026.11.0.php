@@ -33,6 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_page_revisions();         // 11.0.15
 
 }
 
@@ -314,5 +315,41 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+// Page revisions (includes/fn/page_revisions.php).
+//
+// page_revisions keeps one row for every publish of a visual-designer page:
+// the tree as saved, the SHA-1 of the tree and of the HTML drawn from it, the
+// page's settings as JSON, who published, when and from where (publish,
+// restore, import, ai). revision_no counts up per page; the unique key is what
+// makes two saves of one page at the same moment take different numbers. The
+// two config columns are the retention rules: the last N revisions of a page
+// are kept, and so is every revision younger than D days.
+function upgrade_2026_11_0_page_revisions() {
+
+	install_create_table('page_revisions', "CREATE TABLE page_revisions (
+		revision_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		style_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		revision_no    INT UNSIGNED NOT NULL DEFAULT 0,
+		page_tree_json LONGTEXT NOT NULL,
+		tree_hash      CHAR(40) NOT NULL DEFAULT '',
+		tree_code_hash CHAR(40) NOT NULL DEFAULT '',
+		settings_json  TEXT NOT NULL,
+		user_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		source         VARCHAR(16) NOT NULL DEFAULT 'publish',
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (revision_id),
+		UNIQUE KEY idx_page_revision (page_id, revision_no),
+		KEY idx_page_created (page_id, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'page_revisions_keep', "SMALLINT UNSIGNED NOT NULL DEFAULT 30");
+
+	install_add_column('config', 'page_revisions_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 90");
+
+	install_note('Pages: every publish of a visual-designer page is kept as a revision, with who published it and when; the last 30 revisions of a page and every revision of the last 90 days are kept.');
 
 }

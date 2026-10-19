@@ -1,6 +1,6 @@
 ---
 name: page-revisions-and-scheduling
-description: Plan (approved 2026-10-19, not started): server-side page revision history with compare and restore, retention, scheduled publish and unpublish for designer pages; live pages still publish directly
+description: Plan (approved 2026-10-19; step 1 revisions table and writer done): server-side page revision history with compare and restore, retention, scheduled publish and unpublish for designer pages
 ---
 
 ## What did the owner decide?
@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19, not started): server-side page revision 
 - API: `GET /design/pages/{id}/revisions`, `POST …/revisions/{no}/restore` (dry-run supported), `publish_at`/`unpublish_at` on page write.
 
 ## What remains?
-1. Migration step + writer + trimming job + tests (`tests/page_revisions_test.php`) (S–M).
+1. Done (PR #PRNUM): step 11.0.15 (`page_revisions`, `config.page_revisions_keep/days`), `includes/fn/page_revisions.php` (writer in `pg_designer_save_page()`, sources, trim, daily sweep in job.php), `tests/page_revisions_test.php`; `docs/memory/designer/page-revisions.md`.
 2. History panel, compare, restore in `style_designer.js` (build with `tools/build_js.php` if bundled) (M).
 3. Scheduling columns, job, list badge, page settings UI (M).
 4. API routes, schema, MCP (S).
@@ -26,6 +26,7 @@ description: Plan (approved 2026-10-19, not started): server-side page revision 
 
 ## Open questions?
 - Store `page_tree_code` fully or hash only? Hash only; the tree is re-rendered on restore (render is deterministic).
+- Retention settings (count, days) have columns and constants but no settings card yet; it goes in with step 3's page settings UI (Designer settings pane or the Features card).
 
 ## Where to start?
 - Step 1; read `docs/memory/designer/multi-page-design-model.md` and `designer-collab-view-mode.md` (lock rules apply to restore too).

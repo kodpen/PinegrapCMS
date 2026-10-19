@@ -383,6 +383,7 @@ function pg_designer_create_design_from_import($res, $design_name, $user)
             'page_sitemap'          => 1,
             'page_home'             => 0,
             'pg_comments_allow_new' => 1,
+            'revision_source'       => 'import',
         ), $user);
         if (!empty($r['ok'])) {
             $out['page_ids'][] = (int)$r['page_id'];
