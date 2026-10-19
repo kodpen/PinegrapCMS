@@ -1580,8 +1580,10 @@ $(document).ready(function () {
             return (v !== undefined && v !== null) ? v : key;
         }
 
+        // String() first: one term that arrives as a number would otherwise
+        // stop the matcher, and with it every search typed into the box.
         function normalizeTR(s) {
-            return s.toLowerCase()
+            return String(s).toLowerCase()
                 .replace(/\u011f/g, 'g').replace(/\u00fc/g, 'u').replace(/\u015f/g, 's')
                 .replace(/\u0131/g, 'i').replace(/\u00f6/g, 'o').replace(/\u00e7/g, 'c');
         }
