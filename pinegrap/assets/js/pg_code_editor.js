@@ -876,7 +876,6 @@
         var userChange = opts.onChange;
         var merged = {};
         for (var k in opts) if (Object.prototype.hasOwnProperty.call(opts, k)) merged[k] = opts[k];
-        merged.value = textarea.value;
         merged.language = opts.language || textarea.getAttribute('data-language') || 'html';
         merged.readOnly = (opts.readOnly !== undefined) ? opts.readOnly : textarea.readOnly;
         merged.onChange = function (inst, update) {
@@ -884,7 +883,12 @@
             try { textarea.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
             if (typeof userChange === 'function') userChange(inst, update);
         };
-        return open(host, merged).then(function (inst) {
+        // The text is read once the engine is here: what was typed into the
+        // textarea while it was on its way is kept.
+        return load().then(function () {
+            merged.value = textarea.value;
+            return pgCeCreate(host, merged);
+        }).then(function (inst) {
             textarea.style.display = 'none';
             inst.textarea = inst.textarea || textarea;
             var destroy = inst.destroy;
