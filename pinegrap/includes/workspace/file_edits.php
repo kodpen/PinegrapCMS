@@ -240,7 +240,6 @@ function ws_file_office_edited($message, $cells, $version)
     $saved = pg_office_xlsx_save($copy, $cells, (string) $version, $directory);
     $bytes = $saved['ok'] ? @file_get_contents($copy) : false;
     @unlink($copy);
-    @unlink($directory . '/office_edit_' . sha1($copy) . '.lock');
 
     if (!$saved['ok']) {
         return $fail($saved['error']);

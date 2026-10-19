@@ -604,6 +604,10 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
  */
 function pg_office_xlsx_read($path, $edit = false)
 {
+    // The version is taken before anything is read: a file changed while it
+    // is read then fails the save's check, instead of passing it with cells
+    // the person never saw.
+    $version = ($edit && function_exists('pg_office_version')) ? pg_office_version($path) : '';
     $zip = pg_office_open($path, $error);
 
     if ($zip === null) {
@@ -644,7 +648,7 @@ function pg_office_xlsx_read($path, $edit = false)
             $last_row = empty($rows) ? 0 : (int) $rows[count($rows) - 1]['n'];
             $entry['edit'] = $signed
                 ? array('ok' => false, 'why' => 'signed')
-                : pg_office_xlsx_sheet_edit_info($path, $zip, $sheet, $last_row, $styles);
+                : pg_office_xlsx_sheet_edit_info($zip, $sheet, $last_row, $styles);
         }
 
         $out[] = $entry;
@@ -655,7 +659,7 @@ function pg_office_xlsx_read($path, $edit = false)
     $book = array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
 
     if ($edit) {
-        $book['version'] = pg_office_version($path);
+        $book['version'] = $version;
     }
 
     return $book;

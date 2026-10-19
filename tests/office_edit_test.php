@@ -437,3 +437,100 @@ function test_office_edit_save_refuses_signed_and_bad_requests()
 	@unlink($directory . '/office_edit_' . sha1($path) . '.lock');
 	unlink($path);
 }
+
+// A zip whose entry says it unpacks to fewer bytes than it does: the central
+// directory's and the local header's sizes are rewritten after the fact.
+function office_edit_test_declare_size($path, $entry, $size)
+{
+	$bytes = file_get_contents($path);
+	$name = strlen($entry);
+
+	foreach (array("PK\x01\x02" => 24, "PK\x03\x04" => 22) as $signature => $field) {
+		$offset = 0;
+
+		while (($offset = strpos($bytes, $signature, $offset)) !== false) {
+			$name_at = ($signature === "PK\x01\x02") ? 46 : 30;
+			$length = unpack('v', substr($bytes, $offset + (($signature === "PK\x01\x02") ? 28 : 26), 2))[1];
+
+			if (($length === $name) && (substr($bytes, $offset + $name_at, $name) === $entry)) {
+				$bytes = substr_replace($bytes, pack('V', $size), $offset + $field, 4);
+			}
+
+			$offset += 4;
+		}
+	}
+
+	file_put_contents($path, $bytes);
+}
+
+function test_office_edit_scan_limits()
+{
+	$reader = new XMLReader();
+	$reader->XML(office_edit_test_sheet('<row r="1"><c r="A1"><v>1</v></c></row><?pi <row r="1"><c r="B1"/></row>?>'));
+	pg_assert_true(pg_office_xlsx_scan($reader, 1, array())['unusual'], 'a processing instruction in the sheet: shown, not changed');
+
+	$merges = '';
+
+	for ($row = 1; $row <= PG_OFFICE_EDIT_MAX_RANGES + 1; $row++) {
+		$merges .= '<mergeCell ref="A' . $row . ':B' . $row . '"/>';
+	}
+
+	$reader = new XMLReader();
+	$reader->XML(office_edit_test_sheet('<row r="1"><c r="A1"><v>1</v></c></row>', '<mergeCells>' . $merges . '</mergeCells>'));
+	$scan = pg_office_xlsx_scan($reader, 1, array());
+	pg_assert_true($scan['crowded'], 'more merges than are kept');
+	pg_assert_same(PG_OFFICE_EDIT_MAX_RANGES, count($scan['merges']), 'and no more are kept');
+
+	if (!pg_office_ready()) {
+		return;
+	}
+
+	$parts = office_edit_test_book_parts();
+	$parts['xl/worksheets/sheet2.xml'] = office_edit_test_sheet('<row r="1"><c r="A1"><v>1</v></c></row>', '<mergeCells>' . $merges . '</mergeCells>');
+	$path = office_edit_test_package($parts);
+	$book = pg_office_read($path, 'x.xlsx', true);
+	pg_assert_same(array('ok' => false, 'why' => 'large'), array_intersect_key($book['sheets'][1]['edit'], array('ok' => 1, 'why' => 1)), 'such a sheet is not offered');
+
+	$refused = pg_office_xlsx_save($path, array(array('sheet' => 1, 'cell' => 'C1', 'value' => '2')), $book['version'], sys_get_temp_dir());
+	pg_assert_same('large', $refused['code'], 'nor saved');
+	unlink($path);
+
+	// A merge reaching far below and beside what is shown goes to the
+	// preview cut to it.
+	$parts = office_edit_test_book_parts();
+	$parts['xl/worksheets/sheet2.xml'] = office_edit_test_sheet('<row r="1"><c r="A1"><v>1</v></c></row><row r="2"><c r="A2"><v>2</v></c></row>', '<mergeCells><mergeCell ref="B1:ZZ90000"/><mergeCell ref="A70000:B70001"/></mergeCells>');
+	$path = office_edit_test_package($parts);
+	pg_assert_same(array(array(1, 1, 2, PG_OFFICE_MAX_COLUMNS - 1, 'merged')), pg_office_read($path, 'x.xlsx', true)['sheets'][1]['edit']['ranges'], 'cut to the rows and columns shown, the rest left out');
+	unlink($path);
+
+	// A sheet that unpacks to more than its entry declares is read only as
+	// far as declared: cut short, it is not offered.
+	$parts = office_edit_test_book_parts();
+	$parts['xl/worksheets/sheet2.xml'] = office_edit_test_sheet('<row r="1"><c r="A1"><v>1</v></c></row>', '<mergeCells>' . $merges . '</mergeCells>');
+	$path = office_edit_test_package($parts);
+	office_edit_test_declare_size($path, 'xl/worksheets/sheet2.xml', 1000);
+	$zip = new ZipArchive();
+	$zip->open($path);
+	pg_assert_same(1000, (int) $zip->statName('xl/worksheets/sheet2.xml')['size'], 'the entry declares 1000 bytes');
+	$zip->close();
+	$book = pg_office_read($path, 'x.xlsx', true);
+	pg_assert_false($book['sheets'][1]['edit']['ok'], 'only the declared bytes are read, and they are not a whole sheet');
+	unlink($path);
+}
+
+function test_office_edit_lock_file_goes()
+{
+	$directory = sys_get_temp_dir();
+	$path = $directory . '/pg_office_edit_lock_' . bin2hex(random_bytes(4)) . '.xlsx';
+	$file = $directory . '/office_edit_' . sha1($path) . '.lock';
+
+	$lock = pg_office_edit_lock($path, $directory);
+	pg_assert_true(is_array($lock) && is_file($file), 'held, with its file');
+	pg_office_edit_unlock($lock);
+	pg_assert_false(is_file($file), 'let go: the file is gone');
+
+	$again = pg_office_edit_lock($path, $directory);
+	pg_assert_true(is_array($again), 'and the lock can be taken again');
+	pg_office_edit_unlock($again);
+	pg_assert_false(is_file($file), 'leaving nothing behind');
+}

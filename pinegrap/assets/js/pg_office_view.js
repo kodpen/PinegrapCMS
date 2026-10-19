@@ -71,10 +71,41 @@
         return value !== '' && !isNaN(value) && !isNaN(parseFloat(value));
     }
 
+    // The areas a sheet's cells are checked against (merges, array
+    // formulas, tables, pivot tables), listed under each shown row they
+    // cover, so a cell looks only at those of its own row. The server sends
+    // them cut to the rows and columns shown; the rows come in order.
+    function rangeIndex(sheet) {
+        var index = {};
+        var ranges = (sheet.edit && sheet.edit.ranges) || [];
+        var shown = sheet.rows.map(function (row) { return row.n; });
+
+        ranges.forEach(function (range) {
+            var low = 0;
+            var high = shown.length;
+
+            while (low < high) {
+                var middle = (low + high) >> 1;
+
+                if (shown[middle] < range[0]) {
+                    low = middle + 1;
+                } else {
+                    high = middle;
+                }
+            }
+
+            for (var place = low; place < shown.length && shown[place] <= range[2]; place++) {
+                (index[shown[place]] = index[shown[place]] || []).push(range);
+            }
+        });
+
+        return index;
+    }
+
     // Why a cell of a sheet may not be changed, as the server sorted it
     // (includes/fn/office_edit.php); '' when it may. The server checks the
     // same again when the edit is saved.
-    function lockOf(sheet, row, column) {
+    function lockOf(sheet, row, column, index) {
         var edit = sheet.edit;
 
         if (!edit || !edit.ok) {
@@ -91,10 +122,10 @@
             return 'protected';
         }
 
-        var ranges = edit.ranges || [];
+        var ranges = (index && index[row]) || [];
 
-        for (var index = 0; index < ranges.length; index++) {
-            var range = ranges[index];
+        for (var place = 0; place < ranges.length; place++) {
+            var range = ranges[place];
 
             if (row < range[0] || row > range[2] || column < range[1] || column > range[3]) {
                 continue;
@@ -156,6 +187,7 @@
         });
 
         var table = el('table', 'office-sheet');
+        var index = state ? rangeIndex(sheet) : null;
         var head = el('thead');
         var headRow = el('tr');
 
@@ -184,7 +216,7 @@
 
                 if (state) {
                     var address = columnName(column) + row.n;
-                    var lock = lockOf(sheet, row.n, column);
+                    var lock = lockOf(sheet, row.n, column, index);
 
                     if (own(state.changes, address)) {
                         value = state.changes[address];

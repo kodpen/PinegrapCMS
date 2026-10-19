@@ -59,9 +59,21 @@ define('PG_OFFICE_EDIT_MAX_TEXT', 32767);
 define('PG_OFFICE_EDIT_MAX_PART', 32 * 1024 * 1024);
 
 /**
- * The longest formula text handed to the preview for a cell's tooltip.
+ * The longest formula text handed to the preview for a cell's tooltip, and
+ * how much formula text one sheet hands out in all, in bytes; past that the
+ * cells are still locked, with the plain reason.
  */
 define('PG_OFFICE_EDIT_FORMULA_LABEL', 255);
+define('PG_OFFICE_EDIT_FORMULA_TEXT', 1000000);
+
+/**
+ * The most merged areas and array formula ranges a sheet may hold, together,
+ * and the most tables and pivot tables, to be offered for editing. Each one
+ * is looked at for every cell, here and in the preview; a sheet with more is
+ * shown but not changed.
+ */
+define('PG_OFFICE_EDIT_MAX_RANGES', 10000);
+define('PG_OFFICE_EDIT_MAX_TABLES', 1000);
 
 /* ---------------------------------------------------------------------------
    Addresses
@@ -503,13 +515,14 @@ function pg_office_xlsx_patch_workbook($xml)
  * @param XMLReader $reader     opened on the sheet
  * @param int       $until_row  list the cells of rows up to this one; 0 for none
  * @param array     $open_styles style number => true for unlocked styles
- * @return array addressed, unusual, protected, merges, arrays, locked (ref => formula|value), formulas (ref => text), open (ref => true)
+ * @return array addressed, unusual, crowded (more ranges than are kept), protected, merges, arrays, locked (ref => formula|value), formulas (ref => text), open (ref => true)
  */
 function pg_office_xlsx_scan($reader, $until_row, $open_styles)
 {
     $out = array(
         'addressed' => true,
         'unusual' => false,
+        'crowded' => false,
         'protected' => false,
         'merges' => array(),
         'arrays' => array(),
@@ -521,15 +534,18 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
     $row = 0;
     $cell = '';
     $record = false;
+    $ranges = 0;
+    $formula_text = 0;
     $previous = libxml_use_internal_errors(true);
     libxml_clear_errors();
 
     while (@$reader->read()) {
         $type = $reader->nodeType;
 
-        if (($type === XMLReader::COMMENT) || ($type === XMLReader::CDATA) || ($type === XMLReader::DOC_TYPE)) {
+        if (in_array($type, array(XMLReader::COMMENT, XMLReader::CDATA, XMLReader::DOC_TYPE, XMLReader::PI), true)) {
             // The row splice reads the sheet as text and does not know
-            // these; a sheet that has them is shown, not changed.
+            // these (a comment or an instruction may hold "<row" of its
+            // own); a sheet that has them is shown, not changed.
             $out['unusual'] = true;
             continue;
         }
@@ -587,7 +603,7 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
                 if ((string) $reader->getAttribute('t') === 'array') {
                     $range = pg_office_xlsx_range((string) $reader->getAttribute('ref'));
 
-                    if ($range !== null) {
+                    if (($range !== null) && (++$ranges <= PG_OFFICE_EDIT_MAX_RANGES)) {
                         $out['arrays'][] = $range;
                     }
                 }
@@ -596,10 +612,11 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
                     $out['locked'][$cell] = 'formula';
                     unset($out['open'][$cell]);
 
-                    $formula = $reader->isEmptyElement ? '' : (string) $reader->readString();
+                    $formula = ($reader->isEmptyElement || ($formula_text >= PG_OFFICE_EDIT_FORMULA_TEXT)) ? '' : (string) $reader->readString();
 
                     if ($formula !== '') {
                         $out['formulas'][$cell] = mb_substr($formula, 0, PG_OFFICE_EDIT_FORMULA_LABEL, 'UTF-8');
+                        $formula_text += strlen($out['formulas'][$cell]);
                     }
                 }
                 break;
@@ -607,7 +624,7 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
             case 'mergeCell':
                 $range = pg_office_xlsx_range((string) $reader->getAttribute('ref'));
 
-                if ($range !== null) {
+                if (($range !== null) && (++$ranges <= PG_OFFICE_EDIT_MAX_RANGES)) {
                     $out['merges'][] = $range;
                 }
                 break;
@@ -624,6 +641,8 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
         $out['unusual'] = true;
     }
 
+    $out['crowded'] = ($ranges > PG_OFFICE_EDIT_MAX_RANGES);
+
     libxml_clear_errors();
     libxml_use_internal_errors($previous);
 
@@ -638,17 +657,23 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
  *
  * @param ZipArchive $zip
  * @param string     $sheet_part
- * @return array[] [first row, first column, last row, last column, table|pivot]
+ * @return array[]|null [first row, first column, last row, last column, table|pivot]; null when the
+ *                      sheet has more tables than are read (PG_OFFICE_EDIT_MAX_TABLES)
  */
 function pg_office_xlsx_bound_ranges($zip, $sheet_part)
 {
     $out = array();
     $folder = substr($sheet_part, 0, (int) strrpos($sheet_part, '/') + 1);
     $rels = pg_office_rels($zip, $folder . '_rels/' . substr($sheet_part, strlen($folder)) . '.rels');
+    $tables = 0;
 
     foreach ($rels as $relationship) {
         if ($relationship['external'] || !in_array($relationship['type'], array('table', 'pivottable'), true)) {
             continue;
+        }
+
+        if (++$tables > PG_OFFICE_EDIT_MAX_TABLES) {
+            return null;
         }
 
         $part = pg_office_xml($zip, pg_office_part_name($folder, $relationship['target']));
@@ -752,14 +777,13 @@ function pg_office_signed($zip)
  * sheet may be changed at all (and why not), and which of its shown cells
  * may not, with the reason.
  *
- * @param string     $path      the package on disk
- * @param ZipArchive $zip       open on it
+ * @param ZipArchive $zip       open on the package
  * @param array      $sheet     pg_office_xlsx_sheets() entry
  * @param int        $until_row the last row number the preview shows
  * @param array      $styles    pg_office_xlsx_style_kinds()
  * @return array ok, why, protected, locked, formulas, open, ranges
  */
-function pg_office_xlsx_sheet_edit_info($path, $zip, $sheet, $until_row, $styles)
+function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
 {
     $out = array('ok' => false, 'why' => '', 'protected' => false, 'locked' => array(), 'formulas' => array(), 'open' => array(), 'ranges' => array());
 
@@ -775,22 +799,25 @@ function pg_office_xlsx_sheet_edit_info($path, $zip, $sheet, $until_row, $styles
         return $out;
     }
 
-    if (!pg_office_xlsx_utf8_part((string) $zip->getFromName($sheet['part'], 200))) {
+    // Read whole, as the save reads it: a part is never inflated past the
+    // size its entry declares (a stream through zip:// would go on).
+    $xml = (string) $zip->getFromName($sheet['part']);
+
+    if (!pg_office_xlsx_utf8_part(substr($xml, 0, 200))) {
         $out['why'] = 'unusual';
         return $out;
     }
 
-    pg_office_zip_stream();
-
     $reader = new XMLReader();
 
-    if (!$reader->open('zip://' . $path . '#' . $sheet['part'], null, LIBXML_NONET)) {
+    if (($xml === '') || !@$reader->XML($xml, null, LIBXML_NONET)) {
         $out['why'] = 'unusual';
         return $out;
     }
 
     $scan = pg_office_xlsx_scan($reader, max(0, (int) $until_row), $styles['open']);
     $reader->close();
+    unset($xml);
 
     if (!$scan['addressed']) {
         $out['why'] = 'layout';
@@ -802,22 +829,39 @@ function pg_office_xlsx_sheet_edit_info($path, $zip, $sheet, $until_row, $styles
         return $out;
     }
 
+    $bound = pg_office_xlsx_bound_ranges($zip, $sheet['part']);
+
+    if ($scan['crowded'] || ($bound === null)) {
+        $out['why'] = 'large';
+        return $out;
+    }
+
     $out['ok'] = true;
     $out['protected'] = $scan['protected'];
     $out['locked'] = $scan['locked'];
     $out['formulas'] = $scan['formulas'];
     $out['open'] = $scan['protected'] ? $scan['open'] : array();
 
+    $ranges = array();
+
     foreach ($scan['merges'] as $range) {
-        $out['ranges'][] = array($range[0], $range[1], $range[2], $range[3], 'merged');
+        $ranges[] = array($range[0], $range[1], $range[2], $range[3], 'merged');
     }
 
     foreach ($scan['arrays'] as $range) {
-        $out['ranges'][] = array($range[0], $range[1], $range[2], $range[3], 'array');
+        $ranges[] = array($range[0], $range[1], $range[2], $range[3], 'array');
     }
 
-    foreach (pg_office_xlsx_bound_ranges($zip, $sheet['part']) as $range) {
-        $out['ranges'][] = $range;
+    // Only what reaches the rows and columns the preview shows goes to it,
+    // cut to them; a save looks at the sheet's own again.
+    $last_row = max(0, (int) $until_row);
+
+    foreach (array_merge($ranges, $bound) as $range) {
+        if (($range[0] > $last_row) || ($range[1] >= PG_OFFICE_MAX_COLUMNS)) {
+            continue;
+        }
+
+        $out['ranges'][] = array($range[0], $range[1], min($range[2], $last_row), min($range[3], PG_OFFICE_MAX_COLUMNS - 1), $range[4]);
     }
 
     return $out;
@@ -1370,48 +1414,66 @@ function pg_office_edit_temp_directory()
  * Holds a lock on one file's saves, so two saves that both read the same
  * version cannot both write. Waits up to five seconds for a save under way.
  *
+ * The lock file goes when its holder lets go (pg_office_edit_unlock()), so
+ * a lock taken on a file that is no longer the one at the path guards
+ * nothing: the file is opened again and the lock asked for again.
+ *
  * @param string $path      the file
  * @param string $directory where the lock file lives
- * @return resource|null
+ * @return array|null handle, file
  */
 function pg_office_edit_lock($path, $directory)
 {
-    $handle = @fopen(rtrim($directory, '/\\') . '/office_edit_' . sha1($path) . '.lock', 'c');
-
-    if ($handle === false) {
-        return null;
-    }
+    $file = rtrim($directory, '/\\') . '/office_edit_' . sha1($path) . '.lock';
 
     for ($attempt = 0; $attempt < 20; $attempt++) {
-        if (@flock($handle, LOCK_EX | LOCK_NB)) {
-            return $handle;
+        $handle = @fopen($file, 'c');
+
+        if ($handle === false) {
+            return null;
         }
 
+        if (@flock($handle, LOCK_EX | LOCK_NB)) {
+            clearstatcache(true, $file);
+            $held = @fstat($handle);
+            $now = @stat($file);
+
+            if (($held !== false) && ($now !== false) && ($held['ino'] === $now['ino']) && ($held['dev'] === $now['dev'])) {
+                return array('handle' => $handle, 'file' => $file);
+            }
+
+            @flock($handle, LOCK_UN);
+        }
+
+        fclose($handle);
         usleep(250000);
     }
-
-    fclose($handle);
 
     return null;
 }
 
 /**
- * Lets go of pg_office_edit_lock().
+ * Lets go of pg_office_edit_lock() and takes its file away, while it is
+ * still held, so nothing is left behind in the temporary folder.
  *
- * @param resource|null $handle
+ * @param array|null $lock
  */
-function pg_office_edit_unlock($handle)
+function pg_office_edit_unlock($lock)
 {
-    if (is_resource($handle)) {
-        @flock($handle, LOCK_UN);
-        fclose($handle);
+    if (is_array($lock) && is_resource($lock['handle'])) {
+        @unlink($lock['file']);
+        @flock($lock['handle'], LOCK_UN);
+        fclose($lock['handle']);
     }
 }
 
 /**
  * Puts the new package in the old one's place. A rename is one step; on
  * Windows a file another process holds open cannot be renamed over, and
- * writing into it in place is the way left.
+ * writing into it in place is the way left. The old bytes are put aside
+ * first then, so a copy that stops half way is undone; and when even that
+ * fails, both copies stay in the temporary folder rather than the only
+ * whole one being deleted.
  *
  * @param string $new
  * @param string $path
@@ -1420,20 +1482,35 @@ function pg_office_edit_unlock($handle)
 function pg_office_replace_file($new, $path)
 {
     $mode = @fileperms($path);
+    $done = @rename($new, $path);
 
-    if (@rename($new, $path) || (@copy($new, $path) && @unlink($new))) {
-        if ($mode !== false) {
-            @chmod($path, $mode & 0777);
+    if (!$done) {
+        $old = $new . '.old';
+
+        if (!@copy($path, $old)) {
+            @unlink($old);
+            @unlink($new);
+
+            return false;
         }
 
-        clearstatcache(true, $path);
-
-        return true;
+        if (@copy($new, $path)) {
+            @unlink($new);
+            @unlink($old);
+            $done = true;
+        } elseif (@copy($old, $path)) {
+            @unlink($old);
+            @unlink($new);
+        }
     }
 
-    @unlink($new);
+    clearstatcache(true, $path);
 
-    return false;
+    if ($done && ($mode !== false)) {
+        @chmod($path, $mode & 0777);
+    }
+
+    return $done;
 }
 
 /**
@@ -1710,6 +1787,10 @@ function pg_office_xlsx_save_parts($zip, $wanted, $directory, $fail, &$spooled)
         }
 
         $bound = pg_office_xlsx_bound_ranges($zip, $sheet['part']);
+
+        if ($scan['crowded'] || ($bound === null)) {
+            return $fail('large', '', $sheet['name']);
+        }
 
         foreach ($sheet_changes['rows'] as $row => $columns) {
             foreach ($columns as $column => $text) {
