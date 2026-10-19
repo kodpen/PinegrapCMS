@@ -1,6 +1,6 @@
 ---
 name: designer-code-editor
-description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, panel screens off CodeMirror 5), open questions
+description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, panel screens off CodeMirror 5)
 ---
 
 ## What is being built?
@@ -16,11 +16,7 @@ description: Plan (2026-10-19) for the visual designer's code editor: owner rule
 ## Which decisions are made?
 - Owner (2026-10-19): engine CodeMirror 6 (Monaco rejected for weight: 2.5 MB core + 0.7-7 MB workers); shared components and system widgets are half-locked in code mode; changes apply while typing.
 - One emitter (`_sdEmitNode()` with a range map), one set of frame rows, the server converter for new elements, no JS twin of `pg_di_node()`.
-- Built (PRs #503 facade, #504 view, #505 incremental refresh, #521 editing, #522 file tabs and CM5 removal, E7 class completion): docs/memory/designer/designer-code-view-model.md and designer-code-view-editing.md; facade docs/memory/core/code-editor-facade-and-bundle.md.
-
-## Open questions (owner)
-1. `buildNodeHTML()` has no callers; remove?
-2. `esc()` escapes text, not quotes: a `"` in an attribute value breaks the tag in `generateHTML()` (the frame rows use `_sdAttrEsc()`). Fix in the emitter, with the PHP twin?
+- Built (PRs #503 facade, #504 view, #505 incremental refresh, #521 editing, #522 file tabs and CM5 removal, #523 class completion, #525/#527 panel screens, E10 `esc()` quotes and `buildNodeHTML()` removed): docs/memory/designer/designer-code-view-model.md and designer-code-view-editing.md; facade docs/memory/core/code-editor-facade-and-bundle.md.
 
 ## What is left, and where to start?
 - Completion of data-binding tokens (`{{…}}`) in text and attribute values; the class source (`_sdCodeClassCompletion`) is the pattern.

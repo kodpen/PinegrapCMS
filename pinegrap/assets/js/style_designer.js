@@ -21689,97 +21689,6 @@ const StyleDesigner = (function () {
         return classes.join(' ');
     }
 
-    function buildNodeHTML(node, pad) {
-        var h = '';
-        switch (node.type) {
-            case 'container':
-                var cl = (node.props.fluid ? 'container-fluid' : 'container') + (node.props.cssClass ? ' ' + node.props.cssClass : '');
-                h = pad + '<div class="' + cl + '">\n';
-                if (node.children) node.children.forEach(function (c) { h += buildNodeHTML(c, pad + '    '); });
-                h += pad + '</div>\n';
-                break;
-            case 'semantic':
-                var stag = node.props.tag || 'section';
-                var scl = node.props.cssClass ? ' class="' + node.props.cssClass + '"' : '';
-                var _voidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
-                // Whitespace is content in these two: the pretty-printer's
-                // newline and indent would be indentation the visitor sees in
-                // a code sample, and leading spaces inside a textarea's
-                // default value. They are written on one line, unpadded.
-                var _wsTags = ['pre', 'textarea', 'code'];
-                if (_voidTags.indexOf(stag.toLowerCase()) !== -1) {
-                    // Void elements have no children and no closing tag
-                    h = pad + '<' + stag + scl + '>\n';
-                } else if (_wsTags.indexOf(stag.toLowerCase()) !== -1) {
-                    var _wsInner = '';
-                    if (node.children) node.children.forEach(function (c) { _wsInner += buildNodeHTML(c, '').replace(/\n+$/, ''); });
-                    if (node.props.text) _wsInner += node.props.text;
-                    h = pad + '<' + stag + scl + '>' + _wsInner + '</' + stag + '>\n';
-                } else {
-                    h = pad + '<' + stag + scl + '>\n';
-                    // Button/a honor textPosition so virtual-text placement is preserved on export.
-                    var _stagLc = stag.toLowerCase();
-                    var _isBtnLike = (_stagLc === 'button' || _stagLc === 'a');
-                    var _tp = node.props.textPosition || 'end';
-                    if (_isBtnLike && _tp === 'start' && node.props.text) {
-                        h += pad + '    ' + node.props.text + '\n';
-                    }
-                    if (node.children) node.children.forEach(function (c) { h += buildNodeHTML(c, pad + '    '); });
-                    if (node.props.text && (!_isBtnLike || _tp !== 'start')) {
-                        h += pad + '    ' + node.props.text + '\n';
-                    }
-                    h += pad + '</' + stag + '>\n';
-                }
-                break;
-            case 'row':
-                var rcl = 'row';
-                if (node.props.gutter) rcl += ' g-' + node.props.gutter;
-                if (node.props.justify) rcl += ' justify-content-' + node.props.justify;
-                if (node.props.align) rcl += ' align-items-' + node.props.align;
-                if (node.props.cssClass) rcl += ' ' + node.props.cssClass;
-                h = pad + '<div class="' + rcl + '">\n';
-                if (node.children) node.children.forEach(function (c) { h += buildNodeHTML(c, pad + '    '); });
-                h += pad + '</div>\n';
-                break;
-            case 'col':
-                var ccl = buildColClasses(node.props) + (node.props.cssClass ? ' ' + node.props.cssClass : '');
-                h = pad + '<div class="' + ccl.trim() + '">\n';
-                if (node.children) node.children.forEach(function (c) { h += buildNodeHTML(c, pad + '    '); });
-                h += pad + '</div>\n';
-                break;
-            case 'region':
-                h = pad + '<!-- ' + regionLabels[node.props.regionType] + (node.props.regionName ? ': ' + node.props.regionName : '') + ' -->\n';
-                break;
-            case 'component':
-                if (COMPONENTS[node.props.componentType] && typeof COMPONENTS[node.props.componentType].toHTML === 'function') {
-                    var _cChildren = '';
-                    if (node.children) node.children.forEach(function(c) { _cChildren += buildNodeHTML(c, pad + '    '); });
-                    h = COMPONENTS[node.props.componentType].toHTML(node.props, pad, _cChildren);
-                }
-                break;
-            case 'content':
-                if (CONTENT[node.props.contentType] && typeof CONTENT[node.props.contentType].toHTML === 'function') {
-                    var _ctChildren = '';
-                    if (node.children) node.children.forEach(function(c) { _ctChildren += buildNodeHTML(c, pad + '    '); });
-                    h = CONTENT[node.props.contentType].toHTML(node.props, pad, _ctChildren);
-                }
-                break;
-            case 'shared_ref':
-                // Expand the cached shared component tree inline.
-                var _scId = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
-                var _scCached = _scId > 0 ? _sharedCache[_scId] : null;
-                // A nested component is expanded too; one already open further
-                // up (a loop) is left out rather than expanded forever.
-                if (_scCached && _scCached.tree && !_sdSharedOpen[_scId]) {
-                    _sdSharedOpen[_scId] = true;
-                    try { h = buildNodeHTML(_scCached.tree, pad); }
-                    finally { delete _sdSharedOpen[_scId]; }
-                }
-                break;
-        }
-        return addGlobalAttrs(h, node);
-    }
-
     // ========================= TREE VIEW & HTML GEN =========================
     function renderTree() {
         var list = document.getElementById('sd-tree-list');
@@ -22439,14 +22348,10 @@ const StyleDesigner = (function () {
         return attrs;
     }
 
-    // An attribute value between double quotes: esc() leaves quotes alone
-    // (it escapes text), so they are written here.
-    function _sdAttrEsc(v) { return esc(String(v == null ? '' : v)).replace(/"/g, '&quot;'); }
-
     // The text a frame row prints: the tag the page gets.
     function _sdFrameRowText(r) {
         var out = '<' + r.tag;
-        r.attrs.forEach(function (a) { out += ' ' + a[0] + (a[1] !== undefined && a[1] !== null ? '="' + _sdAttrEsc(a[1]) + '"' : ''); });
+        r.attrs.forEach(function (a) { out += ' ' + a[0] + (a[1] !== undefined && a[1] !== null ? '="' + esc(a[1]) + '"' : ''); });
         out += '>';
         if (r.void) return out;
         var inner = r.inner == null ? '' : String(r.inner);
@@ -22872,7 +22777,7 @@ const StyleDesigner = (function () {
         _sdPageBodyAttrs().forEach(function (a) {
             bodyOpen += ' ' + a[0] + '="';
             var vf = bodyOpen.length;
-            bodyOpen += _sdAttrEsc(a[1]);
+            bodyOpen += esc(a[1]);
             bodyIslands.push([vf, bodyOpen.length]);
             bodyOpen += '"';
         });
@@ -56012,7 +55917,18 @@ const StyleDesigner = (function () {
     }
 
     // ========================= UTIL =========================
-    function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.appendChild(document.createTextNode(s)); return d.innerHTML; }
+    // Text for markup, in an element's content or in a double-quoted
+    // attribute value: & < > and the double quote are written as entities,
+    // as h() does on the server, so a quote in a value cannot end the
+    // attribute and break the tag. The apostrophe is left alone: every
+    // attribute the designer prints is double-quoted and the text keeps
+    // its "don't".
+    function esc(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML.replace(/"/g, '&quot;');
+    }
 
     // ========================= PUBLIC =========================
     // ── File/page picker integration ──
