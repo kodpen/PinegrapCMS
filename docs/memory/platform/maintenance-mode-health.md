@@ -11,7 +11,7 @@ description: Maintenance mode (503 + Retry-After on page renders only, who passe
 
 ## Where is it set and shown?
 - Settings › General › Maintenance Mode (`pgset-maintenance`): switch, end time (datetime-local, site time zone), addresses. Columns `maintenance_mode`, `maintenance_until`, `maintenance_allow_ips` (2026.11.0, step 11.0.7, default off; PR #547); constants `MAINTENANCE_*` in `init.php`. A bad address, a bad time or an end already passed while switching on refuses the save. Switching logs a line and drops the System Status cache.
-- The card warns when the address it shows is the server or a trusted proxy (`pg_maintenance_ip_is_shared()`; loopback means a tunnel or a local reverse proxy): every visitor has it. Saving a list that holds that address keeps it and warns (`pg_maintenance_list_opens_to_all()`). Before #NNN, `::1` on the list behind a Cloudflare tunnel let every visitor in, silently.
+- The card warns when the address it shows is the server or a trusted proxy (`pg_maintenance_ip_is_shared()`; loopback means a tunnel or a local reverse proxy): every visitor has it. Saving a list that holds that address keeps it and warns (`pg_maintenance_list_opens_to_all()`). Before #638, `::1` on the list behind a Cloudflare tunnel let every visitor in, silently.
 - System Status tile "Maintenance Mode" (actions column, not scored) only while the switch is on: warning with the end time, or "Ended" once it passed. The API's `GET /system/status` carries `maintenance: {active, until}`, read live rather than from the ten-minute cache.
 
 ## What does health.php answer?
