@@ -1052,7 +1052,7 @@ function ws_mcp_call_run($viewer, $change, $channel)
     };
 
     $give_back = function () use ($change) {
-        db("UPDATE ws_ai_changes SET status = 'pending' WHERE id = '" . (int) $change['id'] . "' AND status = 'applying'");
+        db("UPDATE ws_ai_changes SET status = 'pending', decided_by = 0, decided_at = 0 WHERE id = '" . (int) $change['id'] . "' AND status = 'applying'");
         ws_message_touch($change['message_id']);
     };
 
