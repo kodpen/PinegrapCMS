@@ -1,6 +1,6 @@
 ---
 name: docker-image
-description: Plan (approved 2026-10-19, steps 1-4 built in PRs #565, #621 and #NNN): docker/ compose stack in the release tree, unattended install service, README section; GHCR publishing left
+description: Plan (approved 2026-10-19, steps 1-4 built in PRs #565, #621 and #689): docker/ compose stack in the release tree, unattended install service, README section; GHCR publishing left
 ---
 
 ## What did the owner decide?
@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19, steps 1-4 built in PRs #565, #621 and #N
 ## What is built?
 - Steps 1 and 3 (PR #565): `docker/` (Dockerfile with `app` and `web` targets, compose with db/app/cron/web, nginx.conf, php.ini, cron loop, readiness check), `tools/check_docker.sh` and the Docker check workflow. Rules and reasons: docs/memory/platform/docker.md.
 - Step 2 (PR #621): `php install/index.php install` (`includes/install_cli.php`, docs/memory/platform/install-command-line.md), the one-shot `install` service (`docker/install.sh`), `tools/check_docker.sh` installs with it and checks the second start leaves the site alone.
-- Step 4 (PR #NNN): "Try it with Docker" in README.md and "Docker ile deneyin" in README.tr.md (wizard values, the install variables, `docker/.env`, volumes, updates with the automated upgrade run as www-data), and the plan's `[NEW]` changelog line.
+- Step 4 (PR #689): "Try it with Docker" in README.md and "Docker ile deneyin" in README.tr.md (wizard values, the install variables, `docker/.env`, volumes, updates with the automated upgrade run as www-data), and the plan's `[NEW]` changelog line.
 - Differences from the first sketch: the web image carries its own copy of the files (static assets); one data volume covers uploads (they are under `pinegrap/data/files`); the job waits for the database to be at the code version; the unattended install takes a starter site, not a design template (a template's widget layouts are built by the editor's JavaScript in the browser); the install service runs at every start and does nothing once a site is installed.
 
 ## What remains?
