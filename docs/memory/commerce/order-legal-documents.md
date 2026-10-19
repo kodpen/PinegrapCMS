@@ -4,7 +4,7 @@ description: Checkout legal documents (pre-information form, distance sales cont
 ---
 
 ## What exists today?
-- Settings › Ecommerce › Legal Documents (`pgset-legal`, `includes/settings/commerce.php`): switch `config.ecommerce_legal_documents` (constant `ECOMMERCE_LEGAL_DOCUMENTS`, bool) and two HTML templates `ecommerce_preinfo_template`, `ecommerce_contract_template` (TEXT). Schema step 11.0.1 (`upgrade_2026_11_0_legal_documents()`, PR #536). The card is drawn and saved only when the column exists (upgrade bridge).
+- Settings › Ecommerce › Legal Documents (`pgset-legal`, `includes/settings/commerce.php`): switch `config.ecommerce_legal_documents` (constant `ECOMMERCE_LEGAL_DOCUMENTS`, bool) and two HTML templates `ecommerce_preinfo_template`, `ecommerce_contract_template` (TEXT). Schema step 11.0.1 (`upgrade_2026_11_0_legal_documents()`, PR #540). The card is drawn and saved only when the column exists (upgrade bridge).
 - `includes/fn/legal_documents.php`: pure `pg_legal_document_render()`, `pg_legal_document_values()`, `pg_legal_document_lines_html()`, `pg_legal_document_unknown_placeholders()` (tests in `tests/legal_documents_test.php`); DB side `pg_legal_documents_for_order($order_id)` and `pg_legal_documents_store($order_id, $accepted_types)`.
 - `submit_order.php` calls the store right after the order number is written (before `order.created`); it reads the order only, totals untouched. Accepted types come from liveform fields `legal_preinfo` / `legal_contract` (value 1). The checkout checkboxes that post them are not built yet, so today every copy is stored with `accepted_at` NULL.
 
