@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-4 done): only the L
 - Step 2 (PR #595): `pg_img_*` in `includes/fn/image.php`, the designer renderer (Image element and bare `<img>`), the load order, `srcset` in the version stamp, the e-mail strip.
 - Step 3 (PR #599): `pg_img_responsive_html()` over widget output, shared components and page bodies (bound, carousel, text images; srcset only), `auto` sizes for lazy full-width images, the variant chooser drops srcset when it swaps a photo.
 - Step 4a (PR #602): purge, daily sweep, storage line with formats. No delete hooks (the sweep reads `files`).
-- Step 4b (PR #603): config columns (2026.11.0 step 11.0.9, formats as a TINYINT bit set), settings in get_file.php, markup and sweep; Rebuild Page HTML, run unasked when the formats change; each page body writes its own once-per-page assets.
+- Step 4b (PR #604): config columns (2026.11.0 step 11.0.9, formats as a TINYINT bit set), settings in get_file.php, markup and sweep; Rebuild Page HTML, run unasked when the formats change; each page body writes its own once-per-page assets.
 - Changed from the first sketch: no single `pg_img_tag()`; the sets come from `pg_img_responsive($src)` and each renderer writes its own tag. `<picture>` only on the Image element (CSS may target `> img` on imported markup). `sizes` is capped at the file width; `auto` only for lazy full-width images. The importer already kept `srcset`/`sizes` (and drops them when the source changes), so nothing was needed there.
 
 ## What remains?
