@@ -2662,6 +2662,7 @@ if (!$_POST) {
                             ' . $source . '
                             ' . $output_applied_gift_cards . '
                             ' . $output_affiliate . '
+                            ' . pg_legal_documents_panel_card((int) $_GET['id']) . '
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
                             <div class="card">
