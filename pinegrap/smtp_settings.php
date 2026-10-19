@@ -239,8 +239,6 @@ if (!$_POST) {
 
     print pg_page_shell([
         'title'=> lang('SMTP Settings'),
-        // No code field here; CodeMirror 5 waits in its template.
-        'code_editor' => false,
         'extra classes'=>'setting',
         'icon'=>'setting',
         'heading'=>lang('SMTP Settings'),

@@ -94,8 +94,6 @@ if (!$_POST) {
 	    pg_page_shell(
 	        array(
 	            'title'          => lang('Backup Manager'),
-	            // No code field here; CodeMirror 5 waits in its template.
-	            'code_editor'    => false,
 	            'extra classes'  => 'setting',
 	            'icon'           => 'setting',
 	            'heading'        => lang('Backup Manager'),

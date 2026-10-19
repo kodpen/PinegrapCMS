@@ -4,7 +4,7 @@ description: Built-in CSP policy (learning mode), waf_csp_policy() allowlist rul
 ---
 
 ## What is the built-in CSP?
-- Written to LEARN: inline code and `'unsafe-eval'` are allowed, the software's own CDNs (jsDelivr, jQuery, DataTables, CodeMirror, Google Fonts, Cloudflare beacons) are listed, every other third party is a violation.
+- Written to LEARN: inline code and `'unsafe-eval'` are allowed, the software's own CDNs (jsDelivr, jQuery, DataTables, Google Fonts, Cloudflare beacons) are listed, every other third party is a violation.
 - If you add a new external resource to the panel, ALSO add it to `waf_csp_policy()`, or every panel page generates reports.
 - An operator policy replaces the built-in entirely; CR/LF are folded; `report-uri` is added if absent.
 

@@ -37,8 +37,6 @@ if (!$_POST) {
 
     echo  pg_page_shell(array(
         'title'=> lang('Create File'),
-        // The code field is the facade's editor (pg_code_editor_attach()).
-        'code_editor' => false,
         'icon'=>'file',
         'heading'=>lang('Create File'),
         'heading_description' => lang('Create a new editable file'),

@@ -147,6 +147,14 @@ $file_list = array(
     'assets/codemirror',
     'assets/codemirror-5.65.9',
     'assets/codemirror_modal.js',
+    // CodeMirror 5, replaced by the code editor facade (assets/js/
+    // pg_code_editor.js, CodeMirror 6 in assets/lib/code_editor) on every
+    // screen, and the rich text editor's own copy, replaced by its
+    // pgcodeeditor plugin (assets/js/pg_ckeditor_source.js). Dropped from the
+    // package with 2026.11.0.
+    'assets/lib/codemirror',
+    'assets/lib/codemirror-5.65.9',
+    'assets/lib/ckeditor_4_20/plugins/codemirror',
     'assets/colorpicker',
     'assets/dropzone',
     'assets/file-explorer',

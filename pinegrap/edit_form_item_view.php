@@ -199,9 +199,6 @@ if (!$_POST) {
 
     // Put the javascript into the head of the document.
     $output_header = preg_replace('/(<\/head>)/i', $output_javascript .'$1', pg_page_shell([
-        // The code field is the facade's editor (pg_code_editor_attach());
-        // CodeMirror 5 waits in the template for a settings pane that draws one.
-        'code_editor' => false,
         'title'=> lang('Edit Form Item View'),
         'extra classes'=>'design',
         'icon'=>'design',

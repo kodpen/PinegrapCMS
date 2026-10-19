@@ -3223,11 +3223,6 @@ nav.buttons.navigation .btn-secondary {
   opacity: 1;
 }
 
-.CodeMirror.cm-s-default {
-  border: var(--bs-border-width) solid var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-}
-
 /* A code field drawn by pg_code_editor_attach(): the facade's editor in a
    textarea's place. Without a height it grows with the text up to most of
    the window and scrolls inside after that, so the buttons below a long
@@ -3418,7 +3413,6 @@ a.dt-button {
 .input-group-sm > .input-group-text,
 .btn-group,
 .popover,
-.cm-s-pastel-on-dark.CodeMirror,
 .form-select,
 .form-control,
 .tagin-tag,
@@ -3614,10 +3608,6 @@ table.dataTable th.dataTables_empty {
 
 .advanced_filters .header {
   height: 47px;
-}
-
-.CodeMirror.cke_enable_context_menu {
-  border-radius: 0px;
 }
 
 .tagin-input:not(.tagin-input-hidden),

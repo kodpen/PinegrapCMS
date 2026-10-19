@@ -276,7 +276,6 @@ $liveform->remove_form();
 
 echo pg_page_shell(array(
     'title'               => lang('Calendar subscription'),
-    'code_editor'         => false,
     'icon'                => 'workspace',
     'heading'             => lang('Calendar subscription'),
     'heading_description' => lang('Your tasks, plan items, days off and approval deadlines in the calendar on your phone or computer.'),

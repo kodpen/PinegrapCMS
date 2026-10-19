@@ -54,18 +54,11 @@ function pg_help_url($properties = array())
  * $help_topic is the "page#anchor" a screen names for its help through
  * output_header()'s 'help' property; '' looks the screen up by its script.
  *
- * $code_editor false (output_header()'s 'code_editor' property) leaves
- * CodeMirror and its linters, some 2 MB of script, out of the head of a
- * screen that draws no code field of its own. They wait in a template and
- * window.pgCodeEditorReady() (backend.src.js) loads them the first time
- * something on the screen needs them, such as a pane of the settings dialog
- * with a code field.
- *
- * Every screen is told where the newer code editor is
- * (window.pgCodeEditorConfig, two addresses); its script is fetched by
- * window.pgCodeEditorUse() the first time a code field is drawn.
+ * Every screen is told where the code editor is (window.pgCodeEditorConfig,
+ * two addresses); its script is fetched by window.pgCodeEditorUse()
+ * (backend.src.js) the first time a code field is drawn.
  */
-function output_control_panel_header_includes($include_assistant = true, $help_topic = '', $code_editor = true)
+function output_control_panel_header_includes($include_assistant = true, $help_topic = '')
 {
     $help_url = pg_help_url(array('topic' => (string) $help_topic));
 
@@ -285,7 +278,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/json2/json.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
-    ' . ($code_editor ? get_codemirror_includes() : '<template id="pg-code-editor-assets">' . get_codemirror_includes() . '</template>') . '
     <script>window.pgCodeEditorConfig = ' . pg_code_editor_json(pg_code_editor_urls()) . ';</script>
     <link rel="stylesheet" type="text/css" href="' . CONTROL_PANEL_STYLESHEET_URL . '" />
     ' . $assistant_snippet . '
@@ -1617,7 +1609,7 @@ function output_header_secure($properties = false)
     <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
     <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-    ' . output_control_panel_header_includes(false, '', false) . '
+    ' . output_control_panel_header_includes(false) . '
 </head>
 <body' . $output_body_class . '>';
 
@@ -2499,7 +2491,7 @@ function output_header($properties = false)
         <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
         <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-        ' . output_control_panel_header_includes(true, $help_topic, !isset($properties['code_editor']) || $properties['code_editor']) . '
+        ' . output_control_panel_header_includes(true, $help_topic) . '
         ' . $output_tour_head . '
         ' . (isset($properties['head']) ? $properties['head'] : '') . '
     </head>

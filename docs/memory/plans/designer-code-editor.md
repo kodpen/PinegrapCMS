@@ -1,6 +1,6 @@
 ---
 name: designer-code-editor
-description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, panel screens off CodeMirror 5)
+description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (data-binding completion, Emmet license, formatter, minimap)
 ---
 
 ## What is being built?
@@ -22,4 +22,4 @@ description: Plan (2026-10-19) for the visual designer's code editor: owner rule
 - Completion of data-binding tokens (`{{…}}`) in text and attribute values; the class source (`_sdCodeClassCompletion`) is the pattern.
 - Emmet: `@emmetio/codemirror6-plugin` carries no license (repo and package, 2026-10-19), so it is not bundled; the `emmet` core package is MIT and an expand-abbreviation command of our own on it is the way, if wanted.
 - A formatter for CSS/JS tabs (the page view is normalised by the emitter already), a minimap, search across the open tabs.
-- The panel screens move to `pg_code_editor_attach()` one by one (`edit_file.php` done; the list and the recipe: docs/memory/ui/panel-code-fields.md), then CodeMirror 5 leaves the product.
+- Done 2026-10-19: every panel screen, the File Manager, the legacy page designer and CKEditor's source mode are on the facade and CodeMirror 5 left the product (docs/memory/ui/panel-code-fields.md).
