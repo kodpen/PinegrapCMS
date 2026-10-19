@@ -16,7 +16,7 @@ description: Designer images published with srcset/sizes and AVIF/WebP <picture>
 
 ## How do images load?
 - `pg_img_loading_attrs()`: while `generate_style_code_from_tree()` writes a page body (`pg_img_page_state()`), the first image gets `fetchpriority="high"`, every later one `loading="lazy" decoding="async"`. Shared components and widgets drawn at request time get nothing automatic.
-- The node's own choice wins: `props.loading` (multi-select Options "Loading attribute", printed since PR #[PR]) or a `loading` in the Attributes panel. No attribute is written twice.
+- The node's own choice wins: `props.loading` (multi-select Options "Loading attribute", printed since PR #595) or a `loading` in the Attributes panel. No attribute is written twice.
 
 ## How are cached derivatives invalidated?
 - `pg_version_assets()` (output stamp, `includes/fn/output.php`) also versions every local address in a `srcset` (`pg_version_srcset()`, `&amp;v=<mtime>`), so a replaced file is not served from a browser or CDN copy of its derivatives.

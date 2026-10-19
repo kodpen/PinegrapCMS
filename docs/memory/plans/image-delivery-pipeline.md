@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-2 done, derivatives
 
 ## What is built?
 - Step 1 (PR #589): `includes/image_engine.php` (engine moved out of `includes/fn/image.php`, AVIF output, derivative functions), the `get_file.php` route. Name carries a signature (`<w>-<sig>.<ext>`), folder beside `FILE_DIRECTORY_PATH`, widths round up, `.skip`/lock files, formats tested once; fixed Imagick resizing rotated photos sideways.
-- Step 2 (PR #[PR]): `pg_img_*` in `includes/fn/image.php`, the designer renderer (Image element and bare `<img>`), the load order, `srcset` in the version stamp, the e-mail strip.
+- Step 2 (PR #595): `pg_img_*` in `includes/fn/image.php`, the designer renderer (Image element and bare `<img>`), the load order, `srcset` in the version stamp, the e-mail strip.
 - Changed from the first sketch: no single `pg_img_tag()`; the sets come from `pg_img_responsive($src)` and each renderer writes its own tag. `<picture>` only on the Image element (CSS may target `> img` on imported markup). `sizes` is capped at the file width, never `auto`. The importer already kept `srcset`/`sizes` (and drops them when the source changes), so nothing was needed there.
 
 ## What remains?
