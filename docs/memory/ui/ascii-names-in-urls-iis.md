@@ -14,7 +14,7 @@ description: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish
 
 ## Why does no stored file name end in a dot?
 - Windows drops the dots at the end of a file name: `photo.jpg.` is written over `photo.jpg`, while the record keeps `photo.jpg.`, so the name check (`check_name_availability()`, records only) sees no clash. Two records then share one file, and a basic user could store the signing key as `dkim.key.` (`platform/dkim-key-in-file-manager.md`).
-- `prepare_file_name()` drops them last, after the length limit (which can leave one) and after the upload rule (`shell.php.` is still `shell_php`). #NNN.
+- `prepare_file_name()` drops them last, after the length limit (which can leave one) and after the upload rule (`shell.php.` is still `shell_php`). #620.
 
 ## What is the rule?
 - When you generate a new name that enters a URL, reduce it to ASCII. Do not trust the server to behave correctly.
