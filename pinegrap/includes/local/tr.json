@@ -24117,5 +24117,6 @@
     "Cell {var:1} on sheet {var:2} cannot be changed here.": "{var:2} sayfasındaki {var:1} hücresi burada değiştirilemez.",
     "Sheet {var:1} cannot be changed here.": "{var:1} sayfası burada değiştirilemez.",
     "Cell {var:1} on sheet {var:2} is not in the file.": "{var:2} sayfasındaki {var:1} hücresi dosyada yok.",
-    "Sheet {var:1} is too large to change here.": "{var:1} sayfası burada değiştirilemeyecek kadar büyük."
+    "Sheet {var:1} is too large to change here.": "{var:1} sayfası burada değiştirilemeyecek kadar büyük.",
+    "The changed cells are not saved. Close the window anyway?": "Değişen hücreler kaydedilmedi. Pencere yine de kapatılsın mı?"
 }

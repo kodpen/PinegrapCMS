@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - editing a picture or a text file posted in a conversation.
+ * Workspace - editing a picture, a text file or a workbook posted in a
+ * conversation.
  *
  * The person who posted the file may edit it: the edited file takes the old
  * one's place in the message, the message reads "edited", and the file it
@@ -14,7 +15,9 @@
  * Pictures are edited in the panel's image editor (Pintura, through
  * workspace_file_save.php); text files - Markdown, plain text, CSV and the
  * like - in the text window of the channel screen, through ws_file_text and
- * ws_file_text_save.
+ * ws_file_text_save; the cells of an Excel workbook in its preview window,
+ * through ws_file_office and ws_file_office_save (written into a copy by
+ * includes/fn/office_edit.php, never into the file the message carries).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -158,7 +161,7 @@ function ws_file_text_read($file_id, $text_only = false)
  *
  * @param array  $viewer
  * @param int    $message_id
- * @param string $kind image | text
+ * @param string $kind image | text | office (an Excel workbook)
  * @return array|string [message, channel], or the error
  */
 function ws_file_edit_target($viewer, $message_id, $kind)
@@ -174,13 +177,80 @@ function ws_file_edit_target($viewer, $message_id, $kind)
         return lang('The file could not be found.');
     }
 
-    $fits = ($kind === 'image') ? (ws_file_kind($message['file_name']) === 'image') : ws_file_is_text($message['file_name']);
+    if ($kind === 'image') {
+        $fits = (ws_file_kind($message['file_name']) === 'image');
+    } elseif ($kind === 'office') {
+        $fits = function_exists('pg_office_kind') && (pg_office_kind($message['file_name']) === 'xlsx');
+    } else {
+        $fits = ws_file_is_text($message['file_name']);
+    }
 
     if (!$fits) {
         return lang('This file cannot be edited here.');
     }
 
     return array($message, $channel);
+}
+
+/**
+ * A message's workbook with changed cells written in, as the bytes of a new
+ * file. The cells go into a copy (pg_office_xlsx_save(), which also checks
+ * them and the version the person opened); the file the message carries is
+ * never written to, so it can stay as the earlier version or as the
+ * original somebody else's copy answers.
+ *
+ * @param array  $message
+ * @param mixed  $cells   as the preview sends them
+ * @param string $version what the person opened (pg_office_version())
+ * @return array ok, error, data (base64, as the panel sends files)
+ */
+function ws_file_office_edited($message, $cells, $version)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'data' => '');
+    };
+
+    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
+    $path = FILE_DIRECTORY_PATH . '/' . basename($stored);
+
+    if (($stored === '') || !is_file($path)) {
+        return $fail(lang('The file could not be found.'));
+    }
+
+    if (!is_array($cells) || empty($cells)) {
+        return $fail(lang('Nothing was changed.'));
+    }
+
+    if ((int) @filesize($path) > ws_upload_max_bytes()) {
+        return $fail(lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor(ws_upload_max_bytes() / 1048576))));
+    }
+
+    $directory = pg_office_edit_temp_directory();
+
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0755, true);
+    }
+
+    $copy = $directory . '/office_edit_' . bin2hex(random_bytes(8)) . '.xlsx';
+
+    if (!@copy($path, $copy)) {
+        return $fail(lang('The file could not be saved.'));
+    }
+
+    $saved = pg_office_xlsx_save($copy, $cells, (string) $version, $directory);
+    $bytes = $saved['ok'] ? @file_get_contents($copy) : false;
+    @unlink($copy);
+    @unlink($directory . '/office_edit_' . sha1($copy) . '.lock');
+
+    if (!$saved['ok']) {
+        return $fail($saved['error']);
+    }
+
+    if (!is_string($bytes) || ($bytes === '')) {
+        return $fail(lang('The file could not be saved.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'data' => base64_encode($bytes));
 }
 
 /**
@@ -372,5 +442,6 @@ function ws_file_edit_js_strings()
         'file_versions_by'     => ws_js_template('replaced by {var:1}', 1),
         'file_editor_loading'  => lang('The image editor is loading…'),
         'file_editor_missing'  => lang('The image editor could not be loaded.'),
+        'file_cells_unsaved'   => lang('The changed cells are not saved. Close the window anyway?'),
     );
 }
