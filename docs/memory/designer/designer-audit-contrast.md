@@ -4,7 +4,7 @@ description: Designer audit's text contrast check (WCAG 1.4.3): measured on the 
 ---
 
 ## What does it check?
-- Every text the canvas draws against the colour behind it: 4.5:1, or 3:1 for large text (24px, or 18.66px and bold). Ratio = `_pg_theme_contrast()` of the palette builder (`includes/fn/design_themes.php`); its browser twin is `assets/js/pg_contrast.js` (`window.PgContrast`, loaded by `includes/designer_screen.php`), kept equal by `tests/contrast_test.php`, which runs the JS under Node (skipped where Node is missing). PR #PR.
+- Every text the canvas draws against the colour behind it: 4.5:1, or 3:1 for large text (24px, or 18.66px and bold). Ratio = `_pg_theme_contrast()` of the palette builder (`includes/fn/design_themes.php`); its browser twin is `assets/js/pg_contrast.js` (`window.PgContrast`, loaded by `includes/designer_screen.php`), kept equal by `tests/contrast_test.php`, which runs the JS under Node (skipped where Node is missing). PR #628.
 - One issue per element, its worst text: rule `low_contrast`, label with the ratio rounded down, the minimum and the text (locale decimals). It goes on the nearest element a tree knows, inside shared components and widgets too (like `cf_field_unnamed`); the badge and Go work as for every issue.
 
 ## Why on the canvas and not from the tree?
