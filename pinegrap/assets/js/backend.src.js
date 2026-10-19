@@ -48,6 +48,12 @@ window.pgLang = function (key) {
         });
         const activeElementId = theme === "auto" ? "theme-auto" : `theme-${theme}`;
         document.getElementById(activeElementId)?.classList.add("active");
+
+        // The switch in the account menu is three buttons for one choice, so
+        // each says whether it is the one that is on.
+        document.querySelectorAll(".pg-um-themebtn").forEach(button => {
+            button.setAttribute("aria-pressed", button.classList.contains("active") ? "true" : "false");
+        });
     };
 
     const onSchemeChange = () => {
@@ -915,6 +921,15 @@ $(document).ready(function () {
                 closeMenuDrawer();
             }
         });
+
+        // A menu of the header opens over the screen below it, and the drawer
+        // is drawn above the header's layer: left open, it would cover the
+        // account sheet on a phone. Opening any of them puts the drawer away.
+        $('#header').on('show.bs.dropdown', function () {
+            if (isMenuDrawerOpen()) {
+                closeMenuDrawer();
+            }
+        });
     }
 
     // Keep the two modes consistent when the viewport crosses the breakpoint.
@@ -1236,6 +1251,12 @@ $(document).ready(function () {
     pg_push_init();
 
     pg_quick_note_init();
+
+    pg_contact_quick_init();
+
+    pg_account_menu_init();
+
+    pg_shortcuts_init();
 
     check_unread_notifications('onload_check');
     setInterval(function () {
@@ -1759,6 +1780,25 @@ $(document).ready(function () {
                                 // exactly that, so it is not let through.
                                 $a.on('click', function (event) {
 
+                                    // The keyboard shortcuts are a dialog of
+                                    // this document, opened once the search
+                                    // box has gone, for the reason above.
+                                    if (this.getAttribute('href') === '#keyboard-shortcuts') {
+
+                                        event.preventDefault();
+                                        event.stopPropagation();
+
+                                        $modal.one('hidden.bs.modal', function () {
+                                            if (typeof window.pgShowShortcuts === 'function') {
+                                                window.pgShowShortcuts();
+                                            }
+                                        });
+
+                                        $modal.modal('hide');
+
+                                        return;
+                                    }
+
                                     var want = window.pgSettingsModal ? window.pgSettingsModal.asked(this) : null;
 
                                     if (want) {
@@ -2150,6 +2190,201 @@ function pg_push_open_requested() {
             clearInterval(timer);
         }
     }, 250);
+}
+
+// The account menu (pg_account_menu(), includes/fn/output.php). Bootstrap
+// opens and closes it; what is added here is the close button of the phone
+// sheet, which covers the screen below the header. (That the drawer of the
+// main menu gives way to it is initMenuDrawer()'s business.)
+function pg_account_menu_init() {
+
+    var toggle = document.getElementById('user_menu_toggle');
+
+    if (!toggle || !window.bootstrap || !window.bootstrap.Dropdown) {
+        return;
+    }
+
+    document.addEventListener('click', function (event) {
+
+        if (!event.target.closest || !event.target.closest('[data-pg-account-close]')) {
+            return;
+        }
+
+        window.bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
+        toggle.focus();
+    });
+}
+
+// The keyboard shortcuts (pg_shortcuts_dialog(), includes/fn/output.php).
+// ? opens them from anywhere outside a field, the key most web applications
+// use for the same sheet; the search box offers them as a chip and calls
+// window.pgShowShortcuts().
+function pg_shortcuts_init() {
+
+    var dialog = document.getElementById('pg_shortcuts');
+
+    if (!dialog || !window.bootstrap || !window.bootstrap.Modal) {
+        return;
+    }
+
+    // The command key stands where Ctrl does on an Apple keyboard.
+    var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '';
+
+    if (/mac|iphone|ipad|ipod/i.test(platform)) {
+        dialog.querySelectorAll('kbd[data-pg-mod]').forEach(function (key) {
+            key.textContent = '⌘';
+        });
+    }
+
+    window.pgShowShortcuts = function () {
+        window.bootstrap.Modal.getOrCreateInstance(dialog).show();
+    };
+
+    document.addEventListener('keydown', function (event) {
+
+        if ((event.key !== '?') || event.ctrlKey || event.metaKey || event.altKey || event.defaultPrevented) {
+            return;
+        }
+
+        var on = document.activeElement;
+
+        if (on && ((on.tagName === 'INPUT') || (on.tagName === 'TEXTAREA') || (on.tagName === 'SELECT') || on.isContentEditable)) {
+            return;
+        }
+
+        // Not over another dialog: it would open under that one's backdrop.
+        if (document.querySelector('.modal.show') && !dialog.classList.contains('show')) {
+            return;
+        }
+
+        event.preventDefault();
+        window.bootstrap.Modal.getOrCreateInstance(dialog).toggle();
+    });
+}
+
+// The address book form at the top of the account menu (pg_account_menu(),
+// includes/fn/output.php), there while the name or the picture is missing.
+// The texts and the address come with the form.
+function pg_contact_quick_init() {
+
+    var item = document.getElementById('pg_contact_quick');
+    var form = item ? item.querySelector('[data-pg-contact-quick]') : null;
+    var LATER = 'pg_contact_photo_later';
+
+    if (!form) {
+        return;
+    }
+
+    // "Not now" on the picture keeps it out of the menu for a month.
+    if (item.hasAttribute('data-photo-only')) {
+        try {
+            if ((parseInt(window.localStorage.getItem(LATER), 10) || 0) > Date.now()) {
+                item.hidden = true;
+                return;
+            }
+        } catch (error) {}
+    }
+
+    var later = form.querySelector('[data-pg-contact-later]');
+
+    if (later) {
+        later.addEventListener('click', function () {
+            try { window.localStorage.setItem(LATER, String(Date.now() + 30 * 86400000)); } catch (error) {}
+            item.hidden = true;
+        });
+    }
+
+    var photo = '';
+    var file = form.elements.photo;
+    var preview = form.querySelector('[data-pg-contact-preview]');
+    var error = form.querySelector('[data-pg-contact-error]');
+
+    // Cut square and made small in the browser: the upload stays light and
+    // carries nothing but the picture.
+    file.addEventListener('change', function () {
+        var chosen = file.files && file.files[0];
+
+        photo = '';
+        error.textContent = '';
+
+        if (!chosen) {
+            return;
+        }
+
+        var reader = new FileReader();
+
+        reader.onload = function () {
+            var image = new Image();
+
+            image.onload = function () {
+                var side = Math.min(image.naturalWidth, image.naturalHeight);
+                var size = Math.min(256, side);
+                var canvas = document.createElement('canvas');
+
+                canvas.width = size;
+                canvas.height = size;
+
+                var context = canvas.getContext('2d');
+                context.fillStyle = '#fff';
+                context.fillRect(0, 0, size, size);
+                context.drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+
+                try {
+                    photo = canvas.toDataURL('image/jpeg', 0.88);
+                } catch (drawError) {
+                    photo = String(reader.result || '');
+                }
+
+                preview.src = photo;
+            };
+
+            image.onerror = function () {
+                error.textContent = form.getAttribute('data-error-type') || '';
+            };
+
+            image.src = String(reader.result || '');
+        };
+
+        reader.readAsDataURL(chosen);
+    });
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        var button = form.querySelector('button[type=submit]');
+        var body = {
+            action: 'contact_quick_save',
+            token: (typeof software_token !== 'undefined') ? software_token : '',
+            photo: photo
+        };
+
+        ['first_name', 'last_name', 'mobile_phone'].forEach(function (name) {
+            if (form.elements[name]) { body[name] = form.elements[name].value; }
+        });
+
+        button.disabled = true;
+        error.textContent = '';
+
+        fetch(form.getAttribute('data-api'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        }).then(function (response) {
+            return response.json();
+        }).then(function (json) {
+            if (json && json.status === 'success') {
+                window.location.reload();
+                return;
+            }
+
+            error.textContent = (json && json.message) ? json.message : (form.getAttribute('data-error-save') || '');
+            button.disabled = false;
+        }).catch(function () {
+            error.textContent = form.getAttribute('data-error-save') || '';
+            button.disabled = false;
+        });
+    });
 }
 
 // The quick note in the header (ws_notes_quick_markup(), includes/workspace/

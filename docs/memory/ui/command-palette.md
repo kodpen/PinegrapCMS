@@ -1,6 +1,6 @@
 ---
 name: command-palette
-description: The panel search box (Ctrl+K, #SearchBox): where its quick-action chips come from, how typed text is matched, why every key must be a string (the "503" crash that emptied every search)
+description: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
 ---
 
 ## Where do the chips come from?
@@ -11,5 +11,6 @@ description: The panel search box (Ctrl+K, #SearchBox): where its quick-action c
 - `normalizeTR()` lower-cases each key. One number among them threw ("s.toLowerCase is not a function") and every typed search came back empty, chips and results alike.
 - It started when the maintenance card listed "503" among its keywords: `pg_settings_keywords()` drops repeats through array keys, and PHP turns the key "503" into the integer 503. It now returns `strval`s (`tests/settings_keywords_test.php`), and `normalizeTR()` reads `String(s)` so a stray number cannot stop the matcher again (#590).
 
-## How does a settings chip open?
-- In the dialog, after the search box has gone: see `settings-modal-navigation.md` (two modals at once leave a second backdrop).
+## How does a chip open a dialog instead of a screen?
+- A settings chip opens the settings after the search box has gone: see `settings-modal-navigation.md` (two modals at once leave a second backdrop).
+- The "Keyboard Shortcuts" chip (keys klavye, kısayol, keyboard, shortcut) has the address `#keyboard-shortcuts`; the chip handler opens `window.pgShowShortcuts()` in the same `hidden.bs.modal` way (`account-menu.md`).
