@@ -188,7 +188,10 @@ function erp_edoc_parasut_error_text($result)
 
     foreach ((array) ($body['errors'] ?? array()) as $error) {
         if (is_array($error)) {
-            $line = trim(trim((string) ($error['title'] ?? '')) . ': ' . trim((string) ($error['detail'] ?? '')), ': ');
+            // Paraşüt often repeats the detail as the title ("X: X").
+            $title = trim((string) ($error['title'] ?? ''));
+            $detail = trim((string) ($error['detail'] ?? ''));
+            $line = (($title !== '') && ($detail !== '') && ($title !== $detail)) ? $title . ': ' . $detail : (($detail !== '') ? $detail : $title);
         } else {
             $line = trim((string) $error);
         }
@@ -702,6 +705,31 @@ function erp_edoc_parasut_total_check($attributes, $invoice)
     $total = erp_edoc_parasut_kurus((string) $attributes['net_total']);
 
     return array('ok' => in_array($total, erp_edoc_parasut_expected_totals($invoice), true), 'total' => $total);
+}
+
+/**
+ * The totals Paraşüt holds for a sales invoice, in kurus: before taxes
+ * (before_taxes_total), VAT (total_vat), VAT withheld (total_vat_withholding)
+ * and the grand total (net_total). Empty when the answer carries no
+ * net_total.
+ *
+ * @param array $attributes  data.attributes of the sales invoice
+ * @return array ['before_taxes' => int, 'vat' => int, 'vat_withholding' => int, 'net' => int] or []
+ */
+function erp_edoc_parasut_totals($attributes)
+{
+    $attributes = (array) $attributes;
+
+    if (!isset($attributes['net_total']) || ((string) $attributes['net_total'] === '')) {
+        return array();
+    }
+
+    return array(
+        'before_taxes' => erp_edoc_parasut_kurus((string) ($attributes['before_taxes_total'] ?? ($attributes['gross_total'] ?? '0'))),
+        'vat' => erp_edoc_parasut_kurus((string) ($attributes['total_vat'] ?? '0')),
+        'vat_withholding' => erp_edoc_parasut_kurus((string) ($attributes['total_vat_withholding'] ?? '0')),
+        'net' => erp_edoc_parasut_kurus((string) $attributes['net_total']),
+    );
 }
 
 /**
@@ -1364,6 +1392,24 @@ function erp_edoc_parasut_poll($invoice, $job_id)
         $out['success'] = true;
         $out['status'] = 'created';
         $out['message'] = lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+
+        // What Paraşüt computed for the draft, so it can be looked over
+        // before the hand-over without opening Paraşüt.
+        $totals = erp_edoc_parasut_totals($attributes);
+
+        if (($totals !== array()) && function_exists('erp_money_out_currency')) {
+            $currency = (string) ($invoice['currency'] ?? 'TRY');
+            $out['message'] .= ' ' . lang(array(
+                'string' => 'Paraşüt has it at {var:1} before VAT, {var:2} VAT, {var:3} withheld, {var:4} in all.',
+                'vars' => array(
+                    erp_money_out_currency($totals['before_taxes'], $currency),
+                    erp_money_out_currency($totals['vat'], $currency),
+                    erp_money_out_currency($totals['vat_withholding'], $currency),
+                    erp_money_out_currency($totals['net'], $currency),
+                ),
+            ));
+        }
+
         return $out;
     }
 
