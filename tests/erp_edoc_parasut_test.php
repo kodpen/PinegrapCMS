@@ -150,7 +150,7 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 		array('product_id' => 0, 'description' => 'Kargo', 'quantity' => '1.0000', 'unit_price' => 2500, 'discount_rate' => '0.000', 'discount_amount' => 500, 'tax_rate' => '20.000', 'withholding_rate' => '0.000', 'withholding_code' => '', 'vat_exemption_code' => ''),
 	);
 
-	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 1172)), $lines, '555');
+	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 1172, 'order_date' => '2026-10-18')), $lines, '555');
 
 	pg_assert_same('sales_invoices', $payload['data']['type']);
 	pg_assert_same('invoice', $payload['data']['attributes']['item_type']);
@@ -158,6 +158,7 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 	pg_assert_same('2026-10-19', $payload['data']['attributes']['issue_date']);
 	pg_assert_same('2026-10-29', $payload['data']['attributes']['due_date']);
 	pg_assert_same('1172', $payload['data']['attributes']['order_no']);
+	pg_assert_same('2026-10-18', $payload['data']['attributes']['order_date']);
 	pg_assert_false(isset($payload['data']['attributes']['exchange_rate']));
 	pg_assert_false(isset($payload['data']['attributes']['vat_withholding_rate']));
 	pg_assert_same('555', $payload['data']['relationships']['contact']['data']['id']);
@@ -172,39 +173,83 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 	pg_assert_same('amount', $details[1]['attributes']['discount_type']);
 	pg_assert_same(5.0, $details[1]['attributes']['discount_value']);
 	pg_assert_same('9001', $details[1]['relationships']['product']['data']['id']);
+	pg_assert_false(isset($details[0]['attributes']['vat_withholding_rate']));
 
-	// A foreign currency carries its rate; one withholding rate travels on
-	// the document, two different ones are refused.
+	// The order number without its date would stop the conversion; neither
+	// is sent then.
+	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 1172, 'order_date' => '')), $lines, '555');
+	pg_assert_false(isset($payload['data']['attributes']['order_no']));
+	pg_assert_false(isset($payload['data']['attributes']['order_date']));
+
+	// A foreign currency carries its rate.
 	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('currency' => 'EUR', 'exchange_rate' => '48.250000')), array($lines[0]), '555');
 	pg_assert_same('EUR', $payload['data']['attributes']['currency']);
 	pg_assert_same(48.25, $payload['data']['attributes']['exchange_rate']);
 
+	// Withholding travels on each line, so two rates share one document.
 	$withheld = $lines;
 	$withheld[0]['withholding_rate'] = '40.000';
-	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $withheld, '555');
-	pg_assert_same(40.0, $payload['data']['attributes']['vat_withholding_rate']);
-
 	$withheld[1]['withholding_rate'] = '50.000';
 	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $withheld, '555');
-	pg_assert_true(isset($payload['error']));
+	pg_assert_false(isset($payload['error']));
+	pg_assert_same(40.0, $payload['data']['relationships']['details']['data'][0]['attributes']['vat_withholding_rate']);
+	pg_assert_same(50.0, $payload['data']['relationships']['details']['data'][1]['attributes']['vat_withholding_rate']);
+	pg_assert_false(isset($payload['data']['attributes']['vat_withholding_rate']));
+}
+
+// The grand total Paraşüt computed is net_total ("Genel Toplam"); gross_total
+// is the subtotal before VAT and is not compared.
+function test_erp_edoc_parasut_total_check()
+{
+	$invoice = pg_test_parasut_invoice();
+
+	pg_assert_same(array('ok' => true, 'total' => 108000), erp_edoc_parasut_total_check(array('gross_total' => '900.0', 'total_vat' => '180.0', 'net_total' => '1080.0'), $invoice));
+	pg_assert_same(array('ok' => false, 'total' => 108001), erp_edoc_parasut_total_check(array('net_total' => '1080.01'), $invoice));
+	pg_assert_same(array('ok' => false, 'total' => 0), erp_edoc_parasut_total_check(array('gross_total' => '1080.0'), $invoice));
+
+	// With withholding either reading is taken until the live answer settles it.
+	$withheld = pg_test_parasut_invoice(array('withholding_total' => 7200, 'grand_total' => 100800));
+	pg_assert_true(erp_edoc_parasut_total_check(array('net_total' => '1080.0'), $withheld)['ok']);
+	pg_assert_true(erp_edoc_parasut_total_check(array('net_total' => '1008.0'), $withheld)['ok']);
+}
+
+// The line ids of a sales invoice, in the order it lists them.
+function test_erp_edoc_parasut_detail_ids()
+{
+	$body = array('data' => array('id' => '77', 'relationships' => array('details' => array('data' => array(
+		array('id' => '501', 'type' => 'sales_invoice_details'),
+		array('id' => '502', 'type' => 'sales_invoice_details'),
+	)))));
+
+	pg_assert_same(array('501', '502'), erp_edoc_parasut_detail_ids($body));
+	pg_assert_same(array(), erp_edoc_parasut_detail_ids(array('data' => array())));
 }
 
 // The e-document request: scenario and alias for e-Fatura; the internet
-// sale block for an e-Arşiv invoice; one exemption and one withholding code.
+// sale block for an e-Arşiv invoice; one exemption, and each withheld line's
+// code against Paraşüt's line id.
 function test_erp_edoc_parasut_edoc_attributes()
 {
 	$lines = array(
 		array('tax_rate' => '0.000', 'vat_exemption_code' => '301', 'withholding_rate' => '0.000', 'withholding_code' => ''),
 		array('tax_rate' => '20.000', 'vat_exemption_code' => '', 'withholding_rate' => '40.000', 'withholding_code' => '601'),
+		array('tax_rate' => '20.000', 'vat_exemption_code' => '', 'withholding_rate' => '90.000', 'withholding_code' => '612'),
 	);
 
-	$einvoice = erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(array('edoc_scenario' => 'commercial', 'notes' => 'Teşekkürler')), $lines, 'einvoice', 'urn:mail:defaultpk@example.com');
+	$einvoice = erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(array('edoc_scenario' => 'commercial', 'notes' => 'Teşekkürler')), $lines, 'einvoice', 'urn:mail:defaultpk@example.com', array('501', '502', '503'));
 	pg_assert_same('commercial', $einvoice['scenario']);
 	pg_assert_same('urn:mail:defaultpk@example.com', $einvoice['to']);
 	pg_assert_same('301', $einvoice['vat_exemption_reason_code']);
-	pg_assert_same('601', $einvoice['vat_withholding_code']);
-	pg_assert_same('Teşekkürler', $einvoice['note']);
+	pg_assert_false(isset($einvoice['vat_exemption_reason']));
+	pg_assert_same(array(
+		array('detail_id' => 502, 'vat_withholding_code' => '601'),
+		array('detail_id' => 503, 'vat_withholding_code' => '612'),
+	), $einvoice['vat_withholding_params']);
+	pg_assert_false(isset($einvoice['note']));
 	pg_assert_false(isset($einvoice['internet_sale']));
+
+	// Without Paraşüt's line ids a withheld line cannot be named.
+	pg_assert_true(isset(erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(), $lines, 'earchive', '')['error']));
 
 	$earchive = erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(array(
 		'is_internet_sale' => 1, 'web_address' => 'https://magaza.example.com', 'payment_method' => 'KREDIKARTI/BANKAKARTI',
@@ -230,9 +275,46 @@ function test_erp_edoc_parasut_edoc_attributes()
 	pg_assert_same('2026-10-19', $earchive['internet_sale']['payment_date']);
 
 	// Two exemption codes cannot be named on one document.
-	$mixed = $lines;
-	$mixed[1] = array('tax_rate' => '0.000', 'vat_exemption_code' => '350', 'withholding_rate' => '0.000', 'withholding_code' => '');
+	$mixed = array(
+		array('tax_rate' => '0.000', 'vat_exemption_code' => '301', 'withholding_rate' => '0.000', 'withholding_code' => ''),
+		array('tax_rate' => '0.000', 'vat_exemption_code' => '350', 'withholding_rate' => '0.000', 'withholding_code' => ''),
+	);
 	pg_assert_true(isset(erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(), $mixed, 'earchive', '')['error']));
+
+	// "Other" exemptions need the reason in words, taken from the note.
+	$other = array(array('tax_rate' => '0.000', 'vat_exemption_code' => '350', 'withholding_rate' => '0.000', 'withholding_code' => ''));
+	pg_assert_true(isset(erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(), $other, 'earchive', '')['error']));
+	$with_reason = erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(array('notes' => 'KDVK 17/4-s')), $other, 'earchive', '');
+	pg_assert_same('350', $with_reason['vat_exemption_reason_code']);
+	pg_assert_same('KDVK 17/4-s', $with_reason['vat_exemption_reason']);
+}
+
+// What an e-document's own attributes say: a signed e-Archive invoice is
+// issued whatever its delivery word; an e-Invoice by status and the buyer's
+// answer.
+function test_erp_edoc_parasut_edoc_state()
+{
+	pg_assert_same('accepted', erp_edoc_parasut_edoc_state('e_archives', array('status' => 'sent', 'is_signed' => true))['status']);
+	pg_assert_same('accepted', erp_edoc_parasut_edoc_state('e_archives', array('status' => 'legalized'))['status']);
+	pg_assert_same('accepted', erp_edoc_parasut_edoc_state('e_archives', array('status' => 'bounced'))['status']);
+	pg_assert_contains('came back', erp_edoc_parasut_edoc_state('e_archives', array('status' => 'bounced'))['message']);
+	pg_assert_same('sent', erp_edoc_parasut_edoc_state('e_archives', array('status' => '', 'is_signed' => false))['status']);
+
+	pg_assert_same('sent', erp_edoc_parasut_edoc_state('e_invoices', array('status' => 'waiting'))['status']);
+	pg_assert_same('accepted', erp_edoc_parasut_edoc_state('e_invoices', array('status' => 'successful'))['status']);
+	pg_assert_same('error', erp_edoc_parasut_edoc_state('e_invoices', array('status' => 'failed'))['status']);
+	pg_assert_same('rejected', erp_edoc_parasut_edoc_state('e_invoices', array('status' => 'successful', 'response_type' => 'rejected'))['status']);
+	pg_assert_contains('return', erp_edoc_parasut_edoc_state('e_invoices', array('status' => 'successful', 'response_type' => 'refunded'))['message']);
+}
+
+// GİB's cancellation window of an e-Archive invoice.
+function test_erp_edoc_parasut_cancel_window_open()
+{
+	$now = strtotime('2026-10-19 12:00:00');
+
+	pg_assert_true(erp_edoc_parasut_cancel_window_open(array(), $now));
+	pg_assert_true(erp_edoc_parasut_cancel_window_open(array('cancellable_until' => '2026-10-26T23:59:59+03:00'), $now));
+	pg_assert_false(erp_edoc_parasut_cancel_window_open(array('cancellable_until' => '2026-10-18T23:59:59+03:00'), $now));
 }
 
 // Paraşüt's status words, read by their stems; the unknown counts as sent.

@@ -32,10 +32,11 @@
  *                  invoice is cancelled through sales_invoices/{id}/cancel;
  *                  an e-Invoice that has gone is answered with a return.
  *
- * Nothing about the API's answers is assumed to be exact: the fields are
- * read by name with fallbacks and, where the documentation is silent (the
- * status words of an e-document, which total carries the withholding), the
- * first live test decides and the comment beside the reading says so.
+ * The fields follow the published swagger (apidocs.parasut.com/swagger.json)
+ * and are read by name with fallbacks; where the documentation is silent
+ * (the scale of the withholding rate, which total carries the withholding)
+ * the comment beside the reading says UNVERIFIED until a live document
+ * settles it. The API takes 10 requests in any 10 seconds.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -99,8 +100,10 @@ function erp_edoc_parasut_request($method, $path, $body = null, $context = array
     $url = (strpos((string) $path, 'https://') === 0) ? (string) $path : _parasut_prefix() . (string) $path;
     $doc_type = (string) ($context['doc_type'] ?? '');
     $doc_id = (int) ($context['doc_id'] ?? 0);
+    $renewed = false;
+    $waited = false;
 
-    for ($attempt = 1; $attempt <= 2; $attempt++) {
+    for ($attempt = 1; $attempt <= 3; $attempt++) {
         $token = parasut_get_token();
 
         if (empty($token['success'])) {
@@ -116,11 +119,26 @@ function erp_edoc_parasut_request($method, $path, $body = null, $context = array
             $headers[] = 'Content-Type: application/json';
         }
 
+        if (function_exists('parasut_throttle')) {
+            parasut_throttle();
+        }
+
         $result = erp_edoc_http($method, $url, $headers, $body, 40);
         erp_edoc_log('parasut', $doc_type, $doc_id, $method, $url, $result, $body);
+        $code = (int) $result['http_code'];
 
-        if (((int) $result['http_code'] === 401) && ($attempt === 1) && function_exists('parasut_token_forget')) {
+        if (($code === 401) && !$renewed && function_exists('parasut_token_forget')) {
+            $renewed = true;
             parasut_token_forget();
+            continue;
+        }
+
+        // Over the rate limit (another process was writing too): one wait of
+        // a full window, then the same request once more. A POST refused with
+        // 429 was not processed, so repeating it cannot double a record.
+        if (($code === 429) && !$waited) {
+            $waited = true;
+            sleep((int) ceil(defined('PARASUT_RATE_WINDOW') ? PARASUT_RATE_WINDOW : 10));
             continue;
         }
 
@@ -575,7 +593,6 @@ function erp_edoc_parasut_line_product($line)
 function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
 {
     $details = array();
-    $withholding_rates = array();
 
     foreach ($lines as $line) {
         $product = erp_edoc_parasut_line_product($line);
@@ -594,8 +611,12 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
             'discount_value' => ($discount_rate > 0) ? $discount_rate : erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0)),
         );
 
+        // Withholding is a line attribute at Paraşüt (details[].vat_withholding_rate),
+        // so lines with different rates share one document. UNVERIFIED on
+        // the live API: the scale; Pinegrap keeps the withheld share of the
+        // VAT in percent (4/10 = 40).
         if ((float) ($line['withholding_rate'] ?? 0) > 0) {
-            $withholding_rates[] = (float) $line['withholding_rate'];
+            $attributes['vat_withholding_rate'] = (float) $line['withholding_rate'];
         }
 
         $details[] = array(
@@ -607,13 +628,6 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         );
     }
 
-    // Paraşüt withholds on the whole document, at one rate.
-    $withholding_rates = array_values(array_unique($withholding_rates));
-
-    if (count($withholding_rates) > 1) {
-        return array('error' => lang('Paraşüt applies VAT withholding to the whole document at one rate; this invoice has lines with different withholding rates.'));
-    }
-
     $currency = strtoupper(trim((string) $invoice['currency']));
     $attributes = array(
         'item_type' => 'invoice',
@@ -621,18 +635,19 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         'issue_date' => (string) $invoice['issue_date'],
         'due_date' => (((string) $invoice['due_date'] !== '0000-00-00') && ((string) $invoice['due_date'] !== '')) ? (string) $invoice['due_date'] : (string) $invoice['issue_date'],
         'currency' => erp_edoc_parasut_currency($currency),
-        'order_no' => ((int) ($invoice['order_id'] ?? 0) > 0) ? (string) (int) $invoice['order_id'] : '',
     );
+
+    // The order number and date go together or not at all: Paraşüt refuses
+    // to turn an invoice into an e-document when only one of them is set.
+    $order_date = trim((string) ($invoice['order_date'] ?? ''));
+
+    if (((int) ($invoice['order_id'] ?? 0) > 0) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $order_date)) {
+        $attributes['order_no'] = (string) (int) $invoice['order_id'];
+        $attributes['order_date'] = $order_date;
+    }
 
     if (($currency !== '') && ($currency !== 'TRY') && ((float) ($invoice['exchange_rate'] ?? 0) > 0)) {
         $attributes['exchange_rate'] = (float) $invoice['exchange_rate'];
-    }
-
-    if (!empty($withholding_rates)) {
-        // UNVERIFIED on the live API: Pinegrap keeps the withheld share of
-        // the VAT in percent (4/10 = 40); the documentation names
-        // vat_withholding_rate without saying which scale it reads.
-        $attributes['vat_withholding_rate'] = (float) $withholding_rates[0];
     }
 
     if (trim((string) ($invoice['notes'] ?? '')) !== '') {
@@ -651,7 +666,7 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
 
 /**
  * The total the ERP expects Paraşüt to compute: net of discounts plus VAT.
- * UNVERIFIED on the live API: whether gross_total is read before or after
+ * UNVERIFIED on the live API: whether net_total is read before or after
  * the withholding; a document with withholding compares on both readings
  * and the first live one settles it.
  *
@@ -664,6 +679,50 @@ function erp_edoc_parasut_expected_totals($invoice)
     $after_withholding = (int) $invoice['grand_total'];
 
     return array_values(array_unique(array($before_withholding, $after_withholding)));
+}
+
+/**
+ * Whether the total Paraşüt computed for the sales invoice is the ERP's.
+ * The documentation names net_total "Genel Toplam" (the grand total, VAT
+ * included) and gross_total "Ara toplam" (the subtotal before VAT), so the
+ * grand total is the one compared.
+ *
+ * @param array $attributes  data.attributes of the sales invoice Paraşüt answered
+ * @param array $invoice     The erp_invoices row
+ * @return array ['ok' => bool, 'total' => int kurus Paraşüt computed]
+ */
+function erp_edoc_parasut_total_check($attributes, $invoice)
+{
+    $attributes = (array) $attributes;
+
+    if (!isset($attributes['net_total']) || ((string) $attributes['net_total'] === '')) {
+        return array('ok' => false, 'total' => 0);
+    }
+
+    $total = erp_edoc_parasut_kurus((string) $attributes['net_total']);
+
+    return array('ok' => in_array($total, erp_edoc_parasut_expected_totals($invoice), true), 'total' => $total);
+}
+
+/**
+ * The Paraşüt ids of a sales invoice's lines, in the order the invoice
+ * lists them (relationships.details.data), which is the order they were
+ * written in.
+ *
+ * @param array $body  The decoded answer of GET sales_invoices/{id}?include=details
+ * @return array  Ids as strings
+ */
+function erp_edoc_parasut_detail_ids($body)
+{
+    $ids = array();
+
+    foreach ((array) ($body['data']['relationships']['details']['data'] ?? array()) as $reference) {
+        if (is_array($reference) && (trim((string) ($reference['id'] ?? '')) !== '')) {
+            $ids[] = trim((string) $reference['id']);
+        }
+    }
+
+    return $ids;
 }
 
 /**
@@ -732,6 +791,12 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         return $fail($contact['error']);
     }
 
+    // orders.order_date is a UNIX timestamp; the document wants the day.
+    if (((int) ($invoice['order_id'] ?? 0) > 0) && !isset($invoice['order_date'])) {
+        $stamp = (int) db_value("SELECT order_date FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
+        $invoice['order_date'] = ($stamp > 0) ? date('Y-m-d', $stamp) : '';
+    }
+
     $payload = erp_edoc_parasut_invoice_payload($invoice, $lines, $contact['id']);
 
     if (isset($payload['error'])) {
@@ -754,14 +819,14 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     // record that differs is deleted again: a legal document is not the
     // place to find a rounding gap, and a record left behind would be
     // invoiced twice on the next try.
-    $gross = erp_edoc_parasut_kurus((string) ($result['body']['data']['attributes']['gross_total'] ?? '0'));
+    $check = erp_edoc_parasut_total_check($result['body']['data']['attributes'] ?? array(), $invoice);
 
-    if (!in_array($gross, erp_edoc_parasut_expected_totals($invoice), true)) {
+    if (!$check['ok']) {
         erp_edoc_parasut_request('DELETE', '/sales_invoices/' . rawurlencode($external_id), null, $context);
 
         return $fail(lang(array(
             'string' => 'Paraşüt computed {var:1} for the invoice where the ERP has {var:2}; the record was deleted there and nothing was issued.',
-            'vars' => array(erp_money_out_currency($gross, (string) $invoice['currency']), erp_money_out_currency((int) $invoice['grand_total'], (string) $invoice['currency'])),
+            'vars' => array(erp_money_out_currency($check['total'], (string) $invoice['currency']), erp_money_out_currency((int) $invoice['grand_total'], (string) $invoice['currency'])),
         )));
     }
 
@@ -827,56 +892,74 @@ function erp_edoc_parasut_decide_kind($invoice, $tax_number)
 
 /**
  * The attributes of the e-document request: what both kinds share (the
- * exemption behind a zero-rated line, the withholding code, the note) and
- * what each adds - the scenario and the buyer's alias for e-Fatura, the
- * internet-sale block for e-Arşiv.
+ * exemption behind a zero-rated line, each withheld line's code) and what
+ * each adds - the scenario and the buyer's alias for e-Fatura, the
+ * internet-sale block for e-Arşiv. The invoice note is already on the sales
+ * invoice (invoice_note); the e-document request has no note of its own.
  *
  * @param array  $invoice
  * @param array  $lines
- * @param string $kind   'einvoice' | 'earchive'
- * @param string $alias  The buyer's GİB mailbox (e-Fatura)
+ * @param string $kind        'einvoice' | 'earchive'
+ * @param string $alias       The buyer's GİB mailbox (e-Fatura)
+ * @param array  $detail_ids  The Paraşüt line ids in the order of $lines
+ *                            (erp_edoc_parasut_detail_ids()); needed for withholding
  * @return array  The attributes, or ['error' => string]
  */
-function erp_edoc_parasut_edoc_attributes($invoice, $lines, $kind, $alias)
+function erp_edoc_parasut_edoc_attributes($invoice, $lines, $kind, $alias, $detail_ids = array())
 {
     $attributes = array();
     $exemptions = array();
-    $withholding_codes = array();
+    $withholding = array();
+    $detail_ids = array_values((array) $detail_ids);
 
-    foreach ($lines as $line) {
+    foreach (array_values($lines) as $index => $line) {
         if (((float) ($line['tax_rate'] ?? 0) == 0) && (trim((string) ($line['vat_exemption_code'] ?? '')) !== '')) {
             $exemptions[] = trim((string) $line['vat_exemption_code']);
         }
 
-        if (((float) ($line['withholding_rate'] ?? 0) > 0) && (trim((string) ($line['withholding_code'] ?? '')) !== '')) {
-            $withholding_codes[] = trim((string) $line['withholding_code']);
+        $code = trim((string) ($line['withholding_code'] ?? ''));
+
+        if (((float) ($line['withholding_rate'] ?? 0) > 0) && ($code !== '')) {
+            // The code goes with the Paraşüt line it belongs to
+            // (vat_withholding_params[].detail_id), so the line ids of the
+            // sales invoice must be known.
+            $detail_id = trim((string) ($detail_ids[$index] ?? ''));
+
+            if ($detail_id === '') {
+                return array('error' => lang('The lines of the invoice at Paraşüt could not be matched to the withholding codes; nothing was converted.'));
+            }
+
+            $withholding[] = array('detail_id' => (int) $detail_id, 'vat_withholding_code' => $code);
         }
     }
 
     $exemptions = array_values(array_unique($exemptions));
-    $withholding_codes = array_values(array_unique($withholding_codes));
 
     if (count($exemptions) > 1) {
         return array('error' => lang('Paraşüt names one VAT exemption reason for the whole document; this invoice has zero-rated lines with different exemption codes.'));
     }
 
-    if (count($withholding_codes) > 1) {
-        return array('error' => lang('Paraşüt names one VAT withholding code for the whole document; this invoice has lines with different withholding codes.'));
-    }
-
     if (!empty($exemptions)) {
-        // The GİB code list; Paraşüt knows the wording behind the code. The
-        // reason text (vat_exemption_reason) is sent only if the first live
-        // test shows the code alone is refused.
         $attributes['vat_exemption_reason_code'] = $exemptions[0];
+
+        // "Other" exemptions (250, 350) need the reason in words; the code
+        // alone is enough for the rest, Paraşüt knows their wording.
+        if (in_array($exemptions[0], array('250', '350'), true)) {
+            $reason = trim((string) ($invoice['notes'] ?? ''));
+
+            if ($reason === '') {
+                return array('error' => lang(array(
+                    'string' => 'Exemption code {var:1} needs its reason in words: write it in the invoice note (it goes to GİB as the exemption reason), or choose the specific exemption code.',
+                    'vars' => $exemptions[0],
+                )));
+            }
+
+            $attributes['vat_exemption_reason'] = mb_substr($reason, 0, 255);
+        }
     }
 
-    if (!empty($withholding_codes)) {
-        $attributes['vat_withholding_code'] = $withholding_codes[0];
-    }
-
-    if (trim((string) ($invoice['notes'] ?? '')) !== '') {
-        $attributes['note'] = mb_substr(trim((string) $invoice['notes']), 0, 1000);
+    if (!empty($withholding)) {
+        $attributes['vat_withholding_params'] = $withholding;
     }
 
     if ($kind === 'einvoice') {
@@ -892,6 +975,8 @@ function erp_edoc_parasut_edoc_attributes($invoice, $lines, $kind, $alias)
         $carrier_vkn = preg_replace('/\D/', '', (string) $invoice['carrier_vkn']);
         $method = (string) ($invoice['payment_method'] ?? '');
 
+        // GİB's list ends with DIGER; Paraşüt's documentation lists the first
+        // four only. UNVERIFIED on the live API: whether DIGER is taken.
         if (!in_array($method, array('KREDIKARTI/BANKAKARTI', 'EFT/HAVALE', 'KAPIDAODEME', 'ODEMEARACISI', 'DIGER'), true)) {
             $method = 'DIGER';
         }
@@ -954,7 +1039,32 @@ function erp_edoc_parasut_submit_invoice($invoice, $external_id = '')
     }
 
     $kind = $decision['kind'];
-    $attributes = erp_edoc_parasut_edoc_attributes($invoice, $lines, $kind, $decision['alias']);
+    $detail_ids = array();
+
+    // A withheld line's code is sent against Paraşüt's own line id.
+    foreach ($lines as $line) {
+        if (((float) ($line['withholding_rate'] ?? 0) > 0) && (trim((string) ($line['withholding_code'] ?? '')) !== '')) {
+            $read = erp_edoc_parasut_request('GET', '/sales_invoices/' . rawurlencode($external_id) . '?include=details', null, $context);
+
+            if ((string) $read['login_error'] !== '') {
+                return $fail($read['login_error']);
+            }
+
+            if (!erp_edoc_parasut_ok($read)) {
+                return $fail(lang(array('string' => 'Paraşüt would not show the lines of the invoice: {var:1}', 'vars' => erp_edoc_parasut_error_text($read))));
+            }
+
+            $detail_ids = erp_edoc_parasut_detail_ids($read['body']);
+
+            if (count($detail_ids) !== count($lines)) {
+                return $fail(lang('The invoice at Paraşüt does not have the same lines as the ERP invoice; nothing was converted.'));
+            }
+
+            break;
+        }
+    }
+
+    $attributes = erp_edoc_parasut_edoc_attributes($invoice, $lines, $kind, $decision['alias'], $detail_ids);
 
     if (isset($attributes['error'])) {
         return $fail($attributes['error']);
@@ -1009,10 +1119,9 @@ function erp_edoc_parasut_submit_invoice($invoice, $external_id = '')
    --------------------------------------------------------------------------- */
 
 /**
- * The ERP's word for the state a Paraşüt e-document reports. The status
- * vocabulary of e_invoices / e_archives is not in the public documentation;
- * the words are read by their stems and anything unknown, with an ETTN
- * beside it, counts as sent and awaiting GİB.
+ * The ERP's word for a status word read by its stems, for what
+ * erp_edoc_parasut_edoc_state() does not know by name: anything unknown,
+ * with an ETTN beside it, counts as sent and awaiting GİB.
  *
  * @param string $status  The provider's status word
  * @return string  'accepted' | 'rejected' | 'cancelled' | 'error' | 'sent'
@@ -1046,6 +1155,87 @@ function erp_edoc_parasut_document_state($status)
     }
 
     return 'sent';
+}
+
+/**
+ * The ERP's word for an e-document Paraşüt holds, from its own attributes.
+ *
+ * e_archives.status is one of bounced | sent | printed | legalized
+ * (documentation): every one is a signed document GİB has, the words say
+ * how it reached the buyer (e-mail, paper; bounced = the e-mail came back),
+ * so a signed e-Archive invoice counts as accepted and the word is the
+ * message. e_invoices.status is waiting | failed | successful, and the
+ * buyer's answer to a commercial one is response_type (accepted | rejected
+ * | refunded).
+ *
+ * @param string $type        'e_archives' | 'e_invoices'
+ * @param array  $attributes  The e-document's attributes
+ * @return array ['status' => accepted|rejected|error|sent, 'message' => string]
+ */
+function erp_edoc_parasut_edoc_state($type, $attributes)
+{
+    $attributes = (array) $attributes;
+    $status = strtolower(trim((string) ($attributes['status'] ?? '')));
+
+    if ($type === 'e_archives') {
+        $signed = !empty($attributes['is_signed']) || in_array($status, array('sent', 'printed', 'legalized', 'bounced'), true);
+        $words = array(
+            'sent' => lang('e-Archive invoice issued and sent to the buyer.'),
+            'printed' => lang('e-Archive invoice issued and printed.'),
+            'legalized' => lang('e-Archive invoice issued.'),
+            'bounced' => lang('e-Archive invoice issued; the e-mail to the buyer came back.'),
+        );
+
+        return array(
+            'status' => $signed ? 'accepted' : erp_edoc_parasut_document_state($status),
+            'message' => $words[$status] ?? $status,
+        );
+    }
+
+    $response = strtolower(trim((string) ($attributes['response_type'] ?? '')));
+
+    if ($response === 'rejected') {
+        return array('status' => 'rejected', 'message' => trim(lang('The buyer rejected the e-Invoice.') . ' ' . trim((string) ($attributes['response_note'] ?? ''))));
+    }
+
+    if ($status === 'failed') {
+        return array('status' => 'error', 'message' => lang('GİB did not take the e-Invoice.'));
+    }
+
+    if ($status === 'successful') {
+        return array(
+            'status' => 'accepted',
+            'message' => ($response === 'refunded') ? lang('The buyer answered the e-Invoice with a return.') : lang('GİB delivered the e-Invoice.'),
+        );
+    }
+
+    if ($status === 'waiting') {
+        return array('status' => 'sent', 'message' => lang('The e-Invoice is on its way to GİB.'));
+    }
+
+    return array('status' => erp_edoc_parasut_document_state($status), 'message' => $status);
+}
+
+/**
+ * Whether GİB still lets an e-Archive invoice be cancelled
+ * (e_archives.cancellable_until). No date given: the server decides.
+ *
+ * @param array $attributes  The e-Archive invoice's attributes
+ * @param int   $now
+ * @return bool
+ */
+function erp_edoc_parasut_cancel_window_open($attributes, $now)
+{
+    $attributes = (array) $attributes;
+    $until = trim((string) ($attributes['cancellable_until'] ?? ''));
+
+    if ($until === '') {
+        return true;
+    }
+
+    $stamp = strtotime($until);
+
+    return ($stamp === false) || ($stamp >= (int) $now);
 }
 
 /**
@@ -1192,13 +1382,16 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     $document_attributes = (array) ($document['attributes'] ?? array());
     $out['gib_uuid'] = trim((string) ($document_attributes['uuid'] ?? ($document_attributes['env_uuid'] ?? '')));
 
-    if (($out['gib_number'] === '') && (trim((string) ($document_attributes['invoice_number'] ?? '')) !== '')) {
+    // The e-document's own number is the one GİB knows (e_archives carry
+    // invoice_number); the sales invoice's series and number stand in when
+    // the e-document does not say.
+    if (trim((string) ($document_attributes['invoice_number'] ?? '')) !== '') {
         $out['gib_number'] = trim((string) $document_attributes['invoice_number']);
     }
 
-    $status_word = trim((string) ($document_attributes['status'] ?? ''));
-    $out['status'] = erp_edoc_parasut_document_state($status_word);
-    $out['message'] = $status_word;
+    $state = erp_edoc_parasut_edoc_state($document_type, $document_attributes);
+    $out['status'] = $state['status'];
+    $out['message'] = $state['message'];
 
     erp_query("UPDATE erp_invoices SET parasut_edoc_id = '" . escape(mb_substr($document_id, 0, 32)) . "' WHERE id = '" . (int) $invoice['id'] . "'");
 
@@ -1254,6 +1447,12 @@ function erp_edoc_parasut_fetch_document($invoice, $format = 'pdf')
 
     if (!erp_edoc_parasut_ok($answer)) {
         return array_merge($none, array('error' => erp_edoc_parasut_error_text($answer)));
+    }
+
+    // 204 with no body: the PDF is still being drawn (documentation: ask
+    // again until the answer is not 204).
+    if ((int) $answer['http_code'] === 204) {
+        return array_merge($none, array('error' => lang('Paraşüt has not prepared the PDF yet; try again in a minute.')));
     }
 
     $url = trim((string) ($answer['body']['data']['attributes']['url'] ?? ''));
@@ -1409,7 +1608,23 @@ function erp_edoc_parasut_cancel_invoice($invoice, $reason = '')
     }
 
     // An e-Archive invoice: cancelled through the API, which Paraşüt then
-    // reports to GİB.
+    // reports to GİB - while GİB's window is open (cancellable_until).
+    $archive_id = trim((string) ($document_reference['id'] ?? ''));
+    $archive = array();
+
+    foreach ((array) ($detail['body']['included'] ?? array()) as $item) {
+        if (is_array($item) && ((string) ($item['type'] ?? '') === 'e_archives') && ((string) ($item['id'] ?? '') === $archive_id)) {
+            $archive = (array) ($item['attributes'] ?? array());
+        }
+    }
+
+    if (!erp_edoc_parasut_cancel_window_open($archive, time())) {
+        return $fail(lang(array(
+            'string' => 'The e-Archive invoice could be cancelled until {var:1}; after that it is answered with a return invoice.',
+            'vars' => (string) $archive['cancellable_until'],
+        )));
+    }
+
     $cancelled = erp_edoc_parasut_request('DELETE', '/sales_invoices/' . rawurlencode($external_id) . '/cancel', null, $context);
 
     if ((string) $cancelled['login_error'] !== '') {

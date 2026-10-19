@@ -88,3 +88,18 @@ function test_parasut_me_parse_tolerates_a_bare_answer()
 
 	pg_assert_same(array(), $me['companies']);
 }
+
+// Ten requests fit in any ten seconds; the eleventh waits until the oldest
+// of the last ten has left the window.
+function test_parasut_throttle_wait_keeps_ten_in_ten_seconds()
+{
+	pg_assert_same(0.0, parasut_throttle_wait(array(), 100.0, 10, 10.0));
+	pg_assert_same(0.0, parasut_throttle_wait(array_fill(0, 9, 99.0), 100.0, 10, 10.0));
+
+	$stamps = array(91.0, 92.0, 93.0, 94.0, 95.0, 96.0, 97.0, 98.0, 99.0, 99.5);
+	pg_assert_same(1.0, parasut_throttle_wait($stamps, 100.0, 10, 10.0));
+
+	// Requests older than the window do not count.
+	pg_assert_same(0.0, parasut_throttle_wait(array(80.0, 85.0, 89.0), 100.0, 3, 10.0));
+	pg_assert_same(3.5, parasut_throttle_wait(array(93.5, 95.0, 99.0), 100.0, 3, 10.0));
+}

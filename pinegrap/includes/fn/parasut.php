@@ -36,6 +36,70 @@ if (!defined('PARASUT_REDIRECT_URI')) {
     define('PARASUT_REDIRECT_URI', 'urn:ietf:wg:oauth:2.0:oob');
 }
 
+// The API takes 10 requests in any 10 seconds (documentation, "Genel
+// Bilgiler"); one invoice with new products and a buyer to open can pass that.
+if (!defined('PARASUT_RATE_LIMIT')) {
+    define('PARASUT_RATE_LIMIT', 10);
+}
+
+if (!defined('PARASUT_RATE_WINDOW')) {
+    define('PARASUT_RATE_WINDOW', 10.0);
+}
+
+/**
+ * How long to wait before the next request so that no window of
+ * $window seconds holds more than $limit of them.
+ *
+ * @param array $stamps  microtime(true) of the requests made so far
+ * @param float $now
+ * @param int   $limit
+ * @param float $window
+ * @return float  Seconds; 0 when the request may go now
+ */
+function parasut_throttle_wait($stamps, $now, $limit = PARASUT_RATE_LIMIT, $window = PARASUT_RATE_WINDOW)
+{
+    $recent = array();
+
+    foreach ((array) $stamps as $stamp) {
+        if (($now - (float) $stamp) < $window) {
+            $recent[] = (float) $stamp;
+        }
+    }
+
+    if (count($recent) < $limit) {
+        return 0.0;
+    }
+
+    sort($recent);
+
+    // The oldest of the last $limit requests has to leave the window.
+    return max(0.0, round($recent[count($recent) - $limit] + $window - $now, 3));
+}
+
+/**
+ * Holds the request back until the rate limit allows it, then counts it.
+ * Per PHP request: a cron run and a page writing at the same moment are not
+ * counted together, which the 429 retry in the e-document driver covers.
+ *
+ * @return void
+ */
+function parasut_throttle()
+{
+    static $stamps = array();
+
+    $wait = parasut_throttle_wait($stamps, microtime(true));
+
+    if ($wait > 0) {
+        usleep((int) ceil($wait * 1000000));
+    }
+
+    $now = microtime(true);
+    $stamps[] = $now;
+    $stamps = array_values(array_filter($stamps, function ($stamp) use ($now) {
+        return ($now - $stamp) < PARASUT_RATE_WINDOW;
+    }));
+}
+
 /**
  * Make a cURL request to the Parasut API.
  *
@@ -47,6 +111,8 @@ if (!defined('PARASUT_REDIRECT_URI')) {
  */
 function _parasut_request($method, $url, $body = null, $token = null)
 {
+    parasut_throttle();
+
     $ch = curl_init($url);
     // Identify this installation on outgoing requests. Sent with no
     // User-Agent, a request looks like an anonymous client to the receiving
@@ -519,6 +585,8 @@ function _parasut_token_exchange($body, $credentials)
     $client_id = trim((string) (($credentials['client_id'] ?? '') !== '' ? $credentials['client_id'] : (defined('PARASUT_CLIENT_ID') ? PARASUT_CLIENT_ID : '')));
     $client_secret = (string) ($credentials['client_secret'] ?? '');
     $body = ['client_id' => $client_id, 'client_secret' => $client_secret] + (array) $body;
+
+    parasut_throttle();
 
     $ch = curl_init(_parasut_base() . '/oauth/token');
     // Identify this installation on outgoing requests. Sent with no
