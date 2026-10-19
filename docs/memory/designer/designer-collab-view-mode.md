@@ -9,7 +9,7 @@ description: Designer view mode when another person holds the lock: _sdMayEdit, 
 
 ## What is hidden in view mode?
 - Editing panels are hidden (`display:none`), not dimmed: component palette, right property panel, bottom panel strips (`.sd-bp-*`). Only Overview remains and must stay clickable (you find the element to leave a note on there).
-- Page settings are locked with `inert`, not field-by-field `disabled` (unlocking would also enable fields that were already disabled).
+- Page settings are locked with `inert`, every page pane of the settings modal with its own note, not field-by-field `disabled` (unlocking would also enable fields that were already disabled).
 - Everything is written **two-way** in `_collabSetMode()`; the lock may be released while the editor is open.
 - The bottom panel itself is `#sd-bottom-panel` (class `sd-panel-bottom`; the two names are reversed). Hiding only the strips inside leaves an empty band at the bottom.
 - **The view-mode right-click menu has one item: Add Note** ("Not Ekle"). A menu that never opens reads as a broken right click; a faded list says the same and takes longer.
