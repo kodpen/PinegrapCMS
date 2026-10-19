@@ -3229,8 +3229,9 @@ nav.buttons.navigation .btn-secondary {
 }
 
 /* A code field drawn by pg_code_editor_attach(): the facade's editor in a
-   textarea's place. Without a height it grows with the text, like the
-   textarea did; F11 fills the window with it. */
+   textarea's place. Without a height it grows with the text up to most of
+   the window and scrolls inside after that, so the buttons below a long
+   file stay within reach; F11 fills the window with it. */
 .pg-code-field {
   border: var(--bs-border-width) solid var(--bs-border-color);
   border-radius: var(--bs-border-radius);
@@ -3239,6 +3240,11 @@ nav.buttons.navigation .btn-secondary {
 
 .pg-code-field .cm-editor {
   min-height: 12rem;
+  max-height: 80vh;
+}
+
+.pg-code-field.pg-code-field-full .cm-editor {
+  max-height: none;
 }
 
 .pg-code-field.pg-code-field-full {

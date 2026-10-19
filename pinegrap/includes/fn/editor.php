@@ -917,6 +917,12 @@ function pg_code_editor_attach($properties)
         $options['height'] = (string) $properties['height'];
     }
 
+    // Plain text (a list of options, a .txt file) is shown with the HTML
+    // grammar for its colours only; a stray < in it is not a syntax error.
+    if (pg_code_editor_is_plain(isset($properties['code_type']) ? $properties['code_type'] : '')) {
+        $options['lint'] = false;
+    }
+
     return pg_code_editor_includes() . '<script>
         (function () {
             var field = document.getElementById(' . pg_code_editor_json($id) . ');
@@ -969,6 +975,14 @@ function pg_code_editor_language($code_type)
     }
 
     return 'html';
+}
+
+// Whether a code type of get_codemirror_javascript() means plain text.
+function pg_code_editor_is_plain($code_type)
+{
+    $type = mb_strtolower(trim((string) $code_type));
+
+    return in_array($type, array('plain', 'text', 'text.txt', 'text/plain'), true);
 }
 
 // The editor follows the panel's colour scheme, the way CodeMirror 5's

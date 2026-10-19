@@ -56,3 +56,16 @@ function test_code_editor_json_escapes_markup()
 	pg_assert_same(array('phrases' => array('close' => '</script><b>&')), json_decode($json, true), 'the value survives the round trip');
 	pg_assert_same('"ağaç"', pg_code_editor_json('ağaç'), 'UTF-8 stays readable');
 }
+
+// Plain text keeps the HTML colours but not the HTML lint: a stray < in a
+// list of options is not an error.
+function test_code_editor_is_plain_names_the_text_types()
+{
+	pg_assert_true(pg_code_editor_is_plain('plain'), 'plain');
+	pg_assert_true(pg_code_editor_is_plain('text'), 'text');
+	pg_assert_true(pg_code_editor_is_plain('text.txt'), 'text.txt');
+	pg_assert_true(pg_code_editor_is_plain('text/plain'), 'text/plain');
+	pg_assert_false(pg_code_editor_is_plain('mixed'), 'mixed');
+	pg_assert_false(pg_code_editor_is_plain('php'), 'php');
+	pg_assert_false(pg_code_editor_is_plain(''), 'empty');
+}
