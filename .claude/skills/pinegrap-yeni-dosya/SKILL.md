@@ -104,7 +104,10 @@ yüklenir), `auth`, `forms`, `ecommerce`, `seo`, `content`, `calendar`, `editor`
   `pg_folder_edit_access`, `check_private_access`) iki tarafın da yüklediği
   `includes/authentication.php`'de tek kopyadır; oraya yazarken dosya
   başlığındaki sözleşmeye uy (yalnız `db/db_value/db_item/db_items/escape` +
-  PHP, `lang()` / `output_error()` yok). Kalan kopyalar `tools/check_copies.php`
+  PHP, `lang()` / `output_error()` yok). Görsel motoru (`pg_process_image_file()`,
+  `pg_ini_bytes()`) ve duyarlı türevler de aynı nedenle
+  `includes/image_engine.php`'dedir: yalnız kendi fonksiyonlarını ve PHP'yi
+  çağırır, ayar okuyan kod `includes/fn/image.php`'de kalır. Kalan kopyalar `tools/check_copies.php`
   içindeki `$intended` listesindedir (gerekçe `docs/_get_file_kopyalar.md`) —
   onlardan birini değiştirirken `get_file.php`'deki kopyayı da güncelle;
   listede olmayan yeni bir kopya CI'da `FAIL` olur.

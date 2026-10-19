@@ -33,6 +33,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/authentication.php');
 // install/index.php, which requires this file: the installer writes them and
 // the System Status check looks for them, from one list.
 require_once(PG_FUNCTIONS_DIR . '/includes/server_config.php');
+// The image engine and its responsive derivatives. Shared with get_file.php,
+// which makes a derivative on the first request for it.
+require_once(PG_FUNCTIONS_DIR . '/includes/image_engine.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mfa.php');
