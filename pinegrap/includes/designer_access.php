@@ -25,8 +25,12 @@
  * Three rules hold the second level together, and none of them is optional:
  *
  *   1. A shared component or system widget is never editable at `content`
- *      level, marked area or not. Its tree belongs to every page that uses
- *      it, so an edit there is not an edit to "this page".
+ *      level from a page, marked area or not. Its tree belongs to every page
+ *      that uses it, so an edit there is not an edit to "this page". The one
+ *      way in is a component a designer opened (`content_editable`): it is
+ *      edited as a whole, through its own save, by the operators
+ *      pg_shared_component_content_editable_ids() names, under the same
+ *      merge as a page. A system widget never opens.
  *   2. What the operator may see is decided by the folder, not by the design.
  *      A design can span folders; a user reads the tab strip, not the ACL.
  *   3. The browser decides what to SHOW. The server decides what is WRITTEN
@@ -139,6 +143,85 @@ function pg_designer_in_editable_area($ancestors)
         if (is_array($a) && !empty($a['props']['_editable'])) return true;
     }
     return false;
+}
+
+/**
+ * May an operator of this role edit a shared component at content level?
+ *
+ * A component a designer opened (`content_editable`) is the visual
+ * designer's form of a common region, and it follows the common region's
+ * rule: a manager edits every one, a user the ones granted to them. Roles 0
+ * and 1 edit every component through the designer's own save anyway. A
+ * system widget never opens: its tree drives a renderer, not page text.
+ *
+ * @param int  $role              the operator's role
+ * @param bool $content_editable  the component's flag
+ * @param bool $is_widget         the row carries a system_region_config
+ * @param bool $granted           a users_shared_components_xref row exists
+ * @return bool
+ */
+function pg_shared_component_content_rule($role, $content_editable, $is_widget, $granted)
+{
+    if ($is_widget || !$content_editable) return false;
+
+    $role = (int)$role;
+    if ($role <= 2) return true;
+
+    return ($role === 3) && $granted;
+}
+
+/**
+ * Whether the schema can open shared components to the content level.
+ *
+ * @return bool
+ */
+function pg_shared_component_content_ready()
+{
+    return pg_schema_has('shared_components', 'content_editable')
+        && pg_schema_has('users_shared_components_xref');
+}
+
+/**
+ * The shared components this operator may edit at content level.
+ *
+ * @param array $user validate_user() row
+ * @param int[] $ids  only these components; empty for every opened one
+ * @return array id => true
+ */
+function pg_shared_component_content_editable_ids($user, array $ids = array())
+{
+    if (!pg_shared_component_content_ready()) return array();
+
+    $role    = isset($user['role']) ? (int)$user['role'] : 3;
+    $user_id = isset($user['id']) ? (int)$user['id'] : 0;
+
+    $id_list = array();
+    foreach ($ids as $id) {
+        if ((int)$id > 0) $id_list[(int)$id] = (int)$id;
+    }
+
+    $rows = db_items(
+        "SELECT id,
+                (system_region_config IS NOT NULL AND system_region_config != '') AS is_widget
+         FROM shared_components
+         WHERE content_editable = 1"
+        . ($id_list ? " AND id IN (" . implode(',', $id_list) . ")" : ''));
+
+    $granted = array();
+    if ($role === 3 && $user_id > 0) {
+        $granted = array_flip(array_map('intval', (array)db_values(
+            "SELECT shared_component_id FROM users_shared_components_xref WHERE user_id = '$user_id'")));
+    }
+
+    $out = array();
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $id = (int)$row['id'];
+        if (pg_shared_component_content_rule($role, true, !empty($row['is_widget']), isset($granted[$id]))) {
+            $out[$id] = true;
+        }
+    }
+
+    return $out;
 }
 
 /**

@@ -11,7 +11,7 @@ Core `includes/designer_access.php`.
 | `content` | manager (2), user (3) | text + inside of blocks marked `props._editable` |
 
 ## What are the immutable rules of the content level?
-- A shared component / system widget is never opened to `content`, even inside a marked area: its tree lives in `shared_components` and belongs to every page using it. Design `style_custom_*`, theme and body classes are not written for the same reason.
+- A shared component / system widget is never opened to `content` from a page, even inside a marked area: its tree lives in `shared_components` and belongs to every page using it. The only way in is a component a designer opened, saved through its own `content_update` (docs/memory/designer/shared-component-content-editing.md); a widget never opens. Design `style_custom_*`, theme and body classes are not written for the same reason.
 - The browser decides what is SHOWN, the server decides what is WRITTEN. `_sdMayEdit(node, what)` is courtesy; the gate is `pg_designer_merge_restricted_tree()` inside `pg_designer_save_page()`.
 - On save there is no rejection, only non-copying: the saved tree is walked; from inside a marked area the whole subtree is taken, from outside only `text`; the rest is discarded (diffing and rejecting would mean enumerating every way a tree can differ).
 - Children match by `_id`, not position. Position matching broke on duplication: a node duplicated outside the marked area shifted all later siblings by one and the saved B received sent A's text. Trusting a request-body id is free here: outside the marked area only text and image address are copied, and the operator may change both on that node anyway.

@@ -8992,6 +8992,7 @@ function get_tables() {
 		'users_contact_groups_xref',
 		'users_menus_xref',
 		'users_messages_xref',
+		'users_shared_components_xref',
 		'verified_shipping_addresses',
 		'visitor_report_filters',
 		'visitor_reports',

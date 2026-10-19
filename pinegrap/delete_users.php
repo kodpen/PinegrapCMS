@@ -95,6 +95,9 @@ if ($_POST['users']) {
 
                 db("DELETE FROM users_messages_xref WHERE user_id = '" . e($user_id) . "'");
 
+                // delete shared component xref records
+                if (pg_schema_has('users_shared_components_xref')) db("DELETE FROM users_shared_components_xref WHERE user_id = '" . e($user_id) . "'");
+
                 $number_of_users++;
                 
                 // if user that was deleted was an administrator, then decrement number of administrators
