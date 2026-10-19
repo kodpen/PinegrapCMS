@@ -11,7 +11,7 @@ description: How designer images load: page body order (first image first, the r
 - `props.loading` (lazy/eager) is printed only when the node has no such attribute: the attribute outranks it (`tests/image_responsive_test.php`).
 
 ## What does the Loading row do?
-- "Loading attribute" in the Image element's Image section and in the multi-select Options: Default / Lazy / Eager (`_sdImgLoading()`, `_sdSetImgLoading()` in `style_designer.js`, PR #000). Default removes the attribute; Lazy and Eager write it and drop `props.loading`, so the Attributes panel, the code view and the page show one value. Its tooltip explains the three; the label turns blue when set and a click on it resets.
+- "Loading attribute" in the Image element's Image section and in the multi-select Options: Default / Lazy / Eager (`_sdImgLoading()`, `_sdSetImgLoading()` in `style_designer.js`, PR #693). Default removes the attribute; Lazy and Eager write it and drop `props.loading`, so the Attributes panel, the code view and the page show one value. Its tooltip explains the three; the label turns blue when set and a click on it resets.
 - A value typed in the Attributes panel that is neither (`auto`) is listed as it is, so the row shows what the page gets and can replace it.
 
 ## Why the attribute and not the prop?
