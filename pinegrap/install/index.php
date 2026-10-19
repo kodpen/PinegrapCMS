@@ -9035,6 +9035,8 @@ function get_tables() {
 		'order_receipt_pages',
 		'order_report_filters',
 		'order_reports',
+		'order_return_items',
+		'order_returns',
 		'orders',
 		'page',
 		'photo_gallery_pages',

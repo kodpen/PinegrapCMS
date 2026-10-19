@@ -33,6 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_order_returns();          // 11.0.11
 
 }
 
@@ -314,5 +315,68 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+
+// Customer returns (2026.11.0, 11.0.11; includes/fn/returns.php).
+//
+// order_returns is one request to send back goods of a completed order: the
+// lines of one delivery (ship_to_id), why (reason, a code of
+// pg_return_reasons(), and the customer's own words), and where it stands.
+// status is a VARCHAR checked in code rather than an ENUM, so a status added
+// later needs no step and an older server never turns one into ''. Each status
+// reached has its own time, because the deadlines are read from them: the
+// refund is due 14 days after the goods reached the carrier (shipped_at), or
+// after they arrived (received_at). decision_note is what staff wrote when
+// approving or rejecting, for the customer; carrier and carrier_code say which
+// carrier the goods go back with and the code the customer gives it, and
+// tracking_number is the parcel's. source says who asked (customer, panel,
+// api) and requested_by / decided_by which person.
+//
+// order_return_items lists how many of each order line go back; one row per
+// line and return (uq_return_item). What a line still has to give is its
+// quantity less what the open returns hold, worked out from these rows.
+//
+// Both InnoDB: a request is written in one transaction, so a return without
+// its lines is never left behind.
+function upgrade_2026_11_0_order_returns() {
+
+	install_create_table('order_returns', "CREATE TABLE order_returns (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		status           VARCHAR(16) NOT NULL DEFAULT 'requested',
+		reason           VARCHAR(32) NOT NULL DEFAULT '',
+		customer_note    TEXT NULL,
+		decision_note    TEXT NULL,
+		carrier          VARCHAR(32) NOT NULL DEFAULT '',
+		carrier_code     VARCHAR(64) NOT NULL DEFAULT '',
+		tracking_number  VARCHAR(100) NOT NULL DEFAULT '',
+		source           VARCHAR(16) NOT NULL DEFAULT '',
+		requested_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		requested_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		shipped_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		received_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		refunded_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order (order_id),
+		KEY idx_status (status, requested_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('order_return_items', "CREATE TABLE order_return_items (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		return_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_return_item (return_id, order_item_id),
+		KEY idx_order_item (order_item_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Returns: the tables that will keep customers\' return requests and the order lines they send back are added. Nothing changes on the site with this update.');
 
 }
