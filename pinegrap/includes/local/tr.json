@@ -12917,7 +12917,7 @@
     "Whether this number is registered for e-Invoice has not been asked yet.": "Bu numaranın e-Fatura mükellefi olup olmadığı henüz sorulmadı.",
     "e-Invoice taxpayer": "e-Fatura mükellefi",
     "Not an e-Invoice taxpayer": "e-Fatura mükellefi değil",
-    "asked {var:1}": "sorulma {var:1}",
+    "asked {var:1}": "sorgulandı: {var:1}",
     "Ask GİB about the tax number": "Vergi numarasını GİB'e sor",
     "İşbaşı is not answering at the moment (HTTP {var:1}). Try again in a little while.": "İşbaşı şu anda yanıt vermiyor (HTTP {var:1}). Biraz sonra tekrar deneyin.",
     "Hand to GİB": "GİB'e Gönder",
