@@ -18,7 +18,7 @@
  *   PgCodeEditor.addExtension(function (opts) { return ext })  registry
  *
  * An editor instance (see pgCeCreate) offers getValue / setValue,
- * setLanguage, setReadOnly, goTo and scrollTo, the search panel, tracked
+ * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel, tracked
  * ranges that follow the text as it is edited (track / tracked / trackedAt)
  * and locks: ranges no edit may touch, each with optional "islands" inside
  * it that stay editable. A lock without islands is read-only as a whole; a
@@ -449,6 +449,7 @@
         var inst = {};
         var langComp = new S.Compartment(), readOnlyComp = new S.Compartment(), wrapComp = new S.Compartment();
         var completionsComp = new S.Compartment(), lintComp = new S.Compartment(), keymapComp = new S.Compartment();
+        var themeComp = new S.Compartment();
         var useVscode = (opts.keymap !== 'default');
         var lockHitAt = 0;
         var destroyed = false;
@@ -515,7 +516,7 @@
             fields.lockField,
             fields.decorations,
             _lockFilter(cm, fields, inst),
-            _themeExtensions(cm, opts.theme !== 'light'),
+            themeComp.of(_themeExtensions(cm, opts.theme !== 'light')),
             V.EditorView.updateListener.of(function (update) {
                 if (destroyed) return;
                 if (update.docChanged && typeof opts.onChange === 'function') opts.onChange(inst, update);
@@ -602,6 +603,12 @@
         inst.isReadOnly = function () { return view.state.readOnly; };
         inst.setLineWrapping = function (on) {
             view.dispatch({ effects: wrapComp.reconfigure(on ? V.EditorView.lineWrapping : []) });
+        };
+        // 'dark' | 'light', while the editor is open: the panel's colour
+        // scheme switch pushes it to every editor on the page.
+        inst.setTheme = function (name) {
+            opts.theme = (name === 'light') ? 'light' : 'dark';
+            view.dispatch({ effects: themeComp.reconfigure(_themeExtensions(cm, opts.theme !== 'light')) });
         };
         inst.setKeymap = function (name) {
             useVscode = (name !== 'default');

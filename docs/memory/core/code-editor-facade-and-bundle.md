@@ -6,12 +6,12 @@ description: The code editor facade window.PgCodeEditor (assets/js/pg_code_edito
 ## What is the code editor and where does it live?
 - Engine: CodeMirror 6, one bundle `assets/lib/code_editor/cm6.bundle.js` (~600 KB, `window.PgCM`). Nothing calls PgCM directly; screens call the facade `assets/js/pg_code_editor.js` (`window.PgCodeEditor`), served raw.
 - The bundle is fetched the first time an editor opens (`PgCodeEditor.load()`), so a page that never opens one never downloads it. The page says where it is: `PgCodeEditor.configure({ bundle: '…/cm6.bundle.js?v=<stamp>' })` (`includes/designer_screen.php`); without it the URL is derived from the facade's own script URL.
-- The designer page loads no CodeMirror 5 (`'code_editor' => false`): its code view, file tabs and code dialog (`codemirror_modal.js`, `window.openCodeEditor()`, API unchanged) run on the facade. The other panel screens keep CM5 (`get_codemirror_includes()`) until they migrate.
+- The designer page loads no CodeMirror 5 (`'code_editor' => false`): its code view, file tabs and code dialog (`codemirror_modal.js`, `window.openCodeEditor()`, API unchanged) run on the facade. Panel screens move with `pg_code_editor_attach()` (docs/memory/ui/panel-code-fields.md).
 
 ## How does a screen open an editor?
-- `PgCodeEditor.open(host, opts).then(function (ed) {})` = load + create; `PgCodeEditor.attach(textarea, opts)` takes a textarea's place and writes every edit back into it (CM5's fromTextArea).
+- `PgCodeEditor.open(host, opts).then(function (ed) {})` = load + create; `PgCodeEditor.attach(textarea, opts)` takes a textarea's place and writes every edit back into it.
 - `opts`: `language` (html|css|javascript|json), `value`, `readOnly` (focusable, refuses changes), `lineWrapping`, `theme` ('dark'|'light'), `keymap` ('vscode'|'default'), `phrases` (engine texts), `labels.syntaxError`, `onChange`, `onSelection`, `onFocus`, `onBlur`, `onLockHit`, `keys`.
-- Instance: `getValue/setValue(text, keepHistory)`, `replaceRange(from, to, text, force)` (false when a lock refused it), `applyExternal` (past the locks, outside the undo history), `syntaxTree()`, `sliceDoc`, `setLanguage`, `setReadOnly`, `goTo`, `scrollTo`, `selection()`, `openSearch`, `findNext/Previous`, `replaceNext/All`, `destroy`.
+- Instance: `getValue/setValue(text, keepHistory)`, `replaceRange(from, to, text, force)` (false when a lock refused it), `applyExternal` (past the locks, outside the undo history), `syntaxTree()`, `sliceDoc`, `setLanguage`, `setReadOnly`, `setTheme`, `goTo`, `scrollTo`, `selection()`, `openSearch`, `findNext/Previous`, `replaceNext/All`, `destroy`.
 - No `_sdT()` / `lang()` in the facade: every text is passed in by the caller.
 
 ## How do locks and tracked ranges work?

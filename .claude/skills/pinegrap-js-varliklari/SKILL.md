@@ -41,7 +41,11 @@ Yeni bir kod alanı açacaksan CodeMirror 5'e değil facade'a git:
 `assets/lib/code_editor/cm6.bundle.js`'dir ve ilk editör açılışında
 tembel yüklenir (`PgCodeEditor.open(host, opts)` / `attach(textarea, opts)`);
 sayfa `PgCodeEditor.configure({ bundle: '…?v=damga' })` ile adresini söyler.
-Facade'da `_sdT()`/`lang()` yoktur, metinler çağırandan gelir. Kilitli aralık,
+Facade'da `_sdT()`/`lang()` yoktur, metinler çağırandan gelir. Panel
+ekranında bir textarea'ya editör vermek için PHP'den
+`pg_code_editor_attach(array('id' => …, 'code_type' => …))` basılır ve
+ekrana `'code_editor' => false` verilir (`docs/memory/ui/panel-code-fields.md`);
+`get_codemirror_javascript()` yeni koda yazılmaz. Kilitli aralık,
 izlenen aralık, tamamlama kaynağı ve eklenti kaydı için
 `docs/memory/core/code-editor-facade-and-bundle.md`. Bundle'ı elle düzenleme:
 `tools/code_editor/` kaynaklarını değiştirip `php tools/build_code_editor.php`
