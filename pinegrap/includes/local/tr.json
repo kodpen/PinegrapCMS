@@ -23477,6 +23477,7 @@
     "Close the file without saving the changes?": "Dosya değişiklikler kaydedilmeden kapatılsın mı?",
     "Unsaved changes": "Kaydedilmemiş değişiklikler",
     "Save the file (Ctrl+S)": "Dosyayı kaydet (Ctrl+S)",
+    "The note is full, so the answer could not be written under the line that asked.": "Not dolu olduğu için yanıt, soran satırın altına yazılamadı.",
     "Cancelled in the Workspace by the scheduled action “{var:1}”.": "Çalışma Alanı'nda “{var:1}” programlanmış işlemiyle iptal edildi.",
     "Offer ({var:1}) was deleted in the Workspace by the scheduled action “{var:2}”.": "Teklif ({var:1}) Çalışma Alanında, “{var:2}” programlanmış işlemiyle silindi."
 }
