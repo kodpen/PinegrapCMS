@@ -4,7 +4,7 @@ description: "Write with AI" drafts for product and page fields (ai_write panel 
 ---
 
 ## What exists?
-- Panel action `ai_write` (`includes/panel/ai_write.php`): a draft for one field, written by Pinegrap AI from the form's current values (unsaved edits included); nothing is saved. Logic in `includes/fn/ai_write.php`, pure parts tested in `tests/ai_write_test.php`. The buttons on the screens: `docs/memory/plans/ai-write-buttons.md`.
+- Panel action `ai_write` (`includes/panel/ai_write.php`, PR #581): a draft for one field, written by Pinegrap AI from the form's current values (unsaved edits included); nothing is saved. Logic in `includes/fn/ai_write.php`, pure parts tested in `tests/ai_write_test.php`. The buttons on the screens: `docs/memory/plans/ai-write-buttons.md`.
 - Targets (`pg_ai_write_targets()`): `product_description` (paragraphs and a "- " list, returned also as HTML), `product_short` (≤100), `seo_title` (≤60; product `title`, page `page_title`), `seo_description` (≤160; `meta_description`). The context keys a record may send are in `pg_ai_write_record_fields()`; unknown keys are dropped, rich text is reduced to plain text. The field's own key travels as `current_text`, so the model rewrites it instead of quoting it as a fact.
 
 ## Which model, which language?
