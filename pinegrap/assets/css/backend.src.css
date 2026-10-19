@@ -13122,7 +13122,10 @@ a.ws-chip:hover {
 .ws-board-add:hover {
   background: var(--bs-secondary-bg);
 }
-.ws-swatch {
+/* The plan board's legend dots. Not .ws-swatch: that is the colour picker's
+   button (above), and a second rule under the same name overrode its size,
+   shape and centring. */
+.ws-legend-swatch {
   display: inline-block;
   width: 1.5rem;
   height: 1.5rem;
