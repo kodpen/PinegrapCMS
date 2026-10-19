@@ -807,6 +807,10 @@ function ws_handle_action($action, $request)
                 'statuses'    => ws_task_statuses(),
                 'priorities'  => ws_task_priorities(),
                 'ref_types'   => ws_ref_types($viewer),
+                // The kinds of record this person edits from the drawer.
+                'quick_edit'  => array_values(array_filter(ws_quick_edit_types(), function ($type) use ($viewer) {
+                    return ws_change_allowed($viewer, $type, 0);
+                })),
                 'commands'    => ws_command_help(),
                 'upload'      => array('max' => ws_upload_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
@@ -2220,7 +2224,14 @@ function ws_handle_action($action, $request)
         case 'ws_record_fields':
             $fields = ws_quick_edit_fields($viewer, (string) ($request['type'] ?? ''), (int) ($request['id'] ?? 0));
 
-            return $fields['ok'] ? ws_action_ok($fields) : ws_action_error($fields['error']);
+            if (!$fields['ok']) {
+                $error = ws_action_error($fields['error']);
+                $error['code'] = $fields['code'];
+
+                return $error;
+            }
+
+            return ws_action_ok($fields);
 
         case 'ws_record_fields_save':
             $saved = ws_quick_edit_save(

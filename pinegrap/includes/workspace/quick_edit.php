@@ -107,11 +107,63 @@ function ws_quick_edit_moved($field, $sent, $current)
     $sent = ws_change_value($field, $sent);
 
     // A value the field cannot hold at all did not come from this record.
-    if (($sent === null) && ($current !== null)) {
-        return true;
+    if ($sent === null) {
+        return $current !== null;
     }
 
-    return $sent !== $current;
+    // Both in the field's own shape: what the record holds may carry more
+    // than the field keeps (the seconds of a time).
+    $held = ws_change_value($field, $current);
+
+    return $sent !== (($held === null) ? $current : $held);
+}
+
+/**
+ * The fields the drawer shows first for a kind of record: the ones changed
+ * most often. The rest wait behind "More fields". A kind not named here
+ * shows every field.
+ *
+ * @param string $type
+ * @return string[]
+ */
+function ws_quick_edit_short_list($type)
+{
+    $lists = array(
+        'product'        => array('short_description', 'price', 'enabled', WS_QUICK_EDIT_STOCK_FIELD, 'minimum_quantity', 'maximum_quantity', 'brand', 'keywords'),
+        'product_group'  => array('name', 'enabled', 'title'),
+        'order'          => array('status', 'cancellation_reason', 'notes', 'tracking_numbers'),
+        'contact'        => array('first_name', 'last_name', 'company', 'email', 'phone'),
+        'erp_account'    => array('title', 'email', 'phone', 'payment_days', 'credit_limit', 'status'),
+        'offer'          => array('status', 'start_date', 'end_date', 'description'),
+        'calendar_event' => array('name', 'start_time', 'end_time', 'all_day', 'location', 'published'),
+    );
+
+    return $lists[$type] ?? array();
+}
+
+/**
+ * The words the drawer's fields section uses (ws_js_strings()).
+ *
+ * @return array
+ */
+function ws_quick_edit_js_strings()
+{
+    return array(
+        'qe_title'       => lang('Fields'),
+        'qe_edit'        => lang('Edit fields'),
+        'qe_more'        => lang('More fields'),
+        'qe_fewer'       => lang('Fewer fields'),
+        'qe_save'        => lang('Save'),
+        'qe_saved'       => lang('Saved.'),
+        'qe_nothing'     => lang('Nothing changed.'),
+        'qe_stale'       => lang('The record changed meanwhile, so nothing was written.'),
+        'qe_reload'      => lang('Load it again'),
+        'qe_decision'    => lang('Keep it in this channel as a decision'),
+        'qe_stock_off'   => lang('Stock is not tracked for this product; saving a quantity turns tracking on.'),
+        'qe_lines_help'  => lang('One per line'),
+        'qe_keywords_help' => lang('Separated by commas'),
+        'qe_decimal_help'  => lang('A number, like 0.5'),
+    );
 }
 
 /**
@@ -121,12 +173,12 @@ function ws_quick_edit_moved($field, $sent, $current)
  * @param array  $viewer
  * @param string $type
  * @param int    $id
- * @return array ok, error, record
+ * @return array ok, error, code (rights, gone, rule, request), record
  */
 function ws_quick_edit_check($viewer, $type, $id)
 {
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'record' => null);
+    $fail = function ($error, $code = 'request') {
+        return array('ok' => false, 'error' => $error, 'code' => $code, 'record' => null);
     };
 
     if (!function_exists('ws_changes_ready') || !ws_changes_ready()) {
@@ -138,23 +190,23 @@ function ws_quick_edit_check($viewer, $type, $id)
     }
 
     if (!ws_change_allowed($viewer, $type, (int) $id)) {
-        return $fail(lang('You may not change this record.'));
+        return $fail(lang('You may not change this record.'), 'rights');
     }
 
     $record = ws_change_record($type, (int) $id);
 
     if ($record === null) {
-        return $fail(lang('The record is gone.'));
+        return $fail(lang('The record is gone.'), 'gone');
     }
 
     // A record the kind's own rules refuse to write (one in the Recycle Bin).
     $check = ws_change_check($viewer, $type, 'update', $record, array());
 
     if ($check !== '') {
-        return $fail($check);
+        return $fail($check, 'rule');
     }
 
-    return array('ok' => true, 'error' => '', 'record' => $record);
+    return array('ok' => true, 'error' => '', 'code' => '', 'record' => $record);
 }
 
 /**
@@ -164,15 +216,16 @@ function ws_quick_edit_check($viewer, $type, $id)
  * @param array  $viewer
  * @param string $type
  * @param int    $id
- * @return array ok, error, name, tag, label, fields (list of meta + value +
- *               shown), stock (the product's quantity, when it may be set)
+ * @return array ok, error, code, name, tag, label, fields (list of meta +
+ *               value + shown), short (the names shown first), stock (the
+ *               product's quantity, when it may be set)
  */
 function ws_quick_edit_fields($viewer, $type, $id)
 {
     $check = ws_quick_edit_check($viewer, $type, $id);
 
     if (!$check['ok']) {
-        return array('ok' => false, 'error' => $check['error']);
+        return array('ok' => false, 'error' => $check['error'], 'code' => $check['code']);
     }
 
     $types = ws_change_types();
@@ -189,10 +242,12 @@ function ws_quick_edit_fields($viewer, $type, $id)
     $out = array(
         'ok'     => true,
         'error'  => '',
+        'code'   => '',
         'name'   => ws_change_record_name($type, $record),
         'tag'    => '<#' . $types[$type]['tag'] . ':' . (int) $id . '>',
         'label'  => (string) $types[$type]['label'],
         'fields' => $fields,
+        'short'  => ws_quick_edit_short_list($type),
         'stock'  => null,
     );
 
