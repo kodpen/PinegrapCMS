@@ -583,6 +583,17 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
         }
 
         if ($resize) {
+
+            // The orientation fix above can have swapped the edges, so the
+            // target is worked out again from the upright picture, as the GD
+            // half does. Taken from getimagesize() alone, a phone photo stored
+            // 4000x3000 on its side was turned to 3000x4000 and then squeezed
+            // into 2400x1800.
+            list($target_width, $target_height) = pg_image_scaled_dimensions(
+                $image->getImageWidth(),
+                $image->getImageHeight(),
+                max($target_width, $target_height));
+
             $image->resizeImage($target_width, $target_height, Imagick::FILTER_LANCZOS, 1);
         }
 
@@ -1289,6 +1300,141 @@ function pg_image_derivative_directory()
 
 
 /**
+ * Whether this server can really encode WebP and AVIF: format => bool.
+ *
+ * pg_image_format_writer() only says a library claims the format, and an
+ * ImageMagick built with a libheif that has no AV1 encoder lists AVIF and then
+ * fails every write. Taken on trust, every ?f=avif request on such a host
+ * would decode the picture, fail, and send the full-size original where WebP
+ * at the asked width was possible. So each claimed format is tried once, on a
+ * 16 px picture, and the answer is kept in <directory>/formats.json under
+ * pg_image_derivative_formats_key(): a server upgrade asks again. So does a
+ * week, because a codec plugin can be installed without any version that the
+ * key sees changing.
+ *
+ * Without a writable directory nothing is tried (no derivative can be kept
+ * there either) and the claims are answered as they are.
+ *
+ * @param string $directory pg_image_derivative_directory()
+ * @return array webp, avif
+ */
+function pg_image_derivative_formats($directory)
+{
+    static $cache = array();
+
+    $directory = rtrim((string) $directory, '/\\');
+
+    if (isset($cache[$directory])) {
+        return $cache[$directory];
+    }
+
+    $formats = array();
+
+    foreach (array('webp', 'avif') as $format) {
+        $formats[$format] = (pg_image_format_writer($format) !== '');
+    }
+
+    $key = pg_image_derivative_formats_key();
+    $file = $directory . '/formats.json';
+
+    $stored = ($directory !== '') ? @json_decode((string) @file_get_contents($file), true) : null;
+
+    if (
+        is_array($stored)
+        && isset($stored['key'], $stored['time'], $stored['formats'])
+        && ($stored['key'] === $key)
+        && ((int) $stored['time'] > (time() - 604800))
+        && is_array($stored['formats'])
+    ) {
+
+        foreach ($formats as $format => $claimed) {
+            $formats[$format] = $claimed && !empty($stored['formats'][$format]);
+        }
+
+    } elseif (($directory !== '') && (@is_dir($directory) || @mkdir($directory, 0755, true)) && @is_writable($directory)) {
+
+        foreach ($formats as $format => $claimed) {
+            $formats[$format] = $claimed && pg_image_format_probe($format, $directory);
+        }
+
+        pg_image_derivative_put($file, json_encode(array('key' => $key, 'time' => time(), 'formats' => $formats)));
+    }
+
+    $cache[$directory] = $formats;
+
+    return $formats;
+}
+
+
+/**
+ * What the stored answer of pg_image_derivative_formats() was found under:
+ * the PHP, GD and ImageMagick versions and which library claims which format.
+ *
+ * @return string
+ */
+function pg_image_derivative_formats_key()
+{
+    $gd = function_exists('gd_info') ? gd_info() : array();
+    $imagick = '';
+
+    if (class_exists('Imagick')) {
+        try {
+            $version = Imagick::getVersion();
+            $imagick = isset($version['versionString']) ? (string) $version['versionString'] : '';
+        } catch (\Exception $exception) {
+            $imagick = '';
+        }
+    }
+
+    return md5(json_encode(array(
+        PHP_VERSION,
+        isset($gd['GD Version']) ? $gd['GD Version'] : '',
+        $imagick,
+        pg_image_format_writer('webp'),
+        pg_image_format_writer('avif'))));
+}
+
+
+/**
+ * Encode a 16 px picture with alpha into a format through the engine, and say
+ * whether real bytes of that format came out.
+ *
+ * @param string $format    webp or avif
+ * @param string $directory a writable folder for the probe's source file
+ * @return bool
+ */
+function pg_image_format_probe($format, $directory)
+{
+    // RIFF....WEBP, and an ISO box ....ftypavif.
+    $signatures = array('webp' => array(8, 'WEBP'), 'avif' => array(8, 'avif'));
+
+    if (!isset($signatures[$format])) {
+        return false;
+    }
+
+    $source = $directory . '/probe-' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.png';
+
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAM0lEQVQ4y+3OsQ0AIAgAwTNxAMaltJOx3YFYUn31yS3ODTKoTreQKHrdoj8bwQhG8E/wAGnJgp2pmVIpAAAAAElFTkSuQmCC');
+
+    if (@file_put_contents($source, $png) === false) {
+        return false;
+    }
+
+    $report = pg_process_image_file($source, array('format' => $format, 'quality' => pg_image_derivative_quality($format), 'write' => false));
+
+    @unlink($source);
+
+    if (($report['status'] !== 'success') || !is_string($report['data'])) {
+        return false;
+    }
+
+    list($offset, $magic) = $signatures[$format];
+
+    return (substr($report['data'], $offset, 4) === $magic);
+}
+
+
+/**
  * The EXIF orientation of a JPEG, 1 to 8; 1 when it has none or it cannot be
  * read.
  *
@@ -1488,12 +1634,14 @@ function pg_image_derivative($file_id, $source_path, $request, $directory)
     $width = pg_image_derivative_width(isset($request['width']) ? $request['width'] : 0, $source_width);
     $resize = ($width < $source_width);
 
+    // The formats this server really writes are only looked up when one is
+    // asked for: a width alone keeps the source's format.
+    $requested_format = isset($request['format']) ? (string) $request['format'] : '';
+
     $format = pg_image_derivative_format(
-        isset($request['format']) ? $request['format'] : '',
+        $requested_format,
         $source_extension,
-        array(
-            'webp' => (pg_image_format_writer('webp') !== ''),
-            'avif' => (pg_image_format_writer('avif') !== '')));
+        ($requested_format !== '') ? pg_image_derivative_formats($directory) : array());
 
     // The original already is what was asked for.
     if (!$resize && ($format === '')) {

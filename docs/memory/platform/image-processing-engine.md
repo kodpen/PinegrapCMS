@@ -13,7 +13,7 @@ description: Single image engine pg_process_image_file(): optimize vs resize job
 ## What are the invariant rules?
 1. Write nothing if the result is larger than the original, even when shrinking (palette PNG scaling creates edges that no longer fit the palette → smaller image, heavier file). Both buttons promise a lighter file.
 2. Write to a temp file + `rename()`. Direct overwrite leaves a half image if the disk fills, and `files.name` is that file's public address.
-3. Resolve EXIF orientation in pixels, not by tag. Rewriting the tag after strip only works if every reader obeys it (GD never wrote it). Symptom: "optimized, phone photo turned sideways".
+3. Resolve EXIF orientation in pixels, not by tag. Rewriting the tag after strip only works if every reader obeys it (GD never wrote it). Symptom: "optimized, phone photo turned sideways". Both halves recompute the resize target from the upright picture; the Imagick half used getimagesize()'s sideways edges until PR #589 and squeezed a rotated phone photo (3000x4000 into 2400x1800).
 4. Convert color space only when it is CMYK. Unconditional `setColorspace(RGB)` labels instead of converting; labelling sRGB as linear gives washed-out colors.
 5. Never touch animated GIFs (`pg_image_is_animated_gif()`): both libraries read frame 1 and write a still, with no on-screen explanation.
 6. Compute memory first (`pg_image_ensure_memory()`). GD holds two copies at 4 bytes/pixel while resizing (24 MP photo ≈ 200 MB). At a 128 MB limit that is a fatal error mid-request, i.e. a blank page on the upload path. Raise the limit only for this request, up to a 1 GB ceiling; `-1` would take down the whole box, not one upload.

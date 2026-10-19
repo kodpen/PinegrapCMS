@@ -387,6 +387,77 @@ function test_image_derivative_one_try_after_a_crash()
 	}
 }
 
+// The formats this server writes are tried once and kept; a stored answer
+// under the same key and younger than a week is believed, an older one is
+// tried again, and nothing is claimed that no library offers.
+function test_image_derivative_formats_are_tried_and_kept()
+{
+	$folder = image_derivatives_test_folder();
+
+	try {
+		$claims = array(
+			'webp' => (pg_image_format_writer('webp') !== ''),
+			'avif' => (pg_image_format_writer('avif') !== ''));
+
+		$tried = pg_image_derivative_formats($folder . '/a');
+
+		pg_assert_same(array('webp', 'avif'), array_keys($tried), 'both formats answered');
+
+		foreach ($tried as $format => $works) {
+			pg_assert_true(!$works || $claims[$format], $format . ' only when a library claims it');
+		}
+
+		$stored = json_decode(file_get_contents($folder . '/a/formats.json'), true);
+		pg_assert_same(pg_image_derivative_formats_key(), $stored['key'], 'kept under the key');
+		pg_assert_same($tried, $stored['formats'], 'kept as answered');
+		pg_assert_same(array('formats.json'), array_values(array_diff(scandir($folder . '/a'), array('.', '..'))), 'the probe file is gone');
+
+		mkdir($folder . '/b');
+		file_put_contents($folder . '/b/formats.json', json_encode(array('key' => pg_image_derivative_formats_key(), 'time' => time(), 'formats' => array('webp' => false, 'avif' => false))));
+		pg_assert_same(array('webp' => false, 'avif' => false), pg_image_derivative_formats($folder . '/b'), 'a fresh stored answer is believed');
+
+		mkdir($folder . '/c');
+		file_put_contents($folder . '/c/formats.json', json_encode(array('key' => pg_image_derivative_formats_key(), 'time' => time() - 8 * 86400, 'formats' => array('webp' => false, 'avif' => false))));
+		pg_assert_same($tried, pg_image_derivative_formats($folder . '/c'), 'a week-old answer is tried again');
+
+		mkdir($folder . '/d');
+		file_put_contents($folder . '/d/formats.json', json_encode(array('key' => 'another server', 'time' => time(), 'formats' => array('webp' => false, 'avif' => false))));
+		pg_assert_same($tried, pg_image_derivative_formats($folder . '/d'), 'another key is tried again');
+
+		pg_assert_same($claims, pg_image_derivative_formats(''), 'no folder: the claims as they are');
+
+	} finally {
+		image_derivatives_test_remove($folder);
+	}
+}
+
+// Only where this server really writes AVIF.
+function test_image_derivative_avif_where_it_can_be_written()
+{
+	$folder = image_derivatives_test_folder();
+
+	try {
+		$formats = pg_image_derivative_formats($folder . '/cache');
+
+		if (!image_derivatives_test_gd() || empty($formats['avif'])) {
+			pg_assert_true(true, 'AVIF cannot be written here; skipped');
+			return;
+		}
+
+		$source = $folder . '/files/photo.jpg';
+		image_derivatives_test_jpeg($source, 2000, 1000, 6);
+
+		$avif = pg_image_derivative(4, $source, array('width' => 960, 'format' => 'avif'), $folder . '/cache');
+
+		pg_assert_same('derivative', $avif['status'], 'made');
+		pg_assert_same('avif', $avif['extension'], 'as avif');
+		pg_assert_same('avif', substr(file_get_contents($avif['path'], false, null, 0, 12), 8, 4), 'avif bytes');
+
+	} finally {
+		image_derivatives_test_remove($folder);
+	}
+}
+
 function test_image_derivative_refuses_what_is_not_a_raster_image()
 {
 	$folder = image_derivatives_test_folder();
