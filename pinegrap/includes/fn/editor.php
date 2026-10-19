@@ -256,15 +256,6 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             $output_background_color_toolbar_property = '["BGColor"],';
         }
 
-        $output_ckeditor_theme_configs = '';
-        //if its dark theme
-        if (isset($_COOKIE['prefers-color-scheme']) && $_COOKIE['prefers-color-scheme'] == 'dark') {
-            $output_ckeditor_theme_configs = 'software_ckeditor_config.codemirror = {theme: "pastel-on-dark"};';
-        } else {
-            //else default
-            $output_ckeditor_theme_configs = 'software_ckeditor_config.codemirror = {theme: "default"};';
-        }
-
         // We have to remove the various plugins listed by removePlugins,
         // because we were using those plugins at one point during testing
         // and we told ckbuilder to add them to the bundled ckeditor.js file.
@@ -281,6 +272,8 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
         // This avoids slow load-speed and browser generating 404 errors.
         return
             '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/ckeditor_4_20/ckeditor.js"></script>
+            ' . pg_code_editor_includes() . '
+            <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ckeditor_source.js?v=' . pg_code_editor_asset_version('/assets/js/pg_ckeditor_source.js') . '"></script>
             <script>
                 var software_editor_version = "' . $page_editor_version . '";
                 CKEDITOR.config.language = "' . lang(array('info' => '')) . '";
@@ -326,9 +319,10 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
                     ],
                     ' . $output_editor_properties . '
                 };
-                ' . $output_ckeditor_theme_configs . '
                 CKEDITOR.config.skin = "moono-lisa";
-                CKEDITOR.config.extraPlugins = "sourcedialog,codemirror";
+                // Source mode and the Source dialog show the HTML in the code
+                // editor every other code field uses (pg_ckeditor_source.js).
+                CKEDITOR.config.extraPlugins = "sourcedialog,pgcodeeditor";
                 ' . $output_editor_initialization . '
 
             </script>';
@@ -878,6 +872,7 @@ function pg_code_editor_includes()
 
     $config = pg_code_editor_urls();
     $config['phrases'] = pg_code_editor_phrases();
+    $config['labels'] = array('syntaxError' => lang('Syntax error'));
 
     return '<script>window.pgCodeEditorConfig = ' . pg_code_editor_json($config) . ';</script>';
 }
