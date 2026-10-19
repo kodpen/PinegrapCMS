@@ -1,6 +1,6 @@
 ---
 name: waf-path-exemption-and-robots
-description: waf_is_excluded() matches the path only; waf_path_is_always_served() exempts /robots.txt and /.well-known/ from bot policy; feed readers are good bots.
+description: waf_is_excluded() matches the path only; /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
 ---
 
 ## What does the exemption look at?
@@ -12,6 +12,7 @@ description: waf_is_excluded() matches the path only; waf_path_is_always_served(
 - Blocking `robots.txt` undermines itself: it tells crawlers what not to crawl; without it the crawler cannot learn the rule and keeps guessing. A live log showed AhrefsBot, SemrushBot and DotBot turned away from `/robots.txt` repeatedly, missing every chance to tell them "go".
 - `.well-known/` carries ACME certificate renewal. Blocking it does not fail loudly: ninety days later the certificate expires and the whole site fails with it.
 - The exemption is from the BOT POLICY ONLY; the IP blacklist and rate limit still apply.
+- `health.php` (uptime monitors) gets the same bot-policy and country exemption through `waf_is_health_request()`, which asks the running script, never the path: `/x/health.php/y` handed to `router.php` must not carry it. See `docs/memory/platform/maintenance-mode-health.md`.
 
 ## Which feed readers are good bots?
 - Feedly, Inoreader, Feedbin, NewsBlur, Miniflux, Netvibes, The Old Reader, FeedFetcher. Each request represents a real subscribed person; blocked, the feed silently empties and nobody reports "my feed stopped".

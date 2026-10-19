@@ -20454,7 +20454,7 @@
     "Also refuse a request whose country is not known": "Ülkesi bilinmeyen isteği de reddet",
     "Off: a request no source can place is let in, so a missing location database never shuts the site.": "Kapalıyken hiçbir kaynağın konumunu bulamadığı istek içeri alınır; böylece eksik bir konum veritabanı siteyi asla kapatmaz.",
     "Always let in": "Her zaman içeri al",
-    "Allowed IP addresses, robots.txt and certificate renewal (.well-known) are always let in.": "İzin verilen IP adresleri, robots.txt ve sertifika yenileme (.well-known) her zaman içeri alınır.",
+    "Allowed IP addresses, robots.txt, certificate renewal (.well-known) and the uptime check address (health.php) are always let in.": "İzin verilen IP adresleri, robots.txt, sertifika yenileme (.well-known) ve erişilebilirlik denetimi adresi (health.php) her zaman içeri alınır.",
     "You are in {var:1}, which these settings refuse: the site's pages do not open for you.": "Bulunduğunuz ülke {var:1}; bu ayarlar onu reddediyor, sitenin sayfaları sizin için açılmaz.",
     "You are in {var:1}, which these settings let in.": "Bulunduğunuz ülke {var:1}; bu ayarlar onu içeri alıyor.",
     "You are in {var:1}, which these settings refuse; your address is on the Allowed IP Addresses, so the site still opens for you.": "Bulunduğunuz ülke {var:1}; bu ayarlar onu reddediyor, ancak adresiniz İzin Verilen IP Adresleri'nde olduğu için site sizin için açılır.",
