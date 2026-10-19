@@ -21,7 +21,7 @@ description: Shared components opened to content editors (the designer's common 
 - The designer's switch "Content editors" sits in the Shared Component section of a selected `shared_ref` (not for widgets, only while `sdDesign.sharedContentReady`); it calls `set_content_editable` at once and keeps `contentEditable` on the cache entry.
 - `prefetch` fills `mayEditContent` on `_sharedCache[sid]`. `_sdSharedOpenToContent(sid)` reads it; `_sdNodeSharedSid(node)` comes from the owner map built in `_sdEditableSet()`'s pass, so no per-node walk. `_sdCanEditNode()` refuses every node of a closed component (`_sdInClosedShared()`, text included) and applies the page rule inside an opened one; canvas fade, tree marks, the read-only panel and the nudge follow it.
 - `_sdTrackSharedEditing()` marks only an opened component dirty at content level; `_flushDirtyShared()` sends it as `content_update` and, when the answer differs from what was sent, puts the stored tree in the cache and redraws.
-- Symptom fixed with it: a manager could type into a shared component's text (only widgets were refused on screen) and the save failed with "Permission denied.".
+- Symptom fixed with it (PR #579): a manager could type into a shared component's text (only widgets were refused on screen) and the save failed with "Permission denied.".
 
 ## What is not built yet?
 - The grant checkboxes on the user screens (R1c): `plans/legacy-retirement-prerequisites.md`. Tests: `tests/shared_component_content_test.php`.
