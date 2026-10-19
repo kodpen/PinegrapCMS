@@ -11,7 +11,7 @@ description: Designer and widget images with srcset/sizes, AVIF/WebP <picture> o
 - `onerror` also removes `<source>`s and `srcset` before swapping to no-image.svg (both outrank `src`).
 
 ## What about widget, carousel and bound images?
-- `pg_img_responsive_html()` adds `srcset`/`sizes` (own format, never a `<picture>`) to every `<img>` of a site file without one: on each system widget's output (`_expand_system_widgets()`, not for e-mail: catalog cards, product photos, cart lines with `^^token^^` src filled in), on each shared component at request time, and on the page body at publish (carousel slides, images in texts and custom HTML). Files are read with one query per pass (`pg_img_prefetch()`, PR #[PR3]).
+- `pg_img_responsive_html()` adds `srcset`/`sizes` (own format, never a `<picture>`) to every `<img>` of a site file without one: on each system widget's output (`_expand_system_widgets()`, not for e-mail: catalog cards, product photos, cart lines with `^^token^^` src filled in), on each shared component at request time, and on the page body at publish (carousel slides, images in texts and custom HTML). Files are read with one query per pass (`pg_img_prefetch()`, PR #599).
 - A bound image's `onerror` drops `srcset` too (its srcset comes after the token is filled). `pg_civ_variants.js` removes `srcset`/`sizes` and `<source>`s before it swaps a variant photo into `src`.
 
 ## Why sizes = "(max-width: Npx) 100vw, Npx"?
