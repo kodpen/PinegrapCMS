@@ -25,7 +25,7 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 - No: the v4 API has no webhook or event subscription. State is only ever read back (poll, the queue worker); nothing listens for Paraşüt.
 
 ## Can the account card fill itself? (partly done)
-- Done (#624): Query beside the tax number on the account form fills the name from GİB's register (docs/memory/erp/erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
+- Done (#625): Query beside the tax number on the account form fills the name from GİB's register (docs/memory/erp/erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
 - Open: the same correction for an account opened from an order (`erp_account_for_contact()`). It would put a provider call into the order or invoice path; not started, to be decided.
 
 ## How is testing done without a sandbox?

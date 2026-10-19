@@ -4,7 +4,7 @@ description: Asking GİB about a tax number from the account form (Query button,
 ---
 
 ## How does the Query button work?
-- `erp_account_form_cards()` (includes/erp/account_form.php) draws Query beside the tax number on the add and edit screens when `erp_edoc_installed()`, the active provider supports `check_taxpayer`, the account is Turkish (`data-erp-tr-only`) and the user is not ERP read-only. It replaced the "Ask GİB about the tax number" toolbar button of `edit_erp_account.php` (#624), which submitted the form and answered with a notice.
+- `erp_account_form_cards()` (includes/erp/account_form.php) draws Query beside the tax number on the add and edit screens when `erp_edoc_installed()`, the active provider supports `check_taxpayer`, the account is Turkish (`data-erp-tr-only`) and the user is not ERP read-only. It replaced the "Ask GİB about the tax number" toolbar button of `edit_erp_account.php` (#625), which submitted the form and answered with a notice.
 - The form's inline script POSTs `token`, `tax_number`, `account_id` to `erp_taxpayer_lookup.php` (JSON in every answer, the gates of `erp_account_quick.php`) and prints the answer under the field (`data-erp-taxpayer-answer`, `aria-live`).
 - The registered name fills an empty Name field; a different name already there gets a "Use the registered name" button. Nothing is saved until the form is.
 
