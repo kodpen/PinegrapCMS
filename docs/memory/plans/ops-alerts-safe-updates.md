@@ -1,6 +1,6 @@
 ---
 name: ops-alerts-safe-updates
-description: Plan (approved 2026-10-19, not started): alerts for backup, cron, integrity, error-spike and disk failures; automatic backup before a software update with rollback; maintenance mode; health URL
+description: Plan (approved 2026-10-19, in progress): alerts for backup, cron, integrity, error-spike and disk failures; automatic backup before a software update with rollback; maintenance mode; health URL
 ---
 
 ## Why?
@@ -14,14 +14,14 @@ description: Plan (approved 2026-10-19, not started): alerts for backup, cron, i
 - Anonymous liveness URL `health.php` returning 200/503 and the cron stamp age, for external uptime monitors (no details, rate-limited by the WAF).
 
 ## What remains?
-1. Alert helper, de-dup state, backup/cron/integrity sources, settings card (S).
-2. Error-spike, disk, mail-queue, certificate sources (S).
-3. Pre-update backup + rollback button (S–M).
+1. Done: alert helper, de-dup, backup/cron/integrity sources, Alerts card (`docs/memory/platform/ops-alerts.md`).
+2. Done: error-spike, disk, mail-queue, webhook, certificate sources and their threshold columns.
+3. Done: pre-update backup + rollback (`docs/memory/platform/update-backup-rollback.md`; rollback lives on Repair Software).
 4. Maintenance mode + `health.php` (S).
 5. Memory updates in `docs/memory/platform/` (system status, updates).
 
 ## Open questions?
-- Alert e-mail through the mail queue or direct send? Direct for queue-failure alerts, queue for the rest.
+- None. Settled: e-mail queued, direct for a code marked `direct` (mail failures); de-dup through the `notifications` row, no table (owner approval 2026-10-19 for the config columns).
 
 ## Where to start?
 - Step 1; read `includes/fn/system_status.php:1375` (checks) and `includes/panel/software.php:335-614` (update steps).

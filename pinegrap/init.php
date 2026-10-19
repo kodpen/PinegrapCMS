@@ -768,6 +768,25 @@ define('LANGUAGE_REDIRECT_MODE', in_array(($row['language_redirect_mode'] ?? '')
 define('LANGUAGE_REDIRECT_SCOPE', (($row['language_redirect_scope'] ?? '') === 'all') ? 'all' : 'home');
 define('LANGUAGE_REDIRECT_FALLBACK', (string) ($row['language_redirect_fallback'] ?? ''));
 
+// Operations alerts (2026.11.0, 11.0.20; includes/fn/ops_alerts.php). Off
+// while the columns are not there: the general job of a site that has the
+// files but not the upgrade raises nothing. The step turns them on, with the
+// e-mail and device channels, to the site's own address.
+define('OPS_ALERTS', isset($row['ops_alerts']) ? (int) $row['ops_alerts'] : 0);
+define('OPS_ALERT_EMAIL', isset($row['ops_alert_email']) ? (int) $row['ops_alert_email'] : 0);
+define('OPS_ALERT_PUSH', isset($row['ops_alert_push']) ? (int) $row['ops_alert_push'] : 0);
+define('OPS_ALERT_RECIPIENTS', (string) ($row['ops_alert_recipients'] ?? ''));
+// The thresholds of the checks, 0 switching one off; the step's defaults while
+// a column is missing.
+define('OPS_ALERT_ERROR_RATE', isset($row['ops_alert_error_rate']) ? (int) $row['ops_alert_error_rate'] : 50);
+define('OPS_ALERT_DISK_PERCENT', isset($row['ops_alert_disk_percent']) ? (int) $row['ops_alert_disk_percent'] : 10);
+define('OPS_ALERT_MAIL_FAILURES', isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10);
+define('OPS_ALERT_CERT_DAYS', isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14);
+// Whether an update backs up the files it replaces and the database first
+// (2026.11.0, 11.0.21; pg_update_backup_create()). On while the column is not
+// there: the step defaults it on too.
+define('UPDATE_BACKUP', isset($row['update_backup']) ? (int) $row['update_backup'] : 1);
+
 
 if (!defined('SOFTWARE_LANGUAGE')) {
     $lang = isset($row['software_language']) && $row['software_language'] !== '' && $row['software_language'] !== 'undefined'

@@ -103,6 +103,13 @@ function pg_notification_visible($notification, $rights)
 		return ($rights['role'] < 3);
 	}
 
+	// An operations alert (includes/fn/ops_alerts.php) is for whoever sees
+	// System Status and may open the screens it points at: backups, the
+	// scheduled jobs, the software update - manager and above.
+	if ($action == 'ops') {
+		return ($rights['role'] < 3);
+	}
+
 	if ($action == 'new_comment') {
 		return pg_notification_comment_visible($notification, $rights);
 	}
@@ -441,6 +448,27 @@ function pg_notification_display($notification)
 			? lang(array('string' => 'Quote {var:1} expires within {var:2} days.', 'vars' => array(h($number), $days)))
 			: lang(array('string' => '{var:1} quote(s) expire within {var:2} days.', 'vars' => array($count, $days)));
 		$display['url']         = ($number !== '') ? 'edit_erp_quote.php?id=' . $quote_id : 'erp_quotes.php?state=open';
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'ops') {
+
+		// order_total is the alert's code, title its detail - or the code
+		// again when it had none (pg_ops_alert()). The sentence comes from
+		// the catalogue, so the bell, the banner and the e-mail say the same.
+		$code  = (string) ($notification['order_total'] ?? '');
+		$codes = function_exists('pg_ops_alert_codes') ? pg_ops_alert_codes() : array();
+
+		if (isset($codes[$code])) {
+			$display['title'] = h($codes[$code]['label']);
+			$display['url']   = $codes[$code]['url'];
+		} else {
+			$display['title'] = h(lang('Operations alert'));
+			$display['url']   = 'welcome.php';
+		}
+
+		$display['description'] = (isset($notification['title']) && ((string) $notification['title'] !== $code)) ? h($notification['title']) : '';
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;

@@ -44,6 +44,13 @@ pg_cron_ran('auto_backup');
 
 if (!extension_loaded('pdo_mysql') ) {
     echo lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.');
+
+    // The run was due and could not start: the same failure as a dump that
+    // broke half-way, as far as whoever relies on the backup is concerned.
+    if (defined('LAST_SOFTWARE_AUTO_BACKUP') && (!defined('SOFTWARE_AUTO_BACKUP') || SOFTWARE_AUTO_BACKUP != false)) {
+        pg_ops_alert('backup_failed', lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.'));
+    }
+
     exit();
 }
 
@@ -73,5 +80,11 @@ if(defined('LAST_SOFTWARE_AUTO_BACKUP') && ( !defined('SOFTWARE_AUTO_BACKUP') ||
 // The run itself -- the archive, the retention and the remote copy -- lives in
 // includes/fn/backup.php.
 function software_auto_backup(){
-    pg_backup_run_auto();
+    // A failed run is logged where it failed; the alert names the same
+    // reason (pg_backup_last_error()) to whoever was not reading the log.
+    if (!pg_backup_run_auto()) {
+        $reason = pg_backup_last_error();
+
+        pg_ops_alert('backup_failed', ($reason !== '') ? $reason : lang('The backup could not be written completely. The activity log has the details.'));
+    }
 }

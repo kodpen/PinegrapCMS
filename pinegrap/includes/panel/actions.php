@@ -210,6 +210,7 @@ function pg_panel_actions()
         'software_backup' => array('file' => 'software.php', 'handler' => 'pg_panel_software_backup', 'exempt' => true, 'token' => true, 'write' => true),
         'software_update_check' => array('file' => 'software.php', 'handler' => 'pg_panel_software_update_check', 'exempt' => true, 'token' => true, 'write' => true),
         'software_update' => array('file' => 'software.php', 'handler' => 'pg_panel_software_update', 'exempt' => true, 'token' => true, 'write' => true),
+        'software_rollback' => array('file' => 'software.php', 'handler' => 'pg_panel_software_rollback', 'exempt' => false, 'token' => true, 'write' => true),
 
         // The System Status widget's jobs. Each checks the role it needs for
         // itself -- the table scan and the cache purge stand at manager, the
