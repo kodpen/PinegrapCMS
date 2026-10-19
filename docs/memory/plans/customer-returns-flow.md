@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19, in progress: step 1 tables and model don
 - Legacy multi-step order view (`get_view_order`) gets the same button through the widget token layer, no layout rewrite.
 
 ## What remains?
-1. Done (PR #PRNUM): tables (step 11.0.11), `includes/fn/returns.php` (statuses and moves, held quantities, withdrawal window, refund deadline, create, move, read, delete with the order), `tests/returns_test.php`. Behaviour and what was added to the column list (`decision_note`, `source`, `requested_by`, `decided_by`, `shipped_at`, `closed_at`): docs/memory/commerce/order-returns.md.
+1. Done (PR #650): tables (step 11.0.11), `includes/fn/returns.php` (statuses and moves, held quantities, withdrawal window, refund deadline, create, move, read, delete with the order), `tests/returns_test.php`. Behaviour and what was added to the column list (`decision_note`, `source`, `requested_by`, `decided_by`, `shipped_at`, `closed_at`): docs/memory/commerce/order-returns.md.
 2. My Account widget section (`widgets.php` order_view bindings, `check_bindings.php`), request e-mail template (M).
 3. Panel screens `view_returns.php`, `view_return.php` (M).
 4. Refund and ERP bridge, reminders job (S–M).
