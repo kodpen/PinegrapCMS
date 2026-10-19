@@ -1,0 +1,25 @@
+---
+name: feature-roadmap-2026-10
+description: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
+---
+
+## What was decided on 2026-10-19?
+- All 24 candidates of the October 2026 gap analysis are approved as plans (one file each, listed below). Research evidence: `docs/_ozellik_adaylari.md`.
+- Legacy code is never removed by these plans: old payment gateways, the classic checkout flow, classic styles and renderers stay as they are and keep working. New work is added beside them (frozen, not deleted). Retiring the legacy page designer is a separate decision (`legacy-page-designer-retirement.md`).
+- Page revision history **and** scheduled publishing are approved; live pages still publish directly (no working copy).
+- Open questions of the analysis were closed with the recommended answers; each plan file records its own.
+
+## What is the wave order?
+1. Now, one small PR series each, no further decision needed: `checkout-legal-documents`, `price-history-reference-price`, `erp-auto-invoice-earchive`, `ops-alerts-safe-updates`; when capacity allows `seo-toolkit-redirects`, `ai-write-buttons`, `agent-product-feeds`, `docker-image`. In parallel the first slice of `sms-and-iys`.
+2. Mid-term, 3–6 PRs each: `sms-and-iys`, `customer-returns-flow`, `image-delivery-pipeline`, `page-revisions-and-scheduling`, `storefront-conversion-pack` (a–c), `accessibility-and-consent-tools`, `passkeys`.
+3. Long-running, 10+ PRs, design decision first: `marketplace-trendyol-hepsiburada` (Trendyol, then Hepsiburada), `shipping-carrier-labels` (after `shipping-management`), `payment-driver-layer`, `privacy-data-pack-audit-log`.
+4. Watch, re-check each quarter: `storefront-api-agentic-commerce`, `addon-hook-system` (after the payment driver layer), `visitor-ai-assistant`, `subscriptions-iyzico-stripe`, `designer-interactions-collections`.
+
+## Who takes what?
+- Commerce session: checkout legal documents, price history, returns flow, conversion pack, payment driver layer, subscriptions.
+- Platform session: ops alerts, image pipeline, accessibility and consent, privacy pack, passkeys, Docker, SEO toolkit.
+- ERP session: auto invoice / e-Arşiv. API session: marketplaces, agent feeds, storefront API. SMS + İYS and carrier labels each get their own session. Designer items go to the running designer session.
+
+## Which rules bind every plan?
+- Owner rules (`docs/memory/workflow/owner-rules.md`), CLAUDE.md fixed rules, the decisions skill. Schema only through 2026.11.0 migration steps. Express-order totals (`get_express_order.php`, `get_order_preview.php`) never change. A plan-driven feature gets one `[NEW]` changelog line when it ships; plans get none.
+- When a plan is finished its lasting decisions move to the topic folder and the plan file is deleted.

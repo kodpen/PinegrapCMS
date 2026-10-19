@@ -4,19 +4,44 @@
 
 Unfinished and shelved plans: remaining work, decisions made, open questions, where to start.
 
+- accessibility-and-consent-tools.md: Plan (approved 2026-10-19, not started): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement template, consent banner with equal accept/reject and Consent Mode v2 defaults
+- addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
+- agent-product-feeds.md: Plan (approved 2026-10-19, not started): product feed exports for AI shopping agents (OpenAI JSONL/CSV, Google TSV) with eligibility flags and policy URLs beside ?rss=true; UCP manifest groundwork
+- ai-write-buttons.md: Plan (approved 2026-10-19, not started): "Write with AI" buttons in the product builder, page SEO fields, image alt text and blog records, reusing the Workspace AI client; AI-generated labelling
+- checkout-legal-documents.md: Plan (approved 2026-10-19, not started): pre-information form and distance sales contract generated per order at checkout, approval before payment, stored copy, KVKK consent texts
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
+- customer-returns-flow.md: Plan (approved 2026-10-19, not started): customer return request in My Account, approval, return carrier code, status, 14-day timers, bridge to iyzico refund and ERP return invoice
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, panel screens off CodeMirror 5)
+- designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
+- docker-image.md: Plan (approved 2026-10-19, not started): docker/ folder in the release tree with a PHP-FPM + nginx + MariaDB compose stack, cron container, demo seed; README one-command trial
+- erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, not started): read ERP_AUTO_INVOICE_ON to create the invoice and queue the e-document on order status, revenue-threshold warnings (e-Fatura, e-Arşiv), internet-sale note
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Design decided for the unfinished Paraşüt e-document driver: credentials, HTTP layer, taxpayer check, scenario, async job ladder, totals check, webhook, account title lookup
+- feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
+- image-delivery-pipeline.md: Plan (approved 2026-10-19, not started): automatic WebP/AVIF derivatives, srcset/sizes, lazy loading except the LCP image, fetchpriority, derivative cache and disk accounting
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-page-designer-retirement.md: Plan (2026-10-19, not started) to open classic (legacy) pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
+- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19, not started): Trendyol (V2 API, first) and Hepsiburada connectors on the n11 connector layer: listings, stock/price queue, orders, status, invoice link, returns, Q&A
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export (Markdown, zip vault, print), import (Markdown/zip, enex, Keep, HTML), API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
+- ops-alerts-safe-updates.md: Plan (approved 2026-10-19, not started): alerts for backup, cron, integrity, error-spike and disk failures; automatic backup before a software update with rollback; maintenance mode; health URL
+- page-revisions-and-scheduling.md: Plan (approved 2026-10-19, not started): server-side page revision history with compare and restore, retention, scheduled publish and unpublish for designer pages; live pages still publish directly
+- passkeys.md: Plan (approved 2026-10-19, not started): WebAuthn passkeys for panel users and members as a second factor or passwordless sign-in beside TOTP; registration in Account Security, admin reset
+- payment-driver-layer.md: Plan (approved 2026-10-19, not started): payment driver interface beside submit_order.php, Stripe PaymentIntents + wallets, PayTR as first local PSP; legacy gateways frozen, never removed
+- price-history-reference-price.md: Plan (approved 2026-10-19, not started): product price history table, automatic "price before discount" (TR 10/30-day, EU 30-day rules), merchant compare-at price, API endpoint
+- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19, not started): per-person data export, erasure/anonymisation wizard respecting invoice retention, consent log, structured admin audit trail with before/after values
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
+- seo-toolkit-redirects.md: Plan (approved 2026-10-19, not started): redirect manager (301/302, wildcard, CSV, auto 301 on slug change), 404 log, per-page canonical and JSON-LD editor, llms.txt and robots AI-bot policy UI
+- shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
 - shipping-management.md: Not started shipping plan (2026-10-08): carrier recognition, shipment row status, single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields
+- sms-and-iys.md: Plan (approved 2026-10-19, not started): SMS provider layer (Netgsm first), order/shipping/OTP messages, İYS consent sync for e-mail and SMS marketing, 3-year consent log
+- storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
+- storefront-conversion-pack.md: Plan (approved 2026-10-19, not started): verified-buyer product reviews with request e-mail and real aggregateRating, wishlist, back-in-stock notice, bundles as a later phase
+- subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
+- visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-phase3-leftovers.md: Workspace module items planned for phase 3 (bots) and not built: app membership and command registry over the API, app.mentioned webhook, ERP overdue to task, designer task panel
