@@ -1,6 +1,6 @@
 ---
 name: checkout-legal-documents
-description: Plan (approved 2026-10-19, checkout and kept copy built): pre-information form and distance sales contract; left: designer bindings, My Account link, API, KVKK consent
+description: Plan (approved 2026-10-19; checkout, designer bindings and kept copy built): pre-information form and distance sales contract; left: My Account link, API, KVKK consent
 ---
 
 ## Why?
@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19, checkout and kept copy built): pre-infor
 
 ## What remains?
 1. Done: settings, templates, `order_documents`, checkboxes on all three checkouts, cart page, server check, `[NEW]` line (docs/memory/commerce/order-legal-documents.md, checkout-legal-checkboxes.md).
-2. Designer (the designer session's work): offer `legal_preinfo` / `legal_contract` in `SW_EXPRESS_ORDER_FIELD_GROUPS` and `_eo_known_input_names()` (prefill), a visibility flag, and in the starter tree (PHP `_eo_default_designer_tree()` and the JS starter together) the two checkboxes with a modal or links to `legal_document.php?type=...`. Once a tree draws a `legal_preinfo` field, `pg_legal_documents_inject()` adds nothing to it; the stored total snapshot still works.
+2. Done: designer bindings (`legal_preinfo` / `legal_contract` in the field list and prefill, `has_legal_documents` flag, `__legal_*_url` href tokens, both boxes in the PHP and JS starter trees, PR #570; docs/memory/designer/express-order-legal-documents.md).
 3. Done: receipt attachments, panel card, kept-copy page. Left: a link in My Account's order view (`order_view` widget, designer session; `legal_document.php?order_id=N&type=...` is ready) and `GET /orders/{id}/documents` with its schema entry.
 4. KVKK notice link and optional consent checkbox (text setting: needs its own config column, ask first), stored as type `kvkk`.
 5. Template seed for Turkish sites on install and the withdrawal timer shown on the order (14 days from delivery, see `customer-returns-flow.md`).
@@ -27,4 +27,4 @@ description: Plan (approved 2026-10-19, checkout and kept copy built): pre-infor
 - Should the contract PDF be produced (dompdf is already vendored for ERP) or is HTML enough? Start with HTML; PDF later if customers ask.
 
 ## Where to start?
-- The API route (step 3) or step 2 (designer session). Express-order totals stay untouchable: the checkout part only wraps the renderers' output.
+- The API route (step 3); the My Account link is the designer session's. Express-order totals stay untouchable: the checkout part only wraps the renderers' output.

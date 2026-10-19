@@ -23715,5 +23715,15 @@
     "There is no channel you can write in.": "Yazabileceğiniz bir kanal yok.",
     "Sent to {var:1}.": "{var:1} kanalına gönderildi.",
     "The channel gets a copy of this file; the original stays where it is.": "Kanala bu dosyanın bir kopyası gider; asıl dosya yerinde kalır.",
-    "Add a message (optional)": "Mesaj ekleyin (isteğe bağlı)"
+    "Add a message (optional)": "Mesaj ekleyin (isteğe bağlı)",
+    "I have read and approve {var:1}": "{var:1} okudum ve onaylıyorum",
+    "I have read and accept {var:1}": "{var:1} okudum ve kabul ediyorum",
+    "Checkout documents": "Ödeme belgeleri",
+    "Pre-Information Form page URL": "Ön Bilgilendirme Formu sayfasının adresi",
+    "Distance Sales Contract page URL": "Mesafeli Satış Sözleşmesi sayfasının adresi",
+    "Checkout approvals": "Ödeme onayları",
+    "Order terms accepted (checkbox)": "Sipariş şartları kabul edildi (onay kutusu)",
+    "Pre-Information Form approved (checkbox)": "Ön Bilgilendirme Formu onaylandı (onay kutusu)",
+    "Distance Sales Contract accepted (checkbox)": "Mesafeli Satış Sözleşmesi kabul edildi (onay kutusu)",
+    "Checkout documents are switched on": "Ödeme belgeleri açık"
 }
