@@ -9402,14 +9402,31 @@ html[data-bs-theme="dark"] body .workspace-color {
   color: var(--workspace-color-highlight) !important;
 }
 
-/* The workspace's own accent, on its screens and in its drawers elsewhere. */
+/* The workspace's own accent, on its screens and in its drawers elsewhere,
+   and the scale every workspace rule measures with: four corner radii from
+   a chip to a drawer, four spaces, four sizes of face, two shadows. The
+   RGB numbers are --workspace-color written out, for rgba(); the two are
+   kept together here so a change to one is a change to both. */
 body.workspace,
 .ws-app,
 [id^="ws-"] {
   --ws-accent: var(--workspace-color);
   --ws-accent-rgb: 94, 53, 177;
   --ws-soft: rgba(var(--ws-accent-rgb), .08);
-  --ws-radius: .9rem;
+  --ws-radius-xs: .45rem;
+  --ws-radius-sm: .65rem;
+  --ws-radius: 1rem;
+  --ws-radius-lg: 1.25rem;
+  --ws-space-1: .25rem;
+  --ws-space-2: .5rem;
+  --ws-space-3: .75rem;
+  --ws-space-4: 1rem;
+  --ws-avatar-xs: 1rem;
+  --ws-avatar-sm: 1.6rem;
+  --ws-avatar: 2.2rem;
+  --ws-avatar-lg: 3rem;
+  --ws-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 10px 30px -14px rgba(0, 0, 0, .16);
+  --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .45);
 }
 html[data-bs-theme="dark"] body.workspace,
 html[data-bs-theme="dark"] .ws-app,
@@ -9417,21 +9434,44 @@ html[data-bs-theme="dark"] [id^="ws-"] {
   --ws-accent: var(--workspace-color-highlight);
   --ws-accent-rgb: 179, 157, 219;
   --ws-soft: rgba(var(--ws-accent-rgb), .1);
+  --ws-shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 10px 30px -14px rgba(0, 0, 0, .5);
+  --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .35);
 }
 
-/* No focus rings in the workspace: its screens are full of small controls
-   and the rings drew a box around whatever was last clicked. Borders still
-   change colour on a focused field. The rest of the panel keeps its rings. */
-body.workspace *:focus,
+/* Focus rings follow the keyboard, not the mouse: the workspace is full of
+   small controls, and a ring left on whatever was last clicked drew a box
+   around it, so a click leaves no ring (:focus without :focus-visible),
+   while the Tab key draws the accent ring the keyboard needs to see where
+   it stands. Borders still change colour on a focused field. */
+body.workspace *:focus:not(:focus-visible),
+[id^="ws-"] *:focus:not(:focus-visible),
+.ws-ctx *:focus:not(:focus-visible),
+.ws-ask-modal *:focus:not(:focus-visible) {
+  outline: 0;
+  box-shadow: none;
+}
 body.workspace *:focus-visible,
-[id^="ws-"] *:focus,
 [id^="ws-"] *:focus-visible,
-.ws-ctx *:focus,
 .ws-ctx *:focus-visible,
-.ws-ask-modal *:focus,
 .ws-ask-modal *:focus-visible {
-  outline: 0 !important;
-  box-shadow: none !important;
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* Drawers and the overview's cards sit on the scale too: a drawer's inner
+   corners rounded and the panel lifted on the soft shadow instead of a
+   hairline, a home card the same. */
+body.workspace .offcanvas.offcanvas-end,
+[id^="ws-"].offcanvas.offcanvas-end {
+  border-left: 0;
+  border-radius: var(--ws-radius-lg) 0 0 var(--ws-radius-lg);
+  box-shadow: var(--ws-shadow);
+}
+.ws-home-card.card {
+  border-color: transparent;
+  border-radius: var(--ws-radius-lg);
+  box-shadow: var(--ws-shadow);
 }
 
 /* On a touch screen the composer text is 16px so iOS does not zoom in on it. */
@@ -9595,7 +9635,7 @@ body.workspace_settings .ws-shell-main > #button_bar {
   max-width: 100%;
   padding: .3rem .6rem;
   border: 1px solid rgba(var(--ws-accent-rgb), .35);
-  border-radius: .7rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--ws-soft);
   color: var(--bs-body-color);
   font-size: .8rem;
@@ -9644,7 +9684,7 @@ button.ws-thread-bar:hover {
   align-items: center;
   padding: 0 .45rem;
   border: 0;
-  border-radius: 1rem;
+  border-radius: var(--ws-radius);
   background: var(--ws-soft);
   color: var(--ws-accent);
   font-size: .7rem;
@@ -9747,7 +9787,7 @@ button.ws-thread-bar:hover {
   background: transparent;
   color: var(--bs-body-color);
   text-align: left;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   padding: .3rem .5rem;
   font-size: .9rem;
   text-decoration: none;
@@ -9769,7 +9809,7 @@ button.ws-thread-bar:hover {
   display: none;
   color: var(--bs-secondary-color);
   padding: 0 .15rem;
-  border-radius: .3rem;
+  border-radius: var(--ws-radius-xs);
 }
 .ws-channel-link:hover .ws-pin,
 .ws-channel-link .ws-pin.ws-pinned {
@@ -9830,6 +9870,29 @@ button.ws-thread-bar:hover {
 .ws-rail-item[data-ws-nav="audit"] > .bi { color: #b5534b; }
 .ws-channel-link[data-ws-nav="settings"] > .bi,
 .ws-rail-item[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
+/* The same tones lifted for the dark theme, where the ones above sink. */
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="home"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="home"] > .bi { color: #8fbde3; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="inbox"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="inbox"] > .bi { color: #7fc9b8; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="tasks"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="tasks"] > .bi { color: #8fcf9b; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="notes"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="notes"] > .bi { color: #e6bb6c; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="board"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="board"] > .bi { color: #b1a4e0; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="calendar"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="calendar"] > .bi { color: #dc95c7; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="scheduled"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="scheduled"] > .bi { color: #e9a67f; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="timeline"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="timeline"] > .bi { color: #99a8e0; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="archived"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="archived"] > .bi { color: #a9aeb5; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="audit"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="audit"] > .bi { color: #e08a82; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="settings"] > .bi,
+html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="settings"] > .bi { color: #b3ab9b; }
 /* Groups of channels: a heading with its colour, one inside another. */
 .ws-side-group {
   margin-bottom: .2rem;
@@ -9843,7 +9906,7 @@ button.ws-thread-bar:hover {
   justify-content: flex-start;
   gap: .15rem;
   padding: 0 .25rem .1rem 0;
-  border-radius: .4rem;
+  border-radius: var(--ws-radius-xs);
 }
 .ws-group-toggle {
   display: flex;
@@ -9859,7 +9922,7 @@ button.ws-thread-bar:hover {
   text-transform: inherit;
   text-align: left;
   padding: .2rem .25rem;
-  border-radius: .4rem;
+  border-radius: var(--ws-radius-xs);
 }
 .ws-group-toggle:hover {
   background: var(--bs-secondary-bg);
@@ -9904,7 +9967,7 @@ button.ws-thread-bar:hover {
 .ws-group-empty {
   padding-top: .15rem;
   padding-bottom: .25rem;
-  border-radius: .4rem;
+  border-radius: var(--ws-radius-xs);
 }
 .ws-drop-into {
   outline: 2px dashed var(--ws-group, var(--ws-accent));
@@ -9933,7 +9996,7 @@ button.ws-thread-bar:hover {
   height: 1.75rem;
   padding: 0;
   border: 2px solid transparent;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
 }
 .ws-swatch.active {
@@ -9969,7 +10032,7 @@ button.ws-thread-bar:hover {
 .ws-sa-when-trigger {
   padding: .5rem .65rem;
   border: 1px dashed var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   margin-bottom: .5rem;
 }
 .ws-sa-follows {
@@ -9982,7 +10045,7 @@ button.ws-thread-bar:hover {
   padding: .5rem .6rem;
   border: 1px solid var(--bs-border-color);
   border-left: 3px solid var(--ws-accent);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
 }
 .ws-sa-follow-head {
@@ -10031,7 +10094,7 @@ button.ws-thread-bar:hover {
   padding: .35rem .5rem .35rem .65rem;
   border: 1px solid var(--bs-border-color);
   border-left: 3px solid var(--ws-accent);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
   font-size: .85rem;
 }
@@ -10062,7 +10125,7 @@ button.ws-thread-bar:hover {
 /* Messages chosen together. */
 .ws-msg-choosable {
   cursor: pointer;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   padding-left: 2rem;
 }
 /* The tick box sits in the padding: .ws-msg is a grid, a pseudo element in
@@ -10075,7 +10138,7 @@ button.ws-thread-bar:hover {
   width: 1rem;
   height: 1rem;
   border: 2px solid var(--bs-border-color);
-  border-radius: .3rem;
+  border-radius: var(--ws-radius-xs);
 }
 .ws-msg-selected {
   background: rgba(var(--ws-accent-rgb), .1);
@@ -10119,7 +10182,7 @@ button.ws-thread-bar:hover {
   padding: .45rem .6rem;
   border: 1px solid var(--bs-border-color);
   border-left: 3px solid var(--bs-secondary-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
 }
 .ws-fwd-head {
@@ -10149,7 +10212,7 @@ button.ws-thread-bar:hover {
   padding: .4rem .6rem;
   margin-bottom: .75rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   font-size: .82rem;
 }
 .ws-fwd-preview-line {
@@ -10221,7 +10284,7 @@ button.ws-thread-bar:hover {
   width: 100%;
   padding: .5rem .6rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: transparent;
   color: inherit;
   text-align: left;
@@ -10246,7 +10309,7 @@ button.ws-thread-bar:hover {
   padding: .5rem .6rem;
   margin-bottom: .35rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
 }
 .ws-era-current {
   background: var(--bs-tertiary-bg);
@@ -10335,8 +10398,8 @@ button.ws-thread-bar:hover {
   display: inline-flex;
 }
 .ws-avatars img {
-  width: 1.6rem;
-  height: 1.6rem;
+  width: var(--ws-avatar-sm);
+  height: var(--ws-avatar-sm);
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--bs-body-bg);
@@ -10376,7 +10439,7 @@ button.ws-thread-bar:hover {
   min-width: 1.15rem;
   margin-left: .35rem;
   padding: 0 .35rem;
-  border-radius: 1rem;
+  border-radius: var(--ws-radius);
   background: var(--ws-soft);
   color: var(--ws-accent);
   font-size: .68rem;
@@ -10454,7 +10517,7 @@ button.ws-thread-bar:hover {
   grid-template-columns: 2.2rem minmax(0, 1fr);
   gap: .6rem;
   padding: .3rem .5rem;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
 }
 .ws-msg:hover {
   background: rgba(var(--bs-emphasis-color-rgb), .035);
@@ -10478,8 +10541,8 @@ button.ws-thread-bar:hover {
   background: rgba(var(--bs-warning-rgb), .18);
 }
 .ws-msg-avatar img {
-  width: 2.2rem;
-  height: 2.2rem;
+  width: var(--ws-avatar);
+  height: var(--ws-avatar);
   border-radius: 50%;
   object-fit: cover;
 }
@@ -10528,7 +10591,7 @@ button.ws-thread-bar:hover {
   text-transform: uppercase;
   letter-spacing: .03em;
   padding: 0 .4rem;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
 }
 .ws-msg-flag.ws-flag-decision {
   background: rgba(var(--bs-success-rgb), .15);
@@ -10562,7 +10625,7 @@ button.ws-thread-bar:hover {
   margin-right: .35rem;
   padding: 0 .5rem;
   border: 0;
-  border-radius: 1rem;
+  border-radius: var(--ws-radius);
   font-size: .72rem;
   font-weight: 600;
   line-height: 1.5;
@@ -10584,7 +10647,7 @@ button.ws-thread-bar:hover {
   margin-bottom: 1rem;
   padding: .6rem .7rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
 }
 .ws-status-chips {
@@ -10596,7 +10659,7 @@ button.ws-thread-bar:hover {
   display: inline-flex;
   align-items: center;
   padding: .1rem .5rem;
-  border-radius: 1rem;
+  border-radius: var(--ws-radius);
   font-size: .75rem;
   background: var(--bs-body-bg);
   border: 1px solid var(--bs-border-color);
@@ -10627,7 +10690,7 @@ button.ws-thread-bar:hover {
 }
 .ws-status-choice {
   border: 1px solid transparent;
-  border-radius: 1rem;
+  border-radius: var(--ws-radius);
 }
 .btn-check:checked + .ws-status-choice {
   border-color: currentColor;
@@ -10639,7 +10702,7 @@ button.ws-thread-bar:hover {
   padding: .55rem .65rem .5rem;
   border: 1px solid var(--bs-border-color);
   border-left: 3px solid rgb(var(--ws-accent-rgb));
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-body-bg);
 }
 .ws-checkin-head {
@@ -10712,7 +10775,7 @@ button.ws-thread-bar:hover {
   gap: .1rem;
   background: var(--bs-body-bg);
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   padding: .1rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
 }
@@ -10725,7 +10788,7 @@ button.ws-thread-bar:hover {
   background: transparent;
   width: 1.8rem;
   height: 1.7rem;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
   color: var(--bs-secondary-color);
 }
 .ws-msg-tools button:hover {
@@ -10812,7 +10875,7 @@ button.ws-thread-bar:hover {
 .ws-emoji-tab {
   border: 0;
   background: transparent;
-  border-radius: .4rem;
+  border-radius: var(--ws-radius-xs);
   line-height: 1;
   padding: 0;
   color: var(--bs-secondary-color);
@@ -10950,7 +11013,7 @@ button.ws-thread-bar:hover {
   margin-top: .4rem;
   padding: .55rem .65rem .45rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-body-bg);
 }
 .ws-poll-head {
@@ -10966,7 +11029,7 @@ button.ws-thread-bar:hover {
 }
 .ws-poll-tag {
   padding: 0 .4rem;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
   font-size: .68rem;
   font-weight: 600;
   background: var(--bs-secondary-bg);
@@ -10989,7 +11052,7 @@ button.ws-thread-bar:hover {
   margin: 0;
   padding: .4rem .55rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .45rem;
+  border-radius: var(--ws-radius-xs);
   overflow: hidden;
   font-size: .88rem;
   cursor: pointer;
@@ -11042,7 +11105,7 @@ button.ws-thread-bar:hover {
 }
 .ws-poll-note {
   padding: .5rem .6rem;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   font-size: .8rem;
   color: var(--bs-secondary-color);
   background: var(--bs-tertiary-bg);
@@ -11166,7 +11229,7 @@ button.ws-thread-bar:hover {
   max-width: 100%;
   padding: .2rem .55rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-body-bg);
   color: var(--bs-body-color);
   font-size: .78rem;
@@ -11203,7 +11266,7 @@ button.ws-thread-bar:hover {
   align-items: flex-start;
   margin-bottom: 1rem;
   padding: .55rem .7rem;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   font-size: .84rem;
   background: rgba(var(--ws-accent-rgb), .08);
 }
@@ -11211,7 +11274,7 @@ button.ws-thread-bar:hover {
   margin-bottom: 1rem;
   padding: .65rem .75rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
 }
 .ws-task-work-head {
   display: flex;
@@ -11262,8 +11325,8 @@ button.ws-thread-bar:hover {
   gap: .5rem;
 }
 .ws-task-note-avatar {
-  width: 1.8rem;
-  height: 1.8rem;
+  width: var(--ws-avatar-sm);
+  height: var(--ws-avatar-sm);
   border-radius: 50%;
   object-fit: cover;
 }
@@ -11406,7 +11469,7 @@ button.ws-thread-bar:hover {
   padding: .6rem .75rem;
   border: 1px solid var(--bs-border-color);
   border-left: 3px solid var(--ws-accent);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-body-bg);
   font-size: .85rem;
 }
@@ -11662,7 +11725,7 @@ button.ws-thread-bar:hover {
   align-items: flex-start;
   padding: .5rem .6rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .7rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-body-bg);
   color: var(--bs-body-color);
   text-align: left;
@@ -11703,7 +11766,7 @@ button.ws-thread-bar:hover {
   align-items: flex-start;
   margin-top: .5rem;
   padding: .5rem;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
 }
 .ws-sa-condition-grid {
@@ -11746,7 +11809,7 @@ button.ws-thread-bar:hover {
   overflow-y: auto;
   padding: .25rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-body-bg);
   box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .25);
 }
@@ -11757,7 +11820,7 @@ button.ws-thread-bar:hover {
   width: 100%;
   padding: .3rem .45rem;
   border: 0;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
   background: transparent;
   font-size: .82rem;
   text-align: left;
@@ -11864,7 +11927,7 @@ a.ws-person-link:hover img {
   min-width: 4rem;
   min-height: 3rem;
   object-fit: contain;
-  border-radius: .75rem;
+  border-radius: var(--ws-radius-sm);
   border: 1px solid var(--bs-border-color-translucent);
   background: var(--bs-tertiary-bg);
 }
@@ -11874,7 +11937,7 @@ a.ws-person-link:hover img {
   gap: .5rem;
   padding: .35rem .6rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   text-decoration: none;
   color: var(--bs-body-color);
   font-size: .85rem;
@@ -11884,7 +11947,7 @@ a.ws-person-link:hover img {
   font-weight: 700;
   text-transform: uppercase;
   background: var(--bs-secondary-bg);
-  border-radius: .3rem;
+  border-radius: var(--ws-radius-xs);
   padding: .05rem .35rem;
 }
 .ws-chip {
@@ -11927,7 +11990,7 @@ a.ws-chip:hover {
   max-width: 36rem;
   border: 1px solid var(--bs-border-color-translucent);
   border-left: 4px solid var(--ws-accent);
-  border-radius: .75rem;
+  border-radius: var(--ws-radius-sm);
   padding: .6rem .85rem;
   background: var(--bs-tertiary-bg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
@@ -12085,14 +12148,15 @@ a.ws-chip:hover {
 }
 .ws-composer {
   border: 1px solid var(--bs-border-color);
-  border-radius: 1rem;
+  border-radius: var(--ws-radius);
   background: var(--bs-body-bg);
   padding: .45rem .55rem .35rem;
-  box-shadow: 0 2px 10px -4px rgba(0, 0, 0, .12);
-  transition: border-color .15s ease;
+  box-shadow: var(--ws-shadow);
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
 .ws-composer:focus-within {
   border-color: rgba(var(--ws-accent-rgb), .65);
+  box-shadow: var(--ws-shadow-accent);
 }
 .ws-composer textarea {
   display: block;
@@ -12185,7 +12249,7 @@ a.ws-chip:hover {
   margin: .15rem 0;
   padding: .3rem .3rem .3rem .6rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
   font-size: .8rem;
   line-height: 1.3;
@@ -12223,7 +12287,7 @@ a.ws-chip:hover {
   background: transparent;
   color: var(--bs-secondary-color);
   padding: .2rem .3rem;
-  border-radius: .4rem;
+  border-radius: var(--ws-radius-xs);
   line-height: 1;
 }
 .ws-rich-block-remove:hover {
@@ -12293,7 +12357,7 @@ a.ws-chip:hover {
   position: fixed;
   z-index: 1096;
   border: 1px solid var(--bs-border-color);
-  border-radius: .65rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-body-bg);
   animation: wsCtxIn .1s ease-out;
 }
@@ -12309,7 +12373,7 @@ a.ws-chip:hover {
   width: 2rem;
   height: 2rem;
   border: 0;
-  border-radius: .45rem;
+  border-radius: var(--ws-radius-xs);
   background: transparent;
   color: var(--bs-body-color);
   font-size: 1rem;
@@ -12400,7 +12464,7 @@ a.ws-chip:hover {
   align-items: flex-start;
   gap: .35rem;
   padding: .1rem .25rem;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
 }
 .ws-check-edit-row:focus-within {
   background: var(--bs-tertiary-bg);
@@ -12443,7 +12507,7 @@ a.ws-chip:hover {
   margin: .25rem 0 .35rem;
   overflow: hidden;
   border: 1px solid var(--bs-border-color);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
 }
 .ws-code-head {
@@ -12458,7 +12522,7 @@ a.ws-chip:hover {
 }
 .ws-code-copy {
   border: 0;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
   background: transparent;
   color: inherit;
   padding: .2rem .4rem;
@@ -12554,7 +12618,7 @@ a.ws-chip:hover {
   margin: 0 0 .35rem;
   padding: .3rem .6rem;
   border: 1px dashed rgba(var(--ws-accent-rgb), .45);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--ws-soft);
   color: var(--bs-body-color);
   font-size: .8rem;
@@ -12623,7 +12687,7 @@ a.ws-chip:hover {
   flex-direction: column;
   background: var(--bs-body-bg);
   border: 1px solid var(--bs-border-color);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
   overflow: hidden;
 }
@@ -12664,7 +12728,7 @@ a.ws-chip:hover {
   border: 0;
   background: transparent;
   text-align: left;
-  border-radius: .4rem;
+  border-radius: var(--ws-radius-xs);
   padding: .35rem .5rem;
   color: var(--bs-body-color);
 }
@@ -12702,7 +12766,7 @@ a.ws-chip:hover {
 .ws-preview {
   border: 1px solid rgba(var(--bs-primary-rgb), .4);
   background: rgba(var(--bs-primary-rgb), .06);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   padding: .6rem .75rem;
   margin: 0 0 .5rem;
   font-size: .88rem;
@@ -12738,7 +12802,7 @@ a.ws-chip:hover {
 }
 .ws-ephemeral {
   border: 1px dashed var(--bs-border-color);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   padding: .6rem .75rem;
   margin: .5rem 0;
   font-size: .88rem;
@@ -12768,7 +12832,7 @@ a.ws-chip:hover {
   text-align: center;
   font-size: .75rem;
   font-weight: 700;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
   padding: 0 .3rem;
 }
 .ws-load-ok {
@@ -13030,7 +13094,7 @@ a.ws-chip:hover {
   text-align: left;
   font-size: .75rem;
   line-height: 1.3;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
   padding: .15rem .35rem;
   margin-bottom: .2rem;
   background: rgba(var(--bs-primary-rgb), .12);
@@ -13081,7 +13145,7 @@ a.ws-chip:hover {
   opacity: 0;
   width: 1.4rem;
   height: 1.4rem;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
 }
 .ws-board-cell:hover .ws-board-add,
 .ws-board-add:focus {
@@ -13134,7 +13198,7 @@ a.ws-chip:hover {
 .ws-record-item {
   display: block;
   padding: .45rem .5rem;
-  border-radius: .45rem;
+  border-radius: var(--ws-radius-xs);
   text-decoration: none;
   color: var(--bs-body-color);
   font-size: .85rem;
@@ -13157,7 +13221,7 @@ a.ws-chip:hover {
   position: relative;
   cursor: zoom-in;
   text-decoration: none;
-  border-radius: .75rem;
+  border-radius: var(--ws-radius-sm);
 }
 .ws-image-link .ws-image-name {
   display: block;
@@ -13175,7 +13239,7 @@ a.ws-chip:hover {
 .ws-media {
   max-width: min(28rem, 100%);
   border: 1px solid var(--bs-border-color-translucent);
-  border-radius: .75rem;
+  border-radius: var(--ws-radius-sm);
   overflow: hidden;
   background: var(--bs-tertiary-bg);
 }
@@ -13205,7 +13269,7 @@ a.ws-chip:hover {
   max-width: min(28rem, 100%);
   padding: .5rem .6rem;
   border: 1px solid var(--bs-border-color-translucent);
-  border-radius: .75rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
 }
 .ws-file-card .ws-file-name {
@@ -13223,7 +13287,7 @@ a.ws-chip:hover {
   min-width: 2.4rem;
   text-align: center;
   padding: .45rem .3rem;
-  border-radius: .45rem;
+  border-radius: var(--ws-radius-xs);
   background: rgba(var(--ws-accent-rgb), .14);
   color: var(--ws-accent);
 }
@@ -13251,7 +13315,7 @@ a.ws-chip:hover {
   aspect-ratio: 4 / 3;
   padding: 0;
   border: 1px solid var(--bs-border-color-translucent);
-  border-radius: .75rem;
+  border-radius: var(--ws-radius-sm);
   overflow: hidden;
   background: var(--bs-tertiary-bg);
   cursor: zoom-in;
@@ -13301,7 +13365,7 @@ a.ws-chip:hover {
 }
 .ws-file-list {
   border: 1px solid var(--bs-border-color-translucent);
-  border-radius: .75rem;
+  border-radius: var(--ws-radius-sm);
   overflow: hidden;
 }
 .ws-file-row {
@@ -13467,6 +13531,7 @@ a.ws-chip:hover {
   z-index: 1095;
   max-width: 19rem;
   min-width: 12rem;
+  border-radius: var(--ws-radius-sm);
   animation: wsCtxIn .1s ease-out;
 }
 @keyframes wsCtxIn {
@@ -13479,7 +13544,7 @@ a.ws-chip:hover {
   width: 100%;
   padding: .32rem .6rem;
   font-size: .86rem;
-  border-radius: .45rem;
+  border-radius: var(--ws-radius-xs);
 }
 .ws-ctx .ws-ctx-item:hover,
 .ws-ctx .ws-ctx-item:focus {
@@ -13598,7 +13663,7 @@ a.ws-chip:hover {
   margin-bottom: .18rem;
   padding: .12rem .35rem;
   border: 0;
-  border-radius: .4rem;
+  border-radius: var(--ws-radius-xs);
   font-size: .72rem;
   line-height: 1.3;
   text-align: left;
@@ -13685,7 +13750,7 @@ a.ws-chip:hover {
 /* The dates and the repeat of a task, one box in the task drawer. */
 .ws-when {
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   padding: .6rem .75rem .55rem;
   background: var(--bs-tertiary-bg);
 }
@@ -13709,7 +13774,7 @@ a.ws-chip:hover {
 .ws-when-summary {
   margin-top: .55rem;
   padding: .45rem .6rem;
-  border-radius: .4rem;
+  border-radius: var(--ws-radius-xs);
   background: rgba(var(--ws-accent-rgb), .08);
   font-size: .8rem;
 }
@@ -13793,8 +13858,8 @@ a.ws-chip:hover {
   font-size: .8rem;
 }
 .ws-avatars-sm img {
-  width: 1rem;
-  height: 1rem;
+  width: var(--ws-avatar-xs);
+  height: var(--ws-avatar-xs);
   border-width: 1px;
   margin-left: -.3rem;
 }
@@ -13859,7 +13924,7 @@ a.ws-chip:hover {
   display: flex;
   flex-direction: column;
   padding: .45rem .5rem;
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
 }
 .ws-figure b {
@@ -13884,7 +13949,7 @@ a.ws-chip:hover {
   padding: .45rem .5rem;
   margin-bottom: .4rem;
   border: 1px solid var(--bs-border-color-translucent);
-  border-radius: .7rem;
+  border-radius: var(--ws-radius-sm);
   background: transparent;
   text-align: left;
   color: var(--bs-body-color);
@@ -13930,7 +13995,7 @@ a.ws-chip:hover {
   width: 100%;
   padding: .4rem .35rem;
   border: 0;
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: transparent;
   text-align: left;
   color: var(--bs-body-color);
@@ -14307,7 +14372,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-draft {
   padding: .5rem .7rem;
   border: 1px dashed rgba(var(--ws-accent-rgb), .55);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: rgba(var(--ws-accent-rgb), .05);
   font-size: .84rem;
 }
@@ -14397,7 +14462,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-change-action {
   flex: none;
   padding: .05rem .45rem;
-  border-radius: 1rem;
+  border-radius: var(--ws-radius);
   font-size: .7rem;
   font-weight: 600;
   white-space: nowrap;
@@ -14454,7 +14519,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 }
 .ws-claude-shot img {
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
 }
 .ws-claude-shot svg {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -14617,7 +14682,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   font-size: .72rem;
   font-weight: 600;
   padding: 0 .4rem;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
   background: var(--ws-soft);
   color: var(--ws-accent);
 }
@@ -14630,7 +14695,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   display: block;
   max-width: 100%;
   max-height: 8rem;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
 }
 .ws-tl-foot {
   display: flex;
@@ -14724,7 +14789,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   width: 2.25rem;
   height: 2.25rem;
   border: 0;
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: transparent;
   color: var(--bs-secondary-color);
   font-size: 1.05rem;
@@ -14757,7 +14822,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   justify-content: center;
   width: 1.6rem;
   height: 1.6rem;
-  border-radius: .45rem;
+  border-radius: var(--ws-radius-xs);
   background: rgba(var(--ws-accent-rgb), .14);
   color: var(--ws-accent);
   font-size: .8rem;
@@ -14851,7 +14916,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   gap: .6rem;
   width: 100%;
   border: 0;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: transparent;
   color: var(--bs-body-color);
   text-align: left;
@@ -14933,7 +14998,7 @@ button.ws-home-row:hover,
 .ws-home-tile {
   height: 100%;
   padding: .6rem .75rem;
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--ws-soft);
 }
 .ws-home-tile-title {
@@ -15008,7 +15073,7 @@ button.ws-home-row:hover,
   max-width: 100%;
   margin: .25rem 0;
   border: 1px solid var(--bs-border-color);
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   overflow: hidden;
 }
 .ws-calc-block-head {
@@ -15167,7 +15232,7 @@ button.ws-home-row:hover,
   min-height: 8rem;
   padding: .75rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
 }
 @media (max-width: 767.98px) {
   .ws-nb-versions-grid {
@@ -15201,7 +15266,7 @@ button.ws-home-row:hover,
     align-items: flex-start;
     padding: .75rem;
     border: 1px dashed var(--bs-border-color);
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
 }
 .ws-nb-intro > .bi {
     font-size: 1.4rem;
@@ -15225,7 +15290,7 @@ button.ws-home-row:hover,
 }
 .ws-nb-count {
     padding: 0 .4rem;
-    border-radius: 1rem;
+    border-radius: var(--ws-radius);
     background: var(--bs-tertiary-bg);
     font-size: .7rem;
 }
@@ -15237,7 +15302,7 @@ button.ws-home-row:hover,
 .ws-nb-item {
     padding: .5rem .6rem;
     border: 1px solid transparent;
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
     cursor: pointer;
 }
 .ws-nb-item:hover,
@@ -15344,8 +15409,8 @@ button.ws-home-row:hover,
 }
 .ws-nb-face img,
 .ws-nb-face .ws-avatar {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: var(--ws-avatar-sm);
+    height: var(--ws-avatar-sm);
     border-radius: 50%;
 }
 .ws-nb-face-edit::after {
@@ -15491,8 +15556,8 @@ button.ws-home-row:hover,
 }
 .ws-nb-share-row img,
 .ws-nb-share-row .ws-avatar {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: var(--ws-avatar-sm);
+    height: var(--ws-avatar-sm);
     border-radius: 50%;
 }
 @media (max-width: 991.98px) {
@@ -15507,7 +15572,7 @@ button.ws-home-row:hover,
     padding: .6rem .75rem;
     border: 1px solid var(--bs-border-color);
     border-left: 3px solid var(--bs-primary);
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-tertiary-bg);
 }
 .ws-nb-msg-card-head {
@@ -15592,7 +15657,7 @@ button.ws-home-row:hover,
     min-width: 3rem;
     padding: .25rem .5rem;
     border: 1px solid var(--bs-border-color);
-    border-radius: .375rem;
+    border-radius: var(--ws-radius-xs);
     background: var(--bs-tertiary-bg);
     font-family: var(--bs-font-monospace);
     font-size: .8125rem;
@@ -15678,7 +15743,7 @@ button.ws-home-row:hover,
     max-width: 34rem;
     margin-top: .35rem;
     padding: .3rem .5rem;
-    border-radius: .4rem;
+    border-radius: var(--ws-radius-xs);
     background: var(--bs-warning-bg-subtle);
     font-size: .8125rem;
     color: var(--bs-warning-text-emphasis);
@@ -15848,7 +15913,7 @@ button.ws-home-row:hover,
     flex-direction: column;
     min-width: 0;
     border: 2px solid transparent;
-    border-radius: var(--ws-radius, .9rem);
+    border-radius: var(--ws-radius);
     background: var(--bs-tertiary-bg);
 }
 .ws-cb-col.ws-cb-drop {
@@ -15907,7 +15972,7 @@ button.ws-home-row:hover,
     position: relative;
     padding: .5rem .6rem .5rem .75rem;
     border: 1px solid var(--bs-border-color-translucent);
-    border-radius: .6rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-body-bg);
     box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
     cursor: pointer;
@@ -16009,7 +16074,7 @@ button.ws-home-row:hover,
     width: 2.6rem;
     height: .3rem;
     overflow: hidden;
-    border-radius: .3rem;
+    border-radius: var(--ws-radius-xs);
     background: var(--bs-secondary-bg);
 }
 .ws-cb-progress-bar > span {
@@ -16022,7 +16087,7 @@ button.ws-home-row:hover,
     width: 100%;
     max-height: 7rem;
     margin-bottom: .35rem;
-    border-radius: .4rem;
+    border-radius: var(--ws-radius-xs);
     object-fit: cover;
 }
 .ws-cb-decision .ws-cb-kind-icon {
@@ -16043,7 +16108,6 @@ button.ws-home-row:hover,
         display: flex;
     }
 }
-/* ── /Workspace ── */
 /* Workspace: the site's events (includes/workspace/watch.php, assets/js/workspace_events.js) */
 .ws-sa-when-event {
     max-width: 24rem;
@@ -16056,7 +16120,7 @@ button.ws-home-row:hover,
     margin-top: .4rem;
     padding: .45rem .65rem;
     border: 1px solid var(--bs-border-color);
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-body-bg);
     font-size: .8125rem;
 }
@@ -16106,7 +16170,7 @@ a.ws-form-card-head:hover span {
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-secondary-bg);
     color: var(--bs-body-color);
 }
@@ -16124,7 +16188,7 @@ a.ws-form-card-head:hover span {
     gap: .6rem;
     padding: .5rem .6rem;
     border: 1px solid var(--bs-border-color);
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-body-bg);
     color: var(--bs-body-color);
     text-align: start;
@@ -16153,7 +16217,7 @@ a.ws-form-card-head:hover span {
     margin-bottom: .75rem;
     padding: .6rem;
     border: 1px solid var(--bs-border-color);
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-body-bg);
 }
 .ws-tpl-item-head {
@@ -16318,7 +16382,7 @@ a.ws-form-card-head:hover span {
     padding: .5rem .65rem;
     border: 1px solid var(--bs-border-color);
     border-left: 3px solid rgb(var(--ws-accent-rgb));
-    border-radius: .6rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-body-bg);
     font-size: .85rem;
 }
@@ -16335,7 +16399,7 @@ a.ws-form-card-head:hover span {
 .ws-task-delegate-answer {
     margin-top: .3rem;
     padding: .45rem .6rem;
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-tertiary-bg);
 }
 .ws-task-delegate-form {
@@ -16357,7 +16421,7 @@ a.ws-form-card-head:hover span {
 .ws-task-delegate-waiting {
     margin-bottom: .5rem;
     padding: .35rem .6rem;
-    border-radius: .5rem;
+    border-radius: var(--ws-radius-sm);
     background: var(--bs-warning-bg-subtle);
     color: var(--bs-warning-text-emphasis);
     font-size: .8rem;
@@ -16376,7 +16440,7 @@ a.ws-form-card-head:hover span {
   padding: .55rem .65rem .45rem;
   border: 1px solid var(--bs-border-color);
   border-left: 3px solid rgb(var(--ws-accent-rgb));
-  border-radius: .6rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-body-bg);
 }
 .ws-approval-approved {
@@ -16402,7 +16466,7 @@ a.ws-form-card-head:hover span {
 }
 .ws-approval-tag {
   padding: 0 .4rem;
-  border-radius: .35rem;
+  border-radius: var(--ws-radius-xs);
   font-size: .68rem;
   font-weight: 600;
   background: var(--bs-secondary-bg);
@@ -16424,7 +16488,7 @@ a.ws-form-card-head:hover span {
   margin-bottom: .45rem;
   padding: .2rem .55rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .45rem;
+  border-radius: var(--ws-radius-xs);
   background: var(--bs-tertiary-bg);
   font-size: .82rem;
   color: var(--bs-body-color);
@@ -16504,7 +16568,7 @@ a.ws-form-card-head:hover span {
   margin-top: .5rem;
   padding: .5rem .6rem;
   border: 1px solid var(--bs-border-color-translucent);
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
 }
 .ws-task-approvals-item-head {
   display: flex;
@@ -16530,7 +16594,7 @@ a.ws-form-card-head:hover span {
 .ws-task-approvals-form {
   margin-top: .5rem;
   padding: .6rem;
-  border-radius: .5rem;
+  border-radius: var(--ws-radius-sm);
   background: var(--bs-tertiary-bg);
 }
 /* ── Workspace: read receipts (assets/js/workspace_acks.js) ── */
@@ -16545,7 +16609,7 @@ a.ws-form-card-head:hover span {
 .ws-ack-count {
   padding: 0 .45rem;
   border: 0;
-  border-radius: 1rem;
+  border-radius: var(--ws-radius);
   background: var(--bs-secondary-bg);
   font-size: .75rem;
   font-weight: 600;
@@ -16572,3 +16636,4 @@ button.ws-ack-count:hover {
   padding: .3rem 0;
   border-bottom: 1px solid var(--bs-border-color-translucent);
 }
+/* ── /Workspace ── */
