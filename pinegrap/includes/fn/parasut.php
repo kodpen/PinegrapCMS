@@ -1055,6 +1055,49 @@ function parasut_company_id_for_save($posted, $stored)
 }
 
 /**
+ * Whether an order's documents belong to the ERP rather than to the order
+ * screen's own Paraşüt buttons (Create Invoice, E-Shipment). With the ERP on
+ * and an e-document provider switched on, the ERP issues the order's invoice
+ * and the provider takes it to GİB; the older buttons send the same sale to
+ * Paraşüt as a second invoice, outside the ERP's books.
+ *
+ * Without the ERP, or with the ERP but no provider (its invoices stay on
+ * paper), the buttons are still the store's way to Paraşüt.
+ *
+ * @return bool
+ */
+function parasut_order_documents_in_erp()
+{
+    static $in_erp = null;
+
+    if ($in_erp === null) {
+        // erp_edoc_providers (4.61) says which provider is on; before it the
+        // ERP's own Paraşüt switch did.
+        $table = function_exists('waf_table_has_column') && waf_table_has_column('erp_edoc_providers', 'is_active');
+
+        $in_erp = _parasut_order_documents_in_erp(
+            defined('ERP_ENABLED') && ERP_ENABLED,
+            $table ? ((int) db_value("SELECT COUNT(*) FROM erp_edoc_providers WHERE is_active = 1") > 0)
+                : (defined('ERP_PARASUT_ENABLED') && ((int) ERP_PARASUT_ENABLED === 1))
+        );
+    }
+
+    return $in_erp;
+}
+
+/**
+ * The rule behind parasut_order_documents_in_erp().
+ *
+ * @param bool $erp_enabled  The ERP module is on
+ * @param bool $provider_on  An e-document provider is switched on for it
+ * @return bool
+ */
+function _parasut_order_documents_in_erp($erp_enabled, $provider_on)
+{
+    return (bool) $erp_enabled && (bool) $provider_on;
+}
+
+/**
  * Find or create a Parasut contact for the given order row.
  * Stores the Parasut contact ID back to orders.parasut_contact_id.
  *

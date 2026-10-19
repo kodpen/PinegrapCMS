@@ -133,3 +133,13 @@ function test_parasut_company_id_for_save()
 	pg_assert_same('115', parasut_company_id_for_save(' 115 ', '830533'));
 	pg_assert_same('', parasut_company_id_for_save('', ''));
 }
+
+// The order screen's own Paraşüt buttons give way only when the ERP is on
+// and an e-document provider takes its invoices to GİB.
+function test_parasut_order_documents_in_erp()
+{
+	pg_assert_true(_parasut_order_documents_in_erp(true, true));
+	pg_assert_false(_parasut_order_documents_in_erp(true, false));
+	pg_assert_false(_parasut_order_documents_in_erp(false, true));
+	pg_assert_false(_parasut_order_documents_in_erp(false, false));
+}

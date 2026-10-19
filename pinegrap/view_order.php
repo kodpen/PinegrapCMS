@@ -42,6 +42,16 @@ if (isset($_POST['parasut_action'])) {
 
         $redirect = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id;
 
+        // With the ERP and an e-document provider on, the order's invoice and
+        // delivery note are the ERP's; sending the order from here as well
+        // would put the same sale into Paraşüt twice. The buttons are not
+        // drawn then, so a post that gets here comes from a page opened
+        // before the provider was switched on.
+        if (parasut_order_documents_in_erp()) {
+            $liveform->mark_error('_error', lang('The ERP issues this order\'s invoice and delivery note, and its e-document provider takes them to GİB. Use the Invoice and delivery documents card of the order.'));
+            go($redirect);
+        }
+
         // Validate that a contact is linked and has a tax number before invoicing.
         $parasut_contact_id = db_value("SELECT contact_id FROM orders WHERE id = '$order_id'");
         $parasut_tax_number = $parasut_contact_id
@@ -2412,6 +2422,15 @@ if (!$_POST) {
                                         <span class="col text-end">' . $shipment_row_badge . '</span>
                                     </div>';
 
+        // With the ERP and an e-document provider on, the order's documents
+        // are the ERP's (parasut_order_documents_in_erp()): no buttons, and
+        // the status rows only for an order already sent from here.
+        $parasut_in_erp = parasut_order_documents_in_erp();
+
+        if ($parasut_in_erp && ($parasut_invoice_id === '') && ($parasut_shipment_id === '')) {
+            $output_parasut_status_rows = '';
+        }
+
         // Inline mini-forms that post back to this page with a parasut_action field.
         $output_parasut_forms = '
         <form method="post" id="parasut-invoice-form" class="d-none">
@@ -2466,6 +2485,11 @@ if (!$_POST) {
             </button>
             ' . $output_parasut_shipment_button . '
         </div>';
+
+        if ($parasut_in_erp) {
+            $output_parasut_buttons = '';
+            $output_parasut_forms = '';
+        }
     }
 
     // The ERP's own invoice for this order, for a user the module lets in: the
