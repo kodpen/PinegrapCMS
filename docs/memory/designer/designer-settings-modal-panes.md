@@ -4,7 +4,7 @@ description: Designer settings modal panes per scope, one row per setting with a
 ---
 
 ## Which panes are there?
-- Shared by all pages (the style): `tab-style` General (name, pages, framework, template, social networking, collection), `tab-theme` Theme (look, palette, theme file), `tab-head` Head & meta (head code `style_head`, the design's meta tags).
+- Since #582. Shared by all pages (the style): `tab-style` General (name, pages, framework, template, social networking, collection), `tab-theme` Theme (look, palette, theme file), `tab-head` Head & meta (head code `style_head`, the design's meta tags).
 - Only this page: `tab-page` Page (name and address, folder and who may open it, draft, home, site search, keywords), `tab-seo` Search Engines (title, description, search result preview, site map, noindex, nofollow), `tab-page-meta` Meta Tags (only where the columns exist).
 - Each pane and pill carries `data-sd-settings-scope="design|page"`. Code about "the page settings" takes every `page` pane, not `#tab-page` alone (`_collabLockPageSettings()` makes each inert with its own note). Open a pane with `_sdOpenSettingsPane(pane, rowId)`; the open page's name shows in every page pane and under the rail caption (`.sd-settings-page-name`, `_sdSettingsPageLabel()`).
 
