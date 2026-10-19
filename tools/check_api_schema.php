@@ -74,6 +74,7 @@ $presenters = array(
 	'api_store_tax_zone_schema' => 'api_store_tax_zone_present',
 	'api_store_country_schema' => 'api_store_country_present',
 	'api_store_currency_schema' => 'api_store_currency_present',
+	'api_store_feed_schema'    => 'api_store_feed_present',
 	'api_gift_card_schema'     => 'api_gift_card_present',
 	'api_gift_card_redemption_schema' => 'api_gift_card_redemption_present',
 	'api_commission_schema'    => 'api_commission_present',

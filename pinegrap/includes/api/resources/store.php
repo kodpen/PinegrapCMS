@@ -549,3 +549,95 @@ function api_store_currencies_list($params) {
 	api_ok_list($out, max(1, count($out)), null);
 
 }
+
+// Product feeds (includes/fn/product_feeds.php): per format whether it is
+// on, the address a platform reads it from, and how its last build went - for
+// an integration that hands the address to a platform (Merchant Center's
+// scheduled fetch) or watches that the feeds keep being built. The address
+// carries the feed's token; a key that may read the products may read the
+// feed of them too, so products:read is the scope.
+//
+// state is the System Status rule (pg_product_feed_health()): off, ok, stale
+// (never built, or not for two days) or failing (the last build failed and
+// the file built before it is still served).
+function api_store_feed_present($format, $entry, $state) {
+
+	$formats = pg_product_feed_formats();
+	$token = ($entry['token_hash'] !== '') ? pg_product_feed_token($entry) : '';
+
+	return array(
+		'format'       => (string)$format,
+		'enabled'      => ((int)$entry['enabled'] === 1),
+		// null before the feed has an address, or where the site's key can
+		// no longer open the sealed token (a new address is made on the card).
+		'url'          => ($token !== '') ? pg_product_feed_url($token) : null,
+		'content_type' => (string)$formats[$format]['content_type'],
+		'state'        => (string)$state,
+		'built_at'     => api_time($entry['built_at']),
+		'products'     => (int)$entry['count'],
+		'bytes'        => (int)$entry['bytes'],
+		'error'        => ($entry['error'] !== '') ? (string)$entry['error'] : null,
+		'skipped'      => api_store_feed_skipped($entry['skipped'])
+	);
+
+}
+
+// Why products were left out of the last build, reason => count as a list.
+// Reasons: no_address, donation, recurring, no_price, not_in_catalog,
+// excluded_group (the store's rules), no_title, no_brand, no_image (what the
+// format needs).
+function api_store_feed_skipped($skipped) {
+
+	$out = array();
+
+	foreach ((array)$skipped as $reason => $count) {
+
+		$out[] = array('reason' => (string)$reason, 'count' => (int)$count);
+
+	}
+
+	return $out;
+
+}
+
+function api_store_feed_schema() {
+
+	return array(
+		'format'       => 'string',
+		'enabled'      => 'boolean',
+		'url'          => 'string?',
+		'content_type' => 'string',
+		'state'        => 'string',
+		'built_at'     => 'string?',
+		'products'     => 'integer',
+		'bytes'        => 'integer',
+		'error'        => 'string?',
+		'skipped'      => array(array('reason' => 'string', 'count' => 'integer'))
+	);
+
+}
+
+function api_store_feeds_list($params) {
+
+	$settings = pg_product_feed_settings();
+	$health = pg_product_feed_health($settings, time());
+	$states = array();
+
+	foreach ($health['rows'] as $row) {
+
+		$states[$row['format']] = ($row['state'] === 'fail') ? 'failing' : (($row['state'] === 'warn') ? 'stale' : 'ok');
+
+	}
+
+	$out = array();
+
+	foreach ($settings['formats'] as $format => $entry) {
+
+		$out[] = api_store_feed_present($format, $entry, isset($states[$format]) ? $states[$format] : 'off');
+
+	}
+
+	api_ok_list($out, max(1, count($out)), null);
+
+}
+
