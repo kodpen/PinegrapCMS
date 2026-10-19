@@ -43,6 +43,82 @@
         return (value === 'purchase' || value === 'given') ? 'supplier' : 'customer';
     }
 
+    // Query beside the tax number: GİB's answer through the e-document
+    // provider (erp_taxpayer_lookup.php). The registered name goes into an
+    // empty name field; a different name already typed is only replaced on
+    // request. A ten-digit number whose name came from GİB is a company.
+    var lookup = form.querySelector('[data-erp-quick-lookup]');
+    var answerLine = form.querySelector('[data-erp-quick-answer]');
+
+    function clearAnswer() {
+        if (answerLine) {
+            answerLine.textContent = '';
+            answerLine.classList.remove('text-danger');
+        }
+    }
+
+    function takeName(name, number) {
+        form.elements.title.value = name;
+        form.elements.title.classList.remove('is-invalid');
+        if (number.length === 10) {
+            form.querySelector('input[name="is_person"][value="0"]').checked = true;
+        }
+        answerLine.appendChild(document.createTextNode(' ' + modal.getAttribute('data-text-filled')));
+    }
+
+    if (lookup && answerLine) {
+        lookup.addEventListener('click', function () {
+            var number = String(form.elements.tax_number.value || '').replace(/\D/g, '');
+            var body = new FormData();
+            body.append('token', modal.getAttribute('data-token') || '');
+            body.append('tax_number', form.elements.tax_number.value || '');
+            body.append('account_id', '0');
+            lookup.disabled = true;
+            clearAnswer();
+            answerLine.textContent = modal.getAttribute('data-text-busy') + '…';
+
+            fetch(modal.getAttribute('data-lookup-url'), {
+                method: 'POST',
+                body: body,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .catch(function () {
+                    return null;
+                })
+                .then(function (data) {
+                    lookup.disabled = false;
+                    if (!data || !data.ok) {
+                        answerLine.textContent = (data && data.message) ? data.message : modal.getAttribute('data-text-lookup-failed');
+                        answerLine.classList.add('text-danger');
+                        return;
+                    }
+                    answerLine.textContent = data.message;
+                    var name = String(data.title || '').trim();
+                    var typed = String(form.elements.title.value || '').trim();
+                    if (!name || typed === name) {
+                        return;
+                    }
+                    if (typed === '') {
+                        takeName(name, number);
+                        return;
+                    }
+                    var use = document.createElement('button');
+                    use.type = 'button';
+                    use.className = 'btn btn-sm btn-outline-primary ms-2 my-1 no-submit';
+                    use.textContent = modal.getAttribute('data-text-use');
+                    use.addEventListener('click', function () {
+                        use.remove();
+                        takeName(name, number);
+                    });
+                    answerLine.appendChild(use);
+                });
+        });
+    }
+
     function clearErrors() {
         form.querySelectorAll('.is-invalid').forEach(function (node) {
             node.classList.remove('is-invalid');
@@ -67,6 +143,7 @@
         target = select;
         form.reset();
         clearErrors();
+        clearAnswer();
         var kind = kindFor(trigger);
         form.elements.kind.value = kind;
         // A supplier is usually a firm; a person is the usual buyer.

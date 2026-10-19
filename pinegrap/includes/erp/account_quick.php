@@ -146,11 +146,22 @@ function erp_account_quick_modal()
     $country = erp_account_country('');
     $is_tr = ($country === 'TR');
 
+    // Query beside the tax number, as on the account form: GİB's answer
+    // through the e-document provider, and the registered name for the name
+    // field (erp_taxpayer_lookup.php, nothing kept for a new account).
+    $lookup = $is_tr && function_exists('erp_edoc_installed') && erp_edoc_installed() && erp_edoc_supports('check_taxpayer');
+
     return '
     <div class="modal fade" id="erp_account_quick_modal" tabindex="-1" aria-labelledby="erp_account_quick_title" aria-hidden="true"
          data-url="erp_account_quick.php"
          data-token="' . h((string) ($_SESSION['software']['token'] ?? '')) . '"
-         data-text-failed="' . h(lang('The account could not be opened. Check the connection and try again.')) . '">
+         data-text-failed="' . h(lang('The account could not be opened. Check the connection and try again.')) . '"' . ($lookup
+            ? ' data-lookup-url="erp_taxpayer_lookup.php"'
+                . ' data-text-busy="' . h(lang('Querying')) . '"'
+                . ' data-text-lookup-failed="' . h(lang('The answer could not be read. Try again in a moment.')) . '"'
+                . ' data-text-use="' . h(lang('Use the registered name')) . '"'
+                . ' data-text-filled="' . h(lang('The name field now holds the registered name.')) . '"'
+            : '') . '>
         <div class="modal-dialog modal-dialog-centered">
             <form class="modal-content disable_shortcut" id="erp_account_quick_form" data-pg-no-curtain novalidate>
                 <input type="hidden" name="kind" value="customer" />
@@ -185,8 +196,11 @@ function erp_account_quick_modal()
                     </div>
                     <div class="mt-3">
                         <label class="form-label" for="erp_quick_acc_tax">' . h(erp_tax_id_label($country)) . ' <span class="text-body-secondary fw-normal">(' . lang('optional') . ')</span></label>
+                        ' . ($lookup ? '<div class="input-group has-validation">' : '') . '
                         <input type="text" class="form-control" id="erp_quick_acc_tax" name="tax_number"' . ($is_tr ? ' inputmode="numeric" maxlength="11"' : ' maxlength="' . (int) erp_tax_number_width() . '"') . ' autocomplete="off">
+                        ' . ($lookup ? '<button type="button" class="btn btn-outline-secondary no-submit" data-erp-quick-lookup title="' . h(lang('Asks GİB whether the number is an e-Invoice user and under which name it is registered.')) . '"><i class="bi bi-search me-1" aria-hidden="true"></i>' . lang('Query') . '</button>' : '') . '
                         <div class="invalid-feedback" data-erp-quick-error="tax_number"></div>
+                        ' . ($lookup ? '</div><div class="form-text text-break" data-erp-quick-answer aria-live="polite"></div>' : '') . '
                     </div>
                 </div>
                 <div class="modal-footer">
