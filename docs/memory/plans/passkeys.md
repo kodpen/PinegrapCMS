@@ -1,6 +1,6 @@
 ---
 name: passkeys
-description: Plan (approved 2026-10-19, not started): WebAuthn passkeys for panel users and members as a second factor or passwordless sign-in beside TOTP; registration in Account Security, admin reset
+description: Plan (approved 2026-10-19, in progress: step 1 verifier library): WebAuthn passkeys for panel users and members as second factor or passwordless sign-in beside TOTP; Account Security, admin reset
 ---
 
 ## Why?
