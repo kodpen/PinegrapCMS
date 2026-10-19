@@ -473,7 +473,7 @@ function pg_parasut_credentials_for_save()
             parasut_client_id = '" . escape(trim(post_value('parasut_client_id'))) . "',
             parasut_credentials_enc = '" . escape(pg_parasut_credentials_for_save()) . "',
             parasut_username = '" . escape(trim(post_value('parasut_username'))) . "',
-            parasut_company_id = '" . escape(trim(post_value('parasut_company_id'))) . "',
+            parasut_company_id = '" . escape(function_exists('parasut_company_id_for_save') ? parasut_company_id_for_save(post_value('parasut_company_id'), defined('PARASUT_COMPANY_ID') ? PARASUT_COMPANY_ID : '') : trim((string) post_value('parasut_company_id'))) . "',
             parasut_default_product_id = '" . escape(trim(post_value('parasut_default_product_id'))) . "',
             parasut_default_warehouse_id = '" . escape(trim(post_value('parasut_default_warehouse_id'))) . "',
             erp_enabled = '" . escape(post_value('erp_enabled')) . "',
@@ -546,6 +546,36 @@ function pg_parasut_credentials_for_save()
     // The carriers' API applications are kept with the connected accounts'
     // applications, the secrets sealed (includes/fn/carrier_api.php).
     pg_carrier_api_settings_save($_POST, USER_ID, $liveform);
+
+    // A Paraşüt authorization code is exchanged by the card's Connect button;
+    // one pasted and saved with the page is exchanged here as well, after the
+    // boxes above are written, instead of being dropped without a word. A
+    // refused code is a warning: the rest of the page has been saved. Notices
+    // are printed as HTML, and the names and errors come from Paraşüt.
+    $parasut_code = is_string(post_value('parasut_auth_code')) ? trim(post_value('parasut_auth_code')) : '';
+
+    if (($parasut_code !== '') && function_exists('parasut_connect_with_code')) {
+        $parasut_text = function ($key) {
+            return is_string(post_value($key)) ? trim(post_value($key)) : '';
+        };
+
+        $parasut_connected = parasut_connect_with_code($parasut_code, $parasut_text('parasut_client_id'), $parasut_text('parasut_client_secret'), $parasut_text('parasut_company_id'));
+
+        if (!empty($parasut_connected['success'])) {
+            $liveform->add_notice(h(lang(array(
+                'string' => 'Connected to Paraşüt as {var:1}; company {var:2}.',
+                'vars' => array(
+                    ((string) $parasut_connected['email'] !== '') ? (string) $parasut_connected['email'] : lang('the authorized user'),
+                    ((string) $parasut_connected['company_name'] !== '') ? $parasut_connected['company_name'] . ' (' . $parasut_connected['company_id'] . ')' : (string) $parasut_connected['company_id'],
+                ),
+            ))));
+
+            log_activity(lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => (string) $parasut_connected['company_id'])),
+                (string) ($_SESSION['sessionusername'] ?? ''));
+        } else {
+            $liveform->add_warning(h((string) $parasut_connected['error']));
+        }
+    }
 
 
     // if there was a next order number field, update next order number

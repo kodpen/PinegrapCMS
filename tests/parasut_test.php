@@ -103,3 +103,33 @@ function test_parasut_throttle_wait_keeps_ten_in_ten_seconds()
 	pg_assert_same(0.0, parasut_throttle_wait(array(80.0, 85.0, 89.0), 100.0, 3, 10.0));
 	pg_assert_same(3.5, parasut_throttle_wait(array(93.5, 95.0, 99.0), 100.0, 3, 10.0));
 }
+
+// The card's status line: not connected, or how, as whom, which company and
+// since when.
+function test_parasut_connection_line()
+{
+	$none = parasut_connection_line(array('connected' => false));
+	pg_assert_same('secondary', $none['tone']);
+
+	$line = parasut_connection_line(array(
+		'connected' => true, 'grant' => 'code', 'email' => 'a@example.com',
+		'company_name' => 'Deneme Ltd.', 'connected_at' => mktime(17, 39, 0, 10, 19, 2026),
+	));
+	pg_assert_same('success', $line['tone']);
+	pg_assert_contains('a@example.com · Deneme Ltd. · 19.10.2026 17:39', $line['text']);
+
+	$bare = parasut_connection_line(array('connected' => true, 'grant' => 'password', 'email' => '', 'company_name' => '', 'connected_at' => 0));
+	pg_assert_same(false, strpos($bare['text'], ' · '));
+}
+
+// An empty company box keeps the saved number (the page drawn before Connect
+// holds an empty box); another number replaces it.
+function test_parasut_company_id_for_save()
+{
+	pg_assert_same('830533', parasut_company_id_for_save('', '830533'));
+	pg_assert_same('830533', parasut_company_id_for_save('  ', '830533'));
+	pg_assert_same('830533', parasut_company_id_for_save(null, '830533'));
+	pg_assert_same('830533', parasut_company_id_for_save(array('x'), '830533'));
+	pg_assert_same('115', parasut_company_id_for_save(' 115 ', '830533'));
+	pg_assert_same('', parasut_company_id_for_save('', ''));
+}
