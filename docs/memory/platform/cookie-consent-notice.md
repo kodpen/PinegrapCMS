@@ -19,8 +19,10 @@ description: Cookie notice: Settings, Reject all and Accept all drawn alike, not
 ## What changed for keyboard users?
 - Settings moves focus to the first switch: the pressed button hides with its view, and focus used to fall back to the page, so Escape no longer reached the notice and Tab started over from the top.
 
+## Where does its wording come from?
+- The translation system, the buttons included: the `lang()` keys of `pg_consent_ui_keys()`, which a language without a language file translates in Translations › "Cookie window". The button texts get no settings of their own (decided 2026-10-19).
+
 ## What is not built?
-- Settings for the button texts (needs `config` columns; ask first); texts come from `lang()` and, in languages without a language file, from the "Cookie window" group of Translations.
 - A consent log of answers: `privacy-data-pack-audit-log.md`.
 
 ## Where are the tests?

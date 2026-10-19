@@ -1,6 +1,6 @@
 ---
 name: accessibility-and-consent-tools
-description: Plan (approved 2026-10-19; consent notice done, PR #619): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement; consent button texts left
+description: Plan (approved 2026-10-19; consent notice done, PR #619): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement
 ---
 
 ## Why?
@@ -10,14 +10,14 @@ description: Plan (approved 2026-10-19; consent notice done, PR #619): designer 
 - Designer: contrast rule (text vs resolved background, 4.5:1 / 3:1 large text) added to `_validationRules`, using the palette builder's contrast function moved into a shared JS helper; target-size (24×24) and "redundant entry" hints as warnings.
 - Site report: a nightly job `seo_a11y_job.php` in the dispatcher (heavy lane) walks published pages like `seo_structure.php` and stores findings per page in the existing SEO issue tables with `category='a11y'` (missing alt, heading order, landmarks, labels, contrast, link text, language attribute, form error association, target size). Shown on the SEO screen as an "Accessibility" tab and in `GET /seo/issues?category=a11y`.
 - Accessibility statement: a designer page template (block "Accessibility statement") seeded with the required sections (scope, standard, known issues, contact, date); the checklist report can be exported as PDF for the Ministry's monitoring forms.
-- Consent notice (built, docs/memory/platform/cookie-consent-notice.md): Settings / Reject all / Accept all alike on the first view, per-purpose switches with nothing pre-ticked, the cookie list per category, Consent Mode v2 default at the top of `<head>` and an update before held scripts start; GA stays held until consent. Consent events feed `consent_log` (`privacy-data-pack-audit-log.md`).
+- Consent notice (built, docs/memory/platform/cookie-consent-notice.md): Settings / Reject all / Accept all alike on the first view, per-purpose switches with nothing pre-ticked, the cookie list per category, Consent Mode v2 default at the top of `<head>` and an update before held scripts start; GA stays held until consent. Consent events feed `consent_log` (`privacy-data-pack-audit-log.md`). Its wording, the buttons included, is the translation system's (`pg_consent_ui_keys()`); no settings of its own.
 - Legacy classic pages: the nightly report covers them read-only; nothing in their markup is changed automatically.
 
 ## What remains?
 1. Contrast helper + designer rules + tests on the ratio function (S–M).
 2. Nightly a11y job, storage, SEO screen tab, API filter (M).
 3. Statement block + PDF export (S).
-4. Consent notice: done (PR #619). Left: settings for the button texts (needs `config` columns; ask the owner first, or drop it, since the texts are translatable).
+4. Consent notice: done (PR #619).
 5. Memory: `docs/memory/platform/accessibility-report.md` when shipped; the plan's one `[NEW]` changelog line goes in with the report.
 
 ## Open questions?
