@@ -2240,6 +2240,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $maintenance_until_value = ($maintenance_until > 0) ? date('Y-m-d\TH:i', $maintenance_until) : '';
     $maintenance_allow_ips = (string) ($row['maintenance_allow_ips'] ?? '');
     $maintenance_my_ip = function_exists('waf_client_ip') ? waf_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    $maintenance_my_ip_shared = pg_maintenance_ip_is_shared($maintenance_my_ip);
 
     // The structure pass parses rendered markup with DOMDocument. Without the
     // extension the job records its run and exits, so the operator would see

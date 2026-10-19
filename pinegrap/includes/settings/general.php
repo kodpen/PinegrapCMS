@@ -631,7 +631,11 @@ if ($maintenance_ready) {
                     <div class="col-12">
                         <label for="maintenance_allow_ips" class="form-label">' . lang('Addresses that see the site') . '</label>
                         <textarea name="maintenance_allow_ips" id="maintenance_allow_ips" rows="2" class="form-control" spellcheck="false">' . h($maintenance_allow_ips) . '</textarea>
-                        <div class="form-text">' . lang(array('string' => 'Addresses or ranges (CIDR), separated by commas or one per line. Your address: {var:1}', 'vars' => array(h($maintenance_my_ip)))) . '</div>
+                        <div class="form-text">' . lang(array('string' => 'Addresses or ranges (CIDR), separated by commas or one per line. Your address: {var:1}', 'vars' => array(h($maintenance_my_ip)))) . '</div>'
+                        // Behind a tunnel or a proxy that is not declared,
+                        // the address shown is the one every visitor has.
+                        . ($maintenance_my_ip_shared ? '
+                        <div class="alert alert-warning mt-2 mb-0 py-2 small">' . lang('This is the server or a proxy, not your own address: every visitor reaches the site through it, so listing it lets everyone see the site. Add it to Trusted Proxies on the Firewall card first; then this line shows your own address.') . '</div>' : '') . '
                     </div>
                     <div class="col-12">
                         <div class="form-text">' . lang('Uptime monitors can poll this address. It answers 200 while the site is up and its general job runs, and 503 during maintenance or when the general job has stopped:') . ' <code>' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/health.php') . '</code></div>

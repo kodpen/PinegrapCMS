@@ -24069,5 +24069,7 @@
     "Filled in by Connect. Write it only when the Paraşüt user works in more than one company; an empty box keeps the saved number.": "Bağla doldurur. Yalnız Paraşüt kullanıcısı birden çok firmada çalışıyorsa yazın; boş kutu kayıtlı numarayı korur.",
     "Not connected to Paraşüt yet.": "Henüz Paraşüt'e bağlı değil.",
     "Open the Paraşüt authorization page": "Paraşüt yetkilendirme sayfasını aç",
-    "This is the key that signs the site's mail. It stays on the server.": "Bu, sitenin postalarını imzalayan anahtardır. Sunucudan çıkmaz."
+    "This is the key that signs the site's mail. It stays on the server.": "Bu, sitenin postalarını imzalayan anahtardır. Sunucudan çıkmaz.",
+    "This is the server or a proxy, not your own address: every visitor reaches the site through it, so listing it lets everyone see the site. Add it to Trusted Proxies on the Firewall card first; then this line shows your own address.": "Bu sizin adresiniz değil, sunucunun ya da bir vekil sunucunun adresi: her ziyaretçi siteye onun üzerinden geliyor, listeye eklenirse siteyi herkes görür. Önce Güvenlik Duvarı kartında Güvenilen Vekil Sunucular'a ekleyin; sonra bu satır sizin adresinizi gösterir.",
+    "{var:1} is on the list, but it is the server or a proxy every visitor arrives through, so everyone sees the site during maintenance. Add it to Trusted Proxies on the Firewall card and list your own address instead.": "{var:1} listede, ama bu her ziyaretçinin üzerinden geldiği sunucu ya da vekil sunucu; bakım sırasında siteyi herkes görür. Onu Güvenlik Duvarı kartında Güvenilen Vekil Sunucular'a ekleyin ve listeye kendi adresinizi yazın."
 }
