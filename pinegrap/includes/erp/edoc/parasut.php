@@ -445,6 +445,52 @@ function erp_edoc_parasut_document_missing($invoice)
 }
 
 /**
+ * The VAT rates Paraşüt takes on a sales invoice line: Turkey's rates since
+ * July 2023. The documentation types vat_rate as a plain number; the live
+ * API answers 422 "KDV oranı (18.0) artık kullanılamaz." for an older one.
+ *
+ * @return float[]
+ */
+function erp_edoc_parasut_vat_rates()
+{
+    return array(0.0, 1.0, 10.0, 20.0);
+}
+
+/**
+ * Why an invoice cannot go to Paraşüt for its VAT rates, or '' when every
+ * line carries one Paraşüt takes. An issued invoice keeps its figures, so the
+ * way out is to cancel it and issue it again at the current rate.
+ *
+ * @param array $lines  erp_invoice_items rows (tax_rate)
+ * @return string
+ */
+function erp_edoc_parasut_vat_rate_refusal($lines)
+{
+    $taken = erp_edoc_parasut_vat_rates();
+    $refused = array();
+
+    foreach ((array) $lines as $line) {
+        $rate = is_array($line) ? round((float) ($line['tax_rate'] ?? 0), 3) : 0.0;
+
+        if (!in_array($rate, $taken, true) && !in_array($rate, $refused, true)) {
+            $refused[] = $rate;
+        }
+    }
+
+    if (empty($refused)) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'Paraşüt takes VAT at {var:1} only; this invoice has {var:2}. It cannot be sent at that rate: cancel it and issue it again at a current rate.',
+        'vars' => array(
+            implode(', ', array_map('erp_percent_text', $taken)),
+            implode(', ', array_map('erp_percent_text', $refused)),
+        ),
+    ));
+}
+
+/**
  * The attributes a Paraşüt contact (its customer card) is written with.
  *
  * Paraşüt keeps one identity field, tax_number, for the VKN of a company
@@ -804,6 +850,14 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
 
     if (empty($lines)) {
         return $fail(lang('The invoice has no lines.'));
+    }
+
+    // Refused before anything reaches Paraşüt: a rate it does not take used
+    // to open the buyer's card there first and only then fail on the invoice.
+    $rate_refusal = erp_edoc_parasut_vat_rate_refusal($lines);
+
+    if ($rate_refusal !== '') {
+        return $fail($rate_refusal);
     }
 
     $context = array('doc_type' => 'invoice', 'doc_id' => (int) $invoice['id']);

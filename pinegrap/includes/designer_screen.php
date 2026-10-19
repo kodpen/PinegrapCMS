@@ -516,6 +516,8 @@ function pg_designer_screen_render($ctx)
              designer page does not carry it on every load. -->
         <script src="assets/js/pg_code_editor.js?v=' . pg_designer_asset_stamp('assets/js/pg_code_editor.js') . '"></script>
         <script>PgCodeEditor.configure({ bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
+        <!-- Text contrast for the audit (window.PgContrast). -->
+        <script src="assets/js/pg_contrast.js?v=' . pg_designer_asset_stamp('assets/js/pg_contrast.js') . '"></script>
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
         ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '

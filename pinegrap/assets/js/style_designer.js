@@ -55986,6 +55986,105 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
+    // Read from the canvas, not from the tree: the colour of a text and of
+    // what it sits on come from the design's CSS, its theme and Bootstrap's
+    // classes. Every text the canvas shows is measured against the colour
+    // behind it (PgContrast, assets/js/pg_contrast.js); a text with a picture
+    // under it is left alone, since no single colour is behind it. One issue
+    // per element, for its worst text, on the nearest element a tree knows -
+    // inside shared components and widgets too, like cf_field_unnamed.
+
+    // Editor chrome that has text of its own (toolbars, badges, placeholders,
+    // bands), the sample records drawn after a loop's first, and elements a
+    // switched-off feature drops from the page.
+    var _SD_CONTRAST_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
+        '.sd-system-empty-hint, .sd-system-placeholder, .sd-section-binding-hint, .sd-loop-band, .sd-loop-band-row, ' +
+        '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off';
+
+    // An editor box around an element: its background (the selection tint,
+    // the loop area's) is the editor's, not the page's. Table parts and a
+    // summary are their own wrapper (buildTableNodeEl(), _sdSelfWrapped()),
+    // so theirs is the page's.
+    function _sdContrastEditorBox(el) {
+        var cl = el.classList;
+        if (!cl) return false;
+        if (cl.contains('sd-wrap')) {
+            return !el.hasAttribute('data-sd-self') && TABLE_STRUCT_TAGS.indexOf(el.tagName.toLowerCase()) === -1;
+        }
+        return cl.contains('sd-shared-inner') || cl.contains('sd-loop-area') || cl.contains('sd-system-drop-area');
+    }
+
+    // Every node the canvas can show, by id: the page's and those of the
+    // shared components, whose own nodes carry their ids on the canvas.
+    function _sdContrastNodeIndex(root) {
+        var index = {};
+        function walk(n) {
+            if (!n) return;
+            if (n._id) index[n._id] = n;
+            if (n.children) n.children.forEach(walk);
+        }
+        walk(root);
+        Object.keys(_sharedCache).forEach(function (sid) {
+            var c = _sharedCache[sid];
+            if (c && c.tree) walk(c.tree);
+        });
+        return index;
+    }
+
+    function _sdContrastIssues(root) {
+        if (!canvasDoc || !canvasDoc.body || !window.PgContrast) return [];
+        var body = canvasDoc.body;
+        var opts = {
+            skip: function (el) { return el.matches(_SD_CONTRAST_SKIP); },
+            ignore: _sdContrastEditorBox,
+            // The canvas grid overlay is the body's background image.
+            noImage: function (el) { return el === body && body.classList.contains('sd-grid-overlay'); },
+            // The editor tints the cells of a repeated table row; under the
+            // tint is the table's own colour (Bootstrap's --bs-table-bg).
+            background: function (el, cs) {
+                if ((el.tagName === 'TD' || el.tagName === 'TH') && el.parentElement && el.parentElement.classList.contains('sd-loop-tr')) {
+                    return PgContrast.parse(cs.getPropertyValue('--bs-table-bg')) || [0, 0, 0, 0];
+                }
+                return undefined;
+            }
+        };
+        var cache = (typeof WeakMap === 'function') ? new WeakMap() : null;
+        var index = _sdContrastNodeIndex(root);
+        var pics = PgContrast.pictures(body, opts);
+        var worst = {};
+        PgContrast.textRuns(body, opts).forEach(function (run) {
+            var node = null;
+            for (var w = run.el.closest('[data-sd-id]'); w && !node; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
+                node = index[w.getAttribute('data-sd-id')] || null;
+            }
+            if (!node || node.type === 'root') return;
+            var res = PgContrast.check(run, pics, opts, cache);
+            if (!res || res.ok) return;
+            // How far below its minimum: the text that reads worst is named.
+            var gap = res.ratio / res.min;
+            if (!worst[node._id] || gap < worst[node._id].gap) worst[node._id] = { node: node, gap: gap, res: res, text: run.text };
+        });
+        var num = function (v, digits) {
+            try {
+                return Number(v).toLocaleString(_sdLocale(), { minimumFractionDigits: digits, maximumFractionDigits: 1 });
+            } catch (e) {
+                return String(v);
+            }
+        };
+        return Object.keys(worst).map(function (id) {
+            var f = worst[id];
+            var text = f.text.length > 40 ? f.text.slice(0, 39) + '…' : f.text;
+            // Rounded down, so a 4.48:1 never reads as the 4.5:1 it misses.
+            var ratio = num(Math.floor(f.res.ratio * 10) / 10, 1);
+            return {
+                rule: 'low_contrast',
+                label: _sdT('Low text contrast {var:1}:1, at least {var:2}:1 is needed: "{var:3}"', [ratio, num(f.res.min, 0), text]),
+                node: f.node, nodeLabel: getNodeLabel(f.node), seo: ''
+            };
+        });
+    }
+
     function validateTree(root) {
         var issues = [];
         var ctx = { ids: {}, lastHeading: 0, inInteractive: false, _intStack: 0, _labelFor: {} };
@@ -56033,6 +56132,12 @@ const StyleDesigner = (function () {
                 seo: pi.seo
             });
         });
+        // A broken canvas must not take the rest of the audit with it.
+        try {
+            _sdContrastIssues(root).forEach(function (ci) { issues.push(ci); });
+        } catch (e) {
+            if (window.console) console.warn('Contrast check skipped', e);
+        }
         return issues;
     }
 
