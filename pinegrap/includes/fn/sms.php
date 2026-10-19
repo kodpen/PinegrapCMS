@@ -206,6 +206,39 @@ function pg_sms_number($input)
 }
 
 /**
+ * A message as it is sent: line breaks as \n, a tab as a space, no other
+ * control character, no spaces around it.
+ *
+ * @param mixed $text
+ * @return string '' for text that is not valid UTF-8
+ */
+function pg_sms_text($text)
+{
+    $text = is_scalar($text) ? (string) $text : '';
+
+    if (!mb_check_encoding($text, 'UTF-8')) {
+        return '';
+    }
+
+    $text = str_replace(array("\r\n", "\r", "\t"), array("\n", "\n", ' '), $text);
+    $text = preg_replace('/[\x00-\x08\x0B-\x1F\x7F]/', '', $text);
+
+    return trim((string) $text);
+}
+
+/**
+ * The longest message passed on, in characters. No message of the site's
+ * comes near it; it stops a mistake (a whole e-mail body handed over as the
+ * text) from going out as a dozen paid parts.
+ *
+ * @return int
+ */
+function pg_sms_max_length()
+{
+    return 1000;
+}
+
+/**
  * A failed send in the shape every send returns.
  *
  * @param string $error
@@ -268,10 +301,20 @@ function pg_sms_send($to, $text, $kind)
         return pg_sms_failure(lang('This is not a mobile number an SMS can be sent to.'));
     }
 
-    $text = trim((string) $text);
+    $text = pg_sms_text($text);
 
     if ($text === '') {
         return pg_sms_failure(lang('The message is empty.'));
+    }
+
+    if (mb_strlen($text, 'UTF-8') > pg_sms_max_length()) {
+        return pg_sms_failure(lang(array('string' => 'The message is longer than {var:1} characters.', 'vars' => array(pg_sms_max_length()))));
+    }
+
+    // Anyone can sign in to a demonstration site, so it sends nothing, as it
+    // sends no e-mail (email() in includes/fn/mail.php).
+    if (function_exists('pg_demo') && pg_demo()) {
+        return pg_sms_failure(lang('No text message is sent from a demonstration site.'));
     }
 
     $provider = pg_sms_provider();
@@ -295,12 +338,13 @@ function pg_sms_send($to, $text, $kind)
  *
  * @param string $provider
  * @param array  $app pg_sms_app() shape
- * @return array ok, senders, code, error, retry
+ * @return array ok, senders, code, error, refused (the provider answered and
+ *               refused the account; false when it could not be asked)
  */
 function pg_sms_senders($provider, $app)
 {
     if (!pg_sms_driver($provider)) {
-        return array('ok' => false, 'senders' => array(), 'code' => '', 'error' => lang('The SMS provider could not be loaded.'), 'retry' => false);
+        return array('ok' => false, 'senders' => array(), 'code' => '', 'error' => lang('The SMS provider could not be loaded.'), 'refused' => false);
     }
 
     $senders = 'pg_sms_' . $provider . '_senders';
@@ -310,13 +354,19 @@ function pg_sms_senders($provider, $app)
 
 /**
  * The approved spelling of a sender name, compared without regard to case.
+ * The account's own number (the user code) is a sender too, listed or not.
  *
  * @param string $sender
- * @param array  $senders
+ * @param array  $senders the provider's list
+ * @param string $user    the account's user code
  * @return string '' when it is not among them
  */
-function pg_sms_sender_match($sender, $senders)
+function pg_sms_sender_match($sender, $senders, $user = '')
 {
+    if (((string) $sender !== '') && ((string) $sender === (string) $user)) {
+        return (string) $sender;
+    }
+
     $wanted = mb_strtolower(trim((string) $sender), 'UTF-8');
 
     foreach ($senders as $approved) {
@@ -335,42 +385,74 @@ function pg_sms_sender_match($sender, $senders)
 }
 
 /**
- * A driver's HTTP call, through the outgoing client that checks the address
- * and does not follow redirects.
+ * A driver's HTTP call. The provider's address is fixed in its driver, never
+ * typed by anyone, so this is a plain cURL call with the certificate checks
+ * the carriers and the update channel use (pg_curl_tls()); a redirect is not
+ * followed. The cURL error number tells a caller whether the request can
+ * have reached the provider (pg_sms_http_never_sent()).
  *
  * @param string $method
  * @param array  $request url, headers, body (optional)
- * @return array status (0 when nothing came back), body, error
+ * @return array status (0 when nothing came back), body, error (a transport
+ *               problem, '' when the provider answered), errno (cURL's error
+ *               number, 0 when the provider answered)
  */
 function pg_sms_http($method, $request)
 {
-    // The client belongs to a request that went through init.php.
-    if (!function_exists('api_http_request')) {
-        if (!defined('PG_INIT_LOADED')) {
-            return array('status' => 0, 'body' => '', 'error' => 'The outgoing HTTP client is not available here.');
-        }
-
-        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+    if (!function_exists('curl_init')) {
+        return array('status' => 0, 'body' => '', 'error' => lang('cURL is not available on this server.'), 'errno' => 0);
     }
 
-    $options = array(
-        'headers'  => $request['headers'],
-        'timeout'  => 20,
-        'max_body' => 8000,
-        'agent'    => 'sms',
-    );
+    $handle = curl_init((string) $request['url']);
 
-    if (isset($request['body'])) {
-        $options['body'] = $request['body'];
+    curl_setopt($handle, CURLOPT_CUSTOMREQUEST, (string) $method);
+    curl_setopt($handle, CURLOPT_HTTPHEADER, (array) $request['headers']);
+    curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($handle, CURLOPT_FOLLOWLOCATION, false);
+    curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($handle, CURLOPT_TIMEOUT, 20);
+    curl_setopt($handle, CURLOPT_USERAGENT, 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+sms)');
+    pg_curl_tls($handle);
+
+    if (isset($request['body']) && ((string) $request['body'] !== '')) {
+        curl_setopt($handle, CURLOPT_POSTFIELDS, (string) $request['body']);
     }
 
-    $result = api_http_request($method, $request['url'], $options);
+    $body = curl_exec($handle);
+    $errno = (int) curl_errno($handle);
+    $error = curl_error($handle);
+    $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
 
-    return array(
-        'status' => (int) $result['status'],
-        'body'   => (string) $result['body'],
-        'error'  => (string) $result['error'],
-    );
+    // The handle is freed with the variable; curl_close() does nothing since
+    // PHP 8.0 and is deprecated in 8.5.
+    unset($handle);
+
+    if ($errno !== 0) {
+        return array(
+            'status' => 0,
+            'body'   => '',
+            'error'  => trim($error . pg_curl_tls_hint($errno)),
+            'errno'  => $errno,
+        );
+    }
+
+    return array('status' => $status, 'body' => (string) $body, 'error' => '', 'errno' => 0);
+}
+
+/**
+ * Whether a transport error came before anything reached the provider: the
+ * proxy or the provider's name could not be resolved, or no connection was
+ * made. After any other one (a timeout above all) the provider may have
+ * taken the request, so sending it again could deliver a message twice.
+ *
+ * @param int $errno cURL's error number
+ * @return bool
+ */
+function pg_sms_http_never_sent($errno)
+{
+    // CURLE_COULDNT_RESOLVE_PROXY, CURLE_COULDNT_RESOLVE_HOST,
+    // CURLE_COULDNT_CONNECT.
+    return in_array((int) $errno, array(5, 6, 7), true);
 }
 
 
@@ -441,13 +523,9 @@ function pg_sms_settings_fields()
     $app = pg_sms_app($shown);
     $enabled = $app['enabled'];
 
-    $warning = '';
+    $warning = pg_sms_settings_refusal();
 
-    if (!pg_connect_schema_ready()) {
-        $warning = lang('The database has not been upgraded yet. Run the software update first.');
-    } elseif (!pg_connect_can_seal()) {
-        $warning = lang('This site has no encryption key, so it cannot keep the password of an SMS account.');
-    } elseif ($enabled && !pg_sms_app_complete($app)) {
+    if (($warning === '') && $enabled && !pg_sms_app_complete($app)) {
         $warning = $app['password_stored'] && ($app['password'] === '')
             ? lang('SMS is switched on but cannot send: the stored password cannot be read with this site\'s encryption key. Enter it again.')
             : lang('SMS is switched on but cannot send until the account is complete.');
@@ -673,6 +751,30 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
 }
 
 /**
+ * Why no SMS account can be set up on this site now, '' when one can. A
+ * demonstration site, which anyone can sign in to, takes none: it would keep
+ * what visitors type and ask the provider about it.
+ *
+ * @return string
+ */
+function pg_sms_settings_refusal()
+{
+    if (function_exists('pg_demo') && pg_demo()) {
+        return lang('This is a demonstration site: no SMS provider can be set up here.');
+    }
+
+    if (!pg_connect_schema_ready()) {
+        return lang('The database has not been upgraded yet. Run the software update first.');
+    }
+
+    if (!pg_connect_can_seal()) {
+        return lang('This site has no encryption key, so it cannot keep the password of an SMS account.');
+    }
+
+    return '';
+}
+
+/**
  * Checks the SMS card's fields before the Communication settings are
  * written, and asks the provider about a changed account. A refusal is marked
  * on its field, so nothing of the category is written.
@@ -690,15 +792,7 @@ function pg_sms_settings_check($post, $liveform)
         return null;
     }
 
-    $refusal = '';
-
-    if (!pg_connect_schema_ready()) {
-        $refusal = lang('The database has not been upgraded yet. Run the software update first.');
-    } elseif (!pg_connect_can_seal()) {
-        $refusal = lang('This site has no encryption key, so it cannot keep the password of an SMS account.');
-    }
-
-    $decision = pg_sms_settings_decide($post, $provider, pg_sms_app($provider), $refusal);
+    $decision = pg_sms_settings_decide($post, $provider, pg_sms_app($provider), pg_sms_settings_refusal());
 
     foreach ($decision['marks'] as $field => $sentence) {
         $liveform->mark_error($field, $sentence);
@@ -719,7 +813,7 @@ function pg_sms_settings_check($post, $liveform)
         'sender'   => $decision['sender']));
 
     if ($check['ok']) {
-        $approved = pg_sms_sender_match($decision['sender'], $check['senders']);
+        $approved = pg_sms_sender_match($decision['sender'], $check['senders'], $decision['user']);
 
         if ($approved !== '') {
             $decision['sender'] = $approved;
@@ -732,14 +826,15 @@ function pg_sms_settings_check($post, $liveform)
                 'string' => 'This {var:1} account has no approved sender name yet.',
                 'vars'   => array($label))));
         }
-    } elseif ($check['retry']) {
-        // The provider did not answer: the account is kept unchecked rather
-        // than the settings refused for an outage.
+    } elseif ($check['refused']) {
+        $liveform->mark_error(($check['code'] === '30') ? $name . 'password' : $name . 'user', h($check['error']));
+    } else {
+        // The provider could not be asked (no answer, an unreadable one, an
+        // outage, a limit): the account is kept unchecked rather than the
+        // settings refused for it.
         $decision['notices'][] = lang(array(
             'string' => 'The SMS account was saved without being checked: {var:1}',
             'vars'   => array(h($check['error']))));
-    } else {
-        $liveform->mark_error(($check['code'] === '30') ? $name . 'password' : $name . 'user', h($check['error']));
     }
 
     return $decision;

@@ -1,30 +1,26 @@
 ---
 name: sms-provider-layer
-description: SMS layer (PR #600): pg_sms_send() and kinds, Netgsm REST v2 driver, account in connect_apps sms_<key> (no schema), Communication › SMS card, save-time check, test message
+description: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the Communication › SMS card and its save decision, test message
 ---
 
 ## What sends an SMS?
-- `pg_sms_send($to, $text, $kind)` (`includes/fn/sms.php`) returns `ok, id, code, error, retry`. Before reading any account it refuses an unknown kind, a commercial one (`marketing`, until İYS consent records exist), an unreadable number, an empty text.
-- `pg_sms_number()` gives E.164 digits without the plus. National forms (`05xx…`, `5xx…`, `90 5xx…`) are read as Turkish mobiles; other countries need `+` or `00`; under 90 only `5xx` mobiles pass.
-- It calls the provider at once: only the settings' test does so in a request; other messages go through a queue (plan step 2).
+- `pg_sms_send($to, $text, $kind)` (`includes/fn/sms.php`) returns `ok, id, code, error, retry`. Before any account is read it refuses an unknown kind, a commercial one (`marketing`, until İYS consent records exist), an unreadable number, an empty text or one over `pg_sms_max_length()` (1000), and a demonstration site (`pg_demo()`, like `email()`).
+- `pg_sms_text()`: CRLF/CR → `\n`, tab → space, other control characters dropped, non-UTF-8 → empty.
+- `pg_sms_number()` → E.164 digits without the plus; national forms (`05xx…`, `5xx…`, `90 5xx…`) are Turkish mobiles, other countries need `+`/`00`; under 90 only `5xx` (a `0` after `+90` is dropped).
+- It sends at once and waits: background job or an operator's button only. `retry` true means sending again cannot deliver twice (`sms-netgsm-driver.md`).
 
-## How is a provider added?
-- An entry in `pg_sms_providers()` and `includes/sms/<key>.php` with `pg_sms_<key>_send($app, $number, $text, $commercial)` and `pg_sms_<key>_senders($app)`. Builders and parsers are plain functions (`tests/sms_test.php`); HTTP goes through `pg_sms_http()` → `api_http_request()`.
-- No schema: the account is the `connect_apps` row `sms_<key>` like the carriers' API apps (`carrier_api.php`): user code = `client_id`, password sealed with the site key (`pg_connect_app_save()`), `options.sender`, `enabled` = the switch. The plan said "config blob"; this needs no migration step.
-- The active provider is the first enabled one with user, password and sender (`pg_sms_provider()`). Saving one provider switches the others off, their accounts kept. With a second provider the card needs a show/hide by the select.
+## Where is the account and why there?
+- `connect_apps` row `sms_<key>`, as the carriers' API apps (`carrier_api.php`): user code = `client_id`, password sealed with the site key (`pg_connect_app_save()`), `options.sender`, `enabled` = the switch. Chosen over the plan's config blob on purpose: no migration step (and no step-number race between parallel work), a provider added later needs no column (`pinegrap-dis-api`: zero schema per provider).
+- Active provider: the first enabled one with user, password and sender (`pg_sms_provider()`); saving one switches the others off. A second provider needs a show/hide by the card's select.
+- Commerce › Reset Encryption Key re-encrypts card numbers only, not `connect_apps`: the stored password then reads empty and the card warns.
 
-## What does Netgsm take?
-- `POST https://api.netgsm.com.tr/sms/rest/v2/send`, Basic auth (subscriber number or API sub-user : password), JSON `msgheader`, `messages[{msg,no}]`, `iysfilter` (`0` informational, `11` commercial), `encoding: TR` only when the text has ç ğ ı İ ş Ş Ğ. Number: 10 digits `5xxxxxxxxx`, Turkish mobiles only.
-- Answer: JSON `code` `00` + `jobid`; refusals come as JSON with a 4xx, so the body is always read. `00` without `jobid` is a failure. Retried later: no answer, unreadable 5xx/429, codes 80, 85 (rate / duplicate limit), 100, 101. Not retried: 20 text, 30 (or a bare 401/403) credentials / API permission / IP limit, 40-41 sender, 50-51 İYS, 70 parameter.
-- `GET /sms/rest/v2/msgheader` lists approved senders (`msgheaders` or `msgheader`) at no cost: the credential check.
-- Endpoints and fields are from two client libraries (siberfx/netgsm, mobinova/netgsm-go).
-
-## What does the Communication › SMS card do on save?
-- `pg_sms_settings_decide()` (pure, tested) picks `none` / `save` / `disable` / `forget` from the post and the stored account; `pg_sms_settings_check()` marks its refusals before the config UPDATE (a mark stops the whole category) and asks the provider only about an account that changed or is being switched on, and only if no other card was refused. A refusal is marked on the field (code 30 on the password), an unapproved sender with the approved names; no answer saves unchecked with a notice.
-- An unchanged account is never rewritten, so an unreadable one does not block chat or campaign saves; the card warns. Commerce › Reset Encryption Key re-encrypts card numbers only, not `connect_apps`. Switching off writes `enabled = 0` alone (works without sealing). Off + empty user code deletes the row. The password is never drawn back.
-- "Save and send a test message" is the pane's only named submit, so Enter presses it: an empty Test Number is a plain save, a wrong one is marked. 10 tests per clock hour per site (`waf_rate` `sms-test`, fails open).
+## What does the card do on save?
+- `pg_sms_settings_decide()` (pure, tested) picks `none` / `save` / `disable` / `forget`. An unchanged account is never rewritten or asked about, so an unreadable one does not block chat or campaign saves. Off writes `enabled = 0` alone (no sealing needed); off + empty user code deletes the row; the password is never drawn back.
+- `pg_sms_settings_refusal()`: demo site, schema not upgraded or no encryption key: switching on is marked, nothing is asked.
+- `pg_sms_settings_check()` runs in `contact.save.php` before MailChimp's checks (they may create a store a refusal here could not undo). A changed or newly switched-on account is asked about (`senders`): `refused` → mark (code 30 on the password, else the user code); unapproved sender → mark with the approved names, the approved spelling (or the user code itself) is stored; could not ask → saved unchecked with a notice.
+- "Save and send a test message" is the pane's only named submit, so Enter presses it: an empty Test Number is a plain save, a wrong one is marked; 10 tests per clock hour per site (`waf_rate` `sms-test`, fails open).
 
 ## How was it verified?
-- `tests/sms_test.php`; on a sandbox instance through `settings_pane.php`: card in the dialog and the page path, the marks, save / unchanged / disable / forget rows, the test button. The sandbox could not reach Netgsm: real calls are unverified.
+- `tests/sms_test.php`; a sandbox instance through `settings_pane.php` (dialog and page path, marks, save / unchanged / disable / forget, test button). Netgsm itself was not reachable.
 
-Related: docs/memory/plans/sms-and-iys.md, docs/memory/core/security-helpers-and-secret-storage.md
+Related: docs/memory/platform/sms-netgsm-driver.md, docs/memory/plans/sms-and-iys.md

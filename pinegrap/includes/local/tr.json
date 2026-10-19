@@ -23820,5 +23820,8 @@
     "Netgsm sends to Turkish mobile numbers only.": "Netgsm yalnız Türkiye cep telefonu numaralarına gönderir.",
     "Netgsm answered with code {var:1}. {var:2}": "Netgsm {var:1} koduyla cevap verdi. {var:2}",
     "Netgsm could not be reached: {var:1}": "Netgsm'e ulaşılamadı: {var:1}",
-    "Netgsm sent an answer that could not be read (HTTP {var:1}).": "Netgsm okunamayan bir cevap gönderdi (HTTP {var:1})."
+    "Netgsm sent an answer that could not be read (HTTP {var:1}).": "Netgsm okunamayan bir cevap gönderdi (HTTP {var:1}).",
+    "No text message is sent from a demonstration site.": "Tanıtım sitesinden kısa mesaj gönderilmez.",
+    "This is a demonstration site: no SMS provider can be set up here.": "Bu bir tanıtım sitesi: burada SMS sağlayıcısı ayarlanamaz.",
+    "The message is longer than {var:1} characters.": "Mesaj {var:1} karakterden uzun."
 }

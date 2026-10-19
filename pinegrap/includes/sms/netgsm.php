@@ -11,6 +11,11 @@
  * name (msgheader) approved on the account; "iysfilter" tells whether it is
  * informational ("0") or commercial and so subject to the İYS consent check.
  *
+ * A message is sent once. Only an answer that shows Netgsm did not take it
+ * (no connection was made, a 429 or 503, a limit or system code) says it may
+ * be tried again: after a timeout or a 500/502/504 Netgsm may already have
+ * it, and a message sent twice cannot be taken back.
+ *
  * Request builders and response readers are plain functions of their
  * arguments, so the tests check them without a Netgsm account; the two
  * functions at the end make the calls through includes/fn/sms.php.
@@ -51,15 +56,16 @@ function pg_sms_netgsm_number($number)
 }
 
 /**
- * The encoding a text needs: "TR" when it has a Turkish letter that the
- * default GSM alphabet lacks, otherwise none (the default alphabet).
+ * The encoding a text needs: "TR" for any character outside ASCII (Turkish
+ * letters, ₺, typographic quotes), otherwise none. Sent in the default
+ * alphabet, such characters would arrive garbled.
  *
  * @param string $text
  * @return string 'TR' or ''
  */
 function pg_sms_netgsm_encoding($text)
 {
-    return preg_match('/[çğıİşŞĞ]/u', (string) $text) ? 'TR' : '';
+    return preg_match('/[^\x00-\x7F]/', (string) $text) ? 'TR' : '';
 }
 
 /**
@@ -115,7 +121,7 @@ function pg_sms_netgsm_send_request($app, $number, $text, $commercial)
     return array(
         'url'     => pg_sms_netgsm_host() . '/sms/rest/v2/send',
         'headers' => pg_sms_netgsm_request_headers($app, true),
-        'body'    => json_encode($body),
+        'body'    => (string) json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
     );
 }
 
@@ -182,8 +188,9 @@ function pg_sms_netgsm_error_text($code, $description = '')
 }
 
 /**
- * Whether a refusal is worth repeating later: Netgsm's own errors and its
- * rate limits are, a refused text, number, sender or password is not.
+ * Whether a code says Netgsm did not take the request and may later: a limit
+ * or its own system error. A refused text, number, sender or password stays
+ * refused.
  *
  * @param string $code
  * @return bool
@@ -195,55 +202,50 @@ function pg_sms_netgsm_code_retries($code)
 
 /**
  * Reads the code out of a Netgsm answer. The body is read whatever the HTTP
- * status: Netgsm sends a refusal as a JSON body with a 4xx status.
+ * status: Netgsm sends a refusal as a JSON body with a 4xx status. A bare 401
+ * or 403 is the sign-in refused in front of the API and reads as code 30.
  *
  * @param int    $status HTTP status, 0 when nothing came back
  * @param string $body
  * @param string $error  the transport error when nothing came back
- * @return array data (the decoded body or null), code, error, retry; error is
- *               '' when the code is "00"
+ * @return array data (the decoded body, array() when it was not JSON), code
+ *               ('' when the body carries none), error ('' when the code is
+ *               "00")
  */
 function pg_sms_netgsm_answer($status, $body, $error = '')
 {
     if ((int) $status === 0) {
         return array(
-            'data'  => null,
+            'data'  => array(),
             'code'  => '',
             'error' => lang(array('string' => 'Netgsm could not be reached: {var:1}', 'vars' => array((string) $error))),
-            'retry' => true,
         );
     }
 
-    $data = json_decode((string) $body, true);
-    $code = (is_array($data) && isset($data['code']) && is_scalar($data['code'])) ? trim((string) $data['code']) : '';
+    // The job id may come as a JSON number longer than an integer holds.
+    $data = json_decode((string) $body, true, 512, JSON_BIGINT_AS_STRING);
+    $data = is_array($data) ? $data : array();
+    $code = (isset($data['code']) && is_scalar($data['code'])) ? trim((string) $data['code']) : '';
 
-    // A refused sign-in may come back as a bare 401 or 403: the same answer
-    // as code 30.
     if (($code === '') && in_array((int) $status, array(401, 403), true)) {
         $code = '30';
     }
 
     if ($code === '') {
         return array(
-            'data'  => is_array($data) ? $data : null,
+            'data'  => $data,
             'code'  => '',
             'error' => lang(array('string' => 'Netgsm sent an answer that could not be read (HTTP {var:1}).', 'vars' => array((int) $status))),
-            'retry' => ((int) $status >= 500) || ((int) $status === 429),
         );
     }
 
     if ($code === '00') {
-        return array('data' => $data, 'code' => $code, 'error' => '', 'retry' => false);
+        return array('data' => $data, 'code' => $code, 'error' => '');
     }
 
     $description = (isset($data['description']) && is_scalar($data['description'])) ? (string) $data['description'] : '';
 
-    return array(
-        'data'  => $data,
-        'code'  => $code,
-        'error' => pg_sms_netgsm_error_text($code, $description),
-        'retry' => pg_sms_netgsm_code_retries($code),
-    );
+    return array('data' => $data, 'code' => $code, 'error' => pg_sms_netgsm_error_text($code, $description));
 }
 
 /**
@@ -251,15 +253,28 @@ function pg_sms_netgsm_answer($status, $body, $error = '')
  *
  * @param int    $status
  * @param string $body
- * @param string $error
- * @return array ok, id (Netgsm's job id), code, error, retry
+ * @param string $error transport error
+ * @param bool   $never_sent the transport failed before anything reached
+ *                           Netgsm (pg_sms_http_never_sent())
+ * @return array ok, id (Netgsm's job id), code, error, retry (whether sending
+ *               the same message again cannot deliver it twice)
  */
-function pg_sms_netgsm_send_parse($status, $body, $error = '')
+function pg_sms_netgsm_send_parse($status, $body, $error = '', $never_sent = false)
 {
     $answer = pg_sms_netgsm_answer($status, $body, $error);
 
     if ($answer['error'] !== '') {
-        return array('ok' => false, 'id' => '', 'code' => $answer['code'], 'error' => $answer['error'], 'retry' => $answer['retry']);
+        if ((int) $status === 0) {
+            $retry = (bool) $never_sent;
+        } elseif ($answer['code'] !== '') {
+            $retry = pg_sms_netgsm_code_retries($answer['code']);
+        } else {
+            // Not Netgsm's JSON: only a 429 or a 503 says the request was
+            // turned away before Netgsm took it.
+            $retry = in_array((int) $status, array(429, 503), true);
+        }
+
+        return array('ok' => false, 'id' => '', 'code' => $answer['code'], 'error' => $answer['error'], 'retry' => $retry);
     }
 
     $id = '';
@@ -272,7 +287,7 @@ function pg_sms_netgsm_send_parse($status, $body, $error = '')
     }
 
     // "00" without a job id is not a message Netgsm took on: there is nothing
-    // to ask its delivery report about.
+    // to ask its delivery report about. Not retried: it may have been taken.
     if ($id === '') {
         return array(
             'ok'    => false,
@@ -292,15 +307,23 @@ function pg_sms_netgsm_send_parse($status, $body, $error = '')
  *
  * @param int    $status
  * @param string $body
- * @param string $error
- * @return array ok, senders (list of names), code, error, retry
+ * @param string $error transport error
+ * @return array ok, senders (list of names), code, error, refused (Netgsm
+ *               answered and refused the account; false when it could not be
+ *               asked: no answer, an unreadable one, a limit or an outage)
  */
 function pg_sms_netgsm_senders_parse($status, $body, $error = '')
 {
     $answer = pg_sms_netgsm_answer($status, $body, $error);
 
     if ($answer['error'] !== '') {
-        return array('ok' => false, 'senders' => array(), 'code' => $answer['code'], 'error' => $answer['error'], 'retry' => $answer['retry']);
+        return array(
+            'ok'      => false,
+            'senders' => array(),
+            'code'    => $answer['code'],
+            'error'   => $answer['error'],
+            'refused' => ($answer['code'] !== '') && !pg_sms_netgsm_code_retries($answer['code']),
+        );
     }
 
     $list = array();
@@ -320,7 +343,7 @@ function pg_sms_netgsm_senders_parse($status, $body, $error = '')
         }
     }
 
-    return array('ok' => true, 'senders' => array_values(array_unique($senders)), 'code' => $answer['code'], 'error' => '', 'retry' => false);
+    return array('ok' => true, 'senders' => array_values(array_unique($senders)), 'code' => $answer['code'], 'error' => '', 'refused' => false);
 }
 
 /**
@@ -349,14 +372,14 @@ function pg_sms_netgsm_send($app, $number, $text, $commercial)
     $request = pg_sms_netgsm_send_request($app, $netgsm_number, $text, $commercial);
     $response = pg_sms_http('POST', $request);
 
-    return pg_sms_netgsm_send_parse($response['status'], $response['body'], $response['error']);
+    return pg_sms_netgsm_send_parse($response['status'], $response['body'], $response['error'], pg_sms_http_never_sent($response['errno']));
 }
 
 /**
  * The sender names approved on the account.
  *
  * @param array $app pg_sms_app()
- * @return array ok, senders, code, error, retry
+ * @return array ok, senders, code, error, refused
  */
 function pg_sms_netgsm_senders($app)
 {

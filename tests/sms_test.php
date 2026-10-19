@@ -94,14 +94,12 @@ function test_sms_netgsm_number_takes_turkish_mobiles_only()
 	pg_assert_same('', pg_sms_netgsm_number('5321234567'));
 }
 
-// "TR" only for the Turkish letters the default alphabet lacks; Ö, Ü and ü
-// are in it.
+// "TR" for anything outside ASCII, which the default alphabet would garble.
 function test_sms_netgsm_encoding()
 {
-	pg_assert_same('', pg_sms_netgsm_encoding('Order 1172 shipped'));
-	pg_assert_same('', pg_sms_netgsm_encoding('Ödeme Üzüm'));
+	pg_assert_same('', pg_sms_netgsm_encoding('Order 1172 shipped, 47.14 TL'));
 
-	foreach (array('Siparişiniz kargoda', 'Ödeme alındı', 'İade', 'çay', 'ağ', 'ŞUBAT', 'ĞÇ') as $text) {
+	foreach (array('Siparişiniz kargoda', 'Ödeme alındı', 'İade', 'çay', 'Ödeme Üzüm', '₺47,14', 'kâr', "\xE2\x80\x9Ctamam\xE2\x80\x9D") as $text) {
 		pg_assert_same('TR', pg_sms_netgsm_encoding($text), $text);
 	}
 }
@@ -140,6 +138,12 @@ function test_sms_netgsm_senders_request_shape()
 	pg_assert_false(isset($request['body']));
 }
 
+// The job id survives as a JSON number longer than an integer holds.
+function test_sms_netgsm_send_parse_big_numeric_job_id()
+{
+	pg_assert_same('17377215342605050417149344', pg_sms_netgsm_send_parse(200, '{"code":"00","jobid":17377215342605050417149344}')['id']);
+}
+
 function test_sms_netgsm_send_parse_success()
 {
 	$result = pg_sms_netgsm_send_parse(200, '{"code":"00","jobid":"17377215342605050417149344","description":"queued"}');
@@ -176,20 +180,43 @@ function test_sms_netgsm_send_parse_retries_outages_and_limits()
 	}
 }
 
+// A message is sent again only when it cannot have reached Netgsm: a
+// timeout or a 500/502/504 may come after Netgsm took it.
 function test_sms_netgsm_send_parse_transport_and_unreadable()
 {
-	$down = pg_sms_netgsm_send_parse(0, '', 'Connection timed out');
-	pg_assert_false($down['ok']);
-	pg_assert_true($down['retry']);
-	pg_assert_true(strpos($down['error'], 'Connection timed out') !== false);
+	$timeout = pg_sms_netgsm_send_parse(0, '', 'Operation timed out', false);
+	pg_assert_false($timeout['ok']);
+	pg_assert_false($timeout['retry']);
+	pg_assert_true(strpos($timeout['error'], 'Operation timed out') !== false);
 
-	$html = pg_sms_netgsm_send_parse(502, '<html>Bad Gateway</html>');
-	pg_assert_false($html['ok']);
-	pg_assert_true($html['retry']);
+	$unresolved = pg_sms_netgsm_send_parse(0, '', 'Could not resolve host', true);
+	pg_assert_true($unresolved['retry']);
+
+	foreach (array(500, 502, 504) as $status) {
+		$page = pg_sms_netgsm_send_parse($status, '<html>Bad Gateway</html>');
+		pg_assert_false($page['ok'], (string) $status);
+		pg_assert_false($page['retry'], (string) $status);
+	}
+
+	foreach (array(429, 503) as $status) {
+		pg_assert_true(pg_sms_netgsm_send_parse($status, 'Busy')['retry'], (string) $status);
+	}
 
 	$odd = pg_sms_netgsm_send_parse(200, 'OK');
 	pg_assert_false($odd['ok']);
 	pg_assert_false($odd['retry']);
+}
+
+function test_sms_http_never_sent()
+{
+	foreach (array(5, 6, 7) as $errno) {
+		pg_assert_true(pg_sms_http_never_sent($errno), (string) $errno);
+	}
+
+	// Timeout, send error, receive error, TLS: the request may have arrived.
+	foreach (array(0, 28, 35, 52, 55, 56, 60) as $errno) {
+		pg_assert_false(pg_sms_http_never_sent($errno), (string) $errno);
+	}
 }
 
 // "00" without a job id is no message taken on.
@@ -231,7 +258,7 @@ function test_sms_netgsm_bare_401_is_refused_credentials()
 		$result = pg_sms_netgsm_senders_parse($status, 'Unauthorized');
 
 		pg_assert_same('30', $result['code'], (string) $status);
-		pg_assert_false($result['retry'], (string) $status);
+		pg_assert_true($result['refused'], (string) $status);
 		pg_assert_same(pg_sms_netgsm_error_text('30'), $result['error'], (string) $status);
 	}
 }
@@ -242,7 +269,27 @@ function test_sms_netgsm_senders_parse_refused_credentials()
 
 	pg_assert_false($result['ok']);
 	pg_assert_same('30', $result['code']);
-	pg_assert_false($result['retry']);
+	pg_assert_true($result['refused']);
+}
+
+// When Netgsm could not be asked, the account is not refused but saved
+// unchecked: no answer, a gateway page, a limit or a system error.
+function test_sms_netgsm_senders_parse_could_not_ask()
+{
+	foreach (array(
+		array(0, '', 'Operation timed out'),
+		array(502, '<html>Bad Gateway</html>', ''),
+		array(200, '{"code":"100"}', ''),
+		array(200, '{"code":"85"}', ''),
+	) as $case) {
+		$result = pg_sms_netgsm_senders_parse($case[0], $case[1], $case[2]);
+
+		pg_assert_false($result['ok'], $case[1]);
+		pg_assert_false($result['refused'], $case[1]);
+		pg_assert_true($result['error'] !== '', $case[1]);
+	}
+
+	pg_assert_true(pg_sms_netgsm_senders_parse(406, '{"code":"40"}')['refused']);
 }
 
 function test_sms_sender_match_keeps_the_approved_spelling()
@@ -253,6 +300,10 @@ function test_sms_sender_match_keeps_the_approved_spelling()
 	pg_assert_same('KODPEN', pg_sms_sender_match('kodpen', $approved));
 	pg_assert_same('', pg_sms_sender_match('OTHER', $approved));
 	pg_assert_same('', pg_sms_sender_match('PINE', array()));
+
+	// The account's own number passes, listed or not.
+	pg_assert_same('8501234567', pg_sms_sender_match('8501234567', array('KODPEN'), '8501234567'));
+	pg_assert_same('', pg_sms_sender_match('', array(), ''));
 }
 
 function test_sms_sender_valid()
@@ -265,6 +316,15 @@ function test_sms_sender_valid()
 	pg_assert_false(pg_sms_sender_valid("PINE\nGRAP"));
 }
 
+function test_sms_text_rules()
+{
+	pg_assert_same("Line 1\nLine 2 tab", pg_sms_text("  Line 1\r\nLine 2\ttab\x07  "));
+	pg_assert_same("a\nb", pg_sms_text("a\rb"));
+	pg_assert_same('', pg_sms_text("\xC3\x28"), 'not UTF-8');
+	pg_assert_same('', pg_sms_text(array('x')));
+	pg_assert_same('Sipariş ₺47,14', pg_sms_text('Sipariş ₺47,14'));
+}
+
 // Refusals that come before any account is read or any call is made: each
 // with its own sentence, so a lookup moved ahead of them would show here as
 // "SMS is not set up.".
@@ -274,7 +334,7 @@ function test_sms_send_refuses_before_reading_the_account()
 		array('905321234567', 'Hello', 'newsletter', 'Unknown kind of SMS message.'),
 		array('905321234567', 'Hello', 'marketing', 'Marketing messages are not sent by SMS: they need the recipient\'s consent recorded in İYS.'),
 		array('not a number', 'Hello', 'order', 'This is not a mobile number an SMS can be sent to.'),
-		array('905321234567', '   ', 'order', 'The message is empty.'),
+		array('905321234567', "  \x07 ", 'order', 'The message is empty.'),
 	) as $case) {
 		$result = pg_sms_send($case[0], $case[1], $case[2]);
 
@@ -282,6 +342,10 @@ function test_sms_send_refuses_before_reading_the_account()
 		pg_assert_false($result['retry'], $case[2]);
 		pg_assert_same(lang($case[3]), $result['error'], $case[2]);
 	}
+
+	$long = pg_sms_send('905321234567', str_repeat('ş', pg_sms_max_length() + 1), 'order');
+	pg_assert_same(lang(array('string' => 'The message is longer than {var:1} characters.', 'vars' => array(pg_sms_max_length()))), $long['error']);
+	pg_assert_false($long['retry']);
 }
 
 function test_sms_kinds_only_marketing_is_commercial()

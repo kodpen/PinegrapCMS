@@ -103,6 +103,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 "chat_upload_folder_id = '" . escape((int) post_value('chat_upload_folder_id')) . "',";
         }
     }
+
+    // ── SMS ──
+    //
+    // Checked before anything is written: a changed account is asked about at
+    // the provider, and a refusal stops the whole category like a refused
+    // MailChimp key. Ahead of MailChimp's checks, which may create a store
+    // there that a refusal here could not take back.
+    $sms_settings_post = pg_sms_settings_check($_POST, $liveform);
+
     // ── MailChimp ──
     //
     // Everything here runs BEFORE the write and can stop it. A key, a list or
@@ -222,13 +231,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             }
         }
     }
-
-    // ── SMS ──
-    //
-    // Checked here, before anything is written: a changed account is asked
-    // about at the provider, and a refusal stops the whole category like a
-    // refused MailChimp key.
-    $sms_settings_post = pg_sms_settings_check($_POST, $liveform);
 
     if ($liveform->check_form_errors()) {
         return;
