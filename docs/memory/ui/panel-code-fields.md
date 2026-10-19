@@ -5,7 +5,7 @@ description: Code fields on panel screens: pg_code_editor_attach(), loading thro
 
 ## How does a panel screen draw a code field?
 - `pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css', 'readonly' => false))` (`includes/fn/editor.php`) after the textarea: the facade's editor (`assets/js/pg_code_editor.js`, CodeMirror 6) takes the textarea's place, keeps its value current and raises `input` on it, so the form submits as before. `pg_code_editor_language()` maps the code type to `css`, `javascript`, `json`, else `html`; a plain-text type turns the lint off. Optional `height`; without it the field grows to 80vh and scrolls inside; a read-only field is as tall as its text.
-- The syntax lint (`_syntaxLinter()`) checks nothing in an empty document, nor in a blank JSON one: the HTML parser leaves a zero-length error node there and the JSON parser reports an unexpected end, which marked every empty field red until #NNN.
+- The syntax lint (`_syntaxLinter()`) checks nothing in an empty document, nor in a blank JSON one: the HTML parser leaves a zero-length error node there and the JSON parser reports an unexpected end, which marked every empty field red until #629.
 - F11 fills the window, Esc leaves. The instance is kept in `window.pgCodeEditors[id]` and the textarea raises `pgcodeeditorready` when it is there (`create_file.php` then follows the chosen type with `setLanguage()` / `setLint()`).
 - CodeMirror 5 is gone (2026.11.0): no `get_codemirror_*()`, no `'code_editor'` page property, no template in the head. `clean_up.php` lists its old folders.
 
