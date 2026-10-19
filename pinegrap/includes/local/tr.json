@@ -24096,5 +24096,10 @@
     "access denied to submit a review to page ({var:1}) because the visitor has no purchase of the product left to review": "ziyaretçinin değerlendirebileceği bir satın alımı kalmadığı için sayfaya ({var:1}) değerlendirme gönderme erişimi reddedildi",
     "Verified purchase": "Doğrulanmış satın alma",
     "Please {var:1} to review a product you bought.": "Satın aldığınız ürünü değerlendirmek için lütfen {var:1}.",
-    "general job corrected the rating of {var:1} product(s) from their reviews": "genel iş {var:1} ürünün puanını değerlendirmelerinden yeniden hesaplayarak düzeltti"
+    "general job corrected the rating of {var:1} product(s) from their reviews": "genel iş {var:1} ürünün puanını değerlendirmelerinden yeniden hesaplayarak düzeltti",
+    "Reply from the store": "Mağazanın cevabı",
+    "Verified purchase: order {var:1}": "Doğrulanmış satın alma: {var:1} numaralı sipariş",
+    "Not a verified purchase": "Doğrulanmış satın alma değil",
+    "Replied {var:1}.": "{var:1} cevaplandı.",
+    "Shown under the review, with the date it was written.": "Değerlendirmenin altında, yazıldığı tarihle gösterilir."
 }

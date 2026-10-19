@@ -28,7 +28,9 @@
 // one purchase opens one review and the next order of it opens the next.
 //
 // Staff - anyone who may edit the page - are not asked: what they write under
-// a product is the store speaking, and it counts in no rating.
+// a product is the store speaking, and it counts in no rating. The store's
+// answer to a review itself is written in Comment Moderation
+// (comments.seller_reply, seller_reply_at) and shown under the review.
 //
 // products.rating_avg and rating_count are worked out from the published,
 // starred reviews of verified purchases only; a comment from before 2026.11.0
@@ -399,6 +401,96 @@ function pg_review_aggregate_jsonld($average, $count)
         'bestRating'  => 5,
         'worstRating' => 1,
     );
+}
+
+/**
+ * Whether the store's reply columns (11.0.14) are there.
+ *
+ * @return bool
+ */
+function pg_review_replies_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has')
+            && pg_schema_has('comments', 'seller_reply')
+            && pg_schema_has('comments', 'seller_reply_at');
+    }
+
+    return $ready;
+}
+
+/**
+ * The store's reply as it is kept: trimmed, at most 5000 characters.
+ *
+ * @param string|null $reply
+ * @return string
+ */
+function pg_review_reply_text($reply)
+{
+    return mb_substr(trim((string) $reply), 0, 5000);
+}
+
+/**
+ * When the store's reply was written, after a save of the moderation screen:
+ * a new or changed reply now, an unchanged one when it was first written, and
+ * none once the reply is taken away.
+ *
+ * @param string|null $old_reply   comments.seller_reply before the save
+ * @param string      $new_reply   what is kept now (pg_review_reply_text())
+ * @param int|string  $old_time    comments.seller_reply_at before the save
+ * @param int         $now
+ * @return int
+ */
+function pg_review_reply_time($old_reply, $new_reply, $old_time, $now)
+{
+    $new_reply = (string) $new_reply;
+
+    if ($new_reply === '') {
+        return 0;
+    }
+
+    if (($new_reply === pg_review_reply_text($old_reply)) && ((int) $old_time > 0)) {
+        return (int) $old_time;
+    }
+
+    return (int) $now;
+}
+
+/**
+ * The store's reply under a review, in the comment list of the page.
+ *
+ * @param string $reply     comments.seller_reply
+ * @param string $when      when it was written, as get_relative_time() prints it
+ *                          (a <time> element; '' for none)
+ * @param bool   $bootstrap whether the page draws its comments in Bootstrap's markup
+ * @return string '' when there is no reply
+ */
+function pg_review_reply_html($reply, $when, $bootstrap)
+{
+    $reply = trim((string) $reply);
+
+    if ($reply === '') {
+        return '';
+    }
+
+    $heading = h(lang('Reply from the store'));
+    $text = convert_text_to_html($reply);
+
+    if ($bootstrap) {
+        return '<div class="software_seller_reply border-start border-3 ps-3 mt-3">'
+            . '<div class="small fw-semibold">' . $heading
+            . (((string) $when !== '') ? ' <span class="fw-normal text-body-secondary">' . $when . '</span>' : '') . '</div>'
+            . '<div class="message mt-1">' . $text . '</div>'
+            . '</div>';
+    }
+
+    return '<div class="software_seller_reply" style="margin-top: 1em; padding-left: 1em; border-left: 3px solid #ccc">'
+        . '<div class="seller_reply_heading" style="font-weight: bold">' . $heading
+        . (((string) $when !== '') ? ' <span class="date_and_time" style="font-weight: normal">' . $when . '</span>' : '') . '</div>'
+        . '<div class="message">' . $text . '</div>'
+        . '</div>';
 }
 
 /**

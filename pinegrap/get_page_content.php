@@ -3939,6 +3939,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         comments.featured,
                         comments.rating,
                         " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
+                        " . (pg_review_replies_ready() ? "comments.seller_reply, comments.seller_reply_at," : "'' AS seller_reply, 0 AS seller_reply_at,") . "
                         user.user_username as username,
                         user.user_role,
                         user.user_id,
@@ -4241,6 +4242,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             $output_verified_purchase = ' <span class="software_verified_purchase' . ($cm_bs ? ' badge rounded-pill text-bg-success ms-1' : '') . '">' . h(lang('Verified purchase')) . '</span>';
                         }
 
+                        // The store's reply, under the review it answers.
+                        $output_seller_reply = pg_review_reply_html(
+                            $comment['seller_reply'],
+                            ((int) $comment['seller_reply_at'] > 0) ? get_relative_time(array('timestamp' => $comment['seller_reply_at'])) : '',
+                            $cm_bs);
+
                         $output_submitted_date_and_time = '';
                         
                         // if the page is set so that the submitted date & time should be shown, then output it
@@ -4301,6 +4308,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 						                ' . str_replace('class="date_and_time"', 'class="date_and_time small text-body-secondary"', $output_submitted_date_and_time) . '
 						                <div class="message mt-2">' . convert_text_to_html($comment['message']) . '</div>
 						                ' . $output_file_attachment . '
+						                ' . $output_seller_reply . '
 						            </div>
 						            <a href="javascript:void(0)" class="share btn btn-link btn-sm text-body-secondary position-absolute top-0 end-0 m-2 p-1 lh-1" title="' . lang('Share') . ': ' . $output_comment_label . '" aria-label="' . lang('Share') . '" data-id="' . $comment['id'] . '">
 						                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.5 2.5 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5m-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3m11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3"/></svg>
@@ -4326,6 +4334,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 <br />
                                 <div class="message">' . convert_text_to_html($comment['message']) . '</div>
                                 ' . $output_file_attachment . '
+                                ' . $output_seller_reply . '
                                 <a href="javascript:void(0)" class="share" style="position: absolute; top: 1em; right: 1em; padding: .25em" title="' . lang('Share') . ': ' . $output_comment_label . '" data-id="' . $comment['id'] . '">
                                         <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/share.png" width="20" height="20" alt="' . lang('Share') . '" style="opacity: 0.15">
                                 </a>

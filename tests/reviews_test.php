@@ -162,3 +162,58 @@ function test_reviews_write_paths()
 	pg_assert_contains('pg_review_eligibility(', $page, 'the comment form asks before it is drawn');
 	pg_assert_contains('pg_review_product_aggregate_jsonld(', $page, 'the product markup carries the rating');
 }
+
+// The store's reply is kept trimmed and at most 5000 characters long.
+function test_reviews_reply_text()
+{
+	pg_assert_same('Teşekkürler!', pg_review_reply_text("  Teşekkürler!\n"));
+	pg_assert_same('', pg_review_reply_text(null));
+	pg_assert_same(5000, mb_strlen(pg_review_reply_text(str_repeat('ş', 6000))), 'cut at 5000 characters, not bytes');
+}
+
+// A reply is dated when it is first written or changed, keeps its date while
+// it stays the same, and loses it when it is taken away.
+function test_reviews_reply_time()
+{
+	$now = 1760000000;
+	$then = $now - 7200;
+
+	pg_assert_same($now, pg_review_reply_time('', 'Teşekkürler', 0, $now), 'a new reply');
+	pg_assert_same($then, pg_review_reply_time('Teşekkürler', 'Teşekkürler', $then, $now), 'saved again unchanged');
+	pg_assert_same($then, pg_review_reply_time("Teşekkürler \n", 'Teşekkürler', (string) $then, $now), 'stored with spaces around it');
+	pg_assert_same($now, pg_review_reply_time('Teşekkürler', 'Teşekkür ederiz', $then, $now), 'changed');
+	pg_assert_same($now, pg_review_reply_time('Teşekkürler', 'Teşekkürler', 0, $now), 'an old reply without a date gets one');
+	pg_assert_same(0, pg_review_reply_time('Teşekkürler', '', $then, $now), 'taken away');
+}
+
+// The reply is printed under the review in either markup, as text.
+function test_reviews_reply_html()
+{
+	pg_assert_same('', pg_review_reply_html('', 'now', true), 'no reply, nothing');
+	pg_assert_same('', pg_review_reply_html("  \n", 'now', false), 'only spaces, nothing');
+
+	foreach (array(true, false) as $bootstrap) {
+		$html = pg_review_reply_html('<script>alert(1)</script> Teşekkürler', '<time datetime="2026-10-18T09:00:00Z">2 days ago</time>', $bootstrap);
+
+		pg_assert_contains('software_seller_reply', $html, $bootstrap ? 'bootstrap' : 'classic');
+		pg_assert_contains('&lt;script&gt;', $html, 'the reply is text');
+		pg_assert_contains('<time datetime="2026-10-18T09:00:00Z">2 days ago</time>', $html, 'the time as get_relative_time() prints it');
+		pg_assert_false(strpos($html, '<script>') !== false, 'no markup from the reply');
+	}
+
+	pg_assert_false(strpos(pg_review_reply_html('Teşekkürler', '', true), 'text-body-secondary') !== false, 'no time, no time span');
+}
+
+// The moderation screen writes the reply with its date, and the page prints
+// it under the review in both markups.
+function test_reviews_reply_paths()
+{
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_comment.php');
+
+	pg_assert_contains('pg_review_reply_time($seller_reply, $new_seller_reply, $seller_reply_at, time())', $edit);
+	pg_assert_contains('$sql_seller_reply', $edit);
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+	pg_assert_same(2, substr_count($page, "' . \$output_seller_reply . '"), 'under the review in both markups');
+}

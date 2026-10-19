@@ -1,6 +1,6 @@
 ---
 name: product-reviews-verified
-description: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, verified_order_id, the product rating and its refresh, aggregateRating
+description: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
 ---
 
 ## Which comments are product reviews?
@@ -28,5 +28,5 @@ description: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): whi
 - Only the legacy catalog detail block of `get_page_content.php`, when the page shows comments with stars (`comments` and `comments_rating` on): markup may describe only reviews a visitor can read there. `_pg_build_product_jsonld()` (designer pages) adds none until the designer shows reviews (plan step: `__reviews` token).
 
 ## What is not done yet?
-- Seller reply (`seller_reply`, `seller_reply_at` exist, nothing writes them), the `order_review_request` e-mail (enum value exists), a verified filter in moderation, widget tokens, the API: `plans/storefront-conversion-pack.md`.
+- The store's reply: `commerce/product-review-store-reply.md`. Not done: the `order_review_request` e-mail (enum value exists), a verified filter in moderation, widget tokens, the API: `plans/storefront-conversion-pack.md`.
 - By default a page with featured comments shows only those first; 28/B(4) asks for an objective order. Owner question.
