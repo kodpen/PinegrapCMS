@@ -428,8 +428,9 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
         foreach ($files as $file) {
 
             // Design files stay designer-only, the same rule the single file
-            // copy applies; the rest of the folder still comes across.
-            if (($file['design'] == 1) && ($user['role'] > 1)) {
+            // copy applies, and the signing key is never copied; the rest of
+            // the folder still comes across.
+            if ((($file['design'] == 1) && ($user['role'] > 1)) || pg_file_withheld($file['name'])) {
                 $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $file['name']));
                 continue;
             }
@@ -778,6 +779,12 @@ function pg_explorer_zip_add_folder($zip, $folder_id, $prefix, $user, &$skipped_
         foreach ($files as $file) {
 
             if (($file['design'] == 1) && ($user['role'] > 1)) {
+                continue;
+            }
+
+            // The archive is served like any other file, so the signing
+            // key stays out of it.
+            if (pg_file_withheld($file['name'])) {
                 continue;
             }
 
@@ -6840,6 +6847,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         respond(array('status' => 'error', 'message' => pg_upload_blocked_message($name)));
                     }
 
+                    // Under another name the signing key would be served.
+                    if (($name != $file['name']) && pg_file_withheld($file['name'])) {
+                        respond(array('status' => 'error', 'message' => lang('Access denied')));
+                    }
+
                     // Same preparation the file edit screen applies: ASCII
                     // conversion, reserved names, length and character rules.
                     $name = prepare_file_name($name);
@@ -7092,9 +7104,12 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                             break;
                         }
 
+                        // A copy of the signing key would carry another name,
+                        // and get_file.php serves it under that name.
                         if (
                             (check_edit_access($file['folder']) == false)
                             || (($file['design'] == 1) && ($user['role'] > 1))
+                            || pg_file_withheld($file['name'])
                         ) {
                             $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $file['name']));
                             break;
@@ -7958,8 +7973,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             $extension = mb_strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
             $path = FILE_DIRECTORY_PATH . '/' . $file['name'];
 
+            // The signing key is shown as a file with no preview: its
+            // content never leaves the server (pg_file_withheld()).
             $payload['editable'] = in_array($extension, pg_explorer_editable_formats(), true);
-            $payload['viewable'] = in_array($extension, pg_explorer_viewable_formats(), true);
+            $payload['viewable'] = in_array($extension, pg_explorer_viewable_formats(), true)
+                && (pg_file_withheld($file['name']) == false);
             $payload['editor_language'] = pg_explorer_editor_language($extension);
             $payload['content'] = null;
             $payload['content_too_large'] = false;
@@ -8007,6 +8025,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             if ($name == '') {
                 respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
+            }
+
+            // Under another name the signing key would be served.
+            if (($name != $file['name']) && pg_file_withheld($file['name'])) {
+                respond(array('status' => 'error', 'message' => lang('Access denied')));
             }
 
             if (($name != $file['name']) && (check_name_availability(array('name' => $name, 'ignore_item_id' => $file_id, 'ignore_item_type' => 'file')) == false)) {
@@ -9435,6 +9458,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     if (
                         (check_edit_access($file['folder']) == false)
                         || (($file['design'] == 1) && ($user['role'] > 1))
+                        || pg_file_withheld($file['name'])
                     ) {
                         $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $file['name']));
                         continue;

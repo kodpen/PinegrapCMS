@@ -302,6 +302,19 @@ function pg_upload_name_blocked($name)
     return false;
 }
 
+// The one file the panel never hands out: dkim.key, the private key that
+// signs the site's mail. get_file.php never serves it, whatever folder its
+// record sits in (older installations registered it in a public folder), so
+// the file screens show no content for it, leave it out of the archives they
+// build, and neither copy it nor rename it: an archive, a copy or a renamed
+// file would be an ordinary file that get_file.php then serves. The mailer
+// reads it by this name, so it stays where the SMTP settings screen wrote it. Other .key
+// and .pub files are not affected.
+function pg_file_withheld($name)
+{
+    return mb_strtolower(trim((string) $name)) === 'dkim.key';
+}
+
 // The one sentence every door says when it refuses such a file.
 function pg_upload_blocked_message($name = '')
 {
