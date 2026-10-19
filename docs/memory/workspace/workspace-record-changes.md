@@ -5,7 +5,7 @@ description: How site records are written from the Workspace: the changes.php pi
 
 ## Where are records written from the Workspace?
 - Only in `includes/workspace/changes.php`: catalogue `ws_change_types()` (per field: kind, limit, label, column), rights `ws_change_allowed()` (product, stock, order, product_group, offer need the `ecommerce` right), typing and diff `ws_changes_input()`, per-kind rules `ws_change_check()`, apply-time stale check `ws_change_apply_record_check()` (every `from` must still hold), writers `ws_change_write_<kind>()`, rows in `ws_ai_changes` (pending → applying → applied / dismissed / stale / failed).
-- Callers: assistant proposals (ai.php, api_claude.php; applied by the person who asked through `ws_ai_change_apply` or `POST /workspace/changes/{id}/apply`), AI bulk (bulk.php), and the scheduled action of type "change" (`ws_scheduled_change()`: staff only, writers called directly, own log line). No immediate form for a person yet: docs/memory/plans/workspace-record-quick-edit.md.
+- Callers: assistant proposals (ai.php, api_claude.php; applied by the person who asked through `ws_ai_change_apply` or `POST /workspace/changes/{id}/apply`), AI bulk (bulk.php), and the scheduled action of type "change" (`ws_scheduled_change()`: staff only, writers called directly, own log line). A person's own edit from the record drawer runs the same checks and writers: docs/memory/workspace/workspace-quick-edit.md.
 - Invoices, waybills, receipts and e-documents are tag-only; a product's images, barcode, attributes and zones are not reachable.
 
 ## What does ws_change_check() refuse for the catalogue?
@@ -19,7 +19,7 @@ description: How site records are written from the Workspace: the changes.php pi
 
 ## Which sentences does a writer leave, and in whose name?
 - Log lines go through `ws_change_log()`: silent under `$GLOBALS['ws_change_log_quiet']` (a scheduled action logs its own line), otherwise worded "on Claude's proposal" and switched to Pinegrap AI by `ws_ai_voice()`.
-- Two sentences stay on the record itself: an order's default cancellation reason (kept on the order, sent with the refund, read by the customer in the cancellation e-mail) and the note on a deleted offer. `ws_change_sentence($by_assistant, $by_scheduled, $var)` names the scheduled action when `ws_change_source()` says one runs (set and cleared around the writer call in `ws_scheduled_change()`), the assistant otherwise. Before #516 a scheduled cancellation told the customer "on Claude's proposal". A person-made quick edit adds its own source kind here, not a new flag.
+- Two sentences stay on the record itself: an order's default cancellation reason (kept on the order, sent with the refund, read by the customer in the cancellation e-mail) and the note on a deleted offer. `ws_change_sentence($by_assistant, $by_scheduled, $var, $by_person)` names the scheduled action or the person when `ws_change_source()` says one is writing (set and cleared around the writer call in `ws_scheduled_change()` and `ws_quick_edit_save()`), the assistant otherwise. Before #516 a scheduled cancellation told the customer "on Claude's proposal".
 
 ## What is still open?
 - A write that dies after the row is set to `applying` leaves it there (Apply and Dismiss need `pending`; only bulk rows are resumed): issue #512.

@@ -2215,6 +2215,33 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok($refs);
 
+        // A record's fields, edited by the person from the drawer with no
+        // assistant in between (quick_edit.php).
+        case 'ws_record_fields':
+            $fields = ws_quick_edit_fields($viewer, (string) ($request['type'] ?? ''), (int) ($request['id'] ?? 0));
+
+            return $fields['ok'] ? ws_action_ok($fields) : ws_action_error($fields['error']);
+
+        case 'ws_record_fields_save':
+            $saved = ws_quick_edit_save(
+                $viewer,
+                (string) ($request['type'] ?? ''),
+                (int) ($request['id'] ?? 0),
+                is_array($request['fields'] ?? null) ? $request['fields'] : array(),
+                is_array($request['from'] ?? null) ? $request['from'] : array(),
+                (int) ($request['channel_id'] ?? 0),
+                !empty($request['decision'])
+            );
+
+            if (!$saved['ok']) {
+                $error = ws_action_error($saved['error']);
+                $error['stale'] = $saved['stale'];
+
+                return $error;
+            }
+
+            return ws_action_ok(array('lines' => $saved['lines'], 'decision_id' => $saved['decision_id']));
+
         case 'ws_task_get':
             $task = ws_task((int) ($request['task_id'] ?? 0));
 
