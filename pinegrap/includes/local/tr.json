@@ -23819,5 +23819,6 @@
     "This is not valid JSON, so the save refuses it.": "Bu geçerli JSON değil; kayıt bunu kabul etmez.",
     "Too long: the block can be at most 64 KB.": "Çok uzun: blok en çok 64 KB olabilir.",
     "Valid JSON-LD; it goes on the page with the next save.": "Geçerli JSON-LD; bir sonraki kayıtla sayfaya yazılır.",
-    "Write a JSON object, or a list of objects.": "Bir JSON nesnesi ya da nesne listesi yazın."
+    "Write a JSON object, or a list of objects.": "Bir JSON nesnesi ya da nesne listesi yazın.",
+    "Written in the head of every page of this design. A tag of the same name in the Meta Tags of a page replaces it on that page.": "Bu tasarımın her sayfasının head bölümüne yazılır. Bir sayfanın Meta Etiketleri bölümündeki aynı adlı etiket, o sayfada bunun yerine geçer."
 }

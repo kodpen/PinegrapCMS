@@ -1942,7 +1942,7 @@ function pg_designer_meta_tags_group($scope, $value = '')
 
     if ($scope === 'design') {
         $input = '<input type="hidden" name="style_meta_tags" id="sd-style-meta-tags" value="' . h(pg_meta_tags_encode(pg_meta_tags_normalize((string)$value))) . '">';
-        $help  = lang('Written in the head of every page of this design. A page replaces one with a tag of the same name under Page.');
+        $help  = lang('Written in the head of every page of this design. A tag of the same name in the Meta Tags of a page replaces it on that page.');
     } else {
         $input = '<input type="hidden" id="pg_page_meta_tags" class="sd-page-field" data-page-key="page_meta_tags" value="">';
         $help  = lang('Written in the head of this page only. A tag here replaces a design tag of the same name.');
