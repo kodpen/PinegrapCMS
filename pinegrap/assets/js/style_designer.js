@@ -42825,11 +42825,11 @@ const StyleDesigner = (function () {
         _sdSettingsDescribe(phpModal);
 
         // ── Panes ──
-        // The head code becomes a code field the first time its pane opens:
-        // the editor's bundle is not fetched for a modal opened for a title.
-        phpModal.addEventListener('shown.bs.tab', function (e) {
-            if (e.target && e.target.id === 'tab-head-btn') _sdHeadCodeEditor();
-        });
+        // The head code and the page's JSON-LD become code fields the first
+        // time their pane opens (_sdSettingsCodeFields()).
+        phpModal.addEventListener('shown.bs.tab', _sdSettingsCodeFields);
+        var jsonld = document.getElementById('pg_page_custom_jsonld');
+        if (jsonld) jsonld.addEventListener('input', _sdJsonLdStatus);
 
         // ── Refresh dynamic values on modal open ──
         phpModal.addEventListener('show.bs.modal', function() {
@@ -42838,8 +42838,7 @@ const StyleDesigner = (function () {
             _sdSettingsSyncSave();
             _sdSettingsSummary();
             _sdSettingsRefresh();
-            var head = document.getElementById('tab-head');
-            if (head && head.classList.contains('active')) _sdHeadCodeEditor();
+            _sdSettingsCodeFields();
         });
         // Every way out keeps what was changed: the meta tag lists and the
         // page fields have written their inputs by now, the HTML tree shows
@@ -42915,6 +42914,7 @@ const StyleDesigner = (function () {
         _sdSettingsAddress();
         _sdSettingsAccess();
         _sdSettingsSerp();
+        _sdJsonLdStatus();
     }
 
     // The design's pages, as the tabs hold them, and its last save.
@@ -43004,17 +43004,29 @@ const StyleDesigner = (function () {
         note.textContent = parts.join(' ');
     }
 
-    // Head code: a code field the first time its pane is shown. The syntax
-    // check starts with the first character: the parser marks an empty
-    // document as an error, and an empty field is the normal state here.
-    function _sdHeadCodeEditor() {
-        var ta = document.getElementById('sd-style-head');
+    // The code fields of the modal's open pane: the design's head code and
+    // the page's JSON-LD. Each becomes a code field the first time its pane
+    // is shown, so the editor's bundle is not fetched for a modal opened for
+    // a title.
+    var _SD_SETTINGS_CODE = { 'tab-head': ['sd-style-head', 'html'], 'tab-seo': ['pg_page_custom_jsonld', 'json'] };
+    function _sdSettingsCodeFields() {
+        Object.keys(_SD_SETTINGS_CODE).forEach(function (pane) {
+            var el = document.getElementById(pane);
+            if (el && el.classList.contains('active')) _sdSettingsCodeField(_SD_SETTINGS_CODE[pane][0], _SD_SETTINGS_CODE[pane][1]);
+        });
+    }
+
+    // The syntax check starts with the first character: both parsers mark
+    // an empty document as an error, and an empty field is the normal state
+    // here.
+    function _sdSettingsCodeField(id, language) {
+        var ta = document.getElementById(id);
         if (!ta || ta._sdEditor || typeof PgCodeEditor === 'undefined' || !PgCodeEditor.attach) return;
         ta._sdEditor = true;
         var hasText = function (v) { return /\S/.test(v || ''); };
         var linted = hasText(ta.value);
         PgCodeEditor.attach(ta, {
-            language: 'html',
+            language: language,
             lineWrapping: true,
             className: 'sd-settings-code',
             phrases: _sdCodePhrases(),
@@ -43024,7 +43036,69 @@ const StyleDesigner = (function () {
                 var on = hasText(inst.getValue());
                 if (on !== linted && inst.setLint) { linted = on; inst.setLint(on); }
             }
-        }).then(function (ed) { ta._sdEditor = ed; }, function () { ta._sdEditor = false; });
+        }).then(function (ed) {
+            ta._sdEditor = ed;
+            // Another page may have been opened while the engine was on its
+            // way; the field holds that page's text by now.
+            if (ed.getValue() !== ta.value) ed.setValue(ta.value);
+        }, function () { ta._sdEditor = false; });
+    }
+
+    // A page field shown in a code field: the page's text, written into the
+    // textarea by _pgLoadPageIntoFields(), goes into the editor too, or the
+    // next keystroke would write the previous page's text back.
+    function _sdSettingsCodeSync(id) {
+        var ta = document.getElementById(id);
+        var ed = ta ? ta._sdEditor : null;
+        if (ed && typeof ed === 'object' && ed.getValue() !== ta.value) ed.setValue(ta.value);
+    }
+
+    // The page's JSON-LD, checked as it is typed: the mirror of
+    // pg_page_custom_jsonld_check() (includes/fn/seo.php), which the save
+    // applies. '' for an empty field, 'ok', or the reason.
+    function _sdJsonLdCheck(raw) {
+        var text = String(raw == null ? '' : raw).trim();
+        if (!text) return '';
+        var bytes = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(text).length : text.length;
+        if (bytes > 65535) return 'size';
+        var v;
+        try { v = JSON.parse(text); } catch (e) { return 'json'; }
+        var items = Array.isArray(v) ? v : ((v && typeof v === 'object') ? [v] : null);
+        if (!items) return 'shape';
+        if (!items.length) return 'type';
+        var typed = function (it, top) {
+            var t = it['@type'];
+            if (typeof t === 'string' && t.trim() !== '') return true;
+            if (Array.isArray(t) && t.length) return t.every(function (w) { return typeof w === 'string' && w.trim() !== ''; });
+            var g = it['@graph'];
+            if (top && Array.isArray(g) && g.length) {
+                return g.every(function (n) { return n && typeof n === 'object' && !Array.isArray(n) && typed(n, false); });
+            }
+            return false;
+        };
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (!it || typeof it !== 'object' || Array.isArray(it)) return 'shape';
+            if (!typed(it, true)) return 'type';
+        }
+        return 'ok';
+    }
+
+    function _sdJsonLdStatus() {
+        var box = document.getElementById('sd-jsonld-status');
+        var ta = document.getElementById('pg_page_custom_jsonld');
+        if (!box || !ta) return;
+        var r = _sdJsonLdCheck(ta.value);
+        var say = {
+            'ok':    _sdT('Valid JSON-LD; it goes on the page with the next save.'),
+            'json':  _sdT('This is not valid JSON, so the save refuses it.'),
+            'shape': _sdT('Write a JSON object, or a list of objects.'),
+            'type':  _sdT('Every item needs an @type, for example "@type": "FAQPage".'),
+            'size':  _sdT('Too long: the block can be at most 64 KB.')
+        };
+        box.textContent = r ? say[r] : '';
+        box.classList.toggle('is-ok', r === 'ok');
+        box.classList.toggle('is-bad', !!r && r !== 'ok');
     }
 
     // ── Settings > General: turn this design into a template ──
@@ -50065,7 +50139,7 @@ const StyleDesigner = (function () {
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
-        'page_meta_tags'
+        'page_meta_tags', 'page_custom_jsonld'
     ];
     var _PG_BOOL_FIELDS = {
         page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1, page_draft: 1,
@@ -50217,7 +50291,9 @@ const StyleDesigner = (function () {
         if (sm) sm.disabled = !!p.page_noindex;
         var hint = document.getElementById('pg_noindex_hint');
         if (hint) hint.style.display = p.page_noindex ? 'block' : 'none';
-        // Settings modal headings name the page; its live lines follow it.
+        // Settings modal headings name the page; its live lines and its
+        // code field follow it.
+        _sdSettingsCodeSync('pg_page_custom_jsonld');
         _sdSettingsPageLabel(p.page_name);
         _sdSettingsRefresh();
     }
@@ -50695,7 +50771,7 @@ const StyleDesigner = (function () {
         var folder = (opts && typeof opts.folder === 'number' && opts.folder > 0) ? opts.folder : 0;
         var p = {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
-            page_id: 0, page_name: '', page_folder: folder, page_title: '', page_meta_description: '', page_meta_tags: '',
+            page_id: 0, page_name: '', page_folder: folder, page_title: '', page_meta_description: '', page_meta_tags: '', page_custom_jsonld: '',
             page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
             page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
             pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -50734,7 +50810,7 @@ const StyleDesigner = (function () {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: name,
             page_folder: src.page_folder, page_title: src.page_title, page_meta_description: src.page_meta_description,
-            page_meta_tags: src.page_meta_tags || '',
+            page_meta_tags: src.page_meta_tags || '', page_custom_jsonld: src.page_custom_jsonld || '',
             page_search: src.page_search, page_search_keywords: src.page_search_keywords,
             page_sitemap: src.page_sitemap, page_home: 0,           // never two home pages
             page_noindex: src.page_noindex, page_nofollow: src.page_nofollow,
@@ -50827,7 +50903,7 @@ const StyleDesigner = (function () {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: name || ((sp.page_name || _sdT('page')) + '-' + _sdT('copy')),
             page_folder: sp.page_folder || 0, page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
-            page_meta_tags: sp.page_meta_tags || '',
+            page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: 0,           // never two home pages
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -52539,7 +52615,7 @@ const StyleDesigner = (function () {
             key: sp.key || ('p' + sp.page_id),
             page_id: sp.page_id, page_name: sp.page_name || '', savedName: sp.page_name || '', page_folder: sp.page_folder || 0,
             page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
-            page_meta_tags: sp.page_meta_tags || '',
+            page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -52933,7 +53009,7 @@ const StyleDesigner = (function () {
                 var p = {
                     key: tabKeys[i],
                     page_id: 0, page_name: sp.page_name || '', page_folder: importFolder,
-                    page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '',
+                    page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '', page_custom_jsonld: '',
                     page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                     page_draft: _pgNewPageDraft(),
                     pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -53192,7 +53268,7 @@ const StyleDesigner = (function () {
             var p = {
                 key: tabKey,
                 page_id: 0, page_name: sp.page_name || '', page_folder: parseInt(sp.page_folder, 10) || 0,
-                page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '',
+                page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '', page_custom_jsonld: '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: '', page_sitemap: sp.page_sitemap ? 1 : 0,
                 page_home: isHome ? 1 : 0, page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: 0,
                 page_draft: isHome ? 0 : _pgNewPageDraft(),
@@ -53667,7 +53743,7 @@ const StyleDesigner = (function () {
                 key: sp.key, page_id: sp.page_id || 0, page_name: sp.page_name || '',
                 page_folder: sp.page_folder || 0, page_title: sp.page_title || '',
                 page_meta_description: sp.page_meta_description || '',
-                page_meta_tags: sp.page_meta_tags || '',
+                page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
                 page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
                 page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -53694,7 +53770,7 @@ const StyleDesigner = (function () {
         _pgTabsApplyLayout(design && design.tabLayout ? design.tabLayout.layout : null);
         if (!_pages.length) {
             _pages.push({
-                key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '', page_meta_tags: '',
+                key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '', page_meta_tags: '', page_custom_jsonld: '',
                 page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                 page_draft: _pgNewPageDraft(),
                 pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,

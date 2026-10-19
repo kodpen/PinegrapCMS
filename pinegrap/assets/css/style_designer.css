@@ -5642,6 +5642,8 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-set-value { padding: .3rem 0; font-size: .82rem; color: #c9d1d9; }
 .sd-set-status { margin-top: .45rem; font-size: .75rem; color: #8b949e; overflow-wrap: anywhere; }
 .sd-set-status:empty { display: none; }
+.sd-set-status.is-ok { color: #3fb950; }
+.sd-set-status.is-bad { color: #f85149; }
 .sd-set-status a { color: #58a6ff; text-decoration: none; }
 .sd-set-status a:hover { text-decoration: underline; }
 @container (min-width: 620px) {

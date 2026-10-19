@@ -142,6 +142,7 @@ function pg_designer_screen_render($ctx)
             'pg_comments_email_subject' => (string)(isset($p['pg_comments_email_subject']) ? $p['pg_comments_email_subject'] : ''),
             'pg_comments_notify_email'  => (string)(isset($p['pg_comments_notify_email']) ? $p['pg_comments_notify_email'] : ''),
             'page_meta_tags'        => (string)(isset($p['page_meta_tags']) ? $p['page_meta_tags'] : ''),
+            'page_custom_jsonld'    => (string)(isset($p['page_custom_jsonld']) ? $p['page_custom_jsonld'] : ''),
             'tree'                  => $tree,
             'treeLoadWarning'       => $warn,
             // The page's form-level settings (name, notification, confirmation).
@@ -183,6 +184,7 @@ function pg_designer_screen_render($ctx)
             'pg_comments_email_subject' => '',
             'pg_comments_notify_email'  => '',
             'page_meta_tags'        => '',
+            'page_custom_jsonld'    => '',
             'tree'                  => null,
             'treeLoadWarning'       => false,
             'formSettings'          => array(),
@@ -1821,6 +1823,21 @@ function pg_designer_settings_modal($ctx)
                 array('for' => 'pg_page_sitemap', 'switch' => true)) . '
             ' . $noindex_rows . '
         </section>';
+    // The page's own JSON-LD (page.custom_jsonld, 2026.4.4), where the
+    // column exists. The editor checks it as it is typed
+    // (_sdJsonLdStatus()); the save refuses what does not pass
+    // pg_page_custom_jsonld_check().
+    if (pg_page_custom_jsonld_ready()) {
+        $seo .=
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Structured Data') . '</h3>
+            ' . pg_designer_setting(lang('JSON-LD for this page'),
+                lang('A schema.org block that tells search engines what the page is: a FAQ, an event, a local business. Written in the head of the page while structured data is on in the Site Settings, beside the site-wide block and the ones the site writes itself. It must be valid JSON, and every item needs an @type.'),
+                '<textarea id="pg_page_custom_jsonld" class="form-control form-control-sm sd-code-field sd-page-field" data-page-key="page_custom_jsonld" rows="6" spellcheck="false" autocomplete="off" placeholder="' . h('{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": […]}') . '"></textarea>
+                <div class="sd-set-status" id="sd-jsonld-status" aria-live="polite"></div>',
+                array('for' => 'pg_page_custom_jsonld', 'wide' => true)) . '
+        </section>';
+    }
 
     // ── Page: meta tags ────────────────────────────────────────────────
     $page_meta = pg_designer_meta_tags_group('page');

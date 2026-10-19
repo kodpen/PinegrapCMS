@@ -23808,5 +23808,16 @@
     "Where the share buttons of the site stand on the pages of this design, around the System Region; Disabled leaves them out. They show on public pages only.": "Sitenin paylaşım düğmelerinin bu tasarımın sayfalarında, Sistem Bölgesi'nin hangi köşesinde duracağı; Devredışı onları göstermez. Yalnız herkese açık sayfalarda görünürler.",
     "With no description a search engine shows a passage of the page.": "Açıklama yoksa arama motoru sayfadan bir bölüm gösterir.",
     "Written as it is into the head of every page of this design: a site verification tag, an analytics snippet, a link to an outside stylesheet. It runs on the site, not on the canvas or in the preview; a broken tag can break every page.": "Bu tasarımın her sayfasının head bölümüne olduğu gibi yazılır: site doğrulama etiketi, ölçüm (analytics) kodu, dış bir stil dosyasının bağlantısı. Tuvalde ve önizlemede değil, sitede çalışır; bozuk bir etiket bütün sayfaları bozabilir.",
-    "Only a designer changes it.": "Yalnız tasarımcı değiştirebilir."
+    "Only a designer changes it.": "Yalnız tasarımcı değiştirebilir.",
+    "A schema.org block that tells search engines what the page is: a FAQ, an event, a local business. Written in the head of the page while structured data is on in the Site Settings, beside the site-wide block and the ones the site writes itself. It must be valid JSON, and every item needs an @type.": "Arama motorlarına sayfanın ne olduğunu anlatan schema.org bloğu: bir SSS, bir etkinlik, bir yerel işletme. Site Ayarları'nda yapılandırılmış veri açıkken sayfanın head bölümüne, site geneli bloğun ve sitenin kendi yazdıklarının yanına yazılır. Geçerli JSON olmalı ve her öğenin bir @type'ı bulunmalı.",
+    "Every item in the structured data of {var:1} needs an @type.": "{var:1} sayfasının yapılandırılmış verisindeki her öğenin bir @type'ı olmalı.",
+    "Every item needs an @type, for example \"@type\": \"FAQPage\".": "Her öğenin bir @type'ı olmalı, örneğin \"@type\": \"FAQPage\".",
+    "JSON-LD for this page": "Bu sayfanın JSON-LD'si",
+    "The structured data of {var:1} is not valid JSON.": "{var:1} sayfasının yapılandırılmış verisi geçerli JSON değil.",
+    "The structured data of {var:1} is too long; it can be at most 64 KB.": "{var:1} sayfasının yapılandırılmış verisi çok uzun; en çok 64 KB olabilir.",
+    "The structured data of {var:1} must be a JSON object or a list of objects.": "{var:1} sayfasının yapılandırılmış verisi bir JSON nesnesi ya da nesne listesi olmalı.",
+    "This is not valid JSON, so the save refuses it.": "Bu geçerli JSON değil; kayıt bunu kabul etmez.",
+    "Too long: the block can be at most 64 KB.": "Çok uzun: blok en çok 64 KB olabilir.",
+    "Valid JSON-LD; it goes on the page with the next save.": "Geçerli JSON-LD; bir sonraki kayıtla sayfaya yazılır.",
+    "Write a JSON object, or a list of objects.": "Bir JSON nesnesi ya da nesne listesi yazın."
 }
