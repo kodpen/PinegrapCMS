@@ -730,7 +730,7 @@ if (count($administrator_email_addresses) > 0) {
     if ($file_id != 0) {
         $attachment_line =
             "\n" .
-            lang('Attachment') . ': ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path($file_name) . ' (' . convert_bytes_to_string($file_size) . ')' . "\n";
+            lang('Attachment') . ': ' . URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($file_name) . ' (' . convert_bytes_to_string($file_size) . ')' . "\n";
     }
     
     // if comment was published, then build a message that informs the administrator
@@ -831,7 +831,7 @@ if (count($administrator_email_addresses) > 0) {
             "\n" .
             $output_action . "\n" .
             "\n" .
-            URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $comment_id . "\n";
+            URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $comment_id . "\n";
     }
 
     $query_string = get_query_string_for_page_url($page_type, $item_id, $item_type);
@@ -853,7 +853,7 @@ if (count($administrator_email_addresses) > 0) {
         "\n" .
         lang(array('string'=>'The {var:1} appears at the link below.','vars'=>$comment_label_lowercase)) . "\n" .
         "\n" .
-        URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id) . $query_string . '#c-' . $comment_id;
+        URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . $query_string . '#c-' . $comment_id;
 
     email(array(
         'to' => $administrator_email_addresses,
