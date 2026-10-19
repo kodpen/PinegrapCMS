@@ -473,7 +473,7 @@ function pg_parasut_credentials_for_save()
             parasut_client_id = '" . escape(trim(post_value('parasut_client_id'))) . "',
             parasut_credentials_enc = '" . escape(pg_parasut_credentials_for_save()) . "',
             parasut_username = '" . escape(trim(post_value('parasut_username'))) . "',
-            parasut_company_id = '" . escape(trim(post_value('parasut_company_id'))) . "',
+            parasut_company_id = '" . escape(function_exists('parasut_company_id_for_save') ? parasut_company_id_for_save(post_value('parasut_company_id'), defined('PARASUT_COMPANY_ID') ? PARASUT_COMPANY_ID : '') : trim((string) post_value('parasut_company_id'))) . "',
             parasut_default_product_id = '" . escape(trim(post_value('parasut_default_product_id'))) . "',
             parasut_default_warehouse_id = '" . escape(trim(post_value('parasut_default_warehouse_id'))) . "',
             erp_enabled = '" . escape(post_value('erp_enabled')) . "',
