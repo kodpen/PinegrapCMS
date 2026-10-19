@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19, in progress: model and the My Account si
 
 ## What remains?
 1. Done (PR #650): tables (step 11.0.11), `includes/fn/returns.php` (statuses and moves, held quantities, withdrawal window, refund deadline, create, move, read, delete with the order), `tests/returns_test.php`. Behaviour and what was added to the column list (`decision_note`, `source`, `requested_by`, `decided_by`, `shipped_at`, `closed_at`): docs/memory/commerce/order-returns.md.
-2. Done (PR #PRNUM): order view widget tokens and flags, `order_return.php`, request mail, staff bell: docs/memory/commerce/order-returns-customer.md. Left: the classic order view (`get_view_order_screen_content.php`, liveform `view_order`) shows no returns.
+2. Done (PR #677): order view widget tokens and flags, `order_return.php`, request mail, staff bell: docs/memory/commerce/order-returns-customer.md. Left: the classic order view (`get_view_order_screen_content.php`, liveform `view_order`) shows no returns.
 3. Panel screens `view_returns.php`, `view_return.php` (M).
 4. Refund and ERP bridge, reminders job (S–M).
 5. API, webhooks, trigger (S).

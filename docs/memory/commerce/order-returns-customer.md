@@ -6,7 +6,7 @@ description: Customer side of returns in My Account's order view: the switch, __
 ## When can a customer ask?
 - `ECOMMERCE_ORDER_RETURNS_ALLOWED` in data/config.php (off by default, like `ECOMMERCE_ORDER_CANCEL_ALLOWED`; documented in `data/config(default).php`) and the tables: `pg_returns_customer_enabled()`.
 - Only the signed-in owner, on a `complete`/`exported` order, per delivery whose goods left and whose window is open, while something is left on a line: `pg_return_customer_view()`, the same rules `pg_return_create()` applies to source `customer`.
-- Built with step 2 of `plans/customer-returns-flow.md` (PR #PRNUM). The panel screens are step 3: until they land staff get the bell and the activity log but no returns screen.
+- Built with step 2 of `plans/customer-returns-flow.md` (PR #677). The panel screens are step 3: until they land staff get the bell and the activity log but no returns screen.
 
 ## What does the order view widget give?
 - `__returns`: every request of the order with its status badge, lines, reason, both notes, the carrier and return code once approved, the tracking number, the refund due date and the customer's moves. `__return_form`: one form per delivery, a quantity box per line up to what is left, the reason, a note. Pre-built HTML from `pg_returns_list_html()` / `pg_return_form_html()` (pure, `tests/returns_test.php`).
