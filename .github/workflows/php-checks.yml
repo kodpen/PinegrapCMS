@@ -1,10 +1,17 @@
 # Static checks and unit tests that gate every pull request: PHP syntax across
 # the product tree, translation-key consistency, designer binding tokens, the
 # external API schema, the unit tests under tests/, the function copies in
-# get_file.php, a JavaScript syntax check of the large panel scripts,
-# whether every .min.js and the code editor bundle still match their sources
-# and whether the memory index (docs/memory/README.md) matches the files it
-# lists. None of them needs a database.
+# get_file.php, static analysis (PHPStan level 0) and PHP 7.1+ compatibility
+# (PHPCompatibility) of the product tree against their baselines, a
+# JavaScript syntax check of the large panel scripts, whether every .min.js
+# and the code editor bundle still match their sources and whether the memory
+# index (docs/memory/README.md) matches the files it lists. None of them needs
+# a database.
+#
+# The two analysers are not part of the product: tools/static_analysis.sh
+# downloads the pinned releases on each run (PHPStan and PHP_CodeSniffer as
+# phars checked against their SHA-256, the PHPCompatibility and PHPCSUtils
+# standards by commit).
 #
 # tools/ and tests/ are tracked on the development branch only; main and the
 # release branches carry the product alone. There the PHP steps find no
@@ -60,6 +67,17 @@ jobs:
       - name: get_file.php copies (only the intended ones)
         if: ${{ hashFiles('tools/check_copies.php') != '' }}
         run: php tools/check_copies.php
+
+      # tools/static_analysis.sh fetches the pinned analysers into the
+      # runner's temporary folder; PHPStan's errors become annotations on the
+      # pull request's diff.
+      - name: Static analysis (PHPStan level 0 against tools/phpstan-baseline.neon)
+        if: ${{ hashFiles('tools/static_analysis.sh') != '' }}
+        run: bash tools/static_analysis.sh phpstan
+
+      - name: PHP 7.1+ compatibility (PHPCompatibility against tools/phpcs-baseline.json)
+        if: ${{ hashFiles('tools/static_analysis.sh') != '' }}
+        run: bash tools/static_analysis.sh phpcompat
 
       - name: Set up Node
         uses: actions/setup-node@v4
