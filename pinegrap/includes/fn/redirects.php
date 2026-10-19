@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The redirect manager: rules in the redirects table (2026.11.0, 11.0.11)
+ * The redirect manager: rules in the redirects table (2026.11.0, 11.0.12)
  * that send an old address on to where its content is now, with a 301
  * (moved for good) or a 302 (moved for now).
  *
@@ -65,7 +65,7 @@ define('PG_REDIRECT_TO_MAX', 2048);
 define('PG_REDIRECT_PATTERN_LIMIT', 5000);
 
 /**
- * True when the redirect tables are in the database (2026.11.0, 11.0.11).
+ * True when the redirect tables are in the database (2026.11.0, 11.0.12).
  *
  * @return bool
  */

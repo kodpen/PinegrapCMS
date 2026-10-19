@@ -1,6 +1,6 @@
 ---
 name: redirect-manager
-description: Redirect manager (2026.11.0, 11.0.11, PR #654): redirects table, matched only where a page request is about to 404, address rules, wildcards, refusals, screens, CSV, what is not built yet
+description: Redirect manager (2026.11.0, 11.0.12, PR #654): redirects table, matched only where a page request is about to 404, address rules, wildcards, refusals, screens, CSV, what is not built yet
 ---
 
 ## Where is a rule matched?

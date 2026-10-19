@@ -15,9 +15,9 @@ description: Plan (approved 2026-10-19; step 1 redirect manager done, PR #654): 
 - API: `/redirects` CRUD with dry run; `/seo/not-found` read.
 
 ## What remains?
-1. Done (PR #654): migration step 11.0.11 (`redirects`, `not_found_log`), the match where a routed page request is about to 404, manager screens, CSV import and export. Behaviour: docs/memory/platform/redirect-manager.md.
+1. Done (PR #654): migration step 11.0.12 (`redirects`, `not_found_log`), the match where a routed page request is about to 404, manager screens, CSV import and export. Behaviour: docs/memory/platform/redirect-manager.md.
 2. Slug-change hook in designer save and page edit (S).
-3. 404 logging with retention (S): `not_found_log` exists (11.0.11) with `path_hash` as its key; write it beside `pg_redirect_not_found()` (same three call sites), and link each row to `edit_redirect.php?from=`.
+3. 404 logging with retention (S): `not_found_log` exists (11.0.12) with `path_hash` as its key; write it beside `pg_redirect_not_found()` (same three call sites), and link each row to `edit_redirect.php?from=`.
 4. Page settings fields + render (S).
 5. `llms.txt`, robots AI section, Content-Signal (S).
 6. API routes + schema (S).

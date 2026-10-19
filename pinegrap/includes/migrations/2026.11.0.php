@@ -33,7 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
-	upgrade_2026_11_0_redirects();              // 11.0.11
+	upgrade_2026_11_0_redirects();              // 11.0.12
 
 }
 
