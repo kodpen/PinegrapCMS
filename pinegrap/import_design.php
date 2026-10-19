@@ -116,7 +116,15 @@ if ($action and !$command_line) {
         ($action == 'scan')
         && ($liveform->check_field_error('url') == false)
     ) {
-        if (check_if_url_exists($url) == false) {
+        $url_check = import_design_check_url($url);
+
+        // An address inside the server's network is refused before anything
+        // is fetched; said as such, since "no web page there" reads as a
+        // typing mistake. An address that does not resolve, or a redirect
+        // that leads inside, gets the general answer below.
+        if (!$url_check['ok'] && ($url_check['ip'] !== '')) {
+            $liveform->mark_error('url', lang('That address is inside the network of this server, so it is not read. The import reads public websites only.'));
+        } elseif (check_if_url_exists($url) == false) {
             $liveform->mark_error('url', lang('Sorry, we could not find a web page to start scanning at that URL. Please try a different URL.'));
         }
     }
