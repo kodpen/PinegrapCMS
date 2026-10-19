@@ -2222,6 +2222,52 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-html-tree::-webkit-scrollbar { width: 5px; height: 5px; }
 .sd-html-tree::-webkit-scrollbar-thumb { background: var(--sd-panel-border); border-radius: 3px; }
 
+/* Code view: the page as text in place of the tree (PgCodeEditor host),
+   with a tab per open CSS/JS file */
+.sd-html-code { display: none; height: 100%; min-height: 0; flex-direction: column; }
+.sd-bp-quad-tl.sd-code-on .sd-bp-quad-body { overflow: hidden; }
+.sd-bp-quad-tl.sd-code-on .sd-html-code { display: flex; }
+.sd-bp-quad-tl.sd-code-on .sd-html-tree { display: none; }
+.sd-code-tabs {
+    display: flex; align-items: center; gap: 2px;
+    flex-shrink: 0; min-height: 24px;
+    padding: 0 .3rem;
+    background: #1c1e22;
+    border-bottom: 1px solid var(--sd-panel-border);
+    overflow-x: auto; overflow-y: hidden;
+}
+.sd-code-tabs::-webkit-scrollbar { height: 3px; }
+.sd-code-tab {
+    display: inline-flex; align-items: center; gap: .3rem;
+    background: transparent; border: 0; border-bottom: 2px solid transparent;
+    color: var(--sd-text-muted); font-size: .66rem; line-height: 1;
+    padding: .3rem .45rem; cursor: pointer; white-space: nowrap;
+}
+.sd-code-tab:hover { color: var(--sd-text); }
+.sd-code-tab-active { color: var(--sd-text); border-bottom-color: var(--sd-accent); }
+.sd-code-tab-dirty { color: #ffc107; font-size: .55rem; }
+.sd-code-tab-close { opacity: .6; padding: 0 .1rem; font-size: .8rem; line-height: 1; }
+.sd-code-tab-close:hover { opacity: 1; color: #f85149; }
+.sd-code-tabs-spacer { flex: 1; }
+.sd-code-url {
+    width: 14rem; max-width: 40%;
+    background: #0f1115; color: var(--sd-text);
+    border: 1px solid rgba(255,255,255,.14); border-radius: 3px;
+    font-size: .66rem; padding: .15rem .4rem; height: 22px;
+    margin-right: .35rem;
+}
+.sd-code-url:focus { outline: none; border-color: var(--sd-accent); }
+.sd-code-panes { flex: 1; min-height: 0; position: relative; }
+.sd-code-pane { display: none; height: 100%; min-height: 0; }
+.sd-code-pane-active { display: block; }
+.sd-html-code .cm-editor { height: 100%; }
+.sd-html-code-toggle { margin-right: .35rem; }
+.sd-html-code-toggle.active {
+    background: rgba(13,110,253,.18);
+    border-color: rgba(13,110,253,.5);
+    color: #6ea8fe;
+}
+
 /* HTML tree row */
 .sd-ht-row {
     display: flex;
@@ -3939,12 +3985,6 @@ body.sd-resizing * { cursor: col-resize !important; }
     flex-direction: column;
     min-height: 0;
 }
-.sd-fl-editor .CodeMirror {
-    height: 100%;
-    font-size: 12px;
-    background: #0d1117;
-}
-
 /* ============================================
    GOOGLE FONTS PICKER (Fonts tab)
    ============================================ */
@@ -4613,7 +4653,7 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-fl-name:focus { background: rgba(255,255,255,.05); padding: 0 2px; }
 
-/* CodeMirror fills remaining space in the pane */
+/* The editor fills the remaining space of the pane */
 .sd-fl-editor {
     flex: 1;
     overflow: hidden;
@@ -4621,19 +4661,6 @@ body.sd-resizing * { cursor: col-resize !important; }
     flex-direction: column;
     min-height: 0;
 }
-/* CodeMirror inside the pane fills the available height */
-.sd-assets-pane .CodeMirror {
-    height: 100%;
-    font-size: 12px;
-    line-height: 1.5;
-    background: #0d1117;
-    color: #c9d1d9;
-    border: none;
-    border-radius: 0;
-}
-.sd-assets-pane .CodeMirror-scroll { height: 100%; }
-.sd-assets-pane .CodeMirror-gutters { background: #161b22; border-right: 1px solid #2e333a; }
-.sd-assets-pane .CodeMirror-linenumber { color: #484f58; }
 
 /* Fonts textarea pane */
 .sd-assets-fonts-help {
@@ -4901,109 +4928,6 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 .sd-as-overlay-item:hover { opacity: 1; }
 .sd-as-overlay-item .sd-as-item-icon { color: #8b9ab0; }
 
-/* ============================================================
-   CODMIRROR MODAL
-   ============================================================ */
-#sd-as-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 9000;
-    background: rgba(0,0,0,.65);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    display: none;
-}
-.sd-as-modal-dialog {
-    width: 95vw;
-    max-width: 1400px;
-    height: 90vh;
-    background: #0d1117;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 8px 40px rgba(0,0,0,.6);
-}
-.sd-as-modal-hdr {
-    display: flex;
-    align-items: center;
-    padding: .4rem .75rem;
-    background: #161b22;
-    border-bottom: 1px solid rgba(255,255,255,.1);
-    flex-shrink: 0;
-    gap: .5rem;
-}
-.sd-as-modal-title {
-    flex: 1;
-    font-size: .8rem;
-    font-weight: 600;
-    color: #e6edf3;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.sd-as-modal-actions { display: flex; gap: .4rem; flex-shrink: 0; }
-.sd-as-modal-save {
-    background: #238636;
-    border: 1px solid rgba(255,255,255,.1);
-    color: #fff;
-    font-size: .73rem;
-    padding: .22rem .65rem;
-    border-radius: 5px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: .3rem;
-}
-.sd-as-modal-save:hover { background: #2ea043; }
-.sd-as-modal-close {
-    background: none;
-    border: 1px solid rgba(255,255,255,.12);
-    color: #8b9ab0;
-    font-size: .8rem;
-    padding: .22rem .5rem;
-    border-radius: 5px;
-    cursor: pointer;
-    line-height: 1;
-}
-.sd-as-modal-close:hover { color: #f85149; border-color: #f85149; }
-
-.sd-as-modal-body {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-.sd-as-modal-url-wrap {
-    display: flex;
-    align-items: center;
-    gap: .6rem;
-    padding: 1rem;
-}
-.sd-as-modal-url-label { font-size: .76rem; color: #8b9ab0; flex-shrink: 0; }
-.sd-as-modal-url {
-    flex: 1;
-    background: #0d1117;
-    border: 1px solid rgba(255,255,255,.15);
-    border-radius: 5px;
-    color: #c9d1d9;
-    font-size: .8rem;
-    padding: .35rem .6rem;
-    outline: none;
-    font-family: monospace;
-}
-.sd-as-modal-url:focus { border-color: #007bff; }
-
-#sd-as-modal .CodeMirror {
-    flex: 1;
-    height: 100%;
-    font-size: 13px;
-}
-#sd-as-modal .CodeMirror-scroll { min-height: 0; height: 100%; }
-#sd-as-modal-cm-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ============================================================
    GOOGLE FONTS PICKER (inline in Fonts section)
@@ -5181,8 +5105,6 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 .sd-panel-bottom.collapsed { transition: height .15s ease; }
 #sd-assets-panel { transition: height .2s cubic-bezier(.4,0,.2,1); }
 
-/* ── Code editor modal backdrop blur ── */
-#sd-as-modal { -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
 
 /* ── HTML tree node type colors ── */
 .sd-html-node[data-tag="div"] .sd-html-tag { color: #79c0ff; }

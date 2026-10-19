@@ -44,6 +44,9 @@ if (!isset($_POST['name'])) {
     
     print
     pg_page_shell([
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region'))),
         'extra classes'=>'design',
         'icon'=>'design',
@@ -101,8 +104,7 @@ if (!isset($_POST['name'])) {
                                         <div class="col-12 my-2">
                                             <label for="name" class="form-label">' . lang('HTML Code Snippet') . '</label>
                                             <textarea name="content" id="code" rows="30" cols="60" wrap="off">' . h($cregion_content) . '</textarea>
-                                            ' . get_codemirror_includes() . '
-                                            ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'mixed')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
                                         </div>
                                     </div>
                                 </div>

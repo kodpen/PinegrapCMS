@@ -199,6 +199,9 @@ if (!$_POST) {
 
     // Put the javascript into the head of the document.
     $output_header = preg_replace('/(<\/head>)/i', $output_javascript .'$1', pg_page_shell([
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'title'=> lang('Edit Form Item View'),
         'extra classes'=>'design',
         'icon'=>'design',
@@ -247,7 +250,6 @@ if (!$_POST) {
                     </div>
                 </div>
                 <form action="edit_form_item_view.php" method="post">
-                    ' . get_codemirror_includes() . '
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="page_id" value="' . h($_GET['page_id']) . '" />
@@ -279,7 +281,7 @@ if (!$_POST) {
                                                 <div class="col mt-3">
                                                     <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
                                                     <textarea id="layout" name="layout">' . h($layout) . '</textarea>
-                                                    ' . get_codemirror_javascript(array('id' => 'layout', 'code_type' => 'mixed')) . '
+                                                    ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
                                                 </div>
                                             </div>
                                         </div>

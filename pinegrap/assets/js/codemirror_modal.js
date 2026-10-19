@@ -1,9 +1,13 @@
 /**
- * Generic CodeMirror modal editor.
+ * Pinegrap - Enterprise Website Platform
  *
- * A single Bootstrap 5 modal instance is created lazily on first use and reused
- * for every call. The caller supplies an initial value, a CodeMirror mode, a
- * title, and save/cancel callbacks.
+ * Generic code editor dialog.
+ *
+ * A single Bootstrap 5 modal instance is created lazily on first use and
+ * reused for every call. The caller supplies an initial value, a language,
+ * a title, and save/cancel callbacks. The editor inside is the facade's
+ * (window.PgCodeEditor, assets/js/pg_code_editor.js), whose engine is
+ * fetched on the first open.
  *
  * Public API:
  *   window.openCodeEditor({
@@ -17,39 +21,33 @@
  *       readonly:    Boolean        // optional — opens in read-only mode
  *   });
  *
+ * PHP, XML and plain text are shown with the HTML grammar: the facade
+ * carries HTML, CSS, JavaScript and JSON.
+ *
  * Dependencies:
- *   - CodeMirror 5.65.9 assets loaded via get_codemirror_includes() PHP helper
+ *   - assets/js/pg_code_editor.js (PgCodeEditor) on the page
  *   - Bootstrap 5 JS (bootstrap.Modal)
  *
- * This file is framework-agnostic (no jQuery, no inner Pinegrap dependencies)
- * so it can be pulled into any admin page that already includes CodeMirror.
  * Labels are read from window.PgCodeModalLabels when the including screen
  * emits that map; otherwise the English text is shown.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 (function () {
     'use strict';
 
-    var MODE_MAP = {
-        'html':       'htmlmixed',
-        'htmlmixed':  'htmlmixed',
-        'php':        'application/x-httpd-php',
-        'css':        'css',
-        'javascript': 'javascript',
-        'js':         'javascript',
-        'json':       'application/json',
-        'xml':        'application/xml',
-        'text':       'text/plain',
-        'plain':      'text/plain'
-    };
-
-    var _modal       = null;   // Bootstrap Modal instance
-    var _modalEl     = null;   // the <div> root
-    var _textarea    = null;
-    var _editor      = null;   // CodeMirror instance
-    var _titleEl     = null;
-    var _saveBtn     = null;
-    var _opts        = null;   // current call's options
-    var _didSave     = false;  // guard: distinguish Save click from dismiss
+    var _modal     = null;   // Bootstrap Modal instance
+    var _modalEl   = null;   // the <div> root
+    var _host      = null;   // the editor's host inside the body
+    var _editor    = null;   // PgCodeEditor instance
+    var _titleEl   = null;
+    var _saveBtn   = null;
+    var _opts      = null;   // current call's options
+    var _didSave   = false;  // guard: distinguish Save click from dismiss
+    var _opening   = 0;      // the call the bundle is being fetched for
 
     function _t(key) {
         var map = window.PgCodeModalLabels;
@@ -71,8 +69,8 @@
                             '<h5 class="modal-title" id="pgCodeEditorTitle">' + _h(_t('Code Editor')) + '</h5>' +
                             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + _h(_t('Close')) + '"></button>' +
                         '</div>' +
-                        '<div class="modal-body p-0 d-flex flex-column" style="overflow:hidden;">' +
-                            '<textarea id="pgCodeEditorTextarea" style="width:100%;height:100%;border:0;display:block;"></textarea>' +
+                        '<div class="modal-body p-0 d-flex flex-column" style="overflow:hidden;min-height:0;">' +
+                            '<div id="pgCodeEditorHost" class="pg-code-editor" style="flex:1 1 auto;min-height:0;"></div>' +
                         '</div>' +
                         '<div class="modal-footer">' +
                             '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + _h(_t('Cancel')) + '</button>' +
@@ -82,22 +80,14 @@
                 '</div>' +
             '</div>';
 
-        var host = document.createElement('div');
-        host.innerHTML = html;
-        _modalEl = host.firstChild;
+        var wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        _modalEl = wrap.firstChild;
         document.body.appendChild(_modalEl);
 
-        _textarea = _modalEl.querySelector('#pgCodeEditorTextarea');
+        _host     = _modalEl.querySelector('#pgCodeEditorHost');
         _titleEl  = _modalEl.querySelector('#pgCodeEditorTitle');
         _saveBtn  = _modalEl.querySelector('#pgCodeEditorSave');
-
-        // CodeMirror needs to sit inside the full height of the modal body.
-        // Override the default sizing so editor fills available space.
-        var style = document.createElement('style');
-        style.textContent =
-            '#pgCodeEditorModal .CodeMirror { height:100%; flex:1 1 auto; font-size:13px; }' +
-            '#pgCodeEditorModal .modal-body { min-height:0; }';
-        document.head.appendChild(style);
 
         _saveBtn.addEventListener('click', function () {
             if (!_opts || !_editor) return;
@@ -114,31 +104,39 @@
             if (!_didSave && _opts && typeof _opts.onCancel === 'function') {
                 try { _opts.onCancel(); } catch (e) {}
             }
-            // Destroy editor so each open gets a clean instance with the right mode.
-            if (_editor) {
-                // First the refresh addon, which toTextArea() does not stop: it
-                // would go on reading the offsetHeight of a wrapper that is no
-                // longer in the document, every 250 ms, for the life of the tab.
-                try { _editor.setOption('autoRefresh', false); } catch (e) {}
-
-                _editor.toTextArea();
-                _editor = null;
-            }
+            // A fresh editor per open: the language and the text are the call's.
+            if (_editor) { _editor.destroy(); _editor = null; }
+            _modalEl.classList.remove('pg-code-editor-full');
+            var dlg = _modalEl.querySelector('.modal-dialog');
+            if (dlg) dlg.classList.remove('modal-fullscreen');
             _opts = null;
         });
     }
 
-    function _resolveTheme() {
+    function _theme() {
         try {
-            var dark = document.cookie.indexOf('prefers-color-scheme=dark') !== -1;
-            return dark ? 'pastel-on-dark' : 'default';
-        } catch (e) { return 'default'; }
+            return document.cookie.indexOf('prefers-color-scheme=dark') !== -1 ? 'dark' : 'light';
+        } catch (e) { return 'light'; }
+    }
+
+    function _language(mode) {
+        var m = String(mode || 'html').toLowerCase();
+        if (m === 'css') return 'css';
+        if (m === 'javascript' || m === 'js') return 'javascript';
+        if (m === 'json') return 'json';
+        return 'html';
+    }
+
+    function _toggleFullscreen() {
+        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
+        if (dlg) dlg.classList.toggle('modal-fullscreen');
+        return true;
     }
 
     window.openCodeEditor = function (opts) {
         opts = opts || {};
-        if (typeof window.CodeMirror === 'undefined') {
-            // Fallback so callers don't hang silently if the helper was forgotten.
+        if (typeof window.PgCodeEditor === 'undefined') {
+            // Fallback so callers don't hang silently if the facade was forgotten.
             // A plain prompt preserves the save round-trip.
             var v = window.prompt(opts.title || _t('Code'), opts.code || '');
             if (v !== null && typeof opts.onSave === 'function') opts.onSave(v);
@@ -154,39 +152,37 @@
         // The button says what it does. "Save" is wrong when the dialog
         // hands its content on to a next step rather than storing it.
         _saveBtn.textContent = opts.saveLabel || _t('Save');
-        _textarea.value      = opts.code || '';
-        if (opts.placeholder) _textarea.setAttribute('placeholder', opts.placeholder);
 
         if (!_modal) _modal = new bootstrap.Modal(_modalEl, { backdrop: 'static', keyboard: true });
         _modal.show();
 
-        // CodeMirror must be initialized AFTER the modal is visible so the
-        // textarea has non-zero dimensions (otherwise the editor renders 0×0).
+        // The editor is built once the modal is visible, so it measures a
+        // real box; the engine may still be on its way for the first open.
+        var call = ++_opening;
+        var mount = function () {
+            if (call !== _opening || !_opts) return;
+            if (_editor) { _editor.destroy(); _editor = null; }
+            _editor = PgCodeEditor.create(_host, {
+                language: _language(opts.mode),
+                value: opts.code || '',
+                readOnly: !!opts.readonly,
+                theme: _theme(),
+                placeholder: opts.placeholder || '',
+                phrases: window.PgCodeEditorPhrases || null,
+                labels: { syntaxError: _t('Syntax error') },
+                keys: [
+                    { key: 'Mod-s', run: function () { _saveBtn.click(); return true; } },
+                    { key: 'F11', run: _toggleFullscreen }
+                ]
+            });
+            setTimeout(function () { if (_editor && !opts.readonly) _editor.focus(); }, 50);
+        };
         var onShown = function () {
             _modalEl.removeEventListener('shown.bs.modal', onShown);
-            var mode = MODE_MAP[(opts.mode || 'html').toLowerCase()] || 'htmlmixed';
-            _editor = CodeMirror.fromTextArea(_textarea, {
-                mode: mode,
-                lineNumbers: true,
-                indentUnit: 4,
-                matchTags: { bothTags: true },
-                autoCloseTags: true,
-                autoCloseBrackets: true,
-                autoRefresh: true,
-                styleActiveLine: true,
-                lineWrapping: false,
-                theme: _resolveTheme(),
-                readOnly: !!opts.readonly,
-                extraKeys: {
-                    'F11':         function (cm) { cm.setOption('fullScreen', !cm.getOption('fullScreen')); },
-                    'Esc':         function (cm) { if (cm.getOption('fullScreen')) cm.setOption('fullScreen', false); },
-                    'Ctrl-Space':  'autocomplete',
-                    'Cmd-S':       function () { _saveBtn.click(); },
-                    'Ctrl-S':      function () { _saveBtn.click(); }
-                },
-                viewportMargin: Infinity
+            PgCodeEditor.load().then(mount, function (err) {
+                if (call !== _opening) return;
+                _host.textContent = (err && err.message) ? err.message : 'The code editor could not be loaded.';
             });
-            setTimeout(function () { if (_editor) { _editor.refresh(); _editor.focus(); } }, 50);
         };
         _modalEl.addEventListener('shown.bs.modal', onShown);
     };

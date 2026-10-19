@@ -23,6 +23,9 @@ validate_area_access($user, 'administrator');
 if (!isset($_POST['name'])) {
     $output =
     pg_page_shell([
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Dynamic Region'))),
         'extra classes'=>'design',
         'icon'=>'design',
@@ -58,8 +61,7 @@ if (!isset($_POST['name'])) {
                                         <div class="col-12 my-2">
                                             <label for="name" class="form-label">' . lang('PHP Code Snippet') . '</label>
                                             <textarea name="code" id="code" rows="30" cols="60" wrap="off"></textarea>
-                                            ' . get_codemirror_includes() . '
-                                            ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'php')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'php')) . '
                                         </div>
                                     </div>
                                 </div>

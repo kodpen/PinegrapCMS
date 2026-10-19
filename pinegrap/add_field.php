@@ -346,6 +346,9 @@ if (!$_POST) {
     
     echo
     pg_page_shell([
+        // The code field is the facade's editor (pg_code_editor_attach());
+        // CodeMirror 5 waits in the template for a settings pane that draws one.
+        'code_editor' => false,
         'title'=> $output_form_designer_content_heading,
         'extra classes'=>'design',
         'icon'=>'design',
@@ -507,8 +510,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-12 col-lg-6">
                                             <textarea name="options" id="options" placeholder="' . lang('Please Enter Values Here') . '" class="form-control rounded bg-light" style="min-height: calc(20em + .75rem + 2px);height:100%;" wrap="off"></textarea>
-                                            ' . get_codemirror_includes() . '
-                                            ' . get_codemirror_javascript(array('id' => 'options', 'code_type' => 'plain')) . '
+                                            ' . pg_code_editor_attach(array('id' => 'options', 'code_type' => 'plain')) . '
                                         </div>
                                         <div class="col-12 col-md-12 col-lg-6">
                                             <div class="row">
