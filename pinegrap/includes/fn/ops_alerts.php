@@ -763,6 +763,14 @@ function pg_ops_alerts_check_integrity($now)
         return '';
     }
 
+    // Between an update's file replacement and its database upgrade the new
+    // files sit under the old version's number, and the check would compare
+    // them with the old release: a false alert that would also use up the
+    // day's slot a real one needs.
+    if (function_exists('pg_schema_upgrade_pending') && pg_schema_upgrade_pending()) {
+        return '';
+    }
+
     $previous = getcwd();
 
     if (!@chdir(PG_FUNCTIONS_DIR)) {

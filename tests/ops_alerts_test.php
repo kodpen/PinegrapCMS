@@ -312,3 +312,14 @@ function test_ops_alerts_threshold_defaults()
 {
 	pg_assert_same(array('error_rate' => 50, 'disk_percent' => 10, 'mail_failures' => 10, 'cert_days' => 14), pg_ops_alert_thresholds());
 }
+
+// The integrity check stays quiet while an update's files wait for their
+// database upgrade: they are compared with the old release otherwise.
+function test_ops_alerts_integrity_waits_for_the_upgrade()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/ops_alerts.php');
+	$start = strpos($source, 'function pg_ops_alerts_check_integrity(');
+	$body = substr($source, $start, strpos($source, 'check_directory_file_integrity();', $start) - $start);
+
+	pg_assert_contains('pg_schema_upgrade_pending()', $body);
+}
