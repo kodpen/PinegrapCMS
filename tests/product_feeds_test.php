@@ -643,3 +643,39 @@ function test_product_feeds_not_modified()
 	pg_assert_false(pg_product_feed_not_modified($modified, 'yesterday-ish nonsense'), 'unreadable');
 	pg_assert_false(pg_product_feed_not_modified(0, 'Mon, 19 Oct 2026 03:00:00 GMT'), 'no file');
 }
+
+// The seller addresses must be absolute http(s) addresses, or empty.
+function test_product_feeds_valid_url()
+{
+	pg_assert_true(pg_product_feed_valid_url(''), 'empty');
+	pg_assert_true(pg_product_feed_valid_url(' https://shop.example/gizlilik '), 'trimmed');
+	pg_assert_true(pg_product_feed_valid_url('http://shop.example/terms?x=1'));
+	pg_assert_false(pg_product_feed_valid_url('/gizlilik'), 'a site path');
+	pg_assert_false(pg_product_feed_valid_url('javascript:alert(1)'));
+	pg_assert_false(pg_product_feed_valid_url('ftp://shop.example/x'));
+	pg_assert_false(pg_product_feed_valid_url('https://'), 'no host');
+	pg_assert_false(pg_product_feed_valid_url('shop.example'), 'no scheme');
+}
+
+// Only groups the screen offered are kept, once each.
+function test_product_feeds_posted_groups()
+{
+	pg_assert_same(array(3, 7), pg_product_feed_posted_groups(array('3', '7', '3', '99', 'x', '-2', array('5')), array(3, 5, 7)));
+	pg_assert_same(array(), pg_product_feed_posted_groups(null, array(3)), 'nothing chosen');
+	pg_assert_same(array(3), pg_product_feed_posted_groups('3', array(3)), 'a single value is read as a list of one');
+}
+
+// Every reason the builder counts and every error it returns has its own text.
+function test_product_feeds_screen_texts()
+{
+	foreach (array('no_address', 'donation', 'recurring', 'no_price', 'not_in_catalog', 'excluded_group', 'no_title', 'no_brand', 'no_image') as $reason) {
+		pg_assert_true(strpos(pg_product_feed_skip_text($reason, 4), 'another reason') === false, $reason);
+		pg_assert_contains('4', pg_product_feed_skip_text($reason, 4), $reason . ' count');
+	}
+
+	foreach (array('ecommerce_off', 'no_catalog', 'no_detail_page', 'detail_page_not_public', 'no_seller_name', 'write_failed', 'not_ready') as $code) {
+		pg_assert_true(pg_product_feed_error_text($code) !== pg_product_feed_error_text('unknown_code'), $code);
+	}
+
+	pg_assert_same(array_keys(pg_product_feed_formats()), array_keys(pg_product_feed_format_texts()), 'a label for every format');
+}

@@ -125,6 +125,120 @@ $pg_settings_scripts[] = '
         }
     </script>';
 
+// ── Product Feeds ──
+// The shop's products as files shopping platforms read
+// (includes/fn/product_feeds.php): a switch, an address and the last build per
+// format, then the seller fields every format shares. The fields are drawn
+// even while e-commerce is off or before the 11.0.4 step, so a save never
+// finds them missing; seo.save.php writes nothing until the column is there.
+$product_feeds_groups = pg_product_feed_screen_groups();
+$product_feeds_rows = '';
+
+foreach (pg_product_feed_format_texts() as $product_feeds_format => $product_feeds_text) {
+    $product_feeds_entry = $product_feeds_settings['formats'][$product_feeds_format];
+    $product_feeds_address = '';
+
+    if ($product_feeds_entry['token_hash'] !== '') {
+        $product_feeds_token = pg_product_feed_token($product_feeds_entry);
+
+        $product_feeds_address = '
+                                            <div class="input-group input-group-sm mt-2 pg-f-lg">
+                                                ' . (($product_feeds_token !== '')
+                                                    ? '<input type="text" class="form-control" readonly value="' . h(pg_product_feed_url($product_feeds_token)) . '" aria-label="' . h(lang('Feed address')) . '" onfocus="this.select()" />'
+                                                    : '<span class="form-control text-muted">' . h(lang('This address cannot be shown again on this site. Make a new address to see it.')) . '</span>') . '
+                                                <button type="submit" name="product_feed_new_address" value="' . h($product_feeds_format) . '" class="btn btn-sm btn-outline-warning" onclick="return confirm(' . h(json_encode(lang('Make a new address? The current address stops working at once, so the platforms that read it must be given the new one.'))) . ')"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('New address') . '</button>
+                                            </div>';
+    }
+
+    $product_feeds_status = pg_product_feed_status_text($product_feeds_entry);
+
+    if ($product_feeds_entry['error'] !== '') {
+        $product_feeds_status = '<span class="text-danger">' . h(lang(array('string' => 'The last build failed: {var:1} The file built before is still served.', 'vars' => array(pg_product_feed_error_text($product_feeds_entry['error']))))) . '</span>'
+            . (($product_feeds_status !== '') ? ' ' . h($product_feeds_status) : '');
+    } elseif ($product_feeds_entry['enabled'] && ((int) $product_feeds_entry['built_at'] === 0)) {
+        $product_feeds_status = h(lang('Not built yet.'));
+    } else {
+        $product_feeds_status = h($product_feeds_status);
+    }
+
+    $product_feeds_rows .= '
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . ($product_feeds_entry['enabled'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="product_feed_' . h($product_feeds_format) . '" name="product_feed_' . h($product_feeds_format) . '"/>
+                                                <label class="form-check-label" for="product_feed_' . h($product_feeds_format) . '">' . h($product_feeds_text['label']) . '</label>
+                                                <div class="form-text">' . h($product_feeds_text['help']) . '</div>
+                                            </div>' . $product_feeds_address . (($product_feeds_status !== '') ? '
+                                            <div class="form-text">' . $product_feeds_status . '</div>' : '') . '
+                                        </div>';
+}
+
+$product_feeds_group_options = '';
+
+foreach ($product_feeds_groups as $product_feeds_group_id => $product_feeds_group_path) {
+    $product_feeds_group_options .= '<option value="' . (int) $product_feeds_group_id . '"' . (in_array((int) $product_feeds_group_id, $product_feeds_settings['excluded_group_ids'], true) ? ' selected="selected"' : '') . '>' . h($product_feeds_group_path) . '</option>';
+}
+
+$product_feeds_notice = '';
+
+if (!$product_feeds_ready) {
+    $product_feeds_notice = lang('Product feeds become available once the database upgrade has run.');
+} elseif (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
+    $product_feeds_notice = lang('E-commerce is turned off, so no feed is built.');
+}
+
+$pg_settings_cards[] = '
+                        <div id="pgset-feeds" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    ' . lang('Product Feeds') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-3">
+                                        <div class="col-12">
+                                            <div class="form-text">' . lang('Publishes the products of your catalog as files that shopping platforms and AI shopping assistants read. Each feed has its own private address and is built again every day.') . '</div>' . (($product_feeds_notice !== '') ? '
+                                            <div class="form-text text-warning">' . h($product_feeds_notice) . '</div>' : '') . '
+                                        </div>
+                                        ' . $product_feeds_rows . '
+                                        <div class="col-12 mb-0"><h6 class="text-muted text-uppercase">' . lang('Seller') . '</h6></div>
+                                        <div class="pg-f-md">
+                                            <label for="product_feed_seller_name" class="form-label">' . lang('Seller name') . '</label>
+                                            <input type="text" name="product_feed_seller_name" id="product_feed_seller_name" class="form-control" maxlength="255" value="' . h(($product_feeds_settings['seller_name'] !== '') ? $product_feeds_settings['seller_name'] : (defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '')) . '"/>
+                                            <div class="form-text">' . lang('The name shoppers see as the seller. The OpenAI feed needs it.') . '</div>
+                                        </div>
+                                        <div class="pg-f-md">
+                                            <label for="product_feed_default_brand" class="form-label">' . lang('Brand for products without one') . '</label>
+                                            <input type="text" name="product_feed_default_brand" id="product_feed_default_brand" class="form-control" maxlength="255" value="' . h($product_feeds_settings['default_brand']) . '"/>
+                                            <div class="form-text">' . lang('Usually your own brand. The OpenAI feed leaves out a product with no brand.') . '</div>
+                                        </div>
+                                        <div class="pg-f-lg">
+                                            <label for="product_feed_seller_url" class="form-label">' . lang('Seller website') . '</label>
+                                            <input type="text" name="product_feed_seller_url" id="product_feed_seller_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['seller_url']) . '" placeholder="https://"/>
+                                        </div>
+                                        <div class="pg-f-lg">
+                                            <label for="product_feed_privacy_policy_url" class="form-label">' . lang('Privacy policy address') . '</label>
+                                            <input type="text" name="product_feed_privacy_policy_url" id="product_feed_privacy_policy_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['privacy_policy_url']) . '" placeholder="https://"/>
+                                        </div>
+                                        <div class="pg-f-lg">
+                                            <label for="product_feed_terms_url" class="form-label">' . lang('Terms of sale address') . '</label>
+                                            <input type="text" name="product_feed_terms_url" id="product_feed_terms_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['terms_url']) . '" placeholder="https://"/>
+                                            <div class="form-text">' . lang('Full addresses starting with https://. The OpenAI feed passes them on with every product.') . '</div>
+                                        </div>
+                                        <div class="pg-f-lg">
+                                            <label for="product_feed_excluded_groups" class="form-label">' . lang('Leave out these product groups') . '</label>
+                                            ' . (($product_feeds_group_options !== '')
+                                                ? '<select multiple size="6" name="product_feed_excluded_groups[]" id="product_feed_excluded_groups" class="form-select">' . $product_feeds_group_options . '</select>
+                                            <div class="form-text">' . lang('A product in a chosen group, or in a group under it, is in no feed. Hold Ctrl (or ⌘) to choose several.') . '</div>'
+                                                : '<div class="form-text">' . lang('No catalog shows a product group yet.') . '</div>') . '
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-text mb-2">' . lang('Changes reach the feeds at the next daily build. A feed you switch on is built when you save.') . '</div>
+                                            <button type="submit" name="product_feed_build" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
+                                        </div>
+                                   </div>
+                                </div>
+                            </div>
+                        </div>';
+
 // ── Visitor Tracking ──
 $pg_settings_cards[] = '
                         <div id="pgset-analytics" class="pg-set-card">

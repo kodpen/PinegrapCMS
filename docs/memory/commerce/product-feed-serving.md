@@ -22,5 +22,9 @@ description: How product feeds are kept, built and served (PR #571): config.prod
 - 200 with the format's Content-Type, `Last-Modified` (file mtime), `Cache-Control: private, max-age=3600`, `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`; `If-Modified-Since` at or after the mtime → 304.
 - `waf_is_api_request()` lists `feed.php` like `workspace_ical.php`: platform fetchers send generic or empty user agents and must not meet the bot policy.
 
+## How is it set up on the screen?
+- Settings › SEO › Product Feeds (`pgset-feeds`, `includes/settings/seo.php`): a switch, the address with "New address" (confirm; old address ends) and the last build line per format; seller name (prefilled with the organization name), default brand, seller/privacy/terms URLs (absolute http(s) or empty, refused before any write), excluded groups (multi-select of the groups the catalogs show; `lists` entry in the registry), "Save and build now".
+- `seo.save.php` calls `pg_product_feed_save_from_screen()` after the screen's columns: a feed switched on gets a token and is built at once; otherwise changes wait for the daily job. An address that cannot be sealed (no site key) is shown once in a notice.
+
 ## How was it verified?
-- `tests/product_feeds_test.php` (setup parse, token lookup, status, merge, path, 304 rule). Sandbox: step ran on install and twice by hand ("already exists"); job built JSONL and TSV; feed.php gave 200 with identical body, 304, HEAD, 404s, 405, no cookie.
+- `tests/product_feeds_test.php`. Sandbox: step ran on install and twice by hand; job built JSONL and TSV; feed.php gave 200 with identical body, 304, HEAD, 404s, 405, no cookie; the card saved over HTTP (built, new address ended the old one, exclusion applied, bad URL refused with nothing written).
