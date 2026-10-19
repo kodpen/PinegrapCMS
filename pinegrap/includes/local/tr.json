@@ -23440,5 +23440,11 @@
     "general job took the IP address out of {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydından IP adresini sildi",
     "Removed after {var:1} days": "{var:1} gün sonra silindi",
     "Cancelled in the Workspace by the scheduled action “{var:1}”.": "Çalışma Alanı'nda “{var:1}” programlanmış işlemiyle iptal edildi.",
-    "Offer ({var:1}) was deleted in the Workspace by the scheduled action “{var:2}”.": "Teklif ({var:1}) Çalışma Alanında, “{var:2}” programlanmış işlemiyle silindi."
+    "Offer ({var:1}) was deleted in the Workspace by the scheduled action “{var:2}”.": "Teklif ({var:1}) Çalışma Alanında, “{var:2}” programlanmış işlemiyle silindi.",
+    "You may not change this record.": "Bu kaydı değiştiremezsiniz.",
+    "The record changed meanwhile, so nothing was written. Open it again to see what it holds now.": "Kayıt bu arada değişti, hiçbir şey yazılmadı. Şimdi ne tuttuğunu görmek için yeniden açın.",
+    "{var:1} ({var:2}) was changed in the Workspace: {var:3}": "{var:1} ({var:2}) Çalışma Alanı'nda değiştirildi: {var:3}",
+    "{var:1} was changed. {var:2}": "{var:1} değiştirildi. {var:2}",
+    "Cancelled in the Workspace by {var:1}.": "Çalışma Alanı'nda {var:1} tarafından iptal edildi.",
+    "Offer ({var:1}) was deleted in the Workspace by {var:2}.": "Teklif ({var:1}) Çalışma Alanında {var:2} tarafından silindi."
 }

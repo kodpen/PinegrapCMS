@@ -1864,6 +1864,38 @@ function ws_changes_store($request, $message_id, $rows)
 }
 
 /**
+ * The words an enum value is shown by, on the card, in the decision and in
+ * the drawer: the states and kinds the catalogue's enum fields share, and a
+ * task's own states and priorities as its screen names them.
+ *
+ * @param string $type
+ * @param mixed  $value
+ * @return string
+ */
+function ws_change_enum_label($type, $value)
+{
+    $labels = array(
+        'incomplete' => lang('Incomplete'),
+        'complete'   => lang('Complete'),
+        'exported'   => lang('Exported'),
+        'cancelled'  => lang('Cancelled'),
+        'active'     => lang('Active'),
+        'passive'    => lang('Passive'),
+        'customer'   => lang('Customer'),
+        'supplier'   => lang('Supplier'),
+        'both'       => lang('Customer and supplier'),
+        'enabled'    => lang('Enabled'),
+        'disabled'   => lang('Disabled'),
+    );
+
+    if ($type === 'task') {
+        $labels = ws_task_statuses() + ws_task_priorities();
+    }
+
+    return $labels[(string) $value] ?? (string) $value;
+}
+
+/**
  * A value as the card and the decision print it.
  *
  * @param string $type
@@ -1936,26 +1968,7 @@ function ws_change_show($type, $name, $value, $limit = 300)
             return ($text === '') ? lang('(empty)') : ((mb_strlen($text) > $limit) ? rtrim(mb_substr($text, 0, $limit - 1)) . '…' : $text);
 
         case 'enum':
-            $labels = array(
-                'incomplete' => lang('Incomplete'),
-                'complete'   => lang('Complete'),
-                'exported'   => lang('Exported'),
-                'cancelled'  => lang('Cancelled'),
-                'active'     => lang('Active'),
-                'passive'    => lang('Passive'),
-                'customer'   => lang('Customer'),
-                'supplier'   => lang('Supplier'),
-                'both'       => lang('Customer and supplier'),
-                'enabled'    => lang('Enabled'),
-                'disabled'   => lang('Disabled'),
-            );
-
-            // A task's state and priority as its screen names them.
-            if ($type === 'task') {
-                $labels = ws_task_statuses() + ws_task_priorities();
-            }
-
-            return $labels[(string) $value] ?? (string) $value;
+            return ws_change_enum_label($type, $value);
     }
 
     // Descriptions may carry markup: the card shows the words.
@@ -2706,11 +2719,12 @@ function ws_change_dismiss($viewer, $change_id)
  * Who is writing the record when it is not an assistant's proposal being
  * applied. The writers' sentences (the log line, a cancellation reason the
  * customer reads, the note on a deleted offer) name the proposer, and a
- * scheduled action (scheduled.php) is no proposer: it sets this before it
- * calls a writer and clears it after.
+ * scheduled action (scheduled.php) or a person editing from the drawer
+ * (quick_edit.php) is no proposer: each sets this before it calls a writer
+ * and clears it after.
  *
- * @param array|false|null $source array kind ('scheduled'), name; false to
- *                                 clear; null to read
+ * @param array|false|null $source array kind ('scheduled' or 'person'),
+ *                                 name; false to clear; null to read
  * @return array|null null while an assistant's proposal is applied
  */
 function ws_change_source($source = null)
@@ -2728,20 +2742,25 @@ function ws_change_source($source = null)
 
 /**
  * The sentence a writer leaves on the record itself, in the name of whoever
- * made the change: the assistant that proposed it, or the scheduled action.
+ * made the change: the assistant that proposed it, the scheduled action, or
+ * the person who edited the record from the drawer.
  *
  * @param string $by_assistant the sentence written for Claude's proposal
  * @param string $by_scheduled the sentence with {var:1} for the action's name
  *                             (and {var:2} when $var is given)
  * @param mixed  $var          the sentence's own variable, if any
+ * @param string $by_person    the sentence with the person's name in the
+ *                             place the action's name takes
  * @return string
  */
-function ws_change_sentence($by_assistant, $by_scheduled, $var = null)
+function ws_change_sentence($by_assistant, $by_scheduled, $var = null, $by_person = '')
 {
     $source = ws_change_source();
+    $kind = is_array($source) ? (string) $source['kind'] : '';
+    $named = ($kind === 'scheduled') ? $by_scheduled : (($kind === 'person') ? $by_person : '');
 
-    if (is_array($source) && ($source['kind'] === 'scheduled')) {
-        return lang(array('string' => $by_scheduled, 'vars' => ($var === null) ? (string) $source['name'] : array($var, (string) $source['name'])));
+    if ($named !== '') {
+        return lang(array('string' => $named, 'vars' => ($var === null) ? (string) $source['name'] : array($var, (string) $source['name'])));
     }
 
     $text = ($var === null) ? lang($by_assistant) : lang(array('string' => $by_assistant, 'vars' => $var));
@@ -3053,7 +3072,7 @@ function ws_change_write_order($viewer, $action, $record, $values)
         $reason = trim((string) ($values['cancellation_reason'] ?? ''));
 
         if ($reason === '') {
-            $reason = ws_change_sentence('Cancelled in the Workspace, on Claude\'s proposal.', 'Cancelled in the Workspace by the scheduled action “{var:1}”.');
+            $reason = ws_change_sentence('Cancelled in the Workspace, on Claude\'s proposal.', 'Cancelled in the Workspace by the scheduled action “{var:1}”.', null, 'Cancelled in the Workspace by {var:1}.');
         }
 
         $outcome = process_order_cancellation((int) $record['id'], $reason, true, (int) $viewer['id']);
@@ -3740,7 +3759,7 @@ function ws_change_write_offer($viewer, $action, $record, $values)
 
         // The deletion's own log line names whoever deleted it; it does not go
         // through ws_change_log(), so a scheduled action is named here.
-        $deleted = _pg_offer_delete($id, null, ws_change_sentence('Offer ({var:1}) was deleted in the Workspace, on Claude\'s proposal.', 'Offer ({var:1}) was deleted in the Workspace by the scheduled action “{var:2}”.', (string) $record['code']));
+        $deleted = _pg_offer_delete($id, null, ws_change_sentence('Offer ({var:1}) was deleted in the Workspace, on Claude\'s proposal.', 'Offer ({var:1}) was deleted in the Workspace by the scheduled action “{var:2}”.', (string) $record['code'], 'Offer ({var:1}) was deleted in the Workspace by {var:2}.'));
 
         return $deleted ? array('ok' => true, 'error' => '', 'id' => $id) : array('ok' => false, 'error' => lang('The offer could not be found.'), 'id' => $id);
     }
