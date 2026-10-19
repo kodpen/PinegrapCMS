@@ -14,7 +14,7 @@ description: Plan (approved 2026-10-19; designer checks done, #628 #642): nightl
 - Legacy classic pages: the nightly report covers them read-only; nothing in their markup is changed automatically.
 
 ## What remains?
-1. Done (PR #628, PR #642): contrast helper with the PHP-JS test, designer contrast, target size and redundant entry checks. The nightly report (2) reuses `_pg_theme_contrast()`.
+1. Done (PR #628, PR #642): contrast helper with the PHP-JS test, designer contrast, target size and redundant entry checks. The nightly report (2) reuses `_pg_theme_contrast()`. Left: drop `_SD_ENTRY_SOFTWARE_TWICE` (the `email_verify` exemption) once PR #668 (the address asked once) is in.
 2. Nightly a11y job, storage, SEO screen tab, API filter (M).
 3. Statement block + PDF export (S).
 4. Consent banner changes in `includes/fn/consent.php` and `pg_consent.js`, settings for button texts (S–M).

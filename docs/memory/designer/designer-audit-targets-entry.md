@@ -13,7 +13,7 @@ description: Designer audit's target size (WCAG 2.5.8, 24px with the spacing exc
 
 ## What does the redundant entry hint do?
 - `_sdRedundantEntryIssues()`: within one form, or one widget whose form the server wraps around its fields only when the page is drawn (`.sd-system-wrap`, no `<form>` on the canvas), a second field with the same purpose is flagged (rule `redundant_entry`): the same `autocomplete` value, or the same name once a `confirm`/`repeat`/`again`/`verify`/`retype`/`tekrar`/`dogrula`/`onay` part is dropped (`email` and `email_confirm`). Passwords, choices, files and buttons are not looked at; two phone fields with different names are not the same.
-- `email_verify` and `email_address_verify` are left out (`_SD_ENTRY_SOFTWARE_TWICE`): the registration and membership widgets post them to `pg_member_register()` / `pg_member_activate()`, which require the address twice, so a design cannot drop them. Making that field optional is an open question for the owner.
+- `email_verify` and `email_address_verify` are left out (`_SD_ENTRY_SOFTWARE_TWICE`) while `pg_member_register()` / `pg_member_activate()` require the address twice: a design could not drop them. PR #668 makes the second copy optional (docs/memory/designer/member-email-asked-once.md); with it in, the list goes and the hint flags the field.
 
 ## What did the templates show?
 - Store, cafe, clinic and hello templates (home page, the store's registration page too): no target size or redundant entry findings. Deliberate fixtures: 12px buttons 4px apart flagged, 30px apart not; a 10px button touching an input flagged; `email` + `email_confirm` flagged, passwords, `phone`/`mobile` and shipping/billing `autocomplete` not.
