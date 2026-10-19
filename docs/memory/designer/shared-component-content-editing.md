@@ -4,7 +4,7 @@ description: Shared components opened to content editors (the designer's common 
 ---
 
 ## What is it for?
-- A common region is edited by managers and by the role-3 users granted it; a shared component was closed to the content level. To move common regions into the designer without taking them from those people, a designer can open a component: `shared_components.content_editable` (schema 11.0.8). Grants live in `users_shared_components_xref` (user_id, shared_component_id), the `users_common_regions_xref` model.
+- A common region is edited by managers and by the role-3 users granted it; a shared component was closed to the content level. To move common regions into the designer without taking them from those people, a designer can open a component: `shared_components.content_editable` (schema 11.0.8, PR #575). Grants live in `users_shared_components_xref` (user_id, shared_component_id), the `users_common_regions_xref` model.
 
 ## Who may edit an opened component?
 - `pg_shared_component_content_rule($role, $open, $is_widget, $granted)` (`includes/designer_access.php`): a manager every opened one, a user the granted ones, nobody a closed one; a system widget (row with `system_region_config`) never opens. `pg_shared_component_content_editable_ids($user, $ids)` answers it from the database; both are empty before the schema step (`pg_shared_component_content_ready()`).
