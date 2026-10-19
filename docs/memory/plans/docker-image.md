@@ -1,6 +1,6 @@
 ---
 name: docker-image
-description: Plan (approved 2026-10-19, steps 1-3 built in PR #565 and #621): docker/ compose stack in the release tree with an unattended install service; README section and GHCR publishing left
+description: Plan (approved 2026-10-19, steps 1-4 built in PRs #565, #621 and #NNN): docker/ compose stack in the release tree, unattended install service, README section; GHCR publishing left
 ---
 
 ## What did the owner decide?
@@ -18,10 +18,10 @@ description: Plan (approved 2026-10-19, steps 1-3 built in PR #565 and #621): do
 ## What is built?
 - Steps 1 and 3 (PR #565): `docker/` (Dockerfile with `app` and `web` targets, compose with db/app/cron/web, nginx.conf, php.ini, cron loop, readiness check), `tools/check_docker.sh` and the Docker check workflow. Rules and reasons: docs/memory/platform/docker.md.
 - Step 2 (PR #621): `php install/index.php install` (`includes/install_cli.php`, docs/memory/platform/install-command-line.md), the one-shot `install` service (`docker/install.sh`), `tools/check_docker.sh` installs with it and checks the second start leaves the site alone.
+- Step 4 (PR #NNN): "Try it with Docker" in README.md and "Docker ile deneyin" in README.tr.md (wizard values, the install variables, `docker/.env`, volumes, updates with the automated upgrade run as www-data), and the plan's `[NEW]` changelog line.
 - Differences from the first sketch: the web image carries its own copy of the files (static assets); one data volume covers uploads (they are under `pinegrap/data/files`); the job waits for the database to be at the code version; the unattended install takes a starter site, not a design template (a template's widget layouts are built by the editor's JavaScript in the browser); the install service runs at every start and does nothing once a site is installed.
 
 ## What remains?
-4. README section (EN/TR) "Try it with Docker" (S): `docker compose -f docker/docker-compose.yml up -d --build`, port 8080, database host `db` with the compose values, `PG_INSTALL_ADMIN_EMAIL`/`PG_INSTALL_ADMIN_PASSWORD` for a site without the wizard, `PG_DB_PASSWORD` for anything but a trial. The plan's one `[NEW]` changelog line goes in with it.
 5. GHCR: a release-tag workflow or the owner's release step pushes `ghcr.io/kodpen/pinegrap-app` and `-web`; the compose file then names those images; note in `release-status.md`.
 
 ## Open questions?
@@ -29,4 +29,4 @@ description: Plan (approved 2026-10-19, steps 1-3 built in PR #565 and #621): do
 - Apache variant: not shipped; nginx only.
 
 ## Where to start?
-- Step 4; the header of `docker/docker-compose.yml` lists the settings the README section needs.
+- Step 5: a workflow on release tags (or the owner's release step) that builds both targets and pushes them; then `image:` in the compose file names them and the README section says to pull instead of build.

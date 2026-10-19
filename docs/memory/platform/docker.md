@@ -7,6 +7,7 @@ description: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), Ma
 - `Dockerfile` with two targets built from the repository root: `app` (php:8.3-fpm-alpine plus mysqli, pdo_mysql, gd with JPEG/PNG/WebP/AVIF, imagick, zip, intl, exif, opcache, ftp; `docker/php-settings.conf`, named .conf because `.gitignore` drops every `*.ini`) and `web` (nginx:stable-alpine with `docker/nginx.conf` and a copy of the same files for static assets).
 - `docker-compose.yml`: `db` (mariadb:10.11, not published), `app`, `cron` (app image, `pinegrap-cron` as www-data), `install` (app image, `docker/install.sh` as www-data, after `app`; the unattended install, platform/install-command-line.md), `web` on `PG_HTTP_PORT` (8080). Volumes `data` (`pinegrap/data/`: config.php, uploads, layouts, backups) and `db`.
 - The folder ships in the release tree (release-status.md removes only CLAUDE.md, .claude/, docs/, tools/, tests/).
+- README "Try it with Docker" (and README.tr.md) repeats the compose header's commands, variables, URLs and volume names: change them together.
 
 ## What does the image take from the repository?
 - Only the root `index.php` and `pinegrap/`; `web.config` and `download_assistant.php` stay out. `Dockerfile.dockerignore` (BuildKit) is an allow-list: `index.php`, `pinegrap/`, the copied docker/ files, and of `pinegrap/data/` only the tracked files (guards, `config(default).php`, `cacert.pem`, the two starter sites), so a development machine's real config.php, uploads and backups never reach an image layer. `data/config.php` starts as `<?php ?>`.
