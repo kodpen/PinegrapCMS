@@ -44,9 +44,6 @@ if (!isset($_POST['name'])) {
     
     print
     pg_page_shell([
-        // The code field is the facade's editor (pg_code_editor_attach());
-        // CodeMirror 5 waits in the template for a settings pane that draws one.
-        'code_editor' => false,
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region'))),
         'extra classes'=>'design',
         'icon'=>'design',

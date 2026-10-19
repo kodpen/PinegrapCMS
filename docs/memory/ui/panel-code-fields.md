@@ -1,26 +1,26 @@
 ---
 name: panel-code-fields
-description: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, 'code_editor' => false, the colour scheme, which screens have moved
+description: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
 ---
 
 ## How does a panel screen draw a code field?
-- `pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css', 'readonly' => false))` (`includes/fn/editor.php`) after the textarea: the facade's editor (`assets/js/pg_code_editor.js`, CodeMirror 6) takes the textarea's place, keeps its value current and raises `input` on it, so the form submits as before. `code_type` takes the names `get_codemirror_javascript()` took; `pg_code_editor_language()` maps them to `css`, `javascript`, `json`, else `html`; a plain-text type turns the lint off. Optional `height`; without it the field grows to 80vh and scrolls inside; a read-only field is as tall as its text.
-- F11 fills the window, Esc leaves. The instance is kept in `window.pgCodeEditors[id]` (a screen that changes the language calls `pgCodeEditors.code.setLanguage()`).
+- `pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css', 'readonly' => false))` (`includes/fn/editor.php`) after the textarea: the facade's editor (`assets/js/pg_code_editor.js`, CodeMirror 6) takes the textarea's place, keeps its value current and raises `input` on it, so the form submits as before. `pg_code_editor_language()` maps the code type to `css`, `javascript`, `json`, else `html`; a plain-text type turns the lint off. Optional `height`; without it the field grows to 80vh and scrolls inside; a read-only field is as tall as its text.
+- F11 fills the window, Esc leaves. The instance is kept in `window.pgCodeEditors[id]` and the textarea raises `pgcodeeditorready` when it is there (`create_file.php` then follows the chosen type with `setLanguage()` / `setLint()`).
+- CodeMirror 5 is gone (2026.11.0): no `get_codemirror_*()`, no `'code_editor'` page property, no template in the head. `clean_up.php` lists its old folders.
 
 ## How is the facade loaded?
-- Not in the head. The panel header names the facade and its engine in `window.pgCodeEditorConfig` (`pg_code_editor_urls()`); `pg_code_editor_includes()` (once per request) adds the engine's translated texts (`pg_code_editor_phrases()`, the keys `_sdCodePhrases()` uses). Both are inline scripts, never a `<script src>`: jQuery fetches those in pane markup with a blocking request.
+- Not in the head. The panel header names the facade and its engine in `window.pgCodeEditorConfig` (`pg_code_editor_urls()`); `pg_code_editor_includes()` (once per request) adds the engine's translated texts and labels. Both are inline scripts: jQuery fetches a `<script src>` in pane markup with a blocking request.
 - `window.pgCodeEditorUse(run)` (`backend.src.js`) fetches the facade once and runs `run` (also on failure; `run` checks `PgCodeEditor`). The engine bundle (~600 KB) follows on the first editor (`PgCodeEditor.load()`).
-- The designer is the exception: `designer_screen.php` puts the facade in its page, as `style_designer.js` registers completion sources at start.
+- Pages that build editors at start put the facade in the page: the designer (`designer_screen.php`) and the legacy page designer (`page_designer.php`).
 
-## How does the settings dialog handle code fields?
-- Panes arrive by AJAX; `pgCodeEditorReady(markup, done)` waits for the facade and its engine when the markup calls `pgCodeEditorUse`, so the pane is painted with its editors (and still loads CodeMirror 5 from the template for markup that mentions it).
-- `pgReleaseEditors(scope)` destroys the facade editors inside the scope as well; it runs on the pane before a new one is painted, on the card's own dialogs (`clearExtras()`, the cron commands live in one) and when the dialog closes.
-- Typing raises keydown, so `review()` sees it; the textarea is hidden and so not `keep()`-ed, as with CodeMirror 5.
+## What must happen around AJAX markup?
+- The settings dialog: `pgCodeEditorReady(markup, done)` waits for the facade and its engine when the markup calls `pgCodeEditorUse`, so the pane is painted with its editors.
+- `window.pgReleaseEditors(scope)` destroys every editor of `window.pgCodeEditors` inside the scope (an editor view keeps document listeners and a resize observer). Call it before replacing or closing markup that may hold one, like `destroy_widget_charts()` for charts; the settings dialog does it for the pane, the card's own dialogs (`clearExtras()`) and on close.
 
-## What does 'code_editor' => false do?
-- `pg_page_shell()` / `output_header()` with it leave CodeMirror 5 and its linters (40 files, ~2 MB) out of the head, parked in `<template id="pg-code-editor-assets">`. A screen whose code fields are the facade's sets it.
-- Moved: `edit_file.php`, the content screens (custom style, dynamic/designer/login region, field, product group, `edit_javascript`, `edit_theme_css`, `editor_edit_file`, form views, `view_system_style_source`, product screen), the File Manager's file window (`view_folders.php`: `PgCodeEditor.create()` after the hidden textarea, `destroy()` on close, language from `pg_explorer_editor_language()`), the settings panes and pages (`includes/settings/*.php`).
-- Still on CodeMirror 5: `create_file.php`, `page_designer.js`, `theme_designer.php`, `backups.php`, `smtp_settings.php`, `generate_layout.php`. When the last one has moved, `get_codemirror_includes()`, the template, the CodeMirror half of `pgCodeEditorReady()` and `assets/lib/codemirror/` go.
+## Which other places use the facade?
+- The File Manager's file window (`view_folders.php`): `PgCodeEditor.create()` after the hidden textarea, `destroy()` on close, language from `pg_explorer_editor_language()`.
+- The legacy page designer (`page_designer.js`): `PgCodeEditor.open()` per item, `activeLineMarker` for the region button, `insertAtCursor()` for region tags, image preview on hover via `posAtCoords()` + `syntaxTree()`.
+- The rich text editor (CKEditor 4, `get_wysiwyg_editor_code()`, also on site pages): Source mode and Source dialog through its plugin `pgcodeeditor` (`assets/js/pg_ckeditor_source.js`, which loads the facade itself where `pgCodeEditorUse()` is missing).
 
 ## How does the colour scheme reach the editors?
-- The server reads the `prefers-color-scheme` cookie (`pg_code_editor_theme()`) for the first paint; the panel's scheme switch (`setTheme()` in `backend.src.js`) pushes `dark`/`light` to CodeMirror 5 and, through `window.pgCodeEditors`, to every facade editor.
+- The server reads the `prefers-color-scheme` cookie (`pg_code_editor_theme()`) for the first paint; the panel's scheme switch (`setTheme()` in `backend.src.js`) calls `setTheme()` on every editor in `window.pgCodeEditors`.

@@ -18,9 +18,9 @@ function init_page_designer(properties) {
 
     // Define the handler function separately
     function handlePregionInsert() {
-        const doc = window.editor.getDoc();
-        const cursor = doc.getCursor(); // Get current cursor position
-        doc.replaceRange('<pregion></pregion>', cursor); // Insert at cursor
+        if (window.editor && window.editor.insertAtCursor) {
+            window.editor.insertAtCursor('<pregion></pregion>');
+        }
         RegionModalInstance.hide();
     }
 
@@ -97,6 +97,13 @@ function init_page_designer(properties) {
                 var output_heading = labels['Dynamic Region'];
                 var mode = 'php';
                 break;
+        }
+
+        // The editor of the item open until now goes with its panel.
+        if (editor && editor.destroy) {
+            try { editor.destroy(); } catch (e) { }
+            editor = null;
+            window.editor = null;
         }
 
         $('#editorpanel').html(`
@@ -281,127 +288,119 @@ function init_page_designer(properties) {
                     }
                 });
 
-                $('#content').val(content);
-                editor = CodeMirror.fromTextArea(document.getElementById('content'), {
-                    mode: mode,
-                    lineNumbers: true,
-                    indentUnit: 4,
-                    coverGutterNextToScrollbar: 1,
-                    styleActiveLine: true,
-                    lineWrapping: false,
+                // The editor (the code editor facade, CodeMirror 6) takes the
+                // place of the panel's textarea once its engine is on the page;
+                // everything that acts on it waits for it.
+                var host = document.createElement('div');
+                host.className = 'pg-code-editor';
+                $('#content').after(host);
+
+                var languages = { htmlmixed: 'html', php: 'html', css: 'css', javascript: 'javascript' };
+                var regionTypes = (type == 'style') || (type == 'designer_region') || (type == 'dynamic_region');
+
+                // The backend's scheme choice, as the panel resolves it.
+                var schemeTheme = function () {
+                    var chosen = localStorage.getItem('pinegrap backend color scheme') || 'light';
+                    var dark = (chosen === 'auto') ? window.matchMedia('(prefers-color-scheme: dark)').matches : (chosen === 'dark');
+                    return dark ? 'dark' : 'light';
+                };
+
+                // Content changes are handled once the save and cancel wiring
+                // below is in place.
+                var onEdit = null;
+
+                var opened = PgCodeEditor.open(host, {
+                    language: languages[mode] || 'html',
+                    value: content,
                     readOnly: readonly,
-                    viewportMargin: Infinity,
-                    matchTags: { bothTags: true },
-                    autoCloseTags: true,
-                    autoRefresh: true,
-                    lint: true,
-                    gutters: ["CodeMirror-lint-markers", "custom-gutter"],
-                    autoCloseBrackets: true
-                });
-                $('#content').val(content);
-                window.editor = editor;
-
-                // --- Image preview logic ---
-                var previewEl = document.createElement("img");
-                previewEl.id = "cm-img-preview";
-                previewEl.style.position = "fixed";
-                previewEl.style.border = "1px solid #ccc";
-                previewEl.style.maxWidth = "150px";
-                previewEl.style.maxHeight = "150px";
-                previewEl.style.display = "none";
-                document.body.appendChild(previewEl);
-
-                editor.on("mousemove", function (cm, e) {
-                    var pos = cm.coordsChar({ left: e.clientX, top: e.clientY });
-                    var token = cm.getTokenAt(pos);
-
-                    // English comment: check if token looks like an image path
-                    if (token.string.match(/\.(png|jpg|jpeg|gif)$/)) {
-                        var src = token.string.replace(/['"]/g, ""); // remove quotes
-                        // adapt {path} to real path if needed
-                        src = src.replace("{path}", "/assets/");
-                        previewEl.src = src;
-                        previewEl.style.left = (e.clientX + 10) + "px";
-                        previewEl.style.top = (e.clientY + 10) + "px";
-                        previewEl.style.display = "block";
-                    } else {
-                        previewEl.style.display = "none";
+                    theme: schemeTheme(),
+                    labels: { syntaxError: labels['Syntax error'] || 'Syntax error' },
+                    // Ctrl+D belongs to the screen (the preview's full screen);
+                    // the editor leaves it alone.
+                    keys: [{ key: 'Mod-d', run: function () { return true; } }],
+                    // The region buttons sit beside the line the cursor is on.
+                    activeLineMarker: regionTypes ? function () {
+                        var addButton = document.createElement('button');
+                        addButton.type = 'button';
+                        addButton.className = 'btn btn-primary bi bi-plus p-0 lh-1 position-absolute start-50 top-50 translate-middle hide-on-fullscreen';
+                        addButton.setAttribute('data-bs-toggle', 'modal');
+                        addButton.setAttribute('data-bs-target', '#regionModal');
+                        return addButton;
+                    } : null,
+                    onChange: function () {
+                        if (onEdit) {
+                            onEdit();
+                        }
                     }
                 });
 
-                // disable codemirror shortcut ctrl+d
-                editor.setOption("extraKeys", {
-                    "Ctrl-D": function (cm) { }
-                });
+                opened.then(function (instance) {
+                    editor = instance;
+                    window.editor = editor;
 
-                editor.focus();
-                if (
-                    type == 'style'
-                    || type == 'designer_region'
-                    || type == 'dynamic_region'
-                ) {
+                    // The panel's colour scheme switch reaches the editors it
+                    // finds in window.pgCodeEditors (backend.src.js).
+                    window.pgCodeEditors = window.pgCodeEditors || {};
+                    window.pgCodeEditors.page_designer = editor;
 
-                    var currentButtons = null;
+                    // --- Image preview: an image address under the pointer ---
+                    var previewEl = document.getElementById('cm-img-preview');
+                    if (!previewEl) {
+                        previewEl = document.createElement('img');
+                        previewEl.id = 'cm-img-preview';
+                        previewEl.style.position = 'fixed';
+                        previewEl.style.border = '1px solid #ccc';
+                        previewEl.style.maxWidth = '150px';
+                        previewEl.style.maxHeight = '150px';
+                        previewEl.style.display = 'none';
+                        previewEl.style.zIndex = '1080';
+                        document.body.appendChild(previewEl);
+                    }
 
-                    // Add the region buttons to the gutter of the line the cursor is on.
-                    editor.on('cursorActivity', function (cm) {
-                        var cursor = cm.getCursor();
-                        var line = cursor.line;
+                    host.addEventListener('mousemove', function (e) {
+                        var pos = editor.posAtCoords(e.clientX, e.clientY);
+                        var src = '';
 
-                        if (currentButtons && currentButtons.line !== line) {
-                            cm.setGutterMarker(currentButtons.line, 'custom-gutter', null);
-                            currentButtons = null;
+                        if (pos !== null) {
+                            // The attribute value (or text) the pointer is on.
+                            var node = editor.syntaxTree().resolveInner(pos, 1);
+                            var text = editor.sliceDoc(node.from, node.to);
+
+                            if ((node.to - node.from) < 500 && /\.(png|jpe?g|gif|webp|svg)['"]?$/i.test(text)) {
+                                // {path} stands for the site's file folder.
+                                src = text.replace(/['"]/g, '').replace('{path}', path);
+                            }
                         }
 
-                        if (!currentButtons) {
-                            var addButton = document.createElement('button');
-                            addButton.className = 'btn btn-primary bi bi-plus p-0 lh-1 position-absolute start-0 top-50 translate-middle hide-on-fullscreen';
-                            addButton.setAttribute('data-bs-toggle', 'modal');
-                            addButton.setAttribute('data-bs-target', '#regionModal');
-
-                            var buttonContainer = document.createElement('div');
-                            buttonContainer.className = 'btn-group';
-                            buttonContainer.appendChild(addButton);
-
-                            cm.setGutterMarker(line, 'custom-gutter', buttonContainer);
-                            currentButtons = { line: line, element: buttonContainer };
+                        if (src) {
+                            previewEl.src = src;
+                            previewEl.style.left = (e.clientX + 10) + 'px';
+                            previewEl.style.top = (e.clientY + 10) + 'px';
+                            previewEl.style.display = 'block';
+                        } else {
+                            previewEl.style.display = 'none';
                         }
                     });
 
-                    // Page region button: insert a <pregion> tag at the cursor.
-                    rebindPregionButton();
-
-
-                }
-
-                // Set Theme
-                const theme = localStorage.getItem('pinegrap backend color scheme') || 'light';
-                const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const resolvedTheme = theme === 'auto' ? (prefersDarkScheme ? 'pastel-on-dark' : 'default') : (theme === 'dark' ? 'pastel-on-dark' : 'default');
-                editor.setOption('theme', resolvedTheme);
-                // Add listener for theme change
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                    const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    const theme = localStorage.getItem('pinegrap backend color scheme') || 'light';
-                    const resolvedTheme = theme === 'auto' ? (prefersDarkScheme ? 'pastel-on-dark' : 'default') : (theme === 'dark' ? 'pastel-on-dark' : 'default');
-                    editor.setOption('theme', resolvedTheme);
-                });
-                document.querySelectorAll('[data-bs-theme-value]').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const selectedTheme = button.getAttribute('data-bs-theme-value');
-                        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                        const resolvedTheme = selectedTheme === 'auto' ? (prefersDarkScheme ? 'pastel-on-dark' : 'default') : (selectedTheme === 'dark' ? 'pastel-on-dark' : 'default');
-                        editor.setOption('theme', resolvedTheme);
+                    host.addEventListener('mouseleave', function () {
+                        previewEl.style.display = 'none';
                     });
-                });
 
+                    editor.focus();
 
+                    if (regionTypes) {
+                        // Page region button: insert a <pregion> tag at the cursor.
+                        rebindPregionButton();
+                    }
 
+                    // The scheme can also follow the system's.
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+                        if (editor && !editor.isDestroyed()) {
+                            editor.setTheme(schemeTheme());
+                        }
+                    });
 
-
-
-
-                editor.on('change', function () {
+                onEdit = function () {
                     // If this is the first time the editor content has been changed,
                     // then enable save & cancel buttons and actions for buttons.
                     if (content_changed == false) {
@@ -539,6 +538,12 @@ function init_page_designer(properties) {
                             $('.cancel').addClass('disabled');
                         });
                     }
+                };
+                }, function (err) {
+                    // The engine could not be loaded: the text is shown in the
+                    // plain box, read-only, rather than not at all.
+                    $(host).remove();
+                    $('#content').val(content).prop('readonly', true).css({ display: 'block', width: '100%', height: '100%' });
                 });
             }
         });
@@ -731,60 +736,43 @@ function init_page_designer(properties) {
 
 
     const submit_button = $('[name=submit_create]');
-    //create codemirror for create designer region area
-    const designer_region_CodeMirror = CodeMirror.fromTextArea(document.getElementById('designer_region_code'), {
-        mode: 'htmlmixed',
-        lineNumbers: true,
-        indentUnit: 4,
-        theme: 'pastel-on-dark',
-        lineWrapping: false,
-        styleActiveLine: true,
-        readOnly: false,
-        viewportMargin: Infinity,
-        matchTags: {
-            bothTags: true
-        },
-        autoCloseTags: true,
-        autoRefresh: true,
-        lint: true,
-        gutters: ["CodeMirror-lint-markers"],
-        autoCloseBrackets: true
+
+    // The code boxes of the "create a region" dialogs. Until the editor is on
+    // the page (or when it cannot be loaded) the textarea itself is the box,
+    // so these read and clear whichever one is there.
+    var regionEditors = {};
+    ['designer_region_code', 'dynamic_region_code'].forEach(function (id) {
+        var field = document.getElementById(id);
+        if (!field || (typeof PgCodeEditor === 'undefined')) {
+            return;
+        }
+        PgCodeEditor.attach(field, { language: 'html', theme: 'dark', className: 'pg-pd-region-code' }).then(function (instance) {
+            regionEditors[id] = instance;
+        }, function () { });
     });
-    //create codemirror for create dynamic region area
-    const dynamic_region_CodeMirror = CodeMirror.fromTextArea(document.getElementById('dynamic_region_code'), {
-        mode: 'php',
-        lineNumbers: true,
-        indentUnit: 4,
-        theme: 'pastel-on-dark',
-        lineWrapping: false,
-        styleActiveLine: true,
-        readOnly: false,
-        viewportMargin: Infinity,
-        matchTags: {
-            bothTags: true
-        },
-        autoCloseTags: true,
-        autoRefresh: true,
-        lint: true,
-        gutters: ["CodeMirror-lint-markers"],
-        autoCloseBrackets: true
-    });
+    var regionCode = function (id) {
+        return regionEditors[id] ? regionEditors[id].getValue() : $('#' + id).val();
+    };
+    var clearRegionCode = function (id) {
+        $('#' + id).val('');
+        if (regionEditors[id]) {
+            regionEditors[id].setValue('');
+        }
+    };
 
     // Region-create wiring is bound once here rather than inside open_item(): the
     // modals, the submit button and the region buttons live outside the editor
     // panel, so re-binding on every open would fire one create request per open.
     $('#editor_modal_add_designer_region').on('hide.bs.modal', function () {
         $('#designer_region_name').val('');
-        $('#designer_region_code').val('');
-        designer_region_CodeMirror.setValue('');
+        clearRegionCode('designer_region_code');
         submit_button.removeClass('disabled');
         $('[name=designer_region_name]').removeClass('is-invalid');
     });
     if (dynamic_regions && dynamic_regions === 1) {
         $('#editor_modal_add_dynamic_region').on('hide.bs.modal', function () {
             $('#dynamic_region_name').val('');
-            $('#dynamic_region_code').val('');
-            dynamic_region_CodeMirror.setValue('');
+            clearRegionCode('dynamic_region_code');
             submit_button.removeClass('disabled');
             $('[name=dynamic_region_name]').removeClass('is-invalid');
         });
@@ -809,7 +797,7 @@ function init_page_designer(properties) {
 
 
             //get content and create region with informations.
-            var content = designer_region_CodeMirror.getValue();
+            var content = regionCode('designer_region_code');
             var data = {
                 action: 'create_design_region',
                 token: software_token,
@@ -825,9 +813,7 @@ function init_page_designer(properties) {
                 type: 'POST',
                 success: function (response) {
                     if (name) {
-                        var doc = editor.getDoc();
-                        var cursor = doc.getCursor();
-                        doc.replaceRange('<cregion>' + name + '</cregion>', cursor);
+                        editor.insertAtCursor('<cregion>' + name + '</cregion>');
                         RegionModalInstance.hide();
                         CregionModalInstance.hide();
                         if (dynamic_regions && dynamic_regions === 1) {
@@ -855,7 +841,7 @@ function init_page_designer(properties) {
 
 
             //get content and create region with informations.
-            var code = dynamic_region_CodeMirror.getValue();
+            var code = regionCode('dynamic_region_code');
             var data = {
                 action: 'create_dynamic_region',
                 token: software_token,
@@ -871,9 +857,7 @@ function init_page_designer(properties) {
                 type: 'POST',
                 success: function (response) {
                     if (name) {
-                        var doc = editor.getDoc();
-                        var cursor = doc.getCursor();
-                        doc.replaceRange('<dregion>' + name + '</dregion>', cursor);
+                        editor.insertAtCursor('<dregion>' + name + '</dregion>');
                         RegionModalInstance.hide();
                         CregionModalInstance.hide();
                         DregionModalInstance.hide();

@@ -352,7 +352,6 @@ echo pg_page_shell(array(
 	'icon'                => 'settings',
 	'heading'             => lang('Connected accounts'),
 	'heading_description' => lang('Outside accounts this site works with, such as Google or Microsoft. Each provider knows the site by an application you register there; features ask the connected account for what they need.'),
-	'code_editor'         => false,
 )) . '
 
 <main id="content" class="container-fluid">

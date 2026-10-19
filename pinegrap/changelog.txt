@@ -22,6 +22,7 @@
 [NEW] Added editing of a record's fields (product, stock, order, contact, current account, product group, offer, event) from the Workspace record drawer, with the change kept in the channel as a decision.
 [NEW] Added export of Workspace notes: one note as Markdown or a printable page, all notes as a zip that opens as a vault in other note apps.
 [FIX] Miscellaneous bug fixes and new features.
+[SECURITY] Implemented various security fixes.
 [SCHEME] Fields for the checkout legal documents will be added to the settings, and a table for the documents each order accepted.
 ==========================================================
 2026.4.10

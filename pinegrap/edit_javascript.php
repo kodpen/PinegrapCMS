@@ -57,9 +57,6 @@ if (!$_POST) {
     // output the page
     print
     pg_page_shell( array(
-        // The code field is the facade's editor (pg_code_editor_attach());
-        // CodeMirror 5 waits in the template for a settings pane that draws one.
-        'code_editor' => false,
         'cancel'=>array('enable'=>'true','url'=>pg_safe_back_url(isset($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', 'view_design_files.php')),
         'breadcrumb' => array(
             array('label' => lang('All Design Files'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php'),

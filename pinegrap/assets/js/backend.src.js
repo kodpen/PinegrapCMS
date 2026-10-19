@@ -26,19 +26,13 @@ window.pgLang = function (key) {
         localStorage.setItem("pinegrap backend color scheme", theme);
         document.cookie = `prefers-color-scheme=${resolvedTheme}`;
 
-        // Push the resolved theme to every CodeMirror instance on the page.
-        updateCodeMirrorTheme(resolvedTheme);
+        // Push the resolved theme to every code editor on the page.
+        updateCodeEditorTheme(resolvedTheme);
     };
 
-    const updateCodeMirrorTheme = (resolvedTheme) => {
-        document.querySelectorAll(".CodeMirror").forEach(cmElem => {
-            if (cmElem.CodeMirror) {
-                cmElem.CodeMirror.setOption("theme", resolvedTheme === "dark" ? "pastel-on-dark" : "default");
-            }
-        });
-
-        // The facade's editors (pg_code_editor_attach() keeps them in
-        // window.pgCodeEditors) follow the scheme the same way.
+    // The code editors (pg_code_editor_attach() and the screens that build
+    // their own keep them in window.pgCodeEditors) follow the scheme.
+    const updateCodeEditorTheme = (resolvedTheme) => {
         const editors = window.pgCodeEditors || {};
         Object.keys(editors).forEach(id => {
             const editor = editors[id];
@@ -9341,7 +9335,7 @@ function initSettingsFilter() {
    scope live in these helpers and both callers use them: the ready block runs
    them over the document, the settings modal over its pane.
 
-   What is NOT here: CodeMirror, the tag fields and the rest of the controls
+   What is NOT here: the code editors, the tag fields and the rest of the controls
    whose init sits in an inline <script> beside the control. jQuery's .html()
    runs the scripts it injects, so those start themselves -- which is why a
    pane is injected with .html() and never with innerHTML.
@@ -9781,7 +9775,7 @@ var pgSettingsModal = (function () {
         });
 
         // Something in the pane changed. Whether that counts is review()'s
-        // question; CodeMirror's own input events reach here the same way.
+        // question; a code field raises input on its textarea the same way.
         $('#pg_settings_modal_pane').on('change input', review);
 
         // Return in a text field submits a form. There is nowhere for this one
@@ -9834,23 +9828,14 @@ var pgSettingsModal = (function () {
 
 
     /**
-     * The pane's whole value as one string.
-     *
-     * CodeMirror keeps its own document and only writes back to the textarea
-     * when told to, so a code field has to be pushed down before the form can
-     * be read at all.
+     * The pane's whole value as one string. A code field writes every edit
+     * into its textarea, so the form holds it.
      */
     function snapshot() {
 
         if (!form) {
             return '';
         }
-
-        $(form).find('.CodeMirror').each(function () {
-            if (this.CodeMirror) {
-                this.CodeMirror.save();
-            }
-        });
 
         return $(form).serialize();
     }
@@ -9874,7 +9859,7 @@ var pgSettingsModal = (function () {
      *
      * Only what a fill can reach: a control that is not on screen cannot be
      * filled by anything but us. That leaves out the tokens, the tag fields'
-     * hidden inputs and the textarea CodeMirror writes into -- all three are
+     * hidden inputs and the textarea a code editor writes into -- all three are
      * written by this software after the reading below, and putting them back
      * would be fighting ourselves.
      */
@@ -10022,8 +10007,8 @@ var pgSettingsModal = (function () {
      * it still hold what it arrived with? A fill nobody asked for fails the
      * first; something typed and then taken back fails the second.
      *
-     * Debounced because the comparison pushes every CodeMirror document into
-     * its textarea, and a code field can hold a lot of text.
+     * Debounced because the comparison serialises the whole form, and a code
+     * field can hold a lot of text.
      */
     /**
      * Put one control back to the value it is being held at.
@@ -10114,8 +10099,8 @@ var pgSettingsModal = (function () {
      * it still hold what it arrived with? A fill nobody asked for fails the
      * first; something typed and then taken back fails the second.
      *
-     * Debounced because the comparison pushes every CodeMirror document into
-     * its textarea, and a code field can hold a lot of text.
+     * Debounced because the comparison serialises the whole form, and a code
+     * field can hold a lot of text.
      */
     function review() {
 
@@ -10336,9 +10321,8 @@ var pgSettingsModal = (function () {
                 return;
             }
 
-            // A pane with a code field, on a screen that left CodeMirror out
-            // of its head, is painted once the editor has loaded; the dialog
-            // stays busy until then.
+            // A pane with a code field is painted once the code editor has
+            // loaded; the dialog stays busy until then.
             later = window.pgCodeEditorReady(String(response.html || '') + String(response.modals || '') + String(response.scripts || ''), function () {
 
                 if (mine !== seq) {
@@ -10374,49 +10358,17 @@ var pgSettingsModal = (function () {
     }
 
 
-// Lets go of the CodeMirror editors inside a region that is about to be thrown
-// away.
-//
-// CodeMirror's autoRefresh addon waits for a hidden editor to become visible by
-// reading offsetHeight every 250 ms, and re-arms itself for as long as the
-// answer is zero. An editor whose markup was replaced, or whose dialog was
-// closed, is never visible again - so it is polled for the life of the tab. It
-// also binds mouseup and keyup on window, which are never removed either, so
-// every later click runs one handler per abandoned editor.
-//
-// The symptom is not an error and not a crash: the tab keeps scrolling, because
-// scrolling is the compositor's job and the compositor is free, while clicks and
-// context menus stop because those need the main thread. Chrome never calls the
-// page unresponsive, because no single task is long - there are just always
-// more of them. Same class as the Chart.js rule: markup that owns a live object
-// cannot simply be dropped.
-//
-// Turning the option off is what the addon listens for; it stops the poll and
-// removes the handlers it put on window. toTextArea() does not do this - it
-// destroys the editor and leaves the addon polling a wrapper that is no longer
-// in the document.
-//
-// The facade's editors (pg_code_editor_attach(), kept in window.pgCodeEditors)
-// inside the region are destroyed as well: an editor view keeps listeners on
-// the document and an observer on its box until it is told to go.
+// Lets go of the code editors inside a region that is about to be thrown
+// away (window.pgCodeEditors, filled by pg_code_editor_attach() and the screens
+// that build their own). An editor view keeps listeners on the document and an
+// observer on its box until it is told to go, so markup that owns one cannot
+// simply be dropped -- the same rule as for Chart.js.
 window.pgReleaseEditors = function (scope) {
 
     var root = scope || document;
 
-    if (!root || !root.querySelectorAll) {
+    if (!root || !root.contains) {
         return;
-    }
-
-    var wrappers = root.querySelectorAll('.CodeMirror');
-
-    for (var i = 0; i < wrappers.length; i++) {
-        var editor = wrappers[i].CodeMirror;
-
-        if (!editor) {
-            continue;
-        }
-
-        try { editor.setOption('autoRefresh', false); } catch (e) {}
     }
 
     var editors = window.pgCodeEditors || {};
@@ -10491,122 +10443,35 @@ window.pgCodeEditorUse = (function () {
     };
 })();
 
-// Makes sure CodeMirror is on the page before markup that starts an editor is
-// put into it, then calls done.
+// Makes sure the code editor is on the page before markup that draws a code
+// field is put into it, then calls done.
 //
-// A screen with no code field of its own (the workspace's) leaves CodeMirror
-// and its linters out of its head and parks the tags in
-// <template id="pg-code-editor-assets"> (output_control_panel_header_includes()).
-// Markup that arrives later and mentions CodeMirror -- a pane of the settings
-// dialog, whose inline scripts call CodeMirror.fromTextArea as .html() runs
-// them -- waits here until the files are in, one script after the other in the
-// order the head would have run them. Anywhere else CodeMirror is already
-// there and done runs at once, before this returns.
-//
-// Markup that draws a code field with the facade (it calls pgCodeEditorUse())
-// waits the same way for the facade and its engine, so the pane is painted
-// with its editors rather than with plain boxes that turn into editors a
-// moment later.
+// Markup that arrives later -- a pane of the settings dialog, whose inline
+// scripts call pgCodeEditorUse() as .html() runs them -- waits here for the
+// facade and its engine, so the pane is painted with its editors rather than
+// with plain boxes that turn into editors a moment later. Anywhere else done
+// runs at once, before this returns.
 //
 // Returns true when done will run later. A file that fails to load still ends
-// in done: the textarea stays a plain field, which is what a missing editor
-// looked like before.
+// in done: the textarea stays a plain field.
 window.pgCodeEditorReady = function (markup, done) {
 
-    markup = String(markup || '');
+    if ((String(markup || '').indexOf('pgCodeEditorUse') === -1)
+        || (window.PgCodeEditor && window.PgCodeEditor.isLoaded())) {
+        done();
+        return false;
+    }
 
-    var facade = (markup.indexOf('pgCodeEditorUse') !== -1)
-        && !(window.PgCodeEditor && window.PgCodeEditor.isLoaded());
-
-    var classic = pgCodeMirrorReady(markup, function () {
-
-        if (!facade) {
+    window.pgCodeEditorUse(function () {
+        if (window.PgCodeEditor) {
+            window.PgCodeEditor.load().then(done, done);
+        } else {
             done();
-            return;
         }
-
-        window.pgCodeEditorUse(function () {
-            if (window.PgCodeEditor) {
-                window.PgCodeEditor.load().then(done, done);
-            } else {
-                done();
-            }
-        });
     });
 
-    return classic || facade;
+    return true;
 };
-
-// CodeMirror 5 from its template, for markup that still starts one; see
-// pgCodeEditorReady(). Returns true when done will run later.
-var pgCodeMirrorReady = (function () {
-
-    var waiting = null;     // callbacks while the files load; null otherwise
-
-    return function (markup, done) {
-
-        var template = document.getElementById('pg-code-editor-assets');
-
-        if (window.CodeMirror || !template || !template.content || (String(markup || '').indexOf('CodeMirror') === -1)) {
-            done();
-            return false;
-        }
-
-        if (waiting) {
-            waiting.push(done);
-            return true;
-        }
-
-        waiting = [done];
-
-        var nodes = Array.prototype.slice.call(template.content.childNodes);
-
-        var finish = function () {
-            var callbacks = waiting;
-
-            waiting = null;
-            callbacks.forEach(function (callback) { callback(); });
-        };
-
-        var next = function (index) {
-
-            while ((index < nodes.length) && (nodes[index].nodeType !== 1)) {
-                index++;
-            }
-
-            if (index >= nodes.length) {
-                finish();
-                return;
-            }
-
-            var node = nodes[index];
-
-            if (node.tagName === 'LINK') {
-                var sheet = document.createElement('link');
-                sheet.rel = 'stylesheet';
-                sheet.href = node.getAttribute('href');
-                document.head.appendChild(sheet);
-                next(index + 1);
-                return;
-            }
-
-            if ((node.tagName !== 'SCRIPT') || !node.getAttribute('src')) {
-                next(index + 1);
-                return;
-            }
-
-            var script = document.createElement('script');
-            script.src = node.getAttribute('src');
-            script.onload = function () { next(index + 1); };
-            script.onerror = function () { next(index + 1); };
-            document.head.appendChild(script);
-        };
-
-        next(0);
-
-        return true;
-    };
-})();
     function paint(key, response) {
 
         pane = key;
@@ -10652,7 +10517,7 @@ var pgCodeMirrorReady = (function () {
         window.pgReleaseEditors($pane[0]);
 
         // .html(), not innerHTML: the cards carry inline scripts that start
-        // CodeMirror and the tag fields, and .html() runs them.
+        // the code editors and the tag fields, and .html() runs them.
         $pane.html(response.html || '');
 
         // A card's own dialog cannot stay inside this one -- nested modals
@@ -10669,14 +10534,6 @@ var pgCodeMirrorReady = (function () {
         }
 
         pgInitInjected($pane);
-
-        // CodeMirror edits its own document and leaves the textarea alone, so
-        // a code field would otherwise never reach the comparison.
-        $pane.find('.CodeMirror').each(function () {
-            if (this.CodeMirror) {
-                this.CodeMirror.on('change', review);
-            }
-        });
 
         // What the pane arrived holding, whole and control by control. Read
         // here and not a frame later: a fill that lands in between would become
@@ -10740,15 +10597,6 @@ var pgCodeMirrorReady = (function () {
                 }
             }
         }
-
-        // CodeMirror keeps its own document and only writes back to the
-        // textarea when told to, so serialize() would post the value the pane
-        // arrived with.
-        $(form).find('.CodeMirror').each(function () {
-            if (this.CodeMirror) {
-                this.CodeMirror.save();
-            }
-        });
     }
 
 

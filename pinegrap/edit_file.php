@@ -495,10 +495,6 @@ if (!isset($_POST['name'])) {
     pg_page_shell(
         array(
             'title'=> lang('Edit File'),
-            // The file's code field is the facade's editor
-            // (pg_code_editor_attach()); CodeMirror 5 waits in the template
-            // for a settings pane that still draws one.
-            'code_editor' => false,
             'extra classes'=>'file',
             'icon'=>'file', 
             'heading'=>lang('Edit File'),

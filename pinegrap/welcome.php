@@ -965,10 +965,6 @@ pg_page_shell(
         'icon'=>'welcome',
         'heading'=>lang('Welcome'),
         'heading_description' => lang('Your site at a glance: visitors, orders and health'),
-        // No card draws a code field, so CodeMirror and its linters (some
-        // 2 MB of script) stay out of the head; the settings dialog loads
-        // them when one of its panes needs them.
-        'code_editor' => false,
     )
 ) . '<main id="content" class="container-fluid" data-widget-theme="' . h($widget_theme) . '" data-panel-backdrop="' . h($panel_backdrop) . '">' .
 $output_header_includes .

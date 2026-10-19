@@ -36,8 +36,7 @@ if (!defined('PG_INIT_LOADED')) {
                                         'name' => 'layout',
                                         'id' => 'layout',
                                         'class' => 'd-none h-100'))?>
-                                    <?=get_codemirror_includes()?>
-                                    <?=get_codemirror_javascript(array(
+                                    <?=pg_code_editor_attach(array(
                                         'id' => 'layout',
                                         'code_type' => 'php',
                                         'readonly' => true))?>
