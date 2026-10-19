@@ -18,5 +18,8 @@ description: Designer audit's text contrast check (WCAG 1.4.3): measured on the 
 ## What does it find on the built-in templates?
 - Store template in plain Bootstrap colours: `text-primary`/`link-primary` #0d6efd on `bg-light` #f8f9fa (4.27:1), light text on primary, #6c757d on `bg-light` (4.45:1). With its coral palette: #e11d48 on #f8f9fa (4.46:1). Cafe with cocoa: nothing. These are real: the palette builder makes primary readable on white (`_pg_theme_readable()` against white), not on `bg-light`.
 
+## Does the canvas zoom change it?
+- No. The canvas zoom is CSS `zoom` on the iframe's `<html>`, and Chromium reports rectangles zoomed (a 30px button reads 15px at 50%), so every size test divides by `PgContrast.zoom(el)` (`currentCSSZoom`). Same findings at 25%, 100% and 200%.
+
 ## What does it cost?
 - The store home page (1,480 elements, 151 texts) takes about 12 ms in headless Chromium per audit pass (500 ms after a render). Backdrops are cached per element for the pass (WeakMap); pictures are collected once.
