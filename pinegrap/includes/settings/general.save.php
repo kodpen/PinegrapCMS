@@ -278,6 +278,60 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // ── Maintenance mode ─────────────────────────────────────────────────
+    // The 2026.11.0 columns (11.0.22); before the upgrade nothing is written.
+    // The end time arrives from a datetime-local box in the site's own time
+    // zone. An address the firewall's lists would not take, a time that is
+    // not one, or an end that has already passed while the mode is being
+    // switched on, refuses the save.
+    $sql_maintenance_settings = '';
+    $maintenance_switched = null;
+
+    if (array_key_exists('maintenance_mode', $row) && function_exists('pg_maintenance_allow_invalid')) {
+
+        $maintenance_on = post_value('maintenance_mode') ? 1 : 0;
+        $maintenance_allow_posted = trim((string) post_value('maintenance_allow_ips'));
+        $maintenance_allow_invalid = pg_maintenance_allow_invalid($maintenance_allow_posted);
+
+        if ($maintenance_allow_invalid) {
+            $liveform->mark_error('maintenance_allow_ips', lang(array(
+                'string' => 'Not an address or a range: {var:1}',
+                'vars'   => array(implode(', ', $maintenance_allow_invalid)),
+            )));
+        }
+
+        $maintenance_until_posted = trim((string) post_value('maintenance_until'));
+        $maintenance_until_saved = 0;
+
+        if ($maintenance_until_posted !== '') {
+
+            $maintenance_until_parsed = DateTime::createFromFormat('!Y-m-d\TH:i', substr($maintenance_until_posted, 0, 16));
+
+            if (($maintenance_until_parsed === false) || ($maintenance_until_parsed->format('Y-m-d\TH:i') !== substr($maintenance_until_posted, 0, 16))) {
+                $liveform->mark_error('maintenance_until', lang('The end time is not a date and time.'));
+            } else {
+                $maintenance_until_saved = $maintenance_until_parsed->getTimestamp();
+
+                if ($maintenance_on && ($maintenance_until_saved <= time())) {
+                    $liveform->mark_error('maintenance_until', lang('The end time has already passed.'));
+                }
+            }
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+
+        $sql_maintenance_settings =
+            "maintenance_mode = '" . $maintenance_on . "',
+             maintenance_until = '" . (int) $maintenance_until_saved . "',
+             maintenance_allow_ips = '" . escape(implode(', ', waf_parse_list($maintenance_allow_posted))) . "',";
+
+        if ($maintenance_on !== (int) $row['maintenance_mode']) {
+            $maintenance_switched = $maintenance_on;
+        }
+    }
+
     // ── Backup before updating ───────────────────────────────────────────
     // The 2026.11.0 column (11.0.21); before the upgrade nothing is written.
     $sql_update_backup = array_key_exists('update_backup', $row)
@@ -301,8 +355,19 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             " . $sql_backup_settings . "
             " . $sql_ops_alert_settings . "
             " . $sql_update_backup . "
+            " . $sql_maintenance_settings . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    // The mode changed: in the log, and System Status is told at once rather
+    // than after its ten-minute cache.
+    if ($maintenance_switched !== null) {
+        log_activity($maintenance_switched ? lang('Maintenance mode was switched on.') : lang('Maintenance mode was switched off.'), $_SESSION['sessionusername']);
+
+        if (file_exists(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json')) {
+            @unlink(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json');
+        }
+    }
 
     // Pinegrap AI sends this key to its gateway (includes/workspace/ai.php).
     // What the gateway said about the old key is forgotten with it: a key it

@@ -28,6 +28,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_price_history();          // 11.0.2
 	upgrade_2026_11_0_ops_alerts();             // 11.0.20
 	upgrade_2026_11_0_update_backup();          // 11.0.21
+	upgrade_2026_11_0_maintenance_mode();       // 11.0.22
 
 }
 
@@ -194,5 +195,24 @@ function upgrade_2026_11_0_update_backup() {
 	install_add_column('config', 'update_backup', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
 
 	install_note('Software update: before an update replaces the files, the files it replaces and the database are backed up to data/backups/pre-update-….zip, and Repair Software can roll the files back. It can be switched off under Site Settings, General, Update Channel.');
+
+}
+
+// Maintenance mode (2026.11.0, 11.0.22; includes/fn/maintenance_mode.php, the
+// Maintenance Mode card under Site Settings, General).
+//
+// Off: nothing changes for a site that never switches it on. While on, a
+// visitor asking for a page gets a 503 with Retry-After until the optional end
+// time (0 = none); signed-in managers and above, and the listed addresses,
+// see the site.
+function upgrade_2026_11_0_maintenance_mode() {
+
+	install_add_column('config', 'maintenance_mode', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'maintenance_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'maintenance_allow_ips', "TEXT NULL");
+
+	install_note('Maintenance mode: visitors can be shown a maintenance page (503, with the time the site is expected back) while managers, administrators and listed addresses see the site. It is under Site Settings, General, Maintenance Mode; health.php answers uptime monitors.');
 
 }

@@ -26,7 +26,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - `cert_expiring`: only over https for a public host name; read once a day (`pg_ops_certificate_end()`, same reading as the Workspace web check), judged every pass; a failed reading says nothing.
 
 ## Which scheduled jobs count as stopped?
-- The catalogue's `stale_after`, as on the tile; the general job's is 2 h (was 6 h): it records its run before dispatching. When it is stopped it is the only one named, and since it cannot report its own death System Status calls `pg_ops_alerts_check_cron()` too (mail then goes out directly).
+- The catalogue's `stale_after`, as on the tile; the general job's is 2 h (was 6 h): it records its run before dispatching. When it is stopped it is the only one named, and since it cannot report its own death System Status and `health.php` call `pg_ops_alerts_check_cron()` too (mail then goes out directly).
 - Inline job only while switched on (the mail pass always); dispatched job when selected or while dispatching is off; silent a week past its limit = retired, no longer alerted; never run is not a failure.
 
 ## How was it tested?

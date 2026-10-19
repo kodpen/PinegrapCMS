@@ -590,6 +590,67 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Maintenance Mode ──
+//
+// What a visitor sees while the site is being worked on
+// (includes/fn/maintenance_mode.php), and the address an uptime monitor
+// polls. Before the 2026.11.0 columns the card says so and the save module
+// writes nothing for it.
+$output_maintenance_settings = '<div class="col-12"><div class="alert alert-secondary mb-0">' . lang('Run the upgrade to use this setting.') . '</div></div>';
+
+if ($maintenance_ready) {
+
+    $maintenance_state = '';
+
+    if ($maintenance_mode && pg_maintenance_holds(true, $maintenance_until, time())) {
+        $maintenance_state = '
+                    <div class="col-12">
+                        <div class="alert alert-warning mb-0 py-2 small">' . lang('Maintenance mode is on: visitors see the maintenance screen.') . '</div>
+                    </div>';
+    } elseif ($maintenance_mode) {
+        $maintenance_state = '
+                    <div class="col-12">
+                        <div class="alert alert-secondary mb-0 py-2 small">' . lang('The end time of maintenance mode has passed, so visitors see the site again. Switch it off, or set a new end time.') . '</div>
+                    </div>';
+    }
+
+    $output_maintenance_settings = '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . ($maintenance_mode ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="maintenance_mode" name="maintenance_mode"/>
+                            <label class="form-check-label" for="maintenance_mode">' . lang('Maintenance Mode') . '<br/><span class="form-text">' . lang('Visitors who open a page of the site see the maintenance screen - the designed error page, or the classic one - with the 503 answer that tells search engines to come back later. Signed-in managers and administrators, and the addresses below, see the site as usual. Files, the control panel and payment callbacks keep working.') . '</span></label>
+                        </div>
+                    </div>' . $maintenance_state . '
+                    <div class="pg-f-sm">
+                        <label for="maintenance_until" class="form-label">' . lang('Ends at') . '</label>
+                        <input type="datetime-local" name="maintenance_until" id="maintenance_until" class="form-control" value="' . h($maintenance_until_value) . '" />
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text">' . lang('Optional. At this time the site opens to visitors again by itself, and search engines are told to come back then.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <label for="maintenance_allow_ips" class="form-label">' . lang('Addresses that see the site') . '</label>
+                        <textarea name="maintenance_allow_ips" id="maintenance_allow_ips" rows="2" class="form-control" spellcheck="false">' . h($maintenance_allow_ips) . '</textarea>
+                        <div class="form-text">' . lang(array('string' => 'Addresses or ranges (CIDR), separated by commas or one per line. Your address: {var:1}', 'vars' => array(h($maintenance_my_ip)))) . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text">' . lang('Uptime monitors can poll this address. It answers 200 while the site is up and its general job runs, and 503 during maintenance or when the general job has stopped:') . ' <code>' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/health.php') . '</code></div>
+                    </div>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-maintenance" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                ' . lang('Maintenance Mode') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">' . $output_maintenance_settings . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // The modal explains every job the card can switch on. It is printed outside
 // the form, so it travels in its own variable.
 $pg_settings_modals[] = '

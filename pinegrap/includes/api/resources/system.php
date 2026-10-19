@@ -81,6 +81,10 @@ function api_system_status($params) {
 
 	$storage = isset($status['storage']) ? (array)$status['storage'] : array();
 
+	// Read live, not from the ten-minute cache: switching the mode on is the
+	// one change a monitor has to see at once, or it reports the site down.
+	$maintenance = function_exists('pg_maintenance_settings') ? pg_maintenance_settings() : array('on' => false, 'until' => 0);
+
 	api_ok(array(
 		'score'      => (int)$status['score'],
 		// When the checks were last computed, not when this call was made: the
@@ -94,6 +98,12 @@ function api_system_status($params) {
 			'file_bytes'     => isset($storage['files']) ? (int)$storage['files'] : 0,
 			'total_bytes'    => isset($storage['total']) ? (int)$storage['total'] : 0,
 			'measured_at'    => api_time(isset($storage['ts']) ? $storage['ts'] : 0)
+		),
+		// Maintenance mode (Site Settings, General): whether visitors get the
+		// maintenance screen now, and when it ends by itself (null: no end).
+		'maintenance' => array(
+			'active' => function_exists('pg_maintenance_holds') ? pg_maintenance_holds($maintenance['on'], $maintenance['until'], time()) : false,
+			'until'  => $maintenance['on'] ? api_time($maintenance['until']) : null
 		)
 	));
 
@@ -124,6 +134,10 @@ function api_system_status_schema() {
 			'file_bytes'     => 'integer',
 			'total_bytes'    => 'integer',
 			'measured_at'    => 'string?'
+		),
+		'maintenance' => array(
+			'active' => 'boolean',
+			'until'  => 'string?'
 		)
 	);
 
