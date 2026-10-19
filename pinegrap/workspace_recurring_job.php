@@ -76,6 +76,12 @@ if (ws_enabled() && function_exists('ws_bulk_continue')) {
     ws_bulk_continue(20);
 }
 
+// Proposals whose write died after Apply took them: failed, so the card
+// stops waiting (includes/workspace/changes.php).
+if (ws_enabled() && function_exists('ws_change_sweep_stuck')) {
+    ws_change_sweep_stuck(50);
+}
+
 // Concluded discussions whose time is up, deleted with what was said in
 // them (includes/workspace/threads.php).
 if (ws_enabled() && function_exists('ws_threads_purge')) {

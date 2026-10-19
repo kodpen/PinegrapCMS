@@ -308,7 +308,7 @@ if (!$_POST) {
                     case 'email address':
                         $output_fields .=
                             '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength'])) . '
                                 ' . $field_required . '
                             </div>';
@@ -335,7 +335,7 @@ if (!$_POST) {
 
                         $output_fields .=
                             '<div class="col-12 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'maxlength'=>$field['maxlength'], 'class'=>'form-control', 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'style'=>$style)) . '
                                 ' . $field_required . '
                             </div>';
@@ -362,7 +362,7 @@ if (!$_POST) {
 
                         $output_fields .=
                             '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-select', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
                                 ' . $field_required . '
                             </div>';
@@ -389,7 +389,7 @@ if (!$_POST) {
 
                         $output_fields .=
                             '<div class="col-12 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $output_options . '
                             </div>';
 
@@ -429,7 +429,7 @@ if (!$_POST) {
 
                         $output_fields .=
                             '<div class="col-12 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $output_options . '
                             </div>';
 
@@ -453,7 +453,7 @@ if (!$_POST) {
                     case 'file upload':
                         $output_fields .=
                         '<div class="col-12 border py-2 my-2 ' . $row_class . '">
-                            <label class="form-label">' . $field['label'] . '</label>
+                            <label class="form-label">' . h($field['label']) . '</label>
                             <div class="input-group d-flex flex-row flex-wrap">
                                 ' . $liveform->output_field(array('type'=>'file', 'name'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size'] )) . '
                             </div>
@@ -467,7 +467,7 @@ if (!$_POST) {
                     case 'date':
                         $output_fields .=
                             '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'10')) . '
                                 ' . $field_required . '
                                 ' . get_date_picker_format() . '
@@ -480,7 +480,7 @@ if (!$_POST) {
                     case 'date and time':
                         $output_fields .=
                             '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'22')) . '
                                 ' . $field_required . '
                                 ' . get_date_time_picker_format() . '
@@ -498,7 +498,7 @@ if (!$_POST) {
                     case 'time':
                         $output_fields .=
                             '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11')) . '
                                 ' . $field_required . '
                                 <div class="form-text text-end">' . lang('Format: h:mm AM/PM') . '</div>
@@ -512,7 +512,7 @@ if (!$_POST) {
                     default:
                         $output_fields .=
                             '<div class="col-12 my-2 ' . $row_class . '">
-                                <label class="form-label">' . $field['label'] . '</label>
+                                <label class="form-label">' . h($field['label']) . '</label>
                             </div>';
 
                         break;
@@ -682,7 +682,7 @@ if (!$_POST) {
             $error_message = '';
 
             if ($field['label']) {
-                $error_message = lang(array('string'=>'{var:1} is required.','vars'=>$field['label']));
+                $error_message = lang(array('string'=>'{var:1} is required.','vars'=>h($field['label'])));
             }
 
             // If field is a file upload type then determine if field should be required, in a certain way.
@@ -724,22 +724,22 @@ if (!$_POST) {
 
         // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
         if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>$field['label'])) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>h($field['label']))) );
         }
 
         // if field has date & time type and there is not already an error for this field and user entered value for field and submitted date & time is invalid, prepare error
         if (($field['type'] == 'date and time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date_and_time($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date & time for {var:1}','vars'=>$field['label'])) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date & time for {var:1}','vars'=>h($field['label']))) );
         }
 
         // if field has email address type and there is not already an error for this field and user entered value for field and submitted e-mail address is invalid, prepare error
         if (($field['type'] == 'email address') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_email_address($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid e-mail address for {var:1}','vars'=>$field['label'])) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid e-mail address for {var:1}','vars'=>h($field['label']))) );
         }
 
         // if field has time type and there is not already an error for this field and user entered value for field and submitted time is invalid, prepare error
         if (($field['type'] == 'time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_time($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>$field['label'])) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>h($field['label']))) );
         }
 
         // If this field is a title field and there is not already an error for this field,
@@ -755,7 +755,7 @@ if (!$_POST) {
 
             // If that address name is already in use, then output error.
             if (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '" . escape($page_id) . "') AND (address_name = '" . escape($address_name) . "')") > 0) {
-                $liveform->mark_error($field['id'], lang(array('string'=>'That {var:1} is already in use. Please enter a different one.','vars'=>$field['label'])) );
+                $liveform->mark_error($field['id'], lang(array('string'=>'That {var:1} is already in use. Please enter a different one.','vars'=>h($field['label']))) );
             }
         }
     }

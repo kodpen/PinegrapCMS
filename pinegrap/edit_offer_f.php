@@ -1831,7 +1831,7 @@ function _pg_offer_key_code()
     for ($attempt = 0; $attempt < 50; $attempt++) {
         $code = '';
         for ($i = 0; $i < 10; $i++) {
-            $code .= mb_substr($characters, mt_rand(0, 35), 1);
+            $code .= mb_substr($characters, random_int(0, 35), 1);
         }
         if (!db_value("SELECT id FROM key_codes WHERE code = '" . e($code) . "'")) {
             return $code;

@@ -245,6 +245,11 @@ function ws_handle_action($action, $request)
                 ws_bulk_continue(1);
             }
 
+            // Proposals whose write died after Apply took them (changes.php).
+            if (function_exists('ws_change_sweep_stuck')) {
+                ws_change_sweep_stuck(5);
+            }
+
             return ws_action_ok();
 
         // Scheduled actions (includes/workspace/scheduled.php): staff only.

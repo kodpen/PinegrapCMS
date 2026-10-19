@@ -59,6 +59,14 @@ define('WS_CHANGES_PER_ANSWER', 10);
 define('WS_CHANGES_LIST_MAX', 100);
 
 /**
+ * How long a proposal may stay "applying" before its write is taken for dead
+ * (seconds): see ws_change_sweep_stuck(). A write runs inside the request
+ * that took the row; the longest, a call to an MCP server, stops at its own
+ * time limit, a few minutes at most.
+ */
+define('WS_CHANGE_APPLYING_TIMEOUT', 900);
+
+/**
  * Are the table and its columns there (2026.4.4, 4.87)?
  *
  * @return bool
@@ -2485,7 +2493,10 @@ function ws_change_apply($viewer, $change_id)
     $action = (string) ($change['action'] ?? 'update');
 
     // Taken before anything is checked, so two clicks cannot both apply it.
-    db("UPDATE ws_ai_changes SET status = 'applying' WHERE id = '" . (int) $change['id'] . "' AND status = 'pending'");
+    // Who took it and when is written with it, as a bulk change's start
+    // does: ws_change_sweep_stuck() tells a dead write by that moment.
+    db("UPDATE ws_ai_changes SET status = 'applying', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
+        WHERE id = '" . (int) $change['id'] . "' AND status = 'pending'");
 
     if (mysqli_affected_rows(db::$con) !== 1) {
         return $fail(lang('Somebody has already decided about this proposal.'));
@@ -2630,6 +2641,67 @@ function ws_change_apply($viewer, $change_id)
     ws_message_touch($change['message_id']);
 
     return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => $decision_id);
+}
+
+/**
+ * The query that finds proposals whose write died after the row was taken:
+ * still "applying" longer than WS_CHANGE_APPLYING_TIMEOUT after the moment
+ * it was taken. A row taken before that moment was written has only the
+ * proposal's own age. Bulk changes stay "applying" while
+ * ws_bulk_continue() carries them on a slice at a time and are left out.
+ *
+ * @param int $now
+ * @param int $limit
+ * @return string
+ */
+function ws_change_stuck_sql($now, $limit)
+{
+    return "SELECT id, message_id FROM ws_ai_changes
+        WHERE status = 'applying' AND action <> 'bulk'
+            AND IF(decided_at > 0, decided_at, created_at) < '" . ((int) $now - WS_CHANGE_APPLYING_TIMEOUT) . "'
+        ORDER BY id LIMIT " . max(1, (int) $limit);
+}
+
+/**
+ * Marks as failed the proposals whose write died after the row was taken (a
+ * timeout, a fatal error, a dropped connection). Apply and Dismiss only take
+ * a pending row, so such a card would otherwise stay half decided for good.
+ * The row is failed rather than handed back: the write may have changed part
+ * of the record before it stopped, and a second apply would do that part
+ * again. A write that was only slow still ends with its own status, since
+ * every ending of ws_change_apply() writes it by id. Run next to
+ * ws_bulk_continue(), by the screens' tick and the Workspace job.
+ *
+ * @param int $limit rows per run
+ * @return int how many were marked
+ */
+function ws_change_sweep_stuck($limit = 20)
+{
+    if (!ws_changes_ready()) {
+        return 0;
+    }
+
+    $now = time();
+    $rows = (array) db_items(ws_change_stuck_sql($now, $limit));
+
+    if (!$rows) {
+        return 0;
+    }
+
+    $error = lang('The change stopped before it was finished, so part of it may have been written. Check the record before asking again.');
+    $marked = 0;
+
+    foreach ($rows as $row) {
+        db("UPDATE ws_ai_changes SET status = 'failed', error = '" . e(mb_substr($error, 0, 250)) . "', decided_at = '" . $now . "'
+            WHERE id = '" . (int) $row['id'] . "' AND status = 'applying'");
+
+        if (mysqli_affected_rows(db::$con) === 1) {
+            $marked++;
+            ws_message_touch($row['message_id']);
+        }
+    }
+
+    return $marked;
 }
 
 /**

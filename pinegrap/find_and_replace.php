@@ -96,6 +96,13 @@ $all_table_defs = [
 
 ];
 
+// Dynamic region code is PHP that runs on the server, and its add and edit
+// screens are administrator-only; a designer does not get a third way to
+// write it from here.
+if ($user['role'] > 0) {
+    unset($all_table_defs['dregion']);
+}
+
 // Add the product tables when e-commerce is enabled
 if (defined('ECOMMERCE') && ECOMMERCE === true) {
     $all_table_defs['products'] = [

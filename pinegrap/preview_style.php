@@ -44,7 +44,7 @@ switch (($_GET['mode'] ?? '')) {
             // If the user is currently previewing the activated theme or the "none" theme,
             // then update the activated style for the page.
             if (
-                ($_SESSION['software']['preview_theme_id'] == db_value("SELECT id FROM files WHERE activated_" . $_SESSION['software']['device_type'] . "_theme = '1'"))
+                ($_SESSION['software']['preview_theme_id'] == db_value("SELECT id FROM files WHERE activated_" . sql_device_type($_SESSION['software']['device_type'] ?? '') . "_theme = '1'"))
                 || ($_SESSION['software']['preview_theme_id'] == '')
             ) {
 

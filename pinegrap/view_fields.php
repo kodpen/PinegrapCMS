@@ -187,7 +187,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         $output_office_use_only_table_heading = '<th class="text-center">' . lang('Office Use Only') . '</th>';
         $delete_data_warning = lang(' and ALL SUBMITTED FORM DATA for the selected field(s)');
     }
-    $output_cancel_onclick = 'window.location.href=\'' . h(escape_javascript(($_GET['send_to'] ?? ''))) . '\'';
+    $output_cancel_onclick = 'window.location.href=\'' . h(escape_javascript(pg_safe_back_url(($_GET['send_to'] ?? ''), 'view_pages.php'))) . '\'';
     $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
 // else if there is a product_id supplied in the query string, this is a product form
@@ -346,10 +346,12 @@ while ($row = mysqli_fetch_assoc($result)) {
     $type = get_field_type_name($row['type']);
     $office_use_only = '';
     
+    // The information text is rich text and is shown as markup; a label is
+    // the plain text the field editor accepted and is escaped.
     if ($row['type'] == 'information') {
-        $label_or_information = $row['information'];
+        $label_or_information = pg_sanitize_rich_text($row['information']);
     } else {
-        $label_or_information = $row['label'];
+        $label_or_information = h($row['label']);
     }
     
     if ($row['required'] == 1) {
@@ -388,7 +390,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="chart_label">' . h($name) . '</td>
-            <td title="' . h($label_or_information) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>
+            <td title="' . h(strip_tags($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>
             ' . $output_rss_field_cell . '
             <td>' . h($type) . '</td>
             <td class="align-middle text-center">' . $required . '</td>

@@ -285,8 +285,9 @@ function pg_load_user_row($user_id)
 // The fresh id is what defeats session fixation: an id the browser held
 // before the visitor authenticated (planted through a link or a script on a
 // shared machine) refers to nothing once the sign-in completes, because the
-// old session is deleted. $_SESSION itself carries over unchanged, so the
-// CSRF token, the cart and order keys and any pending redirect survive.
+// old session is deleted. $_SESSION itself carries over, so the cart and
+// order keys and any pending redirect survive; only the form token is
+// renewed, below.
 //
 // Regeneration needs a running session and unsent headers (the new id
 // travels in a Set-Cookie header); when either is missing the identity is
@@ -300,6 +301,16 @@ function pg_session_sign_in($user_id, $username)
 
     $_SESSION['sessionuserid']  = $user_id;
     $_SESSION['sessionusername'] = $username;
+
+    // The form token is renewed with the identity: a token that was handed
+    // out while the visitor was anonymous must not keep authorising the
+    // signed-in account's forms. initialize_token() lives behind
+    // functions.php; get_file.php signs in without it and gets a token on
+    // its next page request.
+    if (function_exists('initialize_token')) {
+        unset($_SESSION['software']['token']);
+        initialize_token();
+    }
 }
 
 // ---------------------------------------------------------------------------

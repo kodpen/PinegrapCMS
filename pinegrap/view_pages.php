@@ -208,7 +208,7 @@ if ((strpos($filter, 'seo_') === 0) && !isset($filters_in_array[$filter])) {
 // If a theme is being previewed then get the activated theme.
 // We will use in several places below.
 if (isset($_SESSION['software']['preview_theme_id']) && $_SESSION['software']['preview_theme_id']) {
-    $activated_theme_id = db_value("SELECT id FROM files WHERE activated_" . $_SESSION['software']['device_type'] . "_theme = '1'");
+    $activated_theme_id = db_value("SELECT id FROM files WHERE activated_" . sql_device_type($_SESSION['software']['device_type'] ?? '') . "_theme = '1'");
 }
 
 $style_join_field = "";

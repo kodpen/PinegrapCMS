@@ -7802,6 +7802,17 @@ function output_install_lock_screen() {
 			}
 			else {
 
+				// This is a password check like the sign-in screen's, so it is
+				// counted by the same address and account lockout: the session
+				// counter slows one browser, the shared one stops a run that
+				// drops its cookie. A locked-out attempt stops here, before the
+				// password is looked at.
+				if (function_exists('pg_login_throttle_guard')) {
+
+					pg_login_throttle_guard($unlock_username);
+
+				}
+
 				// Find an administrator by name, then verify the raw password against
 				// the stored hash (legacy MD5, wrapped or modern) in PHP.
 				// The algo column is asked for only when it exists: this screen is
@@ -7837,6 +7848,12 @@ function output_install_lock_screen() {
 
 				// else the login was wrong, so count the attempt and slow the visitor down
 				add_install_attempt();
+
+				if (function_exists('pg_login_record_failure')) {
+
+					pg_login_record_failure($unlock_username);
+
+				}
 
 				log_activity(lang('failed to unlock the installation screen'), $unlock_username);
 

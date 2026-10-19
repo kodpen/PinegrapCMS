@@ -46,7 +46,11 @@ function api_http_address_is_allowed($ip) {
 }
 
 // Answers array('ok' => bool, 'ip' => string, 'error' => string).
-function api_http_check_url($url) {
+//
+// $allow_http lets a caller that reads public pages rather than sending
+// credentials (the site importer) accept plain http; the address check is the
+// same either way.
+function api_http_check_url($url, $allow_http = false) {
 
 	$parts = @parse_url($url);
 
@@ -68,7 +72,7 @@ function api_http_check_url($url) {
 	// clear. It is allowed only where the operator has said the network is
 	// theirs, which is a setting for a webhook to a machine on the same rack -
 	// never for a marketplace on the public internet.
-	if ($scheme === 'http' && (!defined('API_WEBHOOK_ALLOW_HTTP') || API_WEBHOOK_ALLOW_HTTP !== true)) {
+	if ($scheme === 'http' && !$allow_http && (!defined('API_WEBHOOK_ALLOW_HTTP') || API_WEBHOOK_ALLOW_HTTP !== true)) {
 
 		return array('ok' => false, 'ip' => '', 'error' => 'Outgoing addresses must be https.');
 

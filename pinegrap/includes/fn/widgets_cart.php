@@ -1539,7 +1539,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 // text, printed raw by every classic template and by the
                 // catalog and express-order widgets. short_description above
                 // is plain text and stays escaped.
-                '__item_description'       => (string)$item['description'],
+                '__item_description'       => pg_defuse_php_tags($item['description']),
                 '__item_summary'           => h(pg_sw_item_summary($item['description'])),   // plain one-liner for rows
                 '__item_qty'               => (string)$item['qty'],            // numeric, safe
                 '__item_qty_input'         => $qty_input,                       // editable input (legacy token)

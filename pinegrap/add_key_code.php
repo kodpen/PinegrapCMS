@@ -190,7 +190,8 @@ function generate_key_code() {
     $key_code = '';
 
     for ($i = 1; $i <= 10; $i++) {
-        $index = mt_rand(0, 35);
+        // A key code is a secret that unlocks a discount, so it comes from the CSPRNG.
+        $index = random_int(0, 35);
         $key_code .= $characters[$index];
     }
     
