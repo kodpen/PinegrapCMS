@@ -1,10 +1,10 @@
 ---
 name: erp-parasut-driver-design
-description: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder, account title lookup), decisions behind both
+description: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder, account name for accounts opened from orders), decisions behind both
 ---
 
 ## Where does it stand?
-- Written and checked against the published swagger: the authorization-code connection (docs/memory/erp/erp-parasut-connection.md) and the driver (docs/memory/erp/erp-parasut-driver.md). Live on dev.pinegrap.com with the owner's demo company (830533) on 2026-10-19: connection, contacts, sales invoice, totals, poll, delete. The demo company has no e-document integration, so conversion, job, PDF and e-Arşiv cancel are still untried; ask Paraşüt support for a test e-Arşiv / e-Fatura integration on the demo company, or try them on a company that has one.
+- Written and checked against the published swagger: the authorization-code connection (docs/memory/erp/erp-parasut-connection.md) and the driver (docs/memory/erp/erp-parasut-driver.md). Live on dev.pinegrap.com with the owner's demo company (830533) on 2026-10-19: connection, contacts, sales invoice, totals (withholding scale and `net_total` settled, #630), poll, delete. The demo company has no e-document integration, so conversion, job, PDF and e-Arşiv cancel are still untried; ask Paraşüt support for a test e-Arşiv / e-Fatura integration on the demo company, or try them on a company that has one.
 
 ## How are Paraşüt credentials obtained and stored?
 - Done: the authorization code (Connect on the Paraşüt card, `parasut_connect.php`) beside the password grant; the secret in `config.parasut_credentials_enc`, the token sealed in the service tokens; access token 2 h, refresh token rotates on every use.
@@ -24,9 +24,9 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 ## Is there a webhook?
 - No: the v4 API has no webhook or event subscription. State is only ever read back (poll, the queue worker); nothing listens for Paraşüt.
 
-## Can the account card fill itself? (open)
-- `e_invoice_inboxes` gives the alias and `name` (the registered title) and `registered_at`. GİB tax plate lookup has a captcha, MERSİS no open API. Address and tax office come from the customer or the order.
-- Plan: a "Lookup" button beside the tax number that fills the title from `e_invoice_inboxes.name`, title correction in `erp_account_for_contact()`.
+## Can the account card fill itself? (partly done)
+- Done (#625): Query beside the tax number on the account form fills the name from GİB's register (docs/memory/erp/erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
+- Open: the same correction for an account opened from an order (`erp_account_for_contact()`). It would put a provider call into the order or invoice path; not started, to be decided.
 
 ## How is testing done without a sandbox?
 - Live tests only (the staging host does not take merchant credentials). The demo application the owner holds points at a demo company; low-value one-line invoices there, with the cancel path tried on each.
