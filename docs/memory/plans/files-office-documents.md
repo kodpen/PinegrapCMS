@@ -1,6 +1,6 @@
 ---
 name: files-office-documents
-description: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use and xlsx cell edits done; docx paragraph edits (D3) and hygiene (D5) left
+description: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
 ---
 
 ## What is this plan?
@@ -13,8 +13,8 @@ description: Plan (2026-10-19) for docx and xlsx in the file manager and the Wor
 
 ## What are the slices?
 - D1 View — done (PR #530, memory docs/memory/platform/office-files.md): read on the server by `includes/fn/office.php` (no library; the SheetJS npm build is stale with known CVEs and its CDN is unreachable), drawn by `assets/js/pg_office_view.js` in the file window, Quick Look and the Workspace preview; OOXML MIME types in `get_file.php`.
-- D2 Edit cells — done: file window (PR #656, memory docs/memory/platform/office-cell-edits.md), channel preview window (PR #656, docs/memory/workspace/workspace-office-cell-edits.md). File window: the D1 table becomes an editable grid; the window's own Save (`explorer_file_save` with `cells`, already ERP-gated) patches only the changed rows, text as inline strings (sharedStrings untouched), and takes every formula's cached result out. Changed from the sketch: no separate action; a hash of the bytes, not `files.timestamp`, as the version.
-- D3 Edit text: docx paragraph text edited in place (one `<w:p>` at a time, runs merged into the first run's style); same patch approach, same endpoint family; no layout editing.
+- D2 Edit cells — done: file window (PR #656, memory docs/memory/platform/office-cell-edits.md), channel preview window (PR #656, docs/memory/workspace/workspace-office-edits.md). File window: the D1 table becomes an editable grid; the window's own Save (`explorer_file_save` with `cells`, already ERP-gated) patches only the changed rows, text as inline strings (sharedStrings untouched), and takes every formula's cached result out. Changed from the sketch: no separate action; a hash of the bytes, not `files.timestamp`, as the version.
+- D3 Edit text — done (memory docs/memory/platform/office-paragraph-edits.md): a paragraph's plain text, in the file window and the channel preview; only word/document.xml is rewritten. Changed from the sketch: no merging into the first run's style; a word-level diff touches only the runs it reaches.
 - D4 Shared use — done (PR #564, memory docs/memory/workspace/workspace-file-manager-files.md): "Send to a channel" in the file manager, "From the file manager" under the paperclip; a copy, no tag of the original.
 - D5 Hygiene: block `docm`/`xlsm`/`pptm` on channel uploads, "Where used" counts `ws_messages`, size ceilings that also hold for parts read as a stream (`pg_office_open()` measures only what entries declare). Done: the split comment above `explorer_file_usage` (PR #656).
 
@@ -25,4 +25,4 @@ description: Plan (2026-10-19) for docx and xlsx in the file manager and the Wor
 4. Settled by D4: shared use is a copy into the channel folder (private channel rules stay the channel's).
 
 ## Where to start?
-- D3 next (docx paragraphs, the same package patch: `includes/fn/office_edit.php` holds the lock, version and replace helpers), then D5. Memory file for the final behaviour: `docs/memory/platform/office-files.md`. Verify on dev: a 5 MB xlsx with three sheets, a docx with images and tables, dark theme, a private channel member without folder rights.
+- D5 next (channel upload rule for macro files, "Where used" with `ws_messages`). Memory file for the final behaviour: `docs/memory/platform/office-files.md`. Verify on dev: a 5 MB xlsx with three sheets, a docx with images and tables, dark theme, a private channel member without folder rights.

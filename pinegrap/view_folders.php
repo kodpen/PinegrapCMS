@@ -13260,7 +13260,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // A Word or Excel file is read on the server (includes/fn/office.php)
     // and drawn here by assets/js/pg_office_view.js, fetched on first use.
     var OFFICE_TYPES = ['docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xlsm', 'xltx', 'xltm'];
-    var OFFICE_SHEET_TYPES = ['xlsx', 'xlsm', 'xltx', 'xltm'];
     var OFFICE_STRINGS = <?php echo encode_json(pg_office_view_strings()); ?>;
 
     function isOfficeType(type) {
@@ -13271,10 +13270,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // reads it, the sheets or the document when it answers, the reason when
     // it cannot.
     //
-    // The file window asks for a workbook's cells to be offered for editing
-    // (editing given); the server answers with what may be changed, and the
-    // view drawn is kept on the window so its Save sends the changes
-    // (saveFileEditor()).
+    // The file window asks for a workbook's cells or a document's paragraphs
+    // to be offered for editing (editing given); the server answers with what
+    // may be changed, and the view drawn is kept on the window so its Save
+    // sends the changes (saveFileEditor()).
     function loadOfficePreview(box, fileId, editing) {
 
         if (!box) { return; }
@@ -13612,10 +13611,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('file_edit_preview').innerHTML = filePreviewHtml(file, kind);
 
-        // A workbook's cells may be changed in the window; a document's
-        // paragraphs not (yet). The server decides which cells.
+        // A workbook's cells and a document's paragraphs may be changed in
+        // the window; the server decides which, and for whom.
         if ((kind === 'office') && file.on_disk) {
-            loadOfficePreview(document.getElementById('file_edit_office'), file.id, OFFICE_SHEET_TYPES.indexOf(file.type) !== -1);
+            loadOfficePreview(document.getElementById('file_edit_office'), file.id, true);
         }
 
         var editorWrap = document.getElementById('file_edit_editor_wrap');
@@ -13733,7 +13732,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             description: document.getElementById('file_edit_description').value,
             design: document.getElementById('file_edit_design').checked,
             content: fileEdit.editor ? fileEdit.editor.getValue() : document.getElementById('file_edit_code').value,
-            cells: (fileEdit.office && fileEdit.office.count()) ? fileEdit.office.edits() : []
+            office: (fileEdit.office && fileEdit.office.count()) ? fileEdit.office.edits() : []
         });
     }
 
@@ -13779,10 +13778,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             payload.content = fileEdit.editor ? fileEdit.editor.getValue() : document.getElementById('file_edit_code').value;
         }
 
-        // The cells changed in a workbook, with the version that was opened:
-        // the server writes them only into that version.
+        // The cells changed in a workbook, or the paragraphs in a document,
+        // with the version that was opened: the server writes them only into
+        // that version.
         if (fileEdit.office && fileEdit.office.count()) {
-            payload.cells = fileEdit.office.edits();
+            payload[(fileEdit.office.kind === 'docx') ? 'paragraphs' : 'cells'] = fileEdit.office.edits();
             payload.office_version = fileEdit.office.version;
         }
 

@@ -870,6 +870,14 @@ function pg_office_docx_run(&$state, $run)
                 $html .= '<br>';
                 break;
 
+            case 'noBreakHyphen':
+                $html .= '&#8209;';
+                break;
+
+            case 'softHyphen':
+                $html .= '&shy;';
+                break;
+
             case 'sym':
                 $html .= '&#x25A1;';
                 break;
@@ -1130,6 +1138,7 @@ function pg_office_docx_blocks(&$state, $container, &$html)
             case 'p':
                 $props = pg_office_docx_paragraph_props($child);
                 $inner = pg_office_docx_inline($state, $child);
+                $mark = pg_office_docx_edit_mark($state, $child);
 
                 if (($props['list'] === '') && isset($state['styles'][$props['style']])) {
                     $props['list'] = $state['styles'][$props['style']]['list'];
@@ -1147,9 +1156,9 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                     if ($list_open === '') {
                         $list_open = $format;
                         $list_id = $props['list'];
-                        $html .= '<' . $format . ' class="office-list"><li class="office-lvl-' . (int) $props['level'] . '">';
+                        $html .= '<' . $format . ' class="office-list"><li class="office-lvl-' . (int) $props['level'] . '"' . $mark . '>';
                     } else {
-                        $html .= '</li><li class="office-lvl-' . (int) $props['level'] . '">';
+                        $html .= '</li><li class="office-lvl-' . (int) $props['level'] . '"' . $mark . '>';
                     }
 
                     $html .= ($inner === '') ? '&nbsp;' : $inner;
@@ -1161,7 +1170,7 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                 $tag = pg_office_docx_block_tag($props['style']);
                 $style = ($props['align'] !== '') ? ' style="text-align:' . $props['align'] . '"' : '';
 
-                $html .= '<' . $tag . $style . '>' . (($inner === '') ? '&nbsp;' : $inner) . '</' . $tag . '>';
+                $html .= '<' . $tag . $style . $mark . '>' . (($inner === '') ? '&nbsp;' : $inner) . '</' . $tag . '>';
                 break;
 
             case 'tbl':
@@ -1218,16 +1227,58 @@ function pg_office_docx_blocks(&$state, $container, &$html)
 }
 
 /**
+ * The attributes a drawn paragraph carries when the document is read for
+ * editing: its position among the document's paragraphs (data-p), and why
+ * it cannot be changed (data-lock) when it cannot; the text of one that can
+ * goes to the preview beside the HTML. Nothing when not editing.
+ *
+ * @param array      $state
+ * @param DOMElement $paragraph
+ * @return string
+ */
+function pg_office_docx_edit_mark(&$state, $paragraph)
+{
+    if (!isset($state['edit'])) {
+        return '';
+    }
+
+    $path = $paragraph->getNodePath();
+
+    if (!isset($state['edit']['index'][$path])) {
+        return '';
+    }
+
+    $position = (int) $state['edit']['index'][$path];
+    $edit = pg_office_docx_paragraph_edit($paragraph);
+
+    if ($edit['lock'] !== '') {
+        return ' data-p="' . $position . '" data-lock="' . h($edit['lock']) . '"';
+    }
+
+    $state['edit']['texts'][(string) $position] = $edit['text'];
+
+    return ' data-p="' . $position . '"';
+}
+
+/**
  * A document as the preview draws it: a safe subset of HTML (headings,
  * paragraphs, lists, tables, bold and the like, links, inlined pictures),
  * made here from the package alone, with nothing the file wrote passing
  * through unescaped.
  *
+ * Asked for editing, the paragraphs drawn carry their position (and the
+ * reason when one cannot change), the answer carries the texts of those that
+ * can and the version a save hands back (includes/fn/office_edit.php), or
+ * says why the document cannot be changed at all.
+ *
  * @param string $path
- * @return array ok, error, html, truncated, images_lost
+ * @param bool   $edit
+ * @return array ok, error, html, truncated, images_lost[, edit, version]
  */
-function pg_office_docx_read($path)
+function pg_office_docx_read($path, $edit = false)
 {
+    // As for a workbook, the version is taken before anything is read.
+    $version = ($edit && function_exists('pg_office_version')) ? pg_office_version($path) : '';
     $zip = pg_office_open($path, $error);
 
     if ($zip === null) {
@@ -1244,6 +1295,16 @@ function pg_office_docx_read($path)
 
     $state = pg_office_docx_state($zip);
     $html = '';
+    $edit = $edit && function_exists('pg_office_docx_edit_refusal');
+    $refusal = $edit ? pg_office_docx_edit_refusal($zip) : '';
+
+    if ($edit && ($refusal === '')) {
+        $state['edit'] = array('index' => array(), 'texts' => array());
+
+        foreach (pg_office_docx_paragraphs($document) as $position => $paragraph) {
+            $state['edit']['index'][$paragraph->getNodePath()] = $position;
+        }
+    }
 
     foreach ($document->getElementsByTagNameNS('*', 'body') as $body) {
         pg_office_docx_blocks($state, $body, $html);
@@ -1252,7 +1313,16 @@ function pg_office_docx_read($path)
 
     $zip->close();
 
-    return array('ok' => true, 'error' => '', 'html' => $html, 'truncated' => $state['cut'], 'images_lost' => $state['images_lost']);
+    $out = array('ok' => true, 'error' => '', 'html' => $html, 'truncated' => $state['cut'], 'images_lost' => $state['images_lost']);
+
+    if ($edit) {
+        $out['edit'] = ($refusal !== '')
+            ? array('ok' => false, 'why' => $refusal)
+            : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts']);
+        $out['version'] = $version;
+    }
+
+    return $out;
 }
 
 /**
@@ -1270,8 +1340,9 @@ function pg_office_view_includes()
 
 /**
  * The words the preview's drawing code needs, translated: the preview's own,
- * and those of a workbook offered for editing (why a cell or a sheet is not
- * offered, the hint, the count of changes).
+ * those of a workbook offered for editing (why a cell or a sheet is not
+ * offered, the hint, the count of changes) and those of a document (why a
+ * paragraph or the whole document is not offered, the hint, the count).
  *
  * @return array
  */
@@ -1300,6 +1371,24 @@ function pg_office_view_strings()
         'sheet_kind'        => lang('This sheet has no cells to change.'),
         'sheet_large'       => lang('This sheet is too large to change here.'),
         'sheet_unusual'     => lang('This sheet cannot be changed here.'),
+        'doc_hint'          => lang('Click a paragraph, then click it again (or press Enter) to change its text. Enter keeps the change, Shift+Enter starts a new line, Esc undoes it.'),
+        'doc_changed'       => lang('{1} paragraph(s) changed.'),
+        'doc_format'        => lang('Changed paragraphs show their formatting again once saved.'),
+        'doc_editor'        => lang('Text of the paragraph'),
+        'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
+        'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),
+        'doc_protected'     => lang('The document is protected against changes.'),
+        'doc_tracking'      => lang('Track Changes is on for this document. Change it in a word processor, so that the changes are tracked.'),
+        'doc_large'         => lang('This document is too large to change here.'),
+        'doc_unusual'       => lang('This document cannot be changed here.'),
+        'para_tracked'      => lang('This paragraph has tracked changes. Change it in a word processor.'),
+        'para_field'        => lang('This paragraph has a field, such as a page number, a date or a table of contents. Change it in a word processor.'),
+        'para_comment'      => lang('This paragraph has a comment. Change it in a word processor.'),
+        'para_note'         => lang('This paragraph has a footnote or an endnote. Change it in a word processor.'),
+        'para_control'      => lang('This paragraph is part of a content control or a form. Change it in a word processor.'),
+        'para_object'       => lang('This paragraph has a picture, a shape, an equation or a symbol. Change it in a word processor.'),
+        'para_break'        => lang('This paragraph has a page or column break. Change it in a word processor.'),
+        'para_other'        => lang('This paragraph holds more than text. Change it in a word processor.'),
     );
 }
 
@@ -1308,7 +1397,7 @@ function pg_office_view_strings()
  *
  * @param string $path
  * @param string $name the file's name (for the kind)
- * @param bool   $edit a workbook also says which cells may be changed
+ * @param bool   $edit a workbook or a document also says what may be changed in it
  * @return array ok, error, kind, and the kind's own fields
  */
 function pg_office_read($path, $name, $edit = false)
@@ -1320,7 +1409,7 @@ function pg_office_read($path, $name, $edit = false)
     }
 
     if ($kind === 'docx') {
-        return array('kind' => 'docx') + pg_office_docx_read($path);
+        return array('kind' => 'docx') + pg_office_docx_read($path, $edit);
     }
 
     return array('ok' => false, 'error' => lang('There is no preview for this kind of file.'), 'kind' => '');
