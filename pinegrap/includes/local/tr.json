@@ -24082,6 +24082,8 @@
     "Compare-at Price": "Karşılaştırma Fiyatı",
     "An earlier or list price of this article, higher than the price it sells at.": "Bu ürünün önceki ya da liste fiyatı; satış fiyatından yüksektir.",
     "Empty or zero is none.": "Boş ya da sıfır bırakılırsa karşılaştırma fiyatı olmaz.",
+    "Low text contrast {var:1}:1, at least {var:2}:1 is needed: \"{var:3}\"": "Metin kontrastı düşük: {var:1}:1, en az {var:2}:1 gerekli: \"{var:3}\"",
     "Reject all": "Tümünü reddet",
-    "Google tags you add yourself (Tag Manager, Google Ads) are told the answer through Google Consent Mode v2: they set no cookies until the visitor allows statistics or marketing. Such a tag can stay as it is; for the notice to ask about its category, add an empty held tag such as {var:1}.": "Kendi eklediğiniz Google etiketleri (Etiket Yöneticisi, Google Ads) yanıtı Google İzin Modu v2 ile öğrenir: ziyaretçi istatistiğe ya da pazarlamaya izin verene kadar çerez yazmazlar. Böyle bir etiket olduğu gibi kalabilir; bildirimin onun kategorisini sorması için {var:1} gibi boş bir bekletilen etiket ekleyin."
+    "Google tags you add yourself (Tag Manager, Google Ads) are told the answer through Google Consent Mode v2: they set no cookies until the visitor allows statistics or marketing. Such a tag can stay as it is; for the notice to ask about its category, add an empty held tag such as {var:1}.": "Kendi eklediğiniz Google etiketleri (Etiket Yöneticisi, Google Ads) yanıtı Google İzin Modu v2 ile öğrenir: ziyaretçi istatistiğe ya da pazarlamaya izin verene kadar çerez yazmazlar. Böyle bir etiket olduğu gibi kalabilir; bildirimin onun kategorisini sorması için {var:1} gibi boş bir bekletilen etiket ekleyin.",
+    "The name field now holds the registered name.": "Ad alanına kayıtlı unvan yazıldı."
 }

@@ -14,6 +14,7 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 - Client `_validationRules` (per node; the `seo` field = server code) -> canvas badge `applyIssueBadges()`.
 - `api.php designer/seo_check` -> `pg_seo_evaluate_meta` + `pg_seo_analyze_html('fragment')` + `pg_seo_compose`; writes nothing. Save runs `pg_seo_analyze_record` + `pg_seo_recalculate`.
 - When adding a node-level SEO check, write its client twin too: a server finding cannot be mapped to a node.
+- Text contrast is measured on the canvas, not from the tree: docs/memory/designer/designer-audit-contrast.md.
 
 ## How is the theme stored?
 - A theme is a `files` row (`design=1`). The "theme" row in the Styles list does not enter `cssFiles`; it is read from `select[name=theme_id]` (`_sdActiveTheme`).

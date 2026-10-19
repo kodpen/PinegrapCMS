@@ -47,6 +47,22 @@ function test_theme_designer_rules_gate_sends_css_to_the_css_editor()
 	pg_assert_contains("output_error(lang('Record not found.')", $block, 'not found for other files');
 }
 
+// The notice says what the theme is, not what was done, so it is read once
+// even when the designer is opened twice before the CSS editor shows (two
+// tabs, a request the browser repeats): the second request does not add it
+// again.
+function test_theme_designer_rules_gate_notice_is_added_once()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/theme_designer.php');
+	$gate = strpos($source, "SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '\" . \$id . \"'");
+	$block = substr($source, $gate, 1500);
+
+	pg_assert_true(
+		preg_match('/if \(!in_array\(\$notice, \$liveform_edit_theme_css->get_notices\(\), true\)\) \{\s*\$liveform_edit_theme_css->add_notice\(\$notice\);\s*\}/', $block) === 1,
+		'the notice is added only when it is not already waiting');
+	pg_assert_same(1, substr_count($block, '->add_notice('), 'no other add_notice() call in the gate');
+}
+
 // The module endpoint stops on "Record not found." before it builds a module
 // for a file without designer settings.
 function test_theme_designer_rules_gate_on_module_endpoint()
