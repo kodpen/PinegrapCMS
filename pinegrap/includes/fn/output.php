@@ -1920,41 +1920,35 @@ function output_header($properties = false)
 
 
 
-    $menu_expanded_class = '';
-    $menu_active_class = '';
-    if (isset($_COOKIE['softwaremenustatus']) && $_COOKIE['softwaremenustatus'] === 'expanded') {
-        $menu_expanded_class = ' expanded';
-        $menu_active_class = ' active';
-    }
+    // The main menu's state on a wide screen, as its controls left it in the
+    // cookie (pg_menu_state()). Drawn here so the page arrives in it; below
+    // the lg breakpoint the menu is a drawer and backend.src.js sets it aside.
+    $menu_state = pg_menu_state(isset($_COOKIE['softwaremenustatus']) ? $_COOKIE['softwaremenustatus'] : '');
+    $menu_expanded_class = ($menu_state === 'expanded') ? ' expanded' : '';
+    $menu_hidden_class = '';
 
-    // Below the lg breakpoint the sidebar is an off-canvas drawer, so its own collapse
-    // control slides off screen with it. This navbar button is the only way back in.
+    // The button in the bar shows and hides the menu on every width: on a
+    // phone it slides the drawer in, on a wide screen it puts the rail away
+    // and brings it back. The foot of the menu chooses how it shows.
     $output_menu_drawer_toggle = '';
     $output_software_sidebar = '';
     if (isset($properties['hide_menu']) && $properties['hide_menu'] == true) {
         $output_software_sidebar = '';
     } else {
-        $output_menu_drawer_toggle = '
-                    <li class="nav-item d-lg-none">
-                        <a id="menu_drawer_toggle" type="button" class="ms-1 btn btn-link link-body-emphasis btn-circle no-popover" title="' . lang('Menu') . '" aria-label="' . lang('Menu') . '" aria-controls="menu" aria-expanded="false">
-                            <span class="bi bi-list"></span>
-                        </a>
-                    </li>';
+        $output_menu_drawer_toggle = pg_menu_toggle_button($menu_state);
+
+        // Only a screen that draws the menu gives up its column for it.
+        $menu_hidden_class = ($menu_state === 'hidden') ? ' menu-hidden' : '';
 
         $output_software_sidebar = '
         <div class="software-sidebar position-fixed d-print-none bg-software-navbar backdrop">
             <nav id="menu" class="menu z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
-            
+
                 <div class="menu-body">
                     <div class=" list-group list-group-flush" style="--bs-list-group-bg:transparent;">
                         ' . output_menu(array('toolbar' => $toolbar)) . '
                     </div>
-                </div>
-                <div class="menu-footer d-flex justify-content-start p-1 sticky-bottom">
-                    <a id="menu_toggle" title="' . lang('Expand') . '/' . lang('Collapse') . '" class="btn btn-circle no-popover ' . $menu_active_class . '">
-                        <i class="bi bi-caret-right-fill"></i>
-                    </a>
-                </div>
+                </div>' . pg_menu_mode_switch($menu_state) . '
             </nav>
         </div>';
 
@@ -2114,7 +2108,7 @@ function output_header($properties = false)
     <body class="' . $output_body_class . '">
     ' . pg_preloader_markup() . '
     <a class="pg-skip-link" href="#content">' . lang('Skip to main content') . '</a>
-    <div class="software-container ' . $menu_expanded_class . '">
+    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . '">
         <div class="software-navbar fixed-top d-print-none ">
             <nav id="header" class="z-1 position-sticky h-100 p-0 top-0 start-100 navbar navbar-expand bg-software-navbar backdrop" >
                 <ul class="navbar-nav">
@@ -2506,6 +2500,96 @@ function pg_account_menu($user, $options = array())
                         <ul id="user_menu" class="dropdown-menu dropdown-menu-end pg-usermenu backdrop" aria-labelledby="user_menu_toggle">' . $output . '
                         </ul>
                     </li>';
+}
+
+/**
+ * The state of the main menu on a wide screen, from the value its controls
+ * keep in the softwaremenustatus cookie (backend.src.js).
+ *
+ *   expanded   icons and labels
+ *   collapsed  the icon rail; also what anything unknown or missing means
+ *   hidden     no menu, the screen has the whole width
+ *
+ * Below the lg breakpoint the menu is a drawer, open or shut, and this state
+ * is set aside until the window is wide again.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_menu_state($value)
+{
+    $value = is_string($value) ? $value : '';
+
+    return in_array($value, array('expanded', 'collapsed', 'hidden'), true) ? $value : 'collapsed';
+}
+
+/**
+ * The button at the left end of the bar that shows and hides the main menu.
+ *
+ * One button on every width: on a phone it slides the drawer in and out, on a
+ * wide screen it puts the menu away and brings it back as it was (Ctrl+D does
+ * the same). Its picture is a side panel, filled while the menu is on screen
+ * and empty while it is not; both pictures are printed and the stylesheet
+ * shows the one that fits the state and the width, so the right one is there
+ * before any script has run. The label follows in backend.src.js.
+ *
+ * @param string $state pg_menu_state()
+ * @return string
+ */
+function pg_menu_toggle_button($state)
+{
+    $visible = (pg_menu_state($state) !== 'hidden');
+    $show = lang('Show menu');
+    $hide = lang('Hide menu');
+    $label = $visible ? $hide : $show;
+
+    return '
+                    <li class="nav-item pg-menu-toggle-item">
+                        <button type="button" id="menu_drawer_toggle" class="btn btn-link link-body-emphasis no-popover" aria-controls="menu" aria-expanded="' . ($visible ? 'true' : 'false') . '" aria-label="' . h($label) . '" title="' . h($label) . ' (Ctrl+D)" data-label-show="' . h($show) . '" data-label-hide="' . h($hide) . '">
+                            <i class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></i>
+                            <i class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></i>
+                        </button>
+                    </li>';
+}
+
+/**
+ * The foot of the main menu: how the menu shows on a wide screen, chosen from
+ * a small menu of three -- open with its labels, mini with icons only, or
+ * hidden, when the button in the bar is the way back. Not on a phone, where
+ * the menu is a drawer.
+ *
+ * @param string $state pg_menu_state()
+ * @return string
+ */
+function pg_menu_mode_switch($state)
+{
+    $state = pg_menu_state($state);
+
+    $modes = array(
+        'expanded' => array('bi-square-half', lang('Expanded'), lang('Icons and labels')),
+        'collapsed' => array('bi-layout-sidebar-inset', lang('Mini'), lang('Icons only')),
+        'hidden' => array('bi-square', lang('Hidden'), lang('The button at the top brings it back')));
+
+    $items = '';
+
+    foreach ($modes as $mode => $parts) {
+        $items .= '
+                            <li role="none"><button type="button" class="dropdown-item" role="menuitemradio" data-pg-menu-mode="' . $mode . '" aria-checked="' . (($mode === $state) ? 'true' : 'false') . '"><i class="bi ' . $parts[0] . '" aria-hidden="true"></i><span class="pg-railmode-text"><span>' . h($parts[1]) . '</span><small>' . h($parts[2]) . '</small></span><i class="bi bi-check2 pg-railmode-check" aria-hidden="true"></i></button></li>';
+    }
+
+    return '
+                <div class="menu-footer pg-railfoot">
+                    <div class="dropend pg-railmode">
+                        <button type="button" id="menu_mode_toggle" class="pg-railmode-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" title="' . h(lang('Menu view')) . '">
+                            <i class="bi bi-square-half pg-railmode-when-expanded" aria-hidden="true"></i>
+                            <i class="bi bi-layout-sidebar-inset pg-railmode-when-collapsed" aria-hidden="true"></i>
+                            <span class="pg-railmode-label">' . h(lang('Menu view')) . '</span>
+                        </button>
+                        <ul class="dropdown-menu pg-railmode-menu" role="menu" aria-label="' . h(lang('Menu view')) . '">
+                            <li role="none"><span class="dropdown-header" aria-hidden="true">' . h(lang('Menu view')) . '</span></li>' . $items . '
+                        </ul>
+                    </div>
+                </div>';
 }
 
 /**
