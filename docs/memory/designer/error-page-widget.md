@@ -8,7 +8,7 @@ description: The error page system widget: when it is shown, which block shows f
 
 ## Which block shows for which error?
 - Flags from `pg_sw_error_flags($code, $maintenance_block)` (`includes/fn/widgets_error.php`): `is_not_found` (404), `is_maintenance` (503; maintenance mode is the only sender), `is_other_error` (any other error), `has_error_code` (code 400 and up).
-- A page with an `is_maintenance` block shows maintenance only there. A page designed before PR #NNN has no such block, so for it `is_other_error` still covers maintenance (its "503", "Something Went Wrong" and the maintenance sentence); `pg_sw_error_tree_shows()` looks for the block.
+- A page with an `is_maintenance` block shows maintenance only there. A page designed before PR #692 has no such block, so for it `is_other_error` still covers maintenance (its "503", "Something Went Wrong" and the maintenance sentence); `pg_sw_error_tree_shows()` looks for the block.
 - The starter tree (`case 'error_page'` in `style_designer.js`) has three blocks: Not Found, Maintenance (heading "Down for Maintenance", the software's sentence bound to `__error_message`, no links: every page answers with this screen until it ends) and Other Error. The canvas shows all three, with the generic message sample in both bound paragraphs.
 
 ## What is the maintenance screen's title?
