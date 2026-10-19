@@ -1,29 +1,32 @@
 ---
 name: image-delivery-pipeline
-description: Plan (approved 2026-10-19, not started): automatic WebP/AVIF derivatives, srcset/sizes, lazy loading except the LCP image, fetchpriority, derivative cache and disk accounting
+description: Plan (approved 2026-10-19, in progress: steps 1-3 and the cache upkeep done): image settings with a schema step, page rebuild button, Loading row left
 ---
 
 ## Why?
-- Images are served as uploaded: WebP only by a manual action (`view_folder_and_files_f.php:7597`), no `srcset`/`sizes` anywhere, the HTML importer strips `srcset` (`assets/js/style_designer.js:37426-37432`), `loading="lazy"` only in widget galleries. AVIF has 96% browser support; CrUX shows the share of sites with good INP falling in 2026. Every builder compared serves responsive, modern-format images by default.
+- Images were served as uploaded: WebP only by a manual action, no `srcset`/`sizes`, `loading="lazy"` only in widget galleries. AVIF has 96% browser support; every builder compared serves responsive, modern-format images by default.
 
 ## What is decided?
-- One engine: extend `pg_process_image_file()` (`includes/fn/image.php`) with derivative generation (widths 480, 960, 1440, 1920 capped at the original; formats WebP and, when GD/Imagick supports it, AVIF). Derivatives live under `data/cache/img/<file_id>/<w>.<ext>` and are produced on first request through `get_file.php` (`?w=&f=`), never in the upload path, so uploads stay fast and old sites gain it without a rebuild.
-- Output: a helper `pg_img_tag($file, $attrs)` prints `<picture>`/`srcset`/`sizes` and is used by the designer renderer for `image` nodes (`includes/panel/designer.php` and `includes/fn/designer.php`), by the catalog and form widgets, and by the legacy page renderer only where it already prints `<img>` through a helper; legacy raw `style_code` HTML is left untouched.
-- `loading="lazy"` on every image except the first image of the page (`fetchpriority="high"`); the designer marks a node "above the fold" automatically for the first image of the root section and offers a manual toggle.
-- The importer stops stripping `srcset`/`sizes`; existing attributes are kept and re-generated from the node.
-- Cache purge (`pg_purge_caches()`), System Status storage tile and a retention sweep (derivatives unused 90 days) cover the new folder; `get_file.php` keeps its 304/`max-age` headers.
+- One engine, made on first request through `get_file.php` (`?w=&f=`), never in the upload path: `docs/memory/platform/image-derivatives.md`.
+- Designer output: `srcset`/`sizes` on every image of a site file, AVIF/WebP `<picture>` on the Image element only, first image `fetchpriority="high"`, the rest lazy: `docs/memory/designer/responsive-images.md`. Legacy raw `style_code` HTML is left untouched.
+- Cache purge, a daily sweep of deleted and changed files' derivatives and the System Status storage line cover the folder: `docs/memory/platform/image-derivatives.md`. No "unused 90 days" rule: the derivative's mtime is its Last-Modified, and a current derivative is the cache working.
 - Settings › Appearance: formats on/off, quality, and a "regenerate" button; `CDN` constant unchanged.
 - Optional later: Speculation Rules `prefetch` for navbar links.
 
+## What is built?
+- Step 1 (PR #589): `includes/image_engine.php` (engine moved out of `includes/fn/image.php`, AVIF output, derivative functions), the `get_file.php` route. Name carries a signature (`<w>-<sig>.<ext>`), folder beside `FILE_DIRECTORY_PATH`, widths round up, `.skip`/lock files, formats tested once; fixed Imagick resizing rotated photos sideways.
+- Step 2 (PR #595): `pg_img_*` in `includes/fn/image.php`, the designer renderer (Image element and bare `<img>`), the load order, `srcset` in the version stamp, the e-mail strip.
+- Step 3 (PR #599): `pg_img_responsive_html()` over widget output, shared components and page bodies (bound, carousel, text images; srcset only), `auto` sizes for lazy full-width images, the variant chooser drops srcset when it swaps a photo.
+- Step 4a (PR #602): purge, daily sweep, storage line with formats. No delete hooks (the sweep reads `files`).
+- Changed from the first sketch: no single `pg_img_tag()`; the sets come from `pg_img_responsive($src)` and each renderer writes its own tag. `<picture>` only on the Image element (CSS may target `> img` on imported markup). `sizes` is capped at the file width; `auto` only for lazy full-width images. The importer already kept `srcset`/`sizes` (and drops them when the source changes), so nothing was needed there.
+
 ## What remains?
-1. Derivative engine + request route + tests (`tests/image_derivatives_test.php` on pure sizing logic) (M).
-2. `pg_img_tag()` + designer `image` node renderer + importer fix (M).
-3. Catalog/form widget images, product gallery (S).
-4. Settings, purge, retention, status tile (S).
-5. Memory update of `docs/memory/platform/image-*.md`.
+4. Settings (schema step: config columns, so owner approval first): formats on/off and quality per format (quality enters the signature, so a change replaces derivatives; get_file.php reads them before it closes the connection and hands them to `pg_image_derivative()`), and a "rebuild page HTML" button that rewrites `page_tree_code` of every designer page so pages published before step 2 get the markup without a republish (S–M).
+5. A "Loading" row in the single Image element's Options (today only the multi-select Options and the Attributes panel set it) (S).
+6. Memory update with each step.
 
 ## Open questions?
-- AVIF on shared hosts without Imagick: fall back to WebP silently; System Status shows which formats the server can make.
+- Owner: may step 4 add config columns for the image settings (formats on/off, quality per format) through a 2026.11.0 migration step?
 
 ## Where to start?
-- Step 1; read `docs/memory/platform/image-*.md` and `get_file.php:1015-1097`.
+- Step 4 settings: ask the owner for the config columns, then `pg_image_settings()` (`includes/fn/image.php`) and Settings › Appearance. Client-built galleries in `pg_civ_variants.js` still print plain `<img>`; fine until a variant has large photos.

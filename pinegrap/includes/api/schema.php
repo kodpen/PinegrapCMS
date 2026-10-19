@@ -269,6 +269,24 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'products.price_history',
+			'method'  => 'GET',
+			'path'    => '/products/{id}/price-history',
+			'scope'   => 'products:read',
+			'handler' => 'api_products_price_history',
+			'returns' => array('list' => 'PriceHistoryEntry'),
+			'summary' => 'The price history of a product',
+			'description' => 'Every change of the product\'s own price since the history began, oldest first and cursor paged: the price it became, in which currency, when, and which kind of writer changed it (initial, panel, import, api, offer, erp). The first row of a product is initial, the price it had when the history started on this site. Pass since to read only the changes at or after a moment, which is how a client keeps a copy in step. The rows are the product\'s own price (channel web); an offer\'s reduced price is not recorded yet, so the lowest row of a window is not by itself the lawful price before a discount. A product in the Recycle Bin still answers; a site without the history table answers an empty list.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'since',   'in' => 'query', 'type' => 'datetime', 'description' => 'Only changes recorded at or after this moment.'),
+				array('name' => 'channel', 'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'One sales channel: web (the shop\'s own price), pos, or marketplace:<code>. Every channel when left out.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
 		/* ----- Product groups ----------------------------------------------- */
 
 		array(

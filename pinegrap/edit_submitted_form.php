@@ -417,8 +417,8 @@ if (!$_POST) {
                 case 'email address':
                     $output_fields .=
                         '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
-                            <label class="form-label">' . h($field['label']) . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength'])) . '
+                            ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $custom_form_page_id, $field['id'])) . '
+                            ' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength'])) . '
                             ' . $field_required . '
                         </div>';
                     break;
@@ -444,7 +444,7 @@ if (!$_POST) {
                     
                     $output_fields .=
                         '<div class="col-12 my-2 ' . $row_class . '">
-                            <label class="form-label">' . h($field['label']) . '</label>
+                            ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $custom_form_page_id, $field['id'])) . '
                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'maxlength'=>$field['maxlength'], 'class'=>'form-control', 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'style'=>$style)) . '
                             ' . $field_required . '
                         </div>';
@@ -858,6 +858,7 @@ if (!$_POST) {
             </div>
         </div>
     
+    ' . pg_ai_write_assets() . '
 </main>' . output_footer();
     
     $liveform->remove_form();

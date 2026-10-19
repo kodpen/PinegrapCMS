@@ -651,6 +651,7 @@ function api_openapi_objects()
         'Inventory'    => 'api_inventory_schema',
         'InventoryBatch' => 'api_inventory_batch_schema',
         'PriceBatch'     => 'api_price_batch_schema',
+        'PriceHistoryEntry' => 'api_price_history_entry_schema',
         'Seo'          => 'api_seo_schema',
         'Form'           => 'api_form_schema',
         'FormField'      => 'api_form_field_schema',

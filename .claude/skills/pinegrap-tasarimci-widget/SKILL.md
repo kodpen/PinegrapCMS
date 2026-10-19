@@ -299,7 +299,7 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
 - Düzenleme inline yapılır; kayıtta önce `shared_components` güncellenir, sonra
   stil kaydedilir.
 - `_render_tree_node()` çağrılarında `$depth` taşınır ve 8'i aşınca durulur.
-- Editör dışında silme: tasarım listesinin altındaki panel
+- Editör dışında silme: tasarım listesinin başlığındaki düğmenin açtığı panel
   (`pg_designer_components_card()`, tür adları `pg_sw_type_labels()` —
   `SW_TYPES`'ın aynası, `tests/designer_components_test.php`) kullanımı
   `pg_shared_component_usage()`'tan okur (`binned` = kutudaki sayfa; tasarımı
@@ -614,10 +614,14 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   düğmesinin başlığını `_sdSetButtonTitle()` ile değiştir: panel her
   başlıklı öğeye yüklenişte bir popover verir (`pgBindTitlePopovers()`),
   sonradan yazılan `title` ona ulaşmaz.
-- Tasarım listesi (`view_system_styles.php`) durum sütunu:
-  `pg_designer_design_draft_counts()` / `pg_designer_design_state()`;
-  toplu yayından kaldır / yayına al `designer/design_publish` →
-  `pg_designer_design_set_draft()` (editörde açık tasarımı reddeder).
+- Tasarım listesi (`view_system_styles.php`) tablo değil: sitenin tasarımı
+  büyük, diğerleri kutucuk; sağ tık / ⋯ menüsü `assets/js/designer_home.js`
+  (`docs/memory/designer/designer-home-screen.md`). Durum bloğu
+  `pg_designer_list_status_cell()` — `pg_designer_design_draft_counts()` /
+  `pg_designer_design_state()`; toplu yayından kaldır / yayına al
+  `designer/design_publish` → `pg_designer_design_set_draft()`, yeniden
+  adlandır `designer/design_rename` → `pg_designer_rename_design()` (ikisi de
+  editörde açık tasarımı reddeder).
 
 ## Sayfa sekmelerinin sırası ve grupları (2026.4.8)
 

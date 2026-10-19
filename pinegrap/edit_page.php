@@ -618,7 +618,14 @@ if (!$_POST) {
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page'))));
         $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
-    
+
+    // "Write with AI" beside the browser title and description
+    // (includes/fn/ai_write.php): the model reads them and the page's name
+    // from the form, the page's folder, headings and text from the site.
+    $ai_page_context = array('page_title' => 'title', 'meta_description' => 'meta_description', 'page_name' => 'name');
+    $ai_title_button = pg_ai_write_button($user, array('target' => 'seo_title', 'record' => 'page', 'record_id' => $page_id, 'field' => 'title', 'context' => $ai_page_context));
+    $ai_description_button = pg_ai_write_button($user, array('target' => 'seo_description', 'record' => 'page', 'record_id' => $page_id, 'field' => 'meta_description', 'context' => $ai_page_context));
+
     print
     pg_page_shell(
         array(
@@ -717,12 +724,12 @@ if (!$_POST) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 mt-1 mb-2">
-                                                    <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
+                                                    ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_title_button) . '
                                                     <input type="text" value="' . h($page_title) . '" name="title" id="title" class="form-control" maxlength="255"/>
                                                     <div id="seo_c_title"></div>
                                                 </div>
                                                 <div class="col-12 mt-1 mb-2">
-                                                    <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
+                                                    ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_description_button) . '
                                                     <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($page_meta_description) . '</textarea>
                                                     <div id="seo_c_meta_description"></div>
                                                 </div>
@@ -944,6 +951,7 @@ if (!$_POST) {
     // Indexing switch dependencies — logic in assets/js/backend.src.js
     bindPageIndexingSwitches();
     </script>
+    ' . pg_ai_write_assets() . '
 </main>' .
     output_footer();
 

@@ -17,6 +17,12 @@ description: Shared components opened to content editors (the designer's common 
 ## What cleans the grants up?
 - Deleting a component (`delete`, `delete_many`) and deleting a user (`edit_user.php`, `delete_users.php`) remove their rows.
 
-## What is not built yet?
-- The designer toggle and editing an opened component on the canvas at content level (R1b), the grant checkboxes on the user screens (R1c): `plans/legacy-retirement-prerequisites.md`.
-- Tests: `tests/shared_component_content_test.php`.
+## How does the editor show it?
+- The designer's switch "Content editors" sits in the Shared Component section of a selected `shared_ref` (not for widgets, only while `sdDesign.sharedContentReady`); it calls `set_content_editable` at once and keeps `contentEditable` on the cache entry.
+- `prefetch` fills `mayEditContent` on `_sharedCache[sid]`. `_sdSharedOpenToContent(sid)` reads it; `_sdNodeSharedSid(node)` comes from the owner map built in `_sdEditableSet()`'s pass, so no per-node walk. `_sdCanEditNode()` refuses every node of a closed component (`_sdInClosedShared()`, text included) and applies the page rule inside an opened one; canvas fade, tree marks, the read-only panel and the nudge follow it.
+- `_sdTrackSharedEditing()` marks only an opened component dirty at content level; `_flushDirtyShared()` sends it as `content_update` and, when the answer differs from what was sent, puts the stored tree in the cache and redraws.
+- Symptom fixed with it (PR #579): a manager could type into a shared component's text (only widgets were refused on screen) and the save failed with "Permission denied.".
+
+## Where are the grants given?
+- User screens (add, edit, import; PR #580): Shared Content panel, list "Shared components the User may edit" (fields `shared_component_<id>`), shown only when a component is open; `get_checkboxes_for_items_user_can_edit('shared_components')` / `get_items_user_can_edit()` in `includes/fn/content.php`. Saved for role 3 by `pg_save_shared_component_grants($user_id, $_POST)`, which rewrites only the rows of open components: a grant on a closed one stays for when it opens again.
+- A role-3 user still reaches a component only through a page the designer lets them open (folder edit right): see the open question in `plans/legacy-retirement-prerequisites.md`. Tests: `tests/shared_component_content_test.php`.

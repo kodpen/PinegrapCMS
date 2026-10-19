@@ -2611,6 +2611,16 @@ function get_checkboxes_for_items_user_can_edit($item_type, $selected_ids = arra
 
                 WHERE cregion_designer_type = "no"';
             break;
+        case 'shared_components':
+            // The visual designer's components a designer opened to content
+            // editors (schema 11.0.8); a system widget never opens.
+            if (!pg_schema_has('shared_components', 'content_editable')) {
+                return '';
+            }
+            $sql_table = 'shared_components';
+            $sql_columns = 'id, name';
+            $sql_where = "WHERE (content_editable = 1) AND ((system_region_config IS NULL) OR (system_region_config = ''))";
+            break;
         case 'menus':
             $sql_table = 'menus';
             $sql_columns = '
@@ -2662,6 +2672,13 @@ function get_items_user_can_edit($item_type, $user_id)
             $sql_table = 'users_common_regions_xref';
             $sql_columns = 'common_region_id';
             break;
+        case 'shared_components':
+            if (!pg_schema_has('users_shared_components_xref')) {
+                return array();
+            }
+            $sql_table = 'users_shared_components_xref';
+            $sql_columns = 'shared_component_id';
+            break;
         case 'contact_groups':
             $sql_table = 'users_contact_groups_xref';
             $sql_columns = 'contact_group_id';
@@ -2683,6 +2700,42 @@ function get_items_user_can_edit($item_type, $user_id)
         $items_user_can_edit[] = $row['id'];
     }
     return $items_user_can_edit;
+}
+
+/**
+ * Write a user's grants on shared components from a submitted user form
+ * (fields shared_component_<id> = 1).
+ *
+ * The form lists only the components open to content editors, so only their
+ * rows are rewritten: a grant on a component a designer closed again stays,
+ * and is in force again when the component is opened.
+ *
+ * @param int   $user_id
+ * @param array $source  the submitted fields, usually $_POST
+ */
+function pg_save_shared_component_grants($user_id, array $source)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !pg_schema_has('users_shared_components_xref') || !pg_schema_has('shared_components', 'content_editable')) {
+        return;
+    }
+
+    $open = array_map('intval', (array) db_values(
+        "SELECT id FROM shared_components
+         WHERE (content_editable = 1) AND ((system_region_config IS NULL) OR (system_region_config = ''))"));
+
+    if (!$open) {
+        return;
+    }
+
+    db("DELETE FROM users_shared_components_xref WHERE (user_id = '$user_id') AND (shared_component_id IN (" . implode(',', $open) . "))");
+
+    foreach ($open as $id) {
+        if ((string) ($source['shared_component_' . $id] ?? '') === '1') {
+            db("INSERT INTO users_shared_components_xref (user_id, shared_component_id) VALUES ('$user_id', '$id')");
+        }
+    }
 }
 function add_edit_button_for_images($object_type = '', $object_id = 0, $content = '', $column_to_update = '')
 {

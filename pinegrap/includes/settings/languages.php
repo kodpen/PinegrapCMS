@@ -379,7 +379,7 @@ $output_translation_engines_card = '
                         <div class="pg-f-lg">
                             <label for="translation_style_note" class="form-label">' . lang('Style note for the AI engines') . '</label>
                             <textarea name="translation_style_note" id="translation_style_note" class="form-control" rows="3" maxlength="2000">' . h($translation_style_note) . '</textarea>
-                            <div class="form-text">' . lang('Given to the AI engines with every text: the tone, the form of address, the terms to keep. Google and the browser do not read it.') . '</div>
+                            <div class="form-text">' . lang('Given to the AI engines with every text, and to the AI that drafts a field for Write with AI: the tone, the form of address, the terms to keep. Google and the browser engine do not read it.') . '</div>
                         </div>
                     </div>
                     <div class="col-12">

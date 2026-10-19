@@ -161,6 +161,12 @@ function pg_panel_backend_search($request, $action)
         $actions[] = array('label' => lang('Find & Replace'), 'icon' => 'bi-search', 'url' => $base_url . '/find_and_replace.php', 'keys' => array('bul degistir', 'find replace', 'degistir', 'bul'));
     }
 
+    // ── Help ──────────────────────────────────────────────────────────────
+    // The keyboard shortcuts are a dialog of the header, not a screen: the
+    // fragment is what the chip handler in backend.src.js answers to by
+    // opening it, as the ? key does.
+    $actions[] = array('label' => lang('Keyboard Shortcuts'), 'icon' => 'bi-keyboard', 'url' => '#keyboard-shortcuts', 'keys' => array('klavye', 'kisayol', 'kısayol', 'keyboard', 'shortcut', 'tus', 'tuş'));
+
     // Empty search: return only quick actions (no DB query needed)
     if (strlen($search) < 1) {
         echo encode_json(array('status' => 'success', 'results' => array(), 'actions' => $actions, 'has_more' => false));

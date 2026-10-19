@@ -316,24 +316,33 @@ function pg_user_permission_ui($config)
 		),
 	);
 
-	// Shared content: common regions and menus, two lists in one panel.
+	// Shared content: common regions, the visual designer's shared components
+	// opened to content editors (listed only when there is one) and menus.
+	$shared_counters = array(
+		array('scope' => 'common_regions', 'one' => lang('region'), 'many' => lang('regions')),
+	);
+	$shared_components_list = '';
+	if (!empty($panels['shared_components'])) {
+		$shared_components_list = pg_user_permission_list('shared_components', lang('Shared components the User may edit'), $panels['shared_components'], 'multiselect-checkbox-checker-8');
+		$shared_counters[] = array('scope' => 'shared_components', 'one' => lang('component'), 'many' => lang('components'));
+	}
+	$shared_counters[] = array('scope' => 'menus', 'one' => lang('menu'), 'many' => lang('menus'));
+
 	$groups[] = array(
 		'id'          => 'shared',
 		'icon'        => 'bi-layout-text-window',
 		'color'       => '#ff4c87',
 		'title'       => lang('Shared Content'),
-		'description' => lang('Common regions and menu items'),
+		'description' => ($shared_components_list !== '') ? lang('Common regions, shared components and menu items') : lang('Common regions and menu items'),
 		'panel_lead'  => lang('Content that appears on more than one page.'),
 		'gate_field'  => '',
 		'gate_value'  => '',
-		'gate_on'     => (($count('common_regions') + $count('menus')) > 0),
+		'gate_on'     => (($count('common_regions') + $count('shared_components') + $count('menus')) > 0),
 		'panel'       =>
 			pg_user_permission_list('common_regions', lang('Common Regions the User may edit'), $panels['common_regions'], 'multiselect-checkbox-checker-2')
+			. $shared_components_list
 			. pg_user_permission_list('menus', lang('Menus whose items the User may edit'), $panels['menus'], 'multiselect-checkbox-checker-3'),
-		'counters'    => array(
-			array('scope' => 'common_regions', 'one' => lang('region'), 'many' => lang('regions')),
-			array('scope' => 'menus',          'one' => lang('menu'),   'many' => lang('menus')),
-		),
+		'counters'    => $shared_counters,
 	);
 
 	// Contacts and campaigns. Two columns, either of which opens the contact

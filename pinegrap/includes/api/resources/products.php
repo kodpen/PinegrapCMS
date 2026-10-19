@@ -1419,6 +1419,142 @@ function api_price_batch_schema() {
 
 }
 
+// One row of a product's price history: the price the product's own price
+// became at a moment, in the base currency of that moment, and which kind of
+// writer changed it (pg_price_history_sources()). The first row of a product
+// is 'initial', the price it had when the history began; its changed_at is
+// the moment the history began, not the moment that price was set.
+function api_price_history_entry_present($row) {
+
+	return array(
+		'id'              => (int)$row['id'],
+		// 'web' for the shop's own price; a price kept per sales channel is
+		// 'pos' or 'marketplace:<code>'.
+		'channel'         => (string)$row['channel'],
+		'price'           => api_money($row['price']),
+		'currency'        => (string)$row['currency'],
+		'source'          => (string)$row['source'],
+		'changed_at'      => api_time($row['changed_at']),
+		'changed_at_unix' => (int)$row['changed_at']
+	);
+
+}
+
+// GET /products/{id}/price-history
+//
+// Every change of the product's own price, oldest first, so a client that
+// walks the pages builds the same line the "lowest price of the last 30 days"
+// is read from. Cursor paged like the catalogue listing: a product that is
+// repriced by a feed every day has hundreds of rows in a year, and an offset
+// over a table that is written to between two pages skips rows.
+//
+// A product in the Recycle Bin keeps its id and its prices, so it answers
+// here as it does on GET /products/{id}. A site upgraded without the history
+// table answers an empty list rather than an error: the product exists, it
+// simply has no history yet.
+//
+// What is not here, on purpose: an offer's reduced price. The history keeps
+// what products.price was set to; an offer changes what the visitor pays
+// without changing that column, and recording it is a step of its own (the
+// price-history plan). Until then a client must not read the lowest row of a
+// window as the lawful "price before the discount".
+function api_products_price_history($params) {
+
+	$id = (int)$params['id'];
+
+	$product = api_row("SELECT id FROM products WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($product === null) {
+
+		api_fail_not_found(lang('Product'));
+
+	}
+
+	$channel = isset($params['channel']) ? trim((string)$params['channel']) : '';
+
+	// The channel is written into the statement as it is, so only a name of
+	// the known shape passes (pg_price_history_channel()); anything else is a
+	// client mistake and says so rather than matching nothing quietly.
+	if (($channel !== '') && (pg_price_history_channel($channel) === null)) {
+
+		api_fail_validation(lang('channel must be web, pos or marketplace:<code>.'), 'channel');
+
+	}
+
+	$cursor = null;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+	}
+
+	$since = isset($params['since']) ? (int)$params['since'] : 0;
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$rows = array();
+
+	if (pg_price_history_ready()) {
+
+		// One row more than asked for; whether it exists says whether there
+		// is another page, without a second query.
+		$rows = api_rows(pg_price_history_list_sql($id, $channel, $since, $cursor, $limit + 1));
+
+	}
+
+	$has_more = (count($rows) > $limit);
+
+	if ($has_more) {
+
+		array_pop($rows);
+
+	}
+
+	$next_cursor = null;
+
+	if ($has_more && !empty($rows)) {
+
+		$last = $rows[count($rows) - 1];
+
+		$next_cursor = api_cursor_encode($last['changed_at'], $last['id']);
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_price_history_entry_present($row);
+
+	}
+
+	api_ok_list($out, $limit, $next_cursor);
+
+}
+
+// What api_price_history_entry_present() returns, declared for the OpenAPI
+// document.
+function api_price_history_entry_schema() {
+
+	return array(
+		'id'              => 'integer',
+		'channel'         => 'string',
+		'price'           => 'integer',
+		'currency'        => 'string',
+		'source'          => 'string',
+		'changed_at'      => 'string?',
+		'changed_at_unix' => 'integer'
+	);
+
+}
+
 // What api_product_present() returns, declared for the OpenAPI document.
 //
 // Beside the presenter on purpose: a field added above without a line here is
