@@ -193,6 +193,23 @@ function pg_legal_document_lines_html(array $lines, $money)
 }
 
 /**
+ * The name an ordered item goes by in the documents: what the shop calls the
+ * product, its short description, as the cart and the order receipt show it.
+ * order_items.product_name is the Product ID / SKU at the time of sale; it is
+ * printed only when the product has no short description or no longer exists.
+ *
+ * @param string|null $short_description  products.short_description, null for a deleted product
+ * @param string|null $product_name       order_items.product_name
+ * @return string
+ */
+function pg_legal_document_item_name($short_description, $product_name)
+{
+    $short_description = trim((string) $short_description);
+
+    return ($short_description !== '') ? $short_description : (string) $product_name;
+}
+
+/**
  * Join the non-empty parts of an address, one line per part group.
  *
  * @param array $lines  each a string or a list of strings joined by a space
@@ -671,10 +688,21 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
 
     $lines = array();
 
-    foreach ((array) db_items("SELECT product_name, quantity, price, tax_total FROM order_items WHERE order_id = '" . $order_id . "' ORDER BY id") as $item) {
+    foreach ((array) db_items(
+        "SELECT
+            order_items.product_name,
+            products.short_description,
+            order_items.quantity,
+            order_items.price,
+            order_items.tax_total
+        FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_items.order_id = '" . $order_id . "'
+        ORDER BY order_items.id"
+    ) as $item) {
         $quantity = (int) $item['quantity'];
         $lines[] = array(
-            'name'       => $item['product_name'],
+            'name'       => pg_legal_document_item_name($item['short_description'], $item['product_name']),
             'quantity'   => $quantity,
             'unit_price' => (int) round($item['price']),
             'line_total' => (int) round($item['price'] * $quantity),
@@ -784,7 +812,9 @@ function pg_legal_documents_store($order_id, array $accepted_types)
     }
 
     $now = time();
-    $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+    // The visitor's address as the firewall resolves it: behind a CDN or a
+    // trusted proxy REMOTE_ADDR is the proxy, the same for every customer.
+    $ip = substr((string) (function_exists('waf_client_ip') ? waf_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '')), 0, 45);
     $agent = mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
     $stored = 0;
 
