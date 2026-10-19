@@ -13,10 +13,10 @@ description: Plan (2026-10-19) for docx and xlsx in the file manager and the Wor
 
 ## What are the slices?
 - D1 View — done (PR #530, memory docs/memory/platform/office-files.md): read on the server by `includes/fn/office.php` (no library; the SheetJS npm build is stale with known CVEs and its CDN is unreachable), drawn by `assets/js/pg_office_view.js` in the file window, Quick Look and the Workspace preview; OOXML MIME types in `get_file.php`.
-- D2 Edit cells — file window done (PR #PR, memory docs/memory/platform/office-cell-edits.md): the D1 table becomes an editable grid; the window's own Save (`explorer_file_save` with `cells`, already ERP-gated) patches only the changed rows, text as inline strings (sharedStrings untouched), and takes every formula's cached result out. Changed from the sketch: no separate action; a hash of the bytes, not `files.timestamp`, as the version.
+- D2 Edit cells — file window done (PR #656, memory docs/memory/platform/office-cell-edits.md): the D1 table becomes an editable grid; the window's own Save (`explorer_file_save` with `cells`, already ERP-gated) patches only the changed rows, text as inline strings (sharedStrings untouched), and takes every formula's cached result out. Changed from the sketch: no separate action; a hash of the bytes, not `files.timestamp`, as the version.
 - D3 Edit text: docx paragraph text edited in place (one `<w:p>` at a time, runs merged into the first run's style); same patch approach, same endpoint family; no layout editing.
 - D4 Shared use — done (PR #564, memory docs/memory/workspace/workspace-file-manager-files.md): "Send to a channel" in the file manager, "From the file manager" under the paperclip; a copy, no tag of the original. Left for D2: the cell editor on Workspace file cards through `ws_file_edit_target()` (versioned replace), on `pg_office_xlsx_save()` over a copy.
-- D5 Hygiene: block `docm`/`xlsm`/`pptm` on channel uploads, "Where used" counts `ws_messages`. Done: size ceilings before parsing (D1's `pg_office_open()`), the split comment above `explorer_file_usage` (PR #PR).
+- D5 Hygiene: block `docm`/`xlsm`/`pptm` on channel uploads, "Where used" counts `ws_messages`. Done: size ceilings before parsing (D1's `pg_office_open()`), the split comment above `explorer_file_usage` (PR #656).
 
 ## What is still open?
 1. Settled by D1: no library; the readers are the product's own (the xlsx one can later replace the importer's twin in `import_products_f.php`).

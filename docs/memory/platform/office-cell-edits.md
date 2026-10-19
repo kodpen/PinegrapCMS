@@ -1,6 +1,6 @@
 ---
 name: office-cell-edits
-description: Excel cells changed in the file window (includes/fn/office_edit.php, PR #PR): what may change, how a typed value is stored, the row splice, why formula results are taken out
+description: Excel cells changed in the file window (includes/fn/office_edit.php, PR #656): what may change, how a typed value is stored, the row splice, why formula results are taken out
 ---
 
 ## How is a cell of a workbook changed?
