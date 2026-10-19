@@ -4,7 +4,7 @@
 
 Project overview, owner rules, git and branches, sandbox and dev machine.
 
-- git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, editing shared files without conflicts
+- git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, Claude Code attribution footer turned off, editing shared files without conflicts
 - owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, templates, language, the shelved mobile app and who edits which notes
 - project-overview.md: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap/ root), dev-only folders, files never in any branch
 - sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com
