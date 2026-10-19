@@ -1552,7 +1552,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $file = mysqli_fetch_array($result);
                 $file_name = $file['name'];
-                $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . $file_name . '" /></td>';
+                $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . h($file_name) . '" /></td>';
             }
 		}
 

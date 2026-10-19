@@ -301,7 +301,7 @@ if ($liveform->check_form_errors() == false) {
                 user_id = '$user_id',
                 contact_id = '$contact_id',
                 billing_complete = '1'
-             WHERE id = " . ($_SESSION['ecommerce']['order_id'] ?? '');
+             WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // If the user is logged in and not ghosting and the user selected that he/she

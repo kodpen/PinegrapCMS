@@ -2577,7 +2577,7 @@ function submit_custom_form($properties)
             $error_message = '';
             // If there is a field label, then prepare error message.
             if ($field['label']) {
-                $error_message = lang(array('string' => '{var:1} is required.', 'vars' => $field['label']));
+                $error_message = lang(array('string' => '{var:1} is required.', 'vars' => h($field['label'])));
             }
             $form->validate_required_field($html_field_name, $error_message);
         }
@@ -2586,25 +2586,25 @@ function submit_custom_form($properties)
             case 'date':
                 // If value is not blank and date is not valid, then mark error.
                 if (($form->get_field_value($html_field_name) != '') && (validate_date($form->get_field_value($html_field_name)) == false)) {
-                    $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => $field['label'])));
+                    $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => h($field['label']))));
                 }
                 break;
             case 'date and time':
                 // If value is not blank and date and time is not valid, then mark error.
                 if (($form->get_field_value($html_field_name) != '') && (validate_date_and_time($form->get_field_value($html_field_name)) == false)) {
-                    $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date & time for {var:1}', 'vars' => $field['label'])));
+                    $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date & time for {var:1}', 'vars' => h($field['label']))));
                 }
                 break;
             case 'email address':
                 // If value is not blank and e-mail address is not valid, then mark error.
                 if (($form->get_field_value($html_field_name) != '') && (validate_email_address($form->get_field_value($html_field_name)) == false)) {
-                    $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => $field['label'])));
+                    $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => h($field['label']))));
                 }
                 break;
             case 'time':
                 // If value is not blank and time is not valid, then mark error.
                 if (($form->get_field_value($html_field_name) != '') && (validate_time($form->get_field_value($html_field_name)) == false)) {
-                    $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => $field['label'])));
+                    $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => h($field['label']))));
                 }
                 break;
         }

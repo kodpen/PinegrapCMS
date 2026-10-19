@@ -100,7 +100,7 @@ function get_preview_style($properties)
     // a preview style instead of the activated style.
     if ((isset($_SESSION['software']['preview_theme_id']) == true) && (((isset($_GET['edit_theme']) ? $_GET['edit_theme'] : '') != 'true') || ((isset($_GET['theme_id']) ? $_GET['theme_id'] : '') == $_SESSION['software']['preview_theme_id']))) {
         // If the selected theme is the activated theme, then get style in a certain way.
-        if (($_SESSION['software']['preview_theme_id']) && ($_SESSION['software']['preview_theme_id'] == db_value("SELECT id FROM files WHERE activated_" . $device_type . "_theme = '1'"))) {
+        if (($_SESSION['software']['preview_theme_id']) && ($_SESSION['software']['preview_theme_id'] == db_value("SELECT id FROM files WHERE activated_" . sql_device_type($device_type) . "_theme = '1'"))) {
             // If a style has been selected, then use that style.
             if (isset($_SESSION['software']['preview_style']['theme_' . $_SESSION['software']['preview_theme_id'] . '_page_' . $page_id . '_' . $device_type]) == true) {
                 // If the selected style is blank, then that means,
@@ -1126,9 +1126,9 @@ function select_image_options($image_name = '', $design = false)
             if (is_array($image_name)) {
                 // loop through each image and create an <option> tag
                 $selected_class = ' selected';
-                $control_button = '<button type="button" onclick="add_this_image(\'' . $row['name'] . '\',\'' . $row['id'] . '\');return false;" data-bs-dismiss="modal"  class="m-1 btn-data-control btn btn-outline-primary border-2 "  title="' . lang('Select') . '" ><i class="material-icons">done</i></button>';
+                $control_button = '<button type="button" onclick="add_this_image(\'' . h(escape_javascript($row['name'])) . '\',\'' . (int) $row['id'] . '\');return false;" data-bs-dismiss="modal"  class="m-1 btn-data-control btn btn-outline-primary border-2 "  title="' . lang('Select') . '" ><i class="material-icons">done</i></button>';
             } else {
-                $control_button = '<button type="button" onclick="add_this_image(\'' . $row['name'] . '\',\'' . $row['id'] . '\');return false;" data-bs-dismiss="modal"  class="m-1 btn-data-control btn btn-outline-primary border-2 "  title="' . lang('Select') . '" ><i class="material-icons">done</i></button>';
+                $control_button = '<button type="button" onclick="add_this_image(\'' . h(escape_javascript($row['name'])) . '\',\'' . (int) $row['id'] . '\');return false;" data-bs-dismiss="modal"  class="m-1 btn-data-control btn btn-outline-primary border-2 "  title="' . lang('Select') . '" ><i class="material-icons">done</i></button>';
             }
             $output .= '
             <tr file-id="' . $row['id'] . '" class="image_selector_item ' . $selected_class . '">

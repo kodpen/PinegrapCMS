@@ -97,7 +97,7 @@ if (!$_POST) {
             FROM menu_items
             WHERE 
                 (menu_id = '" . escape($menu_id) . "')
-                AND (sort_order < " . $sort_order . ")
+                AND (sort_order < " . (int) $sort_order . ")
                 AND (parent_id = '" . escape($parent_id) . "')
             ORDER BY sort_order DESC
             LIMIT 1";

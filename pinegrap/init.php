@@ -955,6 +955,19 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         ini_set('session.cookie_httponly', '1');
     }
 
+    // Lax, said explicitly rather than left to the browser's default: the
+    // cookie then never rides on a cross-site POST, except where a checkout
+    // screen re-issues it as None for a payment gateway's return
+    // (pg_session_cookie_allow_cross_site()). The setting exists from 7.3.
+    if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
+        ini_set('session.cookie_samesite', 'Lax');
+    }
+
+    // The id in the cookie must be one this server issued: with strict mode
+    // an id the browser was given elsewhere (a planted link) is not adopted
+    // but replaced, so a fixation attempt never gets a session of its own.
+    ini_set('session.use_strict_mode', '1');
+
     // Start session after secure mode checks.
     //
     // An entry point that carries its own credentials asks for none: the

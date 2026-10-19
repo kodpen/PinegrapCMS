@@ -188,7 +188,7 @@ function api_design_pages_list($params) {
 
 	if (isset($params['q']) && $params['q'] !== '') {
 
-		$q = escape($params['q']);
+		$q = escape(escape_like($params['q']));
 
 		$where[] = "(page.page_name LIKE '%" . $q . "%' OR page.page_title LIKE '%" . $q . "%')";
 

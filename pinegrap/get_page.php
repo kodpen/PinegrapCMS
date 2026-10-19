@@ -565,7 +565,7 @@ if (isset($_GET['pdf']) && $_GET['pdf'] == 'true')
 		output_error(h(lang('The PDF could not be generated because of the following error: ') . $error));
 	}
 	header('Content-Type: application/pdf');
-	header('Content-disposition: filename=' . $page_name . '.pdf');
+	header('Content-disposition: filename="' . preg_replace('/["\\\\\r\n]/', '', $page_name) . '.pdf"');
 	// else if rss is being requested, first verify that RSS needs to be outputted, and then output RSS if all conditions are met
 	
 }

@@ -108,7 +108,7 @@ if (!$_POST) {
                                 <div class="d-flex gap-2 mt-3">
                                     <button type="submit" name="submit_save_and_return" value="Save &amp; Return" class="btn btn-primary">' . lang('Save & Return') . '</button>
                                     <button type="submit" name="submit_save" value="Save" class="btn btn-outline-secondary">' . lang('Save') . '</button>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="window.location.href=\'' . h(escape_javascript($liveform->get_field_value('send_to'))) . '\'">' . lang('Cancel') . '</button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="window.location.href=\'' . h(escape_javascript(pg_safe_back_url($liveform->get_field_value('send_to'), 'view_styles.php'))) . '\'">' . lang('Cancel') . '</button>
                                 </div>
                             </form>
                         </div>
