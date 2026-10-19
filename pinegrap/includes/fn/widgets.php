@@ -645,6 +645,13 @@ function pg_sw_raw_token_keys()
 // wrap: the one that forgets is the one that breaks.
 //
 // $raw_extra names further keys this particular map fills with markup.
+//
+// A raw value is still not code: the widget is drawn into the page before
+// get_page_content.php evaluates it (PHP_REGIONS), so a PHP open tag in a
+// product's rich description written by a manager, a role-3 user with
+// manage_ecommerce or a products:write API key would run on the server. Every
+// raw value goes through pg_defuse_php_tags(); renderer-built blocks never
+// carry `<?`, so they pass unchanged.
 function pg_sw_escape_token_values($values, $raw_extra = array())
 {
     if (!is_array($values)) return $values;
@@ -655,7 +662,10 @@ function pg_sw_escape_token_values($values, $raw_extra = array())
     }
 
     foreach ($values as $key => $value) {
-        if (isset($raw[$key])) continue;
+        if (isset($raw[$key])) {
+            $values[$key] = pg_defuse_php_tags($value);
+            continue;
+        }
         $values[$key] = h((string)$value);
     }
 
@@ -5512,7 +5522,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_number'            => h($item['item_number']),
                 '__item_short_description' => h($item['short_description']),
                 // RAW HTML — rich text, same as the cart and catalog widgets.
-                '__item_description'       => (string)$item['full_description'],
+                '__item_description'       => pg_defuse_php_tags($item['full_description']),
                 '__item_summary'           => h(pg_sw_item_summary($item['full_description'])),
                 // The image alt text follows the same precedence as cart:
                 // prefer the readable short_description, fall back to name.

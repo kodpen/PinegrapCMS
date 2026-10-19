@@ -101,7 +101,7 @@ function api_customers_list($params) {
 
 	if (isset($params['search']) && $params['search'] !== '') {
 
-		$search = escape($params['search']);
+		$search = escape(escape_like($params['search']));
 
 		$where[] = "(contacts.first_name LIKE '%" . $search . "%'
 			OR contacts.last_name LIKE '%" . $search . "%'

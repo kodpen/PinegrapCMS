@@ -138,13 +138,13 @@ if (
 ) {
     $login = 
         lang('Login') . ':' . "\n" .
-        URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . "\n";
+        URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/' . "\n";
 
 // else if there was a send to page selected for this user        
 } elseif ($user_home) {
     $login =
         lang('Login') . ':' . "\n" .
-        URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . encode_url_path(get_page_name($user_home)) . "\n";
+        URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path(get_page_name($user_home)) . "\n";
 }
 
 email(array(

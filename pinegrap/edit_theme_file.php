@@ -71,7 +71,7 @@ if (!$_POST) {
         
         // force download dialog
         header("Content-type: text/csv");
-        header("Content-disposition: attachment; filename=" . $file_name_for_csv . ".csv");
+        header('Content-disposition: attachment; filename="' . preg_replace('/["\\\\\r\n]/', '', $file_name_for_csv) . '.csv"');
 
         print 'area,row,col,module,region_type,region_name,property,value' . "\n";
         

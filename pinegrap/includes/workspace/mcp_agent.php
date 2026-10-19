@@ -1483,7 +1483,7 @@ function ws_mcp_agent_approved($viewer, $change, $call, $server)
 
     $give_back = function () use ($change, $row) {
         db("UPDATE ws_ai_requests SET status = 'sent' WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
-        db("UPDATE ws_ai_changes SET status = 'pending' WHERE id = '" . (int) $change['id'] . "' AND status = 'applying'");
+        db("UPDATE ws_ai_changes SET status = 'pending', decided_by = 0, decided_at = 0 WHERE id = '" . (int) $change['id'] . "' AND status = 'applying'");
         ws_message_touch($change['message_id']);
         ws_mcp_agent_touch($row);
     };

@@ -25,24 +25,6 @@ include_once('liveform.class.php');
 
 $liveform = new liveform('smtp_settings');
 
-// Helper functions
-if (!function_exists('h')) {
-    function h($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
-}
-if (!function_exists('escape')) {
-    function escape($s) { return addslashes($s); }
-}
-if (!function_exists('db_value')) {
-    function db_value($query) {
-        $result = db($query);
-        if ($result && mysqli_num_rows($result) > 0) {
-            $row = mysqli_fetch_row($result);
-            return $row ? $row[0] : null;
-        }
-        return null;
-    }
-}
-
 // SMTP credentials check
 $smtp_ready = (
     defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '' &&

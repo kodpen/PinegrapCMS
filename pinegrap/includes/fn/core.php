@@ -632,6 +632,30 @@ function h($content)
     return htmlspecialchars($content, ENT_QUOTES | ENT_HTML401, 'UTF-8');
 }
 
+// Defuse PHP open tags in markup that is printed raw into a page.
+//
+// get_page_content.php evaluates the assembled page as a PHP template when
+// PHP_REGIONS is on, and a content-level operator's text, a product's rich
+// description and an imported page all land in that page before the eval.
+// Rewriting `<?` to `&lt;?` keeps the characters on screen while the PHP
+// parser no longer sees an open tag; the rest of the markup is untouched.
+// Designer code (style code, designer regions, custom_php nodes) never goes
+// through here, so PHP written by a designer still runs.
+function pg_defuse_php_tags($html)
+{
+    if ($html === null || $html === '') {
+        return '';
+    }
+
+    $html = (string) $html;
+
+    if (strpos($html, '<?') === false) {
+        return $html;
+    }
+
+    return str_replace('<?', '&lt;?', $html);
+}
+
 function escape($string)
 {
     // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
@@ -663,6 +687,15 @@ function sql_order_direction($direction, $default = 'asc')
         return $direction;
     }
     return $default;
+}
+
+// Whitelists a device type that names a column (activated_<type>_theme).
+// The session value is written only by validated code, but a bare column
+// position cannot be escaped, so the sink only ever sees one of the two
+// literals; anything else reads as desktop.
+function sql_device_type($device_type)
+{
+    return ((string) $device_type === 'mobile') ? 'mobile' : 'desktop';
 }
 
 function escape_like($string)
