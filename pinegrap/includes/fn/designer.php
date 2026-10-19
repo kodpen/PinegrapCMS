@@ -2326,6 +2326,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
     $noindex_ready = pg_page_noindex_ready();
     $multi_ready   = pg_multi_page_design_ready();
     $meta_ready    = pg_meta_tags_ready();
+    $jsonld_ready  = pg_page_custom_jsonld_ready();
 
     $cols = "page.page_id, page.page_name, page.page_folder, page.page_title,
              page.page_meta_description, page.page_search, page.page_search_keywords,
@@ -2338,6 +2339,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
              page.comments_administrator_email_to_email_address,
              page.page_timestamp,
              " . ($meta_ready ? "page.page_meta_tags," : "'' AS page_meta_tags,") . "
+             " . ($jsonld_ready ? "page.custom_jsonld," : "'' AS custom_jsonld,") . "
              " . pg_page_tree_sql_expr() . " AS tree_json";
 
     $rows = db_items(
@@ -2403,6 +2405,8 @@ function pg_designer_load_pages($style_id, $style_name = '')
             // none): the editor posts the string back unchanged when they
             // were not edited.
             'page_meta_tags'        => pg_meta_tags_encode(pg_meta_tags_normalize((string)$r['page_meta_tags'])),
+            // The page's own JSON-LD (page.custom_jsonld), as written.
+            'page_custom_jsonld'    => (string)$r['custom_jsonld'],
             'tree_json'             => (string)$r['tree_json'],
         );
     }
@@ -2776,6 +2780,18 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     }
     foreach ((array)$vt['warnings'] as $w) $warnings[] = $w;
 
+    // The page's own JSON-LD has to be something a search engine can read.
+    // Checked here, so the dry run that checks every page refuses the save
+    // before anything is written. Content like the title: every level that
+    // edits the page writes it, and the output re-encodes it.
+    $jsonld = null;
+    if (array_key_exists('page_custom_jsonld', $page) && pg_page_custom_jsonld_ready()) {
+        $jsonld = pg_page_custom_jsonld_check($page['page_custom_jsonld']);
+        if (!$jsonld['ok']) {
+            $errors[] = pg_page_custom_jsonld_message($jsonld['error'], $name);
+        }
+    }
+
     if (!empty($errors)) {
         return array('ok' => false, 'page_id' => $page_id, 'errors' => $errors, 'warnings' => $warnings);
     }
@@ -2936,6 +2952,11 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // them too; every value is escaped when the page is drawn.
     if (array_key_exists('page_meta_tags', $page) && pg_meta_tags_ready()) {
         $c_extra['page_meta_tags'] = e(pg_meta_tags_encode(pg_meta_tags_normalize($page['page_meta_tags'])));
+    }
+    // The page's own JSON-LD, checked above: written when the editor sends
+    // it, left as stored when it does not.
+    if ($jsonld !== null && $jsonld['ok']) {
+        $c_extra['custom_jsonld'] = e($jsonld['value']);
     }
     $sql_c_extra_set  = '';
     $sql_c_extra_cols = '';

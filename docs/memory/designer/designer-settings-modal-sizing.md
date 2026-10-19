@@ -1,12 +1,21 @@
 ---
 name: designer-settings-modal-sizing
-description: Designer settings modal sizes (.sd-settings-nav 230px, .sd-settings-body 640px) live in style_designer.css, not inline; rail becomes a strip under 992px.
+description: Designer settings modal size and closing: modal-xl from 992px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 992px.
 ---
 
-## Where do modal and panel dimensions live?
-- The settings modal's rail (`.sd-settings-nav`, 230px) and form panel (`.sd-settings-body`, 640px) were measured with inline `style`; inline style loses to no media query, so the narrow-screen rule became a pile of `!important`. Size, color and font size are in `style_designer.css`.
-- **Write no inline dimensions on panel/modal skeletons**: width, `max-width`, `flex-direction`, padding. Bootstrap helpers like `flex-column`, `p-4`, `mb-3` are the same trap: they produce `!important` and must be undone in media queries. Content boxes (form row, badge) are free.
+## How big is the modal?
+- From 992px the largest Bootstrap dialog (`modal-xl`: 800px up to 1199px, 1140px from 1200px), centred; below 992px the whole screen (`modal-fullscreen-lg-down`). It used to be full screen at every width, a 640px form in a sea of empty space (changed in #582).
+- One height whatever pane is open: `.sd-settings-content` is `min(100vh - 3.5rem, 56rem)` (dvh where the browser has it), so a pane switch never moves the buttons and only the pane (`.sd-settings-body`) scrolls. Every flex item of that chain carries `min-height: 0`. 3.5rem is Bootstrap's own 1.75rem dialog margin twice.
+- The rail (`.sd-settings-nav`) is 230px. Below 992px it is a strip above the pane: the group captions are hidden, the page group's caption becomes a thin line between the design's pills and the page's. Keep pill texts short.
+- `data-bs-theme="dark"` on the modal gives the switches, the close button and the tag field their dark variants; the designer's own colours sit on top in `#styleSettingsModal` rules.
 
-## What happens below 992px?
-- **The rail turns into a horizontal strip** and group titles (`.sd-settings-nav-title`) are hidden. Titles make sense beside a vertical list; each tab panel's opening scope sentence already gives the same information, so nothing is lost.
-- When adding a new tab keep the pill text short: pills sit side by side in the strip.
+## Where do the sizes live?
+- In `style_designer.css`, never inline on the skeleton: an inline size beats every media query, and Bootstrap helpers such as `flex-column`, `p-4`, `mb-3` carry `!important`. Content boxes (a row, a badge, a code field) are free.
+
+## How does it close?
+- Only from its own buttons: `data-bs-backdrop="static"` and `data-bs-keyboard="false"`; a click beside it or Escape makes Bootstrap shake it (`modal-static`). Before, a stray click closed it in the middle of typing.
+- X and Apply do the same: what was changed is already on the design and nothing is undone. Every way out redraws the HTML tree (`hide.bs.modal`) and schedules the live preview (`hidden.bs.modal`); the theme file reaches the canvas on `change`, not on Apply.
+- The footer's main button (`#sd-settings-save`) closes the modal and then clicks the toolbar's main button, under its word: Save on a draft, Publish otherwise (`_sdSettingsSyncSave()`). It is off while that one is disabled and in view mode, where the toolbar's is only out of reach.
+- Reset Layout (footer, left) resets the editor's panel sizes, not the design; it is a neutral button with a title saying so.
+
+Related: docs/memory/designer/designer-settings-modal-panes.md
