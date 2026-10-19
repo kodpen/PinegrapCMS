@@ -105,7 +105,10 @@
     // A completion source is the engine's shape: function (context) →
     // { from, options: [{ label, type, detail, apply }] } | null. Registered
     // for 'html', 'css', 'javascript' or 'json', it joins every editor of that
-    // language, those already open included at their next reconfigure.
+    // language, those already open included at their next reconfigure. It
+    // also receives the syntax around the cursor as a second argument
+    // ({ tree, node }: the state's tree and the innermost node ending at or
+    // holding the position), so a screen never asks the engine for it.
     function addCompletionSource(language, source) {
         var lang = _normLanguage(language);
         if (typeof source !== 'function') return;
@@ -218,7 +221,12 @@
         var list = _completions[lang] || [];
         if (!list.length) return [];
         var langObj = _languageObject(cm, lang);
-        return list.map(function (source) { return langObj.data.of({ autocomplete: source }); });
+        return list.map(function (source) {
+            return langObj.data.of({ autocomplete: function (context) {
+                var tree = cm.language.syntaxTree(context.state);
+                return source(context, { tree: tree, node: tree.resolveInner(context.pos, -1) });
+            } });
+        });
     }
 
     // Syntax errors as diagnostics: the parser leaves an error node where a
@@ -401,19 +409,31 @@
         return locks[0];
     }
 
+    // A single change that touches a lock is dropped whole. A transaction
+    // of several changes (replace all, several cursors) keeps the ones
+    // outside the locks: the locked text minus its islands is handed back
+    // as the ranges to suppress, so the matches inside a lock stay as they
+    // are and the rest are replaced.
     function _lockFilter(cm, fields, inst) {
         return cm.state.EditorState.changeFilter.of(function (tr) {
             if (!tr.docChanged) return true;
             var set = tr.startState.field(fields.lockField, false);
             if (!set || set === cm.state.RangeSet.empty) return true;
-            var hit = null;
+            var hit = null, count = 0;
             tr.changes.iterChangedRanges(function (fromA, toA) {
-                if (hit) return;
-                hit = _lockVerdict(set, fromA, toA);
+                count++;
+                if (!hit) hit = _lockVerdict(set, fromA, toA);
             });
             if (!hit) return true;
             inst._lockHit(hit, tr);
-            return false;
+            if (count <= 1) return false;
+            var locks = [], allows = [];
+            set.between(0, tr.startState.doc.length, function (from, to, value) {
+                if (from < to) (value.kind === 'allow' ? allows : locks).push([from, to]);
+            });
+            var suppressed = [];
+            _subtractRanges(_unionRanges(locks), _unionRanges(allows)).forEach(function (r) { suppressed.push(r[0], r[1]); });
+            return suppressed.length ? suppressed : false;
         });
     }
 

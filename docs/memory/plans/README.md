@@ -5,9 +5,7 @@
 Unfinished and shelved plans: remaining work, decisions made, open questions, where to start.
 
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
-- designer-code-editor-apply.md: How a change typed in the designer's code view reaches the tree (E4, built): dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush
-- designer-code-editor-design.md: Design of the designer code view as built (E1-E2): range map from one emitter, document and lock levels, head/foot rows, what lives in the facade and what in the designer
-- designer-code-editor.md: Plan (2026-10-19) for the editable code view in the visual designer (HTML of the page, CSS/JS files, find and replace): rules, slices E1-E7, open questions, where to start
+- designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, panel screens off CodeMirror 5), open questions
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Design decided for the unfinished Paraşüt e-document driver: credentials, HTTP layer, taxpayer check, scenario, async job ladder, totals check, webhook, account title lookup
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
