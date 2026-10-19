@@ -1,6 +1,6 @@
 ---
 name: product-feed-serving
-description: How product feeds are kept, built and served: config.product_feeds (11.0.4), one secret token per format, product_feed_job.php writing data/feeds/, feed.php with Last-Modified/304, WAF exemption
+description: How product feeds are kept, built and served (PR #571): config.product_feeds (11.0.4), a token per format, product_feed_job.php into data/feeds/, feed.php with 304, WAF exemption
 ---
 
 ## Where is the setup kept?

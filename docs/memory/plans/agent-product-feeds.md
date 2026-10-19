@@ -8,7 +8,7 @@ description: Plan (approved 2026-10-19, in progress: builder, job and feed.php d
 
 ## What is done?
 - Step 1 (PR #561): `includes/fn/product_feeds.php` (`pg_product_feed_build()`, reader, item, per-format rows, JSONL/CSV/TSV writers) and `tests/product_feeds_test.php`. Rules and field mapping: docs/memory/commerce/product-feeds.md.
-- Step 2a: `config.product_feeds` (11.0.4), tokens, `product_feed_job.php` writing `data/feeds/<format>.<ext>`, `feed.php`, WAF exemption: docs/memory/commerce/product-feed-serving.md.
+- Step 2a (PR #571): `config.product_feeds` (11.0.4), tokens, `product_feed_job.php` writing `data/feeds/<format>.<ext>`, `feed.php`, WAF exemption: docs/memory/commerce/product-feed-serving.md.
 
 ## What is decided?
 - Files are named by format (`data/feeds/<format>.<ext>`), not by token, so the token is never on disk in clear; the token is kept as a hash plus a sealed copy.
