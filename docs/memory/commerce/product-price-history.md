@@ -1,6 +1,6 @@
 ---
 name: product-price-history
-description: product_price_history (2026.11.0, 11.0.2): one row per change of products.price, pg_price_history_record() / queue after every writer, initial rows, compare_at_price column, known limits
+description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of products.price, pg_price_history_record() / queue after every writer, initial rows, compare_at_price column, known limits
 ---
 
 ## What is recorded and why?
