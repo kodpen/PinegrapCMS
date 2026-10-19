@@ -23772,5 +23772,12 @@
     "Icons and labels": "Simgeler ve adlar",
     "Icons only": "Yalnız simgeler",
     "The button at the top brings it back": "Üstteki düğme geri getirir",
-    "Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. The button at the foot of it chooses how it shows: open with its labels, mini with its icons only, or hidden; the button at the top left puts it away and brings it back.": "Yazılımın yapabildiği her şey burada toplanır: sitenizin sayfaları ve dosyaları, mağaza, ziyaretçiler ve raporlar. Alttaki düğme menünün nasıl görüneceğini seçer: adlarıyla açık, yalnız simgeleriyle minik ya da gizli; sol üstteki düğme menüyü kaldırır ve geri getirir."
+    "Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. The button at the foot of it chooses how it shows: open with its labels, mini with its icons only, or hidden; the button at the top left puts it away and brings it back.": "Yazılımın yapabildiği her şey burada toplanır: sitenizin sayfaları ve dosyaları, mağaza, ziyaretçiler ve raporlar. Alttaki düğme menünün nasıl görüneceğini seçer: adlarıyla açık, yalnız simgeleriyle minik ya da gizli; sol üstteki düğme menüyü kaldırır ve geri getirir.",
+    "Draft by the browser's built-in AI": "Tarayıcıdaki yapay zekânın taslağı",
+    "The browser's AI is writing…": "Tarayıcıdaki yapay zekâ yazıyor…",
+    "The browser is translating the draft…": "Tarayıcı taslağı çeviriyor…",
+    "The browser's AI could not write a draft. Try again.": "Tarayıcıdaki yapay zekâ bir taslak yazamadı. Tekrar deneyin.",
+    "The browser's AI did not write anything that could be used. Try again.": "Tarayıcıdaki yapay zekâ kullanılabilecek bir şey yazmadı. Tekrar deneyin.",
+    "asked the browser's built-in AI for a draft of {var:1} ({var:2})": "tarayıcıdaki yapay zekâdan {var:1} taslağı istedi ({var:2})",
+    "Given to the AI engines with every text, and to the AI that drafts a field for Write with AI: the tone, the form of address, the terms to keep. Google and the browser engine do not read it.": "Yapay zekâ motorlarına her metinle, Yapay zekâyla yaz için bir alanın taslağını yazan yapay zekâya da verilir: üslup, hitap biçimi, korunacak terimler. Google ve tarayıcı motoru bunu okumaz."
 }
