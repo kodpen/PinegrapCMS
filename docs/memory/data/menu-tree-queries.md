@@ -5,7 +5,7 @@ description: Classic menus (get_menu_content(), get_menu_sequence()) read a menu
 
 ## How is a classic menu read?
 - `pg_menu_tree($menu_id)` (`includes/fn/content.php`): every item of the menu in one query (`ORDER BY sort_order, id`, with the linked page's name and folder), then how many items sit under each of them in a second (`GROUP BY parent_id`, any menu). Kept in a static for the request, so a menu printed twice, or on every page a command-line render loops over, is read once. `pg_menu_tree_from_rows()` groups the rows by parent (pure, `tests/menu_tree_test.php`).
-- `get_menu_content()` (the `<menu>` tag of classic pages and custom layouts) and `get_menu_sequence()` (`<menu_sequence>`, `includes/fn/designer.php`) walk the tree; neither runs a query per level or per item. PR #NNN.
+- `get_menu_content()` (the `<menu>` tag of classic pages and custom layouts) and `get_menu_sequence()` (`<menu_sequence>`, `includes/fn/designer.php`) walk the tree; neither runs a query per level or per item. PR #666.
 - Before, every level was a query and every shown item asked `COUNT(*)` of its children. Sandbox, starter site, 139-item menu (2026-10-19): 168 `menu_items` queries per page view, now 3 (the current item's id in `get_page_content.php` plus the two); a page went from 257 to 92 queries, the catalog from 284 to 119, the express order from 278 to 113.
 
 ## What must the output keep?
