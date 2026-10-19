@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-driver-design
-description: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder, account title lookup), decisions behind both
+description: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder, account name for accounts opened from orders), decisions behind both
 ---
 
 ## Where does it stand?
@@ -24,9 +24,9 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 ## Is there a webhook?
 - No: the v4 API has no webhook or event subscription. State is only ever read back (poll, the queue worker); nothing listens for Paraşüt.
 
-## Can the account card fill itself? (open)
-- `e_invoice_inboxes` gives the alias and `name` (the registered title) and `registered_at`. GİB tax plate lookup has a captcha, MERSİS no open API. Address and tax office come from the customer or the order.
-- Plan: a "Lookup" button beside the tax number that fills the title from `e_invoice_inboxes.name`, title correction in `erp_account_for_contact()`.
+## Can the account card fill itself? (partly done)
+- Done (#624): Query beside the tax number on the account form fills the name from GİB's register (docs/memory/erp/erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
+- Open: the same correction for an account opened from an order (`erp_account_for_contact()`). It would put a provider call into the order or invoice path; not started, to be decided.
 
 ## How is testing done without a sandbox?
 - Live tests only (the staging host does not take merchant credentials). The demo application the owner holds points at a demo company; low-value one-line invoices there, with the cancel path tried on each.
