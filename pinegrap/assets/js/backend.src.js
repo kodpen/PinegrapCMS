@@ -1361,22 +1361,31 @@ $(document).ready(function () {
        boxes as they stand -- then prints the answer under the button. No new
        tab: a popup is the one part of this a browser is free to refuse, and
        an answer nobody sees is the fault all over again.
-       Nothing is saved by it; that is still the pane's Save. */
+       Nothing is saved by it; that is still the pane's Save.
+       The Paraşüt card's Connect button is the same handler with another
+       endpoint and another box prefix (data-pg-fields): it posts the
+       parasut_* boxes and prints the answer in the result box nearest to
+       it, the one in its own block. */
     $(document).on("click", "button.pg-edoc-test", function (event) {
 
         event.preventDefault();
 
         var $button = $(this);
         var action = $button.attr("data-pg-action");
+        var prefix = $button.attr("data-pg-fields") || "edoc_";
 
         if (!action || $button.prop("disabled")) {
             return;
         }
 
         var $card = $button.closest(".pg-set-card");
-        var $result = $card.find(".pg-edoc-test-result").first();
+        var $result = $button.closest(".col-12, .pg-f-md").find(".pg-edoc-test-result").first();
         var token = $("#pg_settings_modal_token").val();
         var data = new FormData();
+
+        if (!$result.length) {
+            $result = $card.find(".pg-edoc-test-result").first();
+        }
 
         if (typeof token === "undefined") {
             token = $button.closest("form").find("input[name=token]").val();
@@ -1385,7 +1394,7 @@ $(document).ready(function () {
         data.append("token", token || "");
         data.append("format", "json");
 
-        $card.find("[name^='edoc_']").each(function () {
+        $card.find("[name^='" + prefix + "']").each(function () {
 
             if (this.disabled || (((this.type === "checkbox") || (this.type === "radio")) && !this.checked)) {
                 return;
@@ -1422,6 +1431,29 @@ $(document).ready(function () {
             .then(function () {
                 $button.prop("disabled", false);
             });
+    });
+
+    /* The Paraşüt authorization link follows the Client ID box as it is
+       typed, so an operator can authorize before the first save; with no
+       client id there is nothing to open and the link is disabled. The
+       redirect is the out-of-band one the API documentation names. */
+    $(document).on("input change", "#parasut_client_id", function () {
+
+        var $link = $(this).closest(".pg-set-card").find("a.pg-parasut-authorize").first();
+        var base = $link.attr("data-pg-base");
+        var clientId = $.trim($(this).val());
+
+        if (!$link.length || !base) {
+            return;
+        }
+
+        if (clientId === "") {
+            $link.addClass("disabled").attr("href", "");
+            return;
+        }
+
+        $link.removeClass("disabled").attr("href", base + "?client_id=" + encodeURIComponent(clientId)
+            + "&redirect_uri=" + encodeURIComponent("urn:ietf:wg:oauth:2.0:oob") + "&response_type=code");
     });
 
     if ($("input.timepicker").length > 0) {

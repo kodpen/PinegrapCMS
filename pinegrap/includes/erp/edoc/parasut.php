@@ -33,7 +33,7 @@ function erp_edoc_parasut_info()
         'description' => lang('Cloud pre-accounting by Mikrogrup. e-Invoice, e-Archive and e-Delivery note through the Paraşüt API; the store needs a Paraşüt subscription with API access.'),
         'docs_url' => 'https://apidocs.parasut.com/',
         'capabilities' => array('einvoice', 'earchive', 'ewaybill', 'inbox'),
-        'settings_note' => lang('The Paraşüt client id, secret, user name, password and company id are the Paraşüt boxes further down on this card.'),
+        'settings_note' => lang('The Paraşüt client id, secret and company id are the Paraşüt boxes further down on this card; authorize Pinegrap there with Connect (or enter the Paraşüt user name and password).'),
     );
 }
 
@@ -61,7 +61,7 @@ function erp_edoc_parasut_ping($credentials)
     $company = defined('PARASUT_COMPANY_ID') ? trim((string) PARASUT_COMPANY_ID) : '';
 
     if ($company === '') {
-        return array('success' => false, 'message' => lang('The Paraşüt company id is empty. Enter it on the Paraşüt card of the commerce settings.'), 'details' => array());
+        return array('success' => false, 'message' => lang('The Paraşüt company id is empty. Connect on the Paraşüt card of the commerce settings, or enter it there.'), 'details' => array());
     }
 
     $token = parasut_get_token();
@@ -70,10 +70,35 @@ function erp_edoc_parasut_ping($credentials)
         return array('success' => false, 'message' => (string) $token['error'], 'details' => array());
     }
 
+    // The token is good; the company it opens is read back so a company id
+    // typed for another account is caught here and not on the first invoice.
+    $me = function_exists('parasut_me') ? parasut_me((string) $token['token']) : array('success' => false, 'companies' => array(), 'email' => '', 'error' => '');
+    $companies = (array) ($me['companies'] ?? array());
+
+    if (!empty($me['success']) && !empty($companies) && !isset($companies[$company])) {
+        $named = array();
+
+        foreach ($companies as $id => $name) {
+            $named[] = ((string) $name !== '') ? $name . ' (' . $id . ')' : (string) $id;
+        }
+
+        return array(
+            'success' => false,
+            'message' => lang(array('string' => 'The Paraşüt user cannot see company {var:1}. Its companies: {var:2}', 'vars' => array($company, implode(', ', $named)))),
+            'details' => array('company_id' => $company),
+        );
+    }
+
+    $name = (string) ($companies[$company] ?? '');
+    $company_text = ($name !== '') ? $name . ' (' . $company . ')' : $company;
+    $email = (string) ($me['email'] ?? '');
+
     return array(
         'success' => true,
-        'message' => lang(array('string' => 'Paraşüt answered; company {var:1}.', 'vars' => $company)),
-        'details' => array('company_id' => $company),
+        'message' => ($email !== '')
+            ? lang(array('string' => 'Paraşüt answered; company {var:1}, user {var:2}.', 'vars' => array($company_text, $email)))
+            : lang(array('string' => 'Paraşüt answered; company {var:1}.', 'vars' => $company_text)),
+        'details' => array('company_id' => $company, 'email' => $email),
     );
 }
 
