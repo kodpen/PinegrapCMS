@@ -248,6 +248,47 @@ function pg_short_link_name_problem($name)
         return lang('A name needs at least one letter or number beside its wildcards.');
     }
 
+    // A browser resolves . and .. in a path before it asks, so a name with
+    // such a part could never be opened.
+    if (preg_match('#(^|/)\.{1,2}(/|$)#', $name) === 1) {
+        return lang('A part of the name between slashes cannot be . or .. alone.');
+    }
+
+    return '';
+}
+
+/**
+ * What is wrong with the address a link sends visitors to, or '' when it can
+ * be used: a web address (http or https) or a path on this site, without
+ * spaces or a backslash, not protocol-relative, within the column. The
+ * external API and the CSV import ask this.
+ *
+ * @param mixed $url
+ * @return string
+ */
+function pg_short_link_url_problem($url)
+{
+    $url = trim(is_scalar($url) ? (string) $url : '');
+
+    if ($url === '') {
+        return lang('Destination URL is required.');
+    }
+
+    if (preg_match('/[\x00-\x20\x7f]/', $url) === 1) {
+        return lang('Sorry, you may not enter a space in the URL.');
+    }
+
+    if (((preg_match('/^([A-Za-z][A-Za-z0-9+.-]*):/', $url, $found) === 1) && !in_array(strtolower($found[1]), array('http', 'https'), true))
+        || (strpos($url, '//') === 0) || (strpos($url, '\\') !== false)) {
+        return lang('The address must be a web address or a path on this site.');
+    }
+
+    // The column takes 2048 characters since 11.0.12 (255 before); a longer
+    // address would be cut short in silence.
+    if (mb_strlen($url, 'UTF-8') > pg_short_link_url_max()) {
+        return lang(array('string' => 'The address can be at most {var:1} characters long.', 'vars' => array(pg_short_link_url_max())));
+    }
+
     return '';
 }
 
@@ -1042,4 +1083,262 @@ function pg_short_link_redirect_columns($link, $code = null, $stored = 0, $links
         ),
         'problem' => $problem,
     );
+}
+
+/**
+ * The lines of a short link CSV file.
+ *
+ * Columns: the address (a name, a path or a full old address), where it sends
+ * visitors and, optionally, the code (301 when empty). The separator is a
+ * comma, or the semicolon or tab a spreadsheet wrote when the first line has
+ * one of those and no comma. A byte order mark is dropped, and bytes that are
+ * not UTF-8 are read as the Windows Turkish code page (what Excel writes in
+ * Turkey). A first line whose second cell holds no / is a heading (from,to,
+ * Eski adres;Yeni adres) and is skipped, as are empty lines. The apostrophe
+ * pg_short_link_csv() puts before a formula character is taken off again.
+ *
+ * @param string $bytes
+ * @return array[] array('line' => int, 'from' => string, 'to' => string, 'code' => string)
+ */
+function pg_short_link_csv_rows($bytes)
+{
+    $bytes = (string) $bytes;
+
+    if (substr($bytes, 0, 3) === "\xEF\xBB\xBF") {
+        $bytes = substr($bytes, 3);
+    }
+
+    if (!mb_check_encoding($bytes, 'UTF-8')) {
+        $encodings = array_map('strtolower', mb_list_encodings());
+        $bytes = (string) mb_convert_encoding($bytes, 'UTF-8', in_array('windows-1254', $encodings, true) ? 'Windows-1254' : 'ISO-8859-9');
+    }
+
+    $bytes = str_replace(array("\r\n", "\r"), "\n", $bytes);
+    $first_line = (string) strtok($bytes, "\n");
+    $delimiter = ',';
+
+    if (strpos($first_line, ',') === false) {
+        if (strpos($first_line, ';') !== false) {
+            $delimiter = ';';
+        } elseif (strpos($first_line, "\t") !== false) {
+            $delimiter = "\t";
+        }
+    }
+
+    $handle = fopen('php://temp', 'r+');
+    fwrite($handle, $bytes);
+    rewind($handle);
+
+    $cell = function ($cells, $index) {
+        $text = isset($cells[$index]) ? trim((string) $cells[$index]) : '';
+
+        return (preg_match("/^'[=+\-@]/", $text) === 1) ? substr($text, 1) : $text;
+    };
+
+    $rows = array();
+    $line = 0;
+    $first = true;
+
+    while (($cells = fgetcsv($handle, 0, $delimiter, '"', '\\')) !== false) {
+        $line++;
+
+        if (!is_array($cells) || ((count($cells) === 1) && (trim((string) $cells[0]) === ''))) {
+            continue;
+        }
+
+        $row = array('line' => $line, 'from' => $cell($cells, 0), 'to' => $cell($cells, 1), 'code' => $cell($cells, 2));
+
+        if ($first) {
+            $first = false;
+
+            if (strpos($row['to'], '/') === false) {
+                continue;
+            }
+        }
+
+        $rows[] = $row;
+    }
+
+    fclose($handle);
+
+    return $rows;
+}
+
+/**
+ * Where a link leads, as the CSV file writes it: the address of a URL link as
+ * it was entered, a page, product group, product or file as its path from the
+ * site's root (a page with the link's tracking code). '' when the
+ * destination is gone.
+ *
+ * @param array  $link A short_links row with page_name, the catalog address names and file_name
+ * @param string $base The site's base path (PATH)
+ * @return string
+ */
+function pg_short_link_csv_target($link, $base = '/')
+{
+    $base = '/' . ltrim((string) $base, '/');
+    $type = (string) $link['destination_type'];
+
+    if ($type === 'url') {
+        return (string) $link['url'];
+    }
+
+    if ($type === 'file') {
+        return ((string) ($link['file_name'] ?? '') === '') ? '' : $base . $link['file_name'];
+    }
+
+    if ((string) ($link['page_name'] ?? '') === '') {
+        return '';
+    }
+
+    $target = $base . $link['page_name'];
+
+    if (($type === 'product_group') && ((string) ($link['product_group_address_name'] ?? '') !== '')) {
+        $target .= '/' . $link['product_group_address_name'];
+    }
+
+    if (($type === 'product') && ((string) ($link['product_address_name'] ?? '') !== '')) {
+        $target .= '/' . $link['product_address_name'];
+    }
+
+    if ((string) ($link['tracking_code'] ?? '') !== '') {
+        $target .= '?t=' . rawurlencode((string) $link['tracking_code']);
+    }
+
+    return $target;
+}
+
+/**
+ * Links as a CSV file: a heading line (from,to,code), then one line per link,
+ * the address as a path from the site's root. Every cell is quoted, a cell
+ * that starts with a formula character gets an apostrophe in front
+ * (csv_cell()), and the byte order mark lets a spreadsheet read the file as
+ * UTF-8.
+ *
+ * @param array[] $links Rows for pg_short_link_csv_target(), with name and redirect_code
+ * @param string  $base  The site's base path (PATH)
+ * @return string
+ */
+function pg_short_link_csv($links, $base = '/')
+{
+    $base = '/' . ltrim((string) $base, '/');
+    $lines = array('from,to,code');
+
+    foreach ((array) $links as $link) {
+        $lines[] = '"' . csv_cell($base . $link['name']) . '","' . csv_cell(pg_short_link_csv_target($link, $base)) . '",' . (isset($link['redirect_code']) ? (int) $link['redirect_code'] : 0);
+    }
+
+    return "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n";
+}
+
+/**
+ * Adds the lines of a CSV file as short links to addresses.
+ *
+ * Each line is checked the way a link saved on its own screen is: the name
+ * rule, a name no page, file, folder or other link holds, an address a link
+ * can send visitors to, and the loop checks, against the links already there
+ * and the ones added by the lines before it, so a file may chain its own
+ * addresses but cannot close a loop. A line whose name a short link already
+ * has is skipped, or, with $replace, gives that link its new address and code
+ * when it is a link to an address; a link that shows a page, product or file
+ * is never turned into one.
+ *
+ * @param array[] $rows    pg_short_link_csv_rows()
+ * @param bool    $replace
+ * @param int     $user_id
+ * @return array array('added' => int, 'updated' => int, 'skipped' => int, 'errors' => array of array('line' => int, 'message' => string))
+ */
+function pg_short_link_import($rows, $replace, $user_id = 0)
+{
+    $summary = array('added' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => array());
+
+    // The answer and the pattern flag have no column before 11.0.12; the
+    // import screen does not open then.
+    if (!pg_short_link_redirects_ready()) {
+        return $summary;
+    }
+
+    $prepared = pg_short_link_prepare(pg_short_link_redirect_links());
+    $by_key = array();
+
+    foreach ($prepared['by_id'] as $link) {
+        $by_key[pg_short_link_key($link['name'])] = $link;
+    }
+
+    $modes = pg_short_link_modes_ready();
+
+    foreach ((array) $rows as $row) {
+        $line = (int) $row['line'];
+        $name = pg_short_link_name_from_address($row['from']);
+        $url = trim((string) $row['to']);
+        $code = ((string) $row['code'] === '') ? '301' : (string) $row['code'];
+
+        $problem = pg_short_link_name_problem($name);
+
+        if ($problem === '') {
+            $problem = pg_short_link_url_problem($url);
+        }
+
+        if (($problem === '') && ((preg_match('/^\d+$/', $code) !== 1) || !in_array((int) $code, pg_short_link_answer_codes(), true))) {
+            $problem = lang('The code must be 301, 302 or 0; an empty code is 301.');
+        }
+
+        $key = pg_short_link_key($name);
+        $existing = ($problem === '') && isset($by_key[$key]) ? $by_key[$key] : null;
+
+        if ($existing !== null) {
+            if (!$replace) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            if ((string) $existing['destination_type'] !== 'url') {
+                $problem = lang('A short link to a page, product or file has this name; it is changed on its own screen.');
+            }
+        } elseif (($problem === '') && (check_name_availability(array('name' => $name)) == false)) {
+            $problem = lang('The name that you entered is already in use, so please enter a different name.');
+        }
+
+        $link = array('id' => ($existing !== null) ? (int) $existing['id'] : 0, 'name' => $name, 'destination_type' => 'url', 'url' => $url);
+
+        if ($problem === '') {
+            $answer = pg_short_link_redirect_columns($link, (int) $code, 0, $prepared);
+
+            if ($answer['problem'] !== null) {
+                $problem = $answer['problem']['message'];
+            }
+        }
+
+        if ($problem !== '') {
+            $summary['errors'][] = array('line' => $line, 'message' => $problem);
+            continue;
+        }
+
+        $columns = "url = '" . escape($url) . "',
+            redirect_code = '" . (int) $answer['columns']['redirect_code'] . "',
+            is_pattern = '" . (int) $answer['columns']['is_pattern'] . "',
+            last_modified_user_id = '" . (int) $user_id . "',
+            last_modified_timestamp = UNIX_TIMESTAMP()";
+
+        if ($existing !== null) {
+            db("UPDATE short_links SET " . $columns . " WHERE id = '" . (int) $existing['id'] . "'");
+            $summary['updated']++;
+        } else {
+            db("INSERT INTO short_links SET
+                name = '" . escape($name) . "',
+                destination_type = 'url',
+                " . ($modes ? "link_mode = 'permanent'," : "") . "
+                created_user_id = '" . (int) $user_id . "',
+                created_timestamp = UNIX_TIMESTAMP(),
+                " . $columns);
+
+            $link['id'] = (int) mysqli_insert_id(db::$con);
+            $summary['added']++;
+        }
+
+        pg_short_link_prepared_put($prepared, $link);
+        $by_key[$key] = $link;
+    }
+
+    return $summary;
 }

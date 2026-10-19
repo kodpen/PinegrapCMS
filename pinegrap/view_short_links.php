@@ -55,6 +55,37 @@ require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 
 $sql_live = (pg_short_link_live_filter() != '') ? ' AND ' . pg_short_link_live_filter() : '';
 
+// The named links as a CSV file (from,to,code), the form import_short_links.php
+// reads back. A one-time link has no name to list.
+if (($_GET['export'] ?? '') === 'csv') {
+    $export_links = db_items(
+        "SELECT
+            short_links.name,
+            short_links.destination_type,
+            short_links.url,
+            short_links.tracking_code,
+            " . (pg_short_link_redirects_ready() ? "short_links.redirect_code," : "") . "
+            page.page_name,
+            product_groups.address_name AS product_group_address_name,
+            products.address_name AS product_address_name,
+            files.name AS file_name
+        FROM short_links
+        LEFT JOIN page ON short_links.page_id = page.page_id
+        LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
+        LEFT JOIN products ON short_links.product_id = products.id
+        LEFT JOIN files ON short_links.file_id = files.id
+        WHERE short_links.name <> '' AND short_links.destination_type <> 'workspace_guest'" . $sql_live . "
+        ORDER BY short_links.name");
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="short-links-' . date('Y-m-d') . '.csv"');
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: no-store, private');
+
+    echo pg_short_link_csv($export_links, PATH);
+    exit();
+}
+
 // get the total number of short links
 $query = "SELECT COUNT(*) FROM short_links WHERE destination_type <> 'workspace_guest'" . $sql_live;
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -231,6 +262,8 @@ pg_page_shell(
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="add_short_link.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        ' . (pg_short_link_redirects_ready() ? '<a class="btn btn-sm btn-ghost" href="import_short_links.php"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . lang('Import') . '</a>' : '') . '
+                        <a class="btn btn-sm btn-ghost" href="view_short_links.php?export=csv"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Export') . '</a>
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>

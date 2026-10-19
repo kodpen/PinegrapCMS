@@ -6,7 +6,8 @@
  * a name taken from a pasted address and the name rule, names with a * and
  * what each * matched, where an address on this site leads, the checks that
  * keep a link from leading to itself or round a loop, the address a visitor
- * is sent to and the status it is sent with. The runner has no connection,
+ * is sent to and the status it is sent with, and the CSV file of links that
+ * the list exports and the import reads. The runner has no connection,
  * so the columns of 2026.11.0 (11.0.12) read as missing: names stop at 100
  * characters and pg_short_link_redirect_columns() writes nothing, as on a
  * site that has not run the upgrade.
@@ -271,4 +272,79 @@ function test_short_link_redirects_columns_wait_for_the_upgrade()
 	pg_assert_same(null, $answer['problem'], 'nor checked');
 	pg_assert_same(100, pg_short_link_name_max(), 'the name column before the upgrade');
 	pg_assert_same(255, pg_short_link_url_max(), 'the address column before the upgrade');
+}
+
+function test_short_link_redirects_name_parts_that_cannot_be_opened()
+{
+	pg_assert_true(pg_short_link_name_problem('../gizli') !== '', 'two dots at the start');
+	pg_assert_true(pg_short_link_name_problem('a/./b') !== '', 'one dot in the middle');
+	pg_assert_true(pg_short_link_name_problem('a/..') !== '', 'two dots at the end');
+	pg_assert_same('', pg_short_link_name_problem('a/..b/c.'), 'dots inside a part');
+	pg_assert_same('', pg_short_link_name_problem('.well'), 'a part that starts with a dot');
+}
+
+function test_short_link_redirects_url_problem()
+{
+	pg_assert_same('', pg_short_link_url_problem('https://example.com/a?b=1#c'), 'web address');
+	pg_assert_same('', pg_short_link_url_problem('/yeni/$1'), 'path from the root');
+	pg_assert_same('', pg_short_link_url_problem('yeni'), 'path below the site');
+	pg_assert_true(pg_short_link_url_problem('') !== '', 'empty');
+	pg_assert_true(pg_short_link_url_problem('/a b') !== '', 'space');
+	pg_assert_true(pg_short_link_url_problem('javascript:alert(1)') !== '', 'another scheme');
+	pg_assert_true(pg_short_link_url_problem('//other.com/x') !== '', 'protocol-relative');
+	pg_assert_true(pg_short_link_url_problem('/\\other.com') !== '', 'backslash');
+	pg_assert_true(pg_short_link_url_problem('/' . str_repeat('a', 300)) !== '', 'longer than the column before the upgrade');
+	pg_assert_true(pg_short_link_url_problem(array('/a')) !== '', 'a list');
+}
+
+function test_short_link_redirects_csv_reader()
+{
+	$rows = pg_short_link_csv_rows("\xEF\xBB\xBF" . "from,to,code\r\n/eski,/yeni,301\r\n\r\n\"/a,b\",\"/c \"\"d\"\"\",\r\n'=eski,'+yeni,302\r\n");
+
+	pg_assert_same(3, count($rows), 'heading and empty line skipped');
+	pg_assert_same(array('line' => 2, 'from' => '/eski', 'to' => '/yeni', 'code' => '301'), $rows[0], 'plain line');
+	pg_assert_same(array('line' => 4, 'from' => '/a,b', 'to' => '/c "d"', 'code' => ''), $rows[1], 'quoted cells');
+	pg_assert_same(array('line' => 5, 'from' => '=eski', 'to' => '+yeni', 'code' => '302'), $rows[2], 'the apostrophe before a formula character comes off');
+
+	$semicolon = pg_short_link_csv_rows("Eski adres;Yeni adres\n/a;/b\n");
+	pg_assert_same(1, count($semicolon), 'semicolons, Turkish heading');
+	pg_assert_same('/b', $semicolon[0]['to'], 'semicolon cell');
+
+	$tab = pg_short_link_csv_rows("/a\t/b\t302\n");
+	pg_assert_same(array('line' => 1, 'from' => '/a', 'to' => '/b', 'code' => '302'), $tab[0], 'tabs, no heading');
+
+	$windows = pg_short_link_csv_rows("/\xFCr\xFCn,/\xE7anta\n");
+	pg_assert_same('/ürün', $windows[0]['from'], 'Windows-1254 bytes read as Turkish');
+	pg_assert_same('/çanta', $windows[0]['to'], 'Windows-1254 second cell');
+
+	pg_assert_same(array(), pg_short_link_csv_rows(''), 'empty file');
+}
+
+function test_short_link_redirects_csv_writer()
+{
+	$links = array(
+		array('name' => 'ürün/eski', 'destination_type' => 'url', 'url' => 'https://example.com/a,b', 'redirect_code' => '301'),
+		array('name' => 'kampanya', 'destination_type' => 'page', 'page_name' => 'yaz', 'tracking_code' => 'tw 1', 'url' => '', 'redirect_code' => '0'),
+		array('name' => 'urun', 'destination_type' => 'product', 'page_name' => 'magaza', 'product_address_name' => 'canta', 'tracking_code' => '', 'url' => ''),
+		array('name' => 'belge', 'destination_type' => 'file', 'file_name' => 'belge.pdf', 'tracking_code' => '', 'url' => '', 'redirect_code' => '302'),
+		array('name' => 'formul', 'destination_type' => 'url', 'url' => '=1+1', 'redirect_code' => '301'),
+	);
+
+	$csv = pg_short_link_csv($links, '/site/');
+
+	pg_assert_same("\xEF\xBB\xBF" . "from,to,code\r\n"
+		. "\"/site/ürün/eski\",\"https://example.com/a,b\",301\r\n"
+		. "\"/site/kampanya\",\"/site/yaz?t=tw%201\",0\r\n"
+		. "\"/site/urun\",\"/site/magaza/canta\",0\r\n"
+		. "\"/site/belge\",\"/site/belge.pdf\",302\r\n"
+		. "\"/site/formul\",\"'=1+1\",301\r\n", $csv, 'file');
+
+	// What the writer wrote, the reader reads back.
+	$rows = pg_short_link_csv_rows($csv);
+
+	pg_assert_same(5, count($rows), 'round trip');
+	pg_assert_same('ürün/eski', pg_short_link_name_from_address($rows[0]['from'], '/site/'), 'name back without the base path');
+	pg_assert_same('https://example.com/a,b', $rows[0]['to'], 'address with a comma');
+	pg_assert_same('=1+1', $rows[4]['to'], 'formula guard taken off');
+	pg_assert_same('', pg_short_link_csv_target(array('destination_type' => 'page', 'page_name' => null), '/'), 'a page that is gone');
 }

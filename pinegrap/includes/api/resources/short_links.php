@@ -358,24 +358,13 @@ function api_short_link_url_or_fail($url) {
 
 	$url = trim((string)$url);
 
-	if (preg_match('/[\x00-\x20\x7f]/', $url)) {
+	// An empty address is left to the destination check, which names the
+	// field the way the file manager does.
+	$problem = ($url === '') ? '' : pg_short_link_url_problem($url);
 
-		api_fail_validation(lang('Sorry, you may not enter a space in the URL.'), 'url');
+	if ($problem !== '') {
 
-	}
-
-	if ((preg_match('/^([A-Za-z][A-Za-z0-9+.-]*):/', $url, $found) && !in_array(strtolower($found[1]), array('http', 'https'), true))
-		|| (strpos($url, '//') === 0) || (strpos($url, '\\') !== false)) {
-
-		api_fail_validation(lang('The address must be a web address or a path on this site.'), 'url');
-
-	}
-
-	// The column takes 2048 characters since 2026.11.0 (255 before); a longer
-	// address would be cut short in silence.
-	if (mb_strlen($url, 'UTF-8') > pg_short_link_url_max()) {
-
-		api_fail_validation(lang(array('string' => 'The address can be at most {var:1} characters long.', 'vars' => array(pg_short_link_url_max()))), 'url');
+		api_fail_validation($problem, 'url');
 
 	}
 

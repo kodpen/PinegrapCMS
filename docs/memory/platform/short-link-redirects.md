@@ -33,6 +33,6 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 
 ## What is left?
 - The File Manager's short link window keeps the stored answer and offers no choice yet (`view_folders.php`).
-- CSV import and export on the short link list (`plans/seo-toolkit-redirects.md`).
+- Lists of links as CSV files: `short-link-csv.md`.
 
 Tests: `tests/short_link_redirects_test.php`.

@@ -1,6 +1,6 @@
 ---
 name: seo-toolkit-redirects
-description: Plan (approved 2026-10-19, in progress: step 1 done, redirects are short link options): short link CSV, File Manager choice, slug-change 301, 404 log, canonical, llms.txt, AI-bot robots
+description: Plan (approved 2026-10-19, in progress: steps 1-2 done, redirects are short link options with CSV): File Manager choice, slug-change 301, 404 log, canonical, llms.txt, AI-bot robots
 ---
 
 ## Why?
@@ -8,7 +8,7 @@ description: Plan (approved 2026-10-19, in progress: step 1 done, redirects are 
 
 ## What is decided?
 - Owner decision 2026-10-19: no separate redirect manager (PR #654 closed). A redirect is a short link that answers 301 or 302; old addresses, Turkish letters and `*` patterns are short link names: `docs/memory/platform/short-link-redirects.md`.
-- CSV on the short link list: export `from,to,code`; import makes URL short links with that answer, 5 MB and 10,000 rows at most. A name a page, file or folder holds is refused per line; a short link of the same name is skipped, or replaced when asked. Every line passes the save checks against one set kept current (`pg_short_link_prepare()`, `pg_short_link_prepared_put()`). The CSV reader of the closed PR #654 (`pinegrap/includes/fn/redirects.php` there: BOM, Windows-1254, `;` or tab, heading line) is the model.
+- CSV on the short link list: `docs/memory/platform/short-link-csv.md`.
 - Automatic redirect: when a page or folder slug changes in the designer or the page settings, a 301 short link from the old path is offered (checked by default), translated prefixes included.
 - 404 log: `not_found_log` (path, referrer, count, first/last seen, user agent class) written by `output_error()` for 404s only, after `pg_short_link_not_found()` had its chance, grouped by path, with "Create redirect" per row (a 301 short link); retention 90 days and a row cap like the WAF log; bot hits excluded by the WAF classification.
 - Per-page SEO extras in page settings: canonical override (URL), optional `noarchive`/`max-snippet` directives. The `custom_jsonld` editor with validation is in the visual designer since #582 (`pg_page_custom_jsonld_check()`); the classic `edit_page.php` can reuse the same check.
@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19, in progress: step 1 done, redirects are 
 
 ## What remains?
 1. Done: redirects as short link options (11.0.12, router, 404-time patterns, classic screens, File Manager server side, API).
-2. CSV import and export on the short link list (S).
+2. Done: CSV import and export on the short link list.
 3. File Manager short link window: the answer choice (`view_folders.php`, after the open Excel cell edit PR on that file merges) (S).
 4. Slug-change hook in designer save and page edit (S).
 5. 404 logging with retention (S).
@@ -29,4 +29,4 @@ description: Plan (approved 2026-10-19, in progress: step 1 done, redirects are 
 - Should redirects apply before the WAF? No: after the WAF, like every page.
 
 ## Where to start?
-- Step 2; read `docs/memory/platform/short-link-redirects.md`, `view_short_links.php` and `docs/memory/commerce/short-link-recycle-bin.md`.
+- Step 3 once `view_folders.php` is free, else step 4 or 5; read `docs/memory/platform/short-link-redirects.md` and `router.php`.
