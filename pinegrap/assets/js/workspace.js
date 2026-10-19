@@ -18197,6 +18197,14 @@
             bar.appendChild(exportAll);
         }
 
+        // Notes from another app: Markdown and text files, or a zip of them
+        // (workspace_notes_import.php).
+        if (CFG.urls.notes_import && CFG.notes_import) {
+            var importNotes = button('btn btn-sm btn-ghost', t('notes_import'), 'bi-box-arrow-in-down');
+            importNotes.addEventListener('click', function () { save().then(openImport); });
+            bar.appendChild(importNotes);
+        }
+
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
         var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
@@ -18969,6 +18977,503 @@
 
             document.body.appendChild(node);
             node.addEventListener('hidden.bs.modal', function () { node.remove(); });
+            bootstrap.Modal.getOrCreateInstance(node).show();
+        }
+
+        // Notes brought in from another app, in the steps of
+        // workspace_notes_import.php: the files are picked and read through,
+        // the person sees what each would become and unticks what they do
+        // not want, the rest is written a batch at a time, then the links
+        // between the notes are pointed at them.
+        function openImport() {
+            var limits = CFG.notes_import || {};
+            var node = el('div', 'modal fade ws-nb-import');
+            var stage = '';
+            var rows = [];
+            var mode = 'update';
+            var capacity = 0;
+            var running = false;
+            var closed = false;
+
+            node.tabIndex = -1;
+            node.setAttribute('data-bs-backdrop', 'static');
+            node.innerHTML = '<div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-md-down"><div class="modal-content">'
+                + '<div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
+                + '<div class="modal-body"></div><div class="modal-footer"></div></div></div>';
+            node.querySelector('.modal-title').appendChild(icon('bi-box-arrow-in-down', 'me-2'));
+            node.querySelector('.modal-title').appendChild(document.createTextNode(t('notes_import_title')));
+
+            var closeX = node.querySelector('.btn-close');
+            var body = node.querySelector('.modal-body');
+            var footer = node.querySelector('.modal-footer');
+
+            closeX.setAttribute('aria-label', t('close'));
+
+            function send(payload) {
+                var form = (payload instanceof FormData);
+
+                return fetch(CFG.urls.notes_import, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: form ? {} : { 'Content-Type': 'application/json' },
+                    body: form ? payload : JSON.stringify(payload)
+                }).then(function (response) {
+                    return response.json().catch(function () {
+                        throw new Error(t('error_generic'));
+                    });
+                }).then(function (json) {
+                    if (!json || json.status !== 'success') {
+                        throw new Error((json && json.message) ? json.message : t('error_generic'));
+                    }
+
+                    return json.data || {};
+                });
+            }
+
+            function closeButton(label) {
+                var close = button('btn btn-sm btn-ghost', label || t('cancel'));
+                close.setAttribute('data-bs-dismiss', 'modal');
+                return close;
+            }
+
+            function busy(text) {
+                clear(body);
+                clear(footer);
+
+                var box = el('div', 'd-flex align-items-center gap-2 py-4 justify-content-center text-body-secondary');
+                var spinner = el('span', 'spinner-border spinner-border-sm');
+                spinner.setAttribute('role', 'status');
+                box.appendChild(spinner);
+                box.appendChild(el('span', '', text));
+                body.appendChild(box);
+
+                return box;
+            }
+
+            // ── the files ──
+
+            function drawPick(error) {
+                clear(body);
+                clear(footer);
+
+                body.appendChild(el('p', 'small text-body-secondary', t('notes_import_intro')));
+
+                var drop = el('label', 'ws-nb-import-drop');
+                var input = el('input', 'visually-hidden');
+
+                input.type = 'file';
+                input.multiple = true;
+                input.accept = '.md,.markdown,.txt,.zip';
+                drop.appendChild(icon('bi-cloud-arrow-up'));
+                drop.appendChild(el('span', 'fw-semibold', t('notes_import_pick')));
+                drop.appendChild(el('span', 'small text-body-secondary', t('notes_import_limit', Math.max(1, Math.floor((limits.max || 0) / 1048576)))));
+                drop.appendChild(input);
+
+                input.addEventListener('change', function () { upload(input.files); });
+
+                drop.addEventListener('dragover', function (event) {
+                    event.preventDefault();
+                    drop.classList.add('ws-nb-import-over');
+                });
+                drop.addEventListener('dragleave', function () { drop.classList.remove('ws-nb-import-over'); });
+                drop.addEventListener('drop', function (event) {
+                    event.preventDefault();
+                    drop.classList.remove('ws-nb-import-over');
+                    upload(event.dataTransfer ? event.dataTransfer.files : []);
+                });
+
+                body.appendChild(drop);
+
+                if (error) {
+                    body.appendChild(el('div', 'alert alert-danger small mt-3 mb-0', error));
+                }
+
+                footer.appendChild(closeButton());
+            }
+
+            function upload(files) {
+                var list = Array.prototype.slice.call(files || []);
+                var size = 0;
+
+                if (!list.length) {
+                    return;
+                }
+
+                list.forEach(function (file) { size += file.size; });
+
+                // The server takes only so many files in one request and
+                // drops the rest without a word.
+                if (limits.files && list.length > limits.files) {
+                    drawPick(t('notes_import_too_many', limits.files));
+                    return;
+                }
+
+                if (limits.max && size > limits.max) {
+                    drawPick(t('notes_import_too_large', Math.max(1, Math.floor(limits.max / 1048576))));
+                    return;
+                }
+
+                var form = new FormData();
+
+                form.append('step', 'upload');
+                form.append('token', CFG.token);
+                list.forEach(function (file) { form.append('files[]', file, file.name); });
+
+                busy(t('notes_import_reading'));
+
+                send(form).then(function (data) {
+                    // Closed while the files were read: nothing is kept.
+                    if (closed) {
+                        send({ step: 'discard', token: CFG.token, stage: data.stage || '' }).catch(function () {});
+                        return;
+                    }
+
+                    stage = data.stage || '';
+                    rows = data.rows || [];
+                    capacity = data.capacity || 0;
+                    drawPreview(data);
+                }).catch(function (error) {
+                    if (!closed) {
+                        drawPick(error.message);
+                    }
+                });
+            }
+
+            // ── what each file would become ──
+
+            // A row writes a new note when it is not one exported from here
+            // that the person may bring up to date, or when they asked for
+            // copies.
+            function makesNote(row) {
+                return row.kind === 'new' || (mode === 'new' && (row.kind === 'update' || row.kind === 'same'));
+            }
+
+            function chosenNew() {
+                return rows.filter(function (row) { return row.checked && makesNote(row); }).length;
+            }
+
+            // Ticked rows that would make more notes than the person may
+            // still keep are unticked, the last ones first.
+            function fit() {
+                var room = capacity;
+
+                rows.forEach(function (row) {
+                    if (row.checked && makesNote(row)) {
+                        row.checked = (room > 0);
+                        room--;
+                    }
+                });
+            }
+
+            function drawPreview(data) {
+                clear(body);
+                clear(footer);
+
+                var counts = { 'new': 0, update: 0, same: 0, error: 0 };
+
+                rows.forEach(function (row) {
+                    counts[row.kind] = (counts[row.kind] || 0) + 1;
+                    row.checked = (row.kind === 'new' || row.kind === 'update');
+                });
+
+                fit();
+
+                var head = el('div', 'd-flex flex-wrap align-items-center gap-2 mb-2');
+                head.appendChild(el('span', 'fw-semibold me-auto', t('notes_import_found', rows.length)));
+
+                ['new', 'update', 'same', 'error'].forEach(function (kind) {
+                    if (counts[kind]) {
+                        head.appendChild(el('span', 'badge rounded-pill ws-nb-import-badge ws-nb-import-' + kind, t('notes_import_count_' + kind, counts[kind])));
+                    }
+                });
+
+                body.appendChild(head);
+
+                if (data.more) {
+                    body.appendChild(el('div', 'alert alert-warning small py-2', t('notes_import_more', data.more, rows.length)));
+                }
+
+                // Files exported from here: brought up to date, or copies.
+                if (counts.update || counts.same) {
+                    var modeRow = el('div', 'd-flex flex-wrap align-items-center gap-2 mb-2');
+                    var select = el('select', 'form-select form-select-sm w-auto');
+                    var modeLabel = el('label', 'small text-body-secondary', t('notes_import_mode'));
+
+                    select.id = 'ws-nb-import-mode';
+                    modeLabel.htmlFor = select.id;
+
+                    [['update', t('notes_import_mode_update')], ['new', t('notes_import_mode_new')]].forEach(function (option) {
+                        var item = el('option', '', option[1]);
+                        item.value = option[0];
+                        select.appendChild(item);
+                    });
+
+                    select.value = mode;
+                    select.addEventListener('change', function () {
+                        mode = select.value;
+
+                        rows.forEach(function (row) {
+                            if (row.kind === 'same') {
+                                row.checked = false;
+                            }
+                        });
+
+                        fit();
+                        drawRows();
+                    });
+
+                    modeRow.appendChild(modeLabel);
+                    modeRow.appendChild(select);
+                    body.appendChild(modeRow);
+                }
+
+                var roomNote = el('div', 'small text-warning-emphasis mb-2 d-none');
+                body.appendChild(roomNote);
+
+                var all = el('label', 'form-check small mb-1');
+                var allBox = el('input', 'form-check-input');
+                allBox.type = 'checkbox';
+                all.appendChild(allBox);
+                all.appendChild(el('span', 'form-check-label', t('notes_import_all')));
+                body.appendChild(all);
+
+                var list = el('div', 'list-group ws-nb-import-list');
+                body.appendChild(list);
+
+                var go = button('btn btn-sm btn-primary rounded-pill px-3', '', 'bi-box-arrow-in-down');
+                var cancel = closeButton();
+
+                footer.appendChild(cancel);
+                footer.appendChild(go);
+
+                allBox.addEventListener('change', function () {
+                    var room = capacity;
+
+                    rows.forEach(function (row) {
+                        if (!selectable(row)) {
+                            return;
+                        }
+
+                        if (!allBox.checked) {
+                            row.checked = false;
+                        } else if (makesNote(row)) {
+                            row.checked = (room > 0);
+                            room--;
+                        } else {
+                            row.checked = true;
+                        }
+                    });
+
+                    drawRows();
+                });
+
+                go.addEventListener('click', run);
+
+                function selectable(row) {
+                    return row.kind !== 'error' && (row.kind !== 'same' || mode === 'new');
+                }
+
+                function state(row) {
+                    if (row.kind === 'error') {
+                        return row.error || t('notes_import_kind_error');
+                    }
+
+                    if (mode === 'new' && row.note) {
+                        return t('notes_import_kind_copy');
+                    }
+
+                    if (row.kind === 'update') {
+                        return t('notes_import_kind_update', row.name);
+                    }
+
+                    return row.kind === 'same' ? t('notes_import_kind_same') : t('notes_import_kind_new');
+                }
+
+                function drawRows() {
+                    clear(list);
+
+                    rows.forEach(function (row) {
+                        var item = el('label', 'list-group-item ws-nb-import-row' + (selectable(row) ? '' : ' ws-nb-import-off'));
+                        var box = el('input', 'form-check-input');
+                        var main = el('div', 'ws-nb-import-main');
+                        var line = el('div', 'ws-nb-import-state');
+
+                        box.type = 'checkbox';
+                        box.checked = !!row.checked && selectable(row);
+                        box.disabled = !selectable(row);
+                        box.addEventListener('change', function () {
+                            if (box.checked && makesNote(row) && chosenNew() >= capacity) {
+                                box.checked = false;
+                                roomNote.classList.remove('d-none');
+                                return;
+                            }
+
+                            row.checked = box.checked;
+                            sum();
+                        });
+
+                        main.appendChild(el('div', 'fw-semibold text-truncate', row.title));
+
+                        if (row.path !== row.title) {
+                            main.appendChild(el('div', 'ws-nb-import-path', row.path));
+                        }
+
+                        line.appendChild(el('span', 'ws-nb-import-kind ws-nb-import-' + ((mode === 'new' && row.note && row.kind !== 'error') ? 'new' : row.kind), state(row)));
+
+                        if (row.files && selectable(row)) {
+                            line.appendChild(document.createTextNode(' · '));
+                            line.appendChild(icon('bi-paperclip'));
+                            line.appendChild(document.createTextNode(t('notes_import_files', row.files)));
+                        }
+
+                        main.appendChild(line);
+
+                        (row.warnings || []).forEach(function (warning) {
+                            main.appendChild(el('div', 'ws-nb-import-warn', warning));
+                        });
+
+                        item.appendChild(box);
+                        item.appendChild(main);
+                        list.appendChild(item);
+                    });
+
+                    sum();
+                }
+
+                // The button says how many notes go; the capacity line shows
+                // once the person's notes would run over their limit.
+                function sum() {
+                    var chosen = rows.filter(function (row) { return row.checked && selectable(row); }).length;
+                    var selectableCount = rows.filter(selectable).length;
+
+                    clear(go);
+                    go.appendChild(icon('bi-box-arrow-in-down', 'me-1'));
+                    go.appendChild(document.createTextNode(t('notes_import_go', chosen)));
+                    go.disabled = (chosen === 0);
+
+                    roomNote.textContent = t('notes_import_capacity', capacity, limits.limit || '');
+                    roomNote.classList.toggle('d-none', rows.filter(function (row) { return selectable(row) && makesNote(row); }).length <= capacity);
+
+                    allBox.checked = selectableCount > 0 && chosen === selectableCount;
+                    allBox.indeterminate = chosen > 0 && chosen < selectableCount;
+                    allBox.disabled = selectableCount === 0;
+                }
+
+                drawRows();
+            }
+
+            // ── writing ──
+
+            function run() {
+                var skip = rows.filter(function (row) { return !row.checked; }).map(function (row) { return row.i; });
+                var failed = [];
+
+                running = true;
+                closeX.classList.add('d-none');
+                clear(body);
+                clear(footer);
+
+                var label = el('div', 'small text-body-secondary mb-2', t('notes_import_running', 0, rows.length));
+                var bar = el('div', 'progress');
+                var fill = el('div', 'progress-bar');
+
+                bar.setAttribute('role', 'progressbar');
+                fill.style.width = '0%';
+                bar.appendChild(fill);
+                body.appendChild(label);
+                body.appendChild(bar);
+
+                function next() {
+                    return send({ step: 'import', token: CFG.token, stage: stage, mode: mode, skip: skip }).then(function (data) {
+                        failed = failed.concat(data.failed || []);
+                        label.textContent = t('notes_import_running', data.next || 0, data.total || rows.length);
+                        fill.style.width = (data.total ? Math.round(100 * data.next / data.total) : 100) + '%';
+
+                        return data.done ? link() : next();
+                    });
+                }
+
+                function link() {
+                    label.textContent = t('notes_import_linking');
+
+                    return send({ step: 'finish', token: CFG.token, stage: stage }).then(function (data) {
+                        return data.done ? data : link();
+                    });
+                }
+
+                next().then(function (data) {
+                    stage = '';
+                    drawResult(data, failed);
+                }).catch(function (error) {
+                    drawResult(null, failed, error.message);
+                }).then(function () {
+                    running = false;
+                    closeX.classList.remove('d-none');
+                    loadList();
+                });
+            }
+
+            function drawResult(data, failed, error) {
+                clear(body);
+                clear(footer);
+
+                if (data) {
+                    var counts = data.counts || {};
+                    var done = el('div', 'd-flex align-items-start gap-2 mb-2');
+
+                    done.appendChild(icon('bi-check-circle-fill', 'text-success fs-5'));
+                    done.appendChild(el('div', '', t('notes_import_done', counts.added || 0, counts.updated || 0, counts.same || 0)));
+                    body.appendChild(done);
+                }
+
+                if (error) {
+                    body.appendChild(el('div', 'alert alert-danger small', error));
+                }
+
+                if (failed.length) {
+                    body.appendChild(el('div', 'small fw-semibold mt-2', t('notes_import_failed')));
+
+                    var list = el('ul', 'small mb-0');
+
+                    failed.forEach(function (item) {
+                        list.appendChild(el('li', '', item.title + ': ' + item.error));
+                    });
+
+                    body.appendChild(list);
+                }
+
+                footer.appendChild(closeButton(t('close')));
+
+                if (data && data.first) {
+                    var open = button('btn btn-sm btn-primary rounded-pill px-3', t('notes_open'), 'bi-box-arrow-in-right');
+
+                    open.addEventListener('click', function () {
+                        bootstrap.Modal.getOrCreateInstance(node).hide();
+                        openNote(data.first, true);
+                    });
+                    footer.appendChild(open);
+                }
+            }
+
+            // Closed before the import ran: the staged upload is dropped.
+            node.addEventListener('hide.bs.modal', function (event) {
+                if (running) {
+                    event.preventDefault();
+                }
+            });
+
+            node.addEventListener('hidden.bs.modal', function () {
+                closed = true;
+
+                if (stage) {
+                    send({ step: 'discard', token: CFG.token, stage: stage }).catch(function () {});
+                }
+
+                node.remove();
+            });
+
+            drawPick();
+            document.body.appendChild(node);
             bootstrap.Modal.getOrCreateInstance(node).show();
         }
 
