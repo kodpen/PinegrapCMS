@@ -38,7 +38,9 @@ RUN set -eux; \
     apk del --no-network .build-deps; \
     php -m
 
-COPY docker/php.ini "$PHP_INI_DIR/conf.d/pinegrap.ini"
+# The php.ini values. Kept as .conf in the repository: .gitignore leaves out
+# every *.ini, a host's own server configuration.
+COPY docker/php-settings.conf "$PHP_INI_DIR/conf.d/pinegrap.ini"
 COPY docker/cron.sh /usr/local/bin/pinegrap-cron
 COPY docker/job-ready.php /usr/local/bin/pinegrap-job-ready
 

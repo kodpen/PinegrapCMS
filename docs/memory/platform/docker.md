@@ -4,13 +4,12 @@ description: docker/ compose stack (PR #565): app (PHP-FPM 8.3) and web (nginx) 
 ---
 
 ## What is in docker/?
-- `Dockerfile` with two targets built from the repository root: `app` (php:8.3-fpm-alpine plus mysqli, pdo_mysql, gd with JPEG/PNG/WebP/AVIF, imagick, zip, intl, exif, opcache, ftp; `docker/php.ini`) and `web` (nginx:stable-alpine with `docker/nginx.conf` and a copy of the same files for static assets).
+- `Dockerfile` with two targets built from the repository root: `app` (php:8.3-fpm-alpine plus mysqli, pdo_mysql, gd with JPEG/PNG/WebP/AVIF, imagick, zip, intl, exif, opcache, ftp; `docker/php-settings.conf`, named .conf because `.gitignore` drops every `*.ini`) and `web` (nginx:stable-alpine with `docker/nginx.conf` and a copy of the same files for static assets).
 - `docker-compose.yml`: `db` (mariadb:10.11, not published), `app`, `cron` (app image, `pinegrap-cron` as www-data), `web` on `PG_HTTP_PORT` (8080). Volumes `data` (`pinegrap/data/`: config.php, uploads, layouts, backups) and `db`.
 - The folder ships in the release tree (release-status.md removes only CLAUDE.md, .claude/, docs/, tools/, tests/).
 
 ## What does the image take from the repository?
-- Only the root `index.php` and `pinegrap/`; `web.config` and `download_assistant.php` stay out. `Dockerfile.dockerignore` (BuildKit) drops the development tree and lets in only the tracked files of `pinegrap/data/` (guards, `config(default).php`, `cacert.pem`, the two starter sites), so a development machine's real config.php, uploads and backups never reach an image layer. `data/config.php` starts as `<?php ?>`.
-- The ignore file names what to leave out; a blanket `**` with exceptions for docker/ files worked locally but the CI runner's BuildKit left `docker/php.ini` out of the context.
+- Only the root `index.php` and `pinegrap/`; `web.config` and `download_assistant.php` stay out. `Dockerfile.dockerignore` (BuildKit) is an allow-list: `index.php`, `pinegrap/`, the copied docker/ files, and of `pinegrap/data/` only the tracked files (guards, `config(default).php`, `cacert.pem`, the two starter sites), so a development machine's real config.php, uploads and backups never reach an image layer. `data/config.php` starts as `<?php ?>`.
 - A new named volume is filled from the image on first start (starter sites included). Later images do not refresh what is already in the volume.
 
 ## How do nginx and the installer's rules stay the same?
