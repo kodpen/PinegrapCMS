@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Communication cards: e-mail campaigns and live chat.
+ * Site Settings - the Communication cards: e-mail campaigns, live chat,
+ * MailChimp and SMS.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -229,6 +230,22 @@ $pg_settings_cards[] = '
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+// ── SMS ──
+// The account is kept with the connected accounts' applications, the password
+// sealed (includes/fn/sms.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-sms" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    ' . lang('SMS') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-3">' . pg_sms_settings_fields() . '
                                     </div>
                                 </div>
                             </div>
