@@ -37,6 +37,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-connection.md: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect button and endpoint, company id discovery
 - erp-parasut-driver.md: The Paraşüt e-document driver (includes/erp/edoc/parasut.php): request wrapper, buyer card, sales invoice, conversion job, poll, PDF, cancel; what the live API showed
+- erp-parasut-legacy-order-buttons.md: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment, includes/fn/parasut.php) and when they give way to the ERP's invoice and delivery documents card
 - erp-receipt-corrections-and-gift-card.md: ERP receipt cancel, settlement removal/late allocation, FX reversal, and the gift card as the only automatic settlement.
 - erp-reconciliation-letter.md: ERP account reconciliation letter (cari mutabakat): as-of balance from the ledger, option sanitizing, reference, row cap, e-mail attachments, screen pattern.
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, line VAT rate, returned_qty and parent_line_id.

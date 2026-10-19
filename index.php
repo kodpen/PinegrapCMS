@@ -1,1 +1,1 @@
-<?php require('pinegrap/router.php'); ?> 
+<?php require('pinegrap/router.php');

@@ -100,3 +100,34 @@ function test_maintenance_health_answer_is_small()
 	pg_assert_contains("'cron_age' => \$health_cron_age,", $source);
 	pg_assert_same(1, substr_count($source, 'json_encode('));
 }
+
+// The server itself (behind a tunnel or a reverse proxy on the same machine)
+// is an address every visitor arrives with; a real address is not. The
+// runner has no database, so the firewall is handed its settings: no trusted
+// proxy declared.
+function test_maintenance_ip_is_shared()
+{
+	waf_config(array('waf_trusted_proxies' => ''));
+
+	pg_assert_true(pg_maintenance_ip_is_shared('::1'), 'IPv6 loopback, a local tunnel');
+	pg_assert_true(pg_maintenance_ip_is_shared('127.0.0.1'), 'IPv4 loopback');
+	pg_assert_true(pg_maintenance_ip_is_shared('127.8.9.10'), 'the whole loopback range');
+	pg_assert_false(pg_maintenance_ip_is_shared('203.0.113.7'), 'a public address');
+	pg_assert_false(pg_maintenance_ip_is_shared('192.168.1.20'), 'a private address seen directly');
+	pg_assert_false(pg_maintenance_ip_is_shared(''), 'no address');
+}
+
+// A list lets everyone through when it holds the address this request comes
+// from and every visitor shares that address.
+function test_maintenance_list_opens_to_all()
+{
+	pg_assert_true(pg_maintenance_list_opens_to_all('::1', '::1', true), 'the tunnel address itself');
+	pg_assert_true(pg_maintenance_list_opens_to_all("203.0.113.9\n127.0.0.1", '127.0.0.1', true), 'among other addresses');
+	pg_assert_true(pg_maintenance_list_opens_to_all('127.0.0.0/8', '127.0.0.1', true), 'a range that holds it');
+	pg_assert_true(pg_maintenance_list_opens_to_all('127.0.0.*', '127.0.0.1', true), 'a wildcard that holds it');
+
+	pg_assert_false(pg_maintenance_list_opens_to_all('203.0.113.9', '127.0.0.1', true), 'the list does not hold it');
+	pg_assert_false(pg_maintenance_list_opens_to_all('', '127.0.0.1', true), 'an empty list');
+	pg_assert_false(pg_maintenance_list_opens_to_all('203.0.113.7', '203.0.113.7', false), 'an address of the visitor\'s own');
+	pg_assert_false(pg_maintenance_list_opens_to_all('::1', '', true), 'no address');
+}

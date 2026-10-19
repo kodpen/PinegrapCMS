@@ -11,6 +11,7 @@ description: Maintenance mode (503 + Retry-After on page renders only, who passe
 
 ## Where is it set and shown?
 - Settings › General › Maintenance Mode (`pgset-maintenance`): switch, end time (datetime-local, site time zone), addresses. Columns `maintenance_mode`, `maintenance_until`, `maintenance_allow_ips` (2026.11.0, step 11.0.7, default off; PR #547); constants `MAINTENANCE_*` in `init.php`. A bad address, a bad time or an end already passed while switching on refuses the save. Switching logs a line and drops the System Status cache.
+- The card warns when the address it shows is the server or a trusted proxy (`pg_maintenance_ip_is_shared()`; loopback means a tunnel or a local reverse proxy): every visitor has it. Saving a list that holds that address keeps it and warns (`pg_maintenance_list_opens_to_all()`). Before #638, `::1` on the list behind a Cloudflare tunnel let every visitor in, silently.
 - System Status tile "Maintenance Mode" (actions column, not scored) only while the switch is on: warning with the end time, or "Ended" once it passed. The API's `GET /system/status` carries `maintenance: {active, until}`, read live rather than from the ten-minute cache.
 
 ## What does health.php answer?
@@ -19,4 +20,4 @@ description: Maintenance mode (503 + Retry-After on page renders only, who passe
 - The firewall leaves the bot policy and the country restriction out for it (`waf_is_health_request()`, by the running script, not the path): monitors are often generic clients with no user agent and run abroad, and with "block unknown bots" on every check was a 403 that read as "site down". The IP block list, attack tools and rate limits still apply. The firewall itself does not change behaviour in maintenance.
 
 ## How was it tested?
-- `tests/maintenance_mode_test.php`; sandbox: anonymous page 503 with the message and Retry-After 3600/1800, admin session 200, listed 127.0.0.1 200, passed end 200, CSS file and panel login 200; health 200/503 for both causes, no session files created, stopped job alert sent once; card refused `nope` and a past end, saved a list and an end. Firewall in block mode with "block unknown bots" and a country allow list: curl and empty user agents got 200 from health.php (403 before) and 403 from a page; sqlmap stays 403.
+- `tests/maintenance_mode_test.php`; sandbox: anonymous page 503 with message and Retry-After, admin and a listed address 200, passed end 200, files and panel login 200; health 200/503 for both causes, no session files, stopped-job alert once; card refused `nope` and a past end. With "block unknown bots" and a country list, curl and empty agents got 200 from health.php and 403 from a page; sqlmap 403.

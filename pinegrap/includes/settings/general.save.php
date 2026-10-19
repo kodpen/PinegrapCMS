@@ -369,6 +369,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // An address every visitor shares on the list (the server behind a
+    // tunnel, a proxy that is not declared) lets everyone through. The list
+    // is saved as typed - on a machine without such a proxy it is the
+    // operator's own - and the warning says what it does.
+    if (($sql_maintenance_settings !== '') && function_exists('waf_client_ip')) {
+        $maintenance_my_ip = (string) waf_client_ip();
+
+        if (pg_maintenance_list_opens_to_all($maintenance_allow_posted, $maintenance_my_ip, pg_maintenance_ip_is_shared($maintenance_my_ip))) {
+            $liveform->add_warning(lang(array(
+                'string' => '{var:1} is on the list, but it is the server or a proxy every visitor arrives through, so everyone sees the site during maintenance. Add it to Trusted Proxies on the Firewall card and list your own address instead.',
+                'vars'   => array(h($maintenance_my_ip)),
+            )));
+        }
+    }
+
     // Pinegrap AI sends this key to its gateway (includes/workspace/ai.php).
     // What the gateway said about the old key is forgotten with it: a key it
     // turned down is otherwise never asked about again.
