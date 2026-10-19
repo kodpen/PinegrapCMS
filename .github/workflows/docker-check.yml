@@ -1,0 +1,42 @@
+# Builds the Docker images of docker/ and checks the compose stack end to end
+# (tools/check_docker.sh): extensions and PHP settings, the nginx rules, an
+# installation through the installation screen against the db container, the
+# site, the control panel and an uploaded file over nginx, a recreated app
+# container and the general job in the cron container.
+#
+# Building compiles several PHP extensions, so pull requests run it only when
+# something the images are made of changed; every push to development runs it.
+#
+# tools/ is tracked on the development branch only; on main and the release
+# branches the check is skipped and the job still reports.
+name: Docker check
+
+on:
+  pull_request:
+    paths:
+      - "docker/**"
+      - "tools/check_docker.sh"
+      - ".github/workflows/docker-check.yml"
+      - "index.php"
+      - "pinegrap/install/**"
+      - "pinegrap/includes/server_config.php"
+      - "pinegrap/job.php"
+      - "pinegrap/router.php"
+  push:
+    branches: [development]
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    name: build and run the compose stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Build, install and check (tools/check_docker.sh)
+        if: ${{ hashFiles('tools/check_docker.sh') != '' }}
+        run: bash tools/check_docker.sh english_default 8089

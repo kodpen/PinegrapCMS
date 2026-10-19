@@ -1,0 +1,109 @@
+# Pinegrap - Enterprise Website Platform
+#
+# A Pinegrap site in four containers, started from the repository (or an
+# unpacked release) with
+#
+#   docker compose -f docker/docker-compose.yml up -d --build
+#
+# and opened at http://localhost:8080/pinegrap/install/. In the installation
+# wizard the database is host "db" with the name, user and password below.
+#
+#   web    nginx on port 8080 (PG_HTTP_PORT), the installer's nginx rules
+#   app    PHP-FPM running the software
+#   cron   the general job once a minute (same image as app)
+#   db     MariaDB 10.11, reachable only from the other containers
+#
+# Two named volumes hold everything that is not the software itself:
+# pinegrap_data (config.php, uploads, layouts, backups) and pinegrap_db. The
+# software comes from the image, so a new release is installed by building
+# or pulling the new image and recreating the containers; an update installed
+# from the control panel lasts only until the app container is recreated.
+#
+# Settings, all optional, from the shell or an .env file next to this file:
+#   PG_HTTP_PORT     published port of the web container (8080)
+#   PG_DB_NAME       database name (pinegrap)
+#   PG_DB_USER       database user (pinegrap)
+#   PG_DB_PASSWORD   database password (pinegrap; set your own for anything
+#                    but a trial)
+#   PG_CRON_INTERVAL seconds between two runs of the general job (60)
+#
+# @author      Erdal Güral (Kodpen)
+# @link        https://kodpen.com
+# @copyright   2017–2026 Kodpen
+# @license     https://opensource.org/licenses/mit-license.html MIT License
+
+name: pinegrap
+
+services:
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${PG_DB_NAME:-pinegrap}
+      MARIADB_USER: ${PG_DB_USER:-pinegrap}
+      MARIADB_PASSWORD: ${PG_DB_PASSWORD:-pinegrap}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: app
+    image: pinegrap-app:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - data:/var/www/html/pinegrap/data
+
+  cron:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: app
+    image: pinegrap-app:local
+    restart: unless-stopped
+    command: ["pinegrap-cron"]
+    user: www-data
+    environment:
+      PG_CRON_INTERVAL: ${PG_CRON_INTERVAL:-60}
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    volumes:
+      - data:/var/www/html/pinegrap/data
+    logging:
+      options:
+        max-size: "1m"
+        max-file: "3"
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: web
+    image: pinegrap-web:local
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    ports:
+      - "${PG_HTTP_PORT:-8080}:80"
+
+volumes:
+  data:
+  db:

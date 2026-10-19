@@ -11,6 +11,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - design-template-install-at-setup.md: Install wizard step "Site Tasarımı": two-request template install, StyleDesigner.starterTree() API, home/staff keys, starter removal and preview lists.
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
 - dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel: no content view, no archive, no copy, no rename; pg_file_withheld() and the doors that ask it
+- docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3) and web (nginx) images, MariaDB 10.11, cron service gated on the database version, data volume, nginx rules kept in step, tools/check_docker.sh in CI
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - external-api-iis-environment.md: Rules imposed by IIS/WAF on the external API: waf_is_api_request() path logic, WAF exemption, no PATCH/DELETE, 422 body keys, POST /products.
