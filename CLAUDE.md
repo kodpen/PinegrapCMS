@@ -55,6 +55,43 @@ Version numbers are `YYYY.M.PATCH` from 2026.11.0 on (2026.11.0, 2026.11.1,
 `docs/memory/release/version-numbering.md`.
 Branches: work from `development`, PRs to `development`, never to `main`.
 
+## Claim work before starting it
+
+Several sessions work on `development` at once, and a plan file shows a step
+as taken only after its PR merges, so work is claimed on GitHub first. Use
+REST (`gh api repos/kodpen/pinegrapcms/…`); `gh issue`, `gh pr` (GraphQL) and
+the search API are blocked in cloud sessions.
+
+1. **Check.** Before starting a plan step or any task that ends in a PR, list
+   open claims and open PRs:
+   ```bash
+   gh api 'repos/kodpen/pinegrapcms/issues?state=open&labels=sahiplenildi&per_page=100' --jq '.[]|"#\(.number) \(.title)"'
+   gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '.[]|"#\(.number) \(.head.ref) \(.title)"'
+   ```
+   Open each one on the same plan file or area (`…/pulls/<n>/files` lists a
+   PR's files). If another session holds the same plan file (any step) or the
+   same files, do not start, even if it looks stale: tell the owner which
+   issue or PR holds it. Steps of one plan run in parallel only when the owner
+   assigns them so.
+2. **Claim.** Before writing code, open an issue labelled `sahiplenildi`:
+   title `[plan:<plan file name>] <steps> — <topic>` (`[iş] <topic>` outside a
+   plan); body: plan file and steps, branch, files or folders it will touch.
+   `gh api -X POST repos/kodpen/pinegrapcms/issues -f title='…' -f body='…' -f 'labels[]=sahiplenildi'`
+   Working from an existing issue (bug, hand-off)? Label that one instead.
+   Then list the claims again: if a lower-numbered claim on the same plan or
+   files appeared meanwhile, close yours (`state_reason=not_planned`, comment
+   naming the older one) and stop. Small fixes, memory-only edits and reviews
+   skip the claim, never the check.
+3. **Mark it done when the PR goes up.** The PR that finishes the claimed
+   steps marks them done in the plan file (each step with its PR number, the
+   status in `description`; after the last step the plan is finished, see
+   Memory) and has `Closes #<claim>` under "Linked issue". `Closes` does not
+   fire for PRs to `development`, so right after opening the PR, comment its
+   number on the claim and close it:
+   `gh api -X PATCH repos/kodpen/pinegrapcms/issues/<claim> -f state=closed -f state_reason=completed`
+   A claim delivered over several PRs gets each PR as a comment and is closed
+   with the last one.
+
 ## Fixed rules
 
 1. **Code comments in English, no exceptions** (PHP, JS, CSS, SQL, comments
@@ -116,4 +153,5 @@ Also: a test in `tests/<topic>_test.php` for a pure function you add or change
 (red first when behaviour changes); a schema step rerun twice on a dev DB;
 `node --check` after touching `style_designer.js`. The PR says what changed,
 why, and what could not be verified (say so when no running instance was set
-up).
+up). A claimed task also marks its plan steps done and closes its claim
+(Claim work before starting it, step 3).
