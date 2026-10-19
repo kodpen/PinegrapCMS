@@ -226,6 +226,70 @@ $pg_settings_cards[] = '
                 ? '<div class="form-text">' . lang(array('string' => 'Image library in use: {var:1}', 'vars' => array($image_library))) . $output_upload_limits_note . '</div>'
                 : '<div class="alert alert-warning py-2 mb-0">' . lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.') . '</div>';
 
+        // How pictures reach visitors: the modern formats the responsive
+        // markup offers and the quality each is written at
+        // (includes/image_engine.php). Hidden until the 2026.11.0 columns
+        // exist; the defaults (both formats, 80 and 50) apply meanwhile. A
+        // format the server cannot write is said beside its switch: the
+        // switch alone would promise pictures nobody gets.
+        $output_image_delivery_fields = '';
+
+        if ($image_delivery_ready) {
+
+            $image_format_rows = array(
+                'webp' => array('bit' => 1, 'name' => 'WebP', 'label' => lang('Offer pictures as WebP'), 'text' => lang('Pictures on pages are sent at the width the screen needs, and as WebP to browsers that read it: usually about a third lighter than JPEG. Each is made the first time it is asked for.')),
+                'avif' => array('bit' => 2, 'name' => 'AVIF', 'label' => lang('Offer pictures as AVIF'), 'text' => lang('Lighter still than WebP. Browsers that cannot read AVIF get WebP or the original instead.')),
+            );
+
+            foreach ($image_format_rows as $image_format => $image_format_row) {
+
+                $image_format_checked = (($image_settings['derivative_formats'] & $image_format_row['bit']) === $image_format_row['bit']) ? ' checked="checked"' : '';
+
+                $image_format_note = empty($image_formats_written[$image_format])
+                    ? '<div class="form-text text-warning-emphasis">' . lang(array('string' => 'This server cannot write {var:1}, so it is not offered while that stays so.', 'vars' => array($image_format_row['name']))) . '</div>'
+                    : '';
+
+                $output_image_delivery_fields .= '
+                            <div class="col-12 ">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . $image_format_checked . ' class="form-check-input" type="checkbox" id="image_derivative_' . $image_format . '" name="image_derivative_' . $image_format . '"/>
+                                    <label class="form-check-label" for="image_derivative_' . $image_format . '">' . $image_format_row['label'] . '</label>
+                                    <div class="form-text">' . $image_format_row['text'] . '</div>' . $image_format_note . '
+                                </div>
+                            </div>';
+            }
+
+            $output_image_delivery_fields .= '
+                            <div class="pg-f-xs">
+                                <label for="image_quality_webp" class="form-label">' . lang('WebP Quality') . '</label>
+                                <div class="input-group">
+                                    <input type="text" name="image_quality_webp" id="image_quality_webp" maxlength="3" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['quality_webp']) . '" />
+                                    <label class="input-group-text" for="image_quality_webp">%</label>
+                                </div>
+                                <div class="form-text">' . lang('A changed quality makes the pictures again as they are next asked for. Resized JPEG and PNG pictures use the quality when resizing above.') . '</div>
+                            </div>
+                            <div class="pg-f-xs">
+                                <label for="image_quality_avif" class="form-label">' . lang('AVIF Quality') . '</label>
+                                <div class="input-group">
+                                    <input type="text" name="image_quality_avif" id="image_quality_avif" maxlength="3" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['quality_avif']) . '" />
+                                    <label class="input-group-text" for="image_quality_avif">%</label>
+                                </div>
+                                <div class="form-text">' . lang('AVIF holds up at a lower number than WebP, so its quality is set apart.') . '</div>
+                            </div>';
+        }
+
+        // The visual designer's pages keep the HTML drawn when they were
+        // saved; this draws them all again (pg_designer_rebuild_page_code()).
+        $output_page_rebuild_field = '';
+
+        if ($page_rebuild_ready) {
+            $output_page_rebuild_field = '
+                            <div class="col-12 ">
+                                <button type="submit" name="submit_rebuild_pages" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and rebuild page HTML') . '</button>
+                                <div class="form-text">' . lang('Visual designer pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.') . '</div>
+                            </div>';
+        }
+
         $output_image_settings_card =
             '<div id="pgset-images" class="pg-set-card">
                 <div class="card">
@@ -280,7 +344,7 @@ $pg_settings_cards[] = '
                                     <label class="input-group-text" for="image_file_max_dimension">' . lang('pixels') . '</label>
                                 </div>
                                 <div class="form-text">' . lang('Files are never resized on upload and never by the plain optimize button. This is only used when the resize button is pressed.') . '</div>
-                            </div>
+                            </div>' . $output_image_delivery_fields . $output_page_rebuild_field . '
                             <div class="col-12 ">
                                 ' . $output_image_library_note . '
                             </div>

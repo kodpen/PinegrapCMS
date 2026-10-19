@@ -10,11 +10,11 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 
 ## Which formats does a server make?
 - `pg_image_derivative_formats()`: each format a library claims (`pg_image_format_writer()`: Imagick `queryFormats()`, else GD) is test-encoded once on a 16 px PNG and kept in `data/cache/img/formats.json` (key: PHP/GD/ImageMagick versions + claims; re-tested after a week). Why: Ubuntu's ImageMagick lists AVIF but cannot write it without `libheif-plugin-aomenc`; trusted, every `?f=avif` sent the full-size original.
-- AVIF falls back to WebP, WebP to the source format.
+- AVIF falls back to WebP, WebP to the source format. A format the operator switched off counts as not written: docs/memory/platform/image-delivery-settings.md.
 
 ## Where is it kept and when is it replaced?
 - `dirname(FILE_DIRECTORY_PATH)/cache/img/<file id>/<width>-<signature>.<ext>`: beside the file directory, so two sites sharing one software directory never read each other's file id. data/ is refused over HTTP.
-- Signature = md5 of recipe `1`, source mtime, size and quality (fixed for now: AVIF 50, WebP 80, source 82). Optimize, rotate, replace give a new mtime; the next derivative of that width and format prunes the old one.
+- Signature = md5 of recipe `1`, source mtime, size and quality. Optimize, rotate, replace or a new quality give a new name; the next derivative of that width and format prunes the old one.
 
 ## What does get_file.php send when there is no derivative?
 - `original` (normal caching): not a raster type, already small enough, as heavy as the original or heavier (palette PNG), the engine refused (animated GIF, too large, unreadable), or an earlier attempt died part way (`<name>.try` left: one try, else every request would 500). The last three leave an empty `<name>.skip`. A missing library is not remembered.
@@ -32,4 +32,3 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 - Clear caches (`pg_purge_caches()`) renames the folder to `img.old-<time>-<pid>` (instant, `formats.json` included, so formats are tested again), deletes what it can in 2 s; the job deletes the rest.
 - System Status › Storage: `images` in `pg_storage_usage()` (6 h cache), labelled with the formats this server writes.
 
-Still open (settings, page rebuild): docs/memory/plans/image-delivery-pipeline.md

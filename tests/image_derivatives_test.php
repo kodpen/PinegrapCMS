@@ -92,6 +92,94 @@ function test_image_derivative_sources_and_quality()
 	pg_assert_same(50, pg_image_derivative_quality('avif'), 'avif');
 	pg_assert_same(80, pg_image_derivative_quality('WEBP'), 'webp');
 	pg_assert_same(82, pg_image_derivative_quality('jpg'), 'the source format');
+
+	$settings = pg_image_delivery_settings(array('image_quality_webp' => 70, 'image_quality_avif' => 40, 'image_resize_quality' => 90));
+
+	pg_assert_same(40, pg_image_derivative_quality('avif', $settings), 'avif as set');
+	pg_assert_same(70, pg_image_derivative_quality('webp', $settings), 'webp as set');
+	pg_assert_same(90, pg_image_derivative_quality('png', $settings), 'the source format at the resize quality');
+}
+
+// The config row as get_file.php and pg_image_settings() read it.
+function test_image_delivery_settings()
+{
+	$defaults = array(
+		'formats' => array('webp' => true, 'avif' => true),
+		'quality' => array('webp' => 80, 'avif' => 50, 'source' => 82));
+
+	pg_assert_same($defaults, pg_image_delivery_settings(null), 'no row: what the software did before the settings');
+	pg_assert_same($defaults, pg_image_delivery_settings(array('image_resize_quality' => '82')), 'a row without the new columns');
+
+	$row = array('image_derivative_formats' => '1', 'image_quality_webp' => '75', 'image_quality_avif' => '45', 'image_resize_quality' => '85');
+	pg_assert_same(array(
+		'formats' => array('webp' => true, 'avif' => false),
+		'quality' => array('webp' => 75, 'avif' => 45, 'source' => 85)), pg_image_delivery_settings($row), 'as stored');
+
+	$formats = function ($bits) {
+		$settings = pg_image_delivery_settings(array('image_derivative_formats' => $bits));
+		return $settings['formats'];
+	};
+
+	pg_assert_same(array('webp' => false, 'avif' => false), $formats(0), 'both off');
+	pg_assert_same(array('webp' => false, 'avif' => true), $formats(2), 'avif only');
+	pg_assert_same(array('webp' => true, 'avif' => true), $formats(7), 'unknown bits ignored');
+
+	$low = pg_image_delivery_settings(array('image_quality_webp' => 0, 'image_quality_avif' => 5, 'image_resize_quality' => 10));
+	pg_assert_same(array('webp' => 40, 'avif' => 20, 'source' => 40), $low['quality'], 'raised to the floor of each scale');
+
+	$high = pg_image_delivery_settings(array('image_quality_webp' => 255, 'image_quality_avif' => 120, 'image_resize_quality' => 101));
+	pg_assert_same(array('webp' => 100, 'avif' => 100, 'source' => 100), $high['quality'], 'held at 100');
+
+	$typed = pg_image_delivery_settings(array('image_quality_webp' => '', 'image_quality_avif' => 'abc'));
+	pg_assert_same(array('webp' => 80, 'avif' => 50, 'source' => 82), $typed['quality'], 'an empty or non-numeric field keeps the default');
+}
+
+function test_image_derivative_offered()
+{
+	$writable = array('webp' => true, 'avif' => false);
+
+	pg_assert_same(array('webp' => true, 'avif' => false), pg_image_derivative_offered($writable), 'what the server writes, by default');
+	pg_assert_same(array('webp' => false, 'avif' => false), pg_image_derivative_offered($writable, pg_image_delivery_settings(array('image_derivative_formats' => 2))), 'avif on cannot make the server write it');
+	pg_assert_same(array('webp' => false, 'avif' => false), pg_image_derivative_offered(array('webp' => true, 'avif' => true), pg_image_delivery_settings(array('image_derivative_formats' => 0))), 'both switched off');
+	pg_assert_same(array('webp' => false, 'avif' => true), pg_image_derivative_offered(array('webp' => true, 'avif' => true), pg_image_delivery_settings(array('image_derivative_formats' => 2))), 'webp switched off');
+}
+
+// A format switched off is answered like one the server cannot write, and the
+// quality is part of the name.
+function test_image_derivative_follows_the_settings()
+{
+	if (!image_derivatives_test_gd() || !function_exists('imagewebp') || (pg_image_format_writer('webp') === '')) {
+		pg_assert_true(true, 'GD with WebP is not available; skipped');
+		return;
+	}
+
+	$folder = image_derivatives_test_folder();
+	$source = $folder . '/files/photo.jpg';
+
+	try {
+		image_derivatives_test_jpeg($source, 2000, 1000, 3);
+
+		$off = pg_image_delivery_settings(array('image_derivative_formats' => 0));
+		$plain = pg_image_derivative(21, $source, array('width' => 960, 'format' => 'webp'), $folder . '/cache', $off);
+
+		pg_assert_same('derivative', $plain['status'], 'still a smaller picture');
+		pg_assert_same('jpg', $plain['extension'], 'in the source format when webp is off');
+
+		$avif_off = pg_image_delivery_settings(array('image_derivative_formats' => 1));
+		$webp = pg_image_derivative(21, $source, array('width' => 960, 'format' => 'avif'), $folder . '/cache', $avif_off);
+
+		pg_assert_same('webp', $webp['extension'], 'avif off: webp instead');
+
+		$first = pg_image_derivative(21, $source, array('width' => 480, 'format' => 'webp'), $folder . '/cache', pg_image_delivery_settings(array('image_quality_webp' => 80)));
+		$second = pg_image_derivative(21, $source, array('width' => 480, 'format' => 'webp'), $folder . '/cache', pg_image_delivery_settings(array('image_quality_webp' => 60)));
+
+		pg_assert_true($first['path'] !== $second['path'], 'another quality, another name');
+		pg_assert_false(file_exists($first['path']), 'and the one of the old quality goes');
+		pg_assert_true(is_file($second['path']), 'the new one is made');
+
+	} finally {
+		image_derivatives_test_remove($folder);
+	}
 }
 
 function test_image_derivative_names()

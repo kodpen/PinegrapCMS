@@ -166,6 +166,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $image_settings_ready = pg_image_settings_ready();
     $image_settings       = pg_image_settings();
 
+    // How pictures are delivered (2026.11.0): the formats this server can
+    // write (tested once and stored, pg_image_derivative_formats()), and
+    // whether the designer pages have a tree to draw their HTML from again.
+    $image_delivery_ready  = pg_image_delivery_ready();
+    $image_formats_written = pg_image_derivative_formats(pg_image_derivative_directory());
+    $page_rebuild_ready    = pg_multi_page_design_ready();
+
     $image_library = '';
 
     if (class_exists('Imagick')) {

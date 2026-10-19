@@ -1013,6 +1013,29 @@ if (function_exists('session_status') && (session_status() === PHP_SESSION_ACTIV
     session_write_close();
 }
 
+// The operator's image delivery settings (formats offered, quality of each),
+// read now for a derivative request: the connection closes below. Its own
+// query and not part of the config read at the top, because the columns come
+// with the 2026.11.0 upgrade; until it has run the query fails (false, it
+// does not throw: router.php turned mysqli reporting off) and the defaults
+// of pg_image_delivery_settings() apply.
+$image_delivery_row = null;
+
+if ((isset($_GET['w']) || isset($_GET['f'])) && isset(db::$con) && db::$con) {
+    $image_delivery_result = @mysqli_query(db::$con,
+        "SELECT
+            image_derivative_formats,
+            image_quality_webp,
+            image_quality_avif,
+            image_resize_quality
+        FROM config
+        LIMIT 1");
+
+    if ($image_delivery_result) {
+        $image_delivery_row = mysqli_fetch_assoc($image_delivery_result);
+    }
+}
+
 if (isset(db::$con) && db::$con) {
     @mysqli_close(db::$con);
     db::$con = null;
@@ -1047,7 +1070,7 @@ if (
     $derivative_request = pg_image_derivative_request($_GET);
 
     if ($derivative_request !== null) {
-        $derivative = pg_image_derivative($file['id'], $file['path'], $derivative_request, pg_image_derivative_directory());
+        $derivative = pg_image_derivative($file['id'], $file['path'], $derivative_request, pg_image_derivative_directory(), pg_image_delivery_settings($image_delivery_row));
         $derivative_status = $derivative['status'];
 
         if ($derivative_status === 'derivative') {

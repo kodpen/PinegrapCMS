@@ -4,7 +4,7 @@ description: Designer and widget images with srcset/sizes, AVIF/WebP <picture> o
 ---
 
 ## What does a published designer image look like?
-- `_render_content_html()` image case: a file of this site's file manager (`pg_img_responsive()`, `includes/fn/image.php`) gets `srcset` of the derivative widths in its own format (`?w=`), the file itself closing the list, and `sizes`. The Image element also gets AVIF/WebP `<source>`s in `<picture data-pg-picture style="display:contents">` (only formats `pg_image_derivative_formats()` says this server writes; a format source stops at 1920 px).
+- `_render_content_html()` image case: a file of this site's file manager (`pg_img_responsive()`, `includes/fn/image.php`) gets `srcset` of the derivative widths in its own format (`?w=`), the file itself closing the list, and `sizes`. The Image element also gets AVIF/WebP `<source>`s in `<picture data-pg-picture style="display:contents">` (formats this server writes and the settings offer: `pg_image_delivery_formats()`; a format source stops at 1920 px).
 - A bare `<img>` (semantic node: imported or written markup) gets only the `srcset`, never a `<picture>`: its CSS may target `> img`.
 - No `<picture>` when the parent styles its direct children (`.row`, `.ratio`: `_pg_parent_styles_children()`, parent stack `_pg_parent_stack()`). In the Image element's own ratio box the `<picture>` is the box child (no display:contents) and the img gets `w-100 h-100`.
 - Not touched: external addresses, SVG/GIF/BMP/TIFF, attachments, `erp-` files, an image with its own `srcset` (and its own `sizes` wins).
@@ -30,4 +30,4 @@ description: Designer and widget images with srcset/sizes, AVIF/WebP <picture> o
 - `get_page_content()` with `$email` ends with `pg_img_strip_responsive()`: the `<picture data-pg-picture>` is unwrapped and every `srcset`/`sizes` dropped. The e-mail pass only absolutises `src`.
 
 ## When does a page get it?
-- `page_tree_code` is written at publish; an existing page gets the markup when it is published again. Shared components get it on the next request.
+- `page_tree_code` is written at publish; older pages get it from Rebuild Page HTML (`docs/memory/designer/page-html-rebuild.md`), run unasked when the formats change. Shared components get it on the next request.
