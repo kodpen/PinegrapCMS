@@ -105,6 +105,67 @@ function test_img_sizes()
 	pg_assert_same('100vw', pg_img_sizes('', 0), 'no file width');
 }
 
+function test_img_sizes_auto_only_when_asked()
+{
+	pg_assert_same('auto, (max-width: 1200px) 100vw, 1200px', pg_img_sizes('', 1200, true), 'the layout width first');
+	pg_assert_same('48px', pg_img_sizes('48', 1200, true), 'a pixel width stays exact');
+	pg_assert_true(pg_img_fills_width('card-img-top rounded'), 'card image');
+	pg_assert_true(pg_img_fills_width('d-block w-100'), 'w-100');
+	pg_assert_false(pg_img_fills_width('img-fluid'), 'img-fluid is only a max-width');
+	pg_assert_false(pg_img_fills_width('w-100x mw-100'), 'not a word of it');
+}
+
+function test_img_tag_attr()
+{
+	$tag = '<img src="/p.jpg?a=1&amp;b=2" alt=\'it\'\'s\' loading=lazy class="w-100 x" data-src="/no.jpg">';
+
+	pg_assert_same('/p.jpg?a=1&b=2', pg_img_tag_attr($tag, 'src'), 'double quotes, entities decoded');
+	pg_assert_same('lazy', pg_img_tag_attr($tag, 'loading'), 'unquoted');
+	pg_assert_same('w-100 x', pg_img_tag_attr($tag, 'class'), 'class');
+	pg_assert_same('', pg_img_tag_attr($tag, 'sizes'), 'absent');
+	pg_assert_same('', pg_img_tag_attr('<img data-src="/no.jpg">', 'src'), 'data-src is not src');
+	pg_assert_same('x', pg_img_tag_attr("<img src='x'>", 'src'), 'single quotes');
+}
+
+// The pass over widget output and page bodies, with a stand-in for the file
+// lookup.
+function test_img_responsive_html_adds_srcset_and_sizes()
+{
+	$resolve = function ($src) {
+		if ($src === '/p.jpg' || $src === '/p.jpg?v=1') {
+			return array('srcset' => $src . '?w=480 480w, ' . $src . ' 1200w', 'sources' => array('image/webp' => 'x'), 'width' => 1200);
+		}
+		return null;
+	};
+
+	pg_assert_same(
+		'<div><img src="/p.jpg" alt="A" srcset="/p.jpg?w=480 480w, /p.jpg 1200w" sizes="(max-width: 1200px) 100vw, 1200px"></div>',
+		pg_img_responsive_html('<div><img src="/p.jpg" alt="A"></div>', $resolve),
+		'added before the end of the tag');
+
+	pg_assert_same(
+		'<img class="card-img-top" loading="lazy" src="/p.jpg" srcset="/p.jpg?w=480 480w, /p.jpg 1200w" sizes="auto, (max-width: 1200px) 100vw, 1200px" />',
+		pg_img_responsive_html('<img class="card-img-top" loading="lazy" src="/p.jpg" />', $resolve),
+		'a lazy card image: auto first, self-closing kept');
+
+	pg_assert_same(
+		'<img src="/p.jpg" width="320" sizes="50vw" srcset="/p.jpg?w=480 480w, /p.jpg 1200w">',
+		pg_img_responsive_html('<img src="/p.jpg" width="320" sizes="50vw">', $resolve),
+		'the author\'s sizes stays');
+
+	foreach (array(
+		'<img src="/p.jpg" srcset="/p.jpg 1x">' => 'already has a srcset',
+		'<img src="/other.jpg">' => 'not a file of the site',
+		'<img src="^^__image_url^^">' => 'a token',
+		'<img src="/p.jpg" alt="a " b">' => 'a tag cut short by a quote',
+		'<p>no image</p>' => 'no image',
+	) as $html => $label) {
+		pg_assert_same($html, pg_img_responsive_html($html, $resolve), $label);
+	}
+
+	pg_assert_same('<img src="/p.jpg">', pg_img_responsive_html('<img src="/p.jpg">'), 'no database: nothing added');
+}
+
 function test_img_picture_wraps_sources()
 {
 	$html = pg_img_picture('<img src="/p.jpg" alt="">', array('image/webp' => '/p.jpg?f=webp 300w'), '100vw');
