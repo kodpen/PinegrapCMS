@@ -4,7 +4,8 @@ description: Single image engine pg_process_image_file(): optimize vs resize job
 ---
 
 ## Where may pixels be touched, and what are the two jobs?
-- `pg_process_image_file()` (functions.php) is the ONLY place that touches pixels. Never open a second compression path: if the code depends on the call site, the same file gets different results on two screens.
+- `pg_process_image_file()` (`includes/image_engine.php`, loaded by functions.php and by get_file.php for derivatives) is the ONLY place that touches pixels. Never open a second compression path: if the code depends on the call site, the same file gets different results on two screens. That file may call only its own functions and PHP (get_file.php has no functions.php).
+- `format` converts to `webp` or `avif` (`pg_image_format_writer()` picks Imagick, else GD; reason `no_webp`/`no_avif` when neither can).
 - optimize: strips metadata, recompresses at the SAME pixel size. Default; every call without `max_dimension`.
 - resize: long edge reduced to a ceiling, then compressed. Only when explicitly requested.
 - Shrinking is never implied: a design image placed at exact size must survive the "optimize" button.
@@ -19,4 +20,4 @@ description: Single image engine pg_process_image_file(): optimize vs resize job
 7. The resize criterion is pixels, not bytes (`pg_image_can_be_resized()`): a low-quality 6000 px photo can be under 1 MB yet 6x too wide; a heavy 1200 px screenshot gains nothing from losing pixels.
 8. The threshold cannot go below the target: `pg_image_settings()` clamps it, otherwise the button is offered for images that resizing would never change.
 
-Related: docs/memory/platform/image-settings-and-product-upload.md
+Related: docs/memory/platform/image-settings-and-product-upload.md, docs/memory/platform/image-derivatives.md
