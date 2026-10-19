@@ -1,17 +1,20 @@
 ---
 name: designer-code-editor-apply
-description: Design for the code view editing slices (E4-E5, not built): how a typed change reaches the tree, in-place rules, new elements via the converter, undo, the sync guard
+description: How a change typed in the designer's code view reaches the tree (E4, built): dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush
 ---
 
-## How is an edit applied? (E4)
-- Debounce 400 ms; parse the region of the outermost changed node from the editor's syntax tree; stop on an error node (the lint shows it).
-- Existing element (its open tag starts inside a tracked open range): tag name -> `props.tag` (semantic, heading) or a conversion to `semantic` for container/row/col/component when a derived class was removed (toast); `class` -> `cssClass` minus derived tokens; `id` -> `props.id` + `_sdRetargetLabels()`; `style` -> `_writeInlineStyleValue()`; attributes with `propKey` -> the prop; the rest -> `_attrs` through the Attrs panel's rules; text: `semantic` plain (entities decoded), `content` heading/paragraph/span innerHTML.
-- Element without a tracked owner: its outer HTML goes to `designer/import_fragment`; the reply's nodes are spliced at the parsed position, `_cfAdoptOnDrop()` for controls. Removed tracked node -> removed (locks permitting). Order of children follows the parsed order.
-- `saveState('run:code:' + nodeId)` before the first applied change of a burst; `render()` after; `_sdCodeApplying` guards the loop so the editor keeps its text and cursor.
-- Edits inside a shared component mark `_sharedDirty[sid]` (same as the canvas).
+## How does typing reach the tree?
+- `onChange` (facade) grows `_sdCode.dirty` (mapped through later changes) and arms a 400 ms timer; `_sdCodeApply()` runs then, or at once from `_sdCodeFlush()` (before `saveAjax()` and `_pgTabsSwitch()`). The facade's own writes are `busy` and never count as typing.
+- Scope (`_sdCodeScopeOf`): the innermost tracked range holding the whole span: a node, the `<body>` tag (its attributes go to the root node) or `content` (the page's own content between the body tag and the scripts). The element is read from the editor's syntax tree (`ed.syntaxTree()`, Lezer HTML); an error node, a mismatched or incomplete close tag inside the scope means nothing is applied until the text parses (the lint marks it). When the element no longer covers the span (a close tag was typed or removed), `_sdCodeApplyOuter()` widens to the parent and tries again.
+- Owner rule (`_sdCodeOwnerOf`): an element whose `<` is where a node's range starts is that node (ranges are tight: from `<` to the last character, grow false, so a tag typed just before a node is new). An element with no owner but owned elements inside becomes a plain `semantic` wrapper (`_sdCodeNewSemantic`); one with none inside becomes a Custom HTML holder printing the typed markup and goes to `designer/import_fragment` (`_sdCodeImport`); the answer replaces the holder, no answer leaves it as Custom HTML. Text beside elements at body level or in a mixed plain element becomes `span` content nodes, as the converter does.
 
-## What else must the editing slices keep? (E5)
-- The switch label changes from Code to Edit; `readOnly` goes off only when `_collab.mayEdit` (view mode keeps the view read-only).
-- Ctrl+S saves the design: pending editor changes are applied first (`_sdSaveShortcut()` / `saveAjax()` hook), else the last keystrokes are lost.
-- A refused change (`onLockHit`) gets a toast naming the lock: head/foot rows, a locked layer, a shared component, a widget, the content role's area.
-- `_pgPageUnchanged()` is unaffected: edits land in the tree, so the usual dirty check applies.
+## What changes in place?
+- `_sdCodeApplyTag`: `semantic` and heading (`h1`-`h6`) rename; other types keep the tag their type prints (toast).
+- `_sdCodeApplyAttrs`: only attributes that differ from what the emitter printed (parsed from `_sdCode.text` at the entry's original range) are touched. `class` by token diff: tokens of `cssClass` go, others are the type's (toast), an icon's `bi-*` token sets `iconName`; `id` -> `props.id` + `_sdRetargetLabels()`; `style` -> `_sdApplyInlineStyle()` (the Attributes panel's splitter); `src/alt/width/height` of an image and `href/target/rel` of a link, a btn or `<a>` -> props; tooltip title/placement -> props; the rest -> `_attrs`. The root node's style is replaced as `_attrs.style`.
+- `_sdCodeApplyText` by `_sdCodeTextKind()`: `plain` (semantic text node, entities decoded, pre/textarea/code untrimmed, `textPosition` for a button or link), `inner` (content element innerHTML minus its owned children, which stay nodes in order and go when removed), `outer` (Custom HTML = its markup), `none`.
+- Children (`_sdCodeReconcileChildren`) are rebuilt only for a free node whose children the emitter placed (`entry.atomic` false) and whose text is not `inner`/`outer`; a half-locked node keeps its children. A shared component's or widget's elements met inside a page node keep that node's `shared_ref` in place (`_sdCodeSharedRefFor`); their own changes arrive with the node as scope and mark `_sharedDirty`.
+
+## Undo, selection, locks
+- `saveState('run:code')` once per apply, then `render()`; the refresh writes back the tree's spelling of the typed text (quotes, entities, indentation) with a cursor-preserving diff. Ctrl+Z in the editor undoes typed text and applies again; Ctrl+Z outside restores the tree and the text follows.
+- `selectedNode` is dropped when its node left every tree (`_sdCodeNodeExists`). A refused keystroke shows one toast per 2.5 s naming the lock (`_sdCodeOnLockHit`).
+- Read-only follows `_collab.mayEdit` (`_sdCodeSyncMode()`); the switch reads Edit when typing is allowed, Code otherwise.

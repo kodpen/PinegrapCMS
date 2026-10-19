@@ -23466,5 +23466,12 @@
     "Unfolded lines": "Açılan satırlar",
     "Show the page as code (click a line to select its element)": "Sayfayı kod olarak göster (bir satıra tıklayınca öğesi seçilir)",
     "Syntax error": "Sözdizimi hatası",
-    "The code editor could not be loaded.": "Kod editörü yüklenemedi."
+    "The code editor could not be loaded.": "Kod editörü yüklenemedi.",
+    "Edit the page as code: what you type goes onto the canvas; click a line to select its element": "Sayfayı kod olarak düzenle: yazdığın tuvale geçer; bir satıra tıklayınca öğesi seçilir",
+    "These lines come from the page settings and the design files; change them there.": "Bu satırlar sayfa ayarlarından ve tasarım dosyalarından gelir; onları oradan değiştir.",
+    "The body tag is fixed; its class, id and attribute values can change.": "body etiketi sabittir; sınıfı, id'si ve nitelik değerleri değişebilir.",
+    "The loop markers of a system widget cannot change.": "Sistem widget'ının döngü işaretleri değiştirilemez.",
+    "This element is locked here: only its attribute values and its text can change.": "Bu öğe burada kilitli: yalnız nitelik değerleri ve metni değişebilir.",
+    "A class set by the element's type cannot be removed in the code; use the options panel.": "Öğenin türünün verdiği sınıf kodda kaldırılamaz; seçenekler panelini kullan.",
+    "The tag of this element is set by its type; use the options panel.": "Bu öğenin etiketini türü belirler; seçenekler panelini kullan."
 }

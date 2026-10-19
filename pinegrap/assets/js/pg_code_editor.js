@@ -554,6 +554,14 @@
                 annotations: [S.Transaction.addToHistory.of(false)]
             });
         };
+        // The engine's syntax tree of the whole document (parsed to the end
+        // when it is not yet), for callers that read the structure back.
+        inst.syntaxTree = function () {
+            var len = view.state.doc.length;
+            return L.ensureSyntaxTree(view.state, len, 2000) || L.syntaxTree(view.state);
+        };
+        inst.sliceDoc = function (from, to) { return view.state.sliceDoc(from, to); };
+        inst.docLength = function () { return view.state.doc.length; };
         inst.getLanguage = function () { return lang; };
         inst.setLanguage = function (next) {
             next = _normLanguage(next);

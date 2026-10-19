@@ -20558,19 +20558,28 @@ const StyleDesigner = (function () {
     }
 
     function _writeInlineStyleValue(node, value) {
-        // Inverse of `_currentInlineStyleValue`: split the incoming serialized
-        // style back into prop-bound decls (routed to node.props.<key>) and
-        // freeform decls (kept in _attrs.style). Removing a prop-derived
-        // decl from element.style clears the corresponding prop — keeps the
-        // font picker in sync when the user deletes the font-family row.
         if (!node) return;
-        if (!node.props) node.props = {};
-        if (!Array.isArray(node.props._attrs)) node.props._attrs = [];
-
         // Snapshot BEFORE we start mutating node.props. Without this, the
         // saveState() call at the bottom of the function would capture the
         // POST-mutation state, making undo a no-op for inline-style edits.
         saveState();
+        _sdApplyInlineStyle(node, value);
+        // saveState() runs at the top of this function — it must capture the
+        // PRE-edit state, not the post-edit state, for undo to roll back.
+        render();
+    }
+
+    // Inverse of `_currentInlineStyleValue`: split the incoming serialized
+    // style back into prop-bound decls (routed to node.props.<key>) and
+    // freeform decls (kept in _attrs.style). Removing a prop-derived decl
+    // from element.style clears the corresponding prop — keeps the font
+    // picker in sync when the user deletes the font-family row. Writes the
+    // node only: the Attributes panel and the code view call it between
+    // their own saveState() and render().
+    function _sdApplyInlineStyle(node, value) {
+        if (!node) return;
+        if (!node.props) node.props = {};
+        if (!Array.isArray(node.props._attrs)) node.props._attrs = [];
 
         var decls = _parseInlineStyle(value || '');
         var maps = _sdInlineStyleProps(node);
@@ -20611,9 +20620,6 @@ const StyleDesigner = (function () {
             if (idx === -1) node.props._attrs.push({ name: 'style', value: trimmed });
             else            node.props._attrs[idx].value = trimmed;
         }
-        // saveState() runs at the top of this function — it must capture the
-        // PRE-edit state, not the post-edit state, for undo to roll back.
-        render();
     }
     function _parseInlineStyle(s) {
         if (!s) return [];
@@ -22715,8 +22721,14 @@ const StyleDesigner = (function () {
         entries: [],        // the range map behind it (see _sdCodeDocument())
         busy: false,        // true while the editor is being written to
         fromEditor: false,  // true while a selection made in the editor is applied
-        loading: false
+        loading: false,
+        editable: null,     // what the editor was last told (null: never)
+        dirty: null,        // { from, to } typed since the last apply, in editor positions
+        applyTimer: 0,
+        applying: false,    // true while typed changes are being put into the tree
+        lockToastAt: 0
     };
+    var _SD_CODE_APPLY_MS = 400;
     var _SD_CODE_KEY = 'pinegrap_designer_code_view';
 
     function _sdCodeEnabled() { return !!(_sdCode.on && _sdCode.ed); }
@@ -22754,9 +22766,8 @@ const StyleDesigner = (function () {
         btn.type = 'button';
         btn.id = 'sd-html-code-toggle';
         btn.className = 'sd-styles-tool sd-html-code-toggle';
-        btn.title = _sdT('Show the page as code (click a line to select its element)');
-        btn.innerHTML = '<span class="bi bi-braces-asterisk me-1"></span>' + esc(_sdT('Code'));
         btn.addEventListener('click', function (e) { e.stopPropagation(); _sdCodeToggle(!_sdCode.on); });
+        _sdCodeLabelSwitch(btn, _sdCodeMayEdit());
         var caret = document.getElementById('sd-bp-collapse');
         if (caret && caret.parentNode) caret.parentNode.insertBefore(btn, caret);
         else quad.querySelector('.sd-bp-quad-hdr').appendChild(btn);
@@ -22789,13 +22800,16 @@ const StyleDesigner = (function () {
         PgCodeEditor.open(_sdCode.host, {
             language: 'html',
             value: '',
-            readOnly: true,
+            readOnly: !_sdCodeMayEdit(),
             phrases: _sdCodePhrases(),
             labels: { syntaxError: _sdT('Syntax error') },
-            onSelection: _sdCodeOnSelection
+            onSelection: _sdCodeOnSelection,
+            onChange: _sdCodeOnChange,
+            onLockHit: _sdCodeOnLockHit
         }).then(function (ed) {
             _sdCode.loading = false;
             _sdCode.ed = ed;
+            _sdCode.editable = _sdCodeMayEdit();
             // Switched off while the bundle was on its way.
             if (!_sdCode.on) return;
             _sdCode.text = '';
@@ -22857,6 +22871,15 @@ const StyleDesigner = (function () {
         if (tree && tree.children) {
             tree.children.forEach(function (c) { text += _sdEmitNode(c, 1, text.length, sink); });
         }
+        // Where the page's own content is: what is typed between the body
+        // tag and the scripts belongs to the root node. Grows at both ends
+        // so a line typed right after <body> or right before the scripts
+        // counts.
+        var contentEnd = text.length;
+        entries.push({ key: 'content', node: tree, from: bodyStart, to: contentEnd, lock: '', role: 'content', grow: true });
+
+        var recorded = new Set();
+        sink.ranges.forEach(function (r) { recorded.add(r.node); });
         sink.ranges.forEach(function (r) {
             if (r.to <= r.from) return;
             var type = r.node.type;
@@ -22872,9 +22895,25 @@ const StyleDesigner = (function () {
                 }
                 return;
             }
-            var lock = (type === 'root' || type === 'shared_ref') ? { level: '', attrs: false, text: false } : _sdCodeLockOf(r.node);
-            var e = { key: r.sid + ':' + r.node._id, node: r.node, sid: r.sid, from: r.from, to: r.to, lock: lock.level, role: 'node' };
-            if (lock.level === 'half') e.islands = _sdCodeIslands(text, r, lock);
+            if (type === 'root' || type === 'shared_ref') return;
+            // The range is the element itself: from its "<" to its last
+            // character, without the indentation and the line break the
+            // emitter puts around it, so a tag typed just before it is a
+            // new element and not a change to it.
+            var from = r.from, to = r.to;
+            var open = _sdCodeOpenTag(text, from, to);
+            if (open) from = open.from;
+            else { while (from < to && /\s/.test(text[from])) from++; }
+            while (to > from && /\s/.test(text[to - 1])) to--;
+            if (to <= from) return;
+            var lock = _sdCodeLockOf(r.node);
+            var e = { key: r.sid + ':' + r.node._id, node: r.node, sid: r.sid, from: from, to: to, lock: lock.level, role: 'node',
+                      kind: _sdCodeTextKind(r.node),
+                      // Children the emitter could not locate (a component
+                      // that rewrote them) stay as they are: the text is
+                      // read for the element itself only.
+                      atomic: !!(r.node.children && r.node.children.length && r.node.children.some(function (c) { return !recorded.has(c); })) };
+            if (lock.level === 'half') e.islands = _sdCodeIslands(text, { from: from, to: to, node: r.node }, lock);
             entries.push(e);
         });
 
@@ -22974,6 +23013,7 @@ const StyleDesigner = (function () {
     function _sdCodeRefresh() {
         if (!_sdCodeEnabled()) return;
         var ed = _sdCode.ed;
+        _sdCodeSyncMode();
         var doc = _sdCodeDocument();
         var current = ed.getValue();
         if (doc.text !== current) {
@@ -22981,15 +23021,43 @@ const StyleDesigner = (function () {
             try {
                 var d = _sdCodeTextDiff(current, doc.text);
                 ed.applyExternal(d.from, d.to, d.insert);
-                ed.track(doc.entries.map(function (e) {
-                    return { id: e.key, from: e.from, to: e.to, data: e, grow: false };
-                }));
-                ed.lock(doc.locks);
+                // The text is the tree's again: nothing typed is waiting.
+                _sdCode.dirty = null;
+                if (_sdCode.applyTimer) { clearTimeout(_sdCode.applyTimer); _sdCode.applyTimer = 0; }
             } finally { _sdCode.busy = false; }
         }
+        // The map and the locks are replaced on every pass, text change or
+        // not: a node the tree gained has no range yet even when its text
+        // is already there (typed, then applied).
+        ed.track(doc.entries.map(function (e) {
+            return { id: e.key, from: e.from, to: e.to, data: e, grow: !!e.grow };
+        }));
+        ed.lock(doc.locks);
         _sdCode.text = doc.text;
         _sdCode.entries = doc.entries;
         _sdCodeRevealSelection();
+    }
+
+    // Whether the editor may change the page right now: not in view mode.
+    // Content roles edit inside the locks; the server gate decides the rest.
+    function _sdCodeMayEdit() { return !!(_collab && _collab.mayEdit); }
+
+    function _sdCodeLabelSwitch(btn, editable) {
+        if (!btn) return;
+        btn.innerHTML = '<span class="bi ' + (editable ? 'bi-pencil-square' : 'bi-braces-asterisk') + ' me-1"></span>' + esc(editable ? _sdT('Edit') : _sdT('Code'));
+        _sdSetButtonTitle(btn, editable
+            ? _sdT('Edit the page as code: what you type goes onto the canvas; click a line to select its element')
+            : _sdT('Show the page as code (click a line to select its element)'));
+    }
+
+    // Read-only follows the page lock: a session that lost the page keeps
+    // the view but not the keyboard.
+    function _sdCodeSyncMode() {
+        var editable = _sdCodeMayEdit();
+        if (_sdCode.editable === editable) return;
+        _sdCode.editable = editable;
+        if (_sdCode.ed) _sdCode.ed.setReadOnly(!editable);
+        _sdCodeLabelSwitch(document.getElementById('sd-html-code-toggle'), editable);
     }
 
     // The one replacement that turns `before` into `after`: the common start
@@ -23023,7 +23091,7 @@ const StyleDesigner = (function () {
         var open = _sdCodeOpenTag(ed.getValue(), live.from, live.to);
         var from = open ? open.from : live.from, to = open ? open.end : Math.min(live.to, live.from + 200);
         ed.mark('sel', from, to, 'pg-ce-mark');
-        if (!_sdCode.fromEditor) ed.scrollTo(from, { y: 'center' });
+        if (!_sdCode.fromEditor && !_sdCode.applying) ed.scrollTo(from, { y: 'center' });
     }
 
     // The cursor moved by hand: the innermost element under it is selected
@@ -23050,6 +23118,609 @@ const StyleDesigner = (function () {
             _sdSelectRender();
             scrollCanvasToNode(selectedNode);
         } finally { _sdCode.fromEditor = false; }
+    }
+
+    // ========================= CODE VIEW: TYPED CHANGES INTO THE TREE =========================
+    // What is typed is read back from the editor's syntax tree after a pause
+    // and put into the nodes it belongs to. The range map says which element
+    // of the text is which node: an element whose "<" sits where a node's
+    // range starts is that node; one without a range is new. An existing
+    // node changes in place (tag, attributes, text), a free node's children
+    // are rebuilt from the elements inside it (so a deletion, a move or a
+    // paste in the text is one in the tree), a new element with no node
+    // inside it goes through the server's converter (the same one a paste
+    // uses) and stands as a Custom HTML node until the answer comes. Locks
+    // never reach here: the editor refused the keystroke. After the tree is
+    // written the normal render follows, and the refresh writes back the
+    // tree's own spelling of what was typed (quotes, escaping, indentation).
+
+    // The editor changed under the operator's hands: remember the span and
+    // apply after a pause. The facade's writes (busy) are not typing.
+    function _sdCodeOnChange(inst, update) {
+        if (_sdCode.busy || !_sdCode.on || !_sdCodeMayEdit()) return;
+        var d = _sdCode.dirty;
+        if (d) {
+            d.from = update.changes.mapPos(d.from, -1);
+            d.to = update.changes.mapPos(d.to, 1);
+        }
+        update.changes.iterChangedRanges(function (fromA, toA, fromB, toB) {
+            if (!d) d = { from: fromB, to: toB };
+            else { d.from = Math.min(d.from, fromB); d.to = Math.max(d.to, toB); }
+        });
+        _sdCode.dirty = d;
+        if (_sdCode.applyTimer) clearTimeout(_sdCode.applyTimer);
+        _sdCode.applyTimer = setTimeout(_sdCodeApply, _SD_CODE_APPLY_MS);
+    }
+
+    // Whatever is waiting goes in now (a save, a tab switch).
+    function _sdCodeFlush() {
+        if (!_sdCode.applyTimer) return;
+        clearTimeout(_sdCode.applyTimer);
+        _sdCode.applyTimer = 0;
+        _sdCodeApply();
+    }
+
+    function _sdCodeOnLockHit(hit) {
+        var now = Date.now();
+        if (now - _sdCode.lockToastAt < 2500) return;
+        _sdCode.lockToastAt = now;
+        var msg;
+        switch (hit.tag) {
+            case 'head': case 'foot': case 'frame':
+                msg = _sdT('These lines come from the page settings and the design files; change them there.'); break;
+            case 'body':
+                msg = _sdT('The body tag is fixed; its class, id and attribute values can change.'); break;
+            case 'loop':
+                msg = _sdT('The loop markers of a system widget cannot change.'); break;
+            default:
+                msg = _sdT('This element is locked here: only its attribute values and its text can change.');
+        }
+        sdToast('<span class="bi bi-lock-fill me-1"></span>' + esc(msg), 'warning', 3500);
+    }
+
+    // The innermost thing whose text holds the whole typed span: a node, the
+    // body tag (its attributes) or the page content between the tags.
+    function _sdCodeScopeOf(dirty) {
+        var ed = _sdCode.ed;
+        var hits = ed.trackedAt(dirty.from);
+        for (var i = 0; i < hits.length; i++) {
+            var h = hits[i];
+            if (!(h.from <= dirty.from && dirty.to <= h.to)) continue;
+            var role = h.data && h.data.role;
+            if (role === 'node' || role === 'body' || role === 'content') return { entry: h.data, from: h.from, to: h.to };
+        }
+        return null;
+    }
+
+    // The node an element of the text stands for: the one whose range starts
+    // at the element's "<". Nothing there: the element is new.
+    function _sdCodeOwnerOf(item) {
+        var hits = _sdCode.ed.trackedAt(item.from);
+        for (var i = 0; i < hits.length; i++) {
+            if (hits[i].from === item.from && hits[i].data && hits[i].data.role === 'node') return hits[i].data;
+        }
+        return null;
+    }
+
+    // Reads the elements between `from` and `to` among the children of a
+    // syntax node: elements with their tags, attributes and children, text
+    // runs with their raw markup. null when the parser left an error there
+    // (an unclosed tag, a stray close tag): nothing is applied until the
+    // text parses, and the lint shows where it does not.
+    function _sdCodeParse(syntax, from, to, text) {
+        var items = [];
+        for (var child = syntax.firstChild; child; child = child.nextSibling) {
+            if (child.to <= from || child.from >= to) continue;
+            var name = child.name;
+            if (child.type.isError || name === 'MismatchedCloseTag' || name === 'IncompleteCloseTag') return null;
+            if (name === 'Element') {
+                var el = _sdCodeParseElement(child, text);
+                if (!el) return null;
+                items.push(el);
+            } else if (name === 'Text' || name === 'EntityReference' || name === 'CharacterReference' || name === 'InvalidEntity') {
+                var raw = text.slice(child.from, child.to);
+                var last = items.length ? items[items.length - 1] : null;
+                if (last && last.kind === 'text' && last.to === child.from) { last.to = child.to; last.raw += raw; }
+                else items.push({ kind: 'text', from: child.from, to: child.to, raw: raw });
+            }
+            // Comments, doctype and processing instructions are not nodes.
+        }
+        return items;
+    }
+
+    function _sdCodeParseElement(node, text) {
+        var open = node.getChild('OpenTag') || node.getChild('SelfClosingTag');
+        if (!open) return null;
+        var tagNode = open.getChild('TagName');
+        if (!tagNode) return null;
+        var item = {
+            kind: 'element', from: node.from, to: node.to,
+            tag: text.slice(tagNode.from, tagNode.to).toLowerCase(),
+            open: { from: open.from, to: open.to },
+            selfClosing: open.name === 'SelfClosingTag',
+            close: null, attrs: [], children: [], texts: []
+        };
+        var attrs = open.getChildren('Attribute');
+        for (var i = 0; i < attrs.length; i++) {
+            var an = attrs[i].getChild('AttributeName');
+            if (!an) continue;
+            var av = attrs[i].getChild('AttributeValue');
+            var au = av ? null : attrs[i].getChild('UnquotedAttributeValue');
+            var value = null;
+            if (av) {
+                var q = text.slice(av.from, av.to);
+                value = (q.length >= 2 && (q[0] === '"' || q[0] === "'")) ? q.slice(1, -1) : q;
+            } else if (au) {
+                value = text.slice(au.from, au.to);
+            }
+            item.attrs.push({ name: text.slice(an.from, an.to).toLowerCase(), value: value === null ? null : _sdCodeDecode(value) });
+        }
+        var close = node.getChild('CloseTag');
+        if (close) item.close = { from: close.from, to: close.to };
+        var innerFrom = open.to, innerTo = close ? close.from : node.to;
+        item.innerFrom = innerFrom; item.innerTo = innerTo;
+        // Raw-text elements: the text is what it is.
+        var raw = node.getChild('ScriptText') || node.getChild('StyleText') || node.getChild('TextareaText');
+        if (raw) { item.texts.push({ from: raw.from, to: raw.to, raw: text.slice(raw.from, raw.to) }); return item; }
+        if (innerTo <= innerFrom) return item;
+        var inner = _sdCodeParse(node, innerFrom, innerTo, text);
+        if (inner === null) return null;
+        for (var k = 0; k < inner.length; k++) {
+            if (inner[k].kind === 'element') item.children.push(inner[k]);
+            else item.texts.push(inner[k]);
+        }
+        item.items = inner;
+        return item;
+    }
+
+    function _sdCodeDecode(s) {
+        if (s.indexOf('&') === -1) return s;
+        var t = document.createElement('textarea');
+        t.innerHTML = s;
+        return t.value;
+    }
+
+    // How a node holds its text: 'plain' (a semantic element's text node),
+    // 'inner' (a content element's innerHTML), 'outer' (Custom HTML: the
+    // markup itself), 'none' (nothing of its own to read).
+    function _sdCodeTextKind(node) {
+        if (!node) return 'none';
+        if (node.type === 'semantic') return 'plain';
+        if (node.type === 'content') {
+            var ct = node.props.contentType;
+            if (ct === 'custom_html') return 'outer';
+            if (['heading', 'paragraph', 'span', 'text', 'link', 'button'].indexOf(ct) !== -1) return 'inner';
+        }
+        return 'none';
+    }
+
+    // Puts the typed span into the tree. Called after the pause, and
+    // before a save or a tab switch.
+    function _sdCodeApply() {
+        _sdCode.applyTimer = 0;
+        if (!_sdCodeEnabled() || !_sdCode.dirty || !_sdCodeMayEdit()) return;
+        var ed = _sdCode.ed;
+        var dirty = _sdCode.dirty;
+        var text = ed.getValue();
+        var syntax;
+        try { syntax = ed.syntaxTree(); } catch (e) { syntax = null; }
+        if (!syntax) return;
+        var scope = _sdCodeScopeOf(dirty);
+        if (!scope) { _sdCode.dirty = null; return; }
+
+        var changed = false;
+        var report = { derived: false, tag: false, imports: [] };
+        _sdCode.applying = true;
+        try {
+            if (scope.entry.role === 'body') {
+                // The body tag's attributes belong to the root node.
+                var bodyEl = _sdCodeElementAt(syntax, scope.from);
+                if (!bodyEl) return;
+                var body = _sdCodeParseElementShallow(bodyEl, text);
+                if (!body) return;
+                saveState('run:code');
+                _sdCodeApplyAttrs(tree, body, scope.entry, { level: 'half', attrs: true, text: false }, report);
+                changed = true;
+            } else if (scope.entry.role === 'content') {
+                // The page's own content, between the body tag and the scripts.
+                var bodyNode = _sdCodeElementAt(syntax, _sdCodeBodyOpenAt(text));
+                if (!bodyNode) return;
+                var items = _sdCodeParse(bodyNode, scope.from, scope.to, text);
+                if (items === null) return;   // not well-formed yet
+                saveState('run:code');
+                _sdCodeReconcileChildren(tree, items, 0, report);
+                changed = true;
+            } else {
+                var entry = scope.entry;
+                var el = _sdCodeElementAt(syntax, scope.from);
+                // The element must still cover the typed span; when the
+                // typing split it, the parent reads it as a whole.
+                if (!el || el.to < dirty.to) { _sdCodeApplyOuter(dirty); return; }
+                var item = _sdCodeParseElement(el, text);
+                if (!item) return;
+                saveState('run:code');
+                _sdCodeReconcileNode(entry.node, item, entry, report);
+                changed = true;
+            }
+        } finally {
+            _sdCode.applying = false;
+        }
+        if (!changed) return;
+        _sdCode.dirty = null;
+        if (selectedNode && !_sdCodeNodeExists(selectedNode)) { selectedNode = null; selectedNodes = []; }
+        _sdCode.applying = true;
+        try { render(); } finally { _sdCode.applying = false; }
+        if (report.derived) sdToast(esc(_sdT('A class set by the element\'s type cannot be removed in the code; use the options panel.')), 'warning', 4000);
+        if (report.tag) sdToast(esc(_sdT('The tag of this element is set by its type; use the options panel.')), 'warning', 4000);
+        report.imports.forEach(_sdCodeImport);
+    }
+
+    // The typed span is no longer inside one element (a close tag was typed
+    // or removed): widen to the enclosing one and try again from there.
+    function _sdCodeApplyOuter(dirty) {
+        var hits = _sdCode.ed.trackedAt(dirty.from);
+        var entry = null;
+        for (var i = 0; i < hits.length; i++) {
+            if (hits[i].from <= dirty.from && dirty.to <= hits[i].to && hits[i].data && hits[i].data.role === 'node') { entry = hits[i]; break; }
+        }
+        // Grow the span to the whole parent of the element that broke.
+        var parentHit = null;
+        for (var j = 0; j < hits.length; j++) {
+            if (entry && hits[j].data === entry.data) continue;
+            if (hits[j].from <= (entry ? entry.from : dirty.from) && (entry ? entry.to : dirty.to) <= hits[j].to && hits[j].data && (hits[j].data.role === 'node' || hits[j].data.role === 'content')) { parentHit = hits[j]; break; }
+        }
+        if (!parentHit) return;
+        _sdCode.dirty = { from: parentHit.from, to: parentHit.to };
+        _sdCodeApply();
+    }
+
+    function _sdCodeBodyOpenAt(text) {
+        var e = null;
+        for (var i = 0; i < _sdCode.entries.length; i++) if (_sdCode.entries[i].role === 'body') { e = _sdCode.entries[i]; break; }
+        var live = e ? _sdCode.ed.tracked(e.key) : null;
+        return live ? live.from : text.indexOf('<body');
+    }
+
+    // The Element syntax node whose opening "<" is at `pos`.
+    function _sdCodeElementAt(syntax, pos) {
+        var n = syntax.resolveInner(pos + 1, 1);
+        while (n) {
+            if (n.name === 'Element' && n.from === pos) return n;
+            n = n.parent;
+        }
+        return null;
+    }
+
+    function _sdCodeParseElementShallow(node, text) {
+        var open = node.getChild('OpenTag');
+        if (!open) return null;
+        var item = { kind: 'element', from: node.from, to: node.to, tag: 'body', open: { from: open.from, to: open.to }, attrs: [], children: [], texts: [] };
+        var attrs = open.getChildren('Attribute');
+        for (var i = 0; i < attrs.length; i++) {
+            var an = attrs[i].getChild('AttributeName');
+            if (!an) continue;
+            var av = attrs[i].getChild('AttributeValue');
+            var au = av ? null : attrs[i].getChild('UnquotedAttributeValue');
+            var value = null;
+            if (av) { var q = text.slice(av.from, av.to); value = (q.length >= 2 && (q[0] === '"' || q[0] === "'")) ? q.slice(1, -1) : q; }
+            else if (au) value = text.slice(au.from, au.to);
+            item.attrs.push({ name: text.slice(an.from, an.to).toLowerCase(), value: value === null ? null : _sdCodeDecode(value) });
+        }
+        return item;
+    }
+
+    function _sdCodeNodeExists(node) {
+        if (_nodeInTree(node, tree)) return true;
+        for (var k in _sharedCache) {
+            if (Object.prototype.hasOwnProperty.call(_sharedCache, k) && _sharedCache[k] && _sharedCache[k].tree && _nodeInTree(node, _sharedCache[k].tree)) return true;
+        }
+        return false;
+    }
+
+    // One element of the text against its node.
+    function _sdCodeReconcileNode(node, item, entry, report) {
+        var lock = _sdCodeLockOf(node);
+        if (lock.level === 'full' || node.type === 'region') return;
+        var sid = entry.sid || 0;
+        if (lock.attrs) _sdCodeApplyTag(node, item, entry, report);
+        if (lock.attrs) _sdCodeApplyAttrs(node, item, entry, lock, report);
+        if (lock.text) _sdCodeApplyText(node, item, entry, report);
+        // The structure follows the text only for a free node whose children
+        // the emitter could place; a locked one keeps its children.
+        if (lock.level === '' && !entry.atomic && entry.kind !== 'inner' && entry.kind !== 'outer' && node.type !== 'shared_ref') {
+            _sdCodeReconcileChildren(node, item.items || [], sid, report);
+        }
+        if (sid) _sharedDirty[sid] = true;
+    }
+
+    // A parent's children, rebuilt from the elements inside it in the text.
+    function _sdCodeReconcileChildren(parent, items, sid, report) {
+        var kids = [];
+        var isPlain = parent.type === 'semantic';
+        var textRuns = items.filter(function (it) { return it.kind === 'text' && it.raw.trim() !== ''; });
+        var elements = items.filter(function (it) { return it.kind === 'element'; });
+        // Text beside elements in a plain element becomes spans, in order,
+        // as the converter does: a text node has one place, before or
+        // after all the children.
+        var mixed = isPlain && textRuns.length && elements.length && !_sdCodeTextSlot(parent, items);
+        items.forEach(function (it) {
+            if (it.kind === 'text') {
+                if (it.raw.trim() === '') return;
+                if (parent.type === 'root' || mixed) kids.push(_sdCodeNewSpan(it.raw));
+                return;
+            }
+            var owner = _sdCodeOwnerOf(it) || _sdCodeOwnerInside(it);
+            if (owner && (owner.sid || 0) !== sid) {
+                // The element belongs to a shared component or widget this
+                // parent places: the reference stays, its tree is its own.
+                var ref = _sdCodeSharedRefFor(parent, owner.sid);
+                if (ref && kids.indexOf(ref) === -1) kids.push(ref);
+                return;
+            }
+            if (owner && owner.node && owner.from === it.from) {
+                _sdCodeReconcileNode(owner.node, it, owner, report);
+                kids.push(owner.node);
+            } else if (_sdCodeHasOwnedInside(it)) {
+                var wrap = _sdCodeNewSemantic(it);
+                kids.push(wrap);
+                _sdCodeReconcileChildren(wrap, it.items || [], sid, report);
+            } else {
+                var html = _sdCode.ed.sliceDoc(it.from, it.to);
+                var holder = _sdCodeNewHolder(html);
+                kids.push(holder);
+                report.imports.push(holder);
+            }
+        });
+        parent.children = kids;
+        if (mixed) parent.props.text = '';
+    }
+
+    function _sdCodeHasOwnedInside(item) {
+        for (var i = 0; i < item.children.length; i++) {
+            if (_sdCodeOwnerOf(item.children[i]) || _sdCodeHasOwnedInside(item.children[i])) return true;
+        }
+        return false;
+    }
+
+    // The first owned element inside an element without an owner of its own
+    // (a widget's root wrapper prints no tag: its children are the first
+    // owned elements seen).
+    function _sdCodeOwnerInside(item) {
+        for (var i = 0; i < item.children.length; i++) {
+            var o = _sdCodeOwnerOf(item.children[i]);
+            if (o) return o;
+        }
+        return null;
+    }
+
+    // The shared_ref among a parent's children that places component `sid`.
+    function _sdCodeSharedRefFor(parent, sid) {
+        var kids = parent.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            if (kids[i].type === 'shared_ref' && parseInt(kids[i].props && kids[i].props.sharedId, 10) === sid) return kids[i];
+        }
+        return null;
+    }
+
+    // A new element around existing nodes: a plain element with the typed
+    // tag and attributes, so the nodes inside keep what they are.
+    function _sdCodeNewSemantic(item) {
+        var props = { tag: item.tag, cssClass: '' };
+        var attrs = [];
+        item.attrs.forEach(function (a) {
+            var v = a.value === null ? '' : a.value;
+            if (a.name === 'class') props.cssClass = v;
+            else if (a.name === 'id') props.id = v;
+            else if (item.tag === 'a' && (a.name === 'href' || a.name === 'target' || a.name === 'rel')) props[a.name] = v;
+            else attrs.push({ name: a.name, value: v });
+        });
+        if (attrs.length) props._attrs = attrs;
+        return { _id: gid(), type: 'semantic', props: props, children: [] };
+    }
+
+    function _sdCodeNewSpan(raw) {
+        return { _id: gid(), type: 'content', props: { contentType: 'span', text: raw.trim(), cssClass: '' }, children: [] };
+    }
+
+    // The place a new element keeps until the converter answers: its own
+    // markup as Custom HTML, which prints the same text.
+    function _sdCodeNewHolder(html) {
+        return { _id: gid(), type: 'content', props: { contentType: 'custom_html', html: html, cssClass: '', _sdPending: html }, children: [] };
+    }
+
+    // The converter reads the new element and the holder gives way to what
+    // it made. No answer, or nothing made: the holder stays as Custom HTML
+    // and the page prints the markup as typed.
+    function _sdCodeImport(holder) {
+        var html = holder.props._sdPending;
+        if (!html) return;
+        _pgApiPost('import_fragment', { html: html }).then(function (res) {
+            if (!_sdCodeNodeExists(holder)) return;
+            // Typed again meanwhile: ask about the newer text instead.
+            if (holder.props.html !== html) { holder.props._sdPending = holder.props.html; _sdCodeImport(holder); return; }
+            delete holder.props._sdPending;
+            var kids = (res && res.status === 'success' && Array.isArray(res.children)) ? res.children : [];
+            if (!kids.length) { render(); return; }
+            _backfillIds({ type: 'root', props: {}, children: kids });
+            var owner = _sdAnyParent(holder);
+            if (!owner || !owner.parent) return;
+            var idx = owner.parent.children.indexOf(holder);
+            if (idx === -1) return;
+            Array.prototype.splice.apply(owner.parent.children, [idx, 1].concat(kids));
+            kids.forEach(function (k) { if (typeof _cfAdoptOnDrop === 'function') _cfAdoptOnDrop(k); });
+            if (owner.sid) _sharedDirty[owner.sid] = true;
+            if (selectedNode === holder) selectedNode = kids[kids.length - 1];
+            _sdCode.applying = true;
+            try { render(); } finally { _sdCode.applying = false; }
+        }).catch(function () {
+            delete holder.props._sdPending;
+        });
+    }
+
+    // The tag name: a plain element and a heading may change theirs; the
+    // rest wear the tag their type prints.
+    function _sdCodeApplyTag(node, item, entry, report) {
+        var oldOpen = _sdCodeOpenTag(_sdCode.text, entry.from, entry.to);
+        var oldTag = oldOpen ? _sdCode.text.slice(oldOpen.tagFrom, oldOpen.tagTo).toLowerCase() : '';
+        if (!oldTag || item.tag === oldTag) return;
+        if (!/^[a-z][a-z0-9-]*$/.test(item.tag)) return;
+        if (node.type === 'semantic') { node.props.tag = item.tag; return; }
+        if (node.type === 'content' && node.props.contentType === 'heading' && /^h[1-6]$/.test(item.tag)) { node.props.tag = item.tag; return; }
+        report.tag = true;
+    }
+
+    // Attributes: only those that differ from what the emitter printed are
+    // touched, each by the Attributes panel's rules.
+    function _sdCodeApplyAttrs(node, item, entry, lock, report) {
+        var oldOpen = _sdCodeOpenTag(_sdCode.text, entry.from, entry.to);
+        var oldMap = {};
+        if (oldOpen) oldOpen.attrs.forEach(function (a) {
+            oldMap[a.name.toLowerCase()] = a.valueFrom === null ? '' : _sdCodeDecode(_sdCode.text.slice(a.valueFrom, a.valueTo));
+        });
+        var newMap = {};
+        item.attrs.forEach(function (a) { newMap[a.name] = a.value === null ? '' : a.value; });
+        var names = {};
+        Object.keys(oldMap).forEach(function (n) { names[n] = 1; });
+        Object.keys(newMap).forEach(function (n) { names[n] = 1; });
+        Object.keys(names).forEach(function (name) {
+            var was = Object.prototype.hasOwnProperty.call(oldMap, name) ? oldMap[name] : undefined;
+            var now = Object.prototype.hasOwnProperty.call(newMap, name) ? newMap[name] : undefined;
+            if (was === now) return;
+            _sdCodeSetAttr(node, name, was, now, report);
+        });
+    }
+
+    function _sdCodeSetAttr(node, name, was, now, report) {
+        var p = node.props;
+        if (name === 'class') {
+            var oldT = (was || '').split(/\s+/).filter(Boolean), newT = (now || '').split(/\s+/).filter(Boolean);
+            var cls = (p.cssClass || '').split(/\s+/).filter(Boolean);
+            var isIcon = node.type === 'content' && p.contentType === 'icon';
+            oldT.forEach(function (t) {
+                if (newT.indexOf(t) !== -1) return;
+                var at = cls.indexOf(t);
+                if (at !== -1) cls.splice(at, 1);
+                else if (isIcon && /^bi-/.test(t)) { /* the icon itself: replaced below */ }
+                else if (t !== 'bi' || !isIcon) report.derived = true;
+            });
+            newT.forEach(function (t) {
+                if (oldT.indexOf(t) !== -1) return;
+                if (isIcon && /^bi-/.test(t)) { p.iconName = t; return; }
+                if (cls.indexOf(t) === -1) cls.push(t);
+            });
+            p.cssClass = cls.join(' ');
+            return;
+        }
+        if (name === 'id') {
+            if (node.type === 'root') { _sdCodeSetRootAttr(node, 'id', now); return; }
+            var oldId = p.id || '';
+            p.id = now || '';
+            _sdRetargetLabels(oldId, p.id);
+            return;
+        }
+        if (name === 'style') {
+            if (node.type === 'root') { _sdCodeSetRootAttr(node, 'style', now); return; }
+            _sdApplyInlineStyle(node, now || '');
+            return;
+        }
+        var key = _sdCodeAttrProp(node, name);
+        if (key) { p[key] = now || ''; return; }
+        if (p.tooltipEnabled && name === 'title') { p.tooltipTitle = now || ''; return; }
+        if (p.tooltipEnabled && name === 'data-bs-placement') { p.tooltipPlacement = now || 'top'; return; }
+        if (!Array.isArray(p._attrs)) p._attrs = [];
+        var idx = -1;
+        for (var i = 0; i < p._attrs.length; i++) {
+            if (p._attrs[i] && String(p._attrs[i].name || '').toLowerCase() === name) { idx = i; break; }
+        }
+        if (now === undefined) { if (idx !== -1) p._attrs.splice(idx, 1); }
+        else if (idx === -1) p._attrs.push({ name: name, value: now });
+        else p._attrs[idx].value = now;
+    }
+
+    // The body tag's id and style live where the Attributes panel keeps the
+    // root node's: the dedicated field and the attribute list respectively.
+    function _sdCodeSetRootAttr(node, name, now) {
+        var p = node.props;
+        if (name === 'id') { p.id = now || ''; return; }
+        if (!Array.isArray(p._attrs)) p._attrs = [];
+        // The style printed is the font and inline style props plus
+        // _attrs.style; what is typed replaces the lot as _attrs.style.
+        p.fontFamily = '';
+        p.inlineStyle = '';
+        var idx = -1;
+        for (var i = 0; i < p._attrs.length; i++) if (p._attrs[i] && String(p._attrs[i].name || '').toLowerCase() === 'style') { idx = i; break; }
+        if (!now) { if (idx !== -1) p._attrs.splice(idx, 1); }
+        else if (idx === -1) p._attrs.push({ name: 'style', value: now });
+        else p._attrs[idx].value = now;
+    }
+
+    // The prop an attribute of this node is printed from, when it has one.
+    function _sdCodeAttrProp(node, name) {
+        var p = node.props, t = node.type, ct = p.contentType, cpt = p.componentType;
+        if (t === 'content' && ct === 'image' && /^(src|alt|width|height)$/.test(name)) return name;
+        var linkLike = (t === 'content' && ct === 'link') || (t === 'semantic' && String(p.tag || '').toLowerCase() === 'a')
+            || (t === 'component' && cpt === 'btn' && (p.btnElement || 'a') === 'a');
+        if (linkLike && /^(href|target|rel)$/.test(name)) return name;
+        if (t === 'component' && cpt === 'btn' && p.btnElement === 'input') { if (name === 'type') return 'btnType'; if (name === 'value') return 'text'; }
+        if (t === 'component' && cpt === 'btn' && p.btnElement === 'button' && name === 'type') return 'btnType';
+        return null;
+    }
+
+    // Where a plain element's single text sits against its children: before
+    // them all ('start'), after them all ('end'), or nowhere clean (null).
+    function _sdCodeTextSlot(node, items) {
+        var firstEl = -1, lastEl = -1, firstTx = -1, lastTx = -1;
+        items.forEach(function (it, i) {
+            if (it.kind === 'element') { if (firstEl === -1) firstEl = i; lastEl = i; }
+            else if (it.raw.trim() !== '') { if (firstTx === -1) firstTx = i; lastTx = i; }
+        });
+        if (firstTx === -1) return 'none';
+        if (firstEl === -1) return 'end';
+        if (lastTx < firstEl) return 'start';
+        if (firstTx > lastEl) return 'end';
+        return null;
+    }
+
+    // The node's own text, by the kind of node.
+    function _sdCodeApplyText(node, item, entry, report) {
+        var ed = _sdCode.ed;
+        var kind = entry.kind || _sdCodeTextKind(node);
+        if (kind === 'none') return;
+        if (kind === 'outer') { node.props.html = ed.sliceDoc(item.from, item.to); return; }
+        if (kind === 'inner') {
+            // Everything between the tags is the text, except the children
+            // that are nodes of their own (an icon inside a link); those
+            // stay children, in the order they are in, and one removed
+            // from the text goes.
+            var inner = '';
+            var pos = item.innerFrom;
+            var kept = [];
+            (item.items || []).forEach(function (it) {
+                var owner = (it.kind === 'element') ? _sdCodeOwnerOf(it) : null;
+                if (owner && owner.node) {
+                    inner += ed.sliceDoc(pos, it.from);
+                    pos = it.to;
+                    _sdCodeReconcileNode(owner.node, it, owner, report);
+                    kept.push(owner.node);
+                }
+            });
+            inner += ed.sliceDoc(pos, item.innerTo);
+            node.props.text = inner.trim();
+            if (_sdCodeLockOf(node).level === '' && !entry.atomic) node.children = kept;
+            return;
+        }
+        // plain: a semantic element's text node, entities decoded. Beside
+        // children it keeps its one slot; mixed with them it is split into
+        // spans by _sdCodeReconcileChildren().
+        var items = item.items || [];
+        var slot = _sdCodeTextSlot(node, items);
+        if (slot === null) return;   // handled as spans
+        var runs = items.filter(function (it) { return it.kind === 'text' && it.raw.trim() !== ''; });
+        var ws = ['pre', 'textarea', 'code'].indexOf(String(node.props.tag || '').toLowerCase()) !== -1;
+        var joined = runs.map(function (r) { return r.raw; }).join('');
+        node.props.text = ws ? _sdCodeDecode(joined) : _sdCodeDecode(joined.replace(/\s+/g, ' ').trim());
+        var tag = String(node.props.tag || '').toLowerCase();
+        if ((tag === 'button' || tag === 'a') && slot !== 'none') node.props.textPosition = slot;
     }
 
     // ── Shared Context Menu Builder ────────────────────────────────────────────────
@@ -48767,6 +49438,9 @@ const StyleDesigner = (function () {
     // instead of a Location header.
     function saveAjax(opts) {
         opts = opts || {};
+        // A change typed in the code view in the last moments is applied
+        // before the tree is read, else the save is one edit behind.
+        _sdCodeFlush();
         // Belt-and-suspenders against the original race: even if a Ctrl+S
         // shortcut, custom button, or a programmatic call gets past the
         // disabled `#sd-ajax-save` button, bail here. Without this guard
@@ -49517,6 +50191,8 @@ const StyleDesigner = (function () {
     function _pgTabsSwitch(key) {
         var next = _pgPageByKey(key);
         if (!next) return;
+        // What was typed in the code view goes into the page we are leaving.
+        _sdCodeFlush();
         // Listed, not opened. The tab strip shows the page so the design
         // reads as a whole; the folder decides whether it opens.
         if (next.access === 'locked') {
