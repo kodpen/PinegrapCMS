@@ -9,6 +9,9 @@ description: CSRF/escape helpers (get_token_field, validate_token_field, h) and 
 ## Does lang() escape its {var:N} values?
 - No. `lang(array('string' => '... {var:1}', 'vars' => $x))` inserts `$x` as is, and `liveform` prints notices, warnings and errors as raw HTML. A stored name or URL that goes into a notice must be wrapped: `'vars' => h($name)`. Symptom fixed in #541: an anonymous OAuth dynamic registration (`pg_oauth_register()`) could plant `<img onerror>` in `client_name`, which ran in the panel when a manager removed or re-enabled the client on `api_settings.php`; the same shape covered device names and webhook URLs there and the ended connection on `connected_apps.php`.
 
+## Is a form field's label HTML?
+- No. `fields.label` is the plain text the field editor's `<input>` accepted (a role-3 user with folder edit rights writes it); only an information field's `information` column is rich text. The panel screens (`add_submitted_form.php`, `edit_submitted_form.php`, `view_fields.php`) and the validation messages (`custom_form.php`, `shopping_cart.php`, `express_order.php`, both submitted-form screens) print it through `h()`. The classic front-end renderers (`includes/fn/content.php`, `get_form_item_view.php`, `get_custom_form_confirmation_screen_content.php`) still print it raw pending the owner's decision in `plans/security-findings-2026-10.md`; the widget renderer escapes it.
+
 ## How are secret-bearing config fields stored?
 - A secret config field is NEVER opened into a constant. Paraşüt's secret key and password live in `config.parasut_credentials_enc` as ONE encrypted JSON blob (`"<ciphertext>:<iv>"`, the pair returned by `encrypt_string_with_iv()`); `init.php` only takes the blob into a constant.
 - Decryption happens in the request that actually calls Paraşüt, via `_parasut_credentials()`.
