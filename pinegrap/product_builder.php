@@ -3696,6 +3696,36 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>';
     }
 
+    // "Write with AI" beside the texts a product is described by
+    // (includes/fn/ai_write.php): the model reads these fields as they are
+    // in the form now, a stored product adds its groups and attributes. A
+    // product in the Recycle Bin is not written, so it gets none.
+    $ai_context = array(
+        'short_description' => 'short_description',
+        'name'              => 'name',
+        'brand'             => 'brand',
+        'price'             => 'price',
+        'keywords'          => 'keywords',
+        'full_description'  => 'full_description',
+        'details'           => 'details',
+        'title'             => 'title',
+        'meta_description'  => 'meta_description',
+    );
+
+    $ai_button = function ($target, $field) use ($user, $pg_product_id, $pg_recycled, $ai_context) {
+        if ($pg_recycled) {
+            return '';
+        }
+
+        return pg_ai_write_button($user, array(
+            'target'    => $target,
+            'record'    => 'product',
+            'record_id' => $pg_product_id,
+            'field'     => $field,
+            'context'   => $ai_context,
+        ));
+    };
+
     // The submit-form block, moved from edit_product.php (:1368-1453). It keeps
     // the ids the JavaScript in backend.src.js hooks — the field pickers, the
     // "where" selector and the add-field buttons are all driven from there, and
@@ -4586,7 +4616,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
 
                                     <div class="col-12 col-lg-5 my-2">
-                                        <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
+                                        ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description')) . '
                                         <input type="text" name="short_description" id="short_description" class="form-control" maxlength="255" value="' . h($v('short_description')) . '" />
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Becomes the product group name shown in the catalog.') . '</div>
                                     </div>
@@ -4618,7 +4648,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
 
                                     <div class="col-12 mt-3 mb-2">
-                                        <label for="full_description" class="form-label">' . lang('Full Description') . '</label>
+                                        ' . pg_ai_write_label_row('<label for="full_description" class="form-label">' . lang('Full Description') . '</label>', $ai_button('product_description', 'full_description')) . '
                                         <textarea id="full_description" name="full_description">' . h($v('full_description')) . '</textarea>
                                     </div>
 
@@ -4911,12 +4941,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <div class="form-text">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '</div>
                                     </div>
                                     <div class="col-12 col-lg-6 my-2">
-                                        <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
+                                        ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_button('seo_title', 'title')) . '
                                         <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($v('title')) . '" />
                                         <div id="seo_c_title"></div>
                                     </div>
                                     <div class="col-12 my-2">
-                                        <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
+                                        ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_button('seo_description', 'meta_description')) . '
                                         <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255">' . h($v('meta_description')) . '</textarea>
                                         <div id="seo_c_meta_description"></div>
                                     </div>
@@ -5452,7 +5482,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         ]);
     </script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
-    
+    ' . pg_ai_write_assets() . '
 </main>' . output_footer();
 
     $liveform->remove_form();

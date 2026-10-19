@@ -271,6 +271,7 @@ const StyleDesigner = (function () {
     var _sharedCache      = {};  // id → { name: str, tree: parsed-obj|null }
     var _sharedDirty      = {};  // id → true  — unsaved inline edits awaiting flush
     var _editingSharedSid = 0;   // sid of shared component currently being edited (0 = none)
+    var _sdSharedContentReady = false;  // the schema can open components to content editors
     var _sharedSnapshots  = {};  // id → JSON string snapshot taken before first edit this session
 
     // Pre-save hook for the assets panel. Default no-op so saveAjax can call
@@ -679,6 +680,7 @@ const StyleDesigner = (function () {
             try {
                 var resp = JSON.parse(xhr.responseText);
                 if (resp && resp.status === 'success' && Array.isArray(resp.items)) {
+                    if (resp.content_ready) _sdSharedContentReady = true;
                     var repaired = [];
                     resp.items.forEach(function (item) {
                         var sid = parseInt(item.id, 10);
@@ -710,7 +712,11 @@ const StyleDesigner = (function () {
                             // snapshot of the old one (kept after a save) no
                             // longer says what is stored.
                             delete _sharedSnapshots[sid];
-                            _sharedCache[sid] = { name: item.name || '', tree: parsed, system_region_config: item.system_region_config || null };
+                            _sharedCache[sid] = { name: item.name || '', tree: parsed, system_region_config: item.system_region_config || null,
+                                                  // Opened to content editors, and whether this
+                                                  // operator is one of them (_sdSharedOpenToContent()).
+                                                  contentEditable: String(item.content_editable) === '1',
+                                                  mayEditContent: String(item.may_edit_content) === '1' };
                             // A form control's name used to live in a binding;
                             // it lives on the attribute now. Moved on load so the
                             // next save writes the tree in its current shape.
@@ -3335,7 +3341,10 @@ const StyleDesigner = (function () {
      *   - a node that carries text, anywhere, is theirs for its TEXT
      *   - everything else is read-only
      *   - a shared component or system widget is never theirs, marked area
-     *     or not: its tree belongs to every page that uses it
+     *     or not: its tree belongs to every page that uses it. The exception
+     *     is a component a designer opened to content editors that names this
+     *     operator (_sdSharedOpenToContent()): inside it the rules above
+     *     apply, and it is saved through its own content_update
      *
      * The server enforces the same rule on save. This function decides what
      * the SCREEN allows; it is a courtesy, not the gate.
@@ -3365,6 +3374,9 @@ const StyleDesigner = (function () {
     var _sdEditEpoch    = 0;
     var _sdEditSet      = null;
     var _sdEditSetEpoch = -1;
+    // node -> id of the shared component whose tree holds it, built in the
+    // same pass as the set (a node of the page is not in it).
+    var _sdEditOwner    = null;
 
     // Called wherever the tree changes. saveState() runs before every
     // mutation and render() before every repaint, so between them nothing
@@ -3374,22 +3386,26 @@ const StyleDesigner = (function () {
     function _sdEditableSet() {
         if (_sdEditSet && _sdEditSetEpoch === _sdEditEpoch) return _sdEditSet;
         var set = new WeakSet();
-        var walk = function (n, on) {
+        var owner = new WeakMap();
+        var walk = function (n, on, sid) {
             if (!n || typeof n !== 'object') return;
             var here = on || !!(n.props && n.props._editable);
             if (here) set.add(n);
+            if (sid) owner.set(n, sid);
             if (Array.isArray(n.children)) {
-                for (var i = 0; i < n.children.length; i++) walk(n.children[i], here);
+                for (var i = 0; i < n.children.length; i++) walk(n.children[i], here, sid);
             }
         };
-        walk(tree, false);
-        // Shared component trees are walked too. Nothing in them is editable
-        // at content level, but the same set answers both questions and a
-        // second code path would be a second answer to keep in step.
+        walk(tree, false, 0);
+        // Shared component trees are walked too: a component a designer
+        // opened to content editors has editable areas of its own
+        // (_sdSharedOpenToContent()), and the owner map says which tree a
+        // node belongs to without walking every cached tree per node.
         Object.keys(_sharedCache).forEach(function (k) {
             var c = _sharedCache[k];
-            if (c && c.tree) walk(c.tree, false);
+            if (c && c.tree) walk(c.tree, false, parseInt(k, 10) || 0);
         });
+        _sdEditOwner    = owner;
         _sdEditSet      = set;
         _sdEditSetEpoch = _sdEditEpoch;
         return set;
@@ -3398,6 +3414,28 @@ const StyleDesigner = (function () {
     function _sdInEditableArea(node) {
         if (!node || typeof node !== 'object') return false;
         return _sdEditableSet().has(node);
+    }
+
+    // The shared component whose tree holds the node, or 0 for the page's own.
+    function _sdNodeSharedSid(node) {
+        if (!node || typeof node !== 'object') return 0;
+        _sdEditableSet();
+        return (_sdEditOwner && _sdEditOwner.get(node)) || 0;
+    }
+
+    // A component a designer opened to content editors, and this operator is
+    // one of them (the server's pg_shared_component_content_editable_ids()).
+    // A system widget never is.
+    function _sdSharedOpenToContent(sid) {
+        var c = sid > 0 ? _sharedCache[sid] : null;
+        return !!(c && c.mayEditContent && !c.system_region_config);
+    }
+
+    // At content level: a node of a shared component that is not open to
+    // this operator. Nothing in it is theirs, text included.
+    function _sdInClosedShared(node) {
+        var sid = _sdNodeSharedSid(node);
+        return !!sid && !_sdSharedOpenToContent(sid);
     }
 
     // Does this node's own text belong to the operator?
@@ -3423,7 +3461,9 @@ const StyleDesigner = (function () {
     function _sdCanEditNode(node, what) {
         if (!_collab.mayEdit) return false;
         if (!_sdIsContentLevel()) return true;
-        if (node && _isInsideSystemWidget(node)) return false;
+        // A shared component's node is theirs only in a component opened to
+        // them; inside it the page's rule applies. A widget never opens.
+        if (node && _sdInClosedShared(node)) return false;
         if (_sdInEditableArea(node)) return true;
         if (what === 'text'  && _sdIsTextNode(node)) return true;
         // Pictures are content, wherever they sit. Swapping the photo in a
@@ -3442,7 +3482,7 @@ const StyleDesigner = (function () {
         }
         if (_sdCanEditNode(node, what)) return true;
         if (!_sdIsContentLevel()) return true;
-        _sdContentNudge((node && _isInsideSystemWidget(node)) ? 'shared' : 'area');
+        _sdContentNudge((node && _sdInClosedShared(node)) ? 'shared' : 'area');
         return false;
     }
 
@@ -8031,6 +8071,11 @@ const StyleDesigner = (function () {
     function _sdTrackSharedEditing() {
         var _prevSid = _editingSharedSid;
         _editingSharedSid = _resolveSharedSid(selectedNode);
+        // At content level only a component opened to the operator is
+        // written; selecting inside another one changes nothing.
+        if (_editingSharedSid > 0 && _sdIsContentLevel() && !_sdSharedOpenToContent(_editingSharedSid)) {
+            _editingSharedSid = 0;
+        }
         if (_editingSharedSid > 0) {
             _sharedDirty[_editingSharedSid] = true;
             if (_editingSharedSid !== _prevSid && !_sharedSnapshots[_editingSharedSid]) {
@@ -10136,11 +10181,12 @@ const StyleDesigner = (function () {
         // fades. Text nodes are left alone — they are always editable, and
         // fading every paragraph would make the whole page look disabled.
         if (_sdIsContentLevel()) {
-            if (node.props && node.props._editable) {
+            var _closedShared = _sdInClosedShared(node);
+            if (node.props && node.props._editable && !_closedShared) {
                 wrapper.classList.add('sd-editable-area');
                 wrapper.setAttribute('data-sd-editable-label', _sdT('EDITABLE'));
             }
-            else if (!_sdInEditableArea(node) && !_sdIsTextNode(node) && node.type !== 'root') {
+            else if (_closedShared || (!_sdInEditableArea(node) && !_sdIsTextNode(node) && node.type !== 'root')) {
                 wrapper.classList.add('sd-content-locked');
             }
         } else if (node.props && node.props._editable) {
@@ -23890,9 +23936,11 @@ const StyleDesigner = (function () {
         var on      = !!(node.props && node.props._editable);
         var inherit = !on && _sdInEditableArea(node);
 
-        // A shared component or system widget is never editable at content
-        // level, so marking something inside one would set a flag that can
-        // never mean anything. Say so rather than letting it be set.
+        // A system widget is never editable at content level, so marking
+        // something inside one would set a flag that can never mean anything;
+        // a shared_ref is marked inside its component, not on the page. Say
+        // so rather than letting it be set. Inside an ordinary component the
+        // mark counts once a designer opens it to content editors.
         if (node.type === 'shared_ref' || _isInsideSystemWidget(node)) {
             return { icon: 'bi-pencil-square', label: _sdT('Not available in a shared component'), disabled: true, handler: function () {} };
         }
@@ -24403,8 +24451,9 @@ const StyleDesigner = (function () {
         else if (node.props._locked) li.classList.add('sd-tree-locked');
         else if (hasLockedAncestor(node)) li.classList.add('sd-tree-locked-desc');
         if (_sdIsContentLevel()) {
-            if (node.props && node.props._editable) li.classList.add('sd-tree-editable');
-            else if (!_sdInEditableArea(node) && !_sdIsTextNode(node)) li.classList.add('sd-tree-nocontent');
+            var _treeClosed = _sdInClosedShared(node);
+            if (node.props && node.props._editable && !_treeClosed) li.classList.add('sd-tree-editable');
+            else if (_treeClosed || (!_sdInEditableArea(node) && !_sdIsTextNode(node))) li.classList.add('sd-tree-nocontent');
         }
 
         // Right-click context menu
@@ -26187,10 +26236,10 @@ const StyleDesigner = (function () {
                         '<span class="bi bi-lock-fill me-2"></span>' +
                         esc(_isInsideSystemWidget(selectedNode)
                             ? _sdT('System widget')
-                            : _sdT('Read-only')) +
+                            : (_sdInClosedShared(selectedNode) ? _sdT('Shared component') : _sdT('Read-only'))) +
                     '</div>' +
                     '<div class="sd-props-readonly-body">' +
-                        esc(_isInsideSystemWidget(selectedNode)
+                        esc(_sdInClosedShared(selectedNode)
                             ? _sdT('System widgets and shared components are managed by designers.')
                             : _sdT('You can edit text here, and everything inside an area marked as editable.')) +
                     '</div>' +
@@ -28906,11 +28955,24 @@ const StyleDesigner = (function () {
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The name shown in the palette and the tree. The server adds a suffix when the name is taken.')) + '</div>')
             : row(_sdT('Name'), '<span class="sd-prop-static" style="color:#22c55e;font-weight:600">' + esc(sname) + '</span>');
 
+        // A designer opens a component to content editors here: managers and
+        // the users given access to it then change its text and images and
+        // everything inside its editable areas, as they do a common region.
+        var contentHtml = (!_cfg && sid > 0 && cached && (_sdSharedContentReady || (_design && _design.sharedContentReady)) && !_sdIsContentLevel())
+            ? row(_sdT('Content editors'),
+                '<label class="sd-prop-switch">' +
+                    '<input type="checkbox" class="sd-sw-inp" id="sd-sc-content-editable" data-sc-id="' + sid + '"' + (cached.contentEditable ? ' checked' : '') + '>' +
+                    '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                '</label>' +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('On: managers and the users given access to it can change its text and images, and everything inside its editable areas, on every page that shows it.')) + '</div>')
+            : '';
+
         return systemSection +
             sect('bi-puzzle-fill', _cfg ? _sdT('System Widget Record') : _sdT('Shared Component'),
                 nameHtml +
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
                 row(_sdT('Status'), statusHtml) +
+                contentHtml +
                 usageHtml +
                 actionHtml
             );
@@ -39965,7 +40027,7 @@ const StyleDesigner = (function () {
         }
         parseGfField();
 
-        // The theme select (Settings → Design) feeds the Styles list and the
+        // The theme select (Settings → Theme) feeds the Styles list and the
         // Themes head; both redraw when it changes.
         (function () {
             var sel = document.querySelector('select[name="theme_id"]');
@@ -40960,7 +41022,7 @@ const StyleDesigner = (function () {
                 item.addEventListener('contextmenu', function(e) { e.preventDefault(); e.stopPropagation(); showFileCtx(type, f.id, e.clientX, e.clientY); });
                 bodyEl.appendChild(item);
             });
-            // The design's theme (Settings → Design → Theme) is a stylesheet
+            // The design's theme file (Settings → Theme) is a stylesheet
             // too, and it loads AFTER everything above — so it wins. It is
             // listed here, last and locked, so the cascade the operator sees
             // on the page is the one they see in this list. Not part of
@@ -40970,10 +41032,10 @@ const StyleDesigner = (function () {
                 if (th) {
                     var trow = document.createElement('div');
                     trow.className = 'sd-as-item sd-as-item-locked sd-as-item-theme';
-                    trow.title = _sdT('The theme chosen in Settings → Design. Loads last, so it overrides the stylesheets above.');
+                    trow.title = _sdT('The theme file chosen in Settings → Theme. Loads last, so it overrides the stylesheets above.');
                     trow.innerHTML = '<span class="bi bi-palette2 sd-as-item-icon"></span><span class="sd-as-item-name">' + esc(th.name) + '</span>' +
                                      '<span class="sd-as-badge-theme">' + esc(_sdT('theme')) + '</span>' +
-                                     '<span class="sd-as-badge-lock" title="' + esc(_sdT('Change it in Settings → Design')) + '"><span class="bi bi-lock-fill"></span></span>';
+                                     '<span class="sd-as-badge-lock" title="' + esc(_sdT('Change it in Settings → Theme')) + '"><span class="bi bi-lock-fill"></span></span>';
                     trow.addEventListener('click', function () { _sdOpenDesignSettings(); });
                     bodyEl.appendChild(trow);
                 }
@@ -40989,11 +41051,7 @@ const StyleDesigner = (function () {
             return { id: opt.value, name: opt.text.trim() };
         }
         function _sdOpenDesignSettings() {
-            var modalEl = document.getElementById('styleSettingsModal');
-            if (!modalEl || typeof bootstrap === 'undefined') return;
-            var btn = document.getElementById('tab-style-btn');
-            if (btn && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(btn).show();
-            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            _sdOpenSettingsPane('theme', 'sd-theme-file-row');
         }
 
         // ── Render font list ──────────────────────────────────────────────────
@@ -41453,7 +41511,7 @@ const StyleDesigner = (function () {
             var head = document.getElementById('sd-theme-head');
             if (!head) return;
             var th = _sdActiveTheme();
-            // The design's look and palette (Settings > Design > Theme) come
+            // The design's look and palette (Settings > Theme) come
             // first: they are what the variables below are laid over.
             var _lk = _sdThemeFind('look', _sdThemeValue('look'));
             var _pl = _sdThemeFind('palette', _sdThemeValue('palette'));
@@ -41476,7 +41534,7 @@ const StyleDesigner = (function () {
                             ? '<strong>' + esc(th.name) + '</strong><br><span class="sd-theme-head-hint">' + esc(_bsVars ? _sdT('Loads after every stylesheet and overrides the variables below.') : _sdT('Loads after every stylesheet of the design.')) + '</span>'
                             : '<strong>' + esc(_sdT('No theme')) + '</strong><br><span class="sd-theme-head-hint">' + esc(_bsVars ? _sdT('The variables below live in User Styles.') : _sdT('A theme file loads after every stylesheet of the design.')) + '</span>') +
                     '</span>' +
-                    '<button type="button" class="sd-theme-head-btn" data-act="pick" title="' + esc(_sdT('Choose a theme (Settings → Design)')) + '"><span class="bi bi-gear"></span></button>' +
+                    '<button type="button" class="sd-theme-head-btn" data-act="pick" title="' + esc(_sdT('Choose a theme (Settings → Theme)')) + '"><span class="bi bi-gear"></span></button>' +
                 '</div>' +
                 (_bsVars
                     ? '<button type="button" class="sd-theme-save-btn" data-act="save">' +
@@ -42693,61 +42751,36 @@ const StyleDesigner = (function () {
     }
 
     // ========================= SETTINGS MODAL =========================
+    // Drawn by PHP (pg_designer_settings_modal()): panes per topic in two
+    // scopes, the design's and the open page's, every setting with a
+    // sentence on what it does. It closes from its own buttons only
+    // (data-bs-backdrop="static"). What is changed in it reaches the design
+    // as it is changed, so every way out does the same: the HTML tree is
+    // redrawn and an open preview follows. The footer's main button closes
+    // it and saves, as the toolbar's main button does and under its word.
     function initSettingsMenu() {
-        // Attach additional dynamic sections (Scripts, Meta Tags) to the Style tab
-        // inside the PHP-provided #styleSettingsModal.
-        // NOTE: .modal-body is a d-flex container — never append to it directly,
-        // or the sections become 3rd-column flex items instead of appearing in the tab.
         var phpModal = document.getElementById('styleSettingsModal');
         if (!phpModal) return;
 
-        // Target the Style tab pane so sections appear below existing style controls
-        var tabStyle = phpModal.querySelector('#tab-style');
-        if (!tabStyle) return;
-
-        // ── Divider before dynamic sections ──
-        var sep = document.createElement('hr');
-        sep.style.cssText = 'border-color:#30363d;margin:.75rem 0';
-        tabStyle.appendChild(sep);
-
-        // jQuery used to live here as a <select> but it was canvas-only
-        // (pageSettings.jquery was never persisted server-side). The
-        // assets panel now ships a locked `jquery-js` sentinel — disabled
-        // by default — so users toggle it from Design > JavaScript and
-        // the choice persists with the rest of page_custom_js.
-        var jqSel = null;
-
-        // ── Meta Tags: the design's list (Design tab) and the page's (Page
-        // tab), drawn by PHP (pg_designer_meta_tags_group()) where the
+        // ── Meta Tags: the design's list (Head & meta) and the page's (its
+        // own pane), drawn by PHP (pg_designer_meta_tags_group()) where the
         // columns exist ──
         _sdMetaListBind();
 
-        // ── Wire Apply button to save JS-managed settings ──
-        var applyBtn = phpModal.querySelector('.modal-footer .btn-primary');
-        if (applyBtn) {
-            applyBtn.addEventListener('click', function() {
-                // The meta tag lists write their inputs as they change; the
-                // HTML tree shows them from there.
+        // The theme file reaches the canvas as soon as it is chosen.
+        var themeSel = phpModal.querySelector('select[name="theme_id"]');
+        if (themeSel) themeSel.addEventListener('change', function () {
+            if (window._sdSyncTheme) window._sdSyncTheme();
+        });
 
-                // jQuery moved to the assets panel sentinel — no Settings
-                // modal control to read. Stub kept for any caller looking
-                // up _sdSyncJquery (now a no-op).
-
-                // Theme CSS sync
-                if (window._sdSyncTheme) window._sdSyncTheme();
-
-                renderHtmlTree();
-                // Bootstrap data-bs-dismiss="modal" on the button closes the modal automatically
-            });
-        }
-
-        // ── Add Reset Layout button to modal footer ──
+        // ── Reset Layout: the editor's panels, not the design ──
         var footer = phpModal.querySelector('.modal-footer');
         if (footer) {
             var resetBtn = document.createElement('button');
             resetBtn.type = 'button';
-            resetBtn.className = 'btn btn-sm btn-outline-danger me-auto';
-            resetBtn.innerHTML = '<span class="bi bi-layout-three-columns me-1"></span>' + esc(_sdT('Reset Layout')) + '';
+            resetBtn.className = 'btn btn-sm btn-outline-light';
+            resetBtn.title = _sdT('Puts the panels of the editor back to their first width and height. The design does not change.');
+            resetBtn.innerHTML = '<span class="bi bi-layout-three-columns me-1" aria-hidden="true"></span>' + esc(_sdT('Reset Layout'));
             resetBtn.addEventListener('click', function() {
                 resetLayout();
                 var bsModal = bootstrap.Modal.getInstance(phpModal);
@@ -42756,21 +42789,319 @@ const StyleDesigner = (function () {
             footer.insertBefore(resetBtn, footer.firstChild);
         }
 
+        // ── Save / Publish: close, then the toolbar's main button ──
+        var saveBtn = document.getElementById('sd-settings-save');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function () {
+                var main = document.getElementById('sd-ajax-save');
+                if (!main || main.disabled || !_collab.mayEdit) return;
+                phpModal.addEventListener('hidden.bs.modal', function () {
+                    if (!main.disabled) main.click();
+                }, { once: true });
+                bootstrap.Modal.getOrCreateInstance(phpModal).hide();
+            });
+        }
+        // A draft saves and stays off the site; the word follows the switch.
+        var draftBox = document.getElementById('pg_page_draft');
+        if (draftBox) draftBox.addEventListener('change', _sdSettingsSyncSave);
+        var homeBox = document.getElementById('pg_page_home');
+        if (homeBox) homeBox.addEventListener('change', function () { _sdSettingsSyncSave(); _sdSettingsAddress(); });
+
+        // ── The live lines of the page panes ──
+        var folderSel = document.getElementById('pg_page_folder');
+        if (folderSel) folderSel.addEventListener('change', _sdSettingsAccess);
+        ['pg_page_title', 'pg_page_meta_description'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', _sdSettingsSerp);
+        });
+        var noindexBox = document.getElementById('pg_page_noindex');
+        if (noindexBox) noindexBox.addEventListener('change', _sdSettingsSerp);
+        // Site search: the keywords only matter while the page is searched.
+        var searchBox = document.getElementById('pg_page_search');
+        if (searchBox) searchBox.addEventListener('change', function () {
+            var row = document.getElementById('pg_search_kw_row');
+            if (row) row.style.display = searchBox.checked ? '' : 'none';
+        });
+        _sdSettingsDescribe(phpModal);
+
+        // ── Panes ──
+        // The head code and the page's JSON-LD become code fields the first
+        // time their pane opens (_sdSettingsCodeFields()).
+        phpModal.addEventListener('shown.bs.tab', _sdSettingsCodeFields);
+        var jsonld = document.getElementById('pg_page_custom_jsonld');
+        if (jsonld) jsonld.addEventListener('input', _sdJsonLdStatus);
+
         // ── Refresh dynamic values on modal open ──
         phpModal.addEventListener('show.bs.modal', function() {
             _sdMetaListRender('design');
             _sdMetaListRender('page');
+            _sdSettingsSyncSave();
+            _sdSettingsSummary();
+            _sdSettingsRefresh();
+            _sdSettingsCodeFields();
+        });
+        // Every way out keeps what was changed: the meta tag lists and the
+        // page fields have written their inputs by now, the HTML tree shows
+        // them from there.
+        phpModal.addEventListener('hide.bs.modal', function () {
+            renderHtmlTree();
         });
         // Page and design settings reach an open preview window once the
-        // modal is closed (Apply has written them by then).
+        // modal is closed.
         phpModal.addEventListener('hidden.bs.modal', function() {
             _sdLivePreviewSchedule();
         });
 
+        _sdSettingsRefresh();
         _sdMakeTemplateBind();
     }
 
-    // ── Settings > Design: turn this design into a template ──
+    // Opens the settings modal on one pane (style, theme, head, page, seo,
+    // page-meta), with a row of it in view when one is named.
+    function _sdOpenSettingsPane(pane, rowId) {
+        var modalEl = document.getElementById('styleSettingsModal');
+        if (!modalEl || typeof bootstrap === 'undefined') return;
+        var btn = document.getElementById('tab-' + pane + '-btn');
+        if (btn && bootstrap.Tab && !btn.classList.contains('d-none')) bootstrap.Tab.getOrCreateInstance(btn).show();
+        if (rowId) {
+            modalEl.addEventListener('shown.bs.modal', function () {
+                var row = document.getElementById(rowId);
+                if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
+            }, { once: true });
+        }
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    // The footer's main button says what the toolbar's says: a draft is
+    // saved and stays off the site, a page on the site is published. It is
+    // off while the toolbar's is: a save running, or view mode (where the
+    // toolbar's is out of reach, not disabled).
+    function _sdSettingsSyncSave() {
+        var btn = document.getElementById('sd-settings-save');
+        if (!btn) return;
+        var main = document.getElementById('sd-ajax-save');
+        var draft = _pgActiveIsDraft();
+        var txt = btn.querySelector('.sd-settings-save-txt');
+        if (txt) txt.textContent = draft ? _sdT('Save') : _sdT('Publish');
+        var icon = btn.querySelector('.bi');
+        if (icon) icon.className = 'bi ' + (draft ? 'bi-floppy' : 'bi-rocket-takeoff') + ' me-1';
+        btn.disabled = !main || main.disabled || !_collab.mayEdit;
+        btn.title = draft ? _sdT('Saves the design. This page stays a draft, off the site.')
+                          : _sdT('Saves the design; its pages on the site show the changes at once.');
+    }
+
+    // Every setting's sentence describes its control for a screen reader.
+    function _sdSettingsDescribe(root) {
+        var n = 0;
+        root.querySelectorAll('.sd-set').forEach(function (row) {
+            var help = row.querySelector('.sd-set-help');
+            var ctrl = row.querySelector('.sd-set-ctrl input:not([type="hidden"]), .sd-set-ctrl select, .sd-set-ctrl textarea, .sd-set-ctrl button');
+            if (!help || !ctrl) return;
+            if (!help.id) help.id = 'sd-set-help-' + (++n);
+            ctrl.setAttribute('aria-describedby', help.id);
+        });
+    }
+
+    // The page the "Only this page" panes are about, by name.
+    function _sdSettingsPageLabel(name) {
+        var label = name || _sdT('New Page');
+        document.querySelectorAll('#styleSettingsModal .sd-settings-page-name').forEach(function (el) { el.textContent = label; });
+        var nav = document.getElementById('sd-settings-page-tab-label');
+        if (nav) nav.textContent = label;
+    }
+
+    function _sdSettingsRefresh() {
+        _sdSettingsAddress();
+        _sdSettingsAccess();
+        _sdSettingsSerp();
+        _sdJsonLdStatus();
+    }
+
+    // The design's pages, as the tabs hold them, and its last save.
+    function _sdSettingsSummary() {
+        var box = document.getElementById('sd-design-summary');
+        if (!box) return;
+        var unsaved = _pages.filter(function (p) { return !(p.page_id > 0); }).length;
+        var h = esc(_sdT('Pages: {var}', _pages.length));
+        if (unsaved) h += ' · ' + esc(_sdT('Not saved yet: {var}', unsaved));
+        var lm = document.getElementById('sd-last-modified-label');
+        var when = lm ? lm.textContent.trim() : '';
+        if (when) h += '<br>' + esc(_sdT('Last saved: {var}', when));
+        box.innerHTML = h;
+    }
+
+    // Under the page name: the address the name makes. A link once the page
+    // is saved under it; the home page opens at the site address too.
+    function _sdSettingsAddress() {
+        var box = document.getElementById('sd-page-address');
+        if (!box) return;
+        var p = _pgActivePage() || {};
+        var nameEl = document.getElementById('sd-page-name');
+        var name = (nameEl ? nameEl.value : (p.page_name || '')).trim();
+        if (!name) { box.textContent = _sdT('The address appears here once the page has a name.'); return; }
+        var site = (_design && _design.site && _design.site.url) ? String(_design.site.url) : (location.origin + (window.OUTPUT_PATH || '/'));
+        var shown = site + name;
+        var live = _pgPageViewUrl(p);
+        var h = '<span class="bi bi-link-45deg me-1" aria-hidden="true"></span>';
+        if (live && p.savedName === name) h += '<a href="' + esc(live) + '" target="_blank" rel="noopener">' + esc(shown) + '</a>';
+        else h += esc(shown) + ' <span class="text-nowrap">· ' + esc(_sdT('Opens once the page is saved.')) + '</span>';
+        var homeEl = document.getElementById('pg_page_home');
+        if (homeEl ? homeEl.checked : p.page_home) h += '<br>' + esc(_sdT('As the home page it also opens at the site address on its own.'));
+        if (_pgActiveIsDraft()) h += '<br>' + esc(_sdT('Draft: visitors cannot open it, administrators can.'));
+        box.innerHTML = h;
+    }
+
+    // Under the folder list: who may open the pages of the folder chosen
+    // (its own access, or the nearest parent's; data-access from PHP).
+    var _sdAccessTexts = null;
+    function _sdSettingsAccess() {
+        var box = document.getElementById('sd-page-access');
+        var sel = document.getElementById('pg_page_folder');
+        if (!box || !sel) return;
+        if (!_sdAccessTexts) _sdAccessTexts = {
+            'public':       [_sdT('Public'), _sdT('Anyone can open the page.')],
+            'guest':        [_sdT('Guest'), _sdT('Visitors open it once they sign in, register or choose to go on as a guest.')],
+            'registration': [_sdT('Registration'), _sdT('Visitors open it once they sign in; anybody may register.')],
+            'membership':   [_sdT('Membership'), _sdT('Only signed-in members with a membership open it.')],
+            'private':      [_sdT('Private'), _sdT('Only the people given access to the folder open it.')]
+        };
+        var opt = sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
+        var type = (opt && opt.getAttribute('data-access')) || 'public';
+        var t = _sdAccessTexts[type] || _sdAccessTexts['public'];
+        box.innerHTML = '<span class="sd-access-badge" data-access="' + esc(type) + '">' + esc(t[0]) + '</span>' + esc(t[1]);
+    }
+
+    // Search result preview: the page's title and description, or the
+    // site's where the page has none (get_page_content.php does the same).
+    function _sdSettingsSerp() {
+        var card = document.getElementById('sd-serp');
+        if (!card) return;
+        var site = (_design && _design.site) ? _design.site : {};
+        var val = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+        var ownTitle = val('pg_page_title'), ownDesc = val('pg_page_meta_description');
+        var title = ownTitle || String(site.title || '');
+        var desc  = ownDesc || String(site.description || '');
+        var name  = val('sd-page-name');
+        var base  = String(site.url || '').replace(/\/+$/, '');
+        var homeEl = document.getElementById('pg_page_home');
+        var crumb = (name && !(homeEl && homeEl.checked)) ? base + ' › ' + name : base;
+        card.querySelector('.sd-serp-name').textContent = String(site.title || '') || base.replace(/^https?:\/\//, '');
+        card.querySelector('.sd-serp-url').textContent = crumb;
+        card.querySelector('.sd-serp-title').textContent = title || _sdT('Page Title');
+        card.querySelector('.sd-serp-desc').textContent = desc || _sdT('With no description a search engine shows a passage of the page.');
+        var noindex = document.getElementById('pg_page_noindex');
+        var off = !!(noindex && noindex.checked);
+        card.classList.toggle('is-off', off);
+        var note = document.getElementById('sd-serp-note');
+        if (!note) return;
+        var parts = [];
+        if (off) {
+            parts.push(_sdT('The page is closed to search engines: it is left out of their results.'));
+        } else {
+            if (!ownTitle && site.title) parts.push(_sdT('No title of its own: the title of the site is shown.'));
+            if (!ownDesc && site.description) parts.push(_sdT('No description of its own: the description of the site is shown.'));
+        }
+        note.textContent = parts.join(' ');
+    }
+
+    // The code fields of the modal's open pane: the design's head code and
+    // the page's JSON-LD. Each becomes a code field the first time its pane
+    // is shown, so the editor's bundle is not fetched for a modal opened for
+    // a title.
+    var _SD_SETTINGS_CODE = { 'tab-head': ['sd-style-head', 'html'], 'tab-seo': ['pg_page_custom_jsonld', 'json'] };
+    function _sdSettingsCodeFields() {
+        Object.keys(_SD_SETTINGS_CODE).forEach(function (pane) {
+            var el = document.getElementById(pane);
+            if (el && el.classList.contains('active')) _sdSettingsCodeField(_SD_SETTINGS_CODE[pane][0], _SD_SETTINGS_CODE[pane][1]);
+        });
+    }
+
+    // The syntax check starts with the first character: both parsers mark
+    // an empty document as an error, and an empty field is the normal state
+    // here.
+    function _sdSettingsCodeField(id, language) {
+        var ta = document.getElementById(id);
+        if (!ta || ta._sdEditor || typeof PgCodeEditor === 'undefined' || !PgCodeEditor.attach) return;
+        ta._sdEditor = true;
+        var hasText = function (v) { return /\S/.test(v || ''); };
+        var linted = hasText(ta.value);
+        PgCodeEditor.attach(ta, {
+            language: language,
+            lineWrapping: true,
+            className: 'sd-settings-code',
+            phrases: _sdCodePhrases(),
+            labels: { syntaxError: _sdT('Syntax error') },
+            lint: linted,
+            onChange: function (inst) {
+                var on = hasText(inst.getValue());
+                if (on !== linted && inst.setLint) { linted = on; inst.setLint(on); }
+            }
+        }).then(function (ed) {
+            ta._sdEditor = ed;
+            // Another page may have been opened while the engine was on its
+            // way; the field holds that page's text by now.
+            if (ed.getValue() !== ta.value) ed.setValue(ta.value);
+        }, function () { ta._sdEditor = false; });
+    }
+
+    // A page field shown in a code field: the page's text, written into the
+    // textarea by _pgLoadPageIntoFields(), goes into the editor too, or the
+    // next keystroke would write the previous page's text back.
+    function _sdSettingsCodeSync(id) {
+        var ta = document.getElementById(id);
+        var ed = ta ? ta._sdEditor : null;
+        if (ed && typeof ed === 'object' && ed.getValue() !== ta.value) ed.setValue(ta.value);
+    }
+
+    // The page's JSON-LD, checked as it is typed: the mirror of
+    // pg_page_custom_jsonld_check() (includes/fn/seo.php), which the save
+    // applies. '' for an empty field, 'ok', or the reason.
+    function _sdJsonLdCheck(raw) {
+        var text = String(raw == null ? '' : raw).trim();
+        if (!text) return '';
+        var bytes = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(text).length : text.length;
+        if (bytes > 65535) return 'size';
+        var v;
+        try { v = JSON.parse(text); } catch (e) { return 'json'; }
+        var items = Array.isArray(v) ? v : ((v && typeof v === 'object') ? [v] : null);
+        if (!items) return 'shape';
+        if (!items.length) return 'type';
+        var typed = function (it, top) {
+            var t = it['@type'];
+            if (typeof t === 'string' && t.trim() !== '') return true;
+            if (Array.isArray(t) && t.length) return t.every(function (w) { return typeof w === 'string' && w.trim() !== ''; });
+            var g = it['@graph'];
+            if (top && Array.isArray(g) && g.length) {
+                return g.every(function (n) { return n && typeof n === 'object' && !Array.isArray(n) && typed(n, false); });
+            }
+            return false;
+        };
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (!it || typeof it !== 'object' || Array.isArray(it)) return 'shape';
+            if (!typed(it, true)) return 'type';
+        }
+        return 'ok';
+    }
+
+    function _sdJsonLdStatus() {
+        var box = document.getElementById('sd-jsonld-status');
+        var ta = document.getElementById('pg_page_custom_jsonld');
+        if (!box || !ta) return;
+        var r = _sdJsonLdCheck(ta.value);
+        var say = {
+            'ok':    _sdT('Valid JSON-LD; it goes on the page with the next save.'),
+            'json':  _sdT('This is not valid JSON, so the save refuses it.'),
+            'shape': _sdT('Write a JSON object, or a list of objects.'),
+            'type':  _sdT('Every item needs an @type, for example "@type": "FAQPage".'),
+            'size':  _sdT('Too long: the block can be at most 64 KB.')
+        };
+        box.textContent = r ? say[r] : '';
+        box.classList.toggle('is-ok', r === 'ok');
+        box.classList.toggle('is-bad', !!r && r !== 'ok');
+    }
+
+    // ── Settings > General: turn this design into a template ──
     // The server makes the template from the saved pages
     // (designer/template_from_design): a design never saved has nothing to
     // make it from, and changes not saved yet are left out.
@@ -42784,8 +43115,8 @@ const StyleDesigner = (function () {
 
         var styleId = function () { return (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0; };
 
-        // The settings modal is full screen; it steps aside rather than
-        // stacking a second dialog on top of it.
+        // The settings modal steps aside rather than stacking a second
+        // dialog on top of it.
         var open = function () {
             var designName = document.getElementById('sd-style-name');
             nameEl.value = designName ? designName.value.trim() : '';
@@ -43135,6 +43466,14 @@ const StyleDesigner = (function () {
             });
         }
 
+        // ── Shared Component: open to content editors ───────────────────────
+        var _scContentSw = document.getElementById('sd-sc-content-editable');
+        if (_scContentSw) {
+            _scContentSw.addEventListener('change', function () {
+                _sdSetSharedContentEditable(parseInt(this.dataset.scId, 10) || 0, this.checked, this);
+            });
+        }
+
         // ── System Widget: save config button + data binding wiring ────────────
         if (selectedNode && selectedNode.type === 'shared_ref') {
             _wireSystemWidgetProps();
@@ -43149,6 +43488,34 @@ const StyleDesigner = (function () {
     }
 
     // ========================= SHARED COMPONENT OPERATIONS =========================
+
+    // Opens a shared component to content editors or closes it again
+    // (set_content_editable, administrators and designers). Written at once,
+    // like a rename: it is a property of the component, not of this page.
+    function _sdSetSharedContentEditable(sid, on, input) {
+        if (!sid) return;
+        var apiBase = (typeof path !== 'undefined' ? path : '') +
+                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+        var token   = (typeof software_token !== 'undefined') ? software_token : '';
+        var undo = function (msg) {
+            if (input) { input.disabled = false; input.checked = !on; }
+            sdToast(esc(msg || _sdT('The change could not be saved.')), 'error', 6000);
+        };
+        if (input) input.disabled = true;
+        fetch(apiBase, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'shared_component', sub_action: 'set_content_editable',
+                                   id: sid, content_editable: on ? 1 : 0, token: token })
+        }).then(function (r) { return r.json(); }).then(function (resp) {
+            if (!resp || resp.status !== 'success') { undo(resp && resp.message); return; }
+            if (input) input.disabled = false;
+            if (_sharedCache[sid]) _sharedCache[sid].contentEditable = !!resp.content_editable;
+            sdToast(esc(on ? _sdT('Content editors can now edit this shared component.')
+                           : _sdT('This shared component is closed to content editors.')), 'success', 4000);
+        }).catch(function () { undo(''); });
+    }
 
     // Convert the selected node into a shared_ref + create shared component record.
     // `node` is replaced in the tree by a { type:'shared_ref', props:{ sharedId, sharedName } } node.
@@ -48063,7 +48430,7 @@ const StyleDesigner = (function () {
     }
 
     // ========================= LOOK & COLOUR PALETTE =========================
-    // Settings > Design > Theme. A design built on Bootstrap wears a look
+    // Settings > Theme. A design built on Bootstrap wears a look
     // (corners, shadows, lines, type, how buttons and cards behave) and a
     // colour palette (a primary and a secondary colour), each a stylesheet
     // (includes/fn/design_themes.php). Nothing is written into the pages: the
@@ -48531,17 +48898,9 @@ const StyleDesigner = (function () {
         }
     }
 
-    // Opens Settings > Design at the Theme group.
+    // Opens Settings at the Theme pane.
     function _sdOpenThemeSettings() {
-        var modalEl = document.getElementById('styleSettingsModal');
-        if (!modalEl || typeof bootstrap === 'undefined') return;
-        var tabBtn = document.getElementById('tab-style-btn');
-        if (tabBtn && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(tabBtn).show();
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-        setTimeout(function () {
-            var g = document.getElementById('sd-theme-settings');
-            if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start', behavior: 'smooth' });
-        }, 350);
+        _sdOpenSettingsPane('theme');
     }
 
     // ========================= PREVIEW =========================
@@ -49780,7 +50139,7 @@ const StyleDesigner = (function () {
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
-        'page_meta_tags'
+        'page_meta_tags', 'page_custom_jsonld'
     ];
     var _PG_BOOL_FIELDS = {
         page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1, page_draft: 1,
@@ -49921,17 +50280,22 @@ const StyleDesigner = (function () {
         _pgSyncDraftBox(p);
         // The page's meta tag rows are drawn from its hidden field.
         _sdMetaListRender('page');
-        // Search keywords row + noindex hint follow their switches.
+        // Search keywords row + noindex hint follow their switches; the
+        // site map is not offered while the page is closed to search
+        // engines (bindPageIndexingSwitches() in backend.src.js).
         var kwRow = document.getElementById('pg_search_kw_row');
-        if (kwRow) kwRow.style.display = p.page_search ? 'block' : 'none';
+        if (kwRow) kwRow.style.display = p.page_search ? '' : 'none';
         var nf = document.getElementById('pg_page_nofollow');
         if (nf) nf.disabled = !p.page_noindex;
+        var sm = document.getElementById('pg_page_sitemap');
+        if (sm) sm.disabled = !!p.page_noindex;
         var hint = document.getElementById('pg_noindex_hint');
         if (hint) hint.style.display = p.page_noindex ? 'block' : 'none';
-        // Settings modal headings name the page.
-        var label = p.page_name || _sdT('New Page');
-        var h1 = document.getElementById('sd-settings-page-name');     if (h1) h1.textContent = label;
-        var h2 = document.getElementById('sd-settings-page-tab-label'); if (h2) h2.textContent = label;
+        // Settings modal headings name the page; its live lines and its
+        // code field follow it.
+        _sdSettingsCodeSync('pg_page_custom_jsonld');
+        _sdSettingsPageLabel(p.page_name);
+        _sdSettingsRefresh();
     }
 
     // ── Tab bar ───────────────────────────────────────────────────────────
@@ -50296,8 +50660,9 @@ const StyleDesigner = (function () {
                     if (box) box.value = nameEl.value;
                     else t.textContent = nameEl.value || _sdT('New Page');
                 }
-                var h1 = document.getElementById('sd-settings-page-name');     if (h1) h1.textContent = nameEl.value || '—';
-                var h2 = document.getElementById('sd-settings-page-tab-label'); if (h2) h2.textContent = nameEl.value || _sdT('Page');
+                _sdSettingsPageLabel(nameEl.value);
+                _sdSettingsAddress();
+                _sdSettingsSerp();
             });
         }
         // Any per-page field change marks the tab.
@@ -50406,7 +50771,7 @@ const StyleDesigner = (function () {
         var folder = (opts && typeof opts.folder === 'number' && opts.folder > 0) ? opts.folder : 0;
         var p = {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
-            page_id: 0, page_name: '', page_folder: folder, page_title: '', page_meta_description: '', page_meta_tags: '',
+            page_id: 0, page_name: '', page_folder: folder, page_title: '', page_meta_description: '', page_meta_tags: '', page_custom_jsonld: '',
             page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
             page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
             pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -50445,7 +50810,7 @@ const StyleDesigner = (function () {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: name,
             page_folder: src.page_folder, page_title: src.page_title, page_meta_description: src.page_meta_description,
-            page_meta_tags: src.page_meta_tags || '',
+            page_meta_tags: src.page_meta_tags || '', page_custom_jsonld: src.page_custom_jsonld || '',
             page_search: src.page_search, page_search_keywords: src.page_search_keywords,
             page_sitemap: src.page_sitemap, page_home: 0,           // never two home pages
             page_noindex: src.page_noindex, page_nofollow: src.page_nofollow,
@@ -50538,7 +50903,7 @@ const StyleDesigner = (function () {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: name || ((sp.page_name || _sdT('page')) + '-' + _sdT('copy')),
             page_folder: sp.page_folder || 0, page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
-            page_meta_tags: sp.page_meta_tags || '',
+            page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: 0,           // never two home pages
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -50782,8 +51147,7 @@ const StyleDesigner = (function () {
             p.page_name = val;
             var nameEl = document.getElementById('sd-page-name');
             if (nameEl && key === _activeKey) nameEl.value = val;
-            var h1 = document.getElementById('sd-settings-page-name');     if (h1 && key === _activeKey) h1.textContent = val || '—';
-            var h2 = document.getElementById('sd-settings-page-tab-label'); if (h2 && key === _activeKey) h2.textContent = val || _sdT('Page');
+            if (key === _activeKey) _sdSettingsPageLabel(val);
         };
         // A click anywhere else commits too. blur alone is not enough: the
         // browser does not fire it while the window itself is unfocused
@@ -50818,13 +51182,9 @@ const StyleDesigner = (function () {
         inp.select();
     }
 
-    // Settings modal, opened straight on the "Only this page" pane.
+    // Settings modal, opened straight on the "Only this page" panes.
     function _pgTabsOpenPageSettings() {
-        var modalEl = document.getElementById('styleSettingsModal');
-        if (!modalEl || typeof bootstrap === 'undefined') return;
-        var btn = document.getElementById('tab-page-btn');
-        if (btn && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(btn).show();
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        _sdOpenSettingsPane('page');
     }
 
     // Delete = the recycle bin, through the same server path the file
@@ -52071,24 +52431,24 @@ const StyleDesigner = (function () {
      * sitemap switch follows noindex) and would re-enable them on release.
      */
     function _collabLockPageSettings(locked) {
-        var pane = document.getElementById('tab-page');
-        if (!pane) return;
-        try { pane.inert = !!locked; } catch (e) {}
-        pane.classList.toggle('sd-pane-locked', !!locked);
-
-        var note = document.getElementById('sd-page-locked-note');
-        if (locked) {
-            if (!note) {
-                note = document.createElement('div');
-                note.id = 'sd-page-locked-note';
-                note.className = 'alert alert-warning py-2 px-3 small mb-3';
-                note.innerHTML = '<span class="bi bi-lock me-2"></span>' +
-                    esc(_sdT('These settings belong to the page somebody else is editing right now, so they are locked until they move on.'));
-                pane.insertBefore(note, pane.firstChild);
+        // Every pane of "Only this page", each with the note on top: the
+        // pane opened may be any of them.
+        document.querySelectorAll('#styleSettingsModal .tab-pane[data-sd-settings-scope="page"]').forEach(function (pane) {
+            try { pane.inert = !!locked; } catch (e) {}
+            pane.classList.toggle('sd-pane-locked', !!locked);
+            var note = pane.querySelector('.sd-page-locked-note');
+            if (locked) {
+                if (!note) {
+                    note = document.createElement('div');
+                    note.className = 'alert alert-warning py-2 px-3 small mb-3 sd-page-locked-note';
+                    note.innerHTML = '<span class="bi bi-lock me-2"></span>' +
+                        esc(_sdT('These settings belong to the page somebody else is editing right now, so they are locked until they move on.'));
+                    pane.insertBefore(note, pane.firstChild);
+                }
+            } else if (note && note.parentNode) {
+                note.parentNode.removeChild(note);
             }
-        } else if (note && note.parentNode) {
-            note.parentNode.removeChild(note);
-        }
+        });
     }
 
     // Is the page held by another tab of the person sitting here? Only then
@@ -52255,7 +52615,7 @@ const StyleDesigner = (function () {
             key: sp.key || ('p' + sp.page_id),
             page_id: sp.page_id, page_name: sp.page_name || '', savedName: sp.page_name || '', page_folder: sp.page_folder || 0,
             page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
-            page_meta_tags: sp.page_meta_tags || '',
+            page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -52649,7 +53009,7 @@ const StyleDesigner = (function () {
                 var p = {
                     key: tabKeys[i],
                     page_id: 0, page_name: sp.page_name || '', page_folder: importFolder,
-                    page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '',
+                    page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '', page_custom_jsonld: '',
                     page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                     page_draft: _pgNewPageDraft(),
                     pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -52908,7 +53268,7 @@ const StyleDesigner = (function () {
             var p = {
                 key: tabKey,
                 page_id: 0, page_name: sp.page_name || '', page_folder: parseInt(sp.page_folder, 10) || 0,
-                page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '',
+                page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '', page_custom_jsonld: '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: '', page_sitemap: sp.page_sitemap ? 1 : 0,
                 page_home: isHome ? 1 : 0, page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: 0,
                 page_draft: isHome ? 0 : _pgNewPageDraft(),
@@ -53383,7 +53743,7 @@ const StyleDesigner = (function () {
                 key: sp.key, page_id: sp.page_id || 0, page_name: sp.page_name || '',
                 page_folder: sp.page_folder || 0, page_title: sp.page_title || '',
                 page_meta_description: sp.page_meta_description || '',
-                page_meta_tags: sp.page_meta_tags || '',
+                page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
                 page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
                 page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -53410,7 +53770,7 @@ const StyleDesigner = (function () {
         _pgTabsApplyLayout(design && design.tabLayout ? design.tabLayout.layout : null);
         if (!_pages.length) {
             _pages.push({
-                key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '', page_meta_tags: '',
+                key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '', page_meta_tags: '', page_custom_jsonld: '',
                 page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                 page_draft: _pgNewPageDraft(),
                 pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -53601,17 +53961,18 @@ const StyleDesigner = (function () {
         document.querySelectorAll('.sd-tabs-add, #sd-tab-add-wrap').forEach(function (el) {
             el.style.display = 'none';
         });
-        // The design tab of the settings modal: name, theme, collection,
-        // social. All of it belongs to the design, which this level never
-        // writes — the server ignores it, so leaving it on screen would be a
-        // form that forgets what you typed.
-        var styleTabPane = document.getElementById('tab-style');
-        if (styleTabPane) styleTabPane.style.display = 'none';
-        var styleTabBtn = document.querySelector('[data-bs-target="#tab-style"], [href="#tab-style"]');
-        if (styleTabBtn) {
-            var li = styleTabBtn.closest ? styleTabBtn.closest('li') : null;
-            (li || styleTabBtn).style.display = 'none';
-        }
+        // The design's panes of the settings modal: name, theme, head code,
+        // meta tags, social, collection. All of it belongs to the design,
+        // which this level never writes — the server ignores it, so leaving
+        // it on screen would be a form that forgets what you typed. PHP
+        // already leaves them hidden and opens the page pane first
+        // (pg_designer_settings_modal()).
+        document.querySelectorAll('#styleSettingsModal [data-sd-settings-scope="design"]').forEach(function (el) {
+            el.classList.add('d-none');
+        });
+        var designOpen = document.querySelector('#settingsTabs .nav-link.active[data-sd-settings-scope="design"]');
+        var pageBtn = document.getElementById('tab-page-btn');
+        if (designOpen && pageBtn && window.bootstrap && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(pageBtn).show();
         // …and the panels that edit the design's stylesheets, scripts, fonts
         // and themes, wherever they live in the left rail.
         ['sd-assets-panel', 'sd-themes-panel', 'sd-bp-assets', 'sd-bp-themes'].forEach(function (id) {
@@ -53678,10 +54039,16 @@ const StyleDesigner = (function () {
                       (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
         var token   = (typeof software_token !== 'undefined') ? software_token : '';
         var pending = [];
+        // A content-level operator writes only a component opened to them,
+        // through content_update: the server takes what their level allows
+        // (as it does for a page) and answers with the tree it stored.
+        var contentLevel = _sdIsContentLevel();
+        var redraw = false;
         dirtyIds.forEach(function (idStr) {
             var sid    = parseInt(idStr, 10);
             var cached = _sharedCache[sid];
             if (!cached || !cached.tree) { delete _sharedDirty[sid]; return; }
+            if (contentLevel && !_sdSharedOpenToContent(sid)) { delete _sharedDirty[sid]; return; }
             var currentJson = JSON.stringify(cached.tree);
             // Skip if tree is unchanged since the snapshot (no real edit happened).
             // The snapshot stays: it is still what the stored row holds.
@@ -53696,7 +54063,7 @@ const StyleDesigner = (function () {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
-                    action: 'shared_component', sub_action: 'update',
+                    action: 'shared_component', sub_action: contentLevel ? 'content_update' : 'update',
                     id: sid, tree_json: currentJson, token: token
                 })
             }).then(function (r) { return r.json(); }).then(function (resp) {
@@ -53707,6 +54074,23 @@ const StyleDesigner = (function () {
                     if (resp && resp.message) sdToast(esc(resp.message), 'error', 8000);
                     return;
                 }
+                // A content-level save may keep less than was sent; the
+                // editor then shows what was written instead.
+                if (contentLevel && typeof resp.tree_json === 'string') {
+                    var stored = null;
+                    try { stored = JSON.parse(resp.tree_json); } catch (e) {}
+                    if (stored && typeof stored === 'object') {
+                        _sdTreeObjects(stored);
+                        var storedJson = JSON.stringify(stored);
+                        if (storedJson !== currentJson && _sharedCache[sid] && _sharedCache[sid].tree === cached.tree) {
+                            if (selectedNode && _nodeInTree(selectedNode, cached.tree)) { selectedNode = null; selectedNodes = []; }
+                            _sharedCache[sid].tree = stored;
+                            _sharedSnapshots[sid] = storedJson;
+                            redraw = true;
+                            return;
+                        }
+                    }
+                }
                 // Written: what was sent is the stored row now. Kept as the
                 // snapshot so an edit made after this save is found by
                 // _sdSharedCatchEdits() even when no new selection marks it.
@@ -53716,7 +54100,9 @@ const StyleDesigner = (function () {
                 _sharedDirty[sid] = true;
             }));
         });
-        return Promise.all(pending);
+        return Promise.all(pending).then(function () {
+            if (redraw) { _sdEditableInvalidate(); render(); }
+        });
     }
 
     // ========================= ICON MODAL =========================

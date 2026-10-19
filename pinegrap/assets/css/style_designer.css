@@ -296,24 +296,7 @@
 .sd-tabs-all-dirty { flex: 0 0 auto; color: #f0b95d; font-size: .6rem; }
 .sd-tabs-all-empty { padding: .4rem .75rem; font-size: .75rem; color: var(--sd-text-muted, #8b949e); }
 
-/* Settings modal */
-.sd-settings-scope { font-size: .74rem; color: var(--sd-text-muted, #8b949e); margin-bottom: 1rem; }
-.sd-settings-group { padding: .85rem 1rem .35rem; margin-bottom: 1rem; border: 1px solid #30363d; border-radius: 6px; background: rgba(255,255,255,.015); }
-.sd-settings-group-title { font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: #8b949e; margin-bottom: .75rem; }
-.sd-settings-switches { display: flex; flex-direction: column; gap: .45rem; margin-bottom: .75rem; }
-.sd-settings-switches .form-check { margin-bottom: 0; }
-.sd-settings-body .form-text { color: #8b949e; }
-/* Meta Tags groups (Design and Page): one row per tag, the name narrower
-   than the content; below 576px the two boxes stack. */
-.sd-meta-list:empty { display: none; }
-.sd-meta-row { display: flex; align-items: flex-start; gap: .35rem; margin-bottom: .35rem; }
-.sd-meta-row .sd-meta-name { flex: 0 0 36%; min-width: 0; }
-.sd-meta-row .sd-meta-content { flex: 1 1 auto; min-width: 0; }
-@media (max-width: 575.98px) {
-    .sd-meta-row { flex-wrap: wrap; }
-    .sd-meta-row .sd-meta-name { flex: 1 1 calc(100% - 2.5rem); }
-    .sd-meta-row .sd-meta-content { flex: 1 1 100%; order: 3; }
-}
+/* Settings modal: see SETTINGS MODAL further below. */
 
 /* ── Toolbar ── */
 .sd-toolbar {
@@ -2732,8 +2715,10 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-sm-del-meta:hover { color: var(--sd-danger); }
 
-/* Fullscreen Style Settings Modal — dark theme for Bootstrap form controls
-   (and the "Turn this design into a template" dialog it opens) */
+/* Settings modal — dark theme for Bootstrap form controls (and the "Turn
+   this design into a template" dialog it opens). The modal also carries
+   data-bs-theme="dark", which gives the switches, the close button and the
+   tag field their dark variants; these colours are the designer's own. */
 #styleSettingsModal .form-control,
 #styleSettingsModal .form-select,
 #styleSettingsModal textarea.form-control,
@@ -2760,6 +2745,25 @@ body.sd-resizing * { cursor: col-resize !important; }
     font-size: .72rem;
     margin-top: .25rem;
     display: block;
+}
+/* A value that is shown, not set (framework, template). */
+#styleSettingsModal .form-control[readonly] { background-color: transparent; color: #8b949e; }
+#styleSettingsModal .form-check-input { background-color: #0d1117; border-color: #484f58; cursor: pointer; }
+#styleSettingsModal .form-check-input:checked { background-color: #1f6feb; border-color: #1f6feb; }
+#styleSettingsModal .form-check-input:disabled { opacity: .35; cursor: default; }
+/* The tag field's typing box sits inside the dark box, not on white. */
+#styleSettingsModal .tagin-input { background: transparent; color: #c9d1d9; }
+#styleSettingsModal .tagin-input::placeholder { color: #6e7681; }
+#styleSettingsModal .tagin-tag { background: #21262d; border-color: #30363d; color: #c9d1d9; }
+#styleSettingsModal .btn-outline-light {
+    --bs-btn-color: #c9d1d9;
+    --bs-btn-border-color: #30363d;
+    --bs-btn-hover-color: #e6edf3;
+    --bs-btn-hover-bg: #21262d;
+    --bs-btn-hover-border-color: #484f58;
+    --bs-btn-active-color: #e6edf3;
+    --bs-btn-active-bg: #30363d;
+    --bs-btn-active-border-color: #484f58;
 }
 
 /* Legacy sd-settings-row kept for compat */
@@ -5274,9 +5278,8 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 /* The page's own settings, locked while somebody else holds the page.
    `inert` does the real work in the browsers that have it; this is what it
    looks like, and the fallback where it does not. */
-.sd-pane-locked { opacity: .6; }
-.sd-pane-locked #sd-page-locked-note { opacity: 1; }
-body.sd-view-mode .sd-pane-locked > *:not(#sd-page-locked-note) { pointer-events: none; }
+.sd-pane-locked > *:not(.sd-page-locked-note) { opacity: .6; }
+body.sd-view-mode .sd-pane-locked > *:not(.sd-page-locked-note) { pointer-events: none; }
 .sd-readonly #sd-ajax-save,
 .sd-readonly #sd-main-undo,
 .sd-readonly #sd-main-redo,
@@ -5551,28 +5554,147 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-panel-bottom.sd-docked .sd-bp-quad.sd-dock-open .sd-dock-caret { transform: rotate(180deg); opacity: 1; }
 
-/* ===================== SETTINGS MODAL RAIL ===================== */
-/* Dimensions that used to sit in the markup as inline styles. They moved
-   here so the narrow-screen rules below can win: an inline width beats any
-   media query. */
+/* ===================== SETTINGS MODAL ===================== */
+/* The largest dialog from 992px up (modal-xl), the whole screen below it
+   (modal-fullscreen-lg-down). Every size lives here, not in the markup: an
+   inline size beats any media query. The dialog keeps one height whatever
+   pane is open, so a pane switch never moves the buttons, and only the
+   pane scrolls: every flex item of that chain carries min-height: 0. */
+.sd-settings-content { background: #1e2127; color: #c9d1d9; border: 1px solid #30363d; }
+.sd-settings-header,
+.sd-settings-footer { flex-shrink: 0; border-color: #30363d; }
+.sd-settings-main { display: flex; flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+@media (min-width: 992px) {
+    /* The window minus Bootstrap's own 1.75rem margins, at most 56rem:
+       on a tall screen the dialog stays a dialog. */
+    .sd-settings-dialog .sd-settings-content { height: min(calc(100vh - 3.5rem), 56rem); }
+    @supports (height: 100dvh) {
+        .sd-settings-dialog .sd-settings-content { height: min(calc(100dvh - 3.5rem), 56rem); }
+    }
+}
+
+/* Rail: one tablist, the group captions are plain divs inside it. */
 .sd-settings-nav {
-    width: 230px; flex-shrink: 0;
+    width: 230px; flex: 0 0 230px; min-height: 0;
     background: #161b22;
     border-right: 1px solid #30363d;
-    padding: 1rem 0;
+    padding: 1rem .5rem;
     overflow-y: auto;
 }
-.sd-settings-nav .nav { flex-direction: column; flex-wrap: nowrap; }
+.sd-settings-nav .nav { flex-direction: column; flex-wrap: nowrap; gap: .15rem; }
 .sd-settings-nav .nav-link {
-    color: #c9d1d9; font-size: .85rem; margin-bottom: .25rem;
+    display: flex; align-items: center; gap: .6rem;
+    padding: .45rem .7rem; border-radius: 6px;
+    color: #c9d1d9; font-size: .85rem;
 }
+.sd-settings-nav .nav-link:hover { background: rgba(255,255,255,.05); color: #e6edf3; }
+.sd-settings-nav .nav-link.active { background: rgba(56,139,253,.16); color: #e6edf3; box-shadow: inset 3px 0 0 #58a6ff; }
+.sd-settings-nav .nav-link .bi { font-size: .95rem; color: #8b949e; }
+.sd-settings-nav .nav-link.active .bi { color: #58a6ff; }
 .sd-settings-nav-title {
-    padding: 0 .5rem .25rem;
+    padding: 1rem .7rem .35rem;
     font-size: .66rem; letter-spacing: .06em; text-transform: uppercase;
     color: #8b949e;
 }
-.sd-settings-nav-title + .nav-link { margin-bottom: 1rem; }
-.sd-settings-body { max-width: 640px; padding: 1.5rem; }
+.sd-settings-nav-title:first-child { padding-top: 0; }
+/* Under "Only this page": the page's name. */
+.sd-settings-nav-page {
+    display: block; margin-top: .2rem;
+    font-size: .78rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: #e6edf3;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Pane: the one scroll box. A container, so the rows choose their layout
+   by the pane's width, not the window's (the rail takes 230px of it). */
+.sd-settings-body {
+    flex: 1 1 auto; min-width: 0; min-height: 0;
+    padding: 1.25rem 1.5rem 1.5rem;
+    overflow-y: auto;
+    container-type: inline-size;
+}
+.sd-settings-scope { font-size: .75rem; color: #8b949e; margin-bottom: 1rem; }
+.sd-settings-scope strong { color: #e6edf3; }
+.sd-settings-group {
+    padding: .25rem 1.1rem .35rem; margin-bottom: 1rem;
+    border: 1px solid #30363d; border-radius: 8px; background: rgba(255,255,255,.015);
+}
+.sd-settings-group-title {
+    margin: .8rem 0 .15rem;
+    font-size: .68rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: #8b949e;
+}
+.sd-settings-group-help { margin: .3rem 0 .8rem; }
+.sd-settings-note { margin: 0 0 1rem; font-size: .74rem; color: #8b949e; }
+
+/* One setting: name and what it does, then its control. Stacked in a
+   narrow pane; side by side from 620px of pane width. A switch stays on
+   the right of its text at every width; a wide row keeps its control under
+   the text. Lines go BETWEEN rows, so a hidden last row leaves none. */
+.sd-set { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; padding: .85rem 0; }
+.sd-set + .sd-set { border-top: 1px solid #262c34; }
+.sd-set-name { display: block; margin: 0; font-size: .84rem; font-weight: 600; color: #e6edf3; }
+.sd-set-help { margin-top: .2rem; font-size: .75rem; line-height: 1.5; color: #8b949e; }
+.sd-set-warn { display: block; margin-top: .35rem; color: #d29922; }
+.sd-set-ctrl { min-width: 0; }
+.sd-set-switch { grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 1.25rem; }
+.sd-set-switch .form-check { min-height: 0; margin: .1rem 0 0; }
+.sd-set-switch .form-check-input { width: 2.4em; height: 1.25em; margin-top: 0; }
+.sd-set-value { padding: .3rem 0; font-size: .82rem; color: #c9d1d9; }
+.sd-set-status { margin-top: .45rem; font-size: .75rem; color: #8b949e; overflow-wrap: anywhere; }
+.sd-set-status:empty { display: none; }
+.sd-set-status.is-ok { color: #3fb950; }
+.sd-set-status.is-bad { color: #f85149; }
+.sd-set-status a { color: #58a6ff; text-decoration: none; }
+.sd-set-status a:hover { text-decoration: underline; }
+@container (min-width: 620px) {
+    .sd-set:not(.sd-set-wide):not(.sd-set-switch) { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 2rem; }
+}
+
+/* Meta Tags groups (Head & meta, and the page's own pane): one row per tag,
+   the name narrower than the content; below 576px the two boxes stack. */
+.sd-meta-list:empty { display: none; }
+.sd-meta-row { display: flex; align-items: flex-start; gap: .35rem; margin-bottom: .35rem; }
+.sd-meta-row .sd-meta-name { flex: 0 0 36%; min-width: 0; }
+.sd-meta-row .sd-meta-content { flex: 1 1 auto; min-width: 0; }
+.sd-meta-add { margin: .2rem 0 .8rem; }
+@media (max-width: 575.98px) {
+    .sd-meta-row { flex-wrap: wrap; }
+    .sd-meta-row .sd-meta-name { flex: 1 1 calc(100% - 2.5rem); }
+    .sd-meta-row .sd-meta-content { flex: 1 1 100%; order: 3; }
+}
+
+/* Head code: a plain monospace box until the code editor takes its place. */
+#styleSettingsModal .sd-code-field { font-family: var(--bs-font-monospace); font-size: .78rem; }
+.sd-settings-code { height: 14rem; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
+
+/* Who may open the page: a word for the folder's access, then a sentence. */
+.sd-access-badge {
+    display: inline-block; margin-right: .4rem; padding: .05rem .45rem;
+    border: 1px solid #30363d; border-radius: 99px;
+    font-size: .7rem; font-weight: 600; color: #c9d1d9; background: #21262d;
+}
+.sd-access-badge[data-access="public"]       { color: #3fb950; border-color: rgba(63,185,80,.4); }
+.sd-access-badge[data-access="private"]      { color: #f85149; border-color: rgba(248,81,73,.4); }
+.sd-access-badge[data-access="membership"]   { color: #d2a8ff; border-color: rgba(210,168,255,.4); }
+.sd-access-badge[data-access="registration"],
+.sd-access-badge[data-access="guest"]        { color: #d29922; border-color: rgba(210,153,34,.4); }
+
+/* Search result preview: the colours of a dark results page. */
+.sd-serp { padding: .85rem 1rem; border: 1px solid #30363d; border-radius: 8px; background: #202124; font-family: Arial, "Helvetica Neue", sans-serif; }
+.sd-serp-site { display: flex; align-items: center; gap: .6rem; margin-bottom: .3rem; min-width: 0; }
+.sd-serp-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; background: #303134; color: #bdc1c6; font-size: .8rem; }
+.sd-serp-where { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.sd-serp-name { font-size: .82rem; color: #dadce0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-serp-url { font-size: .74rem; color: #bdc1c6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-serp-title { font-size: 1.2rem; line-height: 1.3; color: #99c3ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-serp-desc { margin-top: .2rem; font-size: .82rem; line-height: 1.55; color: #bdc1c6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sd-serp.is-off { opacity: .45; }
+
+/* Footer: the note says when the changes are kept; it wraps inside its
+   own room, so the buttons keep one line. */
+.sd-settings-footer { flex-wrap: nowrap; gap: .5rem; }
+.sd-settings-footer > .btn { flex: 0 0 auto; }
+.sd-settings-footer-note { flex: 1 1 auto; min-width: 0; margin-right: auto; font-size: .74rem; color: #8b949e; }
 
 /* ===================== NARROW SCREENS: TOOLBARS ===================== */
 /* Same 992px line the panels dock at. Below it every toolbar control has to
@@ -5608,22 +5730,31 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     .sd-bp-bar .sd-bp-label { margin-left: 2px; }
 
     /* ── Settings modal ── */
-    #styleSettingsModal .modal-body { flex-direction: column; }
+    /* Full screen: the rail turns into a strip above the pane. */
+    .sd-settings-main { flex-direction: column; }
     .sd-settings-nav {
-        width: 100%;
+        width: 100%; flex: 0 0 auto;
         border-right: none;
         border-bottom: 1px solid #30363d;
-        padding: .35rem 0;
+        padding: .4rem .5rem;
         overflow-x: auto; overflow-y: hidden;
     }
-    .sd-settings-nav .nav { flex-direction: row; gap: .3rem; }
-    /* The two group captions only make sense beside a vertical list; the
-       scope line at the top of each pane says the same thing in a sentence. */
+    .sd-settings-nav .nav { flex-direction: row; align-items: center; gap: .25rem; }
+    .sd-settings-nav .nav-link { white-space: nowrap; }
+    .sd-settings-nav .nav-link.active { box-shadow: inset 0 -2px 0 #58a6ff; }
+    /* The group captions only make sense beside a vertical list; the scope
+       line at the top of each pane says the same in a sentence. Between the
+       two groups a thin line still parts the design's pills from the page's. */
     .sd-settings-nav-title { display: none; }
-    .sd-settings-nav .nav-link,
-    .sd-settings-nav-title + .nav-link { margin-bottom: 0; white-space: nowrap; }
-    .sd-settings-body { max-width: none; padding: 1rem; }
-    #styleSettingsModal .modal-footer { flex-wrap: wrap; row-gap: .4rem; }
+    .sd-settings-nav-title[data-sd-settings-scope="page"] {
+        display: block; flex: 0 0 1px; align-self: stretch;
+        width: 1px; margin: .2rem .35rem; padding: 0;
+        background: #30363d; overflow: hidden; font-size: 0;
+    }
+    .sd-settings-nav-title.d-none ~ .sd-settings-nav-title[data-sd-settings-scope="page"] { display: none; }
+    .sd-settings-body { padding: 1rem; }
+    .sd-settings-footer { flex-wrap: wrap; row-gap: .4rem; }
+    .sd-settings-footer-note { flex: 1 1 100%; order: 3; margin: 0; }
 }
 
 /* Phones and small touch tablets: the canvas already fills the screen, so

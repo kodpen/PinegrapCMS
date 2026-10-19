@@ -1593,18 +1593,110 @@ body:not(.toolbar) .software-content {
   }
 }
 
-#menu_toggle {
-  --bs-text-opacity: 1;
-  color: var(--bs-tertiary-color) !important;
-  transition: all 0.3s ease;
-  z-index: 1000;
+/* ── The foot of the menu: how it shows ──────────────────────────────────
+   pg_menu_mode_switch(). One button, opening the three states in a small
+   menu of its own -- expanded, mini, hidden -- the way the theme is chosen in
+   the account menu rather than by a control that flips on every click. The
+   button's picture is the state the menu is in; on the expanded menu it
+   carries its name as well, like the rows above it. The old caret that
+   rotated in place had no name and only two answers. */
+#menu .pg-railfoot {
+  padding: 0.375rem 6px;
 }
-#menu_toggle:not(.active) {
-  margin-left: 0px;
+#menu .pg-railmode-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 0.8rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--bs-border-radius-lg);
+  background: transparent;
+  color: var(--bs-secondary-color);
+  font-size: 0.875rem;
+  white-space: nowrap;
 }
-#menu_toggle.active {
-  margin-left: 150px;
-  transform: rotate(180deg);
+#menu.expanded .pg-railmode-btn {
+  padding: 0 0.625rem;
+}
+#menu .pg-railmode-btn:is(:hover, :focus-visible),
+#menu .pg-railmode-btn[aria-expanded="true"] {
+  background: var(--pg-tint-hover);
+  color: var(--bs-body-color);
+}
+#menu .pg-railmode-btn > .bi {
+  flex: 0 0 auto;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+#menu .pg-railmode-when-expanded,
+#menu.expanded .pg-railmode-when-collapsed,
+#menu:not(.expanded) .pg-railmode-label {
+  display: none;
+}
+#menu.expanded .pg-railmode-when-expanded {
+  display: inline-block;
+}
+#menu .pg-railmode-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#menu .pg-railmode-menu {
+  --bs-dropdown-min-width: 15rem;
+  --bs-dropdown-padding-x: 0.375rem;
+  --bs-dropdown-padding-y: 0.375rem;
+  --bs-dropdown-header-padding-x: 0.625rem;
+  --bs-dropdown-header-padding-y: 0.375rem;
+  --bs-dropdown-item-border-radius: var(--bs-border-radius-lg);
+  --bs-dropdown-link-hover-bg: var(--pg-tint-hover);
+  --bs-dropdown-link-active-bg: var(--pg-tint-strong);
+  --bs-dropdown-link-active-color: var(--bs-body-color);
+  border-radius: 0.875rem;
+  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.16), 0 0.125rem 0.375rem rgba(0, 0, 0, 0.08);
+}
+#menu .pg-railmode-menu .dropdown-header {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+#menu .pg-railmode-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4375rem 0.625rem;
+  white-space: normal;
+}
+#menu .pg-railmode-menu .dropdown-item > .bi:first-child {
+  flex: 0 0 1.25rem;
+  font-size: 1.0625rem;
+  text-align: center;
+  color: var(--bs-secondary-color);
+}
+#menu .pg-railmode-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+#menu .pg-railmode-text > small {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}
+#menu .pg-railmode-check {
+  flex: 0 0 auto;
+  visibility: hidden;
+  color: var(--pg-primary-ink);
+}
+#menu .pg-railmode-menu [aria-checked="true"] > .bi:first-child,
+#menu .pg-railmode-menu [aria-checked="true"] .pg-railmode-check {
+  visibility: visible;
+  color: var(--pg-primary-ink);
 }
 
 .dropdown-item-sm {
@@ -1688,9 +1780,9 @@ body:not(.toolbar) .software-content {
     overflow: hidden;
   }
 
-  /* Collapsing to a rail is meaningless once there is no rail; the navbar button,
-     the scrim and Escape are the ways out. */
-  #menu_toggle {
+  /* How the menu shows on a wide screen means nothing to a drawer; the button
+     in the bar, the scrim and Escape are the ways in and out. */
+  #menu .pg-railfoot {
     display: none;
   }
 
@@ -1766,6 +1858,40 @@ body:not(.toolbar) .software-content {
      the content fills its own column with no correction at all. */
   .software-container.expanded .software-sidebar {
     width: var(--pg-rail-w-expanded);
+  }
+
+  /* Hidden: the column goes, and the rail slides out with it rather than
+     being cut off by it. visibility, delayed until the slide is over, keeps
+     its links out of the tab order; coming back, the rail is visible at once
+     and slides in. The pocket corner belongs to the rail and goes with it. */
+  .software-container .software-sidebar {
+    transition: width 0.3s ease, transform 0.3s ease;
+  }
+  .software-container.menu-hidden {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+  .software-container.menu-hidden .software-sidebar {
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: width 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
+  }
+  .software-container.menu-hidden .software-sidebar::before,
+  .software-container.menu-hidden .software-sidebar::after {
+    display: none;
+  }
+
+  /* The button in the bar sits over the rail, centred on it, so its picture
+     lines up with the icons of the menu below. */
+  #header .pg-menu-toggle-item {
+    display: flex;
+    justify-content: center;
+    width: var(--pg-rail-w);
+  }
+}
+@media only screen and (min-width: 992px) and (prefers-reduced-motion: reduce) {
+  .software-container .software-sidebar,
+  .software-container.menu-hidden .software-sidebar {
+    transition: none;
   }
 }
 .navbar .vh {
@@ -1864,6 +1990,30 @@ body:not(.toolbar) .software-content {
    opposite even once both were the same size. */
 #header > ul.navbar-nav {
   align-items: center;
+}
+/* The two pictures of the menu button (pg_menu_toggle_button()): the side
+   panel filled while the menu is on screen, empty while it is not -- the
+   drawer below lg, the rail above. Both are printed, so the right one is
+   there before the script runs; the ids are repeated to outrank the rule
+   above that makes every icon of the button a flex box. */
+#header #menu_drawer_toggle > .pg-mt-open {
+  display: none;
+}
+@media (min-width: 992px) {
+  .software-container:not(.menu-hidden) #header #menu_drawer_toggle > .pg-mt-shut {
+    display: none;
+  }
+  .software-container:not(.menu-hidden) #header #menu_drawer_toggle > .pg-mt-open {
+    display: inline-flex;
+  }
+}
+@media (max-width: 991.98px) {
+  .software-container.drawer-open #header #menu_drawer_toggle > .pg-mt-shut {
+    display: none;
+  }
+  .software-container.drawer-open #header #menu_drawer_toggle > .pg-mt-open {
+    display: inline-flex;
+  }
 }
 
 /* ══ Page action bar ═══════════════════════════════════════════════════════
@@ -2194,6 +2344,10 @@ body:not(.toolbar) .software-content {
   border-radius: 50%;
 }
 #header .pg-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transform: scale(1.1);
 }
 /* Licence state rides on the avatar rather than on a control of its own, so it
@@ -2315,144 +2469,302 @@ body:not(.toolbar) .software-content {
 }
 
 /* ══ Account menu ═════════════════════════════════════════════════════════
-   Same content as before - identity, licence, theme, account, start page,
-   help, support, feedback, private label links, keyboard sheet, logout,
-   version, edition, environment - regrouped so it reads as five bands
-   instead of one flat list of thirteen rows. */
+   pg_account_menu() in includes/fn/output.php.
+
+   Fixed to the viewport, never hung from its button. Bootstrap does not hand
+   a dropdown inside a .navbar to Popper, so a menu placed by its toggle has
+   nothing that keeps it on the screen: the one before this hung from the
+   button, ran off the left edge of a phone as soon as it grew, and could not
+   be scrolled at all, because the overflow:hidden of #header .pg-usermenu (an
+   id and a class) beat the overflow-y:auto of #user_menu (an id alone) -- on
+   a phone the rows below the fold, logout among them, were out of reach.
+
+   Above the phone breakpoint it is a card under the right edge of the bar,
+   capped at the height of the screen and scrolling inside; on a phone it is
+   a sheet over everything below the bar. One scroller in both shapes, the
+   menu itself, and its overscroll is contained so the page underneath stays
+   where it was. */
 #header .pg-usermenu {
-  --bs-dropdown-min-width: 17rem;
-  --bs-dropdown-item-padding-y: 0.5rem;
-  overflow: hidden;
-}
-#header .pg-usermenu > li + li {
+  --pg-um-pad: 0.375rem;
+  --pg-um-row: 2.25rem;
+  --bs-dropdown-min-width: 0;
+  --bs-dropdown-padding-x: var(--pg-um-pad);
+  --bs-dropdown-padding-y: var(--pg-um-pad);
+  --bs-dropdown-font-size: 0.875rem;
+  --bs-dropdown-border-radius: 1rem;
+  --bs-dropdown-item-padding-x: 0.625rem;
+  --bs-dropdown-item-padding-y: 0.375rem;
+  --bs-dropdown-item-border-radius: var(--bs-border-radius-lg);
+  --bs-dropdown-divider-margin-y: var(--pg-um-pad);
+  --bs-dropdown-divider-bg: var(--bs-border-color-translucent);
+  --bs-dropdown-link-hover-bg: var(--pg-tint-hover);
+  --bs-dropdown-link-hover-color: var(--bs-body-color);
+  --bs-dropdown-link-active-bg: var(--pg-tint-strong);
+  --bs-dropdown-link-active-color: var(--bs-body-color);
+  /* With the acrylic effect on (.advanced-visuals ... .backdrop) the glass is
+     kept but thickened: the 60% the other menus use left the dashboard's
+     figures legible through the form fields and the rows of this one. */
+  --bs-bg-opacity: 0.86;
+  position: fixed;
+  top: calc(var(--pg-navbar-h) + 0.375rem);
+  right: 0.5rem;
+  left: auto;
+  width: 20rem;
+  max-width: calc(100vw - 1rem);
+  max-height: calc(100vh - var(--pg-navbar-h) - 1rem);
   margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.16), 0 0.125rem 0.375rem rgba(0, 0, 0, 0.08);
+  transform-origin: top right;
 }
-/* Rows are given the tap height too: a 30px menu row is no easier to hit than
-   a 30px toolbar button. */
+/* What the browser's own bars leave of a phone's screen, where it is known. */
+@supports (height: 100dvh) {
+  #header .pg-usermenu {
+    max-height: calc(100dvh - var(--pg-navbar-h) - 1rem);
+  }
+}
+/* A finger gets the tap height the bar's own controls have. */
+@media (hover: none), (pointer: coarse) {
+  #header .pg-usermenu {
+    --pg-um-row: var(--pg-tap);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #header .pg-usermenu.show {
+    animation: pg-um-in 0.14s ease-out;
+  }
+}
+@keyframes pg-um-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.98);
+  }
+}
+
 #header .pg-usermenu .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  min-height: var(--pg-tap);
+  gap: 0.75rem;
+  min-height: var(--pg-um-row);
+  white-space: nowrap;
 }
-#header .pg-usermenu .dropdown-item > i:first-child {
+#header .pg-usermenu .dropdown-item > .bi:first-child {
   flex: 0 0 1.25rem;
-  margin-right: 0 !important;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   text-align: center;
+  color: var(--bs-secondary-color);
 }
-
-/* Identity header. Carries the same destination and the same permission rule
-   as the username row it replaces. */
-#header .pg-um-identity {
+#header .pg-usermenu .dropdown-item:is(:hover, :focus-visible) > .bi:first-child {
+  color: var(--bs-body-color);
+}
+#header .pg-usermenu .pg-um-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A row that leaves for another tab says so after its label. */
+#header .pg-usermenu .pg-um-ext {
+  flex: 0 0 auto;
+  font-size: 0.6875rem;
+  color: var(--bs-tertiary-color);
+}
+/* The dividers run edge to edge, through the card's own padding. */
+#header .pg-usermenu .dropdown-divider {
+  margin-right: calc(-1 * var(--pg-um-pad));
+  margin-left: calc(-1 * var(--pg-um-pad));
+}
+#header .pg-um-section {
+  padding: 0.125rem 0.625rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+/* A private label link that has a name and no address. */
+#header .pg-usermenu .pg-um-note {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.75rem 1rem;
-  border-bottom: var(--bs-border-width) solid var(--bs-border-color-translucent);
+  gap: 0.75rem;
+  min-height: var(--pg-um-row);
+  color: var(--bs-secondary-color);
+}
+
+/* Who is signed in. Only an administrator's opens their user record; for
+   everybody else it is a plain heading. */
+#header .pg-um-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+#header .pg-um-identity {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--bs-border-radius-lg);
   color: var(--bs-body-color);
   text-decoration: none;
 }
-#header a.pg-um-identity:hover,
-#header a.pg-um-identity:focus-visible {
-  background: var(--pg-tint);
+#header a.pg-um-identity:is(:hover, :focus-visible) {
+  background: var(--pg-tint-hover);
   color: var(--bs-body-color);
 }
 #header .pg-um-avatar {
-  display: block;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
+  width: 2.75rem;
+  height: 2.75rem;
   overflow: hidden;
   border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--bs-border-color-translucent);
+}
+#header .pg-um-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 #header .pg-um-idtext {
   display: flex;
-  flex-direction: column;
   flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.125rem;
   min-width: 0;
   line-height: 1.25;
 }
-#header .pg-um-name,
-#header .pg-um-role {
+#header .pg-um-name {
+  overflow: hidden;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#header .pg-um-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}
+#header .pg-um-login {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-#header .pg-um-name {
-  font-size: 0.875rem;
-  font-weight: 600;
-}
+/* The role as a quiet pill. The label is stored lower case for use inside
+   sentences, so its first letter is raised here, by the browser, which knows
+   the page's language and so a Turkish dotted i. */
 #header .pg-um-role {
-  font-size: 0.75rem;
-  color: var(--bs-secondary-color);
+  flex: 0 0 auto;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+  background: var(--pg-tint-strong);
+  color: var(--bs-body-color);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+#header .pg-um-role::first-letter {
+  text-transform: uppercase;
 }
 #header .pg-um-idgo {
   flex: 0 0 auto;
-  font-size: 0.7rem;
-  opacity: 0.45;
+  font-size: 0.75rem;
+  color: var(--bs-tertiary-color);
 }
-#header .pg-um-identity-static .pg-um-idgo {
+/* The phone sheet covers the screen, so it carries a way out of its own
+   beside the button that opened it. Hidden on the card. */
+#header .pg-um-close {
   display: none;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--pg-tap);
+  height: var(--pg-tap);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  font-size: 1rem;
+}
+#header .pg-um-close:is(:hover, :focus-visible) {
+  background: var(--pg-tint-hover);
+  color: var(--bs-body-color);
 }
 
-/* Section label. Used twice - the theme row and the support band - so the
-   middle of the menu has somewhere to break. */
-#header .pg-um-section {
-  font-size: 0.6875rem;
+/* The address book form, while the name or the picture is missing. */
+#header .pg-um-card {
+  margin: 0.25rem 0 0.125rem;
+  padding: 0.75rem;
+  border-radius: var(--bs-border-radius-lg);
+  background: var(--pg-tint);
+  white-space: normal;
+}
+#header .pg-um-cardtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+}
+#header .pg-um-cardtext {
+  margin-bottom: 0.625rem;
+  font-size: 0.75rem;
   color: var(--bs-secondary-color);
 }
-#header .pg-um-section-row {
-  padding: 0.625rem 1rem 0.25rem;
-  border-top: var(--bs-border-width) solid var(--bs-border-color-translucent);
+#header .pg-um-cardpic {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  object-fit: cover;
 }
+
+/* Appearance: one setting, so one control -- a track of three segments where
+   elevation and ink mark the one that is on. */
 #header .pg-um-theme {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  min-height: var(--pg-tap);
-  padding: 0.25rem 1rem;
-  border-bottom: var(--bs-border-width) solid var(--bs-border-color-translucent);
+  min-height: var(--pg-um-row);
+  padding: 0.125rem 0.125rem 0.125rem 0.625rem;
 }
-/* One setting, so one control.
-   The row used to be three buttons in three different accent colours --
-   outline-info, outline-warning, outline-primary -- which is three hues for
-   what is a single choice, and it meant the colour of the row changed with the
-   answer rather than with anything the answer means. A track with three
-   segments says the same thing without a palette: what marks the selection is
-   elevation and ink, and the three options finally look like each other. */
+#header .pg-um-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 #header .pg-um-themeswitch {
   display: inline-flex;
   flex: 0 0 auto;
   gap: 2px;
-  margin-left: auto;
   padding: 2px;
   border-radius: 999px;
-  background: var(--pg-tint);
+  background: var(--pg-tint-strong);
 }
-/* The segments follow the tap token, so they grow with the row on a touch
-   screen instead of staying a 30px target inside a 44px band. */
 #header .pg-um-themebtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: calc(var(--pg-tap) - 0.75rem);
-  height: calc(var(--pg-tap) - 0.75rem);
+  width: 2rem;
+  height: 1.75rem;
   padding: 0;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--bs-secondary-color);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
-#header .pg-um-themebtn:hover,
-#header .pg-um-themebtn:focus-visible {
+#header .pg-um-themebtn:is(:hover, :focus-visible) {
   color: var(--bs-body-color);
 }
 #header .pg-um-themebtn.active {
@@ -2460,57 +2772,49 @@ body:not(.toolbar) .software-content {
   color: var(--bs-body-color);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
+@media (hover: none), (pointer: coarse) {
+  #header .pg-um-themebtn {
+    width: 2.5rem;
+    height: 2.25rem;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   #header .pg-um-themebtn {
     transition: none;
   }
 }
-#header .pg-um-group {
-  padding-top: 0.25rem;
-}
-/* The shortcuts row is an accordion rather than a link, but it stands in a
-   column of rows that all lead with an icon in the same 1.25rem gutter, and
-   without one its label started where their text starts. Bootstrap's own
-   padding is wider than the dropdown's, which is the other half of the
-   misalignment. */
-#header .pg-usermenu .accordion-button {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-height: var(--pg-tap);
-  padding-right: 1rem;
-  padding-left: 1rem;
-}
-#header .pg-usermenu .accordion-button > i:first-child {
-  flex: 0 0 1.25rem;
-  font-size: 1rem;
-  text-align: center;
-}
 
-#header .pg-um-logout {
-  border-top: var(--bs-border-width) solid var(--bs-border-color-translucent);
-}
-/* Version, edition and environment were three separate rows saying one thing
-   each; they are one line now and none of them is gone. */
+/* Version, edition and environment: one quiet line at the foot. */
 #header .pg-um-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  padding: 0.5rem 1rem;
-  border-top: var(--bs-border-width) solid var(--bs-border-color-translucent);
-  background: var(--pg-tint);
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0.625rem 0.125rem;
   font-size: 0.6875rem;
-  color: var(--bs-secondary-color);
+  color: var(--bs-tertiary-color);
 }
 #header .pg-um-metaitem {
   white-space: nowrap;
 }
+#header .pg-um-metaitem + .pg-um-metaitem::before {
+  content: "\00B7";
+  margin-right: 0.5rem;
+}
+#header .pg-um-env {
+  color: var(--pg-warning-ink);
+  font-weight: 600;
+}
 
-/* Licence summary at the head of the account menu, with the countdown, the
-   progress bar and the buttons collapsed underneath it. */
+/* Licence summary (license_check(), output 'bar'), with the countdown, the
+   progress bar and the buttons collapsed underneath it. A tinted card of its
+   own, so its state colour never bleeds into the rows around it. */
 #header .pg-lic-item {
   --pg-lic-ink: var(--bs-secondary-color);
   --pg-lic-bg: var(--bs-secondary-bg);
+  margin: 0.25rem 0 0.125rem;
+  overflow: hidden;
+  border-radius: var(--bs-border-radius-lg);
+  background: var(--pg-lic-bg);
 }
 #header .pg-lic-success {
   --pg-lic-ink: var(--pg-success-ink);
@@ -2527,23 +2831,26 @@ body:not(.toolbar) .software-content {
 #header .pg-lic-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   width: 100%;
-  min-height: var(--pg-tap);
-  padding: 0.5rem 1rem;
+  min-height: var(--pg-um-row);
+  padding: 0.375rem 0.625rem;
   border: 0;
-  border-bottom: var(--bs-border-width) solid var(--bs-border-color-translucent);
-  background: var(--pg-lic-bg);
+  background: transparent;
   color: var(--pg-lic-ink);
   font-size: 0.75rem;
   font-weight: 600;
   text-align: left;
 }
-/* An inset wash rather than a brightness filter: the row is pale in the light
-   theme and near black in the dark one, so a filter would move the wrong way
-   in one of them. */
-#header .pg-lic-row:hover,
-#header .pg-lic-row:focus-visible {
+#header .pg-lic-row > .bi:first-child {
+  flex: 0 0 1.25rem;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+/* An inset wash rather than a brightness filter: the card is pale in the
+   light theme and near black in the dark one, so a filter would move the
+   wrong way in one of them. */
+#header .pg-lic-row:is(:hover, :focus-visible) {
   box-shadow: inset 0 0 0 9999px var(--pg-tint);
 }
 #header .pg-lic-label {
@@ -2567,12 +2874,120 @@ body:not(.toolbar) .software-content {
   transform: rotate(180deg);
 }
 #header .pg-lic-panel {
-  border-bottom: var(--bs-border-width) solid var(--bs-border-color-translucent);
+  border-top: var(--bs-border-width) solid var(--bs-border-color-translucent);
 }
 @media (prefers-reduced-motion: reduce) {
   #header .pg-lic-chev {
     transition: none;
   }
+}
+
+/* ── On a phone: a sheet over the screen below the bar ───────────────────
+   Anchored to all four edges instead of given a height, so whatever the
+   browser's bars leave is what it fills. */
+@media (max-width: 575.98px) {
+  #header .pg-usermenu {
+    --pg-um-pad: 0.5rem;
+    --pg-um-row: var(--pg-tap);
+    --bs-dropdown-font-size: 0.9375rem;
+    /* Solid, glass or not: a sheet over the whole screen has nothing behind
+       it worth seeing, and through the 60% the glass leaves the figures of
+       the dashboard read straight through the menu. Important only against
+       the important of the acrylic rule (.advanced-visuals ... .backdrop). */
+    --bs-dropdown-bg: var(--bs-body-bg) !important;
+    top: var(--pg-navbar-h);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    padding: var(--pg-um-pad) 0.75rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transform-origin: top center;
+  }
+  #header .pg-um-close {
+    display: inline-flex;
+  }
+  /* The page underneath holds still, and the chat bubble, which sits above
+     every layer of the panel, steps out of the way of the bottom rows. */
+  html:has(#user_menu.show) {
+    overflow: hidden;
+  }
+  body:has(#user_menu.show) #pg-chat-root {
+    display: none;
+  }
+}
+
+/* ══ Keyboard shortcuts ═══════════════════════════════════════════════════
+   pg_shortcuts_dialog() in includes/fn/output.php, opened with ? and from the
+   search box. Two groups of keys and what they do, a <dl> each; the keys are
+   drawn as caps rather than as Bootstrap's dark code pill. */
+.pg-keys-modal .modal-dialog {
+  max-width: 30rem;
+}
+.pg-keys-modal .modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.pg-keys-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+.pg-keys + .pg-keys-title {
+  margin-top: 1.25rem;
+}
+.pg-keys {
+  margin: 0;
+}
+.pg-keys-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4375rem 0;
+  border-bottom: var(--bs-border-width) solid var(--bs-border-color-translucent);
+}
+.pg-keys-row:last-child {
+  border-bottom: 0;
+}
+.pg-keys-row dt {
+  display: flex;
+  flex: 0 0 auto;
+  order: 2;
+  gap: 0.25rem;
+  font-weight: 400;
+}
+.pg-keys-row dd {
+  order: 1;
+  margin: 0;
+  font-size: 0.875rem;
+}
+.pg-keys kbd {
+  min-width: 1.75rem;
+  padding: 0.125rem 0.4375rem;
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-bottom-width: 2px;
+  border-radius: 0.375rem;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
 }
 
 #bd-themes {
@@ -3354,12 +3769,6 @@ table.table.dataTable > tbody > tr.selected > * {
   }
 }
 
-/* A fixed height clipped the tail of the menu on short viewports; a cap plus
-   scrolling keeps logout and the meta line reachable. */
-#user_menu {
-  max-height: calc(100vh - var(--pg-navbar-h) - 1.5rem);
-  overflow-y: auto;
-}
 .table.dataTable {
   margin-bottom: 0px !important;
 }
@@ -3618,12 +4027,6 @@ table.dataTable th.dataTables_empty {
   color: var(--bs-body-color);
 }
 
-html[data-bs-theme="dark"] #menu_toggle span {
-  background: linear-gradient(125deg, #09c9ff, #d07f00);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
 
 html[data-bs-theme="dark"] table.monthly_calendar td:not(.inactive) {
   background-color: #00000025;

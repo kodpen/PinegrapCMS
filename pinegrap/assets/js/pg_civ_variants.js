@@ -561,6 +561,18 @@
                 break;
             case 'src':
                 if (el.tagName === 'IMG') {
+                    // A srcset, and the <source>s of a <picture> around the
+                    // image, outrank src: the server described the photo the
+                    // page was drawn with, and the browser would keep showing
+                    // it. The variant's photo is shown as its own file.
+                    if (el.getAttribute('src') !== val) {
+                        el.removeAttribute('srcset');
+                        el.removeAttribute('sizes');
+                        var pic = el.parentNode;
+                        if (pic && pic.nodeName === 'PICTURE') {
+                            Array.prototype.forEach.call(pic.querySelectorAll('source'), function (s) { pic.removeChild(s); });
+                        }
+                    }
                     el.src = val;
                 } else {
                     el.style.backgroundImage = val ? 'url("' + val.replace(/"/g, '\\"') + '")' : '';
