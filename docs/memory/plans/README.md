@@ -47,4 +47,3 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-phase3-leftovers.md: Workspace module items planned for phase 3 (bots) and not built: app membership and command registry over the API, app.mentioned webhook, ERP overdue to task, designer task panel
-- workspace-record-quick-edit.md: Plan (2026-10-19) for editing a product's fields from the Workspace without an assistant: changes.php checks and writers reused, drawer form, /price and /stock; slices R1-R4, open questions
