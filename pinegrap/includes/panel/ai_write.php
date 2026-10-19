@@ -4,16 +4,19 @@
  *
  * Panel actions - "Write with AI".
  *
- *   ai_write   a draft for one field of a product or a page, written by
- *              Pinegrap AI from the form's current values; nothing is saved
+ *   ai_write   a draft for one field of a product, a page or a custom
+ *              form's record, written by Pinegrap AI from the form's current
+ *              values; nothing is saved
  *
  * Request: target (product_description | product_short | seo_title |
- * seo_description), record (product | page), record_id (0 for a record not
- * saved yet), context (field => value as the form holds it now), tone
- * (neutral | friendly | formal | persuasive), hint (an optional request of
- * the person's own). Answer: text, html (the paragraphs as HTML for a rich
- * text field), format and remaining (drafts the site may still ask for
- * today). The rules are in includes/fn/ai_write.php.
+ * seo_description | record_field), record (product | page | form),
+ * record_id (the product or page, 0 for one not saved yet; for a form record
+ * the custom form's page), field_id (the form field, for record_field),
+ * context (field => value as the form holds it now), tone (neutral |
+ * friendly | formal | persuasive), hint (an optional request of the person's
+ * own). Answer: text, html (the paragraphs as HTML for a rich text field),
+ * format and remaining (drafts the site may still ask for today). The rules
+ * are in includes/fn/ai_write.php.
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
  * for the contract.
@@ -44,6 +47,7 @@ function pg_panel_ai_write($request, $action)
         'target'    => isset($request['target']) ? (string) $request['target'] : '',
         'record'    => isset($request['record']) ? (string) $request['record'] : '',
         'record_id' => isset($request['record_id']) ? (int) $request['record_id'] : 0,
+        'field_id'  => isset($request['field_id']) ? (int) $request['field_id'] : 0,
         'context'   => $context,
         'tone'      => (isset($request['tone']) && is_string($request['tone'])) ? $request['tone'] : '',
         'hint'      => (isset($request['hint']) && is_string($request['hint'])) ? $request['hint'] : '',

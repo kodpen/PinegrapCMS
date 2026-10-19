@@ -1,6 +1,6 @@
 ---
 name: ai-write-buttons
-description: Plan (approved 2026-10-19, in progress: endpoint, product and page property buttons done): "Write with AI"; designer page settings, form records, alt text and AI-generated labelling left
+description: Plan (approved 2026-10-19, in progress: endpoint and the product, page property and form record buttons done): "Write with AI"; designer page settings, alt text, labelling left
 ---
 
 ## Why?
@@ -9,6 +9,7 @@ description: Plan (approved 2026-10-19, in progress: endpoint, product and page 
 ## What is done?
 - Step 1 (PR #581): the `ai_write` panel action, prompt rules, answer reading, quota guards and tests. Behaviour: docs/memory/ui/ai-write.md.
 - Step 2 (PR #583): buttons and the draft panel on the product screen and the page properties screen (`assets/js/pg_ai_write.js`), the `[NEW]` changelog line. Behaviour: docs/memory/ui/ai-write-panel.md.
+- Step 3, first half (PR #585): custom form records (`record_field`) on the record add and edit screens. Behaviour: the same two files.
 
 ## What is decided?
 - One endpoint (`ai_write`, `includes/panel/ai_write.php` + `includes/fn/ai_write.php`), no new provider. The draft never saves itself; the person accepts it.
@@ -21,7 +22,7 @@ description: Plan (approved 2026-10-19, in progress: endpoint, product and page 
 - Alt text needs a model that reads images. Nothing in the Pinegrap AI connection says whether its model does (the code sends text only, and the model it tunes for, gpt-oss, reads text), so that button stays hidden until the connection can tell.
 
 ## What remains?
-3. The visual designer: browser title and description in its page settings; form record text fields in the form widget (target `record_field`, gate by form rights); the alt-text button once a vision model is known (S).
+3. The visual designer: browser title and description in its page settings; the alt-text button once a vision model is known (S).
 4. `ai_fields` columns in a migration step (ask the owner first), panel marker, token `__ai_generated` (S).
 5. When done: decisions move to docs/memory/ui/ai-write.md and this file is deleted.
 
