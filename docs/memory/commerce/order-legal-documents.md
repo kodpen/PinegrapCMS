@@ -5,7 +5,7 @@ description: Checkout legal documents (pre-information form, distance sales cont
 
 ## What is built?
 - Settings › Ecommerce › Legal Documents (`pgset-legal`): switch `ECOMMERCE_LEGAL_DOCUMENTS` and two HTML templates (schema 11.0.1, PR #540). Card and save only when the column exists.
-- `includes/fn/legal_documents.php` (tests `tests/legal_documents_test.php`), `legal_document.php` (cart document page), store call in `submit_order.php` after the order number (PR #540), checkout part PR #PRNUM.
+- `includes/fn/legal_documents.php` (tests `tests/legal_documents_test.php`), `legal_document.php` (cart document page), store call in `submit_order.php` after the order number (PR #540), checkout part PR #559.
 
 ## How do the checkboxes reach every checkout?
 - `pg_legal_documents_inject($html, $values)` wraps the three checkout renderers: the designer's express order widget (`_expand_system_widgets()` in `includes/fn/designer.php`) and the classic express order and order preview (`get_page_content.php`). It puts two required checkboxes `legal_preinfo` / `legal_contract` (value 1) in front of the tag named `submit_purchase_now`; `get_express_order.php` / `get_order_preview.php` are not edited. No purchase button, or the page already has a `legal_preinfo` field (a designer tree that binds it), means nothing is added.
