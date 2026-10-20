@@ -94,6 +94,34 @@ One scheduled task is enough. In **Settings › General › Cron Jobs**, turn on
 
 ---
 
+## Try it with Docker
+
+The [`docker/`](docker/) folder holds a Docker Compose stack: nginx, PHP-FPM, the general job and MariaDB 10.11, each in its own container. It is the quickest way to try Pinegrap on your own machine and can run a site on a server you manage; the installation above stays the main way.
+
+```bash
+git clone https://github.com/kodpen/PinegrapCMS.git
+cd PinegrapCMS
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+Open `http://localhost:8080/pinegrap/install/` and run the installation wizard. On its database step enter `db` as the **Database Hostname**; the database name, username and password are all `pinegrap` (or what you set in `PG_DB_NAME`, `PG_DB_USER` and `PG_DB_PASSWORD`).
+
+**Without the wizard:** name the first administrator before the first start and the starter site is installed for you:
+
+```bash
+PG_INSTALL_ADMIN_EMAIL=you@example.com PG_INSTALL_ADMIN_PASSWORD='choose a long one' \
+  docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml logs install
+```
+
+The site is then at `http://localhost:8080/` and its control panel at `http://localhost:8080/pinegrap/`.
+
+* **Settings** come from the shell or from a `docker/.env` file: `PG_HTTP_PORT` (8080), `PG_DB_PASSWORD` (`pinegrap`; for anything but a trial set your own before the first start), `PG_INSTALL_STARTER` (`english_default` or `turkish_default`) and the others listed at the top of [`docker/docker-compose.yml`](docker/docker-compose.yml).
+* **Your data** stays in two volumes, `pinegrap_data` (configuration, uploads, backups) and `pinegrap_db`. `docker compose -f docker/docker-compose.yml down` stops the site and keeps them; `down -v` deletes the site.
+* **Updates:** the software comes from the image. Get the new release (`git pull`, or the new release files) and run the same `up -d --build`. The database steps run from the upgrade screen the control panel opens at the next sign-in, or at once with `docker compose -f docker/docker-compose.yml exec -u www-data app php pinegrap/install/index.php automated_upgrade`. An update installed from the control panel lasts only until the containers are recreated.
+
+---
+
 ## Updating
 
 Updates are installed from the control panel (**Software Update**), on the Stable or Beta channel. Database changes ship as versioned upgrade steps that run on their own, so no manual SQL is needed. If an update leaves files missing, **Repair Software** restores the release files and can re-run the database steps.

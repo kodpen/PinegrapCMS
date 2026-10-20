@@ -138,6 +138,12 @@ function pg_notification_visible($notification, $rights)
 		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
 	}
 
+	// An order that did not get its automatic invoice: for whoever may use
+	// the ERP, who can issue it from the order screen.
+	if ($action == 'erp_auto_invoice') {
+		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
+	}
+
 	// Anything else - a message written by the software itself - is for
 	// everybody who can sign in.
 	return true;
@@ -466,6 +472,18 @@ function pg_notification_display($notification)
 		$display['url']         = ($number !== '') ? 'edit_erp_quote.php?id=' . $quote_id : 'erp_quotes.php?state=open';
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'erp_auto_invoice') {
+
+		// title is the reason the order screen gives, order_id the order and
+		// order_total its number (includes/erp/alerts.php). The link opens
+		// the order's documents card, where the invoice is issued by hand.
+		$display['title']       = lang('An order was not invoiced automatically');
+		$display['description'] = lang(array('string' => 'Order #{var:1}: {var:2}', 'vars' => array(h($notification['order_total'] ?? ''), h($notification['title'] ?? ''))));
+		$display['url']         = 'view_order.php?id=' . (int) ($notification['order_id'] ?? 0) . '#erp_order_documents';
+		$display['icon']        = 'assets/images/notification-order.png';
+		$display['badge']       = 'assets/images/notification-order-badge.png';
 		$display['action']      = $action;
 
 	} elseif ($action == 'ops') {
