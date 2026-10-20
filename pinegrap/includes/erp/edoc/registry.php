@@ -831,6 +831,10 @@ function erp_edoc_http($method, $url, $headers = array(), $body = null, $timeout
  * numbers, e-mail addresses. Works on the JSON text, so nested keys are
  * covered without walking the structure.
  *
+ * A provider's own record ids are not personal numbers and stay readable
+ * under an "id" or "detail_id" key (Paraşüt's are ten digits, as long as a
+ * VKN), so a log line still names the invoice, card or line it was about.
+ *
  * @param string $text
  * @return string
  */
@@ -847,10 +851,17 @@ function erp_edoc_mask($text)
         $text
     );
 
-    // Header lines and bare long digit runs (a VKN is 10, a TCKN 11 digits).
+    // Header lines and bare long digit runs (a VKN is 10, a TCKN 11 digits),
+    // except the value of a record id key.
     $text = preg_replace('/(Authorization:\s*Bearer\s+)\S+/i', '$1***', $text);
     $text = preg_replace('/((?:apikey|tenantid|userid|useremail|username|password):\s*)\S+/i', '$1***', $text);
-    $text = preg_replace('/\b\d{10,11}\b/', '**********', $text);
+    $text = preg_replace_callback(
+        '/("(?:id|detail_id)"\s*:\s*"?)(\d{10,11})\b|\b\d{10,11}\b/i',
+        function ($m) {
+            return isset($m[2]) ? $m[1] . $m[2] : '**********';
+        },
+        $text
+    );
 
     return $text;
 }
