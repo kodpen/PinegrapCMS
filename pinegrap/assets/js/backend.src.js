@@ -3242,7 +3242,11 @@ function tagin(el, option = {}) {
     const transform = eval(el.dataset.transform) || option.transform || defaultTransform
     const placeholder = el.dataset.placeholder || option.placeholder || defaultPlaceholder
 
-    const templateTag = value => `<span class="${classTag}"><span class="${classTag}_text">${value}</span><span class="${classRemove}"></span></span>`
+    // A tag's text is data (a tracking number from the API or a marketplace,
+    // a class name), so it is escaped before it becomes markup; getTags()
+    // reads it back with textContent, unescaped.
+    const escapeTag = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+    const templateTag = value => `<span class="${classTag}"><span class="${classTag}_text">${escapeTag(value)}</span><span class="${classRemove}"></span></span>`
 
     const getValue = () => el.value
     const getValues = () => getValue().split(separator)
