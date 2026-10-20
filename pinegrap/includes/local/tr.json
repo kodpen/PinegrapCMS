@@ -19169,6 +19169,7 @@
     "Remembers whether you chose to stay signed in.": "Oturumunuzun açık kalmasını isteyip istemediğinizi hatırlar.",
     "Remembers the desktop or mobile view you picked.": "Seçtiğiniz masaüstü ya da mobil görünümü hatırlar.",
     "Remembers your cookie choices.": "Çerez tercihlerinizi hatırlar.",
+    "The words typed beside the token are not shown: a bound element shows the bound value alone. Give them an element of their own.": "Token'ın yanına yazılan kelimeler gösterilmez: bağlı bir öğe yalnız bağlı değeri gösterir. O kelimelere kendi öğelerini verin.",
     "Counts your visits, to tell new visitors from returning ones.": "Yeni ziyaretçileri geri gelenlerden ayırmak için ziyaretlerinizi sayar.",
     "Remembers the tracking code of the link you arrived with.": "Geldiğiniz bağlantının izleme kodunu hatırlar.",
     "Remembers the campaign (UTM) that brought you to the site.": "Sizi siteye getiren kampanyayı (UTM) hatırlar.",

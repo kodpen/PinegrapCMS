@@ -22781,8 +22781,10 @@ const StyleDesigner = (function () {
         // engine texts.
         window.PgCodeEditorPhrases = _sdCodePhrases();
         // Class names are offered inside class="…" in every HTML editor of
-        // the page: the view, the file tabs and the dialog.
+        // the page: the view, the file tabs and the dialog. Binding tokens
+        // after {{ only in the view, where the text has nodes behind it.
         PgCodeEditor.addCompletionSource('html', _sdCodeClassCompletion);
+        PgCodeEditor.addCompletionSource('html', _sdCodeBindingCompletion);
 
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -22990,8 +22992,10 @@ const StyleDesigner = (function () {
         if (lock.attrs) {
             open.attrs.forEach(function (a) { if (a.valueFrom !== null) out.push([a.valueFrom, a.valueTo]); });
         }
-        if (lock.text && r.node.props && typeof r.node.props.text === 'string' && r.node.props.text !== '') {
-            var raw = r.node.props.text;
+        // The text as the emitter printed it: a bound text is its {{token}}
+        // even when the node has no text of its own.
+        var raw = (lock.text && r.node.props) ? _sdCodeBoundProps(r.node).text : '';
+        if (typeof raw === 'string' && raw !== '') {
             var needle = (r.node.type === 'semantic') ? esc(raw) : raw;
             var at = text.indexOf(needle, open.end);
             if (at !== -1 && at + needle.length <= r.to) out.push([at, at + needle.length]);
@@ -23655,6 +23659,9 @@ const StyleDesigner = (function () {
             return;
         }
         var key = _sdCodeAttrProp(node, name);
+        // A value written as {{token}} inside a widget is a binding, not a
+        // literal; a literal written over a binding ends it.
+        if (_sdCodeApplyBoundValue(node, key || name, now)) return;
         if (key) { p[key] = now || ''; return; }
         if (p.tooltipEnabled && name === 'title') { p.tooltipTitle = now || ''; return; }
         if (p.tooltipEnabled && name === 'data-bs-placement') { p.tooltipPlacement = now || 'top'; return; }
@@ -23736,7 +23743,7 @@ const StyleDesigner = (function () {
                 }
             });
             inner += ed.sliceDoc(pos, item.innerTo);
-            node.props.text = inner.trim();
+            node.props.text = _sdCodeTextFromTyped(node, inner.trim());
             if (_sdCodeLockOf(node).level === '' && !entry.atomic) node.children = kept;
             return;
         }
@@ -23749,9 +23756,181 @@ const StyleDesigner = (function () {
         var runs = items.filter(function (it) { return it.kind === 'text' && it.raw.trim() !== ''; });
         var ws = ['pre', 'textarea', 'code'].indexOf(String(node.props.tag || '').toLowerCase()) !== -1;
         var joined = runs.map(function (r) { return r.raw; }).join('');
-        node.props.text = ws ? _sdCodeDecode(joined) : _sdCodeDecode(joined.replace(/\s+/g, ' ').trim());
+        node.props.text = _sdCodeTextFromTyped(node, ws ? _sdCodeDecode(joined) : _sdCodeDecode(joined.replace(/\s+/g, ' ').trim()));
         var tag = String(node.props.tag || '').toLowerCase();
         if ((tag === 'button' || tag === 'a') && slot !== 'none') node.props.textPosition = slot;
+    }
+
+    // ========================= CODE VIEW: DATA BINDINGS AS {{TOKENS}} =========================
+    // A value a system widget fills at render time (props._bindings.text,
+    // href, src, alt) is not in the page's HTML: the tree keeps the
+    // design-time value and the server puts the bound one in its place. The
+    // code view would show the design-time value, and a change to it would
+    // show nothing on the site, so there a bound value prints as {{token}}.
+    // Typing {{token}} over a bindable value of an element inside a widget
+    // binds it; writing a literal over a {{token}} ends the binding; typing
+    // {{ offers the tokens the Bind Data panel offers. Outside a widget the
+    // braces are text like any other.
+    var _SD_CODE_BIND_RE = /\{\{\s*([A-Za-z0-9_-]+)\s*\}\}/;
+
+    function _sdCodeBindToken(token) { return '{{' + token + '}}'; }
+
+    // Whether `prop` of this node is a binding a widget reads: the node is
+    // inside a system widget and the Bind Data panel offers the prop. The
+    // panel offers a plain element's text only when it has one, so the text
+    // being typed stands in for it (`textHint`).
+    function _sdCodeBindable(node, prop, textHint) {
+        if (!node || !prop || !_isInsideSystemWidget(node)) return false;
+        var probe = node;
+        if (prop === 'text' && textHint && node.props && !node.props.text) {
+            var props = {};
+            for (var k in node.props) if (Object.prototype.hasOwnProperty.call(node.props, k)) props[k] = node.props[k];
+            props.text = textHint;
+            probe = { type: node.type, props: props, children: node.children };
+        }
+        var list = _getBindableProps(probe);
+        for (var i = 0; i < list.length; i++) if (list[i].prop === prop) return true;
+        return false;
+    }
+
+    // The node's props as the code view prints them: a bound text, href,
+    // src or alt as its {{token}}. The props themselves when nothing is
+    // bound, so the emitter copies nothing for the common node.
+    function _sdCodeBoundProps(n) {
+        var p = n.props || {};
+        var b = p._bindings;
+        if (!b) return p;
+        var out = null;
+        ['text', 'href', 'src', 'alt'].forEach(function (prop) {
+            if (!b[prop]) return;
+            if (!out) { out = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) out[k] = p[k]; }
+            var token = _sdCodeBindToken(b[prop]);
+            if (prop === 'text') { out.text = _sdBindTextSlot(p.text, token); return; }
+            out[prop] = token;
+            // A plain <img> keeps its src and alt in the attribute list.
+            if (n.type === 'semantic' && (prop === 'src' || prop === 'alt')) out._attrs = _sdCodeAttrsWith(p._attrs, prop, token);
+        });
+        return out || p;
+    }
+
+    function _sdCodeAttrsWith(list, name, value) {
+        var out = [], found = false;
+        (list || []).forEach(function (a) {
+            if (a && String(a.name || '').toLowerCase() === name) { found = true; out.push({ name: a.name, value: value }); }
+            else out.push(a);
+        });
+        if (!found) out.push({ name: name, value: value });
+        return out;
+    }
+
+    // The run of words a bound text's {{token}} stands for in the code
+    // view: what _sdBindTextSlot() replaces. The whole text when the markup
+    // wraps no single run.
+    function _sdCodeSlotRun(text) {
+        text = (text == null) ? '' : String(text);
+        if (!/<[a-z\/!]/i.test(text)) return text;
+        var parts = text.split(/(<[^>]*>)/);
+        var slot = -1;
+        for (var i = 0; i < parts.length; i += 2) {
+            if (parts[i] === '') continue;
+            if (_sdDecodeEntities(parts[i]).replace(/ /g, ' ').trim() === '') continue;
+            if (slot !== -1) return text;
+            slot = i;
+        }
+        if (slot === -1) return text;
+        return /^(\s*)([\s\S]*?)(\s*)$/.exec(parts[slot])[2];
+    }
+
+    // The text a typed value leaves on the node once its {{token}} is read:
+    // the token binds the text, and the words it stood for go back in its
+    // place, so the design-time text survives a change to the markup around
+    // the token. A text without a token typed over a bound text ends the
+    // binding and stands as written.
+    function _sdCodeTextFromTyped(node, typed) {
+        typed = (typed == null) ? '' : String(typed);
+        if (!_sdCodeBindable(node, 'text', typed)) return typed;
+        var cur = (node.props._bindings && node.props._bindings.text) || '';
+        var m = _SD_CODE_BIND_RE.exec(typed);
+        if (!m) {
+            if (cur) _sdNodeSetBinding(node, 'text', '');
+            return typed;
+        }
+        if (m[1] !== cur) _sdNodeSetBinding(node, 'text', m[1]);
+        var kept = typed.replace(m[0], _sdCodeSlotRun(node.props.text));
+        // Words typed beside the token are kept on the node but never
+        // shown: the page prints the bound value alone unless the markup
+        // wraps a single run of words (pg_binding_text_slot()). Said once,
+        // like a refused keystroke.
+        if (_sdBindTextSlot(kept, m[0]) !== typed && Date.now() - (_sdCode.bindToastAt || 0) > 2500) {
+            _sdCode.bindToastAt = Date.now();
+            sdToast(esc(_sdT('The words typed beside the token are not shown: a bound element shows the bound value alone. Give them an element of their own.')), 'warning', 4000);
+        }
+        return kept;
+    }
+
+    // A typed attribute value, or the value of an <input> button: {{token}}
+    // binds `prop`, a literal over a binding ends it. True when the value
+    // was the binding and the caller has nothing left to store.
+    function _sdCodeApplyBoundValue(node, prop, value) {
+        if (!_sdCodeBindable(node, prop, (prop === 'text') ? value : '')) return false;
+        var cur = (node.props._bindings && node.props._bindings[prop]) || '';
+        var m = (typeof value === 'string') ? /^\{\{\s*([A-Za-z0-9_-]+)\s*\}\}$/.exec(value) : null;
+        if (m) {
+            if (m[1] !== cur) _sdNodeSetBinding(node, prop, m[1]);
+            return true;
+        }
+        if (cur) _sdNodeSetBinding(node, prop, '');
+        return false;
+    }
+
+    // The node whose element holds a position of the code view.
+    function _sdCodeNodeAtPos(pos) {
+        var hits = _sdCode.ed.trackedAt(pos);
+        for (var i = 0; i < hits.length; i++) {
+            var d = hits[i].data;
+            if (d && d.role === 'node' && d.node) return d.node;
+        }
+        return null;
+    }
+
+    // Inside an element's text, or the value of a bindable attribute, typing
+    // {{ offers the tokens of the element's widget. Only in the page's code
+    // view: a file tab and the dialog have no nodes.
+    function _sdCodeBindingCompletion(context, syntax) {
+        if (!_sdCodeEnabled() || !_sdCode.ed.view) return null;
+        if (context.view ? (context.view !== _sdCode.ed.view) : (context.state.doc !== _sdCode.ed.view.state.doc)) return null;
+        var word = context.matchBefore(/\{\{\s*[A-Za-z0-9_-]*/);
+        if (!word) return null;
+        var sn = syntax.node;
+        var prop = '';
+        if (sn.name === 'AttributeValue' || sn.name === 'UnquotedAttributeValue') {
+            var attr = sn.parent;
+            var nameNode = attr ? attr.getChild('AttributeName') : null;
+            prop = nameNode ? context.state.sliceDoc(nameNode.from, nameNode.to).toLowerCase() : '';
+            if (['href', 'src', 'alt', 'value'].indexOf(prop) === -1) return null;
+        } else if (sn.name === 'Text') {
+            prop = 'text';
+        } else {
+            return null;
+        }
+        var node = _sdCodeNodeAtPos(context.pos);
+        if (!node) return null;
+        if (prop !== 'text') prop = _sdCodeAttrProp(node, prop) || prop;
+        if (prop === 'value' || !_sdCodeBindable(node, prop, (prop === 'text') ? word.text : '')) return null;
+        var options = _swBindTokenOptions(node);
+        if (!options.length) return null;
+        var typedFrom = word.from + word.text.replace(/[A-Za-z0-9_-]*$/, '').length;
+        var typed = context.state.sliceDoc(typedFrom, context.pos);
+        var closed = context.state.sliceDoc(context.pos, context.pos + 2) === '}}';
+        var seen = {}, out = [];
+        options.forEach(function (o) {
+            if (!o.token || seen[o.token] || o.token === typed) return;
+            seen[o.token] = true;
+            var opt = { label: o.token, type: 'variable', apply: closed ? o.token : o.token + '}}' };
+            if (o.label && o.label !== o.token) opt.detail = String(o.label).replace(/<[^>]*>/g, '');
+            out.push(opt);
+        });
+        return out.length ? { from: typedFrom, options: out, validFor: /^[A-Za-z0-9_-]*$/ } : null;
     }
 
     // ========================= CODE VIEW: CLASS COMPLETION =========================
@@ -33667,6 +33846,41 @@ const StyleDesigner = (function () {
         );
     }
 
+    // Writes one binding of a node (props._bindings[propName] = value; an
+    // empty value ends it). The one place a binding is written: the Bind
+    // Data panel and the code view's {{token}} both call it. The caller
+    // records the undo step and redraws.
+    function _sdNodeSetBinding(node, propName, value) {
+        if (!node || !node.props || !propName) return;
+        var p = node.props;
+        if (!p._bindings) p._bindings = {};
+        if (value) {
+            p._bindings[propName] = value;
+            // Remove any same-named _attrs entry so a stale literal value
+            // (e.g. an href the user pasted earlier) doesn't shadow the
+            // binding token at render time. The PHP renderer also dedupes
+            // defensively, but cleaning the saved tree keeps the data
+            // model honest and survives non-system-widget render paths.
+            if (p._attrs && p._attrs.length) {
+                p._attrs = p._attrs.filter(function (a) { return !a || a.name !== propName; });
+                if (!p._attrs.length) delete p._attrs;
+            }
+        } else {
+            delete p._bindings[propName];
+            if (Object.keys(p._bindings).length === 0) delete p._bindings;
+        }
+        // A format belongs to the date field it was written for. Once the
+        // prop points somewhere else, the format is not the designer's
+        // intent any more, so it does not linger in the saved tree.
+        if (p._bindFormats && !(value && SW_DATE_FIELD_TOKENS[value])) {
+            delete p._bindFormats[propName];
+            if (Object.keys(p._bindFormats).length === 0) delete p._bindFormats;
+        }
+        // Mark the containing shared component as dirty so the edit is flushed
+        var sid = _isInsideSystemWidget(node);
+        if (sid) _sharedDirty[sid] = true;
+    }
+
     // Wire the binding selects + custom inputs in the props panel.
     // Called from updatePropPanel for any selectedNode (cheap no-op if not inside SW).
     function _wireDataBindingProps() {
@@ -33679,38 +33893,7 @@ const StyleDesigner = (function () {
             if (!selectedNode) return;
             // The custom-token field calls this on every keystroke.
             saveState(_sdEditRun('bind:' + propName));
-            if (!selectedNode.props._bindings) selectedNode.props._bindings = {};
-            if (value) {
-                selectedNode.props._bindings[propName] = value;
-                // Remove any same-named _attrs entry so a stale literal value
-                // (e.g. an href the user pasted earlier) doesn't shadow the
-                // binding token at render time. The PHP renderer also dedupes
-                // defensively, but cleaning the saved tree keeps the data
-                // model honest and survives non-system-widget render paths.
-                if (selectedNode.props._attrs && selectedNode.props._attrs.length) {
-                    selectedNode.props._attrs = selectedNode.props._attrs.filter(function (a) {
-                        return !a || a.name !== propName;
-                    });
-                    if (!selectedNode.props._attrs.length) delete selectedNode.props._attrs;
-                }
-            } else {
-                delete selectedNode.props._bindings[propName];
-                if (Object.keys(selectedNode.props._bindings).length === 0) {
-                    delete selectedNode.props._bindings;
-                }
-            }
-            // A format belongs to the date field it was written for. Once the
-            // prop points somewhere else, the format is not the designer's
-            // intent any more, so it does not linger in the saved tree.
-            if (selectedNode.props._bindFormats && !(value && SW_DATE_FIELD_TOKENS[value])) {
-                delete selectedNode.props._bindFormats[propName];
-                if (Object.keys(selectedNode.props._bindFormats).length === 0) {
-                    delete selectedNode.props._bindFormats;
-                }
-            }
-            // Mark the containing shared component as dirty so the edit is flushed
-            var _swSid = _isInsideSystemWidget(selectedNode);
-            if (_swSid) _sharedDirty[_swSid] = true;
+            _sdNodeSetBinding(selectedNode, propName, value);
             renderCanvas();
         }
 
@@ -44319,7 +44502,10 @@ const StyleDesigner = (function () {
     // The Bind Data option a widget token stands for, named as the binding
     // dropdown of a `type` widget names it. Panel hints point at the option
     // the designer picks, not at the token behind it.
-    function _swBindLabel(type, token) {
+    // The token palette (groups of [token, label]) of a widget type whose
+    // tokens are fixed. The two form views have none: their tokens are the
+    // form's fields (_swBindTokenOptions()).
+    function _swBindTokenGroups(type) {
         var palettes = {
             catalog_listing:     SW_CATALOG_TOKEN_GROUPS,
             catalog_item_view:   SW_CATALOG_ITEM_TOKEN_GROUPS,
@@ -44337,6 +44523,41 @@ const StyleDesigner = (function () {
             calendar_event_view: SW_CALENDAR_EVENT_VIEW_TOKEN_GROUPS,
             express_order:       SW_EXPRESS_ORDER_TOKEN_GROUPS
         };
+        return palettes[type] || SW_ACCOUNT_TOKEN_PALETTES[type] || [];
+    }
+
+    // The tokens the Bind Data panel offers an element, as one flat list of
+    // { token, label }: the widget type's palette, or for the two form views
+    // the form's fields, their labels when the detail view shows labels, and
+    // the built-in fields. The panel's branches draw these same tables; a
+    // form whose fields are not cached yet is fetched and answers empty now.
+    function _swBindTokenOptions(node) {
+        var type = _getSystemWidgetRegionType(node);
+        if (!type) return [];
+        var out = [];
+        if (type === 'form_list_view' || type === 'form_item_view') {
+            var isItem = (type === 'form_item_view');
+            var formId = _getSystemWidgetCustomFormPageId(node);
+            var fields = formId ? _formFieldsCache[formId] : null;
+            if (formId && !fields) _fetchFormFields(formId, function () {});
+            var fieldLabel = function (ff) { return ff.label || ff.name || ('#' + ff.id); };
+            (fields || []).forEach(function (ff) { out.push({ token: _swFormFieldToken(ff), label: fieldLabel(ff) }); });
+            var cfg = isItem ? _sdSystemWidgetCfgOf(node) : null;
+            if (cfg && cfg.show_field_labels) {
+                (fields || []).forEach(function (ff) { out.push({ token: _swFormFieldToken(ff).toLowerCase() + '__label', label: fieldLabel(ff) }); });
+            }
+            (isItem ? SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS : SW_BUILTIN_FIELD_OPTIONS).forEach(function (o) {
+                out.push({ token: o[0], label: _swBindLabel(type, o[0]) });
+            });
+            return out;
+        }
+        _swBindTokenGroups(type).forEach(function (g) {
+            g.tokens.forEach(function (t) { out.push({ token: t[0], label: t[1] }); });
+        });
+        return out;
+    }
+
+    function _swBindLabel(type, token) {
         if (type === 'form_list_view' || type === 'form_item_view') {
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
@@ -44346,7 +44567,7 @@ const StyleDesigner = (function () {
             for (var k = 0; k < opts.length; k++) if (opts[k][0] === token) return opts[k][1];
             return token;
         }
-        var groups = palettes[type] || SW_ACCOUNT_TOKEN_PALETTES[type] || [];
+        var groups = _swBindTokenGroups(type);
         for (var i = 0; i < groups.length; i++) {
             for (var j = 0; j < groups[i].tokens.length; j++) {
                 if (groups[i].tokens[j][0] === token) return groups[i].tokens[j][1];
@@ -48337,6 +48558,11 @@ const StyleDesigner = (function () {
         var pad = '    '.repeat(indent);
         var h = '';
         var rec = null;
+        // The props the text is printed from. With a sink the text is the
+        // code view's, where a bound value prints as its {{token}}
+        // (_sdCodeBoundProps()); the page's own HTML prints the props as
+        // they are and the server fills the bindings.
+        var P = sink ? _sdCodeBoundProps(n) : n.props;
         if (sink) {
             rec = { node: n, from: base, to: base, sid: sink.scope || 0 };
             sink.ranges.push(rec);
@@ -48362,11 +48588,11 @@ const StyleDesigner = (function () {
                 if (n.props.fontFamily) sStyleParts.push('font-family:' + n.props.fontFamily);
                 if (_pES) sStyleParts.push(_pES);
                 var sfont = sStyleParts.length ? ' style="' + esc(sStyleParts.join(';')) + '"' : '';
-                var shref = (stg === 'a' && n.props.href) ? ' href="' + esc(n.props.href) + '"' : '';
+                var shref = (stg === 'a' && P.href) ? ' href="' + esc(P.href) + '"' : '';
                 var starget = (stg === 'a' && n.props.target) ? ' target="' + esc(n.props.target) + '"' : '';
                 var srel = (stg === 'a' && n.props.rel) ? ' rel="' + esc(n.props.rel) + '"' : '';
                 var sattrs = '';
-                if (n.props._attrs) n.props._attrs.forEach(function(a) {
+                if (P._attrs) P._attrs.forEach(function(a) {
                     // Skip `id` — always sourced from props.id to avoid duplicate attributes
                     if (a.name && a.name.trim() && a.name !== 'id') sattrs += ' ' + a.name.trim() + '="' + esc(a.value || '') + '"';
                 });
@@ -48398,7 +48624,7 @@ const StyleDesigner = (function () {
                         if (sink && sink.ranges[_wsMark] && sink.ranges[_wsMark].node === c) sink.ranges[_wsMark].to -= (_wsPart.length - _wsKept.length);
                         _wsInner += _wsKept;
                     });
-                    if (n.props.text) _wsInner += esc(n.props.text);
+                    if (P.text) _wsInner += esc(P.text);
                     h += _wsInner + '</' + stg + '>\n';
                 } else {
                     h += '\n';
@@ -48406,9 +48632,9 @@ const StyleDesigner = (function () {
                     var _stgLc = stg.toLowerCase();
                     var _isBtnL = (_stgLc === 'button' || _stgLc === 'a');
                     var _tp2 = n.props.textPosition || 'end';
-                    if (_isBtnL && _tp2 === 'start' && n.props.text) h += pad + '    ' + esc(n.props.text) + '\n';
+                    if (_isBtnL && _tp2 === 'start' && P.text) h += pad + '    ' + esc(P.text) + '\n';
                     if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
-                    if (n.props.text && (!_isBtnL || _tp2 !== 'start')) h += pad + '    ' + esc(n.props.text) + '\n';
+                    if (P.text && (!_isBtnL || _tp2 !== 'start')) h += pad + '    ' + esc(P.text) + '\n';
                     h += pad + '</' + stg + '>\n';
                 }
                 break; }
@@ -48441,7 +48667,7 @@ const StyleDesigner = (function () {
                 if (comp && comp.toHTML) {
                     var _pcChildren = '';
                     if (n.children) n.children.forEach(function(c) { _pcChildren += _sdEmitNode(c, indent + 1, _pcChildren.length, sink); });
-                    h += comp.toHTML(n.props, pad, _pcChildren);
+                    h += comp.toHTML(P, pad, _pcChildren);
                     if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pcChildren, base);
                 }
                 break; }
@@ -48450,7 +48676,7 @@ const StyleDesigner = (function () {
                 if (cnt && cnt.toHTML) {
                     var _pctChildren = '';
                     if (n.children) n.children.forEach(function(c) { _pctChildren += _sdEmitNode(c, indent + 1, _pctChildren.length, sink); });
-                    var cHtml = cnt.toHTML(n.props, pad, _pctChildren);
+                    var cHtml = cnt.toHTML(P, pad, _pctChildren);
                     cHtml = addGlobalAttrs(cHtml, n);
                     h += cHtml;
                     if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pctChildren, base);
