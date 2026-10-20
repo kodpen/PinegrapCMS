@@ -384,6 +384,36 @@ function pg_offer_gift_refused($offer_id, $offer_action_id, $forget = false)
     return true;
 }
 
+// Remember that the shopper took an offer's gift out of this order, so the
+// next cart refresh does not put it straight back (pg_offer_gift_refused()).
+function pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)
+{
+    if (empty($_SESSION['ecommerce']['declined_offer_gifts']) || !is_array($_SESSION['ecommerce']['declined_offer_gifts'])) {
+        $_SESSION['ecommerce']['declined_offer_gifts'] = array();
+    }
+    $key = $order_id . '_' . $offer_id . '_' . $offer_action_id;
+    if (!in_array($key, $_SESSION['ecommerce']['declined_offer_gifts'])) {
+        $_SESSION['ecommerce']['declined_offer_gifts'][] = $key;
+    }
+}
+
+// The shopper took a line out of the cart: a quantity of 0 on the cart
+// screens. A gift the offer placed by itself is remembered as refused, then
+// the line goes the way every removal does (remove_order_item()): with its
+// gift card and form rows, with its recipient when it was the last line
+// there, and otherwise with the recipient's shipping worked out again.
+function pg_cart_remove_line($order_item_id)
+{
+    $line = db_item("SELECT order_id, offer_id, offer_action_id, added_by_offer FROM order_items WHERE id = '" . e($order_item_id) . "'");
+    if (!$line) {
+        return;
+    }
+    if ($line['added_by_offer'] && $line['offer_id']) {
+        pg_offer_gift_refuse($line['order_id'], $line['offer_id'], $line['offer_action_id']);
+    }
+    remove_order_item($order_item_id);
+}
+
 // Put the product an offer gives away into the cart.
 //
 // The offer already qualified; this only decides how the gift shows up. When
