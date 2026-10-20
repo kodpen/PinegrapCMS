@@ -18,7 +18,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
-- external-api-authorization.md: External API authorization: app scopes x owner-delegable scopes, write implies read, the removed apps.php model, and which rows a user-role owner reaches (groups, campaigns, calendars, forms)
+- external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, the removed apps.php model, and the rows a user-role owner reaches (groups, customers, campaigns, calendars, forms)
 - file-header-and-embedded-libraries.md: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, and the PHP 7.1 base rule when embedding a third-party library.
 - file-integrity-check.md: How the hourly file-integrity check and hash_reference.json work (2026.4.4 and earlier model): generator, _generated stamp, state file, release regeneration.
 - file-integrity-github-reference.md: 2026.4.5+ integrity check using the GitHub tag tree (git blob SHA-1), its cache and failure state, plus the pre-release cacert.pem refresh rule.
