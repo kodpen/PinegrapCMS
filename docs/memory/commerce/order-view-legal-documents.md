@@ -4,6 +4,7 @@ description: Order view widget links to the legal documents kept with the order:
 ---
 
 ## What does the order view give?
+- Since PR #736; before it the customer reached a kept copy only through the receipt e-mail's attachments.
 - `__legal_preinfo_url` / `__legal_contract_url`: the copy of each document kept with the order, `legal_document.php?order_id=N&type=…` (`pg_legal_document_copy_url()`). Same names as the express order's links to the cart's document page, so a label and link copied between the two widgets stay right.
 - Empty when the order has no copy of that type: `pg_legal_document_copy_urls()` over `pg_legal_documents_of_order()`, one entry per `pg_legal_document_types()` key; a stored type it does not name (`kvkk`) gets no link.
 - Flags: `has_legal_documents` (a copy is kept; on the express order the same name means the switch is on), `has_legal_preinfo`, `has_legal_contract`.
