@@ -1268,15 +1268,159 @@ function pg_legal_document_copy_urls(array $kept, $order_id, $page_url = null)
 }
 
 /**
+ * The last day of an order's right of withdrawal, from the withdrawal window
+ * of each of its deliveries (pg_return_window()).
+ *
+ * For the goods of one order delivered separately the 14 days run from the
+ * last delivery, so the latest deadline is the order's. A delivery with no
+ * known or planned date leaves the last delivery unknown: no date is given
+ * rather than one that could be too early. The date is an estimate while any
+ * delivery is estimated, since that delivery may still arrive later.
+ *
+ * @param array $windows  pg_return_window() of every delivery (null for one
+ *                        with no date)
+ * @return array|null  deadline (Y-m-d), estimated, open; null when the order
+ *                     has no delivery or one of them has no date
+ */
+function pg_legal_withdrawal_deadline(array $windows)
+{
+    $last = null;
+    $estimated = false;
+
+    foreach ($windows as $window) {
+        if (!is_array($window) || !isset($window['deadline']) || (pg_return_date((string) $window['deadline']) === '')) {
+            return null;
+        }
+
+        if (!empty($window['estimated'])) {
+            $estimated = true;
+        }
+
+        if (($last === null) || (strcmp($window['deadline'], $last['deadline']) > 0)) {
+            $last = $window;
+        }
+    }
+
+    if ($last === null) {
+        return null;
+    }
+
+    return array(
+        'deadline'  => (string) $last['deadline'],
+        'estimated' => $estimated,
+        'open'      => !empty($last['open']),
+    );
+}
+
+/**
+ * The withdrawal deadline of an order, read from its deliveries.
+ *
+ * Only recipients with goods to ship count (an order of downloads or services
+ * alone has no delivery to start the period). A cancelled order has none.
+ *
+ * @param int    $order_id
+ * @param string $today  Y-m-d in the site's time zone; '' for today
+ * @return array|null  pg_legal_withdrawal_deadline()
+ */
+function pg_legal_withdrawal_of_order($order_id, $today = '')
+{
+    $order_id = (int) $order_id;
+
+    if ($order_id <= 0) {
+        return null;
+    }
+
+    if ((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'") === 'cancelled') {
+        return null;
+    }
+
+    $ship_tos = db_items(
+        "SELECT ship_tos.ship_date, ship_tos.delivery_date
+        FROM ship_tos
+        WHERE
+            (ship_tos.order_id = '" . $order_id . "')
+            AND EXISTS (
+                SELECT 1 FROM order_items
+                WHERE (order_items.order_id = '" . $order_id . "') AND (order_items.ship_to_id = ship_tos.id))");
+
+    if (!is_array($ship_tos) || empty($ship_tos)) {
+        return null;
+    }
+
+    if (pg_return_date($today) === '') {
+        $today = date('Y-m-d');
+    }
+
+    $windows = array();
+
+    foreach ($ship_tos as $ship_to) {
+        $windows[] = pg_return_window(array(
+            'delivered'     => '',
+            'ship_date'     => (string) $ship_to['ship_date'],
+            'delivery_date' => (string) $ship_to['delivery_date'],
+        ), $today);
+    }
+
+    return pg_legal_withdrawal_deadline($windows);
+}
+
+/**
+ * The line an order's legal documents card prints under the links: the last
+ * day of the right of withdrawal, and whether it is an estimate.
+ *
+ * @param array|null $withdrawal  pg_legal_withdrawal_deadline()
+ * @param string     $date_text   the deadline as the page writes dates
+ * @return string  plain text, '' when there is no deadline
+ */
+function pg_legal_withdrawal_text($withdrawal, $date_text)
+{
+    $date_text = trim((string) $date_text);
+
+    if (!is_array($withdrawal) || ($date_text === '')) {
+        return '';
+    }
+
+    if (!$withdrawal['open']) {
+        return lang(array('string' => 'The right of withdrawal ended on {var:1}.', 'vars' => array($date_text)));
+    }
+
+    return $withdrawal['estimated']
+        ? lang(array('string' => 'Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).', 'vars' => array($date_text)))
+        : lang(array('string' => 'Last day of the right of withdrawal: {var:1}', 'vars' => array($date_text)));
+}
+
+/**
+ * A Y-m-d date the way the panel writes the dates of the legal documents.
+ *
+ * @param string $date  Y-m-d
+ * @return string  '' when it is not a date
+ */
+function pg_legal_document_date_text($date)
+{
+    $date = pg_return_date((string) $date);
+
+    if ($date === '') {
+        return '';
+    }
+
+    list($year, $month, $day) = array_map('intval', explode('-', $date));
+
+    return (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day'))
+        ? $month . '/' . $day . '/' . $year
+        : $day . '/' . $month . '/' . $year;
+}
+
+/**
  * The card an order view gets after it when its layout links neither
  * document: the kept copies, one link each, opening in a new window. A
  * layout from before the links existed shows them this way; a layout that
  * binds a link places them itself.
  *
- * @param array $urls  pg_legal_document_copy_urls()
+ * @param array  $urls        pg_legal_document_copy_urls()
+ * @param string $withdrawal  pg_legal_withdrawal_text(), printed under the links
  * @return string  '' when the order has no kept copy
  */
-function pg_legal_documents_order_view_block(array $urls)
+function pg_legal_documents_order_view_block(array $urls, $withdrawal = '')
 {
     $types = pg_legal_document_types();
     $items = '';
@@ -1295,7 +1439,9 @@ function pg_legal_documents_order_view_block(array $urls)
 
     return '<div class="container pb-4 pg-ov-legal-documents"><div class="card">'
         . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6></div>'
-        . '<div class="card-body"><ul class="list-unstyled mb-0">' . $items . '</ul></div>'
+        . '<div class="card-body"><ul class="list-unstyled mb-0">' . $items . '</ul>'
+        . (((string) $withdrawal !== '') ? '<p class="small text-muted mt-2 mb-0">' . h((string) $withdrawal) . '</p>' : '')
+        . '</div>'
         . '</div></div>';
 }
 
@@ -1330,6 +1476,24 @@ function pg_legal_documents_panel_card($order_id)
 
     if ($rows === '') {
         return '';
+    }
+
+    // The last day the customer may still withdraw: the deadline of the last
+    // delivery, marked when it rests on planned dates rather than a delivery.
+    $withdrawal = pg_legal_withdrawal_of_order($order_id);
+
+    if (is_array($withdrawal)) {
+        $note = !$withdrawal['open']
+            ? lang('Ended')
+            : ($withdrawal['estimated'] ? lang('Estimated') : '');
+
+        $rows .= '<div class="row">
+                        <span class="col text-muted">' . h(lang('Right of withdrawal until')) . ':</span>
+                        <span class="col text-end"' . ($withdrawal['estimated'] ? ' title="' . h(lang('Estimated from the ship date or the expected delivery date; the 14 days run from delivery.')) . '"' : '') . '>'
+                            . h(pg_legal_document_date_text($withdrawal['deadline']))
+                            . (($note !== '') ? ' <span class="text-muted small">(' . h($note) . ')</span>' : '')
+                        . '</span>
+                    </div>';
     }
 
     return '<div class="card mt-3">

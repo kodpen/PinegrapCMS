@@ -11457,6 +11457,7 @@ const StyleDesigner = (function () {
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
         '__arrival_date': _sdDateSample(false),
+        '__withdrawal_deadline': _sdDateSample(false),
         '__estimated_arrival': _sdDateSample(false),
         // The page writes the amount alone (total ÷ number of installments).
         '__installment_per_month': _sdMoney(207.77),
@@ -32087,7 +32088,8 @@ const StyleDesigner = (function () {
             ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
-            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')]
+            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
+            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -32596,6 +32598,9 @@ const StyleDesigner = (function () {
             ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
             ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
             ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
+            ['has_withdrawal_deadline', _sdT('The last day of the right of withdrawal is known')],
+            ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
+            ['withdrawal_ended',        _sdT('The right of withdrawal has ended')],
             ['can_cancel',              _sdT('The order can be cancelled')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
@@ -47331,6 +47336,24 @@ const StyleDesigner = (function () {
                                                 customName: _sdT('Distance Sales Contract Link'),
                                                 _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__legal_contract_url' } })
+                                        ]),
+                                        // Last day of the right of withdrawal: 14 days
+                                        // from the last delivery. One note says the
+                                        // date rests on planned dates, the other that
+                                        // the day has passed.
+                                        createNode('semantic', { tag: 'div', cssClass: 'small text-muted mt-2',
+                                            customName: _sdT('Right of Withdrawal'),
+                                            _bindings: { eo_visible_if: 'has_withdrawal_deadline' } }, [
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('Last day of the right of withdrawal:') }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'fw-semibold mb-0',
+                                                text: '—', _bindings: { text: '__withdrawal_deadline' } }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('Estimated; the 14 days run from delivery.'),
+                                                _bindings: { eo_visible_if: 'withdrawal_deadline_estimated' } }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('The right of withdrawal has ended.'),
+                                                _bindings: { eo_visible_if: 'withdrawal_ended' } })
                                         ])
                                     ])
                                 ]),

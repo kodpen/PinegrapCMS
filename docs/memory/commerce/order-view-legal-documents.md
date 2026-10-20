@@ -21,4 +21,4 @@ description: Order view widget links to the legal documents kept with the order:
 ## What about layouts made before the links?
 - A layout that binds neither token gets `pg_legal_documents_order_view_block()` after the widget: a `container pb-4` card listing the kept copies, the shape of the returns block. A layout that binds a link places the links itself. Deleting the card from a new layout brings the block back; a designer who wants the links elsewhere binds a token there.
 
-Related: docs/memory/commerce/order-legal-documents.md
+Related: docs/memory/commerce/order-legal-documents.md, order-withdrawal-deadline.md (the withdrawal line in the same card)

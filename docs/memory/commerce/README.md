@@ -32,6 +32,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge classes.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
+- order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window, estimate rules, no date when one delivery has none, order view token and flags, fallback card line, panel card row
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date), optional columns, status enum, and the fields the external API returns for orders.
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect drivers, add-on registration, settings in connect_apps payment_<key>
 - product-compare-at-price.md: products.compare_at_price (2026.11.0, 11.0.2, PR #658), the merchant's "was" price: NULL/0 rules, product screen switch, list column, import/export, API field, copy paths, what does not read it yet
