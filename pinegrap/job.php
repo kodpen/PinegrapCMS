@@ -20,6 +20,8 @@
 // It should be run by a cron job.  Currently it does the following:
 //
 // - Publishing scheduled comments
+// - Putting visual-designer pages on the site, and taking them off it, at
+//     their scheduled times
 // - Creating order abandoned auto campaigns
 // - Unpublishing old calendar events so they don't appear on the calendar
 //     or in search results.
@@ -440,12 +442,71 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// Scheduled pages (includes/fn/page_schedule.php): a draft whose publish time
+// has come goes on the site, a page whose time to come off has come goes back
+// to the drafts, and the time is cleared. Every tick, so a page goes live
+// within one tick of its time; with nothing due it is two indexed reads.
+if (function_exists('pg_page_schedule_run')) {
+
+    $page_schedule = pg_page_schedule_run();
+
+    foreach ($page_schedule['published'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) was published at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+
+    foreach ($page_schedule['unpublished'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) was taken off the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+
+    foreach ($page_schedule['home'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) is the home page, so it stayed on the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+}
+
+// Page revisions (includes/fn/page_revisions.php): once a day the rows of
+// deleted pages go, and every page holding more revisions than the count rule
+// keeps is trimmed by the age rule. A tick with nothing due reads one small
+// file.
+if (function_exists('pg_page_revisions_sweep_due') && pg_page_revisions_sweep_due()) {
+
+    $revision_sweep = pg_page_revisions_sweep();
+
+    if (($revision_sweep['orphans'] + $revision_sweep['trimmed']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} page revision(s): {var:2} of deleted pages, {var:3} past the retention period',
+            'vars'   => array(
+                pg_format_number($revision_sweep['orphans'] + $revision_sweep['trimmed'], 0),
+                pg_format_number($revision_sweep['orphans'], 0),
+                pg_format_number($revision_sweep['trimmed'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The price visitors are shown under the offers, into the product price
 // history (pg_price_history_offer_pass_run()): once an hour, ten seconds a
 // tick until the pass is through. A tick with nothing due reads one small
 // file; a shop with no offer running reads its offers once an hour.
 if (pg_price_history_offer_pass_due()) {
     pg_price_history_offer_pass_run(PG_PRICE_HISTORY_OFFER_BUDGET);
+}
+
+// Page revisions (includes/fn/page_revisions.php): once a day the rows of
+// deleted pages go, and every page holding more revisions than the count rule
+// keeps is trimmed by the age rule. A tick with nothing due reads one small
+// file.
+if (function_exists('pg_page_revisions_sweep_due') && pg_page_revisions_sweep_due()) {
+
+    $revision_sweep = pg_page_revisions_sweep();
+
+    if (($revision_sweep['orphans'] + $revision_sweep['trimmed']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} page revision(s): {var:2} of deleted pages, {var:3} past the retention period',
+            'vars'   => array(
+                pg_format_number($revision_sweep['orphans'] + $revision_sweep['trimmed'], 0),
+                pg_format_number($revision_sweep['orphans'], 0),
+                pg_format_number($revision_sweep['trimmed'], 0)),
+        )), 'UNKNOWN');
+    }
 }
 
 // A visitors table still on MyISAM is moved to InnoDB once the cleanup has

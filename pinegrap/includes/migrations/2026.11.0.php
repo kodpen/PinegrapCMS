@@ -37,6 +37,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipments();              // 11.0.20
 	upgrade_2026_11_0_order_returns();          // 11.0.11
 	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
+	upgrade_2026_11_0_page_revisions();         // 11.0.15
+	upgrade_2026_11_0_page_schedule();          // 11.0.17
+	upgrade_2026_11_0_ai_crawlers();            // 11.0.21
 
 }
 
@@ -581,5 +584,99 @@ function upgrade_2026_11_0_short_link_redirects() {
 	$widen('url', 2048, "VARCHAR(2048) NOT NULL DEFAULT ''");
 
 	install_note('Short links: a short link can now send visitors on to its destination with a permanent (301) or temporary (302) redirect, its name can be an old address with Turkish letters, and a * in a name stands for any part of an address that no page answers.');
+
+}
+
+// Page revisions (includes/fn/page_revisions.php).
+//
+// page_revisions keeps one row for every publish of a visual-designer page:
+// the tree as saved, the SHA-1 of the tree and of the HTML drawn from it, the
+// page's settings as JSON, who published, when and from where (publish,
+// restore, import, ai). revision_no counts up per page; the unique key is what
+// makes two saves of one page at the same moment take different numbers. The
+// two config columns are the retention rules: the last N revisions of a page
+// are kept, and so is every revision younger than D days.
+function upgrade_2026_11_0_page_revisions() {
+
+	install_create_table('page_revisions', "CREATE TABLE page_revisions (
+		revision_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		style_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		revision_no    INT UNSIGNED NOT NULL DEFAULT 0,
+		page_tree_json LONGTEXT NOT NULL,
+		tree_hash      CHAR(40) NOT NULL DEFAULT '',
+		tree_code_hash CHAR(40) NOT NULL DEFAULT '',
+		settings_json  TEXT NOT NULL,
+		user_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		source         VARCHAR(16) NOT NULL DEFAULT 'publish',
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (revision_id),
+		UNIQUE KEY idx_page_revision (page_id, revision_no),
+		KEY idx_page_created (page_id, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'page_revisions_keep', "SMALLINT UNSIGNED NOT NULL DEFAULT 30");
+
+	install_add_column('config', 'page_revisions_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 90");
+
+	install_note('Pages: every publish of a visual-designer page is kept as a revision, with who published it and when; the last 30 revisions of a page and every revision of the last 90 days are kept.');
+
+}
+
+// Scheduled publishing of visual-designer pages (includes/fn/page_schedule.php).
+//
+// page.publish_at is the moment a draft goes on the site and page.unpublish_at
+// the moment a page on the site is taken back off it, both unix times, 0 for
+// none. The general job (job.php) makes the move when the time has come and
+// clears the column, so a time is a one-off event. Each column has an index:
+// the job asks for the due rows on every tick, and nearly every row holds 0.
+function upgrade_2026_11_0_page_schedule() {
+
+	$columns = array(
+		'publish_at'   => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'unpublish_at' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('page', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('page', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('page', 'idx_publish_at', "INDEX idx_publish_at (publish_at)");
+
+	install_add_index('page', 'idx_unpublish_at', "INDEX idx_unpublish_at (unpublish_at)");
+
+	install_note('Pages: a visual-designer page can be given a time to go on the site and a time to come off it under Settings, Page; the general job makes the move. How many revisions of a page are kept is set under Site Settings, Features, Page Revisions.');
+
+}
+
+// What the site tells AI crawlers (2026.11.0, 11.0.21; includes/fn/ai_crawlers.php,
+// the AI Crawlers card under Site Settings, SEO).
+//
+// robots_ai_rules writes the AI section of robots.txt: a Content-Signal line
+// in the catch-all group and a "Disallow: /" group for each AI crawler that is
+// not allowed. robots_ai_training is the one choice of its own there, whether
+// pages may be used to train AI models; assistants and AI search follow the
+// firewall's two switches. llms_txt publishes /llms.txt, built from the site's
+// name, description and pages, with additional_llms_content added to it.
+// Everything starts off, so robots.txt stays exactly as it was and /llms.txt
+// answers as before (a file of that name, or a missing page) until the
+// operator switches them on.
+function upgrade_2026_11_0_ai_crawlers() {
+
+	install_add_column('config', 'robots_ai_rules', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'robots_ai_training', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'llms_txt', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'additional_llms_content', "TEXT NULL");
+
+	install_note('AI crawlers: robots.txt can now say how AI tools may use the site (a Content-Signal line, and a group for each AI crawler that is not allowed, in step with the firewall), and the site can publish llms.txt, a short guide to its pages for AI tools. Both are under Site Settings, SEO, AI Crawlers and stay off until switched on.');
 
 }

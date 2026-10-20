@@ -38,6 +38,11 @@
  * invoices are not touched here. A delivery that has not been sent is a
  * cancellation, not a return.
  *
+ * The customer's side is the order view widget of My Account (the tokens
+ * __return_form and __returns, includes/fn/widgets.php) and the endpoint it
+ * posts to (order_return.php), behind ECOMMERCE_ORDER_RETURNS_ALLOWED. A
+ * request mails the customer and rings the staff's bell.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -667,7 +672,7 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
  * @param int    $order_id
  * @param int    $ship_to_id
  * @param string $today Y-m-d, or '' for today in the site's time zone
- * @return array|null ship_to (id, ship_date, delivery_date), goods_left,
+ * @return array|null ship_to (id, name, ship_date, delivery_date), goods_left,
  *                    window (pg_return_window()); null when the delivery is
  *                    not the order's
  */
@@ -681,7 +686,7 @@ function pg_return_delivery_state($order_id, $ship_to_id, $today = '')
     }
 
     $ship_to = db_item(
-        "SELECT id, ship_date, delivery_date
+        "SELECT id, first_name, last_name, ship_date, delivery_date
         FROM ship_tos
         WHERE (id = '" . $ship_to_id . "') AND (order_id = '" . $order_id . "')");
 
@@ -714,6 +719,7 @@ function pg_return_delivery_state($order_id, $ship_to_id, $today = '')
     return array(
         'ship_to'    => array(
             'id'            => (int) $ship_to['id'],
+            'name'          => trim(trim((string) $ship_to['first_name']) . ' ' . trim((string) $ship_to['last_name'])),
             'ship_date'     => pg_return_date((string) $ship_to['ship_date']),
             'delivery_date' => pg_return_date((string) $ship_to['delivery_date']),
         ),
@@ -1052,4 +1058,522 @@ function pg_returns_delete_for_order($order_id)
         WHERE order_returns.order_id = '" . (int) $order_id . "'");
 
     db("DELETE FROM order_returns WHERE order_id = '" . (int) $order_id . "'");
+}
+
+/* ---------------------------------------------------------------------------
+   The customer's side: My Account's order view
+   --------------------------------------------------------------------------- */
+
+/**
+ * May customers ask for returns from their account? A site setting, off
+ * unless data/config.php switches it on (ECOMMERCE_ORDER_RETURNS_ALLOWED), as
+ * cancellation is (ECOMMERCE_ORDER_CANCEL_ALLOWED); staff record returns
+ * either way.
+ *
+ * @return bool
+ */
+function pg_returns_customer_enabled()
+{
+    return defined('ECOMMERCE_ORDER_RETURNS_ALLOWED') && (ECOMMERCE_ORDER_RETURNS_ALLOWED === true) && pg_returns_ready();
+}
+
+/**
+ * The Bootstrap badge classes of a status.
+ *
+ * @param string $status
+ * @return string
+ */
+function pg_return_badge_class($status)
+{
+    $classes = array(
+        'requested' => 'badge text-bg-warning',
+        'approved'  => 'badge text-bg-info',
+        'rejected'  => 'badge text-bg-danger',
+        'shipped'   => 'badge text-bg-primary',
+        'received'  => 'badge text-bg-primary',
+        'refunded'  => 'badge text-bg-success',
+        'closed'    => 'badge text-bg-secondary',
+    );
+
+    return (is_string($status) && isset($classes[$status])) ? $classes[$status] : 'badge text-bg-secondary';
+}
+
+/**
+ * One return as the customer reads it: labels instead of codes, dates as the
+ * page shows them, the carrier by its name, and what the customer may still
+ * do about it.
+ *
+ * @param array    $return      a row of pg_returns_of_order()
+ * @param bool     $enabled     pg_returns_customer_enabled()
+ * @param callable $format_date Y-m-d => the text the page shows
+ * @return array
+ */
+function pg_return_present($return, $enabled, $format_date)
+{
+    $format = is_callable($format_date) ? $format_date : function ($date) { return $date; };
+    $day = function ($stamp) { return ((int) $stamp > 0) ? date('Y-m-d', (int) $stamp) : ''; };
+    $status = (string) $return['status'];
+    $reasons = pg_return_reasons();
+    $carrier = (string) $return['carrier'];
+    $carriers = function_exists('pg_shipping_carriers') ? pg_shipping_carriers() : array();
+
+    if (isset($carriers[$carrier]['name'])) {
+        $carrier = (string) $carriers[$carrier]['name'];
+    }
+
+    // The refund is due once the goods are on their way back, until it is paid.
+    $refund = in_array($status, array('shipped', 'received'), true)
+        ? pg_return_refund_deadline($day($return['shipped_at']), $day($return['received_at']))
+        : '';
+
+    $lines = array();
+
+    foreach ((array) (isset($return['items']) ? $return['items'] : array()) as $item) {
+        $lines[] = array('name' => (string) $item['name'], 'quantity' => (int) $item['quantity']);
+    }
+
+    $requested = $day($return['requested_at']);
+
+    return array(
+        'id'              => (int) $return['id'],
+        'status'          => $status,
+        'status_label'    => pg_return_status_label($status),
+        'requested'       => ($requested !== '') ? $format($requested) : '',
+        'lines'           => $lines,
+        'reason_label'    => isset($reasons[(string) $return['reason']]) ? $reasons[(string) $return['reason']] : '',
+        'customer_note'   => (string) $return['customer_note'],
+        'decision_note'   => (string) $return['decision_note'],
+        'carrier'         => $carrier,
+        'carrier_code'    => (string) $return['carrier_code'],
+        'tracking_number' => (string) $return['tracking_number'],
+        'refund_deadline' => ($refund !== '') ? $format($refund) : '',
+        'can_withdraw'    => $enabled && pg_return_can_move($status, 'closed', 'customer'),
+        'can_mark_sent'   => $enabled && pg_return_can_move($status, 'shipped', 'customer'),
+    );
+}
+
+/**
+ * What an order's owner sees about returns: the returns of the order, and
+ * the deliveries goods can still be asked back from with their lines. The
+ * caller has checked that the viewer owns the order.
+ *
+ * A delivery is offered while the customer may ask (pg_return_create() with
+ * source 'customer' says the same): the setting is on, the order is complete,
+ * the goods have left, the window is open and something is left to ask for.
+ * The returns are listed whatever the setting, so a customer can still read
+ * what became of a request; the moves on them need the setting.
+ *
+ * @param int      $order_id
+ * @param callable $format_date Y-m-d => the text the page shows
+ * @param string   $today       Y-m-d, or '' for today
+ * @return array enabled, deliveries (ship_to_id, label, deadline, lines of
+ *               id, name, quantity, returnable), returns
+ *               (pg_return_present()), can_request, has_returns
+ */
+function pg_return_customer_view($order_id, $format_date = null, $today = '')
+{
+    $view = array('enabled' => false, 'deliveries' => array(), 'returns' => array(), 'can_request' => false, 'has_returns' => false);
+    $order_id = (int) $order_id;
+
+    if (($order_id <= 0) || !pg_returns_ready()) {
+        return $view;
+    }
+
+    $format = is_callable($format_date) ? $format_date : function ($date) { return $date; };
+    $enabled = pg_returns_customer_enabled();
+    $view['enabled'] = $enabled;
+
+    foreach (pg_returns_of_order($order_id) as $return) {
+        $view['returns'][] = pg_return_present($return, $enabled, $format);
+    }
+
+    $view['has_returns'] = !empty($view['returns']);
+
+    if (!$enabled || !in_array((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'"), array('complete', 'exported'), true)) {
+        return $view;
+    }
+
+    if (pg_return_date($today) === '') {
+        $today = date('Y-m-d');
+    }
+
+    $by_delivery = array();
+
+    foreach (pg_return_order_lines($order_id) as $line) {
+        $by_delivery[$line['ship_to_id']][] = $line;
+    }
+
+    foreach ($by_delivery as $ship_to_id => $lines) {
+        $state = pg_return_delivery_state($order_id, $ship_to_id, $today);
+
+        if (!$state || !$state['goods_left'] || ($state['window'] === null) || !$state['window']['open']) {
+            continue;
+        }
+
+        $left = 0;
+        $shown = array();
+
+        foreach ($lines as $line) {
+            $left += $line['returnable'];
+            $shown[] = array('id' => $line['id'], 'name' => $line['name'], 'quantity' => $line['quantity'], 'returnable' => $line['returnable']);
+        }
+
+        if ($left > 0) {
+            $view['deliveries'][] = array(
+                'ship_to_id' => (int) $ship_to_id,
+                'label'      => $state['ship_to']['name'],
+                'deadline'   => $format($state['window']['deadline']),
+                'lines'      => $shown,
+            );
+        }
+    }
+
+    $view['can_request'] = !empty($view['deliveries']);
+
+    return $view;
+}
+
+/**
+ * The form a customer asks for a return with: one per delivery that still
+ * has something to give back, its lines with a box for the quantity, the
+ * reason and a note. Posts to order_return.php.
+ *
+ * @param array $deliveries pg_return_customer_view()'s deliveries
+ * @param array $form       action (the endpoint), send_to (back to this
+ *                          page), token (the CSRF field), order_id
+ * @return string HTML, or '' when there is nothing to ask for
+ */
+function pg_return_form_html($deliveries, $form)
+{
+    if (!is_array($deliveries) || empty($deliveries)) {
+        return '';
+    }
+
+    $several = (count($deliveries) > 1);
+    $options = '<option value="">' . h(lang('Choose a reason')) . '</option>';
+
+    foreach (pg_return_reasons() as $code => $label) {
+        $options .= '<option value="' . h($code) . '">' . h($label) . '</option>';
+    }
+
+    $html = '';
+
+    foreach ($deliveries as $delivery) {
+        $ship_to_id = (int) $delivery['ship_to_id'];
+        $rows = '';
+        $any = false;
+
+        foreach ((array) $delivery['lines'] as $line) {
+            $id = (int) $line['id'];
+            $left = max(0, (int) $line['returnable']);
+
+            if ($left > 0) {
+                $any = true;
+                $cell = '<input type="number" class="form-control form-control-sm text-end" id="pg-ov-return-qty-' . $id . '"'
+                    . ' name="qty[' . $id . ']" min="0" max="' . $left . '" step="1" value="0" inputmode="numeric"'
+                    . ' aria-label="' . h(lang(array('string' => 'How many to return: {var:1}', 'vars' => array((string) $line['name'])))) . '">';
+            } else {
+                $cell = '<span class="small text-muted">' . h(lang('Already in a return')) . '</span>';
+            }
+
+            $rows .= '<tr><td>' . h((string) $line['name']) . '</td>'
+                . '<td class="text-end">' . (int) $line['quantity'] . '</td>'
+                . '<td class="text-end">' . $cell . '</td></tr>';
+        }
+
+        if (!$any) {
+            continue;
+        }
+
+        $label = isset($delivery['label']) ? (string) $delivery['label'] : '';
+        $deadline = isset($delivery['deadline']) ? (string) $delivery['deadline'] : '';
+
+        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="pg-ov-return-form mb-4">'
+            . (string) $form['token']
+            . '<input type="hidden" name="action" value="request">'
+            . '<input type="hidden" name="order_id" value="' . (int) $form['order_id'] . '">'
+            . '<input type="hidden" name="ship_to_id" value="' . $ship_to_id . '">'
+            . '<input type="hidden" name="send_to" value="' . h((string) $form['send_to']) . '">'
+            . (($several && ($label !== '')) ? '<h6 class="fw-semibold mb-2">' . h(lang(array('string' => 'Sent to {var:1}', 'vars' => array($label)))) . '</h6>' : '')
+            . (($deadline !== '') ? '<p class="small text-muted mb-2">' . h(lang(array('string' => 'You can ask to return these items until {var:1}.', 'vars' => array($deadline)))) . '</p>' : '')
+            . '<div class="table-responsive"><table class="table table-sm align-middle mb-3">'
+            . '<thead><tr><th scope="col">' . h(lang('Product')) . '</th>'
+            . '<th scope="col" class="text-end">' . h(lang('Ordered')) . '</th>'
+            . '<th scope="col" class="text-end">' . h(lang('To return')) . '</th></tr></thead>'
+            . '<tbody>' . $rows . '</tbody></table></div>'
+            . '<div class="mb-3"><label for="pg-ov-return-reason-' . $ship_to_id . '" class="form-label small fw-semibold">' . h(lang('Reason for the return')) . '</label>'
+            . '<select class="form-select" id="pg-ov-return-reason-' . $ship_to_id . '" name="reason" required>' . $options . '</select></div>'
+            . '<div class="mb-3"><label for="pg-ov-return-note-' . $ship_to_id . '" class="form-label small fw-semibold">' . h(lang('Note (optional)')) . '</label>'
+            . '<textarea class="form-control" id="pg-ov-return-note-' . $ship_to_id . '" name="note" rows="2" maxlength="' . PG_RETURN_NOTE_MAX . '"'
+            . ' aria-describedby="pg-ov-return-note-help-' . $ship_to_id . '"></textarea>'
+            . '<div id="pg-ov-return-note-help-' . $ship_to_id . '" class="form-text">' . h(lang('Needed when the reason is "Another reason".')) . '</div></div>'
+            . '<button type="submit" class="btn btn-outline-primary"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Request a return')) . '</button>'
+            . '</form>';
+    }
+
+    return $html;
+}
+
+/**
+ * The hidden fields every customer action on a return carries.
+ *
+ * @param array  $form   as pg_return_form_html() takes it
+ * @param string $action withdraw or shipped
+ * @param int    $return_id
+ * @return string
+ */
+function pg_return_action_fields($form, $action, $return_id)
+{
+    return (string) $form['token']
+        . '<input type="hidden" name="action" value="' . h($action) . '">'
+        . '<input type="hidden" name="order_id" value="' . (int) $form['order_id'] . '">'
+        . '<input type="hidden" name="return_id" value="' . (int) $return_id . '">'
+        . '<input type="hidden" name="send_to" value="' . h((string) $form['send_to']) . '">';
+}
+
+/**
+ * The returns of an order as the customer follows them: where each stands,
+ * its lines, what the shop wrote, how to send the goods once it is approved,
+ * when the refund is due, and the customer's own moves (withdraw a request,
+ * say the parcel is on its way).
+ *
+ * @param array $returns pg_return_present() rows
+ * @param array $form    as pg_return_form_html() takes it
+ * @return string HTML, or '' when the order has no returns
+ */
+function pg_returns_list_html($returns, $form)
+{
+    if (!is_array($returns) || empty($returns)) {
+        return '';
+    }
+
+    $detail = function ($label, $value_html) {
+        return '<div class="small mb-1"><span class="text-muted">' . h($label) . ':</span> ' . $value_html . '</div>';
+    };
+
+    $html = '<div class="pg-ov-returns">';
+
+    foreach ($returns as $return) {
+        $id = (int) $return['id'];
+        $lines = '';
+
+        foreach ((array) $return['lines'] as $line) {
+            $lines .= '<li>' . h((string) $line['name']) . ' × ' . (int) $line['quantity'] . '</li>';
+        }
+
+        $html .= '<div class="pg-ov-return border rounded p-3 mb-3">'
+            . '<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">'
+            . '<div><div class="fw-semibold">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array($id)))) . '</div>'
+            . (((string) $return['requested'] !== '') ? '<div class="small text-muted">' . h(lang(array('string' => 'Asked on {var:1}', 'vars' => array((string) $return['requested'])))) . '</div>' : '')
+            . '</div>'
+            . '<span class="' . h(pg_return_badge_class((string) $return['status'])) . '">' . h((string) $return['status_label']) . '</span>'
+            . '</div>'
+            . (($lines !== '') ? '<ul class="small mb-2 ps-3">' . $lines . '</ul>' : '');
+
+        if ((string) $return['reason_label'] !== '') {
+            $html .= $detail(lang('Reason'), h((string) $return['reason_label']));
+        }
+
+        if ((string) $return['customer_note'] !== '') {
+            $html .= $detail(lang('Your note'), nl2br(h((string) $return['customer_note'])));
+        }
+
+        if ((string) $return['decision_note'] !== '') {
+            $html .= $detail(lang('Note from the shop'), nl2br(h((string) $return['decision_note'])));
+        }
+
+        // How the goods go back, once the shop has said yes.
+        if ((string) $return['status'] === 'approved') {
+            $carrier = (string) $return['carrier'];
+            $code = (string) $return['carrier_code'];
+
+            if (($carrier !== '') && ($code !== '')) {
+                $how = h(lang(array('string' => 'Send the parcel with {var:1} and give them this return code:', 'vars' => array($carrier)))) . ' <strong>' . h($code) . '</strong>';
+            } elseif ($carrier !== '') {
+                $how = h(lang(array('string' => 'Send the parcel with {var:1}.', 'vars' => array($carrier))));
+            } elseif ($code !== '') {
+                $how = h(lang('Give the carrier this return code:')) . ' <strong>' . h($code) . '</strong>';
+            } else {
+                $how = h(lang('Your return was approved. You can send the goods back now.'));
+            }
+
+            $html .= '<div class="alert alert-info small py-2 my-2" role="status">' . $how . '</div>';
+        }
+
+        if ((string) $return['tracking_number'] !== '') {
+            $html .= $detail(lang('Tracking number'), h((string) $return['tracking_number']));
+        }
+
+        if ((string) $return['refund_deadline'] !== '') {
+            $html .= $detail(lang('Refund due by'), h((string) $return['refund_deadline']));
+        }
+
+        if (!empty($return['can_mark_sent'])) {
+            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+                . pg_return_action_fields($form, 'shipped', $id)
+                . '<label for="pg-ov-return-tracking-' . $id . '" class="form-label small fw-semibold">' . h(lang('Tracking number of the parcel (optional)')) . '</label>'
+                . '<div class="input-group input-group-sm">'
+                . '<input type="text" class="form-control" id="pg-ov-return-tracking-' . $id . '" name="tracking_number" maxlength="100" autocomplete="off">'
+                . '<button type="submit" class="btn btn-primary">' . h(lang('I have sent it')) . '</button>'
+                . '</div></form>';
+        }
+
+        if (!empty($return['can_withdraw'])) {
+            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+                . pg_return_action_fields($form, 'withdraw', $id)
+                . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Withdraw the request')) . '</button>'
+                . '</form>';
+        }
+
+        $html .= '</div>';
+    }
+
+    return $html . '</div>';
+}
+
+/**
+ * The returns block of an order view whose layout places neither the list
+ * nor the form: a design made before returns existed still shows them once
+ * the setting is on.
+ *
+ * @param string $list_html pg_returns_list_html()
+ * @param string $form_html pg_return_form_html()
+ * @return string
+ */
+function pg_return_block_html($list_html, $form_html)
+{
+    if (((string) $list_html === '') && ((string) $form_html === '')) {
+        return '';
+    }
+
+    return '<div class="container pb-4 pg-ov-returns-block"><div class="card">'
+        . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Returns')) . '</h6></div>'
+        . '<div class="card-body">' . $list_html . $form_html . '</div>'
+        . '</div></div>';
+}
+
+/**
+ * The body of the mail that tells a customer their request arrived.
+ *
+ * @param array $data customer, order_number, lines (name, quantity),
+ *                    reason_label, customer_note, from_name
+ * @return string HTML
+ */
+function pg_return_request_mail_body($data)
+{
+    $customer = isset($data['customer']) ? (string) $data['customer'] : '';
+    $reason = isset($data['reason_label']) ? (string) $data['reason_label'] : '';
+    $note = isset($data['customer_note']) ? (string) $data['customer_note'] : '';
+    $items = '';
+
+    foreach ((array) (isset($data['lines']) ? $data['lines'] : array()) as $line) {
+        $items .= '<li>' . h((string) $line['name']) . ' × ' . (int) $line['quantity'] . '</li>';
+    }
+
+    return '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;background:#f7f7f7;padding:20px;">'
+        . '<div style="max-width:560px;margin:0 auto;background:#fff;padding:24px;border-radius:6px;border:1px solid #e5e5e5;">'
+        . '<h2 style="margin:0 0 16px;font-size:18px;">' . h(lang('Return request received')) . '</h2>'
+        . '<p style="margin:0 0 12px;">' . h(lang('Hello')) . (($customer !== '') ? ' ' . h($customer) : '') . ',</p>'
+        . '<p style="margin:0 0 12px;">' . h(lang(array(
+            'string' => 'We received your request to return items from order #{var:1}. We will check it and let you know what happens next.',
+            'vars'   => array(isset($data['order_number']) ? (string) $data['order_number'] : '')))) . '</p>'
+        . (($items !== '') ? '<ul style="margin:0 0 12px;padding-left:20px;">' . $items . '</ul>' : '')
+        . (($reason !== '') ? '<p style="margin:0 0 12px;"><strong>' . h(lang('Reason')) . ':</strong> ' . h($reason) . '</p>' : '')
+        . (($note !== '') ? '<p style="margin:0 0 12px;"><strong>' . h(lang('Your note')) . ':</strong> ' . nl2br(h($note)) . '</p>' : '')
+        . '<p style="margin:16px 0 0;color:#666;font-size:12px;">' . h(isset($data['from_name']) ? (string) $data['from_name'] : '') . '</p>'
+        . '</div></body></html>';
+}
+
+/**
+ * Tells the customer their request arrived, at the order's billing address.
+ * Handed to the mail queue when the general job runs, so the customer does
+ * not wait on the mail server; skipped when the order has no address or the
+ * site has no sender.
+ *
+ * @param int $return_id
+ * @return bool sent or queued
+ */
+function pg_return_send_request_mail($return_id)
+{
+    $return = pg_return_load($return_id);
+
+    if (!$return) {
+        return false;
+    }
+
+    $order = db_item(
+        "SELECT id, order_number, billing_first_name, billing_last_name, billing_email_address
+        FROM orders
+        WHERE id = '" . (int) $return['order_id'] . "'");
+
+    $to = is_array($order) ? trim((string) $order['billing_email_address']) : '';
+
+    if (($to === '') || (strpos($to, '@') === false) || !defined('EMAIL_ADDRESS') || (EMAIL_ADDRESS === '')) {
+        return false;
+    }
+
+    $from_name = (defined('ORGANIZATION_NAME') && (ORGANIZATION_NAME !== ''))
+        ? ORGANIZATION_NAME
+        : (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : 'Pinegrap');
+
+    $order_number = ((string) $order['order_number'] !== '') ? (string) $order['order_number'] : (string) (int) $order['id'];
+    $customer = trim(trim((string) $order['billing_first_name']) . ' ' . trim((string) $order['billing_last_name']));
+    $reasons = pg_return_reasons();
+    $lines = array();
+
+    foreach ($return['items'] as $item) {
+        $lines[] = array('name' => $item['name'], 'quantity' => $item['quantity']);
+    }
+
+    return (bool) email(array(
+        'to'                 => $to,
+        'to_name'            => $customer,
+        'from_name'          => $from_name,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject'            => lang(array('string' => 'We received your return request for order #{var:1}', 'vars' => array($order_number))),
+        'format'             => 'html',
+        'body'               => pg_return_request_mail_body(array(
+            'customer'      => $customer,
+            'order_number'  => $order_number,
+            'lines'         => $lines,
+            'reason_label'  => isset($reasons[(string) $return['reason']]) ? $reasons[(string) $return['reason']] : '',
+            'customer_note' => (string) $return['customer_note'],
+            'from_name'     => $from_name,
+        )),
+        'type'               => 'system',
+        'queue'              => true,
+    ));
+}
+
+/**
+ * Tells the shop's staff on the panel bell (and on their subscribed devices)
+ * that a customer asked for a return or sent the goods back. The row carries
+ * the order number as its title, what happened as order_total ('requested'
+ * or 'shipped') and the return as form_id; the sentence around them is built
+ * by pg_notification_display().
+ *
+ * @param int    $return_id
+ * @param string $event requested or shipped
+ * @return int|false the notification id
+ */
+function pg_return_notify_staff($return_id, $event)
+{
+    $row = db_item(
+        "SELECT order_returns.id, order_returns.order_id, orders.order_number
+        FROM order_returns
+        JOIN orders ON orders.id = order_returns.order_id
+        WHERE order_returns.id = '" . (int) $return_id . "'");
+
+    if (!$row || !function_exists('create_notification')) {
+        return false;
+    }
+
+    return create_notification(array(
+        'action'      => 'order_return',
+        'type'        => 'info',
+        'title'       => ((string) $row['order_number'] !== '') ? (string) $row['order_number'] : (string) (int) $row['order_id'],
+        'order_id'    => (int) $row['order_id'],
+        'form_id'     => (int) $row['id'],
+        'order_total' => ($event === 'shipped') ? 'shipped' : 'requested',
+    ));
 }

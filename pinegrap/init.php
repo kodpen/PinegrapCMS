@@ -791,6 +791,12 @@ define('UPDATE_BACKUP', isset($row['update_backup']) ? (int) $row['update_backup
 define('MAINTENANCE_MODE', isset($row['maintenance_mode']) ? (int) $row['maintenance_mode'] : 0);
 define('MAINTENANCE_UNTIL', isset($row['maintenance_until']) ? (int) $row['maintenance_until'] : 0);
 define('MAINTENANCE_ALLOW_IPS', (string) ($row['maintenance_allow_ips'] ?? ''));
+// Page revisions (2026.11.0, 11.0.15; includes/fn/page_revisions.php): how
+// many revisions of a page are kept whatever their age, and for how many days
+// a revision is kept whatever its place. The step's defaults while the
+// columns are not there.
+define('PAGE_REVISIONS_KEEP', isset($row['page_revisions_keep']) ? (int) $row['page_revisions_keep'] : 30);
+define('PAGE_REVISIONS_DAYS', isset($row['page_revisions_days']) ? (int) $row['page_revisions_days'] : 90);
 
 
 if (!defined('SOFTWARE_LANGUAGE')) {

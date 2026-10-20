@@ -5880,7 +5880,7 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-motion" aria-pressed="false" title="' + esc(_sdT('Play animations')) + '"><span class="bi bi-play-circle"></span> <span class="sd-vb-txt">' + esc(_sdT('Animations')) + '</span></button>' +
             '<span class="sd-vb-sep"></span>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span> <span class="sd-vb-txt">' + esc(_sdT('Find')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('Snapshots')) + '"><span class="bi bi-camera"></span> <span class="sd-vb-txt">' + esc(_sdT('Snap')) + '</span></button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span> <span class="sd-vb-txt">' + esc(_sdT('History')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
             // Preview renders the UNSAVED canvas in a blank window; this one
             // opens the page as the site actually serves it — theme, common
@@ -11529,6 +11529,33 @@ const StyleDesigner = (function () {
                    '<div class="alert alert-warning py-2 small mb-2">' + esc(_sdT('The refund is handled through the payment provider.')) + '</div>' +
                    '<button type="button" class="btn btn-danger btn-sm" disabled>' + esc(_sdT('Cancel Order')) + '</button>' +
                    '</div>';
+        },
+        // Mirrors pg_return_form_html(): the delivery's lines with a
+        // quantity box, the reason, a note and the request button.
+        '__return_form': function () {
+            return '<div class="pg-ov-return-form">' +
+                   '<div class="table-responsive"><table class="table table-sm align-middle mb-3"><thead><tr>' +
+                   '<th scope="col">' + esc(_sdT('Product')) + '</th>' +
+                   '<th scope="col" class="text-end">' + esc(_sdT('Ordered')) + '</th>' +
+                   '<th scope="col" class="text-end">' + esc(_sdT('To return')) + '</th></tr></thead>' +
+                   '<tbody><tr><td>' + esc(_sdT('Sample Product Name')) + '</td><td class="text-end">2</td>' +
+                   '<td class="text-end"><input type="number" class="form-control form-control-sm text-end" value="0" disabled></td></tr></tbody></table></div>' +
+                   '<label class="form-label small fw-semibold">' + esc(_sdT('Reason for the return')) + '</label>' +
+                   '<select class="form-select mb-3" disabled><option>' + esc(_sdT('Choose a reason')) + '</option></select>' +
+                   '<button type="button" class="btn btn-outline-primary" disabled>' + esc(_sdT('Request a return')) + '</button>' +
+                   '</div>';
+        },
+        // Mirrors pg_returns_list_html(): one bordered box per request with
+        // its status badge, lines and what to do next.
+        '__returns': function () {
+            return '<div class="pg-ov-returns"><div class="pg-ov-return border rounded p-3 mb-3">' +
+                   '<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">' +
+                   '<div><div class="fw-semibold">' + esc(_sdT('Return request')) + ' #12</div>' +
+                   '<div class="small text-muted">' + esc(_sdDateSample(false)) + '</div></div>' +
+                   '<span class="badge text-bg-info">' + esc(_sdT('Return approved')) + '</span></div>' +
+                   '<ul class="small mb-2 ps-3"><li>' + esc(_sdT('Sample Product Name')) + ' × 1</li></ul>' +
+                   '<div class="alert alert-info small py-2 my-2">' + esc(_sdT('Your return was approved. You can send the goods back now.')) + '</div>' +
+                   '</div></div>';
         },
         // Mirrors _eo_render_order_timeline() — <ul class="pg-ov-timeline">
         // with a Bootstrap Icon + label + timestamp per event.
@@ -32014,6 +32041,10 @@ const StyleDesigner = (function () {
             ['__cancel_form',            _sdT('Cancellation Form (CSRF + reason + button — ready-made HTML)')],
             ['__cancel_status',          _sdT('Post-cancellation notice alert (when ?cancelled=… is present)')]
         ]},
+        { label: _sdT('Returns'), tokens: [
+            ['__returns',                _sdT('Return requests of the order with their status and the customer\'s moves (ready-made HTML)')],
+            ['__return_form',            _sdT('Return request form: products, quantities, reason (ready-made HTML)')]
+        ]},
         { label: _sdT('Billing information'), tokens: [
             ['__billing_name',          _sdT('Full Name')],
             ['__billing_first_name',    _sdT('First Name')],
@@ -32054,7 +32085,9 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Order history / document'), tokens: [
             ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
-            ['__order_invoice_pdf_url', _sdT('Printable invoice URL')]
+            ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
+            ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
+            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -32560,11 +32593,17 @@ const StyleDesigner = (function () {
             ['has_surcharge',           _sdT('There is a card surcharge')],
             ['has_timeline',            _sdT('The order has a history')],
             ['can_print_invoice',       _sdT('The invoice can be printed')],
+            ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
+            ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
+            ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
             ['can_cancel',              _sdT('The order can be cancelled')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
             ['cancel_flash_already',    _sdT('Already cancelled (notice after the redirect)')],
-            ['cancel_flash_shipped',    _sdT('Could not cancel, already shipped (notice after the redirect)')]
+            ['cancel_flash_shipped',    _sdT('Could not cancel, already shipped (notice after the redirect)')],
+            ['show_returns',            _sdT('There is a return to follow, or one can be requested')],
+            ['can_request_return',      _sdT('A return can be requested')],
+            ['has_returns',             _sdT('The order has return requests')]
         ],
         express_order: [
             ['has_shipping',         _sdT('The cart has a shippable product')],
@@ -47020,6 +47059,32 @@ const StyleDesigner = (function () {
                                             text: _sdT('Customer note'), cssClass: 'mb-0 small',
                                             _bindings: { text: '__order_notes' } })
                                     ])
+                                ]),
+
+                                // ── Returns — the order's requests and the request
+                                // form. show_returns keeps the card off orders with
+                                // nothing to follow and nothing to ask for; the
+                                // form part needs ECOMMERCE_ORDER_RETURNS_ALLOWED,
+                                // goods that left and an open withdrawal window.
+                                // Both slots are <div>s: the tokens expand to
+                                // forms, tables and lists.
+                                createNode('semantic', { tag: 'div', cssClass: 'card mt-3', customName: _sdT('Returns Card'),
+                                    _bindings: { eo_visible_if: 'show_returns' } }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-header' }, [
+                                        createNode('content', { contentType: 'heading', tag: 'h6',
+                                            text: _sdT('Returns'), cssClass: 'mb-0 fw-semibold' })
+                                    ]),
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
+                                        createNode('semantic', { tag: 'div',
+                                            customName: _sdT('Return Requests (HTML)'),
+                                            _bindings: { text: '__returns' } }),
+                                        createNode('semantic', { tag: 'div', customName: _sdT('Return Request Form'),
+                                            _bindings: { eo_visible_if: 'can_request_return' } }, [
+                                            createNode('semantic', { tag: 'div',
+                                                customName: _sdT('Return Request Form (HTML)'),
+                                                _bindings: { text: '__return_form' } })
+                                        ])
+                                    ])
                                 ])
                             ]),
 
@@ -47175,6 +47240,43 @@ const StyleDesigner = (function () {
                                         createNode('semantic', { tag: 'div',
                                             customName: _sdT('Timeline (HTML)'),
                                             _bindings: { text: '__timeline' } })
+                                    ])
+                                ]),
+
+                                // ── Legal Documents — the copies kept at checkout ──
+                                // has_legal_documents keeps the card off orders
+                                // placed without the documents, and each line
+                                // has its own flag. The server points each href
+                                // at the order's kept copy (legal_document.php),
+                                // which opens only for the order's customer. The
+                                // window is the link's target prop: the server's
+                                // link renderer does not take it from _attrs.
+                                createNode('semantic', { tag: 'div',
+                                    cssClass: 'card mb-3', customName: _sdT('Legal Documents Card'),
+                                    _bindings: { eo_visible_if: 'has_legal_documents' } }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-header' }, [
+                                        createNode('content', { contentType: 'heading', tag: 'h6',
+                                            text: _sdT('Legal Documents'), cssClass: 'mb-0 fw-semibold' })
+                                    ]),
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'mb-1',
+                                            customName: _sdT('Pre-Information Form'),
+                                            _bindings: { eo_visible_if: 'has_legal_preinfo' } }, [
+                                            createNode('content', { contentType: 'link',
+                                                text: _sdT('Pre-Information Form'), href: '#', target: '_blank',
+                                                customName: _sdT('Pre-Information Form Link'),
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
+                                                _bindings: { href: '__legal_preinfo_url' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'div',
+                                            customName: _sdT('Distance Sales Contract'),
+                                            _bindings: { eo_visible_if: 'has_legal_contract' } }, [
+                                            createNode('content', { contentType: 'link',
+                                                text: _sdT('Distance Sales Contract'), href: '#', target: '_blank',
+                                                customName: _sdT('Distance Sales Contract Link'),
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
+                                                _bindings: { href: '__legal_contract_url' } })
+                                        ])
                                     ])
                                 ]),
 
@@ -48758,13 +48860,17 @@ const StyleDesigner = (function () {
         }
     }
 
-    function generateHTML(styleName, additionalBodyClasses) {
-        if (!tree) return '';
+    // `treeOverride`: another tree drawn with this page's frame (a published
+    // revision, for the History panel's compare); the page's own tree
+    // otherwise.
+    function generateHTML(styleName, additionalBodyClasses, treeOverride) {
+        var root = treeOverride || tree;
+        if (!root) return '';
 
         // The <body> tag. Twin of generate_style_code_from_tree() in
         // functions.php — class, style and id each have two sources (the
         // dedicated control and the Attributes panel) and all of them MERGE.
-        var _body = _sdBodyAttrParts(tree, styleName, additionalBodyClasses);
+        var _body = _sdBodyAttrParts(root, styleName, additionalBodyClasses);
         var bc = _body.cls;
         var bodyStyle = _body.style;
         var bodyExtraAttrs = _body.attrs;
@@ -48774,7 +48880,7 @@ const StyleDesigner = (function () {
         (function walkFonts(n) {
             if (n.props && n.props.fontFamily) usedFonts[n.props.fontFamily] = true;
             if (n.children) n.children.forEach(walkFonts);
-        })(tree);
+        })(root);
         var fontImports = Object.keys(usedFonts).map(function(f) {
             return '        <link rel="preconnect" href="https://fonts.googleapis.com">\n' +
                    '        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
@@ -48790,7 +48896,7 @@ const StyleDesigner = (function () {
             + (bc ? ' class="' + bc + '"' : '')
             + (bodyStyle ? ' style="' + esc(bodyStyle) + '"' : '')
             + bodyExtraAttrs + '>\n';
-        if (tree.children) tree.children.forEach(function (c) { code += _sdEmitNode(c, 2, code.length, null); });
+        if (root.children) root.children.forEach(function (c) { code += _sdEmitNode(c, 2, code.length, null); });
         code += '    </body>\n\n</html>';
         return code;
     }
@@ -50035,6 +50141,35 @@ const StyleDesigner = (function () {
         }, 30);
     }
 
+    // ========================= HISTORY =========================
+    // One panel behind the toolbar's camera button: the page's published
+    // revisions (the server's record of every publish, includes/fn/
+    // page_revisions.php) above, the browser's own snapshots and autosave
+    // below. A revision can be compared with the page as it is now and loaded
+    // into the editor as unsaved work; publishing it then writes a new
+    // revision with source 'restore'.
+    var _sdRevisionSourceLabels = null;
+    function _sdRevisionSourceLabel(source) {
+        if (!_sdRevisionSourceLabels) {
+            _sdRevisionSourceLabels = { publish: _sdT('Published'), restore: _sdT('Restored'), 'import': _sdT('Imported'), ai: _sdT('AI') };
+        }
+        return _sdRevisionSourceLabels[source] || source;
+    }
+    function _sdRevisionBytes(n) {
+        n = Number(n) || 0;
+        if (n < 1024) return _sdT('{var} B', n);
+        if (n < 1024 * 1024) return _sdT('{var} KB', (n / 1024).toLocaleString(_sdLocale(), { maximumFractionDigits: 1 }));
+        return _sdT('{var} MB', (n / (1024 * 1024)).toLocaleString(_sdLocale(), { maximumFractionDigits: 1 }));
+    }
+    function _sdRevisionWhen(ts) {
+        return new Date((Number(ts) || 0) * 1000).toLocaleString(_sdLocale(), { dateStyle: 'short', timeStyle: 'short' });
+    }
+    // The page the panel is about: a saved page has an id, a new tab has none.
+    function _sdRevisionPageId() {
+        var p = _pgActivePage();
+        return (p && p.page_id > 0) ? p.page_id : 0;
+    }
+
     function openSnapshotsPanel() {
         var old = document.getElementById('sd-snapshots-panel');
         if (old) { old.remove(); return; }
@@ -50066,11 +50201,78 @@ const StyleDesigner = (function () {
             } catch (e) { return null; }
         }
 
+        // The revisions section: the rows the server answered, kept here so
+        // "Show more" extends the same list.
+        var revState = { rows: [], more: false, ready: true, loading: false, pageId: _sdRevisionPageId() };
+
+        function revisionsHtml() {
+            var html = '<div class="sd-snap-sect"><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('Published revisions')) + '</div>';
+            if (!revState.pageId) {
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('The page has not been published yet.')) + '</div>';
+            }
+            if (!revState.ready) {
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('Revisions start with the next update of the database.')) + '</div>';
+            }
+            if (revState.loading && !revState.rows.length) {
+                return html + '<div class="sd-snap-empty"><span class="bi bi-hourglass-split me-1"></span>' + esc(_sdT('Loading…')) + '</div>';
+            }
+            if (!revState.rows.length) {
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been published yet.')) + '</div>';
+            }
+            var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+            html += '<div class="sd-snap-list sd-rev-list">';
+            revState.rows.forEach(function (r, i) {
+                // The size against the revision before it in the list (the
+                // older one), so the delta reads as what this publish added.
+                var older = revState.rows[i + 1];
+                var delta = older ? (Number(r.size) - Number(older.size)) : 0;
+                var deltaTxt = older ? ' (' + (delta >= 0 ? '+' : '−') + _sdRevisionBytes(Math.abs(delta)) + ')' : '';
+                var title = (r.settings && r.settings.page_title) ? String(r.settings.page_title) : '';
+                html += '<div class="sd-snap-item sd-rev-item" data-no="' + r.revision_no + '">' +
+                    '<div class="sd-snap-info">' +
+                        '<div class="sd-snap-name">' +
+                            '<span class="sd-rev-no">#' + r.revision_no + '</span> ' +
+                            '<span class="sd-rev-src sd-rev-src-' + esc(r.source) + '">' + esc(_sdRevisionSourceLabel(r.source)) + '</span> ' +
+                            esc(r.user_username || _sdT('Unknown')) +
+                        '</div>' +
+                        '<div class="sd-snap-date">' + esc(_sdRevisionWhen(r.created_at)) + ' · ' + esc(_sdRevisionBytes(r.size)) + esc(deltaTxt) +
+                            (title ? ' · ' + esc(title) : '') + '</div>' +
+                    '</div>' +
+                    '<div class="sd-snap-acts">' +
+                        '<button type="button" class="sd-snap-load sd-rev-compare" data-no="' + r.revision_no + '" title="' + esc(_sdT('Compare with the page now')) + '"><span class="bi bi-arrow-left-right"></span></button>' +
+                        '<button type="button" class="sd-snap-load sd-rev-restore" data-no="' + r.revision_no + '"' + (mayEdit ? '' : ' disabled title="' + esc(_sdT('Another person is editing this page.')) + '"') + '>' + esc(_sdT('Load')) + '</button>' +
+                    '</div></div>';
+            });
+            html += '</div>';
+            if (revState.more) {
+                html += '<button type="button" class="sd-snap-more" id="sd-rev-more">' + esc(_sdT('Show older revisions')) + '</button>';
+            }
+            return html;
+        }
+
+        function loadRevisions(beforeNo) {
+            if (!revState.pageId) return;
+            revState.loading = true;
+            _pgApiPost('revisions_list', { page_id: revState.pageId, before_no: beforeNo || 0 }).then(function (res) {
+                revState.loading = false;
+                if (!res || res.status !== 'success') {
+                    if (res && res.message) sdToast(esc(res.message), 'error');
+                    return;
+                }
+                revState.ready = res.ready !== false;
+                revState.rows  = beforeNo ? revState.rows.concat(res.revisions || []) : (res.revisions || []);
+                revState.more  = !!res.more;
+                renderList();
+            }, function () { revState.loading = false; renderList(); });
+        }
+
         function renderList() {
             var snaps = _loadSnapshots();
             var autosaveSnap = _readAutosaveAsSnapshot();
-            var html = '<div class="sd-snap-hdr"><span class="bi bi-camera me-1"></span>' + esc(_sdT('Snapshots')) + '' +
-                '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn"></button></div>' +
+            var html = '<div class="sd-snap-hdr"><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('History')) + '' +
+                '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn"></button></div>';
+            html += revisionsHtml();
+            html += '<div class="sd-snap-sect"><span class="bi bi-camera me-1"></span>' + esc(_sdT('Local snapshots')) + '</div>' +
                 '<button type="button" class="sd-snap-new-btn" id="sd-snap-new"><span class="bi bi-plus-circle me-1"></span>' + esc(_sdT('New Snapshot')) + '</button>';
             if (!snaps.length && !autosaveSnap) {
                 html += '<div class="sd-snap-empty">' + esc(_sdT('There is no snapshot yet')) + '</div>';
@@ -50114,7 +50316,25 @@ const StyleDesigner = (function () {
             var closeBtn = panel.querySelector('#sd-snap-close-btn');
             if (closeBtn) closeBtn.addEventListener('click', function() { panel.remove(); });
 
-            panel.querySelectorAll('.sd-snap-load').forEach(function(b) {
+            var moreBtn = panel.querySelector('#sd-rev-more');
+            if (moreBtn) moreBtn.addEventListener('click', function () {
+                var last = revState.rows[revState.rows.length - 1];
+                if (last) loadRevisions(last.revision_no);
+            });
+
+            panel.querySelectorAll('.sd-rev-compare').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    _sdRevisionOpenCompare(revState.pageId, parseInt(this.dataset.no, 10), function () { panel.remove(); });
+                });
+            });
+            panel.querySelectorAll('.sd-rev-restore').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    if (this.disabled) return;
+                    _sdRevisionRestore(revState.pageId, parseInt(this.dataset.no, 10), function () { panel.remove(); });
+                });
+            });
+
+            panel.querySelectorAll('.sd-snap-load:not(.sd-rev-compare):not(.sd-rev-restore)').forEach(function(b) {
                 b.addEventListener('click', function() {
                     var id = this.dataset.id;
                     // Resolve the snapshot record. Autosave is a virtual
@@ -50158,6 +50378,7 @@ const StyleDesigner = (function () {
         }
 
         renderList();
+        loadRevisions(0);
         document.body.appendChild(panel);
         if (btn) {
             var r = btn.getBoundingClientRect();
@@ -50165,9 +50386,239 @@ const StyleDesigner = (function () {
             panel.style.top   = (r.bottom + 4) + 'px';
         }
         function onOutside(ev) {
+            // A compare dialog opened from the panel is its own layer.
+            if (document.getElementById('sd-rev-overlay')) return;
             if (!panel.contains(ev.target) && ev.target !== btn) { panel.remove(); document.removeEventListener('mousedown', onOutside); }
         }
         setTimeout(function() { document.addEventListener('mousedown', onOutside); }, 0);
+    }
+
+    // One revision from the server, as a tree the editor can hold.
+    function _sdRevisionFetch(pageId, no) {
+        return _pgApiPost('revision_get', { page_id: pageId, revision_no: no }).then(function (res) {
+            if (!res || res.status !== 'success' || !res.revision || !res.revision.tree) {
+                sdToast(esc((res && res.message) || _sdT('The revision could not be read.')), 'error');
+                return null;
+            }
+            var rev = res.revision;
+            rev.tree = _sdTreeObjects(rev.tree);
+            _stripToggleableShowState(rev.tree);
+            return rev;
+        }, function () {
+            sdToast(esc(_sdT('The revision could not be read.')), 'error');
+            return null;
+        });
+    }
+
+    // Loads a revision's tree into the editor as unsaved work. The tree the
+    // operator had is one Ctrl+Z away, and the page is marked so the next
+    // publish records where its tree came from.
+    function _sdRevisionRestore(pageId, no, done) {
+        if (typeof _collab !== 'undefined' && _collab && _collab.mayEdit === false) {
+            sdToast(esc(_sdT('Another person is editing this page.')), 'warning');
+            return;
+        }
+        _sdRevisionFetch(pageId, no).then(function (rev) {
+            if (!rev) return;
+            var p = _pgActivePage();
+            if (!p || p.page_id !== pageId) {
+                sdToast(esc(_sdT('Open the page in its tab first.')), 'warning');
+                return;
+            }
+            var go = function () {
+                saveState();
+                _replaceTreeWithPrefetch(cloneTree(rev.tree));
+                p.restoredFrom = no;
+                if (typeof done === 'function') done();
+                sdToast(esc(_sdT('Revision #{var} is on the canvas as unsaved work. Publish to put it on the site; Ctrl+Z brings the previous tree back.', no)), 'success', 6000);
+            };
+            if (typeof window.pgConfirm === 'function') {
+                window.pgConfirm({
+                    title: _sdT('Load revision #{var}?', no),
+                    message: _sdT('The page on the canvas is replaced by this revision. Nothing is published until you save.'),
+                    confirmText: _sdT('Load'), cancelText: _sdT('Cancel')
+                }).then(function (ok) { if (ok) go(); });
+            } else if (window.confirm(_sdT('The page on the canvas is replaced by this revision. Nothing is published until you save.'))) {
+                go();
+            }
+        });
+    }
+
+    // ── Compare ──
+    // The revision beside the page as it is now: both drawn through the
+    // page's frame (generateHTML() with the revision's tree), shown side by
+    // side as blob documents, and as a line diff of the two HTML texts.
+    // System widgets are not drawn by the server here; they appear as
+    // their placeholders on both sides.
+    function _sdRevisionOpenCompare(pageId, no, done) {
+        _sdRevisionFetch(pageId, no).then(function (rev) {
+            if (!rev) return;
+            var nameEl = document.querySelector('[name="name"]');
+            var bcEl   = document.querySelector('[name="additional_body_classes"]');
+            var styleName = nameEl ? nameEl.value.trim() : '';
+            var addBc     = bcEl ? bcEl.value.trim() : '';
+            var nowHtml = generateHTML(styleName, addBc);
+            var revHtml = generateHTML(styleName, addBc, rev.tree);
+            var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
+            var revDoc  = _sdPreviewDocHtml(null, revHtml);
+            _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
+        });
+    }
+
+    function _sdRevisionShowCompare(rev, docs, pageId, done) {
+        var existing = document.getElementById('sd-rev-overlay');
+        if (existing) existing.remove();
+        var overlay = document.createElement('div');
+        overlay.id = 'sd-rev-overlay';
+        overlay.className = 'sd-fr-overlay sd-rev-overlay';
+        var who = esc(rev.user_username || _sdT('Unknown')) + ' · ' + esc(_sdRevisionWhen(rev.created_at)) + ' · ' + esc(_sdRevisionSourceLabel(rev.source));
+        var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+        overlay.innerHTML =
+            '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare revision')) + '">' +
+                '<div class="sd-fr-header">' +
+                    '<span class="bi bi-arrow-left-right me-2"></span>' + esc(_sdT('Revision #{var}', rev.revision_no)) + ' <span class="sd-rev-who">' + who + '</span>' +
+                    '<div class="sd-rev-tabs" role="tablist">' +
+                        '<button type="button" class="sd-rev-tab is-active" data-view="preview">' + esc(_sdT('Preview')) + '</button>' +
+                        '<button type="button" class="sd-rev-tab" data-view="code">' + esc(_sdT('Code')) + '</button>' +
+                    '</div>' +
+                    '<button type="button" class="sd-fr-close" id="sd-rev-close" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg"></span></button>' +
+                '</div>' +
+                '<div class="sd-rev-body">' +
+                    '<div class="sd-rev-view sd-rev-view-preview">' +
+                        '<div class="sd-rev-pane"><div class="sd-rev-pane-hdr">' + esc(_sdT('Revision #{var}', rev.revision_no)) + '</div><iframe class="sd-rev-frame" title="' + esc(_sdT('Revision #{var}', rev.revision_no)) + '"></iframe></div>' +
+                        '<div class="sd-rev-pane"><div class="sd-rev-pane-hdr">' + esc(_sdT('The page now')) + '</div><iframe class="sd-rev-frame" title="' + esc(_sdT('The page now')) + '"></iframe></div>' +
+                    '</div>' +
+                    '<div class="sd-rev-view sd-rev-view-code" hidden><pre class="sd-rev-diff"></pre></div>' +
+                '</div>' +
+                '<div class="sd-fr-footer">' +
+                    '<span class="sd-rev-summary"></span>' +
+                    '<button type="button" class="sd-fr-btn" id="sd-rev-cancel">' + esc(_sdT('Close')) + '</button>' +
+                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (mayEdit ? '' : ' disabled') + '>' + esc(_sdT('Load this revision')) + '</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+
+        var frames = overlay.querySelectorAll('.sd-rev-frame');
+        var urls = [URL.createObjectURL(new Blob([docs.revDoc], { type: 'text/html' })),
+                    URL.createObjectURL(new Blob([docs.nowDoc], { type: 'text/html' }))];
+        frames[0].src = urls[0];
+        frames[1].src = urls[1];
+
+        var diff = _sdLineDiff(docs.revHtml.split('\n'), docs.nowHtml.split('\n'));
+        overlay.querySelector('.sd-rev-diff').innerHTML = _sdLineDiffHtml(diff);
+        overlay.querySelector('.sd-rev-summary').textContent = diff.same
+            ? _sdT('The revision and the page print the same HTML.')
+            : _sdT('{var:1} lines added, {var:2} removed against the revision.', [diff.added, diff.removed]);
+
+        var close = function () {
+            urls.forEach(function (u) { URL.revokeObjectURL(u); });
+            overlay.remove();
+        };
+        overlay.querySelector('#sd-rev-close').addEventListener('click', close);
+        overlay.querySelector('#sd-rev-cancel').addEventListener('click', close);
+        overlay.addEventListener('mousedown', function (ev) { if (ev.target === overlay) close(); });
+        overlay.querySelectorAll('.sd-rev-tab').forEach(function (t) {
+            t.addEventListener('click', function () {
+                overlay.querySelectorAll('.sd-rev-tab').forEach(function (x) { x.classList.toggle('is-active', x === t); });
+                overlay.querySelector('.sd-rev-view-preview').hidden = (t.dataset.view !== 'preview');
+                overlay.querySelector('.sd-rev-view-code').hidden    = (t.dataset.view !== 'code');
+            });
+        });
+        var loadBtn = overlay.querySelector('#sd-rev-load');
+        loadBtn.addEventListener('click', function () {
+            if (loadBtn.disabled) return;
+            close();
+            _sdRevisionRestore(pageId, rev.revision_no, done);
+        });
+    }
+
+    // ── Line diff ──
+    // Myers' O(ND) difference of two arrays of lines, the way diff tools
+    // compute it: the shortest edit script, returned as a list of
+    // { kind: ' ' | '-' | '+', text }. Capped: two documents that differ by
+    // more than the cap are answered with a plain replace, so a huge page
+    // never freezes the editor.
+    function _sdLineDiff(a, b) {
+        var n = a.length, m = b.length;
+        var max = n + m;
+        var cap = 4000;
+        var out = { ops: [], added: 0, removed: 0, same: false };
+        if (n === m) {
+            var equal = true;
+            for (var q = 0; q < n; q++) if (a[q] !== b[q]) { equal = false; break; }
+            if (equal) {
+                out.same = true;
+                for (var e = 0; e < n; e++) out.ops.push({ kind: ' ', text: a[e] });
+                return out;
+            }
+        }
+        // Forward pass: V[k] is the furthest x on diagonal k after d edits;
+        // the V of each round is kept so the script can be walked back.
+        var v = { 1: 0 }, trace = [], found = false;
+        for (var d = 0; d <= max && d <= cap && !found; d++) {
+            var before = {};
+            for (var key in v) if (Object.prototype.hasOwnProperty.call(v, key)) before[key] = v[key];
+            trace.push(before);
+            for (var k = -d; k <= d; k += 2) {
+                var x = (k === -d || (k !== d && before[k - 1] < before[k + 1])) ? before[k + 1] : before[k - 1] + 1;
+                var y = x - k;
+                while (x < n && y < m && a[x] === b[y]) { x++; y++; }
+                v[k] = x;
+                if (x >= n && y >= m) { found = true; break; }
+            }
+        }
+        if (!found) {
+            a.forEach(function (t) { out.ops.push({ kind: '-', text: t }); });
+            b.forEach(function (t) { out.ops.push({ kind: '+', text: t }); });
+            out.removed = n; out.added = m;
+            return out;
+        }
+        // Backward pass, from the end of both texts to their start.
+        var ops = [];
+        var px = n, py = m;
+        for (var td = trace.length - 1; td >= 0; td--) {
+            var vv = trace[td];
+            var kk = px - py;
+            var prevK = (kk === -td || (kk !== td && vv[kk - 1] < vv[kk + 1])) ? kk + 1 : kk - 1;
+            var prevX = vv[prevK];
+            var prevY = prevX - prevK;
+            while (px > prevX && py > prevY) { ops.push({ kind: ' ', text: a[px - 1] }); px--; py--; }
+            if (td > 0) {
+                if (px === prevX) ops.push({ kind: '+', text: b[prevY] });
+                else ops.push({ kind: '-', text: a[prevX] });
+            }
+            px = prevX; py = prevY;
+        }
+        ops.reverse();
+        ops.forEach(function (o) { if (o.kind === '+') out.added++; else if (o.kind === '-') out.removed++; });
+        out.ops = ops;
+        return out;
+    }
+
+    // The diff as markup: changed lines in full, unchanged ones folded to two
+    // lines of context on either side of a change.
+    function _sdLineDiffHtml(diff) {
+        var ops = diff.ops;
+        var keep = new Array(ops.length);
+        for (var i = 0; i < ops.length; i++) {
+            if (ops[i].kind === ' ') continue;
+            for (var c = Math.max(0, i - 2); c <= Math.min(ops.length - 1, i + 2); c++) keep[c] = true;
+        }
+        var html = '';
+        var folded = 0;
+        var flush = function () {
+            if (folded > 0) html += '<span class="sd-rev-fold">' + esc(_sdT('{var} unchanged lines', folded)) + '</span>\n';
+            folded = 0;
+        };
+        for (var j = 0; j < ops.length; j++) {
+            if (!keep[j]) { folded++; continue; }
+            flush();
+            var cls = ops[j].kind === '+' ? 'sd-rev-add' : (ops[j].kind === '-' ? 'sd-rev-del' : 'sd-rev-ctx');
+            html += '<span class="' + cls + '">' + esc(ops[j].kind) + ' ' + esc(ops[j].text) + '</span>\n';
+        }
+        flush();
+        if (!html) html = '<span class="sd-rev-fold">' + esc(_sdT('The revision and the page print the same HTML.')) + '</span>';
+        return html;
     }
 
     // ========================= FORM =========================
@@ -50501,7 +50952,7 @@ const StyleDesigner = (function () {
     var _PG_PAGE_FIELDS = [
         'page_name', 'page_folder', 'page_title', 'page_meta_description',
         'page_search', 'page_search_keywords', 'page_sitemap', 'page_home',
-        'page_noindex', 'page_nofollow', 'page_draft',
+        'page_noindex', 'page_nofollow', 'page_draft', 'page_publish_at', 'page_unpublish_at',
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
@@ -50709,8 +51160,10 @@ const StyleDesigner = (function () {
                 extra = '<span class="sd-tab-lock bi bi-lock-fill" title="' +
                         esc(_sdT('You do not have content rights for this page\'s folder.')) + '"></span>';
             }
-            // A page kept off the site says so on its tab.
+            // A page kept off the site says so on its tab; one that goes on
+            // or comes off at a set time says when.
             var draft = _pgDraftsReady() && !!p.page_draft;
+            var sched = _pgScheduleNote(p);
             html += '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
                     (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + (folded ? ' sd-tab-folded' : '') + '"' +
                     ' data-key="' + esc(p.key) + '"' +
@@ -50718,7 +51171,8 @@ const StyleDesigner = (function () {
                     ' role="tab" tabindex="0" title="' + esc(name) + '">' +
                     '<span class="sd-tab-dot" aria-hidden="true"></span>' +
                     '<span class="sd-tab-name">' + esc(name) + '</span>' +
-                    (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '') +
+                    (sched ? '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>'
+                           : (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '')) +
                     extra +
                     '</div>';
         });
@@ -50948,6 +51402,20 @@ const StyleDesigner = (function () {
                 _pgTabsRender();
             });
         }
+        // The two times of Page Settings: a publish time still ahead makes
+        // the page a draft at once, on its tab and on the switch.
+        ['pg_page_publish_at', 'pg_page_unpublish_at'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el || el._pgSchedBound) return;
+            el._pgSchedBound = true;
+            el.addEventListener('change', function () {
+                var a = _pgActivePage();
+                if (a) _pgReadFieldsIntoPage(a);
+                _pgSyncDraftBox(a);
+                _pgTabsRender();
+                _sdSettingsSyncSave();
+            });
+        });
         var homeBox = document.getElementById('pg_page_home');
         if (homeBox && draftBox && !homeBox._pgDraftBound) {
             homeBox._pgDraftBound = true;
@@ -53771,6 +54239,9 @@ const StyleDesigner = (function () {
             // the shared components it shows all count as touching it.
             if (_pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
             else rec.tree_json = JSON.stringify(t);
+            // A tree loaded back from the History panel is recorded as a
+            // restore when it is published (includes/fn/page_revisions.php).
+            if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
             _PG_PAGE_FIELDS.forEach(function (k) { rec[k] = p[k]; });
             // The page's own form-level settings. The fields are not sent:
             // the server reads them off the widget tree flushed before this
@@ -53787,6 +54258,9 @@ const StyleDesigner = (function () {
     // every baseline, and move the URL to the edit screen if this was "add".
     function _pgTabsAfterSave(data) {
         var layoutFresh = false;
+        // What was published is on the site; a later publish of the same
+        // tree is a publish, not a restore.
+        _pages.forEach(function (p) { delete p.restoredFrom; });
         if (data && Array.isArray(data.pages)) {
             // Page pickers that named an unsaved tab (`tab:<key>`) now get
             // the id the server handed out — in the widget configs and in
@@ -53808,6 +54282,12 @@ const StyleDesigner = (function () {
                 // The state the server left the page in: a draft of the home
                 // page is refused (pg_designer_page_draft_plan()).
                 if (p && typeof m.draft !== 'undefined') p.page_draft = m.draft ? 1 : 0;
+                // The times as the server left them: one that had come was
+                // carried out by the save and cleared.
+                if (p && typeof m.publish_at !== 'undefined') {
+                    p.page_publish_at   = m.publish_at || '';
+                    p.page_unpublish_at = m.unpublish_at || '';
+                }
                 // A page that joined the design with this save has its place
                 // in the tab layout stored below.
                 if (p && m.page_id > 0 && (!(p.page_id > 0) || p.pickedPending)) layoutFresh = true;
@@ -53914,8 +54394,15 @@ const StyleDesigner = (function () {
         var go = function () {
             // The keys as the save sends them: a new page gets its id and a
             // new key once the server answers.
-            var marked = list.map(function (p) { return { page: p, key: p.key, was: p.page_draft ? 1 : 0 }; });
-            list.forEach(function (p) { p.page_draft = on ? 1 : 0; });
+            var marked = list.map(function (p) {
+                return { page: p, key: p.key, was: p.page_draft ? 1 : 0, pub: p.page_publish_at || '', unpub: p.page_unpublish_at || '' };
+            });
+            // A page put on the site by hand no longer waits for its publish
+            // time; one taken off no longer waits for its time to come off.
+            list.forEach(function (p) {
+                p.page_draft = on ? 1 : 0;
+                if (on) p.page_unpublish_at = ''; else p.page_publish_at = '';
+            });
             _pgSyncDraftBox(_pgActivePage());
             _pgTabsRender();
             // The pages the server wrote in the state asked for. One it did
@@ -53930,6 +54417,8 @@ const StyleDesigner = (function () {
             var unmark = function (rows, rebase) {
                 rows.forEach(function (r) {
                     r.page.page_draft = r.was;
+                    r.page.page_publish_at = r.pub;
+                    r.page.page_unpublish_at = r.unpub;
                     if (rebase) r.page.baseline = _pgBaselineOf(r.page);
                 });
                 _pgSyncDraftBox(_pgActivePage());
@@ -53980,9 +54469,91 @@ const StyleDesigner = (function () {
         var homeBox = document.getElementById('pg_page_home');
         var home = homeBox ? homeBox.checked : !!p.page_home;
         if (home && p.page_draft) p.page_draft = 0;
+        // A publish time still ahead keeps the page a draft until then
+        // (pg_page_schedule_plan() decides the same on the server).
+        var waits = !home && _pgScheduleAhead(p.page_publish_at);
+        if (waits) p.page_draft = 1;
         box.checked  = !!p.page_draft;
-        box.disabled = home;
-        box.title    = home ? _sdT('The home page stays on the site.') : '';
+        box.disabled = home || waits;
+        box.title    = home ? _sdT('The home page stays on the site.')
+                     : (waits ? _sdT('The page stays a draft until its publish time.') : '');
+        _pgSyncScheduleFields(p, home);
+    }
+
+    // ── Scheduled publishing ──
+    // A page can carry a time to go on the site and a time to come off it,
+    // the site's wall clock as a datetime-local box writes it
+    // ("2026-10-21T09:30"); the general job makes the move
+    // (includes/fn/page_schedule.php). Both reach the server with a save,
+    // like the draft state.
+    function _pgScheduleReady() { return !!(_design && _design.drafts && _design.drafts.schedule && _design.drafts.schedule.ready); }
+
+    // The site's wall clock now, in the same text form, so a time compares
+    // as text.
+    function _pgScheduleSiteNow() {
+        var off = (_design && _design.drafts && _design.drafts.schedule) ? (parseInt(_design.drafts.schedule.offset, 10) || 0) : 0;
+        var d = new Date(Date.now() + off * 1000);
+        var two = function (n) { return (n < 10 ? '0' : '') + n; };
+        return d.getUTCFullYear() + '-' + two(d.getUTCMonth() + 1) + '-' + two(d.getUTCDate()) + 'T' + two(d.getUTCHours()) + ':' + two(d.getUTCMinutes());
+    }
+    function _pgScheduleAhead(v) {
+        return _pgScheduleReady() && typeof v === 'string' && v.length >= 16 && v.slice(0, 16) > _pgScheduleSiteNow();
+    }
+
+    // A time in words, for a badge's title: the wall clock it names, read
+    // in the browser's own format.
+    function _pgScheduleLabel(v) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(String(v || ''));
+        if (!m) return String(v || '');
+        try {
+            return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+        } catch (e) {
+            return m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5];
+        }
+    }
+
+    // What the page's times will do next, in one sentence; '' for nothing.
+    // The home page takes no time.
+    function _pgScheduleNote(p) {
+        if (!p || !_pgScheduleReady() || !_pgDraftsReady() || p.page_home) return '';
+        if (p.page_draft && _pgScheduleAhead(p.page_publish_at)) {
+            return _pgScheduleAhead(p.page_unpublish_at)
+                ? _sdT('Goes on the site {var:1}; comes off it again {var:2}.', [_pgScheduleLabel(p.page_publish_at), _pgScheduleLabel(p.page_unpublish_at)])
+                : _sdT('Goes on the site {var}.', _pgScheduleLabel(p.page_publish_at));
+        }
+        if (!p.page_draft && _pgScheduleAhead(p.page_unpublish_at)) {
+            return _sdT('Comes off the site {var}.', _pgScheduleLabel(p.page_unpublish_at));
+        }
+        return '';
+    }
+
+    // The two boxes of Page Settings show the active page; the home page
+    // takes neither, and an end before the start is said under them (the
+    // save refuses it).
+    function _pgSyncScheduleFields(p, home) {
+        var pub = document.getElementById('pg_page_publish_at');
+        var unpub = document.getElementById('pg_page_unpublish_at');
+        if (!pub || !unpub || !p) return;
+        pub.value   = p.page_publish_at || '';
+        unpub.value = p.page_unpublish_at || '';
+        pub.disabled = unpub.disabled = !!home;
+        var line = document.getElementById('sd-page-schedule');
+        if (!line) return;
+        var text = '', warn = false;
+        if (home) {
+            text = _sdT('The home page stays on the site.');
+        } else if (p.page_publish_at && p.page_unpublish_at && p.page_unpublish_at.slice(0, 16) <= p.page_publish_at.slice(0, 16)) {
+            text = _sdT('The time to take the page off the site has to be after its publish time.');
+            warn = true;
+        } else if (p.page_publish_at && !_pgScheduleAhead(p.page_publish_at)) {
+            text = _sdT('This time has passed: the page is published with the next save.');
+        } else if (p.page_unpublish_at && !_pgScheduleAhead(p.page_unpublish_at)) {
+            text = _sdT('This time has passed: the page is taken off the site with the next save.');
+        } else {
+            text = _pgScheduleNote(p);
+        }
+        line.textContent = text;
+        line.classList.toggle('text-warning', warn);
     }
 
     // The keys of the editor's save, as the panel writes a shortcut.
@@ -54026,7 +54597,9 @@ const StyleDesigner = (function () {
         var icon = btn.querySelector('.bi');
         if (icon) icon.className = 'bi ' + (draft ? 'bi-floppy' : 'bi-rocket-takeoff');
         btn.classList.toggle('sd-publish-draft', draft);
-        var title = (draft ? _sdT('Saves the design. This page stays a draft, off the site.') : _sdT('Publish')) + ' (' + _SD_SAVE_KEYS + ')';
+        var note = _pgScheduleNote(a);
+        var title = (draft ? (note ? _sdT('Saves the design.') + ' ' + note : _sdT('Saves the design. This page stays a draft, off the site.'))
+                           : (note ? _sdT('Publish') + '. ' + note : _sdT('Publish'))) + ' (' + _SD_SAVE_KEYS + ')';
         if (!btn.classList.contains('sd-saving-blocked')) _sdSetButtonTitle(btn, title);
         btn.dataset.origTitle = title;
         // A draft has two actions side by side: Save keeps it off the site,

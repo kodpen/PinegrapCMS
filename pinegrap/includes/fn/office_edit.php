@@ -1636,10 +1636,6 @@ function pg_office_xlsx_save($path, $changes, $version, $directory = '')
 /**
  * The part of pg_office_xlsx_save() that runs under the file's lock.
  *
- * Every part that changes is written to a file of its own as soon as it is
- * ready, so only one sheet is held in memory at a time; the files are put
- * into the new package and removed afterwards, whatever happened.
- *
  * @param string   $path
  * @param array    $wanted    sheet position => [name, rows => [row => [column => text]]]
  * @param string   $version
@@ -1648,6 +1644,29 @@ function pg_office_xlsx_save($path, $changes, $version, $directory = '')
  * @return array
  */
 function pg_office_xlsx_save_locked($path, $wanted, $version, $directory, $fail)
+{
+    return pg_office_save_package($path, $version, $directory, $fail, function ($zip, $spool) use ($wanted, $fail) {
+        return pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool);
+    });
+}
+
+/**
+ * Writes the parts a save changed into the package, for a workbook and a
+ * document alike, under the file's lock: the version the person opened must
+ * still be the file's, $prepare works out the changed parts from the open
+ * package and writes each to a file of its own (so only one part is held in
+ * memory at a time), and the new package is built beside the old one as a
+ * copy with those parts put in, read back, and only then put in its place.
+ * The part files are removed afterwards, whatever happened.
+ *
+ * @param string   $path
+ * @param string   $version   what the person opened (pg_office_version())
+ * @param string   $directory where the copy and the part files are written
+ * @param callable $fail      the refusal builder of the caller
+ * @param callable $prepare   function (ZipArchive $zip, callable $spool): ok, parts (part name => file), changed; or a refusal. $spool(string $xml) writes a part and gives its file, or null.
+ * @return array ok, code, error, size, version, changed
+ */
+function pg_office_save_package($path, $version, $directory, $fail, $prepare)
 {
     if (($version === '') || !hash_equals(pg_office_version($path), $version)) {
         return $fail('changed');
@@ -1661,8 +1680,15 @@ function pg_office_xlsx_save_locked($path, $wanted, $version, $directory, $fail)
 
     $spooled = array();
 
+    $spool = function ($xml) use ($directory, &$spooled) {
+        $file = rtrim($directory, '/\\') . '/office_edit_' . bin2hex(random_bytes(8)) . '.part';
+        $spooled[] = $file;
+
+        return (@file_put_contents($file, $xml) === strlen($xml)) ? $file : null;
+    };
+
     try {
-        $result = pg_office_xlsx_save_parts($zip, $wanted, $directory, $fail, $spooled);
+        $result = $prepare($zip, $spool);
         $zip->close();
 
         if (!$result['ok']) {
@@ -1728,25 +1754,17 @@ function pg_office_xlsx_save_locked($path, $wanted, $version, $directory, $fail)
  * with changed cells, every worksheet whose formulas cached results, and the
  * workbook with its recalculation mark.
  *
- * @param ZipArchive $zip       open on the workbook
- * @param array      $wanted    sheet position => [name, rows => [row => [column => text]]]
- * @param string     $directory where the part files go
+ * @param ZipArchive $zip    open on the workbook
+ * @param array      $wanted sheet position => [name, rows => [row => [column => text]]]
  * @param callable   $fail
- * @param array      $spooled   the part files written, for the caller to remove
+ * @param callable   $spool  writes a part to a file (pg_office_save_package())
  * @return array ok, parts (part name => file), changed; or a refusal
  */
-function pg_office_xlsx_save_parts($zip, $wanted, $directory, $fail, &$spooled)
+function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
 {
     if (pg_office_signed($zip)) {
         return $fail('signed');
     }
-
-    $spool = function ($xml) use ($directory, &$spooled) {
-        $file = rtrim($directory, '/\\') . '/office_edit_' . bin2hex(random_bytes(8)) . '.part';
-        $spooled[] = $file;
-
-        return (@file_put_contents($file, $xml) === strlen($xml)) ? $file : null;
-    };
 
     $sheets = pg_office_xlsx_sheets($zip);
     $styles = pg_office_xlsx_style_kinds($zip);
@@ -1881,4 +1899,882 @@ function pg_office_xlsx_save_parts($zip, $wanted, $directory, $fail, &$spooled)
     $parts['xl/workbook.xml'] = $file;
 
     return array('ok' => true, 'parts' => $parts, 'changed' => $changed);
+}
+
+/* ---------------------------------------------------------------------------
+   Documents: the text of a paragraph
+   --------------------------------------------------------------------------- */
+
+/**
+ * The largest main document part changed here, in bytes unpacked: it is
+ * read whole with DOM, which takes several times its size in memory.
+ */
+define('PG_OFFICE_EDIT_MAX_DOCUMENT', 8 * 1024 * 1024);
+
+/**
+ * The most paragraphs one save may change, and the longest text a paragraph
+ * may be given, in characters.
+ */
+define('PG_OFFICE_EDIT_MAX_PARAGRAPHS', 2000);
+define('PG_OFFICE_EDIT_MAX_PARAGRAPH', 100000);
+
+/**
+ * The paragraphs of a document in document order: every paragraph element
+ * of the main part's own namespace, those in tables and text boxes too. A
+ * paragraph's position in this list is how the preview and a save name it,
+ * so both sides count the same way.
+ *
+ * @param DOMDocument $document word/document.xml
+ * @return DOMElement[]
+ */
+function pg_office_docx_paragraphs($document)
+{
+    $out = array();
+
+    if (!$document->documentElement) {
+        return $out;
+    }
+
+    foreach ($document->getElementsByTagNameNS((string) $document->documentElement->namespaceURI, 'p') as $paragraph) {
+        $out[] = $paragraph;
+    }
+
+    return $out;
+}
+
+/**
+ * Why an element inside a paragraph keeps the paragraph from being changed
+ * here, by its local name.
+ *
+ * @param string $local
+ * @return string tracked, field, comment, note, object, control or other
+ */
+function pg_office_docx_lock_reason($local)
+{
+    if (in_array($local, array('ins', 'del', 'moveFrom', 'moveTo', 'rPrChange', 'delText', 'delInstrText', 'moveFromRangeStart', 'moveFromRangeEnd', 'moveToRangeStart', 'moveToRangeEnd'), true)) {
+        return 'tracked';
+    }
+
+    if (in_array($local, array('fldChar', 'instrText', 'fldSimple', 'fldData'), true)) {
+        return 'field';
+    }
+
+    if (in_array($local, array('commentRangeStart', 'commentRangeEnd', 'commentReference', 'annotationRef'), true)) {
+        return 'comment';
+    }
+
+    if (in_array($local, array('footnoteReference', 'endnoteReference', 'footnoteRef', 'endnoteRef', 'separator', 'continuationSeparator'), true)) {
+        return 'note';
+    }
+
+    if (in_array($local, array('sdt', 'customXml', 'smartTag'), true)) {
+        return 'control';
+    }
+
+    if (in_array($local, array('drawing', 'pict', 'object', 'sym', 'ptab', 'oMath', 'oMathPara', 'AlternateContent', 'contentPart', 'ruby', 'pgNum', 'subDoc',
+        'dayShort', 'dayLong', 'monthShort', 'monthLong', 'yearShort', 'yearLong'), true)) {
+        return 'object';
+    }
+
+    return 'other';
+}
+
+/**
+ * Whether formatting holds a tracked change: a run's or a paragraph mark's
+ * properties recorded as inserted, deleted or moved, or an earlier version
+ * of them kept for review (rPrChange, pPrChange and the like).
+ *
+ * @param DOMElement $properties rPr or pPr
+ * @return bool
+ */
+function pg_office_docx_tracked_props($properties)
+{
+    foreach ($properties->getElementsByTagNameNS('*', '*') as $node) {
+        if (in_array($node->localName, array('ins', 'del', 'moveFrom', 'moveTo'), true) || (substr($node->localName, -6) === 'Change')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Why the place a paragraph sits in keeps it from being changed here: a
+ * content control or custom XML (whose text a form or a data binding owns,
+ * and which may be locked), a text box (written twice, for new and for old
+ * readers), or a table cell hidden under merged cells.
+ *
+ * @param DOMElement $paragraph
+ * @return string '' when nothing; control, object or merged
+ */
+function pg_office_docx_place_lock($paragraph)
+{
+    for ($node = $paragraph->parentNode; $node instanceof DOMElement; $node = $node->parentNode) {
+        switch ($node->localName) {
+            case 'sdt':
+            case 'sdtContent':
+            case 'customXml':
+                return 'control';
+
+            case 'txbxContent':
+            case 'AlternateContent':
+            case 'drawing':
+            case 'pict':
+                return 'object';
+
+            case 'tc':
+                foreach ($node->childNodes as $properties) {
+                    if (!($properties instanceof DOMElement) || ($properties->localName !== 'tcPr')) {
+                        continue;
+                    }
+
+                    foreach ($properties->childNodes as $merge) {
+                        if (($merge instanceof DOMElement) && in_array($merge->localName, array('vMerge', 'hMerge'), true)
+                            && (strtolower(pg_office_attr($merge, 'val')) !== 'restart')) {
+                            return 'merged';
+                        }
+                    }
+                }
+                break;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Reads one run for an edit: adds its text to the paragraph's and the run to
+ * the paragraph's list, or says why the paragraph cannot be changed.
+ *
+ * The text is what a person types: a tab is a tab, a line break inside the
+ * paragraph a new line, a non-breaking and an optional hyphen their own
+ * characters. A page or column break, a picture, a field, a footnote mark
+ * and the like are more than text.
+ *
+ * @param DOMElement $run
+ * @param array      $out pg_office_docx_paragraph_edit() being built
+ */
+function pg_office_docx_run_edit($run, &$out)
+{
+    $text = '';
+
+    foreach ($run->childNodes as $child) {
+        if (!($child instanceof DOMElement)) {
+            continue;
+        }
+
+        switch ($child->localName) {
+            case 'rPr':
+                if (pg_office_docx_tracked_props($child)) {
+                    $out['lock'] = ($out['lock'] !== '') ? $out['lock'] : 'tracked';
+                }
+                break;
+
+            case 't':
+                // A line end written inside the text itself is white space
+                // to a word processor, not a line break (that is w:br).
+                $text .= str_replace(array("\r\n", "\r", "\n"), ' ', $child->textContent);
+                break;
+
+            case 'tab':
+                $text .= "\t";
+                break;
+
+            case 'br':
+                if (in_array(strtolower(pg_office_attr($child, 'type')), array('', 'textwrapping'), true)) {
+                    $text .= "\n";
+                } else {
+                    $out['lock'] = ($out['lock'] !== '') ? $out['lock'] : 'break';
+                }
+                break;
+
+            case 'cr':
+                $text .= "\n";
+                break;
+
+            case 'noBreakHyphen':
+                $text .= "\u{2011}";
+                break;
+
+            case 'softHyphen':
+                $text .= "\u{00AD}";
+                break;
+
+            case 'lastRenderedPageBreak':
+                break;
+
+            default:
+                $out['lock'] = ($out['lock'] !== '') ? $out['lock'] : pg_office_docx_lock_reason($child->localName);
+        }
+    }
+
+    $out['runs'][] = array('run' => $run, 'text' => $text);
+    $out['text'] .= $text;
+}
+
+/**
+ * Whether the text of a paragraph may be changed here, its text as a person
+ * reads and types it, and the runs that hold it.
+ *
+ * Only a paragraph of text is changed: runs, links and the markers that sit
+ * between runs (bookmarks, proofing marks, permission ranges). A paragraph
+ * with tracked changes, a field (a page number, a table of contents, a
+ * date), a comment, a footnote, a picture or an equation, a content control
+ * or a page break is shown and left as it is, and so is one in a content
+ * control, a text box or a cell hidden under merged cells.
+ *
+ * @param DOMElement $paragraph
+ * @return array lock ('' when it may change; else the reason), text, runs ([run, text] in order)
+ */
+function pg_office_docx_paragraph_edit($paragraph)
+{
+    $out = array('lock' => pg_office_docx_place_lock($paragraph), 'text' => '', 'runs' => array());
+    $markers = array('bookmarkStart', 'bookmarkEnd', 'proofErr', 'permStart', 'permEnd');
+
+    if ($out['lock'] !== '') {
+        return $out;
+    }
+
+    foreach ($paragraph->childNodes as $child) {
+        if (!($child instanceof DOMElement)) {
+            continue;
+        }
+
+        switch ($child->localName) {
+            case 'pPr':
+                // A paragraph mark inserted or deleted with tracking on, or
+                // formatting changed so: the paragraph is part of a change
+                // waiting for review.
+                if (pg_office_docx_tracked_props($child)) {
+                    $out['lock'] = ($out['lock'] !== '') ? $out['lock'] : 'tracked';
+                }
+                break;
+
+            case 'r':
+                pg_office_docx_run_edit($child, $out);
+                break;
+
+            case 'hyperlink':
+                foreach ($child->childNodes as $inner) {
+                    if (!($inner instanceof DOMElement)) {
+                        continue;
+                    }
+
+                    if ($inner->localName === 'r') {
+                        pg_office_docx_run_edit($inner, $out);
+                    } elseif (!in_array($inner->localName, $markers, true)) {
+                        $out['lock'] = ($out['lock'] !== '') ? $out['lock'] : pg_office_docx_lock_reason($inner->localName);
+                    }
+                }
+                break;
+
+            default:
+                if (!in_array($child->localName, $markers, true)) {
+                    $out['lock'] = ($out['lock'] !== '') ? $out['lock'] : pg_office_docx_lock_reason($child->localName);
+                }
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Splits a text into the pieces a word-level comparison works on: words,
+ * numbers, runs of white space, and every other character on its own.
+ *
+ * @param string $text
+ * @return string[]
+ */
+function pg_office_text_tokens($text)
+{
+    if ($text === '') {
+        return array();
+    }
+
+    preg_match_all('/[\p{L}\p{M}][\p{L}\p{M}\p{N}_]*|\p{N}+|\s+|./us', $text, $matches);
+
+    return $matches[0];
+}
+
+/**
+ * Where two texts differ, as changes to the first: [start, end, insert] in
+ * characters of the old text, in order and not overlapping.
+ *
+ * The common beginning and end are set aside first; what lies between is
+ * compared word by word, so two separate changes come out as two and the
+ * runs between them (with their formatting) are left alone. A middle too
+ * long to compare word by word (the product of the two word counts above
+ * $limit) is one change.
+ *
+ * @param string $old
+ * @param string $new
+ * @param int    $limit
+ * @return array[]
+ */
+function pg_office_text_hunks($old, $new, $limit = 250000)
+{
+    if ($old === $new) {
+        return array();
+    }
+
+    $a = preg_split('//u', $old, -1, PREG_SPLIT_NO_EMPTY);
+    $b = preg_split('//u', $new, -1, PREG_SPLIT_NO_EMPTY);
+    $n = count($a);
+    $m = count($b);
+    $prefix = 0;
+
+    while (($prefix < $n) && ($prefix < $m) && ($a[$prefix] === $b[$prefix])) {
+        $prefix++;
+    }
+
+    $suffix = 0;
+
+    while (($suffix < $n - $prefix) && ($suffix < $m - $prefix) && ($a[$n - 1 - $suffix] === $b[$m - 1 - $suffix])) {
+        $suffix++;
+    }
+
+    $old_middle = pg_office_text_tokens(implode('', array_slice($a, $prefix, $n - $prefix - $suffix)));
+    $new_middle = pg_office_text_tokens(implode('', array_slice($b, $prefix, $m - $prefix - $suffix)));
+    $rows = count($old_middle);
+    $columns = count($new_middle);
+
+    if (($rows * $columns) > $limit) {
+        return array(array($prefix, $n - $suffix, implode('', $new_middle)));
+    }
+
+    // The longest run of words both share, filled in from the end.
+    $table = array_fill(0, $rows + 1, array_fill(0, $columns + 1, 0));
+
+    for ($i = $rows - 1; $i >= 0; $i--) {
+        for ($j = $columns - 1; $j >= 0; $j--) {
+            $table[$i][$j] = ($old_middle[$i] === $new_middle[$j]) ? ($table[$i + 1][$j + 1] + 1) : max($table[$i + 1][$j], $table[$i][$j + 1]);
+        }
+    }
+
+    $hunks = array();
+    $position = $prefix;
+    $i = 0;
+    $j = 0;
+    $open = null;
+
+    while (($i < $rows) || ($j < $columns)) {
+        if (($i < $rows) && ($j < $columns) && ($old_middle[$i] === $new_middle[$j])) {
+            if ($open !== null) {
+                $hunks[] = $open;
+                $open = null;
+            }
+
+            $position += mb_strlen($old_middle[$i], 'UTF-8');
+            $i++;
+            $j++;
+            continue;
+        }
+
+        if ($open === null) {
+            $open = array($position, $position, '');
+        }
+
+        if (($j < $columns) && (($i >= $rows) || ($table[$i][$j + 1] >= $table[$i + 1][$j]))) {
+            $open[2] .= $new_middle[$j];
+            $j++;
+        } else {
+            $position += mb_strlen($old_middle[$i], 'UTF-8');
+            $open[1] = $position;
+            $i++;
+        }
+    }
+
+    if ($open !== null) {
+        $hunks[] = $open;
+    }
+
+    return $hunks;
+}
+
+/**
+ * Applies one change to the texts of a paragraph's runs: the characters from
+ * $start to $end go, and $insert comes in where they were, in the run the
+ * change starts in (or, for text only added, the run of the character before
+ * it, whose formatting carries on as it does when typing; at the very start,
+ * the first run with text). Text added right after a link goes into the run
+ * after it, as a word processor types it, rather than into the link. Runs
+ * the change does not reach keep their text.
+ *
+ * @param array  $runs   [run, text] in order, the texts updated
+ * @param int    $start  in characters of the paragraph's text
+ * @param int    $end
+ * @param string $insert
+ * @return bool false when there is no run to put added text in
+ */
+function pg_office_docx_apply_hunk(&$runs, $start, $end, $insert)
+{
+    $target = -1;
+    $offset = 0;
+    $first_with_text = -1;
+    $keys = array_keys($runs);
+
+    foreach ($keys as $place => $index) {
+        $run = $runs[$index];
+        $length = mb_strlen($run['text'], 'UTF-8');
+
+        if (($first_with_text < 0) && ($length > 0)) {
+            $first_with_text = $index;
+        }
+
+        if ($target < 0) {
+            if ($start < $end) {
+                if (($start >= $offset) && ($start < $offset + $length)) {
+                    $target = $index;
+                }
+            } elseif (($start > 0) && ($start > $offset) && ($start <= $offset + $length)) {
+                $target = $index;
+                $next = isset($keys[$place + 1]) ? $runs[$keys[$place + 1]]['run'] : null;
+
+                if (($start === $offset + $length) && ($next !== null)
+                    && pg_office_docx_in_link($run['run']) && !pg_office_docx_in_link($next)) {
+                    $target = $keys[$place + 1];
+                }
+            }
+        }
+
+        $offset += $length;
+    }
+
+    if ($target < 0) {
+        $target = ($first_with_text >= 0) ? $first_with_text : (empty($runs) ? -1 : 0);
+    }
+
+    if (($target < 0) && ($insert !== '')) {
+        return false;
+    }
+
+    $offset = 0;
+
+    foreach ($runs as $index => $run) {
+        $length = mb_strlen($run['text'], 'UTF-8');
+        $from = max(0, min($length, $start - $offset));
+        $to = max(0, min($length, $end - $offset));
+        $offset += $length;
+
+        if (($from === $to) && ($index !== $target)) {
+            continue;
+        }
+
+        $runs[$index]['text'] = mb_substr($run['text'], 0, $from, 'UTF-8') . (($index === $target) ? $insert : '') . mb_substr($run['text'], $to, null, 'UTF-8');
+        $runs[$index]['changed'] = true;
+    }
+
+    return true;
+}
+
+/**
+ * Whether a run is the text of a link.
+ *
+ * @param DOMElement $run
+ * @return bool
+ */
+function pg_office_docx_in_link($run)
+{
+    return ($run->parentNode instanceof DOMElement) && ($run->parentNode->localName === 'hyperlink');
+}
+
+/**
+ * Writes a text into a run, keeping its formatting (rPr): what it held
+ * before goes, and the text comes in as text, tabs, line breaks and hyphens.
+ *
+ * @param DOMElement $run
+ * @param string     $text
+ */
+function pg_office_docx_run_write($run, $text)
+{
+    $document = $run->ownerDocument;
+    $namespace = (string) $run->namespaceURI;
+    $prefix = ((string) $run->prefix !== '') ? $run->prefix . ':' : '';
+
+    foreach (iterator_to_array($run->childNodes) as $child) {
+        if (!($child instanceof DOMElement) || ($child->localName !== 'rPr')) {
+            $run->removeChild($child);
+        }
+    }
+
+    $buffer = '';
+
+    $flush = function () use (&$buffer, $run, $document, $namespace, $prefix) {
+        if ($buffer === '') {
+            return;
+        }
+
+        $node = $document->createElementNS($namespace, $prefix . 't');
+
+        // Spaces at either end, or several in a row, are dropped by a
+        // reader unless the text says they belong to it.
+        if ((trim($buffer) !== $buffer) || (strpos($buffer, '  ') !== false)) {
+            $node->setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
+        }
+
+        $node->appendChild($document->createTextNode($buffer));
+        $run->appendChild($node);
+        $buffer = '';
+    };
+
+    $marks = array("\t" => 'tab', "\n" => 'br', "\u{2011}" => 'noBreakHyphen', "\u{00AD}" => 'softHyphen');
+
+    foreach (preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY) as $character) {
+        if (isset($marks[$character])) {
+            $flush();
+            $run->appendChild($document->createElementNS($namespace, $prefix . $marks[$character]));
+        } else {
+            $buffer .= $character;
+        }
+    }
+
+    $flush();
+}
+
+/**
+ * Gives a paragraph a new text, changing only the runs the change reaches.
+ *
+ * @param DOMElement $paragraph
+ * @param array      $edit  pg_office_docx_paragraph_edit() of it (editable)
+ * @param string     $text  the new text
+ * @param int        $limit how much word-by-word comparison it may take (pg_office_text_hunks())
+ * @return bool
+ */
+function pg_office_docx_paragraph_write($paragraph, $edit, $text, $limit = 250000)
+{
+    $runs = $edit['runs'];
+    $hunks = pg_office_text_hunks($edit['text'], $text, $limit);
+
+    // From the end backwards, so the positions of the earlier changes hold.
+    foreach (array_reverse($hunks) as $hunk) {
+        if (!pg_office_docx_apply_hunk($runs, $hunk[0], $hunk[1], $hunk[2])) {
+            // A paragraph with no run at all: one is made, formatted like the
+            // paragraph mark.
+            $runs[] = array('run' => pg_office_docx_new_run($paragraph), 'text' => $hunk[2], 'changed' => true);
+        }
+    }
+
+    foreach ($runs as $run) {
+        if (empty($run['changed'])) {
+            continue;
+        }
+
+        if ($run['text'] === '') {
+            $run['run']->parentNode->removeChild($run['run']);
+            continue;
+        }
+
+        pg_office_docx_run_write($run['run'], $run['text']);
+    }
+
+    return true;
+}
+
+/**
+ * A new, empty run at the end of a paragraph that has none, with the
+ * formatting of the paragraph mark.
+ *
+ * @param DOMElement $paragraph
+ * @return DOMElement
+ */
+function pg_office_docx_new_run($paragraph)
+{
+    $document = $paragraph->ownerDocument;
+    $namespace = (string) $paragraph->namespaceURI;
+    $prefix = ((string) $paragraph->prefix !== '') ? $paragraph->prefix . ':' : '';
+    $run = $document->createElementNS($namespace, $prefix . 'r');
+
+    foreach ($paragraph->childNodes as $child) {
+        if (($child instanceof DOMElement) && ($child->localName === 'pPr')) {
+            foreach ($child->childNodes as $property) {
+                if (($property instanceof DOMElement) && ($property->localName === 'rPr')) {
+                    $run->appendChild($property->cloneNode(true));
+                }
+            }
+        }
+    }
+
+    $paragraph->appendChild($run);
+
+    return $run;
+}
+
+/**
+ * What the document's settings say against an edit here: protection the
+ * author switched on (read only, comments only, forms only, tracked changes
+ * only, or a password to change it), or changes being tracked, which an
+ * edit here would not record.
+ *
+ * @param ZipArchive $zip
+ * @return string '' when nothing, protected or tracking
+ */
+function pg_office_docx_restriction($zip)
+{
+    $part = 'word/settings.xml';
+
+    foreach (pg_office_rels($zip, 'word/_rels/document.xml.rels') as $relationship) {
+        if (!$relationship['external'] && ($relationship['type'] === 'settings')) {
+            $part = pg_office_part_name('word/', $relationship['target']);
+        }
+    }
+
+    $settings = pg_office_xml($zip, $part);
+
+    if ($settings === null) {
+        return '';
+    }
+
+    $on = function ($value) {
+        return !in_array(strtolower((string) $value), array('0', 'false', 'off'), true);
+    };
+
+    foreach ($settings->getElementsByTagNameNS('*', 'writeProtection') as $protection) {
+        return 'protected';
+    }
+
+    foreach ($settings->getElementsByTagNameNS('*', 'documentProtection') as $protection) {
+        $enforced = pg_office_attr($protection, 'enforcement');
+
+        if (($enforced !== '') && $on($enforced) && !in_array(strtolower(pg_office_attr($protection, 'edit')), array('', 'none'), true)) {
+            return 'protected';
+        }
+    }
+
+    foreach ($settings->getElementsByTagNameNS('*', 'trackRevisions') as $tracking) {
+        if ($on(pg_office_attr($tracking, 'val'))) {
+            return 'tracking';
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Whether a document may be edited here at all, and why not: the package
+ * signed, protected, tracking changes, its main part too large, or written
+ * in a way no word processor writes (not UTF-8, a DOCTYPE).
+ *
+ * @param ZipArchive $zip
+ * @return string '' when it may; signed, protected, tracking, large or unusual
+ */
+function pg_office_docx_edit_refusal($zip)
+{
+    if (pg_office_signed($zip)) {
+        return 'signed';
+    }
+
+    $restriction = pg_office_docx_restriction($zip);
+
+    if ($restriction !== '') {
+        return $restriction;
+    }
+
+    $stat = $zip->statName('word/document.xml');
+
+    if (($stat === false) || ((int) $stat['size'] > PG_OFFICE_EDIT_MAX_DOCUMENT)) {
+        return 'large';
+    }
+
+    // The declaration and a DOCTYPE stand before the first element.
+    $head = (string) $zip->getFromName('word/document.xml', 1024);
+
+    if (!pg_office_xlsx_utf8_part($head) || (stripos($head, '<!DOCTYPE') !== false)) {
+        return 'unusual';
+    }
+
+    return '';
+}
+
+/**
+ * Writes changed paragraph texts into a document on disk.
+ *
+ * @param string $path      the document
+ * @param array  $changes   list of [p => the paragraph's position (pg_office_docx_paragraphs()), text => the new text]
+ * @param string $version   what the person opened (pg_office_version())
+ * @param string $directory where the new package is built; data/temp when ''
+ * @return array ok, code, error, size, version, changed
+ */
+function pg_office_docx_save($path, $changes, $version, $directory = '')
+{
+    $fail = function ($code, $paragraph = '') {
+        return array('ok' => false, 'code' => $code, 'error' => pg_office_docx_edit_message($code, $paragraph), 'size' => 0, 'version' => '', 'changed' => 0);
+    };
+
+    if (!pg_office_ready()) {
+        return $fail('ready');
+    }
+
+    if (!is_array($changes) || empty($changes)) {
+        return $fail('none');
+    }
+
+    if (count($changes) > PG_OFFICE_EDIT_MAX_PARAGRAPHS) {
+        return $fail('many');
+    }
+
+    // A paragraph named twice takes the last text.
+    $wanted = array();
+
+    foreach ($changes as $change) {
+        if (!is_array($change) || !isset($change['p']) || !is_scalar($change['p']) || !ctype_digit((string) $change['p'])) {
+            return $fail('none');
+        }
+
+        $text = pg_office_xlsx_clean_text(isset($change['text']) ? $change['text'] : '');
+
+        if ($text === null) {
+            return $fail('text');
+        }
+
+        if (mb_strlen($text, 'UTF-8') > PG_OFFICE_EDIT_MAX_PARAGRAPH) {
+            return $fail('long');
+        }
+
+        $wanted[(int) $change['p']] = $text;
+    }
+
+    $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
+
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0755, true);
+    }
+
+    $lock = pg_office_edit_lock($path, $directory);
+
+    if ($lock === null) {
+        return $fail('busy');
+    }
+
+    $result = pg_office_save_package($path, (string) $version, $directory, $fail, function ($zip, $spool) use ($wanted, $fail) {
+        return pg_office_docx_save_parts($zip, $wanted, $fail, $spool);
+    });
+
+    pg_office_edit_unlock($lock);
+
+    return $result;
+}
+
+/**
+ * Works out the main part of a document with the changed paragraphs written
+ * in, and writes it to a file.
+ *
+ * @param ZipArchive $zip
+ * @param array      $wanted paragraph position => new text
+ * @param callable   $fail
+ * @param callable   $spool  writes a part to a file (pg_office_save_package())
+ * @return array ok, parts (part name => file), changed; or a refusal
+ */
+function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
+{
+    $refusal = pg_office_docx_edit_refusal($zip);
+
+    if ($refusal !== '') {
+        return $fail($refusal);
+    }
+
+    $xml = (string) $zip->getFromName('word/document.xml');
+
+    if (!pg_office_xlsx_utf8_part(substr($xml, 0, 200)) || (stripos($xml, '<!DOCTYPE') !== false)) {
+        return $fail('unusual');
+    }
+
+    // Read without dropping blank text: a space between two runs is text.
+    $document = new DOMDocument('1.0', 'UTF-8');
+    $previous = libxml_use_internal_errors(true);
+    $loaded = $document->loadXML($xml, LIBXML_NONET);
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+    unset($xml);
+
+    if (!$loaded) {
+        return $fail('unusual');
+    }
+
+    $paragraphs = pg_office_docx_paragraphs($document);
+    $changed = 0;
+
+    // Every paragraph is checked before any is written.
+    $edits = array();
+
+    foreach ($wanted as $position => $text) {
+        if (!isset($paragraphs[$position])) {
+            return $fail('missing', (string) ($position + 1));
+        }
+
+        $edit = pg_office_docx_paragraph_edit($paragraphs[$position]);
+
+        if ($edit['lock'] !== '') {
+            return $fail('locked', (string) ($position + 1));
+        }
+
+        if ($edit['text'] !== $text) {
+            $edits[$position] = $edit;
+        }
+    }
+
+    // Comparing word by word costs the product of the two texts' word
+    // counts. One save shares a fixed amount of it; a paragraph past that
+    // is written as a single change: the same text, fewer runs left alone.
+    $budget = 2000000;
+
+    foreach ($edits as $position => $edit) {
+        $cost = min(250000, count(pg_office_text_tokens($edit['text'])) * count(pg_office_text_tokens($wanted[$position])));
+        $limit = ($cost <= $budget) ? 250000 : 0;
+        $budget -= ($cost <= $budget) ? $cost : 0;
+
+        pg_office_docx_paragraph_write($paragraphs[$position], $edit, $wanted[$position], $limit);
+        $changed++;
+    }
+
+    $xml = $document->saveXML();
+    unset($document, $paragraphs, $edits);
+
+    if (!is_string($xml) || !pg_office_xml_well_formed($xml)) {
+        return $fail('save');
+    }
+
+    $file = $spool($xml);
+
+    if ($file === null) {
+        return $fail('save');
+    }
+
+    return array('ok' => true, 'parts' => array('word/document.xml' => $file), 'changed' => $changed);
+}
+
+/**
+ * The message for a refused document save, by its reason.
+ *
+ * @param string $code
+ * @param string $paragraph the paragraph concerned, counted from 1
+ * @return string
+ */
+function pg_office_docx_edit_message($code, $paragraph = '')
+{
+    switch ($code) {
+        case 'ready':
+            return lang('This server cannot change documents (the PHP zip or xml extension is missing).');
+        case 'signed':
+            return lang('The file is digitally signed, so its text is not changed here.');
+        case 'protected':
+            return lang('The document is protected against changes.');
+        case 'tracking':
+            return lang('Track Changes is on for this document. Change it in a word processor, so that the changes are tracked.');
+        case 'large':
+            return lang('This document is too large to change here.');
+        case 'many':
+            return lang(array('string' => 'Too many paragraphs were changed at once. Save at most {var:1} paragraphs at a time.', 'vars' => array(PG_OFFICE_EDIT_MAX_PARAGRAPHS)));
+        case 'long':
+            return lang('A paragraph is too long to be saved here.');
+        case 'text':
+            return lang('The text of a paragraph could not be read.');
+        case 'locked':
+            return lang(array('string' => 'Paragraph {var:1} holds more than text and cannot be changed here.', 'vars' => array($paragraph)));
+        case 'missing':
+            return lang(array('string' => 'Paragraph {var:1} is not in the file.', 'vars' => array($paragraph)));
+        case 'unusual':
+            return lang('This document cannot be changed here.');
+    }
+
+    return pg_office_edit_message($code);
 }
