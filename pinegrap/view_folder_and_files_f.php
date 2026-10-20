@@ -774,19 +774,8 @@ function pg_explorer_archive_size($zip)
     return array($total, (int) $zip->numFiles);
 }
 
-// Whether the disk the data folder sits on has room for $bytes plus a
-// margin. Hosts that switch disk_free_space() off answer "unknown", which is
-// not a refusal.
-function pg_explorer_disk_has_room($bytes)
-{
-    if (!function_exists('disk_free_space')) {
-        return true;
-    }
-
-    $free = @disk_free_space(PG_FUNCTIONS_DIR . '/data');
-
-    return ($free === false) || ((float) $free >= ((float) $bytes + 67108864));
-}
+// pg_explorer_disk_has_room() is in includes/fn/files.php: the ZIP importers
+// ask it too (pg_zip_import_open()).
 
 // Names that must never be written into the web root by an extraction.
 //
