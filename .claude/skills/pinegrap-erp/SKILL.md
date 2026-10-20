@@ -499,6 +499,9 @@ Faz -1 – 9 bitti. Kalanlar (e-belge sürücüleri, mali müşavir onayı, elle
   (ödemede "bilgilerimi güncelle" kaldırılmış) ad, adres, e-posta, telefon
   siparişin fatura bilgisinden dolar (`erp_account_data_with_order()`); yoksa
   cari "#<kişi no>" adıyla adressiz açılır. Var olan cariye dokunulmaz.
+  Türk VKN'si GİB'de e-Fatura kayıtlıysa yeni cari GİB'deki unvanla, şirket
+  olarak açılır (`erp_account_data_with_registered_name()`, sağlayıcının
+  `check_taxpayer`'ı; TCKN sorulmaz, sorgu düşerse cari eskisi gibi açılır).
 
 ## Belge, PDF, şablon
 

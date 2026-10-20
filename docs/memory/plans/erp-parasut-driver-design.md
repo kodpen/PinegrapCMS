@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-driver-design
-description: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder, account name for accounts opened from orders), decisions behind both
+description: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 ---
 
 ## Where does it stand?
@@ -28,9 +28,9 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 ## Can incoming e-invoices come through Paraşüt?
 - No: v4 lists no incoming e-invoices (`e_invoices` has create, show and pdf only) and hands out no UBL; `purchase_bills` are Paraşüt's own expense records (what `view_parasut_inbox.php` lists). The driver declares no `inbox`.
 
-## Can the account card fill itself? (partly done)
+## Can the account card fill itself?
 - Done (#625): Query beside the tax number on the account form fills the name from GİB's register (docs/memory/erp/erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
-- Open: the same correction for an account opened from an order (`erp_account_for_contact()`). It would put a provider call into the order or invoice path; not started, to be decided.
+- Done: an account opened from an order takes the name GİB registers its VKN under (docs/memory/erp/erp-taxpayer-lookup.md).
 
 ## How is testing done without a sandbox?
 - Live tests only (the staging host does not take merchant credentials). The owner's demo application points at a demo company; low-value one-line invoices there, with the cancel path tried on each.
