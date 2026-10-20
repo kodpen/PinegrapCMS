@@ -636,20 +636,29 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // first replace designer regions.  We also replace designer regions inside of other
     // designer regions in this block of code (only one level though).
     preg_match_all('/<cregion>.*?<\/cregion>/i', $content, $regions);
-    
-    foreach ($regions[0] as $region) {
-        $cregion_name = strip_tags($region);
 
-        $query =
-            "SELECT
-                cregion_id,
-                cregion_content,
-                cregion_designer_type,
-                cregion_name
-            FROM cregion
-            WHERE cregion_name = '" . escape($cregion_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
+    // The regions the content names are read in one query, then the regions
+    // those designer regions name in a second (pg_common_regions() keeps both
+    // for the common region pass below).
+    $cregion_rows = pg_common_regions(array_map('strip_tags', $regions[0]));
+    $embedded_cregion_names = array();
+
+    foreach ($cregion_rows as $row) {
+        if (($row !== null) && ($row['cregion_designer_type'] == 'yes')) {
+            preg_match_all('/<cregion>.*?<\/cregion>/i', $row['cregion_content'], $embedded_regions);
+            $embedded_cregion_names = array_merge($embedded_cregion_names, array_map('strip_tags', $embedded_regions[0]));
+        }
+    }
+
+    $embedded_cregion_rows = pg_common_regions($embedded_cregion_names);
+
+    foreach ($regions[0] as $region) {
+        $row = $cregion_rows[strip_tags($region)];
+
+        // No region by that name: the tag stays as it is.
+        if ($row === null) {
+            continue;
+        }
 
         $cregion_id = $row['cregion_id'];
         $cregion_content = $row['cregion_content'];
@@ -661,19 +670,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // Replace other designer regions that might exist inside this designer region.
             preg_match_all('/<cregion>.*?<\/cregion>/i', $cregion_content, $embedded_regions);
             foreach ($embedded_regions[0] as $embedded_region) {
-                $embedded_cregion_name = strip_tags($embedded_region);
+                $row = $embedded_cregion_rows[strip_tags($embedded_region)];
 
-                $query =
-                    "SELECT
-                        cregion_id,
-                        cregion_content,
-                        cregion_designer_type,
-                        cregion_name
-                    FROM cregion
-                    WHERE cregion_name = '" . escape($embedded_cregion_name) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-                
+                if ($row === null) {
+                    continue;
+                }
+
                 $embedded_cregion_id = $row['cregion_id'];
                 $embedded_cregion_content = $row['cregion_content'];
                 $embedded_cregion_designer_type = $row['cregion_designer_type'];
@@ -5312,19 +5314,24 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
     // replace code with common regions
     preg_match_all('/<cregion>.*?<\/cregion>/i', $content, $regions);
+
+    // Names the designer region pass read are not read again; only a tag that
+    // appeared since (PHP, dynamic and system regions) costs a query, and all
+    // such tags share one.
+    $cregion_rows = pg_common_regions(array_map('strip_tags', $regions[0]));
+
+    // The common regions a user below Manager may edit, read once on the
+    // first common region of an edit-mode view.
+    $common_regions_user_can_edit = null;
+
     foreach ($regions[0] as $region) {
-        $cregion_name = strip_tags($region);
-        $query =
-            "SELECT
-                cregion_id,
-                cregion_content,
-                cregion_designer_type,
-                cregion_name
-            FROM cregion
-            WHERE cregion_name = '" . escape($cregion_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        
+        $row = $cregion_rows[strip_tags($region)];
+
+        // No region by that name: the tag stays as it is.
+        if ($row === null) {
+            continue;
+        }
+
         $cregion_id = $row['cregion_id'];
         $cregion_content = $row['cregion_content'];
         $cregion_designer_type = $row['cregion_designer_type'];
@@ -5332,13 +5339,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // If this is a common region (not a designer region), then continue to replace it.
         if ($cregion_designer_type == 'no') {
+            if (($mode == 'edit') && ($user['role'] >= 3) && ($common_regions_user_can_edit === null)) {
+                $common_regions_user_can_edit = get_items_user_can_edit('common_regions', $user['id']);
+            }
+
             // If mode is edit and user has edit access to common region, then add edit container.
             if (
                 ($mode == 'edit')
                 &&
                 (
                     ($user['role'] < 3)
-                    || (in_array($cregion_id, get_items_user_can_edit('common_regions', $user['id'])) == true)
+                    || (in_array($cregion_id, $common_regions_user_can_edit) == true)
                 )
             ) {
                 if ($page_editor_version == 'latest') {
