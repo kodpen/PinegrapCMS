@@ -7,6 +7,7 @@ description: Cron/automated upgrade entry points (AUTOMATED_UPGRADE_SECRET), adm
 - `php pinegrap/install/index.php automated_upgrade` (needs no key), or `install/index.php?automated_upgrade=true&secret=<AUTOMATED_UPGRADE_SECRET>`.
 - The constant lives in `data/config.php`, is opt-in, at least 16 characters; if absent the URL path is closed. Both run in one request and answer plain text.
 - A wrong key gives 403 plus an attempt counter.
+- The installation has a command line mode beside it (`php pinegrap/install/index.php install`): docs/memory/platform/install-command-line.md
 
 ## What does an admin session get?
 - An administrator session (redirect from `software_update.php`) needs no key and lands on the screen: the loop starts by itself; if no version is pending it returns to `welcome.php`.

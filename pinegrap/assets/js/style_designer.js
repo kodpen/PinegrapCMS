@@ -25143,8 +25143,12 @@ const StyleDesigner = (function () {
             h += row(_sdT('Target'),   _mcSel('target', targetOpts, _unifProp('target')));
             h += row(_sdT('Relationship'),   _mcSel('rel',    relOpts,    _unifProp('rel')));
         } else if (role === 'c:image') {
-            // alt / src intentionally hidden (unique-per-element rule)
-            h += row(_sdT('Loading attribute'), _mcSel('loading', [['',_sdT('Default')],['lazy',_sdT('Lazy')],['eager',_sdT('Eager')]], _unifProp('loading')));
+            // alt / src intentionally hidden (unique-per-element rule).
+            // Loading reads and writes the loading attribute, as on a single
+            // image (_sdImgLoading()).
+            var _ldVals = nodes.map(_sdImgLoading);
+            var _ldUnif = _ldVals.every(function(v) { return v === _ldVals[0]; }) ? _ldVals[0] : null;
+            h += row(_sdT('Loading attribute'), _mcSel('loading', [['',_sdT('Default')],['lazy',_sdT('Lazy')],['eager',_sdT('Eager')]], _ldUnif));
         } else if (role === 'c:heading') {
             h += row(_sdT('Level'), _mcSel('tag', [['h1','H1'],['h2','H2'],['h3','H3'],['h4','H4'],['h5','H5'],['h6','H6']], _unifProp('tag')));
         } else if (role === 's:a') {
@@ -25427,12 +25431,16 @@ const StyleDesigner = (function () {
         });
 
         // ── data-mc-prop selects (renderMcOptions: target, rel, loading, tag-level) ──
+        // An image's loading choice is its loading attribute (_sdSetImgLoading()).
         panel.querySelectorAll('select[data-mc-prop]').forEach(function(el) {
             el.addEventListener('change', function() {
                 var prop = this.getAttribute('data-mc-prop');
                 var val  = this.value;
                 saveState();
-                nodes.forEach(function(n) { n.props[prop] = val; });
+                nodes.forEach(function(n) {
+                    if (prop === 'loading') _sdSetImgLoading(n, val);
+                    else n.props[prop] = val;
+                });
                 _refresh();
             });
         });
@@ -32650,6 +32658,7 @@ const StyleDesigner = (function () {
         ],
         error_page: [
             ['is_not_found',   _sdT('The page was not found (404)')],
+            ['is_maintenance', _sdT('The site is in maintenance mode (503)')],
             ['is_other_error', _sdT('Another error (not 404)')],
             ['has_error_code', _sdT('The error carries an HTTP code')]
         ]
@@ -36128,6 +36137,39 @@ const StyleDesigner = (function () {
         return row(_sdT('Font'), '<select class="form-select form-select-sm" data-prop="fontFamily">' + opts + '</select>');
     }
 
+    // ── Image loading choice ─────────────────────────────────────────────────
+    // An Image element's loading choice is its loading attribute (_attrs):
+    // start trees and imported markup keep it there, and the Attributes panel
+    // and the code view show it there. props.loading is still read: the page
+    // renderer honours it, but an attribute of the same name outranks it
+    // (pg_img_loading_attrs() writes nothing once the node writes its own),
+    // so a prop set under a start tree's loading="lazy" never reached the
+    // page. '' leaves it to the page: in a page body the first image is
+    // fetched first and the others lazily.
+    function _sdImgLoading(n) {
+        var a = (n && n.props && Array.isArray(n.props._attrs)) ? n.props._attrs : [];
+        for (var i = 0; i < a.length; i++) {
+            if (a[i] && String(a[i].name || '').trim().toLowerCase() === 'loading') {
+                return String(a[i].value == null ? '' : a[i].value).trim().toLowerCase();
+            }
+        }
+        var p = String((n && n.props && n.props.loading) || '').trim().toLowerCase();
+        return (p === 'lazy' || p === 'eager') ? p : '';
+    }
+
+    // Writes the choice as the node's one loading attribute ('' removes it)
+    // and drops props.loading, so the page has a single source.
+    function _sdSetImgLoading(n, value) {
+        var v = String(value == null ? '' : value).trim().toLowerCase();
+        var a = Array.isArray(n.props._attrs) ? n.props._attrs.filter(function (x) {
+            return !(x && String(x.name || '').trim().toLowerCase() === 'loading');
+        }) : [];
+        if (v) a.push({ name: 'loading', value: v });
+        if (a.length) n.props._attrs = a;
+        else delete n.props._attrs;
+        delete n.props.loading;
+    }
+
     function propsContent(n) {
         var ct = n.props.contentType;
         var cnt = CONTENT[ct];
@@ -36279,6 +36321,19 @@ const StyleDesigner = (function () {
             h += row(_sdT('Aspect Ratio'), '<select class="form-select form-select-sm" data-prop="aspectRatio">' +
                 arOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + ((n.props.aspectRatio || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+                }).join('') +
+                '</select>');
+            // Loading: the image's loading attribute (_sdImgLoading()). A
+            // value other than lazy/eager (typed in the Attributes panel)
+            // is listed as it is, so the row shows what the page gets and
+            // can replace it.
+            var _ldCur  = _sdImgLoading(n);
+            var _ldOpts = [['', _sdT('Default')], ['lazy', _sdT('Lazy')], ['eager', _sdT('Eager')]];
+            if (_ldCur !== '' && _ldCur !== 'lazy' && _ldCur !== 'eager') _ldOpts.push([_ldCur, _ldCur]);
+            h += row(_sdT('Loading attribute'),
+                '<select class="form-select form-select-sm" data-img-loading title="' + esc(_sdT('Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.')) + '">' +
+                _ldOpts.map(function(o) {
+                    return '<option value="' + esc(o[0]) + '"' + (o[0] === _ldCur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
                 }).join('') +
                 '</select>');
         }
@@ -38959,7 +39014,18 @@ const StyleDesigner = (function () {
                 }
             });
         });
-        
+
+        // An Image element's Loading row: the choice is written as the
+        // loading attribute (_sdSetImgLoading()), not into props.loading.
+        document.querySelectorAll('#sd-properties select[data-img-loading]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!selectedNode) return;
+                saveState();
+                _sdSetImgLoading(selectedNode, this.value);
+                render();
+            });
+        });
+
         // data-bind-action / data-bind-value / data-bind-section — write to
         // selectedNode.props._bindings.{action|value|section}. Designers pin
         // a backend wiring (action=Add to Cart, value=Quantity, section=
@@ -43577,6 +43643,11 @@ const StyleDesigner = (function () {
         var _bgImgInp = document.getElementById('sd-bg-img-inp');
         if (_bgImgInp) markRow(_bgImgInp, '');
 
+        // 12. An Image element's Loading row — default '' (the page decides)
+        document.querySelectorAll('#sd-properties select[data-img-loading]').forEach(function(el) {
+            markRow(el, '');
+        });
+
         // Color pickers (Text Col / Bg Col / Border Color) are <select data-stylegroup> — already
         // covered by rule #5 above, so no dedicated swatch-marking branch is needed here anymore.
 
@@ -43616,7 +43687,7 @@ const StyleDesigner = (function () {
                 var def = JSON.parse(lbl.dataset.resetVal);
                 var ctrl = propRow.querySelector(
                     'select[data-stylegroup], select[data-util], ' +
-                    'select[data-bg-prop], input[data-bg-prop], ' +
+                    'select[data-bg-prop], input[data-bg-prop], select[data-img-loading], ' +
                     '[data-prop], [data-dd-prop], ' +
                     '[data-modal-fade], [data-modal-cls], [data-modal-section-vis], [data-modal-fullscreen], ' +
                     '[data-oc-header-vis], [data-oc-resp], [data-oc-pos-sel], ' +
@@ -47257,9 +47328,11 @@ const StyleDesigner = (function () {
 
             case 'error_page': {
                 // The site's error screen: one block for "not found", one for
-                // every other error; the server keeps the one that applies.
-                // The home link always stays, "back" drops without a
-                // same-site referrer. Mirrors _render_system_widget_error_page().
+                // maintenance mode, one for every other error; the server
+                // keeps the one that applies. The home link always stays,
+                // "back" drops without a same-site referrer. Maintenance has
+                // no links: every page of the site answers with this screen
+                // until it ends. Mirrors _render_system_widget_error_page().
                 var errLinks = function () {
                     return createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-center gap-2', customName: _sdT('Links') }, [
                         createNode('content', { contentType: 'link', text: _sdT('Go to the Home Page'), href: '#', cssClass: 'btn btn-primary',
@@ -47281,6 +47354,13 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'paragraph', text: '/old-page', cssClass: 'small text-body-secondary font-monospace mb-4',
                                 _bindings: { text: '__requested_url' } }),
                             errLinks()
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'text-center py-5', customName: _sdT('Maintenance'),
+                            _bindings: { eo_visible_if: 'is_maintenance' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Down for Maintenance'), cssClass: 'h2 mb-3' }),
+                            createNode('content', { contentType: 'paragraph',
+                                text: _sdT('This site is undergoing maintenance and will be back shortly.'),
+                                cssClass: 'lead text-body-secondary mb-0', _bindings: { text: '__error_message' } })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'text-center py-5', customName: _sdT('Other Error'),
                             _bindings: { eo_visible_if: 'is_other_error' } }, [
@@ -56202,6 +56282,105 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
+    // Read from the canvas, not from the tree: the colour of a text and of
+    // what it sits on come from the design's CSS, its theme and Bootstrap's
+    // classes. Every text the canvas shows is measured against the colour
+    // behind it (PgContrast, assets/js/pg_contrast.js); a text with a picture
+    // under it is left alone, since no single colour is behind it. One issue
+    // per element, for its worst text, on the nearest element a tree knows -
+    // inside shared components and widgets too, like cf_field_unnamed.
+
+    // Editor chrome that has text of its own (toolbars, badges, placeholders,
+    // bands), the sample records drawn after a loop's first, and elements a
+    // switched-off feature drops from the page.
+    var _SD_CONTRAST_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
+        '.sd-system-empty-hint, .sd-system-placeholder, .sd-section-binding-hint, .sd-loop-band, .sd-loop-band-row, ' +
+        '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off';
+
+    // An editor box around an element: its background (the selection tint,
+    // the loop area's) is the editor's, not the page's. Table parts and a
+    // summary are their own wrapper (buildTableNodeEl(), _sdSelfWrapped()),
+    // so theirs is the page's.
+    function _sdContrastEditorBox(el) {
+        var cl = el.classList;
+        if (!cl) return false;
+        if (cl.contains('sd-wrap')) {
+            return !el.hasAttribute('data-sd-self') && TABLE_STRUCT_TAGS.indexOf(el.tagName.toLowerCase()) === -1;
+        }
+        return cl.contains('sd-shared-inner') || cl.contains('sd-loop-area') || cl.contains('sd-system-drop-area');
+    }
+
+    // Every node the canvas can show, by id: the page's and those of the
+    // shared components, whose own nodes carry their ids on the canvas.
+    function _sdContrastNodeIndex(root) {
+        var index = {};
+        function walk(n) {
+            if (!n) return;
+            if (n._id) index[n._id] = n;
+            if (n.children) n.children.forEach(walk);
+        }
+        walk(root);
+        Object.keys(_sharedCache).forEach(function (sid) {
+            var c = _sharedCache[sid];
+            if (c && c.tree) walk(c.tree);
+        });
+        return index;
+    }
+
+    function _sdContrastIssues(root) {
+        if (!canvasDoc || !canvasDoc.body || !window.PgContrast) return [];
+        var body = canvasDoc.body;
+        var opts = {
+            skip: function (el) { return el.matches(_SD_CONTRAST_SKIP); },
+            ignore: _sdContrastEditorBox,
+            // The canvas grid overlay is the body's background image.
+            noImage: function (el) { return el === body && body.classList.contains('sd-grid-overlay'); },
+            // The editor tints the cells of a repeated table row; under the
+            // tint is the table's own colour (Bootstrap's --bs-table-bg).
+            background: function (el, cs) {
+                if ((el.tagName === 'TD' || el.tagName === 'TH') && el.parentElement && el.parentElement.classList.contains('sd-loop-tr')) {
+                    return PgContrast.parse(cs.getPropertyValue('--bs-table-bg')) || [0, 0, 0, 0];
+                }
+                return undefined;
+            }
+        };
+        var cache = (typeof WeakMap === 'function') ? new WeakMap() : null;
+        var index = _sdContrastNodeIndex(root);
+        var pics = PgContrast.pictures(body, opts);
+        var worst = {};
+        PgContrast.textRuns(body, opts).forEach(function (run) {
+            var node = null;
+            for (var w = run.el.closest('[data-sd-id]'); w && !node; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
+                node = index[w.getAttribute('data-sd-id')] || null;
+            }
+            if (!node || node.type === 'root') return;
+            var res = PgContrast.check(run, pics, opts, cache);
+            if (!res || res.ok) return;
+            // How far below its minimum: the text that reads worst is named.
+            var gap = res.ratio / res.min;
+            if (!worst[node._id] || gap < worst[node._id].gap) worst[node._id] = { node: node, gap: gap, res: res, text: run.text };
+        });
+        var num = function (v, digits) {
+            try {
+                return Number(v).toLocaleString(_sdLocale(), { minimumFractionDigits: digits, maximumFractionDigits: 1 });
+            } catch (e) {
+                return String(v);
+            }
+        };
+        return Object.keys(worst).map(function (id) {
+            var f = worst[id];
+            var text = f.text.length > 40 ? f.text.slice(0, 39) + '…' : f.text;
+            // Rounded down, so a 4.48:1 never reads as the 4.5:1 it misses.
+            var ratio = num(Math.floor(f.res.ratio * 10) / 10, 1);
+            return {
+                rule: 'low_contrast',
+                label: _sdT('Low text contrast {var:1}:1, at least {var:2}:1 is needed: "{var:3}"', [ratio, num(f.res.min, 0), text]),
+                node: f.node, nodeLabel: getNodeLabel(f.node), seo: ''
+            };
+        });
+    }
+
     function validateTree(root) {
         var issues = [];
         var ctx = { ids: {}, lastHeading: 0, inInteractive: false, _intStack: 0, _labelFor: {} };
@@ -56249,6 +56428,12 @@ const StyleDesigner = (function () {
                 seo: pi.seo
             });
         });
+        // A broken canvas must not take the rest of the audit with it.
+        try {
+            _sdContrastIssues(root).forEach(function (ci) { issues.push(ci); });
+        } catch (e) {
+            if (window.console) console.warn('Contrast check skipped', e);
+        }
         return issues;
     }
 

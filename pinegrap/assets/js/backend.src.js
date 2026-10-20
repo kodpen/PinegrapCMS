@@ -449,6 +449,15 @@ $(document).ready(function () {
 
                     break;
                 case 's':
+                    // A dialog or editor that saves on Ctrl+S itself (Site
+                    // Settings, a code editor dialog) has already taken the
+                    // key. Going on would also submit the screen behind it:
+                    // that form was saved, the page reloaded and the dialog
+                    // closed before its own answer arrived.
+                    if (event.isDefaultPrevented()) {
+                        break;
+                    }
+
                     // A "disable_shortcut" class has been added to forms that purely delete
                     // items, because the shortcut is too dangerous in that case.
                     // We could still allow it for those types of forms, but just show
