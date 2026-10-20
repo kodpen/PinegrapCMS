@@ -24095,5 +24095,14 @@
     "Paraşüt no longer has this card.": "Paraşüt'te bu kart artık yok.",
     "Paraşüt would not hand over the card: {var:1}": "Paraşüt kartı vermedi: {var:1}",
     "Paraşüt would not open the card: {var:1}": "Paraşüt kartı açmadı: {var:1}",
-    "Paraşüt took the card but did not say its id. Read the list again to find it.": "Paraşüt kartı aldı ama kimliğini bildirmedi. Bulmak için listeyi yeniden okuyun."
+    "Paraşüt took the card but did not say its id. Read the list again to find it.": "Paraşüt kartı aldı ama kimliğini bildirmedi. Bulmak için listeyi yeniden okuyun.",
+    "This site has no encryption key, so it cannot keep the keys of a payment service.": "Bu sitenin şifreleme anahtarı yok; bu yüzden bir ödeme sağlayıcısının anahtarlarını saklayamaz.",
+    "The stored keys of {var:1} cannot be read with this site's encryption key. Enter them again.": "{var:1} için kayıtlı anahtarlar bu sitenin şifreleme anahtarıyla okunamıyor. Yeniden girin.",
+    "The keys are in your {var:1} account.": "Anahtarlar {var:1} hesabınızda.",
+    "The payment service gave no answer.": "Ödeme sağlayıcısı cevap vermedi.",
+    "The payment was not accepted.": "Ödeme kabul edilmedi.",
+    "The payment service gave an answer that cannot be read. Check the payment on the service's own screen before trying again.": "Ödeme sağlayıcısının cevabı okunamadı. Yeniden denemeden önce ödemeyi sağlayıcının kendi ekranında kontrol edin.",
+    "This payment method is not available.": "Bu ödeme yöntemi kullanılamıyor.",
+    "This payment method cannot do that.": "Bu ödeme yöntemi bu işlemi yapamıyor.",
+    "The payment service could not be reached.": "Ödeme sağlayıcısına ulaşılamadı."
 }
