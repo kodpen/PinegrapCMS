@@ -21,7 +21,7 @@ description: Trendyol seller API (V2) facts for the connector: hosts, Basic auth
 - Tree: `GET /integration/product/product-categories` → `categories[{id,name,parentId?,subCategories[]}]`; leaf = empty/absent `subCategories`; only leaves take products; refresh about weekly.
 - Attributes V2: `GET /integration/product/categories/{id}/attributes` → `categoryAttributes[{attribute{id,name}, required, allowCustom, varianter, slicer, allowMultipleAttributeValues}]`, **without values**.
 - Values: `GET .../categories/{id}/attributes/{attrId}/values?page=&size=` (size max 1000) → `{totalPages, content[{attributeValueId, attributeValue}]}`. The page count ends the loop; a short page only when no count.
-- `slicer` and `allowMultipleAttributeValues` have no column; not needed until listings (step 2).
+- `slicer` and `allowMultipleAttributeValues` have no column; the V2 create body does not use them (one value per attribute is sent).
 
 ## What are the limits?
 - 50 requests to one endpoint per 10 s → 429 `too.many.requests`. From 14 Sep 2026 per-minute group limits scale with the listing limit (product read 1000–2000, product write 200–600, inventory/price write 350–2000; 30 price updates/min per barcode).
@@ -31,6 +31,6 @@ description: Trendyol seller API (V2) facts for the connector: hosts, Basic auth
 - Not fully documented. Read `errors[].message`, then `errors[].key`, then `message`, then `exception` (`mp_trendyol_error_message()`).
 
 ## What is still unknown?
-- Status for a valid key with a wrong seller id (401 or 403). Whether stage has the same category ids as live (the cache is per provider, not per environment). Brands (`/integration/product/brands`, `by-name` answers a bare array) are for step 2.
+- Status for a valid key with a wrong seller id (401 or 403). Whether stage has the same category ids as live (the cache is per provider, not per environment).
 
-Related: docs/memory/commerce/marketplace-outbound-layer.md
+Related: docs/memory/commerce/trendyol-listings.md, docs/memory/commerce/marketplace-outbound-layer.md
