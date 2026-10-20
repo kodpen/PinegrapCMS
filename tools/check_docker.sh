@@ -37,6 +37,10 @@ WORK="$(mktemp -d)"
 
 export PG_HTTP_PORT="$PORT"
 export PG_CRON_INTERVAL=5
+# The images built from this checkout get their own tag: the check never
+# starts a published image in their place, and a latest image pulled on this
+# machine stays as it was.
+export PG_IMAGE_TAG=check
 
 COMPOSE=(docker compose -f "$ROOT/docker/docker-compose.yml" -p pinegrap-check)
 
