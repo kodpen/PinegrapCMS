@@ -20,7 +20,7 @@ description: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, orde
 2. Done (PR #570): designer bindings (designer/express-order-legal-documents.md).
 3. Done: receipt attachments, panel card, kept-copy page, `GET /orders/{id}/documents`; order view links (PR #736, commerce/order-view-legal-documents.md).
 4. KVKK notice link and optional consent checkbox (text setting: needs its own config column, ask first), stored as type `kvkk`.
-5. Done (PR #798): a site installed from the Turkish starter starts with the switch on; its template columns stay NULL and read the built-ins (commerce/order-legal-documents.md). Done (PR #PRNO): the last day of the right of withdrawal on the order view and the panel card, the latest delivery's deadline (commerce/order-withdrawal-deadline.md).
+5. Done (PR #798): a site installed from the Turkish starter starts with the switch on; its template columns stay NULL and read the built-ins (commerce/order-legal-documents.md). Done (PR #816): the last day of the right of withdrawal on the order view and the panel card, the latest delivery's deadline (commerce/order-withdrawal-deadline.md).
 6. Done (PR #648): the document link posts the typed billing fields and payment method to the document page, in its own window (commerce/checkout-legal-checkboxes.md).
 
 ## Open questions?

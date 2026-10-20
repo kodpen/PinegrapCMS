@@ -20,4 +20,4 @@ description: Last day of an order's right of withdrawal: latest delivery's windo
 
 ## Related
 - docs/memory/commerce/order-view-legal-documents.md, order-returns.md (the window), order-legal-documents.md.
-- Tests: tests/legal_withdrawal_deadline_test.php.
+- Built in PR #816. Tests: tests/legal_withdrawal_deadline_test.php.
