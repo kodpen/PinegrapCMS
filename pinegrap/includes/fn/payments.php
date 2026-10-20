@@ -30,7 +30,10 @@
  * sealed with the site's key and never drawn back into a form, the others
  * among the options, the switch of a redirect driver as enabled. A driver
  * added later needs no schema change for them. A driver that declares no
- * fields keeps its settings where they already are.
+ * fields keeps its settings where they already are; a shipped driver that
+ * took over a legacy payment says so with 'settings' => 'config', and the
+ * card draws nothing for it, not even a redirect driver's switch, because
+ * the card's own rows for that service are its settings.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -76,13 +79,31 @@ function pg_payment_legacy_gateways()
  *       'method'  => 'Pay With Example',       // redirect: the orders.payment_method value
  *       'file'    => 'example.php',            // under includes/payments/
  *       'portal'  => 'https://example.com/',   // where the operator finds the keys
+ *       'settings' => 'config',                // shipped drivers only: keeps the
+ *                                              // config columns and switch the card
+ *                                              // already draws (default 'connect')
  *   ),
  *
  * @return array
  */
 function pg_payment_builtin_drivers()
 {
-    return array();
+    return array(
+        'iyzico' => array(
+            'label'    => 'iyzico',
+            'kind'     => 'card',
+            'gateway'  => 'Iyzipay',
+            'file'     => 'iyzico.php',
+            'settings' => 'config',
+        ),
+        'pay_with_iyzico' => array(
+            'label'    => 'Pay with iyzico',
+            'kind'     => 'redirect',
+            'method'   => 'Pay With Iyzico',
+            'file'     => 'iyzico.php',
+            'settings' => 'config',
+        ),
+    );
 }
 
 /**
@@ -92,7 +113,7 @@ function pg_payment_builtin_drivers()
  * @param mixed  $definition
  * @param string $directory where a relative file name is looked for; '' to
  *                          take absolute paths only (an add-on names its own)
- * @return array|null key, label, kind, gateway, method, file, portal
+ * @return array|null key, label, kind, gateway, method, file, portal, settings
  */
 function pg_payment_driver_definition_normalize($key, $definition, $directory)
 {
@@ -150,14 +171,19 @@ function pg_payment_driver_definition_normalize($key, $definition, $directory)
         $portal = '';
     }
 
+    // Only a shipped driver keeps settings outside connect_apps: an add-on has
+    // no config column of its own.
+    $settings = (($text('settings') === 'config') && ($directory !== '')) ? 'config' : 'connect';
+
     return array(
-        'key'     => $key,
-        'label'   => $label,
-        'kind'    => $kind,
-        'gateway' => $gateway,
-        'method'  => $method,
-        'file'    => $file,
-        'portal'  => $portal,
+        'key'      => $key,
+        'label'    => $label,
+        'kind'     => $kind,
+        'gateway'  => $gateway,
+        'method'   => $method,
+        'file'     => $file,
+        'portal'   => $portal,
+        'settings' => $settings,
     );
 }
 
@@ -872,7 +898,7 @@ function pg_payment_settings_card_rows($gateway, $card_enabled)
     $html = '';
 
     foreach (pg_payment_drivers() as $key => $definition) {
-        $fields = ($definition['kind'] === 'card') ? pg_payment_fields($key) : array();
+        $fields = (($definition['kind'] === 'card') && ($definition['settings'] === 'connect')) ? pg_payment_fields($key) : array();
 
         if (!$fields) {
             continue;
@@ -900,7 +926,7 @@ function pg_payment_settings_redirect_rows()
     $html = '';
 
     foreach (pg_payment_drivers() as $key => $definition) {
-        if ($definition['kind'] !== 'redirect') {
+        if (($definition['kind'] !== 'redirect') || ($definition['settings'] !== 'connect')) {
             continue;
         }
 
@@ -925,4 +951,112 @@ function pg_payment_settings_redirect_rows()
     }
 
     return $html;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Checkout (submit_order.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The value of the mode parameter that brings the visitor back from a
+ * driver's 3-D Secure or hosted page. The shipped drivers keep the addresses
+ * submit_order.php and order_preview.php already treat as a return.
+ *
+ * @param string $key
+ * @return string '' for a driver that has none
+ */
+function pg_payment_return_mode($key)
+{
+    $modes = array(
+        'iyzico'          => 'iyzipay_threedsecure_return',
+        'pay_with_iyzico' => 'pay_with_iyzico_return',
+    );
+
+    return (is_string($key) && isset($modes[$key])) ? $modes[$key] : '';
+}
+
+/**
+ * The driver that takes the payment of a checkout request.
+ *
+ * The card method goes to the driver of the Payment Gateway value, any other
+ * method to the driver of that method. A return its driver does not finish
+ * (no complete()) is finished by the code in submit_order.php that has always
+ * handled that return. A driver that is registered but cannot be loaded is
+ * still the answer, so the payment is refused rather than taken by no one.
+ *
+ * @param string $method  the posted payment method
+ * @param string $gateway ECOMMERCE_PAYMENT_GATEWAY
+ * @param string $mode    the request's mode parameter
+ * @return string driver key, '' when submit_order.php's gateway code takes it
+ */
+function pg_payment_checkout_driver($method, $gateway, $mode)
+{
+    $key = ((string) $method === 'Credit/Debit Card')
+        ? pg_payment_driver_for_gateway((string) $gateway)
+        : pg_payment_driver_for_method((string) $method);
+
+    if ($key === '') {
+        return '';
+    }
+
+    if (((string) $mode !== '') && ((string) $mode === pg_payment_return_mode($key)) && pg_payment_load($key) && !pg_payment_can($key, 'complete')) {
+        return '';
+    }
+
+    return $key;
+}
+
+/**
+ * What an order records from a payment a driver took, in the variables the
+ * gateway code has always set: the amount above the order total is the
+ * instalment charge.
+ *
+ * @param array $answer pg_payment_answer() of authorize() or complete()
+ * @param int   $total  hundredths: the order total before any instalment charge
+ * @return array total, installment_charge, total_without_installment_charge
+ *               (0 when there is no charge), payment_installment (1 or more)
+ */
+function pg_payment_checkout_totals($answer, $total)
+{
+    $total = (int) $total;
+    $amount = (isset($answer['amount']) && is_int($answer['amount'])) ? $answer['amount'] : $total;
+    $charge = ($amount > $total) ? $amount - $total : 0;
+    $installments = (isset($answer['installments']) && is_int($answer['installments'])) ? $answer['installments'] : 0;
+
+    return array(
+        'total'                            => $total + $charge,
+        'installment_charge'               => $charge,
+        'total_without_installment_charge' => ($charge > 0) ? $total : 0,
+        'payment_installment'              => ($installments > 1) ? $installments : 1,
+    );
+}
+
+/**
+ * The order's delivery address when it has exactly one and something to
+ * ship, for a service that asks for the address the goods go to.
+ *
+ * @param int $order_id
+ * @return array|null first_name, last_name, address_1, address_2, city,
+ *                    state, zip_code, country
+ */
+function pg_payment_order_ship_to($order_id)
+{
+    $order_id = (int) $order_id;
+
+    $shippable = db_value(
+        "SELECT COUNT(*) FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE (order_items.order_id = '" . $order_id . "') AND (products.shippable = '1')");
+
+    if ((int) $shippable <= 0) {
+        return null;
+    }
+
+    $recipients = db_items(
+        "SELECT first_name, last_name, address_1, address_2, city, state, zip_code, country
+        FROM ship_tos
+        WHERE order_id = '" . $order_id . "'");
+
+    return (is_array($recipients) && (count($recipients) === 1)) ? $recipients[0] : null;
 }
