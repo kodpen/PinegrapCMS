@@ -1065,10 +1065,29 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     if (!$check['ok']) {
         erp_edoc_parasut_request('DELETE', '/sales_invoices/' . rawurlencode($external_id), null, $context);
 
-        return $fail(lang(array(
+        $currency = (string) $invoice['currency'];
+        $message = lang(array(
             'string' => 'Paraşüt computed {var:1} for the invoice where the ERP has {var:2}; the record was deleted there and nothing was issued.',
-            'vars' => array(erp_money_out_currency($check['total'], (string) $invoice['currency']), erp_money_out_currency((int) $invoice['grand_total'], (string) $invoice['currency'])),
-        )));
+            'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency((int) $invoice['grand_total'], $currency)),
+        ));
+
+        // How Paraşüt got there, so the gap can be traced to the VAT or to
+        // the amounts before it once the record is gone.
+        $totals = erp_edoc_parasut_totals($result['body']['data']['attributes'] ?? array());
+
+        if ($totals !== array()) {
+            $message .= ' ' . lang(array(
+                'string' => 'Paraşüt has it at {var:1} before VAT, {var:2} VAT, {var:3} withheld, {var:4} in all.',
+                'vars' => array(
+                    erp_money_out_currency($totals['before_taxes'], $currency),
+                    erp_money_out_currency($totals['vat'], $currency),
+                    erp_money_out_currency($totals['vat_withholding'], $currency),
+                    erp_money_out_currency($totals['net'], $currency),
+                ),
+            ));
+        }
+
+        return $fail($message);
     }
 
     erp_query("UPDATE erp_invoices

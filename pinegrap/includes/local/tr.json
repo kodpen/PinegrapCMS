@@ -7758,6 +7758,7 @@
     "The request body is not valid JSON.": "İstek gövdesi geçerli JSON değil.",
     "This API requires a secure (https) connection.": "Bu API güvenli (https) bağlantı gerektirir.",
     "This Idempotency-Key was already used for a different request.": "Bu Idempotency-Key daha önce farklı bir istek için kullanıldı.",
+    "A request with this Idempotency-Key is still being carried out. Send it again in a moment to receive its answer.": "Bu Idempotency-Key ile gönderilen bir istek hâlâ işleniyor. Cevabını almak için biraz sonra yeniden gönderin.",
     "This address does not accept {var:1} requests.": "Bu adres {var:1} isteklerini kabul etmiyor.",
     "This address is not on the allow list for this application.": "Bu adres, bu uygulamanın izin listesinde değil.",
     "This application does not hold the {var:1} permission.": "Bu uygulama {var:1} yetkisine sahip değil.",
