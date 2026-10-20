@@ -5,7 +5,7 @@ description: Panel side of returns (PR #808): list and bulk approve, one return'
 
 ## Which screens are there?
 - `view_returns.php` (Orders menu › Returns): newest request first, at most `PG_RETURN_PANEL_LIMIT` (1000) rows; status filter `pg_filter_select()`, default `open` (requested, approved, shipped, received: `pg_return_open_statuses()`), one status or `all`, kept in `$_SESSION['software']['ecommerce']['view_returns']`. Only `requested` rows have a checkbox; **Approve Selected** (`bulk=approve`, POST to itself) runs `pg_returns_bulk_approve()`.
-- `view_return.php?id=`: lines, reason, both notes, the forms of `pg_return_staff_actions()` (every staff move but `refunded`, which belongs to the refund step); side column with the stamps and who, order, customer, parcels, delivery date (known or estimated), withdrawal deadline and whether the request came in time, refund due date.
+- `view_return.php?id=`: lines, reason, both notes, the forms of `pg_return_staff_actions()` (every staff move but `refunded`, which has its own card: commerce/order-returns-refund.md); side column with the stamps and who, order, customer, parcels, delivery date (known or estimated), withdrawal deadline and whether the request came in time, refund due date.
 - Gate on both: `validate_user()` + `validate_ecommerce_access()` + `ECOMMERCE`. POSTs check the token; a refusal keeps what was typed (`add_fields_to_session()` only then).
 - Order screen: `pg_returns_panel_card()` under Legal Documents. Bell/push row `order_return` opens `view_return.php?id=<form_id>`.
 
@@ -20,7 +20,7 @@ description: Panel side of returns (PR #808): list and bulk approve, one return'
 - `pg_return_decision_mail_body()`: approved → carrier and code (or "you can send the goods back now"), the shop's note, and "tell us on your order page" when `pg_returns_customer_enabled()`; rejected → the shop's note, no carrier or code. Sent by `pg_return_send_decision_mail()` through the mail queue, sharing `pg_return_mail_context()` with the request mail.
 
 ## What is not here yet?
-- Refund and ERP return invoice, the refund reminder job (plan step 4); staff recording a request from the panel (source `panel`); API and webhooks (step 5).
+- Staff recording a request from the panel (source `panel`); API and webhooks (plan step 5). The refund, the ERP hand-off and the reminder job: commerce/order-returns-refund.md.
 
 ## Tests?
 - `tests/returns_test.php` (filter, defaults, actions, audit fields, refund due, parcel delivery, mail body, order card). The screens ran on a `tools/setup_sandbox.sh` sandbox (PR #808 body).
