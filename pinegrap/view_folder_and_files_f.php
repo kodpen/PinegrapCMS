@@ -6056,18 +6056,19 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 'message' => $message));
             break;
 
-        // ── Where a file is used ────────────────────────────────────────
+        // ── A Word or Excel file, read for a preview ────────────────────
         //
-        // "Can I delete this?" is the question the file manager could not
-        // answer, and the way it was answered instead was by deleting it and
-        // waiting to see what broke.
-        //
-        // files.name IS the address -- every reader resolves a file as
         // A Word or Excel file read on the server for the file window and
         // Quick Look (includes/fn/office.php): rows for a workbook, a safe
         // subset of HTML for a document. Reading only, so it is open to
         // whoever may view the folder; a document the ERP module keeps to
         // whoever may read the ERP (get_file.php's rule for those).
+        //
+        // The file window asks for a workbook's cells to be offered for
+        // editing (edit): then the answer also says which cells may be
+        // changed and carries the version a save must hand back -- only for
+        // someone who may change the file, never for an ERP document. The
+        // cells are written by explorer_file_save.
         case 'explorer_office_preview':
 
             $office_file = pg_explorer_file_row((int) (isset($request['id']) ? $request['id'] : 0));
@@ -6076,7 +6077,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 respond(array('status' => 'error', 'message' => lang('There is no preview for this kind of file.')));
             }
 
-            if (pg_files_include_erp_document(array($office_file['id']))) {
+            $office_erp = pg_files_include_erp_document(array($office_file['id']));
+
+            if ($office_erp) {
                 if (!defined('ERP_ENABLED') || !ERP_ENABLED || (((int) $user['role'] >= 3) && empty($user['manage_erp']))) {
                     respond(array('status' => 'error', 'message' => lang('Access denied')));
                 }
@@ -6084,7 +6087,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 respond(array('status' => 'error', 'message' => lang('Access denied')));
             }
 
-            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $office_file['name'], $office_file['name']);
+            $office_edit = !empty($request['edit']) && !$office_erp && pg_explorer_file_editable_by($office_file, $user);
+
+            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $office_file['name'], $office_file['name'], $office_edit);
 
             if (!$office['ok']) {
                 respond(array('status' => 'error', 'message' => $office['error']));
@@ -6095,6 +6100,13 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             respond(array('status' => 'success', 'request' => $type, 'office' => $office));
             break;
 
+        // ── Where a file is used ────────────────────────────────────────
+        //
+        // "Can I delete this?" is the question the file manager could not
+        // answer, and the way it was answered instead was by deleting it and
+        // waiting to see what broke.
+        //
+        // files.name IS the address -- every reader resolves a file as
         // FILE_DIRECTORY_PATH . '/' . name -- so the name is what the content
         // carries, and a LIKE over the places content lives finds it.
         //
@@ -8130,6 +8142,30 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $old_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
             $new_path = FILE_DIRECTORY_PATH . '/' . $name;
+            $size_sql = '';
+
+            // Cell values changed in a workbook's preview
+            // (includes/fn/office_edit.php). They go into the file before
+            // anything else moves, so a refused edit -- the file changed since
+            // it was opened, a cell that may not be changed -- leaves the
+            // file, its name and its record exactly as they were.
+            if (isset($request['cells'])) {
+
+                if (!is_array($request['cells']) || (pg_office_kind($file['name']) !== 'xlsx')) {
+                    respond(array('status' => 'error', 'message' => lang('This file cannot be edited here.')));
+                }
+
+                // A large sheet takes a few seconds to rewrite.
+                @set_time_limit(120);
+
+                $office_saved = pg_office_xlsx_save($old_path, $request['cells'], isset($request['office_version']) ? (string) $request['office_version'] : '');
+
+                if (!$office_saved['ok']) {
+                    respond(array('status' => 'error', 'message' => $office_saved['error']));
+                }
+
+                $size_sql = "size = '" . e((int) $office_saved['size']) . "',";
+            }
 
             // The record's name is the address, so the disk file moves first
             // and the row is only told if it did -- a row pointing at nothing
@@ -8141,7 +8177,6 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             }
 
             $extension = mb_strtolower(pathinfo($name, PATHINFO_EXTENSION));
-            $size_sql = '';
 
             // Text is written only for a format the editor may write, and only
             // when the window sent some: a window opened on a picture sends

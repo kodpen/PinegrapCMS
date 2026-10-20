@@ -5682,31 +5682,10 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
     if (is_array($page_names_in_menu_sequence) == false) {
         $page_names_in_menu_sequence = array();
     }
-    $menu_items = array();
-    // get menu items
-    $query = "SELECT 
-
-            menu_items.id,
-
-            menu_items.name,
-
-            page.page_name as link_page_name
-
-        FROM menu_items
-
-        LEFT JOIN page ON page.page_id = menu_items.link_page_id
-
-        WHERE 
-
-           (menu_items.parent_id = '" . escape($parent_id) . "') 
-
-           AND (menu_items.menu_id = '" . escape($menu_id) . "') 
-
-        ORDER BY menu_items.sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-    while ($row = mysqli_fetch_assoc($result)) {
-        $menu_items[] = $row;
-    }
+    // This level's items, from the menu read once for the request
+    // (pg_menu_tree(), includes/fn/content.php).
+    $menu_tree = pg_menu_tree($menu_id);
+    $menu_items = isset($menu_tree['children'][(int) $parent_id]) ? $menu_tree['children'][(int) $parent_id] : array();
     // loop through all menu items in order to get child menu items, and add to the array
     foreach ($menu_items as $menu_item) {
         // if this item has a link page name, and if it does not link to a page that is already in the sequence, then add menu item to array
@@ -5719,12 +5698,8 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
                 'link_page_name' => $menu_item['link_page_name']
             );
         }
-        // find out if sub menu exists
-        $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = '" . $menu_item['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-        $row = mysqli_fetch_row($result);
         // if sub menu exists, then add sub menu content to the array
-        if ($row[0] > 0) {
+        if (!empty($menu_tree['counts'][(int) $menu_item['id']])) {
             $menu_sequence = get_menu_sequence($menu_id, $menu_item['id'], $menu_sequence);
         }
     }

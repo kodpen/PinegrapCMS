@@ -17,6 +17,88 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+
+/**
+ * The items of one menu, read once per request in two queries whatever the
+ * menu's size, for get_menu_content() and get_menu_sequence() to walk in
+ * memory: a page that prints a menu runs no query per level or per item.
+ *
+ * Items come in printing order: sort_order, then id among items that share a
+ * place (a query per level left those ties to the database, which gave them
+ * by id). The number of items under an item is counted across every menu, so
+ * an item whose only children belong to another menu still prints as a
+ * parent with an empty list, as it always has.
+ *
+ * @param int $menu_id
+ * @return array  see pg_menu_tree_from_rows()
+ */
+function pg_menu_tree($menu_id)
+{
+    static $trees = array();
+
+    $menu_id = (int) $menu_id;
+
+    if (isset($trees[$menu_id])) {
+        return $trees[$menu_id];
+    }
+
+    $rows = db_items(
+        "SELECT
+            menu_items.id,
+            menu_items.parent_id,
+            menu_items.name,
+            page.page_name AS link_page_name,
+            page.page_folder AS link_page_folder_id,
+            menu_items.link_url,
+            menu_items.link_target,
+            menu_items.security,
+            menu_items.class
+        FROM menu_items
+        LEFT JOIN page ON page.page_id = menu_items.link_page_id
+        WHERE menu_items.menu_id = '" . $menu_id . "'
+        ORDER BY menu_items.sort_order, menu_items.id");
+
+    $counts = array();
+
+    if ($rows) {
+        $ids = array();
+
+        foreach ($rows as $row) {
+            $ids[] = (int) $row['id'];
+        }
+
+        foreach (db_items(
+            "SELECT parent_id, COUNT(*) AS children
+            FROM menu_items
+            WHERE parent_id IN (" . implode(',', $ids) . ")
+            GROUP BY parent_id") as $row) {
+            $counts[(int) $row['parent_id']] = (int) $row['children'];
+        }
+    }
+
+    $trees[$menu_id] = pg_menu_tree_from_rows($rows, $counts);
+
+    return $trees[$menu_id];
+}
+
+/**
+ * A menu's rows, in printing order, grouped under their parent.
+ *
+ * @param array $rows    menu items with id and parent_id, in printing order
+ * @param array $counts  item id => how many items sit under it (any menu)
+ * @return array  children (parent id => rows, in order), counts (item id => number)
+ */
+function pg_menu_tree_from_rows(array $rows, array $counts)
+{
+    $children = array();
+
+    foreach ($rows as $row) {
+        $children[(int) $row['parent_id']][] = $row;
+    }
+
+    return array('children' => $children, 'counts' => $counts);
+}
+
 // Outputs dynamic menu system using values from the database.
 // We don't currently support multiple menu items being set as the current menu item
 // because it causes problems for the accordion menu.  The logic for the accordion menu
@@ -43,42 +125,9 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
     } else {
         $output .= '<ul>';
     }
-    // get menu items
-    $query = "SELECT
-
-           menu_items.id,
-
-           menu_items.name,
-
-           page.page_name AS link_page_name,
-
-           page.page_folder AS link_page_folder_id,
-
-           menu_items.link_url,
-
-           menu_items.link_target,
-
-           menu_items.security,
-
-           menu_items.class
-
-        FROM menu_items
-
-        LEFT JOIN page ON page.page_id = menu_items.link_page_id
-
-        WHERE
-
-           (menu_items.parent_id = '" . escape($parent_id) . "')
-
-           AND (menu_items.menu_id = '" . $menu_id . "')
-
-        ORDER BY menu_items.sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-    $menu_items = array();
-    // loop through all menu items in order to build array
-    while ($row = mysqli_fetch_assoc($result)) {
-        $menu_items[] = $row;
-    }
+    // This level's items, from the menu read once for the request.
+    $menu_tree = pg_menu_tree($menu_id);
+    $menu_items = isset($menu_tree['children'][(int) $parent_id]) ? $menu_tree['children'][(int) $parent_id] : array();
     $first_menu_item = true;
     $output_edit_from = ($edit_mode && isset($edit_context['from'])) ? urlencode($edit_context['from']) : '';
     $output_edit_send_to = ($edit_mode && isset($edit_context['send_to'])) ? urlencode($edit_context['send_to']) : '';
@@ -94,16 +143,8 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
         // or this visitor has access to view this menu item's page,
         // then show the menu item and its child items, if any exist.
         if (($menu_item['security'] == 0) || ($menu_item['link_page_name'] == '') || (check_view_access($menu_item['link_page_folder_id']) == true)) {
-            // assume that sub menus do not exist, until we find out otherwise
-            $sub_menu_exists = false;
-            // find out if sub menu exists
-            $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = '" . $menu_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-            $row = mysqli_fetch_row($result);
-            // if sub menu exists, remember that
-            if ($row[0] > 0) {
-                $sub_menu_exists = true;
-            }
+            // A sub menu exists when any item sits under this one.
+            $sub_menu_exists = !empty($menu_tree['counts'][(int) $menu_item['id']]);
             $output_link_href = '';
             $output_link_target = '';
             // if this is not an accordion menu or a sub-menu does not exist and there is a link, then prepare link
