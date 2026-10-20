@@ -12,6 +12,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - cart-widget-rows-and-groups.md: Cart widget row types (donation, offer gift, normal), pending offers own-form rule, tax/shipping notice, and recipient/recurring group heading bands with their sorting.
 - cart-widget-stock-and-save-later.md: Cart widget low-stock warning (define, tokens, exact condition), cart query stock columns, out_of_stock_message, and the opt-in Save for Later feature.
 - catalog-search-term.md: Which search term a legacy catalog page uses (Clear button, page query, general ?query=, custom layouts) and why its RSS link asks the same helper
+- checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
