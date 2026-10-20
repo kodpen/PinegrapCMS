@@ -1063,8 +1063,14 @@ if (!$_POST) {
                 
                 // loop through the custom field names in order to output cells for values
                 foreach ($custom_field_names as $custom_field_name) {
-                    $data = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['data'];
-                    $type = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['type'];
+                    // An address of a multi-address order may have no answer
+                    // for a field another address filled in.
+                    $custom_field_value = isset($ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name])
+                        ? $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]
+                        : array('data' => '', 'type' => '');
+
+                    $data = $custom_field_value['data'];
+                    $type = $custom_field_value['type'];
                     
                     // assume that we need to prepare data for HTML until we find out otherwise
                     $prepare_for_html = TRUE;
