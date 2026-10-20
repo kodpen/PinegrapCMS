@@ -134,11 +134,13 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-features' => lang('Feature Options'),
                 'pgset-images'   => lang('Image Optimization'),
+                'pgset-revisions' => lang('Page Revisions'),
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
                 'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
+                'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
                 'pgset-signature' => pg_settings_keywords(lang('signature, timestamp, time stamp, tsa, rfc 3161, credit, kamusm, kamu sm, e-guven, e-tugra, contract, evidence, proof')),
             ),
         ),

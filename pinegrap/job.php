@@ -20,6 +20,8 @@
 // It should be run by a cron job.  Currently it does the following:
 //
 // - Publishing scheduled comments
+// - Putting visual-designer pages on the site, and taking them off it, at
+//     their scheduled times
 // - Creating order abandoned auto campaigns
 // - Unpublishing old calendar events so they don't appear on the calendar
 //     or in search results.
@@ -437,6 +439,27 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
             'string' => 'general job removed {var:1} image derivative file(s) of deleted or changed files ({var:2})',
             'vars'   => array(pg_format_number($image_sweep['files'], 0), convert_bytes_to_string($image_sweep['bytes'], 1)),
         )), 'UNKNOWN');
+    }
+}
+
+// Scheduled pages (includes/fn/page_schedule.php): a draft whose publish time
+// has come goes on the site, a page whose time to come off has come goes back
+// to the drafts, and the time is cleared. Every tick, so a page goes live
+// within one tick of its time; with nothing due it is two indexed reads.
+if (function_exists('pg_page_schedule_run')) {
+
+    $page_schedule = pg_page_schedule_run();
+
+    foreach ($page_schedule['published'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) was published at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+
+    foreach ($page_schedule['unpublished'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) was taken off the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+
+    foreach ($page_schedule['home'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) is the home page, so it stayed on the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
     }
 }
 
