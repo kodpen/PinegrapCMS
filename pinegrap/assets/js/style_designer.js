@@ -13388,7 +13388,7 @@ const StyleDesigner = (function () {
                                      'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
                                      'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
                                      'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
-                                     'events-cards', 'notice-promo'];
+                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
                 var _ct = (dragData.extra || {}).componentType || '';
                 if (_noWrapCtypes.indexOf(_ct) === -1) {
                     n = createNode('container', { fluid: false, cssClass: '' }, [n]);
@@ -16222,8 +16222,9 @@ const StyleDesigner = (function () {
                 // service cards, a price list, booking bands, opening hours,
                 // branches, menus, events, an urgent notice, profile cards and
                 // a rating summary. Bootstrap utilities only, so a block looks
-                // the same in any design. One family, one set of helpers.
-                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
+                // the same in any design. One family, one set of helpers; the
+                // legal blocks at the end of the branch share them.
+                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
                     var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
                     var _bkDiv = function (cls, name, kids, attrs) {
                         var p = { tag: 'div', cssClass: cls, customName: name };
@@ -17035,6 +17036,65 @@ const StyleDesigner = (function () {
                                 { name: 'type',            value: 'button' },
                                 { name: 'data-bs-dismiss', value: 'alert' },
                                 { name: 'aria-label',      value: _sdT('Close') }
+                            ])
+                        ]);
+                    }
+
+                    // Legal: Accessibility Statement — the statement a site
+                    // publishes under the Turkish Presidential Circular
+                    // 2025/10 and the European Accessibility Act: what it
+                    // covers, the standard it follows and how far, the
+                    // barriers known today, how to report one, how the site
+                    // was assessed and where to turn when an answer does not
+                    // satisfy. Six sections in one narrow column, each a
+                    // <section> with its own heading so a screen reader lists
+                    // them; the operator rewrites the sample facts.
+                    if (ctype === 'legal-accessibility-statement') {
+                        var _lgSection = function (title, name, kids) {
+                            return _bkTag('section', 'mb-5', name, [_bkH('h3', title, 'h4 fw-bold mb-3')].concat(kids));
+                        };
+                        var _lgLi = function (text) {
+                            return _bkTag('li', 'mb-2', _sdT('List Item'), [_bkH('span', text, 'mb-0 d-inline')]);
+                        };
+                        var _lgContact = function (icon, name, kid) {
+                            return _bkTag('li', 'd-flex align-items-start gap-2 mb-2', name, [_bkIcon(icon, 'text-primary', '20'), kid]);
+                        };
+                        return _bkSection('py-5', _sdT('Accessibility Statement'), [
+                            _bkRow(_sdT('Statement Row'), [
+                                _bkCol(_sdT('Statement Col'), [
+                                    _bkDiv('mb-5', _sdT('Statement Header'), [
+                                        _bkH('h2', _sdT('Accessibility Statement'), 'display-6 fw-bold mb-3'),
+                                        _bkP(_sdT('ACME wants everyone to be able to use this website, whatever their abilities and whatever they browse with. This statement says what we have done, what still falls short and how to reach us.'), 'lead text-body-secondary mb-3'),
+                                        _bkP(_sdT('This statement was last reviewed on {var}.', _sdT('1 January 2026')), 'small text-body-secondary mb-0')
+                                    ]),
+                                    _lgSection(_sdT('Scope'), _sdT('Scope Section'), [
+                                        _bkP(_sdT('This statement applies to the pages, forms and documents published at example.com and its subdomains, the online shop and the customer account included.'), 'mb-0')
+                                    ]),
+                                    _lgSection(_sdT('Conformance status'), _sdT('Conformance Section'), [
+                                        _bkP(_sdT('We follow the Web Content Accessibility Guidelines (WCAG) 2.2. The site meets Level A and conforms partially to Level AA: the content listed below does not yet meet every Level AA criterion.'), 'mb-0')
+                                    ]),
+                                    _lgSection(_sdT('Known limitations'), _sdT('Limitations Section'), [
+                                        _bkTag('ul', 'mb-0', _sdT('Limitations List'), [
+                                            _lgLi(_sdT('PDF documents published before this statement may not read well with a screen reader; ask us for an accessible copy.')),
+                                            _lgLi(_sdT('Some product videos have no captions yet; a transcript is sent on request.')),
+                                            _lgLi(_sdT('The map on the contact page comes from a third party and cannot be operated with the keyboard alone; the address is also given as text.'))
+                                        ])
+                                    ]),
+                                    _lgSection(_sdT('Feedback and contact'), _sdT('Feedback Section'), [
+                                        _bkP(_sdT('If you meet a barrier on this site, or need information in another format, tell us. We aim to reply within five working days.'), 'mb-3'),
+                                        _bkTag('ul', 'list-unstyled mb-0', _sdT('Contact List'), [
+                                            _lgContact('bi-envelope', _sdT('Email Item'), _bkLink(_sdT('accessibility@example.com'), 'mailto:accessibility@example.com', '', _sdT('Email Link'))),
+                                            _lgContact('bi-telephone', _sdT('Phone Item'), _bkH('span', '+90 212 555 0100', 'mb-0 d-inline')),
+                                            _lgContact('bi-geo-alt', _sdT('Address Item'), _bkH('span', _sdT('42 Main Street, New York'), 'mb-0 d-inline'))
+                                        ])
+                                    ]),
+                                    _lgSection(_sdT('How we assessed this site'), _sdT('Assessment Section'), [
+                                        _bkP(_sdT('ACME assessed the site itself: automated checks on every published page, and manual tests with the keyboard, a screen reader and 200% zoom. The assessment is repeated after every major change and at least once a year.'), 'mb-0')
+                                    ]),
+                                    _lgSection(_sdT('Enforcement procedure'), _sdT('Enforcement Section'), [
+                                        _bkP(_sdT('If our answer does not satisfy you, you may turn to the public body responsible for digital accessibility in your country; in Türkiye a complaint is filed through the e-Government gateway.'), 'mb-0')
+                                    ])
+                                ], '9', '', '', 'mx-auto')
                             ])
                         ]);
                     }
@@ -54903,7 +54963,8 @@ const StyleDesigner = (function () {
             { label: _sdT('Catering: Packages'),          type: 'component', icon: 'bi-basket',                extra: { componentType: 'catering-packages' } },
             { label: _sdT('Loyalty: Stamp Card'),         type: 'component', icon: 'bi-cup-hot',               extra: { componentType: 'loyalty-stamps' } },
             { label: _sdT('Events: Cards'),               type: 'component', icon: 'bi-calendar2-event',       extra: { componentType: 'events-cards' } },
-            { label: _sdT('Notice: Announcement'),        type: 'component', icon: 'bi-megaphone',             extra: { componentType: 'notice-promo' } }
+            { label: _sdT('Notice: Announcement'),        type: 'component', icon: 'bi-megaphone',             extra: { componentType: 'notice-promo' } },
+            { label: _sdT('Legal: Accessibility Statement'), type: 'component', icon: 'bi-universal-access',   extra: { componentType: 'legal-accessibility-statement' } }
         ];
     }
 
@@ -54920,7 +54981,8 @@ const StyleDesigner = (function () {
             { title: _sdT('Content Lists'),    icon: 'bi-collection',         match: ['blog-', 'faq-', 'timeline-', 'image-', 'events-'] },
             { title: _sdT('Forms & Access'),   icon: 'bi-envelope-paper',     match: ['contact-', 'newsletter-', 'login-'] },
             { title: _sdT('Page Footer'),      icon: 'bi-window-dock',        match: ['footer-'] },
-            { title: _sdT('Status & Utility'), icon: 'bi-shield-exclamation', match: ['error-', 'alert-', 'notice-', 'theme-switcher-'] }
+            { title: _sdT('Status & Utility'), icon: 'bi-shield-exclamation', match: ['error-', 'alert-', 'notice-', 'theme-switcher-'] },
+            { title: _sdT('Legal'),            icon: 'bi-universal-access',   match: ['legal-'] }
         ];
         var other = { title: _sdT('Other'), icon: 'bi-box', match: [], items: [] };
         groups.forEach(function (g) { g.items = []; });
