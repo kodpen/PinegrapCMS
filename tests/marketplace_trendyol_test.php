@@ -109,9 +109,9 @@ function test_marketplace_trendyol_connector_offers_only_what_it_does()
 	pg_assert_true(mp_can('trendyol', 'category_attributes'));
 	pg_assert_true(mp_can('trendyol', 'create_listings'));
 	pg_assert_true(mp_can('trendyol', 'read_task'));
+	pg_assert_true(mp_can('trendyol', 'push_stock_price'));
 
 	// Nothing queues work it cannot do yet.
-	pg_assert_false(mp_can('trendyol', 'push_stock_price'));
 	pg_assert_false(mp_can('trendyol', 'pull_orders'));
 }
 
@@ -756,4 +756,241 @@ function test_marketplace_trendyol_read_task_refuses_an_odd_task_id()
 
 	pg_assert_false($result['ok']);
 	pg_assert_same(0, count($calls));
+}
+
+/* ------------------------------------------------------- stock and price */
+
+// One product as mp_product_row() hands it to the connector.
+function trendyol_test_stock_row($overrides = array())
+{
+	return array_merge(array(
+		'product_id'  => 11,
+		'remote_code' => '8680000000017',
+		'remote_id'   => '',
+		'name'        => 'PG-KASK-S',
+		'title'       => 'Muay Thai Kaskı',
+		'price'       => 7995,
+		'price_major' => 79.95,
+		'quantity'    => 4,
+		'tracked'     => true,
+		'tax_rate'    => 20.0,
+	), $overrides);
+}
+
+function trendyol_test_stock_account($flags = array())
+{
+	return array_merge(trendyol_test_account(), array('push_stock' => 1, 'push_price' => 1), $flags);
+}
+
+function trendyol_test_stock_url($host = 'https://apigw.trendyol.com')
+{
+	return $host . '/integration/inventory/sellers/123456/products/price-and-inventory';
+}
+
+function test_marketplace_trendyol_stock_body_sends_quantity_and_both_prices()
+{
+	$built = mp_trendyol_stock_body(array(
+		trendyol_test_stock_row(),
+		trendyol_test_stock_row(array('product_id' => 12, 'remote_code' => '8680000000024', 'quantity' => 25000, 'price_major' => 1249.899)),
+		trendyol_test_stock_row(array('product_id' => 13, 'remote_code' => '8680000000031', 'quantity' => -3)),
+	), true, true);
+
+	pg_assert_same(array(), $built['refused']);
+	pg_assert_same(array(
+		array('barcode' => '8680000000017', 'quantity' => 4, 'salePrice' => 79.95, 'listPrice' => 79.95),
+		array('barcode' => '8680000000024', 'quantity' => 20000, 'salePrice' => 1249.9, 'listPrice' => 1249.9),
+		array('barcode' => '8680000000031', 'quantity' => 0, 'salePrice' => 79.95, 'listPrice' => 79.95),
+	), $built['items'], 'above their ceiling the ceiling is sent; below zero is zero');
+}
+
+function test_marketplace_trendyol_stock_body_follows_the_account_flags()
+{
+	$rows = array(
+		trendyol_test_stock_row(),
+		trendyol_test_stock_row(array('product_id' => 12, 'remote_code' => '8680000000024', 'tracked' => false)),
+	);
+
+	$stock_only = mp_trendyol_stock_body($rows, true, false);
+
+	pg_assert_same(array(array('barcode' => '8680000000017', 'quantity' => 4)), $stock_only['items'],
+		'an untracked product has nothing to say when prices are not sent');
+	pg_assert_same(array(), $stock_only['refused']);
+
+	$price_only = mp_trendyol_stock_body($rows, false, true);
+
+	pg_assert_same(array(
+		array('barcode' => '8680000000017', 'salePrice' => 79.95, 'listPrice' => 79.95),
+		array('barcode' => '8680000000024', 'salePrice' => 79.95, 'listPrice' => 79.95),
+	), $price_only['items'], 'no quantity at all, so their stock stands');
+
+	$with_both = mp_trendyol_stock_body($rows, true, true);
+
+	pg_assert_false(isset($with_both['items'][1]['quantity']), 'zero is never sent for an untracked product');
+}
+
+function test_marketplace_trendyol_stock_body_leaves_out_what_they_would_refuse()
+{
+	$built = mp_trendyol_stock_body(array(
+		trendyol_test_stock_row(array('product_id' => 21, 'remote_code' => '', 'name' => 'NOCODE')),
+		trendyol_test_stock_row(array('product_id' => 22, 'remote_code' => 'has space', 'name' => 'SPACE')),
+		trendyol_test_stock_row(array('product_id' => 23, 'price_major' => 0, 'name' => 'FREE')),
+		trendyol_test_stock_row(array('product_id' => 24, 'remote_code' => '8680000000048')),
+		trendyol_test_stock_row(array('product_id' => 25, 'remote_code' => '8680000000048', 'name' => 'TWIN')),
+	), true, true);
+
+	pg_assert_same(array(21, 22, 23, 25), array_keys($built['refused']));
+	pg_assert_contains('NOCODE: Trendyol needs a barcode', $built['refused'][21]);
+	pg_assert_contains('SPACE: the barcode has space cannot be used', $built['refused'][22]);
+	pg_assert_contains('FREE has no price', $built['refused'][23]);
+	pg_assert_contains('TWIN: another product in the same batch', $built['refused'][25]);
+
+	pg_assert_same(array(array('barcode' => '8680000000048', 'quantity' => 4, 'salePrice' => 79.95, 'listPrice' => 79.95)),
+		$built['items'], 'the first product under a barcode goes, and the one refused for no price does not hold it');
+}
+
+function test_marketplace_trendyol_push_posts_the_batch_and_answers_the_task()
+{
+	$calls = array();
+	$transport = trendyol_test_transport(array(
+		trendyol_test_stock_url() => array(200, trendyol_test_fixture('price-and-inventory-accepted.json')),
+	), $calls);
+
+	$result = mp_trendyol_push_stock_price(trendyol_test_stock_account(), array(
+		trendyol_test_stock_row(),
+		trendyol_test_stock_row(array('product_id' => 21, 'remote_code' => '')),
+	), $transport);
+
+	pg_assert_true($result['ok'], $result['error']);
+	pg_assert_same('fa75dfd5-6ce6-4730-a09e-97563500000-1529854840', $result['data']['task_id']);
+	pg_assert_same(1, $result['data']['sent']);
+	pg_assert_same(array(21), array_keys($result['data']['refused']));
+
+	pg_assert_same(1, count($calls));
+	pg_assert_same('POST', $calls[0]['method']);
+	pg_assert_contains('Content-Type: application/json', $calls[0]['options']['headers']);
+	pg_assert_same('{"items":[{"barcode":"8680000000017","quantity":4,"salePrice":79.95,"listPrice":79.95}]}',
+		$calls[0]['options']['body']);
+}
+
+function test_marketplace_trendyol_push_uses_the_stage_host()
+{
+	$calls = array();
+	$transport = trendyol_test_transport(array(
+		trendyol_test_stock_url('https://stageapigw.trendyol.com') => array(200, trendyol_test_fixture('price-and-inventory-accepted.json')),
+	), $calls);
+
+	$result = mp_trendyol_push_stock_price(
+		trendyol_test_stock_account(array('credentials' => array_merge(trendyol_test_account()['credentials'], array('environment' => 'stage')))),
+		array(trendyol_test_stock_row()), $transport);
+
+	pg_assert_true($result['ok'], $result['error']);
+}
+
+function test_marketplace_trendyol_push_with_nothing_left_makes_no_call()
+{
+	$calls = array();
+	$transport = trendyol_test_transport(array(), $calls);
+
+	// Stock only: the untracked product has nothing to say, the other is refused.
+	$result = mp_trendyol_push_stock_price(trendyol_test_stock_account(array('push_price' => 0)), array(
+		trendyol_test_stock_row(array('product_id' => 21, 'remote_code' => '')),
+		trendyol_test_stock_row(array('product_id' => 22, 'tracked' => false)),
+	), $transport);
+
+	pg_assert_true($result['ok'], $result['error']);
+	pg_assert_same('', $result['data']['task_id'], 'no task: nothing was left to send');
+	pg_assert_same(0, $result['data']['sent']);
+	pg_assert_same(array(21), array_keys($result['data']['refused']));
+
+	// Every product refused.
+	$result = mp_trendyol_push_stock_price(trendyol_test_stock_account(), array(
+		trendyol_test_stock_row(array('price_major' => 0)),
+	), $transport);
+
+	pg_assert_true($result['ok'], $result['error']);
+	pg_assert_same('', $result['data']['task_id']);
+	pg_assert_same(array(11), array_keys($result['data']['refused']));
+
+	$result = mp_trendyol_push_stock_price(trendyol_test_stock_account(array('push_price' => 0, 'push_stock' => 0)),
+		array(trendyol_test_stock_row()), $transport);
+
+	pg_assert_false($result['ok']);
+	pg_assert_contains('neither stock nor price', $result['error']);
+
+	pg_assert_false(mp_trendyol_push_stock_price(trendyol_test_stock_account(), array(), $transport)['ok']);
+
+	pg_assert_same(0, count($calls));
+}
+
+function test_marketplace_trendyol_push_repeat_refusal_waits_out_the_window()
+{
+	$calls = array();
+	$transport = trendyol_test_transport(array(
+		trendyol_test_stock_url() => array(400, trendyol_test_fixture('error-400-repeat.json')),
+	), $calls);
+
+	$result = mp_trendyol_push_stock_price(trendyol_test_stock_account(), array(trendyol_test_stock_row()), $transport);
+
+	pg_assert_false($result['ok']);
+	pg_assert_true($result['retry'], 'asked again, not failed for good');
+	pg_assert_same(900, $result['data']['retry_after']);
+	pg_assert_contains('last 15 minutes', $result['error']);
+
+	pg_assert_true(mp_trendyol_is_repeat_refusal('15 dakika boyunca aynı isteği tekrarlı olarak atamazsınız!'));
+	pg_assert_true(mp_trendyol_is_repeat_refusal('You cannot send the same request for 15 minutes'));
+	pg_assert_false(mp_trendyol_is_repeat_refusal('Kategori bulunamadı'));
+}
+
+function test_marketplace_trendyol_push_other_refusals_pass_through()
+{
+	$calls = array();
+	$transport = trendyol_test_transport(array(
+		trendyol_test_stock_url() => array(400, trendyol_test_fixture('error-400.json')),
+	), $calls);
+
+	$result = mp_trendyol_push_stock_price(trendyol_test_stock_account(), array(trendyol_test_stock_row()), $transport);
+
+	pg_assert_false($result['ok']);
+	pg_assert_false($result['retry']);
+	pg_assert_same('Kategori bulunamadı', $result['error']);
+
+	$transport = trendyol_test_transport(array(trendyol_test_stock_url() => array(200, '{}')), $calls);
+
+	$result = mp_trendyol_push_stock_price(trendyol_test_stock_account(), array(trendyol_test_stock_row()), $transport);
+
+	pg_assert_false($result['ok']);
+	pg_assert_true($result['retry'], 'accepted without a batch id is asked again');
+}
+
+function test_marketplace_trendyol_push_caps_the_batch_at_their_ceiling()
+{
+	$rows = array();
+
+	for ($i = 0; $i < 1005; $i++) {
+		$rows[] = trendyol_test_stock_row(array('product_id' => 1000 + $i, 'remote_code' => 'PG' . $i));
+	}
+
+	$calls = array();
+	$transport = trendyol_test_transport(array(
+		trendyol_test_stock_url() => array(200, trendyol_test_fixture('price-and-inventory-accepted.json')),
+	), $calls);
+
+	$result = mp_trendyol_push_stock_price(trendyol_test_stock_account(), $rows, $transport);
+
+	pg_assert_true($result['ok'], $result['error']);
+	pg_assert_same(1000, $result['data']['sent']);
+	pg_assert_same(1000, count(json_decode($calls[0]['options']['body'], true)['items']));
+}
+
+function test_marketplace_trendyol_inventory_batch_listing_fewer_lines_than_its_count_is_not_finished()
+{
+	$read = mp_trendyol_batch_results(json_decode(trendyol_test_fixture('batch-inventory-partial.json'), true));
+
+	pg_assert_false($read['finished'], 'two of three lines listed');
+	pg_assert_same(array(), $read['results']);
+
+	$decoded = json_decode(trendyol_test_fixture('batch-inventory-partial.json'), true);
+	$decoded['itemCount'] = 2;
+
+	pg_assert_true(mp_trendyol_batch_results($decoded)['finished']);
 }

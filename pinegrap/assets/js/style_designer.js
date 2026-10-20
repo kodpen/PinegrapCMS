@@ -2104,12 +2104,12 @@ const StyleDesigner = (function () {
     var MEMBER_CORE_FIELDS = {
         member_id:            _sdT('Member number (membership activation; contact: member_id)'),
         email_address:        _sdT('Email (legacy name; contact: email_address)'),
-        email_address_verify: _sdT('Email again (legacy name)'),
+        email_address_verify: _sdT('Email again (legacy name; optional, must match when filled in)'),
         first_name:           _sdT('First name (contact: first_name)'),
         last_name:            _sdT('Last name (contact: last_name)'),
         username:             _sdT('User name (derived from the email when absent)'),
         email:                _sdT('Email (contact: email_address)'),
-        email_verify:         _sdT('Email again'),
+        email_verify:         _sdT('Email again (optional; must match the email when filled in)'),
         password:             _sdT('Password'),
         password_verify:      _sdT('Password again'),
         password_hint:        _sdT('Password hint (not drawn when the site setting is off)'),
@@ -28320,7 +28320,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While off, the <code>register_remember_me</code> control and its label are not drawn. They are not drawn either when the site setting is off.') + '</div>'
                     ) +
                     '<div class="sd-prop-row"><div class="sd-prop-control" style="font-size:.66rem;color:#888;line-height:1.45">' +
-                        _sdT('Core controls are recognised by name: <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code>, <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
+                        _sdT('Core controls are recognised by name: <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code> (optional), <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
                     '</div></div>'
                 );
             }
@@ -28797,7 +28797,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While off, the <code>register_remember_me</code> control and its label are not drawn. They are not drawn either when the site setting is off.') + '</div>'
                     ) +
                     '<div class="sd-prop-row"><div class="sd-prop-control" style="font-size:.66rem;color:#888;line-height:1.45">' +
-                        _sdT('Core controls are recognised by name: <code>member_id</code>, <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code>, <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). The member number and last name must match a member in the contacts. Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
+                        _sdT('Core controls are recognised by name: <code>member_id</code>, <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code> (optional), <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). The member number and last name must match a member in the contacts. Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
                     '</div></div>'
                 );
             }
@@ -46642,8 +46642,9 @@ const StyleDesigner = (function () {
                                             rgField(_sdT('First Name'), rgId + '_first', 'text', 'first_name', 'given-name', null, 'col-sm-6'),
                                             rgField(_sdT('Last Name'), rgId + '_last', 'text', 'last_name', 'family-name', null, 'col-sm-6')
                                         ]),
+                                        // The address is asked once (WCAG 2.2 3.3.7);
+                                        // pg_member_register() takes email_verify as optional.
                                         rgField(_sdT('Email'), rgId + '_email', 'email', 'email', 'email', [{ name: 'spellcheck', value: 'false' }]),
-                                        rgField(_sdT('Email (again)'), rgId + '_email2', 'email', 'email_verify', 'email', [{ name: 'spellcheck', value: 'false' }]),
                                         createNode('semantic', { tag: 'div', cssClass: 'mb-2', customName: _sdT('Password Rules'),
                                             _bindings: { section: 'password_rules' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Password') }, [
@@ -47460,8 +47461,9 @@ const StyleDesigner = (function () {
                                             mbField(_sdT('First Name'), mbId + '_first', 'text', 'first_name', 'given-name', null, 'col-sm-6'),
                                             mbField(_sdT('Last Name'), mbId + '_last', 'text', 'last_name', 'family-name', null, 'col-sm-6')
                                         ]),
+                                        // Asked once, as on the registration widget;
+                                        // pg_member_activate() takes email_verify as optional.
                                         mbField(_sdT('Email'), mbId + '_email', 'email', 'email', 'email', [{ name: 'spellcheck', value: 'false' }]),
-                                        mbField(_sdT('Email (again)'), mbId + '_email2', 'email', 'email_verify', 'email', [{ name: 'spellcheck', value: 'false' }]),
                                         createNode('semantic', { tag: 'div', cssClass: 'mb-2', customName: _sdT('Password Rules'),
                                             _bindings: { section: 'password_rules' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Password') }, [

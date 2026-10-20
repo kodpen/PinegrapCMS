@@ -72,10 +72,6 @@ if (!defined('PG_INIT_LOADED')) {
 				<label for="register_email_address"><?=h(lang('Email'))?>*</label>
 				<input type="email" name="email_address" id="register_email_address" class="form-control">
 			</div>
-			<div class="form-group">
-				<label for="email_address_verify"><?=h(lang('Confirm Email'))?>*</label>
-				<input type="email" name="email_address_verify" id="email_address_verify" class="form-control">
-			</div>
 			<?php if ($strong_password_help): ?>
 			<?=$strong_password_help?>
 			<?php endif ?>

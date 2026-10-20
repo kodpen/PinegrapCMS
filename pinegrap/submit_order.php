@@ -874,15 +874,18 @@ function submit_order($type) {
         $tax = 0;
     }
     
-    // set the discount for the order if there is one
-    $discount = $_SESSION['ecommerce']['order_discount'] ?? 0;
+    // Set the discount for the order if there is one: what the cart worked
+    // out, at most the subtotal charged today (recurring lines that start
+    // later are not in $subtotal).
+    $discount = pg_order_charged_discount($_SESSION['ecommerce']['order_discount'] ?? 0, $subtotal);
     
     // store the orginal tax in case there is a discount
     // and we need to add a discount line item for PayPal Express Checkout
     $original_tax = $tax;
 
-    // if there is an order discount, adjust tax according to discount
-    if ($discount) {
+    // If there is an order discount, adjust tax according to discount. A
+    // discount is only above zero when the subtotal is.
+    if ($discount && ($subtotal > 0)) {
 
         $tax = $tax - round(($tax * ($discount / $subtotal)));
 
@@ -4181,8 +4184,11 @@ function submit_order($type) {
                 $affiliate_commission_rate = AFFILIATE_DEFAULT_COMMISSION_RATE;
             }
             
-            // if there is an order discount, calculate discount percentage
-            if ($discount) {
+            // If there is an order discount, calculate discount percentage
+            // (pg_order_charged_discount() keeps a discount within a subtotal
+            // above zero; the check keeps the division safe on its own).
+            $discount_percentage = 0;
+            if ($discount && ($subtotal > 0)) {
                 $discount_percentage = $discount / $subtotal;
             }
             
