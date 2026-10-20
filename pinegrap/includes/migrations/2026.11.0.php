@@ -33,6 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_shipments();              // 11.0.20
 
 }
 
@@ -314,5 +315,119 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+// The shipment row (2026.11.0, 11.0.20; docs/memory/commerce/shipment-row-schema.md).
+//
+// shipping_tracking_numbers held one thing per parcel: its number. Which
+// carrier took it, how far it has got, when it left and when it arrived were
+// worked out again at every read, from the shipping method's code, the
+// number's shape and the ship_tos dates - which checkout writes as estimates.
+// The parcel row now carries them itself, so a status a carrier reports, a
+// carrier a fulfilment system names and the day a number was recorded have a
+// place to be written once and read back as they were.
+//
+//   carrier         a key of pg_shipping_carriers() ('yurtici', 'ups'...),
+//                   '' when the carrier is still worked out from the method
+//   tracking_url    the carrier's own page for this parcel when its API gives
+//                   one; '' builds the address from the carrier's pattern
+//   status          one of created, in_transit, out_for_delivery, delivered,
+//                   returned, exception (values in code, not an ENUM: the
+//                   list grows as carriers report more), status_at its time
+//   shipped_at      when the parcel left, delivered_at when it arrived (unix
+//                   times; the ship_tos dates stay the estimates they are)
+//   created_at      when the row was written
+//   source          who wrote it: panel, api, marketplace, carrier, csv
+//   format_warning  1 when the number does not look like the carrier's
+//                   (a warning only, it never blocks a save)
+//
+// The same number recorded twice for one address said nothing new, and the
+// panel, the external API and the marketplace import each checked for it
+// themselves before writing. The pair is unique from now on, so the check is
+// the table's; rows that already repeat a pair are reduced to the first one
+// written before the key is added, or the ALTER would be refused.
+//
+// shipped_at is filled from ship_tos.ship_date for the parcels that have a
+// number, the way erp_order_shipment() reads it: only a date that is not in
+// the future, because a date beyond today is checkout's estimate and not the
+// day anything left. The remaining rows keep 0 and the write path fills them
+// as they are touched.
+//
+// shipping_methods.carrier names the carrier a method ships with, so the
+// method's code no longer has to spell it; '' keeps today's recognition.
+// order_delivered joins the automatic e-mail actions for the campaign a
+// parcel's arrival will start.
+function upgrade_2026_11_0_shipments() {
+
+	install_add_column('shipping_tracking_numbers', 'carrier', "VARCHAR(20) NOT NULL DEFAULT ''");
+
+	install_add_column('shipping_tracking_numbers', 'tracking_url', "VARCHAR(500) NOT NULL DEFAULT ''");
+
+	install_add_column('shipping_tracking_numbers', 'status', "VARCHAR(20) NOT NULL DEFAULT 'created'");
+
+	install_add_column('shipping_tracking_numbers', 'status_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('shipping_tracking_numbers', 'shipped_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('shipping_tracking_numbers', 'delivered_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('shipping_tracking_numbers', 'created_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('shipping_tracking_numbers', 'source', "VARCHAR(16) NOT NULL DEFAULT 'panel'");
+
+	install_add_column('shipping_tracking_numbers', 'format_warning', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	// Repeated pairs, the lowest id kept. Done before the key exists, and
+	// safe to repeat: the second run finds nothing to join. The collation
+	// decides what "the same number" is, so this removes exactly the rows the
+	// unique key would refuse, no more.
+	if (!install_index_exists('shipping_tracking_numbers', 'uk_parcel')) {
+
+		db("DELETE repeated FROM shipping_tracking_numbers AS repeated
+			INNER JOIN shipping_tracking_numbers AS kept
+				ON (kept.ship_to_id = repeated.ship_to_id)
+				AND (kept.number = repeated.number)
+				AND (kept.id < repeated.id)");
+
+	}
+
+	install_add_index('shipping_tracking_numbers', 'uk_parcel', "UNIQUE KEY uk_parcel (ship_to_id, number)");
+
+	// The backfill is written as WHERE shipped_at = 0, so a run that was cut
+	// off continues where it stopped and a second run changes nothing.
+	db("UPDATE shipping_tracking_numbers
+		INNER JOIN ship_tos ON (ship_tos.id = shipping_tracking_numbers.ship_to_id)
+		SET shipping_tracking_numbers.shipped_at = UNIX_TIMESTAMP(ship_tos.ship_date)
+		WHERE (shipping_tracking_numbers.shipped_at = 0)
+			AND (TRIM(shipping_tracking_numbers.number) != '')
+			AND (ship_tos.ship_date != '0000-00-00')
+			AND (ship_tos.ship_date <= CURDATE())");
+
+	install_add_column('shipping_methods', 'carrier', "VARCHAR(20) NOT NULL DEFAULT ''");
+
+	// The enum is widened from what is there, never narrowed: reading it first
+	// keeps any value a later release may have added.
+	$action = install_column_info('email_campaign_profiles', 'action');
+
+	if (is_array($action) && (stripos((string) $action['Type'], "'order_delivered'") === false)) {
+
+		preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $action['Type'], $matches);
+		$values = array();
+
+		foreach ($matches[1] as $value) {
+			$values[] = "'" . $value . "'";
+		}
+
+		$values[] = "'order_delivered'";
+
+		// The default is kept as it stands too, not rewritten from memory.
+		$default = ((string) $action['Default'] !== '') ? (string) $action['Default'] : 'calendar_event_reserved';
+
+		install_modify_column('email_campaign_profiles', 'action', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	}
+
+	install_note('Shipping: each tracking number now keeps its carrier, status, dates and where it was recorded, a number is recorded once per address, a shipping method can name its carrier, and automatic e-mails gain the "order delivered" action.');
 
 }

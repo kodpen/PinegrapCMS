@@ -292,12 +292,15 @@ function pg_products_import_xlsx_sheet_part($zip)
     return '';
 }
 
-// The shared string table, as a plain list.
+// The shared string table, as a plain list, or false when the table unpacks
+// past the size the package declares for it (a damaged or doctored file).
 //
 // Excel writes every text value once here and refers to it by number, so a
 // sheet of thirty thousand products with a repeated brand name holds the name
 // once. Read with XMLReader rather than SimpleXML for the same reason as the
-// sheet: the table of a large workbook is itself large.
+// sheet: the table of a large workbook is itself large. The stream stops at
+// the declared size (pg_zip_entry_uri()); it would otherwise read on to
+// whatever the entry inflates to.
 function pg_products_import_xlsx_strings($path, $part)
 {
     $strings = array();
@@ -310,9 +313,11 @@ function pg_products_import_xlsx_strings($path, $part)
 
     $reader = new XMLReader();
 
-    if ($reader->open('zip://' . $path . '#' . $part) == false) {
+    if ($reader->open(pg_zip_entry_uri($path, $part, max(0, pg_zip_entry_size($path, $part)))) == false) {
         return $strings;
     }
+
+    $previous = libxml_use_internal_errors(true);
 
     while ($reader->read()) {
 
@@ -326,9 +331,11 @@ function pg_products_import_xlsx_strings($path, $part)
         $strings[] = $reader->readString();
     }
 
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
     $reader->close();
 
-    return $strings;
+    return pg_zip_entry_overran() ? false : $strings;
 }
 
 // The style numbers that mean "this number is a date".
@@ -456,9 +463,15 @@ function pg_products_import_xlsx_to_csv($source_path, &$error)
 
     $strings = pg_products_import_xlsx_strings($source_path, $strings_part);
 
+    if ($strings === false) {
+        $error = lang('The file could not be read.');
+        return '';
+    }
+
     $reader = new XMLReader();
 
-    if ($reader->open('zip://' . $source_path . '#' . $part) == false) {
+    // The sheet, too, is read no further than its declared size.
+    if ($reader->open(pg_zip_entry_uri($source_path, $part, max(0, pg_zip_entry_size($source_path, $part)))) == false) {
         $error = lang('The file could not be read.');
         return '';
     }
@@ -482,6 +495,10 @@ function pg_products_import_xlsx_to_csv($source_path, &$error)
 
     $written = 0;
     $width = 0;
+
+    // A sheet cut at its declared size ends in a parser error; it is answered
+    // below, not printed as a warning.
+    $previous = libxml_use_internal_errors(true);
 
     while ($reader->read()) {
 
@@ -581,8 +598,18 @@ function pg_products_import_xlsx_to_csv($source_path, &$error)
         $written++;
     }
 
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
     $reader->close();
     fclose($handle);
+
+    // A sheet that unpacks past its declared size is a damaged or doctored
+    // file; what was read of it is not imported.
+    if (pg_zip_entry_overran()) {
+        unlink($path);
+        $error = lang('The file could not be read.');
+        return '';
+    }
 
     if ($written == 0) {
         unlink($path);
