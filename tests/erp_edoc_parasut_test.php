@@ -192,6 +192,18 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 	pg_assert_same('9001', $details[1]['relationships']['product']['data']['id']);
 	pg_assert_false(isset($details[0]['attributes']['vat_withholding_rate']));
 
+	// A campaign discount and a typed one apply one after the other, which no
+	// single rate says: the line goes with the amount they came to (99.99,
+	// campaign 10% then 5% = 14.50; 5% alone would be 5.00).
+	$two = array(array_merge($lines[0], array('quantity' => '3.0000', 'unit_price' => 3333, 'offer_discount_rate' => '10.000', 'discount_rate' => '5.000', 'discount_amount' => 1450)));
+	$detail = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $two, '555')['data']['relationships']['details']['data'][0]['attributes'];
+	pg_assert_same('amount', $detail['discount_type'], 'campaign and typed discount');
+	pg_assert_same(14.5, $detail['discount_value']);
+	$campaign = array(array_merge($two[0], array('discount_rate' => '0.000', 'discount_amount' => 1000)));
+	$detail = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $campaign, '555')['data']['relationships']['details']['data'][0]['attributes'];
+	pg_assert_same('amount', $detail['discount_type'], 'campaign discount alone');
+	pg_assert_same(10.0, $detail['discount_value']);
+
 	// The order number without its date would stop the conversion; neither
 	// is sent then.
 	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 438, 'order_number' => '1172', 'order_date' => '')), $lines, '555');

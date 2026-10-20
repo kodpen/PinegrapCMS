@@ -991,7 +991,7 @@ if (!$_POST) {
 
         $service = $_POST['service'];
 
-        $realtime_rate = $_POST['realtime_rate'];
+        $realtime_rate = $_POST['realtime_rate'] ?? 0;
 
         // If the service does not support real-time rates then clear real-time rate value, so it
         // won't be enabled in db and show check mark on All Shipping Methods screen.
@@ -1039,8 +1039,9 @@ if (!$_POST) {
         $base_rate_4 = 0;
         $base_rate_4_subtotal = 0;
 
-        // If variable base rate is enabled, then prepare that data.
-        if ($_POST['variable_base_rate'] == 1) {
+        // If variable base rate is enabled, then prepare that data (an
+        // unticked box is not posted at all).
+        if (($_POST['variable_base_rate'] ?? '') == 1) {
             $variable_base_rates = array();
 
             // Loop through the different variable base rate fields
@@ -1085,7 +1086,7 @@ if (!$_POST) {
             }
         }
 
-        if($_POST['status'] == 1){
+        if(($_POST['status'] ?? '') == 1){
             $status = 'enabled';
         }else{
             $status = 'disabled';
@@ -1160,7 +1161,8 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // load all zones in array by exploding string that has allowed zone ids separated by commas
-        $allowed_zones = $_POST['allowed_zones'];
+        // No zone chosen posts no list at all.
+        $allowed_zones = (array) ($_POST['allowed_zones'] ?? array());
 
         // foreach allowed zone insert row in shipping_methods_zones_xref table
         foreach ($allowed_zones as $zone_id) {
@@ -1182,11 +1184,12 @@ if (!$_POST) {
             // convert date to storage format
             $excluded_transit_date = prepare_form_data_for_input($excluded_transit_date, 'date');
             
-            // split date into parts
+            // split date into parts (an empty box gives one empty entry,
+            // which has no month or day and is dropped below)
             $excluded_transit_date_parts = explode('-', $excluded_transit_date);
             $year = $excluded_transit_date_parts[0];
-            $month = $excluded_transit_date_parts[1];
-            $day = $excluded_transit_date_parts[2];
+            $month = $excluded_transit_date_parts[1] ?? '';
+            $day = $excluded_transit_date_parts[2] ?? '';
             
             // if date is valid then update date in array
             if ((is_numeric($month) == true) && (is_numeric($day) == true) && (is_numeric($year) == true) && (checkdate($month, $day, $year) == true)) {
