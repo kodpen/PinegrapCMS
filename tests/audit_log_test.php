@@ -183,6 +183,9 @@ function test_audit_volatile_columns_left_out()
 	pg_assert_same(array('user_id' => '2', 'user_role' => '2', 'user_password' => 'h'), pg_audit_volatile('user', array('user_id' => '2', 'user_role' => '2', 'user_password' => 'h', 'user_user' => '1', 'user_timestamp' => '9', 'token' => 't', 'user_online_timestamp' => '9')), 'user');
 	pg_assert_same(array('id' => '1', 'status' => 'active'), pg_audit_volatile('api_apps', array('id' => '1', 'status' => 'active', 'last_used_ip' => '10.0.0.1', 'last_used_timestamp' => '9', 'updated_timestamp' => '9')), 'api app');
 	pg_assert_same(array('timestamp_label' => 'x'), pg_audit_volatile('files', array('timestamp_label' => 'x', 'timestamp' => '9')), 'only a column that ends in timestamp');
+	pg_assert_same(array('page_title' => 'Hakkımızda'), pg_audit_volatile('page', array('page_title' => 'Hakkımızda', 'seo_flags' => '34', 'seo_checked_at' => '9', 'seo_meta_score' => '62', 'seo_depth' => '2')), 'derived page SEO columns');
+	pg_assert_same(array('price' => '100'), pg_audit_volatile('products', array('price' => '100', 'seo_struct_score' => '40', 'seo_link_score' => '10')), 'derived product SEO columns');
+	pg_assert_same(array('seo_flags' => '1'), pg_audit_volatile('files', array('seo_flags' => '1')), 'seo_ prefix only where it is derived');
 }
 
 // Every mapped table names a record type the trail accepts, and the label is the
@@ -209,4 +212,20 @@ function test_audit_record_without_table()
 	pg_assert_false(pg_audit_record('update', 'products', 1, array('price' => '1')), 'nothing recorded');
 	pg_assert_same(0, pg_audit_record_many('update', 'files', array(3 => array('folder' => '1'), 4 => array('folder' => '2'))), 'nothing recorded for many');
 	pg_assert_same(0, pg_audit_record_many('update', 'files', array()), 'no rows');
+}
+
+// A column that holds JSON text is masked inside: a feed token in
+// config.product_feeds must not reach the trail as part of a string.
+function test_audit_redact_json_text()
+{
+	$feeds = '{"seller_name":"Mağaza","formats":{"openai_jsonl":{"enabled":1,"token_hash":"ab12","token_secret":"s3cr3t"}}}';
+
+	pg_assert_same(
+		array('product_feeds' => array('seller_name' => 'Mağaza', 'formats' => array('openai_jsonl' => array('enabled' => 1, 'token_hash' => '***', 'token_secret' => '***')))),
+		pg_audit_redact(array('product_feeds' => $feeds)),
+		'secrets inside JSON text'
+	);
+	pg_assert_same(array('list' => array('a', 'b')), pg_audit_redact(array('list' => '["a","b"]')), 'a JSON list');
+	pg_assert_same(array('note' => '{not json'), pg_audit_redact(array('note' => '{not json')), 'text that only looks like JSON');
+	pg_assert_same(array('n' => '12'), pg_audit_redact(array('n' => '12')), 'a number stays text');
 }
