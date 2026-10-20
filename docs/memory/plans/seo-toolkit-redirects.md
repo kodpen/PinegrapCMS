@@ -1,6 +1,6 @@
 ---
 name: seo-toolkit-redirects
-description: Plan (approved 2026-10-19, not started): redirect manager (301/302, wildcard, CSV, auto 301 on slug change), 404 log, per-page canonical and JSON-LD editor, llms.txt and robots AI-bot policy UI
+description: Plan (approved 2026-10-19; step 5 done, #739): redirects (301/302, wildcard, CSV, auto 301 on slug change), 404 log, per-page canonical and JSON-LD editor, llms.txt and robots AI rules
 ---
 
 ## Why?
@@ -19,7 +19,7 @@ description: Plan (approved 2026-10-19, not started): redirect manager (301/302,
 2. Slug-change hook in designer save and page edit (S).
 3. 404 logging with retention (S).
 4. Page settings fields + render (S).
-5. `llms.txt`, robots AI section, Content-Signal (S).
+5. Done (#739): `llms.txt`, robots AI section, Content-Signal (`docs/memory/visitors/ai-crawlers-llms-txt.md`, 11.0.21).
 6. API routes + schema (S).
 
 ## Open questions?
