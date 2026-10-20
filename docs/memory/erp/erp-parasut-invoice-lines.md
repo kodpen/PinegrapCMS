@@ -20,6 +20,7 @@ description: How an ERP invoice's lines go to Paraşüt, how Paraşüt takes the
 - Down: discount on the rate's largest line. Up: back off a line's discount, else onto the largest quantity-1 line's price, else a "Rounding difference" line at the rate after every line, on the default product. A moved line's discount goes as `amount`.
 - Not moved: a rate with withholding, a gap over two kurus a line, no amount; the total check still guards them.
 - A rate total no amount reaches is refused before anything goes to Paraşüt (`erp_edoc_parasut_total_refusal()` in `send_invoice`'s pre-checks), with the totals on either side.
+- The ERP taking the VAT per rate itself is planned: plans/erp-vat-per-rate.md.
 
 ## Which line shapes were tried live? (demo company, 2026-10-21)
 - Equal (one line per rate): 1.5 KGM x 12.34 at 10%, 99.99 at 1%, 2 x 7.77 with 12.5% off at 20% (137.67); 12.45 at 10% + 12.50 at 1% (26.33).
