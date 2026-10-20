@@ -11530,6 +11530,33 @@ const StyleDesigner = (function () {
                    '<button type="button" class="btn btn-danger btn-sm" disabled>' + esc(_sdT('Cancel Order')) + '</button>' +
                    '</div>';
         },
+        // Mirrors pg_return_form_html(): the delivery's lines with a
+        // quantity box, the reason, a note and the request button.
+        '__return_form': function () {
+            return '<div class="pg-ov-return-form">' +
+                   '<div class="table-responsive"><table class="table table-sm align-middle mb-3"><thead><tr>' +
+                   '<th scope="col">' + esc(_sdT('Product')) + '</th>' +
+                   '<th scope="col" class="text-end">' + esc(_sdT('Ordered')) + '</th>' +
+                   '<th scope="col" class="text-end">' + esc(_sdT('To return')) + '</th></tr></thead>' +
+                   '<tbody><tr><td>' + esc(_sdT('Sample Product Name')) + '</td><td class="text-end">2</td>' +
+                   '<td class="text-end"><input type="number" class="form-control form-control-sm text-end" value="0" disabled></td></tr></tbody></table></div>' +
+                   '<label class="form-label small fw-semibold">' + esc(_sdT('Reason for the return')) + '</label>' +
+                   '<select class="form-select mb-3" disabled><option>' + esc(_sdT('Choose a reason')) + '</option></select>' +
+                   '<button type="button" class="btn btn-outline-primary" disabled>' + esc(_sdT('Request a return')) + '</button>' +
+                   '</div>';
+        },
+        // Mirrors pg_returns_list_html(): one bordered box per request with
+        // its status badge, lines and what to do next.
+        '__returns': function () {
+            return '<div class="pg-ov-returns"><div class="pg-ov-return border rounded p-3 mb-3">' +
+                   '<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">' +
+                   '<div><div class="fw-semibold">' + esc(_sdT('Return request')) + ' #12</div>' +
+                   '<div class="small text-muted">' + esc(_sdDateSample(false)) + '</div></div>' +
+                   '<span class="badge text-bg-info">' + esc(_sdT('Return approved')) + '</span></div>' +
+                   '<ul class="small mb-2 ps-3"><li>' + esc(_sdT('Sample Product Name')) + ' × 1</li></ul>' +
+                   '<div class="alert alert-info small py-2 my-2">' + esc(_sdT('Your return was approved. You can send the goods back now.')) + '</div>' +
+                   '</div></div>';
+        },
         // Mirrors _eo_render_order_timeline() — <ul class="pg-ov-timeline">
         // with a Bootstrap Icon + label + timestamp per event.
         '__timeline': function () {
@@ -32014,6 +32041,10 @@ const StyleDesigner = (function () {
             ['__cancel_form',            _sdT('Cancellation Form (CSRF + reason + button — ready-made HTML)')],
             ['__cancel_status',          _sdT('Post-cancellation notice alert (when ?cancelled=… is present)')]
         ]},
+        { label: _sdT('Returns'), tokens: [
+            ['__returns',                _sdT('Return requests of the order with their status and the customer\'s moves (ready-made HTML)')],
+            ['__return_form',            _sdT('Return request form: products, quantities, reason (ready-made HTML)')]
+        ]},
         { label: _sdT('Billing information'), tokens: [
             ['__billing_name',          _sdT('Full Name')],
             ['__billing_first_name',    _sdT('First Name')],
@@ -32569,7 +32600,10 @@ const StyleDesigner = (function () {
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
             ['cancel_flash_already',    _sdT('Already cancelled (notice after the redirect)')],
-            ['cancel_flash_shipped',    _sdT('Could not cancel, already shipped (notice after the redirect)')]
+            ['cancel_flash_shipped',    _sdT('Could not cancel, already shipped (notice after the redirect)')],
+            ['show_returns',            _sdT('There is a return to follow, or one can be requested')],
+            ['can_request_return',      _sdT('A return can be requested')],
+            ['has_returns',             _sdT('The order has return requests')]
         ],
         express_order: [
             ['has_shipping',         _sdT('The cart has a shippable product')],
@@ -47024,6 +47058,32 @@ const StyleDesigner = (function () {
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Customer note'), cssClass: 'mb-0 small',
                                             _bindings: { text: '__order_notes' } })
+                                    ])
+                                ]),
+
+                                // ── Returns — the order's requests and the request
+                                // form. show_returns keeps the card off orders with
+                                // nothing to follow and nothing to ask for; the
+                                // form part needs ECOMMERCE_ORDER_RETURNS_ALLOWED,
+                                // goods that left and an open withdrawal window.
+                                // Both slots are <div>s: the tokens expand to
+                                // forms, tables and lists.
+                                createNode('semantic', { tag: 'div', cssClass: 'card mt-3', customName: _sdT('Returns Card'),
+                                    _bindings: { eo_visible_if: 'show_returns' } }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-header' }, [
+                                        createNode('content', { contentType: 'heading', tag: 'h6',
+                                            text: _sdT('Returns'), cssClass: 'mb-0 fw-semibold' })
+                                    ]),
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
+                                        createNode('semantic', { tag: 'div',
+                                            customName: _sdT('Return Requests (HTML)'),
+                                            _bindings: { text: '__returns' } }),
+                                        createNode('semantic', { tag: 'div', customName: _sdT('Return Request Form'),
+                                            _bindings: { eo_visible_if: 'can_request_return' } }, [
+                                            createNode('semantic', { tag: 'div',
+                                                customName: _sdT('Return Request Form (HTML)'),
+                                                _bindings: { text: '__return_form' } })
+                                        ])
                                     ])
                                 ])
                             ]),

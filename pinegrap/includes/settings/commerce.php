@@ -801,7 +801,7 @@ $pg_settings_cards[] = '
                                                                                         <option value="PayPal Payments Pro"' . $ecommerce_payment_gateway_paypal_payments_pro . '>PayPal Payments Pro</option>
                                                                                         <option value="Sage"' . $ecommerce_payment_gateway_sage . '>Sage</option>
                                                                                         <option value="Stripe"' . $ecommerce_payment_gateway_stripe . '>Stripe</option>
-                                                                                        <option value="Iyzipay"' . $ecommerce_payment_gateway_iyzipay . '>Iyzipay</option>
+                                                                                        <option value="Iyzipay"' . $ecommerce_payment_gateway_iyzipay . '>Iyzipay</option>' . pg_payment_settings_gateway_options($ecommerce_payment_gateway) . '
                                                                                     </select>
                                                                                 </div>
                                                                             </div>
@@ -966,7 +966,7 @@ $pg_settings_cards[] = '
                                                                                                     </div>
                                                                                                 </div>
                                                                                             </div>
-                                                                                        </div>
+                                                                                        </div>' . pg_payment_settings_card_rows($ecommerce_payment_gateway, ($ecommerce_credit_debit_card == 1)) . '
 
                                                                                         <div class="col-12 " id="ecommerce_reset_encryption_key_row" style="' . $ecommerce_reset_encryption_key_row_style . '">
                                                                                             <div class="form-check form-switch">
@@ -1030,7 +1030,7 @@ $pg_settings_cards[] = '
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
+                                                        </div>' . pg_payment_settings_redirect_rows() . '
                                                         <div class="col-12 ">
                                                             <div class="form-check form-switch">
                                                                 <input value="1"' . $ecommerce_offline_payment_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_offline_payment" name="ecommerce_offline_payment" data-bs-target="#ecommerce_offline_payment_row"/>

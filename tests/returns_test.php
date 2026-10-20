@@ -245,3 +245,139 @@ function test_returns_text()
 	pg_assert_same('', pg_return_text(array('x'), 10), 'not text');
 	pg_assert_same('', pg_return_text(null, 10), 'null');
 }
+
+// The form settings the HTML builders below are given.
+function returns_test_form()
+{
+	return array(
+		'action'   => '/pinegrap/order_return.php',
+		'send_to'  => '/e?order_id=7&x="1"',
+		'token'    => '<input type="hidden" name="token" value="abc">',
+		'order_id' => 7,
+	);
+}
+
+// One delivery: the lines with their boxes, the reasons, the deadline and the
+// hidden fields that name the order and the delivery.
+function test_returns_form_html_one_delivery()
+{
+	$html = pg_return_form_html(array(array(
+		'ship_to_id' => 31,
+		'label'      => 'Jane Cooper',
+		'deadline'   => '2 November 2026',
+		'lines'      => array(
+			array('id' => 11, 'name' => 'Mug <XL>', 'quantity' => 3, 'returnable' => 2),
+			array('id' => 12, 'name' => 'Plate', 'quantity' => 1, 'returnable' => 0),
+		),
+	)), returns_test_form());
+
+	pg_assert_contains('action="/pinegrap/order_return.php"', $html, 'posts to the endpoint');
+	pg_assert_contains('<input type="hidden" name="token" value="abc">', $html, 'CSRF field');
+	pg_assert_contains('name="action" value="request"', $html, 'action');
+	pg_assert_contains('name="order_id" value="7"', $html, 'order');
+	pg_assert_contains('name="ship_to_id" value="31"', $html, 'delivery');
+	pg_assert_contains('value="/e?order_id=7&amp;x=&quot;1&quot;"', $html, 'send_to is escaped');
+	pg_assert_contains('Mug &lt;XL&gt;', $html, 'names are escaped');
+	pg_assert_contains('name="qty[11]"', $html, 'a box for a line with something left');
+	pg_assert_contains('max="2"', $html, 'at most what is left');
+	pg_assert_false(strpos($html, 'name="qty[12]"') !== false, 'no box for a line already asked for');
+	pg_assert_contains('2 November 2026', $html, 'deadline');
+	pg_assert_contains('value="damaged"', $html, 'reasons');
+	pg_assert_contains('name="note"', $html, 'note');
+	pg_assert_false(strpos($html, 'Jane Cooper') !== false, 'one delivery needs no heading');
+	pg_assert_same(1, substr_count($html, '<form '), 'one form');
+}
+
+// Several deliveries: one form each, headed by the recipient.
+function test_returns_form_html_several_deliveries()
+{
+	$line = array(array('id' => 11, 'name' => 'Mug', 'quantity' => 1, 'returnable' => 1));
+	$html = pg_return_form_html(array(
+		array('ship_to_id' => 31, 'label' => 'Jane <Cooper>', 'deadline' => '', 'lines' => $line),
+		array('ship_to_id' => 32, 'label' => 'John Doe', 'deadline' => '', 'lines' => array(array('id' => 13, 'name' => 'Cup', 'quantity' => 2, 'returnable' => 2))),
+	), returns_test_form());
+
+	pg_assert_same(2, substr_count($html, '<form '), 'one form per delivery');
+	pg_assert_contains('Jane &lt;Cooper&gt;', $html, 'recipient, escaped');
+	pg_assert_contains('John Doe', $html, 'second recipient');
+	pg_assert_contains('name="ship_to_id" value="32"', $html, 'second delivery');
+	pg_assert_contains('id="pg-ov-return-reason-31"', $html, 'ids per delivery');
+	pg_assert_contains('id="pg-ov-return-reason-32"', $html, 'ids per delivery');
+}
+
+// Nothing to ask for, no form.
+function test_returns_form_html_empty()
+{
+	pg_assert_same('', pg_return_form_html(array(), returns_test_form()));
+	pg_assert_same('', pg_return_form_html('nothing', returns_test_form()));
+}
+
+// The list says where each request stands and offers only the customer's
+// own moves.
+function test_returns_list_html()
+{
+	$base = array(
+		'id' => 5, 'status' => 'requested', 'status_label' => 'Return requested',
+		'requested' => '19 October 2026', 'lines' => array(array('name' => 'Mug <XL>', 'quantity' => 2)),
+		'reason_label' => 'It arrived damaged', 'customer_note' => 'Box <torn>', 'decision_note' => '',
+		'carrier' => '', 'carrier_code' => '', 'tracking_number' => '', 'refund_deadline' => '',
+		'can_withdraw' => true, 'can_mark_sent' => false,
+	);
+
+	$html = pg_returns_list_html(array($base), returns_test_form());
+	pg_assert_contains('Return requested', $html, 'status');
+	pg_assert_contains('Mug &lt;XL&gt;', $html, 'line, escaped');
+	pg_assert_contains('Box &lt;torn&gt;', $html, 'note, escaped');
+	pg_assert_contains('name="action" value="withdraw"', $html, 'withdraw');
+	pg_assert_contains('name="return_id" value="5"', $html, 'which return');
+	pg_assert_false(strpos($html, 'value="shipped"') !== false, 'not yet approved: no "sent" form');
+
+	$approved = array_merge($base, array('status' => 'approved', 'status_label' => 'Return approved',
+		'carrier' => 'Yurtiçi Kargo', 'carrier_code' => 'IADE<77>', 'decision_note' => 'Use the code.',
+		'can_withdraw' => false, 'can_mark_sent' => true));
+	$html = pg_returns_list_html(array($approved), returns_test_form());
+	pg_assert_contains('name="action" value="shipped"', $html, 'sent form');
+	pg_assert_contains('name="tracking_number"', $html, 'tracking number box');
+	pg_assert_contains('Yurtiçi Kargo', $html, 'carrier');
+	pg_assert_contains('IADE&lt;77&gt;', $html, 'code, escaped');
+	pg_assert_contains('Use the code.', $html, 'note from the shop');
+	pg_assert_false(strpos($html, 'value="withdraw"') !== false, 'approved: no withdraw');
+
+	$closed = array_merge($base, array('status' => 'refunded', 'status_label' => 'Money refunded',
+		'tracking_number' => 'TR123', 'can_withdraw' => false, 'can_mark_sent' => false));
+	$html = pg_returns_list_html(array($closed), returns_test_form());
+	pg_assert_same(0, substr_count($html, '<form '), 'nothing left to do');
+	pg_assert_contains('TR123', $html, 'tracking number');
+
+	pg_assert_same('', pg_returns_list_html(array(), returns_test_form()), 'no returns');
+}
+
+// Each status has its own badge colour.
+function test_returns_badge_class()
+{
+	pg_assert_contains('text-bg-warning', pg_return_badge_class('requested'));
+	pg_assert_contains('text-bg-success', pg_return_badge_class('refunded'));
+	pg_assert_contains('text-bg-danger', pg_return_badge_class('rejected'));
+	pg_assert_contains('text-bg-secondary', pg_return_badge_class('closed'));
+	pg_assert_contains('text-bg-secondary', pg_return_badge_class('unknown'));
+}
+
+// The customer's mail repeats what they asked for, escaped.
+function test_returns_request_mail_body()
+{
+	$html = pg_return_request_mail_body(array(
+		'customer'      => 'Jane <Cooper>',
+		'order_number'  => '1172',
+		'lines'         => array(array('name' => 'Mug <XL>', 'quantity' => 2)),
+		'reason_label'  => 'It arrived damaged',
+		'customer_note' => "Box torn\nsecond line",
+		'from_name'     => 'ACME',
+	));
+
+	pg_assert_contains('Jane &lt;Cooper&gt;', $html, 'name, escaped');
+	pg_assert_contains('1172', $html, 'order number');
+	pg_assert_contains('Mug &lt;XL&gt;', $html, 'line, escaped');
+	pg_assert_contains('It arrived damaged', $html, 'reason');
+	pg_assert_contains('Box torn<br', $html, 'note line breaks');
+	pg_assert_contains('ACME', $html, 'sender');
+}
