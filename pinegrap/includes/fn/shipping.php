@@ -348,7 +348,10 @@ function pg_shipment_rows_ready()
  * The carrier kept on the row is one somebody named, in this order: the
  * caller ($opts['carrier'], a key or a carrier's name), the row itself from
  * an earlier write, the shipping method's carrier (shipping_methods.carrier),
- * then a carrier the method's code spells out. The site's default carrier
+ * then a carrier the method's code spells out. A caller that names nothing
+ * leaves the row's own carrier alone, unless it says the carrier was chosen
+ * ($opts['carrier_chosen']: the order screen's per-number select, where
+ * "Automatic" is a choice that drops what the row had). The site's default carrier
  * and the number's shape are not written down: they stay guesses made at
  * read time, so correcting the default corrects every parcel that relied on
  * it. The format warning is worked out against the carrier the customer is
@@ -365,18 +368,20 @@ function pg_shipment_rows_ready()
  * @param int    $order_id
  * @param int    $ship_to_id
  * @param string $number
- * @param array  $opts carrier, tracking_url (the carrier's own page), source
- *                     (pg_shipment_sources()), shipped_at (unix time)
+ * @param array  $opts carrier, carrier_chosen (bool), tracking_url (the
+ *                     carrier's own page), source (pg_shipment_sources()),
+ *                     shipped_at (unix time)
  * @return array ok, id, created (the row did not exist), number (as stored),
  *               carrier (as stored), format_warning
  */
 function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
 {
     $opts = (array) $opts + array(
-        'carrier'      => '',
-        'tracking_url' => '',
-        'source'       => 'panel',
-        'shipped_at'   => 0,
+        'carrier'        => '',
+        'carrier_chosen' => false,
+        'tracking_url'   => '',
+        'source'         => 'panel',
+        'shipped_at'     => 0,
     );
 
     $order_id = (int) $order_id;
@@ -450,7 +455,7 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
 
     $carrier = pg_shipping_method_carrier($opts['carrier']);
 
-    if (($carrier === '') && $existing && pg_shipping_carrier_exists($existing['carrier'])) {
+    if (($carrier === '') && empty($opts['carrier_chosen']) && $existing && pg_shipping_carrier_exists($existing['carrier'])) {
         $carrier = (string) $existing['carrier'];
     }
 
@@ -692,4 +697,175 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
     }
 
     return true;
+}
+
+/**
+ * The parcels of an address as the order screen lists them, oldest first.
+ *
+ * Before the 11.0.20 step the row is only a number; the other keys are filled
+ * with what a new row would hold, so a reader needs no second code path.
+ *
+ * @param  int $ship_to_id
+ * @return array list of id, number, carrier, tracking_url, status, status_at,
+ *               shipped_at, delivered_at, source, format_warning
+ */
+function pg_shipment_rows($ship_to_id)
+{
+    $ship_to_id = (int) $ship_to_id;
+
+    if ($ship_to_id <= 0) {
+        return array();
+    }
+
+    $columns = pg_shipment_rows_ready()
+        ? 'id, number, carrier, tracking_url, status, status_at, shipped_at, delivered_at, source, format_warning'
+        : 'id, number';
+
+    $rows = array();
+
+    foreach (db_items("SELECT " . $columns . " FROM shipping_tracking_numbers WHERE ship_to_id = '" . $ship_to_id . "' ORDER BY id ASC") as $row) {
+        $rows[] = $row + array(
+            'carrier'        => '',
+            'tracking_url'   => '',
+            'status'         => 'created',
+            'status_at'      => 0,
+            'shipped_at'     => 0,
+            'delivered_at'   => 0,
+            'source'         => 'panel',
+            'format_warning' => 0,
+        );
+    }
+
+    return $rows;
+}
+
+/**
+ * What a parcel row looks like to the people reading it: the carrier and the
+ * link the row names, or else the ones worked out from the shipping method,
+ * the site's default and the number's shape, the way every screen has always
+ * worked them out.
+ *
+ * @param  array  $row     a row of pg_shipment_rows()
+ * @param  string $method  ship_tos.shipping_method_code
+ * @param  string $default the site's default carrier (pg_shipping_default_carrier())
+ * @return array number, carrier (key or ''), named (the row holds the carrier),
+ *               carrier_name, url, status, warning (bool)
+ */
+function pg_shipment_view($row, $method, $default)
+{
+    $row = (array) $row;
+    $number = isset($row['number']) ? trim((string) $row['number']) : '';
+    $carriers = pg_shipping_carriers();
+
+    $carrier = isset($row['carrier']) ? pg_shipping_carrier_text($row['carrier']) : '';
+    $named = isset($carriers[$carrier]);
+
+    if (!$named) {
+        $carrier = pg_shipping_carrier($number, (string) $method, (string) $default);
+    }
+
+    $url = isset($row['tracking_url']) ? pg_shipment_tracking_url_clean($row['tracking_url']) : '';
+
+    if (($url === '') && ($carrier !== '') && ($number !== '')) {
+        $url = str_replace('{code}', rawurlencode($number), $carriers[$carrier]['url']);
+    }
+
+    $status = (isset($row['status']) && in_array($row['status'], pg_shipment_statuses(), true)) ? $row['status'] : 'created';
+
+    return array(
+        'number'       => $number,
+        'carrier'      => $carrier,
+        'named'        => $named,
+        'carrier_name' => ($carrier !== '') ? $carriers[$carrier]['name'] : '',
+        'url'          => $url,
+        'status'       => $status,
+        'warning'      => !empty($row['format_warning']),
+    );
+}
+
+/**
+ * The name of a parcel's status, for a badge.
+ *
+ * @param  string $status
+ * @return string
+ */
+function pg_shipment_status_label($status)
+{
+    switch ((string) $status) {
+        case 'in_transit':
+            return lang('In transit');
+        case 'out_for_delivery':
+            return lang('Out for delivery');
+        case 'delivered':
+            return lang('Delivered');
+        case 'returned':
+            return lang('Returned to sender');
+        case 'exception':
+            return lang('Delivery problem');
+        default:
+            return lang('Recorded');
+    }
+}
+
+/**
+ * The badge colour of a parcel's status.
+ *
+ * @param  string $status
+ * @return string Bootstrap classes
+ */
+function pg_shipment_status_class($status)
+{
+    switch ((string) $status) {
+        case 'in_transit':
+        case 'out_for_delivery':
+            return 'text-bg-primary';
+        case 'delivered':
+            return 'text-bg-success';
+        case 'returned':
+            return 'text-bg-warning';
+        case 'exception':
+            return 'text-bg-danger';
+        default:
+            return 'text-bg-secondary';
+    }
+}
+
+/**
+ * The options of a parcel's carrier select: "Automatic" first, naming the
+ * carrier it currently resolves to when there is one, then every carrier.
+ * Labels are escaped here, because the select prints them as they are.
+ *
+ * @param  string $automatic the carrier name "Automatic" resolves to, or ''
+ * @return array label => value, as liveform::output_field() takes them
+ */
+function pg_shipment_carrier_options($automatic)
+{
+    $automatic = trim((string) $automatic);
+
+    $options = array(
+        h(($automatic !== '') ? lang(array('string' => 'Automatic ({var:1})', 'vars' => array($automatic))) : lang('Automatic')) => '',
+    );
+
+    foreach (pg_shipping_carriers() as $carrier => $entry) {
+        $options[h($entry['name'])] = $carrier;
+    }
+
+    return $options;
+}
+
+/**
+ * The note beside a number whose shape does not fit its carrier.
+ *
+ * @param  string $carrier_name the carrier the number was checked against, or ''
+ * @return string
+ */
+function pg_shipment_warning_text($carrier_name)
+{
+    $carrier_name = trim((string) $carrier_name);
+
+    if ($carrier_name === '') {
+        return lang('This does not look like a tracking number. It was saved anyway.');
+    }
+
+    return lang(array('string' => 'This does not look like a {var:1} tracking number. It was saved anyway.', 'vars' => array($carrier_name)));
 }

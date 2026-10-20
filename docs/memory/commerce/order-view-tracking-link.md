@@ -13,7 +13,7 @@ description: How a parcel's carrier, name and tracking link are found (pg_shippi
 
 ## Where does the default come from?
 - `ECOMMERCE_DEFAULT_TRACKING_PROVIDER` (`data/config.php`; documented in `data/config(default).php`), read by `pg_shipping_default_carrier()`: a key of `pg_shipping_carriers()` in any capitals, '' otherwise.
-- `get_shipping_tracking_url()` and `get_shipping_carrier_name()` take an optional `$default`; null (every caller today: panel `view_order.php`, `print_order.php`, the classic `get_view_order_screen_content.php`, `includes/templates/view_order.php`, the order view widget) reads the site's. Before #601 only the widget used it, and only when the method code was empty.
+- `get_shipping_tracking_url()` and `get_shipping_carrier_name()` take an optional `$default`; null (callers: `print_order.php`, the classic `get_view_order_screen_content.php`, `includes/templates/view_order.php`, the order view widget) reads the site's. Before #601 only the widget used it, and only when the method code was empty. The panel order screen reads the row first (`pg_shipment_view()`, `order-screen-shipments.md`).
 - System Status's "Default Shipping Carrier" tile reads the value the same way: unknown → warning, known → the carrier's name.
 
 ## Which carriers are known?
