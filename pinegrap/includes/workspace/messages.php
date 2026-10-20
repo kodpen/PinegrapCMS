@@ -653,6 +653,10 @@ function ws_message_send($viewer, $channel, $body, $options = array())
         ));
     }
 
+    // An application it mentions hears it through its own subscriptions,
+    // in any channel it may read.
+    ws_message_tell_apps($channel, $message_id, $tokens);
+
     return array('ok' => true, 'error' => '', 'message_id' => $message_id);
 }
 
@@ -836,6 +840,229 @@ function ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $ap
             'actor_id'   => ((int) $app_id > 0) ? 0 : $viewer['id'],
         ));
     }
+}
+
+/**
+ * The applications a message's tags mention (<@app:N>), each once, in the
+ * order they first appear. A tag written with # mentions nobody.
+ *
+ * @param array $tokens ws_tokens() rows
+ * @return int[]
+ */
+function ws_mentioned_app_ids($tokens)
+{
+    $ids = array();
+
+    foreach ((array) $tokens as $token) {
+        $id = (int) ($token['id'] ?? 0);
+
+        if ((($token['sigil'] ?? '') === '@') && (($token['type'] ?? '') === 'app') && ($id > 0) && !in_array($id, $ids, true)) {
+            $ids[] = $id;
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The applications a message tells that they were mentioned: the ones its
+ * tags mention, less the application that wrote it - its own words never
+ * call it, so an answer that repeats its tag does not start it again - and
+ * less the assistants that answer their mentions inside the site (Claude
+ * and Pinegrap AI, ws_message_ask_assistants()). One application mentioning
+ * another is heard; the event says which application wrote it.
+ *
+ * @param array $tokens        ws_tokens() rows
+ * @param int   $writer_app_id the application that wrote the message, 0 for a person
+ * @param int[] $assistant_ids the applications Claude and Pinegrap AI write through, 0 for one not set up
+ * @return int[]
+ */
+function ws_app_mention_audience($tokens, $writer_app_id, $assistant_ids)
+{
+    $leave_out = array_map('intval', (array) $assistant_ids);
+    $leave_out[] = (int) $writer_app_id;
+
+    return array_values(array_filter(ws_mentioned_app_ids($tokens), function ($id) use ($leave_out) {
+        return !in_array($id, $leave_out, true);
+    }));
+}
+
+/**
+ * Does an application hear its mentions at all: it is active, its key has
+ * not run out (the API refuses an expired key, api_authenticate()) and it
+ * may read the workspace (workspace:read, or workspace:write, which includes
+ * it), so a channel's words never reach an integration that could not read
+ * them through the API. Its owner must also read the channel
+ * (ws_app_reads_channel()).
+ *
+ * @param array    $app api_apps row: status, expires_at (0 for never), scopes (the list as stored)
+ * @param int|null $now the moment the key's end is compared with; now when null
+ * @return bool
+ */
+function ws_app_hears_mentions($app, $now = null)
+{
+    if ((string) ($app['status'] ?? '') !== 'active') {
+        return false;
+    }
+
+    $expires = (int) ($app['expires_at'] ?? 0);
+
+    if (($expires > 0) && ($expires < (($now === null) ? time() : (int) $now))) {
+        return false;
+    }
+
+    $scopes = json_decode((string) ($app['scopes'] ?? ''), true);
+
+    return is_array($scopes) && (in_array('workspace:read', $scopes, true) || in_array('workspace:write', $scopes, true));
+}
+
+/**
+ * May an application read the channel the way the API lets it
+ * (ws_api_channel_or_404()): with its owner's reach - a public channel, and
+ * a private channel, a guest's room or a discussion the owner is in. Never
+ * through inspection: a private channel an administrator opened for
+ * inspection is open in that person's session alone and the API keeps no
+ * session, so the owner is asked as somebody who cannot inspect (the role
+ * decides nothing else in ws_can_read_channel()).
+ *
+ * @param array|null $reader  ws_viewer() of the application's owner, null when there is none
+ * @param array      $channel
+ * @return bool
+ */
+function ws_app_reads_channel($reader, $channel)
+{
+    return is_array($reader) && ws_can_read_channel(array('role' => 3) + $reader, $channel);
+}
+
+/**
+ * What workspace.app.mentioned carries: the message the way
+ * workspace.message.created has it, where it was written - for a discussion
+ * also the channel and the message it is about - and the application it
+ * mentions. channel_id is where an answer goes
+ * (POST /workspace/channels/{channel_id}/messages).
+ *
+ * @param array      $message ws_messages row
+ * @param array      $channel the channel or discussion it was written in
+ * @param array|null $thread  ws_threads row of a discussion, null in a channel
+ * @param int        $app_id  the application mentioned
+ * @param string     $text    the words as the application's owner reads them
+ * @param bool       $edited  an edit added the mention
+ * @return array
+ */
+function ws_app_mention_payload($message, $channel, $thread, $app_id, $text, $edited = false)
+{
+    $by_app = ((string) $message['sender_kind'] === 'app');
+
+    return array(
+        'id'               => (int) $message['id'],
+        'channel_id'       => (int) $channel['id'],
+        'channel'          => (string) $channel['name'],
+        'channel_kind'     => (string) $channel['kind'],
+        'thread'           => is_array($thread) ? array('channel_id' => (int) $thread['parent_channel_id'], 'message_id' => (int) $thread['message_id']) : null,
+        'parent_id'        => (int) $message['parent_id'],
+        'sender_id'        => $by_app ? 0 : (int) $message['sender_id'],
+        'app_id'           => $by_app ? (int) $message['sender_id'] : 0,
+        'mentioned_app_id' => (int) $app_id,
+        'kind'             => (string) $message['kind'],
+        'text'             => (string) $text,
+        'body'             => (string) $message['body'],
+        'task_id'          => (int) $message['task_id'],
+        'edited'           => (bool) $edited,
+    );
+}
+
+/**
+ * Tells the applications a message mentions (<@app:N>) through their own
+ * webhook subscriptions (workspace.app.mentioned), so a service outside the
+ * site can answer in the channel with POST /workspace/channels/{id}/messages
+ * and the site holds none of its code.
+ *
+ * Each application once per message: for the tags of a new message, or the
+ * ones an edit adds. Only where it may read the channel
+ * (ws_app_hears_mentions(), ws_app_reads_channel()); anywhere else nothing
+ * is sent - not the words, not that the channel exists or who wrote in it -
+ * and the application could not answer there either. The words go as its
+ * owner reads them, so a record tag says no more than the owner may see.
+ * Which applications are left out: ws_app_mention_audience(). The queue
+ * sends the event to the mentioned application's subscriptions alone
+ * (ws_webhook_event_app_id()).
+ *
+ * @param array $channel    the channel or discussion the message is in
+ * @param int   $message_id
+ * @param array $tokens     ws_tokens() of the tags to tell about
+ * @param bool  $edited     an edit added them
+ * @return int[] the applications an event was announced for
+ */
+function ws_message_tell_apps($channel, $message_id, $tokens, $edited = false)
+{
+    // Nearly every message mentions no application: settled without a query.
+    if (empty(ws_mentioned_app_ids($tokens)) || !function_exists('pg_announce')) {
+        return array();
+    }
+
+    $message = ws_message($message_id);
+
+    if (!$message || ((int) $message['deleted_at'] > 0)) {
+        return array();
+    }
+
+    $assistants = array(
+        function_exists('ws_claude_config') ? (int) ws_claude_config()['app_id'] : 0,
+        function_exists('ws_ai_config') ? (int) ws_ai_config()['app_id'] : 0,
+    );
+
+    $ids = ws_app_mention_audience($tokens, ((string) $message['sender_kind'] === 'app') ? (int) $message['sender_id'] : 0, $assistants);
+
+    if (empty($ids)) {
+        return array();
+    }
+
+    $apps = db_items("SELECT id, status, expires_at, owner_user_id, scopes FROM api_apps WHERE id IN (" . implode(',', $ids) . ")", 'id');
+    $thread = ws_channel_is_thread($channel) ? ws_thread($channel['id']) : null;
+    $told = array();
+
+    foreach ($ids as $app_id) {
+        if (!isset($apps[$app_id]) || !ws_app_hears_mentions($apps[$app_id])) {
+            continue;
+        }
+
+        $owner = pg_load_user_row((int) $apps[$app_id]['owner_user_id']);
+        $reader = is_array($owner) ? ws_viewer($owner) : null;
+
+        if (!ws_app_reads_channel($reader, $channel)) {
+            continue;
+        }
+
+        pg_announce('workspace.app.mentioned', ws_app_mention_payload($message, $channel, $thread, $app_id, ws_plain_text($reader, $message['body']), $edited));
+
+        $told[] = $app_id;
+    }
+
+    return $told;
+}
+
+/**
+ * The one application a workspace event is for, as the webhook queue asks
+ * it (api_webhook_event_app_id()): the application a mention names
+ * (workspace.app.mentioned), -1 for a mention that names none - sent to
+ * nobody rather than to every subscriber - and 0 for every other event,
+ * which any subscription listening to it hears.
+ *
+ * @param string $event
+ * @param array  $payload
+ * @return int
+ */
+function ws_webhook_event_app_id($event, $payload)
+{
+    if ((string) $event !== 'workspace.app.mentioned') {
+        return 0;
+    }
+
+    $payload = (array) $payload;
+    $named = $payload['mentioned_app_id'] ?? 0;
+    $app_id = (is_int($named) || (is_string($named) && ctype_digit($named))) ? (int) $named : 0;
+
+    return ($app_id > 0) ? $app_id : -1;
 }
 
 /**
@@ -1031,6 +1258,9 @@ function ws_message_edit($viewer, $message, $body)
     }
 
     ws_message_notify_mentions($viewer, $channel, $message['id'], $new);
+
+    // So are the applications it mentions for the first time.
+    ws_message_tell_apps($channel, $message['id'], $new, true);
 
     if ($channel['kind'] === 'thread') {
         ws_thread_copy_sync($message['id']);

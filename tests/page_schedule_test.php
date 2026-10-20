@@ -152,3 +152,85 @@ function test_page_schedule_plan_home_takes_no_time()
 	pg_assert_same(array('draft' => false, 'publish_at' => 0, 'unpublish_at' => 0, 'error' => '', 'notes' => array()),
 		pg_page_schedule_plan(0, 0, false, true, 1000));
 }
+
+// The external API takes a time that names its moment: digits, or a date and
+// time with an offset or Z. Without one the site's zone would be a guess.
+function test_page_schedule_parse_absolute_needs_an_offset()
+{
+	page_schedule_test_in_zone('Europe/Istanbul', function () {
+		$expected = gmmktime(6, 30, 0, 10, 21, 2026);
+
+		pg_assert_same(array('ok' => true, 'time' => $expected, 'error' => ''), pg_page_schedule_parse_absolute('2026-10-21T09:30:00+03:00'));
+		pg_assert_same(array('ok' => true, 'time' => $expected, 'error' => ''), pg_page_schedule_parse_absolute('2026-10-21T06:30:00Z'));
+		pg_assert_same(array('ok' => true, 'time' => $expected, 'error' => ''), pg_page_schedule_parse_absolute((string) $expected));
+		pg_assert_same(array('ok' => true, 'time' => $expected, 'error' => ''), pg_page_schedule_parse_absolute($expected));
+
+		foreach (array('2026-10-21T09:30', '2026-10-21 09:30', '2026-10-21T09:30:00', ' 2026-10-21T09:30 ') as $local) {
+			pg_assert_same(array('ok' => false, 'time' => 0, 'error' => 'offset'), pg_page_schedule_parse_absolute($local), $local);
+		}
+	});
+}
+
+// Nothing sent is a clear; a number too small to be a unix time this
+// century (a date written as digits, a flag) and a date that does not exist
+// are not times.
+function test_page_schedule_parse_absolute_clears_and_refusals()
+{
+	foreach (array(null, '', 0, '0') as $value) {
+		pg_assert_same(array('ok' => true, 'time' => 0, 'error' => ''), pg_page_schedule_parse_absolute($value));
+	}
+
+	foreach (array('1', '20261021', 999999999, '2026-02-30T10:00:00Z', 'tomorrow', '2026-10-21T09:30:00+15:00', array()) as $value) {
+		pg_assert_same(array('ok' => false, 'time' => 0, 'error' => 'invalid'), pg_page_schedule_parse_absolute($value), json_encode($value));
+	}
+}
+
+// The times sent lie over the stored ones; a time not sent keeps its value.
+function test_page_schedule_request_plan_keeps_what_is_not_sent()
+{
+	$check = pg_page_schedule_request_plan(array('unpublish_at' => 5000), array('publish_at' => 3000, 'unpublish_at' => 4000), true, false, 1000);
+
+	pg_assert_same('', $check['error']);
+	pg_assert_same(array('draft' => true, 'publish_at' => 3000, 'unpublish_at' => 5000, 'error' => '', 'notes' => array()), $check['plan']);
+
+	$cleared = pg_page_schedule_request_plan(array('publish_at' => 0), array('publish_at' => 3000, 'unpublish_at' => 4000), true, false, 1000);
+
+	pg_assert_same(array('draft' => true, 'publish_at' => 0, 'unpublish_at' => 4000, 'error' => '', 'notes' => array()), $cleared['plan']);
+}
+
+// The home page is refused a time instead of having it dropped; clearing
+// one is not a time.
+function test_page_schedule_request_plan_refuses_the_home_page()
+{
+	pg_assert_same(array('error' => 'home', 'field' => 'unpublish_at', 'plan' => null),
+		pg_page_schedule_request_plan(array('publish_at' => 0, 'unpublish_at' => 3000), array(), false, true, 1000));
+
+	pg_assert_same('', pg_page_schedule_request_plan(array('publish_at' => 0), array(), false, true, 1000)['error']);
+}
+
+// A new page starts as a draft, so a publish time that has come is refused;
+// for a page that exists it is carried out, as by any save.
+function test_page_schedule_request_plan_passed_publish_time()
+{
+	pg_assert_same(array('error' => 'passed', 'field' => 'publish_at', 'plan' => null),
+		pg_page_schedule_request_plan(array('publish_at' => 1000), array(), true, false, 1000, true));
+
+	$existing = pg_page_schedule_request_plan(array('publish_at' => 900), array(), true, false, 1000);
+
+	pg_assert_same(array('draft' => false, 'publish_at' => 0, 'unpublish_at' => 0, 'error' => '', 'notes' => array('published_now')), $existing['plan']);
+
+	// A publish time ahead takes a page that is on the site off it until then.
+	$ahead = pg_page_schedule_request_plan(array('publish_at' => 2000), array(), false, false, 1000);
+
+	pg_assert_same(true, $ahead['plan']['draft']);
+}
+
+// An end that does not come after the start names the time that was sent.
+function test_page_schedule_request_plan_order_names_the_field()
+{
+	pg_assert_same(array('error' => 'order', 'field' => 'unpublish_at', 'plan' => null),
+		pg_page_schedule_request_plan(array('unpublish_at' => 2500), array('publish_at' => 3000), true, false, 1000));
+
+	pg_assert_same(array('error' => 'order', 'field' => 'publish_at', 'plan' => null),
+		pg_page_schedule_request_plan(array('publish_at' => 4500), array('unpublish_at' => 4000), true, false, 1000));
+}

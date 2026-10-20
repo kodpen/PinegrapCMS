@@ -10,7 +10,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default built): pre-information form, distance sales contract; left: KVKK, withdrawal timer
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule; CI checks done (PR #673)
-- customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model and the My Account side done): panel screens, approval mail, iyzico refund and ERP return invoice, reminders, API, the classic order view left
+- customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model, My Account side and panel screens done): iyzico refund and ERP return invoice, reminders, staff-recorded requests, API, the classic order view left
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
 - docker-image.md: Plan (approved 2026-10-19, steps 1-5 built: #565, #621, #689, #737, #797): compose stack, unattended install, README section, GHCR images; owner's panel-update question left
@@ -27,7 +27,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19, not started): Trendyol (V2 API, first) and Hepsiburada connectors on the n11 connector layer: listings, stock/price queue, orders, status, invoice link, returns, Q&A
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export and Markdown/zip import done; enex, Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
-- page-revisions-and-scheduling.md: Plan (approved 2026-10-19; steps 1-3 done, PRs #696, #705, #743): page revision history with compare and restore, retention, scheduled publish and unpublish; API and MCP left
+- page-revisions-and-scheduling.md: Plan (approved 2026-10-19; steps 1-4 done, PRs #696, #705, #743, #810): page revision history with compare and restore, retention, scheduled publish and unpublish, API and MCP; memory wrap-up left
 - passkeys.md: Plan (approved 2026-10-19, in progress: step 1 verifier done, PR #594): WebAuthn passkeys for panel users and members as second factor or passwordless sign-in; Account Security, admin reset
 - payment-driver-layer.md: Plan (approved 2026-10-19; steps 1-2 done, PRs #740, #812; 2b open): payment drivers beside submit_order.php; iyzico on it, Stripe, PayTR, PayPal v2 next; legacy gateways frozen
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis, all in the CI baselines: undefined variables, a duplicate key, nested functions, an unguarded imagecreatefrombmp(), 8.1-8.5 deprecations, dead remnants
@@ -47,4 +47,4 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
-- workspace-phase3-leftovers.md: Workspace module items planned for phase 3 (bots) and not built: app membership and command registry over the API, app.mentioned webhook, ERP overdue to task, designer task panel
+- workspace-phase3-leftovers.md: Workspace module items planned for phase 3 (bots): app.mentioned webhook done (#809); left: app membership and command registry over the API, ERP overdue to task, designer task panel

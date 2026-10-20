@@ -665,6 +665,8 @@ function api_openapi_objects()
         'DesignView'     => 'api_design_view_schema',
         'DesignOutlineItem' => 'api_design_outline_item_schema',
         'DesignProposal' => 'api_design_proposal_schema',
+        'DesignRevision' => 'api_design_revision_schema',
+        'DesignRestore'  => 'api_design_restore_schema',
         'AuthSession'    => 'api_auth_session_schema',
         'Me'             => 'api_auth_me_schema',
         'Device'         => 'api_device_schema',
