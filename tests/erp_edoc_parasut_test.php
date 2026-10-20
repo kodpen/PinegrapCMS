@@ -451,6 +451,23 @@ function test_erp_edoc_parasut_vat_rate_refusal()
 	pg_assert_contains('0%, 1%, 10%, 20%', $refusal);
 }
 
+// A line without a Pinegrap product goes on the default product/service;
+// with none set the invoice is refused before anything reaches Paraşüt.
+function test_erp_edoc_parasut_product_refusal()
+{
+	$product = array('product_id' => 543, 'description' => 'Deri Kalem Kılıfı');
+	$free = array('product_id' => 0, 'description' => 'Deneme hizmeti');
+
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array($product, $free), '9001'));
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array($product), ''));
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array(), ''));
+	pg_assert_contains('"Deneme hizmeti"', erp_edoc_parasut_product_refusal(array($product, $free), ' '));
+
+	// Without a default given, the setting answers (the test sets one).
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array($free)));
+	pg_assert_same(erp_edoc_parasut_no_product_text($free), erp_edoc_parasut_product_refusal(array($free), ''));
+}
+
 // The driver hands over its customer and supplier cards: the account sync
 // screens ask for the capability and the three operations.
 function test_erp_edoc_parasut_offers_its_cards()
