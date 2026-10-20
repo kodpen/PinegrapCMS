@@ -1454,6 +1454,7 @@
     "Commissionable": "Komisyona Tabi",
     "Full Description": "Tam Açıklama",
     "Authorization Code": "Yetki Kodu",
+    "quantity must be between {var:1} and {var:2}.": "quantity {var:1} ile {var:2} arasında olmalıdır.",
     "Ship to Name": "İsmine Postalama",
     "View Order": "Siparişi Görüntüle",
     "Delivery Date": "Teslimat Tarihi",
@@ -6036,6 +6037,7 @@
     "ChatGPT-User, Claude-User and Perplexity-User fetch a single page at the moment a person asks the assistant about your site. Allowing them lets your pages appear as sources in AI answers. Each request is verified against the operator's published IP list, so a scraper merely claiming the name is still blocked. AI training crawlers such as GPTBot and ClaudeBot stay blocked regardless of this switch.": "ChatGPT-User, Claude-User ve Perplexity-User, bir kişi asistana sitenizi sorduğu anda tek bir sayfayı okur. İzin vermek, sayfalarınızın yapay zekâ cevaplarında kaynak olarak görünmesini sağlar. Her istek operatörün yayınladığı IP listesiyle doğrulanır; adı taklit eden bir kazıyıcı engellenmeye devam eder. GPTBot ve ClaudeBot gibi yapay zekâ eğitim tarayıcıları bu anahtardan bağımsız olarak engelli kalır.",
     "Allow AI Search Indexers (IP Verified)": "Yapay Zekâ Arama Botlarına İzin Ver (IP Doğrulamalı)",
     "OAI-SearchBot and Claude-SearchBot index pages for AI search results, the way a search engine crawler does. Allowing them lets your site rank in ChatGPT and Claude search. Verified against published IP lists as well.": "OAI-SearchBot ve Claude-SearchBot, bir arama motoru tarayıcısı gibi sayfaları yapay zekâ arama sonuçları için dizinler. İzin vermek sitenizin ChatGPT ve Claude aramalarında sıralanmasını sağlar. Bunlar da yayınlanan IP listeleriyle doğrulanır.",
+    "GİB does not list the buyer for e-Invoice, so the invoice goes as e-Archive, and an internet sale needs these on it: {var:1}. The draft at Paraşüt cannot take them any more: cancel the invoice and issue it again once they are on it.": "GİB alıcıyı e-Fatura mükellefi olarak listelemiyor; fatura e-Arşiv olarak gidiyor ve internet satışında üzerinde şunlar bulunmalı: {var:1}. Paraşüt'teki taslağa artık eklenemiyorlar: faturayı iptal edip bunlar üzerindeyken yeniden kesin.",
     "Update Bot IP Lists": "Bot IP Listelerini Güncelle",
     "The lists refresh on their own: with panel visits, and daily when the Bot IP lists job is enabled under Cron jobs. This button fetches them right now and also saves the settings above.": "Listeler kendiliğinden tazelenir: panel ziyaretleriyle, Cron işleri altında Bot IP listeleri işi açıksa günlük olarak. Bu düğme listeleri şimdi çeker ve üstteki ayarları da kaydeder.",
     "today": "bugün",
@@ -24562,5 +24564,5 @@
     "{var:1} return request(s) approved.": "{var:1} iade talebi onaylandı.",
     "{var:1} of the customers could not be told by e-mail.": "Müşterilerden {var:1} tanesine e-posta gönderilemedi.",
     "{var:1} return(s) were no longer waiting for an answer and were left as they are.": "{var:1} iade artık yanıt beklemediği için olduğu gibi bırakıldı.",
-    "GİB does not list the buyer for e-Invoice, so the invoice goes as e-Archive, and an internet sale needs these on it: {var:1}. The draft at Paraşüt cannot take them any more: cancel the invoice and issue it again once they are on it.": "GİB alıcıyı e-Fatura mükellefi olarak listelemiyor; fatura e-Arşiv olarak gidiyor ve internet satışında üzerinde şunlar bulunmalı: {var:1}. Paraşüt'teki taslağa artık eklenemiyorlar: faturayı iptal edip bunlar üzerindeyken yeniden kesin."
+    "unpublish_at has passed. A new page starts as a draft, off the site, so its time to come off it has to be ahead.": "unpublish_at geçmiş. Yeni sayfa taslak olarak, sitenin dışında başlar; bu yüzden yayından kaldırılma zamanı ileride olmalı."
 }

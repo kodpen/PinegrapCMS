@@ -6,18 +6,18 @@ Open the index of the folder the task needs, then only the files you need.
 
 ## Memory folders (docs/memory/)
 
-- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (49)
+- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (50)
 - core/README.md: Code rules, file layout, translation, roles and access, security, api.php, request parameters (37)
 - data/README.md: Table structures and SQL pitfalls (10)
 - designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (79)
 - erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports (42)
-- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (45)
-- platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (49)
+- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (44)
+- platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (50)
 - release/README.md: Versions, migrations and upgrade steps, change log rules, release status (14)
-- ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (45)
+- ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (46)
 - visitors/README.md: Visitor statistics, page and article views, search engine index flags (18)
 - waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers (22)
-- workflow/README.md: Project overview, owner rules, git and branches, sandbox and dev machine (6)
+- workflow/README.md: Project overview, owner rules, git and branches, sandbox and dev machine (7)
 - workspace/README.md: Workspace module: channels, tasks, plan board, rights, Claude in channels (17)
 
 ## Other documents (docs/)
