@@ -32,4 +32,4 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 - `pg_short_link_redirect_columns()` -> `pg_short_link_redirect_problem()` on every entry point: a `$n` beyond the stars (`to_references`), a `$n` in the host of a full address (`to_host`, an open redirect), an address that leads to the link itself (`to_self`), back to it through other links (`to_loop`) or on through more than 10 (`to_chain`). A page, file or the home page ends a chain.
 - Before the step nothing is written or checked and names stay at 100 characters.
 
-CSV files: `short-link-csv.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, PR_NUMBER.
+CSV files: `short-link-csv.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, #799.

@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-3 and 7 done; redir
 ## What remains?
 1. Done (#699): redirects as short link options (11.0.12, router, 404-time patterns, classic screens, File Manager server side, API).
 2. Done (#699): CSV import and export on the short link list.
-3. Done (PR_NUMBER): File Manager short link window offers the answer, with the classic screens' name and address checks.
+3. Done (#799): File Manager short link window offers the answer, with the classic screens' name and address checks.
 4. Slug-change hook in designer save and page edit (S).
 5. 404 logging with retention (S).
 6. Page settings fields + render (S).
