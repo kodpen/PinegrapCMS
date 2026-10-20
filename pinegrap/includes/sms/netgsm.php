@@ -14,7 +14,8 @@
  * A message is sent once. Only an answer that shows Netgsm did not take it
  * (no connection was made, a 429 or 503, a limit or system code) says it may
  * be tried again: after a timeout or a 500/502/504 Netgsm may already have
- * it, and a message sent twice cannot be taken back.
+ * it, and a message sent twice cannot be taken back. Such an answer is
+ * reported as uncertain, apart from a refusal, which took nothing.
  *
  * Request builders and response readers are plain functions of their
  * arguments, so the tests check them without a Netgsm account; the two
@@ -257,24 +258,33 @@ function pg_sms_netgsm_answer($status, $body, $error = '')
  * @param bool   $never_sent the transport failed before anything reached
  *                           Netgsm (pg_sms_http_never_sent())
  * @return array ok, id (Netgsm's job id), code, error, retry (whether sending
- *               the same message again cannot deliver it twice)
+ *               the same message again cannot deliver it twice), uncertain
+ *               (Netgsm may have taken it although no success came back)
  */
 function pg_sms_netgsm_send_parse($status, $body, $error = '', $never_sent = false)
 {
     $answer = pg_sms_netgsm_answer($status, $body, $error);
 
     if ($answer['error'] !== '') {
+        $uncertain = false;
+
         if ((int) $status === 0) {
             $retry = (bool) $never_sent;
+            $uncertain = !$retry;
         } elseif ($answer['code'] !== '') {
+            // Netgsm answered with a code: it refused the message or turned
+            // it away for now, and took nothing.
             $retry = pg_sms_netgsm_code_retries($answer['code']);
         } else {
             // Not Netgsm's JSON: only a 429 or a 503 says the request was
-            // turned away before Netgsm took it.
+            // turned away before Netgsm took it. Any other refusal (4xx) took
+            // nothing either; a success status or a server error in front of
+            // Netgsm may come after it took the message.
             $retry = in_array((int) $status, array(429, 503), true);
+            $uncertain = !$retry && (((int) $status < 400) || ((int) $status >= 500));
         }
 
-        return array('ok' => false, 'id' => '', 'code' => $answer['code'], 'error' => $answer['error'], 'retry' => $retry);
+        return array('ok' => false, 'id' => '', 'code' => $answer['code'], 'error' => $answer['error'], 'retry' => $retry, 'uncertain' => $uncertain);
     }
 
     $id = '';
@@ -290,15 +300,16 @@ function pg_sms_netgsm_send_parse($status, $body, $error = '', $never_sent = fal
     // to ask its delivery report about. Not retried: it may have been taken.
     if ($id === '') {
         return array(
-            'ok'    => false,
-            'id'    => '',
-            'code'  => $answer['code'],
-            'error' => lang('Netgsm accepted the request but returned no job id.'),
-            'retry' => false,
+            'ok'        => false,
+            'id'        => '',
+            'code'      => $answer['code'],
+            'error'     => lang('Netgsm accepted the request but returned no job id.'),
+            'retry'     => false,
+            'uncertain' => true,
         );
     }
 
-    return array('ok' => true, 'id' => $id, 'code' => $answer['code'], 'error' => '', 'retry' => false);
+    return array('ok' => true, 'id' => $id, 'code' => $answer['code'], 'error' => '', 'retry' => false, 'uncertain' => false);
 }
 
 /**
@@ -353,26 +364,20 @@ function pg_sms_netgsm_senders_parse($status, $body, $error = '')
  * @param string $number     E.164 digits (pg_sms_number())
  * @param string $text
  * @param bool   $commercial
- * @return array ok, id, code, error, retry
+ * @return array ok, id, code, error, retry, uncertain
  */
 function pg_sms_netgsm_send($app, $number, $text, $commercial)
 {
     $netgsm_number = pg_sms_netgsm_number($number);
 
     if ($netgsm_number === '') {
-        return array(
-            'ok'    => false,
-            'id'    => '',
-            'code'  => '',
-            'error' => lang('Netgsm sends to Turkish mobile numbers only.'),
-            'retry' => false,
-        );
+        return pg_sms_failure(lang('Netgsm sends to Turkish mobile numbers only.'));
     }
 
     $request = pg_sms_netgsm_send_request($app, $netgsm_number, $text, $commercial);
     $response = pg_sms_http('POST', $request);
 
-    return pg_sms_netgsm_send_parse($response['status'], $response['body'], $response['error'], pg_sms_http_never_sent($response['errno']));
+    return pg_sms_netgsm_send_parse($response['status'], $response['body'], $response['error'], pg_sms_http_never_sent($response['errno'], isset($response['connect']) ? $response['connect'] : 0));
 }
 
 /**

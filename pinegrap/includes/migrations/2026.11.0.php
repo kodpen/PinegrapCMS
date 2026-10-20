@@ -33,6 +33,10 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_sms_outbox();             // 11.0.10
+	upgrade_2026_11_0_shipments();              // 11.0.20
+	upgrade_2026_11_0_order_returns();          // 11.0.11
+	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
 
 }
 
@@ -314,5 +318,268 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+// The queue of outgoing text messages (2026.11.0, 11.0.10; pg_sms_enqueue()
+// and pg_sms_queue_run() in includes/fn/sms.php, the SMS tab of the mail
+// queue screen).
+//
+// A request that wants an SMS writes a row here and the general job sends it,
+// so no visitor waits on the provider. A row is sent again only when the
+// provider's answer shows it never took the message (the driver's retry);
+// after a timeout, a 5xx or a run that stopped halfway the provider may have
+// it, the row becomes 'uncertain' and is not sent again by itself, since a
+// text message sent twice cannot be taken back. status is a VARCHAR rather
+// than an ENUM so a state added later (a delivery report) needs no step.
+// expires_at (0: none) is the time after which a message is no longer worth
+// sending, a sign-in code above all. reference names what a message is about
+// ('order:438:received'); it is unique, so a writer that runs twice queues
+// one message, and NULL for a message about nothing in particular.
+// provider and provider_id say who took the message and under which id, for
+// a delivery report or a question to the provider. InnoDB, so the claim
+// (UPDATE ... WHERE status = 'queued') is a row lock.
+function upgrade_2026_11_0_sms_outbox() {
+
+	install_create_table('sms_outbox', "CREATE TABLE sms_outbox (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		send_after   INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		status       VARCHAR(16) NOT NULL DEFAULT 'queued',
+		attempts     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		last_error   VARCHAR(500) NOT NULL DEFAULT '',
+		claimed_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		kind         VARCHAR(16) NOT NULL DEFAULT '',
+		recipient    VARCHAR(16) NOT NULL DEFAULT '',
+		body         TEXT NOT NULL,
+		reference    VARCHAR(64) NULL DEFAULT NULL,
+		provider     VARCHAR(32) NOT NULL DEFAULT '',
+		provider_id  VARCHAR(64) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_reference (reference),
+		KEY idx_due (status, send_after),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('SMS: outgoing text messages wait in a queue that the scheduled general job sends, so no visitor waits on the SMS provider. The queue is on the SMS tab of the mail queue, under Settings, Jobs.');
+
+}
+
+// The shipment row (2026.11.0, 11.0.20; docs/memory/commerce/shipment-row-schema.md).
+//
+// shipping_tracking_numbers held one thing per parcel: its number. Which
+// carrier took it, how far it has got, when it left and when it arrived were
+// worked out again at every read, from the shipping method's code, the
+// number's shape and the ship_tos dates - which checkout writes as estimates.
+// The parcel row now carries them itself, so a status a carrier reports, a
+// carrier a fulfilment system names and the day a number was recorded have a
+// place to be written once and read back as they were.
+//
+//   carrier         a key of pg_shipping_carriers() ('yurtici', 'ups'...),
+//                   '' when the carrier is still worked out from the method
+//   tracking_url    the carrier's own page for this parcel when its API gives
+//                   one; '' builds the address from the carrier's pattern
+//   status          one of created, in_transit, out_for_delivery, delivered,
+//                   returned, exception (values in code, not an ENUM: the
+//                   list grows as carriers report more), status_at its time
+//   shipped_at      when the parcel left, delivered_at when it arrived (unix
+//                   times; the ship_tos dates stay the estimates they are)
+//   created_at      when the row was written
+//   source          who wrote it: panel, api, marketplace, carrier, csv
+//   format_warning  1 when the number does not look like the carrier's
+//                   (a warning only, it never blocks a save)
+//
+// The same number recorded twice for one address said nothing new, and the
+// panel, the external API and the marketplace import each checked for it
+// themselves before writing. The pair is unique from now on, so the check is
+// the table's; rows that already repeat a pair are reduced to the first one
+// written before the key is added, or the ALTER would be refused.
+//
+// shipped_at is filled from ship_tos.ship_date for the parcels that have a
+// number, the way erp_order_shipment() reads it: only a date that is not in
+// the future, because a date beyond today is checkout's estimate and not the
+// day anything left. The remaining rows keep 0 and the write path fills them
+// as they are touched.
+//
+// shipping_methods.carrier names the carrier a method ships with, so the
+// method's code no longer has to spell it; '' keeps today's recognition.
+// order_delivered joins the automatic e-mail actions for the campaign a
+// parcel's arrival will start.
+function upgrade_2026_11_0_shipments() {
+
+	install_add_column('shipping_tracking_numbers', 'carrier', "VARCHAR(20) NOT NULL DEFAULT ''");
+
+	install_add_column('shipping_tracking_numbers', 'tracking_url', "VARCHAR(500) NOT NULL DEFAULT ''");
+
+	install_add_column('shipping_tracking_numbers', 'status', "VARCHAR(20) NOT NULL DEFAULT 'created'");
+
+	install_add_column('shipping_tracking_numbers', 'status_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('shipping_tracking_numbers', 'shipped_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('shipping_tracking_numbers', 'delivered_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('shipping_tracking_numbers', 'created_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('shipping_tracking_numbers', 'source', "VARCHAR(16) NOT NULL DEFAULT 'panel'");
+
+	install_add_column('shipping_tracking_numbers', 'format_warning', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	// Repeated pairs, the lowest id kept. Done before the key exists, and
+	// safe to repeat: the second run finds nothing to join. The collation
+	// decides what "the same number" is, so this removes exactly the rows the
+	// unique key would refuse, no more.
+	if (!install_index_exists('shipping_tracking_numbers', 'uk_parcel')) {
+
+		db("DELETE repeated FROM shipping_tracking_numbers AS repeated
+			INNER JOIN shipping_tracking_numbers AS kept
+				ON (kept.ship_to_id = repeated.ship_to_id)
+				AND (kept.number = repeated.number)
+				AND (kept.id < repeated.id)");
+
+	}
+
+	install_add_index('shipping_tracking_numbers', 'uk_parcel', "UNIQUE KEY uk_parcel (ship_to_id, number)");
+
+	// The backfill is written as WHERE shipped_at = 0, so a run that was cut
+	// off continues where it stopped and a second run changes nothing.
+	db("UPDATE shipping_tracking_numbers
+		INNER JOIN ship_tos ON (ship_tos.id = shipping_tracking_numbers.ship_to_id)
+		SET shipping_tracking_numbers.shipped_at = UNIX_TIMESTAMP(ship_tos.ship_date)
+		WHERE (shipping_tracking_numbers.shipped_at = 0)
+			AND (TRIM(shipping_tracking_numbers.number) != '')
+			AND (ship_tos.ship_date != '0000-00-00')
+			AND (ship_tos.ship_date <= CURDATE())");
+
+	install_add_column('shipping_methods', 'carrier', "VARCHAR(20) NOT NULL DEFAULT ''");
+
+	// The enum is widened from what is there, never narrowed: reading it first
+	// keeps any value a later release may have added.
+	$action = install_column_info('email_campaign_profiles', 'action');
+
+	if (is_array($action) && (stripos((string) $action['Type'], "'order_delivered'") === false)) {
+
+		preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $action['Type'], $matches);
+		$values = array();
+
+		foreach ($matches[1] as $value) {
+			$values[] = "'" . $value . "'";
+		}
+
+		$values[] = "'order_delivered'";
+
+		// The default is kept as it stands too, not rewritten from memory.
+		$default = ((string) $action['Default'] !== '') ? (string) $action['Default'] : 'calendar_event_reserved';
+
+		install_modify_column('email_campaign_profiles', 'action', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	}
+
+	install_note('Shipping: each tracking number now keeps its carrier, status, dates and where it was recorded, a number is recorded once per address, a shipping method can name its carrier, and automatic e-mails gain the "order delivered" action.');
+
+}
+
+
+// Customer returns (2026.11.0, 11.0.11; includes/fn/returns.php).
+//
+// order_returns is one request to send back goods of a completed order: the
+// lines of one delivery (ship_to_id), why (reason, a code of
+// pg_return_reasons(), and the customer's own words), and where it stands.
+// status is a VARCHAR checked in code rather than an ENUM, so a status added
+// later needs no step and an older server never turns one into ''. Each status
+// reached has its own time, because the deadlines are read from them: the
+// refund is due 14 days after the goods reached the carrier (shipped_at), or
+// after they arrived (received_at). decision_note is what staff wrote when
+// approving or rejecting, for the customer; carrier and carrier_code say which
+// carrier the goods go back with and the code the customer gives it, and
+// tracking_number is the parcel's. source says who asked (customer, panel,
+// api) and requested_by / decided_by which person.
+//
+// order_return_items lists how many of each order line go back; one row per
+// line and return (uq_return_item). What a line still has to give is its
+// quantity less what the open returns hold, worked out from these rows.
+//
+// Both InnoDB: a request is written in one transaction, so a return without
+// its lines is never left behind.
+function upgrade_2026_11_0_order_returns() {
+
+	install_create_table('order_returns', "CREATE TABLE order_returns (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		status           VARCHAR(16) NOT NULL DEFAULT 'requested',
+		reason           VARCHAR(32) NOT NULL DEFAULT '',
+		customer_note    TEXT NULL,
+		decision_note    TEXT NULL,
+		carrier          VARCHAR(32) NOT NULL DEFAULT '',
+		carrier_code     VARCHAR(64) NOT NULL DEFAULT '',
+		tracking_number  VARCHAR(100) NOT NULL DEFAULT '',
+		source           VARCHAR(16) NOT NULL DEFAULT '',
+		requested_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		requested_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		shipped_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		received_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		refunded_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order (order_id),
+		KEY idx_status (status, requested_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('order_return_items', "CREATE TABLE order_return_items (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		return_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_return_item (return_id, order_item_id),
+		KEY idx_order_item (order_item_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Returns: the tables that will keep customers\' return requests and the order lines they send back are added. Nothing changes on the site with this update.');
+
+}
+
+// Short links as redirects (router.php, includes/fn/short_link_redirects.php).
+//
+// redirect_code says how a link answers: 0 as before (a page, product group,
+// product or file is shown at the short address; an address off the site is
+// sent on with 301 when the link is permanent, 302 otherwise), 301 or 302 to
+// send the visitor to the destination's own address with that status, the
+// way an old address of a moved page should answer. is_pattern marks a name
+// with a * in it ("blog/*"): such a link is tried only when no page answers
+// the address, so it can never hide a live page, and its target may reuse
+// what each * matched as $1, $2. idx_pattern serves that lookup.
+//
+// The name was a 100-character slug and the address 255 characters; an old
+// address brought over from another site needs more of both. name stops at
+// 191 so its index stays within 767 bytes in utf8mb4 (InnoDB without large
+// prefixes, MyISAM's 1000-byte key). A column already that wide is left as it
+// is, so a second run changes nothing.
+function upgrade_2026_11_0_short_link_redirects() {
+
+	install_add_column('short_links', 'redirect_code', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('short_links', 'is_pattern', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_index('short_links', 'idx_pattern', "INDEX idx_pattern (is_pattern)");
+
+	$widen = function ($column, $width, $definition) {
+
+		$info = install_column_info('short_links', $column);
+
+		if (is_array($info) && preg_match('/^varchar\((\d+)\)/i', (string) $info['Type'], $type) && ((int) $type[1] < $width)) {
+			install_modify_column('short_links', $column, $definition);
+		} else {
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'short_links.' . $column . ' ' . $width)));
+		}
+	};
+
+	$widen('name', 191, "VARCHAR(191) NOT NULL DEFAULT ''");
+	$widen('url', 2048, "VARCHAR(2048) NOT NULL DEFAULT ''");
+
+	install_note('Short links: a short link can now send visitors on to its destination with a permanent (301) or temporary (302) redirect, its name can be an old address with Turkish letters, and a * in a name stands for any part of an address that no page answers.');
 
 }

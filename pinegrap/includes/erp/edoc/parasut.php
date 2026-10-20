@@ -510,6 +510,10 @@ function erp_edoc_parasut_vat_rate_refusal($lines)
  * tax_number and finds the card by it again (the old order path sent a
  * 'tckn' attribute the documentation does not list).
  *
+ * The postal code goes with the address when the buyer has one: the
+ * account sync compares it, and a card opened without it would differ from
+ * its account on that field alone.
+ *
  * @param array  $party       erp_edoc_invoice_party() output
  * @param string $tax_number  Digits; the final consumer's for a counter sale
  * @return array
@@ -537,6 +541,10 @@ function erp_edoc_parasut_contact_attributes($party, $tax_number)
 
     if (trim((string) ($party['phone'] ?? '')) !== '') {
         $attributes['phone'] = mb_substr(trim((string) $party['phone']), 0, 50);
+    }
+
+    if (trim((string) ($party['postcode'] ?? '')) !== '') {
+        $attributes['postal_code'] = mb_substr(trim((string) $party['postcode']), 0, 255);
     }
 
     return $attributes;

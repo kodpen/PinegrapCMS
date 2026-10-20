@@ -44,6 +44,7 @@ $query =
         short_links.file_id,
         short_links.tracking_code,
         short_links.created_user_id,
+        " . (pg_short_link_redirects_ready() ? "short_links.redirect_code, short_links.is_pattern," : "") . "
         page.page_folder AS folder_id,
         page.page_type
     FROM short_links
@@ -122,6 +123,26 @@ if (!$_POST) {
         $liveform->assign_field_value('product_group_id', $short_link['product_group_id']);
         $liveform->assign_field_value('product_id', $short_link['product_id']);
         $liveform->assign_field_value('tracking_code', $short_link['tracking_code']);
+
+        if (isset($short_link['redirect_code'])) {
+            $liveform->assign_field_value('redirect_code', (string) (int) $short_link['redirect_code']);
+        }
+    }
+
+    // A name with a * stands for many addresses: there is no one address to
+    // visit or to print.
+    $short_link_is_pattern = pg_short_link_is_pattern($short_link['name']);
+
+    // How it answers (2026.11.0, 11.0.12), as on the add screen.
+    $output_redirect_code = '';
+
+    if (pg_short_link_redirects_ready()) {
+        $output_redirect_code = '
+                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="redirect_code_row">
+                                                    <label for="redirect_code" class="form-label">' . lang('How it answers') . '</label>
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'redirect_code', 'id'=>'redirect_code', 'class'=>'form-select', 'options'=>pg_short_link_answer_options())) . '
+                                                    <div class="form-text">' . lang('A redirect sends visitors to the destination\'s own address and keeps their query string: 301 for the old address of a page that moved, 302 for a while.') . '</div>
+                                                </div>';
     }
 
 
@@ -175,11 +196,11 @@ if (!$_POST) {
 
     // The saved address as a QR code, to print or put on a poster. It leaves
     // the request, so it is built on the configured host (HOSTNAME_SETTING),
-    // not on the Host header. The name is already restricted to URL-safe
-    // characters when it is saved.
-    $short_link_qr_url = URL_SCHEME . HOSTNAME_SETTING . PATH . $short_link['name'];
+    // not on the Host header. A name may hold letters outside ASCII, so it is
+    // percent-encoded.
+    $short_link_qr_url = URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($short_link['name']);
     $short_link_qr_options = array('label' => lang('QR code for the short link'), 'class' => 'd-block mx-auto');
-    $short_link_qr = pg_qr_svg($short_link_qr_url, 160, $short_link_qr_options);
+    $short_link_qr = $short_link_is_pattern ? '' : pg_qr_svg($short_link_qr_url, 160, $short_link_qr_options);
     $output_short_link_qr_card = '';
 
     if ($short_link_qr !== '') {
@@ -223,7 +244,7 @@ if (!$_POST) {
 
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 "  href="' . OUTPUT_PATH . h($short_link['name']) . '" target="_blank"><span class="material-icons me-1">link</span>' . lang('Visit') . '</a>
+                                ' . ($short_link_is_pattern ? '' : '<a class="btn btn-link link-secondary py-0 mb-2 "  href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" target="_blank"><span class="material-icons me-1">link</span>' . lang('Visit') . '</a>') . '
                             </div>
                         </nav>
                     </div>
@@ -265,10 +286,13 @@ if (!$_POST) {
                                                     <label for="name" class="form-label">' . lang('Name') . '</label>
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</label>
-                                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
+                                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
                                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                     </div>
+                                                    <div class="form-text">' . pg_short_link_name_rule_text() . '</div>
+                                                    <div class="form-text">' . lang('An old address can be pasted as it is: only its path is kept. A name with a * is tried only where no page answers, and it always redirects.') . '</div>
                                                 </div>
+                                                ' . $output_redirect_code . '
                                             </div>
                                         </div>
                                     </div>
@@ -311,8 +335,9 @@ if (!$_POST) {
                                                 </div>
                                                 <div class="col-12 col-md-8 col-lg-6 my-2" id="url_row"' . $output_url_row_style . '>
                                                     <label for="url" class="form-label">' . lang('Destination URL') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'class'=>'form-control', 'maxlength'=>'255', 'placeholder' => lang('Enter URL that visitor should be redirected to'))) . '
+                                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder' => lang('Enter URL that visitor should be redirected to'))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                    <div class="form-text">' . lang('With a * in the name, $1 to $9 put here what each * matched, after the host name.') . '</div>
                                                 </div>
                                                 <div class="col-12 col-md-6 col-lg my-2" id="tracking_code_row"' . $output_tracking_code_row_style . '>
                                                     <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
@@ -355,7 +380,7 @@ if (!$_POST) {
 
     // A field posted as a list (product_id[]=x) counts as not given: the
     // escaping and the checks below stopped the request on it with a 500.
-    pg_liveform_single_values($liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code'));
+    pg_liveform_single_values($liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code', 'redirect_code'));
 
     $handle = @fopen(HTACCESS_FILE_PATH, 'a');
 
@@ -399,20 +424,21 @@ if (!$_POST) {
     // Otherwise the user selected to save the short link, so save it.
     } else {
         $liveform->validate_required_field('name', lang('Name is required.'));
-        $name = $liveform->get_field_value('name');
 
-        // Replace spaces with underscores for the name.
-        $name = str_replace(' ', '_', $name);
+        // An old address pasted whole keeps only its path; spaces become
+        // underscores (pg_short_link_name_from_address()).
+        $name = pg_short_link_name_from_address($liveform->get_field_value('name'));
 
         // Update name in liveform.
         $liveform->assign_field_value('name', $name);
 
-        // If there is not already an error for the name field and it contains invalid characters, then add error.
-        if (
-            ($liveform->check_field_error('name') == FALSE)
-            && (preg_match('/[^A-Za-z0-9._\-\/\[\]]/', $name) == 1)
-        ) {
-            $liveform->mark_error('name', lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.'));
+        // If there is not already an error for the name field and the name breaks the rule, then add error.
+        if ($liveform->check_field_error('name') == FALSE) {
+            $name_problem = pg_short_link_name_problem($name);
+
+            if ($name_problem !== '') {
+                $liveform->mark_error('name', h($name_problem));
+            }
         }
 
         // If there is not already an error for the name field,
@@ -536,6 +562,15 @@ if (!$_POST) {
                         $liveform->mark_error('url', lang('Sorry, you may not enter a space in the URL.'));
                     }
 
+                    // The column holds this many characters; a longer address
+                    // would be cut short in silence.
+                    if (
+                        ($liveform->check_field_error('url') == false)
+                        && (mb_strlen($liveform->get_field_value('url'), 'UTF-8') > pg_short_link_url_max())
+                    ) {
+                        $liveform->mark_error('url', lang(array('string' => 'The address can be at most {var:1} characters long.', 'vars' => array(pg_short_link_url_max()))));
+                    }
+
                     break;
 
                 case 'file':
@@ -614,10 +649,36 @@ if (!$_POST) {
             }
         }
         
+        // How it answers, checked with the name and the destination it goes
+        // with, the way the add screen checks it.
+        $short_link_answer = array('columns' => array(), 'problem' => null);
+
+        if ($liveform->check_form_errors() == FALSE) {
+            $short_link_answer = pg_short_link_redirect_columns(
+                array(
+                    'id' => (int) $short_link['id'],
+                    'name' => $name,
+                    'destination_type' => $liveform->get_field_value('destination_type'),
+                    'url' => ($liveform->get_field_value('destination_type') == 'url') ? $liveform->get_field_value('url') : ''),
+                pg_short_link_redirects_ready() ? (int) $liveform->get_field_value('redirect_code') : null,
+                isset($short_link['redirect_code']) ? (int) $short_link['redirect_code'] : 0);
+
+            if ($short_link_answer['problem'] !== null) {
+                $liveform->mark_error($short_link_answer['problem']['field'], h($short_link_answer['problem']['message']));
+            }
+        }
+
         // If there is an error, forward user back to previous screen.
         if ($liveform->check_form_errors() == TRUE) {
             header('Location: ' . URL_SCHEME . HOSTNAME . $_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
             exit();
+        }
+
+        $short_link_sql_answer = '';
+
+        foreach ($short_link_answer['columns'] as $answer_column => $answer_value) {
+            $short_link_sql_answer .= $answer_column . " = '" . (int) $answer_value . "',
+                ";
         }
 
         $product_group_id = '';
@@ -655,7 +716,7 @@ if (!$_POST) {
                 url = '" . escape($url) . "',
                 tracking_code = '" . escape($liveform->get_field_value('tracking_code')) . "',
                 file_id = '" . escape($file_id) . "',
-                last_modified_user_id = '" . USER_ID . "',
+                " . $short_link_sql_answer . "last_modified_user_id = '" . USER_ID . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

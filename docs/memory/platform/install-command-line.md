@@ -11,7 +11,7 @@ description: php install/index.php install (PR #621): a starter site from PG_INS
 - A site in data/config.php's database: `skipped:`, exit 0, whatever the variables say (checked first), with the automated upgrade command when the database is behind the code. It never reinstalls.
 - A site in the variables' database: the screen's notice, exit 1.
 - Backups (restore stays on the screen, which shows what a backup holds) and design templates (they need `StyleDesigner.starterTree()` in a browser).
-- A quote or backslash in a database value: the installer writes those into config.php between single quotes as they are, and the screen has the same flaw.
+- Not quotes or backslashes in a database value (refused until PR #741): the fields go through `pg_config_install_content()`, the screen's writer, which escapes them (core/init-constants-and-config-file.md).
 
 ## What does it print, and the exit status?
 - Each `add_install_step()` as `[  1.2 s] label: detail` (`warning:`/`error:` marked), in the site's language; then one English line `ok:`, `skipped:` or `error:`, like the automated upgrade's cron answer. Exit 0 installed or skipped, 1 failed, 2 a variable missing or wrong (usage text).
@@ -23,3 +23,4 @@ description: php install/index.php install (PR #621): a starter site from PG_INS
 
 ## Where was it checked?
 - Cloud sandbox, MariaDB 10.11: both starters, nginx rules, config-named database, rerun, wrong password, unreachable server, a site in the variables' database, a failing upgrade step, sign-in as the new administrator, job.php after it; the screen's install (`tools/check_install.sh`) unchanged. Docker: `tools/check_docker.sh` in CI.
+- PR #741, same sandbox: install and rerun with the database password `p'a\ss?>w"d\`; the written config.php parses and holds it.
