@@ -31,6 +31,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - json-endpoint-rules.md: Rules for endpoints that speak JSON: rejections and CSRF failures must be JSON, and pg_post_body_discarded() must not be used on a JSON body.
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
+- personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers

@@ -8,7 +8,7 @@ description: Which save paths write audit_log rows, how they read the row before
 - After an INSERT, read the new id before recording: the line is itself an INSERT and changes `mysqli_insert_id()`.
 - Left out (`pg_audit_volatile()`): columns ending in `timestamp`, the last editor, every `seo_*` column of page and products (scores recalculated after each save), `layout_modified`, `user.token`, `api_apps.last_used_ip`, config job bookkeeping, `orders.mailchimp_sync_error`.
 - Secrets by name are `***` (PIN fields included), also inside JSON text: a value holding a JSON object or list is stored decoded and masked (`config.product_feeds` keeps feed tokens). Over-masked by name: `api_apps.require_signature`, `api_secret_prev_expires`, `api_secret_hint`.
-- Actions: `create`, `update`, `delete`, `recycle`, `restore`, `rotate`, `revoke`, `cancel`, `refund`.
+- Actions: `create`, `update`, `delete`, `recycle`, `restore`, `rotate`, `revoke`, `cancel`, `refund`, `export`.
 - Only the main row is compared, not linked rows (product zones, images, groups; an order's ship_tos). Offers: `_pg_offer_audit_state()` (conditions and actions included).
 
 ## Where is it written?
@@ -18,6 +18,7 @@ description: Which save paths write audit_log rows, how they read the row before
 - Pages: `add_page.php`, `edit_page.php`, `edit_pages.php`, API `pages.php`, file manager (rename, move, bin, restore).
 - Orders: `edit_orders.php`, `view_order.php` (cancel, refund, marked paid, marked refunded, restore), API `orders.php`.
 - Files: `add_file.php`, `edit_file.php`, `edit_files.php`, API `files.php`, file manager (create, upload, paste, folder copy, zip extract, rename, move, bin, restore, delete, WebP, save, rotate, bulk edit, design flag). Users: `add_user.php`.
+- Personal data downloads: `privacy_export.php` (`export`, type `person`; `core/personal-data-export.md`).
 
 ## What is not hooked yet?
 - Files other open work held: `edit_user.php`, `delete_users.php` (#672), `includes/workspace/changes.php` (#805), `view_orders.php` (export status), `pg_catalog_bin_product()` itself (`includes/fn/ecommerce.php`; its callers are hooked, the Workspace one is not).
