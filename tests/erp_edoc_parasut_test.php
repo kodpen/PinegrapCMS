@@ -112,14 +112,18 @@ function test_erp_edoc_parasut_party_missing()
 	pg_assert_same(array('tax_number'), array_keys(erp_edoc_parasut_party_missing(pg_test_parasut_party(array('tax_number' => '')))));
 }
 
-// The internet sale needs the web address and the carrier on the invoice.
+// The internet sale needs the web address and the carrier on an e-Arşiv
+// document, and on one whose kind is not known yet; a registered buyer's
+// e-Fatura carries neither (the e_invoices request has no such block).
 function test_erp_edoc_parasut_document_missing()
 {
-	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice()));
-	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)))));
+	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(), ''));
+	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), '')));
+	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), 'earchive')));
+	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), 'einvoice'), 'an e-Fatura has no internet-sale block');
 	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array(
 		'is_internet_sale' => 1, 'web_address' => 'https://magaza.example.com', 'carrier_title' => 'Kargo A.Ş.', 'carrier_vkn' => '1234567808',
-	))));
+	)), 'earchive'));
 }
 
 // A company card and a person's card: one identity field, the type decides.
