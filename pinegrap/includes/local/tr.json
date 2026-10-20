@@ -24584,5 +24584,10 @@
     "{var:1} return request(s) approved.": "{var:1} iade talebi onaylandı.",
     "{var:1} of the customers could not be told by e-mail.": "Müşterilerden {var:1} tanesine e-posta gönderilemedi.",
     "{var:1} return(s) were no longer waiting for an answer and were left as they are.": "{var:1} iade artık yanıt beklemediği için olduğu gibi bırakıldı.",
-    "unpublish_at has passed. A new page starts as a draft, off the site, so its time to come off it has to be ahead.": "unpublish_at geçmiş. Yeni sayfa taslak olarak, sitenin dışında başlar; bu yüzden yayından kaldırılma zamanı ileride olmalı."
+    "unpublish_at has passed. A new page starts as a draft, off the site, so its time to come off it has to be ahead.": "unpublish_at geçmiş. Yeni sayfa taslak olarak, sitenin dışında başlar; bu yüzden yayından kaldırılma zamanı ileride olmalı.",
+    "Trendyol had this same stock and price request in the last 15 minutes and refuses it until then. It is sent again after that.": "Trendyol aynı stok ve fiyat isteğini son 15 dakika içinde aldı ve o süre dolana kadar reddediyor. Süre dolunca yeniden gönderilecek.",
+    "Trendyol accepted the stock and price update but did not return a batch id.": "Trendyol stok ve fiyat güncellemesini kabul etti, ancak toplu işlem numarası döndürmedi.",
+    "Trendyol sells in Turkish lira, and this shop's prices are in {var:1}. Turn off sending prices for this account to send stock alone.": "Trendyol Türk lirasıyla satış yapıyor; bu mağazanın fiyatları {var:1} cinsinden. Yalnız stok göndermek için bu hesapta fiyat gönderimini kapatın.",
+    "{var:1}: another product in the same batch is sent under the barcode {var:2}.": "{var:1}: aynı toplu işlemde {var:2} barkoduyla başka bir ürün gönderiliyor.",
+    "{var:1} has no price, so Trendyol is not sent its stock and price.": "{var:1} ürününün fiyatı yok, bu yüzden stoğu ve fiyatı Trendyol'a gönderilmiyor."
 }

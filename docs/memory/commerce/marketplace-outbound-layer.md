@@ -4,8 +4,9 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 ---
 
 ## What is the connector contract?
-- `includes/api/outbound/connectors/`: `base.php` = contract + shared plumbing; `n11.php` = first provider; `trendyol.php` = test, category tree, attributes, listing create and batch result so far (`trendyol-api-facts.md`, `trendyol-listings.md`).
+- `includes/api/outbound/connectors/`: `base.php` = contract + shared plumbing; `n11.php` = first provider; `trendyol.php` = test, category tree, attributes, listing create, stock and price, batch result so far (`trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-stock-price.md`).
 - The contract is not an interface but a TABLE OF FUNCTION NAMES: `mp_connector('n11')` returns it, `mp_can()` asks, `mp_call()` calls. A connector that does not name a function it cannot do is valid.
+- `push_stock_price` may answer `data['refused']` (product id => reason): the queue fails those rows on their own reason at once and writes it on the mapping. `task_id` '' = nothing was sent, the rest close as done. A retryable error may carry `data['retry_after']` (seconds, capped at an hour), which `mp_sync_batch_failed()` waits instead of the backoff.
 - Nothing is queued for what a connector cannot do: `mp_enqueue()` skips accounts whose provider lacks `push_stock_price`, and the screen hides "List on the marketplace" without `create_listings` (otherwise rows fail six times or wait for ever).
 
 ## How are a provider's credential fields declared?
