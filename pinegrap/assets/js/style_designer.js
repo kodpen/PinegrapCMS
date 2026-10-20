@@ -47269,11 +47269,10 @@ const StyleDesigner = (function () {
                                                 text: 'TRK-000123', cssClass: 'font-monospace small mb-2',
                                                 _bindings: { text: '__tracking_code' } }),
                                             createNode('content', { contentType: 'link',
-                                                text: _sdT('Track the Shipment'), href: '#',
+                                                text: _sdT('Track the Shipment'), href: '#', target: '_blank',
                                                 cssClass: 'btn btn-sm btn-outline-primary',
                                                 customName: _sdT('Shipment Tracking Link'),
-                                                _attrs: [{ name: 'target', value: '_blank' },
-                                                         { name: 'rel',    value: 'noopener' }],
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__tracking_link', text: '__tracking_company_name' } })
                                         ])
                                     ])
@@ -47343,11 +47342,10 @@ const StyleDesigner = (function () {
                                     cssClass: 'd-grid mb-3', customName: _sdT('Print Invoice'),
                                     _bindings: { eo_visible_if: 'can_print_invoice' } }, [
                                     createNode('content', { contentType: 'link',
-                                        text: _sdT('Print Invoice'), href: '#',
+                                        text: _sdT('Print Invoice'), href: '#', target: '_blank',
                                         cssClass: 'btn btn-outline-secondary',
                                         customName: _sdT('Print Invoice Link'),
-                                        _attrs: [{ name: 'target', value: '_blank' },
-                                                 { name: 'rel',    value: 'noopener' }],
+                                        _attrs: [{ name: 'rel', value: 'noopener' }],
                                         _bindings: { href: '__order_invoice_pdf_url' } })
                                 ]),
 
