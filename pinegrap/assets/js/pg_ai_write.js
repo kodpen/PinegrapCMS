@@ -240,7 +240,13 @@
         hint.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                ask(panel);
+
+                // Like "Try again" and the tone, Enter does nothing while a
+                // request runs: each request takes a draft from the day's
+                // quota.
+                if (!again.disabled) {
+                    ask(panel);
+                }
             }
         });
 
@@ -331,10 +337,12 @@
         box.style.maxHeight = '18rem';
         box.style.overflow = 'auto';
 
-        // The html format is markup the server built from escaped words.
+        // The html format is markup the server built from escaped words; a
+        // plain text draft keeps its line breaks, as the field will.
         if (state.settings.format === 'html') {
             box.innerHTML = String(result.html || '');
         } else {
+            box.style.whiteSpace = 'pre-wrap';
             box.textContent = String(result.text || '');
         }
 
