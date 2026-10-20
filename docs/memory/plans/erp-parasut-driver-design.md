@@ -30,7 +30,7 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 
 ## Can the account card fill itself?
 - Done (#625): Query beside the tax number on the account form fills the name from GİB's register (docs/memory/erp/erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
-- Done: an account opened from an order takes the name GİB registers its VKN under (docs/memory/erp/erp-taxpayer-lookup.md).
+- Done (#806): an account opened from an order takes the name GİB registers its VKN under (docs/memory/erp/erp-taxpayer-lookup.md).
 
 ## How is testing done without a sandbox?
 - Live tests only (the staging host does not take merchant credentials). The owner's demo application points at a demo company; low-value one-line invoices there, with the cancel path tried on each.
