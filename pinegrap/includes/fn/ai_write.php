@@ -1002,8 +1002,13 @@ function pg_ai_write_tidy($format, $text, $max)
 
     if ($format === 'line') {
         // Lines the model broke the answer into are joined, without their
-        // list marks.
-        $text = preg_replace('/^[ \t]*(?:-|\d{1,2}[.)])[ \t]+/mu', '', (string) $text);
+        // list marks. A number at a line's start is a mark only in a run of
+        // numbered lines; alone it belongs to the text, as a Turkish ordinal
+        // does ("5. Sınıf", "2. El").
+        $text = preg_replace_callback('/^(?:[ \t]*\d{1,2}[.)][ \t]+.*(?:\n|$)){2,}/mu', function ($run) {
+            return (string) preg_replace('/^[ \t]*\d{1,2}[.)][ \t]+/mu', '', $run[0]);
+        }, pg_ai_write_join_lists((string) $text));
+        $text = preg_replace('/^[ \t]*-[ \t]+/mu', '', (string) $text);
         $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
 
         // A label the model put in front of the line.
@@ -1086,8 +1091,8 @@ function pg_ai_write_cut($text, $max)
 
 /**
  * The HTML of a draft for a rich text field: each paragraph a <p>, each run
- * of "- " lines a <ul>, each run of "1. " lines an <ol>. Every word is
- * escaped, so nothing the model wrote becomes markup.
+ * of "- " lines a <ul>, each run of two or more "1. " lines an <ol>. Every
+ * word is escaped, so nothing the model wrote becomes markup.
  *
  * @param string $text pg_ai_write_tidy() for the html format
  * @return string
@@ -1106,19 +1111,20 @@ function pg_ai_write_html($text)
         $words = array();
         $list = '';
         $items = array();
+        $lines = array_values(array_filter(array_map('trim', explode("\n", $block)), 'strlen'));
 
-        foreach (explode("\n", $block) as $line) {
-            $line = trim($line);
+        // A number at a line's start makes a list item only next to another
+        // numbered line; alone it belongs to the sentence ("5. Sınıf …"),
+        // which an <ol> would show as "1. Sınıf …".
+        $numbered = preg_grep('/^\d{1,2}[.)]\s+(.+)$/u', $lines);
 
-            if ($line === '') {
-                continue;
-            }
-
+        foreach ($lines as $index => $line) {
             $kind = '';
 
             if (preg_match('/^-\s+(.+)$/u', $line, $match)) {
                 $kind = 'ul';
-            } elseif (preg_match('/^\d{1,2}[.)]\s+(.+)$/u', $line, $match)) {
+            } elseif (isset($numbered[$index]) && (isset($numbered[$index - 1]) || isset($numbered[$index + 1]))
+                && preg_match('/^\d{1,2}[.)]\s+(.+)$/u', $line, $match)) {
                 $kind = 'ol';
             }
 
