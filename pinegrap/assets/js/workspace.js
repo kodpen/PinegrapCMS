@@ -532,9 +532,17 @@
     }
 
     // A PDF, a video, or a Word or Excel file, large, without leaving the screen.
+    //
+    // An Excel workbook is offered for editing to whoever may write in its
+    // channel (ws_file_office with edit): the changed cells are saved over
+    // the person's own file, the old one kept as an earlier version, or sent
+    // as an edited copy of somebody else's (ws_file_office_save), the way a
+    // text file is; onSaved hears the answer.
     var previewModal = null;
+    var previewSheets = null;
+    var OFFICE_SHEET_NAME = /\.(xlsx|xlsm|xltx|xltm)$/i;
 
-    function previewFile(file) {
+    function previewFile(file, onSaved) {
         if ((file.kind || '') === 'image' || file.image) {
             viewImages([{ src: file.url, alt: file.name, caption: file.name }], 0);
             return;
@@ -549,13 +557,28 @@
                 + '<a class="btn btn-sm btn-ghost ms-auto" data-ws-open target="_blank" rel="noopener"></a>'
                 + '<a class="btn btn-sm btn-ghost" data-ws-download></a>'
                 + '<button type="button" class="btn-close ms-1" data-bs-dismiss="modal"></button></div>'
-                + '<div class="modal-body p-0"></div></div></div>';
+                + '<div class="modal-body p-0"></div><div class="modal-footer py-2 d-none"></div></div></div>';
             document.body.appendChild(previewModal);
+
+            // Changed cells are not thrown away by a click beside the window
+            // or the cross without asking.
+            previewModal.addEventListener('hide.bs.modal', function (event) {
+                var state = previewSheets;
+
+                if (state && !state.saving && state.view && state.view.count() > 0 && !window.confirm(t('file_cells_unsaved'))) {
+                    event.preventDefault();
+                }
+            });
 
             previewModal.addEventListener('hidden.bs.modal', function () {
                 clear(previewModal.querySelector('.modal-body'));
+                clear(previewModal.querySelector('.modal-footer')).classList.add('d-none');
+                previewSheets = null;
             });
         }
+
+        previewSheets = null;
+        clear(previewModal.querySelector('.modal-footer')).classList.add('d-none');
 
         previewModal.querySelector('.modal-title').textContent = file.name;
         previewModal.querySelector('.btn-close').setAttribute('aria-label', t('close'));
@@ -586,10 +609,74 @@
             box.appendChild(el('div', 'ws-empty', t('loading')));
             body.appendChild(box);
 
-            Promise.all([api('ws_file_office', { message_id: file.message_id }), loadOfficeView()]).then(function (results) {
-                if (box.isConnected) {
-                    window.pgOfficeView.render(box, results[0].office, (CFG.office && CFG.office.strings) || {});
+            var editing = OFFICE_SHEET_NAME.test(file.name || '');
+
+            Promise.all([api('ws_file_office', { message_id: file.message_id, edit: editing ? 1 : 0 }), loadOfficeView()]).then(function (results) {
+                if (!box.isConnected) {
+                    return;
                 }
+
+                var data = results[0];
+                var writable = editing && !!(data.can_replace || data.can_send);
+                var state = { view: null, saving: false };
+                var save = null;
+
+                state.view = window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, writable ? {
+                    editable: true,
+                    onChange: function (count) {
+                        if (save) {
+                            save.disabled = !count;
+                        }
+                    },
+                    onSave: function () {
+                        if (save && !save.disabled) {
+                            save.click();
+                        }
+                    }
+                } : null);
+
+                if (!writable || !state.view) {
+                    return;
+                }
+
+                previewSheets = state;
+
+                var footer = previewModal.querySelector('.modal-footer');
+                footer.classList.remove('d-none');
+                footer.appendChild(el('div', 'ws-grow small text-body-secondary', data.can_replace ? t('file_text_mine_help') : t('file_text_copy_help')));
+
+                save = button('btn btn-sm btn-primary rounded-pill px-3', data.can_replace ? t('file_text_save') : t('file_text_send'), data.can_replace ? 'bi-check2' : 'bi-send');
+                save.disabled = true;
+
+                save.addEventListener('click', function () {
+                    if (!state.view.count()) {
+                        toast(t('file_text_unchanged'));
+                        return;
+                    }
+
+                    save.disabled = true;
+                    state.saving = true;
+
+                    api('ws_file_office_save', {
+                        message_id: file.message_id,
+                        cells: state.view.edits(),
+                        office_version: state.view.version,
+                        as: data.can_replace ? 'replace' : 'send'
+                    }).then(function (result) {
+                        bootstrap.Modal.getOrCreateInstance(previewModal).hide();
+                        toast(data.can_replace ? t('file_replaced') : t('file_copy_sent'), 'success');
+
+                        if (typeof onSaved === 'function') {
+                            onSaved(result);
+                        }
+                    }).catch(function (error) {
+                        state.saving = false;
+                        save.disabled = false;
+                        fail(error);
+                    });
+                });
+
+                footer.appendChild(save);
             }).catch(function (error) {
                 if (box.isConnected) {
                     clear(box);
@@ -8713,7 +8800,7 @@
 
             if (kind === 'pdf' || file.office) {
                 var look = button('btn btn-sm btn-outline-secondary', t('preview'), 'bi-eye');
-                look.addEventListener('click', function () { previewFile(file); });
+                look.addEventListener('click', function () { previewFile(file, function (result) { self.fileEdited(result); }); });
                 card.appendChild(look);
             }
 
@@ -8866,6 +8953,17 @@
             }).catch(function () {
                 toast(t('file_editor_missing'), 'danger');
             });
+        },
+
+        // A file of the conversation was edited: the message that now carries
+        // the edited file is drawn again, or, for an edited copy sent as a new
+        // message, the conversation is brought up to date.
+        fileEdited: function (result) {
+            if (result && result.message) {
+                this.replaceMessage(result.message);
+            } else {
+                this.sync(true);
+            }
         },
 
         // A text file of the conversation in a window: read it, and save it
@@ -12343,7 +12441,7 @@
                     }
 
                     if (message.file.kind === 'video' || message.file.kind === 'pdf' || message.file.office) {
-                        items.push({ icon: 'bi-eye', label: t('preview'), action: function () { previewFile(message.file); } });
+                        items.push({ icon: 'bi-eye', label: t('preview'), action: function () { previewFile(message.file, function (result) { self.fileEdited(result); }); } });
                     }
 
                     items.push({ icon: 'bi-box-arrow-up-right', label: t('open_in_new_tab'), action: function () { window.open(message.file.url, '_blank', 'noopener'); } });
@@ -12447,7 +12545,7 @@
                             var look = button('btn btn-sm btn-ghost', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
                             look.addEventListener('click', function () {
                                 if (message.file.kind === 'pdf' || message.file.office) {
-                                    previewFile(message.file);
+                                    previewFile(message.file, function (result) { self.fileEdited(result); });
                                 } else {
                                     var sound = el('audio');
                                     sound.src = message.file.url;
