@@ -107,11 +107,24 @@ function test_marketplace_trendyol_connector_offers_only_what_it_does()
 	pg_assert_true(mp_can('trendyol', 'test_credentials'));
 	pg_assert_true(mp_can('trendyol', 'category_tree'));
 	pg_assert_true(mp_can('trendyol', 'category_attributes'));
+	pg_assert_true(mp_can('trendyol', 'create_listings'));
+	pg_assert_true(mp_can('trendyol', 'read_task'));
 
 	// Nothing queues work it cannot do yet.
 	pg_assert_false(mp_can('trendyol', 'push_stock_price'));
-	pg_assert_false(mp_can('trendyol', 'create_listings'));
 	pg_assert_false(mp_can('trendyol', 'pull_orders'));
+}
+
+function test_marketplace_trendyol_is_keyed_on_barcodes_and_n11_is_not()
+{
+	pg_assert_true(mp_provider_keys_by_barcode('trendyol'));
+	pg_assert_false(mp_provider_keys_by_barcode('n11'));
+	pg_assert_false(mp_provider_keys_by_barcode('nope'));
+
+	$providers = mp_providers();
+
+	pg_assert_true(!empty($providers['n11']['shipment_template']), 'n11 listings name a cargo template');
+	pg_assert_true(empty($providers['trendyol']['shipment_template']), 'Trendyol listings do not');
 }
 
 function test_marketplace_provider_credentials_whitelist_the_select()
@@ -448,4 +461,299 @@ function test_marketplace_trendyol_value_page_without_a_count_reads_a_short_page
 	pg_assert_true($result['ok'], $result['error']);
 	pg_assert_same(1, count($calls));
 	pg_assert_same(9, $budget);
+}
+
+/* -------------------------------------------------------------- listings */
+
+// One product of an article, the shape mp_listing_items() assembles for a
+// barcode-keyed provider.
+function trendyol_test_item($overrides = array())
+{
+	return array_merge(array(
+		'product_id'  => 11,
+		'code'        => '8680000000017',
+		'stock_code'  => 'PG-KASK-S',
+		'barcode'     => '8680000000017',
+		'brand'       => 'Örnek',
+		'group_code'  => 'PG-KASK',
+		'title'       => 'Muay Thai Kaskı',
+		'description' => '<p>Darbe emici köpük.</p>',
+		'category_id' => '14609',
+		'price_major' => 79.95,
+		'quantity'    => 5,
+		'tax_rate'    => 20.0,
+		'images'      => array('https://shop.example/kask-1.jpg', 'https://shop.example/kask-2.jpg'),
+		'attributes'  => array(
+			array('id' => '293', 'value_id' => '4873', 'custom_value' => ''),
+			array('id' => '180', 'value_id' => '', 'custom_value' => 'Deri'),
+			array('id' => '47', 'value_id' => '', 'custom_value' => ''),
+		),
+	), $overrides);
+}
+
+function trendyol_test_listing_account()
+{
+	$account = trendyol_test_account();
+	$account['preparing_day'] = 2;
+
+	return $account;
+}
+
+function trendyol_test_listing_routes()
+{
+	return array(
+		'https://apigw.trendyol.com/integration/product/brands/by-name?name=' . rawurlencode('Örnek')
+			=> array(200, trendyol_test_fixture('brands-by-name.json')),
+		'https://apigw.trendyol.com/integration/product/sellers/123456/v2/products'
+			=> array(200, trendyol_test_fixture('v2-products-created.json')),
+	);
+}
+
+function test_marketplace_trendyol_listing_body_has_their_field_names()
+{
+	$body = mp_trendyol_listing_body(trendyol_test_listing_account(), array(trendyol_test_item()), array('Örnek' => 1791));
+
+	pg_assert_true($body['ok'], $body['error']);
+
+	pg_assert_same(array(
+		'barcode'        => '8680000000017',
+		'title'          => 'Muay Thai Kaskı',
+		'productMainId'  => 'PG-KASK',
+		'brandId'        => 1791,
+		'categoryId'     => 14609,
+		'quantity'       => 5,
+		'stockCode'      => 'PG-KASK-S',
+		'description'    => '<p>Darbe emici köpük.</p>',
+		'listPrice'      => 79.95,
+		'salePrice'      => 79.95,
+		'vatRate'        => 20,
+		'images'         => array(array('url' => 'https://shop.example/kask-1.jpg'), array('url' => 'https://shop.example/kask-2.jpg')),
+		'attributes'     => array(
+			array('attributeId' => 293, 'attributeValueId' => 4873),
+			array('attributeId' => 180, 'customAttributeValue' => 'Deri'),
+		),
+		'deliveryOption' => array('deliveryDuration' => 2),
+	), $body['data']['items'][0], 'an attribute with neither a value id nor text is left out');
+}
+
+function test_marketplace_trendyol_listing_body_trims_title_and_pictures()
+{
+	$images = array();
+
+	for ($i = 1; $i <= 10; $i++) {
+		$images[] = 'https://shop.example/p' . $i . '.jpg';
+	}
+
+	$account = trendyol_test_account();
+
+	$body = mp_trendyol_listing_body($account, array(trendyol_test_item(array(
+		'title'  => str_repeat('Ş', 120),
+		'images' => $images,
+	))), array('Örnek' => 1791));
+
+	pg_assert_true($body['ok'], $body['error']);
+	pg_assert_same(100, mb_strlen($body['data']['items'][0]['title']));
+	pg_assert_same(8, count($body['data']['items'][0]['images']), 'their ceiling is eight a barcode');
+	pg_assert_false(isset($body['data']['items'][0]['deliveryOption']), 'no days to prepare, their default applies');
+}
+
+function test_marketplace_trendyol_listing_body_refuses_what_they_would()
+{
+	$account = trendyol_test_listing_account();
+	$brands = array('Örnek' => 1791);
+
+	$cases = array(
+		'no brand'          => array(array('brand' => ''), 'has no brand'),
+		'unknown brand'     => array(array('brand' => 'Başka'), 'no brand called Başka'),
+		'http picture'      => array(array('images' => array('http://shop.example/a.jpg')), 'over https'),
+		'no picture'        => array(array('images' => array()), 'has no picture'),
+		'no description'    => array(array('description' => '  '), 'has no description'),
+		'long description'  => array(array('description' => str_repeat('a', 30001)), '30,000'),
+		'no title'          => array(array('title' => ''), 'has no title'),
+		'no price'          => array(array('price_major' => 0), 'has no price'),
+		'long model code'   => array(array('group_code' => str_repeat('M', 41)), 'model code'),
+		'long stock code'   => array(array('stock_code' => str_repeat('S', 101)), 'stock code'),
+		'barcode with space' => array(array('code' => '868 0000'), 'barcode 868 0000'),
+		'long barcode'      => array(array('code' => str_repeat('1', 41)), 'at most 40'),
+		'no barcode'        => array(array('code' => ''), 'needs a barcode'),
+	);
+
+	foreach ($cases as $label => $case) {
+		$body = mp_trendyol_listing_body($account, array(trendyol_test_item($case[0])), $brands);
+
+		pg_assert_false($body['ok'], $label);
+		pg_assert_contains($case[1], $body['error'], $label);
+		pg_assert_false($body['retry'], $label . ' is not retried');
+	}
+
+	// Turkish letters, dots, dashes and underscores are theirs to accept.
+	pg_assert_same('', mp_trendyol_barcode_problem('ÇİĞ-ö.ü_1'));
+}
+
+function test_marketplace_trendyol_vat_rate_rounds_down_to_theirs()
+{
+	pg_assert_same(20, mp_trendyol_vat_rate(array('tax_rate' => 20.0)));
+	pg_assert_same(10, mp_trendyol_vat_rate(array('tax_rate' => 18.0)));
+	pg_assert_same(1, mp_trendyol_vat_rate(array('tax_rate' => 8.5)));
+	pg_assert_same(0, mp_trendyol_vat_rate(array('tax_rate' => 0.5)));
+	pg_assert_same(20, mp_trendyol_vat_rate(array('tax_rate' => 25.0)));
+}
+
+function test_marketplace_trendyol_brand_match_prefers_the_exact_name()
+{
+	$answer = json_decode(trendyol_test_fixture('brands-by-name.json'), true);
+
+	pg_assert_same(1791, mp_trendyol_brand_match($answer, 'Örnek'));
+	pg_assert_same(1792, mp_trendyol_brand_match($answer, 'örnek spor'), 'one case-only match is taken');
+	pg_assert_same(0, mp_trendyol_brand_match($answer, 'Örne'), 'no partial names');
+	pg_assert_same(0, mp_trendyol_brand_match(array(array('id' => 1, 'name' => 'ABC'), array('id' => 2, 'name' => 'abc')), 'Abc'), 'two case-only matches are a guess');
+	pg_assert_same(5, mp_trendyol_brand_match(array('brands' => array(array('id' => 5, 'name' => 'X'))), 'X'));
+	pg_assert_same(0, mp_trendyol_brand_match(array(), 'X'));
+}
+
+function test_marketplace_trendyol_create_listings_looks_up_the_brand_and_posts()
+{
+	$calls = array();
+
+	$items = array(
+		trendyol_test_item(),
+		trendyol_test_item(array('product_id' => 12, 'code' => '8680000000024', 'stock_code' => 'PG-KASK-M',
+			'attributes' => array(array('id' => '293', 'value_id' => '4874', 'custom_value' => '')))),
+	);
+
+	$result = mp_trendyol_create_listings(trendyol_test_listing_account(), $items,
+		trendyol_test_transport(trendyol_test_listing_routes(), $calls));
+
+	pg_assert_true($result['ok'], $result['error']);
+	pg_assert_same('fa75dfd5-6ce6-4730-a09e-97563500000-1529391724', $result['data']['task_id']);
+	pg_assert_same(2, $result['data']['sent']);
+
+	pg_assert_same(2, count($calls), 'one brand lookup for two products of one brand, then one create');
+	pg_assert_same('GET', $calls[0]['method']);
+	pg_assert_same('POST', $calls[1]['method']);
+	pg_assert_contains('Content-Type: application/json', $calls[1]['options']['headers']);
+	pg_assert_contains('User-Agent: 123456 - SelfIntegration', $calls[1]['options']['headers']);
+
+	$sent = json_decode($calls[1]['options']['body'], true);
+
+	pg_assert_same(array('items'), array_keys($sent));
+	pg_assert_same(array('8680000000017', '8680000000024'), array_column($sent['items'], 'barcode'));
+	pg_assert_same(array('PG-KASK', 'PG-KASK'), array_column($sent['items'], 'productMainId'), 'one model code groups the variants');
+	pg_assert_same(1791, $sent['items'][1]['brandId']);
+	pg_assert_contains('Muay Thai Kaskı', $calls[1]['options']['body'], 'Turkish text is sent unescaped');
+}
+
+function test_marketplace_trendyol_create_listings_checks_before_calling()
+{
+	$calls = array();
+
+	$result = mp_trendyol_create_listings(trendyol_test_listing_account(),
+		array(trendyol_test_item(array('images' => array('http://shop.example/a.jpg')))),
+		trendyol_test_transport(trendyol_test_listing_routes(), $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_same(0, count($calls), 'a picture on http is refused without a call');
+}
+
+function test_marketplace_trendyol_create_listings_unknown_brand_is_refused_before_creating()
+{
+	$routes = trendyol_test_listing_routes();
+	$routes['https://apigw.trendyol.com/integration/product/brands/by-name?name=' . rawurlencode('Örnek')]
+		= array(200, trendyol_test_fixture('brands-by-name-empty.json'));
+
+	$calls = array();
+
+	$result = mp_trendyol_create_listings(trendyol_test_listing_account(), array(trendyol_test_item()),
+		trendyol_test_transport($routes, $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_contains('no brand called Örnek', $result['error']);
+	pg_assert_same(1, count($calls), 'only the lookup was made');
+}
+
+function test_marketplace_trendyol_create_listings_without_a_batch_id_is_retried()
+{
+	$routes = trendyol_test_listing_routes();
+	$routes['https://apigw.trendyol.com/integration/product/sellers/123456/v2/products'] = array(200, '{}');
+
+	$calls = array();
+
+	$result = mp_trendyol_create_listings(trendyol_test_listing_account(), array(trendyol_test_item()),
+		trendyol_test_transport($routes, $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_true($result['retry']);
+	pg_assert_contains('batch id', $result['error']);
+}
+
+function test_marketplace_trendyol_create_listings_needs_lira()
+{
+	// BASE_CURRENCY_CODE is not defined under the test runner, which reads as
+	// the lira; the refusal itself is the body check's.
+	pg_assert_true(!defined('BASE_CURRENCY_CODE') || strtoupper(BASE_CURRENCY_CODE) === 'TRY');
+
+	$body = mp_trendyol_listing_body(trendyol_test_account(), array(trendyol_test_item()), null);
+
+	pg_assert_true($body['ok'], 'the first pass checks everything but the brand id');
+	pg_assert_same(0, $body['data']['items'][0]['brandId']);
+}
+
+/* --------------------------------------------------------------- batches */
+
+function test_marketplace_trendyol_batch_result_per_barcode()
+{
+	$calls = array();
+	$url = 'https://apigw.trendyol.com/integration/product/sellers/123456/products/batch-requests/fa75dfd5-6ce6-4730-a09e-97563500000-1529391724';
+
+	$result = mp_trendyol_read_task(trendyol_test_account(), 'fa75dfd5-6ce6-4730-a09e-97563500000-1529391724',
+		trendyol_test_transport(array($url => array(200, trendyol_test_fixture('batch-create-completed.json'))), $calls));
+
+	pg_assert_true($result['ok'], $result['error']);
+	pg_assert_true($result['data']['finished']);
+	pg_assert_same('COMPLETED', $result['data']['status']);
+
+	pg_assert_same(array(
+		'8680000000017' => array('ok' => true, 'status' => 'SUCCESS', 'error' => ''),
+		'8680000000024' => array('ok' => false, 'status' => 'FAILED', 'error' => 'Görsel indirilemedi; Kategori özelliği eksik: Renk'),
+		'8680000000031' => array('ok' => false, 'status' => 'FAILED', 'error' => 'Trendyol refused this product without saying why.'),
+	), $result['data']['results'], 'the barcode is read from requestItem or from its product');
+}
+
+function test_marketplace_trendyol_batch_in_progress_is_not_finished()
+{
+	$read = mp_trendyol_batch_results(json_decode(trendyol_test_fixture('batch-create-in-progress.json'), true));
+
+	pg_assert_false($read['finished']);
+	pg_assert_same('IN_PROGRESS', $read['status']);
+	pg_assert_same(array(), $read['results']);
+}
+
+function test_marketplace_trendyol_batch_without_status_waits_for_every_line()
+{
+	$decoded = json_decode(trendyol_test_fixture('batch-inventory.json'), true);
+
+	$read = mp_trendyol_batch_results($decoded);
+
+	pg_assert_false($read['finished'], 'one line has no verdict yet');
+
+	$decoded['items'][1]['status'] = 'FAILED';
+	$decoded['items'][1]['failureReasons'] = array('Stok negatif olamaz');
+
+	$read = mp_trendyol_batch_results($decoded);
+
+	pg_assert_true($read['finished']);
+	pg_assert_same('Stok negatif olamaz', $read['results']['8680000000024']['error']);
+	pg_assert_true($read['results']['8680000000017']['ok']);
+
+	pg_assert_false(mp_trendyol_batch_results(array('items' => array()))['finished'], 'an empty answer is not a finished batch');
+}
+
+function test_marketplace_trendyol_read_task_refuses_an_odd_task_id()
+{
+	$calls = array();
+
+	$result = mp_trendyol_read_task(trendyol_test_account(), '../products', trendyol_test_transport(array(), $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_same(0, count($calls));
 }

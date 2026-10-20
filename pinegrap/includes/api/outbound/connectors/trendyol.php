@@ -16,9 +16,9 @@
 // V2 paths, or paths the documentation marks as shared by V1 and V2, are used.
 //
 // What this connector does so far: prove the credentials, read the category
-// tree, and read what a category demands. Stock, price, listings and orders are
-// not named in the table below, so mp_can() answers no for them and nothing
-// queues work this connector cannot do.
+// tree and what a category demands, open listings, and read the result of a
+// batch. Stock, price and orders are not named in the table below, so mp_can()
+// answers no for them and nothing queues work this connector cannot do.
 //
 // Four things about this provider shape the code:
 //
@@ -62,7 +62,9 @@ function mp_trendyol_connector() {
 	return array(
 		'test_credentials'    => 'mp_trendyol_test_credentials',
 		'category_tree'       => 'mp_trendyol_category_tree',
-		'category_attributes' => 'mp_trendyol_category_attributes'
+		'category_attributes' => 'mp_trendyol_category_attributes',
+		'create_listings'     => 'mp_trendyol_create_listings',
+		'read_task'           => 'mp_trendyol_read_task'
 	);
 
 }
@@ -148,8 +150,9 @@ function mp_trendyol_credentials_problem($account) {
 
 /* ---------------------------------------------------------------- one call */
 
-// One GET, with their answer already read.
-function mp_trendyol_call($account, $path, $max_body, $transport = null) {
+// One call, with their answer already read. A GET unless a body is given, in
+// which case it is a POST of that body as JSON.
+function mp_trendyol_call($account, $path, $max_body, $transport = null, $body = null) {
 
 	$problem = mp_trendyol_credentials_problem($account);
 
@@ -165,12 +168,37 @@ function mp_trendyol_call($account, $path, $max_body, $transport = null) {
 
 	}
 
-	$outcome = call_user_func($transport, 'GET', mp_trendyol_base($account) . $path, array(
-		'headers'  => mp_trendyol_headers($account),
+	$headers = mp_trendyol_headers($account);
+
+	$options = array(
 		'timeout'  => 30,
 		'max_body' => $max_body,
 		'agent'    => 'marketplace'
-	));
+	);
+
+	if ($body !== null) {
+
+		$headers[] = 'Content-Type: application/json';
+
+		$options['body'] = json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+		// Text that is not valid UTF-8 (a description pasted from an old
+		// export) makes json_encode() answer false, which would be sent as
+		// the word "false".
+		if ($options['body'] === false) {
+
+			return mp_error(lang(array(
+				'string' => 'The request to Trendyol could not be written as JSON: {var:1}',
+				'vars'   => array(json_last_error_msg())
+			)));
+
+		}
+
+	}
+
+	$options['headers'] = $headers;
+
+	$outcome = call_user_func($transport, ($body === null) ? 'GET' : 'POST', mp_trendyol_base($account) . $path, $options);
 
 	return mp_trendyol_read($outcome, mp_trendyol_environment($account));
 
@@ -660,5 +688,600 @@ function mp_trendyol_value_page($decoded) {
 		'values'      => $values,
 		'total_pages' => isset($decoded['totalPages']) ? max(0, (int)$decoded['totalPages']) : 0
 	);
+
+}
+
+/* ---------------------------------------------------------------- listings */
+
+// Their ceiling for one create request.
+function mp_trendyol_listing_batch_size() {
+
+	return 1000;
+
+}
+
+// Open listings for one article's products.
+//
+// $items is what mp_listing_items() assembled; 'code' is the barcode, because
+// this provider is keyed on barcodes ('key' in mp_providers()), and it is the
+// barcode their batch result names each verdict by. Answers a task handle in
+// data['task_id'] like the other connectors: the batch is not finished until
+// read_task() says so, and a line that finished SUCCESS is a product sent to
+// their approval, not yet a product on sale.
+//
+// Every refusal this connector can make is made before the request: their own
+// verdict arrives per barcode minutes later and in their words, and an article
+// whose barcode, brand or pictures cannot go is something the operator can see
+// and fix now.
+function mp_trendyol_create_listings($account, $items, $transport = null) {
+
+	$items = array_slice((array)$items, 0, mp_trendyol_listing_batch_size());
+
+	if (!$items) {
+
+		return mp_error(lang('Nothing to list.'));
+
+	}
+
+	$names = array();
+
+	foreach ($items as $item) {
+
+		$name = isset($item['brand']) ? trim((string)$item['brand']) : '';
+
+		if ($name !== '') {
+
+			$names[$name] = true;
+
+		}
+
+	}
+
+	// The body is checked once without brand ids first, so that a product
+	// without a brand, a barcode their rules refuse or a picture on http is
+	// reported without a single call having been made.
+	$checked = mp_trendyol_listing_body($account, $items, null);
+
+	if (!$checked['ok']) {
+
+		return $checked;
+
+	}
+
+	$brands = mp_trendyol_brand_ids($account, array_keys($names), $transport);
+
+	if (!$brands['ok']) {
+
+		return $brands;
+
+	}
+
+	$body = mp_trendyol_listing_body($account, $items, $brands['data']['ids']);
+
+	if (!$body['ok']) {
+
+		return $body;
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/product/sellers/' . mp_trendyol_seller_id($account) . '/v2/products',
+		65536, $transport, array('items' => $body['data']['items']));
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$task_id = isset($result['data']['batchRequestId']) ? trim((string)$result['data']['batchRequestId']) : '';
+
+	if ($task_id === '') {
+
+		return mp_error(lang('Trendyol accepted the listing request but did not return a batch id.'), true);
+
+	}
+
+	return mp_ok(array('task_id' => $task_id, 'sent' => count($body['data']['items'])));
+
+}
+
+// The create request's items, or the first reason one of them cannot go.
+//
+// $brand_ids is name => Trendyol brand id; null checks everything except the
+// brand ids, which is the pass made before any brand has been looked up.
+function mp_trendyol_listing_body($account, $items, $brand_ids) {
+
+	$currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : 'TRY';
+
+	// Trendyol Türkiye takes prices in lira and the create request has no
+	// currency field. A shop priced in another currency would list every
+	// product at a number that means something else over there.
+	if ($currency !== 'TRY') {
+
+		return mp_error(lang(array(
+			'string' => 'Trendyol sells in Turkish lira, and this shop\'s prices are in {var:1}.',
+			'vars'   => array($currency)
+		)));
+
+	}
+
+	$preparing = isset($account['preparing_day']) ? (int)$account['preparing_day'] : 0;
+
+	$out = array();
+
+	foreach ((array)$items as $item) {
+
+		$name = isset($item['stock_code']) ? (string)$item['stock_code'] : '';
+
+		$barcode = isset($item['code']) ? trim((string)$item['code']) : '';
+
+		$problem = mp_trendyol_barcode_problem($barcode);
+
+		if ($problem !== '') {
+
+			return mp_error(lang(array('string' => '{var:1}: {var:2}', 'vars' => array($name, $problem))));
+
+		}
+
+		$main_id = isset($item['group_code']) ? trim((string)$item['group_code']) : '';
+
+		// The model code groups the variants; cutting it short could make two
+		// articles one, so a long one is refused rather than trimmed.
+		if ($main_id === '' || mb_strlen($main_id) > 40) {
+
+			return mp_error(lang(array(
+				'string' => 'The article code {var:1} cannot be Trendyol\'s model code: it has to be 1 to 40 characters.',
+				'vars'   => array($main_id)
+			)));
+
+		}
+
+		if (mb_strlen($name) > 100) {
+
+			return mp_error(lang(array(
+				'string' => 'The product code {var:1} is longer than the 100 characters Trendyol keeps as a stock code.',
+				'vars'   => array($name)
+			)));
+
+		}
+
+		$title = isset($item['title']) ? trim((string)$item['title']) : '';
+
+		if ($title === '') {
+
+			return mp_error(lang(array('string' => '{var:1} has no title.', 'vars' => array($name))));
+
+		}
+
+		$description = isset($item['description']) ? trim((string)$item['description']) : '';
+
+		if ($description === '') {
+
+			return mp_error(lang(array(
+				'string' => '{var:1} has no description, and Trendyol will not list a product without one.',
+				'vars'   => array($name)
+			)));
+
+		}
+
+		// A cut description is broken HTML, so it is refused instead.
+		if (mb_strlen($description) > 30000) {
+
+			return mp_error(lang(array(
+				'string' => 'The description of {var:1} is longer than the 30,000 characters Trendyol takes.',
+				'vars'   => array($name)
+			)));
+
+		}
+
+		$price = round((float)(isset($item['price_major']) ? $item['price_major'] : 0), 2);
+
+		if ($price <= 0) {
+
+			return mp_error(lang(array('string' => '{var:1} has no price.', 'vars' => array($name))));
+
+		}
+
+		$brand = isset($item['brand']) ? trim((string)$item['brand']) : '';
+
+		if ($brand === '') {
+
+			return mp_error(lang(array(
+				'string' => '{var:1} has no brand. Trendyol needs one for every product: fill in Brand on the product.',
+				'vars'   => array($name)
+			)));
+
+		}
+
+		$images = array();
+
+		foreach ((array)(isset($item['images']) ? $item['images'] : array()) as $url) {
+
+			// They fetch the pictures themselves and only over https.
+			if (stripos((string)$url, 'https://') !== 0) {
+
+				return mp_error(lang(array(
+					'string' => 'Trendyol only fetches pictures over https, and the pictures of {var:1} are not. Set the site address to https first.',
+					'vars'   => array($name)
+				)));
+
+			}
+
+			if (count($images) < 8) {
+
+				$images[] = array('url' => (string)$url);
+
+			}
+
+		}
+
+		if (!$images) {
+
+			return mp_error(lang(array(
+				'string' => '{var:1} has no picture. The marketplace will not list a product without one.',
+				'vars'   => array($name)
+			)));
+
+		}
+
+		$attributes = array();
+
+		foreach ((array)(isset($item['attributes']) ? $item['attributes'] : array()) as $attribute) {
+
+			if (!isset($attribute['id']) || !is_numeric($attribute['id'])) {
+
+				continue;
+
+			}
+
+			$entry = array('attributeId' => (int)$attribute['id']);
+
+			// A value from their list, or free text where the category allows
+			// it; never both.
+			if (isset($attribute['value_id']) && is_numeric($attribute['value_id'])) {
+
+				$entry['attributeValueId'] = (int)$attribute['value_id'];
+
+			} elseif (isset($attribute['custom_value']) && trim((string)$attribute['custom_value']) !== '') {
+
+				$entry['customAttributeValue'] = trim((string)$attribute['custom_value']);
+
+			} else {
+
+				continue;
+
+			}
+
+			$attributes[] = $entry;
+
+		}
+
+		$row = array(
+			'barcode'       => $barcode,
+			'title'         => mb_substr($title, 0, 100),
+			'productMainId' => $main_id,
+			'brandId'       => 0,
+			'categoryId'    => (int)(isset($item['category_id']) ? $item['category_id'] : 0),
+			'quantity'      => max(0, (int)(isset($item['quantity']) ? $item['quantity'] : 0)),
+			'stockCode'     => $name,
+			'description'   => $description,
+			// One price in the shop, so both carry it; their rule is only that
+			// the list price is not below the sale price.
+			'listPrice'     => $price,
+			'salePrice'     => $price,
+			'vatRate'       => mp_trendyol_vat_rate($item),
+			'images'        => $images,
+			'attributes'    => $attributes
+		);
+
+		// The account's days to prepare, sent as their delivery duration.
+		if ($preparing > 0) {
+
+			$row['deliveryOption'] = array('deliveryDuration' => min(30, $preparing));
+
+		}
+
+		if ($brand_ids !== null) {
+
+			if (!isset($brand_ids[$brand]) || (int)$brand_ids[$brand] <= 0) {
+
+				return mp_error(lang(array(
+					'string' => 'Trendyol has no brand called {var:1}. Write the brand on the product exactly as Trendyol does.',
+					'vars'   => array($brand)
+				)));
+
+			}
+
+			$row['brandId'] = (int)$brand_ids[$brand];
+
+		}
+
+		$out[] = $row;
+
+	}
+
+	return mp_ok(array('items' => $out));
+
+}
+
+// What is wrong with a barcode by their rules, or ''.
+//
+// At most forty characters; letters (Turkish ones included) and digits, with
+// the dot, the dash and the underscore as the only other characters.
+function mp_trendyol_barcode_problem($barcode) {
+
+	$barcode = (string)$barcode;
+
+	if ($barcode === '') {
+
+		return lang('Trendyol needs a barcode for every product.');
+
+	}
+
+	if (mb_strlen($barcode) > 40 || preg_match('/^[\p{L}\p{N}._-]+$/u', $barcode) !== 1) {
+
+		return lang(array(
+			'string' => 'the barcode {var:1} cannot be used on Trendyol: at most 40 letters and digits, with dots, dashes and underscores.',
+			'vars'   => array($barcode)
+		));
+
+	}
+
+	return '';
+
+}
+
+// Trendyol takes the rates 0, 1, 10 and 20.
+//
+// The same answer n11 gets, for the same reason: a product with no rate of
+// its own follows the shop's tax zone and that can be any number, and the
+// nearest allowed rate below it is sent - rounding up would overstate the tax
+// the buyer pays.
+function mp_trendyol_vat_rate($item) {
+
+	$rate = (isset($item['tax_rate']) && $item['tax_rate'] !== null)
+		? (float)$item['tax_rate']
+		: (function_exists('get_default_tax_rate') ? (float)get_default_tax_rate() : 20.0);
+
+	$best = 0;
+
+	foreach (array(0, 1, 10, 20) as $candidate) {
+
+		if ($rate >= $candidate) {
+
+			$best = $candidate;
+
+		}
+
+	}
+
+	return $best;
+
+}
+
+// Their brand ids for a set of brand names, as name => id.
+//
+// One call per name, to the by-name service, which matches whole names and
+// minds the case. A name it does not know is not an error here; the body
+// check names the product whose brand is missing.
+function mp_trendyol_brand_ids($account, $names, $transport = null) {
+
+	$ids = array();
+
+	foreach ((array)$names as $name) {
+
+		$name = trim((string)$name);
+
+		if ($name === '') {
+
+			continue;
+
+		}
+
+		$result = mp_trendyol_call($account,
+			'/integration/product/brands/by-name?name=' . rawurlencode($name),
+			262144, $transport);
+
+		if (!$result['ok']) {
+
+			return $result;
+
+		}
+
+		$id = mp_trendyol_brand_match($result['data'], $name);
+
+		if ($id > 0) {
+
+			$ids[$name] = $id;
+
+		}
+
+	}
+
+	return mp_ok(array('ids' => $ids));
+
+}
+
+// The id of the brand called $name in their answer, or 0.
+//
+// The answer is a bare list (or, on other brand services, wrapped in
+// "brands"). The exact name wins; otherwise one brand whose name differs only
+// in case, and none when two do, because picking between them is a guess.
+function mp_trendyol_brand_match($answer, $name) {
+
+	$list = (isset($answer['brands']) && is_array($answer['brands'])) ? $answer['brands'] : (array)$answer;
+
+	$folded = array();
+
+	foreach ($list as $brand) {
+
+		if (!is_array($brand) || !isset($brand['id']) || !is_numeric($brand['id']) || !isset($brand['name'])) {
+
+			continue;
+
+		}
+
+		if (trim((string)$brand['name']) === $name) {
+
+			return (int)$brand['id'];
+
+		}
+
+		if (mb_strtolower(trim((string)$brand['name'])) === mb_strtolower($name)) {
+
+			$folded[(int)$brand['id']] = true;
+
+		}
+
+	}
+
+	return (count($folded) === 1) ? (int)key($folded) : 0;
+
+}
+
+/* --------------------------------------------------------------- batches */
+
+// The result of an earlier batch, per barcode.
+//
+// Answers data['finished'] false while it runs, and otherwise a results map
+// keyed by barcode, which is what the mapping rows of this provider store.
+// Their results are kept for four hours; the queue asks well inside that.
+function mp_trendyol_read_task($account, $task_id, $transport = null) {
+
+	$task_id = trim((string)$task_id);
+
+	if (preg_match('/^[A-Za-z0-9-]{1,64}$/', $task_id) !== 1) {
+
+		return mp_error(lang('No task to ask about.'));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/product/sellers/' . mp_trendyol_seller_id($account) . '/products/batch-requests/' . $task_id,
+		8388608, $transport);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(mp_trendyol_batch_results($result['data']));
+
+}
+
+// A batch result as array(finished, status, results).
+//
+// A create or update batch carries a status of its own, COMPLETED when it is
+// done. A stock and price batch carries none, so there it is finished when
+// every line has its own verdict.
+function mp_trendyol_batch_results($decoded) {
+
+	$status = isset($decoded['status']) ? strtoupper(trim((string)$decoded['status'])) : '';
+
+	$items = (isset($decoded['items']) && is_array($decoded['items'])) ? $decoded['items'] : array();
+
+	$results = array();
+
+	$every_line_answered = (bool)$items;
+
+	foreach ($items as $item) {
+
+		if (!is_array($item)) {
+
+			continue;
+
+		}
+
+		$line = isset($item['status']) ? strtoupper(trim((string)$item['status'])) : '';
+
+		if ($line === '') {
+
+			$every_line_answered = false;
+
+		}
+
+		$request = (isset($item['requestItem']) && is_array($item['requestItem'])) ? $item['requestItem'] : array();
+
+		$barcode = isset($request['barcode']) ? trim((string)$request['barcode']) : '';
+
+		if ($barcode === '' && isset($request['product']['barcode'])) {
+
+			$barcode = trim((string)$request['product']['barcode']);
+
+		}
+
+		if ($barcode === '') {
+
+			continue;
+
+		}
+
+		$error = '';
+
+		if ($line !== 'SUCCESS') {
+
+			$error = mp_trendyol_reason_text(isset($item['failureReasons']) ? $item['failureReasons'] : array());
+
+			if ($error === '') {
+
+				$error = ($line === '')
+					? lang('Trendyol finished the batch without a verdict for this product.')
+					: lang('Trendyol refused this product without saying why.');
+
+			}
+
+		}
+
+		$results[$barcode] = array(
+			'ok'     => ($line === 'SUCCESS'),
+			'status' => $line,
+			'error'  => $error
+		);
+
+	}
+
+	$finished = ($status === 'COMPLETED') || ($status === '' && $every_line_answered);
+
+	return array(
+		'finished' => $finished,
+		'status'   => ($status !== '') ? $status : ($finished ? 'COMPLETED' : 'IN_PROGRESS'),
+		'results'  => $finished ? $results : array()
+	);
+
+}
+
+// Their reasons as one line. Seen as strings; read as objects too, because
+// the documentation shows the list only empty.
+function mp_trendyol_reason_text($reasons) {
+
+	$parts = array();
+
+	foreach ((array)$reasons as $reason) {
+
+		if (is_array($reason)) {
+
+			foreach (array('message', 'reason', 'description', 'key') as $key) {
+
+				if (isset($reason[$key]) && trim((string)$reason[$key]) !== '') {
+
+					$parts[] = trim((string)$reason[$key]);
+
+					break;
+
+				}
+
+			}
+
+		} elseif (trim((string)$reason) !== '') {
+
+			$parts[] = trim((string)$reason);
+
+		}
+
+	}
+
+	return mb_substr(implode('; ', array_unique($parts)), 0, 500);
 
 }
