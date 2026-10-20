@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1 and 2 done, 2b open): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1 and 2 done, PR #738 and #813; 2b open): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19; steps 1 and 2 done, 2b open): per-person
 
 ## What remains?
 1. Done (PR #738): `consent_log` + `audit_log` (11.0.16), person token and consent log helpers (`includes/fn/privacy.php`), `pg_audit()` (`includes/fn/audit.php`), tests; docs/memory/core/consent-log-and-audit-trail.md. No writer is hooked yet.
-2. Done (this PR): `pg_audit_record()` in the save paths listed in `core/audit-trail-writers.md`.
+2. Done (PR #813): `pg_audit_record()` in the save paths listed in `core/audit-trail-writers.md`.
 2b. The paths that file lists as not hooked (user edit/delete, page editor, order screen, file manager, Workspace changes, Recycle Bin) (S–M).
 3. Export screen + JSON/PDF (M).
 4. Erasure wizard with dry-run (M).

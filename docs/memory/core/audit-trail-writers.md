@@ -8,9 +8,9 @@ description: Which save paths write audit_log rows, how they read the row before
 - Left out of both sides (`pg_audit_volatile()`): any column ending in `timestamp`, the last editor (`user`, `page_user`, `user_user`, `last_modified_user_id`), the derived SEO score (`seo_score`, `seo_analysis`, `seo_analysis_current`), `layout_modified`, `user.token`, `api_apps.last_used_ip`, config job bookkeeping (`last_sitemap_check_hash`, `software_update_available`, `mailchimp_sync_running`), `orders.mailchimp_sync_error`.
 - Actions: `create`, `update`, `delete`, `recycle` (moved to the Recycle Bin, the row stays), `rotate` (API secret), `revoke` (device), `cancel` (order).
 - Only the main table's row is compared: linked rows (a product's zones, images, groups, attributes; an order's ship_tos) are not. Offers are the exception: `_pg_offer_audit_state()` (`edit_offer_f.php`) is the editor's state with conditions and actions, used by the editor's save and toggle, `_pg_offer_delete()` (every caller) and the API update.
-- PIN fields (`user_devpasspin`, `*_pin`) count as secrets since this step.
+- PIN fields (`user_devpasspin`, `*_pin`) count as secrets since PR #813.
 
-## Which paths write today?
+## Which paths write today (PR #813)?
 - Settings: `includes/settings/screen.php` and `fragment.php` (the config row around the category's save module, label = category key); `smtp_settings.php` (the config.php defines, label `smtp`).
 - API keys: `api_settings.php` (application create, update, rotate, delete; `api_device` revoke; `oauth_client` on/off and delete).
 - Products: `add_product.php` (every created id, sets included), `edit_product.php`, `edit_products.php` (bulk edit, bin, delete), API `products.php` (create, update, bin, delete, bulk price).
