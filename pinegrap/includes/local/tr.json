@@ -24630,5 +24630,7 @@
     "Automatic ({var:1})": "Otomatik ({var:1})",
     "This does not look like a tracking number. It was saved anyway.": "Bu bir takip numarasına benzemiyor. Yine de kaydedildi.",
     "This does not look like a {var:1} tracking number. It was saved anyway.": "Bu bir {var:1} takip numarasına benzemiyor. Yine de kaydedildi.",
-    "Shipping carrier of {var:1}": "{var:1} numarasının kargo firması"
+    "Shipping carrier of {var:1}": "{var:1} numarasının kargo firması",
+    "Order (#{var:1}) was marked paid.": "Sipariş (#{var:1}) ödendi olarak işaretlendi.",
+    "Order (#{var:1}) was marked paid automatically.": "Sipariş (#{var:1}) kendiliğinden ödendi olarak işaretlendi."
 }
