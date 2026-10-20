@@ -135,7 +135,19 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 	// every subscription is a whole-site one, as it always was.
 	$narrowed = api_webhook_channel_groups_ready();
 
-	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.events"
+	// An event meant for one application, such as its mention in a workspace
+	// channel, is queued for that application's subscriptions and nobody
+	// else's, whatever else listens to the event; one that names no
+	// application is queued for nobody.
+	$addressed = api_webhook_event_app_id($event, $payload);
+
+	if ($addressed < 0) {
+
+		return 0;
+
+	}
+
+	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.app_id, api_webhooks.events"
 		. ($narrowed ? ", api_webhooks.channel_group_id" : "") . "
 		FROM api_webhooks
 		INNER JOIN api_apps ON api_apps.id = api_webhooks.app_id
@@ -164,6 +176,12 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 		$events = json_decode((string)$hook['events'], true);
 
 		if (!is_array($events) || !in_array($event, $events, true)) {
+
+			continue;
+
+		}
+
+		if (($addressed > 0) && ((int)$hook['app_id'] !== $addressed)) {
 
 			continue;
 
@@ -229,6 +247,26 @@ function api_webhook_event_channel_groups($event, $payload) {
 	}
 
 	return array_map('intval', (array)ws_webhook_event_groups($event, (array)$payload));
+
+}
+
+// The one application an event is for: its id, 0 when every subscription
+// listening to the event hears it, -1 when it is for an application the event
+// does not name, which nobody hears. Only the workspace addresses an event
+// today - a mention of an application goes to that application alone
+// (ws_webhook_event_app_id()). Its events are in the catalogue only while
+// its api.php is loaded (api_module_contributions()), and that loads the
+// function asked here, so a workspace event is never valid without it; with
+// the workspace off every event is for every subscriber, as before.
+function api_webhook_event_app_id($event, $payload) {
+
+	if (!function_exists('ws_webhook_event_app_id')) {
+
+		return 0;
+
+	}
+
+	return (int)ws_webhook_event_app_id($event, (array)$payload);
 
 }
 

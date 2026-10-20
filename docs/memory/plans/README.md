@@ -47,4 +47,4 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
-- workspace-phase3-leftovers.md: Workspace module items planned for phase 3 (bots) and not built: app membership and command registry over the API, app.mentioned webhook, ERP overdue to task, designer task panel
+- workspace-phase3-leftovers.md: Workspace module items planned for phase 3 (bots): app.mentioned webhook done (#809); left: app membership and command registry over the API, ERP overdue to task, designer task panel
