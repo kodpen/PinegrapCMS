@@ -6,7 +6,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - accessibility-and-consent-tools.md: Plan (approved 2026-10-19; consent notice PR #619 and statement block done): designer contrast rule, nightly WCAG 2.2 Level A report, PDF export of the report
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, every planned text button and the browser's model done): "Write with AI"; image alt text and AI-generated labelling (schema) left
+- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default built): pre-information form, distance sales contract; left: KVKK, withdrawal timer
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule; CI checks done (PR #673)
@@ -27,12 +27,12 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19, not started): Trendyol (V2 API, first) and Hepsiburada connectors on the n11 connector layer: listings, stock/price queue, orders, status, invoice link, returns, Q&A
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export and Markdown/zip import done; enex, Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
-- page-revisions-and-scheduling.md: Plan (approved 2026-10-19; steps 1-3 done, PRs #696, #705, #743): page revision history with compare and restore, retention, scheduled publish and unpublish; API and MCP left
+- page-revisions-and-scheduling.md: Plan (approved 2026-10-19; steps 1-4 done, PRs #696, #705, #743, #810): page revision history with compare and restore, retention, scheduled publish and unpublish, API and MCP; memory wrap-up left
 - passkeys.md: Plan (approved 2026-10-19, in progress: step 1 verifier done, PR #594): WebAuthn passkeys for panel users and members as second factor or passwordless sign-in; Account Security, admin reset
 - payment-driver-layer.md: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873; 2b open): payment drivers beside submit_order.php; iyzico on it, Stripe, PayTR, PayPal v2 next; legacy gateways frozen
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis, all in the CI baselines: undefined variables, a duplicate key, nested functions, an unguarded imagecreatefrombmp(), 8.1-8.5 deprecations, dead remnants
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), retention
-- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; step 1 done, PR #738): per-person data export, erasure/anonymisation wizard respecting invoice retention, consent log, structured admin audit trail with before/after values
+- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1 and 2 done, PR #738 and #813; 2b open): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
 - security-findings-2026-10.md: Security findings of the 2026-10-19 audit: what the PRs of 2026-10-19 fixed, what still waits (eval re-ordering, form renderers, CVV, gateway secrets), owner questions; item 8 done (#713)

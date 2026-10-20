@@ -41,6 +41,11 @@
  * Everything that decides what the model is told and what is made of its
  * answer is a pure function, tested in tests/ai_write_test.php.
  *
+ * Which texts of a product or a page came from an accepted draft, and are
+ * still as the draft left them, is kept in products.ai_fields and
+ * page.ai_fields and shown beside the field's label (pg_ai_fields_*(), tested
+ * in tests/ai_fields_test.php).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -1439,14 +1444,19 @@ function pg_ai_write_button_markup($config, $label, $hidden = false)
 
 /**
  * The field's label with the button beside it, or the label alone when there
- * is no button.
+ * is no button. A marker (pg_ai_fields_marker()) sits right after the label.
  *
  * @param string $label  the <label> markup
  * @param string $button pg_ai_write_button()
+ * @param string $marker pg_ai_fields_marker(), '' for none
  * @return string
  */
-function pg_ai_write_label_row($label, $button)
+function pg_ai_write_label_row($label, $button, $marker = '')
 {
+    if ($marker !== '') {
+        $label = '<div class="d-flex flex-wrap align-items-baseline column-gap-2">' . $label . $marker . '</div>';
+    }
+
     if ($button === '') {
         return $label;
     }
@@ -1651,6 +1661,420 @@ function pg_ai_write_assets()
 
     return '<script>window.PinegrapAiWrite = ' . json_encode($config, $flags) . ';</script>'
         . '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ai_write.js?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_ai_write.js') . '"></script>';
+}
+
+/* ---------------------------------------------------------------------------
+   The marks: which texts came from an accepted draft
+   --------------------------------------------------------------------------- */
+
+/**
+ * The columns of a record that can carry the mark that their text was written
+ * with AI (products.ai_fields, page.ai_fields; 2026.11.0, 11.0.23), by the
+ * target whose button writes them: every field the product screen and the
+ * page properties screen offer "Write with AI" for, and no other. The stored
+ * marks follow this order.
+ *
+ * A mark is put on when the person uses a draft ("Use this text") and saves,
+ * and it belongs to the text it was put on (pg_ai_fields_fingerprint()): a
+ * text edited by hand afterwards has lost it. The screen's script takes it
+ * off as the person types; a text changed any other way (a request without
+ * the list, the API, an import) no longer matches its fingerprint
+ * (pg_ai_fields_marked()). The button beside the label and saving the field
+ * empty take it off too (pg_ai_fields_after_save()).
+ *
+ * @param string $record product | page
+ * @return array target => column
+ */
+function pg_ai_fields_columns($record)
+{
+    $columns = array(
+        'product' => array(
+            'product_short'       => 'short_description',
+            'product_description' => 'full_description',
+            'seo_title'           => 'title',
+            'seo_description'     => 'meta_description',
+        ),
+        'page' => array(
+            'seo_title'       => 'page_title',
+            'seo_description' => 'page_meta_description',
+        ),
+    );
+
+    return (is_string($record) && isset($columns[$record])) ? $columns[$record] : array();
+}
+
+/**
+ * The columns of a record that can carry a mark, in their stored order.
+ *
+ * @param string $record product | page
+ * @return array
+ */
+function pg_ai_fields_known($record)
+{
+    return array_values(pg_ai_fields_columns($record));
+}
+
+/**
+ * The table that keeps a record's marks in its ai_fields column.
+ *
+ * @param string $record product | page
+ * @return string '' for a record that keeps none
+ */
+function pg_ai_fields_table($record)
+{
+    $tables = array('product' => 'products', 'page' => 'page');
+
+    return (is_string($record) && isset($tables[$record])) ? $tables[$record] : '';
+}
+
+/**
+ * Whether the record's table has its ai_fields column. A database that
+ * recorded 2026.11.0 before the step was added has not, until the upgrade is
+ * run again; the screens then neither show nor write marks.
+ *
+ * @param string $record product | page
+ * @return bool
+ */
+function pg_ai_fields_ready($record)
+{
+    $table = pg_ai_fields_table($record);
+
+    return ($table !== '') && pg_schema_has($table, 'ai_fields');
+}
+
+/**
+ * A list of marked columns as a screen posts it (its hidden ai_fields input,
+ * JSON) or as an array: the record's own columns only, each once, in their
+ * own order; anything else is no columns.
+ *
+ * @param string $record product | page
+ * @param mixed  $value
+ * @return array
+ */
+function pg_ai_fields_normalize($record, $value)
+{
+    if (is_string($value)) {
+        $value = json_decode($value, true);
+    }
+
+    if (!is_array($value)) {
+        return array();
+    }
+
+    $marked = array();
+
+    foreach ($value as $name) {
+        if (is_string($name)) {
+            $marked[$name] = true;
+        }
+    }
+
+    $out = array();
+
+    foreach (pg_ai_fields_known($record) as $column) {
+        if (isset($marked[$column])) {
+            $out[] = $column;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Whether a field's value has text: words left once its markup, entities and
+ * spaces are gone. The rich text editor leaves "<p>&nbsp;</p>" in a field
+ * that was emptied; "0" is text.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_ai_fields_has_text($value)
+{
+    if (!is_string($value)) {
+        return false;
+    }
+
+    return pg_ai_write_plain($value, 0) !== '';
+}
+
+/**
+ * What a mark keeps of the text it was put on: the first 16 hex digits of the
+ * SHA-1 of the field's value, markup included, with every run of spaces, tabs
+ * and line breaks read as one space and the ends trimmed, so that the same
+ * lines posted back with "\r\n" are the same text. Any other change, a word,
+ * a letter's case or the markup, gives another fingerprint. '' for a field
+ * without text, which carries no mark.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_ai_fields_fingerprint($value)
+{
+    if (!pg_ai_fields_has_text($value)) {
+        return '';
+    }
+
+    // ASCII white space only, byte by byte: a value that is not valid UTF-8
+    // is read the same way every time.
+    $text = preg_replace('/[\x09\x0A\x0B\x0C\x0D\x20]+/', ' ', $value);
+
+    return substr(sha1(trim(is_string($text) ? $text : $value)), 0, 16);
+}
+
+/**
+ * The marks an ai_fields column holds: column => fingerprint, the record's
+ * own columns with a well-formed fingerprint only, in their own order.
+ * Anything else (NULL, '', JSON that is not an object of fingerprints) holds
+ * none.
+ *
+ * @param string $record product | page
+ * @param mixed  $value  the stored JSON or a decoded array
+ * @return array column => fingerprint
+ */
+function pg_ai_fields_stored($record, $value)
+{
+    if (is_string($value)) {
+        $value = json_decode($value, true);
+    }
+
+    $out = array();
+
+    if (!is_array($value)) {
+        return $out;
+    }
+
+    foreach (pg_ai_fields_known($record) as $column) {
+        if (isset($value[$column]) && is_string($value[$column]) && (preg_match('/^[0-9a-f]{16}$/', $value[$column]) === 1)) {
+            $out[$column] = $value[$column];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The columns whose mark still holds: their text now is the one the mark was
+ * put on. A text changed since (on a screen, through the API, an import or a
+ * Workspace proposal) or emptied has lost its mark, and so has a column
+ * $values does not name: nothing says its text is the same.
+ *
+ * @param string $record product | page
+ * @param mixed  $stored the ai_fields column
+ * @param array  $values column => the field's text now
+ * @return array columns, in their stored order
+ */
+function pg_ai_fields_marked($record, $stored, $values)
+{
+    $out = array();
+
+    if (!is_array($values)) {
+        return $out;
+    }
+
+    foreach (pg_ai_fields_stored($record, $stored) as $column => $fingerprint) {
+        if (array_key_exists($column, $values) && (pg_ai_fields_fingerprint($values[$column]) === $fingerprint)) {
+            $out[] = $column;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * What the ai_fields column stores for a list of marked columns: each with the
+ * fingerprint of its text in $values, as a JSON object
+ * ({"title":"0123456789abcdef"}); NULL when none is left (a column $values
+ * leaves empty or does not name carries no mark), never an empty object, so
+ * "has marks" is IS NOT NULL.
+ *
+ * @param string $record product | page
+ * @param mixed  $marks  as for pg_ai_fields_normalize()
+ * @param array  $values column => the field's text
+ * @return string|null
+ */
+function pg_ai_fields_encode($record, $marks, $values)
+{
+    $out = array();
+
+    foreach (pg_ai_fields_normalize($record, $marks) as $column) {
+        $fingerprint = (is_array($values) && array_key_exists($column, $values)) ? pg_ai_fields_fingerprint($values[$column]) : '';
+
+        if ($fingerprint !== '') {
+            $out[$column] = $fingerprint;
+        }
+    }
+
+    return (count($out) > 0) ? (string) json_encode($out) : null;
+}
+
+/**
+ * The texts of a row that a save is about to write, by column: the columns
+ * that can carry a mark and that the row has, in their stored order.
+ *
+ * @param string $record product | page
+ * @param mixed  $row    column => value
+ * @return array column => value
+ */
+function pg_ai_fields_values($record, $row)
+{
+    $out = array();
+
+    if (!is_array($row)) {
+        return $out;
+    }
+
+    foreach (pg_ai_fields_known($record) as $column) {
+        if (array_key_exists($column, $row)) {
+            $out[$column] = $row[$column];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The list a screen posted in its hidden ai_fields input, or null when it
+ * posted none: nothing, or a value that is not a list (a form drawn without
+ * the input, a request made by hand). null keeps the stored marks whose text
+ * the save leaves as it was; an empty list removes them all.
+ *
+ * @param mixed $value $_POST['ai_fields']
+ * @return array|null
+ */
+function pg_ai_fields_posted($value)
+{
+    if (is_string($value)) {
+        $value = json_decode($value, true);
+    }
+
+    return is_array($value) ? $value : null;
+}
+
+/**
+ * What a save of the product screen or the page properties screen stores in
+ * ai_fields.
+ *
+ * With the list the screen posted, its columns are marked on the text the
+ * save writes: the person used a draft there and has not edited it since,
+ * because the script takes a column off the list as soon as its text is
+ * edited by hand. Without a list (a form drawn without the input, a request
+ * made by hand) the stored marks are kept only where the save leaves the text
+ * as it was: an edited text loses its mark here too. A field saved empty
+ * carries no mark either way.
+ *
+ * @param string $record product | page
+ * @param mixed  $posted $_POST['ai_fields'], null when absent
+ * @param mixed  $stored the column's value before the save, null for none
+ * @param array  $values column => the text the save writes, for every column
+ *                       of pg_ai_fields_known() the save writes
+ * @return string|null pg_ai_fields_encode()
+ */
+function pg_ai_fields_after_save($record, $posted, $stored, $values)
+{
+    $list = pg_ai_fields_posted($posted);
+
+    if ($list === null) {
+        $list = pg_ai_fields_marked($record, $stored, $values);
+    }
+
+    return pg_ai_fields_encode($record, $list, $values);
+}
+
+/**
+ * The marks of one variant the product screen creates for a set. The texts
+ * are copied to every variant except the short description, which is the
+ * set's with the options added, or made from a template: its mark goes with
+ * the variant only while the variant's short description holds the set's.
+ *
+ * @param mixed  $marks        the set's marks, a list of columns
+ * @param string $set_text     the short description typed for the set
+ * @param string $variant_text the variant's own short description
+ * @return array
+ */
+function pg_ai_fields_for_variant($marks, $set_text, $variant_text)
+{
+    if (!is_array($marks)) {
+        return array();
+    }
+
+    $set_text = trim((string) $set_text);
+    $kept = ($set_text !== '') && (mb_strpos((string) $variant_text, $set_text) !== false);
+    $out = array();
+
+    foreach ($marks as $column) {
+        if (($column !== 'short_description') || $kept) {
+            $out[] = $column;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The marker beside a field's label: "AI" with the words "Written with AI" in
+ * a tooltip and for screen readers, and a button that removes the mark. Drawn
+ * for every field that can carry one and hidden while the field has none, so
+ * that the script (assets/js/pg_ai_fields.js) only shows or hides it: when a
+ * draft is used, when the text is edited by hand, when the button is pressed.
+ *
+ * @param string $column    the column the mark names
+ * @param string $field     the id of the field's form element
+ * @param bool   $marked
+ * @param bool   $removable false where the screen cannot save (a product in
+ *                          the Recycle Bin): no button then
+ * @return string
+ */
+function pg_ai_fields_marker($column, $field, $marked, $removable = true)
+{
+    $words = lang('Written with AI');
+    $html = '<span class="pg-ai-mark badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-normal d-inline-flex align-items-center gap-1' . ($marked ? '' : ' d-none') . '"'
+        . ' data-pg-ai-mark="' . h((string) $column) . '" data-pg-ai-field="' . h((string) $field) . '">'
+        . '<span class="no-popover" data-bs-toggle="tooltip" title="' . h($words) . '">'
+        . '<i class="bi bi-stars" aria-hidden="true"></i> <span aria-hidden="true">' . h(lang('AI')) . '</span>'
+        . '<span class="visually-hidden">' . h($words) . '</span></span>';
+
+    if ($removable) {
+        $remove = lang('Remove the AI mark');
+        $html .= '<button type="button" class="btn btn-link btn-sm p-0 border-0 lh-1 text-reset pg-ai-mark-remove no-popover" data-bs-toggle="tooltip"'
+            . ' title="' . h($remove) . '" aria-label="' . h($remove) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>';
+    }
+
+    return $html . '</span>';
+}
+
+/**
+ * The hidden input that carries the marked columns with the form, a JSON list
+ * ('[]' for none) that the script keeps up to date and the save reads
+ * (pg_ai_fields_after_save()).
+ *
+ * @param string $record product | page
+ * @param mixed  $marks  the columns whose mark holds (pg_ai_fields_marked()),
+ *                       as for pg_ai_fields_normalize()
+ * @return string
+ */
+function pg_ai_fields_input($record, $marks)
+{
+    return '<input type="hidden" name="ai_fields" value="' . h((string) json_encode(pg_ai_fields_normalize($record, $marks))) . '"'
+        . ' data-pg-ai-fields="' . h((string) $record) . '" />';
+}
+
+/**
+ * The script of the markers, once per screen. Printed after the form by a
+ * screen that drew them.
+ *
+ * @return string
+ */
+function pg_ai_fields_assets()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ai_fields.js?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_ai_fields.js') . '"></script>';
 }
 
 /* ---------------------------------------------------------------------------

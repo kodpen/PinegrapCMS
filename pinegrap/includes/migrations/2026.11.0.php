@@ -42,6 +42,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_crawlers();            // 11.0.21
 	upgrade_2026_11_0_privacy_logs();           // 11.0.16
 	upgrade_2026_11_0_page_canonical_robots();  // 11.0.22
+	upgrade_2026_11_0_ai_fields();              // 11.0.23
 
 }
 
@@ -780,5 +781,42 @@ function upgrade_2026_11_0_page_canonical_robots() {
 	}
 
 	install_note('Search engines: a page can now name its own canonical address and ask search engines not to keep a cached copy (noarchive) or to limit the text they show under its title (max-snippet). The fields are in the page settings and stay empty until filled in.');
+
+}
+
+// The texts written with AI (2026.11.0, 11.0.23; pg_ai_fields_*() in
+// includes/fn/ai_write.php, the product screen and the page properties screen).
+//
+// products.ai_fields and page.ai_fields hold, as a JSON object, the columns of
+// the row whose text came from an accepted "Write with AI" draft, each with a
+// fingerprint of the text it was put on ({"title":"<16 hex digits>"}); NULL is
+// none. A mark holds only while its column still has that text, so a text
+// edited by hand, on the screen or through any other way in, has lost it. Both
+// start NULL: nothing written before this version is marked.
+//
+// Added without copying the tables where the server can do that, as 11.0.2 and
+// 11.0.3 do: the catalogue and the page trees make a copy slow on a big site.
+function upgrade_2026_11_0_ai_fields() {
+
+	$tables = array(
+		'products' => array('ai_fields' => "TEXT NULL"),
+		'page'     => array('ai_fields' => "TEXT NULL"),
+	);
+
+	foreach ($tables as $table => $columns) {
+
+		if (!install_add_columns_instant($table, $columns)) {
+
+			foreach ($columns as $column => $definition) {
+
+				install_add_column($table, $column, $definition);
+
+			}
+
+		}
+
+	}
+
+	install_note('Write with AI: a text that came from an accepted AI draft on the product screen or the page properties screen is now marked beside its field. The mark goes when the text is edited by hand, when it is removed beside the field, or when the field is saved empty.');
 
 }

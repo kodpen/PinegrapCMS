@@ -424,6 +424,20 @@ function _pg_offer_load($offer_id)
             'timestamp' => (int) $offer['timestamp']));
 }
 
+// An offer as the audit trail compares it: the editor's fields with its
+// conditions and actions, without the last editor and modification time.
+// An empty array when the offer is not there.
+function _pg_offer_audit_state($offer_id)
+{
+    $state = _pg_offer_load($offer_id);
+    if (!$state) {
+        return array();
+    }
+    return array_merge($state['offer'], array(
+        'conditions' => $state['conditions'],
+        'actions'    => $state['actions']));
+}
+
 // One offer_actions row as the editor sees it: a value with a unit instead of
 // a pair of amount/percentage columns. The storefront reads the amount column
 // first (functions.php, apply_offers_to_cart), so a row with both filled shows
@@ -935,6 +949,7 @@ function _pg_offer_save($clean, $user)
     if ($is_new) {
         $offer_id = 0;
     }
+    $audit_before = $is_new ? array() : _pg_offer_audit_state($offer_id);
     $products = _pg_offer_products();
 
     // Rule row.
@@ -1012,6 +1027,7 @@ function _pg_offer_save($clean, $user)
     } else {
         log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
     }
+    pg_audit($is_new ? 'create' : 'update', 'offer', $offer_id, $audit_before, _pg_offer_audit_state($offer_id), $offer['code']);
     return $offer_id;
 }
 
@@ -1318,6 +1334,7 @@ function _pg_offer_delete($offer_id, $username = null, $activity = null)
     if (!$offer) {
         return false;
     }
+    $audit_before = _pg_offer_audit_state($offer_id);
     $action_ids = array_map('intval', (array) db_values(
         "SELECT offer_action_id FROM offers_offer_actions_xref WHERE offer_id = '" . e($offer_id) . "'"));
     db("DELETE FROM offers WHERE id = '" . e($offer_id) . "'");
@@ -1333,6 +1350,7 @@ function _pg_offer_delete($offer_id, $username = null, $activity = null)
     if (($offer['offer_rule_id'] > 0) && (_pg_offer_rule_users($offer['offer_rule_id'], $offer_id) == 0)) {
         _pg_offer_rule_delete($offer['offer_rule_id']);
     }
+    pg_audit('delete', 'offer', $offer_id, $audit_before, array(), $offer['code']);
     log_activity(
         ($activity === null)
             ? lang(array('string' => 'offer ({var:1}) was deleted', 'vars' => $offer['code']))
@@ -1940,12 +1958,14 @@ function pg_offer_editor_handle($request)
                 respond(array('status' => 'error', 'message' => lang('The offer could not be found.')));
             }
             $status = ($offer['status'] == 'enabled') ? 'disabled' : 'enabled';
+            $audit_before = _pg_offer_audit_state($offer_id);
             db("UPDATE offers SET
                     status = '" . e($status) . "',
                     user = '" . e($user['id']) . "',
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = '" . e($offer_id) . "'");
             log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
+            pg_audit('update', 'offer', $offer_id, $audit_before, _pg_offer_audit_state($offer_id), $offer['code']);
             $offer = db_item("SELECT * FROM offers WHERE id = '" . e($offer_id) . "'");
             $offer_status = _pg_offer_status($offer);
             respond(array(

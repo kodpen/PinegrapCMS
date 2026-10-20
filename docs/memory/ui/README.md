@@ -8,6 +8,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
 - admin-screen-toolbar.md: Panel UI basics (helpers, icons) and the single-toolbar design principle for every admin screen, with view_folders.php as reference: slot order and classes.
 - ai-write-browser.md: "Write with AI" on the browser's built-in AI (Prompt API) for a site without Pinegrap AI: when, the two server steps, languages and the translation bridge, gesture, long data
+- ai-write-marks.md: Mark on texts written with AI (products.ai_fields, page.ai_fields, 11.0.23): what is stored, the fingerprint, when a field gets or loses it (a hand edit removes it), the marker, pg:ai-write-used
 - ai-write-panel.md: The "Write with AI" button and draft panel (pg_ai_write_button(), pg_ai_write.js): where it is, adding it to a field, what the panel does, what the server adds
 - ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one

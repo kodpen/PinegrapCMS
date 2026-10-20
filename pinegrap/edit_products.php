@@ -112,6 +112,8 @@ if (!$_POST) {
                     // Loop through selected products in order to edit them.
                     foreach ($_POST['products'] as $product_id) {
                         $sql_enabled = '';
+
+                        $audit_before = pg_audit_fetch('products', $product_id);
 					
 						if($edit_change_price_method != ''){
 							$query = "SELECT 
@@ -316,6 +318,8 @@ if (!$_POST) {
                                 timestamp = UNIX_TIMESTAMP(),
                                 user = '" . USER_ID . "'
                             WHERE id = '" . escape($product_id) . "'");
+
+                        pg_audit_record('update', 'products', $product_id, $audit_before);
 
                         if ($edit_change_price_method != '') {
                             pg_price_history_queue($product_id, 'panel');
@@ -522,6 +526,8 @@ if (!$_POST) {
                         continue;
                     }
 
+                    $audit_before = pg_audit_fetch('products', $product_id);
+
                     if ($binning) {
 
                         // False for a product that is gone or already in the
@@ -530,6 +536,8 @@ if (!$_POST) {
                             continue;
                         }
 
+                        pg_audit_record('recycle', 'products', $product_id, $audit_before);
+
                     } else {
 
                         // The product screen's own delete: the row and its
@@ -537,6 +545,8 @@ if (!$_POST) {
                         // form fields, keywords, short links, offer rules and
                         // stored SEO findings, and the product.deleted event.
                         pg_pb_delete_product($product_id);
+
+                        pg_audit_record('delete', 'products', $product_id, $audit_before);
                     }
 
                     $number_of_products++;

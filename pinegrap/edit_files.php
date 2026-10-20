@@ -253,6 +253,8 @@ if (!$_POST) {
 
                         if ($sql_folder or $sql_design) {
 
+                            $audit_before = pg_audit_fetch('files', $file_id);
+
                             db(
                                 "UPDATE files
                                 SET
@@ -261,6 +263,8 @@ if (!$_POST) {
                                     timestamp = UNIX_TIMESTAMP(),
                                     user = '" . $user['id'] . "'
                                 WHERE id = '" . e($file_id) . "'");
+
+                            pg_audit_record('update', 'files', $file_id, $audit_before);
 
                             $number_of_files++;
 
@@ -396,8 +400,12 @@ if (!$_POST) {
                         output_error(lang('You do not have access to delete the files you selected') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
                     }
 
+                    $audit_before = pg_audit_fetch('files', $file_id);
+
                     $query = "DELETE FROM files WHERE id = '" . escape($file_id) . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+                    pg_audit_record('delete', 'files', $file_id, $audit_before);
 
                     // delete file's system css properties in case any exist
                     $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($file_id) . "'";
