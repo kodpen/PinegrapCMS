@@ -15,7 +15,7 @@ description: Order discount vs recurring lines not charged today: the cap at tod
 ## Why not only cap in submit_order()?
 - The express order page posts the total it showed and `submit_order()` refuses an order whose total is higher ("the total has changed"). Capping only at submit made the server total higher than the page's (negative) total, and the order could never be placed.
 
-## What was the symptom? (#729)
+## What was the symptom? (#729, PR #929)
 - Only a recurring product that starts later in the cart and any order discount: `$discount / $subtotal` with a 0 subtotal, DivisionByZeroError, every checkout a 500. A one-time line next to it: the discount worked out over the subscription too came off the one-time charge whole, and the order was placed with a negative total (₺10 + ₺100 subscription, 50% off: total −₺45).
 
 ## What is not decided?
