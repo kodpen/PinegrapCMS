@@ -569,7 +569,7 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
 //   submit_save_for_later=1 + save_item_id=<id>     → flip saved_for_later=1
 //   submit_restore_saved=1   + save_item_id=<id>    → flip saved_for_later=0
 //
-// We probe the column once per request so the endpoint stays stable on
+// The column is probed (pg_schema_has()) so the endpoint stays stable on
 // installs that haven't run the migration yet (the endpoint just no-ops
 // instead of producing a query error).
 if ((isset($_POST['submit_save_for_later']) || isset($_POST['submit_restore_saved']))
@@ -577,12 +577,7 @@ if ((isset($_POST['submit_save_for_later']) || isset($_POST['submit_restore_save
     && defined('ECOMMERCE_SAVE_FOR_LATER') && ECOMMERCE_SAVE_FOR_LATER === true) {
     $_save_iid = isset($_POST['save_item_id']) ? (int)$_POST['save_item_id'] : 0;
     if ($_save_iid > 0) {
-        static $_sfl_has_col = null;
-        if ($_sfl_has_col === null) {
-            $_p = db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'");
-            $_sfl_has_col = ($_p !== '' && $_p !== null);
-        }
-        if ($_sfl_has_col) {
+        if (pg_schema_has('order_items', 'saved_for_later')) {
             $_owns = (int)db_value("SELECT id FROM order_items
                                     WHERE id = '$_save_iid' AND order_id = '$oid' LIMIT 1");
             if ($_owns === $_save_iid) {
@@ -626,9 +621,8 @@ if (!preg_match('#^(?:/|\?)#', $send_to) || stripos($send_to, '://') !== false) 
 // pay for; otherwise the cart shows why (the messages above) or is empty.
 if ($checkout && $oid > 0 && !$lf->check_form_errors()) {
     $checkout_to = isset($_POST['checkout_to']) ? (string)$_POST['checkout_to'] : '';
-    $sfl_col = db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'");
     $items_left = (int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '$oid'"
-        . (($sfl_col !== '' && $sfl_col !== null) ? " AND saved_for_later = 0" : ''));
+        . (pg_schema_has('order_items', 'saved_for_later') ? " AND saved_for_later = 0" : ''));
     if ($items_left > 0 && preg_match('#^/#', $checkout_to) && stripos($checkout_to, '://') === false && strpos($checkout_to, '//') !== 0) {
         $send_to = $checkout_to;
     }

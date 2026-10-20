@@ -263,7 +263,7 @@ if (
     ECOMMERCE
     and defined('ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS')
     and (ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS > 0)
-    and db_item("SHOW COLUMNS FROM orders LIKE 'paid_at'")
+    and pg_schema_has('orders', 'paid_at')
 ) {
 
     $cancel_days = (int) ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS;
@@ -273,7 +273,7 @@ if (
     // An order put on the customer's account (ERP, 10.60) is an offline
     // payment too, but no transfer is coming: it is paid by the account's
     // due date, once it is invoiced. It is never cancelled here.
-    $sql_not_on_account = db_item("SHOW COLUMNS FROM orders LIKE 'erp_on_account'")
+    $sql_not_on_account = pg_schema_has('orders', 'erp_on_account')
         ? 'AND (erp_on_account = 0)'
         : '';
 
