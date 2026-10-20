@@ -4,7 +4,7 @@ description: consent_log and audit_log (11.0.16): the person token, consent row 
 ---
 
 ## What are the two tables?
-- `consent_log`: one row per consent given or refused, appended only. `audit_log`: who changed what (panel, API, job) with the changed fields before and after. Both from `upgrade_2026_11_0_privacy_logs()` (11.0.16, PR #NNN); gates `pg_consent_log_ready()`, `pg_audit_ready()`. Helpers: `includes/fn/privacy.php`, `includes/fn/audit.php`.
+- `consent_log`: one row per consent given or refused, appended only. `audit_log`: who changed what (panel, API, job) with the changed fields before and after. Both from `upgrade_2026_11_0_privacy_logs()` (11.0.16, PR #738); gates `pg_consent_log_ready()`, `pg_audit_ready()`. Helpers: `includes/fn/privacy.php`, `includes/fn/audit.php`.
 
 ## What is the person token?
 - `pg_privacy_person_token($email)`: HMAC-SHA256 of `person:` + the trimmed, lower-cased address (`pg_privacy_normalize_email()`) under `ENCRYPTION_KEY`; `''` without an address or a key. It ties rows that outlive the person's records (consents kept as proof, anonymised orders) to the person. Export and erasure use the same function. A changed `ENCRYPTION_KEY` orphans every token.

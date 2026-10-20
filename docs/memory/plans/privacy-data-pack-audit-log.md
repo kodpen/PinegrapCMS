@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; step 1 done, PR #NNN): per-person data export, erasure/anonymisation wizard respecting invoice retention, consent log, structured admin audit trail with before/after values
+description: Plan (approved 2026-10-19; step 1 done, PR #738): per-person data export, erasure/anonymisation wizard respecting invoice retention, consent log, structured admin audit trail with before/after values
 ---
 
 ## Why?
@@ -14,7 +14,7 @@ description: Plan (approved 2026-10-19; step 1 done, PR #NNN): per-person data e
 - Retention settings for contacts (inactive N years → anonymise), form submissions and orders (anonymise after N years) are opt-in and off by default.
 
 ## What remains?
-1. Done (PR #NNN): `consent_log` + `audit_log` (11.0.16), person token and consent log helpers (`includes/fn/privacy.php`), `pg_audit()` (`includes/fn/audit.php`), tests; docs/memory/core/consent-log-and-audit-trail.md. No writer is hooked yet.
+1. Done (PR #738): `consent_log` + `audit_log` (11.0.16), person token and consent log helpers (`includes/fn/privacy.php`), `pg_audit()` (`includes/fn/audit.php`), tests; docs/memory/core/consent-log-and-audit-trail.md. No writer is hooked yet.
 2. `pg_audit()` hooked into the listed save paths (M).
 3. Export screen + JSON/PDF (M).
 4. Erasure wizard with dry-run (M).
