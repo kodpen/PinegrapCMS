@@ -8049,9 +8049,9 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
-    // order's payment method has a payment driver that can cancel
-    // (pg_payment_cancel_driver(); a card order gets none), the payment is
-    // voided through it. Failures here MUST NOT roll back the cancellation —
+    // order's payment has a driver that can cancel (pg_payment_cancel_driver():
+    // the gateway's for a card order, the method's own otherwise), the payment
+    // is voided through it. Failures here MUST NOT roll back the cancellation —
     // refunds can be retried manually from the gateway dashboard. We just
     // record the outcome on the order row so the operator can audit.
     $refund_status_outcome = '';

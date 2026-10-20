@@ -15643,6 +15643,7 @@
     "Started": "Başlangıç",
     "Started by": "Başlatan",
     "Stock count": "Stok sayımı",
+    "This will void the payment via {var:1}.": "Bu işlem ödemeyi {var:1} üzerinden iptal edecektir.",
     "Stock counts": "Stok sayımları",
     "Stock counts come with the software update; run the update to use them.": "Stok sayımları yazılım güncellemesiyle gelir; kullanmak için güncellemeyi çalıştırın.",
     "The count could not be found.": "Sayım bulunamadı.",

@@ -16,6 +16,7 @@ description: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873
 - PayTR: iframe/redirect flow, hash verification, installment table, refund API, callback endpoint `payment_callback.php?driver=paytr`.
 - PayPal: Checkout v2 driver beside classic Express Checkout (kept).
 - Saved cards/wallets: tokens only as PSP references, never PAN; optional later.
+- 2026-10-20: a new gateway or method value is appended to the `config.ecommerce_payment_gateway` / `orders.payment_method` ENUM by its step's migration (4.48 `install_column_info` append); no VARCHAR change, so add-ons cannot add one. Refund and cancel go to the order's own driver, card orders included (`commerce/payment-refunds.md`).
 
 ## What remains?
 1. ~~Interface + registry + settings scaffolding + tests (M).~~ Done (PR #740).
@@ -27,10 +28,7 @@ description: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions skill entry (legacy gateways frozen on purpose) is the owner's to add.
 
 ## Open questions?
-- Cancel never voids a card order (`Credit/Debit Card`), though the dialog says "via iyzico". Owner: void it through the gateway's card driver?
-- The order screen refunds a Pay With Iyzico order only when the gateway is Iyzipay. Owner: use its own driver whatever the gateway?
 - Sipay/Param after PayTR by demand. Bank vPOS direct integrations are per-bank work; prefer a PSP that fronts the banks.
-- `config.ecommerce_payment_gateway` and `orders.payment_method` are ENUMs: a new gateway ("Stripe" PaymentIntents beside "Stripe (classic)", PayTR, PayPal v2) needs a value appended by a migration step (default: per step, the 4.48 `install_column_info` append), and an add-on cannot add one at all. Owner: keep appending, or turn both columns into VARCHAR before add-ons?
 
 ## Where to start?
-- Step 3 (Stripe) needs its gateway value in the ENUM first (open question above) and a generic return mode recognised at the top of `submit_order.php` and in `order_preview.php` (`pg_payment_return_mode()` knows only the two iyzico ones). Read `commerce/payment-drivers.md`, `commerce/payment-driver-iyzico.md`, the decisions skill first.
+- Step 3 (Stripe) appends its gateway value to the ENUM (decided above) and needs a generic return mode recognised at the top of `submit_order.php` and in `order_preview.php` (`pg_payment_return_mode()` knows only the two iyzico ones). Read `commerce/payment-drivers.md`, `commerce/payment-driver-iyzico.md`, the decisions skill first.
