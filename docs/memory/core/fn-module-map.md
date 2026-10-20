@@ -7,7 +7,7 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - `core`: db*, escape/h/e, JSON, date-time, `lang()`, `truncate`, mime, HTTP responses, `array_key_last` polyfill. LOADED FIRST.
 - `auth`: login, password, remember-me/device limit, bridge (`pg_code_version`...), CAPTCHA, login throttling, `validate_*_access`, `initialize_user`, access checks.
 - `forms`: `select_*` builders, option lists, form-data preparation, reference codes, front-end screen loaders.
-- `ecommerce`: order/cart items, quotes, tax, zones, stock/reservation, gift card, barcode, product copy, order cancellation.
+- `ecommerce`: order/cart items, quotes, tax, zones, stock/reservation, gift card, barcode, product copy, order cancellation, carrier recognition. `shipping` (2026.11.0): the only writer of shipment rows (`docs/memory/commerce/shipment-write-path.md`).
 - `seo`: structured data, OG, robots, sitemap, tag cloud, visitor/form view summaries, performance monitor.
 - `content`: menu content, submitted-form content, catalog search/URL, image ids (the `$image_ids_in_array` global lives here), `render_layout`.
 - `calendar`, `editor` (WYSIWYG, code editor fields, image editor), `mail` (PHPMailer + `email()` + notification mails), `contacts` (`merge_contacts`).
