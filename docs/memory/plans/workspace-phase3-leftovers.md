@@ -1,6 +1,6 @@
 ---
 name: workspace-phase3-leftovers
-description: Workspace module items planned for phase 3 (bots) and not built: app membership and command registry over the API, app.mentioned webhook, ERP overdue to task, designer task panel
+description: Workspace module items planned for phase 3 (bots): app.mentioned webhook done; left: app membership and command registry over the API, ERP overdue to task, designer task panel
 ---
 
 ## What is done?
@@ -9,9 +9,9 @@ description: Workspace module items planned for phase 3 (bots) and not built: ap
 
 ## What is left of phase 3?
 Not found in code on 2026-10-16; check again before starting, then one PR per item:
-1. App membership over the API: an application joins or leaves channels through endpoints (only the owner may add it to a private channel). Today apps see only channels they are members of.
+1. App membership over the API: an application joins or leaves channels through endpoints (only the owner may add it to a private channel). Today an application has no memberships of its own and reads with its owner's reach. With it the @ picker can offer an outside application, `ws_refs_resolve()` should draw its tag with its own name (today every outside application's tag reads "@Claude") and `ws_app_reads_channel()` (`workspace.app.mentioned`) should ask the app's own memberships instead of its owner's reach.
 2. Command registry over the API: an application registers its own `/command` (for example `/summarize`, `/report`); the channel shows it beside the built-in ones (`includes/workspace/commands.php`, `ws_command_names()`).
-3. `app.mentioned` webhook: fired when an application is mentioned with `@`, so an outside service can answer in the channel with `POST /workspace/channels/{id}/messages` without any AI code in Pinegrap.
+3. Done: `workspace.app.mentioned`, sent to the mentioned application's own subscriptions where it may read the channel, answered with `POST /workspace/channels/{id}/messages`: docs/memory/workspace/workspace-app-mentioned-webhook.md.
 4. ERP overdue receivable → task: `erp_overdue_job` optionally opens a "collection follow-up" task on the customer's channel or for a chosen person (ERP side: docs/memory/erp/erp-overdue-reminders.md).
 5. Visual designer: a "tasks of this page" panel next to the page settings.
 

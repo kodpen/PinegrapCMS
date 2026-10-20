@@ -18,7 +18,7 @@ Open the index of the folder the task needs, then only the files you need.
 - visitors/README.md: Visitor statistics, page and article views, search engine index flags (18)
 - waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers (22)
 - workflow/README.md: Project overview, owner rules, git and branches, sandbox and dev machine (5)
-- workspace/README.md: Workspace module: channels, tasks, plan board, rights, Claude in channels (16)
+- workspace/README.md: Workspace module: channels, tasks, plan board, rights, Claude in channels (17)
 
 ## Other documents (docs/)
 
