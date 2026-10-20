@@ -1039,8 +1039,9 @@ if (!$_POST) {
         $base_rate_4 = 0;
         $base_rate_4_subtotal = 0;
 
-        // If variable base rate is enabled, then prepare that data.
-        if ($_POST['variable_base_rate'] == 1) {
+        // If variable base rate is enabled, then prepare that data (an
+        // unticked box is not posted at all).
+        if (($_POST['variable_base_rate'] ?? '') == 1) {
             $variable_base_rates = array();
 
             // Loop through the different variable base rate fields
@@ -1182,11 +1183,12 @@ if (!$_POST) {
             // convert date to storage format
             $excluded_transit_date = prepare_form_data_for_input($excluded_transit_date, 'date');
             
-            // split date into parts
+            // split date into parts (an empty box gives one empty entry,
+            // which has no month or day and is dropped below)
             $excluded_transit_date_parts = explode('-', $excluded_transit_date);
             $year = $excluded_transit_date_parts[0];
-            $month = $excluded_transit_date_parts[1];
-            $day = $excluded_transit_date_parts[2];
+            $month = $excluded_transit_date_parts[1] ?? '';
+            $day = $excluded_transit_date_parts[2] ?? '';
             
             // if date is valid then update date in array
             if ((is_numeric($month) == true) && (is_numeric($day) == true) && (is_numeric($year) == true) && (checkdate($month, $day, $year) == true)) {
