@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Scheduled publishing of visual-designer pages (2026.11.0, 11.0.16).
+ * Scheduled publishing of visual-designer pages (2026.11.0, 11.0.17).
  *
  * A page can carry two times: page.publish_at, when a draft goes on the site,
  * and page.unpublish_at, when a page on the site goes back to the drafts.
@@ -39,7 +39,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('PG_PAGE_SCHEDULE_BATCH', 100);
 
 /**
- * True when the two columns are in the database (2026.11.0, 11.0.16).
+ * True when the two columns are in the database (2026.11.0, 11.0.17).
  *
  * @return bool
  */

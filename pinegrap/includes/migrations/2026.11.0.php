@@ -35,7 +35,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
 	upgrade_2026_11_0_shipments();              // 11.0.20
 	upgrade_2026_11_0_page_revisions();         // 11.0.15
-	upgrade_2026_11_0_page_schedule();          // 11.0.16
+	upgrade_2026_11_0_page_schedule();          // 11.0.17
 
 }
 

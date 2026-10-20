@@ -1,10 +1,10 @@
 ---
 name: page-schedule
-description: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.16): what a save does with the two times, the general job's pass, manual moves, the designs list badge, editor fields
+description: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what a save does with the two times, the general job's pass, manual moves, the designs list badge, editor fields
 ---
 
 ## What is stored?
-- `page.publish_at` (a draft goes on the site) and `page.unpublish_at` (a page on the site goes back to the drafts): unix times, 0 for none, each indexed (2026.11.0, 11.0.16). Entered as the site's wall clock (`datetime-local`, PHP default zone = site zone); `pg_page_schedule_parse()` also takes digits and ISO with offset/Z, refuses a date that does not exist. Module `includes/fn/page_schedule.php`; needs the drafts schema (`pg_page_draft_ready()`).
+- `page.publish_at` (a draft goes on the site) and `page.unpublish_at` (a page on the site goes back to the drafts): unix times, 0 for none, each indexed (2026.11.0, 11.0.17). Entered as the site's wall clock (`datetime-local`, PHP default zone = site zone); `pg_page_schedule_parse()` also takes digits and ISO with offset/Z, refuses a date that does not exist. Module `includes/fn/page_schedule.php`; needs the drafts schema (`pg_page_draft_ready()`).
 
 ## What does a save do with them?
 - `pg_designer_save_page()` calls `pg_page_schedule_save_plan()` next to the draft plan, before the dry-run return, so a bad time refuses the whole multi-page save. Keys `page_publish_at` / `page_unpublish_at`; a key not sent keeps the stored time. Rules in `pg_page_schedule_plan()` (pure, `tests/page_schedule_test.php`): end not after start → error; home page → both dropped with a warning; publish time ahead → draft; a time that has passed is carried out by the save and cleared, with a warning when it changed the state.
