@@ -15,7 +15,7 @@ description: External API and MCP for page revisions and scheduled publishing: t
 
 ## How is the page written?
 - Through `pg_designer_save_page()` with the stored fields (`pg_design_ai_page_fields()`), in the owner's name (`api_design_save_as_owner()`, session user name swapped like the create). The stored times are unset from the fields, so a time not sent keeps its exact value (the editor's copy is minute-rounded).
-- Schedule write: only the sent time keys change; it records no revision (identical snapshot), but the page's modified time moves and the save logs "modified". Restore: the revision's `tree_json` with `revision_source = 'restore'`; name, title, folder, settings, draft state and times stay as they are now. Same tree as the page now → nothing written, `changed: false`.
+- Schedule write: only the sent time keys change; it records a revision only when it moves the page on or off the site (the snapshot holds the folder, not the times); the page's modified time moves and the save logs "modified". Restore: the revision's `tree_json` with `revision_source = 'restore'`; name, title, folder, settings, draft state and times stay as they are now. Same tree as the page now → nothing written, `changed: false`.
 - Both need a full designer owner (403) and refuse with 409 `page_open_in_editor` while `pg_collab_may_edit_page('', id)` says somebody holds the page: the open tab's next save would put its tree and times back. Both log an activity line naming the app and announce `page.updated`.
 
 ## What changed about design:write?

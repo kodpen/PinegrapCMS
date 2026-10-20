@@ -2674,7 +2674,7 @@ function api_schema() {
 			'handler' => 'api_design_revisions_list',
 			'returns' => array('list' => 'DesignRevision'),
 			'summary' => 'Published revisions of a page',
-			'description' => 'One revision for every publish of the page, newest first: the editor\'s saves, the external API, the importers and the AI editor (source publish, restore, import or ai). A save that changed nothing the revision records writes none, and so does a change of the times alone. name and title are the page\'s at that publish. The layout is not returned; put a revision back with POST /design/pages/{id}/revisions/{no}/restore. The site keeps the last revisions of each page and the recent ones (Site Settings, Features, Page Revisions), so old numbers disappear. Cursor paged.',
+			'description' => 'One revision for every publish of the page, newest first: the editor\'s saves, the external API, the importers and the AI editor (source publish, restore, import or ai). A save that changed nothing the revision records writes none, and so does a change of the times that leaves the page where it was; one that moves it on or off the site writes one, since the revision records the page\'s folder. name and title are the page\'s at that publish. The layout is not returned; put a revision back with POST /design/pages/{id}/revisions/{no}/restore. The site keeps the last revisions of each page and the recent ones (Site Settings, Features, Page Revisions), so old numbers disappear. Cursor paged.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
