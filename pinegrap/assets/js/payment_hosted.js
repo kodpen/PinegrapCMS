@@ -161,8 +161,11 @@
         var token = form.querySelector('input[name="payment_token"]');
         var messages = config.messages || {};
         var adapter = adapters[config.driver];
-        var instance = adapter ? adapter(box.querySelector('.pg-eo-hosted-card-element'), config.client || {}) : null;
+
+        // Moved before the service draws its fields: a frame that is moved
+        // later loads again and loses them.
         var section = takeCardSection(form, box);
+        var instance = adapter ? adapter(box.querySelector('.pg-eo-hosted-card-element'), config.client || {}) : null;
 
         if (!instance || !token) {
             if (error) {

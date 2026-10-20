@@ -344,7 +344,8 @@ function test_payment_stripe_authorize_refusals()
 
 	$unreached = payment_stripe_test_authorize(array());
 	pg_assert_false($unreached['success']);
-	pg_assert_same(array('Stripe payment for order #438 was not accepted: Could not resolve host: api.stripe.com.'), $unreached['log']);
+	pg_assert_same(lang('The payment service could not be reached.'), $unreached['error'], 'the transport\'s words stay in the log');
+	pg_assert_same(array('Stripe payment for order #438 was not accepted: Could not resolve host: api.stripe.com (unreached).'), $unreached['log']);
 
 	$failed = payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent(array(
 		'status'             => 'requires_payment_method',

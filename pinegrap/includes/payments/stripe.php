@@ -292,7 +292,8 @@ function pg_payment_stripe_request($secret_key, $method, $path, $params, $idempo
  * @param string   $idempotency_key
  * @return array ok (bool: a 2xx answer with a body), status, body (array),
  *               message (Stripe's or the transport's words), code
- *               (error.decline_code or error.code)
+ *               (error.decline_code or error.code; 'unreached' when Stripe
+ *               did not answer)
  */
 function pg_payment_stripe_call($http, $settings, $method, $path, $params = array(), $idempotency_key = '')
 {
@@ -310,7 +311,9 @@ function pg_payment_stripe_call($http, $settings, $method, $path, $params = arra
         $message = isset($response['error']) ? trim((string) $response['error']) : '';
     }
 
-    $code = '';
+    // Stripe not reached at all has a code of its own, so the visitor reads
+    // the site's sentence and the log keeps the transport's words.
+    $code = ($status === 0) ? 'unreached' : '';
     foreach (array('decline_code', 'code') as $code_key) {
         if (($code === '') && isset($error[$code_key]) && is_scalar($error[$code_key])) {
             $code = trim((string) $error[$code_key]);
@@ -337,6 +340,9 @@ function pg_payment_stripe_call($http, $settings, $method, $path, $params = arra
 function pg_payment_stripe_visitor_error($code, $message)
 {
     switch ((string) $code) {
+        case 'unreached':
+            return lang('The payment service could not be reached.');
+
         case 'insufficient_funds':
             return lang('Your card has insufficient funds.');
 

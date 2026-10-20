@@ -2915,6 +2915,11 @@ function _eo_render_payment_methods($lf, $cfg, $hosted_card_html = '')
             $brand_pills_html .= '</div>';
         }
 
+        // Iyzipay's instalment selector, below the card inputs and in the
+        // script after them.
+        $max_installments = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0;
+        $is_iyzipay_gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
+
         // The payment service's own fields take the card's place.
         if ((string) $hosted_card_html !== '') {
             $html .= $hosted_card_html . '</div>';
@@ -2948,8 +2953,6 @@ function _eo_render_payment_methods($lf, $cfg, $hosted_card_html = '')
         // posts alongside the form. submit_order.php's existing Iyzipay
         // pipeline reads `installment` via $liveform->get_field_value() —
         // no server-side wiring needed beyond this.
-        $max_installments = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0;
-        $is_iyzipay_gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
         if ($is_iyzipay_gateway && $max_installments >= 2) {
             $saved_inst = $lf ? (int)$lf->get_field_value('installment') : 0;
             if ($saved_inst < 1) $saved_inst = 1;
