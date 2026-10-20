@@ -4,7 +4,7 @@ description: Mark on texts written with AI (products.ai_fields, page.ai_fields, 
 ---
 
 ## What is stored?
-- `products.ai_fields`, `page.ai_fields` (TEXT NULL, `upgrade_2026_11_0_ai_fields()`, 11.0.23): a JSON object of the columns whose text is an accepted "Write with AI" draft, each with the fingerprint of that text, `{"title":"0123456789abcdef"}`; NULL is none, never `{}`.
+- `products.ai_fields`, `page.ai_fields` (TEXT NULL, `upgrade_2026_11_0_ai_fields()`, 11.0.23, PR #811): a JSON object of the columns whose text is an accepted "Write with AI" draft, each with the fingerprint of that text, `{"title":"0123456789abcdef"}`; NULL is none, never `{}`.
 - Fingerprint (`pg_ai_fields_fingerprint()`): 16 hex digits of the SHA-1 of the value, markup included, runs of ASCII white space as one space, ends trimmed (a CRLF post is the same text); '' for a field without text.
 - Columns, one per button (`pg_ai_fields_columns()`): product `short_description`, `full_description`, `title`, `meta_description`; page `page_title`, `page_meta_description`; the test fails when a target has no column or a column no button.
 - A mark holds only while its text matches (`pg_ai_fields_marked()`): a text changed any other way (API, import, Workspace, SQL) is not shown as marked and not kept by the next save, with no code on those paths.
@@ -27,7 +27,7 @@ description: Mark on texts written with AI (products.ai_fields, page.ai_fields, 
 - A database that recorded 2026.11.0 before the step: `pg_ai_fields_ready()` (`pg_schema_has()`) says no, the screens draw and write nothing; rerun the version (docs/memory/release/rerun-upgrade-steps.md). An UPDATE naming a missing column fails whole.
 
 ## What does not mark yet?
-- `duplicate_products.php` (explicit columns: the copy has no mark; a design copy, `duplicate_style.php`, takes `page.ai_fields` with the texts, so the marks stay true), the designer's page settings, the API, imports, Workspace proposals; the token `__ai_generated`. See docs/memory/plans/ai-write-buttons.md.
+- Copies with explicit columns (`duplicate_products.php`, `duplicate_page_f.php`: no mark; `duplicate_style.php` takes `page.ai_fields` with the texts, so they stay true), the designer's page settings, the API, imports, Workspace proposals; the token `__ai_generated`. See docs/memory/plans/ai-write-buttons.md.
 
 ## How was it checked?
 - Sandbox (MariaDB 10.11): the step twice (added, then already there); both saves over HTTP (marked, kept, hand edit with and without the list, changed elsewhere, emptied, x); Playwright with a stand-in Prompt API (typing off and back on, the editor, the submit look, the x).
