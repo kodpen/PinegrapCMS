@@ -16,4 +16,5 @@ description: get_page_content.php evaluates the assembled page when PHP_REGIONS 
 ## How does the site importer fetch?
 - `import_design.php` fetches through `import_design_fetch()`: every address, redirect hops included, is checked with `api_http_check_url($url, true)` (http allowed, loopback/private/reserved refused), the resolved address is pinned with `CURLOPT_RESOLVE`, `CURLOPT_FOLLOWLOCATION` stays off and at most five hops are walked. The stream fallback uses `follow_location => 0` + `ignore_errors` and reads `Location` itself.
 - Both the scan and the import step post with a CSRF token (`validate_token_field()` before the URL check); the intro form posts.
+- The scan says why an address inside the server's network is refused ("…is inside the network of this server…"); an address that does not resolve, or a redirect leading inside, gets the general "no web page" answer. Before #647 both read as a typing mistake.
 - `url_to_absolute.php` resolves relative addresses again: its host class `[a-zA-Z\d-.%]` was an invalid range under PCRE2 (PHP 7.3+) and returned false for every URL, and `mb_strrpos()` was given `'UTF-8'` as the offset.

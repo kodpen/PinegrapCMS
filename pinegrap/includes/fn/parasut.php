@@ -1005,6 +1005,99 @@ function parasut_connection_status()
 }
 
 /**
+ * The settings card's line for a connection state, the same after a page
+ * draw and after Connect answers.
+ *
+ * @param array $status  parasut_connection_status() output
+ * @return array ['text' => string, 'tone' => 'success'|'secondary']
+ */
+function parasut_connection_line($status)
+{
+    $status = (array) $status;
+
+    if (empty($status['connected'])) {
+        return ['text' => lang('Not connected to Paraşüt yet.'), 'tone' => 'secondary'];
+    }
+
+    $parts = [((string) ($status['grant'] ?? '') === 'code')
+        ? lang('Connected with an authorization code')
+        : lang('Connected with the user name and password')];
+
+    foreach (['email', 'company_name'] as $key) {
+        if (trim((string) ($status[$key] ?? '')) !== '') {
+            $parts[] = trim((string) $status[$key]);
+        }
+    }
+
+    if ((int) ($status['connected_at'] ?? 0) > 0) {
+        $parts[] = date('d.m.Y H:i', (int) $status['connected_at']);
+    }
+
+    return ['text' => implode(' · ', $parts), 'tone' => 'success'];
+}
+
+/**
+ * The company number the settings save writes. An empty box keeps the saved
+ * number: Connect writes the number it finds while the open page still holds
+ * the empty box, and saving that page used to blank the number, which
+ * orphaned the token (its owner stamp names the company) and disconnected
+ * the store. Another number typed in the box replaces it.
+ *
+ * @param mixed  $posted  The box as posted
+ * @param string $stored  The saved number
+ * @return string
+ */
+function parasut_company_id_for_save($posted, $stored)
+{
+    $posted = is_string($posted) ? trim($posted) : '';
+
+    return ($posted !== '') ? $posted : trim((string) $stored);
+}
+
+/**
+ * Whether an order's documents belong to the ERP rather than to the order
+ * screen's own Paraşüt buttons (Create Invoice, E-Shipment). With the ERP on
+ * and an e-document provider switched on, the ERP issues the order's invoice
+ * and the provider takes it to GİB; the older buttons send the same sale to
+ * Paraşüt as a second invoice, outside the ERP's books.
+ *
+ * Without the ERP, or with the ERP but no provider (its invoices stay on
+ * paper), the buttons are still the store's way to Paraşüt.
+ *
+ * @return bool
+ */
+function parasut_order_documents_in_erp()
+{
+    static $in_erp = null;
+
+    if ($in_erp === null) {
+        // erp_edoc_providers (4.61) says which provider is on; before it the
+        // ERP's own Paraşüt switch did.
+        $table = function_exists('waf_table_has_column') && waf_table_has_column('erp_edoc_providers', 'is_active');
+
+        $in_erp = _parasut_order_documents_in_erp(
+            defined('ERP_ENABLED') && ERP_ENABLED,
+            $table ? ((int) db_value("SELECT COUNT(*) FROM erp_edoc_providers WHERE is_active = 1") > 0)
+                : (defined('ERP_PARASUT_ENABLED') && ((int) ERP_PARASUT_ENABLED === 1))
+        );
+    }
+
+    return $in_erp;
+}
+
+/**
+ * The rule behind parasut_order_documents_in_erp().
+ *
+ * @param bool $erp_enabled  The ERP module is on
+ * @param bool $provider_on  An e-document provider is switched on for it
+ * @return bool
+ */
+function _parasut_order_documents_in_erp($erp_enabled, $provider_on)
+{
+    return (bool) $erp_enabled && (bool) $provider_on;
+}
+
+/**
  * Find or create a Parasut contact for the given order row.
  * Stores the Parasut contact ID back to orders.parasut_contact_id.
  *

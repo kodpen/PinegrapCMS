@@ -58,6 +58,16 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     $tr_only = $is_tr ? '' : ' d-none';
     $not_tr = $is_tr ? ' d-none' : '';
 
+    // The Query button beside the number asks GİB, through the e-document
+    // provider, whether the number typed is an e-Invoice user and under which
+    // name it is registered; the name field can take that name over. Only
+    // with a provider that can answer, for a Turkish account, and for someone
+    // who may change the card (the answer is kept on it).
+    $taxpayer_lookup = function_exists('erp_edoc_installed') && erp_edoc_installed()
+        && erp_edoc_supports('check_taxpayer')
+        && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY);
+    $lookup_account_id = is_array($account) ? (int) ($account['id'] ?? 0) : 0;
+
     $country_options = array();
     if ($country === '') {
         $country_options['—'] = '';
@@ -173,10 +183,19 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="tax_number" class="form-label" data-label-tr="' . h(lang('VKN / TCKN')) . '" data-label-other="' . h(lang('Tax number')) . '">' . h(erp_tax_id_label($country)) . '</label>
+                    ' . ($taxpayer_lookup ? '<div class="input-group">' : '') . '
                     ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'tax_number', 'name' => 'tax_number',
                         'class' => 'form-control', 'maxlength' => (string) erp_tax_number_width(),
                         'autocomplete' => 'off'), $is_tr ? array('inputmode' => 'numeric') : array())) . '
+                    ' . ($taxpayer_lookup ? '<button type="button" class="btn btn-outline-secondary' . $tr_only . '" data-erp-tr-only data-erp-taxpayer-lookup'
+                        . ' data-account-id="' . $lookup_account_id . '"'
+                        . ' data-busy="' . h(lang('Querying')) . '"'
+                        . ' data-failed="' . h(lang('The answer could not be read. Try again in a moment.')) . '"'
+                        . ' data-filled="' . h(lang('The name field now holds the registered name; save the account to keep it.')) . '"'
+                        . ' data-use="' . h(lang('Use the registered name')) . '"'
+                        . ' title="' . h(lang('Asks GİB whether the number is an e-Invoice user and under which name it is registered.')) . '">'
+                        . '<i class="bi bi-search me-1" aria-hidden="true"></i>' . lang('Query') . '</button></div>' : '') . '
                     ' . erp_account_form_einvoice_state($account) . '
                 </div>
                 <div class="col-12 col-lg-6 my-2' . $tr_only . '" data-erp-tr-only>
@@ -185,6 +204,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'type' => 'text', 'id' => 'tax_office', 'name' => 'tax_office',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
+                ' . ($taxpayer_lookup ? '<div class="col-12"><div class="form-text text-break mt-0" data-erp-taxpayer-answer aria-live="polite"></div></div>' : '') . '
             </div>
         </div>
     </div>
@@ -276,6 +296,90 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
             }
         });
     })();
+    (function () {
+        // Query: GİB\'s answer about the number typed, under the field. The
+        // registered name goes into an empty name field; a different name
+        // already there is only replaced on request. Nothing is saved until
+        // the form is.
+        var button = document.querySelector("[data-erp-taxpayer-lookup]");
+        var answer = document.querySelector("[data-erp-taxpayer-answer]");
+        if (!button || !answer || !window.fetch || !window.FormData) {
+            return;
+        }
+        var form = button.closest("form");
+        var say = function (text, failed) {
+            answer.textContent = text;
+            answer.classList.toggle("text-danger", !!failed);
+        };
+        var putName = function (name) {
+            var field = document.getElementById("title");
+            if (!field) {
+                return;
+            }
+            field.value = name;
+            field.dispatchEvent(new Event("input", {bubbles: true}));
+            field.dispatchEvent(new Event("change", {bubbles: true}));
+        };
+        button.addEventListener("click", function () {
+            var number = document.getElementById("tax_number");
+            var token = form ? form.querySelector("input[name=token]") : null;
+            var body = new FormData();
+            body.append("token", token ? token.value : "");
+            body.append("tax_number", number ? number.value : "");
+            body.append("account_id", button.getAttribute("data-account-id") || "0");
+            button.disabled = true;
+            say(button.getAttribute("data-busy") + "…", false);
+            fetch("erp_taxpayer_lookup.php", {method: "POST", body: body, credentials: "same-origin"})
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (!data || !data.ok) {
+                        say((data && data.message) ? data.message : button.getAttribute("data-failed"), true);
+                        return;
+                    }
+                    say(data.message, false);
+                    if (data.state) {
+                        var holder = document.createElement("div");
+                        holder.innerHTML = data.state;
+                        var fresh = holder.firstElementChild;
+                        var old = document.querySelector("[data-erp-einvoice-state]");
+                        var group = button.closest(".input-group");
+                        if (fresh && old) {
+                            old.replaceWith(fresh);
+                        } else if (fresh && group) {
+                            group.after(fresh);
+                        }
+                    }
+                    var name = (data.title || "").trim();
+                    var field = document.getElementById("title");
+                    if (!name || !field) {
+                        return;
+                    }
+                    if (field.value.trim() === "") {
+                        putName(name);
+                        answer.appendChild(document.createTextNode(" " + button.getAttribute("data-filled")));
+                    } else if (field.value.trim() !== name) {
+                        var use = document.createElement("button");
+                        use.type = "button";
+                        use.className = "btn btn-sm btn-outline-primary ms-2 my-1";
+                        use.textContent = button.getAttribute("data-use");
+                        use.addEventListener("click", function () {
+                            putName(name);
+                            use.remove();
+                            answer.appendChild(document.createTextNode(" " + button.getAttribute("data-filled")));
+                        });
+                        answer.appendChild(use);
+                    }
+                })
+                .catch(function () {
+                    say(button.getAttribute("data-failed"), true);
+                })
+                .then(function () {
+                    button.disabled = false;
+                });
+        });
+    })();
     </script>';
 
     if ($with_opening) {
@@ -359,13 +463,13 @@ function erp_account_form_einvoice_state($account)
             return '';
         }
 
-        return '<div class="form-text">' . lang('Whether this number is registered for e-Invoice has not been asked yet.') . '</div>';
+        return '<div class="form-text" data-erp-einvoice-state>' . lang('Whether this number is registered for e-Invoice has not been asked yet.') . '</div>';
     }
 
     $is_user = ((int) $account['einvoice_user'] === 1);
     $alias = trim((string) $account['einvoice_alias']);
 
-    return '<div class="form-text">'
+    return '<div class="form-text" data-erp-einvoice-state>'
         . '<span class="badge text-bg-' . ($is_user ? 'success' : 'secondary') . '">'
         . ($is_user ? lang('e-Invoice taxpayer') : lang('Not an e-Invoice taxpayer')) . '</span> '
         . h(lang(array('string' => 'asked {var:1}', 'vars' => date('d.m.Y H:i', $checked_at))))

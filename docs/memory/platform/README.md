@@ -8,10 +8,11 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
 - ca-bundle-panel-update.md: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): https-only source, validation checks, atomic write to data/cacert.pem.
 - clean-up-tool-file-list.md: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
+- cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus
 - design-template-install-at-setup.md: Install wizard step "Site Tasarımı": two-request template install, StyleDesigner.starterTree() API, home/staff keys, starter removal and preview lists.
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
-- dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel: no content view, no archive, no copy, no rename; pg_file_withheld() and the doors that ask it
-- docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3) and web (nginx) images, MariaDB 10.11, cron service gated on the database version, data volume, nginx rules kept in step, tools/check_docker.sh in CI
+- dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel (no view, archive, copy, rename, channel copy, designer read) and only staff may give a file that name; pg_file_withheld(), pg_file_name_reserved()
+- docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - external-api-iis-environment.md: Rules imposed by IIS/WAF on the external API: waf_is_api_request() path logic, WAF exemption, no PATCH/DELETE, 422 body keys, POST /products.
@@ -21,6 +22,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-derivatives.md: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, files that get none
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the eight invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels).
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
+- install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section).
@@ -44,3 +46,4 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS verification on cURL calls (update channel, payment gateways, Givex, carriers): pg_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS.
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
+- zip-entry-declared-size.md: A zip entry read as a stream (office preview, xlsx importers, restore and extract copies) stops at the size its archive declares; pg_zip_entry_uri(), shared string caps

@@ -6565,6 +6565,11 @@ function duplicate_product($id)
     }
     // prepare the address name for the database
     $address_name = prepare_catalog_item_address_name($address_name);
+    // products.compare_at_price (2026.11.0) is copied where the table has it,
+    // which the SELECT * above shows: the copy starts with the original's "was"
+    // price as it starts with its price.
+    $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
+    $compare_at_value = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
     // insert row into product table
     $query = "INSERT INTO products (
 
@@ -6747,6 +6752,8 @@ function duplicate_product($id)
             brand,
 
             mpn,
+
+            " . $compare_at_column . "
 
             user,
 
@@ -6933,6 +6940,8 @@ function duplicate_product($id)
             '" . escape($row['brand']) . "', 
 
             '" . escape($row['mpn']) . "',
+
+            " . $compare_at_value . "
 
             '" . USER_ID . "',
 

@@ -419,18 +419,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         : array('connected' => false, 'grant' => '', 'email' => '', 'company_name' => '', 'expires_at' => 0, 'connected_at' => 0, 'renewable' => false);
     $parasut_authorize_url = function_exists('parasut_authorize_url') ? parasut_authorize_url($parasut_client_id) : '';
 
-    if (!empty($parasut_connection['connected'])) {
-        $parasut_connection_text = (($parasut_connection['grant'] === 'code')
-            ? lang('Connected with an authorization code')
-            : lang('Connected with the user name and password'))
-            . (($parasut_connection['email'] !== '') ? ' · ' . $parasut_connection['email'] : '')
-            . (($parasut_connection['company_name'] !== '') ? ' · ' . $parasut_connection['company_name'] : '')
-            . (($parasut_connection['connected_at'] > 0) ? ' · ' . date('d.m.Y H:i', $parasut_connection['connected_at']) : '');
-        $parasut_connection_tone = 'success';
-    } else {
-        $parasut_connection_text = lang('Not connected. Open the authorization page, sign in to Paraşüt, allow Pinegrap and paste the code it shows; or enter the user name and password below.');
-        $parasut_connection_tone = 'secondary';
-    }
+    $parasut_connection_connected = !empty($parasut_connection['connected']);
+    $parasut_connection_line = function_exists('parasut_connection_line')
+        ? parasut_connection_line($parasut_connection)
+        : array('text' => lang('Not connected to Paraşüt yet.'), 'tone' => 'secondary');
+    $parasut_connection_text = $parasut_connection_line['text'];
+    $parasut_connection_tone = $parasut_connection_line['tone'];
 
     // The e-document provider (4.61): which one carries the ERP's invoices,
     // and each provider's own fields. Drawn only once the provider table is
@@ -2246,6 +2240,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $maintenance_until_value = ($maintenance_until > 0) ? date('Y-m-d\TH:i', $maintenance_until) : '';
     $maintenance_allow_ips = (string) ($row['maintenance_allow_ips'] ?? '');
     $maintenance_my_ip = function_exists('waf_client_ip') ? waf_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    $maintenance_my_ip_shared = pg_maintenance_ip_is_shared($maintenance_my_ip);
 
     // The structure pass parses rendered markup with DOMDocument. Without the
     // extension the job records its run and exits, so the operator would see

@@ -786,7 +786,9 @@ function ws_scheduled_js_config($viewer)
         'depth'        => WS_SCHEDULED_CHAIN_DEPTH,
         'max_follow'   => WS_SCHEDULED_MAX_FOLLOW,
         'min_minutes'  => WS_SCHEDULED_MIN_MINUTES,
-        'site'         => (defined('URL_SCHEME') && defined('HOSTNAME')) ? URL_SCHEME . HOSTNAME . (defined('PATH') ? PATH : '/') : '',
+        // The address a new web check starts from: the job runs it later, so
+        // it is the site's own address, not the host this request named.
+        'site'         => (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING . (defined('PATH') ? PATH : '/') : '',
         'email'        => (string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) $viewer['id'] . "'"),
         'now'          => date('Y-m-d H:i'),
     );
@@ -4090,7 +4092,7 @@ function ws_scheduled_webhook($viewer, $row, $action, $context)
         default:
             $payload = array(
                 'event'  => 'workspace.scheduled_action',
-                'site'   => (defined('URL_SCHEME') && defined('HOSTNAME')) ? URL_SCHEME . HOSTNAME . (defined('PATH') ? PATH : '/') : '',
+                'site'   => (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING . (defined('PATH') ? PATH : '/') : '',
                 'action' => array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'run' => (int) $row['run_count'] + 1),
                 'text'   => $text,
                 'result' => (string) ($context['result'] ?? ''),

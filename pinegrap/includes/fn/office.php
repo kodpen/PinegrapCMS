@@ -41,6 +41,15 @@ define('PG_OFFICE_MAX_COLUMNS', 200);
 define('PG_OFFICE_MAX_CELLS', 120000);
 
 /**
+ * How much of a workbook's shared string table is kept: strings, and their
+ * bytes together. The table is read whole before any sheet, since a cell
+ * names its text by number, so these bound the memory a table within the
+ * part limit can take.
+ */
+define('PG_OFFICE_MAX_STRINGS', 500000);
+define('PG_OFFICE_MAX_STRING_BYTES', 32 * 1024 * 1024);
+
+/**
  * How much of a document the preview shows: characters of HTML, and the
  * pictures inlined (one, and all together), in bytes.
  */
@@ -324,9 +333,15 @@ function pg_office_zip_stream()
 /**
  * The shared string table, as a list.
  *
+ * Read no further than the size the package declares for the table
+ * (pg_zip_entry_uri()): a stream would otherwise inflate a table that
+ * declares a kilobyte to whatever it holds. A table that unpacks past its
+ * declared size is damaged; one past PG_OFFICE_MAX_STRINGS strings or
+ * PG_OFFICE_MAX_STRING_BYTES bytes is too large to show.
+ *
  * @param string $path the package on disk
  * @param string $part '' when the workbook has none
- * @return string[]
+ * @return string[]|false|null false when damaged, null when too large
  */
 function pg_office_xlsx_strings($path, $part)
 {
@@ -336,23 +351,47 @@ function pg_office_xlsx_strings($path, $part)
         return $strings;
     }
 
+    $size = pg_zip_entry_size($path, $part);
+
+    if ($size < 0) {
+        return $strings;
+    }
+
     pg_office_zip_stream();
 
     $reader = new XMLReader();
 
-    if (!$reader->open('zip://' . $path . '#' . $part, null, LIBXML_NONET)) {
+    if (!$reader->open(pg_zip_entry_uri($path, $part, $size), null, LIBXML_NONET)) {
         return $strings;
     }
 
+    $previous = libxml_use_internal_errors(true);
+    $bytes = 0;
+    $too_large = false;
+
     while ($reader->read()) {
         if (($reader->nodeType === XMLReader::ELEMENT) && ($reader->name === 'si')) {
-            $strings[] = $reader->readString();
+            $string = $reader->readString();
+            $bytes += strlen($string);
+
+            if ((count($strings) >= PG_OFFICE_MAX_STRINGS) || ($bytes > PG_OFFICE_MAX_STRING_BYTES)) {
+                $too_large = true;
+                break;
+            }
+
+            $strings[] = $string;
         }
     }
 
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
     $reader->close();
 
-    return $strings;
+    if (pg_zip_entry_overran()) {
+        return false;
+    }
+
+    return $too_large ? null : $strings;
 }
 
 /**
@@ -481,7 +520,9 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
 
     $reader = new XMLReader();
 
-    if (!$reader->open('zip://' . $path . '#' . $part, null, LIBXML_NONET)) {
+    // No further than the sheet's declared size: past it the read stops, and
+    // the rows read until then are shown as the beginning of the sheet.
+    if (!$reader->open(pg_zip_entry_uri($path, $part, max(0, pg_zip_entry_size($path, $part))), null, LIBXML_NONET)) {
         return $rows;
     }
 
@@ -566,6 +607,10 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
     libxml_use_internal_errors($previous);
     $reader->close();
 
+    if (pg_zip_entry_overran()) {
+        $truncated = true;
+    }
+
     return $rows;
 }
 
@@ -593,6 +638,11 @@ function pg_office_xlsx_read($path)
     }
 
     $strings = pg_office_xlsx_strings($path, $strings_part);
+
+    if (!is_array($strings)) {
+        return array('ok' => false, 'error' => ($strings === null) ? lang('This file is too large to show here. Download it to open it.') : lang('The file could not be read.'), 'sheets' => array(), 'truncated' => false);
+    }
+
     $cells_left = PG_OFFICE_MAX_CELLS;
     $out = array();
     $any_cut = false;

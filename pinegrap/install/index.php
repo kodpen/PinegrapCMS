@@ -71,11 +71,21 @@ $automated_upgrade_requested = false;
 // screen starts by itself and applies one version per request.
 $install_autostart = false;
 
+// php install/index.php install: a starter site installed without the screen, from the
+// PG_INSTALL_* environment variables (includes/install_cli.php). The fields the screen would
+// post are filled in before anything reads them, the installation below runs as the screen's
+// does, and its steps are printed as lines of text.
+$install_cli = false;
+
 if ((PHP_SAPI === 'cli') && (isset($argv[1])) && ($argv[1] == 'automated_upgrade')) {
 
 	$automated_upgrade = true;
 
 	$automated_upgrade_via = 'cli';
+
+} elseif ((PHP_SAPI === 'cli') && (isset($argv[1])) && ($argv[1] == 'install')) {
+
+	$install_cli = true;
 
 } elseif ((isset($_REQUEST['automated_upgrade'])) && ($_REQUEST['automated_upgrade'] == 'true')) {
 
@@ -107,6 +117,24 @@ if (!file_exists(dirname(__FILE__) . '/../data/config.php')) {
     }
 }
 require (dirname(__FILE__) . '/../data/config.php');
+
+// The installation from the command line reads its variables now: the language, the address
+// and the database a data/config.php names are needed by what follows.
+if ($install_cli == true) {
+
+	require(dirname(__FILE__) . '/../includes/install_cli.php');
+
+	$install_cli_starter_sites = array();
+
+	foreach (get_available_starter_sites() as $install_cli_starter_site) {
+
+		$install_cli_starter_sites[$install_cli_starter_site['folder']] = $install_cli_starter_site['language'];
+
+	}
+
+	install_cli_begin($install_cli_starter_sites);
+
+}
 
 
 $output_enforcement ='';
@@ -259,6 +287,13 @@ if(defined('EDITION')){
 }
 require (dirname(__FILE__) . '/../functions.php');
 
+// The firewall's functions, which the sign-in throttle counts with: the unlock form below
+// goes through pg_login_throttle_guard() and pg_login_record_failure() like the sign-in
+// screen, and without these pg_login_throttle_ready() is false and neither of them counts
+// or locks anything.  Only loaded: the firewall itself (waf_run()) does not run on this
+// screen.
+require_once (dirname(__FILE__) . '/../waf.php');
+
 // The upgrade runner: the version list, the migration files, the schema helpers and the
 // loop that applies them.  It lives under includes/ so that it survives the install
 // directory being removed from a server.
@@ -315,8 +350,9 @@ if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'designer_i
 
 }
 
-// if this script is not being called from an automated upgrade script, then start session
-if ($automated_upgrade == false) {
+// If this script is not being called from an automated upgrade script or the installation from
+// the command line (which keeps the form in this process), then start session.
+if (($automated_upgrade == false) && ($install_cli == false)) {
 
 	// If this is a secure request then prepare to start a secure session.
 	// We do this so that if a visitor accidentally requests an insecure URL,
@@ -897,7 +933,7 @@ function write_install_progress_file($done = false) {
 
 function add_install_step($label, $detail = '', $state = 'ok') {
 
-	global $install_log, $install_started_at, $install_streaming, $install_expected_steps;
+	global $install_log, $install_started_at, $install_streaming, $install_expected_steps, $install_cli;
 
 	if ($install_started_at == 0) {
 
@@ -916,6 +952,13 @@ function add_install_step($label, $detail = '', $state = 'ok') {
 
 	// the screen reads this file while the installation runs
 	write_install_progress_file(false);
+
+	// the command line prints the step as it happens
+	if ($install_cli == true) {
+
+		install_cli_print(install_cli_step_line($seconds, $label, $detail, $state));
+
+	}
 
 	// if the installation is being streamed, then send this step to the browser right away
 	if ($install_streaming == true) {
@@ -1785,6 +1828,25 @@ if ($automated_upgrade == false) {
 			}
 
 		}
+
+	}
+
+	// The command line installs into an empty database only. A site that is already there is
+	// left as it is, whatever the variables say, so the container that runs this on every
+	// start can run it again; one whose database is behind the software is pointed at the
+	// upgrade, which stays a step of its own.
+	if ($install_cli == true) {
+
+		if ($install_site_exists == true) {
+
+			$install_cli_database_version = (string) db_value("SELECT version FROM config LIMIT 1");
+
+			install_cli_finish('skipped', 'a site is already installed in ' . DB_DATABASE . '@' . DB_HOST . ' (database ' . $install_cli_database_version . ', software ' . $software_version . ')' .
+				((($install_cli_database_version !== '') && (version_compare($install_cli_database_version, $software_version, '<'))) ? '; php pinegrap/install/index.php automated_upgrade brings the database up to the software.' : '.'), 0);
+
+		}
+
+		install_cli_check();
 
 	}
 
@@ -5022,13 +5084,17 @@ else {
 			// because it is the only dangerous area.  We don't want an attacker to be able to use CSRF
 			// to overwrite an existing site without the admin's permission.  We don't add CSRF protection to other areas
 			// of this script, because we need systems to be able to do fresh installs from a remote location (i.e. our trial system).
+			// The command line has no browser to forge a request from, and it has already turned
+			// away a database that holds a site.
 			if (
+
+			($install_cli == false) && (
 
 			($_SESSION['software']['token'] == '') ||
 
 			(
 
-			($_POST['token'] != $_SESSION['software']['token']) && ($_GET['token'] != $_SESSION['software']['token']))) {
+			($_POST['token'] != $_SESSION['software']['token']) && ($_GET['token'] != $_SESSION['software']['token'])))) {
 
 				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), get_install_log_username());
 
@@ -5536,6 +5602,17 @@ else {
 			};
 
 			$install_restore_result = pg_restore_step($install_restore, $install_restore_beat);
+
+			// The screen loads for a step's seconds and then sends the next request. The command
+			// line has no request to end, so it loads the next step here, until the dump is in or a
+			// statement fails.
+			while (($install_cli == true) && ($install_restore_result['status'] == 'more')) {
+
+				add_install_step(lang('Loading the database'), pg_restore_progress_text($install_restore));
+
+				$install_restore_result = pg_restore_step($install_restore, $install_restore_beat);
+
+			}
 
 			$install_progress_running = '';
 
@@ -6393,7 +6470,11 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 
 				if ($upgrade_result['ok'] == false) {
 
-					output_install_upgrade_failure($upgrade_result, $installed_version, false, '');
+					// The command line gets the plain text answer of the automated upgrade, which
+					// is the last line and sets the exit status.
+					$install_cli_reported = $install_cli;
+
+					output_install_upgrade_failure($upgrade_result, $installed_version, $install_cli, ($install_cli == true) ? 'cli' : '');
 
 				}
 
@@ -6480,6 +6561,20 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 			@mb_send_mail($to, $subject, $body, $headers);
 
 			$install_email_sent = true;
+
+		}
+
+		// The command line has printed the steps; its last line says what is where.
+		if ($install_cli == true) {
+
+			$install_cli_summary = 'installed ' . $install_directory_path . ' ' . $software_version .
+				' into ' . $liveform->get_field_value('db_database') . '@' . $liveform->get_field_value('db_host') .
+				'; administrator ' . $liveform->get_field_value('admin_username') . ' (' . $liveform->get_field_value('admin_email_address') . ')' .
+				'; control panel ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
+
+			$liveform->remove_form('install');
+
+			install_cli_finish('ok', $install_cli_summary, 0);
 
 		}
 
@@ -6682,9 +6777,17 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 // can watch what the server is doing instead of looking at a blank tab.
 function start_install_stream() {
 
-	global $install_streaming;
+	global $install_streaming, $install_cli;
 
 	start_install_log();
+
+	// The command line prints every step as a line of text (add_install_step()); there is no
+	// page to open.
+	if ($install_cli == true) {
+
+		return;
+
+	}
 
 	start_install_progress_file();
 
@@ -8006,7 +8109,15 @@ function get_footer() {
 function return_to_form()
  {
 
-	global $install_streaming, $liveform;
+	global $install_streaming, $liveform, $install_cli;
+
+	// The command line has no form to go back to: it prints what the form collected and ends
+	// with the failure.
+	if ($install_cli == true) {
+
+		install_cli_fail(is_object($liveform) ? array_merge($liveform->get_errors(), $liveform->get_notices()) : array());
+
+	}
 
 	// Once the installation is being streamed the page has already started, so we cannot redirect
 	// any more.  We show what went wrong instead and let the visitor go back themselves.  The

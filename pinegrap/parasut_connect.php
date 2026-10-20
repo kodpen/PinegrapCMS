@@ -42,6 +42,11 @@ pg_request_single_values(array('parasut_auth_code', 'parasut_client_id', 'parasu
 $lines = array();
 $ok = false;
 
+// What the card puts in its boxes and its status line after a connection,
+// so the open page holds what was saved and its own Save writes it again.
+$fill = array();
+$status = array();
+
 if (!function_exists('parasut_connect_with_code')) {
     $lines[] = lang('The Paraşüt client is not loaded on this installation.');
 } else {
@@ -62,7 +67,15 @@ if (!function_exists('parasut_connect_with_code')) {
                 ((string) $result['company_name'] !== '') ? $result['company_name'] . ' (' . $result['company_id'] . ')' : (string) $result['company_id'],
             ),
         ));
-        $lines[] = lang('The client id, the secret and the company id are saved. Close and reopen the settings before saving anything else here, so the page does not write the old boxes back.');
+
+        $fill = array(
+            'parasut_company_id' => (string) $result['company_id'],
+            'parasut_auth_code' => '',
+            'parasut_client_secret' => '',
+        );
+        $status = function_exists('parasut_connection_line') && function_exists('parasut_connection_status')
+            ? parasut_connection_line(parasut_connection_status())
+            : array();
 
         log_activity(lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => (string) $result['company_id'])),
             (string) ($_SESSION['sessionusername'] ?? ''));
@@ -85,6 +98,8 @@ if ((string) ($_POST['format'] ?? '') === 'json') {
         'icon' => $icon,
         'lines' => array_values($lines),
         'note' => $ok ? '' : lang('Nothing was saved.'),
+        'fill' => (object) $fill,
+        'status' => (object) $status,
     ), JSON_UNESCAPED_UNICODE);
 
     exit();

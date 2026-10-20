@@ -56,6 +56,11 @@ WAF'ın kendisi ayrı: `pinegrap-waf`.
   veren, onu arşive koyan, kopyalayan ya da yeniden adlandıran yeni bir dosya
   kapısı önce `pg_file_withheld($name)` sorar (`get_file.php` de vermez).
   `tests/file_withheld_test.php` kapıları sayar.
+- O adı yalnız personel (rol 0-2) verebilir: `pg_file_name_reserved()`
+  saklanacak adla sorulur (`prepare_file_name()`'in sonunda; ASCII dönüşümü
+  ve sondaki noktanın düşmesinden sonra, büyük/küçük harf duyarsız). Adı
+  `prepare_file_name()`'den geçirmeden kuran yeni kapı da sorar; gelen adı
+  karşılaştırma (`dkım.key`, Windows'ta `DKIM.KEY` ve `dkim.key.` aynı dosya).
 
 ## Dosya bütünlüğü
 

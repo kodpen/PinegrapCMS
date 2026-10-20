@@ -22,7 +22,7 @@ başlığı ve `includes/migrations/2026.11.0.php` → `upgrade_to_2026_11_0()`
 dosyası var (alt adımlar 11.0.1 `legal_documents`, 11.0.2 `price_history`,
 11.0.3 `meta_tags`, 11.0.4 `product_feeds`, 11.0.5 `ops_alerts`,
 11.0.6 `update_backup`, 11.0.7 `maintenance_mode`, 11.0.8
-`shared_component_content`, 11.0.9 `image_delivery`, 11.0.10 `sms_outbox`).
+`shared_component_content`, 11.0.9 `image_delivery`, 11.0.10 `sms_outbox`, 11.0.20 `shipments`).
 Yeni adım dosyayı yeniden oluşturmaz, girişe yeni bir çağrı ekler.
 `config.version`'ı zaten `2026.11.0` olan bir dev DB yeni adımı koşmaz: önce
 `2026.4.10`'a geri çek.

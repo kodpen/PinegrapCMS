@@ -193,6 +193,23 @@ function pg_legal_document_lines_html(array $lines, $money)
 }
 
 /**
+ * The name an ordered item goes by in the documents: what the shop calls the
+ * product, its short description, as the cart and the order receipt show it.
+ * order_items.product_name is the Product ID / SKU at the time of sale; it is
+ * printed only when the product has no short description or no longer exists.
+ *
+ * @param string|null $short_description  products.short_description, null for a deleted product
+ * @param string|null $product_name       order_items.product_name
+ * @return string
+ */
+function pg_legal_document_item_name($short_description, $product_name)
+{
+    $short_description = trim((string) $short_description);
+
+    return ($short_description !== '') ? $short_description : (string) $product_name;
+}
+
+/**
  * Join the non-empty parts of an address, one line per part group.
  *
  * @param array $lines  each a string or a list of strings joined by a space
@@ -308,12 +325,15 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * submit_order.php compares against, so offers, gift cards and rounding are
  * the checkout's own; the difference to the row sums is placed below.
  * Billing fields the visitor has typed or the page filled in replace the
- * row's, which a cart has only after an earlier submit.
+ * row's, which a cart has only after an earlier submit. A field the page drew
+ * empty says nothing and keeps the row's value; a field the checkout link
+ * posted empty ($seen['typed'], pg_legal_document_typed_snapshot()) is one
+ * the visitor cleared, and clears it.
  *
  * @param array $order     orders row fields
  * @param array $lines     each with line_total and tax (minor units)
  * @param array $ship_tos  each with cost (minor units)
- * @param array $seen      total (minor units or null), billing (field => value), payment_method
+ * @param array $seen      total (minor units or null), billing (field => value), payment_method, typed (bool)
  * @return array  the order fields with amounts, billing and payment method filled
  */
 function pg_legal_document_cart_order(array $order, array $lines, array $ship_tos, array $seen)
@@ -359,10 +379,18 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
     $order['total'] = $total;
     $order['order_number'] = '';
 
-    foreach (pg_legal_document_billing_fields() as $field) {
-        $value = trim((string) ($seen['billing'][$field] ?? ''));
+    $billing = (isset($seen['billing']) && is_array($seen['billing'])) ? $seen['billing'] : array();
+    $typed = !empty($seen['typed']);
 
-        if (($value !== '') && ($field !== 'billing_country')) {
+    foreach (pg_legal_document_billing_fields() as $field) {
+        // The country arrives as a code; the caller names it.
+        if (($field === 'billing_country') || !array_key_exists($field, $billing)) {
+            continue;
+        }
+
+        $value = trim((string) $billing[$field]);
+
+        if (($value !== '') || $typed) {
             $order[$field] = $value;
         }
     }
@@ -449,6 +477,73 @@ function pg_legal_document_form_snapshot($html)
     }
 
     return $snapshot;
+}
+
+/**
+ * The page's snapshot with what the checkout form holds now laid over it.
+ *
+ * The checkout's document link posts the form's billing fields and payment
+ * method at the moment of the click (assets/js/pg_legal_documents.js), so
+ * the document shows what the visitor has typed but not yet sent. Only the
+ * billing fields and a known payment method are taken, each as one line of
+ * plain text of bounded length. A field that was posted, empty included,
+ * replaces the snapshot's and marks the result `typed`: an empty one is a
+ * value the visitor cleared. The total stays the page's: the form's hidden
+ * total can carry an instalment fee the documents do not count as part of it.
+ *
+ * Nothing here is stored; the values are for the one page they were posted to.
+ *
+ * @param array $seen    pg_legal_document_form_snapshot() for this cart, or array()
+ * @param array $posted  the request's fields
+ * @return array  total, billing, payment_method, typed
+ */
+function pg_legal_document_typed_snapshot(array $seen, array $posted)
+{
+    $seen += array('total' => null, 'billing' => array(), 'payment_method' => '');
+
+    if (!is_array($seen['billing'])) {
+        $seen['billing'] = array();
+    }
+
+    foreach (pg_legal_document_billing_fields() as $field) {
+        if (!isset($posted[$field]) || !is_string($posted[$field])) {
+            continue;
+        }
+
+        // One line of text, as the input holds it: no control characters,
+        // and no longer than a field of the order could hold. A value that is
+        // not UTF-8 is left out rather than cut into one that is.
+        $value = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $posted[$field]);
+
+        if ($value === null) {
+            continue;
+        }
+
+        $seen['billing'][$field] = mb_substr(trim($value), 0, ($field === 'billing_country') ? 10 : 255, 'UTF-8');
+        $seen['typed'] = true;
+    }
+
+    if (isset($posted['payment_method']) && is_string($posted['payment_method'])
+        && isset(pg_legal_document_payment_methods()[$posted['payment_method']])) {
+        $seen['payment_method'] = $posted['payment_method'];
+    }
+
+    return $seen;
+}
+
+/**
+ * Does a posted form token belong to this session? The comparison
+ * validate_token_field() makes, answered rather than enforced: the document
+ * page falls back to the values it was drawn with instead of failing.
+ *
+ * @param mixed $session_token
+ * @param mixed $posted_token
+ * @return bool
+ */
+function pg_legal_document_token_matches($session_token, $posted_token)
+{
+    return is_string($session_token) && is_string($posted_token)
+        && ($session_token !== '') && hash_equals($session_token, $posted_token);
 }
 
 /**
@@ -599,6 +694,22 @@ function pg_legal_document_seller()
 }
 
 /**
+ * The payment methods an order can carry (orders.payment_method), with the
+ * name a customer reads.
+ *
+ * @return array  stored value => label
+ */
+function pg_legal_document_payment_methods()
+{
+    return array(
+        'Credit/Debit Card'       => lang('Credit/Debit Card'),
+        'PayPal Express Checkout' => lang('PayPal Express Checkout'),
+        'Offline Payment'         => lang('Offline Payment'),
+        'Pay With Iyzico'         => lang('Pay With Iyzico'),
+    );
+}
+
+/**
  * The customer-facing name of a stored payment method.
  *
  * @param string $payment_method  one of the four orders.payment_method values
@@ -610,12 +721,7 @@ function pg_legal_document_payment_label($payment_method)
         return (string) $_SESSION['ecommerce']['offline_payment_label'];
     }
 
-    $labels = array(
-        'Credit/Debit Card'       => lang('Credit/Debit Card'),
-        'PayPal Express Checkout' => lang('PayPal Express Checkout'),
-        'Offline Payment'         => lang('Offline Payment'),
-        'Pay With Iyzico'         => lang('Pay With Iyzico'),
-    );
+    $labels = pg_legal_document_payment_methods();
 
     return isset($labels[$payment_method]) ? $labels[$payment_method] : (string) $payment_method;
 }
@@ -671,10 +777,21 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
 
     $lines = array();
 
-    foreach ((array) db_items("SELECT product_name, quantity, price, tax_total FROM order_items WHERE order_id = '" . $order_id . "' ORDER BY id") as $item) {
+    foreach ((array) db_items(
+        "SELECT
+            order_items.product_name,
+            products.short_description,
+            order_items.quantity,
+            order_items.price,
+            order_items.tax_total
+        FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_items.order_id = '" . $order_id . "'
+        ORDER BY order_items.id"
+    ) as $item) {
         $quantity = (int) $item['quantity'];
         $lines[] = array(
-            'name'       => $item['product_name'],
+            'name'       => pg_legal_document_item_name($item['short_description'], $item['product_name']),
             'quantity'   => $quantity,
             'unit_price' => (int) round($item['price']),
             'line_total' => (int) round($item['price'] * $quantity),
@@ -724,11 +841,14 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
         $order = pg_legal_document_cart_order($order, $lines, $ship_tos, $seen);
 
         // The checkout posts a country code; the documents name the country.
-        $seen_country = (string) ($seen['billing']['billing_country'] ?? '');
+        // A country the visitor took off the form (typed, empty) is none.
+        $seen_country = trim((string) ($seen['billing']['billing_country'] ?? ''));
 
         if ($seen_country !== '') {
             $country_name = (string) db_value("SELECT name FROM countries WHERE code = '" . e($seen_country) . "' LIMIT 1");
             $order['billing_country'] = ($country_name !== '') ? $country_name : $seen_country;
+        } elseif (!empty($seen['typed']) && is_array($seen['billing'] ?? null) && array_key_exists('billing_country', $seen['billing'])) {
+            $order['billing_country'] = '';
         }
     }
 
@@ -784,7 +904,9 @@ function pg_legal_documents_store($order_id, array $accepted_types)
     }
 
     $now = time();
-    $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+    // The visitor's address as the firewall resolves it: behind a CDN or a
+    // trusted proxy REMOTE_ADDR is the proxy, the same for every customer.
+    $ip = substr((string) (function_exists('waf_client_ip') ? waf_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '')), 0, 45);
     $agent = mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
     $stored = 0;
 
@@ -847,7 +969,9 @@ function pg_legal_document_page_url()
  * total and billing values are kept for the document page the checkboxes
  * link to, so the documents show what the visitor is looking at. A page that
  * already carries the fields (a designer tree that binds them) gets none
- * added; a page without a purchase button needs none.
+ * added; a page without a purchase button needs none. Either way a page with
+ * the documents gets the script that makes their links post what the visitor
+ * has typed since the page was drawn.
  *
  * @param string $html
  * @param array  $values  pg_legal_documents_form_values() taken before rendering
@@ -864,18 +988,42 @@ function pg_legal_documents_inject($html, array $values = array())
     $_SESSION['ecommerce']['legal_documents_seen'] = array('order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0)) + pg_legal_document_form_snapshot($html);
 
     if (strpos($html, 'name="legal_preinfo"') !== false) {
-        return $html;
+        return $html . pg_legal_documents_script();
     }
 
-    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_page_url()));
+    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_page_url())) . pg_legal_documents_script();
+}
+
+/**
+ * The script tag of assets/js/pg_legal_documents.js, stamped with the file's
+ * time: a click on a document link posts the checkout form's billing fields
+ * and payment method to the document page, so the document is filled with
+ * what the form holds at that moment. Without the script, or opened in a new
+ * tab by a modified click, the link stays a plain GET.
+ *
+ * @param string|null $base  the software directory's address; null for the site's
+ * @return string
+ */
+function pg_legal_documents_script($base = null)
+{
+    $file = '/assets/js/pg_legal_documents.js';
+
+    if ($base === null) {
+        $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
+    }
+
+    return '<script src="' . h($base . $file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . $file)) . '" defer></script>';
 }
 
 /**
  * The documents for the visitor's current cart, as the checkout shows them.
  *
+ * @param array $posted  the fields the checkout's document link posted (see
+ *                       pg_legal_document_typed_snapshot()); empty for the
+ *                       values the page was drawn with
  * @return array  type => html; empty without a cart
  */
-function pg_legal_documents_for_cart()
+function pg_legal_documents_for_cart(array $posted = array())
 {
     $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
@@ -887,6 +1035,10 @@ function pg_legal_documents_for_cart()
 
     if ((int) ($seen['order_id'] ?? 0) !== $order_id) {
         $seen = array();
+    }
+
+    if (!empty($posted)) {
+        $seen = pg_legal_document_typed_snapshot($seen, $posted);
     }
 
     return pg_legal_documents_for_order($order_id, $seen);
@@ -950,6 +1102,23 @@ function pg_legal_document_file_name($label, $order_number)
 }
 
 /**
+ * A moment as the documents print it: the date in the site's order, the
+ * time on the site's clock (Site Settings: 12 or 24 hours). The form
+ * formatter (prepare_form_data_for_output()) prints AM/PM whatever the
+ * setting.
+ *
+ * @param int $timestamp
+ * @return string
+ */
+function pg_legal_document_time_text($timestamp)
+{
+    $date = (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) ? 'n/j/Y' : 'j/n/Y';
+    $clock = (defined('TIME_FORMAT') && (TIME_FORMAT == 'twelve_hours')) ? 'g:i A' : 'H:i';
+
+    return date($date . ' ' . $clock, (int) $timestamp);
+}
+
+/**
  * The note printed under a stored copy: when it was accepted, or that it
  * was not.
  *
@@ -964,7 +1133,7 @@ function pg_legal_document_acceptance_note(array $row)
         return lang('This copy was kept with the order without being accepted.');
     }
 
-    return lang(array('string' => 'Accepted by the customer on {var:1}.', 'vars' => array(prepare_form_data_for_output(date('Y-m-d H:i:s', $accepted), 'date and time', false))));
+    return lang(array('string' => 'Accepted by the customer on {var:1}.', 'vars' => array(pg_legal_document_time_text($accepted))));
 }
 
 /**
@@ -1064,7 +1233,7 @@ function pg_legal_documents_panel_card($order_id)
 
         $accepted = (int) $row['accepted_at'];
         $status = ($accepted > 0)
-            ? h(prepare_form_data_for_output(date('Y-m-d H:i:s', $accepted), 'date and time', false))
+            ? h(pg_legal_document_time_text($accepted))
             : '<span class="text-danger">' . h(lang('Not accepted')) . '</span>';
 
         $rows .= '<div class="row">

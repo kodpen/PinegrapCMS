@@ -211,6 +211,20 @@
     opacity: .9;
 }
 
+/* The first answer: Reject all and Accept all share one look and one width,
+   whatever their labels, so neither is the more prominent; Settings keeps
+   the width of its own label. A long label wraps inside its button, in
+   lines of even length where the browser can balance them. */
+.pg-cc .pg-cc-actions.pg-cc-choices {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.pg-cc .pg-cc-choices .pg-cc-btn {
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+
 /* ── Categories ──────────────────────────────────────────────────── */
 
 .pg-cc .pg-cc-cats {
@@ -387,6 +401,13 @@
         width: calc(100vw - 24px);
         max-width: none;
         max-height: calc(100vh - 24px);
+    }
+}
+
+/* Too narrow for three side by side: one under the other, still alike. */
+@media (max-width: 300px) {
+    .pg-cc .pg-cc-actions.pg-cc-choices {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 

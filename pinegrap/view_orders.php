@@ -3400,10 +3400,11 @@ class zipfile
 
         // no "file data" segment for path
 
-        // "data descriptor" segment (optional but necessary if archive is not served as file)
-        $fr .= pack("V",$crc); //crc32
-        $fr .= pack("V",$c_len); //compressed filesize
-        $fr .= pack("V",$unc_len); //uncompressed filesize
+        // "data descriptor" segment (optional but necessary if archive is not served as file);
+        // a directory has no data, so its CRC and both sizes are zero
+        $fr .= pack("V",0); //crc32
+        $fr .= pack("V",0); //compressed filesize
+        $fr .= pack("V",0); //uncompressed filesize
 
         // add this entry to array
         $this -> datasec[] = $fr;

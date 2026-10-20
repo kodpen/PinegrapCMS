@@ -32,11 +32,16 @@
  *                  invoice is cancelled through sales_invoices/{id}/cancel;
  *                  an e-Invoice that has gone is answered with a return.
  *
+ * The company's customer and supplier cards (contacts) are read and written
+ * for the ERP's account sync (includes/erp/edoc/account_sync.php): accounts()
+ * pages through the list, account() reads one card, account_save() opens a
+ * card or changes one. Balances never travel.
+ *
  * The fields follow the published swagger (apidocs.parasut.com/swagger.json)
  * and are read by name with fallbacks; where the documentation is silent
- * (the scale of the withholding rate, which total carries the withholding)
- * the comment beside the reading says UNVERIFIED until a live document
- * settles it. The API takes 10 requests in any 10 seconds.
+ * the comment beside the reading says what the live API answered, or
+ * UNVERIFIED until a live document settles it. The API takes 10 requests in
+ * any 10 seconds.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -54,13 +59,19 @@ if (!defined('ERP_EDOC_PARASUT_JOB_LIFETIME')) {
     define('ERP_EDOC_PARASUT_JOB_LIFETIME', 15 * 60);
 }
 
+// The contacts list gives at most 25 cards a page (documentation:
+// page[size] maximum 25).
+if (!defined('ERP_EDOC_PARASUT_PAGE_SIZE')) {
+    define('ERP_EDOC_PARASUT_PAGE_SIZE', 25);
+}
+
 function erp_edoc_parasut_info()
 {
     return array(
         'label' => 'Paraşüt',
         'description' => lang('Cloud pre-accounting by Mikrogrup. e-Invoice and e-Archive through the Paraşüt API; the store needs a Paraşüt subscription with API access.'),
         'docs_url' => 'https://apidocs.parasut.com/',
-        'capabilities' => array('einvoice', 'earchive'),
+        'capabilities' => array('einvoice', 'earchive', 'accounts'),
         'settings_note' => lang('The Paraşüt client id, secret and company id are the Paraşüt boxes further down on this card; authorize Pinegrap there with Connect (or enter the Paraşüt user name and password).'),
     );
 }
@@ -188,7 +199,10 @@ function erp_edoc_parasut_error_text($result)
 
     foreach ((array) ($body['errors'] ?? array()) as $error) {
         if (is_array($error)) {
-            $line = trim(trim((string) ($error['title'] ?? '')) . ': ' . trim((string) ($error['detail'] ?? '')), ': ');
+            // Paraşüt often repeats the detail as the title ("X: X").
+            $title = trim((string) ($error['title'] ?? ''));
+            $detail = trim((string) ($error['detail'] ?? ''));
+            $line = (($title !== '') && ($detail !== '') && ($title !== $detail)) ? $title . ': ' . $detail : (($detail !== '') ? $detail : $title);
         } else {
             $line = trim((string) $error);
         }
@@ -302,31 +316,55 @@ function erp_edoc_parasut_ping($credentials)
 }
 
 /**
- * Whether a tax number belongs to a registered e-invoice user, and its
- * aliases (the mailbox addresses) when it does.
+ * Whether a tax number belongs to a registered e-invoice user, its aliases
+ * (the mailbox addresses) and the name it is registered under at GİB.
  *
  * @param string $vkn
- * @return array ['success' => bool, 'is_einvoice_user' => bool, 'aliases' => array, 'error' => string]
+ * @return array ['success' => bool, 'is_einvoice_user' => bool, 'aliases' => array, 'title' => string, 'error' => string]
  */
 function erp_edoc_parasut_check_taxpayer($vkn)
 {
     $result = erp_edoc_parasut_request('GET', '/e_invoice_inboxes?filter[vkn]=' . rawurlencode((string) $vkn), null, array('doc_type' => '', 'doc_id' => 0));
 
     if (!erp_edoc_parasut_ok($result)) {
-        return array('success' => false, 'is_einvoice_user' => false, 'aliases' => array(), 'error' => erp_edoc_parasut_error_text($result));
+        return array('success' => false, 'is_einvoice_user' => false, 'aliases' => array(), 'title' => '', 'error' => erp_edoc_parasut_error_text($result));
     }
 
-    $aliases = array();
+    $inboxes = erp_edoc_parasut_inboxes_read($result['body']);
 
-    foreach ((array) ($result['body']['data'] ?? array()) as $item) {
-        $alias = trim((string) ($item['attributes']['e_invoice_address'] ?? ''));
+    return array('success' => true, 'is_einvoice_user' => !empty($inboxes['aliases']), 'aliases' => $inboxes['aliases'], 'title' => $inboxes['title'], 'error' => '');
+}
+
+/**
+ * Reads an e_invoice_inboxes answer: one entry per GİB mailbox of the tax
+ * number, each carrying the mailbox (e_invoice_address) and the name the
+ * taxpayer is registered under (name). The name is the same on every
+ * mailbox of one number; the first one given is taken.
+ *
+ * @param mixed $body  The decoded answer
+ * @return array ['aliases' => string[], 'title' => string]
+ */
+function erp_edoc_parasut_inboxes_read($body)
+{
+    $aliases = array();
+    $title = '';
+    $data = (is_array($body) && is_array($body['data'] ?? null)) ? $body['data'] : array();
+
+    foreach ($data as $item) {
+        $attributes = (is_array($item) && is_array($item['attributes'] ?? null)) ? $item['attributes'] : array();
+        $alias = trim((string) ($attributes['e_invoice_address'] ?? ''));
+        $name = trim(preg_replace('/\s+/u', ' ', (string) ($attributes['name'] ?? '')));
 
         if (($alias !== '') && !in_array($alias, $aliases, true)) {
             $aliases[] = $alias;
         }
+
+        if (($title === '') && ($name !== '')) {
+            $title = $name;
+        }
     }
 
-    return array('success' => true, 'is_einvoice_user' => !empty($aliases), 'aliases' => $aliases, 'error' => '');
+    return array('aliases' => $aliases, 'title' => $title);
 }
 
 /* ---------------------------------------------------------------------------
@@ -418,13 +456,59 @@ function erp_edoc_parasut_document_missing($invoice)
 }
 
 /**
+ * The VAT rates Paraşüt takes on a sales invoice line: Turkey's rates since
+ * July 2023. The documentation types vat_rate as a plain number; the live
+ * API answers 422 "KDV oranı (18.0) artık kullanılamaz." for an older one.
+ *
+ * @return float[]
+ */
+function erp_edoc_parasut_vat_rates()
+{
+    return array(0.0, 1.0, 10.0, 20.0);
+}
+
+/**
+ * Why an invoice cannot go to Paraşüt for its VAT rates, or '' when every
+ * line carries one Paraşüt takes. An issued invoice keeps its figures, so the
+ * way out is to cancel it and issue it again at the current rate.
+ *
+ * @param array $lines  erp_invoice_items rows (tax_rate)
+ * @return string
+ */
+function erp_edoc_parasut_vat_rate_refusal($lines)
+{
+    $taken = erp_edoc_parasut_vat_rates();
+    $refused = array();
+
+    foreach ((array) $lines as $line) {
+        $rate = is_array($line) ? round((float) ($line['tax_rate'] ?? 0), 3) : 0.0;
+
+        if (!in_array($rate, $taken, true) && !in_array($rate, $refused, true)) {
+            $refused[] = $rate;
+        }
+    }
+
+    if (empty($refused)) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'Paraşüt takes VAT at {var:1} only; this invoice has {var:2}. It cannot be sent at that rate: cancel it and issue it again at a current rate.',
+        'vars' => array(
+            implode(', ', array_map('erp_percent_text', $taken)),
+            implode(', ', array_map('erp_percent_text', $refused)),
+        ),
+    ));
+}
+
+/**
  * The attributes a Paraşüt contact (its customer card) is written with.
  *
  * Paraşüt keeps one identity field, tax_number, for the VKN of a company
  * and the TCKN of a person (the "TC Kimlik No" box of a person's card); the
- * contact_type says which. UNVERIFIED on the live API: whether a person's
- * TCKN is accepted in tax_number (the old order path sent a 'tckn'
- * attribute the documentation does not list).
+ * contact_type says which. The live API takes a person's TCKN in
+ * tax_number and finds the card by it again (the old order path sent a
+ * 'tckn' attribute the documentation does not list).
  *
  * @param array  $party       erp_edoc_invoice_party() output
  * @param string $tax_number  Digits; the final consumer's for a counter sale
@@ -460,8 +544,13 @@ function erp_edoc_parasut_contact_attributes($party, $tax_number)
 
 /**
  * The Paraşüt contact an invoice goes on: the card the account is linked
- * to when the link is beyond doubt (options['party']['provider_code']),
- * else the first card with the buyer's tax number, else a new one.
+ * to when the link is beyond doubt (options['party']['provider_code'], the
+ * contact's id), else the first card with the buyer's tax number, else a
+ * new one.
+ *
+ * The linked card is read once before it is used: since the cards were
+ * last read it may have been archived, deleted or given another number at
+ * Paraşüt, and then the card is looked up as if there were no link.
  *
  * A counter sale carries the final consumer's number, which many cards may
  * share; such a buyer is matched by name on top of the number, so one
@@ -477,7 +566,15 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array())
     $linked = trim((string) ($party['provider_code'] ?? ''));
 
     if ($linked !== '') {
-        return array('id' => $linked, 'error' => '');
+        $read = erp_edoc_parasut_request('GET', '/contacts/' . rawurlencode($linked), null, $context);
+
+        if ((string) $read['login_error'] !== '') {
+            return array('id' => '', 'error' => $read['login_error']);
+        }
+
+        if (erp_edoc_parasut_ok($read) && erp_edoc_parasut_linked_contact_usable($read['body']['data'] ?? null, $linked, $tax_number)) {
+            return array('id' => $linked, 'error' => '');
+        }
     }
 
     $final_consumer = ($tax_number === erp_edoc_final_consumer_tckn());
@@ -534,6 +631,28 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array())
     }
 
     return array('id' => $id, 'error' => '');
+}
+
+/**
+ * Whether the contact an account is linked to can carry the invoice: it is
+ * the card asked for, it is not archived, and it still has the buyer's tax
+ * number.
+ *
+ * @param mixed  $contact     data of a GET contacts/{id} answer
+ * @param string $id          The linked contact's id
+ * @param string $tax_number  The buyer's number, digits
+ * @return bool
+ */
+function erp_edoc_parasut_linked_contact_usable($contact, $id, $tax_number)
+{
+    if (!is_array($contact) || (trim((string) ($contact['id'] ?? '')) !== trim((string) $id)) || ((string) $tax_number === '')) {
+        return false;
+    }
+
+    $attributes = is_array($contact['attributes'] ?? null) ? $contact['attributes'] : array();
+
+    return empty($attributes['archived'])
+        && (preg_replace('/\D/', '', (string) ($attributes['tax_number'] ?? '')) === (string) $tax_number);
 }
 
 /* ---------------------------------------------------------------------------
@@ -612,9 +731,9 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         );
 
         // Withholding is a line attribute at Paraşüt (details[].vat_withholding_rate),
-        // so lines with different rates share one document. UNVERIFIED on
-        // the live API: the scale; Pinegrap keeps the withheld share of the
-        // VAT in percent (4/10 = 40).
+        // so lines with different rates share one document. The rate is the
+        // withheld share of the VAT in percent, as Pinegrap keeps it (4/10 =
+        // 40): on the live API 40 on 15.99 VAT came back as 6.40 withheld.
         if ((float) ($line['withholding_rate'] ?? 0) > 0) {
             $attributes['vat_withholding_rate'] = (float) $line['withholding_rate'];
         }
@@ -665,20 +784,18 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
 }
 
 /**
- * The total the ERP expects Paraşüt to compute: net of discounts plus VAT.
- * UNVERIFIED on the live API: whether net_total is read before or after
- * the withholding; a document with withholding compares on both readings
- * and the first live one settles it.
+ * The total the ERP expects Paraşüt to compute: the amount payable, net of
+ * discounts plus VAT less the VAT withheld - the invoice's grand_total.
+ * Paraşüt's net_total is read after the withholding (live: 79.95 net, 15.99
+ * VAT, 6.40 withheld, net_total 89.54), so a total that still holds the
+ * withheld VAT means the withholding was not applied there.
  *
  * @param array $invoice
- * @return array  Kurus, the readings in order of likelihood
+ * @return array  Kurus; one reading
  */
 function erp_edoc_parasut_expected_totals($invoice)
 {
-    $before_withholding = (int) $invoice['subtotal'] - (int) $invoice['discount_total'] + (int) $invoice['tax_total'];
-    $after_withholding = (int) $invoice['grand_total'];
-
-    return array_values(array_unique(array($before_withholding, $after_withholding)));
+    return array((int) $invoice['grand_total']);
 }
 
 /**
@@ -702,6 +819,31 @@ function erp_edoc_parasut_total_check($attributes, $invoice)
     $total = erp_edoc_parasut_kurus((string) $attributes['net_total']);
 
     return array('ok' => in_array($total, erp_edoc_parasut_expected_totals($invoice), true), 'total' => $total);
+}
+
+/**
+ * The totals Paraşüt holds for a sales invoice, in kurus: before taxes
+ * (before_taxes_total), VAT (total_vat), VAT withheld (total_vat_withholding)
+ * and the grand total (net_total). Empty when the answer carries no
+ * net_total.
+ *
+ * @param array $attributes  data.attributes of the sales invoice
+ * @return array ['before_taxes' => int, 'vat' => int, 'vat_withholding' => int, 'net' => int] or []
+ */
+function erp_edoc_parasut_totals($attributes)
+{
+    $attributes = (array) $attributes;
+
+    if (!isset($attributes['net_total']) || ((string) $attributes['net_total'] === '')) {
+        return array();
+    }
+
+    return array(
+        'before_taxes' => erp_edoc_parasut_kurus((string) ($attributes['before_taxes_total'] ?? ($attributes['gross_total'] ?? '0'))),
+        'vat' => erp_edoc_parasut_kurus((string) ($attributes['total_vat'] ?? '0')),
+        'vat_withholding' => erp_edoc_parasut_kurus((string) ($attributes['total_vat_withholding'] ?? '0')),
+        'net' => erp_edoc_parasut_kurus((string) $attributes['net_total']),
+    );
 }
 
 /**
@@ -754,6 +896,14 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
 
     if (empty($lines)) {
         return $fail(lang('The invoice has no lines.'));
+    }
+
+    // Refused before anything reaches Paraşüt: a rate it does not take used
+    // to open the buyer's card there first and only then fail on the invoice.
+    $rate_refusal = erp_edoc_parasut_vat_rate_refusal($lines);
+
+    if ($rate_refusal !== '') {
+        return $fail($rate_refusal);
     }
 
     $context = array('doc_type' => 'invoice', 'doc_id' => (int) $invoice['id']);
@@ -1364,6 +1514,24 @@ function erp_edoc_parasut_poll($invoice, $job_id)
         $out['success'] = true;
         $out['status'] = 'created';
         $out['message'] = lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+
+        // What Paraşüt computed for the draft, so it can be looked over
+        // before the hand-over without opening Paraşüt.
+        $totals = erp_edoc_parasut_totals($attributes);
+
+        if (($totals !== array()) && function_exists('erp_money_out_currency')) {
+            $currency = (string) ($invoice['currency'] ?? 'TRY');
+            $out['message'] .= ' ' . lang(array(
+                'string' => 'Paraşüt has it at {var:1} before VAT, {var:2} VAT, {var:3} withheld, {var:4} in all.',
+                'vars' => array(
+                    erp_money_out_currency($totals['before_taxes'], $currency),
+                    erp_money_out_currency($totals['vat'], $currency),
+                    erp_money_out_currency($totals['vat_withholding'], $currency),
+                    erp_money_out_currency($totals['net'], $currency),
+                ),
+            ));
+        }
+
         return $out;
     }
 
@@ -1636,4 +1804,424 @@ function erp_edoc_parasut_cancel_invoice($invoice, $reason = '')
     }
 
     return array('success' => true, 'error' => '', 'message' => lang('The e-Archive invoice has been cancelled at Paraşüt.'), 'outcome' => 'cancelled');
+}
+
+/* ---------------------------------------------------------------------------
+   Customer and supplier cards (account sync)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The contact attributes Paraşüt lets be written (ContactAttributes in the
+ * documentation, those not marked read-only). The balances and the dates
+ * are Paraşüt's own and are never sent.
+ *
+ * @return string[]
+ */
+function erp_edoc_parasut_contact_fields()
+{
+    return array(
+        'name', 'short_name', 'contact_type', 'account_type', 'email', 'tax_office', 'tax_number',
+        'district', 'city', 'postal_code', 'country', 'address', 'phone', 'fax', 'iban',
+        'is_abroad', 'archived', 'untrackable', 'invoicing_preferences',
+    );
+}
+
+/**
+ * Gives the request at least a minute more before PHP's time limit stops
+ * it. The account screens chain many requests in one page load (up to fifty
+ * pages of the list, twenty-five cards sent in one go) and Paraşüt takes
+ * ten in any ten seconds, so most of such a page's time is spent waiting on
+ * the rate limit; on Windows the time limit counts that wait too. The limit
+ * only ever moves later, and no limit (the command line) stays none.
+ *
+ * @return void
+ */
+function erp_edoc_parasut_allow_time()
+{
+    $limit = (int) ini_get('max_execution_time');
+
+    if (($limit > 0) && function_exists('set_time_limit')) {
+        @set_time_limit(max(60, $limit));
+    }
+}
+
+/**
+ * The ISO code of the country a contact names. Paraşüt keeps the country as
+ * free text beside is_abroad, and a domestic card usually names none.
+ * Turkey's spellings are known here; another name is looked up in the
+ * store's country list.
+ *
+ * @param string $name
+ * @param bool   $is_abroad
+ * @return string  Two letters, or '' for a foreign country that is not known
+ */
+function erp_edoc_parasut_country_code($name, $is_abroad)
+{
+    $name = trim((string) preg_replace('/\s+/u', ' ', (string) $name));
+    $folded = strtr(mb_strtolower(strtr($name, array('İ' => 'i', 'I' => 'ı')), 'UTF-8'), array('ı' => 'i', 'ü' => 'u'));
+
+    if (in_array($folded, array('turkiye', 'turkey', 'turkiye cumhuriyeti', 'tr'), true)) {
+        return 'TR';
+    }
+
+    if ($name === '') {
+        return $is_abroad ? '' : 'TR';
+    }
+
+    if (preg_match('/^[A-Za-z]{2}$/', $name)) {
+        return strtoupper($name);
+    }
+
+    $found = strtoupper(trim((string) db_value("SELECT code FROM countries WHERE LOWER(name) = LOWER('" . escape($name) . "') LIMIT 1")));
+
+    if (preg_match('/^[A-Z]{2}$/', $found)) {
+        return $found;
+    }
+
+    return $is_abroad ? '' : 'TR';
+}
+
+/**
+ * The country name a contact is written with: Türkiye for Turkey, the
+ * store's name for any other country.
+ *
+ * @param string $code  Two letters; '' counts as Turkey, Paraşüt's home
+ * @return string
+ */
+function erp_edoc_parasut_country_name($code)
+{
+    $code = strtoupper(trim((string) $code));
+
+    if (($code === '') || ($code === 'TR')) {
+        return 'Türkiye';
+    }
+
+    if (function_exists('erp_country_name')) {
+        return erp_country_name($code);
+    }
+
+    $name = (string) db_value("SELECT name FROM countries WHERE code = '" . escape($code) . "' LIMIT 1");
+
+    return ($name !== '') ? $name : $code;
+}
+
+/**
+ * A contact as the card shape includes/erp/edoc/account_sync.php works
+ * with. Paraşüt keeps one name for a person and a company alike, one
+ * identity field (tax_number: a company's VKN, a person's TCKN) and two
+ * kinds, customer and supplier. It has no card code of its own: the
+ * contact's id stands in, as it does in the invoice status (poll()'s
+ * party), so that a linked account's invoices go on that contact.
+ *
+ * @param array $contact  One data item of a contacts answer (id, attributes)
+ * @return array
+ */
+function erp_edoc_parasut_card($contact)
+{
+    $contact = (array) $contact;
+    $attributes = is_array($contact['attributes'] ?? null) ? $contact['attributes'] : array();
+    $id = trim((string) ($contact['id'] ?? ''));
+    $text = function ($key) use ($attributes) {
+        return is_scalar($attributes[$key] ?? null) ? trim((string) $attributes[$key]) : '';
+    };
+    $updated = ($text('updated_at') !== '') ? strtotime($text('updated_at')) : false;
+
+    return array(
+        'external_id' => $id,
+        'code' => $id,
+        'title' => (string) preg_replace('/\s+/u', ' ', $text('name')),
+        'is_person' => ($text('contact_type') === 'person'),
+        // Letters are kept so that a mistyped number stays mistyped: stripped
+        // to its digits, "1234567890abc" would pass for a real VKN.
+        'tax_number' => strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $text('tax_number'))),
+        'tax_office' => $text('tax_office'),
+        'email' => $text('email'),
+        'phone' => $text('phone'),
+        'address' => $text('address'),
+        'district' => $text('district'),
+        'city' => $text('city'),
+        'country_code' => erp_edoc_parasut_country_code($text('country'), !empty($attributes['is_abroad'])),
+        'postcode' => $text('postal_code'),
+        'kind' => ($text('account_type') === 'supplier') ? 'supplier' : 'customer',
+        'is_active' => empty($attributes['archived']),
+        'updated_at' => ($updated !== false) ? (int) $updated : 0,
+    );
+}
+
+/**
+ * Reads a page of the contacts list: the cards, and how many there are in
+ * all (meta.total_count, meta.total_pages).
+ *
+ * @param mixed $body  The decoded answer
+ * @param int   $size  The page size asked for
+ * @return array ['items' => cards, 'total' => int, 'pages' => int]
+ */
+function erp_edoc_parasut_contacts_read($body, $size)
+{
+    $body = is_array($body) ? $body : array();
+    $items = array();
+
+    foreach ((array) ($body['data'] ?? array()) as $contact) {
+        if (is_array($contact) && (trim((string) ($contact['id'] ?? '')) !== '')) {
+            $items[] = erp_edoc_parasut_card($contact);
+        }
+    }
+
+    $meta = is_array($body['meta'] ?? null) ? $body['meta'] : array();
+    $total = isset($meta['total_count']) ? (int) $meta['total_count'] : count($items);
+    $pages = isset($meta['total_pages']) ? (int) $meta['total_pages'] : (int) ceil($total / max(1, (int) $size));
+
+    return array('items' => $items, 'total' => max(0, $total), 'pages' => max(1, $pages));
+}
+
+/**
+ * One page of the company's customer and supplier cards (GET contacts).
+ * Sorted by id so that the pages do not shift under a read: the list's own
+ * order is by balance, which moves while it is read.
+ *
+ * @param int $page  From 1
+ * @return array ['success' => bool, 'error' => string, 'items' => cards, 'total' => int, 'pages' => int]
+ */
+function erp_edoc_parasut_accounts($page = 1)
+{
+    $none = array('success' => false, 'error' => '', 'items' => array(), 'total' => 0, 'pages' => 0);
+    $page = max(1, (int) $page);
+    $size = (int) ERP_EDOC_PARASUT_PAGE_SIZE;
+
+    erp_edoc_parasut_allow_time();
+
+    $result = erp_edoc_parasut_request('GET', '/contacts?sort=id&page[number]=' . $page . '&page[size]=' . $size, null, array('doc_type' => 'account'));
+
+    if ((string) $result['login_error'] !== '') {
+        return array_merge($none, array('error' => $result['login_error']));
+    }
+
+    if (!erp_edoc_parasut_ok($result) || !is_array($result['body'] ?? null)) {
+        return array_merge($none, array('error' => lang(array('string' => 'Paraşüt would not list its customers and suppliers: {var:1}', 'vars' => erp_edoc_parasut_error_text($result)))));
+    }
+
+    return array('success' => true, 'error' => '') + erp_edoc_parasut_contacts_read($result['body'], $size);
+}
+
+/**
+ * One card, read whole (GET contacts/{id}). 'contact' is Paraşüt's own
+ * object, the base account_save() writes back.
+ *
+ * @param string $external_id
+ * @return array ['success' => bool, 'error' => string, 'card' => array, 'contact' => array]
+ */
+function erp_edoc_parasut_account($external_id)
+{
+    $none = array('success' => false, 'error' => '', 'card' => array(), 'contact' => array());
+    $external_id = trim((string) $external_id);
+
+    if (!preg_match('/^[0-9A-Za-z\-]{1,64}$/', $external_id)) {
+        return array_merge($none, array('error' => lang('The card has no Paraşüt id.')));
+    }
+
+    erp_edoc_parasut_allow_time();
+
+    $result = erp_edoc_parasut_request('GET', '/contacts/' . rawurlencode($external_id), null, array('doc_type' => 'account'));
+
+    if ((string) $result['login_error'] !== '') {
+        return array_merge($none, array('error' => $result['login_error']));
+    }
+
+    if ((int) $result['http_code'] === 404) {
+        return array_merge($none, array('error' => lang('Paraşüt no longer has this card.')));
+    }
+
+    $contact = $result['body']['data'] ?? null;
+
+    if (!erp_edoc_parasut_ok($result) || !is_array($contact) || (trim((string) ($contact['id'] ?? '')) === '')) {
+        return array_merge($none, array('error' => lang(array('string' => 'Paraşüt would not hand over the card: {var:1}', 'vars' => erp_edoc_parasut_error_text($result)))));
+    }
+
+    return array('success' => true, 'error' => '', 'card' => erp_edoc_parasut_card($contact), 'contact' => $contact);
+}
+
+/**
+ * The attributes a card is written to Paraşüt with.
+ *
+ * A change starts from the contact as Paraşüt keeps it, every attribute it
+ * lets be written as it came, and changes only the fields named in $card:
+ * nothing else of the card (its IBAN, short name, e-document accounts,
+ * whether it is listed) passes through Pinegrap. A new card is written
+ * with the fields that hold something.
+ *
+ * The short name follows the name when it mirrored it. The tax number is
+ * digits on a Turkish card and as written on a foreign one. The country
+ * travels as its name with is_abroad. Paraşüt knows a customer and a
+ * supplier, so an account that is both is written as a customer.
+ *
+ * @param array      $card     Card fields to write (title, is_person, tax_number,
+ *                             tax_office, email, phone, address, district, city,
+ *                             country_code, postcode, kind, is_active); code and
+ *                             the e-Invoice fields are not Paraşüt's and are left out
+ * @param array|null $current  The contact's attributes as read; null to create
+ * @return array  Attributes, or ['error' => string]
+ */
+function erp_edoc_parasut_card_attributes($card, $current = null)
+{
+    $card = (array) $card;
+    $creating = ($current === null);
+    $current = (array) $current;
+    $attributes = array();
+
+    foreach (erp_edoc_parasut_contact_fields() as $key) {
+        // An attribute that came empty is not sent back: null is no value,
+        // and an empty object decodes to an empty array, which would go out
+        // as a list.
+        if (!array_key_exists($key, $current) || ($current[$key] === null) || (is_array($current[$key]) && empty($current[$key]))) {
+            continue;
+        }
+
+        $attributes[$key] = $current[$key];
+    }
+
+    if ($creating) {
+        $attributes['account_type'] = 'customer';
+        $attributes['contact_type'] = 'company';
+    }
+
+    $put = function ($key, $value) use (&$attributes, $creating) {
+        if ($creating && ($value === '')) {
+            return;
+        }
+
+        $attributes[$key] = $value;
+    };
+
+    if (array_key_exists('title', $card)) {
+        $title = trim((string) preg_replace('/\s+/u', ' ', (string) $card['title']));
+
+        if ($title === '') {
+            return array('error' => lang('Enter a name.'));
+        }
+
+        $short_name = is_scalar($current['short_name'] ?? null) ? trim((string) $current['short_name']) : '';
+
+        if (($short_name !== '') && ($short_name === trim((string) ($current['name'] ?? '')))) {
+            $attributes['short_name'] = mb_substr($title, 0, 255);
+        }
+
+        $attributes['name'] = mb_substr($title, 0, 255);
+    }
+
+    if (array_key_exists('is_person', $card)) {
+        $attributes['contact_type'] = !empty($card['is_person']) ? 'person' : 'company';
+    }
+
+    // The country before the tax number, which is written by its rule.
+    if (array_key_exists('country_code', $card)) {
+        $country = strtoupper(trim((string) $card['country_code']));
+        $country = preg_match('/^[A-Z]{2}$/', $country) ? $country : 'TR';
+        $attributes['country'] = erp_edoc_parasut_country_name($country);
+        $attributes['is_abroad'] = ($country !== 'TR');
+    } else {
+        $country = erp_edoc_parasut_country_code(is_scalar($current['country'] ?? null) ? (string) $current['country'] : '', !empty($current['is_abroad']));
+    }
+
+    if (array_key_exists('tax_number', $card)) {
+        $number = ($country === 'TR') ? preg_replace('/\D/', '', (string) $card['tax_number']) : trim((string) $card['tax_number']);
+        $put('tax_number', mb_substr((string) $number, 0, 255));
+    }
+
+    $plain = array(
+        'tax_office' => 'tax_office',
+        'email' => 'email',
+        'phone' => 'phone',
+        'address' => 'address',
+        'district' => 'district',
+        'city' => 'city',
+        'postcode' => 'postal_code',
+    );
+
+    foreach ($plain as $field => $key) {
+        if (array_key_exists($field, $card)) {
+            $put($key, mb_substr(trim((string) $card[$field]), 0, ($key === 'address') ? 1000 : 255));
+        }
+    }
+
+    if (array_key_exists('kind', $card)) {
+        $attributes['account_type'] = ((string) $card['kind'] === 'supplier') ? 'supplier' : 'customer';
+    }
+
+    if (array_key_exists('is_active', $card)) {
+        $attributes['archived'] = empty($card['is_active']);
+    }
+
+    return $attributes;
+}
+
+/**
+ * Opens a card at Paraşüt ($external_id '': POST contacts) or changes one
+ * (PUT contacts/{id}).
+ *
+ * A change is made on the card as Paraşüt keeps it: the card is read first
+ * and written back whole, with only the fields in $card changed, so the
+ * edit is the same whether Paraşüt replaces the attributes it is sent or
+ * merges them.
+ *
+ * @param array  $card         Card fields to write (erp_edoc_parasut_card_attributes())
+ * @param string $external_id  '' to create
+ * @return array ['success' => bool, 'error' => string, 'external_id' => string]
+ */
+function erp_edoc_parasut_account_save($card, $external_id = '')
+{
+    $none = array('success' => false, 'error' => '', 'external_id' => '');
+    $external_id = trim((string) $external_id);
+    $current = null;
+
+    if ($external_id !== '') {
+        $read = erp_edoc_parasut_account($external_id);
+
+        if (!$read['success']) {
+            return array_merge($none, array('error' => $read['error']));
+        }
+
+        $current = is_array($read['contact']['attributes'] ?? null) ? $read['contact']['attributes'] : array();
+    }
+
+    $attributes = erp_edoc_parasut_card_attributes((array) $card, $current);
+
+    if (isset($attributes['error'])) {
+        return array_merge($none, array('error' => (string) $attributes['error']));
+    }
+
+    $data = array('type' => 'contacts', 'attributes' => $attributes);
+
+    if ($external_id !== '') {
+        $data['id'] = $external_id;
+    }
+
+    erp_edoc_parasut_allow_time();
+
+    $result = ($external_id === '')
+        ? erp_edoc_parasut_request('POST', '/contacts', array('data' => $data), array('doc_type' => 'account'))
+        : erp_edoc_parasut_request('PUT', '/contacts/' . rawurlencode($external_id), array('data' => $data), array('doc_type' => 'account'));
+
+    if ((string) $result['login_error'] !== '') {
+        return array_merge($none, array('error' => $result['login_error']));
+    }
+
+    // A refused change is reported by the sync screen as Paraşüt's refusal of
+    // it; a new card is not, so its refusal says what was refused.
+    if (!erp_edoc_parasut_ok($result)) {
+        return array_merge($none, array('error' => ($external_id === '')
+            ? lang(array('string' => 'Paraşüt would not open the card: {var:1}', 'vars' => erp_edoc_parasut_error_text($result)))
+            : erp_edoc_parasut_error_text($result)));
+    }
+
+    $id = trim((string) ($result['body']['data']['id'] ?? ''));
+
+    if ($id === '') {
+        $id = $external_id;
+    }
+
+    if ($id === '') {
+        return array_merge($none, array('error' => lang('Paraşüt took the card but did not say its id. Read the list again to find it.')));
+    }
+
+    return array('success' => true, 'error' => '', 'external_id' => $id);
 }

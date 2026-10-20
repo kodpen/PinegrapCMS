@@ -315,6 +315,20 @@ function pg_file_withheld($name)
     return mb_strtolower(trim((string) $name)) === 'dkim.key';
 }
 
+// Whether this person may not give a file this name. The one such name is
+// dkim.key: the mailer signs the site's mail with whatever file is called
+// that (includes/fn/mail.php), and the SMTP settings screen offers its
+// record's description as the TXT record to publish. Staff (roles 0-2) may
+// add it; a basic user (role 3) and a visitor who is not signed in ($role
+// null) may not. $name is the name as it will be stored, so a name that only
+// becomes dkim.key on the way in ("dkım.key" after pg_ascii_file_name()) or
+// that a case-insensitive file system keeps as the same file ("DKIM.KEY") is
+// the same name.
+function pg_file_name_reserved($name, $role)
+{
+    return pg_file_withheld($name) && (($role === null) || ((int) $role >= 3));
+}
+
 // The one sentence every door says when it refuses such a file.
 function pg_upload_blocked_message($name = '')
 {
@@ -361,9 +375,8 @@ function pg_upload_neutralize_name($file_name)
 function prepare_file_name($file_name)
 {
     $file_name = trim($file_name);
-    // If file name is invalid, change file name.  We don't allow a basic user to add a "dkim.key"
-    // file, because that file is used to sign emails for DKIM.
-    if ($file_name == '.htaccess' or ($file_name == 'dkim.key' and (!USER_LOGGED_IN or USER_ROLE == 3))) {
+    // If file name is invalid, change file name.
+    if ($file_name == '.htaccess') {
         $file_name = 'file';
     }
     // Done before the length check below so that the 100 character limit is
@@ -414,6 +427,20 @@ function prepare_file_name($file_name)
     $file_name = str_replace('&', '_', $file_name);
     $file_name = str_replace('+', '_', $file_name);
     $file_name = str_replace('#', '_', $file_name);
+    // Windows drops the dots at the end of a file name, so "photo.jpg." would
+    // be written over photo.jpg while its record kept a name of its own. The
+    // length limit above can leave one too. Never empty here: a name that
+    // started with a dot was given "file" in front of it.
+    $file_name = rtrim($file_name, '.');
+    // A basic user or a visitor may not add dkim.key (pg_file_name_reserved()).
+    // Asked last, on the name as it is stored: the transliteration above turns
+    // "dkım.key" into "dkim.key", and a case-insensitive disk keeps "DKIM.KEY"
+    // as the same file. Without a session (a job, the external API) nobody
+    // counts as staff.
+    $role = (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ROLE')) ? USER_ROLE : null;
+    if (pg_file_name_reserved($file_name, $role)) {
+        $file_name = 'file';
+    }
     return $file_name;
 }
 // Create a function that is used in order to determine if a page type
@@ -759,6 +786,73 @@ function pg_http_byte_range($header, $size)
     }
 
     return array($first, min($last, $size - 1));
+}
+
+/**
+ * An address that reads one entry of a zip archive no further than $limit
+ * bytes, for XMLReader::open() and fopen() wherever
+ * 'zip://' . $archive . '#' . $entry would go.
+ *
+ * Give the entry's own size (pg_zip_entry_size()): an honest entry is read
+ * whole, one that inflates past what the archive declares for it fails at
+ * the first byte too many (includes/zip_stream_cap.php), and
+ * pg_zip_entry_overran() says so once the read is done. Without the limit a
+ * stream reads such an entry to its end before libzip compares the sizes.
+ *
+ * @param string $archive the zip on disk
+ * @param string $entry   the entry's name inside it
+ * @param int    $limit   bytes the read may pass
+ * @return string
+ */
+function pg_zip_entry_uri($archive, $entry, $limit)
+{
+    static $registered = false;
+
+    if (!$registered) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/zip_stream_cap.php');
+        $registered = in_array('pg_zip_cap.*', stream_get_filters(), true) || stream_filter_register('pg_zip_cap.*', 'pg_zip_stream_cap');
+    }
+
+    pg_zip_stream_cap::$overran = false;
+
+    return 'php://filter/read=pg_zip_cap.' . max(0, (int) $limit) . '/resource=zip://' . $archive . '#' . $entry;
+}
+
+/**
+ * Did the stream behind the last pg_zip_entry_uri() go past its limit?
+ * Asked once its read is over; the next address clears the answer.
+ *
+ * @return bool
+ */
+function pg_zip_entry_overran()
+{
+    return class_exists('pg_zip_stream_cap', false) && pg_zip_stream_cap::$overran;
+}
+
+/**
+ * How large an entry of a zip archive says it unpacks, in bytes, or -1 when
+ * the archive cannot be opened or holds no such entry.
+ *
+ * @param string $archive
+ * @param string $entry
+ * @return int
+ */
+function pg_zip_entry_size($archive, $entry)
+{
+    if (!class_exists('ZipArchive')) {
+        return -1;
+    }
+
+    $zip = new ZipArchive();
+
+    if ($zip->open((string) $archive) !== true) {
+        return -1;
+    }
+
+    $stat = $zip->statName((string) $entry);
+    $zip->close();
+
+    return ($stat === false) ? -1 : (int) $stat['size'];
 }
 
 /**

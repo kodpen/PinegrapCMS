@@ -4,7 +4,8 @@
  *
  * Tests for the checkout legal documents in includes/fn/legal_documents.php:
  * filling a template, conditionals, escaping, the line table, the values built
- * from an order, unknown placeholders and the built-in templates.
+ * from an order, unknown placeholders and the built-in templates, and the
+ * values a checkout's document link posts (assets/js/pg_legal_documents.js).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -308,4 +309,203 @@ function test_legal_documents_may_view_guest_receipt()
 	} else {
 		$_SESSION = $saved;
 	}
+}
+
+// A line goes by what the shop calls the product, as the cart and the order
+// receipt show it: its short description. order_items.product_name is the
+// Product ID / SKU, printed only when the product has no short description
+// or no longer exists.
+function test_legal_documents_item_name()
+{
+	pg_assert_same('Deri Kalem Kılıfı', pg_legal_document_item_name('Deri Kalem Kılıfı', '543'), 'the short description');
+	pg_assert_same('Deri Kalem Kılıfı', pg_legal_document_item_name("  Deri Kalem Kılıfı\n", '543'), 'trimmed');
+	pg_assert_same('543', pg_legal_document_item_name('', '543'), 'no short description');
+	pg_assert_same('543', pg_legal_document_item_name('   ', '543'), 'only spaces');
+	pg_assert_same('543', pg_legal_document_item_name(null, '543'), 'the product was deleted');
+	pg_assert_same('', pg_legal_document_item_name(null, null), 'nothing at all');
+}
+
+// The source of one function, up to the next top-level function.
+function legal_documents_test_function_source($source, $name)
+{
+	$from = strpos($source, 'function ' . $name . '(');
+
+	if ($from === false) {
+		return '';
+	}
+
+	$next = preg_match('/\nfunction [a-z_]+\(/', $source, $match, PREG_OFFSET_CAPTURE, $from + 10);
+
+	return $next ? substr($source, $from, $match[0][1] - $from) : substr($source, $from);
+}
+
+// The documents' lines read the product's short description and name each
+// line with pg_legal_document_item_name().
+function test_legal_documents_for_order_names_lines_by_short_description()
+{
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_for_order');
+
+	pg_assert_contains('products.short_description', $section, 'the short description is read');
+	pg_assert_contains('LEFT JOIN products ON products.id = order_items.product_id', $section, 'a deleted product keeps the line');
+	pg_assert_contains("pg_legal_document_item_name(\$item['short_description'], \$item['product_name'])", $section, 'each line is named by it');
+}
+
+// The address kept with an acceptance is the visitor's as the firewall
+// resolves it: behind a CDN or a trusted proxy REMOTE_ADDR is the proxy.
+function test_legal_documents_store_keeps_the_visitor_address()
+{
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_store');
+	$asked = strpos($section, 'waf_client_ip()');
+	$stored = strpos($section, 'INSERT INTO order_documents');
+
+	pg_assert_true(($asked !== false) && ($stored !== false) && ($asked < $stored), 'waf_client_ip() is asked before the row is written');
+}
+
+// Acceptance times are printed on the site's clock: 24 hours unless Site
+// Settings ask for 12 (the runner has no settings, so 24 here). The legacy
+// form formatter printed AM/PM whatever the setting.
+function test_legal_documents_time_text()
+{
+	$accepted = mktime(13, 21, 0, 10, 19, 2026);
+
+	pg_assert_same('19/10/2026 13:21', pg_legal_document_time_text($accepted), 'day first, 24 hours');
+	pg_assert_same('5/1/2026 09:05', pg_legal_document_time_text(mktime(9, 5, 0, 1, 5, 2026)), 'no leading zeros in the date, two digits for the hour');
+	pg_assert_contains('19/10/2026 13:21', pg_legal_document_acceptance_note(array('accepted_at' => $accepted)), 'the note on the kept copy');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
+
+	pg_assert_false(strpos($source, "'date and time'"), 'no time is printed with the legacy formatter');
+	pg_assert_contains('pg_legal_document_time_text($accepted)', legal_documents_test_function_source($source, 'pg_legal_documents_panel_card'), 'the panel card prints it the same way');
+}
+
+// What the checkout link posts lies over the page's snapshot: billing fields
+// as one bounded line each (a cleared one too), a known payment method only,
+// and never the total.
+function test_legal_documents_typed_snapshot()
+{
+	$seen = array(
+		'order_id' => 7,
+		'total' => 28100,
+		'billing' => array('billing_first_name' => 'Drawn', 'billing_company' => 'Old Ltd', 'billing_country' => 'TR'),
+		'payment_method' => 'Credit/Debit Card',
+	);
+
+	$typed = pg_legal_document_typed_snapshot($seen, array(
+		'token'                 => 'abc',
+		'billing_first_name'    => "  Ay\x00şe \r\nNur ",
+		'billing_company'       => '',
+		'billing_city'          => str_repeat('ğ', 300),
+		'billing_country'       => ' de ',
+		'billing_address_1'     => array('not', 'a', 'value'),
+		'billing_email_address' => "\xC3\x28",
+		'payment_method'        => 'Offline Payment',
+		'total'                 => '1.00',
+		'notes'                 => 'not a billing field',
+	));
+
+	pg_assert_same(7, $typed['order_id'], 'the snapshot keeps its cart');
+	pg_assert_same(28100, $typed['total'], 'the total stays the page\'s');
+	pg_assert_true($typed['typed'], 'marked as typed');
+	pg_assert_same('Ay şe  Nur', $typed['billing']['billing_first_name'], 'control characters become spaces, the ends are trimmed');
+	pg_assert_same('', $typed['billing']['billing_company'], 'a cleared field is kept as cleared');
+	pg_assert_same(255, mb_strlen($typed['billing']['billing_city'], 'UTF-8'), 'cut at 255 characters, not bytes');
+	pg_assert_same('de', $typed['billing']['billing_country'], 'country code trimmed');
+	pg_assert_false(isset($typed['billing']['billing_address_1']), 'a list is no value');
+	pg_assert_false(isset($typed['billing']['billing_email_address']), 'a value that is not UTF-8 is left out');
+	pg_assert_false(isset($typed['billing']['notes']) || isset($typed['notes']), 'only billing fields are taken');
+	pg_assert_same('Offline Payment', $typed['payment_method'], 'a known payment method');
+
+	pg_assert_same('Credit/Debit Card', pg_legal_document_typed_snapshot($seen, array('payment_method' => '<b>Free</b>'))['payment_method'], 'an unknown method is ignored');
+	pg_assert_same('XYZ1234567', pg_legal_document_typed_snapshot(array(), array('billing_country' => 'XYZ12345678901'))['billing']['billing_country'], 'a country code is short');
+
+	$untouched = pg_legal_document_typed_snapshot($seen, array('token' => 'abc', 'payment_method' => 'Offline Payment'));
+
+	pg_assert_false(isset($untouched['typed']), 'no billing field posted: not typed');
+	pg_assert_same($seen['billing'], $untouched['billing'], 'the drawn billing values stay');
+
+	$empty = pg_legal_document_typed_snapshot(array(), array());
+
+	pg_assert_same(array('total' => null, 'billing' => array(), 'payment_method' => ''), $empty, 'nothing seen, nothing posted');
+}
+
+// A typed snapshot clears the fields the visitor emptied; one drawn by the
+// page never does, and fields nobody posted keep the row's value.
+function test_legal_documents_cart_order_typed_billing()
+{
+	$row = array('billing_first_name' => 'Old', 'billing_company' => 'Old Ltd', 'billing_city' => 'Ankara', 'billing_country' => 'Türkiye');
+
+	$typed = pg_legal_document_cart_order($row, array(), array(), array(
+		'billing' => array('billing_first_name' => 'Ayşe', 'billing_company' => '', 'billing_country' => ''),
+		'typed' => true,
+	));
+
+	pg_assert_same('Ayşe', $typed['billing_first_name'], 'typed name');
+	pg_assert_same('', $typed['billing_company'], 'a cleared company is cleared');
+	pg_assert_same('Ankara', $typed['billing_city'], 'a field nobody posted keeps the row');
+	pg_assert_same('Türkiye', $typed['billing_country'], 'the country is still named by the caller');
+
+	$drawn = pg_legal_document_cart_order($row, array(), array(), array('billing' => array('billing_company' => '')));
+
+	pg_assert_same('Old Ltd', $drawn['billing_company'], 'an empty field the page drew keeps the row');
+}
+
+// The token check answers rather than stops the page, and only for the
+// session's own non-empty token.
+function test_legal_documents_token_matches()
+{
+	pg_assert_true(pg_legal_document_token_matches('abc123', 'abc123'), 'the session token');
+	pg_assert_false(pg_legal_document_token_matches('abc123', 'abc124'), 'another token');
+	pg_assert_false(pg_legal_document_token_matches('', ''), 'no session token');
+	pg_assert_false(pg_legal_document_token_matches('abc123', array('abc123')), 'a list');
+	pg_assert_false(pg_legal_document_token_matches(null, 'abc123'), 'nothing in the session');
+}
+
+// The payment methods a document names, and the label of each.
+function test_legal_documents_payment_methods()
+{
+	pg_assert_same(array('Credit/Debit Card', 'PayPal Express Checkout', 'Offline Payment', 'Pay With Iyzico'), array_keys(pg_legal_document_payment_methods()), 'the four stored values');
+	pg_assert_same('Pay With Iyzico', pg_legal_document_payment_label('Pay With Iyzico'), 'a known method by its label');
+	pg_assert_same('Something else', pg_legal_document_payment_label('Something else'), 'an unknown one as it is');
+}
+
+// Every checkout that shows the documents loads the script that posts the
+// form, whether the boxes were added here or a designer tree binds them.
+function test_legal_documents_script()
+{
+	$tag = pg_legal_documents_script('/pinegrap');
+
+	pg_assert_same(1, preg_match('#^<script src="/pinegrap/assets/js/pg_legal_documents\.js\?v=\d+" defer></script>$#', $tag), 'versioned and deferred: ' . $tag);
+	pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/assets/js/pg_legal_documents.js'), 'the script ships');
+
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_inject');
+
+	pg_assert_same(2, substr_count($section, 'pg_legal_documents_script()'), 'both ways out of the injector carry it');
+}
+
+// The script posts exactly the billing fields the documents read.
+function test_legal_documents_script_posts_the_billing_fields()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_legal_documents.js');
+
+	pg_assert_same(1, preg_match('/var BILLING = \[(.*?)\];/s', $script, $match), 'the list is there');
+	preg_match_all("/'([a-z0-9_]+)'/", $match[1] ?? '', $names);
+	pg_assert_same(pg_legal_document_billing_fields(), $names[1], 'the same fields in the same order');
+	pg_assert_contains("'payment_method'", $script, 'and the payment method');
+	pg_assert_contains("url.searchParams.has('order_id')", $script, 'a kept copy is left to the plain link');
+	pg_assert_contains('url.origin !== window.location.origin', $script, 'the token never leaves the site');
+}
+
+// The document page takes posted values only with the session's token and
+// hands them to the cart's documents; a kept copy never reads them.
+function test_legal_documents_page_reads_posted_values_with_the_token()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/legal_document.php');
+	$checked = strpos($page, "pg_legal_document_token_matches(\$_SESSION['software']['token'] ?? '', \$_POST['token'] ?? '')");
+	$used = strpos($page, 'pg_legal_documents_for_cart($posted)');
+	$kept = strpos($page, 'pg_legal_documents_of_order($order_id)');
+
+	pg_assert_true(($checked !== false) && ($used !== false) && ($checked < $used), 'the token is checked before the values are used');
+	pg_assert_contains('pg_post_body_discarded()', $page, 'a dropped body is no values');
+	pg_assert_true(($kept !== false) && ($kept < $checked), 'the kept copy is read in the branch before');
+	pg_assert_false(strpos($page, 'validate_token_field()'), 'a wrong token falls back instead of failing');
 }
