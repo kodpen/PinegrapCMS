@@ -24149,5 +24149,12 @@
     "{var} B": "{var} B",
     "{var} KB": "{var} KB",
     "{var} MB": "{var} MB",
-    "{var} unchanged lines": "{var} değişmemiş satır"
+    "{var} unchanged lines": "{var} değişmemiş satır",
+    "Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.": "Varsayılan: sayfanın ilk görseli önce, diğerleri ekrana yaklaştıkça yüklenir. Gecikmeli: bu görsel ekrana yaklaşınca yüklenir. Hemen: sayfa açılırken yüklenir.",
+    "Paraşüt would not list its customers and suppliers: {var:1}": "Paraşüt cari listesini vermedi: {var:1}",
+    "The card has no Paraşüt id.": "Kartın Paraşüt kimliği yok.",
+    "Paraşüt no longer has this card.": "Paraşüt'te bu kart artık yok.",
+    "Paraşüt would not hand over the card: {var:1}": "Paraşüt kartı vermedi: {var:1}",
+    "Paraşüt would not open the card: {var:1}": "Paraşüt kartı açmadı: {var:1}",
+    "Paraşüt took the card but did not say its id. Read the list again to find it.": "Paraşüt kartı aldı ama kimliğini bildirmedi. Bulmak için listeyi yeniden okuyun."
 }
