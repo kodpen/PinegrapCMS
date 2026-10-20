@@ -13,7 +13,7 @@ description: How many units of a cart line an offer discounts (cheapest item: on
 - A line whose every unit is covered gets the discounted price unchanged.
 - `apply_offers_to_cart()` and `get_best_offer_id()` use the same spread price, so competing offers are weighed by what the cart charges.
 
-## What was the symptom? (#725)
+## What was the symptom? (#725, PR #917)
 - "2 al, en ucuzu bedava", "Gruptan 3 al, en ucuzu bedava" and "X al, Y bedava" made the whole line free: X×2 entirely free, ten of Y×10 free, every unit of a paid Y×5 line free when Y was the gift.
 
 ## Why is the line not split into a paid row and a free row?
