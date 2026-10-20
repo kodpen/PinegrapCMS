@@ -1067,18 +1067,21 @@ function pg_ai_write_cut($text, $max)
 
     $cut = mb_substr($text, 0, $max);
 
-    // The next character is a space: the cut fell between two words.
-    if (preg_match('/^\s/u', mb_substr($text, $max, 1))) {
-        return rtrim($cut, " \t\n,;:-–—");
+    // Unless the next character is a space (the cut fell between two words),
+    // the cut goes back to the last space.
+    if (!preg_match('/^\s/u', mb_substr($text, $max, 1))) {
+        $space = max((int) mb_strrpos($cut, ' '), (int) mb_strrpos($cut, "\n"));
+
+        if ($space >= (int) floor($max * 0.6)) {
+            $cut = mb_substr($cut, 0, $space);
+        }
     }
 
-    $space = max((int) mb_strrpos($cut, ' '), (int) mb_strrpos($cut, "\n"));
-
-    if ($space >= (int) floor($max * 0.6)) {
-        $cut = mb_substr($cut, 0, $space);
-    }
-
-    return rtrim($cut, " \t\n,;:-–—");
+    // Matched as whole characters: rtrim() reads its list byte by byte, and
+    // the bytes of "–" and "—" would take the last byte of a character that
+    // ends in one of them ("р", "ん", an emoji), leaving broken UTF-8 that
+    // JSON and h() turn into an empty answer.
+    return (string) preg_replace('/[\s,;:\-–—]+$/u', '', $cut);
 }
 
 /**
