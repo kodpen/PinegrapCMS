@@ -127,6 +127,11 @@ if (!$_POST) {
 
     require_once(dirname(__FILE__) . '/import_products_f.php');
 
+    // The compare_at_price column is read with the product screen's reader
+    // (pg_pb_compare_at_price_from_input()), so a figure means the same in a
+    // file as in the box.
+    require_once(dirname(__FILE__) . '/product_builder.php');
+
     if (pg_products_import_is_spreadsheet($_FILES['file']['name'])) {
 
         $import_error = '';
@@ -276,6 +281,20 @@ if (!$_POST) {
                                 $column_value = $column_value * 100;
                             }
                             
+                            // The "was" price: 0 takes it off, as an empty cell
+                            // leaves it as it is (the rule of every column here). A
+                            // negative figure, or one the column cannot hold, leaves
+                            // the stored one alone rather than being cut to fit.
+                            if ($column_name == 'compare_at_price') {
+                                $compare_at = (strpos(trim($column_value), '-') === 0) ? false : pg_pb_compare_at_price_from_input($column_value);
+
+                                if ($compare_at === false) {
+                                    continue;
+                                }
+
+                                $column_value = $compare_at;
+                            }
+
                             // if this column is address_name, then prepare address name
                             if ($column_name == 'address_name') {
                                 $column_value = prepare_catalog_item_address_name($column_value, $product_id);
@@ -374,6 +393,9 @@ if (!$_POST) {
                             if ($column_name == 'tax_rate') {
                                 $parsed_tax_rate = parse_tax_rate($column_value);
                                 $update_values .= $column_name . " = " . (($parsed_tax_rate === NULL) ? 'NULL' : "'" . escape($parsed_tax_rate) . "'");
+                            } elseif ($column_name == 'compare_at_price') {
+                                // NULL for none: '' would be stored as 0.
+                                $update_values .= "compare_at_price = " . pg_compare_at_price_sql($column_value);
                             } else {
                                 $update_values .= $column_name . " = '" . escape($column_value) . "'";
                             }
@@ -516,6 +538,19 @@ if (!$_POST) {
                                 $column_value = $column_value * 100;
                             }
                             
+                            // The "was" price, read as on the update above. None (0)
+                            // and a figure that cannot be stored leave the column
+                            // out, which keeps its default: NULL, none.
+                            if ($column_name == 'compare_at_price') {
+                                $compare_at = (strpos(trim($column_value), '-') === 0) ? false : pg_pb_compare_at_price_from_input($column_value);
+
+                                if (!is_int($compare_at)) {
+                                    continue;
+                                }
+
+                                $column_value = $compare_at;
+                            }
+
                             if ($insert_columns != '') {
                                 $insert_columns .= ', ';
                             }
@@ -1106,6 +1141,11 @@ function convert_column_name($column_name)
         case 'mpn':
             return('mpn');
             break;
+
+        // Only where the column exists (2026.11.0): a statement naming a
+        // missing column fails, and that stops the whole import.
+        case 'compare_at_price':
+            return pg_compare_at_price_ready() ? 'compare_at_price' : false;
     }
     
     return false;

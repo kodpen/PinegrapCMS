@@ -1,12 +1,13 @@
 ---
 name: erp-taxpayer-lookup
-description: Asking GİB about a tax number from the account form (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
+description: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 ---
 
 ## How does the Query button work?
 - `erp_account_form_cards()` (includes/erp/account_form.php) draws Query beside the tax number on the add and edit screens when `erp_edoc_installed()`, the active provider supports `check_taxpayer`, the account is Turkish (`data-erp-tr-only`) and the user is not ERP read-only. It replaced the "Ask GİB about the tax number" toolbar button of `edit_erp_account.php` (#625), which submitted the form and answered with a notice.
 - The form's inline script POSTs `token`, `tax_number`, `account_id` to `erp_taxpayer_lookup.php` (JSON in every answer, the gates of `erp_account_quick.php`) and prints the answer across the Tax Details card, below its fields (`data-erp-taxpayer-answer`, `aria-live`; a mailbox list is too long for the narrow tax number column).
 - The registered name fills an empty Name field; a different name already there gets a "Use the registered name" button. Nothing is saved until the form is.
+- The New account dialog of the document screens (`erp_account_quick_modal()`, `assets/js/erp_account_quick.js`) has the same Query beside its tax number, for a Turkish store with such a provider; it asks with `account_id` 0 and also ticks Company when a ten-digit number's name came from GİB (#676).
 
 ## What is kept on the card?
 - With an account id: `erp_edoc_account_check_taxpayer()` (service.php) writes `einvoice_user / einvoice_alias / einvoice_aliases (JSON) / einvoice_checked_at` only when the number asked about is the stored one (`stored`); the answer then carries the redrawn status line (`erp_account_form_einvoice_state()`, `data-erp-einvoice-state`).

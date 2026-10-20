@@ -1,6 +1,6 @@
 ---
 name: checkout-legal-documents
-description: Plan (approved 2026-10-19; checkout, designer bindings, kept copy and API built): pre-information form and distance sales contract; left: My Account link, KVKK consent, Turkish seed
+description: Plan (approved 2026-10-19; checkout, designer bindings, kept copy, API and typed values built): pre-information form and distance sales contract; left: My Account link, KVKK consent, Turkish seed
 ---
 
 ## Why?
@@ -21,7 +21,7 @@ description: Plan (approved 2026-10-19; checkout, designer bindings, kept copy a
 3. Done: receipt attachments, panel card, kept-copy page, `GET /orders/{id}/documents` (`OrderDocument`, docs/memory/commerce/order-legal-documents.md). Left: a link in My Account's order view (`order_view` widget, designer session; `legal_document.php?order_id=N&type=...` is ready).
 4. KVKK notice link and optional consent checkbox (text setting: needs its own config column, ask first), stored as type `kvkk`.
 5. Template seed for Turkish sites on install and the withdrawal timer shown on the order (14 days from delivery, see `customer-returns-flow.md`).
-6. Optional: the document page reads what the visitor has typed but not yet submitted (a modal posting the form's fields) instead of the values the page was drawn with.
+6. Done (PR #648): the document link posts the form's billing fields and payment method to the document page, in the link's own window rather than a modal (classic pages may have no Bootstrap, and a page of its own prints and saves); docs/memory/commerce/checkout-legal-checkboxes.md.
 
 ## Open questions?
 - Should the contract PDF be produced (dompdf is already vendored for ERP) or is HTML enough? Start with HTML; PDF later if customers ask.

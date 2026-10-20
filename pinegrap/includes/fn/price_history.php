@@ -53,6 +53,12 @@
  * and the next save of that product catches up, because the comparison is
  * with the newest row and not with the previous price.
  *
+ * The same step added products.compare_at_price, the merchant's own "was"
+ * price for an article. It is not a price the article sells at, so it never
+ * reaches the history; the helpers at the end of this file say how it is read
+ * and stored by every writer (the product screen and list, the import, the
+ * external API, the copy paths).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -542,4 +548,102 @@ function pg_price_history_log_failure($step)
         __FILE__,
         __LINE__,
         array()));
+}
+
+/* ------------------------------------------------------------------ *
+ * Compare-at price (products.compare_at_price)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The largest compare-at price the column holds: a signed INT of minor
+ * units, the same type as products.price.
+ */
+define('PG_COMPARE_AT_PRICE_MAX', 2147483647);
+
+/**
+ * True when products.compare_at_price is in the database (2026.11.0, 11.0.2).
+ * Every reader and writer asks first: a site that took the code but not yet
+ * the upgrade has no such column, and a statement naming it fails.
+ *
+ * @return bool
+ */
+function pg_compare_at_price_ready()
+{
+    return pg_schema_has('products', 'compare_at_price');
+}
+
+/**
+ * products.compare_at_price as it is stored, from an amount already in minor
+ * units: what the product screen's reader made of a typed amount
+ * (pg_pb_compare_at_price_from_input()), the external API's money value, or a
+ * stored value being copied.
+ *
+ * null means there is none. Nothing, an empty value and zero all say that: no
+ * shop shows a "was" price of nothing, and an empty box or a 0 in an import
+ * file is how a merchant takes one off. A whole number from 1 to
+ * PG_COMPARE_AT_PRICE_MAX is kept as it is.
+ *
+ * false is a value that cannot be stored: negative, larger than the column,
+ * or not a whole number of minor units. The caller refuses it. The session
+ * is not strict, so MySQL would otherwise cut it to fit without a word.
+ *
+ * @param mixed $cents
+ * @return int|null|false
+ */
+function pg_compare_at_price_value($cents)
+{
+    if ($cents === null) {
+        return null;
+    }
+
+    if (is_string($cents)) {
+        $cents = trim($cents);
+
+        if ($cents === '') {
+            return null;
+        }
+
+        if (preg_match('/^-?[0-9]{1,15}$/', $cents) !== 1) {
+            return false;
+        }
+
+        $cents = (int) $cents;
+    } elseif (is_float($cents)) {
+        if (!is_finite($cents) || (floor($cents) != $cents) || (abs($cents) > 1e15)) {
+            return false;
+        }
+
+        $cents = (int) $cents;
+    } elseif (!is_int($cents)) {
+        return false;
+    }
+
+    if ($cents === 0) {
+        return null;
+    }
+
+    if (($cents < 0) || ($cents > PG_COMPARE_AT_PRICE_MAX)) {
+        return false;
+    }
+
+    return $cents;
+}
+
+/**
+ * The SQL value that writes a compare-at price: NULL for none, the quoted
+ * whole number otherwise.
+ *
+ * It takes what pg_compare_at_price_value() accepts. A value that function
+ * refuses is written as NULL, so a statement can never carry a figure the
+ * column does not hold; a writer that must not clear a stored price on bad
+ * input checks the value first and leaves the column out.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_compare_at_price_sql($value)
+{
+    $value = pg_compare_at_price_value($value);
+
+    return is_int($value) ? "'" . $value . "'" : 'NULL';
 }

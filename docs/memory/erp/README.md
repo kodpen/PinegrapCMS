@@ -35,6 +35,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-money-and-currency.md: ERP money storage (integer minor units), home-currency rule, *_base columns, opt-in FX switch, rate history and the fx_diff ledger line.
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
+- erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (the accounts capability): list paging, the card shape, how a change is written, the linked card on invoices
 - erp-parasut-connection.md: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect button and endpoint, company id discovery
 - erp-parasut-driver.md: The Paraşüt e-document driver (includes/erp/edoc/parasut.php): request wrapper, buyer card, sales invoice, conversion job, poll, PDF, cancel; what the live API showed
 - erp-parasut-legacy-order-buttons.md: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment, includes/fn/parasut.php) and when they give way to the ERP's invoice and delivery documents card
@@ -42,5 +43,5 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-reconciliation-letter.md: ERP account reconciliation letter (cari mutabakat): as-of balance from the ledger, option sanitizing, reference, row cap, e-mail attachments, screen pattern.
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, line VAT rate, returned_qty and parent_line_id.
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
-- erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
+- erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, and the carrier columns.

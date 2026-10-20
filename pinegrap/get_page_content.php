@@ -5691,6 +5691,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
     
+    // The page is drawn as the site's error screen (output_error()): the
+    // error may call for a title of its own (maintenance mode).
+    if (function_exists('pg_sw_error_context') && (($pg_error_screen = pg_sw_error_context()) !== null)) {
+        $page_title = pg_sw_error_title($pg_error_screen['code'], $page_title);
+    }
+
     // If this page has a title then use that for title tag. Escaped for the
     // replacement string as well: "$1" in a title is text, not a back reference.
     if ($page_title != '') {
