@@ -11,7 +11,7 @@ Open the index of the folder the task needs, then only the files you need.
 - data/README.md: Table structures and SQL pitfalls (10)
 - designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (80)
 - erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports (43)
-- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (43)
+- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (44)
 - platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (51)
 - release/README.md: Versions, migrations and upgrade steps, change log rules, release status (14)
 - ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (47)
