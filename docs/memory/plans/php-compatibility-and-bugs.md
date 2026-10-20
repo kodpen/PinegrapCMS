@@ -1,6 +1,6 @@
 ---
 name: php-compatibility-and-bugs
-description: Open items of the 2026-10-19 static analysis (CI baselines): undefined variables, a duplicate key, an unguarded imagecreatefrombmp(), 8.1-8.5 deprecations, dead remnants; nested functions done (#9xx)
+description: Open items of the 2026-10-19 static analysis (CI baselines): undefined variables, a duplicate key, an unguarded imagecreatefrombmp(), 8.1-8.5 deprecations, dead remnants; nested functions done (#972)
 ---
 
 ## Where does this come from?
@@ -9,7 +9,7 @@ description: Open items of the 2026-10-19 static analysis (CI baselines): undefi
 ## Which bugs are confirmed? (one PR each)
 1. `get_catalog.php:556-568`: `$output_featured_items`, `$output_image`, `$output_short_description`, `$output_price` used before assignment in the "top items" branch; legacy custom style layer, ask before touching.
 2. Duplicate array key: `includes/fn/files.php:199` (`'å'` twice, the second mapping is dead; which letter was meant?).
-3. Done (#9xx): the named functions declared inside functions are closures or plain values; the PHPStan baseline holds none (`code-audit-2026-10-followups.md` item 2).
+3. Done (#972): the named functions declared inside functions are closures or plain values; the PHPStan baseline holds none (`code-audit-2026-10-followups.md` item 2).
 4. `edit_file.php:856`, WebP conversion of a `.bmp` file: `imagecreatefrombmp()` is called without the `function_exists()` guard its rotate branch (`:798`) has; the function is PHP 7.2+, so on PHP 7.1 the conversion ends in a fatal error. Found when the CI analysers went in (PR #673).
 
 ## Which deprecations matter for "PHP 7.1-8.5"?
