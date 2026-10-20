@@ -24453,5 +24453,19 @@
     "Paraşüt took the card but did not say its id. Read the list again to find it.": "Paraşüt kartı aldı ama kimliğini bildirmedi. Bulmak için listeyi yeniden okuyun.",
     "Switched on the pre-information form and the distance sales contract at checkout": "Ödeme adımında ön bilgilendirme formu ve mesafeli satış sözleşmesi onayı açıldı",
     "Site Settings › Ecommerce › Legal Documents": "Site Ayarları › E-Ticaret › Yasal Belgeler",
-    "erp account ({var:1}) was opened under the name GİB registers for its tax number instead of {var:2}": "cari hesap ({var:1}), {var:2} yerine vergi numarasının GİB'de kayıtlı unvanıyla açıldı"
+    "erp account ({var:1}) was opened under the name GİB registers for its tax number instead of {var:2}": "cari hesap ({var:1}), {var:2} yerine vergi numarasının GİB'de kayıtlı unvanıyla açıldı",
+    "Somebody has this page open in the Visual Page Editor. Try again when they are done, or make the change there.": "Bu sayfa şu anda birinin Görsel Sayfa Düzenleyici'sinde açık. İşi bitince yeniden deneyin ya da değişikliği orada yapın.",
+    "{var:1} needs its offset from UTC, as in 2026-10-21T09:30:00+03:00, or Z: the site's time zone is not assumed. A unix time is accepted as well.": "{var:1} UTC'ye göre farkıyla (2026-10-21T09:30:00+03:00 gibi) ya da Z ile yazılmalı: sitenin saat dilimi varsayılmaz. Unix zamanı da kabul edilir.",
+    "{var:1} is not a date and time. Send ISO 8601 with an offset or Z, or a unix time.": "{var:1} bir tarih ve saat değil. Farkı ya da Z ile ISO 8601 veya unix zamanı gönderin.",
+    "This site has not been upgraded to the version that schedules pages.": "Bu site, sayfaları zamanlayan sürüme yükseltilmemiş.",
+    "The home page stays on the site, so it takes no publish time and no time to come off it.": "Ana sayfa sitede kalır; yayına alınma ya da yayından kaldırılma zamanı almaz.",
+    "publish_at has passed. A new page starts as a draft, so its publish time has to be ahead.": "publish_at geçmiş. Yeni sayfa taslak olarak başlar, bu yüzden yayına alınma zamanı ileride olmalı.",
+    "Only designers can set when a page goes on the site.": "Sayfanın ne zaman yayına alınacağını yalnız tasarımcılar belirleyebilir.",
+    "Send publish_at, unpublish_at or both.": "publish_at, unpublish_at ya da ikisini birden gönderin.",
+    "The publish times of the page ({var:1}) were set through the API by the application {var:2} (key {var:3}).": "Sayfanın ({var:1}) yayın zamanları API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından ayarlandı.",
+    "This site has not been upgraded to the version that keeps page revisions.": "Bu site, sayfa sürümlerini saklayan sürüme yükseltilmemiş.",
+    "Only designers can restore a revision of a page.": "Sayfanın bir sürümünü yalnız tasarımcılar geri yükleyebilir.",
+    "Revision": "Sürüm",
+    "Page ({var:1}) was restored to revision {var:2} through the API by the application {var:3} (key {var:4}).": "Sayfa ({var:1}) API üzerinden {var:3} uygulaması (anahtar {var:4}) tarafından {var:2}. sürüme geri yüklendi.",
+    "The layout of the Visual Page Editor's pages; writing means proposing a change a designer applies, adding a page as a draft, setting when a page goes on the site and comes off it, or putting back a published revision": "Görsel Sayfa Düzenleyici sayfalarının yerleşimi; yazma, bir tasarımcının uygulayacağı değişikliği önermek, taslak sayfa eklemek, sayfanın ne zaman yayına alınıp kaldırılacağını belirlemek ya da yayınlanmış bir sürümü geri yüklemek demektir"
 }
