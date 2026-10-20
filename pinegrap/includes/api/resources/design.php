@@ -17,15 +17,22 @@
 // field, and is answered with 422. The pages endpoints keep describing what
 // every page tells search engines and still leave its text out.
 //
-// Nothing here rewrites a page. A proposal is checked against the page - every
+// No layout is written here. A proposal is checked against the page - every
 // operation must find what it names and the result must be a valid page - and
 // then waits until a person applies it in the editor or from the workspace
 // answer it was made under, with their own rights (includes/designer_ai.php).
 // That is why design:write is a designer's decision to delegate: it lets an
 // application put a change in front of the people who build the site, not
-// make one. The one write is a new page, and it is always a draft: it is in
-// the editor with the design's other pages and on the site only once a person
-// publishes it there.
+// make one. A new page is always a draft: it is in the editor with the
+// design's other pages and on the site only once it is published.
+//
+// Three writes go through the design save itself, in the name of the owner of
+// the application, each refused while somebody has the page open in the
+// editor (their next save would put their tab back over it): a new page, the
+// times a page goes on the site and comes off it (includes/fn/page_schedule.php),
+// and a published revision put back (includes/fn/page_revisions.php). A
+// restore is a new publish of a layout a person published before, recorded
+// with the source 'restore'; the page keeps its settings and its times.
 
 if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
@@ -130,6 +137,8 @@ function api_design_page_present($row) {
 		'framework'         => function_exists('pg_design_framework_key') ? pg_design_framework_key(isset($row['style_framework']) ? $row['style_framework'] : '') : 'bootstrap5',
 		'pending_proposals' => (int)$row['pending_proposals'],
 		'draft'             => api_design_page_is_draft($row['page_folder']),
+		'publish_at'        => api_time(isset($row['publish_at']) ? $row['publish_at'] : 0),
+		'unpublish_at'      => api_time(isset($row['unpublish_at']) ? $row['unpublish_at'] : 0),
 		'updated_at'        => api_time($row['page_timestamp']),
 		'updated_at_unix'   => (int)$row['page_timestamp']
 	);
@@ -149,9 +158,21 @@ function api_design_page_schema() {
 		'framework'         => 'string',
 		'pending_proposals' => 'integer',
 		'draft'             => 'boolean',
+		'publish_at'        => 'string?',
+		'unpublish_at'      => 'string?',
 		'updated_at'        => 'string?',
 		'updated_at_unix'   => 'integer'
 	);
+
+}
+
+// The two schedule columns (2026.11.0, 11.0.17), or zeros where the upgrade
+// has not run, so the select never names a column that is not there.
+function api_design_schedule_columns() {
+
+	return pg_page_schedule_ready()
+		? 'page.publish_at, page.unpublish_at,'
+		: '0 AS publish_at, 0 AS unpublish_at,';
 
 }
 
@@ -161,7 +182,7 @@ function api_design_page_select() {
 	$framework = (function_exists('waf_table_has_column') && waf_table_has_column('style', 'style_framework')) ? 'style.style_framework' : "'bootstrap5' AS style_framework";
 
 	return "SELECT page.page_id, page.page_name, page.page_title, page.page_folder, page.page_style,
-			page.page_timestamp, style.style_name, " . $framework . ",
+			page.page_timestamp, " . api_design_schedule_columns() . " style.style_name, " . $framework . ",
 			(SELECT COUNT(*) FROM design_proposals WHERE design_proposals.page_id = page.page_id AND design_proposals.status = 'pending') AS pending_proposals
 		FROM page
 		INNER JOIN style ON page.page_style = style.style_id";
@@ -388,6 +409,144 @@ function api_design_page_name_in($name) {
 
 }
 
+// The owner of the application, when they may change pages of a design. The
+// design scope is only granted to designers; this holds when the owner's role
+// has changed since.
+function api_design_designer_or_fail($message) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+
+	$app = api_current_app();
+
+	if (!pg_designer_is_full($app['owner'])) {
+
+		api_fail(403, 'forbidden', $message);
+
+	}
+
+	return $app;
+
+}
+
+// A saved page written from here would be put back by the next save of an
+// editor tab that has it open, so the write waits until nobody has it open.
+function api_design_page_free_or_fail($page) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+
+	if (!pg_collab_may_edit_page('', $page['page_id'])) {
+
+		api_fail(409, 'page_open_in_editor', lang('Somebody has this page open in the Visual Page Editor. Try again when they are done, or make the change there.'));
+
+	}
+
+}
+
+// The owner of the application as the design save takes a person.
+function api_design_user_of($owner) {
+
+	return array('id' => (int)$owner['id'], 'role' => (int)$owner['role'], 'username' => (string)$owner['username']);
+
+}
+
+// The design save, in the name of the owner of the application: it writes its
+// log lines in the name of the signed-in person.
+function api_design_save_as_owner($design_id, $fields, $owner) {
+
+	$user = api_design_user_of($owner);
+
+	$had_name = isset($_SESSION) && array_key_exists('sessionusername', $_SESSION);
+
+	$old_name = $had_name ? $_SESSION['sessionusername'] : null;
+
+	$_SESSION['sessionusername'] = (string)$owner['username'];
+
+	$saved = pg_designer_save_page($design_id, $fields, $user, false);
+
+	if ($had_name) {
+
+		$_SESSION['sessionusername'] = $old_name;
+
+	} else {
+
+		unset($_SESSION['sessionusername']);
+
+	}
+
+	return $saved;
+
+}
+
+// The publish time and the time to come off the site as sent, read as unix
+// times: only the ones in the request, 0 for a clear (null or "").
+function api_design_times_in($params) {
+
+	$sent = array();
+
+	foreach (array('publish_at', 'unpublish_at') as $field) {
+
+		if (!array_key_exists($field, $params)) {
+
+			continue;
+
+		}
+
+		$parsed = pg_page_schedule_parse_absolute($params[$field]);
+
+		if ($parsed['error'] === 'offset') {
+
+			api_fail_validation(lang(array('string' => '{var:1} needs its offset from UTC, as in 2026-10-21T09:30:00+03:00, or Z: the site\'s time zone is not assumed. A unix time is accepted as well.', 'vars' => $field)), $field);
+
+		}
+
+		if (!$parsed['ok']) {
+
+			api_fail_validation(lang(array('string' => '{var:1} is not a date and time. Send ISO 8601 with an offset or Z, or a unix time.', 'vars' => $field)), $field);
+
+		}
+
+		$sent[$field] = $parsed['time'];
+
+	}
+
+	if ($sent && (!pg_page_schedule_ready() || !pg_page_draft_ready())) {
+
+		api_fail(503, 'service_unavailable', lang('This site has not been upgraded to the version that schedules pages.'));
+
+	}
+
+	return $sent;
+
+}
+
+// The times checked against the page as the write will leave it; refused
+// with the time it is about (pg_page_schedule_request_plan()).
+function api_design_times_plan_or_fail($sent, $stored, $draft, $home, $name, $creating) {
+
+	$check = pg_page_schedule_request_plan($sent, $stored, $draft, $home, time(), $creating);
+
+	if ($check['error'] === 'home') {
+
+		api_fail_validation(lang('The home page stays on the site, so it takes no publish time and no time to come off it.'), $check['field']);
+
+	}
+
+	if ($check['error'] === 'passed') {
+
+		api_fail_validation(lang('publish_at has passed. A new page starts as a draft, so its publish time has to be ahead.'), $check['field']);
+
+	}
+
+	if ($check['error'] !== '') {
+
+		api_fail_validation(pg_page_schedule_message($check['error'], $name), $check['field']);
+
+	}
+
+	return $check['plan'];
+
+}
+
 // A new page of a design, always as a draft: the editor's "new page" (an empty
 // canvas) or its "duplicate page" (copy_from). The folder is the one the page
 // is published to when a person puts it on the site.
@@ -401,20 +560,11 @@ function api_design_pages_create($params) {
 
 	}
 
-	require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
 	require_once(dirname(__FILE__) . '/folders.php');
 
-	$app = api_current_app();
+	$app = api_design_designer_or_fail(lang('Only designers can add pages to a design.'));
 
 	$owner = $app['owner'];
-
-	// The design scope is only granted to designers; this holds when the
-	// owner's role has changed since.
-	if (!pg_designer_is_full($owner)) {
-
-		api_fail(403, 'forbidden', lang('Only designers can add pages to a design.'));
-
-	}
 
 	$design_id = (int)$params['design_id'];
 
@@ -473,6 +623,12 @@ function api_design_pages_create($params) {
 
 	}
 
+	// When the draft goes on the site and comes off it again. A new page has
+	// no stored times and is not the home page.
+	$times = api_design_times_in($params);
+
+	$plan = $times ? api_design_times_plan_or_fail($times, array(), true, false, $name, true) : null;
+
 	$fields = array(
 		'page_id'               => 0,
 		'page_name'             => $name,
@@ -493,7 +649,13 @@ function api_design_pages_create($params) {
 		'pg_comments_rating'    => 0
 	);
 
-	$user = array('id' => (int)$owner['id'], 'role' => (int)$owner['role'], 'username' => (string)$owner['username']);
+	foreach ($times as $field => $time) {
+
+		$fields['page_' . $field] = $time;
+
+	}
+
+	$user = api_design_user_of($owner);
 
 	$check = pg_designer_save_page($design_id, $fields, $user, true);
 
@@ -506,33 +668,17 @@ function api_design_pages_create($params) {
 	$base = URL_SCHEME . HOSTNAME_SETTING . PATH;
 
 	api_dry_run_stop('created', 'design_page', array(
-		'design_id' => $design_id,
-		'name'      => $name,
-		'url'       => $base . encode_url_path($name),
-		'folder_id' => $folder_id,
-		'draft'     => true,
-		'copy_from' => ($copy_from > 0) ? $copy_from : null
+		'design_id'    => $design_id,
+		'name'         => $name,
+		'url'          => $base . encode_url_path($name),
+		'folder_id'    => $folder_id,
+		'draft'        => true,
+		'publish_at'   => api_time($plan ? $plan['publish_at'] : 0),
+		'unpublish_at' => api_time($plan ? $plan['unpublish_at'] : 0),
+		'copy_from'    => ($copy_from > 0) ? $copy_from : null
 	));
 
-	// The design save writes its log lines in the name of the signed-in
-	// person; here that is the owner of the application.
-	$had_name = isset($_SESSION) && array_key_exists('sessionusername', $_SESSION);
-
-	$old_name = $had_name ? $_SESSION['sessionusername'] : null;
-
-	$_SESSION['sessionusername'] = (string)$owner['username'];
-
-	$saved = pg_designer_save_page($design_id, $fields, $user, false);
-
-	if ($had_name) {
-
-		$_SESSION['sessionusername'] = $old_name;
-
-	} else {
-
-		unset($_SESSION['sessionusername']);
-
-	}
+	$saved = api_design_save_as_owner($design_id, $fields, $owner);
 
 	if (!$saved['ok'] || (int)$saved['page_id'] <= 0) {
 
@@ -561,19 +707,22 @@ function api_design_pages_create($params) {
 function api_design_view_present($page, $tree, $view, $format) {
 
 	$out = array(
-		'page_id'   => (int)$page['page_id'],
-		'page_name' => (string)$page['page_name'],
-		'design_id' => (int)$page['style_id'],
-		'framework' => (string)$page['framework'],
-		'node_id'   => (string)$view['node_id'],
-		'root_id'   => (string)$view['root_id'],
-		'hash'      => pg_design_ai_hash($tree),
-		'css'       => (string)$view['css'],
-		'islands'   => (int)$view['islands'],
-		'cut'       => (bool)$view['cut'],
-		'html'      => ($format === 'outline') ? '' : (string)$view['html'],
-		'outline'   => array(),
-		'operations' => pg_design_ai_op_names()
+		'page_id'      => (int)$page['page_id'],
+		'page_name'    => (string)$page['page_name'],
+		'design_id'    => (int)$page['style_id'],
+		'framework'    => (string)$page['framework'],
+		'draft'        => api_design_page_is_draft($page['page_folder']),
+		'publish_at'   => api_time(isset($page['publish_at']) ? $page['publish_at'] : 0),
+		'unpublish_at' => api_time(isset($page['unpublish_at']) ? $page['unpublish_at'] : 0),
+		'node_id'      => (string)$view['node_id'],
+		'root_id'      => (string)$view['root_id'],
+		'hash'         => pg_design_ai_hash($tree),
+		'css'          => (string)$view['css'],
+		'islands'      => (int)$view['islands'],
+		'cut'          => (bool)$view['cut'],
+		'html'         => ($format === 'outline') ? '' : (string)$view['html'],
+		'outline'      => array(),
+		'operations'   => pg_design_ai_op_names()
 	);
 
 	if ($format !== 'html') {
@@ -626,19 +775,36 @@ function api_design_outline_item_schema() {
 function api_design_view_schema() {
 
 	return array(
-		'page_id'    => 'integer',
-		'page_name'  => 'string',
-		'design_id'  => 'integer',
-		'framework'  => 'string',
-		'node_id'    => 'string',
-		'root_id'    => 'string',
-		'hash'       => 'string',
-		'css'        => 'string',
-		'islands'    => 'integer',
-		'cut'        => 'boolean',
-		'html'       => 'string',
-		'outline'    => 'DesignOutlineItem[]',
-		'operations' => 'string[]'
+		'page_id'      => 'integer',
+		'page_name'    => 'string',
+		'design_id'    => 'integer',
+		'framework'    => 'string',
+		'draft'        => 'boolean',
+		'publish_at'   => 'string?',
+		'unpublish_at' => 'string?',
+		'node_id'      => 'string',
+		'root_id'      => 'string',
+		'hash'         => 'string',
+		'css'          => 'string',
+		'islands'      => 'integer',
+		'cut'          => 'boolean',
+		'html'         => 'string',
+		'outline'      => 'DesignOutlineItem[]',
+		'operations'   => 'string[]'
+	);
+
+}
+
+// When a page goes on the site and comes off it, as stored (0 for none).
+function api_design_page_times($page_id) {
+
+	$row = pg_page_schedule_ready()
+		? api_row("SELECT publish_at, unpublish_at FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1")
+		: null;
+
+	return array(
+		'publish_at'   => $row ? (int)$row['publish_at'] : 0,
+		'unpublish_at' => $row ? (int)$row['unpublish_at'] : 0
 	);
 
 }
@@ -668,6 +834,8 @@ function api_design_pages_get($params) {
 		api_fail_not_found(lang('Element'));
 
 	}
+
+	$page = array_merge($page, api_design_page_times($page['page_id']));
 
 	api_ok(api_design_view_present($page, $tree, $view, isset($params['format']) ? (string)$params['format'] : 'both'));
 
@@ -827,5 +995,323 @@ function api_design_proposals_get($params) {
 	}
 
 	api_ok(api_design_proposal_out($row));
+
+}
+
+// When a page goes on the site and comes off it again. The times go through
+// the design save like the editor's Page Settings › Schedule: a publish time
+// ahead keeps the page a draft until then (and takes a page on the site off it
+// now), a time that has come is carried out by this save, the general job
+// carries out the rest (pg_page_schedule_run()).
+function api_design_pages_update($params) {
+
+	api_design_ready();
+
+	$page = api_design_page_or_fail($params['id']);
+
+	$app = api_design_designer_or_fail(lang('Only designers can set when a page goes on the site.'));
+
+	$times = api_design_times_in($params);
+
+	if (!$times) {
+
+		api_fail_validation(lang('Send publish_at, unpublish_at or both.'));
+
+	}
+
+	$stored = api_row("SELECT page_home, publish_at, unpublish_at FROM page WHERE page_id = '" . (int)$page['page_id'] . "' LIMIT 1");
+
+	$plan = api_design_times_plan_or_fail($times, $stored, api_design_page_is_draft($page['page_folder']),
+		((string)$stored['page_home'] === 'yes'), $page['page_name'], false);
+
+	api_design_page_free_or_fail($page);
+
+	$fields = pg_design_ai_page_fields($page);
+
+	if (!$fields) {
+
+		api_fail_server(lang('The page could not be read.'));
+
+	}
+
+	// A time not sent keeps the stored one to the second; the editor's copy
+	// of it is rounded to the minute.
+	unset($fields['page_publish_at'], $fields['page_unpublish_at']);
+
+	foreach ($times as $field => $time) {
+
+		$fields['page_' . $field] = $time;
+
+	}
+
+	$owner = $app['owner'];
+
+	$user = api_design_user_of($owner);
+
+	$check = pg_designer_save_page($page['style_id'], $fields, $user, true);
+
+	if (!$check['ok']) {
+
+		api_fail_validation(implode(' ', $check['errors']));
+
+	}
+
+	api_dry_run_stop('updated', 'design_page', array(
+		'id'           => (int)$page['page_id'],
+		'draft'        => (bool)$check['draft'],
+		'publish_at'   => api_time($plan['publish_at']),
+		'unpublish_at' => api_time($plan['unpublish_at']),
+		'warnings'     => array_values($check['warnings'])
+	));
+
+	$saved = api_design_save_as_owner($page['style_id'], $fields, $owner);
+
+	if (!$saved['ok']) {
+
+		api_fail_server(implode(' ', $saved['errors']));
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'The publish times of the page ({var:1}) were set through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($page['page_name'], $app['name'], $app['api_key'])
+	)), $owner['username']);
+
+	pg_announce('page.updated', array('id' => (int)$page['page_id'], 'name' => (string)$page['page_name']));
+
+	$row = api_row(api_design_page_select() . " WHERE page.page_id = '" . (int)$page['page_id'] . "' LIMIT 1");
+
+	api_ok(api_design_page_present($row));
+
+}
+
+// A clean 503 where the revisions table is not there yet.
+function api_design_revisions_ready() {
+
+	if (!pg_page_revisions_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('This site has not been upgraded to the version that keeps page revisions.'));
+
+	}
+
+}
+
+// One published revision of a page, without its layout. name and title are the
+// page's as they were when it was published.
+function api_design_revision_present($row) {
+
+	$settings = isset($row['settings']) && is_array($row['settings']) ? $row['settings'] : array();
+
+	return array(
+		'revision_no'     => (int)$row['revision_no'],
+		'source'          => (string)$row['source'],
+		'name'            => isset($settings['page_name']) ? (string)$settings['page_name'] : null,
+		'title'           => isset($settings['page_title']) ? (string)$settings['page_title'] : null,
+		'user_id'         => ((int)$row['user_id'] > 0) ? (int)$row['user_id'] : null,
+		'user'            => ((string)$row['user_username'] !== '') ? (string)$row['user_username'] : null,
+		'size'            => (int)$row['size'],
+		'created_at'      => api_time($row['created_at']),
+		'created_at_unix' => (int)$row['created_at']
+	);
+
+}
+
+function api_design_revision_schema() {
+
+	return array(
+		'revision_no'     => 'integer',
+		'source'          => 'string',
+		'name'            => 'string?',
+		'title'           => 'string?',
+		'user_id'         => 'integer?',
+		'user'            => 'string?',
+		'size'            => 'integer',
+		'created_at'      => 'string?',
+		'created_at_unix' => 'integer'
+	);
+
+}
+
+function api_design_revisions_list($params) {
+
+	api_design_ready();
+
+	api_design_revisions_ready();
+
+	$page = api_design_page_or_fail($params['id']);
+
+	$limit = (int)$params['limit'];
+
+	$before = 0;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$before = (int)$cursor['i'];
+
+	}
+
+	$rows = pg_page_revisions_list($page['page_id'], $limit + 1, $before);
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['revision_no'], (int)$last['revision_no']);
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_design_revision_present($row);
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
+
+// What a restore answers with: the page as it is now (api_design_page_present()),
+// the revision it was put back to and the revision the restore itself was
+// recorded as.
+function api_design_restore_present($page, $restored_from, $revision_no, $changed, $warnings) {
+
+	return array(
+		'page'          => $page,
+		'restored_from' => (int)$restored_from,
+		'revision_no'   => ((int)$revision_no > 0) ? (int)$revision_no : null,
+		'changed'       => (bool)$changed,
+		'warnings'      => array_values((array)$warnings)
+	);
+
+}
+
+function api_design_restore_schema() {
+
+	return array(
+		'page'          => 'DesignPage',
+		'restored_from' => 'integer',
+		'revision_no'   => 'integer?',
+		'changed'       => 'boolean',
+		'warnings'      => 'string[]'
+	);
+
+}
+
+// The newest revision number of a page, 0 for none.
+function api_design_latest_revision_no($page_id) {
+
+	return (int)api_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '" . (int)$page_id . "'");
+
+}
+
+// Puts a published revision's layout back on the page, as the editor's
+// History panel does when the loaded revision is published again: a new
+// publish, recorded with the source 'restore'. The page's settings, its
+// draft state and its times stay as they are now.
+function api_design_revisions_restore($params) {
+
+	api_design_ready();
+
+	api_design_revisions_ready();
+
+	$page = api_design_page_or_fail($params['id']);
+
+	$app = api_design_designer_or_fail(lang('Only designers can restore a revision of a page.'));
+
+	$revision = pg_page_revision_get($page['page_id'], $params['no']);
+
+	if (!$revision) {
+
+		api_fail_not_found(lang('Revision'));
+
+	}
+
+	api_design_page_free_or_fail($page);
+
+	$fields = pg_design_ai_page_fields($page);
+
+	if (!$fields) {
+
+		api_fail_server(lang('The page could not be read.'));
+
+	}
+
+	unset($fields['page_publish_at'], $fields['page_unpublish_at']);
+
+	$fields['tree_json']       = (string)$revision['tree_json'];
+	$fields['revision_source'] = 'restore';
+
+	// The page already has this layout: nothing to put back, and nothing is
+	// written or recorded.
+	$changed = ((string)$page['tree_json'] !== (string)$revision['tree_json']);
+
+	$owner = $app['owner'];
+
+	$user = api_design_user_of($owner);
+
+	$check = pg_designer_save_page($page['style_id'], $fields, $user, true);
+
+	if (!$check['ok']) {
+
+		api_fail_validation(implode(' ', $check['errors']), 'no');
+
+	}
+
+	api_dry_run_stop('restored', 'design_page', array(
+		'id'            => (int)$page['page_id'],
+		'restored_from' => (int)$revision['revision_no'],
+		'changed'       => $changed,
+		'draft'         => (bool)$check['draft'],
+		'warnings'      => array_values($check['warnings'])
+	));
+
+	$warnings = array();
+
+	$revision_no = 0;
+
+	if ($changed) {
+
+		$before = api_design_latest_revision_no($page['page_id']);
+
+		$saved = api_design_save_as_owner($page['style_id'], $fields, $owner);
+
+		if (!$saved['ok']) {
+
+			api_fail_server(implode(' ', $saved['errors']));
+
+		}
+
+		$warnings = $saved['warnings'];
+
+		$after = api_design_latest_revision_no($page['page_id']);
+
+		$revision_no = ($after > $before) ? $after : 0;
+
+		log_activity(lang(array(
+			'string' => 'Page ({var:1}) was restored to revision {var:2} through the API by the application {var:3} (key {var:4}).',
+			'vars'   => array($page['page_name'], (int)$revision['revision_no'], $app['name'], $app['api_key'])
+		)), $owner['username']);
+
+		pg_announce('page.updated', array('id' => (int)$page['page_id'], 'name' => (string)$page['page_name']));
+
+	}
+
+	$row = api_row(api_design_page_select() . " WHERE page.page_id = '" . (int)$page['page_id'] . "' LIMIT 1");
+
+	api_ok(api_design_restore_present(api_design_page_present($row), $revision['revision_no'], $revision_no, $changed, $warnings));
 
 }

@@ -423,3 +423,95 @@ function pg_page_schedule_label($time)
 {
     return get_absolute_time(array('timestamp' => (int) $time, 'format' => 'plain_text', 'timezone_type' => 'site'));
 }
+
+/**
+ * The earliest unix time the external API takes as one (2001-09-09): a
+ * smaller number is a date written as digits (20261021) or a flag (1), and
+ * read as a time it would be long past and publish the page at once.
+ */
+define('PG_PAGE_SCHEDULE_UNIX_MIN', 1000000000);
+
+/**
+ * A time as the external API takes it: one that names its moment without
+ * the site's clock. Empty, null or 0 is none; digits are a unix time; a date
+ * and time carries an offset or Z ("2026-10-21T09:30:00+03:00"). A date and
+ * time without one is refused ('offset'): a client cannot see the site's time
+ * zone, and a guess moves the page by hours.
+ *
+ * @param mixed $value
+ * @return array ok, time (unix, 0 for none), error ('', 'offset' or 'invalid')
+ */
+function pg_page_schedule_parse_absolute($value)
+{
+    if (is_string($value) && preg_match('/^\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?\s*$/', $value)) {
+        return array('ok' => false, 'time' => 0, 'error' => 'offset');
+    }
+
+    $parsed = pg_page_schedule_parse($value);
+
+    if (!$parsed['ok'] || ($parsed['time'] > 0 && $parsed['time'] < PG_PAGE_SCHEDULE_UNIX_MIN)) {
+        return array('ok' => false, 'time' => 0, 'error' => 'invalid');
+    }
+
+    return array('ok' => true, 'time' => $parsed['time'], 'error' => '');
+}
+
+/**
+ * What a write through the external API does with a page's two times
+ * (pure): the times sent laid over the stored ones and put through
+ * pg_page_schedule_plan(). Where the editor drops a time with a note, the API
+ * refuses the request, since a 200 that changed nothing reads as done:
+ *
+ * - 'home': a time sent for the home page, which stays on the site;
+ * - 'passed': a publish time that has come, for a page being created - a new
+ *   page starts as a draft, and the time would put it on the site at once;
+ * - 'order': the end does not come after the start.
+ *
+ * A passed time for a page that exists is carried out, as by any save.
+ *
+ * @param array $sent     publish_at / unpublish_at as sent (unix, 0 to clear); a key not sent keeps the stored time
+ * @param array $stored   publish_at, unpublish_at as stored (zeros for a new page)
+ * @param bool  $draft    whether the page is a draft before the write
+ * @param bool  $home
+ * @param int   $now
+ * @param bool  $creating
+ * @return array error ('' or a code above), field (the time the error is about), plan (pg_page_schedule_plan() result, null on error)
+ */
+function pg_page_schedule_request_plan($sent, $stored, $draft, $home, $now, $creating = false)
+{
+    $sent  = (array) $sent;
+    $out   = array('error' => '', 'field' => '', 'plan' => null);
+    $times = array();
+
+    foreach (array('publish_at', 'unpublish_at') as $key) {
+        $times[$key] = array_key_exists($key, $sent)
+            ? max(0, (int) $sent[$key])
+            : (isset($stored[$key]) ? max(0, (int) $stored[$key]) : 0);
+    }
+
+    foreach (array('publish_at', 'unpublish_at') as $key) {
+        if ($home && !empty($sent[$key])) {
+            $out['error'] = 'home';
+            $out['field'] = $key;
+            return $out;
+        }
+    }
+
+    if ($creating && !empty($sent['publish_at']) && (int) $sent['publish_at'] <= (int) $now) {
+        $out['error'] = 'passed';
+        $out['field'] = 'publish_at';
+        return $out;
+    }
+
+    $plan = pg_page_schedule_plan($times['publish_at'], $times['unpublish_at'], $draft, $home, $now);
+
+    if ($plan['error'] !== '') {
+        $out['error'] = $plan['error'];
+        $out['field'] = array_key_exists('unpublish_at', $sent) ? 'unpublish_at' : 'publish_at';
+        return $out;
+    }
+
+    $out['plan'] = $plan;
+
+    return $out;
+}
