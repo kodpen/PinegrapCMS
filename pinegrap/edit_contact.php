@@ -68,6 +68,13 @@ if (!$_POST) {
         }
     }
 
+    // Everything the site keeps about this contact, for a KVKK / GDPR request
+    // (privacy_export.php is open to staff only).
+    if ($user['role'] < 3) {
+        $output_bar_links .= '
+                    <a class="btn btn-link link-secondary py-0 mb-2 " href="privacy_export.php?contact_id=' . (int) $id . '"><i class="bi bi-person-down me-1" aria-hidden="true"></i>' . lang('Export personal data') . '</a>';
+    }
+
     // Where the contact was talked about in the workspace, its customer
     // channels and the tasks about it.
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
