@@ -19,7 +19,7 @@ description: iyzico drivers (card for Iyzipay, redirect for Pay With Iyzico), th
 ## What is not on the drivers yet?
 - The 3-D Secure return (`complete()` for the card driver).
 - `iyzipay_cancel_payment()` (submit_order.php's frozen blocks call it).
-- The order screen's refund and the cancellation's void go through the drivers (`commerce/payment-refunds.md`); a card order's automatic refund still never runs (it stores `Credit/Debit Card`).
+- The order screen's refund and the cancellation's void go through the drivers (`commerce/payment-refunds.md`), card orders included.
 
 ## How was it verified?
 - `tests/payment_iyzico_test.php`: a stand-in for iyzico's HTTP client (`\Iyzipay\ApiResource::setHttpClient()`) records the posted JSON, compared with requests built by the gateway code's own statements (copied as `legacy_*()`), plus answers for 3DS start, instalments, protected currency, fraud, PWI return checks and cancel, refund and cancel. No running shop or iyzico sandbox was used.

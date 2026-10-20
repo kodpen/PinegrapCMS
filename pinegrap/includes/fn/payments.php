@@ -999,9 +999,7 @@ function pg_payment_return_mode($key)
  */
 function pg_payment_checkout_driver($method, $gateway, $mode)
 {
-    $key = ((string) $method === 'Credit/Debit Card')
-        ? pg_payment_driver_for_gateway((string) $gateway)
-        : pg_payment_driver_for_method((string) $method);
+    $key = pg_payment_order_driver((string) $method, (string) $gateway);
 
     if ($key === '') {
         return '';
@@ -1087,33 +1085,53 @@ function pg_payment_log_name($key)
 }
 
 /**
- * The driver the order screen gives money back through: the driver of the
- * store's Payment Gateway value, the one service the screen's refund dialog
- * talks to, whichever method the order was paid with.
+ * The driver that took an order's payment: a card order (the method
+ * 'Credit/Debit Card') goes to the driver of the Payment Gateway value, any
+ * other method to the driver of that method, whichever gateway the store has.
+ * The order records the method and not the gateway, so a card order is
+ * credited to the gateway the store has now.
  *
- * @param string $gateway ECOMMERCE_PAYMENT_GATEWAY
- * @return string driver key, '' when the gateway is not driver-based or its
- *                driver cannot refund
+ * @param string      $method  orders.payment_method
+ * @param string|null $gateway the Payment Gateway value; null for the store's
+ *                             own (ECOMMERCE_PAYMENT_GATEWAY)
+ * @return string driver key, '' when no driver serves the order
  */
-function pg_payment_refund_driver($gateway)
+function pg_payment_order_driver($method, $gateway = null)
 {
-    $key = pg_payment_driver_for_gateway((string) $gateway);
+    if ($gateway === null) {
+        $gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') ? ECOMMERCE_PAYMENT_GATEWAY : '';
+    }
+
+    return ((string) $method === 'Credit/Debit Card')
+        ? pg_payment_driver_for_gateway((string) $gateway)
+        : pg_payment_driver_for_method((string) $method);
+}
+
+/**
+ * The driver the order screen gives an order's money back through.
+ *
+ * @param string      $method  orders.payment_method
+ * @param string|null $gateway as in pg_payment_order_driver()
+ * @return string driver key, '' when the order's driver cannot refund
+ */
+function pg_payment_refund_driver($method, $gateway = null)
+{
+    $key = pg_payment_order_driver($method, $gateway);
 
     return (($key !== '') && pg_payment_can($key, 'refund')) ? $key : '';
 }
 
 /**
- * The driver that voids an order's payment when the order is cancelled: the
- * redirect driver of the order's payment method. A card order records the
- * method 'Credit/Debit Card' and not the gateway that took the payment, so
- * it gets no driver here and its refund is left to the operator.
+ * The driver that voids an order's payment when the order is cancelled. A
+ * gateway that is not driver-based leaves the refund to the operator.
  *
- * @param string $method orders.payment_method
- * @return string driver key, '' when no driver can cancel the payment
+ * @param string      $method  orders.payment_method
+ * @param string|null $gateway as in pg_payment_order_driver()
+ * @return string driver key, '' when the order's driver cannot cancel
  */
-function pg_payment_cancel_driver($method)
+function pg_payment_cancel_driver($method, $gateway = null)
 {
-    $key = pg_payment_driver_for_method((string) $method);
+    $key = pg_payment_order_driver($method, $gateway);
 
     return (($key !== '') && pg_payment_can($key, 'cancel')) ? $key : '';
 }

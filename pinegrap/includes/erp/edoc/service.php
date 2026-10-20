@@ -638,13 +638,20 @@ function erp_edoc_account_missing($account)
         return $none;
     }
 
+    // The fields erp_edoc_invoice_party() gives a driver for the live card:
+    // a driver reads the tax office (Paraşüt, for a VKN) and the country (the
+    // postcode rule) of the party, and an absent key reads as an empty one.
     $party = array(
         'title' => (string) ($account['title'] ?? ''),
         'is_person' => ((int) ($account['is_person'] ?? 1) === 1),
         'tax_number' => (string) ($account['tax_number'] ?? ''),
+        'tax_office' => (string) ($account['tax_office'] ?? ''),
+        'email' => (string) ($account['email'] ?? ''),
+        'phone' => (string) ($account['phone'] ?? ''),
         'address' => (string) ($account['address'] ?? ''),
         'district' => (string) ($account['district'] ?? ''),
         'city' => (string) ($account['city'] ?? ''),
+        'country_code' => (string) ($account['country_code'] ?? 'TR'),
         'postcode' => (string) ($account['postcode'] ?? ''),
     );
 

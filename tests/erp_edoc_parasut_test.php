@@ -112,14 +112,18 @@ function test_erp_edoc_parasut_party_missing()
 	pg_assert_same(array('tax_number'), array_keys(erp_edoc_parasut_party_missing(pg_test_parasut_party(array('tax_number' => '')))));
 }
 
-// The internet sale needs the web address and the carrier on the invoice.
+// The internet sale needs the web address and the carrier on an e-Arşiv
+// document, and on one whose kind is not known yet; a registered buyer's
+// e-Fatura carries neither (the e_invoices request has no such block).
 function test_erp_edoc_parasut_document_missing()
 {
-	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice()));
-	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)))));
+	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(), ''));
+	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), '')));
+	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), 'earchive')));
+	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), 'einvoice'), 'an e-Fatura has no internet-sale block');
 	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array(
 		'is_internet_sale' => 1, 'web_address' => 'https://magaza.example.com', 'carrier_title' => 'Kargo A.Ş.', 'carrier_vkn' => '1234567808',
-	))));
+	)), 'earchive'));
 }
 
 // A company card and a person's card: one identity field, the type decides.
@@ -159,15 +163,19 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 		array('product_id' => 0, 'description' => 'Kargo', 'quantity' => '1.0000', 'unit_price' => 2500, 'discount_rate' => '0.000', 'discount_amount' => 500, 'tax_rate' => '20.000', 'withholding_rate' => '0.000', 'withholding_code' => '', 'vat_exemption_code' => ''),
 	);
 
-	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 1172, 'order_date' => '2026-10-18')), $lines, '555');
+	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 438, 'order_number' => '1172', 'order_date' => '2026-10-18')), $lines, '555');
 
 	pg_assert_same('sales_invoices', $payload['data']['type']);
 	pg_assert_same('invoice', $payload['data']['attributes']['item_type']);
 	pg_assert_same('TRL', $payload['data']['attributes']['currency']);
 	pg_assert_same('2026-10-19', $payload['data']['attributes']['issue_date']);
 	pg_assert_same('2026-10-29', $payload['data']['attributes']['due_date']);
-	pg_assert_same('1172', $payload['data']['attributes']['order_no']);
+
+	// The order goes by the number its buyer knows, not by its row id.
+	pg_assert_same('1172', $payload['data']['attributes']['order_no'], 'order number, not the row id');
 	pg_assert_same('2026-10-18', $payload['data']['attributes']['order_date']);
+	pg_assert_contains('1172', $payload['data']['attributes']['description']);
+	pg_assert_false(strpos($payload['data']['attributes']['description'], '438') !== false, 'no row id in the description');
 	pg_assert_false(isset($payload['data']['attributes']['exchange_rate']));
 	pg_assert_false(isset($payload['data']['attributes']['vat_withholding_rate']));
 	pg_assert_same('555', $payload['data']['relationships']['contact']['data']['id']);
@@ -186,9 +194,15 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 
 	// The order number without its date would stop the conversion; neither
 	// is sent then.
-	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 1172, 'order_date' => '')), $lines, '555');
+	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 438, 'order_number' => '1172', 'order_date' => '')), $lines, '555');
 	pg_assert_false(isset($payload['data']['attributes']['order_no']));
 	pg_assert_false(isset($payload['data']['attributes']['order_date']));
+
+	// Without the order's number nothing names the order: its row id is no
+	// reference the buyer could look up.
+	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 438, 'order_date' => '2026-10-18')), $lines, '555');
+	pg_assert_false(isset($payload['data']['attributes']['order_no']));
+	pg_assert_same('PGF2026000000042', $payload['data']['attributes']['description']);
 
 	// A foreign currency carries its rate.
 	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('currency' => 'EUR', 'exchange_rate' => '48.250000')), array($lines[0]), '555');

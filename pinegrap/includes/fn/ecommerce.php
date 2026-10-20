@@ -8049,9 +8049,9 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
-    // order's payment method has a payment driver that can cancel
-    // (pg_payment_cancel_driver(); a card order gets none), the payment is
-    // voided through it. Failures here MUST NOT roll back the cancellation —
+    // order's payment has a driver that can cancel (pg_payment_cancel_driver():
+    // the gateway's for a card order, the method's own otherwise), the payment
+    // is voided through it. Failures here MUST NOT roll back the cancellation —
     // refunds can be retried manually from the gateway dashboard. We just
     // record the outcome on the order row so the operator can audit.
     $refund_status_outcome = '';
@@ -8195,15 +8195,10 @@ function _order_has_shipped($order_id)
 
 /**
  * Probe orders.refund_status — true only after the 2026.1.27 upgrade has run.
- * Cached per-request so we don't issue SHOW COLUMNS on every cancel.
  */
 function _orders_has_refund_columns()
 {
-    static $cached = null;
-    if ($cached !== null) return $cached;
-    $row = db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'");
-    $cached = !empty($row);
-    return $cached;
+    return pg_schema_has('orders', 'refund_status');
 }
 
 /**
