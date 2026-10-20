@@ -123,9 +123,10 @@ if (!$_POST) {
     // loop through all archive items
     for ($archive_index = 0; $archive_index < $zip->numFiles; $archive_index++) {
 
-        // The name exactly as stored in the archive, undecoded.
+        // The name as stored in the archive, undecoded, as a clean path: it
+        // keys the item by the URL its references resolve to.
         $stat = $zip->statIndex($archive_index, ZipArchive::FL_ENC_RAW);
-        $archive_item = array('filename' => ($stat === false) ? '' : (string) $stat['name']);
+        $archive_item = array('filename' => pg_zip_entry_path(($stat === false) ? '' : (string) $stat['name']));
 
         // If this is a directory (or a nameless entry), then skip to next item.
         if (($archive_item['filename'] === '') || (substr($archive_item['filename'], -1) == '/')) {
@@ -142,11 +143,13 @@ if (!$_POST) {
         // may be, and no further than its declared size.
         $content = pg_zip_entry_contents($zip, $archive_index, PG_ZIP_IMPORT_MAX_ENTRY, $read_error);
 
-        // The warning is printed as HTML and the name is the archive's.
+        // The warning is printed as HTML and the name is the archive's, in
+        // whatever encoding it was written with.
         if ($content === null) {
+            $shown_name = h(mb_convert_encoding($archive_item['filename'], 'UTF-8', 'UTF-8'));
             $skipped_unread[] = ($read_error === 'large')
-                ? lang(array('string' => '{var:1} is larger than {var:2} MB.', 'vars' => array(h($archive_item['filename']), PG_ZIP_IMPORT_MAX_ENTRY / 1048576)))
-                : lang(array('string' => '{var:1} could not be read from the archive.', 'vars' => h($archive_item['filename'])));
+                ? lang(array('string' => '{var:1} is larger than {var:2} MB.', 'vars' => array($shown_name, PG_ZIP_IMPORT_MAX_ENTRY / 1048576)))
+                : lang(array('string' => '{var:1} could not be read from the archive.', 'vars' => $shown_name));
             continue;
         }
 

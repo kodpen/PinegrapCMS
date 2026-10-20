@@ -38,6 +38,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The most an HTML page in an imported ZIP may unpack to, in bytes. A page is
+// parsed into a DOM; libxml's memory for it is several times the page and is
+// not counted against memory_limit.
+define('PG_DI_MAX_HTML', 8 * 1024 * 1024);
+
 // ── Public entry points ─────────────────────────────────────────────────────
 
 /**
@@ -67,25 +72,23 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
 
     // First pass: classify every entry. Nothing is written yet — the final
     // file names have to be known before any HTML or CSS can be rewritten.
-    $entries = array();   // path => array('type' => html|css|js|asset|skip, 'name' => basename)
-    $indexes = array();   // normalised path => index of the entry in the archive
+    // Each entry keeps its index in the archive, which is what it is read by.
+    $entries = array();   // path => array('type' => html|css|js|asset|skip, 'index' => int)
     for ($i = 0; $i < $zip->numFiles; $i++) {
         $it = $zip->statIndex($i, ZipArchive::FL_ENC_RAW);
         $path = ($it === false) ? '' : (string)$it['name'];
         if ($path === '' || substr($path, -1) === '/') continue;
         $norm = pg_di_norm_path('', $path);
-        if ($norm === '') continue;
-        $indexes[$norm] = $i;
-        if (pg_di_should_skip($norm)) continue;
+        if ($norm === '' || pg_di_should_skip($norm)) continue;
         $ext = strtolower(pathinfo($norm, PATHINFO_EXTENSION));
         if ($ext === 'html' || $ext === 'htm' || $ext === 'xhtml') {
-            $entries[$norm] = array('type' => 'html');
+            $entries[$norm] = array('type' => 'html', 'index' => $i);
         } elseif ($ext === 'css') {
-            $entries[$norm] = array('type' => 'css');
+            $entries[$norm] = array('type' => 'css', 'index' => $i);
         } elseif ($ext === 'js') {
-            $entries[$norm] = array('type' => 'js');
+            $entries[$norm] = array('type' => 'js', 'index' => $i);
         } else {
-            $entries[$norm] = array('type' => 'asset');
+            $entries[$norm] = array('type' => 'asset', 'index' => $i);
         }
     }
     if (empty($entries)) {
@@ -122,18 +125,19 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
     $ctx->files      = array();  // archive path => array('name','url','type')
     $ctx->warnings   = array();
     $ctx->read_error = '';       // why the last read came back null
-    $ctx->read       = function ($path) use ($zip, $indexes, $ctx) {
-        // Entries were re-keyed after the common prefix was stripped, so the
-        // archive's own entry is found back through the full paths.
-        $index = null;
-        foreach ($indexes as $n => $i) {
-            if ($n === $path || substr($n, -strlen('/' . $path)) === '/' . $path) { $index = $i; break; }
-        }
-        if ($index === null) { $ctx->read_error = 'missing'; return null; }
-        // Whole, but no larger than one entry may be and no further than
-        // the size it declares (pg_di_unread_warning() says which it was).
+    $ctx->read_limit = 0;        // the ceiling of the last read, in bytes
+    $ctx->read       = function ($path) use ($zip, $entries, $ctx) {
+        // By the entry's own index: the path is the one the common prefix
+        // was stripped from, and a name match could find another file that
+        // ends the same way (about/index.html for index.html).
+        if (!isset($entries[$path]['index'])) { $ctx->read_error = 'missing'; return null; }
+        // Whole, but no larger than one entry may be and no further than the
+        // size it declares (pg_di_unread_warning() says which it was). A page
+        // is parsed into a DOM, whose memory libxml does not count against
+        // memory_limit, so it has a ceiling of its own.
+        $ctx->read_limit = ($entries[$path]['type'] === 'html') ? PG_DI_MAX_HTML : PG_ZIP_IMPORT_MAX_ENTRY;
         $error = '';
-        $content = pg_zip_entry_contents($zip, $index, PG_ZIP_IMPORT_MAX_ENTRY, $error);
+        $content = pg_zip_entry_contents($zip, $entries[$path]['index'], $ctx->read_limit, $error);
         $ctx->read_error = $error;
         return $content;
     };
@@ -442,11 +446,11 @@ function pg_designer_import_result()
 }
 
 // Why an archive entry was left out, after $ctx->read gave null: larger than
-// one entry may be read (PG_ZIP_IMPORT_MAX_ENTRY), or missing or damaged.
+// that entry may be read ($ctx->read_limit), or missing or damaged.
 function pg_di_unread_warning($path, $ctx)
 {
     if (isset($ctx->read_error) && $ctx->read_error === 'large') {
-        return lang(array('string' => '{var:1} is larger than {var:2} MB.', 'vars' => array($path, PG_ZIP_IMPORT_MAX_ENTRY / 1048576)));
+        return lang(array('string' => '{var:1} is larger than {var:2} MB.', 'vars' => array($path, $ctx->read_limit / 1048576)));
     }
     return lang(array('string' => '{var:1} could not be read from the archive.', 'vars' => $path));
 }

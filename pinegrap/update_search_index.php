@@ -1177,16 +1177,17 @@ function convert_doc_to_text($file_path)
 
 function convert_docx_to_text($file_path)
 {
-    // The package is measured from its directory before anything is inflated
-    // (the office preview's ceilings), and the part is read no further than
-    // the size it declares.
-    $error = '';
-    $zip = pg_office_open($file_path, $error);
+    // Only the part with the text is read: its declared size is measured
+    // against an office part's ceiling before anything is inflated, and it
+    // is read no further than that size. The rest of the package (a video,
+    // say) is not looked at.
+    $zip = class_exists('ZipArchive') ? new ZipArchive() : null;
 
-    if ($zip === null) {
+    if (($zip === null) || (@$zip->open($file_path) !== true)) {
         return '';
     }
 
+    $error = '';
     $content = pg_zip_entry_contents($zip, 'word/document.xml', PG_OFFICE_MAX_PART, $error);
     $zip->close();
 
@@ -1235,14 +1236,14 @@ function convert_ppt_to_text($file_path)
 
 function convert_pptx_to_text($file_path)
 {
-    // Measured like a docx (convert_docx_to_text()).
-    $error = '';
-    $zip = pg_office_open($file_path, $error);
+    // Read like a docx (convert_docx_to_text()).
+    $zip = class_exists('ZipArchive') ? new ZipArchive() : null;
 
-    if ($zip === null) {
+    if (($zip === null) || (@$zip->open($file_path) !== true)) {
         return '';
     }
 
+    $error = '';
     $content = '';
 
     // The slides together are held to what one part may be.
@@ -1317,15 +1318,15 @@ function convert_xls_to_text($file_path)
 
 function convert_xlsx_to_text($file_path)
 {
-    // Measured like a docx (convert_docx_to_text()).
-    $error = '';
-    $zip = pg_office_open($file_path, $error);
+    // Read like a docx (convert_docx_to_text()).
+    $zip = class_exists('ZipArchive') ? new ZipArchive() : null;
 
-    if ($zip === null) {
+    if (($zip === null) || (@$zip->open($file_path) !== true)) {
         return '';
     }
 
     // The shared strings hold the workbook's text.
+    $error = '';
     $content = pg_zip_entry_contents($zip, 'xl/sharedStrings.xml', PG_OFFICE_MAX_PART, $error);
     $zip->close();
 

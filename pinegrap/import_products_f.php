@@ -66,16 +66,21 @@ function pg_products_import_reader($file_name)
     return '';
 }
 
+// The most content.xml or meta.xml of an OpenDocument file may unpack to, in
+// bytes. SimpleXML holds the whole part as a DOM, about ten times its size in
+// libxml's memory, which memory_limit does not count.
+define('PG_PRODUCTS_IMPORT_ODS_MAX_PART', 8 * 1024 * 1024);
+
 // Can PHPExcel's OpenDocument reader be handed this file? '' when it can,
 // otherwise the sentence to show.
 //
 // The reader takes any file for a zip and reads meta.xml and content.xml
 // whole into SimpleXML, as large as the archive says they are: a part that
-// declares gigabytes is gigabytes in memory before a cell is read, and
-// libxml's share of that is not counted against memory_limit. So both parts
-// have to be there, declare no more than an office part may
-// (PG_OFFICE_MAX_PART) and unpack to exactly what they declare; a part that
-// inflates further would reach the reader cut short, as broken XML.
+// declares gigabytes is gigabytes in memory before a cell is read. So both
+// parts have to be there, declare no more than PG_PRODUCTS_IMPORT_ODS_MAX_PART
+// and unpack to exactly what they declare; a part that inflates further would
+// reach the reader cut short, as broken XML. How many cells the reader then
+// makes of repeated rows and columns is the reader's own matter.
 function pg_products_import_ods_check($path)
 {
     if (!class_exists('ZipArchive')) {
@@ -95,7 +100,7 @@ function pg_products_import_ods_check($path)
         $error = '';
 
         // Read to be measured, and let go: the reader reads it again.
-        $data = pg_zip_entry_contents($zip, $part, PG_OFFICE_MAX_PART, $error);
+        $data = pg_zip_entry_contents($zip, $part, PG_PRODUCTS_IMPORT_ODS_MAX_PART, $error);
         unset($data);
 
         if ($error !== '') {

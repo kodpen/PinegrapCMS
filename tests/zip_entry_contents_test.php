@@ -80,6 +80,17 @@ function zip_entry_contents_test_archive($path, array $entries, array $declared 
 	return $path;
 }
 
+// Whether this libzip, asked for one byte past an entry's declared size,
+// hands it over (the overrun pg_zip_entry_contents() refuses). One that stops
+// at the declared size on its own leaves nothing to tell apart.
+function zip_entry_contents_test_libzip_reads_past($zip, $name)
+{
+	$stat = $zip->statName($name);
+	$data = $zip->getFromIndex($stat['index'], $stat['size'] + 1);
+
+	return is_string($data) && (strlen($data) > $stat['size']);
+}
+
 // The two parts PHPExcel's OpenDocument reader reads, around one sheet with a
 // heading row and one transaction.
 function zip_entry_contents_test_ods_parts()
@@ -113,7 +124,8 @@ function test_zip_entry_contents_reads_no_further_than_declared()
 		'empty.txt' => '',
 		'bomb.txt' => str_repeat('x', 200000),
 		'short.txt' => str_repeat('s', 300),
-	), array('bomb.txt' => 1000, 'short.txt' => 400));
+		'nothing.txt' => str_repeat('n', 5000),
+	), array('bomb.txt' => 1000, 'short.txt' => 400, 'nothing.txt' => 0));
 
 	$zip = new ZipArchive();
 	pg_assert_true($zip->open($path) === true, 'archive opens');
@@ -129,8 +141,16 @@ function test_zip_entry_contents_reads_no_further_than_declared()
 	pg_assert_same(null, pg_zip_entry_contents($zip, 'ok.txt', 10, $error), 'an entry declaring more than the limit');
 	pg_assert_same('large', $error, 'said to be too large');
 
-	pg_assert_same(null, pg_zip_entry_contents($zip, 'bomb.txt', 1000000, $error), 'an entry inflating past its declared size');
-	pg_assert_same('damaged', $error, 'said to be damaged');
+	if (zip_entry_contents_test_libzip_reads_past($zip, 'bomb.txt')) {
+		pg_assert_same(null, pg_zip_entry_contents($zip, 'bomb.txt', 1000000, $error), 'an entry inflating past its declared size');
+		pg_assert_same('damaged', $error, 'said to be damaged');
+	} else {
+		$data = pg_zip_entry_contents($zip, 'bomb.txt', 1000000, $error);
+		pg_assert_true(($data === null) || (strlen($data) <= 1000), 'this libzip stops at the declared size itself');
+	}
+
+	pg_assert_same(null, pg_zip_entry_contents($zip, 'nothing.txt', 1000000, $error), 'an entry declaring nothing over compressed data');
+	pg_assert_same('damaged', $error, 'said to be damaged as well');
 
 	pg_assert_same(null, pg_zip_entry_contents($zip, 'short.txt', 1000000, $error), 'an entry holding less than it declares');
 	pg_assert_same('damaged', $error, 'said to be damaged too');
@@ -179,9 +199,20 @@ function test_zip_import_open_measures_the_archive_first()
 	pg_assert_same(null, pg_zip_import_open($path, $error), 'an archive with one entry too many');
 	pg_assert_same(lang('Sorry, that archive is too large to extract here.'), $error, 'said to be too large too');
 
+	$invalid = lang('The zip file cannot be extracted, because it is not a valid zip file.');
+
 	file_put_contents($dir . '/not.zip', 'not an archive');
 	pg_assert_same(null, pg_zip_import_open($dir . '/not.zip', $error), 'a file that is not a zip');
-	pg_assert_same(lang('The zip file cannot be extracted, because it is not a valid zip file.'), $error, 'said to be no zip');
+	pg_assert_same($invalid, $error, 'said to be no zip');
+
+	file_put_contents($dir . '/empty.zip', '');
+	pg_assert_same(null, pg_zip_import_open($dir . '/empty.zip', $error), 'an empty file');
+	pg_assert_same($invalid, $error, 'said to be no zip too');
+
+	// The end record alone: a zip that holds nothing.
+	file_put_contents($dir . '/hollow.zip', "PK\x05\x06" . str_repeat("\0", 18));
+	pg_assert_same(null, pg_zip_import_open($dir . '/hollow.zip', $error), 'an archive with no entries');
+	pg_assert_same($invalid, $error, 'nothing to import is no zip either');
 
 	pg_assert_same(null, pg_zip_import_open($dir . '/none.zip', $error), 'no file at all');
 
@@ -208,8 +239,8 @@ function test_zip_entry_contents_ods_check()
 	$bomb = zip_entry_contents_test_archive($dir . '/bomb.ods', $parts, array('content.xml' => 100));
 	pg_assert_same($unreadable, pg_products_import_ods_check($bomb), 'content.xml inflating past its declared size');
 
-	$large = zip_entry_contents_test_archive($dir . '/large.ods', $parts, array('content.xml' => PG_OFFICE_MAX_PART + 1));
-	pg_assert_same(lang('The file is too large.'), pg_products_import_ods_check($large), 'content.xml declaring more than an office part may');
+	$large = zip_entry_contents_test_archive($dir . '/large.ods', $parts, array('content.xml' => PG_PRODUCTS_IMPORT_ODS_MAX_PART + 1));
+	pg_assert_same(lang('The file is too large.'), pg_products_import_ods_check($large), 'content.xml declaring more than the ceiling');
 
 	$no_meta = $parts;
 	unset($no_meta['meta.xml']);
@@ -232,4 +263,17 @@ function test_zip_entry_contents_ods_check()
 	pg_assert_same($unreadable, $error, 'product import: said so');
 
 	zip_entry_contents_test_clean($dir);
+}
+
+// An entry's name as the path its references resolve to.
+function test_zip_entry_path()
+{
+	pg_assert_same('css/a.css', pg_zip_entry_path('css/a.css'), 'a clean name as it is');
+	pg_assert_same('css/a.css', pg_zip_entry_path('./css//a.css'), 'dot segments and doubled slashes dropped');
+	pg_assert_same('css/a.css', pg_zip_entry_path('x/../css/a.css'), 'parent segment resolved');
+	pg_assert_same('a.css', pg_zip_entry_path('../../a.css'), 'never above the top');
+	pg_assert_same('a.css', pg_zip_entry_path('/a.css'), 'no leading slash');
+	pg_assert_same('site/img/', pg_zip_entry_path('site/./img/'), 'a directory keeps its slash');
+	pg_assert_same('', pg_zip_entry_path('./'), 'nothing left');
+	pg_assert_same("g\xF6rsel.png", pg_zip_entry_path("g\xF6rsel.png"), 'bytes of another encoding untouched');
 }

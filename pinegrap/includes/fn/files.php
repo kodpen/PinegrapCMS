@@ -866,8 +866,10 @@ function pg_zip_entry_size($archive, $entry)
  * that: an honest entry returns its size, one that inflates further returns
  * the extra byte and is refused, so an entry that declares a kilobyte and
  * inflates to gigabytes costs a kilobyte and one byte. An entry that holds
- * less than it declares comes back short and is refused as well. The
- * checksum is not compared here.
+ * less than it declares comes back short and is refused as well, and so is
+ * one that declares nothing over compressed data. A size past PHP_INT_MAX
+ * (negative on a 32-bit build) is too large. The checksum is not compared
+ * here.
  *
  * @param ZipArchive $zip
  * @param string|int $entry the entry's name, or its index
@@ -887,13 +889,22 @@ function pg_zip_entry_contents($zip, $entry, $limit, &$error)
         return null;
     }
 
-    if ((float) $stat['size'] > (float) $limit) {
+    if (((int) $stat['size'] < 0) || ((float) $stat['size'] > (float) $limit)) {
         $error = 'large';
 
         return null;
     }
 
     $size = (int) $stat['size'];
+
+    // An empty deflate stream is two bytes; anything longer behind a size of
+    // nothing is not an empty file.
+    if (($size === 0) && isset($stat['comp_size']) && ((int) $stat['comp_size'] > 2)) {
+        $error = 'damaged';
+
+        return null;
+    }
+
     $data = $zip->getFromIndex((int) $stat['index'], $size + 1);
 
     if (!is_string($data) || (strlen($data) !== $size)) {
@@ -940,7 +951,17 @@ function pg_zip_import_open($path, &$error)
 
     $zip = new ZipArchive();
 
-    if (!is_file((string) $path) || ($zip->open((string) $path) !== true)) {
+    // 22 bytes is the shortest zip (its end record alone); an empty file
+    // would otherwise open as an empty archive. An archive with no entries
+    // is refused the same way.
+    if (!is_file((string) $path) || (filesize((string) $path) < 22) || (@$zip->open((string) $path) !== true)) {
+        $error = lang('The zip file cannot be extracted, because it is not a valid zip file.');
+
+        return null;
+    }
+
+    if ($zip->numFiles < 1) {
+        $zip->close();
         $error = lang('The zip file cannot be extracted, because it is not a valid zip file.');
 
         return null;
@@ -968,7 +989,8 @@ function pg_zip_import_open($path, &$error)
             return null;
         }
 
-        $total += (float) $stat['size'];
+        // Negative on a 32-bit build: past PHP_INT_MAX, so past the ceiling.
+        $total += ((int) $stat['size'] < 0) ? (float) PG_ZIP_IMPORT_MAX_BYTES + 1 : (float) $stat['size'];
     }
 
     if ($total > PG_ZIP_IMPORT_MAX_BYTES) {
@@ -986,6 +1008,38 @@ function pg_zip_import_open($path, &$error)
     }
 
     return $zip;
+}
+
+/**
+ * An entry's name as a path: "." segments and doubled slashes dropped, ".."
+ * resolved and never above the top, no leading slash. A directory keeps its
+ * trailing slash. ("./css//a.css" and "x/../css/a.css" are "css/a.css".)
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_zip_entry_path($name)
+{
+    $name = (string) $name;
+    $out = array();
+
+    foreach (explode('/', $name) as $segment) {
+
+        if (($segment === '') || ($segment === '.')) {
+            continue;
+        }
+
+        if ($segment === '..') {
+            array_pop($out);
+            continue;
+        }
+
+        $out[] = $segment;
+    }
+
+    $path = implode('/', $out);
+
+    return (($path !== '') && (substr($name, -1) === '/')) ? $path . '/' : $path;
 }
 
 /**
