@@ -558,3 +558,95 @@ function test_returns_panel_card_html()
 	pg_assert_contains('text-bg-info', $html, 'status badge');
 	pg_assert_contains('view_returns.php', $html, 'to the list');
 }
+
+// Amounts typed as money become minor units; anything else is refused.
+function test_returns_amount_cents()
+{
+	pg_assert_same(12000, pg_return_amount_cents('120'));
+	pg_assert_same(12050, pg_return_amount_cents('120.5'), 'one decimal');
+	pg_assert_same(12050, pg_return_amount_cents(' 120,50 '), 'comma and spaces');
+	pg_assert_same(7, pg_return_amount_cents('0.07'));
+	pg_assert_same(0, pg_return_amount_cents('0'), 'zero is an amount');
+	pg_assert_same(500, pg_return_amount_cents(5), 'an integer');
+	pg_assert_same(-1, pg_return_amount_cents('-5'), 'negative');
+	pg_assert_same(-1, pg_return_amount_cents('1.234,56'), 'thousands separator');
+	pg_assert_same(-1, pg_return_amount_cents('12.345'), 'three decimals');
+	pg_assert_same(-1, pg_return_amount_cents(''), 'empty');
+	pg_assert_same(-1, pg_return_amount_cents(array('5')), 'not a string');
+}
+
+// The goods' share of what the customer paid: price, tax, less the order
+// discount spread over the lines.
+function test_returns_refund_estimate()
+{
+	$lines = array(
+		11 => array('price' => 10000, 'quantity' => 2, 'tax_total' => 4000),
+		12 => array('price' => 5000, 'quantity' => 1, 'tax_total' => 500),
+	);
+
+	pg_assert_same(12000, pg_return_refund_estimate($lines, array(11 => 1), 0), 'one unit with its tax');
+	pg_assert_same(29500, pg_return_refund_estimate($lines, array(11 => 2, 12 => 1), 0), 'everything');
+	pg_assert_same(24000, pg_return_refund_estimate($lines, array(11 => 5), 0), 'never more than was sold');
+	pg_assert_same(0, pg_return_refund_estimate($lines, array(99 => 1), 0), 'not a line of the order');
+	pg_assert_same(0, pg_return_refund_estimate($lines, array(), 0), 'nothing');
+
+	// 2500 off 25000 of goods: the first unit carries 1000 of it, and its
+	// tax is taken on the 9000 left.
+	pg_assert_same(10800, pg_return_refund_estimate($lines, array(11 => 1), 2500), 'with the order discount');
+}
+
+// Order lines against the ERP's refund lines: the same ids on the order's
+// own lines, position and product on an invoice.
+function test_returns_erp_line_map()
+{
+	$items = array(11 => 70, 12 => 71);
+
+	$order = array('source' => 'order', 'lines' => array(array('id' => 11, 'product_id' => 70), array('id' => 12, 'product_id' => 71), array('id' => -1, 'product_id' => 0)));
+	pg_assert_same(array(11 => 11, 12 => 12), pg_return_erp_line_map($items, $order), 'the order\'s own lines');
+
+	$invoice = array('source' => 'invoice', 'lines' => array(array('id' => 501, 'product_id' => 70), array('id' => 502, 'product_id' => 71), array('id' => 503, 'product_id' => 0)));
+	pg_assert_same(array(11 => 501, 12 => 502), pg_return_erp_line_map($items, $invoice), 'an invoice made from the order');
+
+	$swapped = array('source' => 'invoice', 'lines' => array(array('id' => 501, 'product_id' => 71), array('id' => 502, 'product_id' => 70)));
+	pg_assert_same(null, pg_return_erp_line_map($items, $swapped), 'products do not line up');
+
+	$short = array('source' => 'invoice', 'lines' => array(array('id' => 501, 'product_id' => 70)));
+	pg_assert_same(null, pg_return_erp_line_map($items, $short), 'a line missing');
+
+	pg_assert_same(null, pg_return_erp_line_map(array(13 => 72), $order), 'not on the order\'s lines');
+	pg_assert_same(null, pg_return_erp_line_map($items, null), 'no source');
+}
+
+// Reminded from three days before the deadline, again after it.
+function test_returns_reminder_stage()
+{
+	pg_assert_same('', pg_return_reminder_stage('2026-10-24', '2026-10-20'), 'four days left');
+	pg_assert_same('due', pg_return_reminder_stage('2026-10-23', '2026-10-20'), 'three days left');
+	pg_assert_same('due', pg_return_reminder_stage('2026-10-20', '2026-10-20'), 'the last day');
+	pg_assert_same('overdue', pg_return_reminder_stage('2026-10-19', '2026-10-20'), 'late');
+	pg_assert_same('', pg_return_reminder_stage('', '2026-10-20'), 'not due yet');
+	pg_assert_same('', pg_return_reminder_stage('2026-10-19', 'today'), 'no valid today');
+}
+
+// The refund mail names the amount and the lines, escaped, and says how the
+// money travels only when it went back the way it was paid.
+function test_returns_refund_mail_body()
+{
+	$html = pg_return_refund_mail_body(array(
+		'customer'     => 'Jane <Cooper>',
+		'order_number' => '1172',
+		'lines'        => array(array('name' => 'Mug <XL>', 'quantity' => 1)),
+		'amount'       => '₺120,00',
+		'by_payment'   => true,
+		'from_name'    => 'ACME',
+	));
+
+	pg_assert_contains('Jane &lt;Cooper&gt;', $html, 'name, escaped');
+	pg_assert_contains('1172', $html, 'order number');
+	pg_assert_contains('₺120,00', $html, 'amount');
+	pg_assert_contains('Mug &lt;XL&gt;', $html, 'line, escaped');
+	pg_assert_contains('the way you paid', $html, 'back to the payment');
+
+	$by_hand = pg_return_refund_mail_body(array('order_number' => '9', 'amount' => '₺5,00', 'by_payment' => false));
+	pg_assert_false(strpos($by_hand, 'the way you paid') !== false, 'a refund made another way');
+}

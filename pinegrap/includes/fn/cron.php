@@ -398,6 +398,19 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // Refunds of returns falling due: the staff's bell rings for each
+        // return whose refund is due within three days, and once more when it
+        // is late. Daily; a run with no goods on their way back is one indexed
+        // read. The first return whose goods leave puts it in the dispatch
+        // list (pg_return_reminder_job_switch_on()).
+        'return_reminder_job' => array(
+            'label'       => lang('Return refund reminders'),
+            'script'      => 'return_reminder_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
         // Product feeds for shopping agents and Merchant Center: each feed
         // that is on is rebuilt into data/feeds/. Daily, as the platforms
         // read them; a site with no feed on records the run and reads
