@@ -10,7 +10,7 @@ description: A link's window (target) written in _attrs: the PHP link and button
 
 ## What does the order view do?
 - `pg_sw_link_attrs_to_props()` (`includes/fn/widgets.php`) moves an `_attrs` `target` into the prop of every content link in the tree, and `target` and `rel` of every Button component drawn as a link; a prop already set wins, an empty value moves nothing, names compare in lower case like the renderer's skip.
-- `_render_system_widget_order_view()` calls it right after decoding the tree, before the not-found closure takes the tree. It covers layouts built from the starter tree before the change: their "Print Invoice" and "Track the Shipment" links kept the window in `_attrs` and opened in the same window.
+- `_render_system_widget_order_view()` calls it right after decoding the tree, before the not-found closure takes the tree (PR #878). It covers layouts built from the starter tree before the change: their "Print Invoice" and "Track the Shipment" links kept the window in `_attrs` and opened in the same window.
 - The starter tree gives every link `target: '_blank'` as a prop, `rel: noopener` in `_attrs` (the content link prints `rel` from `_attrs`).
 - Tested in `tests/widget_link_target_test.php`.
 
