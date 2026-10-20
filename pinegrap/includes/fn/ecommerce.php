@@ -1419,6 +1419,75 @@ function get_order_subtotal()
     }
     return $order_subtotal;
 }
+
+// Whether a cart line is charged when the order is placed: every line but a
+// recurring one that starts after $today, and every recurring line on the
+// ClearCommerce gateway, which charges recurring payments itself; the test
+// submit_order() puts its lines through. A recurring line gets its start date
+// written when the order is submitted (express_order.php, shopping_cart.php);
+// until then ('0000-00-00' or empty) it starts the product's $start_days after
+// today, the date it will be given.
+function pg_order_line_charged_today($recurring, $start_date, $start_days, $today, $clearcommerce)
+{
+    if (!$recurring) {
+        return true;
+    }
+    if ($clearcommerce) {
+        return false;
+    }
+    $start_date = (string) $start_date;
+    if (($start_date === '') || ($start_date === '0000-00-00')) {
+        $start_date = date('Y-m-d', strtotime($today . ' +' . max(0, (int) $start_days) . ' days'));
+    }
+    return ($start_date <= (string) $today);
+}
+
+// The subtotal of the cart's lines charged today (pg_order_line_charged_today()),
+// in minor units.
+function pg_order_subtotal_charged_today()
+{
+    $clearcommerce = (ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
+    $today = date('Y-m-d');
+    $subtotal = 0;
+    foreach ((array) db_items("SELECT
+
+            order_items.price,
+
+            order_items.quantity,
+
+            order_items.recurring_start_date,
+
+            products.recurring,
+
+            products.start
+
+        FROM order_items
+
+        LEFT JOIN products ON order_items.product_id = products.id
+
+        WHERE order_items.order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'") as $row) {
+        if (pg_order_line_charged_today($row['recurring'], $row['recurring_start_date'], $row['start'], $today, $clearcommerce)) {
+            $subtotal += $row['price'] * $row['quantity'];
+        }
+    }
+    return $subtotal;
+}
+
+// The part of the order discount that today's charge takes off, in minor
+// units. The cart works the discount out over every line (get_order_subtotal()),
+// but a recurring line that starts later, or any recurring line on the
+// ClearCommerce gateway, is not charged today; $subtotal is what is. The
+// discount is never more than that subtotal and never below zero, so the
+// order total does not drop below its tax and shipping.
+function pg_order_charged_discount($discount, $subtotal)
+{
+    $discount = max(0, (int) round((float) $discount));
+    $subtotal = (int) round((float) $subtotal);
+    if ($discount > $subtotal) {
+        $discount = max(0, $subtotal);
+    }
+    return $discount;
+}
 // Create function that is responsible for removing order items from an order
 // if product no longer exists or is disabled and also updating order item prices.
 function update_order_item_prices()
@@ -3516,6 +3585,20 @@ function apply_offers_to_cart()
 
                 WHERE id = '" . $discounted_ship_to['id'] . "'";
             $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        }
+    }
+    // The order discount was worked out over every line, but today's charge
+    // holds only the lines charged today: a recurring line that starts later
+    // is not. It is never more than that charge, so the cart, the order pages
+    // and submit_order() agree on a total that does not drop below its tax
+    // and shipping. A discount that comes to nothing uses up no offer.
+    if (!empty($_SESSION['ecommerce']['order_discount'])) {
+        $charged_discount = pg_order_charged_discount($_SESSION['ecommerce']['order_discount'], pg_order_subtotal_charged_today());
+        if ($charged_discount > 0) {
+            $_SESSION['ecommerce']['order_discount'] = $charged_discount;
+        } else {
+            db("UPDATE orders SET discount_offer_id = '0' WHERE id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'");
+            unset($_SESSION['ecommerce']['order_discount']);
         }
     }
     return array(
