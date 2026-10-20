@@ -1,6 +1,6 @@
 ---
 name: erp-auto-invoice-earchive
-description: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): auto invoice once paid or shipped built; card filters (schema), internet-sale UBL fields, threshold warnings left
+description: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
 ---
 
 ## Why?
@@ -8,9 +8,10 @@ description: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): a
 
 ## What is built?
 - Steps 1-2 (PR #697): the ERP card's "The invoice of a web order" (the existing enum), `erp_auto_invoice_decision()` with tests, `erp_auto_invoice_for_order()` at the end of the checkout, on Payment Received and on a new shipment, the invoicing lock in `erp_invoice_from_order()`, refusals on the panel bell. Behaviour: docs/memory/erp/erp-auto-invoice.md.
+- Step 1b (PR #958): the card's two filters, schema step 11.0.58 (`erp_auto_invoice_tax_number_only`, `erp_auto_invoice_min_total` in minor units), read in `erp_auto_invoice_decision()`.
 
 ## What is decided?
-- Setting card in Settings › Ecommerce › ERP: the existing enum plus "only for orders with a billing tax number" and "skip orders below N" (the two filters wait for their columns).
+- Setting card in Settings › Ecommerce › ERP: the existing enum plus two filters, only buyers with a tax number (the invoice's: the account's, else the contact's; the order keeps none) and a smallest order (the whole sale, a gift card included). A filtered order is left to the order screen without a bell row.
 - Writer: `erp_auto_invoice_for_order($order_id, $trigger)` in `includes/erp/order_bridge.php` runs the order card's own invoice step (`erp_order_flow_run()`, which calls `erp_invoice_from_order()`), so the card's gates and the waybill tie-back apply; one invoice per order (the ERP rule "no splitting an order into several invoices" holds). Triggers: `order_paid` (gateway payment at checkout, offline payment marked paid, on-account, nothing left to pay) and `order_shipped` (a recipient just shipped). Called from the existing event points, never from the totals code.
 - Counter sales are never invoiced by it (the till invoices them); an order whose invoice was cancelled is left to the operator.
 - Queue worker: the e-document send depends on the `erp_edoc_queue` worker from `erp-edocument-leftovers.md`; until it exists the invoice is created and the send stays a panel step (the card says so). Built that way.
@@ -19,7 +20,6 @@ description: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): a
 - Legacy Paraşüt order export (`includes/fn/parasut.php`) stays untouched.
 
 ## What remains?
-1b. The two card filters: two config columns in a 2026.11.0 step (for example `erp_auto_invoice_tax_number_only` TINYINT(1), `erp_auto_invoice_min_total` INT in minor units); ask the owner before the schema step, then read them in `erp_auto_invoice_decision()` (S).
 3. Internet-sale fields in the UBL builder (`includes/erp/edoc/ubl.php`) (S).
 4. Threshold job + status check (S).
 5. When done: decisions move to docs/memory/erp/erp-auto-invoice.md and this file is deleted.
@@ -29,4 +29,4 @@ description: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): a
 - Once the queue worker exists: enqueue the e-document send right after the automatic invoice, as first planned.
 
 ## Where to start?
-- Step 1b once the owner approves the two columns (read docs/memory/erp/erp-auto-invoice.md and the `pinegrap-sema-adimi` skill); otherwise step 4.
+- Step 4 (no outside dependency); step 3 needs the İşbaşı test environment to check the UBL fields. Read docs/memory/erp/erp-auto-invoice.md first.

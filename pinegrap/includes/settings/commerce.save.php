@@ -377,6 +377,15 @@ function pg_parasut_credentials_for_save()
         }
         $sql_erp_due .= "
             erp_auto_invoice_on = '" . escape($erp_auto_invoice_value) . "',";
+
+        // Its two filters (11.0.58), drawn with the select, so a switch that
+        // did not come is one left off. The amount is typed in whole units of
+        // the base currency and kept in minor units.
+        if (waf_table_has_column('config', 'erp_auto_invoice_tax_number_only') && waf_table_has_column('config', 'erp_auto_invoice_min_total')) {
+            $sql_erp_due .= "
+            erp_auto_invoice_tax_number_only = '" . ((post_value('erp_auto_invoice_tax_number_only') == 1) ? 1 : 0) . "',
+            erp_auto_invoice_min_total = '" . (min(10000000, max(0, (int) post_value('erp_auto_invoice_min_total'))) * 100) . "',";
+        }
     }
 
     // The walk-in sales account (4.59): an account that exists, or none.
