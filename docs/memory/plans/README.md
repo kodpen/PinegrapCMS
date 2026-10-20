@@ -4,14 +4,14 @@
 
 Unfinished and shelved plans: remaining work, decisions made, open questions, where to start.
 
-- accessibility-and-consent-tools.md: Plan (approved 2026-10-19; consent notice done, PR #619): designer contrast rule, nightly WCAG 2.2 Level A report, accessibility statement
+- accessibility-and-consent-tools.md: Plan (approved 2026-10-19; consent notice PR #619 and statement block done): designer contrast rule, nightly WCAG 2.2 Level A report, PDF export of the report
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, every planned text button and the browser's model done): "Write with AI"; image alt text and AI-generated labelling (schema) left
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, designer bindings, kept copy, API and typed values built): pre-information form and distance sales contract; left: My Account link, KVKK consent, Turkish seed
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule, CI checks
 - customer-returns-flow.md: Plan (approved 2026-10-19, not started): customer return request in My Account, approval, return carrier code, status, 14-day timers, bridge to iyzico refund and ERP return invoice
-- designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (data-binding completion, Emmet license, formatter, minimap)
+- designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
 - docker-image.md: Plan (approved 2026-10-19, steps 1-4 built in PRs #565, #621 and #689): docker/ compose stack in the release tree, unattended install service, README section; GHCR publishing left
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): auto invoice once paid or shipped built; card filters (schema), internet-sale UBL fields, threshold warnings left
@@ -39,7 +39,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - seo-toolkit-redirects.md: Plan (approved 2026-10-19, not started): redirect manager (301/302, wildcard, CSV, auto 301 on slug change), 404 log, per-page canonical and JSON-LD editor, llms.txt and robots AI-bot policy UI
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
 - shipping-management.md: Shipping plan (2026-10-08; phases 1 and 2 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
-- sms-and-iys.md: Plan (approved 2026-10-19, in progress: provider layer, Netgsm driver and settings card done): queue, order/shipping/OTP messages, İYS consent sync for e-mail and SMS marketing, 3-year consent log
+- sms-and-iys.md: Plan (approved 2026-10-19, in progress: provider layer, Netgsm driver, settings card and queue done): order/shipping/OTP messages, İYS consent sync for e-mail and SMS marketing, 3-year consent log
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
 - storefront-conversion-pack.md: Plan (approved 2026-10-19, not started): verified-buyer product reviews with request e-mail and real aggregateRating, wishlist, back-in-stock notice, bundles as a later phase
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
