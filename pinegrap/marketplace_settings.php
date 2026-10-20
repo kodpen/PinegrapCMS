@@ -96,7 +96,17 @@ if ($_POST) {
 
 		$credentials = mp_settings_credentials_from_post($provider);
 
+		$provider_meta = mp_providers();
+
 		foreach ($credentials as $field => $value) {
+
+			// A select always answers one of its options; only a text box can
+			// be left empty.
+			if (mp_provider_field_is_select($provider_meta[$provider]['fields'][$field])) {
+
+				continue;
+
+			}
 
 			if (trim((string)$value) === '') {
 
@@ -384,7 +394,12 @@ if ($_POST) {
 
 		$group_id = isset($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
 
-		$ready = mp_listing_items($account, $group_id);
+		$ready = mp_can($account['provider'], 'create_listings')
+			? mp_listing_items($account, $group_id)
+			: array('ok' => false, 'error' => lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(mp_provider_name($account['provider']))
+			)));
 
 		if (!$ready['ok']) {
 
@@ -703,23 +718,59 @@ function mp_settings_ago($timestamp) {
 // The credential fields this provider asks for, read out of the form.
 function mp_settings_credentials_from_post($provider) {
 
-	$providers = mp_providers();
+	return mp_provider_credentials($provider, $_POST);
 
-	if (!isset($providers[$provider]['fields'])) {
+}
 
-		return array();
+// One credential field of the create or edit form.
+//
+// $current is the stored value when editing. A text field never shows it back
+// - a blank box keeps it, the placeholder hints at it - while a select shows
+// the stored choice, because it is not a secret and has no blank state.
+// $disabled keeps the field of a marketplace that is not chosen out of the
+// submitted form.
+function mp_settings_credential_field($prefix, $field, $meta, $current, $editing, $disabled = false) {
+
+	$id = $prefix . '_' . $field;
+
+	$out = '
+			<div class="mb-3">
+				<label class="form-label" for="' . h($id) . '">' . h(lang($meta['label'])) . '</label>';
+
+	if (mp_provider_field_is_select($meta)) {
+
+		$selected = ($current !== '' && isset($meta['options'][$current]))
+			? $current
+			: (isset($meta['default']) ? (string)$meta['default'] : '');
+
+		$out .= '
+				<select class="form-select" id="' . h($id) . '" name="' . h($field) . '"' . ($disabled ? ' disabled' : '') . '>';
+
+		foreach ((array)$meta['options'] as $value => $label) {
+
+			$out .= '<option value="' . h((string)$value) . '"' . (((string)$value === $selected) ? ' selected' : '') . '>'
+				. h(lang($label)) . '</option>';
+
+		}
+
+		$out .= '
+				</select>
+			</div>';
+
+		return $out;
 
 	}
 
-	$values = array();
+	$out .= '
+				<input type="' . (!empty($meta['secret']) ? 'password' : 'text') . '" class="form-control"
+					id="' . h($id) . '" name="' . h($field) . '" autocomplete="off"'
+					. ($editing ? ' placeholder="' . h(mp_credential_hint($current)) . '"' : '')
+					. ($disabled ? ' disabled' : '') . '>'
+				. ($editing ? '
+				<div class="form-text">' . lang('Leave empty to keep what is stored.') . '</div>' : '') . '
+			</div>';
 
-	foreach ($providers[$provider]['fields'] as $field => $meta) {
-
-		$values[$field] = isset($_POST[$field]) ? trim($_POST[$field]) : '';
-
-	}
-
-	return $values;
+	return $out;
 
 }
 
@@ -971,6 +1022,11 @@ if (!$accounts) {
 
 if ($selected) {
 
+	// A marketplace that cannot open listings yet still has its categories and
+	// attributes mapped here; only the button that would queue the listing is
+	// left out, since the job would never pick that row up.
+	$can_list = mp_can($selected['provider'], 'create_listings');
+
 	$provider_fields = isset($providers[$selected['provider']]['fields'])
 		? $providers[$selected['provider']]['fields']
 		: array();
@@ -981,7 +1037,9 @@ if ($selected) {
 	<div class="card mb-3">
 		<div class="card-header d-flex align-items-center flex-wrap gap-2">
 			<i class="bi bi-sliders me-1"></i><b>' . h($selected['name']) . '</b>
-			<span class="small opacity-75">' . h(mp_provider_name($selected['provider'])) . '</span>
+			<span class="small opacity-75">' . h(mp_provider_name($selected['provider'])) . '</span>'
+			. ((isset($selected['credentials']['environment']) && $selected['credentials']['environment'] === 'stage')
+				? ' <span class="mp-pill off">' . lang('Test environment') . '</span>' : '') . '
 			<div class="ms-auto d-flex gap-2">
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
@@ -1186,7 +1244,7 @@ if ($selected) {
 						href="marketplace_settings.php?account=' . $selected_id . '&amp;group=' . (int)$article['id'] . '#mp-list">'
 						. ($is_open ? lang('Close') : lang('Set up')) . '</a>';
 
-			if ((string)$article['remote_category_id'] !== '') {
+			if ((string)$article['remote_category_id'] !== '' && $can_list) {
 
 				echo '
 					<form method="post" action="marketplace_settings.php" class="d-inline">
@@ -1365,20 +1423,33 @@ foreach ($providers as $key => $meta) {
 
 $first_provider = key($providers);
 
+// Every marketplace's fields are drawn, one block each; the script below shows
+// the chosen one's. The others are disabled as well as hidden so that only the
+// chosen marketplace's credentials are posted.
 $new_fields = '';
 
-if (isset($providers[$first_provider]['fields'])) {
+foreach ($providers as $key => $meta) {
 
-	foreach ($providers[$first_provider]['fields'] as $field => $meta) {
+	$is_first = ($key === $first_provider);
 
-		$new_fields .= '
-			<div class="mb-3">
-				<label class="form-label" for="new_' . h($field) . '">' . h(lang($meta['label'])) . '</label>
-				<input type="' . (!empty($meta['secret']) ? 'password' : 'text') . '" class="form-control"
-					id="new_' . h($field) . '" name="' . h($field) . '" autocomplete="off">
-			</div>';
+	$new_fields .= '
+				<div data-mp-fields="' . h($key) . '"' . ($is_first ? '' : ' class="d-none"') . '>';
+
+	foreach ((isset($meta['fields']) ? $meta['fields'] : array()) as $field => $field_meta) {
+
+		$new_fields .= mp_settings_credential_field('new_' . $key, $field, $field_meta, '', false, !$is_first);
 
 	}
+
+	if (!empty($meta['help'])) {
+
+		$new_fields .= '
+					<div class="form-text mt-n2 mb-3">' . h(lang($meta['help'])) . '</div>';
+
+	}
+
+	$new_fields .= '
+				</div>';
 
 }
 
@@ -1426,14 +1497,14 @@ if ($selected) {
 
 		$current = isset($selected['credentials'][$field]) ? (string)$selected['credentials'][$field] : '';
 
+		$edit_fields .= mp_settings_credential_field('edit', $field, $meta, $current, true);
+
+	}
+
+	if (!empty($providers[$selected['provider']]['help'])) {
+
 		$edit_fields .= '
-			<div class="mb-3">
-				<label class="form-label" for="edit_' . h($field) . '">' . h(lang($meta['label'])) . '</label>
-				<input type="' . (!empty($meta['secret']) ? 'password' : 'text') . '" class="form-control"
-					id="edit_' . h($field) . '" name="' . h($field) . '" autocomplete="off"
-					placeholder="' . h(mp_credential_hint($current)) . '">
-				<div class="form-text">' . lang('Leave empty to keep what is stored.') . '</div>
-			</div>';
+			<div class="form-text mt-n2 mb-3">' . h(lang($providers[$selected['provider']]['help'])) . '</div>';
 
 	}
 
@@ -1532,7 +1603,9 @@ if ($selected) {
 					<label class="form-label" for="match_code">' . lang('Code on the marketplace') . '</label>
 					<input type="text" class="form-control" id="match_code" name="remote_code" autocomplete="off">
 					<div class="form-text">'
-						. lang('Leave empty to use the same code as here. On n11 this is the stock code (stockCode) of the listing.') . '</div>
+						. (($selected['provider'] === 'trendyol')
+							? lang('Leave empty to use the same code as here. On Trendyol this is the barcode of the listing.')
+							: lang('Leave empty to use the same code as here. On n11 this is the stock code (stockCode) of the listing.')) . '</div>
 				</div>
 			</div>
 			<div class="modal-footer">
@@ -1590,6 +1663,40 @@ echo '
 
 <script>
 (function () {
+
+	// The new-account form shows the chosen marketplace\'s fields only. The
+	// others are disabled too, so they are not posted.
+	var provider = document.getElementById(\'new_provider\');
+
+	if (provider) {
+
+		var showFields = function () {
+
+			var blocks = document.querySelectorAll(\'[data-mp-fields]\');
+
+			for (var i = 0; i < blocks.length; i++) {
+
+				var chosen = (blocks[i].getAttribute(\'data-mp-fields\') === provider.value);
+
+				blocks[i].classList.toggle(\'d-none\', !chosen);
+
+				var inputs = blocks[i].querySelectorAll(\'input, select\');
+
+				for (var j = 0; j < inputs.length; j++) {
+
+					inputs[j].disabled = !chosen;
+
+				}
+
+			}
+
+		};
+
+		provider.addEventListener(\'change\', showFields);
+
+		showFields();
+
+	}
 
 	var products = ' . json_encode($unmatched, JSON_UNESCAPED_UNICODE) . ';
 
