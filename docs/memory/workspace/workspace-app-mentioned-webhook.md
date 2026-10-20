@@ -1,10 +1,10 @@
 ---
 name: workspace-app-mentioned-webhook
-description: workspace.app.mentioned: an application mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload, discussions
+description: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload
 ---
 
 ## What does it do?
-- A message that mentions an application (`<@app:N>`) queues `workspace.app.mentioned` for that application's subscriptions; an outside service answers with `POST /workspace/channels/{channel_id}/messages`, no AI code in the site. Before it no event told an application it was mentioned.
+- A message that mentions an application (`<@app:N>`) queues `workspace.app.mentioned` for that application's subscriptions; an outside service answers with `POST /workspace/channels/{channel_id}/messages`, no AI code in the site (PR #809). Before it no event told an application it was mentioned.
 - Once per application per message (a repeated tag counts once); an edit tells only the applications it adds (`edited: true`), as with people. People's and applications' messages (API, Claude's answers) count; system lines, guests (tags stripped) and MCP agent answers (tags neutralised) mention nobody.
 
 ## Who receives it?
