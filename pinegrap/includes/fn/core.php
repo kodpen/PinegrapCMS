@@ -3950,6 +3950,72 @@ function remove_config_define($content, $key, $type = 'string') {
     );
 }
 
+// A text field of a settings form as it goes into data/config.php: as typed,
+// minus control characters and the white space around it. A text box never
+// sends a control character; one in a forged request would put a line break
+// inside the define, where pg_config_define_value_pattern() no longer finds
+// it and the next save adds a second line. A list or a missing field is ''.
+function pg_config_form_value($value) {
+    if (!is_string($value)) {
+        return '';
+    }
+
+    return trim(preg_replace('/[\x00-\x1F\x7F]/', '', $value));
+}
+
+// The settings of the private label screen (private_label.php): form field
+// => the data/config.php constant it is saved as.
+function pg_private_label_config_keys() {
+    $keys = array(
+        'logo_url' => 'LOGO_URL',
+        'control_panel_stylesheet_url' => 'CONTROL_PANEL_STYLESHEET_URL',
+    );
+
+    for ($i = 1; $i <= 5; $i++) {
+        $keys['footer_link_' . $i . '_label'] = 'FOOTER_LINK_' . $i . '_LABEL';
+        $keys['footer_link_' . $i . '_url'] = 'FOOTER_LINK_' . $i . '_URL';
+    }
+
+    return $keys;
+}
+
+// The text of data/config.php after the private label screen is saved.
+//
+// $posted holds the form (field => value), $current what each constant holds
+// now (constant => value, null when it is not defined; for LOGO_URL and
+// CONTROL_PANEL_STYLESHEET_URL init.php's default when config.php names
+// none). With $enabled false every private label define is removed.
+//
+// A value is stored as typed: update_config_define() escapes quotes and
+// backslashes, so an address or a label with an apostrophe reads back as it
+// was. An empty value removes the define, so the default logo and stylesheet
+// or no link apply. A value the constant already holds leaves the file
+// alone: a line written by hand in another form (double quotes) is not
+// matched by the writer, which would add a second define for it.
+function pg_private_label_config_content($content, $enabled, $posted, $current) {
+    $content = (string) $content;
+
+    foreach (pg_private_label_config_keys() as $field => $constant) {
+        if (!$enabled) {
+            $content = remove_config_define($content, $constant);
+            continue;
+        }
+
+        $value = pg_config_form_value(isset($posted[$field]) ? $posted[$field] : '');
+        $now = isset($current[$constant]) ? (string) $current[$constant] : null;
+
+        if ($now === $value) {
+            continue;
+        }
+
+        $content = ($value === '')
+            ? remove_config_define($content, $constant)
+            : update_config_define($content, $constant, $value);
+    }
+
+    return $content;
+}
+
 
 // Hosted mode: the site runs on a shared hosting account next to other
 // sites that belong to other people. Everything that would run PHP written
