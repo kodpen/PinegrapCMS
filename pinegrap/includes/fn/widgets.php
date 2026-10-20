@@ -4734,6 +4734,13 @@ function pg_sw_item_summary($html, $max = 140)
 //     visibility flag: has_timeline (true when at least one event has a timestamp)
 //     Events emitted only when their timestamps are real (no hollow rows).
 //
+//   Legal documents (copies kept at checkout, includes/fn/legal_documents.php):
+//     __legal_preinfo_url      the pre-information form's kept copy
+//     __legal_contract_url     the distance sales contract's kept copy
+//     visibility flags: has_legal_documents, has_legal_preinfo, has_legal_contract
+//     Empty in the receipt e-mail (it attaches the copies). A layout that
+//     binds neither link gets a card listing them after the widget.
+//
 //   Invoice print:
 //     __order_invoice_pdf_url  URL to customer-facing printable invoice endpoint
 //     visibility flag: can_print_invoice (true only for the logged-in owner)
@@ -5409,6 +5416,26 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     }
     $can_print_invoice = ($current_user_id > 0 && $current_user_id === (int)$order['user_id']);
 
+    // ── Legal documents ───────────────────────────────────────────────
+    // The pre-information form and the distance sales contract as they were
+    // kept with the order at checkout (includes/fn/legal_documents.php).
+    // legal_document.php shows a copy to the visitors this widget lets in:
+    // the signed-in owner and the guest who has just placed the order. The
+    // receipt e-mail carries the copies as attachments and its reader may
+    // have no session to open a link with, so it gets none. A kept copy
+    // stays readable after the store switches the documents off.
+    $legal_urls = pg_legal_document_copy_urls(
+        empty($sw_ctx['email']) ? pg_legal_documents_of_order((int)$order['id']) : array(),
+        (int)$order['id']
+    );
+    // A layout made before the links existed binds neither of them: the
+    // kept copies are listed in a card after the widget instead, so every
+    // design shows them. A layout that binds a link places them itself.
+    $legal_block = (strpos((string)$tree_json, '__legal_preinfo_url') === false
+                    && strpos((string)$tree_json, '__legal_contract_url') === false)
+        ? pg_legal_documents_order_view_block($legal_urls)
+        : '';
+
     // ── Apply visibility bindings BEFORE tree split + render ──────────
     // Reuses _eo_apply_visibility_bindings (defined in this same file for
     // express_order). The walker is widget-agnostic — it drops any node
@@ -5480,6 +5507,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // Print invoice button: logged-in owner only. Guests viewing a
         // retrieved order won't see the action.
         'can_print_invoice'        => $can_print_invoice,
+        // Legal documents: the card while the order has a kept copy, each
+        // link while its own copy is kept.
+        'has_legal_documents'      => implode('', $legal_urls) !== '',
+        'has_legal_preinfo'        => $legal_urls['preinfo'] !== '',
+        'has_legal_contract'       => $legal_urls['contract'] !== '',
     );
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
@@ -5702,6 +5734,12 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // URL to the customer-facing printable invoice endpoint. Owner
         // check is enforced server-side; this token only builds the link.
         '__order_invoice_pdf_url'   => h($invoice_print_url),
+
+        // ── Legal documents ────────────────────────────────────────────
+        // The copies kept with the order, the names the checkout's links
+        // carry. Empty when the order has no copy of that document.
+        '__legal_preinfo_url'       => h($legal_urls['preinfo']),
+        '__legal_contract_url'      => h($legal_urls['contract']),
     );
 
     if ($static_html === '') {
@@ -5712,7 +5750,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         foreach ($skeys as $k) {
             $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
         }
-        return pg_sw_sweep_tokens($rendered);
+        return pg_sw_sweep_tokens($rendered) . $legal_block;
     }
 
     $skeys = array_keys($static_values);
@@ -5722,7 +5760,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     }
     $static_html = pg_sw_sweep_tokens($static_html);
 
-    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
+    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $legal_block;
 }
 
 // Render a 'membership' system widget: the membership activation form.

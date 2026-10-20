@@ -31815,7 +31815,9 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Order history / document'), tokens: [
             ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
-            ['__order_invoice_pdf_url', _sdT('Printable invoice URL')]
+            ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
+            ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
+            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -32321,6 +32323,9 @@ const StyleDesigner = (function () {
             ['has_surcharge',           _sdT('There is a card surcharge')],
             ['has_timeline',            _sdT('The order has a history')],
             ['can_print_invoice',       _sdT('The invoice can be printed')],
+            ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
+            ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
+            ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
             ['can_cancel',              _sdT('The order can be cancelled')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
@@ -46894,6 +46899,43 @@ const StyleDesigner = (function () {
                                         createNode('semantic', { tag: 'div',
                                             customName: _sdT('Timeline (HTML)'),
                                             _bindings: { text: '__timeline' } })
+                                    ])
+                                ]),
+
+                                // ── Legal Documents — the copies kept at checkout ──
+                                // has_legal_documents keeps the card off orders
+                                // placed without the documents, and each line
+                                // has its own flag. The server points each href
+                                // at the order's kept copy (legal_document.php),
+                                // which opens only for the order's customer. The
+                                // window is the link's target prop: the server's
+                                // link renderer does not take it from _attrs.
+                                createNode('semantic', { tag: 'div',
+                                    cssClass: 'card mb-3', customName: _sdT('Legal Documents Card'),
+                                    _bindings: { eo_visible_if: 'has_legal_documents' } }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-header' }, [
+                                        createNode('content', { contentType: 'heading', tag: 'h6',
+                                            text: _sdT('Legal Documents'), cssClass: 'mb-0 fw-semibold' })
+                                    ]),
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'mb-1',
+                                            customName: _sdT('Pre-Information Form'),
+                                            _bindings: { eo_visible_if: 'has_legal_preinfo' } }, [
+                                            createNode('content', { contentType: 'link',
+                                                text: _sdT('Pre-Information Form'), href: '#', target: '_blank',
+                                                customName: _sdT('Pre-Information Form Link'),
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
+                                                _bindings: { href: '__legal_preinfo_url' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'div',
+                                            customName: _sdT('Distance Sales Contract'),
+                                            _bindings: { eo_visible_if: 'has_legal_contract' } }, [
+                                            createNode('content', { contentType: 'link',
+                                                text: _sdT('Distance Sales Contract'), href: '#', target: '_blank',
+                                                customName: _sdT('Distance Sales Contract Link'),
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
+                                                _bindings: { href: '__legal_contract_url' } })
+                                        ])
                                     ])
                                 ]),
 

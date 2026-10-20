@@ -24095,5 +24095,13 @@
     "Paraşüt no longer has this card.": "Paraşüt'te bu kart artık yok.",
     "Paraşüt would not hand over the card: {var:1}": "Paraşüt kartı vermedi: {var:1}",
     "Paraşüt would not open the card: {var:1}": "Paraşüt kartı açmadı: {var:1}",
-    "Paraşüt took the card but did not say its id. Read the list again to find it.": "Paraşüt kartı aldı ama kimliğini bildirmedi. Bulmak için listeyi yeniden okuyun."
+    "Paraşüt took the card but did not say its id. Read the list again to find it.": "Paraşüt kartı aldı ama kimliğini bildirmedi. Bulmak için listeyi yeniden okuyun.",
+    "Pre-Information Form copy URL (kept with the order)": "Ön Bilgilendirme Formu kopyasının adresi (siparişle saklanan)",
+    "Distance Sales Contract copy URL (kept with the order)": "Mesafeli Satış Sözleşmesi kopyasının adresi (siparişle saklanan)",
+    "Legal documents are kept with the order": "Siparişle saklanan yasal belge var",
+    "The pre-information form is kept with the order": "Ön bilgilendirme formu siparişle saklandı",
+    "The distance sales contract is kept with the order": "Mesafeli satış sözleşmesi siparişle saklandı",
+    "Legal Documents Card": "Yasal Belgeler Kartı",
+    "Pre-Information Form Link": "Ön Bilgilendirme Formu Linki",
+    "Distance Sales Contract Link": "Mesafeli Satış Sözleşmesi Linki"
 }

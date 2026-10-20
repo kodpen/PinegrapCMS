@@ -26,5 +26,8 @@ description: Legal documents (pre-information form, distance sales contract): se
 ## Where is the checkout side?
 - docs/memory/commerce/checkout-legal-checkboxes.md
 
+## Where does the customer find them later?
+- The order view widget (My Account, thank-you page) links each kept copy: docs/memory/commerce/order-view-legal-documents.md.
+
 ## What is left?
-- docs/memory/plans/checkout-legal-documents.md (designer bindings, My Account link, API, KVKK).
+- docs/memory/plans/checkout-legal-documents.md (KVKK consent, Turkish seed).
