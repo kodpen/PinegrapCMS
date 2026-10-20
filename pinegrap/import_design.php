@@ -1447,17 +1447,23 @@ function import_design_fetch_once($url, $head_only)
     if (!function_exists('curl_init')) {
         $context = get_http_stream_context($head_only ? 'HEAD' : 'GET');
 
-        $content = @file_get_contents($url, false, $context);
+        // The response headers are taken from the stream on every PHP version.
+        // PHP 8.5 deprecates the variable file_get_contents() leaves them in and
+        // reports a read of it when this file is compiled, even in a branch that
+        // never runs there.
+        $stream = @fopen($url, 'rb', false, $context);
 
-        // PHP 8.5 deprecated the magic $http_response_header variable in favour of
-        // http_get_last_response_headers(). Prefer the function where it exists
-        // (8.4 and up) and fall back to the variable on everything older, so this
-        // keeps working across the whole supported range.
-        $response_headers = function_exists('http_get_last_response_headers')
-            ? http_get_last_response_headers()
-            : (isset($http_response_header) ? $http_response_header : null);
+        if ($stream === false) {
+            return false;
+        }
 
-        if (!is_array($response_headers) || !$response_headers) {
+        $meta = stream_get_meta_data($stream);
+        $content = stream_get_contents($stream);
+        fclose($stream);
+
+        $response_headers = (isset($meta['wrapper_data']) && is_array($meta['wrapper_data'])) ? $meta['wrapper_data'] : array();
+
+        if (!$response_headers) {
             return false;
         }
 

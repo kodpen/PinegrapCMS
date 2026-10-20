@@ -16,4 +16,7 @@ description: 2026.4.5+ integrity check using the GitHub tag tree (git blob SHA-1
 - Before a release replace both with the current `https://curl.se/ca/cacert.pem`; they must be byte-for-byte identical.
 - `data/` is outside the hash scope, but the iyzipay copy is inside `includes/`, so rerun `_software_create_hash.php` after replacing it.
 
+## How does the GitHub fetch read the answer without cURL?
+- `pg_integrity_http_get()` opens the address with `fopen()` and takes the status lines from `stream_get_meta_data()['wrapper_data']`. It used to read `$http_response_header`; PHP 8.5 deprecates that variable and reports a read of it when the file is compiled, so `includes/fn/system_status.php` printed "Deprecated" at the top of panel pages although cURL answered every request. `import_design_fetch_once()` reads its headers the same way, and `tests/http_response_header_test.php` fails on any read of the variable outside `includes/dompdf/` (dompdf assigns it before reading, which PHP 8.5 accepts).
+
 Related: docs/memory/core/file-integrity-check.md
