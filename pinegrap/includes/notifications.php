@@ -91,7 +91,9 @@ function pg_notification_visible($notification, $rights)
 		return (($target > 0) && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED);
 	}
 
-	if (($action == 'new_order') || ($action == 'out_stock')) {
+	// A customer's return request, or their word that the goods are on their
+	// way back: for whoever manages the orders (includes/fn/returns.php).
+	if (($action == 'new_order') || ($action == 'out_stock') || ($action == 'order_return')) {
 		return ((ECOMMERCE === true) && $rights['manage_ecommerce']);
 	}
 
@@ -306,6 +308,20 @@ function pg_notification_display($notification)
 		$display['url']     = 'view_order.php?id=' . (int) $notification['order_id'];
 		$display['icon']     = 'assets/images/notification-order.png';
 		$display['badge']    = 'assets/images/notification-order-badge.png';
+		$display['action']  = $action;
+
+	} elseif ($action == 'order_return') {
+
+		// title is the order number, order_total what happened (requested,
+		// or shipped when the customer sent the goods back) and form_id the
+		// return (pg_return_notify_staff()).
+		$display['title']   = ((string) ($notification['order_total'] ?? '') === 'shipped')
+			? lang('A customer sent back the goods of a return.')
+			: lang('A customer asked to return goods.');
+		$display['details'] = lang('Order Number') . ': #' . h($notification['title']);
+		$display['url']     = 'view_order.php?id=' . (int) $notification['order_id'];
+		$display['icon']    = 'assets/images/notification-order.png';
+		$display['badge']   = 'assets/images/notification-order-badge.png';
 		$display['action']  = $action;
 
 	} elseif ($action == 'out_stock') {
