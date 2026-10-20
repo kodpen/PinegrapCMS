@@ -4627,7 +4627,15 @@ function _render_component_html($props, $pad, $kids = '')
                     : "\n" . $kids . $pad . $text;
             }
             if ($tag === 'a') {
-                $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'));
+                // The window and the relationship are the Target and
+                // Relationship options' props. When a prop is empty, an
+                // _attrs entry of the same name (typed in the Attrs panel)
+                // prints, as it does on the canvas; a prop that is set wins
+                // and its _attrs entry is skipped, so each prints once.
+                $btn_skip = array('type', 'href');
+                if ($target !== '') $btn_skip[] = 'target';
+                if ($rel !== '')    $btn_skip[] = 'rel';
+                $btn_extra = _render_extra_attrs($props, $btn_skip);
                 $html .= $pad . '<a href="' . $href . '"' . $target . $rel . ' class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</a>' . "\n";
             } elseif ($tag === 'input') {
                 // <input> uses the button label as its `value` attr — skip
@@ -4822,9 +4830,19 @@ function _render_content_html($props, $pad, $kids = '')
             $href   = h(isset($props['href'])     ? $props['href']     : '#');
             $cls    = !empty($props['cssClass'])  ? ' class="' . h($props['cssClass']) . '"' : '';
             $target = !empty($props['target'])    ? ' target="' . h($props['target']) . '"' : '';
+            $rel    = !empty($props['rel'])       ? ' rel="'    . h($props['rel'])    . '"' : '';
             $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props, array('href', 'target'));
-            $html  .= $pad . '<a href="' . $href . '"' . $cls . $target
+            // The window and the relationship are the Link Options' props.
+            // When a prop is empty, an _attrs entry of the same name (typed
+            // in the Attrs panel, or kept there by an older layout) prints,
+            // as it does on the canvas; a prop that is set wins and its
+            // _attrs entry is skipped, so each prints once. A link without
+            // the props draws as before (its _attrs rel keeps its place).
+            $link_skip = array('href');
+            if ($target !== '') $link_skip[] = 'target';
+            if ($rel !== '')    $link_skip[] = 'rel';
+            $extra_attrs = _render_extra_attrs($props, $link_skip);
+            $html  .= $pad . '<a href="' . $href . '"' . $cls . $target . $rel
                 . $style_attr . $extra_attrs . '>' . $text
                 . ($kids !== '' ? "\n" . $kids . $pad : '') . '</a>' . "\n";
             break;
