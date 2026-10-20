@@ -56,7 +56,6 @@
                         <input type="text" name="first_name" id="first_name" placeholder="First Name*">
 						<input type="text" name="last_name" id="last_name" placeholder="Last Name*">
             			<input type="email" name="email_address" id="register_email_address" placeholder="Email*">
-            			<input type="email" name="email_address_verify" id="email_address_verify" placeholder="Confirm Email*">
                         
                         <?php if ($strong_password_help): ?>
                         <?=$strong_password_help?>
