@@ -4,7 +4,7 @@ description: Paraşüt's customer and supplier cards in ERP › Account sync (th
 ---
 
 ## What does the Paraşüt driver hand to the account sync?
-- The driver declares `accounts`, so ERP › Account sync (`erp_account_sync.php`, `includes/erp/edoc/account_sync.php`) works on Paraşüt's contacts with the three operations of that file's contract:
+- The driver declares `accounts` (#711), so ERP › Account sync (`erp_account_sync.php`, `includes/erp/edoc/account_sync.php`) works on Paraşüt's contacts with the three operations of that file's contract:
   - `erp_edoc_parasut_accounts($page)`: `GET contacts?sort=id&page[number]=…&page[size]=25`, counts from `meta.total_count` / `meta.total_pages` (`erp_edoc_parasut_contacts_read()`). Sorted by id: the list's own order is `-balance`, which moves while a read pages through it.
   - `erp_edoc_parasut_account($id)`: `GET contacts/{id}`; 404 answers "Paraşüt no longer has this card".
   - `erp_edoc_parasut_account_save($card, $id)`: `POST contacts` ('' id) or `PUT contacts/{id}`.
