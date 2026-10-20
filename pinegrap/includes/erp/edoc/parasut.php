@@ -702,10 +702,52 @@ function erp_edoc_parasut_line_product($line)
         return array('id' => $default, 'error' => '');
     }
 
-    return array('id' => '', 'error' => lang(array(
+    return array('id' => '', 'error' => erp_edoc_parasut_no_product_text($line));
+}
+
+/**
+ * Why an invoice cannot go to Paraşüt for want of a product, or '' when
+ * every line can be written against one. A line without a Pinegrap product
+ * goes on the default product/service; with none set, the invoice used to
+ * be refused only after the buyer's card had been opened at Paraşüt. A line
+ * with a product finds or opens its own (erp_edoc_parasut_line_product()),
+ * which only asking Paraşüt tells.
+ *
+ * @param array       $lines    erp_invoice_items rows (product_id, description)
+ * @param string|null $default  The default product/service id; null reads the setting
+ * @return string
+ */
+function erp_edoc_parasut_product_refusal($lines, $default = null)
+{
+    if ($default === null) {
+        $default = defined('PARASUT_DEFAULT_PRODUCT_ID') ? (string) PARASUT_DEFAULT_PRODUCT_ID : '';
+    }
+
+    if (trim((string) $default) !== '') {
+        return '';
+    }
+
+    foreach ((array) $lines as $line) {
+        if (is_array($line) && ((int) ($line['product_id'] ?? 0) <= 0)) {
+            return erp_edoc_parasut_no_product_text($line);
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The refusal of a line that has no Paraşüt product to go on.
+ *
+ * @param array $line  An erp_invoice_items row (description)
+ * @return string
+ */
+function erp_edoc_parasut_no_product_text($line)
+{
+    return lang(array(
         'string' => 'Line "{var:1}" has no Paraşüt product to go on. Enter a default product/service id on the Paraşüt card of the commerce settings (a generic service opened in Paraşüt).',
         'vars' => (string) ($line['description'] ?? ''),
-    )));
+    ));
 }
 
 /**
@@ -907,12 +949,19 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         return $fail(lang('The invoice has no lines.'));
     }
 
-    // Refused before anything reaches Paraşüt: a rate it does not take used
-    // to open the buyer's card there first and only then fail on the invoice.
+    // Refused before anything reaches Paraşüt: a rate it does not take, or a
+    // line with no product to go on, used to open the buyer's card there
+    // first and only then fail on the invoice.
     $rate_refusal = erp_edoc_parasut_vat_rate_refusal($lines);
 
     if ($rate_refusal !== '') {
         return $fail($rate_refusal);
+    }
+
+    $product_refusal = erp_edoc_parasut_product_refusal($lines);
+
+    if ($product_refusal !== '') {
+        return $fail($product_refusal);
     }
 
     $context = array('doc_type' => 'invoice', 'doc_id' => (int) $invoice['id']);
