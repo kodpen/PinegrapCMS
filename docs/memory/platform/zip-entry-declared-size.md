@@ -13,7 +13,7 @@ description: A zip entry is read no further than its archive declares: streams v
 - Office preview, product importer and bank statement .xlsx readers stream through it; past the size → "The file could not be read.", nothing taken (a preview sheet: rows so far, `truncated`); the cut part's parser error stays out of the PHP warnings (`libxml_use_internal_errors()`). Preview shared strings also stop at 500,000 strings or 32 MB (`PG_OFFICE_MAX_STRINGS`, `PG_OFFICE_MAX_STRING_BYTES`).
 - `pg_restore_archive_copy()` and `pg_restore_extract_step()` read at most one byte past the declared size, then report the file damaged.
 
-## And entries read whole?
+## And entries read whole? (PR #730)
 - `pg_zip_entry_contents($zip, $entry, $limit, &$error)` (files.php): null with `large` (declares more than `$limit`), `damaged` (not exactly its declared size; `getFromIndex()` is asked for size + 1) or `missing`.
 - `pg_zip_import_open($path, &$error)` refuses, before inflating, more than 10,000 entries, 2 GB declared or the disk room (`pg_explorer_disk_has_room()`, now in files.php). `import_zip.php` and `pg_designer_import_zip()` use both; an entry past 64 MB (`PG_ZIP_IMPORT_MAX_ENTRY`) or damaged is left out with a warning. Names are read raw (`FL_ENC_RAW`), as PclZip gave them.
 - Search index: `pg_office_open()`, then the part at `PG_OFFICE_MAX_PART`; pptx slides share that room. A refused part gives no text.
