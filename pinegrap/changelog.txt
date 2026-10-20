@@ -35,6 +35,7 @@
 [NEW] Added redirects to short links: a short link can send visitors on with a 301 or 302, its name can be an old address with Turkish letters, a * in the name covers the addresses under it that no page answers, and links can be imported and exported as a CSV file.
 [NEW] Added AI crawler rules and llms.txt: robots.txt can say how AI tools may use the site and ask the crawlers you do not allow to stay away, in step with the firewall, and the site can publish llms.txt, a short guide to its pages for AI tools.
 [NEW] Added Trendyol to marketplace sync: categories and their attributes, listings opened from product groups, and stock and prices sent on a schedule.
+[NEW] Added customer returns: a customer asks to return items from their account within the withdrawal period, staff approve or reject the request with a note and the return carrier and code, follow the goods back, refund the money through the payment provider or record a refund made another way, and are reminded before a refund falls due.
 [NEW] Added a personal data export for KVKK and GDPR requests: everything the site keeps about one person downloads as a JSON file and a PDF summary, and every export is recorded in the audit trail.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.

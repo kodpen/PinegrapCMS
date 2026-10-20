@@ -229,3 +229,57 @@ function test_audit_redact_json_text()
 	pg_assert_same(array('note' => '{not json'), pg_audit_redact(array('note' => '{not json')), 'text that only looks like JSON');
 	pg_assert_same(array('n' => '12'), pg_audit_redact(array('n' => '12')), 'a number stays text');
 }
+
+// A page deleted with a large designer tree keeps its name, folder and title:
+// the tree is kept as its length, hash and opening, never decoded into a side
+// that passes the JSON limit.
+function test_audit_large_json_text_is_compacted()
+{
+	$limits = pg_audit_limits();
+	$nodes = array();
+
+	for ($i = 0; strlen(json_encode($nodes)) < 100000; $i++) {
+		$nodes[] = array('id' => 'n' . $i, 'tag' => 'div', 'text' => 'Bölüm ' . $i);
+	}
+
+	$tree = json_encode(array('type' => 'root', 'children' => $nodes));
+
+	pg_assert_same(null, pg_audit_json_text($tree), 'over the JSON limit it is not decoded');
+	pg_assert_true(strlen($tree) > $limits['json'], 'the fixture is past the limit');
+
+	$row = pg_audit_row('delete', 'page', 7, array('page_name' => 'hakkimizda', 'page_folder' => '3', 'page_title' => 'Hakkımızda', 'page_tree_json' => $tree), array(), 'hakkimizda', 1);
+	$before = json_decode($row['before_json'], true);
+
+	pg_assert_same('hakkimizda', $before['page_name'] ?? null, '100 KB tree: name kept');
+	pg_assert_same('Hakkımızda', $before['page_title'] ?? null, '100 KB tree: title kept');
+	pg_assert_same(true, $before['page_tree_json']['truncated'] ?? null, '100 KB tree: compacted');
+	pg_assert_same(sha1($tree), $before['page_tree_json']['sha1'] ?? null, '100 KB tree: hash of the text');
+
+	// Under the JSON limit but over the value limit: decoded to be masked,
+	// then kept compacted as the masked text.
+	$medium = json_encode(array('token_secret' => 's3cr3t', 'children' => array_slice($nodes, 0, 400)));
+	pg_assert_true((strlen($medium) > $limits['value']) && (strlen($medium) < $limits['json']), 'medium fixture size');
+
+	$row = pg_audit_row('delete', 'page', 8, array('page_name' => 'iletisim', 'page_tree_json' => $medium), array(), 'iletisim', 1);
+	$before = json_decode($row['before_json'], true);
+
+	pg_assert_same('iletisim', $before['page_name'] ?? null, '40 KB tree: name kept');
+	pg_assert_same(true, $before['page_tree_json']['truncated'] ?? null, '40 KB tree: compacted');
+	pg_assert_true(strpos($row['before_json'], 's3cr3t') === false, '40 KB tree: the secret is not in the opening');
+	pg_assert_same(0, strpos($before['page_tree_json']['start'] ?? '', '{"token_secret":"***"'), '40 KB tree: the opening is the masked text');
+}
+
+// Encrypted blobs and keys named private or license are secrets; columns that
+// only contain those words are not.
+function test_audit_private_and_license_names()
+{
+	foreach (array('push_vapid_private', 'ws_ai_license', 'license') as $secret) {
+		pg_assert_true(pg_audit_secret_key($secret), $secret);
+	}
+
+	foreach (array('private_label', 'private_folder', 'grant_private_access', 'private_days', 'license_check') as $plain) {
+		pg_assert_false(pg_audit_secret_key($plain), $plain);
+	}
+
+	pg_assert_same(array('title' => 'x'), pg_audit_volatile('config', array('title' => 'x', 'backup_remote_settings' => 'cipher:iv', 'parasut_credentials_enc' => 'cipher')), 'config ciphertext re-encrypted on every save');
+}

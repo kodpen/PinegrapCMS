@@ -867,14 +867,30 @@ function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
 
     $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . e($order_id) . "'");
 
-    log_activity(
-        'Payment received for order (#' . $order_number . ')'
-        . ($user_id > 0 ? ' recorded by user_id=' . $user_id : ' recorded by the system')
-    );
+    log_activity(pg_order_paid_log_text($order_number, $user_id));
 
     pg_erp_auto_invoice($order_id, 'order_paid');
 
     return true;
+}
+
+/**
+ * The activity log line of a payment recorded on an order. Who recorded it
+ * is the log's user column (the signed-in operator); the line only says
+ * whether an operator pressed Payment Received or the software marked the
+ * order paid itself (an ERP receipt that settled the order's invoice).
+ *
+ * @param string $order_number
+ * @param int    $user_id  Operator recording the payment; 0 for a system path
+ * @return string
+ */
+function pg_order_paid_log_text(string $order_number, int $user_id): string
+{
+    if ($user_id > 0) {
+        return lang(array('string' => 'Order (#{var:1}) was marked paid.', 'vars' => array($order_number)));
+    }
+
+    return lang(array('string' => 'Order (#{var:1}) was marked paid automatically.', 'vars' => array($order_number)));
 }
 
 /**

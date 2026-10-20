@@ -767,7 +767,7 @@ function erp_edoc_parasut_no_product_text($line)
 /**
  * The sales_invoices body for an invoice, field for field from the
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
- * line's rate when it has one, as its amount otherwise.
+ * line's rate when that rate is its only discount, as its amount otherwise.
  *
  * @param array  $invoice     An erp_invoices row; an order's invoice also carries
  *                            order_number and order_date (Y-m-d)
@@ -786,14 +786,19 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
             return array('error' => $product['error']);
         }
 
+        // A campaign discount and a typed one apply one after the other
+        // (erp_manual_lines_build()), which no single rate says: such a line
+        // goes with the amount the two came to (discount_amount holds the
+        // sum). The typed rate alone, with no campaign, goes as the rate.
         $discount_rate = (float) ($line['discount_rate'] ?? 0);
+        $as_rate = ($discount_rate > 0) && ((float) ($line['offer_discount_rate'] ?? 0) <= 0);
         $attributes = array(
             'quantity' => (float) $line['quantity'],
             'unit_price' => erp_edoc_parasut_money((int) $line['unit_price']),
             'vat_rate' => (float) $line['tax_rate'],
             'description' => mb_substr(trim((string) $line['description']), 0, 255),
-            'discount_type' => ($discount_rate > 0) ? 'percentage' : 'amount',
-            'discount_value' => ($discount_rate > 0) ? $discount_rate : erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0)),
+            'discount_type' => $as_rate ? 'percentage' : 'amount',
+            'discount_value' => $as_rate ? $discount_rate : erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0)),
         );
 
         // Withholding is a line attribute at Paraşüt (details[].vat_withholding_rate),
@@ -1490,6 +1495,28 @@ function erp_edoc_parasut_cancel_window_open($attributes, $now)
 }
 
 /**
+ * What a status question says about an invoice that Paraşüt holds with no
+ * e-document. A draft that was never handed to GİB is sent there for the
+ * first time; one that was handed over (a conversion job kept, the kind
+ * decided, the row marked sent) and still has none is sent there again.
+ *
+ * @param array $invoice  The erp_invoices row as the question found it
+ * @return string
+ */
+function erp_edoc_parasut_unconverted_message($invoice)
+{
+    $handed_over = (trim((string) ($invoice['parasut_job_id'] ?? '')) !== '')
+        || ((string) ($invoice['edoc_status'] ?? '') === 'sent')
+        || in_array((string) ($invoice['edoc_kind'] ?? ''), array('einvoice', 'earchive'), true);
+
+    if ($handed_over) {
+        return lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+    }
+
+    return lang(array('string' => 'The document is waiting as a draft at {var:1}; hand it to GİB to make it official.', 'vars' => array('Paraşüt')));
+}
+
+/**
  * Asks after a converted invoice: the trackable job while it still answers,
  * then the sales invoice and the e-document it became.
  *
@@ -1609,12 +1636,13 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     $document_id = trim((string) ($document_reference['id'] ?? ''));
 
     if (($document_id === '') || !in_array($document_type, array('e_archives', 'e_invoices'), true)) {
-        // Converted and still no e-document: the job ran out before it was
-        // read, or failed without a word. Shown as the provider's draft, so
-        // the hand-over button comes back.
+        // No e-document: a draft not handed to GİB yet, or one whose
+        // conversion job ran out before it was read or failed without a
+        // word. Shown as the provider's draft, so the hand-over button
+        // comes back.
         $out['success'] = true;
         $out['status'] = 'created';
-        $out['message'] = lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+        $out['message'] = erp_edoc_parasut_unconverted_message($invoice);
 
         // What Paraşüt computed for the draft, so it can be looked over
         // before the hand-over without opening Paraşüt.
