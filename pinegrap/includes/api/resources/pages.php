@@ -831,8 +831,6 @@ function api_pages_delete($params) {
 	// itself would refuse is not knowable until it runs.
 	api_dry_run_stop('deleted', 'page', array('id' => $id, 'name' => $page['page_name']));
 
-	$audit_before = pg_audit_fetch('page', $id);
-
 	$result = pg_delete_page_record($id, array(
 		'id'           => (int)$app['owner']['id'],
 		'role'         => (int)$app['owner']['role'],
@@ -846,8 +844,6 @@ function api_pages_delete($params) {
 		api_fail(409, 'page_delete_refused', $message);
 
 	}
-
-	pg_audit_record('delete', 'page', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'Page ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',

@@ -568,3 +568,35 @@ function pg_audit_record($action, $table, $id, array $before = array(), $label =
 
     return pg_audit($action, $tables[$table]['type'], $id, $before, $after, $label);
 }
+
+/**
+ * Record a change that one statement made to several rows (WHERE id IN …):
+ * one line per row, each compared with its own row before. The caller reads
+ * the rows before with pg_audit_fetch_many().
+ *
+ * @param string $action
+ * @param string $table
+ * @param array  $before_rows  id => row, as pg_audit_fetch_many() returned them
+ * @return int  lines written
+ */
+function pg_audit_record_many($action, $table, array $before_rows)
+{
+    $tables = pg_audit_tables();
+
+    if (!$before_rows || !isset($tables[$table]) || !pg_audit_ready()) {
+        return 0;
+    }
+
+    $after_rows = ($action === 'delete') ? array() : pg_audit_fetch_many($table, array_keys($before_rows));
+    $written = 0;
+
+    foreach ($before_rows as $id => $before) {
+        $after = isset($after_rows[$id]) ? $after_rows[$id] : array();
+
+        if (pg_audit($action, $tables[$table]['type'], $id, $before, $after, pg_audit_label_of($table, $after ? $after : $before))) {
+            $written++;
+        }
+    }
+
+    return $written;
+}
