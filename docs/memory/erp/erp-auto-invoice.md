@@ -5,7 +5,7 @@ description: An order's invoice issued on its own once it is paid or shipped (co
 
 ## What does the setting do?
 - ERP settings card, "The invoice of a web order" (PR #697): `config.erp_auto_invoice_on` (ENUM since 2026.4.4, `ERP_AUTO_INVOICE_ON`) is `off` (the order screen's Issue the Invoice, default), `order_paid` or `order_shipped`; any other value is stored as `off`.
-- Two filters under it (11.0.58, PR #PRNUM): `erp_auto_invoice_min_total` (BIGINT, minor units; typed in whole units, 0-10,000,000) and `erp_auto_invoice_tax_number_only`, read by `erp_auto_invoice_filters()`. All three are written only when the card posted the select.
+- Two filters under it (11.0.58, PR #958): `erp_auto_invoice_min_total` (BIGINT, minor units; typed in whole units, 0-10,000,000) and `erp_auto_invoice_tax_number_only`, read by `erp_auto_invoice_filters()`. All three are written only when the card posted the select.
 
 ## Where does it fire?
 - `pg_erp_auto_invoice($order_id, $trigger, $after_response)` (`includes/fn/ecommerce.php`) returns at once unless `ERP_ENABLED` and the setting equals the trigger; only then is the ERP loaded.

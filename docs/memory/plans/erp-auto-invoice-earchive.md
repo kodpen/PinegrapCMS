@@ -1,6 +1,6 @@
 ---
 name: erp-auto-invoice-earchive
-description: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #PRNUM): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
+description: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
 ---
 
 ## Why?
@@ -8,7 +8,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #6
 
 ## What is built?
 - Steps 1-2 (PR #697): the ERP card's "The invoice of a web order" (the existing enum), `erp_auto_invoice_decision()` with tests, `erp_auto_invoice_for_order()` at the end of the checkout, on Payment Received and on a new shipment, the invoicing lock in `erp_invoice_from_order()`, refusals on the panel bell. Behaviour: docs/memory/erp/erp-auto-invoice.md.
-- Step 1b (PR #PRNUM): the card's two filters, schema step 11.0.58 (`erp_auto_invoice_tax_number_only`, `erp_auto_invoice_min_total` in minor units), read in `erp_auto_invoice_decision()`.
+- Step 1b (PR #958): the card's two filters, schema step 11.0.58 (`erp_auto_invoice_tax_number_only`, `erp_auto_invoice_min_total` in minor units), read in `erp_auto_invoice_decision()`.
 
 ## What is decided?
 - Setting card in Settings › Ecommerce › ERP: the existing enum plus two filters, only buyers with a tax number (the invoice's: the account's, else the contact's; the order keeps none) and a smallest order (the whole sale, a gift card included). A filtered order is left to the order screen without a bell row.
