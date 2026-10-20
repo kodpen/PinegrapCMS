@@ -391,7 +391,8 @@ Faz -1 – 9 bitti. Kalanlar (e-belge sürücüleri, mali müşavir onayı, elle
 - Banka ekstresi (`includes/erp/bank_import.php`): CSV, `.xlsx`/`.xlsm` (zip
   yardımcılarıyla, kütüphanesiz), `.xls` ve `.ods` (PHPExcel, okuyucu adı
   `pg_products_import_reader()`'dan, biçimleriyle; tarih hücresi biçiminden
-  tanınır). Her yol `erp_bank_read_file()` → aynı hücre satırları; sayı
+  tanınır; `.ods` ürün içe aktarıcıyla ortak `pg_products_import_ods_load()`
+  ile, parça, hücre ve kullanılan alan tavanlarıyla). Her yol `erp_bank_read_file()` → aynı hücre satırları; sayı
   hücresi `erp_bank_sheet_value()` ile CSV metnine, başlık bloğu
   `erp_bank_rows_from_heading()` ile atılır. `.numbers`/`.pdf` adla
   reddedilir. PHPExcel libxml dosya yüklemeyi kapalı bırakır: aynı istekte

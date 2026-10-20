@@ -80,7 +80,7 @@ define('PG_PRODUCTS_IMPORT_ODS_MAX_PART', 8 * 1024 * 1024);
 // parts have to be there, declare no more than PG_PRODUCTS_IMPORT_ODS_MAX_PART
 // and unpack to exactly what they declare; a part that inflates further would
 // reach the reader cut short, as broken XML. How many cells the reader then
-// makes of repeated rows and columns is the reader's own matter.
+// makes of repeated rows and columns is held by pg_products_import_ods_load().
 function pg_products_import_ods_check($path)
 {
     if (!class_exists('ZipArchive')) {
@@ -112,6 +112,70 @@ function pg_products_import_ods_check($path)
     $zip->close();
 
     return $answer;
+}
+
+// The most cells PHPExcel's OpenDocument reader may make of one file, merged
+// range references included. The reader makes a cell for every repeat of a
+// repeated row or column (table:number-rows-repeated,
+// table:number-columns-repeated), so a 1 KB file can ask for hundreds of
+// millions. An honest file spells its cells out: an office application
+// writes a value cell in 90 to 150 bytes and runs of empty cells cost nothing,
+// so content.xml at PG_PRODUCTS_IMPORT_ODS_MAX_PART holds well under one cell
+// per 64 bytes, the ceiling. At some 40 microseconds and 500 bytes a cell in
+// the reader, that is five or six seconds and 65 MB.
+define('PG_PRODUCTS_IMPORT_ODS_MAX_CELLS', PG_PRODUCTS_IMPORT_ODS_MAX_PART / 64);
+
+// The most cells the first sheet's used range may span, its last row times
+// its last column: both importers walk every one of them, empty or not, and
+// one value far down and far right is enough to make that billions. A fifth
+// of a second's walk, and room for 3,000 lines 349 columns wide, which the
+// bank statement importer holds in memory (some 40 MB).
+define('PG_PRODUCTS_IMPORT_ODS_MAX_RANGE', 1024 * 1024);
+
+// Read an OpenDocument file with PHPExcel inside the ceilings above: the
+// workbook, or null with $error set to the sentence to show. $data_only is the
+// reader's setReadDataOnly(): the product importer wants values, the bank
+// statement importer the formats that tell a date.
+function pg_products_import_ods_load($path, $data_only, &$error)
+{
+    $error = pg_products_import_ods_check($path);
+
+    if ($error !== '') {
+        return null;
+    }
+
+    require_once dirname(__FILE__) . '/includes/phpexcel/PHPExcel.php';
+
+    try {
+
+        $reader = PHPExcel_IOFactory::createReader('OOCalc');
+        $reader->setReadDataOnly($data_only);
+        $reader->setCellCeiling(PG_PRODUCTS_IMPORT_ODS_MAX_CELLS);
+
+        $book = $reader->load($path);
+
+        if ($book->getSheetCount() > 0) {
+
+            $sheet = $book->getSheet(0);
+            $span = $sheet->getHighestDataRow() * PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn());
+
+            if ($span > PG_PRODUCTS_IMPORT_ODS_MAX_RANGE) {
+                $book->disconnectWorksheets();
+                $error = lang('The file is too large.');
+                return null;
+            }
+        }
+
+    } catch (Throwable $exception) {
+
+        $too_many = ($exception instanceof PHPExcel_Reader_Exception)
+            && ($exception->getCode() === PHPExcel_Reader_OOCalc::CELL_CEILING_REACHED);
+
+        $error = $too_many ? lang('The file is too large.') : lang('The file could not be read.');
+        return null;
+    }
+
+    return $book;
 }
 
 // One cell, as the text the importer would have read out of a CSV.
@@ -184,31 +248,34 @@ function pg_products_import_to_csv($source_path, $file_name, &$error)
         return pg_products_import_xlsx_to_csv($source_path, $error);
     }
 
-    // An OpenDocument file is measured before the reader holds its parts.
+    // Formatting, column widths and merged cells are of no interest to an
+    // importer that wants values, and skipping them is the difference between
+    // a workbook of ten thousand products opening and not.
     if ($reader_name == 'OOCalc') {
-        $error = pg_products_import_ods_check($source_path);
 
-        if ($error !== '') {
+        // An OpenDocument file is measured before the reader holds its parts,
+        // and read within a ceiling on the cells it makes.
+        $book = pg_products_import_ods_load($source_path, true, $error);
+
+        if ($book === null) {
             return '';
         }
-    }
 
-    require_once dirname(__FILE__) . '/includes/phpexcel/PHPExcel.php';
+    } else {
 
-    try {
+        require_once dirname(__FILE__) . '/includes/phpexcel/PHPExcel.php';
 
-        $reader = PHPExcel_IOFactory::createReader($reader_name);
+        try {
 
-        // Formatting, column widths and merged cells are of no interest to an
-        // importer that wants values, and skipping them is the difference
-        // between a workbook of ten thousand products opening and not.
-        $reader->setReadDataOnly(true);
+            $reader = PHPExcel_IOFactory::createReader($reader_name);
+            $reader->setReadDataOnly(true);
 
-        $book = $reader->load($source_path);
+            $book = $reader->load($source_path);
 
-    } catch (Exception $exception) {
-        $error = lang('The file could not be read.');
-        return '';
+        } catch (Exception $exception) {
+            $error = lang('The file could not be read.');
+            return '';
+        }
     }
 
     $sheet = $book->getSheet(0);

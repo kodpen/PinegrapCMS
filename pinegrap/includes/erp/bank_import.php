@@ -275,15 +275,19 @@ function erp_bank_read_spreadsheet($path, $extension)
         // names for the extension. Read with formats, unlike the product
         // importer, because a date cell is known by its format alone; a
         // statement is small enough for it.
+        $book = null;
+
         if ($extension === 'ods') {
             // The OpenDocument reader takes any file for a zip, fails on the
-            // first missing part with warnings and reads its parts whole; a
-            // file that is not one, or whose parts are too large or unpack
-            // past their size, is turned away here, as a broken .xlsx is
-            // above.
-            $refused = pg_products_import_ods_check($path);
+            // first missing part with warnings, reads its parts whole and
+            // makes a cell of every repeat of a repeated row or column; a
+            // file that is not one, whose parts are too large or unpack past
+            // their size, or that makes too many cells, is turned away here,
+            // as a broken .xlsx is above.
+            $refused = '';
+            $book = pg_products_import_ods_load($path, false, $refused);
 
-            if ($refused !== '') {
+            if ($book === null) {
                 return array('rows' => array(), 'error' => $refused);
             }
         }
@@ -291,7 +295,10 @@ function erp_bank_read_spreadsheet($path, $extension)
         require_once(PG_FUNCTIONS_DIR . '/includes/phpexcel/PHPExcel.php');
 
         try {
-            $book = PHPExcel_IOFactory::createReader(pg_products_import_reader('statement.' . $extension))->load($path);
+            if ($book === null) {
+                $book = PHPExcel_IOFactory::createReader(pg_products_import_reader('statement.' . $extension))->load($path);
+            }
+
             $sheet = $book->getSheet(0);
             $last_row = $sheet->getHighestDataRow();
             $last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
