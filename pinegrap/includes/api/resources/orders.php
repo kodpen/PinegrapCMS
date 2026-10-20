@@ -732,7 +732,7 @@ function api_orders_ship($params) {
 
 	require_once(dirname(__FILE__) . '/../../../update_order.php');
 
-	$outcome = update_order(array('order' => array(
+	$outcome = update_order(array('source' => 'api', 'order' => array(
 		'id'         => $id,
 		'recipients' => array(array(
 			'id'               => (int)$recipient['id'],
