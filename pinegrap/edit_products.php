@@ -545,8 +545,6 @@ if (!$_POST) {
                         // form fields, keywords, short links, offer rules and
                         // stored SEO findings, and the product.deleted event.
                         pg_pb_delete_product($product_id);
-
-                        pg_audit_record('delete', 'products', $product_id, $audit_before);
                     }
 
                     $number_of_products++;
