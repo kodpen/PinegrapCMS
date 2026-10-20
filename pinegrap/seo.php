@@ -164,10 +164,10 @@ function pg_seo_columns_exist($column)
         $cache[$column] = true;
 
         foreach (array('page', 'products', 'product_groups') as $table) {
-            // The underscore is a LIKE wildcard, so an unescaped column name
-            // would also match a column that merely resembles it. The two
-            // sibling probes escape it; this one has to agree.
-            if (!db_item("SHOW COLUMNS FROM `" . $table . "` LIKE '" . e(str_replace('_', '\\_', $column)) . "'")) {
+            // By exact name (pg_schema_has()): in SHOW COLUMNS LIKE the
+            // underscore is a wildcard and would also match a column that
+            // merely resembles it.
+            if (!pg_schema_has($table, $column)) {
                 $cache[$column] = false;
                 break;
             }
@@ -293,8 +293,10 @@ function pg_seo_speed_schema_ready()
 
 // Whether there is anything to read the measurements from.
 //
-// The table is probed before its columns, and both are probed rather than
-// assumed. seo_speed_score is added to the record tables unconditionally by
+// The table and both identity columns are probed rather than assumed
+// (pg_schema_has() answers no for a column of a missing table, and the two
+// columns are the only entity_ columns perf_stats has). seo_speed_score is
+// added to the record tables unconditionally by
 // the upgrade, so its presence says nothing about perf_stats - and an install
 // that has dropped the performance table would otherwise take a fatal on
 // every screen that scores anything, because db_item() turns a missing table
@@ -304,8 +306,8 @@ function pg_seo_speed_source_ready()
     static $ready = null;
 
     if ($ready === null) {
-        $ready = db_item("SHOW TABLES LIKE 'perf_stats'")
-            && (count(db_items("SHOW COLUMNS FROM perf_stats LIKE 'entity\\_%'")) >= 2);
+        $ready = pg_schema_has('perf_stats', 'entity_type')
+            && pg_schema_has('perf_stats', 'entity_id');
     }
 
     return $ready;
