@@ -107,3 +107,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/returns.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/short_link_redirects.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_export.php');
