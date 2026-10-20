@@ -940,67 +940,99 @@ if (!$_POST) {
                             });
                         </script>';
  
-                    $query =
-                        "SELECT number
-                        FROM shipping_tracking_numbers
-                        WHERE ship_to_id = '" . $ship_tos[$key]['ship_to_id'] . "'
-                        ORDER BY id ASC";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $shipping_tracking_numbers = mysqli_fetch_items($result);
-                    
-                    // loop through the shipping tracking numbers in order to output them
-                    foreach ($shipping_tracking_numbers as $shipping_tracking_number) {
-                        // if this is not the first shipping tracking number then add a comma and space for separation
-                        if ($output_shipping_tracking_numbers != '') {
-                            $output_shipping_tracking_numbers .= '<br />';
+                    // The parcels of this address, each with its carrier, its
+                    // status and the format warning the write path set
+                    // (includes/fn/shipping.php). A number whose carrier is not
+                    // known is listed as well, without a link.
+                    $ship_to_id = (int) $ship_tos[$key]['ship_to_id'];
+                    $shipment_rows = pg_shipment_rows($ship_to_id);
+
+                    // "Automatic" resolves to the carrier the shipping method
+                    // names, else to the guess every screen makes from the
+                    // method code, the site's default and the number.
+                    $shipment_method = (string) $recipient['shipping_method_code'];
+
+                    if ($recipient['shipping_method_id'] && pg_shipment_rows_ready()) {
+                        $shipment_method_carrier = (string) db_value("SELECT carrier FROM shipping_methods WHERE id = '" . (int) $recipient['shipping_method_id'] . "'");
+
+                        if (pg_shipping_carrier_exists($shipment_method_carrier)) {
+                            $shipment_method = $shipment_method_carrier;
                         }
-                        
-                        $shipping_tracking_url = get_shipping_tracking_url($shipping_tracking_number['number'],$recipient['shipping_method_code']);
-                        
-                        // if a shipping tracking url was found, then output link
-                        if ($shipping_tracking_url != '') {
-                            $output_shipping_tracking_numbers .= '<a class="link-secondary d-print-none" href="' . h($shipping_tracking_url) . '" target="_blank">' . h($shipping_tracking_number['number']) . '</a>';
-                            
-                        } 
                     }
-                    
+
+                    $shipment_default = pg_shipping_default_carrier();
+
+                    foreach ($shipment_rows as $shipment_row) {
+
+                        $shipment = pg_shipment_view($shipment_row, $shipment_method, $shipment_default);
+
+                        if ($shipment['number'] === '') {
+                            continue;
+                        }
+
+                        $shipment_automatic = pg_shipment_view(array('number' => $shipment['number']), $shipment_method, $shipment_default);
+
+                        $shipment_select = 'ship_to_id_' . $ship_to_id . '_carrier_' . (int) $shipment_row['id'];
+
+                        if (!$liveform->field_in_session('id')) {
+                            $liveform->assign_field_value($shipment_select, $shipment['named'] ? $shipment['carrier'] : '');
+                        }
+
+                        $shipment_status_title = '';
+
+                        if (($shipment['status'] === 'delivered') && ((int) $shipment_row['delivered_at'] > 0)) {
+                            $shipment_status_title = ' title="' . h(get_absolute_time(array('timestamp' => (int) $shipment_row['delivered_at'], 'type' => 'date'))) . '"';
+                        }
+
+                        $output_shipping_tracking_numbers .=
+                            '<li class="d-flex flex-wrap align-items-center gap-2 py-2 border-bottom">
+                                ' . (($shipment['url'] !== '')
+                                    ? '<a class="link-secondary fw-medium text-break" href="' . h($shipment['url']) . '" target="_blank" rel="noopener noreferrer">' . h($shipment['number']) . '</a>'
+                                    : '<span class="fw-medium text-break">' . h($shipment['number']) . '</span>') . '
+                                <span class="badge ' . pg_shipment_status_class($shipment['status']) . '"' . $shipment_status_title . '>' . h(pg_shipment_status_label($shipment['status'])) . '</span>
+                                <span class="ms-auto d-print-none">' .
+                                    $liveform->output_field(array(
+                                        'type'    => 'select',
+                                        'name'    => $shipment_select,
+                                        'id'      => $shipment_select,
+                                        'class'   => 'form-select form-select-sm',
+                                        'options' => pg_shipment_carrier_options($shipment_automatic['carrier_name']),
+                                    )) . '
+                                    <label class="visually-hidden" for="' . h($shipment_select) . '">' . h(lang(array('string' => 'Shipping carrier of {var:1}', 'vars' => array($shipment['number'])))) . '</label>
+                                </span>
+                                ' . ($shipment['warning']
+                                    ? '<span class="w-100 small text-warning-emphasis bg-warning-subtle rounded px-2 py-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipment_warning_text($shipment['carrier_name'])) . '</span>'
+                                    : '') . '
+                            </li>';
+                    }
+
+                    if ($output_shipping_tracking_numbers !== '') {
+                        $output_shipping_tracking_numbers = '<ul class="list-unstyled mb-2">' . $output_shipping_tracking_numbers . '</ul>';
+                    }
+
                   // if the form has not been submitted yet, then prefill tracking number field with tracking numbers
                   if ($liveform->field_in_session('id') == FALSE) {
-                    $shipping_tracking_numbers_for_field = '';
+                    $shipping_tracking_numbers_for_field = array();
 
-                    // array_key_last() needs PHP 7.3, so find the last key once, before the loop.
-                    $last_shipping_tracking_number_key = null;
-
-                    if ($shipping_tracking_numbers) {
-                        end($shipping_tracking_numbers);
-                        $last_shipping_tracking_number_key = key($shipping_tracking_numbers);
-                        reset($shipping_tracking_numbers);
-                    }
-
-                    // loop through the shipping tracking numbers in order to prepare value for field
-                    foreach ($shipping_tracking_numbers as $shipping_tracking_number => $value) {
-                        // if this is not the first shipping tracking number then add a line break
-                        if ($shipping_tracking_numbers_for_field != '') {
-                            $shipping_tracking_numbers_for_field .= "\n";
-                        }
-                    
-                        
-                        if ($shipping_tracking_number === $last_shipping_tracking_number_key) {
-                            $shipping_tracking_numbers_for_field .= $value['number'];
-                        }else{
-                            $shipping_tracking_numbers_for_field .= $value['number'] . ',';
+                    foreach ($shipment_rows as $shipment_row) {
+                        if (trim((string) $shipment_row['number']) !== '') {
+                            $shipping_tracking_numbers_for_field[] = $shipment_row['number'];
                         }
                     }
 
-                    $liveform->assign_field_value('ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_tracking_numbers', $shipping_tracking_numbers_for_field) ;
+                    $liveform->assign_field_value('ship_to_id_' . $ship_to_id . '_tracking_numbers', implode(',', $shipping_tracking_numbers_for_field));
                 }
 
-                $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>'ship_to_id_tracking_numbers', 'name'=>'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_tracking_numbers','class'=>'form-control tagin min-height-tagin' )) . '
+                // One field per address: the id carries the address, so a second
+                // recipient's field is not a duplicate id that tagin never reaches.
+                $shipment_numbers_field = 'ship_to_id_tracking_numbers_' . $ship_to_id;
+
+                $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>$shipment_numbers_field, 'name'=>'ship_to_id_' . $ship_to_id . '_tracking_numbers','class'=>'form-control tagin min-height-tagin' )) . '
                 <script>
-                    if(document.body.contains(document.querySelector("#ship_to_id_tracking_numbers"))){
-                        tagin( document.querySelector("#ship_to_id_tracking_numbers"));
+                    if (document.getElementById("' . $shipment_numbers_field . '")) {
+                        tagin(document.getElementById("' . $shipment_numbers_field . '"));
                     }
-                </script>';  
+                </script>';
                     
                 }
 
@@ -1031,8 +1063,14 @@ if (!$_POST) {
                 
                 // loop through the custom field names in order to output cells for values
                 foreach ($custom_field_names as $custom_field_name) {
-                    $data = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['data'];
-                    $type = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['type'];
+                    // An address of a multi-address order may have no answer
+                    // for a field another address filled in.
+                    $custom_field_value = isset($ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name])
+                        ? $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]
+                        : array('data' => '', 'type' => '');
+
+                    $data = $custom_field_value['data'];
+                    $type = $custom_field_value['type'];
                     
                     // assume that we need to prepare data for HTML until we find out otherwise
                     $prepare_for_html = TRUE;
@@ -1045,7 +1083,10 @@ if (!$_POST) {
                     $output_custom_field_cells .= '<span class="col text-end order_custom_field">' . prepare_form_data_for_output($data, $type, $prepare_for_html) . '</span>';
                 }
                 
-                $output_shipping_details =
+                // Appended, one card per address: an order shipped to two
+                // addresses shows both, and saving it keeps the first one's
+                // tracking numbers.
+                $output_shipping_details .=
                     '<div class="col-12 col-md-12 col-lg-4">
                         <div class="card">
                             <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
@@ -3152,20 +3193,52 @@ if (!$_POST) {
 
             foreach ($order['recipients'] as $key => $recipient) {
 
-                $recipient['ship_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_ship_date'), 'date');
+                // Only an address whose shipping fields were on the screen is
+                // written. One that was not (an address with no order lines is
+                // not drawn) would otherwise be saved as "no tracking numbers"
+                // and lose the ones it has.
+                if (array_key_exists('ship_to_id_' . $recipient['id'] . '_tracking_numbers', $_POST)) {
 
-                $recipient['delivery_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_delivery_date'), 'date');
+                    $recipient['ship_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_ship_date'), 'date');
 
-                $recipient['tracking_numbers'] = array();
+                    $recipient['delivery_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_delivery_date'), 'date');
 
-                if ($liveform->get('ship_to_id_' . $recipient['id'] . '_tracking_numbers')) {
+                    // The carrier chosen for each number already on the
+                    // address, by the number as the table compares it (case and
+                    // trailing spaces aside). A number typed in this save has no
+                    // select yet and takes the automatic carrier.
+                    $chosen_carriers = array();
 
-                    $tracking_numbers = $liveform->get('ship_to_id_' . $recipient['id'] . '_tracking_numbers');
-                    $tracking_numbers = explode(',',$tracking_numbers);
-                    
-                    foreach ($tracking_numbers as $tracking_number) {
-                        if ($tracking_number) {
-                            $recipient['tracking_numbers'][] = $tracking_number;
+                    foreach (pg_shipment_rows($recipient['id']) as $shipment_row) {
+
+                        $select = 'ship_to_id_' . $recipient['id'] . '_carrier_' . (int) $shipment_row['id'];
+
+                        if (array_key_exists($select, $_POST)) {
+                            $chosen_carriers[mb_strtolower(trim((string) $shipment_row['number']))] = (string) $liveform->get($select);
+                        }
+
+                    }
+
+                    $recipient['tracking_numbers'] = array();
+
+                    if ($liveform->get('ship_to_id_' . $recipient['id'] . '_tracking_numbers')) {
+
+                        $tracking_numbers = $liveform->get('ship_to_id_' . $recipient['id'] . '_tracking_numbers');
+                        $tracking_numbers = explode(',',$tracking_numbers);
+
+                        foreach ($tracking_numbers as $tracking_number) {
+
+                            $tracking_number = trim($tracking_number);
+
+                            if ($tracking_number === '') {
+                                continue;
+                            }
+
+                            $chosen_key = mb_strtolower($tracking_number);
+
+                            $recipient['tracking_numbers'][] = isset($chosen_carriers[$chosen_key])
+                                ? array('number' => $tracking_number, 'carrier' => $chosen_carriers[$chosen_key])
+                                : $tracking_number;
                         }
                     }
                 }

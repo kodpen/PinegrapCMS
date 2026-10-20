@@ -12,13 +12,15 @@
 //
 // Written against the seller integration documentation on
 // developers.trendyol.com as it read in October 2026, after the product and
-// order services moved to V2 (the V1 endpoints closed on 15 October 2026). Only
-// V2 paths, or paths the documentation marks as shared by V1 and V2, are used.
+// order services moved to V2 (the product V1 services closed on 15 September
+// 2026, the order V1 services on 15 October 2026). Only V2 paths, or paths the
+// documentation marks as shared by V1 and V2, are used.
 //
 // What this connector does so far: prove the credentials, read the category
-// tree and what a category demands, open listings, and read the result of a
-// batch. Stock, price and orders are not named in the table below, so mp_can()
-// answers no for them and nothing queues work this connector cannot do.
+// tree and what a category demands, open listings, send stock and price, and
+// read the result of a batch. Orders are not named in the table below, so
+// mp_can() answers no for them and nothing queues work this connector cannot
+// do.
 //
 // Four things about this provider shape the code:
 //
@@ -64,6 +66,7 @@ function mp_trendyol_connector() {
 		'category_tree'       => 'mp_trendyol_category_tree',
 		'category_attributes' => 'mp_trendyol_category_attributes',
 		'create_listings'     => 'mp_trendyol_create_listings',
+		'push_stock_price'    => 'mp_trendyol_push_stock_price',
 		'read_task'           => 'mp_trendyol_read_task'
 	);
 
@@ -1140,6 +1143,239 @@ function mp_trendyol_brand_match($answer, $name) {
 
 }
 
+/* --------------------------------------------------------- stock and price */
+
+// Their ceiling for one stock and price request.
+function mp_trendyol_stock_batch_size() {
+
+	return 1000;
+
+}
+
+// The most stock Trendyol takes for one product.
+function mp_trendyol_max_quantity() {
+
+	return 20000;
+
+}
+
+// How long Trendyol refuses a request identical to one it had before.
+function mp_trendyol_repeat_window() {
+
+	return 900;
+
+}
+
+// Send a batch of stock and price changes.
+//
+// $rows is what mp_product_row() built, one per product; 'remote_code' is the
+// barcode, which is the only key their inventory service takes. Answers a task
+// handle in data['task_id'], read later with read_task(): their batch result
+// for a stock and price update carries no status of its own, only one per
+// line.
+//
+// Products this connector can tell will be refused are left out of the
+// request and answered in data['refused'] (product id => reason), so that each
+// fails on its own reason rather than the batch failing on one of them. When
+// nothing is left to send, task_id is '' and the rest had nothing to say.
+//
+// Stock and price are optional per line on their side, so an account that
+// does not send prices sends quantities alone and the prices set in the
+// Trendyol panel stand.
+function mp_trendyol_push_stock_price($account, $rows, $transport = null) {
+
+	$rows = array_slice((array)$rows, 0, mp_trendyol_stock_batch_size());
+
+	if (!$rows) {
+
+		return mp_error(lang('Nothing to send.'));
+
+	}
+
+	$with_price = !empty($account['push_price']);
+	$with_stock = !empty($account['push_stock']);
+
+	if (!$with_price && !$with_stock) {
+
+		return mp_error(lang('This account sends neither stock nor price.'));
+
+	}
+
+	$currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : 'TRY';
+
+	// The request has no currency field: a number sent is a number of lira.
+	if ($with_price && $currency !== 'TRY') {
+
+		return mp_error(lang(array(
+			'string' => 'Trendyol sells in Turkish lira, and this shop\'s prices are in {var:1}. Turn off sending prices for this account to send stock alone.',
+			'vars'   => array($currency)
+		)));
+
+	}
+
+	$built = mp_trendyol_stock_body($rows, $with_stock, $with_price);
+
+	if (!$built['items']) {
+
+		return mp_ok(array('task_id' => '', 'sent' => 0, 'refused' => $built['refused']));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/inventory/sellers/' . mp_trendyol_seller_id($account) . '/products/price-and-inventory',
+		65536, $transport, array('items' => $built['items']));
+
+	if (!$result['ok']) {
+
+		// The same body inside fifteen minutes is refused, which happens when
+		// a batch is sent again after a timeout that their side had in fact
+		// accepted. It is asked again once the window has passed, when it is
+		// either accepted with a batch id of its own or has been replaced by
+		// newer numbers; failing it for good would report an error about
+		// numbers Trendyol already has.
+		if (mp_trendyol_is_repeat_refusal($result['error'])) {
+
+			return mp_error(
+				lang('Trendyol had this same stock and price request in the last 15 minutes and refuses it until then. It is sent again after that.'),
+				true,
+				array('retry_after' => mp_trendyol_repeat_window()));
+
+		}
+
+		return $result;
+
+	}
+
+	$task_id = isset($result['data']['batchRequestId']) ? trim((string)$result['data']['batchRequestId']) : '';
+
+	if ($task_id === '') {
+
+		return mp_error(lang('Trendyol accepted the stock and price update but did not return a batch id.'), true);
+
+	}
+
+	return mp_ok(array('task_id' => $task_id, 'sent' => count($built['items']), 'refused' => $built['refused']));
+
+}
+
+// The request's items, and the products left out with the reason for each.
+//
+// Answers array(items, refused). Per product:
+//
+//   a barcode their rules refuse is left out: Trendyol would refuse it per
+//   line minutes later, and the reason here names the rule.
+//
+//   a second product under a barcode already in the batch is left out: one
+//   line in their answer would be read as the verdict for both.
+//
+//   quantity is sent only for a product that tracks stock (zero would take an
+//   untracked product off sale), and above their ceiling of twenty thousand
+//   the ceiling is sent - the most that can be offered there.
+//
+//   price is sent as both list and sale price, the shop having one price, and
+//   a product without a price is left out rather than offered for nothing.
+//
+//   a product with nothing to say (untracked, and prices not sent) is simply
+//   not in the request.
+function mp_trendyol_stock_body($rows, $with_stock, $with_price) {
+
+	$items = array();
+
+	$refused = array();
+
+	$seen = array();
+
+	foreach ((array)$rows as $row) {
+
+		if (!is_array($row) || empty($row['product_id'])) {
+
+			continue;
+
+		}
+
+		$product_id = (int)$row['product_id'];
+
+		$name = isset($row['name']) ? (string)$row['name'] : (string)$product_id;
+
+		$barcode = isset($row['remote_code']) ? trim((string)$row['remote_code']) : '';
+
+		$problem = mp_trendyol_barcode_problem($barcode);
+
+		if ($problem !== '') {
+
+			$refused[$product_id] = lang(array('string' => '{var:1}: {var:2}', 'vars' => array($name, $problem)));
+
+			continue;
+
+		}
+
+		$key = mb_strtolower($barcode);
+
+		if (isset($seen[$key])) {
+
+			$refused[$product_id] = lang(array(
+				'string' => '{var:1}: another product in the same batch is sent under the barcode {var:2}.',
+				'vars'   => array($name, $barcode)
+			));
+
+			continue;
+
+		}
+
+		$item = array('barcode' => $barcode);
+
+		if ($with_stock && !empty($row['tracked'])) {
+
+			$item['quantity'] = min(mp_trendyol_max_quantity(), max(0, (int)(isset($row['quantity']) ? $row['quantity'] : 0)));
+
+		}
+
+		if ($with_price) {
+
+			$price = round((float)(isset($row['price_major']) ? $row['price_major'] : 0), 2);
+
+			if ($price <= 0) {
+
+				$refused[$product_id] = lang(array(
+					'string' => '{var:1} has no price, so Trendyol is not sent its stock and price.',
+					'vars'   => array($name)
+				));
+
+				continue;
+
+			}
+
+			$item['salePrice'] = $price;
+			$item['listPrice'] = $price;
+
+		}
+
+		if (count($item) === 1) {
+
+			continue;
+
+		}
+
+		$seen[$key] = true;
+
+		$items[] = $item;
+
+	}
+
+	return array('items' => $items, 'refused' => $refused);
+
+}
+
+// Whether a refusal is their "same request within fifteen minutes" rule.
+//
+// Their documentation gives the text, in Turkish, and not the status code; the
+// English wording is matched too in case the message is translated.
+function mp_trendyol_is_repeat_refusal($message) {
+
+	return preg_match('/15\s*(dakika|minute)/iu', (string)$message) === 1;
+
+}
+
 /* --------------------------------------------------------------- batches */
 
 // The result of an earlier batch, per barcode.
@@ -1239,6 +1475,17 @@ function mp_trendyol_batch_results($decoded) {
 			'status' => $line,
 			'error'  => $error
 		);
+
+	}
+
+	// Without a status of its own, a batch is finished when every line it says
+	// it holds has a verdict. A result that lists fewer lines than its own
+	// count is still being written, and reading it as finished would have the
+	// queue close the lines not yet listed as done.
+	if ($status === '' && isset($decoded['itemCount']) && is_numeric($decoded['itemCount'])
+		&& count($items) < (int)$decoded['itemCount']) {
+
+		$every_line_answered = false;
 
 	}
 
