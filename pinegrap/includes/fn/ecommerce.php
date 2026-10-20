@@ -2461,6 +2461,59 @@ function pg_offer_tier_percentage($offer_id, $subtotal)
     return 0;
 }
 
+// The percentage an order discount takes off this subtotal. A ladder replaces
+// the action's own percentage: the rung the subtotal has reached, and nothing
+// below the first rung. The action row keeps the first rung's percentage only
+// so the action reads as one that discounts something (edit_offer_f.php), so
+// it must not stand in for a rung the cart has not reached. Without a ladder
+// the action's percentage stands. $tiers is pg_offer_tiers()' list, highest
+// rung first.
+function pg_offer_order_discount_percentage($tiers, $subtotal, $action_percentage)
+{
+    if (!$tiers) {
+        return $action_percentage;
+    }
+    foreach ($tiers as $tier) {
+        if ($subtotal >= $tier['min']) {
+            return $tier['percent'];
+        }
+    }
+    return 0;
+}
+
+// What one 'discount order' action takes off this subtotal, in minor units:
+// its amount when it has one, otherwise its percentage (the ladder's rung when
+// there is a ladder) of the subtotal. Never more than the subtotal, so an order
+// total is never shown below zero.
+function pg_offer_order_discount_value($amount, $percentage, $tiers, $subtotal)
+{
+    if ($amount != 0) {
+        $discount = $amount;
+    } else {
+        $discount = round($subtotal * (pg_offer_order_discount_percentage($tiers, $subtotal, $percentage) / 100));
+    }
+    if ($discount > $subtotal) {
+        $discount = $subtotal;
+    }
+    return (int) round($discount);
+}
+
+// The order discount that takes the most off this subtotal, as array(offer id,
+// discount); array(0, 0) when none takes anything off. Each candidate is
+// array('offer_id', 'amount', 'percentage', 'tiers'), in the order the offers
+// were weighed; the first one wins a tie.
+function pg_offer_best_order_discount($candidates, $subtotal)
+{
+    $best = array(0, 0);
+    foreach ($candidates as $candidate) {
+        $discount = pg_offer_order_discount_value($candidate['amount'], $candidate['percentage'], $candidate['tiers'], $subtotal);
+        if ($discount > $best[1]) {
+            $best = array($candidate['offer_id'], $discount);
+        }
+    }
+    return $best;
+}
+
 // Conditions about the cart that do not fit the offer_rules row. The answer
 // depends on what is in the basket right now, and apply_offers_to_cart() moves
 // the basket while it runs, so nothing here is cached.
@@ -3216,10 +3269,9 @@ function apply_offers_to_cart()
             remove_order_item($order_item['id']);
         }
     }
-    $best_order_discount = 0;
-    $best_order_discount_offer_id = 0;
-    $best_order_discount_amount = 0;
-    $best_order_discount_percentage = 0;
+    // Every order discount the cart qualifies for. The winner is chosen after
+    // the loop, against the cart as it then stands (below).
+    $order_discount_candidates = array();
     // pending offers are offers that add product(s) that are ready for the customer to select to add them to the order
     $pending_offers = array();
     $discounted_ship_tos = array();
@@ -3236,45 +3288,14 @@ function apply_offers_to_cart()
                         // if this offer is valid,
                         // then prepare to apply discount
                         if (validate_offer($offer['id']) == true) {
-                            $order_discount = 0;
-                            // if discount is by amount, get order discount
-                            if ($offer_action['discount_order_amount'] != 0) {
-                                $subtotal = get_order_subtotal();
-                                // If the subtotal is greater than or equal to the discount,
-                                // then use the whole discount.
-                                if ($subtotal >= $offer_action['discount_order_amount']) {
-                                    $order_discount = $offer_action['discount_order_amount'];
-                                    // Otherwise the subtotal is less than the possible discount,
-                                    // so just set the discount to the amount of the subtotal.
-                                    // This prevents us from showing a larger discount than
-                                    // was actually applied on the cart, preview, and etc. screens.
-                                    // It also prevents the total from ever showing a negative number,
-                                    // which would be confusing to the customer.
-                                } else {
-                                    $order_discount = $subtotal;
-                                }
-                                // else discount is by percentage, so get order discount
-                            } else {
-                                // A ladder replaces the flat rate; without one
-                                // pg_offer_tier_percentage() answers 0 and the
-                                // action's own percentage stands.
-                                $percentage = pg_offer_tier_percentage($offer['id'], get_order_subtotal());
-                                if ($percentage <= 0) {
-                                    $percentage = $offer_action['discount_order_percentage'];
-                                }
-                                $order_discount = round(get_order_subtotal() * ($percentage / 100));
-                            }
-                            // if this offer provides the best order discount so far then remember that
-                            if ($order_discount > $best_order_discount) {
-                                $best_order_discount = $order_discount;
-                                $best_order_discount_offer_id = $offer['id'];
-                                // Kept so the amount can be worked out again at
-                                // the end: a gift or a product discount further
-                                // down this loop still lowers the subtotal this
-                                // percentage is a percentage of.
-                                $best_order_discount_amount = $offer_action['discount_order_amount'];
-                                $best_order_discount_percentage = $offer_action['discount_order_percentage'];
-                            }
+                            // Weighed after the loop: a gift further down this
+                            // loop can still change the subtotal a percentage
+                            // (or a ladder's rung) is taken from.
+                            $order_discount_candidates[] = array(
+                                'offer_id' => $offer['id'],
+                                'amount' => $offer_action['discount_order_amount'],
+                                'percentage' => $offer_action['discount_order_percentage'],
+                                'tiers' => pg_offer_tiers($offer['id']));
                             // else this offer is not valid, so if an upsell has not already been added for it,
                             // and there is an upsell, then add upsell
                         } else if ((isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
@@ -3472,25 +3493,17 @@ function apply_offers_to_cart()
             }
         }
     }
+    // The loop can lower an item's price after an order discount was found - a
+    // gift taken from a paid line - so the best one is chosen against the cart
+    // as it now stands: a percentage of what is left, a ladder's rung for what
+    // is left, and never more than what is left.
+    $best_order_discount_offer_id = 0;
+    $best_order_discount = 0;
+    if ($order_discount_candidates) {
+        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($order_discount_candidates, get_order_subtotal());
+    }
     // if there is an order discount, then add order discount to order
     if ($best_order_discount_offer_id != 0) {
-        // The winning discount was worked out while the loop was still running,
-        // and the loop can lower an item's price after that - a gift, a product
-        // discount. So it is worked out once more against the cart as it now
-        // stands: a percentage of what is left, and never more than what is
-        // left, because an order total is not a negative number.
-        $final_subtotal = get_order_subtotal();
-        $tier_percentage = pg_offer_tier_percentage($best_order_discount_offer_id, $final_subtotal);
-        if ($tier_percentage > 0) {
-            $best_order_discount = round($final_subtotal * ($tier_percentage / 100));
-        } else if ($best_order_discount_percentage != 0) {
-            $best_order_discount = round($final_subtotal * ($best_order_discount_percentage / 100));
-        } else if ($best_order_discount_amount != 0) {
-            $best_order_discount = $best_order_discount_amount;
-        }
-        if ($best_order_discount > $final_subtotal) {
-            $best_order_discount = $final_subtotal;
-        }
         $query = "UPDATE orders SET discount_offer_id = '" . $best_order_discount_offer_id . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         $_SESSION['ecommerce']['order_discount'] = $best_order_discount;
@@ -3859,22 +3872,9 @@ function get_best_offer_id($offer_code, $scope = '')
                         // if this offer is valid,
                         // then determine discount amount
                         if (validate_offer($offer['id'], 0, $subtotal) == true) {
-                            $order_discount = 0;
-                            // if discount is by amount, get order discount
-                            if ($offer_action['discount_order_amount'] != 0) {
-                                $order_discount = $offer_action['discount_order_amount'];
-                                // else discount is by percentage, so get order discount
-                            } else {
-                                $percentage = pg_offer_tier_percentage($offer['id'], $subtotal);
-                                if ($percentage <= 0) {
-                                    $percentage = $offer_action['discount_order_percentage'];
-                                }
-                                $order_discount = round($subtotal * ($percentage / 100));
-                            }
-                            // if the order discount is greater than the subtotal, then set the order discount to the subtotal
-                            if ($order_discount > $subtotal) {
-                                $order_discount = $subtotal;
-                            }
+                            // The same value the cart is charged: below a
+                            // ladder's first rung this offer takes nothing off.
+                            $order_discount = pg_offer_order_discount_value($offer_action['discount_order_amount'], $offer_action['discount_order_percentage'], pg_offer_tiers($offer['id']), $subtotal);
                             // if this is the best order discount, then remember that
                             if ($order_discount > $best_order_discount) {
                                 $best_order_discount = $order_discount;

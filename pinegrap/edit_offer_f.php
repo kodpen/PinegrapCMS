@@ -854,6 +854,10 @@ function _pg_offer_validate($payload)
         if (($type != 'add product') && ($action['value'] <= 0) && !isset($errors[$key . '.value'])) {
             $errors[$key . '.value'] = lang('Please enter a value.');
         }
+        // The action row keeps the first rung's percentage so it reads as an
+        // action that discounts something; checkout takes the rate from the
+        // ladder and gives nothing below the first rung
+        // (pg_offer_order_discount_percentage()).
         if ($action['tiers']) {
             $action['value'] = (int) $action['tiers'][0]['percent'];
             unset($errors[$key . '.value']);
