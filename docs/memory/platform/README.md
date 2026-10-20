@@ -36,7 +36,8 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - scheduled-jobs-command-line-render.md: Why the search index and SEO structure jobs render pages from the command line (crontab or general job) without PHP warnings, and what a command line render lacks.
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
-- sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, encoding, answer codes, when a send may be retried, refused vs could-not-ask, own cURL call
+- sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call
+- sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
 - sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the Communication › SMS card and its save decision, test message
 - structured-data-open-graph.md: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json_encode only, custom JSON-LD, merchant parts, OG image resolvers, SEO card key.
 - system-status-ca-bundle.md: The "CA Certificate Bundle" system status check (CURL_CA_BUNDLE age) - when it runs, how age is read from the mk-ca-bundle header, thresholds, weight and cache.
@@ -46,3 +47,4 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS verification on cURL calls (update channel, payment gateways, Givex, carriers): pg_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS.
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
+- zip-entry-declared-size.md: A zip entry read as a stream (office preview, xlsx importers, restore and extract copies) stops at the size its archive declares; pg_zip_entry_uri(), shared string caps

@@ -16,7 +16,7 @@ description: Plan (2026-10-19) for docx and xlsx in the file manager and the Wor
 - D2 Edit cells — done: file window (PR #656, memory docs/memory/platform/office-cell-edits.md), channel preview window (PR #656, docs/memory/workspace/workspace-office-cell-edits.md). File window: the D1 table becomes an editable grid; the window's own Save (`explorer_file_save` with `cells`, already ERP-gated) patches only the changed rows, text as inline strings (sharedStrings untouched), and takes every formula's cached result out. Changed from the sketch: no separate action; a hash of the bytes, not `files.timestamp`, as the version.
 - D3 Edit text: docx paragraph text edited in place (one `<w:p>` at a time, runs merged into the first run's style); same patch approach, same endpoint family; no layout editing.
 - D4 Shared use — done (PR #564, memory docs/memory/workspace/workspace-file-manager-files.md): "Send to a channel" in the file manager, "From the file manager" under the paperclip; a copy, no tag of the original.
-- D5 Hygiene: block `docm`/`xlsm`/`pptm` on channel uploads, "Where used" counts `ws_messages`, size ceilings that also hold for parts read as a stream (`pg_office_open()` measures only what entries declare). Done: the split comment above `explorer_file_usage` (PR #656).
+- D5 Hygiene: block `docm`/`xlsm`/`pptm` on channel uploads, "Where used" counts `ws_messages`. Done: zip structure and size ceilings (`pg_office_open()`; parts cut at their declared size, PR #700), the split comment above `explorer_file_usage` joined (PR #656).
 
 ## What is still open?
 1. Settled by D1: no library; the readers are the product's own (the xlsx one can later replace the importer's twin in `import_products_f.php`).

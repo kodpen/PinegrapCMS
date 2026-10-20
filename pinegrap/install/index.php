@@ -287,6 +287,13 @@ if(defined('EDITION')){
 }
 require (dirname(__FILE__) . '/../functions.php');
 
+// The firewall's functions, which the sign-in throttle counts with: the unlock form below
+// goes through pg_login_throttle_guard() and pg_login_record_failure() like the sign-in
+// screen, and without these pg_login_throttle_ready() is false and neither of them counts
+// or locks anything.  Only loaded: the firewall itself (waf_run()) does not run on this
+// screen.
+require_once (dirname(__FILE__) . '/../waf.php');
+
 // The upgrade runner: the version list, the migration files, the schema helpers and the
 // loop that applies them.  It lives under includes/ so that it survives the install
 // directory being removed from a server.
@@ -9071,6 +9078,7 @@ function get_tables() {
 		'shipping_tracking_numbers',
 		'shopping_cart_pages',
 		'short_links',
+		'sms_outbox',
 		'states',
 		'style',
 		'submitted_form_info',

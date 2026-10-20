@@ -239,6 +239,33 @@ function test_img_loading_in_a_page_body()
 	pg_assert_false(strpos($alone, 'loading=') !== false || strpos($alone, 'fetchpriority') !== false, 'nothing added outside a page body');
 }
 
+// The loading attribute outranks props.loading, which is why the editor's
+// Loading row writes the attribute: under a start tree's loading="lazy" a
+// prop never reached the page. A tree that has only the prop keeps it.
+function test_img_loading_attribute_outranks_prop()
+{
+	$image = function ($src, $extra = array()) {
+		return array('type' => 'content', 'props' => array_merge(array('contentType' => 'image', 'src' => $src, 'alt' => 'A'), $extra));
+	};
+	$attr = function ($value) {
+		return array('_attrs' => array(array('name' => 'loading', 'value' => $value)));
+	};
+
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		$image('/first.jpg', $attr('eager')),
+		$image('/second.jpg', array_merge($attr('lazy'), array('loading' => 'eager'))),
+		$image('/third.jpg', array('loading' => 'eager')),
+	));
+
+	$html = generate_style_code_from_tree($tree, 'test');
+
+	pg_assert_contains('<img src="/first.jpg" alt="A" loading="eager" onerror=', $html, 'the attribute, written once');
+	pg_assert_contains('<img src="/second.jpg" alt="A" loading="lazy" onerror=', $html, 'the attribute wins over the prop');
+	pg_assert_contains('<img src="/third.jpg" alt="A" loading="eager" onerror=', $html, 'a prop alone still counts');
+	pg_assert_same(3, substr_count($html, 'loading='), 'one loading attribute per image');
+	pg_assert_false(strpos($html, 'fetchpriority') !== false, 'a first image with its own choice is not raised');
+}
+
 // The output stamp versions every local address of a srcset, so a replaced
 // file is not answered from a cached derivative.
 function test_img_srcset_addresses_are_versioned()
