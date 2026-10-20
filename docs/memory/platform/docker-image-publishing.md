@@ -23,6 +23,7 @@ description: Docker images on GHCR (PR #737): docker-publish.yml on a published 
 
 ## How does compose use the images?
 - Each `image:` is `ghcr.io/kodpen/pinegrap-{app,web}:${PG_IMAGE_TAG:-latest}` next to its `build:` section. Without a `pull_policy` Compose pulls a missing image and builds from the files when the pull fails (before the first release, or while a package is private); `up -d --build` always builds, under the same name. Updating: `docker compose pull`, then `up -d`.
+- The README Docker sections (EN and TR) start with `up -d`, so a trial pulls the published images; `--build` is for a copy the reader changed. They name the images, `PG_IMAGE_TAG` and the update commands: change them with the compose file.
 - `tools/check_docker.sh` sets `PG_IMAGE_TAG=check`: the CI check runs its own build and never replaces a pulled `latest`.
 
 Related: docs/memory/platform/docker.md, docs/memory/release/release-status.md

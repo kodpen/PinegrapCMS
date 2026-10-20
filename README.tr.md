@@ -101,7 +101,7 @@ Tek bir zamanlanmış görev yeterlidir. **Ayarlar › Genel › Cron işleri** 
 ```bash
 git clone https://github.com/kodpen/PinegrapCMS.git
 cd PinegrapCMS
-docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 `http://localhost:8080/pinegrap/install/` adresini açın ve kurulum sihirbazını çalıştırın. Veritabanı adımında **Veritabanı Sunucusu** alanına `db` yazın; veritabanı adı, kullanıcı adı ve parola `pinegrap` (ya da `PG_DB_NAME`, `PG_DB_USER` ve `PG_DB_PASSWORD` ile verdikleriniz).
@@ -111,15 +111,16 @@ docker compose -f docker/docker-compose.yml up -d --build
 ```bash
 PG_INSTALL_ADMIN_EMAIL=siz@example.com PG_INSTALL_ADMIN_PASSWORD='uzun bir parola seçin' \
 PG_INSTALL_STARTER=turkish_default \
-  docker compose -f docker/docker-compose.yml up -d --build
+  docker compose -f docker/docker-compose.yml up -d
 docker compose -f docker/docker-compose.yml logs install
 ```
 
 Site bundan sonra `http://localhost:8080/` adresinde, yönetim paneli `http://localhost:8080/pinegrap/` adresindedir.
 
+* **İmajlar:** `--build` olmadan Compose her sürüm için yayınlanan imajları kullanır: `ghcr.io/kodpen/pinegrap-app` ve `ghcr.io/kodpen/pinegrap-web`. Makinede yoksa onları çeker; yalnız çekilemezlerse kopyanızdaki dosyalardan derler. `docker compose -f docker/docker-compose.yml pull` imajları önceden indirir ve makinedeki eskilerinin yerine koyar. `PG_IMAGE_TAG` etiketi seçer: `latest` (varsayılan) en yeni sürümü izler, `v2026.11.0` gibi bir sürüm etiketi o sürümde kalır. `up -d --build` ise iki imajı aynı adlarla kopyanızdaki dosyalardan derler: kendi değiştirdiğiniz bir kopya için bunu kullanın. Böyle derlenen imajlar, bir sonraki `pull` onları değiştirene kadar kullanılır.
 * **Ayarlar** kabuktan ya da `docker/.env` dosyasından okunur: `PG_HTTP_PORT` (8080), `PG_DB_PASSWORD` (`pinegrap`; deneme dışında ilk başlatmadan önce kendi parolanızı verin), `PG_INSTALL_STARTER` (`english_default` ya da `turkish_default`) ve [`docker/docker-compose.yml`](docker/docker-compose.yml) dosyasının başında listelenen diğerleri.
 * **Verileriniz** iki Docker biriminde (volume) kalır: `pinegrap_data` (yapılandırma, yüklenen dosyalar, yedekler) ve `pinegrap_db`. `docker compose -f docker/docker-compose.yml down` siteyi durdurur ve birimleri korur; `down -v` siteyi siler.
-* **Güncelleme:** yazılım imajdan gelir. Yeni sürümü alın (`git pull` ya da yeni sürüm dosyaları) ve aynı `up -d --build` komutunu çalıştırın. Veritabanı adımları, yönetim panelinin bir sonraki girişte açtığı yükseltme ekranından ya da hemen `docker compose -f docker/docker-compose.yml exec -u www-data app php pinegrap/install/index.php automated_upgrade` ile çalışır. Yönetim panelinden kurulan bir güncelleme yalnız konteynerler yeniden oluşturulana kadar kalır.
+* **Güncelleme:** yazılım imajdan gelir. Compose dosyası da yeni sürümünki olsun diye kopyanızı güncelleyin (`git pull` ya da yeni sürüm dosyaları), sonra `docker compose -f docker/docker-compose.yml pull` ve `up -d` komutlarını çalıştırın: konteynerler yeni imajlarla yeniden oluşturulur. `PG_IMAGE_TAG` bir sürüm etiketiyse önce yeni etiketi verin; imajları kendiniz derliyorsanız bunun yerine `up -d --build` çalıştırın. Veritabanı adımları, yönetim panelinin bir sonraki girişte açtığı yükseltme ekranından ya da hemen `docker compose -f docker/docker-compose.yml exec -u www-data app php pinegrap/install/index.php automated_upgrade` ile çalışır. Yönetim panelinden kurulan bir güncelleme yalnız konteynerler yeniden oluşturulana kadar kalır.
 
 ---
 
