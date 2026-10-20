@@ -79,6 +79,8 @@ function pg_payment_legacy_gateways()
  *       'method'  => 'Pay With Example',       // redirect: the orders.payment_method value
  *       'file'    => 'example.php',            // under includes/payments/
  *       'portal'  => 'https://example.com/',   // where the operator finds the keys
+ *       'log_name' => 'ExamplePay',            // how the activity log names the
+ *                                              // service (default: the label)
  *       'settings' => 'config',                // shipped drivers only: keeps the
  *                                              // config columns and switch the card
  *                                              // already draws (default 'connect')
@@ -91,6 +93,7 @@ function pg_payment_builtin_drivers()
     return array(
         'iyzico' => array(
             'label'    => 'iyzico',
+            'log_name' => 'Iyzipay',
             'kind'     => 'card',
             'gateway'  => 'Iyzipay',
             'file'     => 'iyzico.php',
@@ -98,6 +101,7 @@ function pg_payment_builtin_drivers()
         ),
         'pay_with_iyzico' => array(
             'label'    => 'Pay with iyzico',
+            'log_name' => 'Iyzipay',
             'kind'     => 'redirect',
             'method'   => 'Pay With Iyzico',
             'file'     => 'iyzico.php',
@@ -113,7 +117,8 @@ function pg_payment_builtin_drivers()
  * @param mixed  $definition
  * @param string $directory where a relative file name is looked for; '' to
  *                          take absolute paths only (an add-on names its own)
- * @return array|null key, label, kind, gateway, method, file, portal, settings
+ * @return array|null key, label, log_name, kind, gateway, method, file, portal,
+ *                    settings
  */
 function pg_payment_driver_definition_normalize($key, $definition, $directory)
 {
@@ -126,6 +131,7 @@ function pg_payment_driver_definition_normalize($key, $definition, $directory)
     };
 
     $label = $text('label');
+    $log_name = $text('log_name');
     $kind = $text('kind');
     $gateway = $text('gateway');
     $method = $text('method');
@@ -178,6 +184,7 @@ function pg_payment_driver_definition_normalize($key, $definition, $directory)
     return array(
         'key'      => $key,
         'label'    => $label,
+        'log_name' => ($log_name !== '') ? $log_name : $label,
         'kind'     => $kind,
         'gateway'  => $gateway,
         'method'   => $method,
@@ -1059,4 +1066,92 @@ function pg_payment_order_ship_to($order_id)
         WHERE order_id = '" . $order_id . "'");
 
     return (is_array($recipients) && (count($recipients) === 1)) ? $recipients[0] : null;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Money back on an order (view_order.php, process_order_cancellation())
+   --------------------------------------------------------------------------- */
+
+/**
+ * How the activity log names the service behind a driver.
+ *
+ * @param string $key
+ * @return string '' for a key no driver answers to
+ */
+function pg_payment_log_name($key)
+{
+    $definition = pg_payment_driver($key);
+
+    return ($definition === null) ? '' : $definition['log_name'];
+}
+
+/**
+ * The driver the order screen gives money back through: the driver of the
+ * store's Payment Gateway value, the one service the screen's refund dialog
+ * talks to, whichever method the order was paid with.
+ *
+ * @param string $gateway ECOMMERCE_PAYMENT_GATEWAY
+ * @return string driver key, '' when the gateway is not driver-based or its
+ *                driver cannot refund
+ */
+function pg_payment_refund_driver($gateway)
+{
+    $key = pg_payment_driver_for_gateway((string) $gateway);
+
+    return (($key !== '') && pg_payment_can($key, 'refund')) ? $key : '';
+}
+
+/**
+ * The driver that voids an order's payment when the order is cancelled: the
+ * redirect driver of the order's payment method. A card order records the
+ * method 'Credit/Debit Card' and not the gateway that took the payment, so
+ * it gets no driver here and its refund is left to the operator.
+ *
+ * @param string $method orders.payment_method
+ * @return string driver key, '' when no driver can cancel the payment
+ */
+function pg_payment_cancel_driver($method)
+{
+    $key = pg_payment_driver_for_method((string) $method);
+
+    return (($key !== '') && pg_payment_can($key, 'cancel')) ? $key : '';
+}
+
+/**
+ * What a cancellation records after asking a driver to void the payment, and
+ * the activity log lines that say so: the driver's own lines first, then the
+ * cancellation's.
+ *
+ * @param int    $order_id
+ * @param string $transaction_id orders.transaction_id, the reference when the
+ *                               service names none
+ * @param array  $answer         pg_payment_call() of cancel()
+ * @param string $service        pg_payment_log_name()
+ * @return array refund_status ('refunded' or 'manual_required'),
+ *               refund_reference, log
+ */
+function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service)
+{
+    $order_id = (int) $order_id;
+    $answer = pg_payment_answer('cancel', $answer);
+    $log = $answer['log'];
+
+    if ($answer['success']) {
+        $reference = ($answer['refund_reference'] !== '') ? $answer['refund_reference'] : (string) $transaction_id;
+        $log[] = 'Auto-refund SUCCESS via ' . $service . ' — order #' . $order_id . ' (payment ' . $reference . ').';
+
+        return array('refund_status' => 'refunded', 'refund_reference' => $reference, 'log' => $log);
+    }
+
+    $message = (isset($answer['raw']['message']) && is_scalar($answer['raw']['message'])) ? (string) $answer['raw']['message'] : '';
+
+    if (isset($answer['raw']['exception'])) {
+        $log[] = 'Auto-refund EXCEPTION — order #' . $order_id . '. MANUAL REFUND REQUIRED. ' . $message;
+    } else {
+        $log[] = 'Auto-refund FAILED via ' . $service . ' — order #' . $order_id .
+            '. MANUAL REFUND REQUIRED. Gateway message: ' . ($message !== '' ? $message : '(no message)');
+    }
+
+    return array('refund_status' => 'manual_required', 'refund_reference' => '', 'log' => $log);
 }

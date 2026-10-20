@@ -843,7 +843,9 @@ function pg_payment_iyzico_refund_with($order, $amount, $settings)
     $result = \Iyzipay\Model\AmountBaseRefund::create($request, pg_payment_iyzico_options($settings));
 
     if ($result->getStatus() != 'success') {
-        return pg_payment_failure((string) $result->getErrorMessage());
+        $message = (string) $result->getErrorMessage();
+
+        return pg_payment_failure($message, array('message' => $message));
     }
 
     return array(
@@ -882,7 +884,9 @@ function pg_payment_iyzico_cancel_with($order, $transaction_id, $settings)
     $cancel = \Iyzipay\Model\Cancel::create($request, pg_payment_iyzico_options($settings));
 
     if ($cancel->getStatus() != 'success') {
-        return pg_payment_failure((string) $cancel->getErrorMessage());
+        $message = (string) $cancel->getErrorMessage();
+
+        return pg_payment_failure($message, array('message' => $message));
     }
 
     $reference = (string) $cancel->getPaymentId();
