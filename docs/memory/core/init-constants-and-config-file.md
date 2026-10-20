@@ -21,7 +21,7 @@ description: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMM
 
 ## How does a value go into the file?
 - Always through `pg_config_php_string()` / `pg_config_define_line()`: single quotes with `\` and `'` escaped, everything else literal. It reads back byte for byte (quotes, backslashes, a closing tag, `$`).
-- Until PR #<pr> the installer pasted DB and SMTP values between quotes as they were: a password with `'` or a trailing `\` left a config.php that did not parse (site down, and `tools/check_install.sh` still passed because it reads the version with its own connection; it now includes the file). The command line refused such values; it no longer does.
+- Until PR #741 the installer pasted DB and SMTP values between quotes as they were: a password with `'` or a trailing `\` left a config.php that did not parse (site down, and `tools/check_install.sh` still passed because it reads the version with its own connection; it now includes the file). The command line refused such values; it no longer does.
 - `update_config_define()` replaces the key's line (`pg_config_define_value_pattern()`, confined to one line) or adds one; `remove_config_define()` drops it.
 - `smtp_settings.php` saves values as typed (it used to strip `'`) minus control characters; they only reach PHPMailer and a DNS lookup. `private_label.php` still strips `'` and was left alone: some of its values are printed into the panel's HTML as they are (`output.php`, stylesheet `href`), so what it accepts is a question of its own.
 
