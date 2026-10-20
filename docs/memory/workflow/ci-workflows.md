@@ -15,7 +15,7 @@ description: GitHub Actions workflows: what each runs and when, action versions 
 - checkout v4 to v7 changed nothing here: v6 keeps the token in a file under `$RUNNER_TEMP` (no step runs authenticated git; `tools/static_analysis.sh` fetches public commits into its own repository), v7 refuses fork code on `pull_request_target` and `workflow_run` (not used). setup-node v5-v7: the automatic npm cache needs a `packageManager` field in a root `package.json` (there is none); `always-auth` and `registry-url` are not used.
 
 ## Which Node runs the JavaScript checks?
-- Node 24, an LTS line (Node 20 support ended on 2026-04-30). The same Node runs `node --check`, terser through npx (`tools/build_js.php --check`) and `npm ci` + esbuild (`tools/build_code_editor.php --check`). Node 24 with npm 11 builds the same files as Node 22 with npm 10, so the switch needed no rebuild.
+- Node 24 since PR #889, an LTS line (Node 20 support ended on 2026-04-30). The same Node runs `node --check`, terser through npx (`tools/build_js.php --check`) and `npm ci` + esbuild (`tools/build_code_editor.php --check`). Node 24 with npm 11 builds the same files as Node 22 with npm 10, so the switch needed no rebuild.
 - The job name carries the versions ("PHP 8.3, Node 24"); change it with them.
 
 ## Which runners?
