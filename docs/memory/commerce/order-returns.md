@@ -6,7 +6,7 @@ description: Customer return model (includes/fn/returns.php; order_returns, orde
 ## What is stored?
 - `order_returns`: one request to send back goods of one delivery (`ship_to_id`) of a `complete` or `exported` order: reason code (`pg_return_reasons()`), the customer's words, the decision note, carrier and return code, tracking number, `source` (customer, panel, api), who asked and who decided, one time column per status. `order_return_items`: how many of each order line, one row per line and return.
 - Both InnoDB; a request is written in one transaction. `status` is a VARCHAR checked in code, not an ENUM.
-- Built with step 1 of `plans/customer-returns-flow.md` (PR #650). The customer's side (My Account): commerce/order-returns-customer.md; the panel, the refund and the API come with the later steps.
+- Built with step 1 of `plans/customer-returns-flow.md` (PR #650). The customer's side (My Account): commerce/order-returns-customer.md; the panel (PR #808): commerce/order-returns-panel.md; the refund and the API come with the later steps.
 
 ## Which statuses and moves are there?
 - requested → approved, rejected, closed; approved → shipped, received, closed; shipped → received, closed; received → refunded, closed; refunded → closed. Rejected and closed are final: the customer asks again instead.
@@ -18,7 +18,7 @@ description: Customer return model (includes/fn/returns.php; order_returns, orde
 - `pg_return_create()` takes `GET_LOCK('pg_return_<database hash>_<order id>', 5)` around the check and the insert. Sandbox race, three requests for the last unit: one winner in 15 rounds of 15; without the lock every round had several.
 
 ## How is the withdrawal window worked out?
-- 14 days counted from the day after delivery, open up to and including the deadline, and before delivery too. The shipment rows keep no delivery date yet (shipping-management phase 2), so delivery is the later of `ship_tos.ship_date` + 3 days and `ship_tos.delivery_date`. Both may be dates the checkout planned; the later one never cuts the legal period short.
+- 14 days counted from the day after delivery, open up to and including the deadline, and before delivery too. Delivery is known when every numbered parcel of the delivery has `shipping_tracking_numbers.delivered_at` (11.0.20): the day the last one arrived (`pg_return_parcel_delivery()`, read since PR #808; nothing writes the column yet, see `plans/shipping-management.md` step 3). Otherwise it is the latest of `ship_tos.ship_date` + 3 days, `ship_tos.delivery_date` and the day a parcel that did arrive arrived (`parcel_delivered`). The first two may be dates the checkout planned; the latest never cuts the legal period short.
 - No date at all: a customer request is refused with "contact us"; staff record it. A customer request also needs the goods to have left: a tracking number, a shipped quantity or a ship date that has come (`pg_return_goods_left()`); before that it is a cancellation, not a return.
 - Refund deadline (`pg_return_refund_deadline()`): 14 days after `shipped_at`, when the goods reached the carrier (RG 32909, 24 May 2025), else after `received_at`.
 

@@ -24,11 +24,14 @@
  *                                               a client secret, an iframe token)
  *   pg_payment_<key>_authorize($order, $amount, $payment)
  *                                               charge, or hold, what the visitor
- *                                               submitted ($payment: the posted card
- *                                               fields, installment count, token)
- *   pg_payment_<key>_complete($order, $return, $state)
+ *                                               submitted ($payment: the checkout's
+ *                                               values for this attempt - the posted
+ *                                               card fields, instalment count, token,
+ *                                               order lines, return address)
+ *   pg_payment_<key>_complete($order, $amount, $return, $state)
  *                                               the visitor is back from a 3-D Secure
- *                                               or hosted page ($return: the request
+ *                                               or hosted page ($amount: what the
+ *                                               order totals now; $return: the request
  *                                               the service sent back; $state: what
  *                                               authorize() asked to keep)
  *   pg_payment_<key>_capture($order, $amount, $transaction_id)
@@ -64,9 +67,14 @@
  *   client            array   public values for the browser (prepare())
  *   state             array   what complete() needs back; the caller keeps it
  *                             server side, never in the page
+ *   installments      int     how many instalments the payment was taken in,
+ *                             0 when the service does not say
+ *   card_brand        string  the card's scheme as the service names it
  *   refund_reference  string  the service's id of a refund
  *   order_reference   string  notify(): which order the message is about
  *   reply             string  notify(): the body the service expects back
+ *   log               array   sentences for the site's activity log, in order;
+ *                             the caller writes them, failure or not
  *   raw               array   the service's answer, for the log only
  *
  * @author      Erdal Güral (Kodpen)
@@ -90,7 +98,7 @@ function pg_payment_operations()
     return array(
         'prepare'   => 2,
         'authorize' => 3,
-        'complete'  => 3,
+        'complete'  => 4,
         'capture'   => 3,
         'refund'    => 3,
         'cancel'    => 2,
@@ -261,6 +269,22 @@ function pg_payment_failure($error, $raw = array())
 }
 
 /**
+ * A failed answer that also has lines for the activity log.
+ *
+ * @param string $error
+ * @param array  $log sentences, in order
+ * @return array
+ */
+function pg_payment_failure_logged($error, $log)
+{
+    return pg_payment_answer('', array(
+        'success' => false,
+        'error'   => (string) $error,
+        'log'     => is_array($log) ? $log : array(),
+    ));
+}
+
+/**
  * A driver's answer in the fixed shape (see the header of this file).
  *
  * A success the caller cannot act on is turned into a failure, because the
@@ -281,6 +305,8 @@ function pg_payment_answer($operation, $answer)
         'status'           => '',
         'transaction_id'   => '',
         'amount'           => null,
+        'installments'     => 0,
+        'card_brand'       => '',
         'redirect_url'     => '',
         'html'             => '',
         'client'           => array(),
@@ -288,6 +314,7 @@ function pg_payment_answer($operation, $answer)
         'refund_reference' => '',
         'order_reference'  => '',
         'reply'            => '',
+        'log'              => array(),
         'raw'              => array(),
     );
 
@@ -297,7 +324,7 @@ function pg_payment_answer($operation, $answer)
         return $shape;
     }
 
-    foreach (array('error', 'status', 'transaction_id', 'redirect_url', 'html', 'refund_reference', 'order_reference', 'reply') as $text) {
+    foreach (array('error', 'status', 'transaction_id', 'card_brand', 'redirect_url', 'html', 'refund_reference', 'order_reference', 'reply') as $text) {
         if (isset($answer[$text]) && is_scalar($answer[$text])) {
             $shape[$text] = trim((string) $answer[$text]);
         }
@@ -307,6 +334,14 @@ function pg_payment_answer($operation, $answer)
         if (isset($answer[$list]) && is_array($answer[$list])) {
             $shape[$list] = $answer[$list];
         }
+    }
+
+    if (isset($answer['log']) && is_array($answer['log'])) {
+        $shape['log'] = array_values(array_map('strval', array_filter($answer['log'], 'is_scalar')));
+    }
+
+    if (isset($answer['installments']) && is_int($answer['installments']) && ($answer['installments'] > 0)) {
+        $shape['installments'] = $answer['installments'];
     }
 
     if (isset($answer['amount']) && is_int($answer['amount'])) {
