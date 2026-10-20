@@ -149,12 +149,14 @@ function pg_settings_categories()
             'description' => lang('Search engines, structured data and visitor tracking.'),
             'sections' => array(
                 'pgset-seo'       => lang('Search Engine Optimization'),
+                'pgset-ai'        => lang('AI Crawlers'),
                 'pgset-feeds'     => lang('Product Feeds'),
                 'pgset-analytics' => lang('Visitor Tracking'),
                 'pgset-cookies'   => lang('Cookie Consent'),
             ),
             'keywords' => array(
                 'pgset-seo'       => pg_settings_keywords(lang('seo, meta, robots, sitemap, title, description, jsonld, json-ld, canonical, indexnow, sharing, social, og, merchant, structured data')),
+                'pgset-ai'        => pg_settings_keywords(lang('ai, artificial intelligence, llms.txt, robots, crawler, bot, gptbot, claudebot, chatgpt, content signal, training')),
                 'pgset-feeds'     => pg_settings_keywords(lang('product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv')),
                 'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
                 'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),

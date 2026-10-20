@@ -366,6 +366,14 @@ if ($item_name_lowercase == 'sitemap.xml') {
     exit();
 }
 
+// llms.txt, when the site publishes one (Site Settings, SEO, AI Crawlers).
+// Switched off, the name goes on as it always has: to a file of that name in
+// the file manager, or to a page.
+if (($item_name_lowercase == 'llms.txt') && router_llms_txt_enabled()) {
+    require(dirname(__FILE__) . '/get_llms.txt.php');
+    exit();
+}
+
 // Check if item is a file.
 $query = "SELECT id FROM files WHERE name = '" . router_escape($item_name) . "'";
 $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
@@ -585,7 +593,8 @@ function router_translation_prefixes()
 /**
  * A file asked for under a language prefix is redirected to its one address
  * at the root: a row of the files table, a physical file or directory under
- * the web root (the software directory included), robots.txt or sitemap.xml.
+ * the web root (the software directory included), robots.txt, sitemap.xml or
+ * llms.txt.
  * Anything else is a page and is routed in the language.
  *
  * @param string $rest the request without PATH and without the prefix
@@ -609,7 +618,7 @@ function router_language_file_redirect($rest)
     $software = mb_strtolower(SOFTWARE_DIRECTORY);
     $is_file = false;
 
-    if (($lower == 'robots.txt') || ($lower == 'sitemap.xml') || ($lower === $software) || (mb_strpos($lower, $software . '/') === 0)) {
+    if (($lower == 'robots.txt') || ($lower == 'sitemap.xml') || ($lower == 'llms.txt') || ($lower === $software) || (mb_strpos($lower, $software . '/') === 0)) {
         $is_file = true;
     } elseif ((mb_strpos($name, '..') === false) && (strpos($name, "\0") === false) && file_exists(dirname(dirname(__FILE__)) . '/' . $name)) {
         $is_file = true;
@@ -710,6 +719,26 @@ function router_short_link_gone($why)
 {
     header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/short_link_gone.php?r=' . (($why === 'used') ? 'used' : 'expired'), true, 302);
     exit();
+}
+
+/**
+ * Whether the site publishes llms.txt (config.llms_txt, 2026.11.0, 11.0.21).
+ * The column is asked for by name: before its step the query fails, and that
+ * reads as off.
+ *
+ * @return bool
+ */
+function router_llms_txt_enabled()
+{
+    $result = @mysqli_query(db::$con, "SELECT llms_txt FROM config");
+
+    if (!$result) {
+        return false;
+    }
+
+    $row = mysqli_fetch_assoc($result);
+
+    return is_array($row) && !empty($row['llms_txt']);
 }
 
 function router_get_request_url()

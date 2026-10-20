@@ -34,6 +34,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
 	upgrade_2026_11_0_shipments();              // 11.0.20
+	upgrade_2026_11_0_ai_crawlers();            // 11.0.21
 
 }
 
@@ -429,5 +430,31 @@ function upgrade_2026_11_0_shipments() {
 	}
 
 	install_note('Shipping: each tracking number now keeps its carrier, status, dates and where it was recorded, a number is recorded once per address, a shipping method can name its carrier, and automatic e-mails gain the "order delivered" action.');
+
+}
+
+// What the site tells AI crawlers (2026.11.0, 11.0.21; includes/fn/ai_crawlers.php,
+// the AI Crawlers card under Site Settings, SEO).
+//
+// robots_ai_rules writes the AI section of robots.txt: a Content-Signal line
+// in the catch-all group and a "Disallow: /" group for each AI crawler that is
+// not allowed. robots_ai_training is the one choice of its own there, whether
+// pages may be used to train AI models; assistants and AI search follow the
+// firewall's two switches. llms_txt publishes /llms.txt, built from the site's
+// name, description and pages, with additional_llms_content added to it.
+// Everything starts off, so robots.txt stays exactly as it was and /llms.txt
+// answers as before (a file of that name, or a missing page) until the
+// operator switches them on.
+function upgrade_2026_11_0_ai_crawlers() {
+
+	install_add_column('config', 'robots_ai_rules', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'robots_ai_training', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'llms_txt', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'additional_llms_content', "TEXT NULL");
+
+	install_note('AI crawlers: robots.txt can now say how AI tools may use the site (a Content-Signal line, and a group for each AI crawler that is not allowed, in step with the firewall), and the site can publish llms.txt, a short guide to its pages for AI tools. Both are under Site Settings, SEO, AI Crawlers and stay off until switched on.');
 
 }
