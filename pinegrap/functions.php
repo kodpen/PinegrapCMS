@@ -97,3 +97,5 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_mode.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_feeds.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit.php');

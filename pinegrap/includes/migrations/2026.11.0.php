@@ -33,6 +33,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_privacy_logs();           // 11.0.16
 
 }
 
@@ -314,5 +315,70 @@ function upgrade_2026_11_0_image_delivery() {
 	install_add_column('config', 'image_quality_avif', "TINYINT UNSIGNED NOT NULL DEFAULT 50");
 
 	install_note('Images: which modern formats (WebP, AVIF) pictures are offered in and the quality of each can be set under Site Settings, Features, Image Optimization, where Rebuild Page HTML also gives pages published before this version their responsive images without opening each one in the designer.');
+
+}
+
+// The consent log and the audit trail (2026.11.0, 11.0.16;
+// includes/fn/privacy.php, includes/fn/audit.php).
+//
+// consent_log keeps one row for every consent a person gives or refuses: the
+// cookie notice's categories, marketing by e-mail, SMS or phone call, and the
+// documents accepted at checkout. Rows are only appended; the person's
+// current answer is the newest row of each channel and purpose. person_token
+// is a keyed hash of the e-mail address (pg_privacy_person_token()), so a row
+// still proves the consent after the person's own records are erased.
+//
+// audit_log keeps who changed what in the panel, through the API or in a
+// job: the action, the record, and the fields that changed with their values
+// before and after (only those, secrets masked; pg_audit()). The free-text
+// site log (log_activity()) stays as it is.
+//
+// channel, purpose, status, source and action are VARCHARs rather than
+// ENUMs: a label added later must not turn into '' on servers that have not
+// run its step. Both tables keep their rows in a backup (they are records of
+// who did what, like log and erp_audit_log).
+function upgrade_2026_11_0_privacy_logs() {
+
+	install_create_table('consent_log', "CREATE TABLE consent_log (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		person_token  VARCHAR(64) NOT NULL DEFAULT '',
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		contact_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		channel       VARCHAR(16) NOT NULL DEFAULT '',
+		purpose       VARCHAR(32) NOT NULL DEFAULT '',
+		status        VARCHAR(16) NOT NULL DEFAULT '',
+		source        VARCHAR(32) NOT NULL DEFAULT '',
+		ip            VARCHAR(45) NOT NULL DEFAULT '',
+		user_agent    VARCHAR(255) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		KEY idx_person (person_token, created_at),
+		KEY idx_user (user_id, created_at),
+		KEY idx_contact (contact_id, created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('audit_log', "CREATE TABLE audit_log (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		request_id    VARCHAR(32) NOT NULL DEFAULT '',
+		source        VARCHAR(8) NOT NULL DEFAULT '',
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		username      VARCHAR(100) NOT NULL DEFAULT '',
+		ip            VARCHAR(45) NOT NULL DEFAULT '',
+		action        VARCHAR(64) NOT NULL DEFAULT '',
+		entity_type   VARCHAR(32) NOT NULL DEFAULT '',
+		entity_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		label         VARCHAR(255) NOT NULL DEFAULT '',
+		before_json   MEDIUMTEXT NULL,
+		after_json    MEDIUMTEXT NULL,
+		PRIMARY KEY (id),
+		KEY idx_created (created_at),
+		KEY idx_entity (entity_type, entity_id, created_at),
+		KEY idx_user (user_id, created_at),
+		KEY idx_request (request_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Privacy: a consent log and an audit trail are created. Both start empty; the screens that write and show them come with later updates.');
 
 }
