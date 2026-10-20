@@ -991,7 +991,7 @@ if (!$_POST) {
 
         $service = $_POST['service'];
 
-        $realtime_rate = $_POST['realtime_rate'];
+        $realtime_rate = $_POST['realtime_rate'] ?? 0;
 
         // If the service does not support real-time rates then clear real-time rate value, so it
         // won't be enabled in db and show check mark on All Shipping Methods screen.
@@ -1086,7 +1086,7 @@ if (!$_POST) {
             }
         }
 
-        if($_POST['status'] == 1){
+        if(($_POST['status'] ?? '') == 1){
             $status = 'enabled';
         }else{
             $status = 'disabled';
@@ -1161,7 +1161,8 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // load all zones in array by exploding string that has allowed zone ids separated by commas
-        $allowed_zones = $_POST['allowed_zones'];
+        // No zone chosen posts no list at all.
+        $allowed_zones = (array) ($_POST['allowed_zones'] ?? array());
 
         // foreach allowed zone insert row in shipping_methods_zones_xref table
         foreach ($allowed_zones as $zone_id) {
