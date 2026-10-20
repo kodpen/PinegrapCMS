@@ -20,5 +20,6 @@ description: GitHub Actions workflows: what each runs and when, action versions 
 
 ## Which runners?
 - `ubuntu-latest`, except the Docker publish builds: `ubuntu-24.04` and `ubuntu-24.04-arm`, one per architecture (docs/memory/platform/docker-image-publishing.md).
+- `ubuntu-latest` moves from Ubuntu 24.04 to 26.04 between 2026-10-19 and 2026-11-19 (actions/runner-images#14748), so a run may land on either. A trial on `ubuntu-26.04` (draft PR #888, not merged) passed every job: PHP checks, the install check on all six databases, the Docker check and Docker publish's prepare job. Nothing is pinned; pin to `ubuntu-24.04` only if a job breaks on 26.04.
 
 Related: docs/memory/workflow/static-analysis.md, docs/memory/workflow/git-branches-and-shared-files.md
