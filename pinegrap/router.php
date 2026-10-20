@@ -1043,23 +1043,17 @@ function router_output_error($error_message) {
         $output_other_help_buttons .='<div class="col-12"><a target="_blank" rel="noopener" href="' . h($output_documents_url) . '" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">article</span>' . lang('Documents') . '</a></div>';
     }
 
-    function get_header($output_page_title) {
-    	return output_header_secure(array(
-    		'title' => $output_page_title,
-    		'icon' => 'setting'
-    	));
-    }
+    $output_header = output_header_secure(array(
+        'title' => $output_page_title,
+        'icon' => 'setting'
+    ));
 
-    function get_footer() {
-       
-        return '<div id="footer" class="footer p-3  d-flex flex-wrap justify-content-center justify-content-md-between text-light d-print-none">
+    $output_footer = '<div id="footer" class="footer p-3  d-flex flex-wrap justify-content-center justify-content-md-between text-light d-print-none">
                     <h6 class="mx-auto">' . lang('Pinegrap Content Management System') . '</h6>
                     <h6 class="version_and_copyright mx-auto">' . EDITION . ' - <span class="material-icons" >copyright</span>' . date('Y', time()) . '</h6>
                 </div>
             </body>
         </html>';
-
-    }
 
     if($output_other_help_buttons != ''){
         $output_other_help_buttons = '<p class="mt-3">' . lang('Other help links') . ':</p>' . $output_other_help_buttons;
@@ -1068,8 +1062,8 @@ function router_output_error($error_message) {
 
 
 
-    echo 
-    get_header($output_page_title) . '
+    echo
+    $output_header . '
     <meta name="robots" content="noindex">
     <style>
     .alert.alert-danger{
@@ -1135,7 +1129,7 @@ function router_output_error($error_message) {
     document.body.style.backgroundAttachment = "fixed";
     document.body.style.backgroundBlendMode = "darken";
     </script>
-    ' . get_footer();
+    ' . $output_footer;
 
     exit();
 }
