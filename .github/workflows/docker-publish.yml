@@ -51,7 +51,7 @@ env:
 jobs:
   prepare:
     name: resolve the release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       push: ${{ steps.release.outputs.push }}
@@ -225,7 +225,7 @@ jobs:
     name: tag the multi-platform images
     needs: [prepare, build]
     if: ${{ needs.prepare.outputs.push == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read
