@@ -104,18 +104,6 @@ function install_cli_read($env, $defaults, $starter_sites) {
 
 	}
 
-	// The installer writes the four database values into data/config.php between single
-	// quotes, as they are: a quote would end the string there and the file would not run.
-	foreach (array('PG_INSTALL_DB_HOST', 'PG_INSTALL_DB_NAME', 'PG_INSTALL_DB_USER', 'PG_INSTALL_DB_PASSWORD') as $name) {
-
-		if (strpbrk($value($name), "'\\") !== false) {
-
-			$problems[] = $name . ' contains a quote or a backslash, which data/config.php cannot hold.';
-
-		}
-
-	}
-
 	$starter = $value('PG_INSTALL_STARTER', 'english_default');
 
 	if (!isset($starter_sites[$starter])) {
@@ -170,6 +158,8 @@ function install_cli_read($env, $defaults, $starter_sites) {
 			'install_type' => 'install',
 			'install_from_folder' => $starter,
 			'default_software_language' => $language,
+			// As they are, quotes and backslashes included: the installer writes them into
+			// data/config.php with pg_config_install_content(), as it does the screen's.
 			'db_host' => $value('PG_INSTALL_DB_HOST'),
 			'db_username' => $value('PG_INSTALL_DB_USER'),
 			'db_password' => $value('PG_INSTALL_DB_PASSWORD'),

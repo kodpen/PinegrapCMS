@@ -305,6 +305,18 @@ define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 define('ECOMMERCE_DEFAULT_TRACKING_PROVIDER', '');
 
 
+// ── Customer return requests ────────────────────────────────────────────────
+//
+// Whether customers can ask to return goods from My Account. The order view
+// then offers each delivery whose goods have left, within the 14-day
+// withdrawal period, with the quantities still to give back; the customer
+// follows the request there and says when the parcel is on its way. Only the
+// customer's side depends on this: staff handle returns either way.
+//
+// Off by default, like order cancellation (ECOMMERCE_ORDER_CANCEL_ALLOWED).
+define('ECOMMERCE_ORDER_RETURNS_ALLOWED', false);
+
+
 // ── Database availability guard ─────────────────────────────────────────────
 //
 // A bot flooding a form that sends mail can fill max_user_connections, because

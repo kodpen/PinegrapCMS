@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ruleset name="Pinegrap PHP compatibility">
+	<description>PHPCompatibility over the product tree for every PHP version the product supports (7.1 and up). Run by tools/static_analysis.sh phpcompat, which compares the report with tools/phpcs-baseline.json (tools/check_php_compat.php).</description>
+
+	<file>../pinegrap</file>
+	<file>../download_assistant.php</file>
+	<file>../index.php</file>
+
+	<exclude-pattern>*/pinegrap/includes/phpmailer/*</exclude-pattern>
+	<exclude-pattern>*/pinegrap/includes/stripe/*</exclude-pattern>
+	<exclude-pattern>*/pinegrap/includes/iyzipay-php/*</exclude-pattern>
+	<exclude-pattern>*/pinegrap/includes/phpexcel/*</exclude-pattern>
+	<exclude-pattern>*/pinegrap/includes/boxpacker/*</exclude-pattern>
+	<exclude-pattern>*/pinegrap/includes/dompdf/*</exclude-pattern>
+	<exclude-pattern>*/pinegrap/includes/qrcode/*</exclude-pattern>
+	<exclude-pattern>*/pinegrap/pclzip\.lib\.php$</exclude-pattern>
+	<exclude-pattern>*/pinegrap/excel_reader2\.php$</exclude-pattern>
+	<exclude-pattern>*/pinegrap/assets/lib/*</exclude-pattern>
+	<exclude-pattern>*/pinegrap/data/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg value="s"/>
+
+	<config name="testVersion" value="7.1-"/>
+
+	<rule ref="PHPCompatibility"/>
+</ruleset>

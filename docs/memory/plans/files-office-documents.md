@@ -1,6 +1,6 @@
 ---
 name: files-office-documents
-description: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: in-browser viewing, cell and paragraph edits that keep the file, send-to-channel, picker; slices D1-D5, open questions
+description: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
 ---
 
 ## What is this plan?
@@ -13,10 +13,10 @@ description: Plan (2026-10-19) for docx and xlsx in the file manager and the Wor
 
 ## What are the slices?
 - D1 View — done (PR #530, memory docs/memory/platform/office-files.md): read on the server by `includes/fn/office.php` (no library; the SheetJS npm build is stale with known CVEs and its CDN is unreachable), drawn by `assets/js/pg_office_view.js` in the file window, Quick Look and the Workspace preview; OOXML MIME types in `get_file.php`.
-- D2 Edit cells: xlsx values edited in the D1 table; saved server side by patching the original package (ZipArchive + DOM on `xl/worksheets/sheetN.xml` and `sharedStrings.xml`), so styles, widths, charts and formulas elsewhere stay untouched; new action `explorer_office_cells_save` (allowlist + `pg_explorer_file_id_actions()` so ERP documents stay read-only); `files.timestamp` as the precondition (last save wins today).
-- D3 Edit text: docx paragraph text edited in place (one `<w:p>` at a time, runs merged into the first run's style); same patch approach, same endpoint family; no layout editing.
-- D4 Shared use — done (PR #564, memory docs/memory/workspace/workspace-file-manager-files.md): "Send to a channel" in the file manager, "From the file manager" under the paperclip; a copy, no tag of the original. Left for D2: the cell editor on Workspace file cards through `ws_file_edit_target()` (versioned replace).
-- D5 Hygiene: block `docm`/`xlsm`/`pptm` on channel uploads, "Where used" counts `ws_messages`; the comment above `explorer_file_usage` in `view_folder_and_files_f.php` was split in two when `explorer_office_preview` went in (#530), join it again. Done: zip structure and size ceilings (`pg_office_open()`; parts cut at their declared size, PR #700).
+- D2 Edit cells — done: file window (PR #656, memory docs/memory/platform/office-cell-edits.md), channel preview window (PR #656, docs/memory/workspace/workspace-office-edits.md). File window: the D1 table becomes an editable grid; the window's own Save (`explorer_file_save` with `cells`, already ERP-gated) patches only the changed rows, text as inline strings (sharedStrings untouched), and takes every formula's cached result out. Changed from the sketch: no separate action; a hash of the bytes, not `files.timestamp`, as the version.
+- D3 Edit text — done (PR #702, memory docs/memory/platform/office-paragraph-edits.md): a paragraph's plain text, in the file window and the channel preview; only word/document.xml is rewritten. Changed from the sketch: no merging into the first run's style; a word-level diff touches only the runs it reaches.
+- D4 Shared use — done (PR #564, memory docs/memory/workspace/workspace-file-manager-files.md): "Send to a channel" in the file manager, "From the file manager" under the paperclip; a copy, no tag of the original.
+- D5 Hygiene: block `docm`/`xlsm`/`pptm` on channel uploads, "Where used" counts `ws_messages`. Done: zip structure and size ceilings (`pg_office_open()`; parts cut at their declared size, PR #700), the split comment above `explorer_file_usage` joined (PR #656).
 
 ## What is still open?
 1. Settled by D1: no library; the readers are the product's own (the xlsx one can later replace the importer's twin in `import_products_f.php`).
@@ -25,4 +25,4 @@ description: Plan (2026-10-19) for docx and xlsx in the file manager and the Wor
 4. Settled by D4: shared use is a copy into the channel folder (private channel rules stay the channel's).
 
 ## Where to start?
-- D2 next (xlsx cell edits on the server, reusing `pg_office_xlsx_*`), then D3, D5. Memory file for the final behaviour: `docs/memory/platform/office-files.md`. Verify on dev: a 5 MB xlsx with three sheets, a docx with images and tables, dark theme, a private channel member without folder rights.
+- D5 next (channel upload rule for macro files, "Where used" with `ws_messages`). Memory file for the final behaviour: `docs/memory/platform/office-files.md`. Verify on dev: a 5 MB xlsx with three sheets, a docx with images and tables, dark theme, a private channel member without folder rights.
