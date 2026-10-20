@@ -18,12 +18,12 @@ description: Code that reads a table/column added by a migration probes first wi
 - `pg_schema_forget()` loads the request's cache file first, so a later load cannot bring the forgotten answer back. Pure part `pg_schema_cache_forget()` (`tests/schema_has_test.php`).
 
 ## Which hot probes use it?
-- `includes/fn/seo.php`: `pg_visitor_rollup_ready()`, `pg_sfv_stats_ready()`, `pg_sfv_legacy_table_exists()`, `pg_page_noindex_ready()`, `pg_multi_page_design_ready()`, `pg_page_custom_jsonld_ready()`, `pg_page_seo_extras_ready()`, `pg_recycle_bin_folder_id()`, `pg_default_upload_folder()`; `pg_offer_conditions()` (`ecommerce.php`); the three in `view_orders.php`; save for later in `cart_action.php`; the offline payment cancel in `job.php`.
+- `includes/fn/seo.php`: `pg_visitor_rollup_ready()`, `pg_sfv_stats_ready()`, `pg_sfv_legacy_table_exists()`, `pg_page_noindex_ready()`, `pg_multi_page_design_ready()`, `pg_page_custom_jsonld_ready()`, `pg_page_seo_extras_ready()`, `pg_recycle_bin_folder_id()`, `pg_default_upload_folder()`; `pg_offer_conditions()` (`ecommerce.php`); the three in `view_orders.php`; save for later in `cart_action.php`; the offline payment cancel in `job.php` (PR #883).
 - Sandbox, Turkish starter site (2026-10-20): 185 addresses as a visitor 9,351 → 8,736 queries, probes 615 → 0 (home page 73 → 68); as the administrator 193 addresses 18,496 → 17,754; `view_orders.php` 37 → 34.
 
 ## How does the router check for the config table?
 - It has no `functions.php`. After the character set and `sql_mode` it reads `SELECT * FROM config LIMIT 1` and hands the row to `waf_prime_config()`, so the firewall does not read it again. `SHOW TABLES LIKE 'config'` runs only when that read fails: no table gives the error page, a table that cannot be read (damaged) goes on as before.
-- The check stays above `define('DB_CONNECTED')`: the error page's `output_control_panel_header_includes()` reads `config` when that constant is defined and exits with the MySQL error instead of drawing the page.
+- The check stays above `define('DB_CONNECTED')`: the error page's `output_control_panel_header_includes()` reads `config` when that constant is defined and exits with the MySQL error instead of drawing the page (PR #883).
 
 ## What about code that runs on the upgrade bridge?
 - Bridge code must not assume new columns/tables at all: see docs/memory/release/upgrade-bridge-rule.md (probes live there, not behind the gate).
